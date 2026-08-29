@@ -37,6 +37,7 @@ import {
 } from "./campaign-budget";
 import {
   normalizeSalesFunnelKey,
+  type SalesFunnelDef,
   type SalesFunnelKey,
   type SalesFunnelKeyWire,
 } from "./sales-funnels";
@@ -211,6 +212,83 @@ export function buildControlRows(
       if (a.running !== b.running) return a.running ? -1 : 1;
       return a.rowId.localeCompare(b.rowId);
     });
+}
+
+/**
+ * The same rows, filed under the SALES FUNNEL each campaign sells.
+ *
+ * A campaign is named for the LEG it performs (`Sales interest`), which is an
+ * arrow of a funnel and not the funnel itself — so a flat list of campaigns
+ * states what each one buys and never what it buys it FOR. On a scope selling
+ * several funnels that reads as several unrelated lines: the modal named an
+ * arrow and a channel and left the reader to work out which funnel the money was
+ * going into.
+ *
+ * The funnel is also the grain the FLOOR binds (`projectedFunnelTotalsUsd`), so
+ * grouping puts the campaigns that share a minimum on screen together.
+ *
+ * Group order is FIRST APPEARANCE in the row order this module already sorted,
+ * so a funnel with a running campaign leads and nothing reshuffles as toggles
+ * are flipped. Campaigns that predate the funnels name none, so they group under
+ * a null funnel and sort LAST — they have no ceiling and belong to no funnel, and
+ * putting them among the funnels would read as one.
+ */
+export interface ControlRowGroup {
+  /** The funnel these campaigns sell, or null for campaigns that predate them. */
+  funnel: SalesFunnelDef | null;
+  rows: ControlRow[];
+}
+
+export function groupControlRowsByFunnel(rows: ControlRow[]): ControlRowGroup[] {
+  const order: string[] = [];
+  const byKey = new Map<string, ControlRowGroup>();
+  for (const row of rows) {
+    const key = row.scope?.def.key ?? "";
+    let group = byKey.get(key);
+    if (!group) {
+      group = { funnel: row.scope?.def ?? null, rows: [] };
+      byKey.set(key, group);
+      order.push(key);
+    }
+    group.rows.push(row);
+  }
+  // A stable sort, so first-appearance order survives inside each class.
+  return order.map((k) => byKey.get(k)!).sort((a, b) => (a.funnel ? 0 : 1) - (b.funnel ? 0 : 1));
+}
+
+/**
+ * What a funnel HEADING states, read off the drafts so it moves as they are typed.
+ *
+ * Both figures are DERIVED from the campaign rows under it and neither is written:
+ * a funnel is a scope, not a thing billing or campaign-service fund, so an editable
+ * total there would have to be split back across its campaigns and no split the
+ * customer did not state is honest. The heading exists to say what the rows below
+ * it add up to right now.
+ *
+ * `running` follows the same rule as the scope pill (`rollupStatus`): a funnel is
+ * running while at least one campaign in it is, so it reads OFF only once every one
+ * of them is off. With a single campaign the two are the same switch by
+ * construction, which is what makes flipping either one flip the other.
+ *
+ * The total adds up every campaign's TYPED ceiling, running or not — it is the sum
+ * of the numbers on screen, not a claim about what will be spent today. What may
+ * actually be spent is `scopeTotalCents`, which counts only the running ones and is
+ * what the summary above Confirm states.
+ */
+export function groupHeadingState(
+  rows: ControlRow[],
+  drafts: Record<string, ControlDraft>,
+): { running: boolean; budgetUsd: number } {
+  let running = false;
+  let budgetUsd = 0;
+  for (const row of rows) {
+    const draft = drafts[row.rowId];
+    if (draft ? draft.running : row.running) running = true;
+    if (!row.scope) continue;
+    const typed = parseDailyBudgetUsd(draft ? draft.budget : String(Math.round(row.savedCents / 100)));
+    if (typed !== null && typed > 0) budgetUsd += typed;
+  }
+  return { running, budgetUsd };
 }
 
 /**

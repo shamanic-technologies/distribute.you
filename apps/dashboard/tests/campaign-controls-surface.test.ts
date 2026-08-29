@@ -215,3 +215,31 @@ describe("the funnel grain states the same two answers as its offer", () => {
     expect(funnelPage).toContain("headerAction={");
   });
 });
+
+describe("the modal files each campaign under its sales funnel", () => {
+  it("groups the rows through the ONE derivation, never a second grouping", () => {
+    expect(modal).toContain("groupControlRowsByFunnel(rows)");
+    expect(modal).toContain("<FunnelHeading");
+  });
+
+  it("suppresses the heading when the modal is ALREADY scoped to one funnel", () => {
+    // That page names the funnel above the control that opened this, and saying it
+    // twice on one screen is chrome rather than clarity.
+    expect(modal).toContain("const showFunnelHeadings = !funnelKey;");
+  });
+
+  it("states the funnel's figures from the DRAFTS, and writes neither", () => {
+    // The daily budget is read-only at funnel grain: billing keys a ceiling on
+    // (funnel x channel x offer), so the only fundable thing is a campaign and a
+    // funnel-level field would have to split its figure back across them.
+    const at = modal.indexOf("function FunnelHeading(");
+    expect(at).toBeGreaterThan(-1);
+    const body = modal.slice(at, modal.indexOf("\n}\n", at));
+    expect(body).toContain("groupHeadingState(group.rows, drafts)");
+    expect(body).not.toContain("<input");
+    // The switch DOES write — a status is per campaign, so flipping the heading
+    // sets every campaign under it.
+    expect(body).toContain('role="switch"');
+    expect(modal).toContain("function setGroupRunning(");
+  });
+});
