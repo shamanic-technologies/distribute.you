@@ -17,7 +17,7 @@ import { Toast } from "@/components/toast";
 import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import {
-  promiseProgressLabel,
+  promiseProgressSentence,
   promiseProgressWidth,
   promiseUnlockLine,
 } from "@/lib/free-credit-promise-view";
@@ -102,10 +102,12 @@ function NextPromise({
   billingHref: string;
 }) {
   const width = promiseProgressWidth(promise.progressPct);
-  // Stated beside the bar so the same visit tomorrow is comparable to today's:
-  // a shape cannot be remembered, a number can. Read from the same served
-  // progress the bar is drawn from, so the two can never disagree.
-  const pctLabel = promiseProgressLabel(promise.progressPct);
+  // Stated under the bar so the same visit tomorrow is comparable to today's: a
+  // shape cannot be remembered, a number can. It carries the ask alongside the
+  // reading, so the bar is a goal rather than a gauge. Read from the same served
+  // progress the bar is drawn from, so the two can never disagree. Its own line,
+  // because the sentence does not fit beside a bar in a 224px rail.
+  const progressLine = promiseProgressSentence(promise.progressPct);
   const remaining = promise.remainingToUnlockCents
     ? formatBillingCentsWhole(promise.remainingToUnlockCents)
     : null;
@@ -128,14 +130,12 @@ function NextPromise({
         </span>
       </p>
       {width !== null && (
-        <div className="flex items-center gap-1.5">
-          <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white">
+        <div className="space-y-1">
+          <div className="h-1 overflow-hidden rounded-full bg-white">
             <div className="h-full rounded-full bg-brand-500" style={{ width: `${width}%` }} />
           </div>
-          {pctLabel && (
-            <span className="shrink-0 text-[10px] font-semibold tabular-nums text-brand-700">
-              {pctLabel}
-            </span>
+          {progressLine && (
+            <p className="text-[10px] font-semibold tabular-nums text-brand-700">{progressLine}</p>
           )}
         </div>
       )}
