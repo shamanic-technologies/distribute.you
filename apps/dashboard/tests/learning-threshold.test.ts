@@ -492,4 +492,28 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
       expect(read(page)).not.toContain("LearningToneProvider");
     }
   });
+
+  it("states the primary on every OFFER-grain route, from the route and not the component", () => {
+    // An offer reads in the brand's primary. All four of its surfaces are SHARED
+    // components — the Overview is literally the brand page re-rendered — so the tone
+    // is stated on the route: setting it inside the component would repaint the brand,
+    // campaign and funnel grains that mount the same code.
+    const OFFER = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]";
+    for (const route of [
+      `${OFFER}/page.tsx`,
+      `${OFFER}/audiences/page.tsx`,
+      `${OFFER}/audiences/leads/page.tsx`,
+      `${OFFER}/funnels/page.tsx`,
+    ]) {
+      expect(read(route)).toContain('<LearningToneProvider tone="primary">');
+    }
+    // The shared components themselves state nothing, or the brand grain moves with them.
+    for (const shared of [
+      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+      "components/audiences/customer-audiences-page.tsx",
+      "components/audiences/engaged-leads-page.tsx",
+    ]) {
+      expect(read(shared)).not.toContain("LearningToneProvider");
+    }
+  });
 });
