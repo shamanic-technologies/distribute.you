@@ -8,6 +8,8 @@ import {
   controlWriteErrorMessage,
   controlsDiff,
   diffSummary,
+  groupControlRowsByFunnel,
+  groupHeadingState,
   hasChanges,
   isRunningStatus,
   nextTotalCents,
@@ -635,5 +637,78 @@ describe("controlWriteErrorMessage — our copy, never the downstream body", () 
     // The doc comments are internal, so only the string literals are checked.
     const literals = lib.match(/"[^"\n]{12,}"/g) ?? [];
     for (const s of literals) expect(s).not.toContain("—");
+  });
+});
+
+describe("a campaign is filed under the sales funnel it sells", () => {
+  it("groups the rows by funnel, first-appearance order, unfunnelled LAST", () => {
+    // A campaign is NAMED for the leg it performs, which is an arrow of a funnel
+    // and not the funnel itself — so a flat list says what each one buys and never
+    // what funnel it buys it for.
+    const rows = buildControlRows(
+      [
+        campaign({ id: "a", funnelKey: "reply_meeting" }),
+        campaign({ id: "b", funnelKey: "visit_signup", status: "stopped" }),
+        campaign({ id: "c", funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
+        campaign({ id: "orphan", funnelKey: null }),
+      ],
+      undefined,
+      CHANNELS,
+    );
+    const groups = groupControlRowsByFunnel(rows);
+    expect(groups.map((g) => g.funnel?.key ?? null)).toEqual([
+      "reply_meeting",
+      "visit_signup",
+      null,
+    ]);
+    expect(groups[0].rows).toHaveLength(2);
+    // A campaign that predates the funnels belongs to no funnel and sorts last —
+    // it has no ceiling, and putting it among the funnels would read as one.
+    expect(groups[2].rows.map((r) => r.campaignId)).toEqual(["orphan"]);
+  });
+
+  it("states the funnel's running state as the ROLLUP of its campaigns", () => {
+    // OFF only once EVERY campaign under it is off, which is the same rule the
+    // scope pill states. With one campaign the two switches are the same switch.
+    const rows = buildControlRows(
+      [
+        campaign({ id: "a", funnelKey: "reply_meeting", status: "stopped" }),
+        campaign({ id: "b", funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
+      ],
+      undefined,
+      CHANNELS,
+    );
+    const drafts: Record<string, ControlDraft> = {};
+    for (const r of rows) drafts[r.rowId] = { running: r.running, budget: "" };
+    expect(groupHeadingState(rows, drafts).running).toBe(true);
+
+    for (const r of rows) drafts[r.rowId] = { running: false, budget: "" };
+    expect(groupHeadingState(rows, drafts).running).toBe(false);
+  });
+
+  it("adds up the TYPED ceilings, so the parent moves as a child is typed", () => {
+    const rows = buildControlRows(
+      [
+        campaign({ id: "a", funnelKey: "reply_meeting" }),
+        campaign({ id: "b", funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
+      ],
+      undefined,
+      CHANNELS,
+    );
+    const drafts: Record<string, ControlDraft> = {
+      [rows[0].rowId]: { running: true, budget: "24" },
+      [rows[1].rowId]: { running: true, budget: "8" },
+    };
+    expect(groupHeadingState(rows, drafts).budgetUsd).toBe(32);
+
+    // A PAUSED campaign's ceiling still counts here: the heading is the sum of the
+    // numbers on screen, not a claim about what gets spent today (that is
+    // `scopeTotalCents`, which the summary above Confirm states).
+    drafts[rows[1].rowId] = { running: false, budget: "8" };
+    expect(groupHeadingState(rows, drafts).budgetUsd).toBe(32);
+
+    // A half-typed field states nothing rather than a fabricated zero-and-carry.
+    drafts[rows[0].rowId] = { running: true, budget: "" };
+    expect(groupHeadingState(rows, drafts).budgetUsd).toBe(8);
   });
 });

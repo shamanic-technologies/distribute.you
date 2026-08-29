@@ -18,14 +18,18 @@ import {
   controlWriteErrorMessage,
   controlsDiff,
   diffSummary,
+  groupControlRowsByFunnel,
+  groupHeadingState,
   hasChanges,
   projectedFunnelTotalsUsd,
   rollupStatus,
   type ControlDraft,
   type ControlRow,
+  type ControlRowGroup,
 } from "@/lib/campaign-controls";
 import { funnelBudgetBelowMinimum, funnelBudgetTip } from "@/lib/sales-funnels";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { Skeleton } from "@/components/skeleton";
 
 /**
@@ -118,6 +122,19 @@ export function CampaignControlsModal({
     [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId],
   );
 
+  /**
+   * A campaign is named for the LEG it performs, which is an ARROW of a funnel and
+   * not the funnel itself — so a flat list states what each campaign buys and never
+   * what funnel it buys it for. Every row therefore sits under the sales funnel it
+   * sells.
+   *
+   * Suppressed when the modal is already scoped to one funnel: that page names the
+   * funnel above the control that opened this, and saying it twice on one screen is
+   * chrome rather than clarity.
+   */
+  const groups = useMemo(() => groupControlRowsByFunnel(rows), [rows]);
+  const showFunnelHeadings = !funnelKey;
+
   // SEEDED from the queries and RE-SEEDED whenever either payload is a different
   // object than the one the drafts were built from — never a once-per-mount
   // latch, which would pin the form to the on-disk snapshot the local-first cache
@@ -208,6 +225,30 @@ export function CampaignControlsModal({
     });
   }
 
+  /**
+   * One decision for every campaign of ONE funnel.
+   *
+   * The heading's switch is the rollup of the rows under it, so flipping it sets
+   * them all rather than storing a state of its own — there is nothing at funnel
+   * grain to store. With a single campaign under the funnel the two switches are
+   * the same switch, which is why either one moves the other.
+   */
+  function setGroupRunning(rowIds: string[], running: boolean) {
+    setTouched((prev) => {
+      const next = new Set(prev);
+      for (const id of rowIds) next.add(id);
+      return next;
+    });
+    setDrafts((prev) => {
+      const next = { ...prev };
+      for (const row of rows) {
+        if (!rowIds.includes(row.rowId)) continue;
+        next[row.rowId] = { ...(next[row.rowId] ?? draftFor(row)), running };
+      }
+      return next;
+    });
+  }
+
   async function confirm() {
     setSaving(true);
     setFailures({});
@@ -282,6 +323,79 @@ export function CampaignControlsModal({
     onClose();
   }
 
+  /** One campaign's line, the same at every grain and under every funnel heading. */
+  function renderRow(row: ControlRow) {
+    const draft = drafts[row.rowId] ?? draftFor(row);
+    const key = row.scope?.def.key;
+    const floorHit = belowFloor.includes(row.rowId);
+    const invalid = diff.invalidRows.includes(row.rowId);
+    return (
+      <li key={row.rowId} className="py-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* The SAME identity the Campaigns table's first column states, from the
+              same component: this modal changes a campaign's money, so it must name
+              the campaign the way the row you clicked to get here named it. */}
+          <div className="min-w-0 text-sm text-gray-800">
+            <CampaignIdentity
+              funnel={row.scope?.def ?? null}
+              featureSlug={row.scope?.featureSlug ?? null}
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={draft.running}
+              aria-label={draft.running ? "Pause this campaign" : "Restart this campaign"}
+              onClick={() => edit(row.rowId, { running: !draft.running })}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                draft.running ? "bg-green-500" : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
+                  draft.running ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </button>
+            <div className="flex items-center gap-1 text-sm text-gray-600">
+              <span className="text-gray-400">$</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={draft.budget}
+                disabled={!row.scope}
+                onChange={(e) => edit(row.rowId, { budget: e.target.value })}
+                aria-label="Daily budget in dollars"
+                className="w-20 rounded-md border border-gray-200 px-2 py-1 text-right tabular-nums focus:ring-2 focus:ring-brand-300 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
+              />
+              <span className="text-xs text-gray-400">/ day</span>
+            </div>
+          </div>
+        </div>
+        {!row.scope && (
+          <p className="mt-1.5 text-xs text-gray-500">
+            This campaign predates the sales funnels, so it has no budget of its own. It
+            can still be paused and restarted.
+          </p>
+        )}
+        {invalid && (
+          <p className="mt-1.5 text-xs text-red-600">
+            Enter a whole number of dollars, or leave it empty to stop funding it.
+          </p>
+        )}
+        {floorHit && key && (
+          <p className="mt-1.5 text-xs text-red-600">
+            {funnelBudgetTip(key, savedFunnelCents[key] ?? 0)}
+          </p>
+        )}
+        {failures[row.rowId] && (
+          <p className="mt-1.5 text-xs text-red-600">{failures[row.rowId]}</p>
+        )}
+      </li>
+    );
+  }
+
   const rollup = rollupStatus(rows);
   const scopeWord = campaignId ? "campaign" : funnelKey ? "funnel" : offerId ? "offer" : "brand";
 
@@ -349,80 +463,39 @@ export function CampaignControlsModal({
                 </div>
               )}
 
-              <ul className="divide-y divide-gray-100">
-                {rows.map((row) => {
-                  const draft = drafts[row.rowId] ?? draftFor(row);
-                  const key = row.scope?.def.key;
-                  const floorHit = belowFloor.includes(row.rowId);
-                  const invalid = diff.invalidRows.includes(row.rowId);
-                  return (
-                    <li key={row.rowId} className="py-3">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        {/* The SAME identity the Campaigns table's first column
-                            states, from the same component: this modal changes
-                            a campaign's money, so it must name the campaign the
-                            way the row you clicked to get here named it. */}
-                        <div className="min-w-0 text-sm text-gray-800">
-                          <CampaignIdentity
-                            funnel={row.scope?.def ?? null}
-                            featureSlug={row.scope?.featureSlug ?? null}
-                          />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={draft.running}
-                            aria-label={draft.running ? "Pause this campaign" : "Restart this campaign"}
-                            onClick={() => edit(row.rowId, { running: !draft.running })}
-                            className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                              draft.running ? "bg-green-500" : "bg-gray-300"
-                            }`}
-                          >
-                            <span
-                              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-                                draft.running ? "left-[22px]" : "left-0.5"
-                              }`}
-                            />
-                          </button>
-                          <div className="flex items-center gap-1 text-sm text-gray-600">
-                            <span className="text-gray-400">$</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={draft.budget}
-                              disabled={!row.scope}
-                              onChange={(e) => edit(row.rowId, { budget: e.target.value })}
-                              aria-label="Daily budget in dollars"
-                              className="w-20 rounded-md border border-gray-200 px-2 py-1 text-right tabular-nums focus:ring-2 focus:ring-brand-300 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                            />
-                            <span className="text-xs text-gray-400">/ day</span>
-                          </div>
-                        </div>
-                      </div>
-                      {!row.scope && (
-                        <p className="mt-1.5 text-xs text-gray-500">
-                          This campaign predates the sales funnels, so it has no budget of its own.
-                          It can still be paused and restarted.
-                        </p>
-                      )}
-                      {invalid && (
-                        <p className="mt-1.5 text-xs text-red-600">
-                          Enter a whole number of dollars, or leave it empty to stop funding it.
-                        </p>
-                      )}
-                      {floorHit && key && (
-                        <p className="mt-1.5 text-xs text-red-600">
-                          {funnelBudgetTip(key, savedFunnelCents[key] ?? 0)}
-                        </p>
-                      )}
-                      {failures[row.rowId] && (
-                        <p className="mt-1.5 text-xs text-red-600">{failures[row.rowId]}</p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="space-y-3">
+                {groups.map((group) => (
+                  <div
+                    key={group.funnel?.key ?? "no-funnel"}
+                    className={
+                      showFunnelHeadings
+                        ? "overflow-hidden rounded-lg border border-gray-200"
+                        : undefined
+                    }
+                  >
+                    {showFunnelHeadings && (
+                      /* The parent this campaign belongs to, stating what its rows add
+                         up to. A background tint and a full-perimeter 1px border, never
+                         a side accent. */
+                      <FunnelHeading
+                        group={group}
+                        drafts={drafts}
+                        onRunningChange={(running) =>
+                          setGroupRunning(
+                            group.rows.map((r) => r.rowId),
+                            running,
+                          )
+                        }
+                      />
+                    )}
+                    <ul
+                      className={`divide-y divide-gray-100 ${showFunnelHeadings ? "px-3" : ""}`}
+                    >
+                      {group.rows.map((row) => renderRow(row))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -456,6 +529,64 @@ export function CampaignControlsModal({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The funnel a group of campaigns sells, with the two things that group ADDS UP to.
+ *
+ * Neither figure is written here. The daily budget is READ-ONLY on purpose: billing
+ * keys a ceiling on (funnel x channel x offer), so the only thing a customer can
+ * fund is a campaign, and a funnel-level field would have to split its figure back
+ * across them. It tracks the fields below it as they are typed, so the parent moves
+ * the moment a child does.
+ *
+ * The switch DOES write, because pausing is a status and every campaign carries its
+ * own — flipping the heading sets each of them. It reads OFF only once every campaign
+ * under it is off, which is the same rule the scope pill states, so a funnel with one
+ * live campaign never reads as stopped.
+ */
+function FunnelHeading({
+  group,
+  drafts,
+  onRunningChange,
+}: {
+  group: ControlRowGroup;
+  drafts: Record<string, ControlDraft>;
+  onRunningChange: (running: boolean) => void;
+}) {
+  const { running, budgetUsd } = groupHeadingState(group.rows, drafts);
+  const name = group.funnel?.name ?? "No sales funnel";
+  const fundable = group.rows.some((r) => r.scope);
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-3 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        {group.funnel && <SalesFunnelMark def={group.funnel} size="xs" />}
+        <span className="truncate text-xs font-medium text-gray-600">{name}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={running}
+          aria-label={running ? `Pause every campaign of ${name}` : `Restart every campaign of ${name}`}
+          onClick={() => onRunningChange(!running)}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition ${
+            running ? "bg-green-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${
+              running ? "left-[18px]" : "left-0.5"
+            }`}
+          />
+        </button>
+        {/* Whole dollars, like every daily budget in the app, and never an input. */}
+        <span className="text-xs tabular-nums text-gray-500">
+          {fundable ? `$${budgetUsd.toLocaleString("en-US")} / day` : "\u2014"}
+        </span>
       </div>
     </div>
   );
