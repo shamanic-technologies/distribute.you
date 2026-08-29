@@ -8,13 +8,12 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
-import { formatRoi } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-import { useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { RoiCell, useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
@@ -219,11 +218,15 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                       by an outcome count, so at a low count each is decided by whichever
                       outcome happened to land. The TOTALS beside them are never gated:
                       money already spent and pipeline already earned are facts. */}
-                  <td className="px-4 py-3 text-right text-gray-900 whitespace-nowrap">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    {/* The SAME `RoiCell` the Campaigns table renders, so a return reads
+                        one way on this page and the same way one click down: semibold,
+                        green above break-even, ordinary text below it (never red — a
+                        funnel still learning is under 1x by construction). */}
                     {funnelLearningFor(row.funnelKey) ? (
                       <LearningTag withInfo={false} />
                     ) : (
-                      formatRoi(row.roiMultiple)
+                      <RoiCell multiple={row.roiMultiple} />
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">

@@ -245,7 +245,11 @@ describe("the page renders served fields and states the gap", () => {
   });
 
   it("renders money through the shared formatters and divides nothing", () => {
-    expect(PAGE).toContain("formatRoi(row.roiMultiple)");
+    // The return goes through the SAME `RoiCell` the Campaigns table renders, so
+    // it is formatted AND coloured one way across both tables rather than by a
+    // second copy of the rule here.
+    expect(PAGE).toContain("<RoiCell multiple={row.roiMultiple} />");
+    expect(PAGE).toContain('import { RoiCell, useCampaignRows }');
     expect(PAGE).not.toMatch(/roiMultiple\s*[*/]/);
     expect(PAGE).not.toMatch(/pipelineUsd\s*\//);
   });
