@@ -20,12 +20,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import {
-  brandOutcomeCount,
-  daysSinceFirstSpend,
-  shouldShowReassurance,
-} from "@/lib/first-outcome-reassurance";
-import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
+import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { OfferFunnelsPage } from "@/components/funnels/offer-funnels-page";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
@@ -355,21 +350,14 @@ export default function BrandOverviewPage() {
     audienceStatsData !== undefined || audienceStatsIsError || !offerId,
     audiencesData !== undefined || audiencesIsError || !offerId,
   ]);
-  // The brand has landed its first result when ANY funnel it sells converts, and the
-  // banner retires on the window it promised — features-service dates the brand's first
-  // spend as the first point of its own return curve, so nothing is invented here.
-  const showFirstOutcomeReassurance = shouldShowReassurance({
-    revealed: statsRevealed && revenueRevealed,
-    // Money actually running, not campaign-service's brand-level pause flag: nothing
-    // has written that flag since the brand-level Pause control was removed, so it is
-    // frozen and wrong both ways — it hid this banner from brands whose campaigns are
-    // spending today, and showed it to brands that have funded a funnel and have no
-    // campaign at all.
-    runningDailyBudgetCents,
-    outcomeCount: brandOutcomeCount(data?.spend),
-    daysRunning: daysSinceFirstSpend(data?.roiHistory?.daily?.[0]?.date, new Date()),
-  });
-
+  // How long before this scope's figures can be priced — the SAME band every campaign
+  // surface renders, through the one derivation that decides which campaign it speaks
+  // for. It replaced a reassurance banner that promised "2 to 4 weeks" on a window it
+  // was not counting: one state, two boxes, and only one of them a countdown.
+  //
+  // At OFFER grain it answers for the offer's campaigns, at brand grain for the brand's;
+  // either way the subject is the campaign that finishes SOONEST, because the scope
+  // clears the moment one of them is measured.
   const brandPath = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = offerId ? `${brandPath}/offers/${offerId}` : brandPath;
 
@@ -421,9 +409,7 @@ export default function BrandOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-          {showFirstOutcomeReassurance && (
-        <FirstOutcomeReassuranceBanner subject="Your campaign" />
-      )}
+      <ScopeLearningBand brandId={brandId} featureSlug={featureSlug} offerId={offerId} />
         {/* No section header on this branch to sit beside, so the line stands
             on its own here — everywhere else it rides the Outreach heading. */}
         {ControlsLine}
@@ -434,9 +420,7 @@ export default function BrandOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {showFirstOutcomeReassurance && (
-        <FirstOutcomeReassuranceBanner subject="Your campaign" />
-      )}
+      <ScopeLearningBand brandId={brandId} featureSlug={featureSlug} offerId={offerId} />
       {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
           charts the return instead. */}
       <RevenueOverviewSection

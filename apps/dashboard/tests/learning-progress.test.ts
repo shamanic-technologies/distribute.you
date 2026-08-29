@@ -216,69 +216,71 @@ describe("channelSettlesLate", () => {
 });
 
 describe("the band is mounted where campaigns are read", () => {
-  it("rides the campaign Overview", () => {
-    const page = src("components/campaigns/campaign-overview-page.tsx");
-    expect(page).toContain("<LearningProgressCallout");
+  it("is ONE band on every campaign surface — brand, offer, funnel, list, campaign", () => {
+    // Four call sites used to assemble the price, the spend, the ceiling and the
+    // settling tail by hand, so one campaign read `13 days` on its own page and
+    // `27 days` one click up (prod, 2026-08-29: same $144.39 spent, same $24/day, same
+    // $44.97 per sales interest — only the inputs passed differed). A band is a promise
+    // about a date, so two of them for one campaign is the page contradicting itself.
+    for (const rel of [
+      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+      "components/funnels/funnel-overview-page.tsx",
+      "components/campaigns/campaigns-page.tsx",
+      "components/campaigns/campaign-overview-page.tsx",
+    ]) {
+      const page = src(rel);
+      expect(page, `${rel} does not render the band`).toContain("<ScopeLearningBand");
+      expect(page, `${rel} assembles the band's inputs itself`).not.toContain(
+        "<LearningProgressCallout",
+      );
+    }
+
+    // The band component itself renders the callout and decides nothing.
+    const band = src("components/campaigns/scope-learning-band.tsx");
+    expect(band).toContain("useScopeLearningLead");
+    expect(band).toContain("<LearningProgressCallout");
   });
 
-  it("is hidden while the campaign is paused", () => {
-    // A countdown of days left is priced on a daily spend that is not happening, so on
-    // a stopped campaign it states a date nobody can stand behind. The GATE on which
-    // figures are withheld is untouched — restarting restores the band as it was.
-    const page = src("components/campaigns/campaign-overview-page.tsx");
-    expect(page).toContain(
-      "const showLearningProgress = revenueRevealed && !campaignPaused && isLearning(learningSignal);",
+  it("narrows to the scope the page IS", () => {
+    // An offer answers for its campaigns, a funnel for the campaigns selling it, a
+    // campaign for itself. A band speaking for a campaign the page never lists counts
+    // days for something the reader cannot see.
+    expect(src("components/funnels/funnel-overview-page.tsx")).toContain(
+      "funnelKey={rawKey || null}",
     );
-    expect(page).toContain(
-      "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
+    expect(src("components/campaigns/campaigns-page.tsx")).toContain("funnelKey={narrowedKey}");
+    expect(src("components/campaigns/campaign-overview-page.tsx")).toContain(
+      "campaignId={campaignId}",
     );
   });
 
-  it("prices the threshold on the step the gate COUNTS, not the funnel's outcome", () => {
+  it("speaks for the campaign that finishes SOONEST, not the one with the most outcomes", () => {
+    // Two campaigns at the same outcome count can be a week apart if one is funded at
+    // twice the other's ceiling or prices a different step, so a count ranks by a proxy
+    // for the answer rather than by the answer.
+    const hook = src("lib/use-scope-learning-lead.ts");
+    expect(hook).toContain("progress.daysLeft < best.progress.daysLeft");
+    expect(hook).not.toContain("(row.signal ?? 0) > (best.signal ?? 0)");
+  });
+
+  it("is hidden once the scope has been measured, and never counts a paused campaign", () => {
+    // The scope's figures clear the moment ONE of its campaigns is measured, so a band
+    // beside a priced return promises a figure that is already stated. And a countdown
+    // is priced on a daily spend a stopped campaign is not making.
+    const hook = src("lib/use-scope-learning-lead.ts");
+    expect(hook).toContain("const scopedLearning = scopeIsLearning(scopedRows);");
+    expect(hook).toContain("isRunningStatus(row.campaign.status)");
+  });
+
+  it("prices the threshold on the step the gate COUNTS, and counts the settling tail", () => {
     // The band multiplies the expected price by ten and the sentence under it counts ten
     // sales interests, so pricing it on a booked MEETING made one box disagree with
-    // itself by the reply-to-meeting rate. Same projection, no second read.
-    const page = src("components/campaigns/campaign-overview-page.tsx");
-    expect(page).toContain(
-      "const learningUnitCostUsd = learningSignalUnitCostUsd(outcomeProjection, campaignStepKeys);",
-    );
-    expect(page).toContain("learningThresholdUsd(learningUnitCostUsd)");
-    expect(page).not.toContain("outcomeUnitCostUsd={outcomeUnitCostUsd}");
-  });
-
-  it("rides the Campaigns list", () => {
-    const page = src("components/campaigns/campaigns-page.tsx");
-    expect(page).toContain("<LearningProgressCallout");
-  });
-
-  it("is hidden once the listed scope has been measured", () => {
-    // The scope's figures clear the moment ONE of its campaigns is measured, so a band
-    // counting days beside a priced return promises a figure that is already stated.
-    // Prod: 18 sales interests on cold email beside a stopped feedback-request
-    // campaign at 0, and the band counted for the second.
-    const page = src("components/campaigns/campaigns-page.tsx");
-    const at = page.indexOf("const learningLead = useMemo(");
-    expect(at).toBeGreaterThan(-1);
-    const body = page.slice(at, at + 520);
-    expect(body).toContain("if (!scopedLearning) return null;");
-  });
-
-  it("never counts days for a paused campaign", () => {
-    // A countdown is priced on a daily spend that is not happening.
-    const page = src("components/campaigns/campaigns-page.tsx");
-    const at = page.indexOf("const learningLead = useMemo(");
-    const body = page.slice(at, at + 520);
-    expect(body).toContain("isRunningStatus(row.campaign.status)");
-  });
-
-  it("speaks for the rows the table shows, not the offer's other funnels", () => {
-    // Under a funnel the list is a subset of the offer's campaigns; a lead picked from
-    // the rest counts days for a campaign this page never lists.
-    const page = src("components/campaigns/campaigns-page.tsx");
-    const at = page.indexOf("const learningLead = useMemo(");
-    const body = page.slice(at, at + 520);
-    expect(body).toContain("scopedRows.filter(");
-    expect(body).not.toContain("rows.filter((row) => row.learning)");
+    // itself by the reply-to-meeting rate. The tail is what the campaign page dropped:
+    // 13 days is the spend half of a 27-day answer.
+    const hook = src("lib/use-scope-learning-lead.ts");
+    expect(hook).toContain("learningSignalUnitCostUsd(projection, stepKeys)");
+    expect(hook).toContain("channelSettlesLate(row.campaign.featureSlug) ? REPLY_SETTLING_DAYS : 0");
+    expect(hook).toContain("settlingDaysElapsed(");
   });
 
   it("computes nothing of its own, the figures come from the lib", () => {

@@ -12,6 +12,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { LearningToneProvider } from "@/components/learning-tag";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
+import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
@@ -109,6 +110,15 @@ export function FunnelOverviewPage() {
   return (
     <LearningToneProvider tone="primary">
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+      {/* How long before this funnel's figures can be priced. The subject is the campaign
+          selling THIS funnel that finishes soonest: the funnel clears the moment one of
+          them is measured, so the soonest finisher is the honest date. */}
+      <ScopeLearningBand
+        brandId={brandId}
+        featureSlug={featureSlug}
+        offerId={offerId}
+        funnelKey={rawKey || null}
+      />
       <RevenueOverviewSection
         // What is running here and what it may spend in a day, read-only, and the way
         // into the modal that changes it — the SAME trigger the brand and offer

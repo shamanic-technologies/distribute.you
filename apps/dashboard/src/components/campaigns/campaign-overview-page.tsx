@@ -34,7 +34,6 @@ import { tenantBasePath } from "@/lib/offer-path";
 import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
-  learningSignalUnitCostUsd,
 } from "@/lib/workflow-projection-choice";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
@@ -45,15 +44,7 @@ import { CampaignControlsTrigger } from "@/components/campaigns/campaign-control
 import { isRunningStatus } from "@/lib/campaign-controls";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
-import { isLearning } from "@/lib/learning-threshold";
-import { stepsFor } from "@/lib/goal-steps";
-import {
-  REPLY_SETTLING_DAYS,
-  channelSettlesLate,
-  learningThresholdUsd,
-  settlingDaysElapsed,
-} from "@/lib/learning-progress";
-import { LearningProgressCallout } from "@/components/campaigns/learning-progress-callout";
+import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -445,33 +436,16 @@ export function CampaignOverviewPage() {
     economicsData !== undefined || economicsIsError,
     monthlyBudgetUsd == null || outcomeProjection !== undefined || outcomeIsError,
   ]);
-  // How long before this campaign's figures can be priced — the question the `Learning`
-  // tag on the cards below leaves open. Every input is already on this page: the expected
-  // price of one outcome, the committed spend ROI divides by, and this campaign's own
-  // daily ceiling.
+  // How long before this campaign's figures can be priced is stated by
+  // `ScopeLearningBand` below, narrowed to this campaign. Every figure it needs — the
+  // expected price of the step the gate COUNTS, the committed spend, this campaign's own
+  // ceiling, the settling tail and how much of it has run — is resolved in ONE place
+  // (`use-scope-learning-lead`), because this page and the Campaigns list used to
+  // assemble those inputs separately and stated 13 days and 27 days for one campaign.
   //
   // This is the ONLY learning callout on the page. The first-outcome reassurance banner
   // used to sit beside it saying the same thing in a vaguer way — two boxes about one
   // state, one of them promising a window the other was already counting down.
-  //
-  // The GATE stays the outcome count, exactly as the cards read it: the band shows only
-  // while the campaign is learning, so a bar approaching its end can never sit beside a
-  // figure that has already been stated.
-  const campaignSteps = stepsFor(optimizationGoal, campaignFunnelKey);
-  const campaignStepKeys = campaignSteps.map((step) => step.key);
-  const learningSignal = campaignStepKeys.includes("positive_replies")
-    ? data?.spend?.positiveRepliesCount
-    : campaignStepKeys.includes("website_visits")
-      ? totalWebsiteClicks
-      : undefined;
-  // Priced on the step the gate COUNTS — a sales interest, or a website visit — never
-  // on the funnel's terminal outcome. `outcomeUnitCostUsd` above is the cost of a booked
-  // MEETING, which is what the monthly forecast is about; using it here stated a spend
-  // target for ten meetings under a sentence counting ten sales interests, so the two
-  // disagreed by the reply→meeting rate. Same projection, no second read.
-  const learningUnitCostUsd = learningSignalUnitCostUsd(outcomeProjection, campaignStepKeys);
-  const learningThreshold = learningThresholdUsd(learningUnitCostUsd);
-  const showLearningProgress = revenueRevealed && !campaignPaused && isLearning(learningSignal);
 
   const basePath = tenantBasePath(orgId, brandId, offerId);
   const campaignsPath = `${basePath}/campaigns`;
@@ -570,24 +544,12 @@ export function CampaignOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-      {showLearningProgress && (
-        <LearningProgressCallout
+      <ScopeLearningBand
           brandId={brandId}
+          featureSlug={featureSlug ?? ""}
           offerId={offerId}
           campaignId={campaignId}
-          outcomeUnitCostUsd={learningUnitCostUsd}
-          spentUsd={data?.costEconomics.committedCostUsd ?? null}
-          dailyBudgetUsd={
-            campaignBudgetCentsValue != null ? campaignBudgetCentsValue / 100 : null
-          }
-          settlingDays={channelSettlesLate(featureSlug) ? REPLY_SETTLING_DAYS : 0}
-          settlingDaysElapsed={settlingDaysElapsed(
-            data?.roiHistory?.daily,
-            learningThreshold,
-            new Date(),
-          )}
         />
-      )}
         {/* No section header on this branch to sit beside, so the line stands
             on its own here — everywhere else it rides the Outreach heading. */}
         {CampaignStatusLine}
@@ -598,24 +560,12 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {showLearningProgress && (
-        <LearningProgressCallout
+      <ScopeLearningBand
           brandId={brandId}
+          featureSlug={featureSlug ?? ""}
           offerId={offerId}
           campaignId={campaignId}
-          outcomeUnitCostUsd={learningUnitCostUsd}
-          spentUsd={data?.costEconomics.committedCostUsd ?? null}
-          dailyBudgetUsd={
-            campaignBudgetCentsValue != null ? campaignBudgetCentsValue / 100 : null
-          }
-          settlingDays={channelSettlesLate(featureSlug) ? REPLY_SETTLING_DAYS : 0}
-          settlingDaysElapsed={settlingDaysElapsed(
-            data?.roiHistory?.daily,
-            learningThreshold,
-            new Date(),
-          )}
         />
-      )}
       <RevenueOverviewSection
         headerAction={CampaignStatusLine}
         paused={campaignPaused}
