@@ -170,6 +170,7 @@
     .nav-links a:hover{color:var(--text)}
     .nav-actions{display:flex;align-items:center;gap:10px}
     .login-link{font-size:12.5px;color:var(--muted)}
+    .nav-menu-auth{display:none}
     .login-link:hover{color:var(--text)}
     .nav-toggle{
       display:none;
@@ -829,6 +830,7 @@
       .nav-links a:first-child{border-top:0}
       .nav-toggle{display:block}
       .login-link{display:none}
+      .nav-links .nav-menu-auth[data-auth="login"]{display:block}
       .proof-rail-grid{grid-template-columns:1fr 1fr}
       .proof-rail-item:nth-child(3){border-left:0}
       .proof-rail-item:nth-child(n+3){border-top:1px solid var(--line-soft)}
@@ -842,6 +844,7 @@
       .price-card .button,.url-form .button,.closing-actions .button{white-space:normal}
       .announcement-inner{padding:8px 0;font-size:11.5px}
       .nav-actions>.button{display:none}
+      .nav-links .nav-menu-auth[data-auth="signup"]{display:block}
       .hero{padding:67px 0 50px}
       h1{font-size:44px}
       .hero-copy{font-size:15.5px}
@@ -1277,6 +1280,8 @@
           <a href="#proof">Proof</a>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
+          <a class="nav-menu-auth" data-auth="login" href="https://dashboard.distribute.you/sign-in">Log in</a>
+          <a class="nav-menu-auth" data-auth="signup" href="https://dashboard.distribute.you/sign-up">Launch campaign</a>
         </div>
 
         <div class="nav-actions">
