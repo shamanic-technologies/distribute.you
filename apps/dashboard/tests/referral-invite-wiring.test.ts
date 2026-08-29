@@ -109,6 +109,16 @@ describe("the rewards card", () => {
     expect(card).not.toContain("reduce(");
   });
 
+  it("states the percentage beside the bar, read from the same served value", () => {
+    // The bar shows a shape and a shape cannot be remembered day to day; the
+    // number is what makes tomorrow's visit comparable to today's. Both read
+    // `promise.progressPct`, so they can never disagree, and neither is
+    // computed here.
+    expect(card).toContain("promiseProgressLabel(promise.progressPct)");
+    expect(card).toContain("{pctLabel}");
+    expect(card).not.toMatch(/Math\.round\(/);
+  });
+
   it("borrows the shared vocabulary rather than respelling it", () => {
     expect(card).toContain("promiseUnlockLine(");
     expect(card).not.toContain("more in payments");

@@ -4,6 +4,7 @@ import {
   isFromBeingReferred,
   promiseTitle,
   promiseSubtitle,
+  promiseProgressLabel,
   promiseProgressWidth,
   promiseUnlockLine,
 } from "../src/lib/free-credit-promise-view";
@@ -118,5 +119,33 @@ describe("promiseUnlockLine", () => {
 
   it("uses no em-dash", () => {
     expect(promiseUnlockLine("$1", "$2")).not.toContain("\u2014");
+  });
+});
+
+describe("promiseProgressLabel", () => {
+  it("states the served progress as a whole percentage", () => {
+    expect(promiseProgressLabel(44)).toBe("44%");
+    expect(promiseProgressLabel(43.6)).toBe("44%");
+    expect(promiseProgressLabel(0)).toBe("0%");
+  });
+
+  it("never rounds an unfinished promise up to a claim it has unlocked", () => {
+    // 100% says the money is there. Rounding 99.6 into it on the one surface
+    // whose job is to say how close you are would be a lie the reader acts on.
+    expect(promiseProgressLabel(99.6)).toBe("99%");
+    expect(promiseProgressLabel(100)).toBe("100%");
+    expect(promiseProgressLabel(140)).toBe("100%");
+  });
+
+  it("never states 0% for a promise that has real payments behind it", () => {
+    expect(promiseProgressLabel(0.3)).toBe("1%");
+  });
+
+  it("says nothing when the bar says nothing", () => {
+    // The label and the bar read one served value, so they cannot disagree
+    // about whether progress is measurable at all.
+    expect(promiseProgressLabel(null)).toBeNull();
+    expect(promiseProgressLabel(undefined)).toBeNull();
+    expect(promiseProgressLabel(Number.NaN)).toBeNull();
   });
 });
