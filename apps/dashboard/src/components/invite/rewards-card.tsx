@@ -16,7 +16,11 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Toast } from "@/components/toast";
 import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
-import { promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
+import {
+  promiseProgressLabel,
+  promiseProgressWidth,
+  promiseUnlockLine,
+} from "@/lib/free-credit-promise-view";
 
 /**
  * The two rewards at the bottom of every brand-level sidebar, as two cards.
@@ -98,6 +102,10 @@ function NextPromise({
   billingHref: string;
 }) {
   const width = promiseProgressWidth(promise.progressPct);
+  // Stated beside the bar so the same visit tomorrow is comparable to today's:
+  // a shape cannot be remembered, a number can. Read from the same served
+  // progress the bar is drawn from, so the two can never disagree.
+  const pctLabel = promiseProgressLabel(promise.progressPct);
   const remaining = promise.remainingToUnlockCents
     ? formatBillingCentsWhole(promise.remainingToUnlockCents)
     : null;
@@ -120,8 +128,15 @@ function NextPromise({
         </span>
       </p>
       {width !== null && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-white">
-          <div className="h-full rounded-full bg-brand-500" style={{ width: `${width}%` }} />
+        <div className="flex items-center gap-1.5">
+          <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white">
+            <div className="h-full rounded-full bg-brand-500" style={{ width: `${width}%` }} />
+          </div>
+          {pctLabel && (
+            <span className="shrink-0 text-[10px] font-semibold tabular-nums text-brand-700">
+              {pctLabel}
+            </span>
+          )}
         </div>
       )}
     </Link>

@@ -103,3 +103,29 @@ export function promiseProgressWidth(progressPct: number | null | undefined): nu
   if (typeof progressPct !== "number" || !Number.isFinite(progressPct)) return null;
   return Math.max(0, Math.min(100, progressPct));
 }
+
+/**
+ * The percentage stated beside the bar.
+ *
+ * The bar alone shows a shape; a reader coming back tomorrow cannot tell a
+ * slightly longer shape from yesterday's. A number can be compared day to day,
+ * which is the whole point of putting it there.
+ *
+ * Two roundings are deliberate. Below 1% it reads `1%` rather than `0%`: a
+ * promise with real payments behind it must never state that nothing has
+ * happened. Below 100% it reads at most `99%`: rounding 99.6 up to `100%` claims
+ * an unlock that has not happened, on the one surface whose job is to say how
+ * close it is. `100%` therefore means exactly what it says.
+ *
+ * Returns null on the same input `promiseProgressWidth` returns null for, so the
+ * label and the bar can never disagree about whether progress is measurable.
+ */
+export function promiseProgressLabel(progressPct: number | null | undefined): string | null {
+  const width = promiseProgressWidth(progressPct);
+  if (width === null) return null;
+  if (width >= 100) return "100%";
+  const rounded = Math.round(width);
+  if (rounded >= 100) return "99%";
+  if (rounded <= 0 && width > 0) return "1%";
+  return `${rounded}%`;
+}
