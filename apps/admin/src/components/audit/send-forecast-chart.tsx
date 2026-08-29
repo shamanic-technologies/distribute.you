@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { SendForecastDay } from "@/lib/api";
+import { chartDomain } from "@/lib/chart-domain";
 
 function formatDateShort(iso: string): string {
   return new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", {
@@ -90,6 +91,18 @@ export function SendForecastChart({
 
   const todayDate = days.find((d) => d.isToday)?.date;
 
+  // The capacity line is the thing the chart exists to compare against, so the
+  // ceiling has to CLEAR it: recharts' automatic domain reads the bars only, and
+  // a ReferenceLine above that domain is silently discarded — the line simply is
+  // not there on exactly the days that matter. `floor` puts capacity into the
+  // ceiling calculation and the shared HEADROOM keeps whichever is tallest off
+  // the top edge instead of flush against it.
+  const hasCapacity = dailyCapacity !== undefined && dailyCapacity > 0;
+  const { max: yMax } = chartDomain(
+    days.map((d) => d.total ?? 0),
+    { floor: hasCapacity ? dailyCapacity : undefined }
+  );
+
   return (
     <div className="h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
@@ -104,6 +117,8 @@ export function SendForecastChart({
             minTickGap={16}
           />
           <YAxis
+            domain={[0, yMax]}
+            allowDataOverflow={false}
             tickFormatter={(value) => String(Math.round(Number(value)))}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
@@ -111,7 +126,7 @@ export function SendForecastChart({
             width={54}
           />
           <Tooltip cursor={{ fill: "#f8fafc" }} content={<ForecastTooltip />} />
-          {dailyCapacity !== undefined && dailyCapacity > 0 && (
+          {hasCapacity && (
             <ReferenceLine
               y={dailyCapacity}
               stroke="#0ea5e9"
