@@ -42,10 +42,13 @@ describe("the offer is a route level of its own", () => {
   it("renders ONE overview component at both levels, scoped by the route", () => {
     // The repo's scope-PROP pattern (`CustomerAudiencesPage({ campaignId })`), read
     // off the route. Never a duplicated page.
+    // It IMPORTS the brand page rather than re-exporting it, so the route can state
+    // the offer grain's own accent around it; the component is still the one component.
     const offerPage = read(`${OFFER}/page.tsx`);
     expect(offerPage).toContain(
-      'export { default } from "@/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page"',
+      'import BrandOverviewPage from "@/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page"',
     );
+    expect(offerPage).toContain("<BrandOverviewPage />");
     const overview = read(`${APP}/page.tsx`);
     expect(overview).toContain("const offerId = params.offerId as string | undefined;");
   });
