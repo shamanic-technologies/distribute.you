@@ -220,7 +220,7 @@ export function CampaignCell({ campaign }: { campaign: Campaign }) {
 }
 
 // One row = a campaign joined to its revenue group and to its own daily ceiling.
-interface CampaignRow {
+export interface CampaignRow {
   campaign: Campaign;
   revenue: CampaignRevenueGroup | null;
   /** billing's ceiling for THIS campaign, in cents. Null = billing had no answer. */

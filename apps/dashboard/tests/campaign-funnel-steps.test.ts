@@ -232,23 +232,27 @@ describe("the brand-level Pause control is gone, everywhere", () => {
     }
   });
 
-  it("gates the reassurance banner on money actually running, at each page's own grain", () => {
-    // The brand Overview speaks for the whole brand, so it reads the brand's running
-    // total. The campaign Overview carries no reassurance banner at all — the learning
-    // band states the same thing there, with a date on it.
+  it("has no reassurance banner left anywhere — the learning band replaced it", () => {
+    // One state, one box. The banner promised "2 to 4 weeks" on a window it was not
+    // counting, beside a band that states the actual date; two boxes about one state is
+    // how a screen comes to say two things. Deleted rather than hidden, so it cannot
+    // come back by someone re-rendering a component that still exists.
+    const srcFiles = fs
+      .readdirSync(path.join(SRC), { recursive: true, encoding: "utf-8" })
+      .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
+    for (const rel of srcFiles) {
+      const body = fs.readFileSync(path.join(SRC, rel), "utf-8");
+      expect(body, `${rel} still renders the reassurance banner`).not.toContain(
+        "FirstOutcomeReassuranceBanner",
+      );
+      expect(body, `${rel} still gates on the reassurance window`).not.toContain(
+        "shouldShowReassurance",
+      );
+    }
+
+    // The brand Overview still reads the running money — it is what the cost card's
+    // denominator and the monthly forecast are priced on.
     const brand = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
     expect(brand).toContain("useRunningDailyBudgetCents(brandId, { enabled })");
-    expect(brand).toContain("runningDailyBudgetCents,");
-
-    const campaign = read("components/campaigns/campaign-overview-page.tsx");
-    expect(campaign).not.toContain("shouldShowReassurance");
-
-    // The gate itself refuses on an unknown or zero figure — no fallback resurrects
-    // the flag, and "we cannot tell" never becomes a promise.
-    const gate = read("lib/first-outcome-reassurance.ts");
-    expect(gate).toContain(
-      "if (gate.runningDailyBudgetCents == null || gate.runningDailyBudgetCents <= 0) return false;",
-    );
-    expect(gate).not.toContain("gate.paused");
   });
 });

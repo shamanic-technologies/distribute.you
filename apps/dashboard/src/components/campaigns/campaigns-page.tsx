@@ -19,7 +19,6 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
-import { isRunningStatus } from "@/lib/campaign-controls";
 import { pollOptions } from "@/lib/query-options";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
@@ -28,15 +27,7 @@ import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
-import {
-  REPLY_SETTLING_DAYS,
-  channelSettlesLate,
-} from "@/lib/learning-progress";
-import { stepsFor } from "@/lib/goal-steps";
-import { optimizationGoalForRuntimeGoal, getBrandFunnelBudgets } from "@/lib/api";
-import { campaignBudgetCents } from "@/lib/campaign-budget";
-import { useCampaignLearningUnitCostUsd } from "@/lib/use-campaign-learning-progress";
-import { LearningProgressCallout } from "@/components/campaigns/learning-progress-callout";
+import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 
 // The table, its columns and the vocabulary behind them live in `campaigns-table.tsx`
 // — the brand Overview renders the same one under its chart, and two copies is how a
@@ -149,37 +140,6 @@ export function CampaignsPage() {
 
   const channels = useAcquisitionChannels();
 
-  // Which campaign the learning band speaks for.
-  //
-  // The scope clears the moment ONE of its campaigns is measured (`scopeIsLearning`),
-  // so the honest subject is the campaign CLOSEST to the bar — the most outcomes so
-  // far. Picked off the counts the table's own rows already carry, so choosing costs
-  // no request; only the expected price behind it is a read of its own, and that one
-  // is keyed on the funnel, so every campaign selling it shares the answer.
-  //
-  // A PAUSED campaign is never the subject: its days-left are priced against a daily
-  // spend that is not happening, so the date is one nobody can stand behind — the same
-  // reason the campaign's own page hides the band while it is stopped.
-  const learningLead = useMemo(() => {
-    if (!scopedLearning) return null;
-    const candidates = scopedRows.filter(
-      (row) => row.learning && isRunningStatus(row.campaign.status),
-    );
-    if (candidates.length === 0) return null;
-    return candidates.reduce((best, row) =>
-      (row.signal ?? 0) > (best.signal ?? 0) ? row : best,
-    );
-  }, [scopedRows, scopedLearning]);
-
-  const { data: funnelBudgets } = useAuthQuery(["brandFunnelBudgets", brandId], () =>
-    getBrandFunnelBudgets(brandId),
-  );
-  const leadCampaign = learningLead?.campaign ?? null;
-  const leadUnitCostUsd = useCampaignLearningUnitCostUsd(brandId, leadCampaign, offerId);
-  const leadBudgetCents = leadCampaign
-    ? campaignBudgetCents(leadCampaign, leadCampaign.offerId ?? undefined, funnelBudgets, channels)
-    : null;
-
   // The header's money is asked at the grain this page IS — the offer when one is
   // open, the brand otherwise — never of a single acquisition channel. Same reads,
   // same keys and the same reason as the brand Overview, so the two surfaces cannot
@@ -233,19 +193,15 @@ export function CampaignsPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full p-4 md:p-8">
-        {learningLead && leadCampaign && (
-          <LearningProgressCallout
-            brandId={brandId}
-            offerId={offerId}
-            campaignId={leadCampaign.id}
-            outcomeUnitCostUsd={leadUnitCostUsd}
-            spentUsd={learningLead.revenue?.committedCostUsd ?? null}
-            dailyBudgetUsd={leadBudgetCents != null ? leadBudgetCents / 100 : null}
-            settlingDays={
-              channelSettlesLate(leadCampaign.featureSlug) ? REPLY_SETTLING_DAYS : 0
-            }
-          />
-        )}
+        {/* The band speaks for the campaign that finishes SOONEST in this scope, which
+            is the same subject and the same date every other surface states — one
+            derivation, in `use-scope-learning-lead`. */}
+        <ScopeLearningBand
+          brandId={brandId}
+          featureSlug={featureSlug}
+          offerId={offerId}
+          funnelKey={narrowedKey}
+        />
         {/* No create control here: a campaign is set up with us, not spun up from
             a table row, so the page reads this brand's campaigns and nothing more. */}
         <div className="flex items-center gap-2 mb-1">
