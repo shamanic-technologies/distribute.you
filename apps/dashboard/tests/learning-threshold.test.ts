@@ -438,3 +438,58 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     expect(chart).toContain("<LearningTag paused={paused} />");
   });
 });
+
+describe("LearningTag tone — which of the brand's accents a surface states", () => {
+  const src = read("components/learning-tag.tsx");
+
+  it("defaults to the TERTIARY, so a surface that states nothing is unchanged", () => {
+    // The context's default is what every brand / offer / campaign Overview keeps
+    // reading. A new tone must never repaint a surface nobody opted in.
+    expect(src).toContain('createContext<LearningTone>("tertiary")');
+  });
+
+  it("states PRIMARY through the brand ramp, never a literal charter hex", () => {
+    // `:root[data-brand-tint]` re-declares the whole `--color-brand-*` ramp at the
+    // brand hue, so these rotate for free — an arbitrary-value charter hex would be
+    // the one control that stays blue on a tinted dashboard.
+    expect(src).toContain("border-brand-200 bg-brand-50 text-brand-600");
+    expect(src).not.toMatch(/#[0-9a-fA-F]{6}/);
+    // No `tone-tile` on the primary branch: that rotation is for the categorical
+    // purple/indigo/blue/orange set, and adding it here would read as load-bearing.
+    // Asserted on the class STRING, not file-wide — the module's own doc comment
+    // explains why the primary needs no tile, and a loose regex trips on that.
+    expect(src).not.toContain('"tone-tile border-brand');
+  });
+
+  it("keeps the primary tone legible on the dark surface, tinted AND untinted", () => {
+    // Same gap that has bitten purple, green/red and orange in turn: a fill remapped
+    // while the text and border beside it were not.
+    const css = read("app/globals.css");
+    for (const cls of [".bg-brand-50", ".text-brand-600", ".border-brand-200"]) {
+      expect(css).toContain(`html.dark ${cls}`);
+      expect(css).toContain(`html.dark[data-brand-tint] ${cls}`);
+    }
+  });
+
+  it("pins the campaigns table to the tertiary, wherever it is mounted", () => {
+    // It states CAMPAIGNS, so it reads in the campaign accent on every page — pinned
+    // in the component rather than at each call site, or a new surface repaints it by
+    // mounting it under a different tone.
+    const table = read("components/campaigns/campaigns-table.tsx");
+    expect(table).toContain('<LearningToneProvider tone="tertiary">');
+    expect(table).toContain("<CampaignsTableInner {...props} />");
+  });
+
+  it("the funnel Overview states the primary, and only that page does", () => {
+    // The page's own accent — the table inside it keeps its own by construction.
+    const funnel = read("components/funnels/funnel-overview-page.tsx");
+    expect(funnel).toContain('<LearningToneProvider tone="primary">');
+    for (const page of [
+      "components/campaigns/campaign-overview-page.tsx",
+      "components/campaigns/campaigns-page.tsx",
+      "components/funnels/offer-funnels-page.tsx",
+    ]) {
+      expect(read(page)).not.toContain("LearningToneProvider");
+    }
+  });
+});

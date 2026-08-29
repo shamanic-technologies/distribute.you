@@ -10,6 +10,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { LearningToneProvider } from "@/components/learning-tag";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
@@ -101,7 +102,12 @@ export function FunnelOverviewPage() {
   const activityPending = activity.isPending && !activity.isError;
   const data = revenue.data;
 
+  // A funnel's page reads in the brand's PRIMARY: it states the funnel the offer sells,
+  // not one campaign's surface, so the accent the campaign pages own would name the wrong
+  // scope. The Campaigns table below pins itself back to the tertiary — it states
+  // campaigns, and it does so identically wherever it is mounted.
   return (
+    <LearningToneProvider tone="primary">
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
       <RevenueOverviewSection
         // What is running here and what it may spend in a day, read-only, and the way
@@ -213,5 +219,6 @@ export function FunnelOverviewPage() {
         </p>
       )}
     </div>
+    </LearningToneProvider>
   );
 }
