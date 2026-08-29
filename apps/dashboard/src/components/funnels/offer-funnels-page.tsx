@@ -14,6 +14,10 @@ import { campaignFunnel } from "@/lib/campaign-funnel";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { RoiCell, useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { getBrandSpendableBudget } from "@/lib/api";
+import { spendableCampaignsForFunnel } from "@/lib/use-running-daily-budget";
+import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { rollupStatus, ROLLUP_LABEL, ROLLUP_STYLE } from "@/lib/campaign-controls";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
@@ -24,10 +28,16 @@ import {
   unpricedFunnelReasonLabel,
 } from "@/lib/offer-funnels";
 
-const COLUMN_COUNT = 6;
+const COLUMN_COUNT = 8;
 
 const INVESTED_TIP =
   "What this funnel has cost all in: what we charged you, plus what you recorded for the steps your own team worked. The second half is never billed; it is here because a funnel you finish yourself would otherwise look cheaper than it is.";
+
+const BUDGET_TIP =
+  "The most this funnel may spend in a day: the ceilings of the campaigns selling it that are running right now. A paused campaign's ceiling is not in it — it still exists, but nothing will draw on it today. You change it in each campaign's settings.";
+
+const STATUS_TIP =
+  "Whether this funnel is reaching people right now. It is Active as soon as one campaign selling it is running, because that is the question a glance is asking; which campaigns run is what their own rows say.";
 
 const FUNNEL_TIP =
   "A sales funnel is the path from a first signal to a paying client. It is the smallest scope whose money divides into a return, because what a customer is worth is only known at the end of it.";
@@ -106,6 +116,35 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
     );
   };
 
+  // What each funnel may spend TODAY, and whether it is running at all. Both come off
+  // ONE served answer (`["brandSpendableBudget", brandId]`, the key the offer Overview
+  // and every campaign surface already poll, so this costs no request) — which is what
+  // makes the two columns coherent by construction: a row cannot state a ceiling from
+  // one source beside a status from another. The question is a JOIN neither producer
+  // can answer alone, and campaign-service serves the join.
+  const spendableQ = useAuthQuery(
+    ["brandSpendableBudget", brandId],
+    () => getBrandSpendableBudget(brandId),
+    { enabled: Boolean(brandId) },
+  );
+  // Reveal on SETTLE, like the table above it: a failed read renders the dash these
+  // cells already have for "we have no figure", never an eternal skeleton.
+  const budgetSettled = spendableQ.data !== undefined || spendableQ.isError;
+  const campaignsForFunnel = (key: string) =>
+    spendableCampaignsForFunnel(spendableQ.data, key, offerId);
+  // `null` while the read is in flight or has failed — deliberately NOT zero, because
+  // "we could not measure this" and "this funnel spends nothing" are different
+  // statements and the cell prints a different thing for each.
+  const funnelBudgetCentsFor = (key: string) =>
+    spendableQ.data === undefined
+      ? null
+      : campaignsForFunnel(key).reduce((sum, c) => sum + c.runningDailyBudgetCents, 0);
+  // The SAME two-state roll-up the controls modal states one grain up, from the same
+  // function: active as soon as one campaign selling this funnel is running, `none`
+  // kept as its own answer because "there is nothing here" is not "everything is
+  // stopped".
+  const funnelRollupFor = (key: string) => rollupStatus(campaignsForFunnel(key));
+
   return (
     // EMBEDDED is how the offer Overview renders it: an offer sells through funnels,
     // so the Overview lists those rather than the campaigns two levels down. It then
@@ -134,7 +173,7 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full md:min-w-[880px] text-sm">
+        <table className="w-full md:min-w-[1060px] text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
               <th className="px-4 py-2 font-medium">Funnel</th>
@@ -146,6 +185,23 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                 <span className="inline-flex items-center gap-1">
                   $ Invested
                   <InfoTooltip tip={INVESTED_TIP} />
+                </span>
+              </th>
+              {/* The ceiling sits beside the status because the two answer one question
+                  together — is this funnel running, and how hard. Deliberately NOT in
+                  the money block on its left: those are charges and projections of
+                  charges, and a ceiling is neither. Same order, same pairing and the
+                  same words as the Campaigns table one click down. */}
+              <th className="px-4 py-2 font-medium text-right">
+                <span className="inline-flex items-center gap-1">
+                  $ Budget
+                  <InfoTooltip tip={BUDGET_TIP} />
+                </span>
+              </th>
+              <th className="px-4 py-2 font-medium">
+                <span className="inline-flex items-center gap-1">
+                  Status
+                  <InfoTooltip tip={STATUS_TIP} />
                 </span>
               </th>
             </tr>
@@ -255,6 +311,36 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                       <p className="text-[11px] text-gray-400">
                         {fmtUsd(row.platformCostUsd)} us · {fmtUsd(row.customerCostUsd)} you
                       </p>
+                    )}
+                  </td>
+                  {/* Whole dollars, always: a ceiling is a configured whole-dollar
+                      value. `$0` is a real answer — nothing selling this funnel is
+                      running — and a dash means we could not read it, which is a
+                      different statement. The `/ day` rider is what the campaign rows
+                      and the funnel's own header state: a ceiling is a RATE, and the
+                      bare figure reads as a total beside the two money columns to its
+                      left, which really are totals. Withheld on the dash. */}
+                  <td className="px-4 py-3 text-right tabular-nums text-gray-700 whitespace-nowrap">
+                    {!budgetSettled ? (
+                      <Skeleton className="h-4 w-14 rounded ml-auto" />
+                    ) : funnelBudgetCentsFor(row.funnelKey) == null ? (
+                      fmtDailyBudgetUsd(null)
+                    ) : (
+                      <>
+                        {fmtDailyBudgetUsd(funnelBudgetCentsFor(row.funnelKey))}
+                        <span className="text-gray-400"> / day</span>
+                      </>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {!budgetSettled ? (
+                      <Skeleton className="h-4 w-16 rounded" />
+                    ) : (
+                      <span
+                        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${ROLLUP_STYLE[funnelRollupFor(row.funnelKey)]}`}
+                      >
+                        {ROLLUP_LABEL[funnelRollupFor(row.funnelKey)]}
+                      </span>
                     )}
                   </td>
                 </tr>

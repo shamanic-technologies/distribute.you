@@ -1,8 +1,36 @@
 "use client";
 
-import { getBrandSpendableBudget } from "@/lib/api";
+import { getBrandSpendableBudget, type BrandSpendableBudget } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+
+/**
+ * The campaigns in one SALES FUNNEL of one offer, out of the brand's served answer.
+ *
+ * The one narrowing the producer does not do for us: it decomposes by offer and by
+ * campaign, and a funnel is neither. Compared on the NORMALIZED key, because the wire
+ * carries two spellings of every funnel and matching the raw string would silently read
+ * empty for whichever half the producer happens to be emitting.
+ *
+ * Pair it with `offerId`: billing keys a ceiling on (funnel x channel x offer), so a bare
+ * funnel spans every offer selling it and would name a sibling offer's money under this
+ * one's. It is exported so the funnels TABLE and the funnel's own page read one rule —
+ * the money in a row and the money in the header it drills into cannot disagree.
+ */
+export function spendableCampaignsForFunnel(
+  data: BrandSpendableBudget | undefined,
+  funnelKey: string | null | undefined,
+  offerId?: string,
+): BrandSpendableBudget["campaigns"] {
+  if (data === undefined || !funnelKey) return [];
+  const wanted = normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire);
+  return data.campaigns.filter(
+    (c) =>
+      c.funnelKey != null &&
+      normalizeSalesFunnelKey(c.funnelKey as SalesFunnelKeyWire) === wanted &&
+      (offerId ? c.offerId === offerId : true),
+  );
+}
 
 /**
  * What a brand (or one of its offers) may spend TODAY, in cents.
@@ -69,22 +97,17 @@ export function useRunningDailyBudgetCents(
   // the producer states each of them. Compared on the NORMALIZED key, because the wire
   // carries two spellings of every funnel and matching the raw string would silently
   // read zero for whichever half the producer happens to be emitting.
-  const wantedFunnel = funnelKey ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire) : null;
   const cents =
     data === undefined
       ? null
       : campaignId
         ? (data.campaigns.find((c) => c.campaignId === campaignId)
             ?.runningDailyBudgetCents ?? 0)
-        : wantedFunnel
-          ? data.campaigns
-              .filter(
-                (c) =>
-                  c.funnelKey != null &&
-                  normalizeSalesFunnelKey(c.funnelKey as SalesFunnelKeyWire) === wantedFunnel &&
-                  (offerId ? c.offerId === offerId : true),
-              )
-              .reduce((sum, c) => sum + c.runningDailyBudgetCents, 0)
+        : funnelKey
+          ? spendableCampaignsForFunnel(data, funnelKey, offerId).reduce(
+              (sum, c) => sum + c.runningDailyBudgetCents,
+              0,
+            )
           : offerId
             ? (data.offers.find((o) => o.offerId === offerId)?.runningDailyBudgetCents ?? 0)
             : data.runningDailyBudgetCents;

@@ -320,3 +320,57 @@ describe("the campaigns list IS a funnel's page, narrowed by the route", () => {
     expect(TABLE).toContain(": allRows;");
   });
 });
+
+describe("a funnel row states its ceiling and whether it runs", () => {
+  const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
+  const PAGE = read("src/components/funnels/offer-funnels-page.tsx");
+
+  it("reads ONE served answer for both columns, on a key the page already polls", () => {
+    // The question is a JOIN neither producer can answer alone (billing keys a
+    // ceiling and stores no status, campaign-service stores the status and no
+    // money), and campaign-service serves the join. Reading it once is what makes
+    // the two cells coherent: a row cannot state a ceiling from one source beside
+    // a status from another. The key is the one the offer Overview and every
+    // campaign surface already poll, so it dedupes to no extra request.
+    expect(PAGE).toContain('["brandSpendableBudget", brandId]');
+    expect(PAGE).toContain("getBrandSpendableBudget(brandId)");
+  });
+
+  it("narrows to this offer's funnel through the SHARED helper", () => {
+    // billing keys a ceiling on (funnel x channel x offer), so a bare funnel spans
+    // every offer selling it. The same function the funnel's own header reads, so
+    // a row and the page it drills into cannot state different money.
+    expect(PAGE).toContain("spendableCampaignsForFunnel(spendableQ.data, key, offerId)");
+    const HOOK = read("src/lib/use-running-daily-budget.ts");
+    expect(HOOK).toContain("export function spendableCampaignsForFunnel(");
+    expect(HOOK).toContain("spendableCampaignsForFunnel(data, funnelKey, offerId)");
+  });
+
+  it("states the roll-up through the shared vocabulary, never its own words", () => {
+    // Two lists of the same words let a funnel read Active here and Paused in the
+    // modal one grain up.
+    expect(PAGE).toContain("rollupStatus(campaignsForFunnel(key))");
+    expect(PAGE).toContain("ROLLUP_LABEL[funnelRollupFor(row.funnelKey)]");
+    expect(PAGE).toContain("ROLLUP_STYLE[funnelRollupFor(row.funnelKey)]");
+  });
+
+  it("reveals on SETTLE and keeps a missing figure apart from a zero", () => {
+    // `$0` means nothing selling this funnel is running; the dash means we could
+    // not read it. A failed read renders that dash, never an eternal skeleton.
+    expect(PAGE).toContain("spendableQ.data !== undefined || spendableQ.isError");
+    expect(PAGE).toContain("fmtDailyBudgetUsd(null)");
+    expect(PAGE).toContain("fmtDailyBudgetUsd(funnelBudgetCentsFor(row.funnelKey))");
+  });
+
+  it("puts the pair last, in the Campaigns table's own order, and widens the table", () => {
+    // The ceiling sits beside the status because the two answer one question
+    // together, and both sit right of the money block: those are charges, a
+    // ceiling is not. A new column means bumping the floor and the colSpan the
+    // skeleton and the empty state each carry.
+    const head = PAGE.slice(PAGE.indexOf("<thead>"), PAGE.indexOf("</thead>"));
+    expect(head.indexOf("$ Invested")).toBeLessThan(head.indexOf("$ Budget"));
+    expect(head.indexOf("$ Budget")).toBeLessThan(head.indexOf("Status"));
+    expect(PAGE).toContain("const COLUMN_COUNT = 8;");
+    expect(PAGE).toContain("md:min-w-[1060px]");
+  });
+});

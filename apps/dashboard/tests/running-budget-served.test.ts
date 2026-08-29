@@ -47,15 +47,18 @@ describe("the running daily budget is read, never rebuilt in the browser", () =>
   it("sums the funnel's own campaigns, because no served total exists at that grain", () => {
     expect(hook).toContain("normalizeSalesFunnelKey");
     expect(hook).toContain("data.campaigns");
-    expect(hook).toContain("reduce((sum, c) => sum + c.runningDailyBudgetCents, 0)");
+    expect(hook).toContain("reduce(\n              (sum, c) => sum + c.runningDailyBudgetCents,");
   });
 
   // billing keys a ceiling on (funnel x channel x offer), so a funnel with no offer beside it spans
   // every offer selling it — and would print a sibling offer's money under this one's name.
   it("narrows the funnel sum to the offer when one is given", () => {
-    const at = hook.indexOf("wantedFunnel");
+    // The narrowing lives in ONE exported helper now, shared with the funnels table so a
+    // row and the page it drills into cannot state different money for one funnel.
+    const at = hook.indexOf("export function spendableCampaignsForFunnel(");
     expect(at).toBeGreaterThan(-1);
     expect(hook.slice(at, at + 700)).toContain("offerId ? c.offerId === offerId : true");
+    expect(hook).toContain("spendableCampaignsForFunnel(data, funnelKey, offerId)");
   });
 
   it("reports null — not zero — while the read is unresolved or failed", () => {
