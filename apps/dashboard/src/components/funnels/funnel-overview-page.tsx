@@ -184,7 +184,27 @@ export function FunnelOverviewPage() {
           page already holds it for the cards above, and a second read is how two parts of
           one screen come to state different counts. */}
       <div className="space-y-3 pt-2">
-        <h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>
+        {/* The title and the way over to the campaign LIST sit on ONE row: a link under a
+            table reads as a footnote of the last row rather than as the heading's own
+            affordance, and the reader has to scroll the whole walk to find it.
+
+            The table below walks the funnel ARROW by arrow, so a campaign appears under
+            the leg it performs and the reader follows the funnel top to bottom. That is
+            the right shape for this page and the wrong one for "what am I running": a
+            campaign carries a return, a status and a budget the walk has no column for.
+            This is the way over to that list, narrowed to this funnel — the SAME
+            `CampaignsPage` every other campaign surface renders, never a second copy. */}
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>
+          {rawKey && (
+            <Link
+              href={`${basePath}/funnels/${encodeURIComponent(rawKey)}/campaigns`}
+              className="shrink-0 text-sm font-medium text-brand-600 hover:underline"
+            >
+              See more
+            </Link>
+          )}
+        </div>
         <CampaignsTable
           brandId={brandId}
           featureSlug={featureSlug}
@@ -193,22 +213,6 @@ export function FunnelOverviewPage() {
           funnelKey={rawKey}
           funnelSteps={revenuePending ? null : (data?.funnelSteps ?? null)}
         />
-        {/* The table above walks the funnel ARROW by arrow, so a campaign appears under
-            the leg it performs and the reader follows the funnel top to bottom. That is
-            the right shape for this page and the wrong one for "what am I running": a
-            campaign carries a return, a status and a budget the walk has no column for.
-            This is the way over to that list, narrowed to this funnel — the SAME
-            `CampaignsPage` every other campaign surface renders, never a second copy. */}
-        {rawKey && (
-          <div className="flex justify-end">
-            <Link
-              href={`${basePath}/funnels/${encodeURIComponent(rawKey)}/campaigns`}
-              className="text-sm font-medium text-brand-600 hover:underline"
-            >
-              See more
-            </Link>
-          </div>
-        )}
       </div>
 
       {!revenuePending && revenue.isError && (

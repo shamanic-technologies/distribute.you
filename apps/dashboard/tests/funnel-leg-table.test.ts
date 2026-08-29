@@ -236,13 +236,25 @@ describe("see more", () => {
     );
   });
 
-  it("reads as a link, right-aligned, in the brand's own accent", () => {
-    const link = page.slice(page.indexOf("See more") - 500, page.indexOf("See more"));
-    expect(link).toContain("justify-end");
+  it("sits on the heading's own row, right-aligned, in the brand's own accent", () => {
+    // A link UNDER the table reads as a footnote of its last row rather than as the
+    // heading's affordance, and the reader has to scroll the whole walk to find it. The
+    // slice runs from the heading to the link, so it fails if the link moves back below
+    // the table (measured: the heading precedes `See more` by ~700 chars).
+    const headingAt = page.indexOf(
+      '<h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>',
+    );
+    const linkAt = page.indexOf("See more");
+    expect(headingAt).toBeGreaterThan(-1);
+    expect(linkAt).toBeGreaterThan(headingAt);
+    const header = page.slice(headingAt - 400, linkAt);
+    expect(header).toContain("flex items-center justify-between");
+    // The table is BELOW both, so nothing may sit between the heading and the link.
+    expect(header).not.toContain("<CampaignsTable");
     // A brand-* ramp step, never a literal charter hex: the ramp rotates with the
     // brand's tint and an arbitrary-value hex cannot.
-    expect(link).toContain("text-brand-600");
-    expect(link).not.toMatch(/text-\[#/);
+    expect(header).toContain("text-brand-600");
+    expect(header).not.toMatch(/text-\[#/);
   });
 
   it("states nothing when there is no funnel in the route to link to", () => {
