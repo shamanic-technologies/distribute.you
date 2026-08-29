@@ -3674,6 +3674,13 @@ const CampaignRevenueCostEconomicsSchema = z.object({
 const CampaignRevenueOutcomesSchema = z.object({
   recipientsRepliesPositive: z.number().nullish(),
   recipientsClicked: z.number().nullish(),
+  // What this campaign identity paid for one of each, SERVED. The funnel walk states a
+  // per-campaign cost from these rather than the funnel-wide rung, so a row's price
+  // divides the same spend its `$ Invested` states and the same count in the cell
+  // before it. Measured in prod: the rung read $164 (whole funnel, including a
+  // feedback-request campaign that produced none) beside $2,889 and 18 on one row.
+  cpprCents: z.number().nullish(),
+  cpcCents: z.number().nullish(),
 });
 const FeatureRevenueByCampaignSchema = z.object({
   groupBy: z.string(),
@@ -3702,6 +3709,11 @@ export interface CampaignRevenueGroup {
   positiveReplies?: number | null;
   /** Website visits attributed to it, same rule. */
   websiteClicks?: number | null;
+  /** What one positive reply cost this campaign. Undefined = not answered; null = the
+   *  producer measured none, which is not a zero price. */
+  cpprCents?: number | null;
+  /** What one website visit cost it, same rule. */
+  cpcCents?: number | null;
 }
 
 /** GET /features/:slug/revenue?groupBy=campaignId — one lean revenue group per campaign. */
@@ -3732,6 +3744,8 @@ export async function getFeatureRevenueByCampaign(
     costPerConversionUsd: g.costEconomics.costPerConversionUsd ?? null,
     positiveReplies: g.outcomes?.recipientsRepliesPositive,
     websiteClicks: g.outcomes?.recipientsClicked,
+    cpprCents: g.outcomes?.cpprCents,
+    cpcCents: g.outcomes?.cpcCents,
   }));
 }
 
