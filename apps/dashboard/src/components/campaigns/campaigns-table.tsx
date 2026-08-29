@@ -17,7 +17,7 @@ import {
 } from "@/lib/api";
 import { stepsFor } from "@/lib/goal-steps";
 import { isLearning } from "@/lib/learning-threshold";
-import { LearningTag } from "@/components/learning-tag";
+import { LearningTag, LearningToneProvider } from "@/components/learning-tag";
 import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
@@ -790,7 +790,22 @@ export function FunnelLegTable({
   );
 }
 
-export function CampaignsTable({
+/**
+ * A campaign table — the Campaigns page's list, or a funnel's arrows — always reads in
+ * the brand's TERTIARY, whatever accent the page around it states. It is pinned here
+ * rather than at each call site so a new surface cannot repaint it by mounting it under
+ * a different tone; the funnel Overview states `primary` for its cards and this table
+ * keeps its own colour by construction.
+ */
+export function CampaignsTable(props: Parameters<typeof CampaignsTableInner>[0]) {
+  return (
+    <LearningToneProvider tone="tertiary">
+      <CampaignsTableInner {...props} />
+    </LearningToneProvider>
+  );
+}
+
+function CampaignsTableInner({
   brandId,
   featureSlug,
   basePath,
