@@ -5,6 +5,7 @@ import {
   promiseTitle,
   promiseSubtitle,
   promiseProgressLabel,
+  promiseProgressSentence,
   promiseProgressWidth,
   promiseUnlockLine,
 } from "../src/lib/free-credit-promise-view";
@@ -147,5 +148,30 @@ describe("promiseProgressLabel", () => {
     expect(promiseProgressLabel(null)).toBeNull();
     expect(promiseProgressLabel(undefined)).toBeNull();
     expect(promiseProgressLabel(Number.NaN)).toBeNull();
+  });
+});
+
+describe("promiseProgressSentence", () => {
+  it("states where the promise stands and asks for the rest", () => {
+    expect(promiseProgressSentence(18)).toBe("18% achieved. Keep going 💪");
+    expect(promiseProgressSentence(0.3)).toBe("1% achieved. Keep going 💪");
+    expect(promiseProgressSentence(99.6)).toBe("99% achieved. Keep going 💪");
+  });
+
+  it("drops the ask once the bar is full", () => {
+    // Asking for more payments beside a full bar contradicts the number it
+    // sits under: there is nothing left to keep going toward.
+    expect(promiseProgressSentence(100)).toBe("100% achieved 🎉");
+    expect(promiseProgressSentence(140)).toBe("100% achieved 🎉");
+  });
+
+  it("says nothing when the bar says nothing", () => {
+    expect(promiseProgressSentence(null)).toBeNull();
+    expect(promiseProgressSentence(undefined)).toBeNull();
+    expect(promiseProgressSentence(Number.NaN)).toBeNull();
+  });
+
+  it("uses no em-dash", () => {
+    expect(promiseProgressSentence(18)).not.toContain("\u2014");
   });
 });

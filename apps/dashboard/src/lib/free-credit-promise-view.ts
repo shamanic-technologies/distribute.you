@@ -129,3 +129,22 @@ export function promiseProgressLabel(progressPct: number | null | undefined): st
   if (rounded <= 0 && width > 0) return "1%";
   return `${rounded}%`;
 }
+
+/**
+ * The line under the bar: where the promise stands, and an ask to keep going.
+ *
+ * The percentage alone is a reading; a reader has to decide for themselves what
+ * it is asking of them. Stating both makes the bar a goal rather than a gauge,
+ * which is the goal-gradient reading the card is built on.
+ *
+ * At 100% the encouragement is dropped: there is nothing left to keep going
+ * toward, and asking for more payments on a bar that is already full contradicts
+ * the number beside it. Returns null wherever `promiseProgressLabel` does, so the
+ * sentence and the bar can never disagree about whether progress is measurable.
+ */
+export function promiseProgressSentence(progressPct: number | null | undefined): string | null {
+  const label = promiseProgressLabel(progressPct);
+  if (label === null) return null;
+  if (label === "100%") return "100% achieved 🎉";
+  return `${label} achieved. Keep going 💪`;
+}
