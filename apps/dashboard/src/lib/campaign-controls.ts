@@ -329,7 +329,7 @@ function pickRepresentative(
  */
 export type ControlRollup = "none" | "paused" | "active";
 
-export function rollupStatus(rows: ControlRow[]): ControlRollup {
+export function rollupStatus(rows: readonly { running: boolean }[]): ControlRollup {
   if (rows.length === 0) return "none";
   return rows.some((r) => r.running) ? "active" : "paused";
 }

@@ -138,9 +138,13 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     // campaigns, and the ROW's own where the row is alone on its arrow: a campaign that
     // produced nothing is never lent another's evidence, and an arrow that IS measured
     // is never called thin because one of the campaigns feeding it is quiet.
+    // The RATE is the arrow's, so it gates on the arrow's rung when several campaigns
+    // feed it and on the row's own count otherwise.
     expect(cells).toContain(
       "isLearning((sharesArrow ? step?.recipientsReached : outcomes) ?? undefined)",
     );
+    // The PRICE is this campaign's own, so it gates on this campaign's own count.
+    expect(cells).toContain("const thinOwn = isLearning(outcomes ?? undefined);");
     // The COUNT cell carries no gate at all: it is measured whatever its size, and it
     // is what shows the bar being approached. Sliced to that one cell rather than
     // compared by index — the gate now lives in a helper declared above it.
@@ -159,13 +163,42 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(legTable).toContain("step?.recipientsReached");
   });
 
+  it("prices a row with the CAMPAIGN's own cost, never the whole funnel's, where the producer answers one", () => {
+    // Measured in prod: a row read 18 outcomes, $164 and $2,889 invested. 2889/18 is
+    // 160, and 160 is what that campaign's own page said — the rung divides the WHOLE
+    // funnel's spend, so three figures on one row answered at three scopes.
+    expect(legCells).toContain("const statesOwnCost = campaignCostCents !== undefined;");
+    expect(legCells).toContain("formatCentsAsUsdAdaptive(campaignCostCents)");
+    // The arrow's own figure is still what a row nobody of ours runs states, and what a
+    // step with no per-campaign price falls back to.
+    expect(legCells).toContain("formatCentsAsUsdAdaptive(step.costPerReachCents)");
+    // The CALL SITE, not only the component: a prop the table never passes leaves the
+    // component perfectly correct and the behaviour entirely absent.
+    const map = legTable.slice(legTable.indexOf("{rows.map("));
+    expect(map).toContain("campaignStepCostCents(campaign.revenue, leg.toKey)");
+    // A row with no campaign has nobody to ask, and states the funnel's figure.
+    expect(map).toContain("campaign ? campaignStepCostCents(campaign.revenue, leg.toKey) : undefined");
+  });
+
+  it("keeps the RATE arrow-scoped, so it alone carries the state-once treatment", () => {
+    // The producer serves no per-campaign conversion, and a share of the step before is
+    // a funnel property rather than one campaign's.
+    expect(legCells).toContain("{ own: false }");
+    // A campaign's OWN price needs none of it: two campaigns feeding one arrow each
+    // have their own, and stating both is the point.
+    expect(legCells).toContain("if (!own && !statesArrowFigures)");
+    expect(legCells).toContain("if (own || !sharesArrow) return node;");
+  });
+
   it("states a shared arrow's cost and rate ONCE, on the arrow's lead row", () => {
     // The figure is FUNNEL-scoped on every row — the `$ / Outcome` tooltip says so
     // outright — so a shared arrow does not make it unstateable, only repeatable.
     // Withholding it from every row of the arrow was the earlier shape, and it made a
     // funnel whose two channels both feed its first step read as never measured.
     expect(legCells).toContain("const statesArrowFigures = !sharesArrow || arrowLead;");
-    expect(legCells).toContain("if (!statesArrowFigures)");
+    // The suppression fires on an ARROW-scoped figure only — a campaign's own price is
+    // never withheld because a sibling campaign feeds the same step.
+    expect(legCells).toContain("if (!own && !statesArrowFigures)");
     expect(legCells).toContain("COLUMN_INFO.sharedArrow");
     // The lead row says whose figure it is; the rest point back at it.
     expect(legCells).toContain("COLUMN_INFO.sharedArrowLead");
