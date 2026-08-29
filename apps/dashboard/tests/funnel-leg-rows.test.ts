@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildFunnelLegRows,
+  CAMPAIGN_COST_FIELD_BY_STEP_KEY,
+  CAMPAIGN_COUNT_FIELD_BY_STEP_KEY,
+  campaignStepCostCents,
   campaignStepOutcomes,
   LEAD_FIELD_BY_STEP_KEY,
 } from "../src/lib/funnel-leg-rows";
@@ -267,6 +270,44 @@ describe("campaignStepOutcomes — a campaign's OWN count for a step", () => {
   it("keeps a real ZERO, which is the whole point", () => {
     expect(campaignStepOutcomes(feedback, "conversation")).not.toBeUndefined();
     expect(campaignStepOutcomes(feedback, "conversation")).toBe(0);
+  });
+});
+
+describe("campaignStepCostCents — a campaign's OWN price for one outcome at a step", () => {
+  // Measured in prod on the brand that reported this: the funnel's rung divided the
+  // WHOLE funnel's committed spend ($2,949.84, a feedback-request campaign included)
+  // by the 18 sales interests cold email produced, and printed $164 on a row whose own
+  // `$ Invested` read $2,889. 2889/18 is 160, which is what that campaign's own page
+  // says, so the row disagreed with itself and with the page one click away.
+  const coldEmail = { cpprCents: 16048.611111111111, cpcCents: 5349.537037037037 };
+  const feedback = { cpprCents: null, cpcCents: null };
+
+  it("reads the field the producer answers for that step", () => {
+    expect(campaignStepCostCents(coldEmail, "conversation")).toBeCloseTo(16048.61, 2);
+    expect(campaignStepCostCents(coldEmail, "website_visit")).toBeCloseTo(5349.54, 2);
+  });
+
+  it("answers undefined — not null — for a step it has no price for", () => {
+    // Undefined sends the caller to the arrow's own figure; null would make it print a
+    // dash on a step the producer never priced per campaign.
+    expect(campaignStepCostCents(coldEmail, "meeting_booked")).toBeUndefined();
+    expect(campaignStepCostCents(coldEmail, "meeting_attended")).toBeUndefined();
+    expect(campaignStepCostCents(coldEmail, "paid_client")).toBeUndefined();
+    expect(campaignStepCostCents(null, "conversation")).toBeUndefined();
+    expect(campaignStepCostCents(undefined, "conversation")).toBeUndefined();
+  });
+
+  it("keeps a real NULL, which is 'we measured none' and not a zero price", () => {
+    expect(campaignStepCostCents(feedback, "conversation")).toBeNull();
+    expect(campaignStepCostCents(feedback, "website_visit")).toBeNull();
+  });
+
+  it("prices exactly the steps it counts — one map cannot answer where the other cannot", () => {
+    // A step that has a per-campaign COUNT and no per-campaign PRICE would print one
+    // campaign's count beside the whole funnel's price, which is the bug this fixes.
+    expect(Object.keys(CAMPAIGN_COST_FIELD_BY_STEP_KEY).sort()).toEqual(
+      Object.keys(CAMPAIGN_COUNT_FIELD_BY_STEP_KEY).sort(),
+    );
   });
 });
 

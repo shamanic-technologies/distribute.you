@@ -58,6 +58,43 @@ export const CAMPAIGN_COUNT_FIELD_BY_STEP_KEY: Record<
   website_visit: "websiteClicks",
 };
 
+/**
+ * Which field of a CAMPAIGN's own revenue group states what it paid for one outcome
+ * at each step.
+ *
+ * The rung's `costPerReachCents` is FUNNEL-scoped and divides the WHOLE funnel's
+ * committed spend, so on a row that also states this campaign's own count and its own
+ * `$ Invested`, the three numbers answer at three different scopes and a reader who
+ * divides the other two gets a different price. Measured in prod: a row read `18`,
+ * `$164` and `$2,889` — 2889/18 is 160, and 160 is what that campaign's own page said.
+ *
+ * features-service answers per campaign for the two steps a channel produces from
+ * nothing, on the SAME `?groupBy=campaignId` read the table already makes. Anything
+ * deeper in a funnel has no per-campaign price on the wire yet, which reads as "we
+ * cannot tell" and falls back to the arrow's own figure rather than to a zero.
+ */
+export const CAMPAIGN_COST_FIELD_BY_STEP_KEY: Record<string, "cpprCents" | "cpcCents"> = {
+  conversation: "cpprCents",
+  website_visit: "cpcCents",
+};
+
+/**
+ * What a campaign's OWN group says one outcome at this step cost it.
+ *
+ * `undefined` means the producer answers no per-campaign price for this step, and the
+ * caller then states the arrow's. `null` is a different statement — the producer
+ * answered and measured none — and it stays a `null` so the cell can say so rather
+ * than print a confident $0.
+ */
+export function campaignStepCostCents(
+  group: { cpprCents?: number | null; cpcCents?: number | null } | null | undefined,
+  toKey: string,
+): number | null | undefined {
+  if (!group) return undefined;
+  const field = CAMPAIGN_COST_FIELD_BY_STEP_KEY[toKey];
+  return field ? group[field] : undefined;
+}
+
 /** What a campaign's OWN group says reached this step. `undefined` = not answered. */
 export function campaignStepOutcomes(
   group: { positiveReplies?: number | null; websiteClicks?: number | null } | null | undefined,
