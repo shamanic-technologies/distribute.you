@@ -109,13 +109,15 @@ describe("the rewards card", () => {
     expect(card).not.toContain("reduce(");
   });
 
-  it("states the percentage beside the bar, read from the same served value", () => {
+  it("states the progress under the bar, read from the same served value", () => {
     // The bar shows a shape and a shape cannot be remembered day to day; the
-    // number is what makes tomorrow's visit comparable to today's. Both read
+    // number is what makes tomorrow's visit comparable to today's, and the ask
+    // beside it is what makes the bar a goal rather than a gauge. Both read
     // `promise.progressPct`, so they can never disagree, and neither is
-    // computed here.
-    expect(card).toContain("promiseProgressLabel(promise.progressPct)");
-    expect(card).toContain("{pctLabel}");
+    // computed here. The words live in the shared module, not in the component.
+    expect(card).toContain("promiseProgressSentence(promise.progressPct)");
+    expect(card).toContain("{progressLine}");
+    expect(card).not.toContain("Keep going");
     expect(card).not.toMatch(/Math\.round\(/);
   });
 
