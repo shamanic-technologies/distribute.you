@@ -17,7 +17,7 @@ import {
 } from "@/lib/api";
 import { stepsFor } from "@/lib/goal-steps";
 import { isLearning } from "@/lib/learning-threshold";
-import { LearningTag, LearningToneProvider } from "@/components/learning-tag";
+import { LearningTag } from "@/components/learning-tag";
 import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
@@ -275,6 +275,22 @@ function campaignSignalCount(
 }
 
 /**
+ * Every offer's campaigns at once, as `offerId`.
+ *
+ * A caller that needs ONE answer per offer — the brand Overview's Offers table, which
+ * states whether each row's ratios rest on enough evidence — cannot call this hook once
+ * per offer: hooks are not loopable. Reading the brand-grain branch instead would be
+ * wrong rather than merely coarse, because that branch is pinned to a single channel and
+ * an offer is routinely sold through several, so an offer's measured campaign on its
+ * second channel would be invisible and the row would read `Learning` for good.
+ *
+ * So this takes the offer-scoped branch — spans channels, keeps only campaigns that
+ * NAME an offer — and simply does not narrow to one of them. Every query key is
+ * unchanged, so a page already reading these rows pays nothing for the second question.
+ */
+export const ALL_OFFERS = "*";
+
+/**
  * The rows both surfaces read, and the ordering they share.
  *
  * A hook rather than a prop drilled from each page: the Campaigns page names its #1
@@ -349,7 +365,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     () =>
       campaigns.filter((c) =>
         offerId
-          ? c.offerId === offerId &&
+          ? (offerId === ALL_OFFERS ? c.offerId != null : c.offerId === offerId) &&
             acquisitionChannelForFeatureSlug(c.featureSlug, channels) !== null
           : c.featureSlug === featureSlug,
       ),
@@ -830,18 +846,22 @@ export function FunnelLegTable({
 }
 
 /**
- * A campaign table — the Campaigns page's list, or a funnel's arrows — always reads in
- * the brand's TERTIARY, whatever accent the page around it states. It is pinned here
- * rather than at each call site so a new surface cannot repaint it by mounting it under
- * a different tone; the funnel Overview states `primary` for its cards and this table
- * keeps its own colour by construction.
+ * A campaign table states NO tone of its own — the SURFACE it is mounted on decides.
+ *
+ * It used to pin itself to the tertiary wherever it was mounted, on the reasoning that
+ * it states campaigns and so should read in the campaign accent everywhere. That reads
+ * as one rule and behaves as another: a page that states `primary` for its own cards
+ * then carries an orange table under a purple-and-blue header, and a reader meets two
+ * accents on one screen for one meaning. The tone is a property of the page (see
+ * `LearningToneProvider`), so the pin was the one thing stopping a page from being one
+ * colour. Owner-decided: every tag on a surface reads in that surface's accent.
+ *
+ * Consequence, and it is the point: this table reads PRIMARY on the brand Overview, on
+ * the offer Overview and on the offer's Funnels page, and keeps the default tertiary on
+ * the campaign-grain surfaces, which state no tone.
  */
 export function CampaignsTable(props: Parameters<typeof CampaignsTableInner>[0]) {
-  return (
-    <LearningToneProvider tone="tertiary">
-      <CampaignsTableInner {...props} />
-    </LearningToneProvider>
-  );
+  return <CampaignsTableInner {...props} />;
 }
 
 function CampaignsTableInner({

@@ -101,3 +101,61 @@ describe("the Offers table fits a phone", () => {
     }
   });
 });
+
+describe("an offer states Learning on its RATIOS while every campaign selling it is", () => {
+  const table = read("src/components/offers/offers-table.tsx");
+  const hook = read("src/lib/use-offer-learning.ts");
+
+  it("gates ROI and % CAC on the offer's own learning flag", () => {
+    // The two are one statement in two units — a return and its reciprocal — so showing
+    // one beside a tag would let a reader trust the number we just said we could not
+    // stand behind.
+    expect(table).toContain("learning ? <LearningTag withInfo={false} /> : <RoiCell");
+    expect(table).toContain(
+      "learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)",
+    );
+  });
+
+  it("never gates the two money TOTALS", () => {
+    // `$ Revenue` grows with each outcome instead of being decided by whichever one
+    // landed, and `$ Invested` is money already spent. Neither divides by a count.
+    expect(table).toContain("{fmtUsd(revenue?.totalPipelineUsd)}");
+    expect(table).toContain("{fmtUsd(revenue?.committedCostUsd)}");
+    expect(table).not.toContain("learning ? <LearningTag withInfo={false} /> : fmtUsd");
+  });
+
+  it("sinks a learning row below the measured ones rather than ranking it on a hidden number", () => {
+    const at = table.indexOf("const rows = useMemo<OfferRow[]>");
+    const body = table.slice(at, at + 1200);
+    expect(body).toContain("Number(a.learning) - Number(b.learning)");
+    expect(body).toContain("if (a.learning) return 0;");
+  });
+
+  it("asks the question once for every offer, through the offer-scoped branch", () => {
+    // Per offer is impossible (hooks are not loopable) and the brand-grain branch is
+    // pinned to ONE channel, so an offer's measured campaign on a second channel would
+    // be invisible and the row would read Learning for good.
+    expect(hook).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
+    expect(hook).toContain("scopeIsLearning(offerRows)");
+    // The call site, not only the hook: a page that computes nothing renders nothing.
+    expect(table).toContain("useOfferLearning(");
+    expect(table).toContain("offerLearningFor(learningByOfferId, o.offerId, learningSettled)");
+  });
+
+  it("reads an offer with NO campaigns as unmeasured, never as learning", () => {
+    // Nothing to have an opinion about, so the row reads exactly as it does today —
+    // same default as `scopeIsLearning` on an empty list. An unsettled read likewise.
+    const at = hook.indexOf("export function offerLearningFor");
+    const body = hook.slice(at, at + 400);
+    expect(body).toContain("if (!settled || !offerId) return false;");
+    expect(body).toContain("map.get(offerId) ?? false");
+  });
+
+  it("keeps every offer's campaigns spanning the channels it is sold through", () => {
+    const rows = read("src/components/campaigns/campaigns-table.tsx");
+    expect(rows).toContain('export const ALL_OFFERS = "*";');
+    expect(rows).toContain(
+      "offerId === ALL_OFFERS ? c.offerId != null : c.offerId === offerId",
+    );
+  });
+});
