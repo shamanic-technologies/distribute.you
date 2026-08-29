@@ -30,6 +30,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
+import { LearningToneProvider } from "@/components/learning-tag";
 import { useAudienceLearning } from "@/lib/use-audience-learning";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { DashboardPage } from "@/components/dashboard-page";
@@ -433,6 +434,15 @@ export default function BrandOverviewPage() {
   }
 
   return (
+    /* A BRAND reads in its own PRIMARY, and so does the offer Overview this same
+       component renders one level down — owner-decided: every Learning tag on a
+       surface reads in that surface's accent. Stated here rather than on the route
+       because there is no route wrapper for the brand grain: this file IS the page.
+       The campaigns table below states no tone of its own, so it follows.
+
+       Campaign-grain surfaces keep the default tertiary; they mount their own
+       components and state nothing. */
+    <LearningToneProvider tone="primary">
     <DashboardPage width="wide" className="space-y-4">
       <ScopeLearningBand brandId={brandId} featureSlug={featureSlug} offerId={offerId} />
       {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
@@ -533,5 +543,6 @@ export default function BrandOverviewPage() {
         )}
       </div>
     </DashboardPage>
+    </LearningToneProvider>
   );
 }

@@ -14,6 +14,8 @@ import {
   fmtPct,
   fmtUsd,
 } from "@/components/campaigns/campaigns-table";
+import { LearningTag } from "@/components/learning-tag";
+import { offerLearningFor, useOfferLearning } from "@/lib/use-offer-learning";
 import { Skeleton } from "@/components/skeleton";
 import { OfferMark } from "@/components/marks/offer-mark";
 
@@ -55,6 +57,16 @@ const OFFER_COLUMN_INFO = {
 interface OfferRow {
   offer: Offer;
   revenue: OfferRevenueGroup | null;
+  /**
+   * Whether this offer's two RATIOS rest on too little evidence to state.
+   *
+   * An offer is a scope sold by campaigns, so it is learning while every campaign
+   * selling it is — the same rule the cards above this table already follow, one grain
+   * down. `$ Revenue` and `$ Invested` are never gated by it: one is a TOTAL that grows
+   * with each outcome rather than being decided by whichever one landed, the other is
+   * money already spent, and neither divides by an outcome count.
+   */
+  learning: boolean;
 }
 
 export function OffersTable({
@@ -70,6 +82,15 @@ export function OffersTable({
   const router = useRouter();
   const prefetch = useRoutePrefetch();
   const revenueEnabled = isRevenueFeature(featureSlug);
+
+  // Whether each offer's ratios rest on enough evidence to state. Read through the same
+  // campaign rows the offer's own surfaces are judged on, on keys this page already
+  // polls, so a row can never state a return that every campaign selling it is declining
+  // to state.
+  const { learningByOfferId, settled: learningSettled } = useOfferLearning(
+    brandId,
+    featureSlug,
+  );
 
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
     refetchInterval: POLL_INTERVAL,
@@ -95,9 +116,21 @@ export function OffersTable({
   // one order and sorts by another reads as unordered. An offer with no return yet
   // has nothing to rank on, so it sits last rather than at zero.
   const rows = useMemo<OfferRow[]>(() => {
-    const joined = offers.map((o) => ({ offer: o, revenue: groupsById.get(o.offerId) ?? null }));
-    return joined.sort((a, b) => (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1));
-  }, [offers, groupsById]);
+    const joined = offers.map((o) => ({
+      offer: o,
+      revenue: groupsById.get(o.offerId) ?? null,
+      learning: offerLearningFor(learningByOfferId, o.offerId, learningSettled),
+    }));
+    return joined.sort((a, b) => {
+      // A row that is not stating its return has no rank under it — ordering a table by
+      // a number it is deliberately not showing reads as unordered. Learning offers sit
+      // below the measured ones and keep their relative order among themselves.
+      const byLearning = Number(a.learning) - Number(b.learning);
+      if (byLearning !== 0) return byLearning;
+      if (a.learning) return 0;
+      return (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+    });
+  }, [offers, groupsById, learningByOfferId, learningSettled]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate.
   const settled =
@@ -141,7 +174,7 @@ export function OffersTable({
               </td>
             </tr>
           ) : (
-            rows.map(({ offer, revenue }) => (
+            rows.map(({ offer, revenue, learning }) => (
               <tr
                 key={offer.offerId}
                 onClick={() => router.push(`${basePath}/offers/${offer.offerId}`)}
@@ -163,8 +196,15 @@ export function OffersTable({
                     <span className="truncate">{offer.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                {/* The two RATIOS state `Learning` together or not at all — they are one
+                    statement in two units, a return and its reciprocal, so showing one of
+                    them beside a tag would let a reader trust the number we just said we
+                    could not stand behind. The two money columns after them are totals,
+                    not prices, and keep their figures. */}
+                <td className="px-4 py-3 text-right">
+                  {learning ? <LearningTag withInfo={false} /> : <RoiCell multiple={revenue?.roiMultiple} />}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group the ROI and % CAC beside it divide by, so a

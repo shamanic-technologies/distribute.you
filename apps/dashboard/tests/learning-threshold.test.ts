@@ -471,12 +471,13 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
     }
   });
 
-  it("pins the campaigns table to the tertiary, wherever it is mounted", () => {
-    // It states CAMPAIGNS, so it reads in the campaign accent on every page — pinned
-    // in the component rather than at each call site, or a new surface repaints it by
-    // mounting it under a different tone.
+  it("lets the SURFACE decide the campaigns table's tone — no self-pin", () => {
+    // It used to pin itself to the tertiary wherever it was mounted. That put an orange
+    // table under a primary header on every page that states its own accent, so one
+    // screen carried two colours for one meaning. Owner-decided: the tone belongs to the
+    // surface, so the table states none and follows whatever page mounts it.
     const table = read("components/campaigns/campaigns-table.tsx");
-    expect(table).toContain('<LearningToneProvider tone="tertiary">');
+    expect(table).not.toContain("<LearningToneProvider");
     expect(table).toContain("<CampaignsTableInner {...props} />");
   });
 
@@ -493,23 +494,29 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
     }
   });
 
-  it("states the primary on every OFFER-grain route, from the route and not the component", () => {
-    // An offer reads in the brand's primary. All four of its surfaces are SHARED
-    // components — the Overview is literally the brand page re-rendered — so the tone
-    // is stated on the route: setting it inside the component would repaint the brand,
-    // campaign and funnel grains that mount the same code.
+  it("states the primary on the BRAND page, which is the offer Overview too", () => {
+    // Owner-decided: every Learning tag on a brand's Overview reads in the brand's own
+    // primary. There is no route wrapper for the brand grain — that file IS the page —
+    // so the tone is stated in the component, and the offer Overview, which renders the
+    // very same component, inherits it rather than restating it.
+    const brand = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+    expect(brand).toContain('<LearningToneProvider tone="primary">');
+    const OFFER = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]";
+    expect(read(`${OFFER}/page.tsx`)).not.toContain("LearningToneProvider");
+  });
+
+  it("states the primary on the offer's other three routes, from the ROUTE", () => {
+    // Those three mount components that are ALSO mounted at the brand and campaign
+    // grains, so a tone set inside them would repaint grains nobody asked to change.
     const OFFER = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]";
     for (const route of [
-      `${OFFER}/page.tsx`,
       `${OFFER}/audiences/page.tsx`,
       `${OFFER}/audiences/leads/page.tsx`,
       `${OFFER}/funnels/page.tsx`,
     ]) {
       expect(read(route)).toContain('<LearningToneProvider tone="primary">');
     }
-    // The shared components themselves state nothing, or the brand grain moves with them.
     for (const shared of [
-      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
       "components/audiences/customer-audiences-page.tsx",
       "components/audiences/engaged-leads-page.tsx",
     ]) {

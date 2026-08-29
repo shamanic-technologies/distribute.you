@@ -1,4 +1,3 @@
-import { LearningToneProvider } from "@/components/learning-tag";
 import BrandOverviewPage from "@/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page";
 
 /**
@@ -9,18 +8,14 @@ import BrandOverviewPage from "@/app/(authed)/(dashboard)/orgs/[orgId]/brands/[b
  * `EngagedLeadsPage({ campaignId })`): one page, an optional scope read off the
  * route, never a second copy that drifts. The component reads `offerId` from
  * `useParams()`, so mounting it here is what scopes every read to this offer and
- * swaps the brand's Offers list for this offer's campaigns and audiences.
+ * swaps the brand's Offers list for this offer's funnels and audiences.
  *
- * The tone is stated HERE rather than inside the component precisely because the
- * component is shared: an offer reads in the brand's PRIMARY, and a `tone` set in
- * `page.tsx` one level up would repaint the brand Overview with it. The campaigns
- * table inside keeps its own accent by construction — it states campaigns, so it
- * pins itself back to the tertiary wherever it is mounted.
+ * It states no Learning accent of its own: the component already reads in the brand's
+ * PRIMARY, because the brand grain reads in it too and this file renders the brand
+ * grain's own page — restating it here would say the same thing twice. The offer's
+ * other three routes DO state one, since they mount components that are also mounted
+ * at the brand and campaign grains, where the accent must not follow.
  */
 export default function OfferOverviewRoute() {
-  return (
-    <LearningToneProvider tone="primary">
-      <BrandOverviewPage />
-    </LearningToneProvider>
-  );
+  return <BrandOverviewPage />;
 }
