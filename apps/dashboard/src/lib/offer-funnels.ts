@@ -37,14 +37,12 @@ export function unpricedFunnelReasonLabel(reason: string | null | undefined): st
 /**
  * Which dollars a cost is made of, said out loud.
  *
- * `platform_spend_only` is the state today and it MATTERS: a funnel whose last legs are
- * worked by the customer's own team reads cheaper here than it truly is, because what
- * those legs cost THEM is declared per lead and is not folded in yet. Stating it is the
- * alternative to presenting an optimistic return as the whole answer.
+ * `platform_spend_only` states NOTHING. It carried a sentence explaining that a funnel
+ * finished by the customer's own team reads cheap here; it was an accounting caveat
+ * nobody had asked for, under a table of numbers, and the owner cut it. The per-row
+ * `us · you` split already shows where a cost came from.
  */
 const COST_COVERAGE_NOTE: Record<string, string> = {
-  platform_spend_only:
-    "These costs are what the platform spent. Nobody has recorded what a step your own team worked cost you, so a funnel you finish yourself reads cheaper here than it really is.",
   platform_and_customer_spend:
     "These costs are what the platform spent plus what you recorded for the steps your own team worked.",
 };
