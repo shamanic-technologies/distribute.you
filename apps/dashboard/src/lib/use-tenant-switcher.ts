@@ -15,6 +15,7 @@ import { getBrand, listBrands, listBrandOffers, getBrandOffer, type Offer } from
 import { useTenantIdentity } from "@/components/tenant-identity-provider";
 import { withTimeout, isTimeoutError } from "@/lib/with-timeout";
 import { orgSwitchErrorMessage } from "@/lib/org-switch-error";
+import { landingHref } from "@/lib/landing-drilldown";
 
 /**
  * How long any single leg of an org switch may take before the switcher gives up
@@ -393,8 +394,18 @@ export function useTenantSwitcher() {
     if (switchingOrg && orgId === switchingOrg.id) setSwitchingOrg(null);
   }, [switchingOrg, orgId]);
 
+  // Picking a brand chooses a TENANT; where inside it you land is a resolution, so it
+  // carries the same landing marker sign-in does and walks down to the sole offer / sole
+  // funnel (`useLandingDrilldown`). Coming back to a brand from Billing or the API-key
+  // page — the switcher is the only way back, the back links are deleted — therefore
+  // lands where signing in would, instead of always on the brand Overview.
+  //
+  // The sidebar's Overview entry, the brand crumb and the header context still point at
+  // the BARE brand URL on purpose: a page that redirects away from itself is a page
+  // nobody can reach. Same reason `handleOfferSwitch` carries no marker — picking an
+  // offer already names the destination.
   const handleBrandSwitch = useCallback((newBrandId: string) => {
-    if (orgId) router.push(`/orgs/${orgId}/brands/${newBrandId}`);
+    if (orgId) router.push(landingHref(`/orgs/${orgId}/brands/${newBrandId}`));
   }, [orgId, router]);
 
   // Resolve the brand from the dropdown list first, then the authoritative by-id

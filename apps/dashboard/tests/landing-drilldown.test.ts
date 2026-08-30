@@ -139,6 +139,28 @@ describe("where the walk is set, and where it is honoured", () => {
     expect(page).toContain("<DashboardPageSkeleton />");
   });
 
+  it("every surface that PICKS a brand marks the landing, so none of them lands differently", () => {
+    // Coming back to a brand from Billing or the API-key page goes through the
+    // switcher — the back links are deleted — so a brand pick has to land where
+    // signing in would, not always on the brand Overview.
+    const hook = read("lib/use-tenant-switcher.ts");
+    expect(hook).toContain(
+      "router.push(landingHref(`/orgs/${orgId}/brands/${newBrandId}`))",
+    );
+    const org = read("app/(authed)/(dashboard)/orgs/[orgId]/page.tsx");
+    expect(org).toContain("href={landingHref(`/orgs/${orgId}/brands/${brand.id}`)}");
+  });
+
+  it("picking an OFFER names its own destination, so it carries no marker", () => {
+    // The walk exists to skip a level with no choice in it. An offer pick has already
+    // made that choice, and a funnel is worked leg by leg rather than being a level
+    // with one obvious child.
+    const hook = read("lib/use-tenant-switcher.ts");
+    expect(hook).toContain(
+      "router.push(`/orgs/${orgId}/brands/${brandId}/offers/${newOfferId}`)",
+    );
+  });
+
   it("the walk counts the rows the page would show, on the keys it already polls", () => {
     const hook = read("lib/use-landing-drilldown.ts");
     // `brandOffers` is the brand Overview's Offers table; `offerFunnels` is the offer
