@@ -81,6 +81,33 @@ export interface ConversionOrg {
 }
 
 /** One person row (Leads tab). */
+/** The four outcomes features-service attributes per lead (conversion tracker). */
+export type LeadOutcomeField = "signup" | "meetingBooked" | "formSubmission" | "purchased";
+
+/**
+ * What ONE lead has reached — the only thing a browser surface ever asks a `/revenue`
+ * lead row. Structurally a `LeadStageEvidence` (lead-funnel-stages.ts) plus its id and
+ * the four realized-outcome timestamps, so it feeds `trackedStages` directly.
+ *
+ * Every flag is optional and `undefined` means "not measured", which is NOT `false`
+ * ("measured, did not happen"). Both read as "we have not seen this"; neither may be
+ * rendered as a denial.
+ */
+export interface LeadOutcome {
+  leadId: string;
+  clicked?: boolean;
+  repliedPositive?: boolean;
+  meetingBooked?: boolean;
+  meetingAttended?: boolean;
+  signup?: boolean;
+  formSubmission?: boolean;
+  purchased?: boolean;
+  signupAt?: string | null;
+  meetingBookedAt?: string | null;
+  formSubmissionAt?: string | null;
+  purchasedAt?: string | null;
+}
+
 export interface ConversionLead {
   leadId: string;
   firstName: string | null;
@@ -430,6 +457,67 @@ export interface RevenueOverview {
   purchased?: SignalSeries;
   timeSeries: RevenuePoint[];
   organizations: ConversionOrg[];
-  leads: ConversionLead[];
   events: ConversionEvent[];
+  /**
+   * Leads that have REACHED SOMETHING — one entry per lead carrying at least one
+   * realized outcome, never the whole contacted population.
+   *
+   * This replaces a `leads: ConversionLead[]` that held every lead the brand ever
+   * contacted, fully hydrated, and it is the reason the dashboard stopped painting
+   * instantly. Measured in prod (brand `75d7e3e8`, 2026-08-31): `/revenue` answers
+   * **10,903,573 bytes**, of which **10,860,781** are that array — 9,854 rows, each
+   * carrying a name, a photo URL, an org, a logo, tags, a seniority, an industry, an
+   * employee count. Everything else on the body (the headline, the economics, the spend
+   * block, every count series, the ROI history, the funnel walk) is 43KB.
+   *
+   * The persisted cache refuses any snapshot over `MAX_PERSISTED_ENTRY_BYTES` (2MB,
+   * persist-cache.ts), so `brandRevenue` / `offerRevenue` / `offerFunnelRevenue` /
+   * `featureRevenue` were never written to disk — and those four keys are what every
+   * money card, the Return-on-spend chart and the cost card read. Nothing errored: the
+   * reveal gates are settle-based and correct, the network answered, the numbers were
+   * right. Those surfaces simply cold-skeletoned on EVERY load, on every brand, offer,
+   * funnel and campaign page, while the small reads beside them (the Offers table's
+   * `brandOfferMoney`, 118KB) painted from disk instantly. That contrast IS the bug
+   * report.
+   *
+   * Only TWO browser surfaces read per-lead rows and both do the same thing with them:
+   * build a `leadId → outcome` MAP (the Leads page's outcome tab + its detail panel, and
+   * the funnel-leg board's `trackedStages`). A lead carrying no outcome is looked up and
+   * found absent, which is byte-identical to it not being in the array at all — so
+   * carrying it costs 10.8MB to say nothing. On the brand that surfaced this: **72 of
+   * 9,854** leads carry an outcome, and they serialize to **19,720 bytes**.
+   *
+   * ⚠️ This does not shrink the WIRE: 10.9MB still crosses the network and is still
+   * `JSON.parse`d by `fetch` before this parser ever runs. Only features-service can fix
+   * that, by not hydrating every contacted lead on a read that asked for money. Filed as
+   * the follow-up.
+   */
+  leadOutcomes: LeadOutcome[];
+  /**
+   * Which per-lead outcome fields the producer SERVES on this body — a fact about the
+   * payload, not about any lead.
+   *
+   * The Leads page shows an outcome tab only once features-service actually attributes
+   * that outcome (`#476`), and it used to answer that by asking whether ANY lead row
+   * carried the key. Now that `leadOutcomes` holds only the leads that reached
+   * something, that question would silently change meaning — from "is attribution
+   * wired" to "has anyone converted yet" — and a brand with the tracker live and zero
+   * signups would lose a tab it should have. So the presence answer is computed once,
+   * over the full array, before it is narrowed.
+   */
+  outcomeFieldsServed: LeadOutcomeField[];
+}
+
+/**
+ * A revenue body parsed WITH its full per-lead array. Server-side only — the
+ * outcome-digest cron, which names each person and what they did on the day, so it
+ * genuinely needs the names, photos and orgs. It runs on its own schedule, so the
+ * payload never touches a browser, a poll or the persisted cache.
+ *
+ * Do NOT reach for this from a component: use `leadOutcomes` if you need outcomes, or
+ * lead-service (`listBrandLeads`) if you need people — that read is scoped and already
+ * persisted under its own key.
+ */
+export interface RevenueOverviewWithLeads extends RevenueOverview {
+  leads: ConversionLead[];
 }

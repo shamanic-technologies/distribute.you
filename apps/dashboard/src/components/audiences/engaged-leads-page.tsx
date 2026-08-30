@@ -71,7 +71,7 @@ import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
 import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
+import type { LeadOutcome, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { OfferMark } from "@/components/marks/offer-mark";
@@ -1056,7 +1056,7 @@ export function EngagedLeadsPage({
   // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
   // live on the /revenue `leads[]` rows, NOT the lead-service `listBrandLeads` row —
   // so fetch /revenue (same query key as the stat cards → React Query dedupes to one
-  // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `ConversionLead.leadId`, not
+  // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `LeadOutcome.leadId`, not
   // the leads_campaigns row `id`). The outcome tab (Signups/Meetings/Form submissions/
   // Sales) buckets on the join boolean + dates on its timestamp.
   // Gated on the channel CATALOGUE under a campaign, not on the brand's revenue-feature
@@ -1088,9 +1088,13 @@ export function EngagedLeadsPage({
         keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
     },
   );
+  // Leads that reached SOMETHING, keyed by id. The `/revenue` body used to carry every
+  // contacted lead fully hydrated (9,854 rows / 10.8MB on a real brand) and this map is
+  // all any browser surface ever did with them — a lead with no outcome is looked up and
+  // found absent either way. The parser narrows it now; see `RevenueOverview.leadOutcomes`.
   const outcomeByLeadId = useMemo(() => {
-    const m = new Map<string, ConversionLead>();
-    for (const l of revenueData?.leads ?? []) m.set(l.leadId, l);
+    const m = new Map<string, LeadOutcome>();
+    for (const l of revenueData?.leadOutcomes ?? []) m.set(l.leadId, l);
     return m;
   }, [revenueData]);
 
@@ -1100,10 +1104,14 @@ export function EngagedLeadsPage({
     () => funnelTabs.outcomes.map(outcomeTabDescriptor),
     [funnelTabs],
   );
+  // Gated on whether features-service ATTRIBUTES the outcome (#476), never on whether
+  // anyone has converted yet — a brand with the tracker live and zero signups keeps its
+  // tab. That is why the presence answer is computed at the parser, over the full array,
+  // before it is narrowed to the leads that reached something.
   const availableOutcomeTabs = useMemo(
     () =>
       outcomeTabs.filter((t) =>
-        (revenueData?.leads ?? []).some((l) => l[t.leadField] !== undefined),
+        (revenueData?.outcomeFieldsServed ?? []).includes(t.leadField),
       ),
     [outcomeTabs, revenueData],
   );
