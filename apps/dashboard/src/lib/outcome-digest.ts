@@ -635,7 +635,17 @@ async function fetchBrandRevenue(
   // moment (prod: $373.91 gross against $206.81 net, the ratio being exactly the
   // gap). One number under one word, in two places, is the bug the whole
   // pricing-basis rule exists to prevent.
-  const params = new URLSearchParams({ brandId, pricing: "net" });
+  // `leads=full` — the ONE read in the fleet that asks for hydrated people, and it has
+  // to ask now that features-service narrows by default (features-service#873 → v0.153.0).
+  // This email NAMES each person and what they did on the day, so it needs their names,
+  // photos, orgs and logos; every browser surface takes the narrow default, because a
+  // hydrated array is 10.86MB of a 10.90MB body and blew the persisted-cache cap, which
+  // is what made every money card cold-skeleton on every load (distribute.you#3790).
+  //
+  // Omitting it is not a degraded email, it is a CRASH: `parseRevenueWithLeads` requires
+  // the fields a narrow row does not carry, so the digest would throw per brand rather
+  // than quietly report "nothing landed" — loud, which is the point, but still broken.
+  const params = new URLSearchParams({ brandId, pricing: "net", leads: "full" });
   const raw = await fetchJsonUntyped(`${config.apiUrl}/v1/features/${OUTCOME_DIGEST_FEATURE_SLUG}/revenue?${params.toString()}`, {
     headers: adminHeaders(config, orgId, SERVICE_IDENTITY.outcomeDigest),
   }, fetchFn, "fetchBrandRevenue");

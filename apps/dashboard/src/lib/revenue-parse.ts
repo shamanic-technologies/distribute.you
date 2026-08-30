@@ -321,6 +321,24 @@ const FeatureRevenueResponseSchema = z.object({
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
+  /**
+   * WHICH per-lead outcomes this read could attribute — a fact about the READ, never
+   * about the leads, and the producer's own answer to the question this reader used to
+   * derive (features-service#873).
+   *
+   * The derivation below asks whether any lead row carries the key, and that stops being
+   * a safe proxy the moment the producer narrows the array server-side: a brand with a
+   * live tracker and NO lead having reached anything serves zero rows, so the derivation
+   * reads "nothing is attributed" and the Leads page silently drops every outcome tab
+   * from a brand measuring outcomes perfectly well. "Attributed, nobody has reached it
+   * yet" and "not measured here" are different statements and only the producer can tell
+   * them apart.
+   *
+   * `.optional()` for the rollout window ONLY — it is REQUIRED on the wire from
+   * features-service v0.153.0, and prod is one promote behind at the time of writing.
+   * Once that is live the fallback below is dead and both go.
+   */
+  attributedOutcomes: z.array(z.string()).optional(),
   // SLIM leads. Zod strips every undeclared key, so picking the twelve fields a browser
   // surface can actually read means the other twenty-four (name, photo, org, logo, tags,
   // seniority, industry, employee count…) are never validated, never allocated and never
@@ -442,9 +460,13 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // `RevenueOverview.outcomeFieldsServed`. `.some` short-circuits on the first row,
     // so this is four comparisons, not four passes.
     leadOutcomes: d.leads.filter(leadReachedSomething),
-    outcomeFieldsServed: OUTCOME_FIELDS.filter((f) =>
-      d.leads.some((l) => l[f] !== undefined),
-    ),
+    // SERVED first, derived only while prod has not shipped it. The producer's list
+    // spans seven outcomes and this surface asks about four, so it is narrowed rather
+    // than passed through — a value nothing renders must not reach a consumer that
+    // would have to guess what to do with it.
+    outcomeFieldsServed: d.attributedOutcomes
+      ? OUTCOME_FIELDS.filter((f) => d.attributedOutcomes!.includes(f))
+      : OUTCOME_FIELDS.filter((f) => d.leads.some((l) => l[f] !== undefined)),
   };
 }
 
