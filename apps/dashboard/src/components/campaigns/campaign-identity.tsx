@@ -3,6 +3,8 @@
 import type { SalesFunnelDef } from "@/lib/sales-funnels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignLegFor, campaignLegLabel, type CampaignLeg } from "@/lib/campaign-leg";
+import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
+import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { funnelLegMarkFor } from "@/lib/funnel-leg-marks";
 import { funnelLegOperator, funnelLegOperatorLabel } from "@/lib/funnel-leg-operator";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
@@ -65,6 +67,16 @@ export interface CampaignIdentityParts {
    * as before.
    */
   leg?: CampaignLeg | null;
+  /**
+   * The leg the CAMPAIGN ITSELF states — features-service's canonical `legKey`, carried
+   * on the campaign row.
+   *
+   * It outranks the derivation and is outranked by an explicit `leg`: a surface walking
+   * a funnel arrow by arrow already knows which arrow a row is, while a campaign row
+   * knows only what the campaign says. Absent or unresolvable, the leg is derived from
+   * the channel exactly as before, so a campaign predating the column is unchanged.
+   */
+  legKey?: string | null;
 }
 
 /**
@@ -102,6 +114,7 @@ export function CampaignIdentity({
   funnel,
   featureSlug,
   leg: legOverride,
+  legKey,
   statesOperator = false,
 }: CampaignIdentityParts & {
   /**
@@ -115,7 +128,9 @@ export function CampaignIdentity({
   statesOperator?: boolean;
 }) {
   const channel = useChannelParts(featureSlug);
-  const leg = legOverride ?? campaignLegFor(funnel, channel?.def?.legs);
+  const legIndex = useFunnelLegIndex();
+  const leg =
+    legOverride ?? statedCampaignLeg(funnel, legKey, legIndex) ?? campaignLegFor(funnel, channel?.def?.legs);
   // The LEG's tile, not the funnel's: the line beside it names an arrow, so a funnel
   // tile would mark one thing above words about another. A leg this app has not drawn
   // falls back to the funnel's own mark rather than to nothing.
@@ -220,6 +235,7 @@ function OperatorVia({ fromKey, toKey }: { fromKey: string | null; toKey: string
 export function CampaignIdentityInline({
   funnel,
   featureSlug,
+  legKey,
   fallbackLabel,
 }: CampaignIdentityParts & {
   /** What to read when NEITHER half resolves — campaign-service's stored name.
@@ -228,8 +244,13 @@ export function CampaignIdentityInline({
   fallbackLabel: string;
 }) {
   const channel = useChannelParts(featureSlug);
-  const leg = campaignLegFor(funnel, channel?.def?.legs);
-  const legLabel = campaignLegLabel(funnel, channel?.def?.legs);
+  const legIndex = useFunnelLegIndex();
+  // Same precedence as the stacked layout, so one campaign cannot read as one leg in
+  // the table and another in the bar above it. The label follows the leg rather than
+  // being resolved a second time, and falls back to the funnel's own name exactly as
+  // `campaignLegLabel` does when nothing states or derives a leg.
+  const leg = statedCampaignLeg(funnel, legKey, legIndex) ?? campaignLegFor(funnel, channel?.def?.legs);
+  const legLabel = leg ? leg.label : campaignLegLabel(funnel, channel?.def?.legs);
   const legMarked = leg != null && funnelLegMarkFor(leg.fromKey, leg.toKey) != null;
   if (!funnel && !channel) return <span className="truncate">{fallbackLabel}</span>;
 

@@ -54,6 +54,13 @@ export interface ControlCampaign extends CampaignBudgetRow {
   status: string;
   offerId: string | null;
   /**
+   * The funnel LEG this campaign states it is bought for, when it states one.
+   * Carried through so the modal names a campaign the way the row you clicked to
+   * open it named it — a campaign reading one way in the table and another in the
+   * modal that funds it is one campaign described twice.
+   */
+  legKey?: string | null;
+  /**
    * When campaign-service created this row. Read only to pick which row of a
    * campaign a RESTART targets when none of them is running: the most recent one
    * is the campaign as it last ran, and its ancestors are history.
@@ -117,6 +124,13 @@ export interface ControlRow {
   savedCents: number;
   /** The offer this campaign sells, which is what narrows its ceiling. */
   offerId: string | null;
+  /**
+   * The leg the campaign states. Taken from the SAME representative row the id and
+   * the scope come from: every member of a group shares the (funnel, channel, offer)
+   * identity, so they state one leg, and reading it off a different member would be a
+   * second source for one answer.
+   */
+  legKey: string | null;
 }
 
 /**
@@ -206,6 +220,7 @@ export function buildControlRows(
           ? campaignSavedCents(scope, representative.offerId ?? undefined, budgets)
           : 0,
         offerId: representative.offerId,
+        legKey: representative.legKey ?? null,
       };
     })
     .sort((a, b) => {

@@ -31,6 +31,14 @@ export interface CampaignTitleRow extends CampaignFunnelRow {
    * campaign states its own, so this is read — never inferred from the workflow.
    */
   featureSlug: string | null;
+  /**
+   * The funnel LEG the campaign states it is bought for, when it states one.
+   *
+   * Optional because the two callers hold the campaign in different shapes and a row
+   * that predates the column keeps reading through the channel-derived leg exactly as
+   * before. Opaque — resolved through `stated-campaign-leg`, never parsed.
+   */
+  legKey?: string | null;
 }
 
 /**

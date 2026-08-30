@@ -67,6 +67,8 @@ import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { campaignLegFor } from "@/lib/campaign-leg";
+import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
+import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
@@ -1476,11 +1478,21 @@ export function EngagedLeadsPage({
   // run — each of which has its own page, worked by whoever performs it. The channel
   // is the campaign's own feature slug, and its legs come off the catalogue the page
   // already holds (a `useMemo` over the `["features"]` query, so no extra request).
+  //
+  // The campaign's OWN statement wins where it makes one: `legKey` names the arrow it
+  // was bought for, and unlike the derivation it stays correct once a channel performs
+  // several arrows of one funnel. The derivation is the fallback for every campaign
+  // that predates the column. Both reads are already in flight — the campaign row is
+  // the key the top bar polls, the leg catalogue is a platform-wide one — so this costs
+  // no request.
+  const legIndex = useFunnelLegIndex();
   const panelLeg = useMemo(() => {
     if (!panelFunnel || !featureSlug) return null;
+    const stated = statedCampaignLeg(panelFunnel, scopedCampaign?.legKey, legIndex);
+    if (stated) return stated;
     const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
     return campaignLegFor(panelFunnel, channel?.legs);
-  }, [panelFunnel, featureSlug, channels]);
+  }, [panelFunnel, featureSlug, channels, scopedCampaign?.legKey, legIndex]);
   // A leg we cannot place falls back to the whole funnel, the sentence this panel read
   // before legs existed. `later` is never rendered — it is what a `never` also ends.
   const panelWalk = useMemo(
