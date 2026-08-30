@@ -106,6 +106,8 @@ describe("daily outcome digest", () => {
       organizations: ORGS,
       leads,
       events: [],
+      // Required on the wire from features-service v0.153.0 (features-service#873).
+      attributedOutcomes: [],
     };
   }
 
