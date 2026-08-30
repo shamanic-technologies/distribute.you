@@ -131,10 +131,11 @@ describe("unpricedFunnelReasonLabel", () => {
 });
 
 describe("costCoverageNote", () => {
-  it("says the funnel reads cheap when nothing of the customer's is recorded", () => {
-    const note = costCoverageNote("platform_spend_only");
-    expect(note).toContain("your own team");
-    expect(note).toContain("cheaper");
+  it("says nothing when only platform spend is recorded", () => {
+    // There WAS a sentence saying such a funnel reads cheap. It explained an accounting
+    // caveat nobody had asked about, under a table of numbers. The per-row `us / you`
+    // split already says where a cost came from.
+    expect(costCoverageNote("platform_spend_only")).toBeNull();
   });
 
   it("says nothing extra about a partly-recorded funnel", () => {
