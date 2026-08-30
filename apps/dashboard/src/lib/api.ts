@@ -5736,11 +5736,33 @@ export async function createEmbeddedCheckoutSession(
   });
 }
 
+/**
+ * How this org's customer adds a card.
+ *
+ * Not a URL, because not every payment provider does this the same way: some
+ * host a page we redirect to, others have no hosted page at all and save a card
+ * only through a widget this app mounts itself. The backend resolves which one
+ * applies and describes the mechanism; the UI switches on `mode` and never
+ * needs to know which provider is behind it.
+ *
+ * The hosted case still carries `url` where it always did, so this stayed
+ * backwards compatible while the backend rolled out.
+ */
+export type CardSetup =
+  | { object: "card_setup"; mode: "hosted_redirect"; url: string }
+  | {
+      object: "card_setup";
+      mode: "embedded_widget";
+      public_key: string;
+      token: string;
+      save_payment_method_for: "merchant";
+    };
+
 export async function createPortalSession(
   returnUrl: string,
   token?: string
-): Promise<{ url: string }> {
-  return apiCall<{ url: string }>("/billing/portal-sessions", {
+): Promise<CardSetup> {
+  return apiCall<CardSetup>("/billing/portal-sessions", {
     token,
     method: "POST",
     body: { return_url: returnUrl },

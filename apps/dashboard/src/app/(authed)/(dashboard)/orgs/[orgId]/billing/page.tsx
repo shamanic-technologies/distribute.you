@@ -367,10 +367,34 @@ export default function BillingPage() {
     setPortalLoadingSource(source);
     setError(null);
     try {
-      const { url } = await createPortalSession(
+      const setup = await createPortalSession(
         `${window.location.origin}${window.location.pathname}`
       );
-      window.location.href = url;
+
+      // Providers do not all do this the same way: some host a page we send the
+      // customer to, others save a card only through a widget mounted here. The
+      // backend says which; this only renders it.
+      if (setup.mode === "hosted_redirect") {
+        window.location.href = setup.url;
+        return;
+      }
+
+      const { openCardWidget } = await import("@/lib/card-setup-widget");
+      await openCardWidget({
+        token: setup.token,
+        savePaymentMethodFor: setup.save_payment_method_for,
+        onSuccess: () => {
+          // The card only exists at the provider once this fires, so re-read
+          // rather than assuming — otherwise the page would claim a card is on
+          // file before one is.
+          window.location.reload();
+        },
+        onCancel: () => setPortalLoadingSource(null),
+        onError: (message) => {
+          setError(message);
+          setPortalLoadingSource(null);
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open payment portal");
       setPortalLoadingSource(null);
