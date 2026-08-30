@@ -121,7 +121,40 @@ describe("browser parse drops the leads it cannot use", () => {
   });
 });
 
-describe("outcomeFieldsServed answers about the PAYLOAD, not about any lead", () => {
+describe("outcomeFieldsServed prefers the producer's own answer", () => {
+  it("reads attributedOutcomes off the wire, narrowed to this surface's four", () => {
+    // features-service#873 serves seven; the Leads page's outcome tabs are four, and a
+    // value nothing renders must not reach a consumer that would guess what to do.
+    const raw = {
+      ...body([fatLead(1)]),
+      attributedOutcomes: [
+        "clicked",
+        "repliedPositive",
+        "meetingBooked",
+        "meetingAttended",
+        "signup",
+      ],
+    };
+    expect(parseFeatureRevenue(raw, "test").outcomeFieldsServed).toEqual([
+      "signup",
+      "meetingBooked",
+    ]);
+  });
+
+  it("keeps an outcome attributed on a brand where NOBODY has reached anything", () => {
+    // The case the derivation cannot answer once the producer narrows server-side: zero
+    // outcome-carrying rows, tracker live. Derived, this is []; served, the tabs survive.
+    const raw = { ...body([]), attributedOutcomes: ["signup", "purchased"] };
+    const parsed = parseFeatureRevenue(raw, "test");
+    expect(parsed.leadOutcomes).toEqual([]);
+    expect(parsed.outcomeFieldsServed).toEqual(["signup", "purchased"]);
+  });
+
+  it("trusts an EMPTY served list — that is the producer saying it read no leads", () => {
+    const raw = { ...body([fatLead(1)]), attributedOutcomes: [] };
+    expect(parseFeatureRevenue(raw, "test").outcomeFieldsServed).toEqual([]);
+  });
+
   it("stays true for an outcome the producer attributes but nobody has reached", () => {
     // Every flag present and false — exactly prod today for signup / formSubmission /
     // purchased on the brand that surfaced this. The tab must stay available.
@@ -148,7 +181,25 @@ describe("outcomeFieldsServed answers about the PAYLOAD, not about any lead", ()
   });
 
   it("is empty for a body with no leads at all", () => {
+    // The derived path's blind spot, and exactly why the served list exists. Delete this
+    // case with the fallback once features-service v0.153.0 is live in prod.
     expect(parseFeatureRevenue(body([]), "test").outcomeFieldsServed).toEqual([]);
+  });
+});
+
+describe("the digest asks for the people it names", () => {
+  it("sends leads=full, because its parse requires the hydrated fields", () => {
+    const digest = readFileSync(
+      join(process.cwd(), "src/lib/outcome-digest.ts"),
+      "utf8",
+    );
+    expect(digest).toContain('leads: "full"');
+  });
+
+  it("is the ONLY reader that asks — every browser read takes the narrow default", () => {
+    const api = readFileSync(join(process.cwd(), "src/lib/api.ts"), "utf8");
+    expect(api).not.toContain("leads=full");
+    expect(api).not.toContain('leads: "full"');
   });
 });
 
