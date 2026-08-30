@@ -339,6 +339,7 @@ export function CampaignControlsModal({
             <CampaignIdentity
               funnel={row.scope?.def ?? null}
               featureSlug={row.scope?.featureSlug ?? null}
+              legKey={row.legKey}
             />
           </div>
           <div className="flex items-center gap-3">

@@ -216,6 +216,7 @@ export function CampaignCell({ campaign }: { campaign: Campaign }) {
     <CampaignIdentity
       funnel={campaignFunnel(campaign.funnelKey)}
       featureSlug={campaign.featureSlug}
+      legKey={campaign.legKey}
     />
   );
 }

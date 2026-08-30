@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PublicChannelLegsWire } from "./stated-campaign-leg";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
@@ -432,6 +433,22 @@ export interface Campaign {
    * key can, so every surface naming what a campaign buys should read this.
    */
   funnelKey: SalesFunnelKeyWire | null;
+  /**
+   * The single funnel LEG this campaign is bought for — features-service's own
+   * canonical identifier for it, carried verbatim by campaign-service.
+   *
+   * A campaign is (brand x offer x channel x leg): a funnel is sold leg by leg and
+   * the customer buys the leg, so this is the RICHEST of the three fields naming what
+   * a campaign does. `funnelKey` cannot get there on its own — two arrows of two
+   * different funnels land on the same step — and the derivation that stood in for it
+   * (intersect the funnel with the channel's arrows) only works while a campaign names
+   * a funnel at all.
+   *
+   * NULL for every campaign created before campaign-service carried the column, which
+   * keeps reading through that derivation exactly as before. The token is OPAQUE:
+   * resolve it through `stated-campaign-leg`, never by splitting it.
+   */
+  legKey: string | null;
   /**
    * The OFFER this campaign sells. A campaign is (offer x sales funnel x
    * acquisition channel), so the offer is what says WHICH proposition the funnel
@@ -1755,6 +1772,50 @@ const BrandFunnelBudgetsResponseSchema = z.object({
 });
 
 export type BrandFunnelBudgets = z.infer<typeof BrandFunnelBudgetsResponseSchema>;
+
+/**
+ * Every leg the platform can name, as features-service publishes them.
+ *
+ * `GET /public/channels` is the ONE authority on a leg's identity: it mints the
+ * `legKey` a campaign and a budget are keyed on and serves the two steps it connects
+ * beside it, so a consumer names a leg with one value and reads its parts as data
+ * rather than taking the token apart. Public, no auth, no org scope.
+ *
+ * Declared narrow ON PURPOSE: this reader exists to build a lookup table, so every
+ * field it does not use is left undeclared rather than mirrored. The channel
+ * CATALOGUE this app renders (marks, names, funnels) is a different read entirely —
+ * it is projected off the features the session already holds — and nothing here
+ * replaces it.
+ */
+const PublicChannelLegsSchema = z.object({
+  channels: z.array(
+    z.object({
+      stepTransitions: z
+        .array(
+          z.object({
+            legKey: z.string(),
+            from: z.object({ key: z.string() }).nullable(),
+            to: z.object({ key: z.string() }),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+});
+
+/** GET /public/channels — read for the leg identities alone. */
+export async function getPublicChannelLegs(token?: string): Promise<PublicChannelLegsWire[]> {
+  const raw = await apiCall<unknown>(`/public/channels`, { token });
+  const parsed = PublicChannelLegsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getPublicChannelLegs: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getPublicChannelLegs: invalid response shape");
+  }
+  return parsed.data.channels;
+}
 
 /** GET /brands/:brandId/funnel-budgets — the ceilings, plus the total they sum to. */
 export async function getBrandFunnelBudgets(

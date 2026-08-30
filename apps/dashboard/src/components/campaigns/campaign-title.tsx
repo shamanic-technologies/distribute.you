@@ -30,6 +30,7 @@ export function CampaignTitle({
       <CampaignIdentityInline
         funnel={funnel}
         featureSlug={campaign.featureSlug}
+        legKey={campaign.legKey}
         fallbackLabel={label}
       />
     </span>
