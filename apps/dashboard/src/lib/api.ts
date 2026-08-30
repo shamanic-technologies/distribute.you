@@ -1790,6 +1790,7 @@ export type BrandFunnelBudgets = z.infer<typeof BrandFunnelBudgetsResponseSchema
 const PublicChannelLegsSchema = z.object({
   channels: z.array(
     z.object({
+      slug: z.string(),
       stepTransitions: z
         .array(
           z.object({
@@ -5354,6 +5355,13 @@ export async function createCampaignWithoutBrandEnrichment(
     // Which sales funnel this campaign sells — required for the same reason as on
     // createCampaign above; an explicit null means it sells through none.
     funnelKey: SalesFunnelKeyWire | null;
+    // The single funnel LEG this campaign is bought for, as features-service spells it.
+    // A campaign is (brand x offer x channel x leg) and the leg is the richest of the
+    // four: the funnel cannot name which arrow of itself a campaign performs. NULL is
+    // legitimate — campaign-service reads such a campaign exactly as it reads every one
+    // created before the column existed — so this states the leg when the launch could
+    // resolve one and says nothing rather than guessing when it could not.
+    legKey?: string | null;
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
