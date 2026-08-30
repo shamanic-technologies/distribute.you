@@ -11,6 +11,8 @@ import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import { leadBoardColumnFor } from "@/lib/lead-board";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { MaturityBadge } from "@/components/maturity-badge";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listBrandLeads,
@@ -561,7 +563,20 @@ function deriveEmailRows(
 //
 // The email content is fetched on-demand by leadId (content-generation). Renders
 // nothing until at least one event timestamp OR an email is present.
+//
+// READING the message is BETA-gated; the timeline's SHAPE is not. What a campaign
+// did — an initial email left, three follow-ups are scheduled at this cadence, it
+// was delivered, they visited, they replied — is what the page is for and stays GA.
+// The copy itself (subject + body + signature) is ours, so it sits behind
+// `useIsBetaUser` with the badge the gate rule requires beside it. The generation is
+// still FETCHED for everyone, deliberately: the follow-up ROWS are derived from its
+// sequence steps, so skipping the read would delete the cadence from the timeline
+// rather than merely hiding the words. Consequence accepted: the body travels to the
+// browser and is readable in devtools. It is the org's own copy to its own leads, so
+// this is a display decision, not a security boundary — same posture as every other
+// beta gate in this app.
 function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration | null }) {
+  const canReadEmailCopy = useIsBetaUser();
   const replyColor =
     lead.replyClassification === "positive" ? "bg-green-500"
       : lead.replyClassification === "negative" ? "bg-red-500"
@@ -717,10 +732,15 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                         {isFuture ? friendlyDate(e.at) : friendlyDateTime(e.at)}
                       </p>
                     )}
-                    {e.body && (
+                    {/* The message itself. Beta-gated: the subject is content too, so
+                        the summary is inside the gate rather than a GA line hiding a
+                        gated body. A non-beta reader sees the card, its cadence and
+                        its delivery rows, and no copy. */}
+                    {canReadEmailCopy && e.body && (
                       <details className="mt-1.5 group">
                         <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
                           {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
+                          <span className="ml-1.5 inline-flex align-middle"><MaturityBadge level="beta" /></span>
                         </summary>
                         <div className="mt-1.5 bg-white border border-brand-200 rounded p-2">
                           <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>

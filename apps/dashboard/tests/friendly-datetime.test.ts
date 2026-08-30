@@ -116,10 +116,17 @@ describe("lead timeline date lines", () => {
     path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
     "utf-8",
   );
+  // Bounded by the NEXT declaration rather than a guessed length: both assertions
+  // below are `toContain`, so a slice that falls short cuts the target out and the
+  // failure reads as "the code is missing" for code that is right there. The delivery
+  // row sits at the very end of the component, so every comment added to it pushed
+  // the boundary — a fixed length was one edit away from breaking each time.
   const body = (() => {
     const at2 = src.indexOf("function LeadTimeline(");
     expect(at2).toBeGreaterThan(-1);
-    return src.slice(at2, at2 + 11000);
+    const end = src.indexOf("function LeadsLoadingSkeleton(");
+    expect(end).toBeGreaterThan(at2);
+    return src.slice(at2, end);
   })();
 
   it("gives a past instant its time and a future one only its date", () => {
