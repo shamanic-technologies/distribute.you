@@ -367,18 +367,8 @@ export default function BillingPage() {
     setPortalLoadingSource(source);
     setError(null);
     try {
-      // Some providers cannot store a card without taking a payment, so the
-      // amount the user has already chosen rides along and the card is saved
-      // with it. A provider that hosts its own card form ignores it, which is
-      // why this is sent unconditionally rather than behind a provider check.
-      const chosenAmountCents = customAmount
-        ? Math.round(parseFloat(customAmount) * 100)
-        : topupSelected;
-
       const setup = await createPortalSession(
-        `${window.location.origin}${window.location.pathname}`,
-        undefined,
-        chosenAmountCents && chosenAmountCents > 0 ? chosenAmountCents : undefined
+        `${window.location.origin}${window.location.pathname}`
       );
 
       // Providers do not all do this the same way: some host a page we send the
@@ -406,16 +396,7 @@ export default function BillingPage() {
         },
       });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to open payment portal";
-      // A provider that can only save a card during a payment says so. Tell the
-      // user what to DO about it — picking an amount is an action they can
-      // take, "failed to open payment portal" is not.
-      setError(
-        /card_setup_requires_payment|saves a card only with a payment/.test(message)
-          ? "Choose a top-up amount above, then add your card — it will be saved with that payment."
-          : message
-      );
+      setError(err instanceof Error ? err.message : "Failed to open payment portal");
       setPortalLoadingSource(null);
     }
   }

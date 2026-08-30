@@ -5760,22 +5760,12 @@ export type CardSetup =
 
 export async function createPortalSession(
   returnUrl: string,
-  token?: string,
-  /**
-   * Minor units the customer is paying now. Some providers cannot store a card
-   * without taking a payment; for those the card is saved with this amount.
-   * Providers that host their own card form ignore it.
-   */
-  amountCents?: number,
-  currency = "USD"
+  token?: string
 ): Promise<CardSetup> {
   return apiCall<CardSetup>("/billing/portal-sessions", {
     token,
     method: "POST",
-    body: {
-      return_url: returnUrl,
-      ...(amountCents ? { amount: amountCents, currency } : {}),
-    },
+    body: { return_url: returnUrl },
   });
 }
 
