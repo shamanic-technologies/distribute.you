@@ -7,7 +7,7 @@
 // authed side; empty section on the report side), never a render crash.
 
 import { z } from "zod";
-import type { RevenueOverview } from "./revenue-view";
+import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
 
 const RevenueTopPersonSchema = z.object({
   firstName: z.string().nullable(),
@@ -83,6 +83,27 @@ const RevenueLeadSchema = z.object({
   orgCity: z.string().nullish(),
   orgCountry: z.string().nullish(),
   date: z.string().nullable(),
+});
+
+/**
+ * The twelve fields of a `/revenue` lead row a BROWSER surface can read — its id, the
+ * seven outcome flags `trackedStages` renders, and the four realized-outcome
+ * timestamps the Leads page dates its outcome tab by. Picked from the full row rather
+ * than re-declared, so the two can never drift.
+ */
+const LeadOutcomeSchema = RevenueLeadSchema.pick({
+  leadId: true,
+  clicked: true,
+  repliedPositive: true,
+  meetingBooked: true,
+  meetingAttended: true,
+  signup: true,
+  formSubmission: true,
+  purchased: true,
+  signupAt: true,
+  meetingBookedAt: true,
+  formSubmissionAt: true,
+  purchasedAt: true,
 });
 const RevenueEventSchema = z.object({
   leadId: z.string(),
@@ -299,20 +320,93 @@ const FeatureRevenueResponseSchema = z.object({
   roiHistory: RoiHistorySchema.nullish(),
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
-  leads: z.array(RevenueLeadSchema),
   events: z.array(RevenueEventSchema),
+  // SLIM leads. Zod strips every undeclared key, so picking the twelve fields a browser
+  // surface can actually read means the other twenty-four (name, photo, org, logo, tags,
+  // seniority, industry, employee count…) are never validated, never allocated and never
+  // held. See `RevenueOverview.leadOutcomes` for the measured sizes.
+  leads: z.array(LeadOutcomeSchema),
 });
 
-/** Validate + flatten the backend response into the view-model. Throws on shape rot. */
-export function parseFeatureRevenue(raw: unknown, label: string): RevenueOverview {
-  const parsed = FeatureRevenueResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[dashboard] ${label}: revenue response shape mismatch`, {
-      issues: parsed.error.issues,
-    });
-    throw new Error(`[dashboard] ${label}: invalid revenue response shape`);
-  }
-  const d = parsed.data;
+/**
+ * The same body, WITH the per-lead array — the digest's parse, and the ONLY one that
+ * carries it.
+ *
+ * REQUIRED here on purpose: this parse is reached by asking for the leads, so an
+ * absent array means the producer stopped sending them and the digest would silently
+ * report "nothing landed" for every brand on the platform. A loud parse failure is the
+ * honest answer. (`.optional()` is what would hide it.)
+ */
+const RevenueWithLeadsResponseSchema = FeatureRevenueResponseSchema.extend({
+  leads: z.array(RevenueLeadSchema),
+});
+
+/** The four outcome flags, and the timestamp of each, in one place so the filter, the
+ *  presence answer and the schema pick cannot drift apart. */
+const OUTCOME_FIELDS = ["signup", "meetingBooked", "formSubmission", "purchased"] as const;
+/** Every flag a browser surface reads — the four above plus the three the delivery
+ *  layer measures, which `trackedStages` renders on the lead panel and the leg board. */
+const OUTCOME_FLAGS = [
+  ...OUTCOME_FIELDS,
+  "clicked",
+  "repliedPositive",
+  "meetingAttended",
+] as const;
+const OUTCOME_DATES = [
+  "signupAt",
+  "meetingBookedAt",
+  "formSubmissionAt",
+  "purchasedAt",
+] as const;
+
+/**
+ * Has this lead reached ANYTHING?
+ *
+ * A lead with every flag false and every date null is looked up by both browser
+ * consumers and found absent either way — carrying it says nothing and costs, at the
+ * measured population, 10.8MB to say it. A `false` is deliberately NOT an outcome: it is
+ * the producer saying "measured, did not happen", which is exactly the row we drop.
+ */
+function leadReachedSomething(lead: z.infer<typeof LeadOutcomeSchema>): boolean {
+  if (OUTCOME_FLAGS.some((f) => lead[f] === true)) return true;
+  return OUTCOME_DATES.some((d) => lead[d] != null);
+}
+
+/**
+ * TWO parsers, because `leads[]` is 99.6% of this payload and NO browser surface reads
+ * it.
+ *
+ * Measured in prod (brand `75d7e3e8`, 2026-08-31): `/brands/:id/revenue` answers
+ * **10,903,573 bytes**, of which **10,860,781** are the 9,854-entry `leads[]`. The
+ * per-feature read is the same size. Everything else on the body — the headline, the
+ * economics, the spend block, every count series, the ROI history, the funnel walk —
+ * is 43KB.
+ *
+ * That array is what took the dashboard's instant paint away. The persisted cache
+ * refuses any snapshot over `MAX_PERSISTED_ENTRY_BYTES` (2MB, persist-cache.ts), so
+ * `brandRevenue` / `offerRevenue` / `offerFunnelRevenue` / `featureRevenue` were never
+ * written to disk at all — and those four keys are what every money card, the
+ * Return-on-spend chart and the cost card read. Nothing errored: the reveal gates are
+ * settle-based and correct, the network answered, the numbers were right. Every one of
+ * those surfaces simply cold-skeletoned on EVERY load, on every brand, offer, funnel and
+ * campaign page, while the small reads beside them (the Offers table's `brandOfferMoney`,
+ * 118KB) painted instantly from disk. That contrast is the whole bug report.
+ *
+ * So the browser parse OMITS the field rather than parsing-then-discarding it: zod
+ * strips an undeclared key, so the 9,854 rows are never validated either — the parse
+ * itself was tens of megabytes of main-thread work every poll.
+ *
+ * The type carries the split, which is the point: `RevenueOverview` has NO `leads`, so a
+ * browser surface that reaches for one is a COMPILE error rather than an empty array it
+ * would read as "nobody is in the pipeline". Only {@link parseRevenueWithLeads} returns
+ * them, and only the outcome-digest cron calls it.
+ *
+ * ⚠️ This does not shrink the WIRE: 10.9MB still crosses the network and is still
+ * `JSON.parse`d by `fetch`. Only features-service can fix that, by not serving `leads[]`
+ * on a read that did not ask for it. Filed as the follow-up; the digest conforms to
+ * whatever opt-in it designs.
+ */
+function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): RevenueOverview {
   return {
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
@@ -343,7 +437,52 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
     purchased: d.purchased,
     timeSeries: d.timeSeries,
     organizations: d.organizations,
-    leads: d.leads,
     events: d.events,
+    // NARROWED, and the presence answer is taken BEFORE the narrowing — see
+    // `RevenueOverview.outcomeFieldsServed`. `.some` short-circuits on the first row,
+    // so this is four comparisons, not four passes.
+    leadOutcomes: d.leads.filter(leadReachedSomething),
+    outcomeFieldsServed: OUTCOME_FIELDS.filter((f) =>
+      d.leads.some((l) => l[f] !== undefined),
+    ),
   };
+}
+
+/**
+ * Validate + flatten a revenue body for a BROWSER surface. Throws on shape rot.
+ *
+ * Carries no `leads[]` — see {@link flattenRevenue}. Every dashboard reader of
+ * `/revenue` goes through this one.
+ */
+export function parseFeatureRevenue(raw: unknown, label: string): RevenueOverview {
+  const parsed = FeatureRevenueResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${label}: revenue response shape mismatch`, {
+      issues: parsed.error.issues,
+    });
+    throw new Error(`[dashboard] ${label}: invalid revenue response shape`);
+  }
+  return flattenRevenue(parsed.data);
+}
+
+/**
+ * Validate + flatten a revenue body INCLUDING its per-lead array.
+ *
+ * The outcome-digest cron is the only caller: it names, per person, what each one did on
+ * the day, so it genuinely needs the rows. It runs server-side on its own schedule, so
+ * the payload never touches a browser, a poll or the persisted cache.
+ *
+ * Do NOT call this from a component. If a surface ever needs per-lead rows, it reads
+ * lead-service (`listBrandLeads`) like the leads page does — that read is paginated,
+ * scoped, and already persisted under its own key.
+ */
+export function parseRevenueWithLeads(raw: unknown, label: string): RevenueOverviewWithLeads {
+  const parsed = RevenueWithLeadsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${label}: revenue response shape mismatch`, {
+      issues: parsed.error.issues,
+    });
+    throw new Error(`[dashboard] ${label}: invalid revenue response shape`);
+  }
+  return { ...flattenRevenue(parsed.data), leads: parsed.data.leads };
 }

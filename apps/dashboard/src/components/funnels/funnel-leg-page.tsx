@@ -33,7 +33,7 @@ import { FunnelLegBoard } from "@/components/funnels/funnel-leg-board";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { Skeleton } from "@/components/skeleton";
-import type { ConversionLead, SignalSeries } from "@/lib/revenue-view";
+import type { LeadOutcome, SignalSeries } from "@/lib/revenue-view";
 
 /**
  * ONE ARROW of a sales funnel, as a page.
@@ -152,8 +152,8 @@ export function FunnelLegPage() {
   // is on, and the answer is whatever we already measured plus whatever anybody stated —
   // features-service folds both into these flags.
   const evidenceByLeadId = useMemo(() => {
-    const m = new Map<string, ConversionLead>();
-    for (const l of revenue.data?.leads ?? []) m.set(l.leadId, l);
+    const m = new Map<string, LeadOutcome>();
+    for (const l of revenue.data?.leadOutcomes ?? []) m.set(l.leadId, l);
     return m;
   }, [revenue.data]);
 

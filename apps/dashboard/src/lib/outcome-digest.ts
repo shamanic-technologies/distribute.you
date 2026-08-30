@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { parseFeatureRevenue } from "./revenue-parse";
+import { parseRevenueWithLeads } from "./revenue-parse";
 import { SERVICE_IDENTITY } from "./service-identity";
 import { formatRoi as sharedFormatRoi } from "./format-roi";
-import type { ConversionLead, RevenueOverview } from "./revenue-view";
+import type { ConversionLead, RevenueOverviewWithLeads } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
@@ -349,7 +349,7 @@ function leadOutcomeOnDay(
  * signup, so the phrase adds up to the number of people the email then lists.
  */
 export function newOutcomesOnDay(
-  revenue: RevenueOverview,
+  revenue: RevenueOverviewWithLeads,
   day: string,
 ): { singular: string; plural: string; count: number }[] {
   const counts = new Map<string, { kind: OutcomeKind; count: number }>();
@@ -390,7 +390,7 @@ export function describeNewOutcomes(
  * return and is skipped rather than read as zero.
  */
 export function roiChangeOn(
-  revenue: RevenueOverview,
+  revenue: RevenueOverviewWithLeads,
   day: string,
 ): { today: number; previous: number } | null {
   const daily = revenue.roiHistory?.daily ?? [];
@@ -626,7 +626,7 @@ async function fetchBrandRevenue(
   fetchFn: DigestFetch,
   orgId: string,
   brandId: string,
-): Promise<RevenueOverview> {
+): Promise<RevenueOverviewWithLeads> {
   // NET, like every other money reader in the app. The org pays net — its usage
   // discount is frozen onto each cost row at write — so the brand Overview's ROI,
   // its spend and its cost cards are all net. Omitting the param defaults
@@ -639,7 +639,7 @@ async function fetchBrandRevenue(
   const raw = await fetchJsonUntyped(`${config.apiUrl}/v1/features/${OUTCOME_DIGEST_FEATURE_SLUG}/revenue?${params.toString()}`, {
     headers: adminHeaders(config, orgId, SERVICE_IDENTITY.outcomeDigest),
   }, fetchFn, "fetchBrandRevenue");
-  return parseFeatureRevenue(raw, "outcomeDigestRevenue");
+  return parseRevenueWithLeads(raw, "outcomeDigestRevenue");
 }
 
 async function sendDigestEmail(
@@ -672,7 +672,7 @@ const stripOpened = (tags: string[]): string[] =>
 
 function toDigestBrandSummary(
   brand: BrandSummary,
-  revenue: RevenueOverview,
+  revenue: RevenueOverviewWithLeads,
   day: string,
 ): DigestBrandSummary {
   const organizations = revenue.organizations
