@@ -5825,6 +5825,9 @@ export type CardSetup =
       public_key: string;
       token: string;
       save_payment_method_for: "merchant";
+      /** Prefilled so the provider does not ask for what we already know. */
+      customer_name?: string | null;
+      customer_email?: string | null;
     };
 
 export async function createPortalSession(

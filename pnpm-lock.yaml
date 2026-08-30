@@ -132,6 +132,9 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@revolut/checkout':
+        specifier: 1.1.25
+        version: 1.1.25
       '@stripe/react-stripe-js':
         specifier: ^3.1.1
         version: 3.10.0(@stripe/stripe-js@5.10.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1396,6 +1399,9 @@ packages:
         optional: true
       react-redux:
         optional: true
+
+  '@revolut/checkout@1.1.25':
+    resolution: {integrity: sha512-SInbH+dzLqOdsooBVfvKhRfJs4EPTIlzVYcPq17Plrh8htSKHV74k5wIth80Pa0C2nIDqBGSRsTh4pIUoGBTBw==}
 
   '@rollup/rollup-android-arm-eabi@4.57.0':
     resolution: {integrity: sha512-tPgXB6cDTndIe1ah7u6amCI1T0SsnlOuKgg10Xh3uizJk4e5M1JGaUMk7J4ciuAUcFpbOiNhm2XIjP9ON0dUqA==}
@@ -4928,6 +4934,8 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
       react-redux: 9.2.0(@types/react@19.2.14)(react@19.2.4)(redux@5.0.1)
+
+  '@revolut/checkout@1.1.25': {}
 
   '@rollup/rollup-android-arm-eabi@4.57.0':
     optional: true
