@@ -5362,10 +5362,11 @@ export async function createCampaignWithoutBrandEnrichment(
     // created before the column existed — so this states the leg when the launch could
     // resolve one and says nothing rather than guessing when it could not.
     legKey?: string | null;
-    maxBudgetDailyUsd?: string;
-    maxBudgetWeeklyUsd?: string;
-    maxBudgetMonthlyUsd?: string;
-    maxBudgetTotalUsd?: string;
+    // There is deliberately no maxBudget* field here. A sales campaign's money is
+    // billing's, stated per (sales funnel, acquisition channel, offer) on the
+    // brand's daily ceilings, and campaign-service 400s a sales-family campaign
+    // that states a per-campaign ceiling. Declaring the fields invited a caller
+    // to send one; the only caller did, and every launch failed.
   } & Record<string, unknown>,
   token?: string
 ): Promise<{ campaign: RawCampaign }> {

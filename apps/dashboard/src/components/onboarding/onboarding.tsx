@@ -1991,7 +1991,12 @@ export function Onboarding() {
         : { brandIds: [pending.brandId] }),
       featureSlug: SALES_FEATURE_SLUG,
       featureInputs,
-      maxBudgetDailyUsd: String(pending.budgetUsd),
+      // No per-campaign budget ceiling is stated, and campaign-service refuses one
+      // on a sales campaign. The daily budget the customer picked was written to
+      // billing a few lines above, on the brand's funnel ceilings, at the
+      // (funnel, channel, offer) grain that IS a campaign — nothing reads a
+      // per-campaign copy, so stating one only 400s the launch, after the
+      // customer has already been charged.
     });
     setLaunchStep(4);
     posthog.capture("onboarding_completed", {

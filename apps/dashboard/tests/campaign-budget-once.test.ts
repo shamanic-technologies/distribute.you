@@ -128,3 +128,47 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
     expect(budget).toContain('`$${Math.round(cents / 100).toLocaleString("en-US")}`');
   });
 });
+
+/**
+ * The onboarding launch states NO per-campaign budget ceiling.
+ *
+ * campaign-service refuses a `maxBudget*` field on any sales-family campaign —
+ * nothing reads a per-campaign ceiling for that family, its money is billing's,
+ * keyed on (sales funnel, acquisition channel, offer). The launch sent
+ * `maxBudgetDailyUsd` anyway, and `SALES_FEATURE_SLUG` is a constant, so EVERY
+ * onboarding launch 400'd deterministically — after the Stripe charge, on the
+ * terminal screen, with a retry button that reproduced the same 400.
+ *
+ * The budget itself is unchanged: the same launch writes it to billing a few
+ * lines earlier via the brand's funnel ceilings, which is the grain
+ * campaign-service names as its correct home. The field was pure duplication.
+ *
+ * The wrapper's four `maxBudget*` params went with it rather than being left
+ * declared-and-unused — a declared field is an invitation, and the only caller
+ * took it.
+ */
+describe("onboarding launch — no per-campaign budget ceiling", () => {
+  const onboarding = read("components/onboarding/onboarding.tsx");
+
+  it("sends no maxBudget* field on the launch", () => {
+    const at = onboarding.indexOf("createCampaignWithoutBrandEnrichment({");
+    expect(at).toBeGreaterThan(-1);
+    const body = onboarding.slice(at, onboarding.indexOf("setLaunchStep(4)", at));
+    expect(body).not.toContain("maxBudget");
+  });
+
+  it("still writes the customer's chosen budget to billing's funnel ceilings", () => {
+    expect(onboarding).toContain("stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows)");
+  });
+
+  it("does not declare a maxBudget* param a caller could fill in again", () => {
+    const api = read("lib/api.ts");
+    const at = api.indexOf("export async function createCampaignWithoutBrandEnrichment");
+    expect(at).toBeGreaterThan(-1);
+    const fn = api.slice(at, api.indexOf("export ", at + 10));
+    expect(fn).not.toContain("maxBudgetDailyUsd?:");
+    expect(fn).not.toContain("maxBudgetWeeklyUsd");
+    expect(fn).not.toContain("maxBudgetMonthlyUsd");
+    expect(fn).not.toContain("maxBudgetTotalUsd");
+  });
+});
