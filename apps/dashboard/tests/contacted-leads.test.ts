@@ -36,6 +36,8 @@ function rawRevenue(
     organizations: [],
     leads: [],
     events: [],
+    // Required on the wire from features-service v0.153.0 (features-service#873).
+    attributedOutcomes: [],
   };
 }
 

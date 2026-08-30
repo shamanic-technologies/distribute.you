@@ -51,8 +51,20 @@ function fatLead(i: number, outcome?: Record<string, unknown>) {
   };
 }
 
-function body(leads: unknown[]) {
+/** The producer's full list — seven outcomes; this surface renders four of them. */
+const ALL_ATTRIBUTED = [
+  "clicked",
+  "repliedPositive",
+  "meetingBooked",
+  "meetingAttended",
+  "signup",
+  "formSubmission",
+  "purchased",
+];
+
+function body(leads: unknown[], attributedOutcomes: string[] = ALL_ATTRIBUTED) {
   return {
+    attributedOutcomes,
     featureSlug: "sales-cold-email-outreach",
     headline: { totalPipelineUsd: 7250 },
     costEconomics: {
@@ -122,19 +134,14 @@ describe("browser parse drops the leads it cannot use", () => {
 });
 
 describe("outcomeFieldsServed prefers the producer's own answer", () => {
-  it("reads attributedOutcomes off the wire, narrowed to this surface's four", () => {
-    // features-service#873 serves seven; the Leads page's outcome tabs are four, and a
-    // value nothing renders must not reach a consumer that would guess what to do.
-    const raw = {
-      ...body([fatLead(1)]),
-      attributedOutcomes: [
-        "clicked",
-        "repliedPositive",
-        "meetingBooked",
-        "meetingAttended",
-        "signup",
-      ],
-    };
+  it("narrows the producer's seven to the four this surface renders", () => {
+    const raw = body([fatLead(1)], [
+      "clicked",
+      "repliedPositive",
+      "meetingBooked",
+      "meetingAttended",
+      "signup",
+    ]);
     expect(parseFeatureRevenue(raw, "test").outcomeFieldsServed).toEqual([
       "signup",
       "meetingBooked",
@@ -142,48 +149,38 @@ describe("outcomeFieldsServed prefers the producer's own answer", () => {
   });
 
   it("keeps an outcome attributed on a brand where NOBODY has reached anything", () => {
-    // The case the derivation cannot answer once the producer narrows server-side: zero
-    // outcome-carrying rows, tracker live. Derived, this is []; served, the tabs survive.
-    const raw = { ...body([]), attributedOutcomes: ["signup", "purchased"] };
-    const parsed = parseFeatureRevenue(raw, "test");
+    // The case a derivation off `leads[]` cannot answer now that the producer narrows
+    // server-side: zero outcome-carrying rows, tracker live. Derived this reads [] and
+    // the Leads page drops every outcome tab; served, the tabs survive.
+    const parsed = parseFeatureRevenue(body([], ["signup", "purchased"]), "test");
     expect(parsed.leadOutcomes).toEqual([]);
     expect(parsed.outcomeFieldsServed).toEqual(["signup", "purchased"]);
   });
 
-  it("trusts an EMPTY served list — that is the producer saying it read no leads", () => {
-    const raw = { ...body([fatLead(1)]), attributedOutcomes: [] };
-    expect(parseFeatureRevenue(raw, "test").outcomeFieldsServed).toEqual([]);
+  it("trusts an EMPTY list — that is the producer saying it read no leads at all", () => {
+    expect(parseFeatureRevenue(body([fatLead(1)], []), "test").outcomeFieldsServed).toEqual(
+      [],
+    );
   });
 
-  it("stays true for an outcome the producer attributes but nobody has reached", () => {
-    // Every flag present and false — exactly prod today for signup / formSubmission /
-    // purchased on the brand that surfaced this. The tab must stay available.
-    const parsed = parseFeatureRevenue(body([fatLead(1), fatLead(2)]), "test");
-    expect(parsed.leadOutcomes).toEqual([]);
-    expect(parsed.outcomeFieldsServed).toEqual([
-      "signup",
-      "meetingBooked",
-      "formSubmission",
-      "purchased",
-    ]);
+  it("does not infer attribution from the rows, even when they carry the key", () => {
+    // Every lead carries `signup: false`, and the producer says it cannot attribute it.
+    // The producer wins: a key on a row is not a statement that it is measured.
+    const parsed = parseFeatureRevenue(
+      body([fatLead(1), fatLead(2)], ["clicked", "repliedPositive"]),
+      "test",
+    );
+    expect(parsed.outcomeFieldsServed).toEqual([]);
   });
 
-  it("omits an outcome the producer does not attribute yet", () => {
-    const lead = fatLead(1);
-    delete (lead as Record<string, unknown>).signup;
-    delete (lead as Record<string, unknown>).signupAt;
-    const parsed = parseFeatureRevenue(body([lead]), "test");
-    expect(parsed.outcomeFieldsServed).toEqual([
-      "meetingBooked",
-      "formSubmission",
-      "purchased",
-    ]);
-  });
-
-  it("is empty for a body with no leads at all", () => {
-    // The derived path's blind spot, and exactly why the served list exists. Delete this
-    // case with the fallback once features-service v0.153.0 is live in prod.
-    expect(parseFeatureRevenue(body([]), "test").outcomeFieldsServed).toEqual([]);
+  it("fails loud when the producer does not say — never falls back to a derivation", () => {
+    // Required on the wire from features-service v0.153.0. A body without it is shape
+    // rot, and the old fallback would have answered confidently and wrongly.
+    const withoutField = body([fatLead(1)]) as Record<string, unknown>;
+    delete withoutField.attributedOutcomes;
+    expect(() => parseFeatureRevenue(withoutField, "test")).toThrow(
+      /invalid revenue response shape/,
+    );
   });
 });
 

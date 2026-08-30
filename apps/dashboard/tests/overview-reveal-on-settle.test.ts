@@ -175,6 +175,9 @@ describe("the shared parser accepts every grain's body", () => {
     organizations: [],
     leads: [],
     events: [],
+    // Required on the wire from features-service v0.153.0 — which outcomes the read
+    // could attribute, a fact about the READ (features-service#873).
+    attributedOutcomes: [],
   });
 
   it("parses a BRAND body, which names no channel", () => {
