@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { LEADS_POLL_INTERVAL, POLL_INTERVAL } from "@/lib/query-options";
 import { invalidateLeadOutcome } from "@/lib/write-invalidation";
@@ -949,6 +949,7 @@ export function EngagedLeadsPage({
   scopeNote?: string;
 } = {}) {
   const params = useParams();
+  const searchParams = useSearchParams();
   const brandId = params.brandId as string;
   // The OFFER this page is scoped to, when the route names one. lead-service has no
   // offer filter yet, so the ROWS are still the brand's — the money and the
@@ -985,6 +986,22 @@ export function EngagedLeadsPage({
   );
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
+
+  // Deep-link seed: `?leadRowId=` (a funnel-leg board card navigates here rather
+  // than carrying its own copy of the lead panel) opens that lead's panel on first
+  // paint. Seeded once the rows arrive -- a one-shot latch, so a poll can never
+  // re-open a panel the reader has closed, and selection is local state thereafter.
+  // A row the page never received simply opens nothing: the leads list is what
+  // decides, never the URL.
+  const initialLeadRowId = searchParams.get("leadRowId");
+  const hasSeededLead = useRef(false);
+  useEffect(() => {
+    if (hasSeededLead.current || !initialLeadRowId) return;
+    const seeded = leads.find((l) => l.id === initialLeadRowId);
+    if (!seeded) return;
+    hasSeededLead.current = true;
+    setSelectedLead(seeded);
+  }, [initialLeadRowId, leads]);
 
   // The published channel catalogue, derived from the `["features"]` query this app
   // already holds — a `useMemo`, not a request. Read twice below: to decide whether the
