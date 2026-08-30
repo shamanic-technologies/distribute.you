@@ -383,6 +383,8 @@ export default function BillingPage() {
       await openCardWidget({
         token: setup.token,
         savePaymentMethodFor: setup.save_payment_method_for,
+        name: setup.customer_name ?? undefined,
+        email: setup.customer_email ?? undefined,
         onSuccess: () => {
           // The card only exists at the provider once this fires, so re-read
           // rather than assuming — otherwise the page would claim a card is on
