@@ -327,8 +327,15 @@ export function FunnelLegPage() {
           busy={crossMutation.isPending}
           writable={writable}
           error={crossError}
+          // The lead's own panel lives on the LEADS page, so a card opens it there
+          // rather than duplicating it here. Funnel-scoped (`funnels/<key>/leads`)
+          // because that is the route this leg sits under -- `${basePath}/leads`
+          // does not exist and 404'd. `?leadRowId=` is the deep-link seed that
+          // page reads to open the panel on first paint.
           onOpen={(leadRowId) =>
-            router.push(`${basePath}/leads?leadRowId=${encodeURIComponent(leadRowId)}`)
+            router.push(
+              `${basePath}/funnels/${encodeURIComponent(rawKey)}/leads?leadRowId=${encodeURIComponent(leadRowId)}`,
+            )
           }
           onCross={(leadRowId, input) => crossMutation.mutate({ leadRowId, ...input })}
         />

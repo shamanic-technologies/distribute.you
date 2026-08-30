@@ -269,4 +269,21 @@ describe("the leg page, and what it deliberately does not show", () => {
     expect(page).toContain("isPending && !revenue.isError");
     expect(page).toContain("isPending && !leadsQ.isError");
   });
+
+  it("opens a card on a route that EXISTS, under the funnel this leg sits in", () => {
+    // `${basePath}/leads` is not a route — an offer's leads live at
+    // `offers/:offerId/audiences/leads` — so every card 404'd. The funnel-scoped
+    // one keeps the reader in the funnel they drilled into.
+    expect(page).toContain("/funnels/${encodeURIComponent(rawKey)}/leads?leadRowId=");
+    expect(page).not.toContain("`${basePath}/leads?");
+  });
+
+  it("seeds the leads page's panel from the param it sends", () => {
+    // The param was read by nothing, so a fixed path alone would have landed the
+    // reader on a generic list with no panel — the click promising one thing and
+    // doing another, silently.
+    const leadsPage = read("components/audiences/engaged-leads-page.tsx");
+    expect(leadsPage).toContain('searchParams.get("leadRowId")');
+    expect(leadsPage).toContain("hasSeededLead.current = true;");
+  });
 });
