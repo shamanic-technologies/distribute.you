@@ -42,6 +42,9 @@ export type FunnelLegIndex = ReadonlyMap<string, FunnelLegSteps>;
  *  parts it does use is skipped rather than throwing — the index is a lookup table, and
  *  a channel we cannot read simply contributes no entries to it. */
 export interface PublicChannelLegsWire {
+  /** The channel's feature slug — a campaign states its channel this way, so it is what
+   *  narrows the catalogue to the legs THIS campaign could possibly be bought for. */
+  slug?: unknown;
   stepTransitions?: Array<{
     legKey?: unknown;
     from?: { key?: unknown } | null;
@@ -99,4 +102,56 @@ export function statedCampaignLeg(
   const steps = index.get(legKey);
   if (!steps) return null;
   return campaignLegFor(funnel, [{ from: steps.fromKey, to: steps.toKey }]);
+}
+
+/**
+ * The identifier for a leg, looked up by the two steps it connects.
+ *
+ * The inverse of the index above, and it exists for the WRITE side: a surface creating a
+ * campaign knows which arrow it is buying (it resolved it from the funnel it just funded
+ * and the channel it is launching on) and has to state that arrow the way the fleet keys
+ * it. Minting the token from the two steps would be exactly the coupling this module
+ * exists to avoid, so the answer is read out of the same served catalogue.
+ */
+export function legKeyForSteps(
+  index: FunnelLegIndex | null | undefined,
+  fromKey: string | null,
+  toKey: string,
+): string | null {
+  if (!index) return null;
+  for (const [legKey, steps] of index) {
+    if (steps.toKey === toKey && steps.fromKey === fromKey) return legKey;
+  }
+  return null;
+}
+
+/**
+ * The leg a campaign launching on this channel, for this funnel, is bought for — stated
+ * as the identifier campaign-service and billing key on.
+ *
+ * Resolved entirely out of `GET /public/channels`: the channel states the legs it
+ * performs and each carries its own key, so one payload answers both halves. Placement
+ * REUSES `campaignLegFor`, so the leg a launch STATES and the leg every surface later
+ * DERIVES for the same campaign are decided by one rule — they cannot disagree.
+ *
+ * Null when the catalogue is unreadable, when it carries no such channel, or when the
+ * channel performs no leg of this funnel. A launch then states no leg and campaign-service
+ * treats it exactly as it treats every campaign created before the column existed: null
+ * is a legitimate answer here and inventing one would file the campaign under an arrow
+ * nobody bought.
+ */
+export function launchLegKey(
+  channels: readonly PublicChannelLegsWire[] | null | undefined,
+  featureSlug: string | null | undefined,
+  funnel: SalesFunnelDef | null | undefined,
+): string | null {
+  if (!channels || !featureSlug || !funnel) return null;
+  const channel = channels.find((c) => c?.slug === featureSlug);
+  if (!channel) return null;
+
+  const index = funnelLegIndexFromWire([channel]);
+  const legs = [...index.values()].map((steps) => ({ from: steps.fromKey, to: steps.toKey }));
+  const leg = campaignLegFor(funnel, legs);
+  if (!leg) return null;
+  return legKeyForSteps(index, leg.fromKey, leg.toKey);
 }

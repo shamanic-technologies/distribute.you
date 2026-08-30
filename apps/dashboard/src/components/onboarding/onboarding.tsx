@@ -63,6 +63,7 @@ import {
   createCheckoutSession,
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
+  getPublicChannelLegs,
   saveBrandDailyBudget,
   stateBrandFunnelBudgets,
   salesObjectiveForOptimizationGoal,
@@ -112,6 +113,7 @@ import {
   funnelRateFields,
   funnelDraftFromBrand,
   salesFunnelByKey,
+  normalizeSalesFunnelKey,
   buildFunnelPatch,
   isEmptyFunnelPatch,
   validateFunnelDraft,
@@ -123,6 +125,7 @@ import {
   type FunnelDraft,
   type DeclaredFunnelValues,
 } from "@/lib/sales-funnels";
+import { launchLegKey } from "@/lib/stated-campaign-leg";
 import { fundedLaunchFunnelKey } from "@/lib/launch-funnel";
 import { soleOfferId } from "@/lib/launch-offer";
 import {
@@ -1954,8 +1957,26 @@ export function Onboarding() {
       );
     }
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
+    // WHICH ARROW of that funnel this campaign buys, stated the way the fleet keys it.
+    //
+    // A campaign is (brand x offer x channel x leg), and the leg is what a customer
+    // actually buys — the funnel cannot name which of its own arrows a channel performs.
+    // Resolved out of the published channel catalogue, so the identifier is
+    // features-service's rather than one minted here, and the arrow is placed by the SAME
+    // rule every surface later reads it back with.
+    //
+    // Best-effort by construction: the customer has already been charged by the time this
+    // runs, so a catalogue read that fails must not strand the launch. A campaign that
+    // states no leg is read exactly as every campaign created before the column existed.
+    const launchLeg = await getPublicChannelLegs()
+      .then((channels) => launchLegKey(channels, SALES_FEATURE_SLUG, salesFunnelByKey(normalizeSalesFunnelKey(launchFunnelKey))))
+      .catch((err) => {
+        console.error("[dashboard] launch: could not resolve the leg for this campaign", err);
+        return null;
+      });
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       funnelKey: launchFunnelKey,
+      ...(launchLeg ? { legKey: launchLeg } : {}),
       // The proposition this campaign sells, resolved above from the brand's own
       // offers. Omitted rather than nulled when there is no single correct answer:
       // campaign-service adopts an offer-less campaign on its own tick.

@@ -3,6 +3,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   funnelLegIndexFromWire,
+  launchLegKey,
+  legKeyForSteps,
   statedCampaignLeg,
   type PublicChannelLegsWire,
 } from "../src/lib/stated-campaign-leg";
@@ -180,5 +182,65 @@ describe("the call sites read the campaign's own statement", () => {
 
   it("is persisted, so the platform catalogue paints from disk like every other root", () => {
     expect(read("lib/persist-cache.ts")).toContain('"publicChannelLegs"');
+  });
+});
+
+describe("the WRITE side states the leg the way the fleet keys it", () => {
+  /** The catalogue as `GET /public/channels` serves it: each channel names itself. */
+  const SLUGGED: PublicChannelLegsWire[] = [
+    {
+      slug: "sales-cold-email-outreach",
+      stepTransitions: [
+        { legKey: "start_to_conversation", from: null, to: { key: "conversation" } },
+        { legKey: "start_to_website_visit", from: null, to: { key: "website_visit" } },
+      ],
+    },
+    {
+      slug: "in-house-meeting-booking",
+      stepTransitions: [
+        { legKey: "conversation_to_meeting_booked", from: { key: "conversation" }, to: { key: "meeting_booked" } },
+      ],
+    },
+  ];
+
+  it("looks the identifier up rather than minting it from two steps", () => {
+    expect(legKeyForSteps(INDEX, "conversation", "meeting_booked")).toBe("conversation_to_meeting_booked");
+    expect(legKeyForSteps(INDEX, null, "conversation")).toBe("start_to_conversation");
+  });
+
+  it("answers null for a pair the catalogue does not carry", () => {
+    expect(legKeyForSteps(INDEX, "paid_client", "conversation")).toBeNull();
+    expect(legKeyForSteps(null, null, "conversation")).toBeNull();
+  });
+
+  it("states the entry leg a cold-email launch on the reply funnel buys", () => {
+    expect(launchLegKey(SLUGGED, "sales-cold-email-outreach", reply)).toBe("start_to_conversation");
+  });
+
+  it("states the OTHER entry leg for the same channel on a website-led funnel", () => {
+    expect(launchLegKey(SLUGGED, "sales-cold-email-outreach", visitMeeting)).toBe("start_to_website_visit");
+  });
+
+  it("states nothing when the channel performs no leg of that funnel — never a guessed arrow", () => {
+    expect(launchLegKey(SLUGGED, "in-house-meeting-booking", visitMeeting)).toBeNull();
+  });
+
+  it("states nothing for an unknown channel, an unreadable catalogue or no funnel", () => {
+    expect(launchLegKey(SLUGGED, "nope", reply)).toBeNull();
+    expect(launchLegKey(null, "sales-cold-email-outreach", reply)).toBeNull();
+    expect(launchLegKey(SLUGGED, "sales-cold-email-outreach", null)).toBeNull();
+  });
+
+  it("is what the LAUNCH sends — pinned at the call site, not only in the helper", () => {
+    const src = readFileSync(
+      join(__dirname, "..", "src", "components", "onboarding", "onboarding.tsx"),
+      "utf8",
+    );
+    const at = src.indexOf("createCampaignWithoutBrandEnrichment({");
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(at, at + 400)).toContain("legKey: launchLeg");
+    // Best-effort: the customer has already paid, so a failed catalogue read must not
+    // strand the launch.
+    expect(src).toContain("could not resolve the leg for this campaign");
   });
 });
