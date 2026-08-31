@@ -10,6 +10,7 @@ import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
+import { budgetFieldsPresent, omitBudgetOnSalesCampaign } from "./campaign-budget-fields";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -2811,6 +2812,8 @@ export async function createCampaign(
     workflowSlug: string;
     brandUrls: string[];
     funnelKey: string | null;
+    // A per-campaign ceiling is for a NON-sales campaign only — one whose funnelKey is
+    // null. State one beside a funnel and campaign-service 400s; see campaign-budget-fields.
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
@@ -2818,10 +2821,22 @@ export async function createCampaign(
   } & Record<string, unknown>,
   token?: string
 ): Promise<{ campaign: Campaign }> {
+  // The four ceilings stay declared: a feature that sells through no sales funnel
+  // legitimately states one. A SALES campaign may not, and campaign-service 400s the
+  // whole creation rather than ignoring the field — so the strip happens here, at the
+  // one call every path goes through, and it is LOUD: a caller that still builds a
+  // ceiling for a sales campaign is a bug, not a case to absorb.
+  const carried = budgetFieldsPresent(params);
+  const body = omitBudgetOnSalesCampaign(params as unknown as Record<string, unknown>);
+  if (carried.length > 0 && body !== params) {
+    console.error(
+      `[createCampaign] dropped ${carried.join(", ")} — a campaign selling funnel "${String(params.funnelKey)}" holds no ceiling of its own; its money is billing's per (funnel, channel, offer). Fix the caller.`,
+    );
+  }
   const { campaign } = await apiCall<{ campaign: RawCampaign }>("/campaigns", {
     token,
     method: "POST",
-    body: params as unknown as Record<string, unknown>,
+    body,
   });
   const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
   return { campaign: enriched };

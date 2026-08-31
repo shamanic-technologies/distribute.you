@@ -43,6 +43,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { SALES_FUNNEL_KEYS, salesFunnelLabel } from "@/lib/sales-funnel-keys";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { budgetFieldsForCampaign, SALES_BUDGET_NOTE } from "@/lib/campaign-budget-fields";
 import { projectFunnel, type FunnelEconomics } from "@/lib/sales-funnel-projection";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
@@ -806,6 +807,7 @@ export default function FeatureCreateCampaignPage() {
         formData.brandUrl || baseUrl,
         ...additionalBrands.map((b) => b.url).filter((u): u is string => u != null),
       ];
+      const testFunnelKey = needsSalesFunnel ? funnelKey || null : null;
       const now = new Date();
       const name = `Test — ${wf.workflowDynastyName} — ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
       const { campaign } = await createCampaign({
@@ -813,11 +815,13 @@ export default function FeatureCreateCampaignPage() {
         workflowSlug: wf.workflowSlug,
         brandUrls,
         featureSlug,
-        // A test run is still a campaign on this feature, so it states the same funnel.
-        funnelKey: needsSalesFunnel ? funnelKey || null : null,
+        // A test run is still a campaign on this feature, so it states the same funnel —
+        // and a campaign that states one holds no ceiling of its own, so the test cap
+        // rides only on a non-sales feature. maxLeads: 3 is what bounds a sales test run.
+        funnelKey: testFunnelKey,
         featureInputs: inputValues,
         maxLeads: 3,
-        maxBudgetTotalUsd: TEST_RUN_BUDGET_USD,
+        ...budgetFieldsForCampaign(testFunnelKey, { maxBudgetTotalUsd: TEST_RUN_BUDGET_USD }),
       } as unknown as Parameters<typeof createCampaign>[0]);
       setTests((t) => ({ ...t, [wf.id]: { campaignId: campaign.id, status: campaign.status, emails: [] } }));
     } catch (err) {
@@ -1010,11 +1014,16 @@ export default function FeatureCreateCampaignPage() {
 
     setCreateError(null);
 
-    const budgetParams: Record<string, string> = {};
-    if (budgetFrequency === "one-off") budgetParams.maxBudgetTotalUsd = budgetAmount;
-    if (budgetFrequency === "daily") budgetParams.maxBudgetDailyUsd = budgetAmount;
-    if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
-    if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
+    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
+    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
+    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // The typed amount still drives the credit guard and the projections above.
+    const ceiling: Record<string, string> = {};
+    if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
+    if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
+    if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
+    if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
+    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
 
     const generateName = () => {
       const now = new Date();
@@ -1083,11 +1092,16 @@ export default function FeatureCreateCampaignPage() {
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
     if (!selectedRow || !budgetAmount) return;
-    const budgetParams: Record<string, string> = {};
-    if (budgetFrequency === "one-off") budgetParams.maxBudgetTotalUsd = budgetAmount;
-    if (budgetFrequency === "daily") budgetParams.maxBudgetDailyUsd = budgetAmount;
-    if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
-    if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
+    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
+    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
+    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // The typed amount still drives the credit guard and the projections above.
+    const ceiling: Record<string, string> = {};
+    if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
+    if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
+    if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
+    if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
+    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     const intentBrandUrls = [
@@ -1634,6 +1648,15 @@ export default function FeatureCreateCampaignPage() {
                 </div>
               )}
                 </>
+              )}
+
+              {/* A sales campaign holds no ceiling of its own, so say where its money lives
+                  rather than leave an input that quietly does nothing to the campaign. The
+                  amount above still prices the projection and gates the credit check. */}
+              {needsSalesFunnel && (
+                <p className="mt-3 text-xs text-gray-500" data-testid="sales-budget-note">
+                  {SALES_BUDGET_NOTE} The amount above prices the projection and checks this org can afford the run.
+                </p>
               )}
 
               {(() => {
