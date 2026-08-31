@@ -13,6 +13,7 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   CreditCardIcon,
+  ExclamationTriangleIcon,
   GiftIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
@@ -4296,6 +4297,12 @@ function AudienceCandidateCard({
 }) {
   const groups = audienceFilterGroups(candidate.filters);
   const invalid = Boolean(candidate.validationError) || candidate.count === 0;
+  // human-service (via apollo-service) says outright that its refine loop was not
+  // satisfied with this filter set and returned its best attempt anyway. Rendered
+  // verbatim from the flag: nothing here infers it from the count or the filters,
+  // and it gates NOTHING. A degraded audience stays fully selectable, because a
+  // degraded audience beats no audience and the customer is the one who judges it.
+  const degraded = candidate.degraded === true;
   return (
     <button
       onClick={onToggle}
@@ -4312,8 +4319,22 @@ function AudienceCandidateCard({
           {!invalid && (
             <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
           )}
+          {degraded && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+              <ExclamationTriangleIcon className="h-3 w-3 shrink-0" />
+              Check this one
+            </span>
+          )}
         </span>
         <span className="mt-1 block text-xs leading-5 text-gray-500">{candidate.rationale}</span>
+        {degraded && (
+          <span className="mt-2 flex items-start gap-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2 text-[11px] leading-4 text-orange-700">
+            <ExclamationTriangleIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+            <span className="min-w-0">
+              This may not match what you asked for. Read the filters before you pick it.
+            </span>
+          </span>
+        )}
         {groups.length > 0 && (
           <span className="mt-3 flex flex-col gap-2">
             {groups.map((g) => (

@@ -2248,6 +2248,14 @@ export interface AudienceCandidate {
   status: AudienceStatus;
   validationError: string | null;
   truncated: boolean;
+  // apollo-service's own verdict on the filter set it built: true when its refine
+  // loop judged no candidate a good fit and returned the best attempt anyway rather
+  // than failing. INFORMATION, never a gate — a degraded audience is served,
+  // persisted and activatable exactly like any other, and the customer decides.
+  // OPTIONAL in the reader although the producer marks it required: an older
+  // human-service deploy does not send it, and absent means not degraded. Never
+  // infer it from counts or filter shapes; render the flag the backend sends.
+  degraded?: boolean;
 }
 
 const AudienceStatusSchema = z.union([
@@ -2268,6 +2276,7 @@ const AudienceCandidateSchema = z.object({
   status: AudienceStatusSchema,
   validationError: z.string().nullable(),
   truncated: z.boolean(),
+  degraded: z.boolean().optional(),
 });
 
 const SuggestAudiencesResponseSchema = z.object({
