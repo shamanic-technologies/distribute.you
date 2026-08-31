@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Campaign } from "@/lib/api";
+import { SALES_BUDGET_NOTE, statesSalesFunnel } from "@/lib/campaign-budget-fields";
 
 export type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
 
@@ -50,11 +51,23 @@ interface Props {
   submitting: boolean;
   errorMessage: string | null;
   onClose: () => void;
-  onConfirm: (budget: RelaunchBudget) => void;
+  /**
+   * `null` when the campaign sells through a sales funnel: it holds no ceiling of its
+   * own, so there is nothing to edit and nothing to send.
+   */
+  onConfirm: (budget: RelaunchBudget | null) => void;
 }
 
 export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage, onClose, onConfirm }: Props) {
-  const initial = useMemo(() => deriveBudgetFromCampaign(campaign), [campaign]);
+  // A campaign that states a funnel is paced on the brand's daily ceiling in billing;
+  // campaign-service refuses a per-campaign one. So there is no budget to edit, and the
+  // row's own stale ceiling (written before that guard shipped) must not be sent back —
+  // relaunching it verbatim is exactly the 400.
+  const editsBudget = !statesSalesFunnel(campaign.funnelKey);
+  const initial = useMemo(
+    () => (editsBudget ? deriveBudgetFromCampaign(campaign) : null),
+    [campaign, editsBudget],
+  );
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [frequency, setFrequency] = useState<BudgetFrequency>(initial?.frequency ?? "monthly");
 
@@ -77,7 +90,12 @@ export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage
   if (!open) return null;
 
   const handleConfirm = () => {
-    if (!amount.trim() || submitting) return;
+    if (submitting) return;
+    if (!editsBudget) {
+      onConfirm(null);
+      return;
+    }
+    if (!amount.trim()) return;
     onConfirm({ amount: amount.trim(), frequency });
   };
 
@@ -160,7 +178,17 @@ export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage
             </div>
           )}
 
-          {/* Budget (editable) */}
+          {/* Budget — editable only for a campaign that sells through no sales funnel. */}
+          {!editsBudget ? (
+            <div data-testid="sales-budget-note">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                Budget
+              </label>
+              <p className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                {SALES_BUDGET_NOTE}
+              </p>
+            </div>
+          ) : (
           <div>
             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
               Budget
@@ -194,6 +222,7 @@ export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage
               You can change the budget amount and frequency. Other settings are copied from the original campaign.
             </p>
           </div>
+          )}
 
           {errorMessage && (
             <p className="text-sm text-red-600">{errorMessage}</p>
@@ -212,7 +241,7 @@ export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={submitting || !amount.trim()}
+            disabled={submitting || (editsBudget && !amount.trim())}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Relaunching…" : "Confirm Relaunch"}

@@ -118,7 +118,7 @@ export default function CampaignOverviewPage() {
     stopMutation.mutate(campaign);
   };
 
-  const handleRelaunchSubmit = async (budget: RelaunchBudget) => {
+  const handleRelaunchSubmit = async (budget: RelaunchBudget | null) => {
     if (!campaign || !campaign.workflowSlug) return;
     setRelaunching(true);
     setRelaunchError(null);
@@ -136,7 +136,11 @@ export default function CampaignOverviewPage() {
       // funnel relaunches stating none, and campaign-service refuses it if the feature
       // needs one; that refusal is the gap surfacing, not something to paper over here.
       funnelKey: campaign.funnelKey ?? null,
-      ...buildBudgetParams(budget.amount, budget.frequency),
+      // Only a campaign that states NO funnel carries a ceiling of its own — the modal
+      // hands back null for one that does, and campaign-service 400s the relaunch if a
+      // sales campaign states one anyway (a stale ceiling on the row it copies is
+      // exactly how that fired).
+      ...(budget ? buildBudgetParams(budget.amount, budget.frequency) : {}),
     };
     if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;
 

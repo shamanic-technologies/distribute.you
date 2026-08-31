@@ -24,6 +24,7 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { budgetFieldsForCampaign, SALES_BUDGET_NOTE } from "@/lib/campaign-budget-fields";
 import { SALES_FUNNEL_KEYS, salesFunnelLabel } from "@/lib/sales-funnel-keys";
 import { extractDomain } from "@/lib/extract-domain";
 import { pollOptions } from "@/lib/query-options";
@@ -384,11 +385,16 @@ export default function CreateCampaignPage() {
 
     setCreateError(null);
 
-    const budgetParams: Record<string, string> = {};
-    if (budgetFrequency === "one-off") budgetParams.maxBudgetTotalUsd = budgetAmount;
-    if (budgetFrequency === "daily") budgetParams.maxBudgetDailyUsd = budgetAmount;
-    if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
-    if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
+    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
+    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
+    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // The typed amount still drives the credit guard and the projections above.
+    const ceiling: Record<string, string> = {};
+    if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
+    if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
+    if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
+    if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
+    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
 
     const generateName = () => {
       const now = new Date();
@@ -438,11 +444,16 @@ export default function CreateCampaignPage() {
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
     if (!selectedRow || !budgetAmount) return;
-    const budgetParams: Record<string, string> = {};
-    if (budgetFrequency === "one-off") budgetParams.maxBudgetTotalUsd = budgetAmount;
-    if (budgetFrequency === "daily") budgetParams.maxBudgetDailyUsd = budgetAmount;
-    if (budgetFrequency === "weekly") budgetParams.maxBudgetWeeklyUsd = budgetAmount;
-    if (budgetFrequency === "monthly") budgetParams.maxBudgetMonthlyUsd = budgetAmount;
+    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
+    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
+    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // The typed amount still drives the credit guard and the projections above.
+    const ceiling: Record<string, string> = {};
+    if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
+    if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
+    if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
+    if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
+    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
@@ -789,6 +800,15 @@ export default function CreateCampaignPage() {
               ))}
             </select>
           </div>
+
+          {/* A sales campaign holds no ceiling of its own, so say where its money lives
+              rather than leave an input that quietly does nothing to the campaign. The
+              amount above still gates the credit check before we create anything. */}
+          {needsSalesFunnel && (
+            <p className="basis-full text-xs text-gray-500" data-testid="sales-budget-note">
+              {SALES_BUDGET_NOTE} The amount above is only used to check this org can afford the run.
+            </p>
+          )}
 
           {needsSalesFunnel && (
             <>
