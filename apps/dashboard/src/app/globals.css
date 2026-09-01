@@ -322,6 +322,199 @@ html.dark .text-blue-700 { color: #93c5fd; }
 html.dark .text-indigo-700 { color: #a5b4fc; }
 html.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3); }
 
+/* ---------------------------------------------------------------------------
+   THE REST OF THE ACCENT SET, closed by HUE rather than one instance at a time.
+
+   Everything above this line was added the same way, four separate times: a
+   surface shipped a tint, somebody noticed months later that it rendered its
+   light-mode near-white on the dark surface, and one more pair went in. The
+   comments above say so — "third time this gap appears", "same gap the purple
+   pair had". The reason it keeps recurring is that the gap is INVISIBLE in the
+   light default, so nothing is red and nobody looks: a chip that is perfectly
+   legible for every reader who never toggles.
+
+   The leads TABLE's status palette was the fifth instance and the widest — its
+   eleven hues (emerald / violet / cyan / sky / slate / teal / rose / lime /
+   stone …) had not one rule between them, so every Status badge on that page
+   rendered a bright block in dark. Rather than add eleven more pairs, this
+   closes the whole class for every hue the app already uses.
+
+   The convention is the one the block above already follows, so a value here is
+   derived, never picked:
+
+     bg-<hue>-50 / -100 / -200   -> the hue's own -500 at 15% / 20% / 25% alpha
+     border-<hue>-200 / -300     -> the hue's -500 at 30%
+     text-<hue>-600 … -950       -> the hue's -300, which is the light weight
+
+   The numbers are TAILWIND's own, read out of the app's compiled theme rather
+   than typed from memory. Mid tones (`bg-*-500`, `bg-*-600`) are deliberately
+   absent: a saturated fill reads correctly on the dark surface as-is, which is
+   why `bg-purple-600` and `bg-orange-600` were left out above too.
+
+   A hue nobody uses is not listed — this is not a reimplementation of Tailwind.
+   Adding a NEW hue to the app means adding its five lines here in the same
+   commit; `tests/dark-accent-coverage.test.ts` fails if you forget.
+   --------------------------------------------------------------------------- */
+/* amber */
+html.dark .bg-amber-100 { background-color: oklch(76.9% 0.188 70.08 / 0.2); }
+html.dark .bg-amber-200 { background-color: oklch(76.9% 0.188 70.08 / 0.25); }
+html.dark .border-amber-300 { border-color: oklch(76.9% 0.188 70.08 / 0.3); }
+html.dark .text-amber-600 { color: oklch(87.9% 0.169 91.605); }
+html.dark .text-amber-900 { color: oklch(87.9% 0.169 91.605); }
+html.dark .text-amber-950 { color: oklch(87.9% 0.169 91.605); }
+/* blue */
+html.dark .bg-blue-100 { background-color: oklch(62.3% 0.214 259.815 / 0.2); }
+html.dark .bg-blue-200 { background-color: oklch(62.3% 0.214 259.815 / 0.25); }
+html.dark .border-blue-300 { border-color: oklch(62.3% 0.214 259.815 / 0.3); }
+html.dark .text-blue-600 { color: oklch(80.9% 0.105 251.813); }
+html.dark .text-blue-800 { color: oklch(80.9% 0.105 251.813); }
+html.dark .text-blue-950 { color: oklch(80.9% 0.105 251.813); }
+/* cyan */
+html.dark .bg-cyan-50 { background-color: oklch(71.5% 0.143 215.221 / 0.15); }
+html.dark .bg-cyan-100 { background-color: oklch(71.5% 0.143 215.221 / 0.2); }
+html.dark .bg-cyan-200 { background-color: oklch(71.5% 0.143 215.221 / 0.25); }
+html.dark .border-cyan-200 { border-color: oklch(71.5% 0.143 215.221 / 0.3); }
+html.dark .border-cyan-300 { border-color: oklch(71.5% 0.143 215.221 / 0.3); }
+html.dark .text-cyan-600 { color: oklch(86.5% 0.127 207.078); }
+html.dark .text-cyan-700 { color: oklch(86.5% 0.127 207.078); }
+html.dark .text-cyan-800 { color: oklch(86.5% 0.127 207.078); }
+html.dark .text-cyan-900 { color: oklch(86.5% 0.127 207.078); }
+html.dark .text-cyan-950 { color: oklch(86.5% 0.127 207.078); }
+/* emerald */
+html.dark .bg-emerald-50 { background-color: oklch(69.6% 0.17 162.48 / 0.15); }
+html.dark .bg-emerald-100 { background-color: oklch(69.6% 0.17 162.48 / 0.2); }
+html.dark .bg-emerald-200 { background-color: oklch(69.6% 0.17 162.48 / 0.25); }
+html.dark .border-emerald-200 { border-color: oklch(69.6% 0.17 162.48 / 0.3); }
+html.dark .border-emerald-300 { border-color: oklch(69.6% 0.17 162.48 / 0.3); }
+html.dark .text-emerald-600 { color: oklch(84.5% 0.143 164.978); }
+html.dark .text-emerald-700 { color: oklch(84.5% 0.143 164.978); }
+html.dark .text-emerald-800 { color: oklch(84.5% 0.143 164.978); }
+html.dark .text-emerald-900 { color: oklch(84.5% 0.143 164.978); }
+html.dark .text-emerald-950 { color: oklch(84.5% 0.143 164.978); }
+/* green */
+html.dark .bg-green-100 { background-color: oklch(72.3% 0.219 149.579 / 0.2); }
+html.dark .bg-green-200 { background-color: oklch(72.3% 0.219 149.579 / 0.25); }
+html.dark .border-green-300 { border-color: oklch(72.3% 0.219 149.579 / 0.3); }
+html.dark .text-green-600 { color: oklch(87.1% 0.15 154.449); }
+html.dark .text-green-800 { color: oklch(87.1% 0.15 154.449); }
+html.dark .text-green-900 { color: oklch(87.1% 0.15 154.449); }
+html.dark .text-green-950 { color: oklch(87.1% 0.15 154.449); }
+/* indigo */
+html.dark .bg-indigo-100 { background-color: oklch(58.5% 0.233 277.117 / 0.2); }
+html.dark .bg-indigo-200 { background-color: oklch(58.5% 0.233 277.117 / 0.25); }
+html.dark .border-indigo-300 { border-color: oklch(58.5% 0.233 277.117 / 0.3); }
+html.dark .text-indigo-600 { color: oklch(78.5% 0.115 274.713); }
+html.dark .text-indigo-800 { color: oklch(78.5% 0.115 274.713); }
+html.dark .text-indigo-900 { color: oklch(78.5% 0.115 274.713); }
+html.dark .text-indigo-950 { color: oklch(78.5% 0.115 274.713); }
+/* lime */
+html.dark .bg-lime-50 { background-color: oklch(76.8% 0.233 130.85 / 0.15); }
+html.dark .bg-lime-100 { background-color: oklch(76.8% 0.233 130.85 / 0.2); }
+html.dark .bg-lime-200 { background-color: oklch(76.8% 0.233 130.85 / 0.25); }
+html.dark .border-lime-200 { border-color: oklch(76.8% 0.233 130.85 / 0.3); }
+html.dark .border-lime-300 { border-color: oklch(76.8% 0.233 130.85 / 0.3); }
+html.dark .text-lime-600 { color: oklch(89.7% 0.196 126.665); }
+html.dark .text-lime-700 { color: oklch(89.7% 0.196 126.665); }
+html.dark .text-lime-800 { color: oklch(89.7% 0.196 126.665); }
+html.dark .text-lime-900 { color: oklch(89.7% 0.196 126.665); }
+html.dark .text-lime-950 { color: oklch(89.7% 0.196 126.665); }
+/* orange */
+html.dark .bg-orange-100 { background-color: oklch(70.5% 0.213 47.604 / 0.2); }
+html.dark .border-orange-300 { border-color: oklch(70.5% 0.213 47.604 / 0.3); }
+html.dark .text-orange-800 { color: oklch(83.7% 0.128 66.29); }
+html.dark .text-orange-900 { color: oklch(83.7% 0.128 66.29); }
+html.dark .text-orange-950 { color: oklch(83.7% 0.128 66.29); }
+/* purple */
+html.dark .bg-purple-100 { background-color: oklch(62.7% 0.265 303.9 / 0.2); }
+html.dark .border-purple-300 { border-color: oklch(62.7% 0.265 303.9 / 0.3); }
+html.dark .text-purple-800 { color: oklch(82.7% 0.119 306.383); }
+html.dark .text-purple-900 { color: oklch(82.7% 0.119 306.383); }
+html.dark .text-purple-950 { color: oklch(82.7% 0.119 306.383); }
+/* red */
+html.dark .bg-red-100 { background-color: oklch(63.7% 0.237 25.331 / 0.2); }
+html.dark .bg-red-200 { background-color: oklch(63.7% 0.237 25.331 / 0.25); }
+html.dark .border-red-300 { border-color: oklch(63.7% 0.237 25.331 / 0.3); }
+html.dark .text-red-700 { color: oklch(80.8% 0.114 19.571); }
+html.dark .text-red-800 { color: oklch(80.8% 0.114 19.571); }
+html.dark .text-red-900 { color: oklch(80.8% 0.114 19.571); }
+html.dark .text-red-950 { color: oklch(80.8% 0.114 19.571); }
+/* rose */
+html.dark .bg-rose-50 { background-color: oklch(64.5% 0.246 16.439 / 0.15); }
+html.dark .bg-rose-100 { background-color: oklch(64.5% 0.246 16.439 / 0.2); }
+html.dark .bg-rose-200 { background-color: oklch(64.5% 0.246 16.439 / 0.25); }
+html.dark .border-rose-200 { border-color: oklch(64.5% 0.246 16.439 / 0.3); }
+html.dark .border-rose-300 { border-color: oklch(64.5% 0.246 16.439 / 0.3); }
+html.dark .text-rose-600 { color: oklch(81% 0.117 11.638); }
+html.dark .text-rose-700 { color: oklch(81% 0.117 11.638); }
+html.dark .text-rose-800 { color: oklch(81% 0.117 11.638); }
+html.dark .text-rose-900 { color: oklch(81% 0.117 11.638); }
+html.dark .text-rose-950 { color: oklch(81% 0.117 11.638); }
+/* sky */
+html.dark .bg-sky-50 { background-color: oklch(68.5% 0.169 237.323 / 0.15); }
+html.dark .bg-sky-100 { background-color: oklch(68.5% 0.169 237.323 / 0.2); }
+html.dark .bg-sky-200 { background-color: oklch(68.5% 0.169 237.323 / 0.25); }
+html.dark .border-sky-200 { border-color: oklch(68.5% 0.169 237.323 / 0.3); }
+html.dark .border-sky-300 { border-color: oklch(68.5% 0.169 237.323 / 0.3); }
+html.dark .text-sky-600 { color: oklch(82.8% 0.111 230.318); }
+html.dark .text-sky-700 { color: oklch(82.8% 0.111 230.318); }
+html.dark .text-sky-800 { color: oklch(82.8% 0.111 230.318); }
+html.dark .text-sky-900 { color: oklch(82.8% 0.111 230.318); }
+html.dark .text-sky-950 { color: oklch(82.8% 0.111 230.318); }
+/* slate */
+html.dark .bg-slate-50 { background-color: oklch(55.4% 0.046 257.417 / 0.15); }
+html.dark .bg-slate-100 { background-color: oklch(55.4% 0.046 257.417 / 0.2); }
+html.dark .bg-slate-200 { background-color: oklch(55.4% 0.046 257.417 / 0.25); }
+html.dark .border-slate-200 { border-color: oklch(55.4% 0.046 257.417 / 0.3); }
+html.dark .border-slate-300 { border-color: oklch(55.4% 0.046 257.417 / 0.3); }
+html.dark .text-slate-600 { color: oklch(86.9% 0.022 252.894); }
+html.dark .text-slate-700 { color: oklch(86.9% 0.022 252.894); }
+html.dark .text-slate-800 { color: oklch(86.9% 0.022 252.894); }
+html.dark .text-slate-900 { color: oklch(86.9% 0.022 252.894); }
+html.dark .text-slate-950 { color: oklch(86.9% 0.022 252.894); }
+/* stone */
+html.dark .bg-stone-50 { background-color: oklch(55.3% 0.013 58.071 / 0.15); }
+html.dark .bg-stone-100 { background-color: oklch(55.3% 0.013 58.071 / 0.2); }
+html.dark .bg-stone-200 { background-color: oklch(55.3% 0.013 58.071 / 0.25); }
+html.dark .border-stone-200 { border-color: oklch(55.3% 0.013 58.071 / 0.3); }
+html.dark .border-stone-300 { border-color: oklch(55.3% 0.013 58.071 / 0.3); }
+html.dark .text-stone-600 { color: oklch(86.9% 0.005 56.366); }
+html.dark .text-stone-700 { color: oklch(86.9% 0.005 56.366); }
+html.dark .text-stone-800 { color: oklch(86.9% 0.005 56.366); }
+html.dark .text-stone-900 { color: oklch(86.9% 0.005 56.366); }
+html.dark .text-stone-950 { color: oklch(86.9% 0.005 56.366); }
+/* teal */
+html.dark .bg-teal-50 { background-color: oklch(70.4% 0.14 182.503 / 0.15); }
+html.dark .bg-teal-100 { background-color: oklch(70.4% 0.14 182.503 / 0.2); }
+html.dark .bg-teal-200 { background-color: oklch(70.4% 0.14 182.503 / 0.25); }
+html.dark .border-teal-200 { border-color: oklch(70.4% 0.14 182.503 / 0.3); }
+html.dark .border-teal-300 { border-color: oklch(70.4% 0.14 182.503 / 0.3); }
+html.dark .text-teal-600 { color: oklch(85.5% 0.138 181.071); }
+html.dark .text-teal-700 { color: oklch(85.5% 0.138 181.071); }
+html.dark .text-teal-800 { color: oklch(85.5% 0.138 181.071); }
+html.dark .text-teal-900 { color: oklch(85.5% 0.138 181.071); }
+html.dark .text-teal-950 { color: oklch(85.5% 0.138 181.071); }
+/* violet */
+html.dark .bg-violet-50 { background-color: oklch(60.6% 0.25 292.717 / 0.15); }
+html.dark .bg-violet-100 { background-color: oklch(60.6% 0.25 292.717 / 0.2); }
+html.dark .bg-violet-200 { background-color: oklch(60.6% 0.25 292.717 / 0.25); }
+html.dark .border-violet-200 { border-color: oklch(60.6% 0.25 292.717 / 0.3); }
+html.dark .border-violet-300 { border-color: oklch(60.6% 0.25 292.717 / 0.3); }
+html.dark .text-violet-600 { color: oklch(81.1% 0.111 293.571); }
+html.dark .text-violet-700 { color: oklch(81.1% 0.111 293.571); }
+html.dark .text-violet-800 { color: oklch(81.1% 0.111 293.571); }
+html.dark .text-violet-900 { color: oklch(81.1% 0.111 293.571); }
+html.dark .text-violet-950 { color: oklch(81.1% 0.111 293.571); }
+/* yellow */
+html.dark .bg-yellow-100 { background-color: oklch(79.5% 0.184 86.047 / 0.2); }
+html.dark .bg-yellow-200 { background-color: oklch(79.5% 0.184 86.047 / 0.25); }
+html.dark .border-yellow-200 { border-color: oklch(79.5% 0.184 86.047 / 0.3); }
+html.dark .border-yellow-300 { border-color: oklch(79.5% 0.184 86.047 / 0.3); }
+html.dark .text-yellow-600 { color: oklch(90.5% 0.182 98.111); }
+html.dark .text-yellow-700 { color: oklch(90.5% 0.182 98.111); }
+html.dark .text-yellow-800 { color: oklch(90.5% 0.182 98.111); }
+html.dark .text-yellow-900 { color: oklch(90.5% 0.182 98.111); }
+html.dark .text-yellow-950 { color: oklch(90.5% 0.182 98.111); }
+
 /* Shadows — softer in dark mode */
 html.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.3); }
 html.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.3); }
