@@ -35,13 +35,18 @@
 //   - **The move picker.** Which kinds a person may STATE from each column. The write
 //     is unchanged and still goes to instantly-service; see `columnReplyKinds`.
 //
-// What CHANGED for a reader, and somebody will notice: a bounce and a plain "no" now
-// leave Contacted for Disqualified. This file used to keep both there on purpose — a
-// bounce is a failure of DELIVERY rather than an opinion, and in sales a no is where
-// the conversation starts. lead-service reads both as out of play for this campaign
-// (rules 8 and 10 of its ladder), and it is the owner now. One service decides, and a
-// client-side override to preserve the older reading would be the same split all over
-// again.
+// A BOUNCE is NOT a disqualification, and that rule now lives at the producer where
+// the rest of the policy does. A bad address says nothing about whether the human
+// behind it would buy — it is a failure of DELIVERY, so the card stays in Leads and
+// wears "Bounced" as its own tag, which is the thing worth acting on. lead-service
+// v0.65.0 stopped reading a bounce as `disqualified` for exactly that reason
+// (sales-lead-service#478). Note where the fix went: overriding it HERE would have
+// re-created the three-way split this file exists to have closed.
+//
+// A plain "no" DOES leave for Disqualified, and that one is a real change a reader
+// will notice. This file used to keep it in Contacted on the sales-canon split between
+// a temporary no and a permanent one; lead-service reads a negative reply as out of
+// play for THIS campaign, and it is the owner.
 //
 // Alias-free on purpose (its runtime import is relative and pulls no "@" alias in) so
 // this module carries REAL unit tests. Keep it that way.
@@ -85,9 +90,13 @@ export interface LeadBoardColumn {
 
 export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   {
+    // Keyed `contacted` and LABELLED "Leads": "Contacted" is one of the delivery
+    // statuses a CARD can wear (beside Sent, Delivered, Bounced, Queued), so spending
+    // the column's name on it made the heading and the cards under it argue about
+    // what the word means. The column is simply everybody still in play.
     key: "contacted",
-    label: "Contacted",
-    blurb: "Reached. Nothing since, or something this campaign does not sell.",
+    label: "Leads",
+    blurb: "Still in play. Nothing has happened yet, or nothing this campaign sells.",
     writable: true,
     hideWhenEmpty: false,
   },
@@ -101,7 +110,7 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   {
     key: "disqualified",
     label: "Disqualified",
-    blurb: "Out of play: they said no, the mail bounced, or they cannot buy.",
+    blurb: "Out of play: they said no, they opted out, or they cannot buy.",
     writable: true,
     hideWhenEmpty: false,
   },

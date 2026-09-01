@@ -78,6 +78,31 @@ describe("the leads board is wired, not merely written", () => {
   });
 });
 
+describe("the list keeps the whole page width and the panel overlays it", () => {
+  it("never squeezes the list to half-width when a lead is open", () => {
+    // It used to be a two-up split, so opening one card reflowed five board columns
+    // into a 50% rail — the set the reader was working moved under them as the cost
+    // of looking at one row of it.
+    expect(page).toContain('<div className="flex flex-col h-full relative">');
+    expect(page).toContain('<div className="w-full p-4 md:p-8 pb-24 overflow-y-auto transition-all">');
+    expect(page).not.toContain("md:flex-row h-full relative");
+    expect(page).not.toContain("hidden md:block md:w-1/2");
+  });
+
+  it("floats the panel over the right edge at every size, not only on a phone", () => {
+    const panel = sliceFrom(page, "{selectedLead && (", 900);
+    // Full-screen on a phone, a right-hand sheet on desktop. `md:relative md:w-1/2`
+    // is what took the width; `md:left-auto` is what gives it back.
+    expect(panel).toContain("absolute inset-0 md:left-auto");
+    expect(panel).not.toContain("md:relative");
+    expect(panel).not.toContain("md:w-1/2");
+    // Above the board's rail, below the support FAB (z-30) — hence its own bottom
+    // clearance, or the FAB covers the end of the panel.
+    expect(panel).toContain("z-20");
+    expect(panel).toContain("pb-24");
+  });
+});
+
 describe("a campaign page is the board and nothing else", () => {
   it("has no view switch and no funnel tabs to offer", () => {
     expect(page).toContain("const boardOnly = Boolean(campaignId);");
@@ -258,7 +283,7 @@ describe("the card says what it is in two lines and one tag", () => {
   it("leads with the ORG and puts the person under it behind Via", () => {
     // The same shape a campaign wears everywhere else: what this is on top, where it
     // came from underneath, quieter.
-    const body = sliceFrom(board, "function CardBody(", 2600);
+    const body = sliceFrom(board, "function CardBody(", 3600);
     expect(body).toContain("<CompanyLogo");
     expect(body).toContain("card.orgName ?? card.name");
     expect(body).toContain(">Via<");
@@ -271,24 +296,38 @@ describe("the card says what it is in two lines and one tag", () => {
     expect(mark).toContain("charAt(0).toUpperCase()");
   });
 
-  it("always wears a tag, the stated kind or the column's own word", () => {
-    // A tagless card reads as one we know nothing about, when we always know at least
-    // that we contacted them.
-    const body = sliceFrom(board, "function CardBody(", 2600);
+  it("states what we last OBSERVED, never the column's own word repeated", () => {
+    // A card reading "Sales interest" under a heading reading "Sales interest" spends
+    // its one tag saying nothing a reader did not already have. So Sales interest
+    // reads "Website visit" and Leads reads "Delivered" / "Sent" / "Bounced".
+    const body = sliceFrom(board, "function CardBody(", 3600);
     expect(body).toContain("replyKindOption(card.replyKind)");
-    expect(body).toContain("column?.label ?? \"Contacted\"");
-    expect(body).toContain("COLUMN_TONE[card.column]");
+    expect(body).toContain("label: card.statusLabel, tone: card.statusTone");
     expect(body).toContain("REPLY_TONE_PILL[tag.tone]");
+    // The column's own word is not a tag any more, and its map has no reader left.
+    expect(board).not.toContain("COLUMN_TONE");
+    expect(body).not.toContain('column?.label');
+  });
+
+  it("reads the SAME status word the leads table's own badge reads", () => {
+    // One map, three surfaces (table badge, CSV, card): a second spelling is how one
+    // lead comes to read "Delivered" in the table and "Sent" on a card one click away.
+    expect(page).toContain('import { leadStatusLabel, leadStatusTone } from "@/lib/lead-status";');
+    expect(page).toContain("statusLabel: leadStatusLabel(getLeadConsolidatedStatus(lead))");
+    expect(page).toContain("statusTone: leadStatusTone(getLeadConsolidatedStatus(lead))");
+    // And the date under it proves THAT status — one statement, one event.
+    expect(page).toContain(
+      "statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead))",
+    );
   });
 
   it("says HOW LONG it has been that, beside the tag and never as its own line", () => {
     // A tag with no age is the one thing a triage board cannot be read for. It sits
     // beside the tag rather than pinned right, because it qualifies the tag — and it
     // took the place of the `...` menu rather than costing the card another row.
-    const body = sliceFrom(board, "function CardBody(", 2600);
+    const body = sliceFrom(board, "function CardBody(", 3600);
     expect(body).toContain("timeAgo(card.statusAt)");
     expect(body).toContain("text-gray-400");
-    expect(body).not.toContain("justify-between");
     expect(body).not.toContain("aria-label={`Move ${card.name}");
     expect(board).not.toContain("&#8943;");
   });
@@ -304,7 +343,7 @@ describe("the card says what it is in two lines and one tag", () => {
   });
 
   it("says nothing rather than dating a status it holds no instant for", () => {
-    const body = sliceFrom(board, "function CardBody(", 2600);
+    const body = sliceFrom(board, "function CardBody(", 3600);
     expect(body).toContain("{card.statusAt && (");
   });
 });
@@ -320,12 +359,23 @@ describe("the board explains the two splits a reader would not guess", () => {
     const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
     // Each column states what lands in it, in its own blurb.
     for (const blurb of [
-      "Reached. Nothing since, or something this campaign does not sell.",
+      "Still in play. Nothing has happened yet, or nothing this campaign sells.",
       "They reached the step this campaign sells, or bought.",
-      "Out of play: they said no, the mail bounced, or they cannot buy.",
+      "Out of play: they said no, they opted out, or they cannot buy.",
     ]) {
       expect(lib).toContain(blurb);
     }
+  });
+
+  it("names the first column LEADS, because Contacted is a card's word now", () => {
+    // "Contacted" is one of the delivery statuses a CARD wears (beside Sent,
+    // Delivered, Bounced, Queued), so spending the column's name on it made the
+    // heading and the cards under it argue about what the word meant.
+    const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
+    const first = lib.slice(lib.indexOf("export const LEAD_BOARD_COLUMNS"), lib.indexOf('key: "sales_interest"'));
+    expect(first).toContain('key: "contacted"');
+    expect(first).toContain('label: "Leads"');
+    expect(first).not.toContain('label: "Contacted"');
   });
 
   it("draws the producer-failure column only when it has something to report", () => {
