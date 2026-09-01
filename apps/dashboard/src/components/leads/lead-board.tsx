@@ -14,7 +14,7 @@ import {
   type LeadBoardColumn,
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
-import { REPLY_TONE_PILL, replyKindOption, type ReplyKind, type ReplyTone } from "@/lib/reply-kind";
+import { replyKindOption, replyKindPill, type ReplyKind } from "@/lib/reply-kind";
 import { timeAgo } from "@/lib/friendly-datetime";
 
 /**
@@ -75,7 +75,12 @@ export interface LeadBoardCard {
    * component takes nothing from the wire on purpose.
    */
   statusLabel: string;
-  statusTone: ReplyTone;
+  /**
+   * The pill classes for that status, from the one palette every status badge in the
+   * app draws through (`leadStatusPill`). Passed in with the label for the same reason
+   * the label is: this component takes nothing from the wire.
+   */
+  statusPill: string;
   /**
    * When the card's STATUS happened — the moment somebody stated the kind when one
    * was stated, otherwise the timestamp that proves the lead's own delivery status.
@@ -139,9 +144,13 @@ function CardBody({ card }: { card: LeadBoardCard }) {
   // or "Sent" or "Bounced" — the thing that actually distinguishes it from the card
   // above it. A kind somebody STATED still wins, because it is the more specific
   // answer and a person wrote it.
+  // ONE COLOUR PER TAG, from two disjoint families: the reply kinds a person states are
+  // warm and green, the statuses the delivery layer measures are cool. A reader never
+  // has to work out which of the two they are looking at, and inside each family the
+  // hue tracks how far along the lead is.
   const tag = stated
-    ? { label: stated.label, tone: stated.tone as ReplyTone }
-    : { label: card.statusLabel, tone: card.statusTone };
+    ? { label: stated.label, pill: replyKindPill(stated.kind) }
+    : { label: card.statusLabel, pill: card.statusPill };
   return (
     <>
       <div className="flex min-w-0 items-center gap-2">
@@ -168,7 +177,7 @@ function CardBody({ card }: { card: LeadBoardCard }) {
             nothing about, when we always know at least that we wrote to them. */}
         <span
           data-testid="lead-board-card-tag"
-          className={`inline-flex min-w-0 truncate rounded-full border px-1.5 py-0.5 text-[11px] ${REPLY_TONE_PILL[tag.tone]}`}
+          className={`inline-flex min-w-0 truncate rounded-full border px-1.5 py-0.5 text-[11px] ${tag.pill}`}
         >
           {tag.label}
         </span>
@@ -316,7 +325,7 @@ export function LeadBoard({
                         onMove(pending.card.email as string, kind, pending.to.key);
                         setPending(null);
                       }}
-                      className={`rounded-full border px-2.5 py-1 text-xs ${REPLY_TONE_PILL[option.tone]} ${
+                      className={`rounded-full border px-2.5 py-1 text-xs ${replyKindPill(option.kind)} ${
                         busy ? "cursor-wait" : "hover:opacity-80"
                       }`}
                     >

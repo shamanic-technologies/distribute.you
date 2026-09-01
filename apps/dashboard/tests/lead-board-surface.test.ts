@@ -302,8 +302,8 @@ describe("the card says what it is in two lines and one tag", () => {
     // reads "Website visit" and Leads reads "Delivered" / "Sent" / "Bounced".
     const body = sliceFrom(board, "function CardBody(", 3600);
     expect(body).toContain("replyKindOption(card.replyKind)");
-    expect(body).toContain("label: card.statusLabel, tone: card.statusTone");
-    expect(body).toContain("REPLY_TONE_PILL[tag.tone]");
+    expect(body).toContain("label: card.statusLabel, pill: card.statusPill");
+    expect(body).toContain("${tag.pill}");
     // The column's own word is not a tag any more, and its map has no reader left.
     expect(board).not.toContain("COLUMN_TONE");
     expect(body).not.toContain('column?.label');
@@ -312,9 +312,9 @@ describe("the card says what it is in two lines and one tag", () => {
   it("reads the SAME status word the leads table's own badge reads", () => {
     // One map, three surfaces (table badge, CSV, card): a second spelling is how one
     // lead comes to read "Delivered" in the table and "Sent" on a card one click away.
-    expect(page).toContain('import { leadStatusLabel, leadStatusTone } from "@/lib/lead-status";');
+    expect(page).toContain('import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";');
     expect(page).toContain("statusLabel: leadStatusLabel(getLeadConsolidatedStatus(lead))");
-    expect(page).toContain("statusTone: leadStatusTone(getLeadConsolidatedStatus(lead))");
+    expect(page).toContain("statusPill: leadStatusPill(getLeadConsolidatedStatus(lead))");
     // And the date under it proves THAT status — one statement, one event.
     expect(page).toContain(
       "statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead))",

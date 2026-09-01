@@ -22,8 +22,8 @@ import { useState } from "react";
 import {
   REPLY_TONE_LABEL,
   REPLY_TONE_ORDER,
-  REPLY_TONE_PILL,
   replyKindOption,
+  replyKindPill,
   replyKindsByTone,
   type ReplyKind,
 } from "@/lib/reply-kind";
@@ -59,7 +59,7 @@ export function ReplyKindControl({
   const unknown = kind != null && option == null;
 
   const current = option ? (
-    <span className={`text-xs px-2 py-0.5 rounded-full border ${REPLY_TONE_PILL[option.tone]}`}>
+    <span className={`text-xs px-2 py-0.5 rounded-full border ${replyKindPill(option.kind)}`}>
       {option.label}
     </span>
   ) : unknown ? (
@@ -123,7 +123,17 @@ export function ReplyKindControl({
                     o.kind === kind ? "font-semibold text-gray-900" : "text-gray-700"
                   }`}
                 >
-                  <span>{o.label}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {/* The kind's own colour, on the row that states it — so the pill
+                        that appears after the press is the one the reader picked, and
+                        the four positive kinds stop reading as four identical greens.
+                        The dot borrows the pill's fill and border, not a fifth token. */}
+                    <span
+                      aria-hidden
+                      className={`h-2 w-2 shrink-0 rounded-full border ${replyKindPill(o.kind)}`}
+                    />
+                    <span className="truncate">{o.label}</span>
+                  </span>
                   {/* Said out loud on the row, because a control whose whole behaviour
                       is "press the thing you already pressed" is not discoverable from
                       the thing itself. */}
