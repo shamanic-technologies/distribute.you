@@ -30,9 +30,18 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   };
 
   it("names the queue state Queued and drops the Contacted claim", () => {
-    const body = sliceFrom("function leadStatusLabel(", 700);
+    // The label moved to `lib/lead-status.ts` so the leads TABLE's badge, the CSV and
+    // the BOARD card's tag all read one map — a lead must not say "Delivered" in the
+    // table and "Sent" on a card one click away.
+    const lib = fs.readFileSync(
+      path.join(__dirname, "../src/lib/lead-status.ts"),
+      "utf-8",
+    );
+    const body = lib.slice(lib.indexOf("export function leadStatusLabel("));
     expect(body).toContain('case "contacted": return "Queued"');
     expect(body).not.toContain('"Contacted"');
+    // And nothing re-spells it back in the page.
+    expect(src).not.toContain("function leadStatusLabel(");
   });
 
   it("styles the queue state as a wait, not as an acquired step", () => {
