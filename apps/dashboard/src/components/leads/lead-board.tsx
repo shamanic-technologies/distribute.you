@@ -7,6 +7,7 @@ import { CompanyLogo } from "@/components/company-logo";
 import {
   LEAD_BOARD_COLUMNS,
   LEAD_BOARD_PAGE_SIZE,
+  columnMoveConfirmation,
   columnMoveRefusal,
   columnPage,
   columnReplyKinds,
@@ -14,6 +15,7 @@ import {
   type LeadBoardColumn,
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
+import { OPT_OUT_CHANNELS, type OptOutChannel } from "@/lib/opt-out-channel";
 import { replyKindOption, replyKindPill, type ReplyKind } from "@/lib/reply-kind";
 import { timeAgo } from "@/lib/friendly-datetime";
 
@@ -91,6 +93,24 @@ export interface LeadBoardCard {
    */
   statusAt: string | null;
 }
+
+/**
+ * What a completed move actually WRITES.
+ *
+ * Three shapes rather than one, because they are three different statements to two
+ * different producers — flattening them into "a move" is what would let a caller write
+ * a reply kind where a consent record belongs.
+ *
+ *   - `reply`      — what this person said, recorded against the CAMPAIGN.
+ *   - `optOut`     — they asked us to stop, and how they told us. Recorded against the
+ *                    PERSON, so it carries no column and no campaign.
+ *   - `withdrawal` — take an opt-out back. It carries no destination on purpose: where
+ *                    the card lands afterwards is lead-service's answer, not ours.
+ */
+export type LeadBoardMove =
+  | { type: "reply"; email: string; replyKind: ReplyKind; column: LeadBoardColumnKey }
+  | { type: "optOut"; email: string; channel: OptOutChannel }
+  | { type: "withdrawal"; email: string };
 
 /** The move a person has picked but not yet said the kind of. */
 interface PendingMove {
@@ -233,13 +253,15 @@ export function LeadBoard({
   canMove: boolean;
   onOpen: (leadRowId: string) => void;
   /**
-   * The statement, plus the column it was made from.
+   * The statement a completed move writes.
    *
-   * The column is not derivable from the kind here: where a card lands is
-   * lead-service's answer, not a mapping this app holds. The page needs it only to
-   * hold the card in place for the round trip — see the latch there.
+   * A `reply` carries the column it was made TOWARDS, and that is not derivable from
+   * the kind: where a card lands is lead-service's answer, not a mapping this app
+   * holds. The page needs it only to hold the card in place for the round trip — see
+   * the latch there. A `withdrawal` deliberately carries none, so nothing is held and
+   * the card sits still until the producer says where it belongs.
    */
-  onMove: (email: string, kind: ReplyKind, column: LeadBoardColumnKey) => void;
+  onMove: (move: LeadBoardMove) => void;
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
   // How many cards each column has been asked for. Per column, because the columns are
@@ -282,6 +304,11 @@ export function LeadBoard({
 
   const pendingKinds = pending ? columnReplyKinds(pending.to.key) : [];
   const pendingRefusal = pending ? columnMoveRefusal(pending.to.key) : null;
+  // Leaving Opt-out is asked about BEFORE the target's own question: whatever column
+  // the card was dropped on, the write is the same withdrawal, and the thing worth
+  // reading is what taking it back does — and does not — do.
+  const pendingConfirmation = pending ? columnMoveConfirmation(pending.card.column) : null;
+  const pendingOptOut = pending?.to.key === "opt_out" && !pendingConfirmation;
 
   return (
     <div className="space-y-3">
@@ -290,7 +317,79 @@ export function LeadBoard({
           className="rounded-xl border border-gray-200 bg-white p-3"
           data-testid="lead-board-move-form"
         >
-          {pendingRefusal || pendingKinds.length === 0 || !pending.card.email ? (
+          {pendingConfirmation && pending.card.email ? (
+            <>
+              <p className="mb-2 text-sm text-gray-800">
+                Put <span className="font-medium">{pending.card.name}</span> back in play?
+              </p>
+              <p className="mb-2 text-xs text-gray-500">{pendingConfirmation}</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    onMove({ type: "withdrawal", email: pending.card.email as string });
+                    setPending(null);
+                  }}
+                  className={`rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-xs text-amber-700 ${
+                    busy ? "cursor-wait" : "hover:opacity-80"
+                  }`}
+                >
+                  Take the opt-out back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPending(null)}
+                  className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : pendingOptOut && pending.card.email ? (
+            <>
+              <p className="mb-2 text-sm text-gray-800">
+                How did <span className="font-medium">{pending.card.name}</span> tell us to
+                stop?
+              </p>
+              {/* The channel is REQUIRED, so it is asked rather than defaulted: this is a
+                  consent record, and one nobody can audit later is exactly what a consent
+                  record must not be. It applies to the person across every campaign, which
+                  is the half a reader would not guess from a card that belongs to one. */}
+              <p className="mb-2 text-xs text-gray-500">
+                This stops every campaign we are running at them, not only this one.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {OPT_OUT_CHANNELS.map((option: (typeof OPT_OUT_CHANNELS)[number]) => (
+                  <button
+                    key={option.channel}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      onMove({
+                        type: "optOut",
+                        email: pending.card.email as string,
+                        channel: option.channel,
+                      });
+                      setPending(null);
+                    }}
+                    className={`rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-xs text-gray-600 ${
+                      busy ? "cursor-wait" : "hover:opacity-80"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPending(null)}
+                  className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : pendingRefusal || pendingKinds.length === 0 || !pending.card.email ? (
             <>
               <p className="mb-2 text-sm text-gray-800">
                 <span className="font-medium">{pending.card.name}</span> stays where they
@@ -322,7 +421,12 @@ export function LeadBoard({
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        onMove(pending.card.email as string, kind, pending.to.key);
+                        onMove({
+                          type: "reply",
+                          email: pending.card.email as string,
+                          replyKind: kind,
+                          column: pending.to.key,
+                        });
                         setPending(null);
                       }}
                       className={`rounded-full border px-2.5 py-1 text-xs ${replyKindPill(option.kind)} ${

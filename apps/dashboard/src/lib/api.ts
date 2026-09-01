@@ -5,6 +5,7 @@ import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import type { LeadStanding } from "./lead-standing";
 import type { ReplyKind } from "./reply-kind";
+import type { OptOutChannel } from "./opt-out-channel";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
@@ -4753,6 +4754,95 @@ export async function listManualQualifications(
   return apiCall<ListManualQualificationsResponse>(`/emails/manual-qualifications${suffix}`, { token });
 }
 
+
+/**
+ * Record that a named person asked us to stop being contacted, and how they said it.
+ *
+ * ⚠️ SCOPED TO THE PERSON, not to a campaign — which is why this body carries no
+ * campaign id even though the board card that triggers it belongs to one. Honouring
+ * "stop contacting me" in one campaign while another keeps sending is precisely the
+ * outcome the law cares about (CAN-SPAM, GDPR), so instantly-service applies it to
+ * every campaign the org holds for that address.
+ *
+ * It STOPS THE SENDING as well as recording the statement: the sequence is stopped, the
+ * open holds are cancelled, and the campaign is paused at the sender. A clicked
+ * unsubscribe gets that last part for free because the provider served the link; a
+ * statement made over SMS or on a call does not, so it is done explicitly.
+ *
+ * Idempotent: a person who already has a standing opt-out writes nothing and fires no
+ * side effect a second time (`idempotent: true` on the response). The record is written
+ * even when the org holds no campaign for the address — refusing to record a consent
+ * statement because we have nothing to stop is the wrong direction to be wrong in, and
+ * the response then reports `campaignsAffected: 0`.
+ */
+export async function recordLeadOptOut(
+  body: { email: string; channel: OptOutChannel; notes?: string },
+  token?: string,
+): Promise<RecordLeadOptOutResponse> {
+  return apiCall<RecordLeadOptOutResponse>("/emails/opt-outs", {
+    token,
+    method: "POST",
+    body: {
+      email: body.email,
+      channel: body.channel,
+      ...(body.notes !== undefined ? { notes: body.notes } : {}),
+    },
+  });
+}
+
+/**
+ * Take back an opt-out somebody recorded — the wrong lead, or a person who has since
+ * asked to be contacted again.
+ *
+ * NOT an erasure. The withdrawal is appended, the original record stands as the audit of
+ * what was asserted, and only the unsubscribe events THIS record produced are released —
+ * an unsubscribe the prospect produced by clicking the link is never touched, because
+ * nobody withdrew that.
+ *
+ * ⚠️ It does NOT resume the sequences that were stopped. The holds were cancelled and the
+ * campaigns paused, and silently restarting outreach at somebody who asked us to stop is
+ * the one mistake worth being unable to make by accident. A new send is a new decision.
+ *
+ * 404 `no_standing_optout` when nothing stands (never recorded, or already withdrawn —
+ * withdrawing twice is that same refusal, not a success).
+ */
+export async function withdrawLeadOptOut(
+  body: { email: string; notes?: string },
+  token?: string,
+): Promise<{ optOut: LeadOptOut }> {
+  return apiCall<{ optOut: LeadOptOut }>("/emails/opt-outs/withdrawals", {
+    token,
+    method: "POST",
+    body: {
+      email: body.email,
+      ...(body.notes !== undefined ? { notes: body.notes } : {}),
+    },
+  });
+}
+
+/** One recorded opt-out, as the consent record it is: who, when, and through what. */
+export interface LeadOptOut {
+  id: string;
+  email: string;
+  channel: string;
+  notes: string | null;
+  recordedBy?: string;
+  recordedAt?: string;
+  withdrawnAt?: string | null;
+}
+
+export interface RecordLeadOptOutResponse {
+  /** True when a standing opt-out already existed — nothing written, nothing re-fired. */
+  idempotent: boolean;
+  /** Campaigns of this org holding that address. */
+  campaignsAffected: number;
+  /**
+   * How many of them could be stopped AT THE SENDER. Below `campaignsAffected` means a
+   * pause failed upstream and was logged; the local stop and the record still hold.
+   */
+  campaignsStopped: number;
+  optOut: LeadOptOut;
+}
 
 // Workflows
 export interface DAGNode {

@@ -29,11 +29,24 @@
 //     `signal: "unsubscribed"`), which is right for it — both are out of play. It is
 //     not right HERE: an opt-out is the prospect's own act and legally binding
 //     (CAN-SPAM, GDPR), so it can never share a column with a commercial judgement of
-//     ours, and nothing of ours may record one on their behalf. Splitting the
-//     producer's one state by the producer's OWN evidence field is a rendering
-//     decision about our columns, not a second opinion about the lead.
-//   - **The move picker.** Which kinds a person may STATE from each column. The write
-//     is unchanged and still goes to instantly-service; see `columnReplyKinds`.
+//     ours. Splitting the producer's one state by the producer's OWN evidence field is
+//     a rendering decision about our columns, not a second opinion about the lead.
+//   - **The move picker.** What a person may STATE from each column. Every column
+//     states a reply KIND (`columnReplyKinds`) except Opt-out, which states the
+//     CHANNEL somebody told us through — a different write to a different producer,
+//     scoped to the person rather than to the campaign.
+//
+// A CARD MOVES BETWEEN ANY TWO COLUMNS, Opt-out included, in both directions. It used
+// to be a dead end on the reasoning that unsubscribing is the prospect's own act and we
+// must not fabricate one. The premise was wrong in both directions. Inbound: a prospect
+// rarely clicks the link — they send an SMS, they call, they say it in person — and
+// refusing to RECORD what they said is not protecting their consent, it is ignoring it
+// while continuing to email them. Outbound: an opt-out gets recorded on the wrong
+// person, and a prospect can come back, so a locked column left a database write as the
+// only fix. What protects the person is not a locked column: it is that nothing INFERS
+// an opt-out (a record exists because a named person stated it through a named
+// channel), that leaving is an appended WITHDRAWAL rather than an erasure, and that a
+// withdrawal resumes nothing that was stopped. The board says so before it does it.
 //
 // A BOUNCE is NOT a disqualification, and that rule now lives at the producer where
 // the rest of the policy does. A bad address says nothing about whether the human
@@ -83,12 +96,17 @@ export interface LeadBoardColumn {
   /**
    * Whether a person can MOVE a card into this column.
    *
-   * A move here states a REPLY KIND — what this person said — so it is writable
-   * wherever a human can honestly say it. Two are false and for different reasons:
-   * `opt_out` because unsubscribing is the prospect's act and fabricating it on their
-   * behalf would record a consent decision they never made, and `unresolved` because
-   * it is the producer saying it could not answer, which is not a thing anybody can
-   * assert their way into.
+   * Only `unresolved` is false, and it is not a preference: that column is lead-service
+   * reporting it could not answer, which is not a thing anybody can assert their way
+   * into. Every other column is a statement somebody can honestly make.
+   *
+   * `opt_out` used to be false too, on the reasoning that unsubscribing is the
+   * prospect's own act and we must not fabricate a consent decision on their behalf.
+   * The premise was wrong: a prospect rarely clicks the link. They send an SMS, they
+   * call, they say it in person — and refusing to RECORD what they said is not
+   * protecting their consent, it is ignoring it while continuing to email them. What we
+   * must never do is INFER one, and nothing does: a record exists because a named person
+   * stated that a named prospect asked to stop, through a named channel.
    */
   writable: boolean;
   /**
@@ -130,8 +148,8 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   {
     key: "opt_out",
     label: "Opt-out",
-    blurb: "They asked us to stop. We never contact them again.",
-    writable: false,
+    blurb: "They asked us to stop, however they told us. We never contact them again.",
+    writable: true,
     hideWhenEmpty: false,
   },
   {
@@ -187,8 +205,13 @@ export const DISQUALIFYING_STATEMENT_KINDS: readonly string[] = [
  * The kinds a person may STATE from each column, in catalogue order.
  *
  * Derived from the catalogue rather than re-listed, so a kind the producer adds shows
- * up in the picker of whichever column already claims it. `opt_out` and `unresolved`
- * offer none.
+ * up in the picker of whichever column already claims it.
+ *
+ * `opt_out` and `unresolved` offer none, for different reasons. Moving into Opt-out
+ * states the CHANNEL somebody told us through (`OPT_OUT_CHANNELS`), not a reply kind —
+ * a different write, to a different producer, scoped to the person rather than to this
+ * campaign — so an empty list here is not "nothing can be written". `unresolved` really
+ * is nothing: it is lead-service reporting it could not answer.
  */
 export function columnReplyKinds(key: LeadBoardColumnKey): ReplyKind[] {
   if (key === "opt_out" || key === "unresolved") return [];
@@ -256,25 +279,28 @@ export function leadBoardColumnFor(
 }
 
 /**
- * Which columns a card in `from` may be MOVED to.
+ * Which columns a card in `from` may be MOVED to — every writable column except the one
+ * it is already in, whichever column it starts from.
  *
  * Deliberately not "forward only": these are triage states, not funnel rungs, so
  * correcting one a person got wrong is a statement like any other and the producer
  * supersedes the earlier one.
  *
- * Two columns let nothing out, and `writable: false` does not cover it — that only
- * stops a card ARRIVING:
+ * ⚠️ That INCLUDES out of `opt_out`, and that is a decision rather than an oversight.
+ * An opt-out gets recorded on the wrong person, and a prospect can come back and ask to
+ * hear from us again; leaving no way back means the only fix is a database write. What
+ * protects the person is not a locked column, it is that leaving is a WITHDRAWAL —
+ * appended, never an erasure, and it does not resume anything that was stopped. The
+ * board says so before it does it (`columnMoveConfirmation`).
  *
- *   - `opt_out`, because a lead who asked us to stop could otherwise be dragged back
- *     into play, which is the same consent decision we refuse to fabricate, made in
- *     the more dangerous direction.
- *   - `unresolved`, because a card is there when lead-service could not resolve the
- *     campaign's funnel — and without the funnel nothing anybody states moves it (its
- *     own ladder answers `unresolved` before it ever looks at a statement). Offering
- *     the move would offer a control that cannot take.
+ * `unresolved` still lets nothing out, and `writable: false` does not cover it — that
+ * only stops a card ARRIVING. A card is there when lead-service could not resolve the
+ * campaign's funnel, and without the funnel nothing anybody states moves it: its own
+ * ladder answers `unresolved` before it ever looks at a statement. Offering the move
+ * would offer a control that cannot take.
  */
 export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardColumn[] {
-  if (from === "opt_out" || from === "unresolved") return [];
+  if (from === "unresolved") return [];
   return LEAD_BOARD_COLUMNS.filter((c) => c.writable && c.key !== from);
 }
 
@@ -285,19 +311,28 @@ export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardCo
  * broken board rather than as a rule, so the drop lands, the move form opens, and the
  * form says what is missing. This is the sentence it says.
  *
- * Neither refusal is a preference. There is no unsubscribe value in the reply-kind
- * vocabulary instantly-service owns, so `columnReplyKinds("opt_out")` is empty and
- * there is literally nothing to write; and `unresolved` is lead-service reporting that
- * it could not answer, which no statement of ours makes it able to.
+ * One column is left, and it is not a preference: `unresolved` is lead-service reporting
+ * that it could not answer, which no statement of ours makes it able to.
  */
 export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
-  if (to === "opt_out") {
-    return "Only the prospect can opt out. It reaches us the way their reply does, and we never record it for them.";
-  }
   if (to === "unresolved") {
     return "Nothing to state here. These leads are unplaced because this campaign states no sales funnel, which no answer about the person can settle.";
   }
   return null;
+}
+
+/**
+ * What a move OUT of `from` needs somebody to confirm before it is written, or null
+ * when it needs nothing.
+ *
+ * Only leaving `opt_out` does. Every other move states something about a reply and is
+ * superseded by the next statement; this one puts a person who asked us to stop back
+ * where we can contact them, so it says out loud both what it does and — the half that
+ * is easy to assume — what it does NOT do.
+ */
+export function columnMoveConfirmation(from: LeadBoardColumnKey | null): string | null {
+  if (from !== "opt_out") return null;
+  return "They asked us to stop. Only take that back if they have asked to hear from us again — the record stays either way, and nothing that was stopped starts again on its own.";
 }
 
 /**

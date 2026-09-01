@@ -140,7 +140,9 @@ describe("a move states a reply KIND, and it asks which", () => {
     expect(board).toContain("columnReplyKinds(pending.to.key)");
     // The column the drop landed in is threaded back to the page, which cannot derive
     // it from the kind — that mapping is the producer's, not this app's.
-    expect(board).toContain("onMove(pending.card.email as string, kind, pending.to.key)");
+    expect(board).toContain('type: "reply",');
+    expect(board).toContain("replyKind: kind,");
+    expect(board).toContain("column: pending.to.key,");
   });
 
   it("holds what was just stated so the card moves before the re-read lands", () => {
@@ -148,9 +150,8 @@ describe("a move states a reply KIND, and it asks which", () => {
     // without this the control reads as dead for a round trip. The COLUMN rides along
     // because placement is the producer's now: without it the card would snap back the
     // instant it was dropped.
-    expect(page).toContain(
-      "new Map(prev).set(email, { kind, at: new Date().toISOString(), column })",
-    );
+    expect(page).toContain("new Map(prev).set(email, held.kind");
+    expect(page).toContain("at: new Date().toISOString(), column: held.column }");
     expect(page).toContain("const column = held?.column ?? leadBoardColumnFor(lead.standing);");
     // A refusal drops it: the board must never state something nobody recorded.
     expect(page).toContain("next.delete(email)");
@@ -161,9 +162,13 @@ describe("a move states a reply KIND, and it asks which", () => {
     // somewhere else — which it does: stating "Interested" on a campaign whose funnel is
     // entered by a website visit is a positive reply, and a positive reply is not the
     // step that campaign sells. That is the correct answer and the reader must see it.
-    const move = sliceFrom(page, "onMove={(email, kind, column)", 3400);
-    expect(move).toContain("void settled.then(() => {");
+    const move = sliceFrom(page, "onMove={(move) => {", 4400);
+    expect(move).toContain("void settled.then(drop);");
     expect(move).toContain("next.delete(email)");
+    // A WITHDRAWAL holds nothing at all: where a released person lands is
+    // lead-service's answer, and guessing at it here would be this app deciding a
+    // standing again — the whole thing this board stopped doing.
+    expect(move).toContain('if (move.type !== "withdrawal") {');
     // Detached rather than awaited: a promise returned from `onSuccess` keeps the
     // mutation pending, and that is what the board disables its picker on — so
     // awaiting the leads refetch would lock it for the length of a read that runs to
@@ -172,11 +177,10 @@ describe("a move states a reply KIND, and it asks which", () => {
   });
 
   it("renders the producer's own refusal, never the thrown Error's message", () => {
-    // Measured: `leadStepErrorMessage(err)` sits 3,504 chars from the handler's own
-    // open tag. A `toContain` cannot be hurt by a slice that runs long, so this has
-    // real headroom; the `not.toContain` below is bounded by the same slice and its
+    // A `toContain` cannot be hurt by a slice that runs long, so this has real
+    // headroom; the `not.toContain` below is bounded by the same slice and its
     // neighbour writes no `err.message`.
-    const move = sliceFrom(page, "onMove={(email, kind, column)", 4200);
+    const move = sliceFrom(page, "onMove={(move) => {", 4900);
     expect(move).toContain("leadStepErrorMessage(err)");
     expect(move).not.toContain("err.message");
   });
