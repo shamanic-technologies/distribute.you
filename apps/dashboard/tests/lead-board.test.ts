@@ -98,13 +98,24 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
     }
   });
 
-  it("sends a BOUNCE and a plain NO to Disqualified now, which is a change", () => {
-    // This module used to keep both in Contacted on purpose — a bounce is a failure of
-    // DELIVERY, and in sales a no is where the conversation starts. lead-service reads
-    // both as out of play for this campaign and it is the owner; a client-side
-    // override to preserve the older reading is the split this change closes.
-    expect(at("disqualified", "bounced")).toBe("disqualified");
+  it("sends a plain NO to Disqualified, which is a change a reader will notice", () => {
+    // This module used to keep it in Contacted on the sales-canon split between a
+    // temporary no and a permanent one. lead-service reads a negative reply as out of
+    // play for THIS campaign and it is the owner; a client-side override to preserve
+    // the older reading is the split this change closes.
     expect(at("disqualified", "negative_reply")).toBe("disqualified");
+  });
+
+  it("renders a BOUNCE wherever the producer puts it, and does not re-judge it", () => {
+    // A bad address says nothing about whether the human behind it would buy, so a
+    // bounce is not a disqualification — and that rule lives at the PRODUCER now
+    // (sales-lead-service#478), which is why there is nothing here that reads
+    // `bounced`. The card stays in Leads and wears "Bounced" as its own tag.
+    const src = readBoardSource();
+    expect(src.slice(src.indexOf("export function leadBoardColumnFor("))).not.toContain("bounced");
+    // Whatever state the producer sends for a bounced lead is what it renders.
+    expect(at("contacted", "bounced")).toBe("contacted");
+    expect(at("engaged", "bounced")).toBe("contacted");
   });
 
   it("holds NO reply-kind list and NO precedence ladder of its own", () => {

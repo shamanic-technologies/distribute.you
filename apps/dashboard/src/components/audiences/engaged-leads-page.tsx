@@ -10,6 +10,7 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import { leadBoardColumnFor, type LeadBoardColumnKey } from "@/lib/lead-board";
+import { leadStatusLabel, leadStatusTone } from "@/lib/lead-status";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -141,25 +142,10 @@ type Tab = "positive-replies" | "clicks" | "outreach" | "all" | OutcomeTab;
 // from a badge to the timestamp that proves it; the outcome tabs are the exception
 // (their date is the realized-outcome instant from the /revenue join, and a signup
 // has no delivery status to date).
-function leadStatusLabel(status: LeadConsolidatedStatus): string {
-  switch (status) {
-    case "replied": return "Replied";
-    case "clicked": return "Website visit";
-    case "delivered": return "Delivered";
-    case "sent": return "Sent";
-    case "bounced": return "Bounced";
-    case "unsubscribed": return "Unsubscribed";
-    // Handing the lead to Instantly is not reaching them: Instantly dispatches on
-    // weekdays inside the recipient's business hours, so this state can outlive the
-    // push by three days. The old wording claimed an email had already gone out.
-    case "contacted": return "Queued";
-    case "served": return "Processing";
-    case "skipped": return "Skipped";
-    case "claimed": return "Claimed";
-    case "buffered": return "Buffered";
-  }
-}
-
+// `leadStatusLabel` moved to `lib/lead-status.ts`: the board card's tag reads the same
+// word this table's badge does, and a second spelling is how one lead comes to read
+// "Delivered" in the table and "Sent" on a card one click away. The STYLE stays here —
+// it is this table's own eleven-hue palette and nothing else wears it.
 function leadStatusStyle(status: LeadConsolidatedStatus): string {
   switch (status) {
     case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -1418,6 +1404,14 @@ export function EngagedLeadsPage({
         orgDomain: full?.organization?.primaryDomain ?? null,
         column,
         replyKind: stated,
+        // The card states what we last OBSERVED about this person, not the column it
+        // is already sitting in — a tag reading "Sales interest" under a heading
+        // reading "Sales interest" spends the card's one tag saying nothing. The
+        // status is the shared `getLeadConsolidatedStatus`, so the card and the
+        // table's own badge cannot name one lead two ways, and the date below is
+        // `leadDateForStatus` of that same status: one statement, one event.
+        statusLabel: leadStatusLabel(getLeadConsolidatedStatus(lead)),
+        statusTone: leadStatusTone(getLeadConsolidatedStatus(lead)),
         // When a kind was STATED, the card is dated by that statement; otherwise by the
         // timestamp that proves the lead's own delivery status — the same one map the
         // table's Date column reads, so the two surfaces cannot date one lead two ways.
@@ -1759,8 +1753,14 @@ export function EngagedLeadsPage({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full relative">
-      <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 pb-24 overflow-y-auto transition-all`}>
+    // The list keeps the WHOLE page width at every size and the detail panel OVERLAYS
+    // it. It used to be a two-up split that squeezed the list to half-width whenever a
+    // lead was open — which on the board meant five columns reflowing into a 50% rail
+    // the moment somebody opened a card, i.e. the set they were reading moved under
+    // them as the cost of looking at one row of it. An overlay costs the list nothing
+    // and is what the mobile branch already did.
+    <div className="flex flex-col h-full relative">
+      <div className="w-full p-4 md:p-8 pb-24 overflow-y-auto transition-all">
         <OutreachStatCardsAuto contactedOverride={loading ? null : contactedCount} />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
@@ -1947,7 +1947,11 @@ export function EngagedLeadsPage({
       </div>
 
       {selectedLead && (
-        <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
+        // Full-screen on a phone, a right-hand sheet on desktop — pinned to the
+        // right edge and floating over the list rather than taking width from it.
+        // `z-20` sits above the board's own rail and below the support FAB (z-30),
+        // which is why the panel body carries its own bottom clearance.
+        <div className="absolute inset-0 md:left-auto md:w-[30rem] md:max-w-[92vw] bg-gray-50 border-gray-200 md:border-l md:shadow-2xl overflow-y-auto z-20 pb-24">
           <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
             <button onClick={() => setSelectedLead(null)} className="md:hidden flex items-center gap-2 text-gray-600">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>

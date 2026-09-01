@@ -63,8 +63,19 @@ export interface LeadBoardCard {
   orgName: string | null;
   orgDomain: string | null;
   column: LeadBoardColumnKey;
-  /** The kind already stated for this lead, rendered as its badge. */
+  /** The kind already stated for this lead, rendered as its badge when there is one. */
   replyKind: string | null;
+  /**
+   * The lead's most-advanced delivery status, in the SAME words the leads table's own
+   * badge uses (`lib/lead-status.ts`) — "Website visit", "Delivered", "Sent",
+   * "Bounced", "Queued". It is what the card's tag says when nobody has stated a kind,
+   * and `statusAt` below is the instant that proves THIS status and no other.
+   *
+   * Passed in rather than derived here: the page holds the wire row, and this
+   * component takes nothing from the wire on purpose.
+   */
+  statusLabel: string;
+  statusTone: ReplyTone;
   /**
    * When the card's STATUS happened — the moment somebody stated the kind when one
    * was stated, otherwise the timestamp that proves the lead's own delivery status.
@@ -81,22 +92,6 @@ interface PendingMove {
   card: LeadBoardCard;
   to: LeadBoardColumn;
 }
-
-/**
- * The tone of a card's tag when nobody has stated a kind — the column's own verdict.
- *
- * Positive/negative rather than all-neutral because the column IS the judgement at
- * that point, and a Disqualified card reading in the same grey as a Contacted one
- * hides the only thing the board is sorted by.
- */
-const COLUMN_TONE: Record<LeadBoardColumnKey, ReplyTone> = {
-  contacted: "neutral",
-  sales_interest: "positive",
-  disqualified: "negative",
-  opt_out: "negative",
-  // Not a verdict about the person: it is the producer saying it could not answer.
-  unresolved: "neutral",
-};
 
 /** The person's face, or their initial. 18px so the second line keeps its own height. */
 function PersonMark({ photoUrl, name }: { photoUrl: string | null; name: string }) {
@@ -137,10 +132,16 @@ function PersonMark({ photoUrl, name }: { photoUrl: string | null; name: string 
  */
 function CardBody({ card }: { card: LeadBoardCard }) {
   const stated = replyKindOption(card.replyKind);
-  const column = LEAD_BOARD_COLUMNS.find((c) => c.key === card.column);
+  // The tag states what we last OBSERVED about this person, never the column it is
+  // already sitting in: a card reading "Sales interest" under a heading reading
+  // "Sales interest" spends its one tag saying nothing a reader did not have. So a
+  // lead in Sales interest reads "Website visit", and one in Leads reads "Delivered"
+  // or "Sent" or "Bounced" — the thing that actually distinguishes it from the card
+  // above it. A kind somebody STATED still wins, because it is the more specific
+  // answer and a person wrote it.
   const tag = stated
-    ? { label: stated.label, tone: stated.tone }
-    : { label: column?.label ?? "Contacted", tone: COLUMN_TONE[card.column] };
+    ? { label: stated.label, tone: stated.tone as ReplyTone }
+    : { label: card.statusLabel, tone: card.statusTone };
   return (
     <>
       <div className="flex min-w-0 items-center gap-2">
@@ -160,10 +161,11 @@ function CardBody({ card }: { card: LeadBoardCard }) {
       </div>
 
       <div className="mt-1.5 flex min-w-0 items-center gap-2">
-        {/* WHY this card is in this column. A column holds several kinds, so the badge
-            is the only place the particular one survives — and when nobody has stated
-            one the column's own word stands in, because a tagless card reads as
-            unknown when it is merely un-replied-to. */}
+        {/* WHAT WE LAST OBSERVED about this person — never the column's own word,
+            which the heading above already carries. A kind somebody stated when there
+            is one, otherwise the lead's most-advanced delivery status in the table's
+            own vocabulary. Every card wears one: a tagless card reads as one we know
+            nothing about, when we always know at least that we wrote to them. */}
         <span
           data-testid="lead-board-card-tag"
           className={`inline-flex min-w-0 truncate rounded-full border px-1.5 py-0.5 text-[11px] ${REPLY_TONE_PILL[tag.tone]}`}
