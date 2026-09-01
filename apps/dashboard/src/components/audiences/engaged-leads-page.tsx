@@ -9,6 +9,7 @@ import { invalidateLeadOutcome } from "@/lib/write-invalidation";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
+import type { OptOutChannel } from "@/lib/opt-out-channel";
 import { leadBoardColumnFor, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -61,6 +62,8 @@ import {
 import {
   listManualQualifications,
   setManualQualification,
+  recordLeadOptOut,
+  withdrawLeadOptOut,
   withdrawManualQualification,
 } from "@/lib/api";
 import type { ReplyKind } from "@/lib/reply-kind";
@@ -1418,6 +1421,20 @@ export function EngagedLeadsPage({
     mutationFn: ({ email, kind }: { email: string; kind: ReplyKind }) =>
       setManualQualification({ campaignId: campaignId as string, email, status: kind }),
   });
+  // Moving a card INTO Opt-out is a different write to a different producer: it states
+  // that a named person asked us to stop and how they told us, it is scoped to the
+  // PERSON rather than to this campaign, and it stops the sending everywhere. Kept as
+  // its own mutation rather than folded into the one above — flattening them is what
+  // would let a reply kind be written where a consent record belongs.
+  const optOutOnBoard = useMutation({
+    mutationFn: ({ email, channel }: { email: string; channel: OptOutChannel }) =>
+      recordLeadOptOut({ email, channel }),
+  });
+  // And moving one OUT is the withdrawal of that record. It resumes nothing that was
+  // stopped, which is why it is the only move the board asks somebody to confirm.
+  const withdrawOptOutOnBoard = useMutation({
+    mutationFn: ({ email }: { email: string }) => withdrawLeadOptOut({ email }),
+  });
 
   // Paginate the active-tab (post-search) list at 50/page. Pure display slice —
   // the tab count badge + CSV export stay whole-list. Reset to page 0 whenever the
@@ -1857,7 +1874,11 @@ export function EngagedLeadsPage({
             ) : showBoard ? (
               <LeadBoard
                 cards={boardCards}
-                busy={moveOnBoard.isPending}
+                busy={
+                  moveOnBoard.isPending ||
+                  optOutOnBoard.isPending ||
+                  withdrawOptOutOnBoard.isPending
+                }
                 error={boardError}
                 canMove={Boolean(campaignId)}
                 filterKey={search}
@@ -1865,65 +1886,90 @@ export function EngagedLeadsPage({
                   const lead = coveredLeads.find((l) => l.id === leadRowId);
                   if (lead) setSelectedLead(lead);
                 }}
-                onMove={(email, kind, column) => {
+                onMove={(move) => {
                   setBoardError(null);
-                  setStatedReplyKinds((prev) =>
-                    // Stamped now because that is when the person said it — the read
-                    // that replaces this carries instantly-service's own instant. The
-                    // column rides along so the card stays where it was dropped for
-                    // the round trip; lead-service decides where it ends up.
-                    new Map(prev).set(email, { kind, at: new Date().toISOString(), column }),
-                  );
-                  moveOnBoard.mutate(
-                    { email, kind },
-                    {
-                      onSuccess: () => {
-                        // The campaign's kinds and the lead rows both change with a
-                        // statement (a reply kind decides whether the sequence keeps
-                        // sending), so both are re-read.
-                        const settled = Promise.all([
-                          queryClient.invalidateQueries({ queryKey: ["campaignReplyKinds", campaignId ?? "none"] }),
-                          queryClient.invalidateQueries({
-                            queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
-                          }),
-                        ]);
-                        // The card moved because an outcome changed, so every figure
-                        // that counts that outcome is re-read with it.
-                        invalidateLeadOutcome(queryClient);
-                        // Dropped once the re-read lands, and NOT before: the hold
-                        // exists to cover the round trip and no longer. Keeping it past
-                        // the re-read would pin the card to the column somebody dropped
-                        // it in even when lead-service places it somewhere else — which
-                        // it legitimately does (a positive reply is not the step a
-                        // visit-led campaign sells), and which the reader has to see.
-                        //
-                        // Detached rather than awaited HERE: a promise returned from
-                        // `onSuccess` keeps the mutation `isPending`, which is what the
-                        // board's `busy` disables its buttons on — so awaiting the leads
-                        // refetch would lock the whole picker for the length of a read
-                        // that runs to tens of megabytes on a live campaign.
-                        void settled.then(() => {
-                          setStatedReplyKinds((prev) => {
-                            const next = new Map(prev);
-                            next.delete(email);
-                            return next;
-                          });
-                        });
-                      },
-                      // instantly-service writes its refusal as a sentence for a person
-                      // to read. Surface ITS reason, never the thrown Error's own
-                      // message, which apiCall sets to the whole downstream body.
-                      onError: (err) => {
-                        console.error("[dashboard] board move failed", err);
-                        setStatedReplyKinds((prev) => {
-                          const next = new Map(prev);
-                          next.delete(email);
-                          return next;
-                        });
-                        setBoardError(leadStepErrorMessage(err));
-                      },
-                    },
-                  );
+                  const email = move.email;
+                  // A reply kind holds the card in the column it was dropped in for the
+                  // round trip. An opt-out holds it in Opt-out for the same reason. A
+                  // WITHDRAWAL holds nothing on purpose: where the person lands once the
+                  // record is released is lead-service's answer, and guessing at it here
+                  // would be this app deciding a standing again.
+                  if (move.type !== "withdrawal") {
+                    const held =
+                      move.type === "reply"
+                        ? { kind: move.replyKind as string, column: move.column }
+                        // Opt-out states a channel, not a reply kind. The card's own tag
+                        // keeps reading whatever was last observed about the person; the
+                        // hold is only about WHERE it sits.
+                        : { kind: null as unknown as string, column: "opt_out" as LeadBoardColumnKey };
+                    setStatedReplyKinds((prev) =>
+                      // Stamped now because that is when the person said it — the read
+                      // that replaces this carries the producer's own instant.
+                      new Map(prev).set(email, held.kind
+                        ? { kind: held.kind, at: new Date().toISOString(), column: held.column }
+                        : null),
+                    );
+                  }
+
+                  const drop = () =>
+                    setStatedReplyKinds((prev) => {
+                      const next = new Map(prev);
+                      next.delete(email);
+                      return next;
+                    });
+
+                  const settle = () => {
+                    // The campaign's kinds and the lead rows both change with a
+                    // statement (a reply kind decides whether the sequence keeps
+                    // sending), so both are re-read.
+                    const settled = Promise.all([
+                      queryClient.invalidateQueries({ queryKey: ["campaignReplyKinds", campaignId ?? "none"] }),
+                      queryClient.invalidateQueries({
+                        queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
+                      }),
+                    ]);
+                    // The card moved because an outcome changed, so every figure that
+                    // counts that outcome is re-read with it.
+                    invalidateLeadOutcome(queryClient);
+                    // Dropped once the re-read lands, and NOT before: the hold exists to
+                    // cover the round trip and no longer. Keeping it past the re-read
+                    // would pin the card to the column somebody dropped it in even when
+                    // lead-service places it somewhere else — which it legitimately does
+                    // (a positive reply is not the step a visit-led campaign sells), and
+                    // which the reader has to see.
+                    //
+                    // Detached rather than awaited HERE: a promise returned from
+                    // `onSuccess` keeps the mutation `isPending`, which is what the
+                    // board's `busy` disables its buttons on — so awaiting the leads
+                    // refetch would lock the whole picker for the length of a read that
+                    // runs to tens of megabytes on a live campaign.
+                    void settled.then(drop);
+                  };
+
+                  // The producer writes its refusal as a sentence for a person to read.
+                  // Surface ITS reason, never the thrown Error's own message, which
+                  // apiCall sets to the whole downstream body.
+                  const fail = (err: unknown) => {
+                    console.error("[dashboard] board move failed", err);
+                    drop();
+                    setBoardError(leadStepErrorMessage(err));
+                  };
+
+                  if (move.type === "reply") {
+                    moveOnBoard.mutate(
+                      { email, kind: move.replyKind },
+                      { onSuccess: settle, onError: fail },
+                    );
+                    return;
+                  }
+                  if (move.type === "optOut") {
+                    optOutOnBoard.mutate(
+                      { email, channel: move.channel },
+                      { onSuccess: settle, onError: fail },
+                    );
+                    return;
+                  }
+                  withdrawOptOutOnBoard.mutate({ email }, { onSuccess: settle, onError: fail });
                 }}
               />
             ) : (

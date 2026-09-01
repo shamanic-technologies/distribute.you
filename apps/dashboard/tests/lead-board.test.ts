@@ -4,6 +4,7 @@ import {
   INTEREST_STATEMENT_KINDS,
   LEAD_BOARD_COLUMNS,
   LEAD_BOARD_PAGE_SIZE,
+  columnMoveConfirmation,
   columnMoveRefusal,
   columnPage,
   columnReplyKinds,
@@ -18,7 +19,7 @@ const at = (state: string, signal = "none") =>
   leadBoardColumnFor({ state, signal } as unknown as LeadBoardStanding);
 
 describe("the board is five triage columns", () => {
-  it("states them in triage order, and only the two we cannot write refuse a card", () => {
+  it("states them in triage order, and only Not-placed refuses a card", () => {
     expect(LEAD_BOARD_COLUMNS.map((c) => c.key)).toEqual([
       "contacted",
       "sales_interest",
@@ -26,12 +27,13 @@ describe("the board is five triage columns", () => {
       "opt_out",
       "unresolved",
     ]);
-    // Unsubscribing is the PROSPECT's act and it is legally binding, so no control of
-    // ours may record it on their behalf; "Not placed" is the producer saying it could
-    // not answer, which nobody can assert their way into.
-    expect(LEAD_BOARD_COLUMNS.find((c) => c.key === "opt_out")?.writable).toBe(false);
+    // "Not placed" is the producer saying it could not answer, which nobody can assert
+    // their way into. Every other column is a statement somebody can honestly make —
+    // Opt-out included: a prospect who asks us to stop by SMS said it just as much as
+    // one who clicked the link, and refusing to RECORD that is not protecting their
+    // consent, it is ignoring it while we keep emailing them.
     expect(LEAD_BOARD_COLUMNS.find((c) => c.key === "unresolved")?.writable).toBe(false);
-    for (const key of ["contacted", "sales_interest", "disqualified"] as const) {
+    for (const key of ["contacted", "sales_interest", "disqualified", "opt_out"] as const) {
       expect(LEAD_BOARD_COLUMNS.find((c) => c.key === key)?.writable).toBe(true);
     }
   });
@@ -201,25 +203,45 @@ describe("which columns a card may move to", () => {
     expect(movableColumnsFrom("contacted").map((c) => c.key)).toEqual([
       "sales_interest",
       "disqualified",
+      "opt_out",
     ]);
     expect(movableColumnsFrom("sales_interest").map((c) => c.key)).toEqual([
       "contacted",
       "disqualified",
+      "opt_out",
     ]);
   });
 
-  it("never offers Opt-out or Not-placed as a destination", () => {
+  it("moves a card between ANY two triage columns, in both directions", () => {
+    // Every pair, both ways. The four triage columns are states somebody can be wrong
+    // about, so every correction has to be reachable — including out of Opt-out, which
+    // used to be a dead end whose only fix was a database write.
+    const triage = ["contacted", "sales_interest", "disqualified", "opt_out"] as const;
+    for (const from of triage) {
+      expect(movableColumnsFrom(from).map((c) => c.key).sort()).toEqual(
+        triage.filter((k) => k !== from).slice().sort(),
+      );
+    }
+  });
+
+  it("never offers Not-placed as a destination", () => {
     for (const from of LEAD_BOARD_COLUMNS) {
-      expect(movableColumnsFrom(from.key).map((c) => c.key)).not.toContain("opt_out");
       expect(movableColumnsFrom(from.key).map((c) => c.key)).not.toContain("unresolved");
     }
   });
 
-  it("never moves a card OUT of Opt-out either", () => {
-    // `writable: false` only stops a card ARRIVING. Without this, a lead who asked us
-    // to stop could be dragged back into play — the same consent decision we refuse to
-    // fabricate, made in the more dangerous direction.
-    expect(movableColumnsFrom("opt_out")).toEqual([]);
+  it("asks somebody to confirm ONLY when a card leaves Opt-out", () => {
+    // Every other move states something about a reply and the next statement supersedes
+    // it. This one puts a person who asked us to stop back where we can contact them,
+    // so it says what it does AND what it does not do — nothing that was stopped starts
+    // again on its own.
+    for (const key of ["contacted", "sales_interest", "disqualified", "unresolved"] as const) {
+      expect(columnMoveConfirmation(key)).toBeNull();
+    }
+    expect(columnMoveConfirmation(null)).toBeNull();
+    const leaving = columnMoveConfirmation("opt_out");
+    expect(leaving).toMatch(/asked us to stop/i);
+    expect(leaving).toMatch(/nothing that was stopped starts again/i);
   });
 
   it("never moves a card out of Not-placed, because nothing anybody states would move it", () => {
@@ -237,22 +259,25 @@ describe("which columns a card may move to", () => {
 });
 
 describe("a drop lands everywhere, and the form is where a move is refused", () => {
-  it("refuses the two unwritable columns, each with its own reason", () => {
-    for (const key of ["contacted", "sales_interest", "disqualified"] as const) {
+  it("refuses Not-placed alone, and says why", () => {
+    for (const key of ["contacted", "sales_interest", "disqualified", "opt_out"] as const) {
       expect(columnMoveRefusal(key)).toBeNull();
     }
-    // The reason, not a bare "not allowed" — the rule is about whose act this is.
-    expect(columnMoveRefusal("opt_out")).toMatch(/prospect/i);
+    // The reason, not a bare "not allowed": nothing anybody states about the person
+    // settles a campaign that names no sales funnel.
     expect(columnMoveRefusal("unresolved")).toMatch(/funnel/i);
   });
 
-  it("has nothing it could write for either even if it wanted to", () => {
-    // Not a preference: instantly-service's vocabulary carries no unsubscribe value,
-    // so the picker for that column is empty by construction.
+  it("offers no REPLY KIND for Opt-out or Not-placed, for different reasons", () => {
+    // Opt-out states the CHANNEL somebody told us through, not a reply kind — a
+    // different write, to a different producer, scoped to the person rather than to
+    // this campaign. So an empty picker here is NOT "nothing can be written", and the
+    // column is writable. Not-placed really is nothing: lead-service could not answer.
     for (const key of ["opt_out", "unresolved"] as const) {
       expect(columnReplyKinds(key)).toEqual([]);
-      expect(columnMoveRefusal(key)).not.toBeNull();
     }
+    expect(columnMoveRefusal("opt_out")).toBeNull();
+    expect(columnMoveRefusal("unresolved")).not.toBeNull();
   });
 });
 
