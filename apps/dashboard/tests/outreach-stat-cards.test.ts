@@ -203,6 +203,43 @@ describe("OutreachStatCards copy", () => {
     );
   });
 
+  it("swaps the people/actions pair for the board's own two cards when the caller counts them", () => {
+    // The Leads page draws a board, so its row states the population it holds and how
+    // many of those people show sales interest — both off the rows the board partitions.
+    // The undeduped action count has no place beside a board; on a one-step sequence it
+    // printed the very same number twice.
+    expect(cards).toContain("leadsOverride?: number | null;");
+    expect(cards).toContain(
+      "salesInterestOverride?: { count: number; sharePct: number | null } | null;",
+    );
+    expect(cards).toContain("{showOutreach && leadsOverride != null ? (");
+    expect(cards).toContain('label="Leads"');
+    expect(cards).toContain("value={formatCount(leadsOverride)}");
+    expect(cards).toContain("value={formatCount(salesInterestOverride.count)}");
+    // Same adaptive share formatter every other card on the row uses, of the number the
+    // card beside it states.
+    expect(cards).toContain("`${formatSharePct(salesInterestOverride.sharePct)} of leads`");
+  });
+
+  it("stands the funnel pair's own sales-interest COUNT down when the board supplied one", () => {
+    // Two numbers under one word — one from reply signals, one from lead-service's
+    // funnel-aware standing — is one screen contradicting itself. The COST card stays:
+    // it is the only thing that prices them.
+    expect(cards.match(/\{salesInterestOverride == null && \(/g) ?? []).toHaveLength(2);
+    expect(cards).toContain('label="Cost per sales interest"');
+  });
+
+  // The prop is only real if the PAGE passes it.
+  it("has the Leads page pass the board's population and its sales-interest count", () => {
+    const leads = read("../src/components/audiences/engaged-leads-page.tsx");
+    expect(leads).toContain("leadsOverride={loading ? null : boardPopulation.leads}");
+    expect(leads).toContain(
+      "salesInterestOverride={loading ? null : boardPopulation.salesInterest}",
+    );
+    expect(auto).toContain("leadsOverride={leadsOverride}");
+    expect(auto).toContain("salesInterestOverride={salesInterestOverride}");
+  });
+
   // The share is SERVED (`funnelSteps.steps[0].conversionFromPreviousPct`). A browser
   // dividing the two counts is the compute-a-stat-in-the-browser bug and would drift
   // from the producer the moment either side changed scope.
