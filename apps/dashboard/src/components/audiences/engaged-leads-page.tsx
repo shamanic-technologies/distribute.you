@@ -1458,12 +1458,46 @@ export function EngagedLeadsPage({
     count: groupedByTab.get(key)?.length ?? 0,
   }));
 
-  // Contacted-lead count from the SAME listBrandLeads snapshot the table renders
-  // (= the Outreach tab count). Passed to the stat box so the box reads the
-  // leads-snapshot single source (303) instead of the legacy /stats email-gateway
-  // aggregate (301) — mirrors the brand Overview's outreachContacted override
-  // (features-service #371/#372). Both surfaces now move together.
-  const contactedCount = groupedByTab.get("outreach")?.length ?? 0;
+
+  // The two numbers the stat row states, taken off the SAME rows the board partitions
+  // into columns — the page's own population, and how many of those people stand at
+  // sales interest. Placement is `leadBoardColumnFor(standing)`, lead-service's own
+  // funnel-aware answer, exactly as the board reads it (plus the same held latch, so a
+  // move the person just made counts here for the round trip it takes to land): a card
+  // and a column disagreeing about one screen is the self-contradictory-surface bug.
+  //
+  // Computed over `coveredLeads`, NOT `searchedLeads`: the cards describe the population,
+  // the board's own columns thin out with the search box like the table does.
+  //
+  // Deliberately NOT `spend.positiveRepliesCount`. That is features-service's aggregate
+  // over REPLY signals; the board renders `standing.state`, which is funnel-aware, and on
+  // a funnel entered by a website visit the two are legitimately different numbers (67
+  // leads who clicked through stand at `sales_interest` on `form_magnet`, where a
+  // reply-based count sees none of them).
+  const boardPopulation = useMemo(() => {
+    let leads = 0;
+    let salesInterest = 0;
+    for (const lead of coveredLeads) {
+      const held =
+        lead.email && statedReplyKinds.has(lead.email)
+          ? (statedReplyKinds.get(lead.email) ?? null)
+          : undefined;
+      const column = held?.column ?? leadBoardColumnFor(lead.standing);
+      if (!column) continue;
+      leads += 1;
+      if (column === "sales_interest") salesInterest += 1;
+    }
+    return {
+      leads,
+      // A share of two counts THIS row states side by side — a description of the board
+      // on screen, not a metric divided out of served fields. Null on an empty
+      // population: "we have nothing to divide by", never a 0%.
+      salesInterest: {
+        count: salesInterest,
+        sharePct: leads > 0 ? (salesInterest / leads) * 100 : null,
+      },
+    };
+  }, [coveredLeads, statedReplyKinds]);
 
   // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
   // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
@@ -1761,7 +1795,10 @@ export function EngagedLeadsPage({
     // and is what the mobile branch already did.
     <div className="flex flex-col h-full relative">
       <div className="w-full p-4 md:p-8 pb-24 overflow-y-auto transition-all">
-        <OutreachStatCardsAuto contactedOverride={loading ? null : contactedCount} />
+        <OutreachStatCardsAuto
+          leadsOverride={loading ? null : boardPopulation.leads}
+          salesInterestOverride={loading ? null : boardPopulation.salesInterest}
+        />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads

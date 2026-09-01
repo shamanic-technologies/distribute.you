@@ -40,6 +40,8 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 export function OutreachStatCardsAuto({
   outreachOverride,
   contactedOverride,
+  leadsOverride,
+  salesInterestOverride,
   outreachLabel,
 }: {
   /**
@@ -60,6 +62,18 @@ export function OutreachStatCardsAuto({
    * a page counting people has no second count to give.
    */
   contactedOverride?: number | null;
+  /**
+   * The board's own two numbers, forwarded untouched: the POPULATION this surface holds,
+   * and how many of those people stand at sales interest with their share of it.
+   *
+   * The Leads page supplies both off the very rows its board partitions, so its cards and
+   * its columns cannot disagree about the same screen. Supplying `leadsOverride` replaces
+   * the people/actions pair; supplying `salesInterestOverride` also stands the funnel
+   * pair's own count card down, because that one counts reply signals while the board
+   * renders lead-service's funnel-aware standing and the two legitimately differ.
+   */
+  leadsOverride?: number | null;
+  salesInterestOverride?: { count: number; sharePct: number | null } | null;
   /**
    * What that first card is CALLED. Passed through untouched — a caller supplying its
    * own count says in the same breath what the count is OF (the Leads page counts
@@ -210,6 +224,8 @@ export function OutreachStatCardsAuto({
       paused={withheldPaused}
       outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
       contactedOverride={contactedOverride}
+      leadsOverride={leadsOverride}
+      salesInterestOverride={salesInterestOverride}
       // The share of contacted that showed sales interest, through the one helper the
       // campaign Overview reads too, so the two surfaces cannot state it two ways.
       signalSharePct={salesInterestSharePct(revenueData?.funnelSteps)}
