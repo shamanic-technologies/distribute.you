@@ -359,12 +359,26 @@ describe("the board explains the two splits a reader would not guess", () => {
     const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
     // Each column states what lands in it, in its own blurb.
     for (const blurb of [
-      "Still in play. Nothing has happened yet, or nothing this campaign sells.",
+      "Still in play, a no for now included. Nothing has happened yet, or nothing this campaign sells.",
       "They reached the step this campaign sells, or bought.",
-      "Out of play: they said no, they opted out, or they cannot buy.",
+      "Not our target: wrong contact, they left the role, or the company is not who we sell to.",
     ]) {
       expect(lib).toContain(blurb);
     }
+  });
+
+  it("never tells a reader that a no, or an opt-out, belongs in Disqualified", () => {
+    // Disqualified is "not our target" and nothing else. A no about the moment stays in
+    // Leads and an opt-out has its own column, so a blurb naming either of them here
+    // describes a board that does not exist.
+    const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
+    const disqualified = lib.slice(
+      lib.indexOf('key: "disqualified"'),
+      lib.indexOf('key: "opt_out"'),
+    );
+    expect(disqualified).not.toContain("said no");
+    expect(disqualified).not.toContain("opted out");
+    expect(disqualified).not.toContain("cannot buy");
   });
 
   it("names the first column LEADS, because Contacted is a card's word now", () => {

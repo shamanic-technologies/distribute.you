@@ -43,10 +43,23 @@
 // (sales-lead-service#478). Note where the fix went: overriding it HERE would have
 // re-created the three-way split this file exists to have closed.
 //
-// A plain "no" DOES leave for Disqualified, and that one is a real change a reader
-// will notice. This file used to keep it in Contacted on the sales-canon split between
-// a temporary no and a permanent one; lead-service reads a negative reply as out of
-// play for THIS campaign, and it is the owner.
+// A plain "no" STAYS IN LEADS, and this is the rule the whole column exists for.
+// Disqualified means one thing only: we realised this is not our target — the wrong
+// contact, somebody who has left the role, a company that is not who we sell to. It is
+// the ordinary sales qualification, and the owner's analogy for it is exact: we sell
+// pears to supermarkets and we emailed somebody who works in construction. "Not
+// interested" and "cannot buy right now" are judgements about the OFFER at this MOMENT,
+// so those people are still reachable and the lead is still recyclable; folding them in
+// here is what turns the column into a dumping ground and loses that pipeline silently.
+// An opt-out has its own column and never sits here.
+//
+// That split is instantly-service's own — its vocabulary already separates the
+// recyclable `lead_not_interested` from the permanent `lead_wrong_person` /
+// `lead_changed_job` — and it is enforced by lead-service, which owns placement. This
+// file states the columns and the picker; it does NOT re-decide who is out of play.
+// The one thing to know if a plain "no" ever shows up here again: the fault is upstream
+// (the fine kind not reaching lead-service), and overriding it here would re-create the
+// three-way policy split this file exists to have closed.
 //
 // Alias-free on purpose (its runtime import is relative and pulls no "@" alias in) so
 // this module carries REAL unit tests. Keep it that way.
@@ -96,7 +109,7 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
     // what the word means. The column is simply everybody still in play.
     key: "contacted",
     label: "Leads",
-    blurb: "Still in play. Nothing has happened yet, or nothing this campaign sells.",
+    blurb: "Still in play, a no for now included. Nothing has happened yet, or nothing this campaign sells.",
     writable: true,
     hideWhenEmpty: false,
   },
@@ -110,7 +123,7 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   {
     key: "disqualified",
     label: "Disqualified",
-    blurb: "Out of play: they said no, they opted out, or they cannot buy.",
+    blurb: "Not our target: wrong contact, they left the role, or the company is not who we sell to.",
     writable: true,
     hideWhenEmpty: false,
   },
@@ -154,11 +167,16 @@ export const INTEREST_STATEMENT_KINDS: readonly ReplyKind[] = [
  * The kinds a person may state to put a card in Disqualified — an objective fact about
  * the person, never a judgement about the moment.
  *
- * Typed as bare strings so a value can be listed BEFORE this app's own reply-kind
- * catalogue carries it: instantly-service owns that vocabulary and already serves
- * `lead_changed_job`, which `REPLY_KINDS` here does not yet name. `columnReplyKinds`
- * filters against the catalogue, so a kind listed early cannot reach a picker until
- * there is a label for it.
+ * BOTH are offered now. `lead_changed_job` sat here unrendered for a while — listed
+ * ahead of this app's own catalogue, which is what the bare-string type is for — so the
+ * picker offered "Wrong person" alone and somebody who had simply left the role could
+ * not be stated at all. `columnReplyKinds` filters against the catalogue, so a kind
+ * listed early still cannot reach a picker until there is a label for it; keep that
+ * filter, and when a kind is added upstream give it a label here in the same pass.
+ *
+ * What is NOT here, deliberately: `lead_not_interested`. A decline today is about the
+ * offer at this moment, the person stays reachable, and stating it must leave the card
+ * in Leads.
  */
 export const DISQUALIFYING_STATEMENT_KINDS: readonly string[] = [
   "lead_wrong_person",

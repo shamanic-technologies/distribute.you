@@ -150,7 +150,10 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
 describe("what a person may state from a column", () => {
   it("offers exactly that column's own kinds", () => {
     expect(columnReplyKinds("sales_interest")).toEqual([...INTEREST_STATEMENT_KINDS]);
-    expect(columnReplyKinds("disqualified")).toEqual(["lead_wrong_person"]);
+    expect(columnReplyKinds("disqualified")).toEqual([
+      "lead_wrong_person",
+      "lead_changed_job",
+    ]);
     expect(columnReplyKinds("opt_out")).toEqual([]);
     expect(columnReplyKinds("unresolved")).toEqual([]);
   });
@@ -173,15 +176,23 @@ describe("what a person may state from a column", () => {
   });
 
   it("offers only kinds the catalogue actually carries", () => {
-    // `lead_changed_job` is listed ahead of this app's own catalogue (instantly-service
-    // already serves it), so it must NOT reach a picker until there is a label — a
-    // button writing a value nothing renders is worse than a column that fills later.
+    // The filter is what stops a kind listed ahead of this app's own catalogue from
+    // reaching a picker — a button writing a value nothing renders is worse than a
+    // column that fills later. `lead_changed_job` now HAS a label, so it is offered.
     expect(DISQUALIFYING_STATEMENT_KINDS).toContain("lead_changed_job");
     const every = LEAD_BOARD_COLUMNS.flatMap((c) => columnReplyKinds(c.key));
     for (const kind of every) {
       expect(REPLY_KINDS.some((o) => o.kind === kind)).toBe(true);
     }
-    expect(every).not.toContain("lead_changed_job");
+    expect(every).toContain("lead_changed_job");
+  });
+
+  it("keeps a decline about the MOMENT out of the Disqualified picker", () => {
+    // Disqualified means "not our target". "Not interested" is a judgement about the
+    // offer today, so the person stays reachable and the card stays in Leads —
+    // stating it from the Disqualified column would assert something else entirely.
+    expect(columnReplyKinds("disqualified")).not.toContain("lead_not_interested");
+    expect(columnReplyKinds("contacted")).toContain("lead_not_interested");
   });
 });
 
