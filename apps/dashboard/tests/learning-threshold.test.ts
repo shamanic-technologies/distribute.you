@@ -346,8 +346,8 @@ describe("audienceIsLearning + the per-audience gate", () => {
 
   it("hides the three money columns for that row, and leaves $ Invested", () => {
     expect(table).toContain("const moneyLearning =");
-    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} paused={campaignPaused} /> : formatPct(stats?.projection?.costOfAcquisitionPct)");
-    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} paused={campaignPaused} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)");
+    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatPct(stats?.projection?.costOfAcquisitionPct)");
+    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)");
     expect(table).toContain("formatCents(stats.evidence.totalCostInUsdCents)");
   });
 
@@ -407,9 +407,11 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     expect(table).toContain(
       "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
     );
-    expect(table).toContain("paused={campaignPaused}");
-    // Brand grain passes no campaign, so the flag is false there by construction —
-    // several campaigns work those audiences and no single status answers for them.
+    // Off a campaign it falls through to the SCOPE's verdict — the offer's campaigns,
+    // since a set is picked for a proposition and never for a funnel.
+    expect(table).toContain("const withheldPaused = campaignPaused || scopePaused;");
+    expect(table).toContain("paused={withheldPaused}");
+    expect(table).toContain("useScopePaused(brandId, { offerId })");
     expect(table).toContain('const campaignScoped = Boolean(campaignId);');
   });
 
@@ -428,7 +430,9 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     expect(auto).toContain(
       "const campaignPaused = scopedCampaign != null && !isRunningStatus(scopedCampaign.status);",
     );
-    expect(auto).toContain("paused={campaignPaused}");
+    // ...and off a campaign it states the SCOPE's verdict instead of nothing.
+    expect(auto).toContain("const withheldPaused = campaignPaused || scopePaused;");
+    expect(auto).toContain("paused={withheldPaused}");
   });
 
   it("the return chart's tag follows the section's flag", () => {

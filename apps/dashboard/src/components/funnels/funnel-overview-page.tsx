@@ -16,6 +16,7 @@ import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
+import { useScopePaused } from "@/lib/use-scope-paused";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
@@ -97,6 +98,20 @@ export function FunnelOverviewPage() {
   // money already spent and pipeline already earned are facts, not prices.
   const economicsLearning = scopeIsLearning(funnelRows);
 
+  // Is this funnel STOPPED. A `Learning` tag says a figure is withheld because too few
+  // outcomes have landed; when nothing sells this funnel, none can land, so it promises a
+  // number that cannot arrive until the customer restarts something. `Paused` is the
+  // honest word, and it is the one the pill in this page's own header already renders —
+  // built from the SAME rows, so a heading and the figures under it cannot disagree.
+  //
+  // WHICH figures are withheld is unchanged: that stays keyed on the outcome counts, so
+  // restarting restores exactly the tags this page had.
+  const { paused: scopePaused } = useScopePaused(brandId, {
+    offerId,
+    funnelKey: rawKey || null,
+    enabled,
+  });
+
   // Reveal on SETTLE, never on success: a read that errors falls through to a stated
   // page rather than holding it in a skeleton forever.
   const revenuePending = revenue.isPending && !revenue.isError;
@@ -139,6 +154,7 @@ export function FunnelOverviewPage() {
             totalCentsOverride={funnelDailyBudgetCents}
           />
         }
+        paused={scopePaused}
         data={revenuePending ? undefined : data}
         pipelineActivity={activityPending ? undefined : activity.data}
         revenuePending={revenuePending}
@@ -172,6 +188,7 @@ export function FunnelOverviewPage() {
             pending={revenuePending}
             showEconomics
             economicsLearning={economicsLearning}
+            paused={scopePaused}
             // Outreach is what a CHANNEL does, counted per channel and per brand. A
             // funnel carrying several has none of its own, and a zero would read as
             // "nobody was contacted".

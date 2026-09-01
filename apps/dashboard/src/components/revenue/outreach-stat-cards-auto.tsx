@@ -21,6 +21,7 @@ import { salesInterestSharePct } from "@/lib/funnel-share";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { isRunningStatus } from "@/lib/campaign-controls";
+import { useScopePaused } from "@/lib/use-scope-paused";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 /**
@@ -118,6 +119,15 @@ export function OutreachStatCardsAuto({
   // campaign query this row already makes (no second read); brand and offer grain state
   // no single status and pass false.
   const campaignPaused = scopedCampaign != null && !isRunningStatus(scopedCampaign.status);
+  // Off a campaign the same question is asked of the SCOPE this row is about — the offer
+  // when the route names one, else the brand — and it is the verdict the pill on that
+  // page's own header already renders. A scope with no campaign at all is unmeasured
+  // rather than stopped, so it keeps the word it read before.
+  const { paused: scopePaused } = useScopePaused(brandId, {
+    offerId,
+    campaignId,
+  });
+  const withheldPaused = campaignPaused || scopePaused;
 
   // `/revenue` carries the `spend` block that feeds the cost cards (CPC / CPS /
   // CPSM), asked at the grain this row IS: the campaign when one is open, else the
@@ -197,7 +207,7 @@ export function OutreachStatCardsAuto({
       showEconomics={!campaignId}
       economicsLearning={economicsLearning}
       showFunnelMetrics={!!campaignId}
-      paused={campaignPaused}
+      paused={withheldPaused}
       outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
       contactedOverride={contactedOverride}
       // The share of contacted that showed sales interest, through the one helper the

@@ -26,6 +26,7 @@ import { campaignFunnel } from "@/lib/campaign-funnel";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
+import { useScopePaused } from "@/lib/use-scope-paused";
 import { LearningTag } from "@/components/learning-tag";
 import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 
@@ -115,6 +116,15 @@ export function CampaignsPage() {
   // outcomes to price. Read off the SAME rows the table renders, so a header cannot
   // state a figure the rows beneath it are all declining to state.
   const scopeLearning = scopeIsLearning(rows);
+  // ...and whether the scope this route names is STOPPED, which outranks it. Nothing
+  // running means no outcome can land, so `Learning` would promise a number that cannot
+  // arrive; `Paused` is what the scope's own header pill already says, off the SAME rows.
+  // Narrowed by the funnel when the route names one, so a funnel page answers for the
+  // campaigns it lists rather than for every campaign its offer sells.
+  const { paused: scopePaused } = useScopePaused(brandId, {
+    offerId,
+    funnelKey: funnelKey ?? null,
+  });
 
   // The rows the TABLE shows, which under a funnel is a subset of the offer's. The
   // learning band speaks for what is on screen, so it reads these: on a funnel page a
@@ -220,13 +230,17 @@ export function CampaignsPage() {
             label="Cost per acquisition"
             value={fmtUsd(globalCac)}
             pending={!headerSettled}
-            action={scopeLearning ? <LearningTag withInfo={false} /> : undefined}
+            action={
+              scopeLearning ? <LearningTag withInfo={false} paused={scopePaused} /> : undefined
+            }
           />
           <StatTile
             label="#1 acquisition channel"
             value={topChannel}
             pending={!tableSettled}
-            action={scopeLearning ? <LearningTag withInfo={false} /> : undefined}
+            action={
+              scopeLearning ? <LearningTag withInfo={false} paused={scopePaused} /> : undefined
+            }
           />
         </div>
 
