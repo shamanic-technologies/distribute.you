@@ -25,6 +25,7 @@ export type ReplyKind =
   | "lead_meeting_requested"
   | "lead_not_interested"
   | "lead_wrong_person"
+  | "lead_changed_job"
   | "lead_neutral"
   | "lead_out_of_office"
   | "auto_reply_received";
@@ -46,6 +47,15 @@ export interface ReplyKindOption {
  * deal fact "a meeting exists on a calendar", which is the `meeting_booked` funnel
  * stage right below it in the same panel. Two different statements, deliberately, and
  * a reader can truthfully make both.
+ *
+ * ⚠️ The three NEGATIVE kinds are not equal, and the split is the producer's own:
+ * `lead_not_interested` is a judgement about the OFFER at this MOMENT, so the person
+ * stays reachable and the lead stays recyclable; `lead_wrong_person` and
+ * `lead_changed_job` are objective facts about the PERSON and are permanent. Collapsing
+ * a job change into "not interested" is what turns a "no" bucket into a dumping ground
+ * and quietly loses recyclable pipeline. The board reads that split (see
+ * `DISQUALIFYING_STATEMENT_KINDS` in `lead-board.ts`) and so does lead-service, which
+ * is what decides whether a card leaves the Leads column.
  */
 export const REPLY_KINDS: readonly ReplyKindOption[] = [
   { kind: "lead_interested", label: "Interested", tone: "positive" },
@@ -54,6 +64,7 @@ export const REPLY_KINDS: readonly ReplyKindOption[] = [
   { kind: "lead_referral", label: "Not them, but points us on", tone: "positive" },
   { kind: "lead_not_interested", label: "Not interested", tone: "negative" },
   { kind: "lead_wrong_person", label: "Wrong person", tone: "negative" },
+  { kind: "lead_changed_job", label: "Changed job", tone: "negative" },
   { kind: "lead_neutral", label: "Replied, said neither", tone: "neutral" },
   { kind: "lead_out_of_office", label: "Out of office", tone: "automated" },
   { kind: "auto_reply_received", label: "Automatic reply", tone: "automated" },
@@ -101,9 +112,13 @@ export const REPLY_TONE_PILL: Record<ReplyTone, string> = {
  *   slate    said neither         — they answered and it carried no signal.
  *   amber    not interested       — a no about the MOMENT. The lead is recyclable, so it
  *                                   is warned, not condemned.
- *   rose     wrong person         — a no about the PERSON. Permanent, hence the red end.
+ *   rose     wrong person        \ a no about the PERSON. Permanent, hence the red end,
+ *   rose     changed job          / and shared on purpose: these two are one class —
+ *                                   the objective, permanent facts that disqualify —
+ *                                   and it is the class lead-service acts on, so a
+ *                                   reader scanning the board should see it as one.
  *   stone    out of office / automatic reply — not a person at all, so the dimmest pair
- *                                   on the page and the only two that share a colour.
+ *                                   on the page.
  *
  * Deliberately DISJOINT from the delivery-status palette (`leadStatusPill` in
  * `lib/lead-status.ts`), which is cool the whole way: that family is what we did and
@@ -121,6 +136,7 @@ export const REPLY_KIND_PILL: Record<ReplyKind, string> = {
   lead_neutral: "bg-slate-100 text-slate-700 border-slate-200",
   lead_not_interested: "bg-amber-100 text-amber-700 border-amber-200",
   lead_wrong_person: "bg-rose-100 text-rose-700 border-rose-200",
+  lead_changed_job: "bg-rose-100 text-rose-700 border-rose-200",
   lead_out_of_office: "bg-stone-100 text-stone-600 border-stone-200",
   auto_reply_received: "bg-stone-100 text-stone-600 border-stone-200",
 };

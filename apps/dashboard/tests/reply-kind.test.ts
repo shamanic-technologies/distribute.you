@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   REPLY_KINDS,
@@ -18,6 +20,7 @@ describe("reply kinds", () => {
         "lead_info_requested",
         "lead_interested",
         "lead_meeting_requested",
+        "lead_changed_job",
         "lead_neutral",
         "lead_not_interested",
         "lead_out_of_office",
@@ -51,6 +54,22 @@ describe("reply kinds", () => {
     const asked = replyKindOption("lead_meeting_requested");
     expect(asked?.tone).toBe("positive");
     expect(asked?.label).toBe("Wants to book");
+  });
+
+  it("is the ONE catalogue — the api client reads it rather than re-listing it", () => {
+    // A second copy of instantly-service's vocabulary rots in the direction that
+    // silently removes a capability: `lead_changed_job` shipped upstream and the api
+    // client's own re-listed union did not carry it, so a person who had left the role
+    // could not be stated even though the gateway would have accepted the write.
+    const api = readFileSync(join(__dirname, "..", "src", "lib", "api.ts"), "utf8");
+    const union = api.slice(
+      api.indexOf("export type ManualQualificationStatus ="),
+      api.indexOf("export type ManualQualificationClassification"),
+    );
+    expect(union).toContain("| ReplyKind");
+    for (const kind of REPLY_KINDS) {
+      expect(union).not.toContain(`"${kind.kind}"`);
+    }
   });
 
   it("returns null for a kind this build does not carry, never a fabricated label", () => {

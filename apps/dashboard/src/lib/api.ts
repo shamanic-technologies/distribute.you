@@ -4,6 +4,7 @@ import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import type { LeadStanding } from "./lead-standing";
+import type { ReplyKind } from "./reply-kind";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
@@ -4630,16 +4631,16 @@ export async function getLeadEmail(leadId: string, brandId?: string, token?: str
  * to share this one statement per lead, where only the latest survived — so booking a
  * meeting erased the reply sentiment that led to it.
  */
+/**
+ * ⚠️ READ from the one catalogue, never re-listed. This used to spell the nine reply
+ * kinds out again, which is a second copy of a vocabulary instantly-service owns — and
+ * it had already gone stale: `lead_changed_job` shipped upstream and this list did not
+ * carry it, so a person who had left the role could not be stated even though the
+ * gateway would have accepted the write. A copy of somebody else's enum rots in the
+ * direction that silently removes a capability.
+ */
 export type ManualQualificationStatus =
-  | "lead_interested"
-  | "lead_referral"
-  | "lead_info_requested"
-  | "lead_meeting_requested"
-  | "lead_not_interested"
-  | "lead_wrong_person"
-  | "lead_neutral"
-  | "lead_out_of_office"
-  | "auto_reply_received"
+  | ReplyKind
   // Retired, accepted upstream during the migration. Do NOT write these.
   | "lead_meeting_booked"
   | "lead_closed";
