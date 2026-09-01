@@ -42,36 +42,54 @@ export function leadStatusLabel(status: LeadConsolidatedStatus): string {
 }
 
 /**
- * The tone a status wears on a BOARD card, in the reply-kind vocabulary the card's
- * other tag already uses.
+ * The pill a status wears, everywhere one is drawn — the leads table's Status badge,
+ * the lead panel, and the board card's tag.
  *
- * Deliberately NOT the table's own `leadStatusStyle` palette, which is eleven distinct
- * hues (emerald / violet / cyan / amber / slate …) and is remapped for dark mode
- * almost nowhere — bringing it onto the board would spread a light-mode-only palette
- * to a second surface. `REPLY_TONE_PILL`'s four tints are all in the `html.dark`
- * closed set, and on a card the WORD carries the information while the tone only has
- * to say good / bad / neither.
+ * ONE PALETTE, and the hue is not decorative: it tracks HOW FAR ALONG the lead is, so
+ * a column of badges reads as a progression rather than as eleven unrelated chips.
  *
- * A BOUNCE reads negative even though it leaves the lead in play: the address needs
- * repairing and that is the one thing on the card worth acting on.
+ *   stone   nothing has happened to them yet — buffered, claimed, or never served
+ *   slate   ours to send, not sent — picked up, and waiting for the sending window
+ *   blue    it left
+ *   sky     it arrived
+ *   cyan    they came to the site
+ *   teal    they answered
+ *
+ * Cool the whole way, deliberately: this family is what WE did and what the delivery
+ * layer MEASURED. The reply kinds a person states are warm and green (`REPLY_KIND_PILL`
+ * in `lib/reply-kind.ts`), so a stated kind can never be mistaken for an observed
+ * status even though one replaces the other on the same card.
+ *
+ * Two colours sit outside the sweep because they are not points along it:
+ *
+ *   orange  BOUNCED — a failure of delivery. A problem to fix, not a verdict on the
+ *           person, so it is warned rather than condemned. It is deliberately not red:
+ *           the lead stays in play (lead-service v0.65.0) and a red chip would say the
+ *           opposite of the column it sits in.
+ *   red     UNSUBSCRIBED — the prospect's own binding act, and the one terminal state
+ *           the delivery layer can observe.
+ *
+ * `teal` for a reply rather than a green: "replied" means they answered, not that they
+ * answered WELL. The moment somebody states which kind of reply it was, that kind's own
+ * pill takes over and says so.
+ *
+ * Every tint here is answered by the `html.dark` layer — `tests/dark-accent-coverage.test.ts`
+ * fails on one that is not.
  */
-export type LeadStatusTone = "positive" | "negative" | "neutral";
-
-export function leadStatusTone(status: LeadConsolidatedStatus): LeadStatusTone {
+export function leadStatusPill(status: LeadConsolidatedStatus): string {
   switch (status) {
-    case "replied":
-    case "clicked":
-      return "positive";
-    case "bounced":
-    case "unsubscribed":
-      return "negative";
-    case "delivered":
-    case "sent":
-    case "contacted":
-    case "served":
-    case "skipped":
-    case "claimed":
-    case "buffered":
-      return "neutral";
+    case "replied": return "bg-teal-100 text-teal-700 border-teal-200";
+    case "clicked": return "bg-cyan-100 text-cyan-700 border-cyan-200";
+    case "delivered": return "bg-sky-100 text-sky-700 border-sky-200";
+    case "sent": return "bg-blue-100 text-blue-700 border-blue-200";
+    case "bounced": return "bg-orange-100 text-orange-700 border-orange-200";
+    case "unsubscribed": return "bg-red-100 text-red-700 border-red-200";
+    case "contacted": return "bg-slate-100 text-slate-700 border-slate-200";
+    case "served": return "bg-slate-100 text-slate-700 border-slate-200";
+    case "claimed": return "bg-stone-100 text-stone-700 border-stone-200";
+    case "buffered": return "bg-stone-100 text-stone-700 border-stone-200";
+    // Never served at all: the dimmest thing on the page, and the only one with no
+    // border tint, because there is nothing to look at.
+    case "skipped": return "bg-gray-100 text-gray-600 border-gray-200";
   }
 }
