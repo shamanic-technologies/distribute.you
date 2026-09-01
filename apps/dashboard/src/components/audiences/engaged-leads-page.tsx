@@ -10,7 +10,7 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import { leadBoardColumnFor, type LeadBoardColumnKey } from "@/lib/lead-board";
-import { leadStatusLabel, leadStatusTone } from "@/lib/lead-status";
+import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -142,26 +142,10 @@ type Tab = "positive-replies" | "clicks" | "outreach" | "all" | OutcomeTab;
 // from a badge to the timestamp that proves it; the outcome tabs are the exception
 // (their date is the realized-outcome instant from the /revenue join, and a signup
 // has no delivery status to date).
-// `leadStatusLabel` moved to `lib/lead-status.ts`: the board card's tag reads the same
-// word this table's badge does, and a second spelling is how one lead comes to read
-// "Delivered" in the table and "Sent" on a card one click away. The STYLE stays here —
-// it is this table's own eleven-hue palette and nothing else wears it.
-function leadStatusStyle(status: LeadConsolidatedStatus): string {
-  switch (status) {
-    case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "clicked": return "bg-violet-100 text-violet-700 border-violet-200";
-    case "delivered": return "bg-green-100 text-green-700 border-green-200";
-    case "sent": return "bg-cyan-100 text-cyan-700 border-cyan-200";
-    case "bounced": return "bg-red-100 text-red-600 border-red-200";
-    case "unsubscribed": return "bg-amber-100 text-amber-700 border-amber-200";
-    // Slate, not a saturated hue: this is a wait, not a step the lead has cleared.
-    case "contacted": return "bg-slate-100 text-slate-700 border-slate-200";
-    case "served": return "bg-orange-100 text-orange-700 border-orange-200";
-    case "skipped": return "bg-gray-100 text-gray-500 border-gray-200";
-    case "claimed": return "bg-yellow-100 text-yellow-700 border-yellow-200";
-    case "buffered": return "bg-blue-100 text-blue-600 border-blue-200";
-  }
-}
+// The WORD and the PILL both moved to `lib/lead-status.ts`. This table's badge, the
+// lead panel and the board card draw the same status the same way — a second spelling
+// or a second palette is how one lead comes to read "Delivered" in blue here and
+// "Sent" in green on a card one click away.
 
 function timeAgo(date: string | Date): string {
   const now = new Date();
@@ -434,7 +418,7 @@ function CopyableEmail({ email }: { email: string }) {
 }
 
 function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
-  return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
+  return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusPill(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
 // The queue step, named for what it is. Instantly holds the lead until its next
@@ -1411,7 +1395,7 @@ export function EngagedLeadsPage({
         // table's own badge cannot name one lead two ways, and the date below is
         // `leadDateForStatus` of that same status: one statement, one event.
         statusLabel: leadStatusLabel(getLeadConsolidatedStatus(lead)),
-        statusTone: leadStatusTone(getLeadConsolidatedStatus(lead)),
+        statusPill: leadStatusPill(getLeadConsolidatedStatus(lead)),
         // When a kind was STATED, the card is dated by that statement; otherwise by the
         // timestamp that proves the lead's own delivery status — the same one map the
         // table's Date column reads, so the two surfaces cannot date one lead two ways.
@@ -1458,12 +1442,46 @@ export function EngagedLeadsPage({
     count: groupedByTab.get(key)?.length ?? 0,
   }));
 
-  // Contacted-lead count from the SAME listBrandLeads snapshot the table renders
-  // (= the Outreach tab count). Passed to the stat box so the box reads the
-  // leads-snapshot single source (303) instead of the legacy /stats email-gateway
-  // aggregate (301) — mirrors the brand Overview's outreachContacted override
-  // (features-service #371/#372). Both surfaces now move together.
-  const contactedCount = groupedByTab.get("outreach")?.length ?? 0;
+
+  // The two numbers the stat row states, taken off the SAME rows the board partitions
+  // into columns — the page's own population, and how many of those people stand at
+  // sales interest. Placement is `leadBoardColumnFor(standing)`, lead-service's own
+  // funnel-aware answer, exactly as the board reads it (plus the same held latch, so a
+  // move the person just made counts here for the round trip it takes to land): a card
+  // and a column disagreeing about one screen is the self-contradictory-surface bug.
+  //
+  // Computed over `coveredLeads`, NOT `searchedLeads`: the cards describe the population,
+  // the board's own columns thin out with the search box like the table does.
+  //
+  // Deliberately NOT `spend.positiveRepliesCount`. That is features-service's aggregate
+  // over REPLY signals; the board renders `standing.state`, which is funnel-aware, and on
+  // a funnel entered by a website visit the two are legitimately different numbers (67
+  // leads who clicked through stand at `sales_interest` on `form_magnet`, where a
+  // reply-based count sees none of them).
+  const boardPopulation = useMemo(() => {
+    let leads = 0;
+    let salesInterest = 0;
+    for (const lead of coveredLeads) {
+      const held =
+        lead.email && statedReplyKinds.has(lead.email)
+          ? (statedReplyKinds.get(lead.email) ?? null)
+          : undefined;
+      const column = held?.column ?? leadBoardColumnFor(lead.standing);
+      if (!column) continue;
+      leads += 1;
+      if (column === "sales_interest") salesInterest += 1;
+    }
+    return {
+      leads,
+      // A share of two counts THIS row states side by side — a description of the board
+      // on screen, not a metric divided out of served fields. Null on an empty
+      // population: "we have nothing to divide by", never a 0%.
+      salesInterest: {
+        count: salesInterest,
+        sharePct: leads > 0 ? (salesInterest / leads) * 100 : null,
+      },
+    };
+  }, [coveredLeads, statedReplyKinds]);
 
   // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
   // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
@@ -1761,7 +1779,10 @@ export function EngagedLeadsPage({
     // and is what the mobile branch already did.
     <div className="flex flex-col h-full relative">
       <div className="w-full p-4 md:p-8 pb-24 overflow-y-auto transition-all">
-        <OutreachStatCardsAuto contactedOverride={loading ? null : contactedCount} />
+        <OutreachStatCardsAuto
+          leadsOverride={loading ? null : boardPopulation.leads}
+          salesInterestOverride={loading ? null : boardPopulation.salesInterest}
+        />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads

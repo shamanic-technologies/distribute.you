@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
+const { readFileSync } = fs;
 import * as path from "path";
 
 /**
@@ -45,9 +46,18 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("styles the queue state as a wait, not as an acquired step", () => {
-    const body = sliceFrom("function leadStatusStyle(", 900);
+    // The palette moved to `lib/lead-status.ts` with the label, so the table badge, the
+    // lead panel and the board card draw one status one way. Slate is the "ours to
+    // send, not sent" step of that sweep — the lead has cleared nothing yet.
+    const lib = readFileSync(
+      path.join(__dirname, "../src/lib/lead-status.ts"),
+      "utf-8",
+    );
+    const body = lib.slice(lib.indexOf("export function leadStatusPill("));
     expect(body).toContain('case "contacted": return "bg-slate-100 text-slate-700 border-slate-200"');
-    expect(body).not.toContain("teal");
+    // Teal is the far end of the sweep, where the lead has answered.
+    expect(body).toContain('case "replied": return "bg-teal-100');
+    expect(src).not.toContain("function leadStatusStyle(");
   });
 
   it("states the send window on the queue row so the wait is explained", () => {
