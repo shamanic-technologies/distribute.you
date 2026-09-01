@@ -16,6 +16,8 @@ import {
 } from "@/components/campaigns/campaigns-table";
 import { LearningTag } from "@/components/learning-tag";
 import { offerLearningFor, useOfferLearning } from "@/lib/use-offer-learning";
+import { usePausedByOffer } from "@/lib/use-scope-paused";
+import { scopePausedFor } from "@/lib/scope-paused";
 import { Skeleton } from "@/components/skeleton";
 import { OfferMark } from "@/components/marks/offer-mark";
 
@@ -67,6 +69,16 @@ interface OfferRow {
    * money already spent, and neither divides by an outcome count.
    */
   learning: boolean;
+  /**
+   * Whether every campaign selling this offer is STOPPED, in which case the withheld
+   * ratios read `Paused` rather than `Learning`: nothing is landing, so the tag would
+   * promise a number that cannot arrive until the customer restarts something. It is the
+   * word this offer's own page states, so a row and the page it opens agree.
+   *
+   * An offer with NO campaign at all is unmeasured rather than stopped, and reads exactly
+   * as it did before.
+   */
+  paused: boolean;
 }
 
 export function OffersTable({
@@ -91,6 +103,10 @@ export function OffersTable({
     brandId,
     featureSlug,
   );
+  // ...and whether each one is stopped, off the SAME rows the pill on that offer's own
+  // header is built from. A row cannot call a hook, so the verdict is a map built once at
+  // brand grain and read per row — the shape `useOfferLearning` already uses beside it.
+  const { pausedByOfferId, settled: pausedSettled } = usePausedByOffer(brandId);
 
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
     refetchInterval: POLL_INTERVAL,
@@ -120,6 +136,7 @@ export function OffersTable({
       offer: o,
       revenue: groupsById.get(o.offerId) ?? null,
       learning: offerLearningFor(learningByOfferId, o.offerId, learningSettled),
+      paused: scopePausedFor(pausedByOfferId, o.offerId, pausedSettled),
     }));
     return joined.sort((a, b) => {
       // A row that is not stating its return has no rank under it — ordering a table by
@@ -130,7 +147,7 @@ export function OffersTable({
       if (a.learning) return 0;
       return (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
     });
-  }, [offers, groupsById, learningByOfferId, learningSettled]);
+  }, [offers, groupsById, learningByOfferId, learningSettled, pausedByOfferId, pausedSettled]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate.
   const settled =
@@ -174,7 +191,7 @@ export function OffersTable({
               </td>
             </tr>
           ) : (
-            rows.map(({ offer, revenue, learning }) => (
+            rows.map(({ offer, revenue, learning, paused }) => (
               <tr
                 key={offer.offerId}
                 onClick={() => router.push(`${basePath}/offers/${offer.offerId}`)}
@@ -202,9 +219,9 @@ export function OffersTable({
                     could not stand behind. The two money columns after them are totals,
                     not prices, and keep their figures. */}
                 <td className="px-4 py-3 text-right">
-                  {learning ? <LearningTag withInfo={false} /> : <RoiCell multiple={revenue?.roiMultiple} />}
+                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.roiMultiple} />}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group the ROI and % CAC beside it divide by, so a

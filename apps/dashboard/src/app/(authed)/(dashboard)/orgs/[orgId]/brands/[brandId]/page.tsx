@@ -25,6 +25,7 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { OfferFunnelsPage } from "@/components/funnels/offer-funnels-page";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
+import { useScopePaused } from "@/lib/use-scope-paused";
 import { OffersTable } from "@/components/offers/offers-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -108,6 +109,17 @@ export default function BrandOverviewPage() {
   // is a total and keeps its figure.
   const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
   const economicsLearning = scopeIsLearning(campaignRows);
+  // ...and whether this scope is STOPPED, which outranks it. A `Learning` tag says a
+  // figure is withheld because too few outcomes have landed; where nothing runs, none can
+  // land, so it promises a number that cannot arrive until the customer restarts
+  // something. `Paused` is the honest word, and it is the one the pill in this page's own
+  // header already renders — built from the SAME rows, so a heading and the figures under
+  // it cannot disagree. Scoped by the route, like every other read here: the brand's
+  // campaigns at brand level, this offer's at offer level.
+  //
+  // WHICH figures are withheld is unchanged: that stays keyed on the outcome counts, so
+  // restarting restores exactly the tags this page had.
+  const { paused: scopePaused } = useScopePaused(brandId, { offerId, enabled });
   // ...and the same question one audience at a time, for the Top-3 card: an audience
   // states its return once one of the scope's campaigns has priced IT. Same map the
   // Audiences table reads, so the card and the table cannot disagree about a row.
@@ -450,6 +462,7 @@ export default function BrandOverviewPage() {
       <RevenueOverviewSection
         headerAction={ControlsLine}
         economicsLearning={economicsLearning}
+        paused={scopePaused}
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
@@ -490,6 +503,7 @@ export default function BrandOverviewPage() {
             <TopAudiencesCard
             learningByAudienceId={learningByAudienceId}
             learningSettled={audienceLearningSettled}
+            paused={scopePaused}
               data={audienceStatsRevealed ? audienceStatsData : undefined}
               audiences={audienceStatsRevealed ? activeAudiences : undefined}
               pending={!audienceStatsRevealed}
@@ -512,6 +526,7 @@ export default function BrandOverviewPage() {
             totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}
             showEconomics
             economicsLearning={economicsLearning}
+            paused={scopePaused}
             showFunnelMetrics={false}
           />
         }
