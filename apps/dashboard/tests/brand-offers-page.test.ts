@@ -110,9 +110,9 @@ describe("an offer states Learning on its RATIOS while every campaign selling it
     // The two are one statement in two units — a return and its reciprocal — so showing
     // one beside a tag would let a reader trust the number we just said we could not
     // stand behind.
-    expect(table).toContain("learning ? <LearningTag withInfo={false} /> : <RoiCell");
+    expect(table).toContain("learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell");
     expect(table).toContain(
-      "learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)",
+      "learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.costOfAcquisitionPct)",
     );
   });
 
@@ -121,7 +121,7 @@ describe("an offer states Learning on its RATIOS while every campaign selling it
     // landed, and `$ Invested` is money already spent. Neither divides by a count.
     expect(table).toContain("{fmtUsd(revenue?.totalPipelineUsd)}");
     expect(table).toContain("{fmtUsd(revenue?.committedCostUsd)}");
-    expect(table).not.toContain("learning ? <LearningTag withInfo={false} /> : fmtUsd");
+    expect(table).not.toContain("learning ? <LearningTag withInfo={false} paused={paused} /> : fmtUsd");
   });
 
   it("sinks a learning row below the measured ones rather than ranking it on a hidden number", () => {

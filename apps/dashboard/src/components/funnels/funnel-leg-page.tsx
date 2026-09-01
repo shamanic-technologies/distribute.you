@@ -28,6 +28,7 @@ import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { isLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
+import { useScopePaused } from "@/lib/use-scope-paused";
 import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
 import { FunnelLegBoard } from "@/components/funnels/funnel-leg-board";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
@@ -106,6 +107,16 @@ export function FunnelLegPage() {
     () => funnelLegs(funnel).find((l) => l.toKey === legKey) ?? null,
     [funnel, legKey],
   );
+
+  // Is this funnel STOPPED. When nothing sells it, no outcome can land, so a `Learning`
+  // tag would promise a number that cannot arrive until the customer restarts something —
+  // the honest word is `Paused`, which is what the funnel's own header already says. Same
+  // rows the pill there is built from, so the two cannot disagree, and no extra request.
+  const { paused: scopePaused } = useScopePaused(brandId, {
+    offerId,
+    funnelKey: rawKey || null,
+    enabled: Boolean(brandId && offerId && rawKey),
+  });
 
   // The SAME key the funnel page polls, so arriving here from it costs no request and
   // the two surfaces cannot state different counts for one step.
@@ -263,7 +274,7 @@ export function FunnelLegPage() {
               </>
             )
           }
-          action={thin ? <LearningTag /> : undefined}
+          action={thin ? <LearningTag paused={scopePaused} /> : undefined}
           pending={pending}
         />
         {/* What YOU said each crossing cost, averaged over the people who crossed —

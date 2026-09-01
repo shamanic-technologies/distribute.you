@@ -21,6 +21,8 @@ import { rollupStatus, ROLLUP_LABEL, ROLLUP_STYLE } from "@/lib/campaign-control
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
+import { usePausedByFunnel } from "@/lib/use-scope-paused";
+import { scopePausedFor } from "@/lib/scope-paused";
 import {
   funnelViews,
   costCoverageNote,
@@ -115,6 +117,20 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
       ),
     );
   };
+
+  // ...and whether every campaign carrying it is STOPPED, in which case the withheld
+  // ratios read `Paused` rather than `Learning`: nothing is landing, so the tag would
+  // promise a number that cannot arrive until the customer restarts something. It is the
+  // word that funnel's own page states, so a row and the page it opens agree — the map is
+  // built from the SAME rows the pill there is built from. A funnel with NO campaign at
+  // all is unmeasured rather than stopped and reads exactly as it did before.
+  const { pausedByFunnelKey, settled: pausedSettled } = usePausedByFunnel(brandId, offerId);
+  const funnelPausedFor = (key: string) =>
+    scopePausedFor(
+      pausedByFunnelKey,
+      normalizeSalesFunnelKey(key as SalesFunnelKeyWire),
+      pausedSettled,
+    );
 
   // What each funnel may spend TODAY, and whether it is running at all. Both come off
   // ONE served answer (`["brandSpendableBudget", brandId]`, the key the offer Overview
@@ -280,21 +296,21 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                         green above break-even, ordinary text below it (never red — a
                         funnel still learning is under 1x by construction). */}
                     {funnelLearningFor(row.funnelKey) ? (
-                      <LearningTag withInfo={false} />
+                      <LearningTag withInfo={false} paused={funnelPausedFor(row.funnelKey)} />
                     ) : (
                       <RoiCell multiple={row.roiMultiple} />
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
                     {funnelLearningFor(row.funnelKey) ? (
-                      <LearningTag withInfo={false} />
+                      <LearningTag withInfo={false} paused={funnelPausedFor(row.funnelKey)} />
                     ) : (
                       fmtPct(row.costOfAcquisitionPct)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
                     {funnelLearningFor(row.funnelKey) ? (
-                      <LearningTag withInfo={false} />
+                      <LearningTag withInfo={false} paused={funnelPausedFor(row.funnelKey)} />
                     ) : (
                       fmtUsd(row.costPerAcquisitionUsd)
                     )}

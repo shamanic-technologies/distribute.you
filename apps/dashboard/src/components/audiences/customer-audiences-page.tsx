@@ -40,6 +40,7 @@ import { isLearning } from "@/lib/learning-threshold";
 import { audienceLearningFor, useAudienceLearning } from "@/lib/use-audience-learning";
 import { LearningTag } from "@/components/learning-tag";
 import { isRunningStatus } from "@/lib/campaign-controls";
+import { useScopePaused } from "@/lib/use-scope-paused";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
@@ -365,6 +366,13 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // campaign restores the tag it had. False on the brand route, where several campaigns
   // work these audiences and no single status answers for the table.
   const campaignPaused = campaign != null && !isRunningStatus(campaign.status);
+  // Off a campaign route the same question is asked of the SCOPE: this table's rows are
+  // an OFFER's audiences (a set is picked for a proposition, never for a funnel), so on a
+  // brand, offer or funnel page it answers for the offer's campaigns — the verdict the
+  // pill on that page's own header already renders. `none` (a scope with no campaign at
+  // all) is unmeasured rather than stopped, so it keeps the word it read before.
+  const { paused: scopePaused } = useScopePaused(brandId, { offerId });
+  const withheldPaused = campaignPaused || scopePaused;
 
   // The CAMPAIGN's own goal, from campaign-service, else the goal its own FUNNEL
   // implies. Never the brand column: it is retired (NOT NULL with a server default) and
@@ -977,7 +985,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                         <>
                           <td className="px-4 py-3 text-right tabular-nums">
                             {moneyLearning ? (
-                              <LearningTag withInfo={false} paused={campaignPaused} />
+                              <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : (
                               <span
                                 className={`font-medium ${
@@ -991,10 +999,10 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {moneyLearning ? <LearningTag withInfo={false} paused={campaignPaused} /> : formatPct(stats?.projection?.costOfAcquisitionPct)}
+                            {moneyLearning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatPct(stats?.projection?.costOfAcquisitionPct)}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {moneyLearning ? <LearningTag withInfo={false} paused={campaignPaused} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)}
+                            {moneyLearning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)}
                           </td>
                           {/* Realized spend, served ready-made — skeletoned like every
                               other stats-overlay cell so it never flashes "-" first. */}
@@ -1018,7 +1026,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
                             ) : costIsLearning("cpsale", stats) ? (
-                              <LearningTag withInfo={false} paused={campaignPaused} />
+                              <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : stats?.metrics.cpsaleCents != null ? (
                               formatCents(stats.metrics.cpsaleCents)
                             ) : (
@@ -1054,7 +1062,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                               // Too few replies behind the ratio to state it as a price. The
                               // count sits in the column immediately left, so the reader sees
                               // exactly how much evidence there is.
-                              <LearningTag withInfo={false} paused={campaignPaused} />
+                              <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : stats ? (
                               // Accounting "so far": 0 replies + real spend → floor to this
                               // audience's net committed spend (same net figure as billing),
@@ -1080,7 +1088,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
                             ) : costIsLearning("cps", stats) ? (
-                              <LearningTag withInfo={false} paused={campaignPaused} />
+                              <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : stats?.metrics.cpsCents != null ? (
                               formatCents(stats.metrics.cpsCents)
                             ) : (
@@ -1105,7 +1113,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
                             ) : costIsLearning("cpfs", stats) ? (
-                              <LearningTag withInfo={false} paused={campaignPaused} />
+                              <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : stats?.metrics.cpfsCents != null ? (
                               formatCents(stats.metrics.cpfsCents)
                             ) : (
@@ -1129,7 +1137,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
                             ) : costIsLearning("cpc", stats) ? (
-                              <LearningTag withInfo={false} paused={campaignPaused} />
+                              <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : stats ? (
                               formatCents(stats.metrics.cpcCents)
                             ) : (
