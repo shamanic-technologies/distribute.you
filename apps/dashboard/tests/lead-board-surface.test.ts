@@ -37,11 +37,14 @@ describe("the leads board is wired, not merely written", () => {
     expect(page).not.toContain("leadBoardColumns(");
   });
 
-  it("places every card from the lead row plus ONE campaign-scoped read", () => {
-    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 1600);
-    expect(cards).toContain("leadBoardColumnFor(");
-    expect(cards).toContain("lead.unsubscribed === true");
-    expect(cards).toContain("lead.replyClassification ?? null");
+  it("places every card from the PRODUCER's answer plus ONE campaign-scoped read", () => {
+    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 2400);
+    // Where a card sits is lead-service's `standing`, rendered — not derived here from
+    // the reply signals on the row beside it. Those signals stay on the wire and stay
+    // read; "is this person still in play" has one owner now.
+    expect(cards).toContain("leadBoardColumnFor(lead.standing)");
+    expect(cards).not.toContain("lead.unsubscribed === true");
+    expect(cards).not.toContain("lead.replyClassification ?? null");
     // The person's own face rides the row the page already holds — never a per-card
     // fetch, and never a fabricated avatar when the enrichment carried none.
     expect(cards).toContain("photoUrl: full?.photoUrl ?? null");
@@ -62,7 +65,7 @@ describe("the leads board is wired, not merely written", () => {
 
   it("spans the whole population rather than the active tab's slice", () => {
     // A partition scoped to one tab draws a board with most of its cards missing.
-    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 1600);
+    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 2400);
     expect(cards).toContain("of searchedLeads");
     expect(cards).not.toContain("of filteredLeads");
     expect(cards).not.toContain("of pagedLeads");
@@ -110,19 +113,45 @@ describe("a move states a reply KIND, and it asks which", () => {
     expect(drop).toContain("startMove(card, to)");
     expect(drop).not.toContain("onMove(");
     expect(board).toContain("columnReplyKinds(pending.to.key)");
+    // The column the drop landed in is threaded back to the page, which cannot derive
+    // it from the kind — that mapping is the producer's, not this app's.
+    expect(board).toContain("onMove(pending.card.email as string, kind, pending.to.key)");
   });
 
   it("holds what was just stated so the card moves before the re-read lands", () => {
     // The write's only visible effect is the jump, and the jump comes from a re-read —
-    // without this the control reads as dead for a round trip.
-    expect(page).toContain("new Map(prev).set(email, { kind, at: new Date().toISOString() })");
+    // without this the control reads as dead for a round trip. The COLUMN rides along
+    // because placement is the producer's now: without it the card would snap back the
+    // instant it was dropped.
+    expect(page).toContain(
+      "new Map(prev).set(email, { kind, at: new Date().toISOString(), column })",
+    );
+    expect(page).toContain("const column = held?.column ?? leadBoardColumnFor(lead.standing);");
     // A refusal drops it: the board must never state something nobody recorded.
     expect(page).toContain("next.delete(email)");
   });
 
+  it("drops the held column once the re-read lands, so a move can visibly NOT take", () => {
+    // A permanent client override would hide lead-service legitimately placing the card
+    // somewhere else — which it does: stating "Interested" on a campaign whose funnel is
+    // entered by a website visit is a positive reply, and a positive reply is not the
+    // step that campaign sells. That is the correct answer and the reader must see it.
+    const move = sliceFrom(page, "onMove={(email, kind, column)", 3400);
+    expect(move).toContain("void settled.then(() => {");
+    expect(move).toContain("next.delete(email)");
+    // Detached rather than awaited: a promise returned from `onSuccess` keeps the
+    // mutation pending, and that is what the board disables its picker on — so
+    // awaiting the leads refetch would lock it for the length of a read that runs to
+    // tens of megabytes on a live campaign.
+    expect(move).not.toContain("onSuccess: async () => {");
+  });
+
   it("renders the producer's own refusal, never the thrown Error's message", () => {
-    // Measured: the handler runs 1995 chars from its own open tag.
-    const move = sliceFrom(page, "onMove={(email, kind)", 2100);
+    // Measured: `leadStepErrorMessage(err)` sits 3,504 chars from the handler's own
+    // open tag. A `toContain` cannot be hurt by a slice that runs long, so this has
+    // real headroom; the `not.toContain` below is bounded by the same slice and its
+    // neighbour writes no `err.message`.
+    const move = sliceFrom(page, "onMove={(email, kind, column)", 4200);
     expect(move).toContain("leadStepErrorMessage(err)");
     expect(move).not.toContain("err.message");
   });
@@ -289,7 +318,19 @@ describe("the board explains the two splits a reader would not guess", () => {
     expect(board).not.toContain("both stay in Contacted");
     expect(board).not.toContain("<InfoTooltip");
     const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
-    expect(lib).toContain("A no and a bounce included.");
+    // Each column states what lands in it, in its own blurb.
+    for (const blurb of [
+      "Reached. Nothing since, or something this campaign does not sell.",
+      "They reached the step this campaign sells, or bought.",
+      "Out of play: they said no, the mail bounced, or they cannot buy.",
+    ]) {
+      expect(lib).toContain(blurb);
+    }
+  });
+
+  it("draws the producer-failure column only when it has something to report", () => {
+    // "Not placed" on a healthy campaign advertises a problem that is not there.
+    expect(board).toContain("if (column.hideWhenEmpty && inColumn.length === 0) return null;");
   });
 
   it("draws a page of a column and states what is LEFT, never scroll-loading", () => {

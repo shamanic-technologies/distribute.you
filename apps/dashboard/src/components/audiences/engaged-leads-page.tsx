@@ -9,7 +9,7 @@ import { invalidateLeadOutcome } from "@/lib/write-invalidation";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
-import { leadBoardColumnFor } from "@/lib/lead-board";
+import { leadBoardColumnFor, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -1329,8 +1329,18 @@ export function EngagedLeadsPage({
   // BACK, held over the same two round trips a set is. `has` therefore decides whether
   // the latch speaks, never `??`, which would read a cleared entry as silence and fall
   // straight back to the kind that was just withdrawn.
+  //
+  // It carries the COLUMN too, and that half is new: where a card sits is
+  // `standing.state` now, which lead-service only re-answers on the re-read — so
+  // without the held column the card would snap straight back the instant it was
+  // dropped. The hold is TRANSIENT by construction (dropped in `onMove`'s `onSuccess`,
+  // once both invalidations have settled): a permanent client override would hide the
+  // producer legitimately answering something else, which is the one thing this change
+  // exists to stop. A move that does not take is a real answer — stating "Interested"
+  // on a campaign whose funnel is entered by a website visit is a positive reply, and
+  // a positive reply is not the step that campaign sells — and the reader must see it.
   const [statedReplyKinds, setStatedReplyKinds] = useState<
-    Map<string, { kind: string; at: string } | null>
+    Map<string, { kind: string; at: string; column: LeadBoardColumnKey } | null>
   >(new Map());
 
   // The columns are TRIAGE states, not funnel rungs, so they need no funnel to lay out
@@ -1377,18 +1387,23 @@ export function EngagedLeadsPage({
   const boardCards: LeadBoardCard[] = useMemo(() => {
     const out: LeadBoardCard[] = [];
     for (const lead of searchedLeads) {
-      const statement = lead.email
-        ? statedReplyKinds.has(lead.email)
-          ? (statedReplyKinds.get(lead.email) ?? null)
-          : (replyKindByEmail.get(lead.email) ?? null)
-        : null;
+      // A statement somebody just made outranks the served one for the round trip it
+      // takes to land. `has` decides whether the latch speaks, never `??`: `null` is a
+      // real entry there — a statement just taken BACK — and `??` would read it as
+      // silence and fall straight back to the kind that was withdrawn.
+      const held = lead.email && statedReplyKinds.has(lead.email)
+        ? (statedReplyKinds.get(lead.email) ?? null)
+        : undefined;
+      const statement =
+        held !== undefined ? held : lead.email ? (replyKindByEmail.get(lead.email) ?? null) : null;
       const stated = statement?.kind ?? null;
-      const column = leadBoardColumnFor({
-        contacted: lead.contacted === true,
-        unsubscribed: lead.unsubscribed === true,
-        replyKind: stated,
-        replyClassification: lead.replyClassification ?? null,
-      });
+      // WHERE the card sits is lead-service's own answer, rendered — never derived
+      // from the reply signals on the row beside it. Those signals are still what the
+      // table's badge and the panel's timeline read; "is this person still in play" is
+      // funnel-aware commercial policy with one owner. See `lib/lead-standing.ts`.
+      // The held column speaks only over the round trip a move takes, and only when
+      // the latch is the thing speaking — a served qualification carries no column.
+      const column = held?.column ?? leadBoardColumnFor(lead.standing);
       if (!column) continue;
       const full = lead.lead;
       const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.trim() || lead.email || "Lead";
@@ -1829,12 +1844,14 @@ export function EngagedLeadsPage({
                   const lead = coveredLeads.find((l) => l.id === leadRowId);
                   if (lead) setSelectedLead(lead);
                 }}
-                onMove={(email, kind) => {
+                onMove={(email, kind, column) => {
                   setBoardError(null);
                   setStatedReplyKinds((prev) =>
                     // Stamped now because that is when the person said it — the read
-                    // that replaces this carries instantly-service's own instant.
-                    new Map(prev).set(email, { kind, at: new Date().toISOString() }),
+                    // that replaces this carries instantly-service's own instant. The
+                    // column rides along so the card stays where it was dropped for
+                    // the round trip; lead-service decides where it ends up.
+                    new Map(prev).set(email, { kind, at: new Date().toISOString(), column }),
                   );
                   moveOnBoard.mutate(
                     { email, kind },
@@ -1842,14 +1859,35 @@ export function EngagedLeadsPage({
                       onSuccess: () => {
                         // The campaign's kinds and the lead rows both change with a
                         // statement (a reply kind decides whether the sequence keeps
-                        // sending), so both are re-read and the held value is dropped.
-                        queryClient.invalidateQueries({ queryKey: ["campaignReplyKinds", campaignId ?? "none"] });
-                        queryClient.invalidateQueries({
-                          queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
-                        });
+                        // sending), so both are re-read.
+                        const settled = Promise.all([
+                          queryClient.invalidateQueries({ queryKey: ["campaignReplyKinds", campaignId ?? "none"] }),
+                          queryClient.invalidateQueries({
+                            queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
+                          }),
+                        ]);
                         // The card moved because an outcome changed, so every figure
                         // that counts that outcome is re-read with it.
                         invalidateLeadOutcome(queryClient);
+                        // Dropped once the re-read lands, and NOT before: the hold
+                        // exists to cover the round trip and no longer. Keeping it past
+                        // the re-read would pin the card to the column somebody dropped
+                        // it in even when lead-service places it somewhere else — which
+                        // it legitimately does (a positive reply is not the step a
+                        // visit-led campaign sells), and which the reader has to see.
+                        //
+                        // Detached rather than awaited HERE: a promise returned from
+                        // `onSuccess` keeps the mutation `isPending`, which is what the
+                        // board's `busy` disables its buttons on — so awaiting the leads
+                        // refetch would lock the whole picker for the length of a read
+                        // that runs to tens of megabytes on a live campaign.
+                        void settled.then(() => {
+                          setStatedReplyKinds((prev) => {
+                            const next = new Map(prev);
+                            next.delete(email);
+                            return next;
+                          });
+                        });
                       },
                       // instantly-service writes its refusal as a sentence for a person
                       // to read. Surface ITS reason, never the thrown Error's own

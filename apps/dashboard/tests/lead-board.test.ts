@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  DISQUALIFYING_REPLY_KINDS,
-  INTEREST_REPLY_KINDS,
+  DISQUALIFYING_STATEMENT_KINDS,
+  INTEREST_STATEMENT_KINDS,
   LEAD_BOARD_COLUMNS,
   LEAD_BOARD_PAGE_SIZE,
   columnMoveRefusal,
@@ -9,29 +9,28 @@ import {
   columnReplyKinds,
   leadBoardColumnFor,
   movableColumnsFrom,
-  type LeadTriage,
+  type LeadBoardStanding,
 } from "../src/lib/lead-board";
 import { REPLY_KINDS } from "../src/lib/reply-kind";
 
-const base: LeadTriage = {
-  contacted: true,
-  unsubscribed: false,
-  replyKind: null,
-  replyClassification: null,
-};
-const at = (over: Partial<LeadTriage>) => leadBoardColumnFor({ ...base, ...over });
+/** One served standing. `signal` matters for exactly one branch — see the opt-out test. */
+const at = (state: string, signal = "none") =>
+  leadBoardColumnFor({ state, signal } as unknown as LeadBoardStanding);
 
-describe("the board is four triage columns", () => {
-  it("states them in triage order, and only Opt-out refuses a card", () => {
+describe("the board is five triage columns", () => {
+  it("states them in triage order, and only the two we cannot write refuse a card", () => {
     expect(LEAD_BOARD_COLUMNS.map((c) => c.key)).toEqual([
       "contacted",
       "sales_interest",
       "disqualified",
       "opt_out",
+      "unresolved",
     ]);
     // Unsubscribing is the PROSPECT's act and it is legally binding, so no control of
-    // ours may record it on their behalf.
+    // ours may record it on their behalf; "Not placed" is the producer saying it could
+    // not answer, which nobody can assert their way into.
     expect(LEAD_BOARD_COLUMNS.find((c) => c.key === "opt_out")?.writable).toBe(false);
+    expect(LEAD_BOARD_COLUMNS.find((c) => c.key === "unresolved")?.writable).toBe(false);
     for (const key of ["contacted", "sales_interest", "disqualified"] as const) {
       expect(LEAD_BOARD_COLUMNS.find((c) => c.key === key)?.writable).toBe(true);
     }
@@ -43,89 +42,114 @@ describe("the board is four triage columns", () => {
     }
   });
 
+  it("drops ONLY the producer-failure column when it holds nothing", () => {
+    // Drawing "Not placed" on a healthy campaign advertises a problem that is not
+    // there; the other four are the shape of the board and stay either way.
+    for (const column of LEAD_BOARD_COLUMNS) {
+      expect(column.hideWhenEmpty).toBe(column.key === "unresolved");
+    }
+  });
+
   it("needs no funnel to lay out, unlike the rungs it replaced", () => {
     // Triage states are not ordered by a funnel, so a brand selling through several
-    // gets the same four columns a campaign does.
-    expect(LEAD_BOARD_COLUMNS).toHaveLength(4);
+    // gets the same columns a campaign does.
+    expect(LEAD_BOARD_COLUMNS).toHaveLength(5);
   });
 });
 
-describe("where a lead lands", () => {
-  it("puts a contacted lead nobody has answered in Contacted", () => {
-    expect(at({})).toBe("contacted");
+describe("where a lead lands is the PRODUCER's answer, rendered", () => {
+  it("renders each served state as its column", () => {
+    expect(at("contacted")).toBe("contacted");
+    // Something happened that this campaign does not sell — still in play.
+    expect(at("engaged", "click")).toBe("contacted");
+    expect(at("sales_interest", "measured_visit")).toBe("sales_interest");
+    expect(at("disqualified", "negative_reply")).toBe("disqualified");
+    expect(at("unresolved")).toBe("unresolved");
   });
 
   it("leaves a lead we never contacted OFF the board entirely", () => {
     // Not a column of its own: there is nothing to show about what happened to it, and
     // inventing one would make the board disagree with the page's own count.
-    expect(at({ contacted: false })).toBeNull();
+    expect(at("not_contacted", "not_served")).toBeNull();
   });
 
-  it("reads the three buying-interest kinds as Sales interest", () => {
-    for (const kind of INTEREST_REPLY_KINDS) {
-      expect(at({ replyKind: kind })).toBe("sales_interest");
+  it("reads a MEASURED VISIT as sales interest, which a reply signal never could", () => {
+    // The whole reason placement moved: on a campaign selling `form_magnet` the step
+    // being sold is a website visit, so somebody who clicked through has reached it.
+    // Deriving interest from a reply here showed that column empty on a campaign with
+    // 67 such leads.
+    expect(at("sales_interest", "measured_visit")).toBe("sales_interest");
+  });
+
+  it("folds a CUSTOMER into Sales interest rather than inventing a verdict for it", () => {
+    // They reached the step this campaign sells and then some. Four triage buckets
+    // have no room for a fifth verdict, and the column's blurb says so.
+    expect(at("customer", "stated_outcome")).toBe("sales_interest");
+  });
+
+  it("splits an OPT-OUT out of the producer's one disqualified state, by its signal", () => {
+    // lead-service folds an opt-out into `disqualified` — right for it, both are out
+    // of play. Not right here: an opt-out is the prospect's own act and legally
+    // binding, so it gets its own column and nothing of ours may write one.
+    expect(at("disqualified", "unsubscribed")).toBe("opt_out");
+    // Every other way of being out of play reads as the ordinary verdict.
+    for (const signal of ["negative_reply", "bounced", "stated_never"]) {
+      expect(at("disqualified", signal)).toBe("disqualified");
     }
   });
 
-  it("keeps a REFERRAL out of Sales interest", () => {
-    // "Not them, but points us on" is valuable and it is not THIS person's interest —
-    // the new lead it produces arrives as its own row.
-    expect(at({ replyKind: "lead_referral" })).toBe("contacted");
+  it("sends a BOUNCE and a plain NO to Disqualified now, which is a change", () => {
+    // This module used to keep both in Contacted on purpose — a bounce is a failure of
+    // DELIVERY, and in sales a no is where the conversation starts. lead-service reads
+    // both as out of play for this campaign and it is the owner; a client-side
+    // override to preserve the older reading is the split this change closes.
+    expect(at("disqualified", "bounced")).toBe("disqualified");
+    expect(at("disqualified", "negative_reply")).toBe("disqualified");
   });
 
-  it("keeps a NO in Contacted, because in sales a no is where the conversation starts", () => {
-    expect(at({ replyKind: "lead_not_interested" })).toBe("contacted");
-    // And the coarse machine reading of the same message must not move it either.
-    expect(at({ replyClassification: "negative" })).toBe("contacted");
+  it("holds NO reply-kind list and NO precedence ladder of its own", () => {
+    const src = readBoardSource();
+    // The policy that used to live here, by name.
+    expect(src).not.toContain("INTEREST_REPLY_KINDS");
+    expect(src).not.toContain("DISQUALIFYING_REPLY_KINDS");
+    // And the fields it used to read to decide a state.
+    const fn = src.slice(src.indexOf("export function leadBoardColumnFor("));
+    expect(fn).not.toContain("replyClassification");
+    expect(fn).not.toContain("replyKind");
+    expect(fn).not.toContain("unsubscribed:");
+    expect(fn).toContain("standing.state");
   });
 
-  it("keeps a BOUNCE in Contacted", () => {
-    // A bounce is a failure of DELIVERY, not an opinion: the address needs repairing,
-    // the human behind it may still be interested. It reaches the board as a contacted
-    // lead with nothing said, exactly like any other.
-    expect(at({ replyClassification: null })).toBe("contacted");
+  it("states 'we cannot place this' for an ABSENT standing, never a rule of its own", () => {
+    // A payload written before lead-service v0.64.0 — a snapshot restored from disk,
+    // in practice, for the second before the poll lands. A second implementation kept
+    // alive for old payloads is exactly the split this change exists to close.
+    expect(leadBoardColumnFor(null)).toBe("unresolved");
+    expect(leadBoardColumnFor(undefined)).toBe("unresolved");
   });
 
-  it("disqualifies only on an objective fact about the person", () => {
-    expect(at({ replyKind: "lead_wrong_person" })).toBe("disqualified");
-    // Listed before the producer serves it, so the column fills with no change here.
-    expect(at({ replyKind: "lead_job_change" })).toBe("disqualified");
-    expect(DISQUALIFYING_REPLY_KINDS).toContain("lead_job_change");
-  });
-
-  it("puts an opt-out in its own column whatever else is true of the lead", () => {
-    expect(at({ unsubscribed: true })).toBe("opt_out");
-    // Including a lead who WAS interested: they must not read as still in play.
-    expect(at({ unsubscribed: true, replyKind: "lead_interested" })).toBe("opt_out");
-    expect(at({ unsubscribed: true, replyKind: "lead_wrong_person" })).toBe("opt_out");
-  });
-
-  it("lets a HUMAN's statement outrank the machine's classification", () => {
-    // A person read the message; the classifier guessed at it.
-    expect(at({ replyKind: "lead_not_interested", replyClassification: "positive" })).toBe(
-      "contacted",
-    );
-    expect(at({ replyKind: "lead_interested", replyClassification: "negative" })).toBe(
-      "sales_interest",
-    );
-  });
-
-  it("falls back to the coarse classification when nobody has stated a kind", () => {
-    expect(at({ replyClassification: "positive" })).toBe("sales_interest");
-    expect(at({ replyClassification: "neutral" })).toBe("contacted");
-  });
-
-  it("reads a kind this build does not know as saying nothing about interest", () => {
-    // The producer owns the vocabulary and can widen it before this app ships.
-    expect(at({ replyKind: "lead_something_new" })).toBe("contacted");
+  it("states the same for a STATE this build does not name", () => {
+    // lead-service owns the vocabulary and can widen it before this app ships, so the
+    // honest render for a word we do not know is "we cannot place this", never the
+    // nearest column we happen to have.
+    expect(at("something_new")).toBe("unresolved");
   });
 });
 
 describe("what a person may state from a column", () => {
   it("offers exactly that column's own kinds", () => {
-    expect(columnReplyKinds("sales_interest")).toEqual([...INTEREST_REPLY_KINDS]);
+    expect(columnReplyKinds("sales_interest")).toEqual([...INTEREST_STATEMENT_KINDS]);
     expect(columnReplyKinds("disqualified")).toEqual(["lead_wrong_person"]);
     expect(columnReplyKinds("opt_out")).toEqual([]);
+    expect(columnReplyKinds("unresolved")).toEqual([]);
+  });
+
+  it("keeps a REFERRAL out of the Sales-interest picker", () => {
+    // "Not them, but points us on" is not THIS person's interest, and instantly-service
+    // projects it to `neutral` for the same reason — so offering it would offer a move
+    // nothing could honour.
+    expect(columnReplyKinds("sales_interest")).not.toContain("lead_referral");
+    expect(columnReplyKinds("contacted")).toContain("lead_referral");
   });
 
   it("offers no AUTOMATED kind, because nobody states one", () => {
@@ -134,19 +158,19 @@ describe("what a person may state from a column", () => {
       expect(REPLY_KINDS.find((o) => o.kind === kind)?.tone).not.toBe("automated");
     }
     expect(contacted).toContain("lead_not_interested");
-    expect(contacted).toContain("lead_referral");
     expect(contacted).toContain("lead_neutral");
   });
 
   it("offers only kinds the catalogue actually carries", () => {
-    // `lead_job_change` is listed ahead of the producer, so it must NOT reach a picker
-    // until the catalogue names it — a button writing a value nothing renders is worse
-    // than a column that fills later.
+    // `lead_changed_job` is listed ahead of this app's own catalogue (instantly-service
+    // already serves it), so it must NOT reach a picker until there is a label — a
+    // button writing a value nothing renders is worse than a column that fills later.
+    expect(DISQUALIFYING_STATEMENT_KINDS).toContain("lead_changed_job");
     const every = LEAD_BOARD_COLUMNS.flatMap((c) => columnReplyKinds(c.key));
     for (const kind of every) {
       expect(REPLY_KINDS.some((o) => o.kind === kind)).toBe(true);
     }
-    expect(every).not.toContain("lead_job_change");
+    expect(every).not.toContain("lead_changed_job");
   });
 });
 
@@ -162,18 +186,25 @@ describe("which columns a card may move to", () => {
     ]);
   });
 
-  it("never offers Opt-out as a destination", () => {
+  it("never offers Opt-out or Not-placed as a destination", () => {
     for (const from of LEAD_BOARD_COLUMNS) {
       expect(movableColumnsFrom(from.key).map((c) => c.key)).not.toContain("opt_out");
+      expect(movableColumnsFrom(from.key).map((c) => c.key)).not.toContain("unresolved");
     }
   });
 
   it("never moves a card OUT of Opt-out either", () => {
     // `writable: false` only stops a card ARRIVING. Without this, a lead who asked us
     // to stop could be dragged back into play — the same consent decision we refuse to
-    // fabricate, made in the more dangerous direction. Caught by rendering the board,
-    // not by reading it: the card was draggable and carried a Move control.
+    // fabricate, made in the more dangerous direction.
     expect(movableColumnsFrom("opt_out")).toEqual([]);
+  });
+
+  it("never moves a card out of Not-placed, because nothing anybody states would move it", () => {
+    // A card is there when lead-service could not resolve the campaign's funnel, and
+    // its ladder answers `unresolved` before it ever looks at a statement. Offering
+    // the move would offer a control that cannot take.
+    expect(movableColumnsFrom("unresolved")).toEqual([]);
   });
 
   it("lets a card move BACK, because triage states are not funnel rungs", () => {
@@ -184,21 +215,22 @@ describe("which columns a card may move to", () => {
 });
 
 describe("a drop lands everywhere, and the form is where a move is refused", () => {
-  it("refuses only Opt-out, and says why in a sentence a person reads", () => {
+  it("refuses the two unwritable columns, each with its own reason", () => {
     for (const key of ["contacted", "sales_interest", "disqualified"] as const) {
       expect(columnMoveRefusal(key)).toBeNull();
     }
-    const refusal = columnMoveRefusal("opt_out");
-    expect(refusal).toBeTruthy();
     // The reason, not a bare "not allowed" — the rule is about whose act this is.
-    expect(refusal).toMatch(/prospect/i);
+    expect(columnMoveRefusal("opt_out")).toMatch(/prospect/i);
+    expect(columnMoveRefusal("unresolved")).toMatch(/funnel/i);
   });
 
-  it("has nothing it could write for Opt-out even if it wanted to", () => {
-    // The refusal is not a preference: instantly-service's vocabulary carries no
-    // unsubscribe value, so the picker for that column is empty by construction.
-    expect(columnReplyKinds("opt_out")).toEqual([]);
-    expect(columnMoveRefusal("opt_out")).not.toBeNull();
+  it("has nothing it could write for either even if it wanted to", () => {
+    // Not a preference: instantly-service's vocabulary carries no unsubscribe value,
+    // so the picker for that column is empty by construction.
+    for (const key of ["opt_out", "unresolved"] as const) {
+      expect(columnReplyKinds(key)).toEqual([]);
+      expect(columnMoveRefusal(key)).not.toBeNull();
+    }
   });
 });
 
@@ -225,3 +257,10 @@ describe("a column draws a page and states its tail", () => {
     expect(columnPage(10, -1)).toEqual({ visible: 0, remaining: 10 });
   });
 });
+
+function readBoardSource(): string {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { readFileSync } = require("node:fs") as typeof import("node:fs");
+  const { join } = require("node:path") as typeof import("node:path");
+  return readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
+}
