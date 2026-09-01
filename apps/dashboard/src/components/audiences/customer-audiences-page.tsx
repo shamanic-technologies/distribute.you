@@ -1245,7 +1245,16 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
         ]}
         configKey="audience-editor"
         brandId={brandId}
-        context={selected ? { audienceId: selected.id } : undefined}
+        // The chat CREATES audiences, and human-service files each one under the
+        // offer it is told — so a chat that states none creates a brand-wide
+        // audience that this page, which lists exactly one offer's audiences,
+        // can never show. The offer therefore travels in the context the same
+        // way `brandId` already does. Absent off an offer route, which keeps the
+        // brand-wide behaviour byte-identically.
+        context={{
+          ...(offerId ? { offerId } : {}),
+          ...(selected ? { audienceId: selected.id } : {}),
+        }}
         sessionVersion={selected?.id}
         invalidateKeys={[["audiences", brandId]]}
         autoSendMessage={autoPrompt ?? undefined}
