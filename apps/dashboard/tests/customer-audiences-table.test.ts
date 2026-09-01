@@ -124,6 +124,23 @@ describe("Audiences page", () => {
     expect(src).not.toContain('MaturityBadge level="beta"');
   });
 
+  // The chat CREATES audiences, and human-service files each one under the offer
+  // it is given. This page lists exactly one offer's audiences, so a chat that
+  // states none creates a brand-wide audience the customer can never see here —
+  // which is what shipped for months. Pins the CALL SITE, not the component: a
+  // chat perfectly able to carry the offer is the feature entirely absent if the
+  // page never passes it.
+  it("tells the AI chat which offer the page is scoped to", () => {
+    const at = src.indexOf("<EditWithAIChat");
+    expect(at).toBeGreaterThan(-1);
+    const mount = src.slice(at, src.indexOf("/>", at));
+    expect(mount).toContain("...(offerId ? { offerId } : {})");
+    expect(mount).toContain("...(selected ? { audienceId: selected.id } : {})");
+    // Off an offer route there is no offer to state, and the chat then behaves
+    // exactly as it did before — brand-wide, never a guessed one.
+    expect(mount).not.toContain("offerId: offerId ??");
+  });
+
   it("renders readable detail-panel status and targeting tags", () => {
     expect(src).toContain("statusPillTone");
     expect(src).toContain("bg-emerald-50 text-emerald-700 border-emerald-200");
