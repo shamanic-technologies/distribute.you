@@ -1,4 +1,4 @@
-// The leads board: FOUR triage columns, each lead in exactly ONE of them.
+// The leads board: FIVE triage columns, each lead in exactly ONE of them.
 //
 // The tabs this sits beside are NESTED SUBSETS — a lead that replied is also in
 // Contacted — which is why the page has to dedupe them to count its own population. A
@@ -11,31 +11,51 @@
 // still in play, and if not, why not". A funnel rung is stated on the lead's own panel,
 // which is where the cost and the value of that rung are asked for.
 //
-// The four columns come from the sales canon rather than from our own data model, and
-// two splits in them are load-bearing:
+// WHERE A LEAD STANDS IS NOT DECIDED HERE ANY MORE. It is `standing.state`, served per
+// (lead, campaign) by lead-service, and this module renders it. What used to live here
+// — which reply kinds mean interest, what disqualifies, whether an unsubscribe outranks
+// a stated kind — was commercial policy held in three places at once (here,
+// features-service's aggregate count, instantly-service's write-time classification),
+// and that split had already put two different answers about one person on two
+// surfaces. The producer is also FUNNEL-AWARE, which this could never be from a reply
+// signal alone: on a campaign selling `form_magnet` the step being sold is a website
+// visit, so 67 leads who clicked through stood at `sales_interest` while this file,
+// reading replies, showed the column empty.
 //
-//   - **Opt-out is not an opinion.** It is the prospect's own act and it is legally
-//     binding (CAN-SPAM, GDPR), so it can never share a column with a commercial
-//     judgement of ours. It is also the only column nobody can move a card into.
-//   - **A "no" is not a disqualification.** Salesforce and Forrester both split the
-//     negatives into permanent (this person can never buy: it is not their job, they
-//     are not the decision maker) and temporary (not now, no budget yet, not
-//     interested today) — and Forrester warns that a bucket holding both becomes a
-//     dumping ground that quietly loses recyclable pipeline. So `Not interested` stays
-//     in Contacted: in sales a no is the beginning of the conversation, and only an
-//     OBJECTIVE fact about the person reaches Disqualified.
+// Two things stayed OURS, because they are about this board and not about the person:
 //
-// A BOUNCE stays in Contacted for the same kind of reason: it is a failure of
-// DELIVERY, not an opinion. A bad address says nothing about whether the human behind
-// it is interested, so it is an address to repair rather than a lead to write off.
+//   - **The columns.** Their labels, their order, their copy, and the fact that
+//     Opt-out is one at all. lead-service folds an opt-out into `disqualified` (with
+//     `signal: "unsubscribed"`), which is right for it — both are out of play. It is
+//     not right HERE: an opt-out is the prospect's own act and legally binding
+//     (CAN-SPAM, GDPR), so it can never share a column with a commercial judgement of
+//     ours, and nothing of ours may record one on their behalf. Splitting the
+//     producer's one state by the producer's OWN evidence field is a rendering
+//     decision about our columns, not a second opinion about the lead.
+//   - **The move picker.** Which kinds a person may STATE from each column. The write
+//     is unchanged and still goes to instantly-service; see `columnReplyKinds`.
+//
+// What CHANGED for a reader, and somebody will notice: a bounce and a plain "no" now
+// leave Contacted for Disqualified. This file used to keep both there on purpose — a
+// bounce is a failure of DELIVERY rather than an opinion, and in sales a no is where
+// the conversation starts. lead-service reads both as out of play for this campaign
+// (rules 8 and 10 of its ladder), and it is the owner now. One service decides, and a
+// client-side override to preserve the older reading would be the same split all over
+// again.
 //
 // Alias-free on purpose (its runtime import is relative and pulls no "@" alias in) so
 // this module carries REAL unit tests. Keep it that way.
 
 import { REPLY_KINDS, type ReplyKind } from "./reply-kind";
+import type { LeadStanding } from "./lead-standing";
 
-/** The column key. Four triage states, and every contacted lead is in exactly one. */
-export type LeadBoardColumnKey = "contacted" | "sales_interest" | "disqualified" | "opt_out";
+/** The column key. Every lead the producer can place is in exactly one. */
+export type LeadBoardColumnKey =
+  | "contacted"
+  | "sales_interest"
+  | "disqualified"
+  | "opt_out"
+  | "unresolved";
 
 export interface LeadBoardColumn {
   key: LeadBoardColumnKey;
@@ -46,133 +66,166 @@ export interface LeadBoardColumn {
    * Whether a person can MOVE a card into this column.
    *
    * A move here states a REPLY KIND — what this person said — so it is writable
-   * wherever a human can honestly say it. `opt_out` is the exception and stays false
-   * on purpose: unsubscribing is the prospect's act, and fabricating it on their
-   * behalf would record a consent decision they never made.
+   * wherever a human can honestly say it. Two are false and for different reasons:
+   * `opt_out` because unsubscribing is the prospect's act and fabricating it on their
+   * behalf would record a consent decision they never made, and `unresolved` because
+   * it is the producer saying it could not answer, which is not a thing anybody can
+   * assert their way into.
    */
   writable: boolean;
+  /**
+   * Whether the column is dropped from the rail when it holds nothing.
+   *
+   * Only `unresolved` is: it exists to report that the producer could not place some
+   * leads, so drawing it on a healthy campaign advertises a problem that is not there.
+   * The other four are the shape of the board and stay whether or not they have cards.
+   */
+  hideWhenEmpty: boolean;
 }
 
 export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   {
     key: "contacted",
     label: "Contacted",
-    blurb: "Reached, and still in play. A no and a bounce included.",
+    blurb: "Reached. Nothing since, or something this campaign does not sell.",
     writable: true,
+    hideWhenEmpty: false,
   },
   {
     key: "sales_interest",
     label: "Sales interest",
-    blurb: "They answered with real buying interest.",
+    blurb: "They reached the step this campaign sells, or bought.",
     writable: true,
+    hideWhenEmpty: false,
   },
   {
     key: "disqualified",
     label: "Disqualified",
-    blurb: "This person cannot buy: wrong role, or they have moved on.",
+    blurb: "Out of play: they said no, the mail bounced, or they cannot buy.",
     writable: true,
+    hideWhenEmpty: false,
   },
   {
     key: "opt_out",
     label: "Opt-out",
     blurb: "They asked us to stop. We never contact them again.",
     writable: false,
+    hideWhenEmpty: false,
+  },
+  {
+    key: "unresolved",
+    label: "Not placed",
+    blurb: "We cannot say yet: this campaign states no sales funnel, or a signal could not be read.",
+    writable: false,
+    hideWhenEmpty: true,
   },
 ];
 
 /**
- * The reply kinds that put a lead in Sales interest — the three where the prospect
- * expressed buying interest of their own.
+ * The kinds a person may state to put a card in Sales interest.
  *
- * `lead_referral` is deliberately NOT here. "Not them, but points us on" is valuable
- * and it is not THIS person's interest, which is exactly the distinction the column
- * exists to make; Outreach's own taxonomy keeps Referral as its own class for the same
- * reason. It reads as Contacted, and the new lead it produces arrives as its own row.
+ * ⚠️ This is the WRITE picker, NOT how a card is placed. Placement is the producer's
+ * (`leadBoardColumnFor`), and the producer decides where the card lands AFTER the
+ * write — which is why a move can visibly not take: on a campaign whose funnel is
+ * entered by a website visit, stating "Interested" is a positive reply, and a positive
+ * reply is not the step that campaign sells, so lead-service answers `engaged` and the
+ * card comes back to Contacted. That is the correct answer, not a bug to override.
+ *
+ * `lead_referral` is deliberately absent. "Not them, but points us on" is valuable and
+ * it is not THIS person's interest; instantly-service projects it to `neutral` for the
+ * same reason, so offering it here would offer a move nothing could honour.
  */
-export const INTEREST_REPLY_KINDS: readonly ReplyKind[] = [
+export const INTEREST_STATEMENT_KINDS: readonly ReplyKind[] = [
   "lead_interested",
   "lead_info_requested",
   "lead_meeting_requested",
 ];
 
 /**
- * The reply kinds that DISQUALIFY — an objective fact about the person, never a
- * judgement about the moment.
+ * The kinds a person may state to put a card in Disqualified — an objective fact about
+ * the person, never a judgement about the moment.
  *
- * Typed as bare strings, and `lead_job_change` is listed BEFORE the producer serves it:
- * instantly-service owns this vocabulary, so the day it ships that value the column
- * fills with no change here. A value this build does not otherwise render resolves to
- * `null` through `replyKindOption`, so listing it early costs nothing and cannot
- * fabricate a label.
+ * Typed as bare strings so a value can be listed BEFORE this app's own reply-kind
+ * catalogue carries it: instantly-service owns that vocabulary and already serves
+ * `lead_changed_job`, which `REPLY_KINDS` here does not yet name. `columnReplyKinds`
+ * filters against the catalogue, so a kind listed early cannot reach a picker until
+ * there is a label for it.
  */
-export const DISQUALIFYING_REPLY_KINDS: readonly string[] = [
+export const DISQUALIFYING_STATEMENT_KINDS: readonly string[] = [
   "lead_wrong_person",
-  "lead_job_change",
+  "lead_changed_job",
 ];
 
 /**
  * The kinds a person may STATE from each column, in catalogue order.
  *
  * Derived from the catalogue rather than re-listed, so a kind the producer adds shows
- * up in the picker of whichever column already claims it. `opt_out` offers none.
+ * up in the picker of whichever column already claims it. `opt_out` and `unresolved`
+ * offer none.
  */
 export function columnReplyKinds(key: LeadBoardColumnKey): ReplyKind[] {
+  if (key === "opt_out" || key === "unresolved") return [];
   return REPLY_KINDS.filter((o) => {
-    if (key === "sales_interest") return INTEREST_REPLY_KINDS.includes(o.kind);
-    if (key === "disqualified") return DISQUALIFYING_REPLY_KINDS.includes(o.kind);
-    if (key === "opt_out") return false;
+    if (key === "sales_interest") return INTEREST_STATEMENT_KINDS.includes(o.kind);
+    if (key === "disqualified") return DISQUALIFYING_STATEMENT_KINDS.includes(o.kind);
     // Contacted takes what a person can honestly say and that leaves them in play. The
     // automated kinds are not statements anybody makes, so they are not offered.
     return (
-      !INTEREST_REPLY_KINDS.includes(o.kind) &&
-      !DISQUALIFYING_REPLY_KINDS.includes(o.kind) &&
+      !INTEREST_STATEMENT_KINDS.includes(o.kind) &&
+      !DISQUALIFYING_STATEMENT_KINDS.includes(o.kind) &&
       o.tone !== "automated"
     );
   }).map((o) => o.kind);
 }
 
-/** What the board needs to know about one lead to place it. */
-export interface LeadTriage {
-  /** We handed this lead to the sending provider. */
-  contacted: boolean;
-  /** They asked us to stop. Terminal, and it outranks everything else. */
-  unsubscribed: boolean;
-  /**
-   * The FINE reply kind a person stated (instantly-service manual qualifications), or
-   * null when nobody has. It OUTRANKS the coarse classification below: a machine
-   * guessed that one and a human wrote this one.
-   */
-  replyKind: string | null;
-  /** The coarse classification the delivery layer inferred, when nobody has stated one. */
-  replyClassification: "positive" | "negative" | "neutral" | null;
-}
+/** What the board needs to know about one lead to place it. Structural on purpose. */
+export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
 
 /**
- * Which column a lead sits in.
+ * Which column a lead sits in — a render of two served fields and nothing else.
  *
- * Precedence is opt-out, then disqualified, then interest, then contacted — each one
- * a stronger statement about the person than the one under it. Opt-out leads because
- * it is the only one that binds us: a lead who said they were interested and then
- * unsubscribed must not read as in play.
+ * There is no ladder here and no reply kind: `state` is lead-service's answer, and
+ * `signal` is read for exactly one thing, telling an opt-out apart from the other ways
+ * of being out of play (see `LEAD_BOARD_COLUMNS`). `customer` folds into Sales interest
+ * because a customer reached the step this campaign sells and then some — four triage
+ * buckets have no room for a fifth verdict, and the blurb says so.
  *
- * A lead we have NOT contacted lands nowhere (`null`) and is left off the board
- * entirely: there is nothing to show about what happened to it, and inventing a column
- * would make the board disagree with the page's own count of the population.
+ * `not_contacted` lands nowhere (`null`) and the lead is left off the board entirely:
+ * there is nothing to show about what happened to it, and inventing a column would make
+ * the board disagree with the page's own count of the population.
+ *
+ * An ABSENT standing (`null`/`undefined`) is a payload written before lead-service
+ * v0.64.0 — a snapshot restored from disk, in practice, for the second before the poll
+ * lands. It reads as `unresolved`, which states what is true: we cannot place this yet.
+ * It deliberately does NOT fall back to a reply-signal rule of our own; a second
+ * implementation kept alive for old payloads is the split this change exists to close.
+ *
+ * A state this build does not name reads as `unresolved` too. lead-service owns the
+ * vocabulary and can widen it before this app ships, so the honest render for a word we
+ * do not know is "we cannot place this", never the nearest column we happen to have.
  */
-export function leadBoardColumnFor(lead: LeadTriage): LeadBoardColumnKey | null {
-  if (lead.unsubscribed) return "opt_out";
-  if (lead.replyKind && DISQUALIFYING_REPLY_KINDS.includes(lead.replyKind)) {
-    return "disqualified";
+export function leadBoardColumnFor(
+  standing: LeadBoardStanding | null | undefined,
+): LeadBoardColumnKey | null {
+  if (!standing) return "unresolved";
+  switch (standing.state) {
+    case "not_contacted":
+      return null;
+    case "contacted":
+    case "engaged":
+      return "contacted";
+    case "sales_interest":
+    case "customer":
+      return "sales_interest";
+    case "disqualified":
+      // The producer's own evidence field, not a second opinion about the lead: an
+      // opt-out is the prospect's act and gets its own column here.
+      return standing.signal === "unsubscribed" ? "opt_out" : "disqualified";
+    case "unresolved":
+      return "unresolved";
+    default:
+      return "unresolved";
   }
-  if (lead.replyKind) {
-    // A stated kind is the whole answer: it decides interest AND its absence, so a
-    // human saying "not interested" is never overridden by a machine reading the same
-    // message as positive.
-    if (INTEREST_REPLY_KINDS.includes(lead.replyKind as ReplyKind)) return "sales_interest";
-    return lead.contacted ? "contacted" : null;
-  }
-  if (lead.replyClassification === "positive") return "sales_interest";
-  return lead.contacted ? "contacted" : null;
 }
 
 /**
@@ -182,33 +235,40 @@ export function leadBoardColumnFor(lead: LeadTriage): LeadBoardColumnKey | null 
  * correcting one a person got wrong is a statement like any other and the producer
  * supersedes the earlier one.
  *
- * Opt-out is the exception, and it is the one that matters: a card cannot be moved OUT
- * of it either. `writable: false` only stops a card arriving; without this a lead who
- * asked us to stop could be dragged back into play, which is the same consent decision
- * we refuse to fabricate, made in the more dangerous direction. Somebody who opts back
- * in does it themselves, and it reaches us the same way the opt-out did.
+ * Two columns let nothing out, and `writable: false` does not cover it — that only
+ * stops a card ARRIVING:
+ *
+ *   - `opt_out`, because a lead who asked us to stop could otherwise be dragged back
+ *     into play, which is the same consent decision we refuse to fabricate, made in
+ *     the more dangerous direction.
+ *   - `unresolved`, because a card is there when lead-service could not resolve the
+ *     campaign's funnel — and without the funnel nothing anybody states moves it (its
+ *     own ladder answers `unresolved` before it ever looks at a statement). Offering
+ *     the move would offer a control that cannot take.
  */
 export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardColumn[] {
-  if (from === "opt_out") return [];
+  if (from === "opt_out" || from === "unresolved") return [];
   return LEAD_BOARD_COLUMNS.filter((c) => c.writable && c.key !== from);
 }
 
 /**
  * Why a card cannot land in `to`, or null when it can.
  *
- * A drop is accepted EVERYWHERE now — a target that silently refuses a drag reads as
- * a broken board rather than as a rule, so the drop lands, the move form opens, and
- * the form says what is missing. This is the sentence it says.
+ * A drop is accepted EVERYWHERE — a target that silently refuses a drag reads as a
+ * broken board rather than as a rule, so the drop lands, the move form opens, and the
+ * form says what is missing. This is the sentence it says.
  *
- * Opt-out is the only column with one, and the reason is not a preference: there is no
- * unsubscribe value in the reply-kind vocabulary instantly-service owns, so
- * `columnReplyKinds("opt_out")` is empty and there is literally nothing to write. A
- * picker that offered one would be fabricating a consent decision the prospect never
- * made.
+ * Neither refusal is a preference. There is no unsubscribe value in the reply-kind
+ * vocabulary instantly-service owns, so `columnReplyKinds("opt_out")` is empty and
+ * there is literally nothing to write; and `unresolved` is lead-service reporting that
+ * it could not answer, which no statement of ours makes it able to.
  */
 export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
   if (to === "opt_out") {
     return "Only the prospect can opt out. It reaches us the way their reply does, and we never record it for them.";
+  }
+  if (to === "unresolved") {
+    return "Nothing to state here. These leads are unplaced because this campaign states no sales funnel, which no answer about the person can settle.";
   }
   return null;
 }

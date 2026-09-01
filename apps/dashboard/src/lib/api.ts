@@ -3,6 +3,7 @@ import type { PublicChannelLegsWire } from "./stated-campaign-leg";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
+import type { LeadStanding } from "./lead-standing";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
@@ -4379,6 +4380,22 @@ export interface Lead {
    * a lead read before lead-service v0.55.0 carries none.
    */
   offer?: { id: string; name: string | null } | null;
+  /**
+   * WHERE THIS PERSON STANDS on the campaign they were served under, decided by
+   * lead-service (v0.64.0) and by nobody else.
+   *
+   * The leads board renders `standing.state` instead of deriving one from the reply
+   * signals below. Those signals stay on the wire and stay read — they are what the
+   * table's status badge and the lead panel's timeline are about — but "is this
+   * person still a live prospect" is commercial policy, it is funnel-aware, and it
+   * has ONE owner now. See `lib/lead-standing.ts` for why.
+   *
+   * OPTIONAL, and only that: a payload written before v0.64.0 carries none, which in
+   * practice is a snapshot restored from the local-first cache for the second before
+   * the poll lands. Its FIELDS are required-and-nullable, so they are `T | null` and
+   * never `.optional()` — the producer means to send those nulls.
+   */
+  standing?: LeadStanding | null;
   lead: FullLead | null;
 }
 
@@ -4447,12 +4464,35 @@ const LeadDeliverySchema = z
     bounced: z.boolean(),
     unsubscribed: z.boolean(),
     replied: z.boolean(),
+    // The two fields the BOARD dereferences, validated for the same reason the
+    // booleans above are: a 200 whose standing is the wrong shape must fail loudly
+    // rather than place every card in "Not placed".
+    //
+    // `z.string()`, never `z.enum`: lead-service owns this vocabulary and can widen it
+    // before this app ships, and closing the set here would turn a state it ADDS into
+    // a thrown parse — which reveal-on-settle paints as headings with nothing under
+    // them. `leadBoardColumnFor` renders a word it does not know as "we cannot place
+    // this", which is the honest read and costs nobody the page.
+    //
+    // `.optional()` on the OBJECT (a payload written before lead-service v0.64.0
+    // carries none) but never on its fields, which the producer marks required — most
+    // of them nullable, so `.nullable()` is what those need, and they ride the
+    // passthrough rather than being restated.
+    standing: z
+      .object({ state: z.string(), signal: z.string() })
+      .passthrough()
+      .nullish(),
   })
   .passthrough();
 
 const ListLeadsResponseSchema = z.object({ leads: z.array(LeadDeliverySchema) });
 
-function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } {
+/**
+ * Exported so a guard can run the REAL parser over a REAL body — a claim that a field
+ * survives the parse is a claim about what this function returns, and reading the
+ * schema back is not evidence of it.
+ */
+export function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } {
   const parsed = ListLeadsResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error(`[dashboard] ${fn}: response shape mismatch`, { issues: parsed.error.issues, raw });

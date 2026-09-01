@@ -94,6 +94,8 @@ const COLUMN_TONE: Record<LeadBoardColumnKey, ReplyTone> = {
   sales_interest: "positive",
   disqualified: "negative",
   opt_out: "negative",
+  // Not a verdict about the person: it is the producer saying it could not answer.
+  unresolved: "neutral",
 };
 
 /** The person's face, or their initial. 18px so the second line keeps its own height. */
@@ -219,7 +221,14 @@ export function LeadBoard({
    */
   canMove: boolean;
   onOpen: (leadRowId: string) => void;
-  onMove: (email: string, kind: ReplyKind) => void;
+  /**
+   * The statement, plus the column it was made from.
+   *
+   * The column is not derivable from the kind here: where a card lands is
+   * lead-service's answer, not a mapping this app holds. The page needs it only to
+   * hold the card in place for the round trip — see the latch there.
+   */
+  onMove: (email: string, kind: ReplyKind, column: LeadBoardColumnKey) => void;
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
   // How many cards each column has been asked for. Per column, because the columns are
@@ -302,7 +311,7 @@ export function LeadBoard({
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        onMove(pending.card.email as string, kind);
+                        onMove(pending.card.email as string, kind, pending.to.key);
                         setPending(null);
                       }}
                       className={`rounded-full border px-2.5 py-1 text-xs ${REPLY_TONE_PILL[option.tone]} ${
@@ -335,6 +344,10 @@ export function LeadBoard({
       <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
         {LEAD_BOARD_COLUMNS.map((column) => {
           const inColumn = byColumn.get(column.key) ?? [];
+          // "Not placed" reports that lead-service could not place some leads, so
+          // drawing it on a healthy campaign advertises a problem that is not there.
+          // The other four are the shape of the board and stay either way.
+          if (column.hideWhenEmpty && inColumn.length === 0) return null;
           const { visible, remaining } = columnPage(
             inColumn.length,
             shown[column.key] ?? LEAD_BOARD_PAGE_SIZE,
