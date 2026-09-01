@@ -112,9 +112,13 @@ export const REPLY_TONE_PILL: Record<ReplyTone, string> = {
  *   slate    said neither         — they answered and it carried no signal.
  *   amber    not interested       — a no about the MOMENT. The lead is recyclable, so it
  *                                   is warned, not condemned.
- *   rose     wrong person         — a no about the PERSON. Permanent, hence the red end.
+ *   rose     wrong person        \ a no about the PERSON. Permanent, hence the red end,
+ *   rose     changed job          / and shared on purpose: these two are one class —
+ *                                   the objective, permanent facts that disqualify —
+ *                                   and it is the class lead-service acts on, so a
+ *                                   reader scanning the board should see it as one.
  *   stone    out of office / automatic reply — not a person at all, so the dimmest pair
- *                                   on the page and the only two that share a colour.
+ *                                   on the page.
  *
  * Deliberately DISJOINT from the delivery-status palette (`leadStatusPill` in
  * `lib/lead-status.ts`), which is cool the whole way: that family is what we did and
@@ -132,6 +136,7 @@ export const REPLY_KIND_PILL: Record<ReplyKind, string> = {
   lead_neutral: "bg-slate-100 text-slate-700 border-slate-200",
   lead_not_interested: "bg-amber-100 text-amber-700 border-amber-200",
   lead_wrong_person: "bg-rose-100 text-rose-700 border-rose-200",
+  lead_changed_job: "bg-rose-100 text-rose-700 border-rose-200",
   lead_out_of_office: "bg-stone-100 text-stone-600 border-stone-200",
   auto_reply_received: "bg-stone-100 text-stone-600 border-stone-200",
 };
