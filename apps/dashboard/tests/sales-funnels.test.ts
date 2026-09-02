@@ -1141,12 +1141,13 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(lib2).toContain("export function funnelChannelBudgets");
     expect(lib2).toContain("export function offerFunnelTotalCents");
     expect(src).toContain("offerFunnelTotalCents(state.savedCentsByChannel)");
-    // Measured: the tag block runs 572 chars from its guard to its closing
+    // Measured: the tag block runs 1219 chars from its guard to its closing
     // brace. Do NOT pad it — this is a not-toContain guard, so a slice running
     // past the block would read the next thing that mentions the funnel-wide
     // figure and fail on correct code.
-    const tag = sliceFrom(src, "{state.declared && !isOpen && (", 572);
+    const tag = sliceFrom(src, "{state.declared && !isOpen && runningCents !== null && (", 1219);
     expect(tag).toContain("offerFundedCents");
+    expect(tag).toContain("runningCents");
     expect(tag).not.toContain("savedBudgetCents");
     // Which channel may sell which funnel is features-service's statement.
     expect(lib2).not.toContain("reply_meeting:");
@@ -1209,18 +1210,43 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(src).not.toContain("FUNNEL_MIN_DAILY_BUDGET_USD");
   });
 
-  it("states the funded ceiling on the tag, and says so when there is none", () => {
-    // The money IS the selection now. A declared funnel at zero is one the brand
-    // described but is not paying for, so a green tag claiming it runs would be
-    // a statement about spend that is not happening. The figure is THIS offer's,
-    // for the reason pinned in the channel-funding test above.
+  it("states what the funnel spends TODAY on the tag, never its stored ceilings", () => {
+    // billing keys a ceiling on (funnel x channel x offer) and stores no status,
+    // so the sum of the fields this card edits counts a PAUSED channel exactly
+    // like a running one: a funnel running one channel at $50 beside one paused
+    // at $10 read a green $60 it does not spend. campaign-service serves the
+    // join, and the narrowing is the one exported rule the funnels table reads.
+    expect(src).toContain('["brandSpendableBudget", brandId]');
+    expect(src).toContain("spendableCampaignsForFunnel(spendableQ.data, def.key, offerId)");
+    expect(src).toContain("c.runningDailyBudgetCents");
+    expect(src).toContain("runningCents > 0");
+    // The green figure is the RUNNING one. Pinning the status-blind sum here is
+    // what the bug looked like, so it must not come back.
+    expect(src).not.toContain('Math.round(offerFundedCents / 100).toLocaleString("en-US")');
+  });
+
+  it("keeps funded-and-stopped apart from never-funded", () => {
+    // Two different statements, and the old tag collapsed them: a funnel whose
+    // every channel is paused still holds the customer's amounts, so "Not funded"
+    // read as data they would have to re-enter. `offerFundedCents` survives for
+    // exactly this — it says a ceiling EXISTS, which is the question status
+    // cannot answer.
+    expect(src).toContain("offerFundedCents = offerFunnelTotalCents(state.savedCentsByChannel)");
     expect(src).toContain("offerFundedCents > 0");
+    expect(src).toContain("Paused");
     expect(src).toContain("Not funded");
   });
 
-  it("renders the ceiling in whole dollars, never cents", () => {
+  it("renders the running figure in whole dollars, never cents", () => {
     // A daily budget is a configured ceiling, not a charge.
-    expect(src).toContain('Math.round(offerFundedCents / 100).toLocaleString("en-US")');
+    expect(src).toContain('Math.round(runningCents / 100).toLocaleString("en-US")');
+  });
+
+  it("says nothing at all while the running read is unsettled", () => {
+    // "We could not measure this" is not "this funnel spends nothing", and the
+    // grey tag is a claim about the second. A dash-equivalent here is silence.
+    expect(src).toContain("runningCents !== null &&");
+    expect(src).toContain("spendableQ.data === undefined\n        ? null");
   });
 });
 
