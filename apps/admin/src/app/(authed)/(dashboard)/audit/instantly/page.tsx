@@ -112,6 +112,12 @@ function LifecycleBadge({ status }: { status: string }) {
 // placement (sorts by inbox-placement % first, Health Score as tiebreak). Domain
 // is dropped as a column (still searchable).
 const COLUMNS = [
+  // Fill order FIRST, and the table's default sort: send selection fills the
+  // pool top-down, so reading it in that order is what answers "who is full, who
+  // is next". Sorting by what dispatched most yesterday surfaces the mailboxes
+  // carrying old followups instead, which reads as the waterfall skipping the
+  // head vendor when the head is simply full.
+  { key: "fillRank", label: "#", numeric: true, align: "right" },
   { key: "email", label: "Account", numeric: false, align: "left" },
   { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
   { key: "warmupScore", label: "Health", numeric: true, align: "left" },
@@ -137,6 +143,8 @@ const COLUMNS = [
 // Queued steps (queueSize) + Queued seq (queuedSequences) are no longer columns —
 // they live in the row detail panel.
 const COLUMN_HINT: Partial<Record<SortKey, string>> = {
+  fillRank:
+    "Position in send selection's fill order over the in-production pool (vendor, then domain rank, then age). Rank 1 is offered every new sequence first and is filled to its cap before rank 2 is touched. Dash = not in that pool (blocked / not in production, or reserved to a feature slug).",
   dailyLimit: "Per-account daily max send limit (+ daily warmup send volume)",
   queuedToday:
     "Emails actually due today = Initial (one first email per never-started lead) + Followups (steps projected today/overdue). This is the number send selection compares against the daily max.",
@@ -574,7 +582,22 @@ function AccountDetailPanel({
           </Group>
 
           <Group title="Send limits">
+            <Row label="Fill order">
+              {row.fillRank === null || row.fillRank === undefined
+                ? "\u2014"
+                : num(row.fillRank)}
+            </Row>
             <Row label="Daily max send">{num(row.dailyLimit)}</Row>
+            {/* Same rule as the table cell: only stated when the age ramp holds the
+                account below its configured limit, or the panel would say the same
+                number twice under two labels. */}
+            {row.effectiveDailyCap !== null &&
+              row.effectiveDailyCap !== undefined &&
+              row.effectiveDailyCap !== row.dailyLimit && (
+                <Row label="— effective cap today (age ramp)">
+                  {num(row.effectiveDailyCap)}
+                </Row>
+              )}
             <Row label="Daily warmup send">{num(row.warmupLimit)}</Row>
           </Group>
 
@@ -643,8 +666,8 @@ function AccountHealthSection() {
   }, [accounts]);
 
   const [tab, setTab] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("warmupScore");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("fillRank");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<InstantlyAccountHealthRow | null>(null);
 
@@ -817,7 +840,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[1024px] w-full text-sm">
+              <table className="min-w-[1088px] w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -857,6 +880,13 @@ function AccountHealthSection() {
                         onClick={() => setSelected(r)}
                         className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
                       >
+                        {/* Fill order: where send selection offers this mailbox a new
+                            sequence. Dash when it is not in the in-production pool. */}
+                        <td className="py-2.5 px-2 text-right tabular-nums text-gray-500">
+                          {r.fillRank === null || r.fillRank === undefined
+                            ? "\u2014"
+                            : num(r.fillRank)}
+                        </td>
                         {/* Account: provider logo + email (Type folded in). */}
                         <td className="py-2.5 px-2">
                           <div className="flex items-center gap-2">
@@ -894,6 +924,17 @@ function AccountHealthSection() {
                           <div className="tabular-nums text-gray-700">
                             {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
                           </div>
+                          {/* The cap send selection actually compares today's load
+                              against — the configured limit capped by the age ramp.
+                              Stated ONLY when it differs, so a mature mailbox (the
+                              large majority) renders exactly as it did before. */}
+                          {r.effectiveDailyCap !== null &&
+                            r.effectiveDailyCap !== undefined &&
+                            r.effectiveDailyCap !== r.dailyLimit && (
+                              <div className="text-[10px] tabular-nums text-amber-600">
+                                {num(r.effectiveDailyCap)} effective (age ramp)
+                              </div>
+                            )}
                           {r.warmupLimit !== null && r.warmupLimit > 0 && (
                             <div className="text-[10px] tabular-nums text-gray-400">
                               + {num(r.warmupLimit)} daily warmup send
