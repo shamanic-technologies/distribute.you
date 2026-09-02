@@ -138,14 +138,16 @@ const COLUMNS = [
 ] as const;
 
 // Header tooltips. Two columns are merged composites:
-//   Daily max send = dailyLimit (+ warmupLimit shown as a grey sub-line)
+//   Daily max send = the ramp-aware cap (dailyMaxFor) + the pre-ramp dailyLimit
+//                    and warmupLimit shown as grey sub-lines
 //   Queued today   = queuedFirstUnsentSequences (Initial) + queuedNextToday (Followups)
 // Queued steps (queueSize) + Queued seq (queuedSequences) are no longer columns —
 // they live in the row detail panel.
 const COLUMN_HINT: Partial<Record<SortKey, string>> = {
   fillRank:
     "Position in send selection's fill order over the in-production pool (vendor, then domain rank, then age). Rank 1 is offered every new sequence first and is filled to its cap before rank 2 is touched. Dash = not in that pool (blocked / not in production, or reserved to a feature slug).",
-  dailyLimit: "Per-account daily max send limit (+ daily warmup send volume)",
+  dailyLimit:
+    "The daily max send this account actually has today: its configured limit capped by the age ramp (a mailbox under 4 weeks old is held below its limit). This is the ceiling send selection compares today's load against. The configured limit is shown underneath only while the ramp is holding the account below it.",
   queuedToday:
     "Emails actually due today = Initial (one first email per never-started lead) + Followups (steps projected today/overdue). This is the number send selection compares against the daily max.",
   queuedOverdue:
@@ -169,6 +171,21 @@ const COLUMN_HINT: Partial<Record<SortKey, string>> = {
 // reads through this — one number, one definition.
 function queuedTodayFor(r: InstantlyAccountHealthRow): number {
   return r.queuedFirstUnsentSequences + r.queuedNextToday;
+}
+
+// The daily max send an account ACTUALLY has today, and the exact ceiling
+// instantly-service's send selector compares its load against.
+//
+// The producer computes it (`capForAccount` = the configured `daily_limit`
+// capped by the age ramp) and serves it on every row, so nothing is derived
+// here. It falls back to the configured limit only when the producer omits the
+// field — an older deploy, never a guess of ours. `dailyLimit` alone is the
+// number BEFORE the ramp, so a table reading it renders 50 for a mailbox the
+// selector is holding at 23: the ops view contradicting the selector about one
+// account. Everything that displays, sorts or colours against the daily max
+// reads through this — one number, one definition.
+function dailyMaxFor(r: InstantlyAccountHealthRow): number | null {
+  return r.effectiveDailyCap ?? r.dailyLimit;
 }
 
 type SortKey = (typeof COLUMNS)[number]["key"];
@@ -203,6 +220,16 @@ function compareRows(
   if (key === "queuedToday") {
     const av = queuedTodayFor(a);
     const bv = queuedTodayFor(b);
+    return dir === "asc" ? av - bv : bv - av;
+  }
+  // "Daily max send" sorts on the same ramp-aware value the column renders,
+  // never the pre-ramp `dailyLimit`.
+  if (key === "dailyLimit") {
+    const av = dailyMaxFor(a);
+    const bv = dailyMaxFor(b);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1; // nulls always last
+    if (bv === null) return -1;
     return dir === "asc" ? av - bv : bv - av;
   }
   // DEBUG "Queued total" sorts on the backend Queued steps (queueSize) total.
@@ -587,15 +614,15 @@ function AccountDetailPanel({
                 ? "\u2014"
                 : num(row.fillRank)}
             </Row>
-            <Row label="Daily max send">{num(row.dailyLimit)}</Row>
-            {/* Same rule as the table cell: only stated when the age ramp holds the
-                account below its configured limit, or the panel would say the same
-                number twice under two labels. */}
+            <Row label="Daily max send">{num(dailyMaxFor(row))}</Row>
+            {/* Same rule as the table cell: the configured limit is only stated
+                when the age ramp holds the account below it, or the panel would
+                say the same number twice under two labels. */}
             {row.effectiveDailyCap !== null &&
               row.effectiveDailyCap !== undefined &&
               row.effectiveDailyCap !== row.dailyLimit && (
-                <Row label="— effective cap today (age ramp)">
-                  {num(row.effectiveDailyCap)}
+                <Row label="— configured limit (before age ramp)">
+                  {num(row.dailyLimit)}
                 </Row>
               )}
             <Row label="Daily warmup send">{num(row.warmupLimit)}</Row>
@@ -919,22 +946,34 @@ function AccountHealthSection() {
                         <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
                           {num(r.sentToday)}
                         </td>
-                        {/* Daily max send: dailyLimit + warmup send as a grey sub-line. */}
+                        {/* Daily max send: the ramp-aware cap the selector uses,
+                            with the pre-ramp configured limit and the warmup send
+                            volume as grey sub-lines. */}
                         <td className="py-2.5 px-2 text-right">
-                          <div className="tabular-nums text-gray-700">
-                            {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
-                          </div>
-                          {/* The cap send selection actually compares today's load
-                              against — the configured limit capped by the age ramp.
-                              Stated ONLY when it differs, so a mature mailbox (the
-                              large majority) renders exactly as it did before. */}
-                          {r.effectiveDailyCap !== null &&
-                            r.effectiveDailyCap !== undefined &&
-                            r.effectiveDailyCap !== r.dailyLimit && (
-                              <div className="text-[10px] tabular-nums text-amber-600">
-                                {num(r.effectiveDailyCap)} effective (age ramp)
-                              </div>
-                            )}
+                          {(() => {
+                            const dailyMax = dailyMaxFor(r);
+                            // The configured limit is stated ONLY when the age ramp
+                            // is holding the account below it — otherwise the cell
+                            // would print the same number twice under two labels.
+                            const ramping =
+                              r.dailyLimit !== null &&
+                              r.effectiveDailyCap !== null &&
+                              r.effectiveDailyCap !== undefined &&
+                              r.effectiveDailyCap !== r.dailyLimit;
+                            return (
+                              <>
+                                <div className="tabular-nums text-gray-700">
+                                  {dailyMax === null ? "—" : num(dailyMax)}
+                                </div>
+                                {ramping && (
+                                  <div className="text-[10px] tabular-nums text-amber-600">
+                                    ramping up from {num(r.dailyLimit as number)}{" "}
+                                    configured
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                           {r.warmupLimit !== null && r.warmupLimit > 0 && (
                             <div className="text-[10px] tabular-nums text-gray-400">
                               + {num(r.warmupLimit)} daily warmup send
@@ -947,10 +986,14 @@ function AccountHealthSection() {
                             max send, red when it exceeds it (gray when no limit is known). */}
                         {(() => {
                           const queuedToday = queuedTodayFor(r);
+                          // Compared against the SAME ceiling the cell renders, or
+                          // a young account reads green against a limit the
+                          // selector is not letting it reach.
+                          const dailyMax = dailyMaxFor(r);
                           const overLimit =
-                            r.dailyLimit !== null && queuedToday > r.dailyLimit;
+                            dailyMax !== null && queuedToday > dailyMax;
                           const valueClass =
-                            r.dailyLimit === null
+                            dailyMax === null
                               ? "text-gray-900"
                               : overLimit
                                 ? "text-red-600"
