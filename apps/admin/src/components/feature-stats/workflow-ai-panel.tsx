@@ -43,8 +43,13 @@ export function WorkflowAiPanel({ open, onClose, context, sessionKey }: Workflow
   }, [open, onClose]);
 
   return (
+    /* z-[60] sits above the app header, which is `sticky top-0 z-50` — at z-40
+       the header painted over the panel's own title and close button, so the top
+       of a full-height overlay was unreachable. The header's account dropdown is
+       z-[60] too, but it lives INSIDE the header's own stacking context, so it
+       cannot collide with this. */
     <div
-      className={`fixed inset-0 z-40 ${open ? "" : "pointer-events-none invisible"}`}
+      className={`fixed inset-0 z-[60] ${open ? "" : "pointer-events-none invisible"}`}
       aria-hidden={!open}
     >
       {/* Scrim: dims the table and takes the click that closes the panel. */}

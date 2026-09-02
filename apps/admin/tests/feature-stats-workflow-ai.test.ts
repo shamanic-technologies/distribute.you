@@ -14,7 +14,11 @@ const ROUTE = join(
 const PANEL = join(__dirname, "../src/components/feature-stats/workflow-ai-panel.tsx");
 const read = (p: string) => readFileSync(p, "utf8");
 
-const page = read(join(ROUTE, "workflows/page.tsx"));
+// The panel + its context live in the SHARED workflows body every feature's
+// /workflows route renders — the route file is a one-line wrapper.
+const page = read(
+  join(__dirname, "../src/components/feature-stats/feature-workflows-page.tsx"),
+);
 const panel = read(PANEL);
 
 /** Minimal Workflow shape — only the fields the catalogue reads. */
@@ -174,6 +178,12 @@ describe("the Workflow page's Edit-with-AI panel", () => {
     expect(panel).not.toContain("DefaultChatTransport");
   });
 
+  it("paints above the app header, which is sticky z-50", () => {
+    // At z-40 the header covered the panel's own title and close button.
+    expect(panel).toContain("fixed inset-0 z-[60]");
+    expect(panel).not.toContain("fixed inset-0 z-40");
+  });
+
   it("overlays the table rather than splitting it into a column", () => {
     expect(panel).toContain("fixed inset-0");
     expect(panel).toContain("absolute inset-y-0 right-0");
@@ -192,7 +202,7 @@ describe("the Workflow page's Edit-with-AI panel", () => {
   });
 
   it("keys the catalogue under the root the chat invalidates, so a new workflow lands in the table", () => {
-    expect(page).toContain('["workflows", FEATURE_SLUG]');
+    expect(page).toContain('["workflows", featureSlug]');
   });
 
   it("reveals on settle — the catalogue read cannot skeleton the page forever", () => {

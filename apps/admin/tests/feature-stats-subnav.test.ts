@@ -25,7 +25,17 @@ const read = (p: string) => readFileSync(p, "utf8");
 const layout = read(join(ROUTE, "layout.tsx"));
 const economics = read(join(ROUTE, "page.tsx"));
 const details = read(join(ROUTE, "details/page.tsx"));
-const workflows = read(join(ROUTE, "workflows/page.tsx"));
+// The Workflow route is a thin wrapper; its BODY is the shared component every
+// feature's /workflows route renders, so the guards below read that file. A
+// guard pinned to the route would pass while the shared table regressed.
+const workflowsRoute = read(join(ROUTE, "workflows/page.tsx"));
+const workflows = read(
+  join(__dirname, "../src/components/feature-stats/feature-workflows-page.tsx"),
+);
+const aiMeetingRoute = join(
+  __dirname,
+  "../src/app/(authed)/(dashboard)/feature-stats/ai-meeting-booking",
+);
 const sidebar = read(join(__dirname, "../src/components/feature-stats/feature-stats-sidebar.tsx"));
 const contextSidebar = read(join(__dirname, "../src/components/context-sidebar.tsx"));
 
@@ -82,6 +92,43 @@ describe("feature-stats: the page is split into sub-pages", () => {
     expect(sidebar).toContain("`${basePath}/details`");
     expect(sidebar).toContain("`${basePath}/workflows`");
   });
+
+  it("lets a feature name the rows it actually has, defaulting to all three", () => {
+    // Economics / Cost details read cold-email-shaped cross-org endpoints, so a
+    // feature without those pages must be able to list Workflow alone rather
+    // than draw two rows pointing at a 404.
+    expect(sidebar).toContain("nav = ALL_FEATURE_STATS_NAV");
+    expect(sidebar).toContain("nav.map((id) => byId[id])");
+  });
+});
+
+describe("feature-stats: a second feature reuses the same surface", () => {
+  it("ships the AI Meeting Booking Workflow route", () => {
+    expect(existsSync(join(aiMeetingRoute, "workflows/page.tsx"))).toBe(true);
+    expect(existsSync(join(aiMeetingRoute, "layout.tsx"))).toBe(true);
+  });
+
+  it("renders the SHARED table, never a second copy", () => {
+    const page = read(join(aiMeetingRoute, "workflows/page.tsx"));
+    expect(page).toContain("FeatureWorkflowsPage");
+    expect(page).toContain('featureSlug="ai-meeting-booking"');
+    expect(page).not.toContain("useQuery");
+    expect(page).not.toContain("SortableTh");
+    // Same for the cold-email route it was extracted from.
+    expect(workflowsRoute).toContain("FeatureWorkflowsPage");
+    expect(workflowsRoute).not.toContain("useQuery");
+  });
+
+  it("lists ONLY Workflow — it has no Economics or Cost details page", () => {
+    const layout = read(join(aiMeetingRoute, "layout.tsx"));
+    expect(layout).toContain('nav={["workflows"]}');
+    expect(existsSync(join(aiMeetingRoute, "details/page.tsx"))).toBe(false);
+  });
+
+  it("has a nav entry pointing straight at Workflow", () => {
+    expect(contextSidebar).toContain('label: "AI Meeting Booking"');
+    expect(contextSidebar).toContain('"/feature-stats/ai-meeting-booking/workflows"');
+  });
 });
 
 describe("feature-stats: the Workflow page", () => {
@@ -99,7 +146,7 @@ describe("feature-stats: the Workflow page", () => {
   });
 
   it("prints served fields only — no cost is divided in the browser", () => {
-    const body = workflows.slice(workflows.indexOf("export default function"));
+    const body = workflows.slice(workflows.indexOf("export function FeatureWorkflowsPage"));
     expect(body).not.toMatch(/\brow\.\w+\s*\/\s*row\./);
     expect(body).not.toContain("investedUsd /");
   });
@@ -116,7 +163,9 @@ describe("feature-stats: the Workflow page", () => {
   });
 
   it("shares the Cost details page's per-objective query keys (one fetch, two pages)", () => {
-    expect(workflows).toContain('["crossOrgWorkflowCost", FEATURE_SLUG, "positiveReply"]');
+    // The shared table is slug-parameterised; the Cost details page is still
+    // the cold-email one, so the two keys agree by construction on that feature.
+    expect(workflows).toContain('["crossOrgWorkflowCost", featureSlug, "positiveReply"]');
     expect(details).toContain('["crossOrgWorkflowCost", FEATURE_SLUG, objective]');
   });
 });
