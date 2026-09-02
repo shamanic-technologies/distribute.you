@@ -701,7 +701,14 @@ export function controlWriteErrorMessage(status: number | null, kind: "status" |
     if (status === 404) return "This campaign no longer exists.";
     return "We could not change this campaign. Try again in a moment.";
   }
-  if (status === 400) return "That daily budget was refused. Check the amount.";
+  // NOT "check the amount". billing refuses a ceiling for reasons that have nothing to
+  // do with the figure — most often a channel it has not priced yet, which it states no
+  // daily minimum for and so cannot say what funding it needs. Naming the amount sends a
+  // customer to re-type a number that was never the problem, which is exactly what
+  // happened the first time someone tried to fund a newly published channel.
+  if (status === 400) {
+    return "We could not fund this channel. The amount may be outside what this funnel allows, or this channel may not be fundable yet.";
+  }
   if (status === 403) return "You do not have access to this campaign's budget.";
   if (status === 404) return "This campaign no longer exists.";
   if (status === 409) {
