@@ -83,10 +83,15 @@ describe("what a customer may FUND", () => {
   // cannot provision offers a dead channel.
   it("mirrors campaign-service's set and says so", () => {
     expect([...PROVISIONABLE_CHANNEL_SLUGS].sort()).toEqual([
+      "ai-meeting-booking",
       "feedback-request-cold-email-outreach",
       "sales-cold-email-outreach",
       "sales-crm-email-outreach",
     ]);
+    // The one that converts an INTERNAL leg. It is here on the same evidence the
+    // three above are: campaign-service provisions its funded pairs and prod holds
+    // an active workflow for it.
+    expect(PROVISIONABLE_CHANNEL_SLUGS.has("ai-meeting-booking")).toBe(true);
     // Provisioning a campaign is not RUNNING one. Every service a Google Ads
     // campaign needs is in prod; the workflow that would execute it is not, so
     // funding it would produce a campaign that is scheduled and does nothing.
@@ -434,7 +439,7 @@ describe("channelIsFundable — funding one nothing provisions produces no campa
       true,
     );
     expect(
-      channelIsFundable({ featureSlug: "in-house-meeting-booking", operatedBy: "customer" }),
+      channelIsFundable({ featureSlug: "your-team-meeting-booking", operatedBy: "customer" }),
     ).toBe(true);
     expect(
       channelIsFundable({ featureSlug: "a-channel-published-tomorrow", operatedBy: "customer" }),
@@ -448,9 +453,14 @@ describe("channelIsFundable — funding one nothing provisions produces no campa
     // Published, bookable, and campaign-service provisions nothing for it: it has no
     // workflow, so funding it would state a ceiling and never run.
     expect(channelIsFundable({ featureSlug: "google-ads", operatedBy: "platform" })).toBe(false);
-    expect(channelIsFundable({ featureSlug: "managed-closing-calls", operatedBy: "platform" })).toBe(
+    expect(channelIsFundable({ featureSlug: "agency-closing-calls", operatedBy: "platform" })).toBe(
       false,
     );
+    // The one platform-operated channel of the conversion family that IS fundable:
+    // it is the only one of them we automate, and the list is what says so.
+    expect(
+      channelIsFundable({ featureSlug: "ai-meeting-booking", operatedBy: "platform" }),
+    ).toBe(true);
   });
 
   it("treats an unstated operator as platform, the behaviour that came before the field", () => {
