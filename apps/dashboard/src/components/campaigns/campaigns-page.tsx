@@ -25,6 +25,7 @@ import { channelSlugLabel } from "@/lib/campaign-title";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
+import { FunnelLegColumnsBoard } from "@/components/campaigns/funnel-leg-columns-board";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import { LearningTag } from "@/components/learning-tag";
@@ -256,6 +257,20 @@ export function CampaignsPage() {
             <Link href={basePath} className="text-brand-600 hover:underline">
               All sales funnels
             </Link>
+          </div>
+        )}
+        {/* The funnel's own arrows, side by side, with every channel that can work each
+            one — funded or not. The table below states how the funded ones are DOING;
+            only this states what else could run, which is the one way a customer reaches
+            a channel they have not bought. Off a funnel there is no single walk to lay
+            out, so the table stands alone exactly as before. */}
+        {funnelKey && narrowedFunnel && (
+          <div className="mb-6">
+            <FunnelLegColumnsBoard
+              brandId={brandId}
+              offerId={offerId}
+              funnel={narrowedFunnel}
+            />
           </div>
         )}
         <CampaignsTable

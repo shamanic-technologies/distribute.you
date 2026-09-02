@@ -26,6 +26,7 @@ import {
   type ControlDraft,
   type ControlRow,
   type ControlRowGroup,
+  type OfferableChannel,
 } from "@/lib/campaign-controls";
 import { funnelBudgetBelowMinimum, funnelBudgetTip } from "@/lib/sales-funnels";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
@@ -65,12 +66,16 @@ import { Skeleton } from "@/components/skeleton";
  * The writes are a FAN-OUT (there is no bulk endpoint), so a failure is reported
  * per row and the modal stays open. It never claims a success it does not have.
  */
+/** Stable, so the memo above does not re-run on every render of a caller that omits it. */
+const EMPTY_OFFERABLE: readonly OfferableChannel[] = [];
+
 export function CampaignControlsModal({
   brandId,
   offerId,
   funnelKey,
   campaignId,
   prefillBudgetUsd,
+  offerable = EMPTY_OFFERABLE,
   onClose,
 }: {
   brandId: string;
@@ -84,6 +89,14 @@ export function CampaignControlsModal({
   funnelKey?: string | null;
   /** Scope to exactly one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
+  /**
+   * Channels the caller says a customer may fund and has not.
+   *
+   * Empty at every grain that lists what already runs. The funnel board supplies it
+   * because a channel with no campaign is invisible to a campaign-derived list, and
+   * that is exactly the channel someone opens the board to switch on.
+   */
+  offerable?: readonly OfferableChannel[];
   /**
    * Open with the daily budget already set to this figure, in whole dollars.
    *
@@ -114,12 +127,14 @@ export function CampaignControlsModal({
   const channels = useAcquisitionChannels();
   const rows = useMemo(
     () =>
-      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
-        offerId,
-        funnelKey,
-        campaignId,
-      }),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId],
+      buildControlRows(
+        campaignsQ.data?.campaigns ?? [],
+        budgetsQ.data,
+        channels,
+        { offerId, funnelKey, campaignId },
+        offerable,
+      ),
+    [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId, offerable],
   );
 
   /**
@@ -347,7 +362,15 @@ export function CampaignControlsModal({
               type="button"
               role="switch"
               aria-checked={draft.running}
-              aria-label={draft.running ? "Pause this campaign" : "Restart this campaign"}
+              aria-label={
+                row.campaignId === null
+                  ? draft.running
+                    ? "Stop funding this channel"
+                    : "Fund this channel"
+                  : draft.running
+                    ? "Pause this campaign"
+                    : "Restart this campaign"
+              }
               onClick={() => edit(row.rowId, { running: !draft.running })}
               className={`relative h-6 w-11 shrink-0 rounded-full transition ${
                 draft.running ? "bg-green-500" : "bg-gray-300"
@@ -378,6 +401,12 @@ export function CampaignControlsModal({
           <p className="mt-1.5 text-xs text-gray-500">
             This campaign predates the sales funnels, so it has no budget of its own. It
             can still be paused and restarted.
+          </p>
+        )}
+        {row.campaignId === null && !draft.running && (
+          <p className="mt-1.5 text-xs text-gray-500">
+            Nothing runs on this channel yet. Funding it is what starts it, and the
+            campaign appears within a few minutes.
           </p>
         )}
         {invalid && (
