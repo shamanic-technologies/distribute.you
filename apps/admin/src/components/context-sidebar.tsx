@@ -469,6 +469,17 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           }}
           isActive={pathname.startsWith("/feature-stats/sales-cold-email-outreach")}
         />
+        <SidebarLink
+          item={{
+            id: "feature-ai-meeting-booking",
+            label: "AI Meeting Booking",
+            // Straight to Workflow: this feature carries no Economics page, so
+            // its base path only redirects here.
+            href: "/feature-stats/ai-meeting-booking/workflows",
+            icon: <BillingIcon />,
+          }}
+          isActive={pathname.startsWith("/feature-stats/ai-meeting-booking")}
+        />
       </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Customer Success</h4>

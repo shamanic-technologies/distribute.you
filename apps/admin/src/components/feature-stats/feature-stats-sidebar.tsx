@@ -50,14 +50,35 @@ const WorkflowIcon = () => (
   </svg>
 );
 
-export function FeatureStatsSidebar({ basePath, title }: { basePath: string; title: string }) {
+/**
+ * The sub-nav rows a feature can carry. A feature opts in to the ones it has:
+ * `Economics` and `Cost details` read cold-email-shaped cross-org endpoints and
+ * are NOT universal, while `Workflow` answers for any feature that runs one.
+ * Listing a row whose page does not exist is a 404 nobody catches, so the route
+ * that mounts this sidebar names its own set.
+ */
+export type FeatureStatsNavId = "economics" | "details" | "workflows";
+
+export const ALL_FEATURE_STATS_NAV: FeatureStatsNavId[] = ["economics", "details", "workflows"];
+
+export function FeatureStatsSidebar({
+  basePath,
+  title,
+  nav = ALL_FEATURE_STATS_NAV,
+}: {
+  basePath: string;
+  title: string;
+  nav?: FeatureStatsNavId[];
+}) {
   const pathname = usePathname();
 
-  const items: SidebarItem[] = [
-    { id: "economics", label: "Economics", href: basePath, icon: <EconomicsIcon /> },
-    { id: "details", label: "Cost details", href: `${basePath}/details`, icon: <DetailsIcon /> },
-    { id: "workflows", label: "Workflow", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
-  ];
+  const byId: Record<FeatureStatsNavId, SidebarItem> = {
+    economics: { id: "economics", label: "Economics", href: basePath, icon: <EconomicsIcon /> },
+    details: { id: "details", label: "Cost details", href: `${basePath}/details`, icon: <DetailsIcon /> },
+    workflows: { id: "workflows", label: "Workflow", href: `${basePath}/workflows`, icon: <WorkflowIcon /> },
+  };
+
+  const items: SidebarItem[] = nav.map((id) => byId[id]);
 
   return (
     <SidebarSection title={title} backHref="/orgs" backLabel="Platform">
