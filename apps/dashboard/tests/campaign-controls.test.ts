@@ -736,7 +736,12 @@ describe("diffSummary — what Confirm is about to do", () => {
 describe("controlWriteErrorMessage — our copy, never the downstream body", () => {
   it("branches on the status and on the write kind", () => {
     expect(controlWriteErrorMessage(400, "status")).toContain("cannot be restarted");
-    expect(controlWriteErrorMessage(400, "budget")).toContain("daily budget was refused");
+    // NOT "check the amount": billing refuses a ceiling for a channel it has not priced
+    // yet, which has nothing to do with the figure. The first customer to fund a newly
+    // published channel was sent to re-type a number that was never the problem.
+    expect(controlWriteErrorMessage(400, "budget")).toContain("could not fund this channel");
+    expect(controlWriteErrorMessage(400, "budget")).not.toContain("Check the amount");
+    expect(controlWriteErrorMessage(400, "budget")).toContain("may not be fundable yet");
     expect(controlWriteErrorMessage(409, "budget")).toContain("more than one campaign");
     expect(controlWriteErrorMessage(null, "status")).toContain("Try again");
   });
