@@ -83,6 +83,118 @@ function budgets(rows: { funnelKey: string; featureSlug: string; offerId: string
   };
 }
 
+/**
+ * A channel the brand has NEVER funded has no campaign, so it has no row built from
+ * one — and it is exactly the channel a customer needs to see in order to turn it on.
+ * These rows carry no campaign id, so no status write can ever address them: funding
+ * one IS turning it on, and campaign-service provisions the campaign on its own tick.
+ */
+describe("buildControlRows — a channel with no campaign yet", () => {
+  const OFFERABLE = [
+    {
+      funnelKey: "reply_meeting" as const,
+      featureSlug: "feedback-request-cold-email-outreach",
+      channelName: "Feedback Request Cold Email Outreach",
+      offerId: OFFER_A,
+    },
+  ];
+
+  it("adds a row for an offerable channel nothing has been funded on", () => {
+    const rows = buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, {}, OFFERABLE);
+    const offered = rows.find((r) => r.campaignId === null);
+    expect(offered).toBeDefined();
+    expect(offered!.scope?.featureSlug).toBe("feedback-request-cold-email-outreach");
+    expect(offered!.running).toBe(false);
+    expect(offered!.runningCampaignIds).toEqual([]);
+  });
+
+  // The campaign row already states this triple; a second row would offer to edit the
+  // same billing ceiling twice and double it in every total.
+  it("never duplicates a triple a campaign already holds", () => {
+    const rows = buildControlRows(
+      [campaign({ id: "a", featureSlug: "feedback-request-cold-email-outreach" })],
+      undefined,
+      CHANNELS,
+      {},
+      OFFERABLE,
+    );
+    const forSlug = rows.filter(
+      (r) => r.scope?.featureSlug === "feedback-request-cold-email-outreach",
+    );
+    expect(forSlug).toHaveLength(1);
+    expect(forSlug[0].campaignId).toBe("a");
+  });
+
+  it("reads its ceiling through the same narrowing a campaign row does", () => {
+    const rows = buildControlRows(
+      [campaign({ id: "a" })],
+      budgets([
+        {
+          funnelKey: "reply_meeting",
+          featureSlug: "feedback-request-cold-email-outreach",
+          offerId: OFFER_A,
+          cents: 700,
+        },
+      ]),
+      CHANNELS,
+      {},
+      OFFERABLE,
+    );
+    const offered = rows.find((r) => r.campaignId === null)!;
+    expect(offered.savedCents).toBe(700);
+    // Funded is what "running" means for a row with no campaign to ask.
+    expect(offered.running).toBe(true);
+  });
+
+  it("emits a budget write and NEVER a status write when it is turned on", () => {
+    const rows = buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, {}, OFFERABLE);
+    const offered = rows.find((r) => r.campaignId === null)!;
+    const diff = controlsDiff(rows, {
+      [offered.rowId]: { running: true, budget: "12" },
+    });
+    expect(diff.statusWrites).toEqual([]);
+    expect(diff.budgetWrites).toEqual([
+      {
+        rowId: offered.rowId,
+        funnelKey: "reply_meeting",
+        featureSlug: "feedback-request-cold-email-outreach",
+        offerId: OFFER_A,
+        cents: 1200,
+      },
+    ]);
+  });
+
+  // Turning one OFF is defunding it: there is no campaign whose status could be set.
+  it("writes a zero ceiling when it is turned off", () => {
+    const rows = buildControlRows(
+      [campaign({ id: "a" })],
+      budgets([
+        {
+          funnelKey: "reply_meeting",
+          featureSlug: "feedback-request-cold-email-outreach",
+          offerId: OFFER_A,
+          cents: 700,
+        },
+      ]),
+      CHANNELS,
+      {},
+      OFFERABLE,
+    );
+    const offered = rows.find((r) => r.campaignId === null)!;
+    const diff = controlsDiff(rows, { [offered.rowId]: { running: false, budget: "7" } });
+    expect(diff.statusWrites).toEqual([]);
+    expect(diff.budgetWrites).toEqual([
+      {
+        rowId: offered.rowId,
+        funnelKey: "reply_meeting",
+        featureSlug: "feedback-request-cold-email-outreach",
+        offerId: OFFER_A,
+        cents: 0,
+      },
+    ]);
+  });
+});
+
 describe("buildControlRows — which campaigns a grain controls", () => {
   it("brand grain lists every acquisition-channel campaign, running or not", () => {
     const rows = buildControlRows(
@@ -457,7 +569,7 @@ function draftsBy(
   rows: ReturnType<typeof buildControlRows>,
   vals: Record<string, ControlDraft>,
 ): Record<string, ControlDraft> {
-  return Object.fromEntries(rows.map((r) => [r.rowId, vals[r.campaignId]]));
+  return Object.fromEntries(rows.map((r) => [r.rowId, vals[r.campaignId ?? r.rowId]]));
 }
 
 describe("controlsDiff — only what changed", () => {

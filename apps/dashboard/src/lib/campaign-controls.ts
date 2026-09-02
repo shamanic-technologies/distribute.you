@@ -36,11 +36,26 @@ import {
   type CampaignBudgetScope,
 } from "./campaign-budget";
 import {
+  SALES_FUNNELS,
   normalizeSalesFunnelKey,
   type SalesFunnelDef,
   type SalesFunnelKey,
   type SalesFunnelKeyWire,
 } from "./sales-funnels";
+
+/**
+ * A (funnel, channel, offer) a customer may fund but has not.
+ *
+ * Stated by the caller rather than derived here: which channels perform which arrow is
+ * the acquisition catalogue's answer, and this module holds no catalogue.
+ */
+export interface OfferableChannel {
+  funnelKey: string;
+  featureSlug: string;
+  /** What the channel is called, read off the catalogue by the caller. */
+  channelName: string;
+  offerId: string | null;
+}
 
 /**
  * The fields this module reads off a campaign-service campaign.
@@ -103,8 +118,13 @@ export interface ControlRow {
   /**
    * The campaign-service row a RESTART targets — the live one when there is one,
    * else the most recent, which is the campaign as it last ran.
+   *
+   * NULL for a channel the brand has never funded: there is no campaign yet, so no
+   * status write can address it. Funding it IS turning it on, and campaign-service
+   * provisions the campaign on its own tick. That row is the only way a customer can
+   * reach a channel they have not bought, which is the whole reason it exists.
    */
-  campaignId: string;
+  campaignId: string | null;
   /**
    * Every row of this campaign campaign-service reports as running. Pausing
    * stops each of them: migration 0044 keeps at most one, and stopping the one
@@ -168,6 +188,15 @@ export function buildControlRows(
   budgets: BrandFunnelBudgetSet | undefined,
   channels: AcquisitionChannelDef[],
   filter: { offerId?: string; campaignId?: string; funnelKey?: string | null } = {},
+  /**
+   * Channels a customer may fund that have NO campaign yet.
+   *
+   * Optional because every existing caller lists what already runs. The board on a
+   * funnel's page is the one surface that also has to show what COULD run, and a
+   * channel nobody has funded is invisible to a campaign-derived list by construction
+   * — which is precisely the channel someone opens that page to turn on.
+   */
+  offerable: readonly OfferableChannel[] = [],
 ): ControlRow[] {
   // Normalized ONCE, and an unmapped key narrows to nothing rather than throwing:
   // the wire carries two spellings of every funnel, so matching the raw string
@@ -205,8 +234,46 @@ export function buildControlRows(
     else groups.set(rowId, [c]);
   }
 
+  // Filed under the SAME triple a campaign row uses, so a channel that already has one
+  // can never appear twice — a second row would offer to edit one billing ceiling in two
+  // places and count it twice in every total.
+  const offeredRows: ControlRow[] = [];
+  for (const o of offerable) {
+    if (filter.campaignId) break;
+    if (filter.offerId && o.offerId !== filter.offerId) continue;
+    let key: SalesFunnelKey;
+    try {
+      key = normalizeSalesFunnelKey(o.funnelKey as SalesFunnelKeyWire);
+    } catch {
+      continue;
+    }
+    if (wantedFunnel && key !== wantedFunnel) continue;
+    const def = SALES_FUNNELS.find((f) => f.key === key);
+    if (!def) continue;
+    const rowId = `${key}|${o.featureSlug}|${o.offerId ?? ""}`;
+    if (groups.has(rowId)) continue;
+    const scope: CampaignBudgetScope = {
+      def,
+      featureSlug: o.featureSlug,
+      channelName: o.channelName,
+    };
+    const savedCents = campaignSavedCents(scope, o.offerId ?? undefined, budgets);
+    offeredRows.push({
+      rowId,
+      campaignId: null,
+      runningCampaignIds: [],
+      // With no campaign to ask, funded IS running: a ceiling above zero is what makes
+      // campaign-service provision one on its next tick.
+      running: savedCents > 0,
+      scope,
+      savedCents,
+      offerId: o.offerId,
+      legKey: null,
+    });
+  }
+
   return [...groups.entries()]
-    .map(([rowId, members]) => {
+    .map(([rowId, members]): ControlRow => {
       const runningCampaignIds = members.filter((c) => isRunningStatus(c.status)).map((c) => c.id);
       const representative = pickRepresentative(members, runningCampaignIds);
       const scope = campaignBudgetScope(representative, channels);
@@ -223,6 +290,7 @@ export function buildControlRows(
         legKey: representative.legKey ?? null,
       };
     })
+    .concat(offeredRows)
     .sort((a, b) => {
       if (a.running !== b.running) return a.running ? -1 : 1;
       return a.rowId.localeCompare(b.rowId);
@@ -467,10 +535,13 @@ export function controlsDiff(
     const draft = drafts[row.rowId];
     if (!draft) continue;
 
-    if (draft.running !== row.running) {
+    // A row with no campaign has no status to set. Its toggle is the ceiling: ON is
+    // whatever was typed, OFF is zero, and the budget branch below writes it. Sending a
+    // status write here would name a campaign that does not exist.
+    if (draft.running !== row.running && row.campaignId !== null) {
       if (draft.running) {
         // One write: the row a restart addresses is the campaign as it last ran.
-        statusWrites.push({ rowId: row.rowId, campaignId: row.campaignId, activate: true });
+        statusWrites.push({ rowId: row.rowId, campaignId: row.campaignId!, activate: true });
       } else {
         // Every running row of this campaign, so a pause cannot leave one live.
         for (const campaignId of row.runningCampaignIds) {
@@ -485,7 +556,8 @@ export function controlsDiff(
       invalidRows.push(row.rowId);
       continue;
     }
-    const cents = typed * 100;
+    // Turned OFF with no campaign to stop: defunding is what stops it.
+    const cents = row.campaignId === null && !draft.running ? 0 : typed * 100;
     if (cents !== row.savedCents) {
       budgetWrites.push({
         rowId: row.rowId,
