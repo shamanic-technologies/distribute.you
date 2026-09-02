@@ -768,62 +768,6 @@ export function BrandSalesFunnelsCard({
                 </div>
               ))}
 
-              {/* The money, one ceiling per acquisition channel this funnel can
-                  be sold through. Whole dollars, never cents — a daily budget is
-                  a configured ceiling, not a charge. Empty means that channel is
-                  not funded, which is how one offer is put down without
-                  forgetting how the funnel sells: every number below stays as it
-                  is, and the funnel's other channels keep running.
-
-                  Funding a channel IS choosing it, which is why there is no
-                  toggle beside these fields: a switch would be a second way to
-                  say what the amount already says. */}
-              <div>
-                <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
-                  Daily budget per channel
-                  <InfoTooltip
-                    tip={funnelBudgetTip(def.key, state.savedBudgetCents)}
-                    placement="top"
-                  />
-                </label>
-                <div className="space-y-2">
-                  {channelsForFunnel(def.key, features).map((channel) => (
-                    <div key={channel.featureSlug} className="flex items-center gap-2.5">
-                      <AcquisitionChannelMark def={channel} size="sm" />
-                      <span className="min-w-0 flex-1 truncate text-sm text-gray-700">
-                        {channel.name}
-                      </span>
-                      <div className="relative w-32 shrink-0">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                          $
-                        </span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          aria-label={`Daily budget for ${channel.name}`}
-                          value={state.budgetUsdByChannel[channel.featureSlug] ?? ""}
-                          onChange={(e) =>
-                            patch(def.key, {
-                              budgetUsdByChannel: {
-                                ...state.budgetUsdByChannel,
-                                [channel.featureSlug]: e.target.value.replace(/\D/g, ""),
-                              },
-                              touched: true,
-                              error: null,
-                            })
-                          }
-                          placeholder="0"
-                          className="w-full rounded-lg border border-gray-200 py-2 pl-7 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                          /day
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
                   Customer Lifetime Revenue
@@ -890,6 +834,70 @@ export function BrandSalesFunnelsCard({
                   />
                 </div>
               )}
+            </div>
+
+            {/* The money, one ceiling per acquisition channel this funnel can be
+                sold through. Whole dollars, never cents — a daily budget is a
+                configured ceiling, not a charge. Empty means that channel is not
+                funded, which is how one offer is put down without forgetting how
+                the funnel sells: every number above stays as it is, and the
+                funnel's other channels keep running.
+
+                Funding a channel IS choosing it, which is why there is no toggle
+                beside these fields: a switch would be a second way to say what
+                the amount already says.
+
+                It sits BELOW the funnel's own inputs, full width, one row per
+                channel — a channel is a thing the brand funds, not a field, and
+                squeezed into a quarter of the input grid the mark, the name and
+                the amount had no room to read as one line. */}
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <label className="mb-2 flex items-center gap-1 text-xs text-gray-500">
+                Daily budget per channel
+                <InfoTooltip
+                  tip={funnelBudgetTip(def.key, state.savedBudgetCents)}
+                  placement="top"
+                />
+              </label>
+              <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                {channelsForFunnel(def.key, features).map((channel) => (
+                  <li
+                    key={channel.featureSlug}
+                    className="flex items-center gap-3 px-3 py-2.5"
+                  >
+                    <AcquisitionChannelMark def={channel} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-gray-700">
+                      {channel.name}
+                    </span>
+                    <div className="relative w-32 shrink-0">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label={`Daily budget for ${channel.name}`}
+                        value={state.budgetUsdByChannel[channel.featureSlug] ?? ""}
+                        onChange={(e) =>
+                          patch(def.key, {
+                            budgetUsdByChannel: {
+                              ...state.budgetUsdByChannel,
+                              [channel.featureSlug]: e.target.value.replace(/\D/g, ""),
+                            },
+                            touched: true,
+                            error: null,
+                          })
+                        }
+                        placeholder="0"
+                        className="w-full rounded-lg border border-gray-200 py-2 pl-7 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                        /day
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {state.error && <p className="mt-4 text-sm text-red-600">{state.error}</p>}
