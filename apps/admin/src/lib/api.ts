@@ -5067,6 +5067,24 @@ export interface InstantlyAccountHealthRow {
   // a fabricated 0. Never derive it from the other fields.
   queuedOverdue?: number;
   accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
+  // 1-based position of this mailbox in send-selection's fill ORDER over the
+  // in-production pool (infrastructure vendor, then domain rank, then age). Rank 1
+  // is the mailbox a new sequence is offered first; the selector saturates it
+  // before touching rank 2, which is what lets a tail domain go quiet and become
+  // cancellable. null when the mailbox is not in that pool (blocked / not in
+  // production, or reserved to a feature slug).
+  //
+  // `.optional()` on the wire: it is additive, so an older producer omits it and
+  // the honest render is a dash. Never derive it here — the order depends on
+  // vendor attribution, operator-set domain ranks and mailbox age that only
+  // instantly-service holds, and a second implementation would drift silently.
+  fillRank?: number | null;
+  // The daily cap send-selection ACTUALLY compares today's load against: the
+  // configured dailyLimit capped by the account's age ramp (a mailbox under ~4
+  // weeks old is held below its configured limit). Equal to dailyLimit for a
+  // mature mailbox, strictly lower for a young one, null when unknown. Additive
+  // and optional for the same reason as fillRank.
+  effectiveDailyCap?: number | null;
 }
 
 export interface InstantlyAccountHealth {
@@ -5112,6 +5130,10 @@ const InstantlyAccountHealthRowSchema = z.object({
   queuedNextLater: z.number(),
   queuedOverdue: z.number().optional(),
   accountType: z.string().nullable(),
+  // Additive (instantly-service): optional AND nullable so the page renders
+  // identically against a producer that has not deployed them yet.
+  fillRank: z.number().nullable().optional(),
+  effectiveDailyCap: z.number().nullable().optional(),
 });
 const InstantlyAccountHealthSchema = z.object({
   asOf: z.string(),
