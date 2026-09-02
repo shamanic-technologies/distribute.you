@@ -9,6 +9,7 @@ import {
   getBrandSalesEconomics,
   getOfferSalesFunnels,
   getBrandFunnelBudgets,
+  getBrandSpendableBudget,
   saveBrandFunnelBudget,
   undeclareOfferSalesFunnel,
   type BrandSalesFunnelSet,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
+import { spendableCampaignsForFunnel } from "@/lib/use-running-daily-budget";
 import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -188,6 +190,21 @@ export function BrandSalesFunnelsCard({
   const { data: budgetData, isError: budgetError } = useAuthQuery(
     ["brandFunnelBudgets", brandId],
     () => getBrandFunnelBudgets(brandId),
+  );
+
+  // What each funnel may spend TODAY, which is a JOIN neither producer can answer
+  // alone: billing keys a ceiling on (funnel x channel x offer) and stores no
+  // status, campaign-service stores the status and no money. So billing's figures
+  // above — the ones the fields in this card edit — are status-BLIND, and a funnel
+  // running one channel at $50 beside one PAUSED at $10 has $60 of ceilings and $50
+  // of spend. campaign-service serves the join; this reads it on the key every
+  // campaign surface already polls, so it costs no request, and
+  // `invalidateCampaignMoney` (which both writes below call) re-reads it, so the
+  // tag moves the moment a budget or a status does.
+  const spendableQ = useAuthQuery(
+    ["brandSpendableBudget", brandId],
+    () => getBrandSpendableBudget(brandId),
+    { enabled: Boolean(brandId) },
   );
 
   // Which channels each funnel may be sold through is features-service's own
@@ -602,8 +619,25 @@ export function BrandSalesFunnelsCard({
     const rateFields = funnelRateFields(def);
     const dimmed = !state.declared && !isOpen;
     // What this offer funds the funnel at — the sum of the very figures the open
-    // form edits, so the closed card and the open one cannot disagree.
+    // form edits, so the closed card and the open one cannot disagree. It says
+    // whether a ceiling EXISTS, never what is being spent: billing stores no
+    // status, so this counts a paused channel exactly like a running one.
     const offerFundedCents = offerFunnelTotalCents(state.savedCentsByChannel);
+    // ...and what is actually spent today, which is the campaigns campaign-service
+    // reports as RUNNING for this funnel of this offer. Narrowed with the same one
+    // exported rule the funnels TABLE one level up reads, on the normalized funnel
+    // key — the wire carries two spellings of every funnel, so matching the raw
+    // string reads empty for whichever half the producer is emitting. `null` while
+    // the read is in flight or has failed, deliberately NOT zero: "we could not
+    // measure this" and "this funnel spends nothing" are different statements, and
+    // the tag renders nothing at all for the first rather than claiming the second.
+    const runningCents =
+      spendableQ.data === undefined
+        ? null
+        : spendableCampaignsForFunnel(spendableQ.data, def.key, offerId).reduce(
+            (sum, c) => sum + c.runningDailyBudgetCents,
+            0,
+          );
 
     const header = (
       <div className="flex items-start gap-3 p-4">
@@ -685,11 +719,20 @@ export function BrandSalesFunnelsCard({
             to, with both correct. The funnel-wide figure still governs the
             product minimum below, which is the one thing that really does bind
             across offers. */}
-        {state.declared && !isOpen && (
-          offerFundedCents > 0 ? (
+        {state.declared && !isOpen && runningCents !== null && (
+          runningCents > 0 ? (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
               <CheckCircleIcon className="h-3.5 w-3.5" />
-              ${Math.round(offerFundedCents / 100).toLocaleString("en-US")}/day
+              ${Math.round(runningCents / 100).toLocaleString("en-US")}/day
+            </span>
+          ) : offerFundedCents > 0 ? (
+            // Funded and stopped is its own answer, and it is the one the old tag
+            // got wrong in both directions: it summed the paused ceiling into the
+            // green figure, and a funnel whose every channel was paused read "Not
+            // funded" although the customer's amounts are all still there. Restart
+            // it and it spends that money again — nothing to re-enter.
+            <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
+              Paused
             </span>
           ) : (
             <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
