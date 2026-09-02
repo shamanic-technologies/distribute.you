@@ -5861,6 +5861,15 @@ export interface Payment {
   // refunded payment `succeeded` at its full amount, so this is the only signal
   // that the money came back. See lib/payment-return.ts.
   amountReturnedCents: number;
+  // Why the card was refused, straight off Stripe's `last_payment_error`. Null on
+  // a payment that was never attempted against a card (an abandoned checkout) and
+  // on most successful ones. NOT null-implies-success: Stripe keeps the error of
+  // an earlier attempt on an intent that later succeeded, which is why
+  // lib/payment-failure.ts reads the status alongside it.
+  declineMessage: string | null;
+  // `decline_code` when Stripe sent one (`insufficient_funds`), else its coarser
+  // `code` (`card_declined`). Diagnostics — the message is what a person reads.
+  declineCode: string | null;
 }
 
 // stripe-service mirrors raw Stripe PaymentIntents; `amount` is cents (number),
@@ -5877,6 +5886,17 @@ const PaymentIntentSchema = z
     // on purpose: an absent value would silently read as "nothing came back", which
     // is exactly the wrong story to tell. Absent => loud shape mismatch.
     amount_returned: z.coerce.number(),
+    // Raw Stripe. Present only on an intent whose charge was actually attempted
+    // and refused, so `.nullish()` here is the producer's own contract, not a
+    // tolerance: Stripe omits the key entirely on an intent nobody ever charged.
+    last_payment_error: z
+      .object({
+        code: z.string().nullish(),
+        decline_code: z.string().nullish(),
+        message: z.string().nullish(),
+      })
+      .passthrough()
+      .nullish(),
   })
   .passthrough();
 
@@ -5909,6 +5929,10 @@ export async function getBillingPayments(token?: string): Promise<{ payments: Pa
     createdAt: new Date(pi.created * 1000).toISOString(),
     description: pi.description ?? null,
     amountReturnedCents: pi.amount_returned,
+    declineMessage: pi.last_payment_error?.message ?? null,
+    // decline_code is the specific one ("insufficient_funds"); code is the family
+    // ("card_declined"). Prefer the specific, fall back to the family.
+    declineCode: pi.last_payment_error?.decline_code ?? pi.last_payment_error?.code ?? null,
   }));
   // Most recent first.
   payments.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));

@@ -22,9 +22,12 @@ import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
+import { latestPaymentFailure } from "@/lib/payment-failure";
+import { availableCreditCents } from "@/lib/credit-runway";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
+import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
@@ -202,6 +205,15 @@ export default function BillingPage() {
   // Only show successful top-ups — incomplete/failed PaymentIntents are noise to
   // the customer (an abandoned checkout leaves a requires_* husk); hide them.
   const payments = (paymentsData?.payments ?? []).filter((p) => p.status === "succeeded");
+
+  // Has a charge been refused since the last one that went through? Read off the
+  // UNFILTERED list on purpose — the card above drops every non-succeeded intent,
+  // which is exactly why a declined card was invisible here. See lib/payment-failure.ts.
+  const paymentFailure = latestPaymentFailure(paymentsData?.payments ?? []);
+  // A declined top-up on an org still holding credit has stopped nothing, so the
+  // "your campaigns are stopped" half of the banner is gated on the balance the
+  // page already reads rather than on the decline.
+  const paymentsStopped = account ? availableCreditCents(account) <= 0 : false;
 
   // Org-wide daily burn = sum of every brand's saved daily budget (paused/unset
   // brands contribute 0). The org wallet is shared across brands, so this is how
@@ -491,6 +503,33 @@ export default function BillingPage() {
           </button>
         )}
       </div>
+
+      {/* A refused charge is the first thing to say on this page, so it sits above
+          everything else. The retry opens the SAME modal the "Top Up Credits"
+          button opens, in its depleted variant when the balance really is out, so
+          the two doors never tell different stories.
+
+          `required_cents` is deliberately NOT passed: the modal renders it as
+          "Required", and the refused amount is what auto-topup tried to charge,
+          not a debt. The presets are already sized to this org's daily burn. */}
+      {paymentFailure && (
+        <div className="max-w-2xl">
+          <PaymentFailedBanner
+            failure={paymentFailure}
+            stopped={paymentsStopped}
+            updatingCard={portalLoadingSource === "manage"}
+            onRetry={() =>
+              showPaymentRequired({
+                balance_cents: account?.balance_cents,
+                depleted: paymentsStopped,
+                autoReloadSupported,
+                brandDailyBudgetCents: orgDailyBurnCents || null,
+              })
+            }
+            onUpdateCard={() => handleManagePayment("manage")}
+          />
+        </div>
+      )}
 
       {showSuccess && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
