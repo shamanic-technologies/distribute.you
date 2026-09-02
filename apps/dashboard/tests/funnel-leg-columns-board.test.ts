@@ -39,6 +39,34 @@ describe("the funnel board's call site", () => {
     expect(BOARD.slice(at, BOARD.indexOf("/>", at))).toContain("offerable={offerable}");
   });
 
+  // A card and the modal it opens must never state opposite things about one channel,
+  // so the verdict comes from the SAME resolver the modal writes through — never a
+  // second copy of the rule, and never the ceiling standing in for a status.
+  it("takes its running verdict from buildControlRows, on the shared campaigns key", () => {
+    expect(BOARD).toContain("buildControlRows");
+    expect(BOARD).toContain('["campaigns", brandId]');
+    expect(BOARD).toContain("runningBySlug");
+    // The ceiling separates "stopped" from "never bought"; it never decides what runs.
+    expect(BOARD).not.toContain("card.funded ? \"Running\"");
+  });
+
+  // No guess: while the campaigns read is unsettled the pill is a skeleton, not a word.
+  it("states no verdict while the campaigns read is unsettled", () => {
+    expect(BOARD).toContain("campaignsQ.isPending && !campaignsQ.isError");
+    const at = BOARD.indexOf('card.state === "unknown"');
+    expect(at).toBeGreaterThan(-1);
+    expect(BOARD.slice(at, at + 160)).toContain("Skeleton");
+  });
+
+  // Money stays on the card whatever the status: a paused channel that still holds a
+  // ceiling reads Paused AND states its $/day, because that is what is true of it.
+  it("keeps the ceiling on the card independently of the verdict", () => {
+    const at = BOARD.indexOf("fmtDailyBudgetUsd(card.savedCents)");
+    expect(at).toBeGreaterThan(-1);
+    const cell = BOARD.slice(BOARD.lastIndexOf("{pending ?", at), at);
+    expect(cell).not.toContain("card.state");
+  });
+
   // Reveal on SETTLE: a failed budget read paints the cards without a ceiling rather
   // than holding them in a skeleton forever.
   it("reveals on settle, never on success alone", () => {

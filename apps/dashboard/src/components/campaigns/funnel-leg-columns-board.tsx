@@ -2,17 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { funnelLegs } from "@/lib/campaign-leg";
-import { buildLegColumns, type LegChannelCard } from "@/lib/funnel-leg-columns";
+import {
+  buildLegColumns,
+  channelsForLeg,
+  type LegChannelCard,
+  type LegChannelState,
+} from "@/lib/funnel-leg-columns";
 import {
   funnelChannelBudgets,
   type ChannelFeatureRow,
   channelsForFunnel,
 } from "@/lib/funnel-channels";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import type { OfferableChannel } from "@/lib/campaign-controls";
+import { buildControlRows, type OfferableChannel } from "@/lib/campaign-controls";
 import type { SalesFunnelDef } from "@/lib/sales-funnels";
-import { getBrandFunnelBudgets } from "@/lib/api";
+import { getBrandFunnelBudgets, listCampaignsByBrand } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useFeatures } from "@/lib/features-context";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
@@ -45,8 +51,13 @@ export function FunnelLegColumnsBoard({
   const budgetsQ = useAuthQuery(["brandFunnelBudgets", brandId], () =>
     getBrandFunnelBudgets(brandId),
   );
+  // The status half. Byte-equal to the key the controls modal, the Campaigns table and
+  // every other campaign surface already poll, so asking costs no request — and reading
+  // the SAME rows is what stops the card and the modal it opens from disagreeing.
+  const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
 
   const legs = useMemo(() => funnelLegs(funnel), [funnel]);
+  const catalogue = useAcquisitionChannels();
 
   // The ceilings come from the SAME resolver Offer Settings reads, so the two surfaces
   // cannot state different money for one channel. It owns the offer-scoped narrowing;
@@ -66,30 +77,76 @@ export function FunnelLegColumnsBoard({
     return Object.fromEntries(resolved.map((r) => [r.channel.featureSlug, r.savedCents]));
   }, [funnel.key, features, budgetsQ.data, offerId]);
 
-  const columns = useMemo(
-    () =>
-      buildLegColumns({
-        legs,
-        channels: channelsForFunnel(funnel.key, (features ?? []) as ChannelFeatureRow[]),
-        savedCentsBySlug,
-      }),
-    [legs, funnel.key, features, savedCentsBySlug],
+  const funnelChannels = useMemo(
+    () => channelsForFunnel(funnel.key, (features ?? []) as ChannelFeatureRow[]),
+    [funnel.key, features],
   );
 
   // Every channel of this funnel a customer may fund, whether or not one runs today.
   // The modal files them under the same triple a campaign row uses, so a channel that
   // already has a campaign is never listed twice.
+  //
+  // Derived straight off the arrows rather than off the laid-out columns: the columns
+  // now carry a verdict that is itself resolved from these rows, and reading one out of
+  // the other would be a cycle.
   const offerable = useMemo<OfferableChannel[]>(
     () =>
-      columns.flatMap((col) =>
-        col.cards.map((card) => ({
+      legs.flatMap((leg) =>
+        channelsForLeg(leg, funnelChannels).map((channel) => ({
           funnelKey: funnel.key,
-          featureSlug: card.channel.featureSlug,
-          channelName: card.channel.name,
+          featureSlug: channel.featureSlug,
+          channelName: channel.name,
           offerId: offerId ?? null,
         })),
       ),
-    [columns, funnel.key, offerId],
+    [legs, funnelChannels, funnel.key, offerId],
+  );
+
+  /**
+   * Is this channel running — campaign-service's own answer, taken from the SAME
+   * resolver the modal writes through.
+   *
+   * `undefined` while the campaigns read is unsettled: a card must not state a verdict
+   * it does not have. A channel appearing under two arrows of one funnel, or under two
+   * offers at brand grain, is running when ANY of its rows is — the same roll-up the
+   * modal's own pill states, so the two can never disagree.
+   */
+  const runningBySlug = useMemo<Record<string, boolean> | undefined>(() => {
+    if (campaignsQ.isPending && !campaignsQ.isError) return undefined;
+    const rows = buildControlRows(
+      campaignsQ.data?.campaigns ?? [],
+      budgetsQ.data,
+      catalogue,
+      { offerId, funnelKey: funnel.key },
+      offerable,
+    );
+    const out: Record<string, boolean> = {};
+    for (const row of rows) {
+      const slug = row.scope?.featureSlug;
+      if (!slug) continue;
+      out[slug] = (out[slug] ?? false) || row.running;
+    }
+    return out;
+  }, [
+    campaignsQ.data,
+    campaignsQ.isPending,
+    campaignsQ.isError,
+    budgetsQ.data,
+    catalogue,
+    offerId,
+    funnel.key,
+    offerable,
+  ]);
+
+  const columns = useMemo(
+    () =>
+      buildLegColumns({
+        legs,
+        channels: funnelChannels,
+        savedCentsBySlug,
+        runningBySlug,
+      }),
+    [legs, funnelChannels, savedCentsBySlug, runningBySlug],
   );
 
   // Reveal on SETTLE: a failed budget read paints the cards with no ceiling rather than
@@ -140,6 +197,14 @@ export function FunnelLegColumnsBoard({
   );
 }
 
+/** One word per state. `unknown` never renders — the tile draws a skeleton for it. */
+const STATE_LABEL: Record<LegChannelState, string> = {
+  running: "Running",
+  paused: "Paused",
+  not_funded: "Not funded",
+  unknown: "",
+};
+
 /**
  * One channel under one arrow.
  *
@@ -176,17 +241,22 @@ function LegChannelTile({
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between">
-        {/* Green means money is behind it. A channel at zero is not an error and not a
-            warning — it is one the brand has not bought, so it reads plain. */}
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs ${
-            card.funded
-              ? "bg-green-50 text-green-700"
-              : "bg-gray-100 text-gray-500"
-          }`}
-        >
-          {card.funded ? "Running" : "Not funded"}
-        </span>
+        {/* What the channel is DOING, never what it is funded at. Green means a
+            campaign is live; a funded channel that has been stopped reads Paused and
+            still states its ceiling, because that is exactly what is true of it. A
+            channel at zero is not an error and not a warning — it is one the brand has
+            not bought, so it reads plain. */}
+        {card.state === "unknown" ? (
+          <Skeleton className="h-5 w-20 rounded-full" />
+        ) : (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs ${
+              card.state === "running" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {STATE_LABEL[card.state]}
+          </span>
+        )}
         {pending ? (
           <Skeleton className="h-4 w-16" />
         ) : (
