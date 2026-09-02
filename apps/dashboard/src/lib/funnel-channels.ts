@@ -123,11 +123,21 @@ export interface FunnelChannelBudget {
  * then produces nothing forever, which is the precise failure this whole gate
  * exists to prevent: being able to provision a campaign is not being able to RUN
  * one. Add the slug when a workflow answers for it, not before.
+ *
+ * `ai-meeting-booking` is that same test answered the other way, and both are worth
+ * keeping here: the two channels differ in exactly the one thing this list is about.
+ * Everything else was equally true of Google Ads on the day it was left out.
  */
 export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
   "sales-cold-email-outreach",
   "sales-crm-email-outreach",
   "feedback-request-cold-email-outreach",
+  // The one channel here that converts an INTERNAL leg rather than putting a lead
+  // onto a funnel from nothing: it answers a prospect who already replied and turns
+  // that into a booked meeting. It passes the test Google Ads above fails — prod
+  // holds an active workflow for it, and campaign-service provisions its funded
+  // pairs — which is why it is here and that one is not.
+  "ai-meeting-booking",
 ]);
 
 /**

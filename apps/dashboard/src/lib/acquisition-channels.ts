@@ -26,7 +26,11 @@
  * A token rather than a component, so this module keeps no React or icon import
  * and stays a plain unit-testable catalogue. The mark component maps it.
  */
-export type OwnChannelGlyph = "envelope" | "chat-circle" | "chat-teardrop";
+export type OwnChannelGlyph =
+  | "envelope"
+  | "chat-circle"
+  | "chat-teardrop"
+  | "calendar-plus";
 
 /**
  * How the channel is marked.
@@ -145,6 +149,15 @@ export const CHANNEL_MARKS: Record<string, AcquisitionChannelMark> = {
   "sales-crm-email-outreach": {
     kind: "own",
     glyph: "envelope",
+    tone: OWN_CHANNEL_TONE,
+  },
+  // A calendar rather than an envelope, although it answers by email: the row it
+  // draws on states the LEG it performs, and this one ends on a booked meeting.
+  // Deliberately not the CHECK the reply-led funnel wears on its own mark. The
+  // two sit side by side on a campaign row, and one glyph twice reads as one thing.
+  "ai-meeting-booking": {
+    kind: "own",
+    glyph: "calendar-plus",
     tone: OWN_CHANNEL_TONE,
   },
   "cold-sms-outreach": {
