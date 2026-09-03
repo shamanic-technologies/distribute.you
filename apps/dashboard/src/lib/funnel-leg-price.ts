@@ -10,11 +10,17 @@
 //   - A channel WE operate has a price only once the fleet has spent enough to measure
 //     one. features-service publishes that per (channel x funnel) pair, per step.
 //
-// A platform channel nobody has spent on yet has NO price, and it says so in the word
-// the rest of the dashboard already uses for a figure withheld for want of evidence:
-// `Learning`. Never a zero and never a dash — "we have not measured this" and "this is
-// free" are different statements, and printing the second for the first would tell a
-// customer a paid channel costs nothing.
+// A platform channel nobody has spent through yet has NO price, and which word it uses
+// for that depends on whether one is COMING. A channel that is running is accumulating
+// the evidence, so it reads `Learning`, the word the rest of the dashboard already uses
+// for a figure withheld for want of it. A channel that is paused or was never funded is
+// not: nothing will arrive until someone turns it on, so `Learning` there would promise
+// a number that cannot come, exactly as it would on a paused campaign. It reads
+// `Unknown cost` instead.
+//
+// Never a zero and never a dash — "we have not measured this" and "this is free" are
+// different statements, and printing the second for the first would tell a customer a
+// paid channel costs nothing.
 //
 // Only relative, alias-free imports live here (vitest does not resolve `@`), so this
 // module carries REAL unit tests. Keep it that way.
@@ -84,42 +90,57 @@ export function channelStepCostUsd({
 /**
  * What a card's price tag says.
  *
- * `learning` is the third state and the one that carries the rule: a channel WE operate
- * that the fleet has not spent enough through has no price to state, and the dashboard
- * already has a word for a figure withheld for want of evidence. Rendering nothing there
- * reads as a missing feature; rendering a dash or a zero states something false.
+ * The two unpriced states are the ones that carry the rule, and they differ by whether a
+ * price is COMING: `learning` for a channel that is running and accumulating the
+ * evidence, `unknown` for one that is paused or was never funded, where nothing will
+ * arrive until someone turns it on. Same distinction the Learning tag already draws on a
+ * paused campaign — a word that promises a figure which cannot come is worse than one
+ * that says we have none. Rendering nothing for either reads as a missing feature;
+ * rendering a dash or a zero states something false.
  *
- * `null` is NOT one of these — it means the price list has not settled yet, so the card
- * draws a skeleton. Answering `learning` before the read lands would state a verdict and
- * then replace it with a price, which is the surface contradicting itself a moment later.
+ * `null` is NOT one of these — it means a read has not settled yet, so the card draws a
+ * skeleton. Answering `learning` or `unknown` before then would state a verdict and then
+ * replace it, which is the surface contradicting itself a moment later.
  */
-export type LegChannelPrice = { kind: "free" } | { kind: "priced"; usd: number } | { kind: "learning" };
+export type LegChannelPrice =
+  | { kind: "free" }
+  | { kind: "priced"; usd: number }
+  | { kind: "learning" }
+  | { kind: "unknown" };
 
 /**
- * The price a card states, or null while the fleet price list is still in flight.
+ * The price a card states, or null while something it depends on is still in flight.
  *
  * `operatedBy` outranks the measurement: a channel the customer works themselves is
  * free from us however much the fleet has spent measuring the ones we run, so it needs
  * no read at all and states `Free` on the first paint.
  *
- * A price likewise needs no settle check — having one IS the answer. Only the absence of
- * one has to wait, because "not measured yet" and "not read yet" are different things
- * and only the first is `Learning`.
+ * A price likewise needs no settle check — having one IS the answer. Only the ABSENCE of
+ * one has to wait, and it waits on two things: the price list ("not measured yet" and
+ * "not read yet" are different, and only the first is a verdict) and the channel's own
+ * running state, which decides WHICH verdict.
  */
 export function legChannelPrice({
   operatedBy,
   costPerStepUsd,
   settled,
+  running,
 }: {
   operatedBy: string | null;
   costPerStepUsd: number | null;
   /** Has the price list resolved (or errored)? An errored read is settled: we have no figure. */
   settled: boolean;
+  /**
+   * Is this channel running for this brand — campaign-service's own answer, the SAME one
+   * the card's status pill states, so a card cannot read `Learning` above a pill saying
+   * `Paused`. `undefined` while the campaigns read is unsettled.
+   */
+  running: boolean | undefined;
 }): LegChannelPrice | null {
   if (operatedBy === "customer") return { kind: "free" };
   if (costPerStepUsd != null) return { kind: "priced", usd: costPerStepUsd };
-  if (!settled) return null;
-  return { kind: "learning" };
+  if (!settled || running === undefined) return null;
+  return running ? { kind: "learning" } : { kind: "unknown" };
 }
 
 /**
@@ -128,7 +149,9 @@ export function legChannelPrice({
  *
  * `learning` is deliberately absent: it is rendered by the shared `LearningTag`, which
  * owns that word everywhere it appears, so this module never spells it. A second place
- * saying "Learning" is how one surface comes to say it differently.
+ * saying "Learning" is how one surface comes to say it differently. `unknown` is absent
+ * for the same reason — the card renders it in the pause grey, which is a property of
+ * the tag rather than of the words.
  *
  * The step is named in THIS app's vocabulary (the funnel's own `steps`), never the
  * producer's — the reply funnel's first step reads "Sales interest" here and "Positive
