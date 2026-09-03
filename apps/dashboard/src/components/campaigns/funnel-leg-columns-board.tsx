@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { funnelLegs } from "@/lib/campaign-leg";
 import {
   buildLegColumns,
@@ -16,7 +16,14 @@ import {
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { buildControlRows, type OfferableChannel } from "@/lib/campaign-controls";
 import type { SalesFunnelDef } from "@/lib/sales-funnels";
-import { getBrandFunnelBudgets, listCampaignsByBrand } from "@/lib/api";
+import { getBrandFunnelBudgets, getChannelFunnelEconomics, listCampaignsByBrand } from "@/lib/api";
+import {
+  channelStepCostUsd,
+  legChannelPrice,
+  legPriceLabel,
+  type LegChannelPrice,
+} from "@/lib/funnel-leg-price";
+import { formatUsdAdaptive } from "@/lib/format-number";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useFeatures } from "@/lib/features-context";
@@ -55,6 +62,11 @@ export function FunnelLegColumnsBoard({
   // every other campaign surface already poll, so asking costs no request — and reading
   // the SAME rows is what stops the card and the modal it opens from disagreeing.
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
+  // The fleet's price list. Public and org-less on purpose: a card's whole job is to
+  // offer a channel this brand has NOT funded, which by definition has no spend of its
+  // own to price it with. One read for the whole board — the pairs are keyed on
+  // (channel, funnel), so every card looks itself up in the same answer.
+  const economicsQ = useAuthQuery(["channelFunnelEconomics"], () => getChannelFunnelEconomics());
 
   const legs = useMemo(() => funnelLegs(funnel), [funnel]);
   const catalogue = useAcquisitionChannels();
@@ -149,6 +161,37 @@ export function FunnelLegColumnsBoard({
     [legs, funnelChannels, savedCentsBySlug, runningBySlug],
   );
 
+  /**
+   * What this channel charges for the outcome of this arrow.
+   *
+   * `Free` is a fact about the CHANNEL (the customer works it themselves), so it needs
+   * no measurement and is stated the moment the catalogue is there. A price is a fact
+   * about the FLEET, so it exists only once someone has spent through that pair — a
+   * platform channel nobody has run yet states nothing rather than a zero, which would
+   * read as free.
+   *
+   * The step is indexed by the arrow's own `toIndex` and NAMED from this funnel's own
+   * `steps`: the producer calls the reply funnel's first step "Positive reply" while
+   * this app reads "Sales interest", so the words come from here and only the position
+   * crosses the boundary.
+   */
+  const priceFor = useCallback(
+    (toIndex: number, channel: { featureSlug: string; operatedBy: string | null }) =>
+      legChannelPrice({
+        operatedBy: channel.operatedBy,
+        costPerStepUsd: economicsQ.data
+          ? channelStepCostUsd({
+              pairs: economicsQ.data,
+              channelSlug: channel.featureSlug,
+              funnelKey: funnel.key,
+              stepIndex: toIndex,
+              expectedStepCount: funnel.steps.length,
+            })
+          : null,
+      }),
+    [economicsQ.data, funnel.key, funnel.steps.length],
+  );
+
   // Reveal on SETTLE: a failed budget read paints the cards with no ceiling rather than
   // an eternal skeleton. The channels themselves come from the features list, which the
   // session already holds.
@@ -176,6 +219,8 @@ export function FunnelLegColumnsBoard({
                   key={card.channel.featureSlug}
                   card={card}
                   pending={pending}
+                  price={priceFor(col.leg.toIndex, card.channel)}
+                  stepLabel={funnel.steps[col.leg.toIndex] ?? ""}
                   onOpen={() => setOpenSlug(card.channel.featureSlug)}
                 />
               ))
@@ -214,10 +259,16 @@ const STATE_LABEL: Record<LegChannelState, string> = {
 function LegChannelTile({
   card,
   pending,
+  price,
+  stepLabel,
   onOpen,
 }: {
   card: LegChannelCard;
   pending: boolean;
+  /** What it costs per outcome of this arrow, or null when there is nothing to state. */
+  price: LegChannelPrice | null;
+  /** The arrow's destination step, in the FUNNEL's own words. */
+  stepLabel: string;
   onOpen: () => void;
 }) {
   return (
@@ -239,6 +290,16 @@ function LegChannelTile({
           <p className="line-clamp-2 text-sm font-medium text-gray-900">{card.channel.name}</p>
           <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{card.channel.summary}</p>
         </div>
+        {/* The price, in the brand's TERTIARY — the same accent and the same tile the
+            Learning tag wears on every campaign surface, carrying `tone-tile` so on a
+            customer's dashboard it is THEIR tertiary rather than ours. A channel with no
+            measured price renders NOTHING rather than a dash: a tag is a statement, and
+            we have none to make about a channel the fleet has never run. */}
+        {price && (
+          <span className="tone-tile shrink-0 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-orange-600">
+            {legPriceLabel(price, stepLabel, formatUsdAdaptive)}
+          </span>
+        )}
       </div>
       <div className="mt-3 flex items-center justify-between">
         {/* What the channel is DOING, never what it is funded at. Green means a
