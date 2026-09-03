@@ -156,6 +156,13 @@ describe("the filter runs at the ONE reader boundary", () => {
     };
     walk(dir);
     expect(hits.map((h) => path.relative(dir, h)).sort()).toEqual([
+      // A DIFFERENT producer's field under the same name: features-service's
+      // channel-funnel price list marks each (channel, funnel) pair `measured`, meaning
+      // the fleet has spent enough through it to state a price. Nothing to do with a
+      // workflow projection row, so this file is not a second copy of the check below —
+      // it just happens to read a word the scan cannot tell apart. A NEW file matching
+      // still fails, which is the point.
+      "lib/funnel-leg-price.ts",
       "lib/workflow-projection-measured.ts",
     ]);
   });

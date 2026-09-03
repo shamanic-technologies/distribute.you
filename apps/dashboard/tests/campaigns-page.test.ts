@@ -579,37 +579,30 @@ describe("Campaigns page (GA)", () => {
     expect(detail).not.toContain("isRevenueFeature");
   });
 
-  describe("under one funnel it walks that funnel", () => {
+  describe("under one funnel the board is the whole answer", () => {
     /**
-     * Reached from the funnel Overview's `See more`, so it must not show FEWER rows
-     * than the section it was reached from. It did: the plain campaign list shows the
-     * arrows WE sell (two of this funnel's four) and names each after the whole funnel
-     * rather than the leg it buys, while the Overview walks every arrow including the
-     * ones the brand works itself.
+     * The board above walks every arrow of the funnel, whoever performs it, and offers
+     * every channel that could work each one. A table beneath it walked the SAME arrows
+     * a second time — one screen answering one question twice — so under a funnel the
+     * board stands alone.
      */
-    it("hands the table the funnel's own walk", () => {
-      expect(page).toContain("funnelSteps={");
-      expect(page).toContain("getOfferFunnelRevenue");
+    it("renders the table only when the route names NO funnel", () => {
+      expect(page).toContain("{!funnelKey && (");
+      expect(page).toContain("<CampaignsTable");
     });
 
-    it("reads it on the key the funnel Overview already polls", () => {
-      // Byte-equal to `FunnelOverviewPage`'s, so walking down costs no request and the
-      // two surfaces cannot state different rungs for one funnel.
-      const overview = read("components/funnels/funnel-overview-page.tsx");
-      const key = '["offerFunnelRevenue", brandId, offerId';
-      expect(overview).toContain(key);
-      expect(page).toContain(key);
+    it("still lays out the funnel's arrows there", () => {
+      expect(page).toContain("{funnelKey && narrowedFunnel && (");
+      expect(page).toContain("FunnelLegColumnsBoard");
     });
 
-    it("states no walk off a funnel", () => {
-      // `undefined` is "this surface walks no funnel" — the brand and offer lists span
-      // several and have no single walk. `null` is the producer stating none, which
-      // still renders the arrows with no figures rather than dropping them.
-      const at = page.indexOf("funnelSteps={");
-      expect(at).toBeGreaterThan(-1);
-      const body = page.slice(at, at + 260);
-      expect(body).toContain("funnelKey");
-      expect(body).toContain(": undefined");
+    it("hands the table no walk, and reads none for it", () => {
+      // The brand and offer lists span several funnels and have no single walk, so the
+      // prop is absent rather than passed `undefined` through a ternary that can only
+      // ever take one branch. The read that fed it is gone with it.
+      expect(page).not.toContain("funnelSteps={");
+      expect(page).not.toContain("getOfferFunnelRevenue");
+      expect(page).not.toContain('["offerFunnelRevenue"');
     });
   });
 

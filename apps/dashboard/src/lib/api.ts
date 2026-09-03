@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { PublicChannelLegsWire } from "./stated-campaign-leg";
+import type { ChannelFunnelEconomicsPair } from "./funnel-leg-price";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
@@ -1819,6 +1820,57 @@ export async function getPublicChannelLegs(token?: string): Promise<PublicChanne
     throw new Error("[dashboard] getPublicChannelLegs: invalid response shape");
   }
   return parsed.data.channels;
+}
+
+/**
+ * What each (channel x sales funnel) pair costs, per step, across the whole fleet.
+ *
+ * `GET /public/channel-funnel-economics` is features-service's own price list: it
+ * publishes, for every pair it can measure, the cost of reaching each step of that
+ * funnel through that channel. Public, no auth, no org scope — it is a catalogue price,
+ * not this brand's spend, which is exactly what a card offering a channel nobody has
+ * funded needs to state.
+ *
+ * `measured: false` is a first-class answer (`no_spend_recorded` for a channel the fleet
+ * has never run) and carries no economics at all. It is NOT a zero: a consumer must say
+ * nothing rather than state a price we have not measured.
+ *
+ * Declared NARROW on purpose, like `getPublicChannelLegs` beside it: this reader exists
+ * to price a step, so `returnPerDollar`, the evidence block and the per-step milestone
+ * flags are left undeclared rather than mirrored.
+ */
+const ChannelFunnelEconomicsSchema = z.object({
+  pairs: z.array(
+    z.object({
+      channelSlug: z.string(),
+      funnelKey: z.string(),
+      funnelSteps: z.array(z.string()),
+      result: z.object({
+        measured: z.boolean(),
+        economics: z
+          .object({
+            steps: z.array(z.object({ costPerStepUsd: z.number().nullable() })),
+          })
+          .nullish(),
+      }),
+    }),
+  ),
+});
+
+/** GET /public/channel-funnel-economics — the fleet's price per (channel, funnel) step. */
+export async function getChannelFunnelEconomics(
+  token?: string,
+): Promise<ChannelFunnelEconomicsPair[]> {
+  const raw = await apiCall<unknown>(`/public/channel-funnel-economics`, { token });
+  const parsed = ChannelFunnelEconomicsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getChannelFunnelEconomics: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getChannelFunnelEconomics: invalid response shape");
+  }
+  return parsed.data.pairs;
 }
 
 /** GET /brands/:brandId/funnel-budgets — the ceilings, plus the total they sum to. */

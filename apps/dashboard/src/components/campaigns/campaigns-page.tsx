@@ -14,12 +14,10 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   getOfferRevenue,
   getBrandRevenue,
-  getOfferFunnelRevenue,
   keepLastGoodFeatureRevenue,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
-import { pollOptions } from "@/lib/query-options";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { campaignFunnel } from "@/lib/campaign-funnel";
@@ -88,25 +86,6 @@ export function CampaignsPage() {
   const narrowedKey = funnelKey
     ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire)
     : null;
-
-  // The funnel walked arrow by arrow, so this page lists what the funnel Overview
-  // lists: every arrow, whoever performs it. Without it the page rendered the plain
-  // campaign list — the two arrows we sell out of four — so walking down from the
-  // Overview showed FEWER rows than the section it was reached from, and named each
-  // one after the whole funnel instead of the leg it buys.
-  //
-  // The key is byte-equal to the one `FunnelOverviewPage` already polls, so arriving
-  // here costs no request and the two surfaces cannot state different rungs. Read only
-  // under a funnel: the brand and offer Campaigns pages span several and have no walk.
-  const funnelRevenue = useAuthQuery(
-    ["offerFunnelRevenue", brandId, offerId ?? "", narrowedKey ?? "none"],
-    () => getOfferFunnelRevenue(offerId ?? "", funnelKey ?? "", brandId),
-    { enabled: Boolean(offerId && funnelKey), ...pollOptions },
-  );
-  // Reveal on SETTLE: a read that errors hands the table `null` — the producer stating
-  // no walk — so the arrows still render with no figures rather than the page falling
-  // back to a shorter list.
-  const funnelStepsPending = funnelRevenue.isPending && !funnelRevenue.isError;
 
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
@@ -273,22 +252,23 @@ export function CampaignsPage() {
             />
           </div>
         )}
+        {/* The table is the BRAND and OFFER answer, and it stands alone there: those
+            scopes span several funnels, so they have no single walk to lay out and the
+            board never renders. Under ONE funnel the board above already walks every
+            arrow, whoever performs it, so a table beneath it walked the same arrows a
+            second time — one screen answering one question twice. */}
+        {!funnelKey && (
         <CampaignsTable
           brandId={brandId}
           featureSlug={featureSlug}
           basePath={basePath}
           offerId={offerId}
           funnelKey={funnelKey}
-          // `undefined` off a funnel — the brand and offer lists span several and have
-          // no single walk. Under one, the SAME walk the funnel Overview renders.
-          funnelSteps={
-            funnelKey
-              ? funnelStepsPending
-                ? null
-                : (funnelRevenue.data?.funnelSteps ?? null)
-              : undefined
-          }
+          // No walk here: this branch only renders when the route names NO funnel, and
+          // the brand and offer lists span several, so there is no single one to lay
+          // out. Under a funnel the board above is the walk.
         />
+        )}
       </div>
     </div>
   );
