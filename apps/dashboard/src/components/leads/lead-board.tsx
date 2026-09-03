@@ -477,7 +477,12 @@ export function LeadBoard({
               aria-label={column.label}
               data-board-column={column.key}
               data-testid={`lead-board-column-${column.key}`}
-              className={`w-64 shrink-0 rounded-xl border p-2 ${
+              // The columns SHARE the page width rather than each taking a fixed 256px:
+              // how many there are is a property of what is being triaged, so a board
+              // that draws four of them should not leave half the page empty. `basis-0`
+              // makes the split even whatever the content, and the floor keeps a card
+              // legible — past it the rail scrolls, which is what happens on a phone.
+              className={`min-w-[13rem] flex-1 basis-0 rounded-xl border p-2 ${
                 under ? "border-purple-200 bg-purple-50" : "border-gray-200 bg-gray-50"
               }`}
             >

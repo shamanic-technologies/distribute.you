@@ -414,6 +414,17 @@ describe("the board explains the two splits a reader would not guess", () => {
     expect(board).toContain("}, [filterKey]);");
   });
 
+  it("shares the page width between the columns rather than pinning each one", () => {
+    // How many columns there are is a property of what is being triaged, so a fixed
+    // width leaves half the page empty on a four-column board and is what was reported.
+    // `basis-0` makes the split even whatever the content; the floor keeps a card
+    // legible and hands the overflow to the rail, which is the phone case.
+    expect(board).toContain("min-w-[13rem] flex-1 basis-0 rounded-xl border p-2");
+    expect(board).not.toContain("w-64 shrink-0 rounded-xl");
+    // The rail still scrolls once the floors no longer fit.
+    expect(board).toContain('className="flex gap-3 overflow-x-auto pb-2"');
+  });
+
   it("tints the kind pills with colours the dark remap covers", () => {
     // An unremapped tint renders its light-mode near-white on the dark surface.
     const globals = readFileSync(join(__dirname, "..", "src", "app", "globals.css"), "utf8");
