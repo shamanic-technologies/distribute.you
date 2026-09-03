@@ -24,6 +24,7 @@ import {
   type LegChannelPrice,
 } from "@/lib/funnel-leg-price";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { LearningTag } from "@/components/learning-tag";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useFeatures } from "@/lib/features-context";
@@ -166,9 +167,14 @@ export function FunnelLegColumnsBoard({
    *
    * `Free` is a fact about the CHANNEL (the customer works it themselves), so it needs
    * no measurement and is stated the moment the catalogue is there. A price is a fact
-   * about the FLEET, so it exists only once someone has spent through that pair — a
-   * platform channel nobody has run yet states nothing rather than a zero, which would
+   * about the FLEET, so it exists only once someone has spent through that pair — and a
+   * platform channel nobody has run yet reads `Learning`, the word this dashboard
+   * already uses for a figure withheld for want of evidence. Never a zero, which would
    * read as free.
+   *
+   * `settled` is what keeps `Learning` honest: before the price list lands we do not
+   * know which of the two a card is, and stating a verdict that a price then replaces is
+   * the surface contradicting itself a moment later.
    *
    * The step is indexed by the arrow's own `toIndex` and NAMED from this funnel's own
    * `steps`: the producer calls the reply funnel's first step "Positive reply" while
@@ -179,6 +185,7 @@ export function FunnelLegColumnsBoard({
     (toIndex: number, channel: { featureSlug: string; operatedBy: string | null }) =>
       legChannelPrice({
         operatedBy: channel.operatedBy,
+        settled: economicsQ.data !== undefined || economicsQ.isError,
         costPerStepUsd: economicsQ.data
           ? channelStepCostUsd({
               pairs: economicsQ.data,
@@ -189,7 +196,7 @@ export function FunnelLegColumnsBoard({
             })
           : null,
       }),
-    [economicsQ.data, funnel.key, funnel.steps.length],
+    [economicsQ.data, economicsQ.isError, funnel.key, funnel.steps.length],
   );
 
   // Reveal on SETTLE: a failed budget read paints the cards with no ceiling rather than
@@ -292,10 +299,21 @@ function LegChannelTile({
         </div>
         {/* The price, in the brand's TERTIARY — the same accent and the same tile the
             Learning tag wears on every campaign surface, carrying `tone-tile` so on a
-            customer's dashboard it is THEIR tertiary rather than ours. A channel with no
-            measured price renders NOTHING rather than a dash: a tag is a statement, and
-            we have none to make about a channel the fleet has never run. */}
-        {price && (
+            customer's dashboard it is THEIR tertiary rather than ours.
+            A channel the fleet has not spent enough through has no price, and says so in
+            the dashboard's own word for that through the SHARED `LearningTag`: one
+            component owns `Learning` everywhere, so this card cannot come to say it
+            differently. It carries no `(i)` — the card is small, and the tag sits beside
+            two other figures.
+            Null is neither state: the price list has not landed, so the slot holds its
+            own size rather than stating a verdict a price would replace. */}
+        {price === null ? (
+          <Skeleton className="h-5 w-20 shrink-0 rounded-full" />
+        ) : price.kind === "learning" ? (
+          <span className="shrink-0">
+            <LearningTag withInfo={false} />
+          </span>
+        ) : (
           <span className="tone-tile shrink-0 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-orange-600">
             {legPriceLabel(price, stepLabel, formatUsdAdaptive)}
           </span>
