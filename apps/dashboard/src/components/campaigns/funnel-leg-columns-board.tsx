@@ -172,9 +172,16 @@ export function FunnelLegColumnsBoard({
    * already uses for a figure withheld for want of evidence. Never a zero, which would
    * read as free.
    *
-   * `settled` is what keeps `Learning` honest: before the price list lands we do not
-   * know which of the two a card is, and stating a verdict that a price then replaces is
-   * the surface contradicting itself a moment later.
+   * WHICH of the two unpriced words it reads is the channel's own running state: one
+   * that is running is accumulating the evidence, so it reads `Learning`; one that is
+   * paused or was never funded is not, so `Learning` there would promise a figure that
+   * cannot arrive until someone turns it on, and it reads `Unknown cost` instead. Both
+   * read the SAME running answer the status pill below states, so a card cannot say
+   * `Learning` above a pill saying `Paused`.
+   *
+   * `settled` is what keeps both honest: before the price list lands we do not know which
+   * of the states a card is in, and stating a verdict that a price then replaces is the
+   * surface contradicting itself a moment later.
    *
    * The step is indexed by the arrow's own `toIndex` and NAMED from this funnel's own
    * `steps`: the producer calls the reply funnel's first step "Positive reply" while
@@ -182,10 +189,15 @@ export function FunnelLegColumnsBoard({
    * crosses the boundary.
    */
   const priceFor = useCallback(
-    (toIndex: number, channel: { featureSlug: string; operatedBy: string | null }) =>
+    (
+      toIndex: number,
+      channel: { featureSlug: string; operatedBy: string | null },
+      running: boolean | undefined,
+    ) =>
       legChannelPrice({
         operatedBy: channel.operatedBy,
         settled: economicsQ.data !== undefined || economicsQ.isError,
+        running,
         costPerStepUsd: economicsQ.data
           ? channelStepCostUsd({
               pairs: economicsQ.data,
@@ -226,7 +238,7 @@ export function FunnelLegColumnsBoard({
                   key={card.channel.featureSlug}
                   card={card}
                   pending={pending}
-                  price={priceFor(col.leg.toIndex, card.channel)}
+                  price={priceFor(col.leg.toIndex, card.channel, runningBySlug?.[card.channel.featureSlug])}
                   stepLabel={funnel.steps[col.leg.toIndex] ?? ""}
                   onOpen={() => setOpenSlug(card.channel.featureSlug)}
                 />
@@ -300,18 +312,25 @@ function LegChannelTile({
         {/* The price, in the brand's TERTIARY — the same accent and the same tile the
             Learning tag wears on every campaign surface, carrying `tone-tile` so on a
             customer's dashboard it is THEIR tertiary rather than ours.
-            A channel the fleet has not spent enough through has no price, and says so in
-            the dashboard's own word for that through the SHARED `LearningTag`: one
-            component owns `Learning` everywhere, so this card cannot come to say it
-            differently. It carries no `(i)` — the card is small, and the tag sits beside
-            two other figures.
-            Null is neither state: the price list has not landed, so the slot holds its
-            own size rather than stating a verdict a price would replace. */}
+            A RUNNING channel the fleet has not spent enough through says so in the
+            dashboard's own word for that, through the SHARED `LearningTag`: one component
+            owns `Learning` everywhere, so this card cannot come to say it differently. It
+            carries no `(i)` — the card is small, and the tag sits beside two other figures.
+            A channel that is PAUSED or was never funded reads `Unknown cost` in the pause
+            grey instead: nothing is running, so no figure is coming, and `Learning` there
+            would promise one that cannot arrive. Grey rather than the tertiary, and no
+            `tone-tile`: that is a verdict, and a verdict never rotates with the brand hue.
+            Null is none of them: a read has not landed, so the slot holds its own size
+            rather than stating a verdict a price would replace. */}
         {price === null ? (
           <Skeleton className="h-5 w-20 shrink-0 rounded-full" />
         ) : price.kind === "learning" ? (
           <span className="shrink-0">
             <LearningTag withInfo={false} />
+          </span>
+        ) : price.kind === "unknown" ? (
+          <span className="shrink-0 rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-gray-500">
+            Unknown cost
           </span>
         ) : (
           <span className="tone-tile shrink-0 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-orange-600">

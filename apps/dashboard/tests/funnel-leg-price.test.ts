@@ -85,51 +85,67 @@ describe("channelStepCostUsd", () => {
 });
 
 describe("legChannelPrice", () => {
-  it("reads Free for a channel the customer works themselves, measured or not", () => {
-    // It needs no read at all, so it states itself on the first paint — `settled` false.
-    expect(legChannelPrice({ operatedBy: "customer", costPerStepUsd: null, settled: false })).toEqual({
-      kind: "free",
-    });
-    expect(legChannelPrice({ operatedBy: "customer", costPerStepUsd: 500, settled: true })).toEqual({
-      kind: "free",
-    });
+  it("reads Free for a channel the customer works themselves, whatever else is true", () => {
+    // It needs no read at all, so it states itself on the first paint.
+    expect(
+      legChannelPrice({ operatedBy: "customer", costPerStepUsd: null, settled: false, running: undefined }),
+    ).toEqual({ kind: "free" });
+    expect(
+      legChannelPrice({ operatedBy: "customer", costPerStepUsd: 500, settled: true, running: false }),
+    ).toEqual({ kind: "free" });
   });
 
-  it("reads Learning for a platform channel the fleet has not priced", () => {
-    expect(legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: true })).toEqual({
-      kind: "learning",
-    });
-    expect(legChannelPrice({ operatedBy: null, costPerStepUsd: null, settled: true })).toEqual({
-      kind: "learning",
-    });
+  it("reads Learning for a RUNNING channel the fleet has not priced", () => {
+    // It is running, so the evidence is accumulating and a figure is coming.
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: true, running: true }),
+    ).toEqual({ kind: "learning" });
+    expect(
+      legChannelPrice({ operatedBy: null, costPerStepUsd: null, settled: true, running: true }),
+    ).toEqual({ kind: "learning" });
   });
 
-  it("states the price for a platform channel the fleet has measured", () => {
-    expect(legChannelPrice({ operatedBy: "platform", costPerStepUsd: 227.7, settled: true })).toEqual({
-      kind: "priced",
-      usd: 227.7,
-    });
+  it("reads Unknown cost when nothing is running — no figure is coming", () => {
+    // Paused or never funded. `Learning` here promises a number that cannot arrive until
+    // someone turns the channel on, exactly as it would on a paused campaign.
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: true, running: false }),
+    ).toEqual({ kind: "unknown" });
   });
 
-  it("waits before saying Learning — an unsettled read is not a verdict", () => {
-    // Answering `learning` here would state something a price then replaces a moment
+  it("states the price for a channel the fleet has measured, running or not", () => {
+    // A measured price is a fact about the FLEET; whether THIS brand funds it changes
+    // nothing about what the channel charges.
+    for (const running of [true, false]) {
+      expect(
+        legChannelPrice({ operatedBy: "platform", costPerStepUsd: 227.7, settled: true, running }),
+      ).toEqual({ kind: "priced", usd: 227.7 });
+    }
+  });
+
+  it("waits before saying either word — an unsettled read is not a verdict", () => {
+    // Answering here would state something a price (or the other word) replaces a moment
     // later: the surface contradicting itself. Null draws a skeleton instead.
-    expect(legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: false })).toBeNull();
-    // A price needs no settle check — having one IS the answer.
-    expect(legChannelPrice({ operatedBy: "platform", costPerStepUsd: 227.7, settled: false })).toEqual({
-      kind: "priced",
-      usd: 227.7,
-    });
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: false, running: true }),
+    ).toBeNull();
+    // ...and the running answer is the other thing it waits on: it decides WHICH word.
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: true, running: undefined }),
+    ).toBeNull();
+    // A price needs neither — having one IS the answer.
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: 227.7, settled: false, running: undefined }),
+    ).toEqual({ kind: "priced", usd: 227.7 });
   });
 
   it("never turns an absent price into a zero", () => {
-    expect(legChannelPrice({ operatedBy: "platform", costPerStepUsd: 0, settled: true })).toEqual({
-      kind: "priced",
-      usd: 0,
-    });
-    expect(legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: true })).toEqual({
-      kind: "learning",
-    });
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: 0, settled: true, running: true }),
+    ).toEqual({ kind: "priced", usd: 0 });
+    expect(
+      legChannelPrice({ operatedBy: "platform", costPerStepUsd: null, settled: true, running: true }),
+    ).toEqual({ kind: "learning" });
   });
 });
 
@@ -138,6 +154,7 @@ describe("legPriceLabel", () => {
     const src = readFileSync(join(__dirname, "..", "src/lib/funnel-leg-price.ts"), "utf8");
     const body = src.slice(src.indexOf("export function legPriceLabel"));
     expect(body).not.toContain('"Learning"');
+    expect(body).not.toContain('"Unknown cost"');
   });
 
   it("names the step in THIS app's words, not the producer's", () => {
@@ -190,7 +207,7 @@ describe("the card states the price", () => {
     expect(tile).not.toMatch(/#[0-9a-fA-F]{6}/);
   });
 
-  it("says Learning through the SHARED tag when there is no price to state", () => {
+  it("says Learning through the SHARED tag when a running channel has no price", () => {
     const tile = board.slice(board.indexOf("function LegChannelTile("));
     expect(tile).toContain('price.kind === "learning"');
     expect(tile).toContain("<LearningTag");
@@ -199,7 +216,30 @@ describe("the card states the price", () => {
     expect(tile).not.toContain('"Learning"');
   });
 
-  it("draws a skeleton, never a verdict, until the price list settles", () => {
+  it("says Unknown cost in the pause grey when nothing is running", () => {
+    const tile = board.slice(board.indexOf("function LegChannelTile("));
+    expect(tile).toContain('price.kind === "unknown"');
+    expect(tile).toContain("Unknown cost");
+    // A verdict never rotates with the brand hue, so no `tone-tile` on this one — and
+    // the grey is the same one the status pill and the paused Learning tag wear.
+    // Anchored on the BRANCH and bounded by its own close, never a guessed length: the
+    // comment above names the words too (so `indexOf("Unknown cost")` slices prose), and
+    // a slice running past `) : (` reaches the PRICED branch, which legitimately carries
+    // `tone-tile` — a not-toContain over it would fail on correct code.
+    const at = tile.indexOf('price.kind === "unknown"');
+    const span = tile.slice(at, tile.indexOf(") : (", at));
+    expect(span).toContain("bg-gray-100");
+    expect(span).toContain("text-gray-500");
+    expect(span).not.toContain("tone-tile");
+  });
+
+  it("reads the SAME running answer the status pill states", () => {
+    // Or a card says `Learning` above a pill saying `Paused` — one channel described two
+    // ways on one card.
+    expect(board).toContain("runningBySlug?.[card.channel.featureSlug]");
+  });
+
+  it("draws a skeleton, never a verdict, until both reads settle", () => {
     const tile = board.slice(board.indexOf("function LegChannelTile("));
     expect(tile).toContain("price === null ? (");
     expect(tile).toContain("<Skeleton");
