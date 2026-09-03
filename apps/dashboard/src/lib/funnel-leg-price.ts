@@ -10,8 +10,9 @@
 //   - A channel WE operate has a price only once the fleet has spent enough to measure
 //     one. features-service publishes that per (channel x funnel) pair, per step.
 //
-// A platform channel nobody has spent on yet has NO price, and this module says so by
-// answering null rather than a zero or a dash: "we have not measured this" and "this is
+// A platform channel nobody has spent on yet has NO price, and it says so in the word
+// the rest of the dashboard already uses for a figure withheld for want of evidence:
+// `Learning`. Never a zero and never a dash — "we have not measured this" and "this is
 // free" are different statements, and printing the second for the first would tell a
 // customer a paid channel costs nothing.
 //
@@ -80,36 +81,61 @@ export function channelStepCostUsd({
   return step.costPerStepUsd ?? null;
 }
 
-/** What a card's price tag says, or null when there is nothing honest to state. */
-export type LegChannelPrice = { kind: "free" } | { kind: "priced"; usd: number };
+/**
+ * What a card's price tag says.
+ *
+ * `learning` is the third state and the one that carries the rule: a channel WE operate
+ * that the fleet has not spent enough through has no price to state, and the dashboard
+ * already has a word for a figure withheld for want of evidence. Rendering nothing there
+ * reads as a missing feature; rendering a dash or a zero states something false.
+ *
+ * `null` is NOT one of these — it means the price list has not settled yet, so the card
+ * draws a skeleton. Answering `learning` before the read lands would state a verdict and
+ * then replace it with a price, which is the surface contradicting itself a moment later.
+ */
+export type LegChannelPrice = { kind: "free" } | { kind: "priced"; usd: number } | { kind: "learning" };
 
 /**
- * The price a card states.
+ * The price a card states, or null while the fleet price list is still in flight.
  *
  * `operatedBy` outranks the measurement: a channel the customer works themselves is
- * free from us however much the fleet has spent measuring the ones we run.
+ * free from us however much the fleet has spent measuring the ones we run, so it needs
+ * no read at all and states `Free` on the first paint.
+ *
+ * A price likewise needs no settle check — having one IS the answer. Only the absence of
+ * one has to wait, because "not measured yet" and "not read yet" are different things
+ * and only the first is `Learning`.
  */
 export function legChannelPrice({
   operatedBy,
   costPerStepUsd,
+  settled,
 }: {
   operatedBy: string | null;
   costPerStepUsd: number | null;
+  /** Has the price list resolved (or errored)? An errored read is settled: we have no figure. */
+  settled: boolean;
 }): LegChannelPrice | null {
   if (operatedBy === "customer") return { kind: "free" };
-  if (costPerStepUsd == null) return null;
-  return { kind: "priced", usd: costPerStepUsd };
+  if (costPerStepUsd != null) return { kind: "priced", usd: costPerStepUsd };
+  if (!settled) return null;
+  return { kind: "learning" };
 }
 
 /**
- * The tag's words: `Free`, or the price over the step it buys.
+ * The tag's words for the two states that state a figure — `Free`, or the price over the
+ * step it buys.
+ *
+ * `learning` is deliberately absent: it is rendered by the shared `LearningTag`, which
+ * owns that word everywhere it appears, so this module never spells it. A second place
+ * saying "Learning" is how one surface comes to say it differently.
  *
  * The step is named in THIS app's vocabulary (the funnel's own `steps`), never the
  * producer's — the reply funnel's first step reads "Sales interest" here and "Positive
  * reply" upstream, and a card must say what the rest of the dashboard says.
  */
 export function legPriceLabel(
-  price: LegChannelPrice,
+  price: { kind: "free" } | { kind: "priced"; usd: number },
   stepLabel: string,
   fmtUsd: (usd: number) => string,
 ): string {
