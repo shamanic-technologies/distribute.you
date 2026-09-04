@@ -2646,11 +2646,7 @@ export function EngagedLeadsPage({
                 spelled. It renders below the Organization card because it is about
                 both halves at once — the person and the employer — so it cannot sit
                 inside either. It draws nothing when we recognise neither country. */}
-            <LeadLocationMap
-              person={selectedFull ?? null}
-              organization={selectedOrg ?? null}
-              organizationName={selectedOrg?.name ?? null}
-            />
+            <LeadLocationMap person={selectedFull ?? null} organization={selectedOrg ?? null} />
             {/* This person's campaigns, each holding what IT decided about them. The
                 offer, the audience AND the timeline live in here rather than as
                 panel-level cards: all three are a campaign's answer, and stating one of
