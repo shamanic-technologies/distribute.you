@@ -8,14 +8,18 @@ import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolid
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
+// ⚠️ Most-advanced FIRST, and this list MUST stay in the same order as
+// `getLeadConsolidatedStatus` (lib/api.ts). `useMonotonicStatuses` suppresses a
+// "downgrade", so a `bounced` ranked below `sent` here would pin a bounced lead on Sent
+// however the derivation reads it.
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
   "clicked",
+  "bounced",
+  "unsubscribed",
   "opened",
   "delivered",
   "sent",
-  "bounced",
-  "unsubscribed",
   "contacted",
   "served",
   "skipped",

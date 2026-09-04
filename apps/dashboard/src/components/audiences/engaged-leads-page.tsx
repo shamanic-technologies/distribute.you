@@ -246,13 +246,17 @@ const OUTCOME_TABS: ReadonlySet<string> = new Set<OutcomeTab>([
 ]);
 const isOutcomeTab = (tab: string): tab is OutcomeTab => OUTCOME_TABS.has(tab);
 
+// ⚠️ Most-advanced FIRST, and this list MUST stay in the same order as
+// `getLeadConsolidatedStatus` (lib/api.ts). `useMonotonicStatuses` suppresses a
+// "downgrade", so a `bounced` ranked below `sent` here would pin a bounced lead on Sent
+// however the derivation reads it.
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
   "clicked",
-  "delivered",
-  "sent",
   "bounced",
   "unsubscribed",
+  "delivered",
+  "sent",
   "contacted",
   "served",
   "skipped",
