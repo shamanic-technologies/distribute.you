@@ -54,8 +54,21 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
   openRowId,
   onToggle,
   renderDetail,
+  showOffers = true,
+  showFunnels,
 }: {
   tree: LeadCampaignTree<C>;
+  /**
+   * Whether to draw the offer band above the campaigns.
+   *
+   * False when the panel already states the offer as its OWN card, which it does
+   * whenever every one of the person's campaigns names the same one — a heading
+   * repeating a card two inches above it is noise, not hierarchy.
+   */
+  showOffers?: boolean;
+  /** Overrides the tree's own answer, for the same reason: the funnel is stated as a
+   *  card above when every campaign agrees on it. */
+  showFunnels?: boolean;
   audienceFor: (card: C) => LeadCampaignAudience | null;
   /** The one open card, or null when the reader closed it. */
   openRowId: string | null;
@@ -66,6 +79,7 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
 }) {
   if (tree.campaignCount === 0) return null;
   const many = tree.campaignCount > 1;
+  const funnelBands = showFunnels ?? tree.showFunnels;
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
@@ -76,7 +90,8 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
           <OfferBand
             key={offer.offerId ?? "no-offer"}
             offer={offer}
-            showFunnels={tree.showFunnels}
+            showOffer={showOffers}
+            showFunnels={funnelBands}
             collapsible={many}
             audienceFor={audienceFor}
             openRowId={openRowId}
@@ -103,6 +118,7 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
  */
 function OfferBand<C extends LeadCampaignCardLike>({
   offer,
+  showOffer,
   showFunnels,
   collapsible,
   audienceFor,
@@ -111,6 +127,7 @@ function OfferBand<C extends LeadCampaignCardLike>({
   renderDetail,
 }: {
   offer: LeadOfferNode<C>;
+  showOffer: boolean;
   showFunnels: boolean;
   collapsible: boolean;
   audienceFor: (card: C) => LeadCampaignAudience | null;
@@ -126,24 +143,33 @@ function OfferBand<C extends LeadCampaignCardLike>({
       {/* The mark leads the name here exactly as it does in the top bar, the tenant
           switcher, the Offers table and the leads table's own Offer column — an offer
           wears one mark on every surface that names one. */}
-      <div className="flex min-w-0 items-center gap-2">
-        <OfferMark size="sm" />
-        <p className="truncate text-sm font-medium text-gray-800">
-          {offer.offerName ?? <span className="text-gray-500">Unnamed offer</span>}
-        </p>
-        {offer.offerId && (
-          <Link
-            href={`/orgs/${orgId}/brands/${brandId}/offers/${offer.offerId}`}
-            className="ml-auto shrink-0 text-xs text-brand-600 hover:text-brand-700 hover:underline"
-          >
-            View offer
-          </Link>
-        )}
-      </div>
+      {showOffer && (
+        <div className="flex min-w-0 items-center gap-2">
+          <OfferMark size="sm" />
+          <p className="truncate text-sm font-medium text-gray-800">
+            {offer.offerName ?? <span className="text-gray-500">Unnamed offer</span>}
+          </p>
+          {offer.offerId && (
+            <Link
+              href={`/orgs/${orgId}/brands/${brandId}/offers/${offer.offerId}`}
+              className="ml-auto shrink-0 text-xs text-brand-600 hover:text-brand-700 hover:underline"
+            >
+              View offer
+            </Link>
+          )}
+        </div>
+      )}
       {/* A 1px neutral rail, the same connector idiom the tenant switcher uses to draw
           a child under its parent. Indent alone is not hierarchy, and a colored side
-          accent above 1px is banned repo-wide. */}
-      <div className="mt-2 ml-3 space-y-3 border-l border-gray-200 pl-3">
+          accent above 1px is banned repo-wide. With no offer header above it there is
+          no parent to connect to, so the rail goes with the header. */}
+      <div
+        className={
+          showOffer
+            ? "mt-2 ml-3 space-y-3 border-l border-gray-200 pl-3"
+            : "space-y-3"
+        }
+      >
         {offer.funnels.map((funnel) => (
           <div key={funnel.funnelKey ?? "no-funnel"}>
             {showFunnels && (

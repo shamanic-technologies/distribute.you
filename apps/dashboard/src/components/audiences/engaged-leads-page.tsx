@@ -114,9 +114,11 @@ import { tenantBasePath } from "@/lib/offer-path";
 import {
   buildLeadCampaignTree,
   firstCampaignRowId,
+  leadPanelScope,
   type CampaignInfo,
 } from "@/lib/lead-campaign-tree";
 import { LeadCampaignSections } from "@/components/audiences/lead-campaign-sections";
+import { LeadScopeCards } from "@/components/audiences/lead-scope-cards";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // funnels (`leadTabsForFunnels`); this map only names them.
@@ -822,9 +824,12 @@ function LeadTimeline({
                         </summary>
                         <div className={`mt-1.5 bg-white border rounded p-2 ${e.kind === "inbound" ? "border-violet-200" : "border-brand-200"}`}>
                           <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                          {/* The signature is OURS. It belongs under something we wrote,
-                              never under the prospect's message. */}
-                          {e.kind === "message" && <EmailSignature className="text-xs" />}
+                          {/* The signature is OURS, and it is appended AT SEND TIME. So it
+                              belongs under a body that has not been sent — the generation's
+                              own copy (`gated`) — and never under a message read back off the
+                              thread, which already carries the signature it really went out
+                              with. Never under the prospect's message either. */}
+                          {e.kind === "message" && e.gated && <EmailSignature className="text-xs" />}
                         </div>
                       </details>
                     )}
@@ -1700,6 +1705,13 @@ export function EngagedLeadsPage({
     [selectedLead, campaignInfoOf],
   );
 
+  // WHICH levels of Brand > Offer > Funnel > Funnel leg > Channel > Audience every one
+  // of this person's campaigns agrees on. The agreed ones are stated as their own
+  // stacked cards above; only what varies is left to the nested list, so a
+  // campaign-scoped panel reads as six cards, a funnel-scoped one as three cards over a
+  // list of leg x channel, and a brand-scoped one as one card over the whole nest.
+  const panelScope = useMemo(() => leadPanelScope(leadCampaignTree), [leadCampaignTree]);
+
   // ONE CARD OPEN AT A TIME, and the first one by default so a person in a single
   // campaign never has to click to see anything. Latched on the lead's identity rather
   // than set in an effect: a poll must not re-open a card the reader closed, and a
@@ -2410,11 +2422,52 @@ export function EngagedLeadsPage({
                 do differ. A card the provider holds no evidence for says so rather than
                 drawing an all-false timeline: "we cannot tell" is not "nothing
                 happened". */}
+            {/* The hierarchy this person sits in, ONE CARD PER LEVEL, for every level
+                their campaigns agree on. What varies is the list underneath. */}
+            <LeadScopeCards
+              offer={panelScope.offer}
+              funnelKey={panelScope.funnelKey}
+              sole={
+                panelScope.sole
+                  ? {
+                      featureSlug: panelScope.sole.info?.featureSlug ?? null,
+                      legKey: panelScope.sole.info?.legKey ?? null,
+                      audience: audienceForCard(panelScope.sole.card),
+                    }
+                  : null
+              }
+            />
+            {panelScope.sole ? (
+              /* One campaign: every level above is already its own card, so there is
+                 nothing to nest and nothing to switch between — the timeline is the
+                 whole of what is left to say. */
+              panelScope.sole.card.delivery ? (
+                <LeadTimeline
+                  delivery={panelScope.sole.card.delivery}
+                  email={leadEmailData?.generation ?? null}
+                  conversation={conversationData ?? null}
+                  refusal={conversationRefusalKind}
+                  heading="Activity"
+                />
+              ) : (
+                <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+                    Activity
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    No delivery events recorded for this campaign yet.
+                  </p>
+                </div>
+              )
+            ) : (
             <LeadCampaignSections
               tree={leadCampaignTree}
               audienceFor={audienceForCard}
               openRowId={openCampaignRowId}
               onToggle={toggleCampaign}
+              /* Neither band repeats a card two inches above it. */
+              showOffers={!panelScope.offer}
+              showFunnels={panelScope.funnelKey ? false : undefined}
               renderDetail={(node) =>
                 node.card.delivery ? (
                   <LeadTimeline
@@ -2435,6 +2488,7 @@ export function EngagedLeadsPage({
                 )
               }
             />
+            )}
             {/* No `Served:` footer. It printed an internal pipeline instant, in a
                 different date format than every row above it, for a step the customer
                 has no use for. The one place `servedAt` is worth showing is the row's
