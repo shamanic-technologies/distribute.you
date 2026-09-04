@@ -51,7 +51,7 @@ function pct(numerator: number, denominator: number): string {
 function dataSourcesFor(view: PublicAnalyticsView): Array<{ tier: string; label: string }> {
   if (view === "revenue") {
     return [
-      { tier: "Bronze", label: "Stripe charges, refunds and lost disputes" },
+      { tier: "Bronze", label: "Payments, refunds and lost disputes across every acquirer" },
       { tier: "Silver", label: "Actualized cold-email spend on the runs cost ledger" },
       { tier: "Gold", label: "Fleet revenue history and committed-budget snapshots" },
     ];
