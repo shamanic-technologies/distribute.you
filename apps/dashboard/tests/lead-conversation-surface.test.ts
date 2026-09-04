@@ -62,7 +62,7 @@ describe("Leads — the panel reads the real conversation", () => {
     expect(src).toContain("const conversationRefusalKind = conversationRefusal(conversationError);");
     expect(src).toContain("[dashboard] lead conversation: unexpected read failure");
     expect(src).toContain(
-      'import {\n  conversationRefusal,\n  hasInbound,\n  messageLabel,\n  orderedMessages,\n  unsentFollowUps,',
+      'import {\n  conversationRefusal,\n  hasInbound,\n  sequenceStopNote,\n  sequenceStopReason,\n  messageLabel,\n  orderedMessages,\n  unsentFollowUps,',
     );
   });
 
@@ -127,8 +127,19 @@ describe("Leads — the panel reads the real conversation", () => {
     const body = timelineBody();
     // Every follow-up already sent has its own card carrying what it really said;
     // keeping the derived row too would state one email twice.
-    expect(body).toContain("hasThread ? unsentFollowUps(followUps, Date.now()) : followUps");
+    expect(body).toContain("hasThread\n        ? unsentFollowUps(followUps, Date.now())\n        : followUps");
     expect(body).toContain("const hasThread = messages.length > 0;");
+  });
+
+  it("stops promising follow-ups once the sequence has stopped", () => {
+    const body = timelineBody();
+    // instantly-service creates the campaign with `stop_on_reply: true`, so a reply ends
+    // the sequence — listing the planned steps as `scheduled` after that promises sends
+    // that will never happen. A website VISIT does not stop it and is not in the rule.
+    expect(body).toContain("const stopReason = sequenceStopReason(delivery);");
+    expect(body).toContain("stopReason\n      ? []");
+    // And it SAYS why, or the rows simply vanish and the timeline reads as truncated.
+    expect(body).toContain("sequenceStopNote(stopReason)");
   });
 
   it("falls back to the derived view when nobody has the exchange on record", () => {

@@ -153,3 +153,44 @@ export function unsentFollowUps<T extends { at: string }>(followUps: T[], nowMs:
     return Number.isFinite(t) && t > nowMs;
   });
 }
+
+/**
+ * WHY the sequence has stopped, or null while it is still running.
+ *
+ * The panel used to list every follow-up the generation planned, filtered on time
+ * alone, so a prospect who had already replied was shown two follow-ups "scheduled"
+ * that will never be sent. The provider's campaign is created with
+ * `stop_on_reply: true` (instantly-service `send-lead.ts`), so a reply ends the
+ * sequence; an unsubscribe ends it because we never contact them again; and a bounce
+ * ends it because the address does not accept mail. Promising a send that cannot
+ * happen is the status-label bug one surface over: a timeline states what WILL happen,
+ * not what was planned before the prospect answered.
+ *
+ * A WEBSITE VISIT deliberately does NOT stop it. Link tracking is on and nothing in the
+ * provider's config stops a sequence on a click, so the follow-ups really are still
+ * coming — dropping them there would hide a send the customer is about to pay for.
+ *
+ * Alias-free like the rest of this module, so it carries real unit tests.
+ */
+export type SequenceStopReason = "replied" | "unsubscribed" | "bounced";
+
+export function sequenceStopReason(delivery: {
+  firstRepliedAt?: string | null;
+  firstUnsubscribedAt?: string | null;
+  firstBouncedAt?: string | null;
+} | null | undefined): SequenceStopReason | null {
+  if (!delivery) return null;
+  // Unsubscribe first: it is the prospect's own instruction and outranks the rest as
+  // the reason nothing more will be sent, even when they also replied.
+  if (delivery.firstUnsubscribedAt) return "unsubscribed";
+  if (delivery.firstBouncedAt) return "bounced";
+  if (delivery.firstRepliedAt) return "replied";
+  return null;
+}
+
+/** What to say in place of the follow-ups that will not be sent. */
+export function sequenceStopNote(reason: SequenceStopReason): string {
+  if (reason === "unsubscribed") return "No further emails: they asked us to stop.";
+  if (reason === "bounced") return "No further emails: their address bounced.";
+  return "No further follow-ups: they replied, so the sequence stopped.";
+}

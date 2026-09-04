@@ -234,10 +234,15 @@ describe("OutreachStatCards copy", () => {
   // from the producer the moment either side changed scope.
   it("renders the sales-interest share as a served subtitle, never a division", () => {
     expect(cards).toContain("signalSharePct?: number | null;");
-    expect(cards).toContain("signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted`");
+    expect(cards).toContain("${formatSharePct(signalSharePct)} of leads contacted");
     // Both sales-interest count cards carry it: the mid-funnel pair AND the 1-step
     // outcome card, or one campaign would state the share and its sibling would not.
-    expect(cards.match(/of contacted`/g)?.length).toBe(2);
+    // Both sales-interest count cards carry it, and the Website Visits card is the
+    // THIRD: a visit-led funnel's first rung IS the visit, so its share is the same
+    // sentence about a different step.
+    expect(cards.match(/of leads contacted`/g)?.length).toBe(3);
+    expect(cards).toContain("clickSharePct?: number | null;");
+    expect(cards).toContain("${formatSharePct(clickSharePct)} of leads contacted");
     expect(cards).toContain("subtitle={outcomeCard.countSubtitle}");
     // No client ratio anywhere on the row.
     expect(cards).not.toContain("positiveRepliesCount / ");

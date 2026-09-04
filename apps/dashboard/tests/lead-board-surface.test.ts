@@ -383,9 +383,10 @@ describe("the board explains the two splits a reader would not guess", () => {
     const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
     // Each column states what lands in it, in its own blurb.
     for (const blurb of [
-      "Still in play, a no for now included. Nothing has happened yet, or nothing this campaign sells.",
-      "They reached the step this campaign sells, or bought.",
-      "Not our target: wrong contact, they left the role, or the company is not who we sell to.",
+      "Individuals we have identified as potential clients.",
+      "Leads who have shown or expressed sales interest.",
+      // The scope is filled in at render — see the blurb suite below.
+      "Individuals disqualified as leads for this {scope}.",
     ]) {
       expect(lib).toContain(blurb);
     }
@@ -464,6 +465,43 @@ describe("the board explains the two splits a reader would not guess", () => {
       "border-red-200",
     ]) {
       expect(globals).toContain(`html.dark .${cls}`);
+    }
+  });
+});
+
+/**
+ * The blurbs say who is in a column in the customer's own words, and the one whose
+ * sentence depends on the grain names it.
+ */
+describe("the column blurbs name who is in them", () => {
+  const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
+  const page = readFileSync(
+    join(__dirname, "..", "src", "components", "audiences", "engaged-leads-page.tsx"),
+    "utf8",
+  );
+
+  it("reads the blurb through the helper, so the scope is filled in", () => {
+    expect(board).toContain("columnBlurb(column, scopeNoun)");
+    expect(board).not.toContain("{column.blurb}");
+  });
+
+  it("threads the grain from the page at the CALL SITE", () => {
+    // The prop, not only the component: a board handed no scope would silently read
+    // "campaign" on a brand page.
+    expect(page).toContain("scopeNoun={boardScopeNoun}");
+    for (const noun of ['"campaign"', '"sales funnel"', '"offer"', '"brand"']) {
+      expect(page).toContain(noun);
+    }
+  });
+
+  it("keeps the four sentences the owner wrote", () => {
+    for (const blurb of [
+      "Individuals we have identified as potential clients.",
+      "Leads who have shown or expressed sales interest.",
+      "Individuals disqualified as leads for this {scope}.",
+      "Leads who requested to be unsubscribed.",
+    ]) {
+      expect(lib).toContain(blurb);
     }
   });
 });
