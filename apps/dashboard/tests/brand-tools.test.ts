@@ -103,20 +103,32 @@ describe("brand-tools removal", () => {
   });
 
   describe("audiences leads page", () => {
-    it("audiences leads page uses listBrandLeads (brand-level filter)", () => {
+    it("asks lead-service for one page of one bucket, scoped to the brand", () => {
       const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listBrandLeads");
-      expect(src).toContain("replyClassification === \"positive\"");
-      expect(src).toContain("lead.clicked");
+      expect(src).toContain("listLeadsPage(scope, leadsPageQuery(");
+      expect(src).toContain("const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`");
+      // The whole-population readers are gone from this page: holding a brand's every
+      // lead is what made it uncacheable and therefore permanently skeletoned.
+      expect(src).not.toContain("listBrandLeads");
+      expect(src).not.toContain("listCampaignLeads");
+      // Which leads are in a tab is the producer's answer now, never a predicate here —
+      // a predicate can only ever see the page in memory. (Scoped to the bucketing, not
+      // to the field: `replyClassification` still legitimately colours a timeline dot.)
+      expect(src).not.toContain("groupedByTab");
+      expect(src).not.toContain("const coveredLeads");
     });
 
-    it("audiences leads sort has a deterministic tiebreak (poll-stable order)", () => {
-      // Equal/null engagement timestamps must not fall back to the unsorted
-      // backend array order (reshuffles on poll / after a follow-up UPDATE).
+    it("takes its order from the producer, which states a total one", () => {
+      // Equal/null engagement timestamps must not fall back to an unsorted array order
+      // (it reshuffles on a poll, and after a follow-up UPDATE). lead-service breaks
+      // those ties on the row id, so `sort=activity` is total and a page can neither
+      // repeat a lead nor skip one — which a client-side sort of ONE page cannot give.
       const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("a.id.localeCompare(b.id)");
+      const q = fs.readFileSync(path.join(SRC, "src/lib/leads-server-page.ts"), "utf-8");
+      expect(q).toContain('sort: "activity"');
+      expect(src).not.toContain("a.id.localeCompare(b.id)");
     });
   });
 

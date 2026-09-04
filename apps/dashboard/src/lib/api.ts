@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  LeadBucketCountsSchema,
+  LeadsPageEnvelopeSchema,
+  type LeadBucketCounts,
+} from "./leads-server-page";
 import type { PublicChannelLegsWire } from "./stated-campaign-leg";
 import type { ChannelFunnelEconomicsPair } from "./funnel-leg-price";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
@@ -4666,6 +4671,157 @@ export async function listBrandLeads(brandId: string, token?: string): Promise<{
     { token },
   );
   return parseLeadsResponse(raw, "listBrandLeads");
+}
+
+/**
+ * ONE PAGE of a scope's leads, plus how many there are in total.
+ *
+ * The unpaginated readers above hand back a brand's whole population — 44.5 MB over
+ * 12,945 rows on one real brand, 99 MB on the largest. That is fine for a consumer that
+ * genuinely wants every row (features-service's revenue engine, the staff console) and
+ * ruinous for a page a customer opens many times a day: it is far past the 2 MB on-disk
+ * cache entry cap, so it was never cached and the Leads page cold-loaded every visit.
+ *
+ * lead-service answers a bounded page instead (`limit`/`offset`, plus `bucket`, `q` and
+ * `sort`), and states how many rows match the filter so a pager can exist without
+ * holding them. The query is built by `leads-server-page.ts`, which is where the
+ * producer's vocabulary lives; this function only carries it.
+ */
+export interface LeadsPage {
+  leads: Lead[];
+  /**
+   * How many leads match this filter in total. `null` means the producer did not say —
+   * it documents `total` as absent on an unbounded unfiltered read — and is never read
+   * as zero: a pager told nothing shows one page rather than claiming an empty tab.
+   */
+  total: number | null;
+  /** Where a cursor walk would resume; `null` at the end of the population. */
+  nextCursor: string | null;
+}
+
+/** `?brandId=` or `?campaignId=`, exactly as the unpaginated readers scope themselves. */
+export interface LeadScope {
+  brandId?: string;
+  campaignId?: string;
+}
+
+function leadScopeQuery(scope: LeadScope): string {
+  if (scope.campaignId) return `campaignId=${encodeURIComponent(scope.campaignId)}`;
+  if (scope.brandId) return `brandId=${encodeURIComponent(scope.brandId)}`;
+  throw new Error("[dashboard] leadScopeQuery: a leads read must name a brand or a campaign");
+}
+
+function leadQueryString(scope: LeadScope, query: Record<string, string>): string {
+  const parts = [leadScopeQuery(scope)];
+  for (const [key, value] of Object.entries(query)) {
+    parts.push(`${key}=${encodeURIComponent(value)}`);
+  }
+  return parts.join("&");
+}
+
+export async function listLeadsPage(
+  scope: LeadScope,
+  query: Record<string, string>,
+  token?: string,
+  options?: { includeCampaigns?: boolean },
+): Promise<LeadsPage> {
+  // `include=campaigns` nests each person's campaigns under their row, which the lead
+  // panel opens from a row and needs. It roughly quadruples a row (6.2 KB against 1.6 KB
+  // measured in production), so the EXPORT opts out: the CSV states no campaign card, and
+  // a walk of thousands of rows is the one place that multiple is worth avoiding.
+  const includeCampaigns = options?.includeCampaigns ?? true;
+  const raw = await apiCall<unknown>(
+    `/leads?${leadQueryString(scope, includeCampaigns ? { ...query, include: LEADS_INCLUDE } : query)}`,
+    { token },
+  );
+  // Two parses over one body, deliberately: the ROWS go through the same
+  // `parseLeadsResponse` every other leads reader uses, so a page and a full read can
+  // never disagree about a lead's shape, while the envelope is parsed on its own
+  // because that schema strips the keys the pager needs.
+  const { leads } = parseLeadsResponse(raw, "listLeadsPage");
+  const envelope = LeadsPageEnvelopeSchema.safeParse(raw);
+  if (!envelope.success) {
+    console.error("[dashboard] listLeadsPage: envelope shape mismatch", {
+      issues: envelope.error.issues,
+    });
+    throw new Error("[dashboard] listLeadsPage: invalid response shape");
+  }
+  return { leads, total: envelope.data.total ?? null, nextCursor: envelope.data.nextCursor };
+}
+
+/**
+ * Every engagement bucket's size for a scope, without a single lead row.
+ *
+ * This is what lets the tabs state their counts once the page stops holding the
+ * population. It takes the SAME search the list takes, so the counts follow the search
+ * box rather than describing a different set from the rows underneath them.
+ */
+export async function getLeadBucketCounts(
+  scope: LeadScope,
+  query: Record<string, string>,
+  token?: string,
+): Promise<LeadBucketCounts> {
+  const raw = await apiCall<unknown>(
+    `/leads/bucket-counts?${leadQueryString(scope, query)}`,
+    { token },
+  );
+  const parsed = LeadBucketCountsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadBucketCounts: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getLeadBucketCounts: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Every lead in the current filter, walked in bounded pages, for the EXPORT.
+ *
+ * lead-service can stream the whole matching set as a CSV itself (`?format=csv`), and
+ * that is not what this does — its columns are the WIRE's vocabulary (`contacted`,
+ * `replyClassification`, `standing`), while the export a customer downloads says
+ * "Contacted" and "Website visit", matching the screen it came from. A page whose export
+ * disagrees with its screen is the same bug one file over, so the file keeps being built
+ * from `leads-csv.ts` and this walk is what feeds it.
+ *
+ * The walk is a different thing from the page reads and does not undo them: it is
+ * one-shot, on an explicit press, never cached and never polled. What made the old
+ * whole-population read ruinous was that it was held, written and re-fetched every 15
+ * seconds; several megabytes that exist for as long as it takes to build a file are the
+ * cost of an export, not a leak.
+ *
+ * Bounded on purpose. `EXPORT_MAX_ROWS` is a real ceiling and a caller is told when it
+ * was hit, because silently exporting the first N of a larger set is the kind of quiet
+ * wrongness a spreadsheet carries for months.
+ */
+export const EXPORT_PAGE_SIZE = 1000;
+export const EXPORT_MAX_ROWS = 25000;
+
+export async function fetchLeadsForExport(
+  scope: LeadScope,
+  query: Record<string, string>,
+  token?: string,
+): Promise<{ leads: Lead[]; truncated: boolean }> {
+  const out: Lead[] = [];
+  let cursor: string | null = null;
+  // `offset` belongs to the numbered pager; a walk uses the cursor, which lead-service
+  // documents as the one that cannot drift while rows are being written under it.
+  const base: Record<string, string> = { ...query, limit: String(EXPORT_PAGE_SIZE) };
+  delete base.offset;
+  for (;;) {
+    const page: LeadsPage = await listLeadsPage(
+      scope,
+      cursor ? { ...base, cursor } : base,
+      token,
+      { includeCampaigns: false },
+    );
+    out.push(...page.leads);
+    cursor = page.nextCursor;
+    if (!cursor || page.leads.length === 0) return { leads: out, truncated: false };
+    if (out.length >= EXPORT_MAX_ROWS) return { leads: out.slice(0, EXPORT_MAX_ROWS), truncated: true };
+  }
 }
 
 export interface EmailSequenceStep {
