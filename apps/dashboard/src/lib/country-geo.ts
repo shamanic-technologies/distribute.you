@@ -11,6 +11,7 @@
  * source-substring guards. Keep it that way.
  */
 import { COUNTRY_POINTS, COUNTRY_POINT_ALIASES } from "./country-points";
+import { COUNTRY_ISO2, REGION_POINTS } from "./region-points";
 
 /**
  * The map's own coordinate space. Equirectangular at 1000 units of width, so one
@@ -88,6 +89,105 @@ export function projectLatLon(point: GeoPoint): MapPoint {
   };
 }
 
+/**
+ * How precisely we were able to place a pin. The card STATES this rather than
+ * letting a dot imply a precision the data does not carry.
+ */
+export type LocationGrain = "region" | "country";
+
+/**
+ * Resolve a whole location to its finest available point: the region (state,
+ * province, Land, département) when the producer gave us one we recognise,
+ * otherwise the country.
+ *
+ * ⚠️ CITY grain is deliberately NOT done here, and the reason is a size one
+ * rather than a taste one. Placing a pin on "Littleton" needs a coordinate per
+ * city; the smallest table that contains a 45,000-person American suburb is
+ * every settlement over ~15,000 people, which is 34,135 rows — 894KB, 387KB
+ * gzipped, several times this whole page's payload, for a card in a side panel.
+ * The right home for a city coordinate is the LEAD ROW: whoever enriches the
+ * lead already resolves the place and can store its latitude and longitude, at
+ * which point this module renders it with no table at all. Until then a region
+ * pin is the finest thing that is honest, and it is what separates two American
+ * leads in different states — which a country pin could not.
+ */
+export function locationPoint(
+  input: LocationInput | null | undefined,
+): { point: GeoPoint; grain: LocationGrain } | null {
+  const country = countryPoint(input?.country);
+  if (!country) return null;
+
+  const region = regionPoint(input);
+  if (region) return { point: region, grain: "region" };
+  return { point: country, grain: "country" };
+}
+
+/**
+ * Fold a region name to the shape REGION_POINTS is keyed on: lower-cased, accents
+ * stripped, whitespace collapsed. Producers send the same region accented and
+ * unaccented in the same table ("Québec" beside "Quebec", "Franche-Comté" beside
+ * "Franche-Comte"), so comparing raw strings would give one of them a pin and the
+ * other a country fallback.
+ */
+export function foldRegionName(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Wrappers a producer puts in front of a region's actual name. Stripped on the
+ * QUERY side only — the set is unambiguous ("State of Bahia" is Bahia and nothing
+ * else) and doing it here costs no rows in the table.
+ */
+const REGION_NAME_PREFIX = /^(state of |province of |region of |community of |principado de |the )/;
+
+/** The region's own point, or null when we do not carry one for it. */
+function regionPoint(input: LocationInput | null | undefined): GeoPoint | null {
+  const state = input?.state?.trim();
+  if (!state) return null;
+
+  const iso = countryIso2(input?.country);
+  if (!iso) return null;
+
+  const folded = foldRegionName(state);
+  const found =
+    REGION_POINTS[`${iso}|${folded}`] ??
+    REGION_POINTS[`${iso}|${folded.replace(REGION_NAME_PREFIX, "")}`];
+  return found ? { lat: found[0], lon: found[1] } : null;
+}
+
+/**
+ * The ISO 3166-1 alpha-2 the region table is keyed on. Resolved through the SAME
+ * alias pass a country point goes through, so "Czechia" and "Czech Republic"
+ * both reach the Czech regions rather than one of them silently falling back to
+ * a country pin.
+ */
+export function countryIso2(country: string | null | undefined): string | null {
+  const canonical = canonicalCountryName(country);
+  return canonical ? COUNTRY_ISO2[canonical] ?? null : null;
+}
+
+/** The name COUNTRY_POINTS is keyed on, for whatever a producer sent us. */
+export function canonicalCountryName(country: string | null | undefined): string | null {
+  if (!country) return null;
+  const trimmed = country.trim();
+  if (!trimmed) return null;
+  if (COUNTRY_POINTS[trimmed]) return trimmed;
+
+  const key = trimmed.toLowerCase();
+  const aliased = COUNTRY_POINT_ALIASES[key];
+  if (aliased && COUNTRY_POINTS[aliased]) return aliased;
+
+  for (const name of Object.keys(COUNTRY_POINTS)) {
+    if (name.toLowerCase() === key) return name;
+  }
+  return null;
+}
+
 /** One pin the map draws. */
 export interface LocationPin {
   /** Which of the two things this pin is — the person, or where they work. */
@@ -96,6 +196,8 @@ export interface LocationPin {
   label: string;
   /** The country the pin is placed by, stated so a reader knows the grain. */
   country: string;
+  /** How precisely it was placed — the card states the coarsest grain it used. */
+  grain: LocationGrain;
   at: MapPoint;
 }
 
@@ -126,25 +228,36 @@ export function locationPins(
   organization: LocationInput | null | undefined,
 ): LocationPin[] {
   const pins: LocationPin[] = [];
-  const personPoint = countryPoint(person?.country);
+  const personPoint = locationPoint(person);
   if (personPoint && person?.country) {
     pins.push({
       kind: "person",
       label: locationLabel(person),
       country: person.country.trim(),
-      at: projectLatLon(personPoint),
+      grain: personPoint.grain,
+      at: projectLatLon(personPoint.point),
     });
   }
-  const orgPoint = countryPoint(organization?.country);
+  const orgPoint = locationPoint(organization);
   if (orgPoint && organization?.country) {
     pins.push({
       kind: "organization",
       label: locationLabel(organization),
       country: organization.country.trim(),
-      at: projectLatLon(orgPoint),
+      grain: orgPoint.grain,
+      at: projectLatLon(orgPoint.point),
     });
   }
   return pins;
+}
+
+/**
+ * The COARSEST grain any pin on screen was placed at, so the card's own note is
+ * true of every dot it draws. Claiming "by region" while one pin fell back to a
+ * country is the card overstating what it knows.
+ */
+export function coarsestGrain(pins: LocationPin[]): LocationGrain {
+  return pins.some((p) => p.grain === "country") ? "country" : "region";
 }
 
 /**

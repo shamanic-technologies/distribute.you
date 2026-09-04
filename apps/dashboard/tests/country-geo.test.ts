@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   MAP_HEIGHT,
+  coarsestGrain,
+  countryIso2,
+  foldRegionName,
+  locationPoint,
   MAP_LAT_BOTTOM,
   MAP_LAT_TOP,
   MAP_WIDTH,
@@ -14,6 +18,7 @@ import {
   sameCountry,
 } from "../src/lib/country-geo";
 import { COUNTRY_POINTS, COUNTRY_POINT_ALIASES } from "../src/lib/country-points";
+import { REGION_POINTS } from "../src/lib/region-points";
 
 /**
  * `country-geo.ts` imports only the two generated data modules beside it, which
@@ -246,5 +251,166 @@ describe("the generated world outline", () => {
       expect(y).toBeGreaterThanOrEqual(-1);
       expect(y).toBeLessThanOrEqual(MAP_HEIGHT + 1);
     }
+  });
+});
+
+describe("locationPoint — region grain", () => {
+  const LITTLETON = { city: "Littleton", state: "Colorado", country: "United States" };
+  const MINNETONKA = { city: "Minnetonka", state: "Minnesota", country: "United States" };
+
+  it("places two American leads in different states at different points", () => {
+    // The reported bug: both fell back to the country point, so the card drew ONE
+    // pin for a lead in Colorado and a company in Minnesota.
+    const a = locationPoint(LITTLETON)!;
+    const b = locationPoint(MINNETONKA)!;
+    expect(a.grain).toBe("region");
+    expect(b.grain).toBe("region");
+    expect(a.point).not.toEqual(b.point);
+  });
+
+  it("draws them as TWO pins, far enough apart not to merge", () => {
+    const pins = locationPins(LITTLETON, MINNETONKA);
+    expect(pins).toHaveLength(2);
+    // 14 map units is the card's merge threshold; these are an order above it.
+    expect(pinDistance(pins[0].at, pins[1].at)).toBeGreaterThan(14);
+  });
+
+  it("falls back to the country when the region is unknown, and says so", () => {
+    const r = locationPoint({ state: "Nowhere County", country: "France" })!;
+    expect(r.grain).toBe("country");
+    expect(r.point).toEqual(countryPoint("France"));
+  });
+
+  it("falls back to the country when there is no region at all", () => {
+    expect(locationPoint({ country: "France" })!.grain).toBe("country");
+  });
+
+  it("is null when the country itself is unknown — a region cannot rescue it", () => {
+    expect(locationPoint({ state: "Colorado", country: "Wakanda" })).toBeNull();
+    expect(locationPoint({ state: "Colorado" })).toBeNull();
+  });
+
+  it("reaches the region table through the SAME alias pass the country point uses", () => {
+    // Otherwise one spelling of a country gets region pins and the other does not.
+    expect(countryIso2("United States")).toBe("US");
+    expect(countryIso2("USA")).toBe("US");
+    expect(countryIso2("Czechia")).toBe(countryIso2("Czech Republic"));
+    expect(countryIso2("Wakanda")).toBeNull();
+  });
+
+  it("matches a region case-insensitively", () => {
+    expect(locationPoint({ state: "COLORADO", country: "United States" })!.grain).toBe("region");
+    expect(locationPoint({ state: "  colorado ", country: "United States" })!.grain).toBe("region");
+  });
+
+  it("resolves the region spellings production actually holds", () => {
+    // Read out of the prod leads table. Producers send the English name, the
+    // local name, the accented and unaccented forms, and a "State of " wrapper,
+    // all for the same place — every one of them has to reach a region pin.
+    const cases: Array<[string, string]> = [
+      ["United States", "Colorado"],
+      ["United States", "Minnesota"],
+      ["United States", "District of Columbia"],
+      ["Canada", "Quebec"],
+      ["Canada", "Québec"],
+      ["Canada", "Yukon Territory"],
+      ["Germany", "Bayern"],
+      ["Germany", "Bavaria"],
+      ["Germany", "Baden-Wuerttemberg"],
+      ["Germany", "Nordrhein-Westfalen"],
+      ["Germany", "Berlin"],
+      ["France", "Bretagne"],
+      ["France", "Brittany"],
+      ["France", "Île-De-France"],
+      ["France", "Ile-de-France"],
+      ["France", "Nouvelle-Aquitaine"],
+      ["Spain", "Catalunya"],
+      ["Spain", "Andalucia"],
+      ["Netherlands", "Noord-Holland"],
+      ["Brazil", "State of Minas Gerais"],
+      ["Brazil", "Minas Gerais"],
+      ["United Kingdom", "England"],
+      ["India", "Maharashtra"],
+      ["Australia", "New South Wales"],
+    ];
+    for (const [country, state] of cases) {
+      expect(locationPoint({ country, state })?.grain, `${country} / ${state}`).toBe("region");
+    }
+  });
+
+  it("gives the accented and unaccented spelling of one region the SAME point", () => {
+    expect(locationPoint({ country: "Canada", state: "Québec" })!.point).toEqual(
+      locationPoint({ country: "Canada", state: "Quebec" })!.point,
+    );
+    expect(locationPoint({ country: "Germany", state: "Bayern" })!.point).toEqual(
+      locationPoint({ country: "Germany", state: "Bavaria" })!.point,
+    );
+  });
+
+  it("resolves regions outside the United States too", () => {
+    for (const input of [
+      { state: "Ontario", country: "Canada" },
+      { state: "Bayern", country: "Germany" },
+      { state: "New South Wales", country: "Australia" },
+      { state: "Maharashtra", country: "India" },
+    ]) {
+      expect(locationPoint(input)!.grain, JSON.stringify(input)).toBe("region");
+    }
+  });
+});
+
+describe("REGION_POINTS reachability", () => {
+  it("carries regions for every country that has real lead volume", () => {
+    // A whole country's regions can vanish silently: the table is keyed on ISO2,
+    // and if a country name fails to resolve to its code, every region under it
+    // is dropped at generation and every lead there quietly falls back to a
+    // country pin. That is exactly how the Netherlands lost all twelve of its
+    // provinces once ("The Netherlands" in the source, "Netherlands" here).
+    for (const country of [
+      "United States",
+      "United Kingdom",
+      "India",
+      "Canada",
+      "France",
+      "Germany",
+      "Australia",
+      "Netherlands",
+      "Spain",
+      "Brazil",
+      "Poland",
+      "United Arab Emirates",
+    ]) {
+      const iso = countryIso2(country);
+      expect(iso, `no ISO2 for ${country}`).not.toBeNull();
+      const count = Object.keys(REGION_POINTS).filter((k) => k.startsWith(`${iso}|`)).length;
+      expect(count, `no regions for ${country} (${iso})`).toBeGreaterThan(0);
+    }
+  });
+
+  it("keys every region on a folded name, since that is how it is looked up", () => {
+    for (const key of Object.keys(REGION_POINTS)) {
+      const [iso, name] = key.split("|");
+      expect(iso, key).toMatch(/^[A-Z]{2}$/);
+      expect(name, key).toBe(foldRegionName(name));
+    }
+  });
+});
+
+describe("coarsestGrain", () => {
+  it("reports COUNTRY as soon as any one pin fell back to it", () => {
+    const pins = locationPins(
+      { state: "Colorado", country: "United States" },
+      { country: "France" },
+    );
+    expect(pins.map((p) => p.grain)).toEqual(["region", "country"]);
+    expect(coarsestGrain(pins)).toBe("country");
+  });
+
+  it("reports REGION only when every pin got one", () => {
+    const pins = locationPins(
+      { state: "Colorado", country: "United States" },
+      { state: "Minnesota", country: "United States" },
+    );
+    expect(coarsestGrain(pins)).toBe("region");
   });
 });

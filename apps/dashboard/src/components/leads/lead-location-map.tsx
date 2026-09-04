@@ -3,6 +3,7 @@
 import {
   MAP_HEIGHT,
   MAP_WIDTH,
+  coarsestGrain,
   locationLabel,
   locationPins,
   pinDistance,
@@ -18,10 +19,10 @@ import { WORLD_MAP_PATH } from "@/lib/world-map-path";
  * spelled, which is the whole reason it exists — a reader takes "United States"
  * and "France" off a map in one glance and off two text rows in two.
  *
- * COUNTRY grain, deliberately. Nothing in this app geocodes a city, and a pin
- * placed at a guessed city coordinate would state a precision the data does not
- * carry. The card says so in its own words rather than letting a reader assume
- * the dot is a street address.
+ * REGION grain where the producer gave us a state or province, COUNTRY grain
+ * where it did not — and the card STATES which of the two it used, so a dot never
+ * implies a precision the data does not carry. City grain would need a coordinate
+ * on the lead row itself; `locationPoint` explains why it is not done here.
  *
  * The map is an INLINE SVG and makes no network request of any kind. That is
  * not only about cost: a tile-server map would send every customer's lead
@@ -38,11 +39,9 @@ const PIN_RADIUS = 11;
 interface LeadLocationMapProps {
   person: LocationInput | null | undefined;
   organization: LocationInput | null | undefined;
-  /** The employer's name, for the legend. The person's row needs none — it is this lead. */
-  organizationName?: string | null;
 }
 
-export function LeadLocationMap({ person, organization, organizationName }: LeadLocationMapProps) {
+export function LeadLocationMap({ person, organization }: LeadLocationMapProps) {
   const pins = locationPins(person, organization);
 
   // No country we recognise on either side means there is nothing to draw. An
@@ -65,6 +64,13 @@ export function LeadLocationMap({ person, organization, organizationName }: Lead
 
   const personLabel = personPin?.label || locationLabel(person);
   const orgLabel = orgPin?.label || locationLabel(organization);
+
+  // True of EVERY dot on screen: a card claiming "by region" while one pin fell
+  // back to a country would overstate what it knows about that pin.
+  const grainNote =
+    coarsestGrain(pins) === "region"
+      ? "Pins are placed by state or region, not by street address."
+      : "Pins are placed by country, not by city.";
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
@@ -130,7 +136,11 @@ export function LeadLocationMap({ person, organization, organizationName }: Lead
                itself about which dot the reader is looking for. */
             dotClassName={merged ? "bg-brand-600" : "bg-orange-600"}
             rowClassName={merged ? undefined : "tone-tile"}
-            term={organizationName?.trim() || "Company"}
+            /* "Organization", never the employer's own name: the row beside it
+               reads "Lead", so naming one side and labelling the other makes the
+               pair read as two different kinds of thing. The name is one card
+               above, under that exact heading. */
+            term="Organization"
             detail={orgLabel}
           />
         )}
@@ -142,9 +152,7 @@ export function LeadLocationMap({ person, organization, organizationName }: Lead
         </p>
       )}
 
-      <p className="mt-2 text-xs text-gray-400">
-        Pins are placed by country, not by city.
-      </p>
+      <p className="mt-2 text-xs text-gray-400">{grainNote}</p>
     </div>
   );
 }

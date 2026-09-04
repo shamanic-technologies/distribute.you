@@ -28,12 +28,11 @@ describe("the lead panel's location map", () => {
     expect(page).toContain("<LeadLocationMap");
   });
 
-  it("is fed the person AND the employer, and the employer's name for the legend", () => {
+  it("is fed the person AND the employer", () => {
     const at = page.indexOf("<LeadLocationMap");
     const call = page.slice(at, page.indexOf("/>", at));
     expect(call).toContain("person={selectedFull");
     expect(call).toContain("organization={selectedOrg");
-    expect(call).toContain("organizationName={selectedOrg?.name");
   });
 
   it("sits AFTER the Organization card — it is about both halves, so it is inside neither", () => {
@@ -69,8 +68,19 @@ describe("the map itself", () => {
     expect(card).toContain("if (pins.length === 0) return null;");
   });
 
-  it("states its own grain rather than letting a dot imply a street address", () => {
+  it("states the grain it ACTUALLY used, per card, not a fixed sentence", () => {
+    // A card claiming "by region" while one pin fell back to a country overstates
+    // what it knows about that pin.
+    expect(card).toContain("coarsestGrain(pins)");
+    expect(card).toContain("Pins are placed by state or region, not by street address.");
     expect(card).toContain("Pins are placed by country, not by city.");
+  });
+
+  it('labels the second row "Organization", never the employer\'s own name', () => {
+    // The row beside it reads "Lead"; naming one side and labelling the other
+    // makes the pair read as two different kinds of thing.
+    expect(card).toContain('term="Organization"');
+    expect(card).not.toContain("organizationName");
   });
 
   it("says out loud when the lead and their employer are in different countries", () => {
