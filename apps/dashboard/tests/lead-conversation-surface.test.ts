@@ -62,7 +62,7 @@ describe("Leads — the panel reads the real conversation", () => {
     expect(src).toContain("const conversationRefusalKind = conversationRefusal(conversationError);");
     expect(src).toContain("[dashboard] lead conversation: unexpected read failure");
     expect(src).toContain(
-      'import {\n  conversationRefusal,\n  hasInbound,\n  sequenceStopNote,\n  sequenceStopReason,\n  messageLabel,\n  orderedMessages,\n  unsentFollowUps,',
+      'import {\n  conversationRefusal,\n  hasInbound,\n  sequenceStopNote,\n  sequenceStopReason,\n  threadCarriesFirstSend,\n  messageLabel,\n  orderedMessages,\n  unsentFollowUps,',
     );
   });
 
@@ -108,12 +108,23 @@ describe("Leads — the panel reads the real conversation", () => {
   it("builds one card per message actually exchanged", () => {
     const body = timelineBody();
     expect(body).toContain("const messages = conversation ? orderedMessages(conversation.messages) : [];");
-    expect(body).toContain("messageLabel(messages, i)");
-    // The delivery rows nest under the FIRST thing we sent — the first send IS the
-    // initial email — and under nothing else, because the wire gives one
-    // first-occurrence per LEAD rather than per step.
+    expect(body).toContain("messageLabel(messages, i, !deliveryOnThread)");
+    // The delivery rows nest under the FIRST thing we sent — and ONLY when this thread
+    // actually carries that send. The evidence is the campaign IDENTITY's while the
+    // thread is one stored row of it, so on a lead first contacted under an ancestor
+    // the thread's first message is a later sequence entirely; nesting a May `Sent`
+    // under a July card makes the card sort after a reply it precedes.
     expect(body).toContain('const firstOutbound = messages.findIndex((m) => m.direction === "outbound");');
-    expect(body).toContain("...(i === firstOutbound ? { events: initialEvents } : {})");
+    expect(body).toContain("hasThread && (queuedOnly || threadCarriesFirstSend(messages, sentAt))");
+    expect(body).toContain("...(deliveryOnThread && i === firstOutbound ? { events: initialEvents } : {})");
+  });
+
+  it("gives the send its own entry when no message on screen is it", () => {
+    const body = timelineBody();
+    // Same branch serves both cases — no thread at all, and a thread covering a LATER
+    // sequence — so the send always sits at its own instant in the chronology.
+    expect(body).toContain("if (!deliveryOnThread) {");
+    expect(body).toContain('label: "Initial email"');
   });
 
   it("states a reply once — as the message, not as a row beside it", () => {
@@ -127,7 +138,7 @@ describe("Leads — the panel reads the real conversation", () => {
     const body = timelineBody();
     // Every follow-up already sent has its own card carrying what it really said;
     // keeping the derived row too would state one email twice.
-    expect(body).toContain("hasThread\n        ? unsentFollowUps(followUps, Date.now())\n        : followUps");
+    expect(body).toContain("const plannedRows = hasThread ? unsentFollowUps(followUps, Date.now()) : followUps;");
     expect(body).toContain("const hasThread = messages.length > 0;");
   });
 
@@ -137,9 +148,12 @@ describe("Leads — the panel reads the real conversation", () => {
     // the sequence — listing the planned steps as `scheduled` after that promises sends
     // that will never happen. A website VISIT does not stop it and is not in the rule.
     expect(body).toContain("const stopReason = sequenceStopReason(delivery);");
-    expect(body).toContain("stopReason\n      ? []");
-    // And it SAYS why, or the rows simply vanish and the timeline reads as truncated.
-    expect(body).toContain("sequenceStopNote(stopReason)");
+    expect(body).toContain("...(stopReason ? [] : plannedRows)");
+    // And it SAYS why, or the rows simply vanish and the timeline reads as truncated —
+    // but ONLY when rows were actually dropped. A reply makes the reason true forever,
+    // so on a lead whose planned sends had all gone out the sentence sat under cards
+    // showing sends AFTER the reply, contradicting them.
+    expect(body).toContain("stopReason && plannedRows.length > 0 ? sequenceStopNote(stopReason) : null");
   });
 
   it("falls back to the derived view when nobody has the exchange on record", () => {

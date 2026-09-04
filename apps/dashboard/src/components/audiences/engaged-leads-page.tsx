@@ -21,6 +21,7 @@ import {
   hasInbound,
   sequenceStopNote,
   sequenceStopReason,
+  threadCarriesFirstSend,
   messageLabel,
   orderedMessages,
   unsentFollowUps,
@@ -247,13 +248,17 @@ const OUTCOME_TABS: ReadonlySet<string> = new Set<OutcomeTab>([
 ]);
 const isOutcomeTab = (tab: string): tab is OutcomeTab => OUTCOME_TABS.has(tab);
 
+// ⚠️ Most-advanced FIRST, and this list MUST stay in the same order as
+// `getLeadConsolidatedStatus` (lib/api.ts). `useMonotonicStatuses` suppresses a
+// "downgrade", so a `bounced` ranked below `sent` here would pin a bounced lead on Sent
+// however the derivation reads it.
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
   "clicked",
-  "delivered",
-  "sent",
   "bounced",
   "unsubscribed",
+  "delivered",
+  "sent",
   "contacted",
   "served",
   "skipped",
@@ -697,6 +702,14 @@ function LeadTimeline({
         ...(delivery.firstDeliveredAt ? [{ label: "Delivered", at: delivery.firstDeliveredAt, dot: "bg-blue-500" }] : []),
       ];
 
+  // Do the delivery rows belong to a message this thread actually carries? The
+  // evidence is the campaign IDENTITY's (every stored row of it) while the thread is
+  // ONE row, so on a lead first contacted under an ancestor the answer is NO — see
+  // `threadCarriesFirstSend`. Nothing is observed for a queued lead, so there is no
+  // send to disagree with and the queue row rides the thread as it always did.
+  const deliveryOnThread =
+    hasThread && (queuedOnly || threadCarriesFirstSend(messages, sentAt));
+
   if (hasThread) {
     // One card per message actually exchanged. The delivery rows nest under the
     // FIRST thing we sent — the first send IS the initial email, which is the same
@@ -706,19 +719,26 @@ function LeadTimeline({
     messages.forEach((m, i) => {
       entries.push({
         kind: m.direction === "inbound" ? "inbound" : "message",
-        label: messageLabel(messages, i),
+        // A send this thread does not carry means its first outbound is not the
+        // initial email, whatever its position here.
+        label: messageLabel(messages, i, !deliveryOnThread),
         at: m.at,
         dot: m.direction === "inbound" ? "bg-violet-500" : "bg-brand-500",
         subject: m.subject || null,
         body: m.text,
         who: m.direction === "inbound" ? m.from : m.to,
-        ...(i === firstOutbound ? { events: initialEvents } : {}),
+        ...(deliveryOnThread && i === firstOutbound ? { events: initialEvents } : {}),
       });
     });
-  } else {
-    // No thread on record. The card sits at the moment the message left (or started
-    // waiting), so it sorts into the chronology at the right place even though it
-    // prints no date itself.
+  }
+
+  // The send the delivery rows describe, whenever no message on screen IS it — with
+  // no thread at all, and equally when the thread covers a LATER sequence. The card
+  // sits at the moment the message left (or started waiting), so it sorts into the
+  // chronology at the right place even though it prints no date itself. Placing it
+  // there rather than folding it into a message it does not belong to is what keeps
+  // a reply from appearing above the send it answered.
+  if (!deliveryOnThread) {
     const initialAt = queuedOnly ? (delivery.firstContactedAt || anchor) : sentAt;
     if (initialAt) {
       entries.push({
@@ -763,6 +783,7 @@ function LeadTimeline({
   // carrying what it really said; the derived rows are then only worth showing for
   // the steps still AHEAD, which is the cadence the reader is waiting on.
   const followUps = derived?.followUps ?? [];
+  const plannedRows = hasThread ? unsentFollowUps(followUps, Date.now()) : followUps;
   // ...unless the sequence has STOPPED. The provider creates the campaign with
   // `stop_on_reply: true`, so a reply ends it; an unsubscribe and a bounce end it too.
   // Listing the planned steps as `scheduled` after that promises sends that will never
@@ -770,16 +791,16 @@ function LeadTimeline({
   // prospect answered. A website VISIT does not stop it and is deliberately not here.
   const stopReason = sequenceStopReason(delivery);
   entries.push(
-    ...(stopReason
-      ? []
-      : hasThread
-        ? unsentFollowUps(followUps, Date.now())
-        : followUps
-    ).map((f) => ({
+    ...(stopReason ? [] : plannedRows).map((f) => ({
       ...f,
       gated: true,
     })),
   );
+  // The sentence explaining the missing steps is only true of steps that ARE missing.
+  // A reply makes the reason true forever, so on a lead whose planned sends had all
+  // gone out anyway it sat under a timeline showing sends AFTER the reply — one screen
+  // saying the sequence stopped above the cards proving it did not.
+  const stopNote = stopReason && plannedRows.length > 0 ? sequenceStopNote(stopReason) : null;
 
   // Same-instant tie-break only (the primary sort is the timestamp): a message card
   // comes before the lead-level events sharing its instant, because those are
@@ -997,9 +1018,7 @@ function LeadTimeline({
       {/* Why nothing more is coming, in place of the steps that were planned. The
           rows are gone because they will not be sent; saying so is what stops that
           reading as a timeline that simply ends. */}
-      {stopReason && (
-        <p className="mt-2 text-xs text-gray-500">{sequenceStopNote(stopReason)}</p>
-      )}
+      {stopNote && <p className="mt-2 text-xs text-gray-500">{stopNote}</p>}
     </div>
   );
 }
