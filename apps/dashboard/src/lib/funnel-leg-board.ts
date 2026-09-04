@@ -80,6 +80,41 @@ export function legBoardColumns(
 }
 
 /**
+ * How many people each column HOLDS, as opposed to how many cards it draws.
+ *
+ * The board reads one bounded page per column now, so counting the rows in hand would
+ * report the cap — "60 of 60" on an arrow that 9,166 people are standing at. These are
+ * the producer's own bucket totals instead, which come back on the same two reads and
+ * cost nothing extra.
+ *
+ * The `to` column is exact: it IS the to-bucket. The `from` column is the people at that
+ * step who have NOT crossed, so it subtracts — and that rests on the funnel's own claim
+ * that crossing an arrow means having been at the step before it. Where that claim does
+ * not hold (a crossing recorded with the earlier evidence lost, which `legBoardSideFor`
+ * deliberately allows) the subtraction understates, so it is floored at the number of
+ * cards actually drawn: a column may never claim to hold fewer people than it is showing.
+ *
+ * A total the producer did not state falls back to the counted cards — "we were not told"
+ * is not zero, and the honest reading is then just what is on screen.
+ */
+export function legBoardTotals({
+  fromBucketTotal,
+  toBucketTotal,
+  counted,
+}: {
+  fromBucketTotal: number | null;
+  toBucketTotal: number | null;
+  counted: { from: number; to: number };
+}): { from: number; to: number } {
+  const to = toBucketTotal ?? counted.to;
+  const from =
+    fromBucketTotal == null
+      ? counted.from
+      : Math.max(counted.from, fromBucketTotal - (toBucketTotal ?? 0));
+  return { from, to };
+}
+
+/**
  * Which side of the arrow a lead is on, or null when it is on neither.
  *
  * A lead that crossed is on the `to` side even if the step before was never recorded:

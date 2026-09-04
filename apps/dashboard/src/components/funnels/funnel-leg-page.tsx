@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions, LEADS_POLL_INTERVAL } from "@/lib/query-options";
-import { getOfferFunnelRevenue, listBrandLeads, type LeadStepName } from "@/lib/api";
+import { getOfferFunnelRevenue, listLeadsPage, type Lead, type LeadStepName } from "@/lib/api";
+import { bucketForStage } from "@/lib/leads-server-page";
 import {
   normalizeSalesFunnelKey,
   salesFunnelByKey,
@@ -14,8 +15,10 @@ import {
 import { funnelLegs } from "@/lib/campaign-leg";
 import { LEAD_FIELD_BY_STEP_KEY } from "@/lib/funnel-leg-rows";
 import {
+  LEG_BOARD_COLUMN_CAP,
   buildLegBoardCards,
   legBoardColumns,
+  legBoardTotals,
   type LegBoardLead,
 } from "@/lib/funnel-leg-board";
 import {
@@ -125,14 +128,6 @@ export function FunnelLegPage() {
     () => getOfferFunnelRevenue(offerId, rawKey, brandId),
     { enabled: Boolean(brandId && offerId && rawKey), ...pollOptions },
   );
-  // And the SAME key the Leads page polls. The rows are what a statement is written
-  // against — the revenue join carries a lead id, not the leads_campaigns row id.
-  const leadsQ = useAuthQuery(["brandLeads", brandId], () => listBrandLeads(brandId), {
-    enabled: Boolean(brandId),
-    // Slower tier: same huge unpaginated list the Leads page reads, same key.
-    refetchInterval: LEADS_POLL_INTERVAL,
-  });
-
   const stages = useMemo(
     () => leadFunnelStages(rawKey ? (rawKey as SalesFunnelKeyWire) : null),
     [rawKey],
@@ -140,6 +135,60 @@ export function FunnelLegPage() {
   const columns = useMemo(
     () => (leg ? legBoardColumns(stages, leg.toIndex) : null),
     [stages, leg],
+  );
+
+  // ── The board's rows ─────────────────────────────────────────────────────────
+  // ONE bounded read PER COLUMN, rather than the brand's whole lead population.
+  //
+  // This page used to read every lead the brand has — 44.5 MB over 12,945 rows on the
+  // brand it was built against — to fill a board that has never drawn more than
+  // LEG_BOARD_COLUMN_CAP cards a column. The population it actually needs is tiny: a
+  // column is the people at ONE funnel step, and measured in production on that same
+  // brand those buckets hold 21 (sales interest) and 66 (website visit). The cap was
+  // already right; the READ was what had no bound.
+  //
+  // Each column asks for its own step's bucket, which is a question lead-service answers
+  // directly — `LeadStageKey` and its bucket vocabulary are the same tokens.
+  const fromBucket = columns ? bucketForStage(columns.from.stage) : null;
+  const toBucket = columns ? bucketForStage(columns.to.stage) : null;
+  const scope = useMemo(() => ({ brandId }), [brandId]);
+
+  // The FROM column over-fetches, and the reason is that a lead in the from-bucket may
+  // have CROSSED — `legBoardSideFor` then puts it in the other column, so a read of
+  // exactly the cap could hand back a from column with fewer cards than it has people.
+  // Twice the cap covers it comfortably at the sizes these buckets hold; a from column
+  // that still under-fills states its true size regardless, because the "of N" beside it
+  // is the producer's rung count rather than a count of what was fetched.
+  const fromQ = useAuthQuery(
+    ["leadsPage", `brand:${brandId}`, `leg-from:${fromBucket ?? "none"}`, "", 0],
+    () =>
+      listLeadsPage(scope, {
+        view: "basic",
+        bucket: fromBucket as string,
+        sort: "activity",
+        limit: String(LEG_BOARD_COLUMN_CAP * 2),
+      },
+      undefined,
+      // A card here opens the lead on the LEADS page rather than a panel of its own, so
+      // nothing on this board reads a person's campaigns — and the nesting is about four
+      // times the row (6.2 KB against 1.6 KB measured in production).
+      { includeCampaigns: false },
+      ),
+    { enabled: Boolean(brandId && fromBucket), refetchInterval: LEADS_POLL_INTERVAL },
+  );
+  const toQ = useAuthQuery(
+    ["leadsPage", `brand:${brandId}`, `leg-to:${toBucket ?? "none"}`, "", 0],
+    () =>
+      listLeadsPage(scope, {
+        view: "basic",
+        bucket: toBucket as string,
+        sort: "activity",
+        limit: String(LEG_BOARD_COLUMN_CAP),
+      },
+      undefined,
+      { includeCampaigns: false },
+      ),
+    { enabled: Boolean(brandId && toBucket), refetchInterval: LEADS_POLL_INTERVAL },
   );
 
   // What the producer says about this rung, off the read above. `undefined` while it
@@ -169,7 +218,13 @@ export function FunnelLegPage() {
   }, [revenue.data]);
 
   const boardLeads: LegBoardLead[] = useMemo(() => {
-    const rows = leadsQ.data?.leads ?? [];
+    // The two reads overlap by construction (a lead that crossed is usually in both
+    // buckets), so they are merged on the leads_campaigns row id — which is what a step
+    // statement is written against, and what a duplicate card would write twice.
+    const byId = new Map<string, Lead>();
+    for (const row of toQ.data?.leads ?? []) byId.set(row.id, row);
+    for (const row of fromQ.data?.leads ?? []) if (!byId.has(row.id)) byId.set(row.id, row);
+    const rows = [...byId.values()];
     return rows.map((row) => {
       const full = row.lead;
       const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.trim() || row.email || "Lead";
@@ -182,12 +237,23 @@ export function FunnelLegPage() {
         reached: trackedStages(row.leadId ? evidenceByLeadId.get(row.leadId) : undefined),
       };
     });
-  }, [leadsQ.data, evidenceByLeadId]);
+  }, [fromQ.data, toQ.data, evidenceByLeadId]);
 
-  const board = useMemo(
-    () => (columns ? buildLegBoardCards({ leads: boardLeads, columns }) : null),
-    [boardLeads, columns],
-  );
+  const board = useMemo(() => {
+    if (!columns) return null;
+    const built = buildLegBoardCards({ leads: boardLeads, columns });
+    // The counts beside each column head are the producer's bucket totals, not a count
+    // of the rows fetched — which is the cap, and would report "60" on an arrow 9,166
+    // people are standing at.
+    return {
+      ...built,
+      totals: legBoardTotals({
+        fromBucketTotal: fromQ.data?.total ?? null,
+        toBucketTotal: toQ.data?.total ?? null,
+        counted: built.totals,
+      }),
+    };
+  }, [boardLeads, columns, fromQ.data, toQ.data]);
 
   const [crossError, setCrossError] = useState<string | null>(null);
   const cross = useSetAnyLeadStepStatement();
@@ -209,7 +275,9 @@ export function FunnelLegPage() {
   // Reveal on SETTLE, never on success: a read that errors falls through to a stated
   // page rather than holding it in a skeleton forever.
   const pending =
-    (revenue.isPending && !revenue.isError) || (leadsQ.isPending && !leadsQ.isError);
+    (revenue.isPending && !revenue.isError) ||
+    (fromQ.isPending && !fromQ.isError) ||
+    (toQ.isPending && !toQ.isError);
 
   if (!funnel || !leg || !columns) {
     return (
