@@ -502,6 +502,14 @@ type TimelineEntry = {
   // so a reader knows which inbox spoke. Only real messages carry one; a derived
   // follow-up has not been sent, so no mailbox has touched it.
   who?: string;
+  // A statement a PERSON made, rather than something the delivery layer observed.
+  //
+  // A reply we never received is still a reply: a mailbox that drains to somebody's
+  // own inbox, a webhook the provider stopped delivering, a prospect who answered on
+  // the phone. Somebody then records it by hand, and the words they wrote down are the
+  // only copy of that conversation we hold — so the row says WHO said it happened and
+  // shows the note, rather than reading identically to a reply we can produce.
+  stated?: { at: string; note: string | null };
   // A body the reader may not be allowed to read. TRUE only for the generation's
   // copy, which is our own writing and stays behind the beta gate. A real message
   // — ours as sent, or the prospect's own words to this customer — is GA: it is
@@ -615,6 +623,7 @@ function LeadTimeline({
   bare = false,
   conversation = null,
   refusal = null,
+  statement = null,
 }: {
   delivery: TimelineDelivery;
   email: LeadEmailGeneration | null;
@@ -631,6 +640,14 @@ function LeadTimeline({
    *  answer under a narrower one's evidence. */
   conversation?: LeadConversation | null;
   refusal?: ConversationRefusal | null;
+  /**
+   * The standing hand-made statement about this lead's reply, when there is one.
+   *
+   * Scoped to the campaign this timeline is about, like the thread beside it: a
+   * statement is recorded against one campaign, and printing one campaign's under
+   * another's name would attribute somebody's words to the wrong conversation.
+   */
+  statement?: { at: string; note: string | null } | null;
 }) {
   // A scope that produced a SALES INTEREST — they replied positively, or they came to
   // the site — reads its copy GA. The gate exists because an unsent draft is our
@@ -734,8 +751,12 @@ function LeadTimeline({
       : [{
           kind: "event" as const,
           label: delivery.replyClassification ? `Replied (${delivery.replyClassification})` : "Replied",
-          at: delivery.firstRepliedAt ?? "",
+          // The statement's own instant when the delivery layer has none: a reply
+          // nobody observed still happened at the moment somebody recorded it, and a
+          // row with no instant is dropped from the timeline entirely.
+          at: delivery.firstRepliedAt ?? statement?.at ?? "",
           dot: replyColor,
+          ...(statement ? { stated: statement } : {}),
         }]),
     { kind: "event", label: "Bounced", at: delivery.firstBouncedAt ?? "", dot: "bg-red-500" },
     { kind: "event", label: "Unsubscribed", at: delivery.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
@@ -893,6 +914,31 @@ function LeadTimeline({
                         message has one; a follow-up nobody has sent has touched no
                         mailbox, so claiming an address for it would state a send. */}
                     {e.who && <p className="text-xs text-gray-500">{e.who}</p>}
+                    {/* A reply somebody RECORDED rather than one we received. The words
+                        they wrote down are the only copy of that exchange we hold, so
+                        they are shown outright rather than behind a tooltip — reading
+                        them is the whole reason to open this panel. Stated as recorded
+                        by hand, because a reply we cannot produce and one we can are
+                        different facts and must not read the same. */}
+                    {e.stated && (
+                      <div className="mt-1.5 rounded border border-violet-200 bg-violet-50 p-2">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-violet-700">
+                          Recorded by hand
+                        </p>
+                        {e.stated.note ? (
+                          <p className="mt-1 whitespace-pre-wrap break-words text-xs text-gray-700">
+                            {e.stated.note}
+                          </p>
+                        ) : (
+                          /* No note is a real answer: somebody stated the reply and
+                             wrote nothing down, so there is nothing of the prospect's
+                             to show. Saying so beats an empty block. */
+                          <p className="mt-1 text-xs text-gray-500">
+                            No note was recorded with this statement.
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {/* The message itself.
                         A REAL message — one we sent, or the prospect's own words to
                         this customer — is GA. It is their conversation; the reason our
@@ -2071,8 +2117,17 @@ export function EngagedLeadsPage({
   // `[0]` verbatim renders a kind nobody stands behind — the whole point of taking it
   // back. `replyKind` is the resolved vocabulary; `status` is the raw thing a person
   // clicked and is deliberately not rendered.
-  const replyKind =
-    replyData?.qualifications.find((q) => !q.withdrawnAt)?.replyKind ?? null;
+  const standingQualification =
+    replyData?.qualifications.find((q) => !q.withdrawnAt) ?? null;
+  const replyKind = standingQualification?.replyKind ?? null;
+  // What a person RECORDED about this lead's reply, for the timeline to show.
+  //
+  // Kept separate from the pill above: the pill states the KIND, this carries the
+  // words. Scoped to the route campaign, because a statement is recorded against one
+  // campaign and this page can render several of a person's campaigns at once.
+  const replyStatement = standingQualification
+    ? { at: standingQualification.qualifiedAt, note: standingQualification.notes }
+    : null;
   // The kind just picked, shown before the producer has answered. A picker that keeps
   // reading "Replied, kind not stated" for the whole write reads as a control that did
   // nothing. Dropped the moment the producer answers — its own resolution is what
@@ -2607,6 +2662,11 @@ export function EngagedLeadsPage({
                   email={leadEmailData?.generation ?? null}
                   conversation={conversationData ?? null}
                   refusal={conversationRefusalKind}
+                  // Only for the campaign the statement was recorded against, so one
+                  // campaign's words never appear under another's name.
+                  statement={
+                    panelScope.sole.campaignId === campaignId ? replyStatement : null
+                  }
                   heading="Activity"
                 />
               ) : (
@@ -2638,6 +2698,7 @@ export function EngagedLeadsPage({
                     // campaign's conversation under each of the others' names.
                     conversation={node.rowId === openCampaignRowId ? conversationData ?? null : null}
                     refusal={node.rowId === openCampaignRowId ? conversationRefusalKind : null}
+                    statement={node.campaignId === campaignId ? replyStatement : null}
                     heading="Activity"
                     bare
                   />
