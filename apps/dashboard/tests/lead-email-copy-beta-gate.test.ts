@@ -19,6 +19,13 @@ import * as path from "path";
  *     cards, their cadence, and the `Queued` / `Sent` / `Delivered` rows say what a
  *     campaign did; that is the page's whole job.
  *
+ * ⚠️ The gate is on the DERIVED copy only, and that distinction is the whole rule.
+ * A message that was actually EXCHANGED — one we sent, or the prospect's own words
+ * written to this customer — is GA: it is their conversation, and the reason our
+ * drafts are gated (the copy is our writing, not yet sent) does not apply to it,
+ * least of all to what someone wrote back to them. So the condition is not "is this
+ * reader beta" but "is this body one we have not sent yet".
+ *
  * The generation is still FETCHED for everyone, deliberately: the follow-up rows are
  * derived from its sequence steps, so gating the read would delete the cadence rather
  * than hide the words. The body therefore reaches the browser and is readable in
@@ -50,21 +57,38 @@ describe("Leads — the email copy is beta, the timeline is GA", () => {
   it("gates the subject and the body together, on one condition", () => {
     const body = timeline();
     // One gate over the whole `<details>`, so the summary (which prints the subject)
-    // can never render without it.
-    expect(body).toContain("{canReadEmailCopy && e.body && (");
+    // can never render without it — and it turns on whether the body is one we have
+    // not sent, never on the reader alone.
+    expect(body).toContain("{e.body && (!e.gated || canReadEmailCopy) && (");
     // The subject and the body render only inside that block.
-    const gateAt = body.indexOf("{canReadEmailCopy && e.body && (");
+    const gateAt = body.indexOf("{e.body && (!e.gated || canReadEmailCopy) && (");
     const before = body.slice(0, gateAt);
     expect(before).not.toContain("e.subject ?");
     expect(before).not.toContain("{e.body}");
     expect(before).not.toContain("EmailSignature");
   });
 
+  it("marks the derived copy as gated and the real messages as not", () => {
+    const body = timeline();
+    // A card built from a message that was actually exchanged carries no `gated`
+    // flag; only the generation's own cards do. Getting this backwards would either
+    // hide the customer's conversation or leak an unsent draft.
+    const derivedAt = body.indexOf('label: "Initial email",');
+    expect(derivedAt).toBeGreaterThan(-1);
+    expect(body.slice(derivedAt, body.indexOf("}", body.indexOf("events: initialEvents", derivedAt)))).toContain("gated: true");
+    // The unsent follow-ups are gated the same way, in one place.
+    expect(body).toContain("gated: true,");
+    // The real-message cards state no gate at all.
+    const threadAt = body.indexOf("messages.forEach((m, i) => {");
+    expect(threadAt).toBeGreaterThan(-1);
+    expect(body.slice(threadAt, body.indexOf("});", threadAt))).not.toContain("gated");
+  });
+
   it("carries the badge the gate rule requires", () => {
     // Gating without a badge is a bug: the viewer who CAN see it has no way to know
     // the surface is not GA.
     const body = timeline();
-    const gateAt = body.indexOf("{canReadEmailCopy && e.body && (");
+    const gateAt = body.indexOf("{e.body && (!e.gated || canReadEmailCopy) && (");
     const detailsEnd = body.indexOf("</details>", gateAt);
     expect(detailsEnd).toBeGreaterThan(gateAt);
     expect(body.slice(gateAt, detailsEnd)).toContain('<MaturityBadge level="beta" />');
@@ -76,7 +100,8 @@ describe("Leads — the email copy is beta, the timeline is GA", () => {
     // What the campaign DID is the page's job and stays GA. Each of these is outside
     // the copy gate; a `canReadEmailCopy` wrapped around any of them would blank the
     // timeline for every non-beta reader.
-    const gateAt = body.indexOf("{canReadEmailCopy && e.body && (");
+    const gateAt = body.indexOf("{e.body && (!e.gated || canReadEmailCopy) && (");
+    expect(gateAt).toBeGreaterThan(-1);
     const shape = body.slice(0, gateAt);
     expect(shape).toContain('label: "Initial email"');
     expect(shape).toContain("label: QUEUED_LABEL");

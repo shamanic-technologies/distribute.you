@@ -30,6 +30,20 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     return src.slice(at, at + length);
   };
 
+  // The WHOLE timeline component, bounded by the next declaration rather than a
+  // measured char count. A number expires on the next comment added to the function
+  // — which is exactly what happened when the real conversation landed and pushed
+  // every later assertion out of an 11000-char window. The boundary moves with the
+  // file; `LeadsLoadingSkeleton` carries none of the literals asserted below, so an
+  // over-long slice cannot make a `not.toContain` pass or fail by accident.
+  const timelineBody = () => {
+    const at = src.indexOf("function LeadTimeline(");
+    expect(at, "marker not found: function LeadTimeline(").toBeGreaterThan(-1);
+    const end = src.indexOf("function LeadsLoadingSkeleton(");
+    expect(end).toBeGreaterThan(at);
+    return src.slice(at, end);
+  };
+
   it("names the queue state Queued and drops the Contacted claim", () => {
     // The label moved to `lib/lead-status.ts` so the leads TABLE's badge, the CSV and
     // the BOARD card's tag all read one map — a lead must not say "Delivered" in the
@@ -73,14 +87,14 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   it("carries the note on the shared InfoTooltip, never a native title", () => {
     // A native `title` waits ~1s, cannot be styled, and shows NOTHING on touch —
     // which is exactly how this shipped broken the first time.
-    const body = sliceFrom("function LeadTimeline(", 9000);
+    const body = timelineBody();
     expect(body).toContain("<InfoTooltip tip={e.note}");
     expect(body).not.toContain("title={e.note}");
     expect(src).toContain('import { InfoTooltip } from "@/components/visibility/metric-info"');
   });
 
   it("states each piece of timing exactly once", () => {
-    const body = sliceFrom("function LeadTimeline(", 11000);
+    const body = timelineBody();
     // The gutter carries the GAP only. It used to print the first row's own date,
     // one inch from that row's own "Jul 30, 2026".
     expect(body).toContain('const gutter = i === 0 ? "" : gapLabel(sorted[i - 1].at, e.at)');
@@ -93,7 +107,7 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("shows the queue row only while nothing has been sent", () => {
-    const body = sliceFrom("function LeadTimeline(", 3000);
+    const body = timelineBody();
     // The queue row is gated on the absence of a real send, so Queued and Sent can
     // never both appear for one lead — they are the two branches of one ternary.
     expect(body).toContain("const queuedOnly = !sentAt");
@@ -106,7 +120,7 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("groups each message's delivery rows inside that message", () => {
-    const body = sliceFrom("function LeadTimeline(", 3000);
+    const body = timelineBody();
     // "Sent" on its own never said sent WHAT, and a lead receives several messages.
     expect(body).toContain('label: "Initial email"');
     expect(body).toContain("events: initialEvents");
@@ -120,7 +134,7 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("spaces consecutive rows off the index, not a :last-child modifier", () => {
-    const body = sliceFrom("function LeadTimeline(", 11000);
+    const body = timelineBody();
     // `last:` resolves to `:last-child` of the PARENT, and this div is the final
     // child of its <li> on EVERY row — so `pb-4 last:pb-0` zeroed the padding
     // everywhere and consecutive message cards sat edge to edge. Verified headlessly:
@@ -133,9 +147,12 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("draws a message as a demarcated block, never a thick side accent", () => {
-    const body = sliceFrom("function LeadTimeline(", 11000);
+    const body = timelineBody();
     // Repo rule: tint + a full 1px border, no border-left accent.
-    expect(body).toContain('e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2" : ""');
+    expect(body).toContain('e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2"');
+    // A message the PROSPECT sent is a card too, in its own tint, so a glance down
+    // the column shows who was speaking. Same shape rule: full 1px border, no accent.
+    expect(body).toContain('e.kind === "inbound" ? "rounded-lg border border-violet-200 bg-violet-50 px-3 py-2"');
     expect(body).not.toContain("border-l-2");
     expect(body).not.toContain("border-l-4");
     // The `html.dark` accent remap is a closed set: it covers `bg-brand-50` and
@@ -144,8 +161,9 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     // either would paint a near-white block on the dark surface.
     expect(body).not.toContain("bg-brand-50/");
     expect(body).not.toContain("border-brand-100");
-    // The envelope marks a message, and only a message is a card.
-    expect(body).toContain('{e.kind === "message" && (');
+    // The envelope marks a message — either side's. Only a lead-level event is a
+    // plain row.
+    expect(body).toContain('{e.kind !== "event" && (');
   });
 
   it("drops the Served footer from the lead panel", () => {
