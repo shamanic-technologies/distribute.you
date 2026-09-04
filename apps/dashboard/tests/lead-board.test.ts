@@ -89,10 +89,18 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
     expect(at("customer", "stated_outcome")).toBe("sales_interest");
   });
 
-  it("splits an OPT-OUT out of the producer's one disqualified state, by its signal", () => {
-    // lead-service folds an opt-out into `disqualified` — right for it, both are out
-    // of play. Not right here: an opt-out is the prospect's own act and legally
-    // binding, so it gets its own column and nothing of ours may write one.
+  it("reads an OPT-OUT as the state lead-service now names, not as a signal of ours", () => {
+    // `opted_out` is its own standing upstream. It used to be a shade of
+    // `disqualified` that this module split on the deciding evidence — a rule of ours
+    // over a producer's field, which is exactly the kind of second opinion that breaks
+    // silently: the day the producer split the state, every opt-out fell through to
+    // "Not placed" and nothing went red.
+    expect(at("opted_out", "unsubscribed")).toBe("opt_out");
+    // The state decides it, whatever evidence is named beside it.
+    expect(at("opted_out", "stated_never")).toBe("opt_out");
+    // The PRE-SPLIT spelling still reads as an opt-out. A row written before the
+    // producer split the state is still somebody who asked us to stop, and filing it
+    // as an ordinary disqualification would offer a move that puts them back in play.
     expect(at("disqualified", "unsubscribed")).toBe("opt_out");
     // Every other way of being out of play reads as the ordinary verdict.
     for (const signal of ["negative_reply", "bounced", "stated_never"]) {

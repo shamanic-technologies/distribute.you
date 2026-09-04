@@ -43,8 +43,12 @@
  *  - `sales_interest`— they reached the step this campaign's funnel is entered by, or a
  *                      later step of it.
  *  - `customer`      — the funnel's last step (the sale) is reached.
- *  - `disqualified`  — they opted out, bounced, said no, or somebody stated they never
- *                      will.
+ *  - `opted_out`     — the prospect asked us to stop. Their own act, and legally
+ *                      binding, which is why it is a STATE of its own rather than a
+ *                      shade of `disqualified`: the board draws it apart, with its own
+ *                      copy and its own confirmation on the way out.
+ *  - `disqualified`  — a commercial judgement of ours, which we may revisit: bounced,
+ *                      wrong person, left the role, or somebody stated they never will.
  */
 export type LeadStandingState =
   | "unresolved"
@@ -53,6 +57,7 @@ export type LeadStandingState =
   | "engaged"
   | "sales_interest"
   | "customer"
+  | "opted_out"
   | "disqualified";
 
 /**
