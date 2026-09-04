@@ -95,6 +95,23 @@ describe("Leads — the email copy is beta, the timeline is GA", () => {
     expect(src).toContain('import { MaturityBadge } from "@/components/maturity-badge"');
   });
 
+  it("GAs the copy on a scope that produced a sales interest", () => {
+    const body = timeline();
+    // A positive reply or a website visit is what the campaign was bought for, so the
+    // customer reads the words that did it — beta or not. The unlock is derived from
+    // the delivery evidence the CALLER stated, so a campaign card unlocks on its own
+    // and never on a sibling's.
+    expect(body).toContain("const salesInterest = hasSalesInterest(delivery)");
+    expect(body).toContain("const canReadEmailCopy = useIsBetaUser() || salesInterest;");
+    expect(src).toContain('import { hasSalesInterest } from "@/lib/lead-sales-interest"');
+  });
+
+  it("drops the badge where the unlock made the copy GA", () => {
+    // Gating without a badge is a bug; badging without a gate is the mirror of it —
+    // it claims a restriction that is no longer holding anything.
+    expect(timeline()).toContain('{e.gated && !salesInterest && <span');
+  });
+
   it("leaves the timeline's shape ungated", () => {
     const body = timeline();
     // What the campaign DID is the page's job and stays GA. Each of these is outside

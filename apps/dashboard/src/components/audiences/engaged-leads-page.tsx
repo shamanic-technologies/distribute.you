@@ -24,6 +24,7 @@ import {
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { hasSalesInterest } from "@/lib/lead-sales-interest";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listCampaignsByBrand,
@@ -515,7 +516,17 @@ function LeadTimeline({
   conversation?: LeadConversation | null;
   refusal?: ConversationRefusal | null;
 }) {
-  const canReadEmailCopy = useIsBetaUser();
+  // A scope that produced a SALES INTEREST — they replied positively, or they came to
+  // the site — reads its copy GA. The gate exists because an unsent draft is our
+  // writing; once the campaign has bought the thing it was bought for, the customer
+  // is owed the words that did it, and they are reading this panel precisely to find
+  // out what worked. Everything else stays beta.
+  //
+  // Scoped by whatever `delivery` the CALLER stated: a campaign card unlocks on ITS
+  // own evidence, the brand roll-up on the brand's, so one campaign's reply never
+  // opens another's drafts.
+  const salesInterest = hasSalesInterest(delivery);
+  const canReadEmailCopy = useIsBetaUser() || salesInterest;
   // The real exchange, once we have one. Everything below branches on whether it
   // holds anything: with a thread, each message is its own card carrying what was
   // ACTUALLY said; without one, the timeline reads exactly as it did before, off
@@ -769,7 +780,11 @@ function LeadTimeline({
                       <details className="mt-1.5 group">
                         <summary className={`cursor-pointer text-xs select-none ${e.kind === "inbound" ? "text-violet-600 hover:text-violet-700" : "text-brand-600 hover:text-brand-700"}`}>
                           {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
-                          {e.gated && <span className="ml-1.5 inline-flex align-middle"><MaturityBadge level="beta" /></span>}
+                          {/* The badge rides the gate, so it goes where the gate does:
+                              on a scope that produced a sales interest the copy is GA
+                              for everyone and a beta badge there would claim a gate
+                              that is no longer holding anything. */}
+                          {e.gated && !salesInterest && <span className="ml-1.5 inline-flex align-middle"><MaturityBadge level="beta" /></span>}
                         </summary>
                         <div className={`mt-1.5 bg-white border rounded p-2 ${e.kind === "inbound" ? "border-violet-200" : "border-brand-200"}`}>
                           <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
