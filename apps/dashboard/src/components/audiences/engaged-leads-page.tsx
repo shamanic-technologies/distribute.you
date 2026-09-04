@@ -822,9 +822,12 @@ function LeadTimeline({
                         </summary>
                         <div className={`mt-1.5 bg-white border rounded p-2 ${e.kind === "inbound" ? "border-violet-200" : "border-brand-200"}`}>
                           <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                          {/* The signature is OURS. It belongs under something we wrote,
-                              never under the prospect's message. */}
-                          {e.kind === "message" && <EmailSignature className="text-xs" />}
+                          {/* The signature is OURS, and it is appended AT SEND TIME. So it
+                              belongs under a body that has not been sent — the generation's
+                              own copy (`gated`) — and never under a message read back off the
+                              thread, which already carries the signature it really went out
+                              with. Never under the prospect's message either. */}
+                          {e.kind === "message" && e.gated && <EmailSignature className="text-xs" />}
                         </div>
                       </details>
                     )}
