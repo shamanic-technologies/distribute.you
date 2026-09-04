@@ -205,7 +205,7 @@ describe("Revenue bucket derivations", () => {
   });
 });
 
-describe("Cash collected (Stripe, net of refunds)", () => {
+describe("Cash collected (net of refunds)", () => {
   it("charts the NET figure billing already serves, in dollars", () => {
     const buckets = cashBuckets(
       [
@@ -367,9 +367,19 @@ describe("Revenue view — the two money notions are kept apart", () => {
     expect(revenueView).toContain("CWGR since the first snapshot");
   });
 
+  // Cash collected counts every acquirer stripe-service mirrors, not only the
+  // one that service is named after: its per-org payment summary and payment
+  // history have always summed both, and the platform read now does too. So no
+  // copy on this view may name one acquirer as though it were the whole answer.
+  // A whole-file check is safe here because this component names none.
+  it("names no single acquirer as the source of collected cash", () => {
+    expect(revenueView).not.toContain("Stripe");
+    expect(revenueView).not.toContain("Revolut");
+  });
+
   it("names the Revenue tab's real sources in the footer instead of the funnel tabs'", () => {
     expect(metricsPage).toContain("dataSourcesFor");
     expect(metricsPage).toContain("Actualized cold-email spend on the runs cost ledger");
-    expect(metricsPage).toContain("Stripe charges, refunds and lost disputes");
+    expect(metricsPage).toContain("Payments, refunds and lost disputes across every acquirer");
   });
 });

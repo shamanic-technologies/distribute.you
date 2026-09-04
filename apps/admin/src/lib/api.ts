@@ -5773,7 +5773,8 @@ const REVENUE_WEEKS_MAX = 104;
  *
  * NOTE what this measures: summed NET ACTUALIZED cold-email spend (runs-service
  * cost ledger, after each org's usage discount) — the money customers CONSUMED.
- * It is not Stripe cash: no part of this path touches Stripe. Cash collected is
+ * It is not collected cash: no part of this path touches an acquirer. Cash
+ * collected is
  * a separate, larger figure (prepaid credit not yet burned), served by
  * `/public/stats/billing`. Both are rendered on the Revenue view, apart.
  */
