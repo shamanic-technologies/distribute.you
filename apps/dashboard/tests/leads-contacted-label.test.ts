@@ -26,7 +26,6 @@ describe("the Leads page names what it counts", () => {
     ),
     "utf-8",
   );
-  const csv = fs.readFileSync(path.join(__dirname, "../src/lib/leads-csv.ts"), "utf-8");
 
   it("labels the base tab Contacted", () => {
     expect(leads).toContain('outreach: "Contacted"');
@@ -82,12 +81,17 @@ describe("the Leads page names what it counts", () => {
     expect(overview).toContain("data?.sequences ?? data?.outreachContacted");
   });
 
-  it("exports the CSV in the page's own words", () => {
-    expect(csv).toContain('{ label: "Contacted", value: (l) => yesNo(l.contacted) }');
-    expect(csv).toContain(
-      '{ label: "First contacted at", value: (l) => date(l.firstContactedAt) }',
-    );
-    expect(csv).not.toContain('label: "Outreach"');
-    expect(csv).not.toContain('label: "First outreach at"');
+  it("asks the producer for the export rather than building a second one", () => {
+    // The file used to be assembled here purely to control its column headings, because
+    // lead-service headed them with the API's own field names. It heads them in the
+    // customer's words now (v0.70.0: "Contacted", "Website visit", "First contacted at"),
+    // so the second implementation had nothing left to buy — and the walk it needed
+    // carried a row ceiling and megabytes of transient traffic on a press.
+    //
+    // The words are consequently guarded THERE, where the file is produced. This repo can
+    // no longer assert them, and pretending otherwise with a stale copy of the labels
+    // would be a guard over something it does not own.
+    expect(leads).toContain("fetchLeadsCsv(");
+    expect(leads).not.toContain("buildLeadsCsv");
   });
 });

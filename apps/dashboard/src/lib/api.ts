@@ -33,6 +33,16 @@ interface ApiOptions {
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
   suppressPaymentRequired?: boolean;
+  /**
+   * What the body IS. `json` (the default) parses it; `text` hands it back verbatim.
+   *
+   * One caller wants text: the leads CSV export, which lead-service streams as a file. It
+   * goes through here rather than around it so the export carries the same per-tab Clerk
+   * bearer, the same org-desync retry and the same error envelope as every other read — an
+   * export authenticating differently from the page it exports is a second auth path to
+   * keep correct.
+   */
+  responseType?: "json" | "text";
 }
 
 /**
@@ -164,7 +174,14 @@ async function getTabSessionToken(forceRefresh = false): Promise<string | null> 
 const ORG_DESYNC_BACKOFF_MS = [400, 900, 2000] as const;
 
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
-  const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
+  const {
+    token,
+    method = "GET",
+    body,
+    headers: extraHeaders,
+    suppressPaymentRequired,
+    responseType = "json",
+  } = options ?? {};
 
   const send = async (forceFreshToken = false): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
@@ -236,6 +253,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     );
   }
 
+  if (responseType === "text") return (await response.text()) as T;
   return await readJsonResponse(response, endpoint) as T;
 }
 
@@ -4777,51 +4795,27 @@ export async function getLeadBucketCounts(
 }
 
 /**
- * Every lead in the current filter, walked in bounded pages, for the EXPORT.
+ * The export, streamed by lead-service and fetched when the button is pressed.
  *
- * lead-service can stream the whole matching set as a CSV itself (`?format=csv`), and
- * that is not what this does — its columns are the WIRE's vocabulary (`contacted`,
- * `replyClassification`, `standing`), while the export a customer downloads says
- * "Contacted" and "Website visit", matching the screen it came from. A page whose export
- * disagrees with its screen is the same bug one file over, so the file keeps being built
- * from `leads-csv.ts` and this walk is what feeds it.
+ * This walked the filter page by page for a while, assembling the file here, purely to
+ * control the column headings: the producer's export used to head its columns with the
+ * API's own field names while the page a customer had just been looking at said
+ * "Contacted" and "Website visit". lead-service v0.70.0 heads them in the customer's
+ * words, so the second implementation had nothing left to buy — and the walk carried a
+ * row ceiling and several megabytes of transient traffic on a press that this does not.
  *
- * The walk is a different thing from the page reads and does not undo them: it is
- * one-shot, on an explicit press, never cached and never polled. What made the old
- * whole-population read ruinous was that it was held, written and re-fetched every 15
- * seconds; several megabytes that exist for as long as it takes to build a file are the
- * cost of an export, not a leak.
- *
- * Bounded on purpose. `EXPORT_MAX_ROWS` is a real ceiling and a caller is told when it
- * was hit, because silently exporting the first N of a larger set is the kind of quiet
- * wrongness a spreadsheet carries for months.
+ * The file is now the producer's, headings included. That is the right home for it: it is
+ * one artifact, and two implementations of it is how the file and the screen drift apart.
  */
-export const EXPORT_PAGE_SIZE = 1000;
-export const EXPORT_MAX_ROWS = 25000;
-
-export async function fetchLeadsForExport(
+export async function fetchLeadsCsv(
   scope: LeadScope,
   query: Record<string, string>,
   token?: string,
-): Promise<{ leads: Lead[]; truncated: boolean }> {
-  const out: Lead[] = [];
-  let cursor: string | null = null;
-  // `offset` belongs to the numbered pager; a walk uses the cursor, which lead-service
-  // documents as the one that cannot drift while rows are being written under it.
-  const base: Record<string, string> = { ...query, limit: String(EXPORT_PAGE_SIZE) };
-  delete base.offset;
-  for (;;) {
-    const page: LeadsPage = await listLeadsPage(
-      scope,
-      cursor ? { ...base, cursor } : base,
-      token,
-      { includeCampaigns: false },
-    );
-    out.push(...page.leads);
-    cursor = page.nextCursor;
-    if (!cursor || page.leads.length === 0) return { leads: out, truncated: false };
-    if (out.length >= EXPORT_MAX_ROWS) return { leads: out.slice(0, EXPORT_MAX_ROWS), truncated: true };
-  }
+): Promise<string> {
+  return apiCall<string>(
+    `/leads?${leadQueryString(scope, { ...query, format: "csv" })}`,
+    { token, responseType: "text" },
+  );
 }
 
 export interface EmailSequenceStep {

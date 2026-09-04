@@ -45,15 +45,10 @@ describe("EngagedLeadsPage — the header count matches what the tabs can reach"
   });
 
   it("exports what the page is showing — the active tab, the active search", () => {
-    const button = sliceFrom("<CsvDownloadButton", 700);
-    expect(button).toContain("fetchLeadsForExport(");
+    const button = sliceFrom("<CsvDownloadButton", 500);
+    expect(button).toContain("fetchLeadsCsv(");
     expect(button).toContain("leadsPageQuery({ tab: activeTab, search: wireSearch");
     expect(button).toContain("isEmpty={reachableCount === 0}");
-    // The file keeps the dashboard's own column vocabulary ("Contacted", "Website
-    // visit") rather than lead-service's `?format=csv`, whose columns are the wire's
-    // names. An export that disagrees with the screen it came from is the same bug one
-    // file over.
-    expect(button).toContain("buildLeadsCsv(all,");
   });
 
   it("shows the empty card off the reachable count, not off the served rows", () => {
@@ -61,9 +56,10 @@ describe("EngagedLeadsPage — the header count matches what the tabs can reach"
     expect(src).not.toContain("{leads.length === 0 ? (");
   });
 
-  it("states the export cap rather than silently exporting the first N", () => {
-    const button = sliceFrom("<CsvDownloadButton", 700);
-    expect(button).toContain("truncated");
-    expect(button).toContain("EXPORT_MAX_ROWS");
+  it("has no export cap left to state, because it no longer pages the file itself", () => {
+    // The walk carried a 25,000-row ceiling. lead-service streams the whole matching set,
+    // so there is nothing to truncate and nothing to warn about.
+    expect(src).not.toContain("EXPORT_MAX_ROWS");
+    expect(src).not.toContain("truncated");
   });
 });

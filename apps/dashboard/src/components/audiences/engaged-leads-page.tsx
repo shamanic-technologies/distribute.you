@@ -28,8 +28,7 @@ import { hasSalesInterest } from "@/lib/lead-sales-interest";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listCampaignsByBrand,
-  EXPORT_MAX_ROWS,
-  fetchLeadsForExport,
+  fetchLeadsCsv,
   getLeadBucketCounts,
   listLeadsPage,
   type LeadScope,
@@ -94,7 +93,6 @@ import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { LeadOutcome, RevenueOverview } from "@/lib/revenue-view";
-import { buildLeadsCsv } from "@/lib/leads-csv";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import {
   LEADS_PAGE_SIZE,
@@ -2094,18 +2092,12 @@ export function EngagedLeadsPage({
                memory, which is what forced the page to hold it. */
             <CsvDownloadButton
               filename={`leads-${brandId}.csv`}
-              csv={async () => {
-                const { leads: all, truncated } = await fetchLeadsForExport(
+              csv={() =>
+                fetchLeadsCsv(
                   scope,
                   leadsPageQuery({ tab: activeTab, search: wireSearch, page: 0 }),
-                );
-                if (truncated) {
-                  console.warn(
-                    `[dashboard] leads export capped at ${EXPORT_MAX_ROWS} rows; the file is not the whole set`,
-                  );
-                }
-                return buildLeadsCsv(all, (l) => leadStatusLabel(statusOf(l)));
-              }}
+                )
+              }
               isEmpty={reachableCount === 0}
               label="Export leads"
             />

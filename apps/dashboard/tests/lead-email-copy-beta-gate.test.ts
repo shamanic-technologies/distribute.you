@@ -144,10 +144,21 @@ describe("Leads — the email copy is beta, the timeline is GA", () => {
     expect(src.slice(at, at + 2200)).not.toContain("canReadEmailCopy");
   });
 
-  it("keeps the copy out of the CSV export", () => {
-    const csv = fs.readFileSync(path.join(__dirname, "../src/lib/leads-csv.ts"), "utf-8");
-    expect(csv).not.toContain("subject");
-    expect(csv).not.toContain("bodyHtml");
-    expect(csv).not.toContain("bodyText");
+  it("never asks the export for the copy", () => {
+    // The file is lead-service's now (v0.70.0) and carries no subject and no body —
+    // verified against the deployed export, whose 44 columns are the person, their
+    // company, the lifecycle and the delivery evidence. What this repo can still hold is
+    // that it does not ASK for them: the export request is the page's own scope, tab and
+    // search, and nothing else.
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
+      "utf-8",
+    );
+    const at = src.indexOf("<CsvDownloadButton");
+    expect(at).toBeGreaterThan(-1);
+    const button = src.slice(at, at + 500);
+    expect(button).toContain("fetchLeadsCsv(");
+    expect(button).not.toContain("subject");
+    expect(button).not.toContain("body");
   });
 });
