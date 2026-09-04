@@ -119,6 +119,10 @@ export function useSetAnyLeadStepStatement() {
       kind: "outcome" | "never";
       costCents: number;
       valueCents?: number;
+      // Whether OUR outreach caused it. OMITTING it records the producer's `null`,
+      // which reads as "nobody was asked" — a real third answer, so a caller with no
+      // way to ask leaves it out rather than guessing either way.
+      causedByOutreach?: boolean;
     }
   >({
     mutationFn: ({ leadRowId, ...body }) => setLeadStepStatement(leadRowId, body),
