@@ -234,9 +234,12 @@ export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
 /**
  * Which column a lead sits in — a render of two served fields and nothing else.
  *
- * There is no ladder here and no reply kind: `state` is lead-service's answer, and
- * `signal` is read for exactly one thing, telling an opt-out apart from the other ways
- * of being out of play (see `LEAD_BOARD_COLUMNS`). `customer` folds into Sales interest
+ * There is no ladder here, no reply kind and no second opinion: `state` is
+ * lead-service's answer and the whole of it. An opt-out is its OWN state upstream now
+ * (`opted_out`), so telling it apart from the other ways of being out of play is a
+ * render of that word rather than a rule of ours over the deciding evidence — which is
+ * what it used to be, and which quietly misfiled every opt-out into "Not placed" the
+ * moment the producer split the state. `customer` folds into Sales interest
  * because a customer reached the step this campaign sells and then some — four triage
  * buckets have no room for a fifth verdict, and the blurb says so.
  *
@@ -267,9 +270,14 @@ export function leadBoardColumnFor(
     case "sales_interest":
     case "customer":
       return "sales_interest";
+    case "opted_out":
+      return "opt_out";
     case "disqualified":
-      // The producer's own evidence field, not a second opinion about the lead: an
-      // opt-out is the prospect's act and gets its own column here.
+      // A person who asked us to stop reads `opted_out` upstream, so this is only ever
+      // a judgement of ours. The pre-split spelling is still honoured below: a
+      // `disqualified` row whose deciding evidence is an unsubscribe is an opt-out
+      // however it is spelled, and reading it as an ordinary disqualification would
+      // offer a move that puts somebody back in play who asked to be left alone.
       return standing.signal === "unsubscribed" ? "opt_out" : "disqualified";
     case "unresolved":
       return "unresolved";
