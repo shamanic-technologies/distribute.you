@@ -180,7 +180,11 @@ describe("the reply row", () => {
     // The list serves withdrawn statements beside standing ones - they are the audit of
     // what was asserted - so taking the newest row verbatim renders a kind nobody stands
     // behind, which is the whole point of taking it back.
-    expect(PAGE).toContain("replyData?.qualifications.find((q) => !q.withdrawnAt)?.replyKind");
+    // The standing row is resolved ONCE and both the kind and the note read it — the
+    // pill states what kind of reply it was, the timeline shows the words somebody
+    // wrote down, and two lookups is how those come to disagree about which row stands.
+    expect(PAGE).toContain("replyData?.qualifications.find((q) => !q.withdrawnAt) ?? null");
+    expect(PAGE).toContain("const replyKind = standingQualification?.replyKind ?? null;");
     expect(PAGE).toContain("if (q.withdrawnAt) continue;");
     const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 1200);
     expect(call).toContain("onWithdraw: shownReplyKind ? onWithdrawReply : undefined");
@@ -460,5 +464,38 @@ describe("the panel walks the campaign's OWN arrow, not the whole funnel", () =>
     expect(SECTION).toContain("...stages.slice(stageIndex + 1), ...(laterStages ?? [])");
     // And `laterStages` is never DRAWN — it exists for that sentence alone.
     expect(SECTION).not.toContain("laterStages.map(");
+  });
+});
+
+/**
+ * A reply we never RECEIVED is still a reply. A mailbox that drains to somebody's own
+ * inbox, a webhook the provider stopped delivering, a prospect who answered on the
+ * phone: somebody records it by hand, and the note they wrote is the only copy of that
+ * exchange we hold.
+ */
+describe("a hand-recorded reply shows the words somebody wrote down", () => {
+  it("carries the statement's note onto the Replied row", () => {
+    expect(PAGE).toContain("statement?: { at: string; note: string | null } | null;");
+    expect(PAGE).toContain("...(statement ? { stated: statement } : {})");
+    // Shown outright, not behind the ⓘ the queue row uses: reading the words is the
+    // whole reason to open the panel.
+    expect(PAGE).toContain("Recorded by hand");
+    expect(PAGE).toContain("{e.stated.note}");
+    // A statement with no note is its own answer, never an empty block.
+    expect(PAGE).toContain("No note was recorded with this statement.");
+  });
+
+  it("falls back to the statement's own instant, or the row would vanish", () => {
+    // A row with no `at` is filtered out of the timeline entirely, so a reply the
+    // delivery layer never saw would be recorded and then invisible.
+    expect(PAGE).toContain("at: delivery.firstRepliedAt ?? statement?.at ?? \"\",");
+  });
+
+  it("only reaches the campaign the statement was recorded against", () => {
+    // A statement belongs to ONE campaign, and this panel renders several of a
+    // person's campaigns at once — printing it under each would attribute somebody's
+    // words to a conversation they were not about.
+    expect(PAGE).toContain("statement={node.campaignId === campaignId ? replyStatement : null}");
+    expect(PAGE).toContain("panelScope.sole.campaignId === campaignId ? replyStatement : null");
   });
 });
