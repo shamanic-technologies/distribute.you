@@ -90,6 +90,8 @@ describe("the lead panel states its hierarchy one card per level", () => {
     // Every level is its own card there, so there is nothing to nest and nothing to
     // switch between — the timeline is the whole of what is left to say.
     expect(page).toContain("{panelScope.sole ? (");
-    expect(page).toContain("delivery={panelScope.sole.card.delivery}");
+    // The sole card's history is the one read for, and it draws the timeline directly.
+    expect(page).toContain("const openHistoryRowId = panelScope.sole?.rowId ?? openCampaignRowId;");
+    expect(page).toContain("<LeadHistoryTimeline");
   });
 });

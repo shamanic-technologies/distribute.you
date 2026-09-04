@@ -79,44 +79,44 @@ describe("the panel nests a person's campaigns", () => {
   });
 });
 
-describe("the timeline is the open campaign's own", () => {
-  // Both halves are now per campaign on the wire: lead-service serves the delivery
-  // evidence per card, and content-generation-service answers the email per campaign.
-  it("renders inside the card, off that card's own delivery evidence", () => {
-    expect(page).toContain("delivery={node.card.delivery}");
-    expect(page).toContain("renderDetail={(node) =>");
+describe("the timeline is lead-service's answer, not a merge done here", () => {
+  // The panel used to assemble a person's history in the BROWSER out of six services,
+  // with the customer's own mailbox read by nobody. lead-service assembles it now and
+  // the panel draws what it sends.
+  it("reads the history per card and renders it", () => {
+    expect(page).toContain('["leadHistory", openHistoryRowId ?? "none", brandId, "campaign"]');
+    expect(page).toContain('getLeadHistory(openHistoryRowId as string, { brandId, scope: "campaign" })');
+    expect(page).toContain("<LeadHistoryTimeline");
   });
 
-  // "We cannot tell" is not "nothing happened", so a card with no evidence says so
-  // rather than drawing an all-false timeline.
-  it("states a card the provider holds no evidence for, rather than faking one", () => {
-    expect(page).toContain("No delivery events recorded for this campaign yet.");
-    expect(page).toContain("node.card.delivery ? (");
+  // A panel listing eleven campaigns must not fire eleven of these, so only the open
+  // card is read for and only the open card can draw one.
+  it("reads for the OPEN card alone", () => {
+    expect(page).toContain("const openHistoryRowId = panelScope.sole?.rowId ?? openCampaignRowId;");
+    expect(page).toContain("node.rowId === openCampaignRowId && openHistory ? (");
   });
 
-  // A person contacted by several campaigns of one brand has ONE GENERATION PER
-  // CAMPAIGN — 5,539 leads carry two or more — so without the scope this shows one
-  // campaign's copy under another's name. The id is in the KEY, or opening a second
-  // card would show the first one's email.
-  it("scopes the email read to the open campaign, key included", () => {
-    expect(page).toContain('["leadEmail", selectedLeadId, brandId, openCampaignId]');
-    expect(page).toContain("getLeadEmail(selectedLeadId as string, brandId, openCampaignId ?? undefined)");
-    expect(api).toContain('if (campaignId) params.set("campaignId", campaignId);');
+  // "We could not read this" and "nothing happened" are different facts, and the read
+  // is reveal-on-settle: a failure says so rather than skeletoning forever.
+  it("states a failed read rather than an empty history", () => {
+    expect(page).toContain("We could not read this person's history right now.");
+    expect(page).toContain("We could not read this campaign's history right now.");
   });
 
-  // With ONE campaign the card's timeline already states everything, so a brand-wide
-  // one beside it would print the same rows twice under two headings.
-  it("keeps a brand-wide timeline only where the cards do not account for it", () => {
-    expect(page).toContain("leadCampaignTree.campaignCount !== 1 && (");
-    expect(page).toContain("Everything this brand did, across every campaign above.");
+  // The roll-up is asked of the producer under its own scope, never added up here.
+  it("asks the producer for the brand roll-up", () => {
+    expect(page).toContain('{ brandId, scope: "brand" }');
+    expect(page).toContain("leadCampaignTree.campaignCount !== 1 && brandHistory && (");
   });
 
-  // The same timeline serves both scopes because the row and a card carry the same
-  // field names for the same facts. A second implementation is how two surfaces come to
-  // disagree about what happened.
-  it("serves both scopes from one timeline", () => {
-    expect(page).toContain("interface TimelineDelivery {");
-    expect(page).toContain("delivery={selectedLead}");
+  // The merge is DELETED, not merely unused: leaving it is how a second, disagreeing
+  // history comes back.
+  it("keeps no second implementation of a timeline", () => {
+    expect(page).not.toContain("function LeadTimeline(");
+    expect(page).not.toContain("interface TimelineDelivery {");
+    expect(page).not.toContain("function deriveEmailRows(");
+    expect(page).not.toContain("getLeadEmail(");
+    expect(page).not.toContain("getLeadConversation(");
   });
 });
 

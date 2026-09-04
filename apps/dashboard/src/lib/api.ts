@@ -16,6 +16,7 @@ import type { LeadConversation } from "./lead-conversation";
 import type { ReplyKind } from "./reply-kind";
 import type { OptOutChannel } from "./opt-out-channel";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { LeadHistorySchema, type LeadHistory } from "./lead-history";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
 // `normalizeSalesFunnelKey` is a RUNTIME import; the rest is type-only. No cycle
@@ -4842,6 +4843,47 @@ export async function getLeadStandingCounts(
       raw,
     });
     throw new Error("[dashboard] getLeadStandingCounts: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Everything that happened to ONE person, in order, in one place.
+ *
+ * lead-service assembles it (`GET /orgs/leads/{id}/history`, sales-lead-service #508):
+ * both directions of every exchange WITH THE WORDS, what we sent and when it landed,
+ * what they did, what somebody recorded by hand and who recorded it, and what it
+ * converted into — already merged, already de-duplicated, already ordered. Including
+ * the customer's own mailbox, which for some prospects holds the only copy of the
+ * exchange and which nothing read before.
+ *
+ * This replaces a merge the BROWSER did across six services. Do NOT reintroduce one:
+ * ordering, de-duplication and which fact outranks which are the producer's, and every
+ * timeline bug of that week came from this app deciding them for itself.
+ *
+ * `id` is the `leads_campaigns` row id a list row already carries. `scope` is the
+ * producer's own: `campaign` (this campaign's identity) or `brand` (the roll-up).
+ */
+export async function getLeadHistory(
+  leadRowId: string,
+  params: { brandId?: string; scope?: "campaign" | "brand" } = {},
+  token?: string,
+): Promise<LeadHistory> {
+  const qs = new URLSearchParams();
+  if (params.brandId) qs.set("brandId", params.brandId);
+  if (params.scope) qs.set("scope", params.scope);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const raw = await apiCall<unknown>(
+    `/leads/${encodeURIComponent(leadRowId)}/history${suffix}`,
+    { token },
+  );
+  const parsed = LeadHistorySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadHistory: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getLeadHistory: invalid response shape");
   }
   return parsed.data;
 }

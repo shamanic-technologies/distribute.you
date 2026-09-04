@@ -111,42 +111,30 @@ describe("timeAgo", () => {
 
 // Source-substring: the component imports through the `@` alias, which vitest does
 // not resolve in this repo.
-describe("lead timeline date lines", () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
-    "utf-8",
+describe("the lead history renders those words, not its own", () => {
+  // The panel's timeline is `LeadHistoryTimeline` now: lead-service assembles the
+  // history and this component draws it. It must READ these helpers rather than carry
+  // its own copy — two spellings of "Yesterday at 6:21pm" on one product is how the
+  // wording drifts.
+  const timeline = fs.readFileSync(
+    path.join(__dirname, "..", "src", "components", "audiences", "lead-history-timeline.tsx"),
+    "utf8",
   );
-  // Bounded by the NEXT declaration rather than a guessed length: both assertions
-  // below are `toContain`, so a slice that falls short cuts the target out and the
-  // failure reads as "the code is missing" for code that is right there. The delivery
-  // row sits at the very end of the component, so every comment added to it pushed
-  // the boundary — a fixed length was one edit away from breaking each time.
-  const body = (() => {
-    const at2 = src.indexOf("function LeadTimeline(");
-    expect(at2).toBeGreaterThan(-1);
-    const end = src.indexOf("function LeadsLoadingSkeleton(");
-    expect(end).toBeGreaterThan(at2);
-    return src.slice(at2, end);
-  })();
 
   it("gives a past instant its time and a future one only its date", () => {
-    // Instantly sends inside a weekday window, so a clock time on a projected send
+    // The provider sends inside a weekday window, so a clock time on a projected send
     // would be invented precision.
-    expect(body).toContain("{isFuture ? friendlyDate(e.at) : friendlyDateTime(e.at)}");
-  });
-
-  it("times every delivery row inside a message card", () => {
-    // These are observed instants, so they always carry the time.
-    expect(body).toContain("{friendlyDateTime(ev.at)}");
+    expect(timeline).toContain("{isFuture ? friendlyDate(e.at) : friendlyDateTime(e.at)}");
   });
 
   it("keeps the full timestamp on hover", () => {
     // The friendly form drops the seconds and the timezone; the title keeps them.
-    expect(body).toContain('title={new Date(e.at).toLocaleString()}');
-    expect(body).toContain('title={new Date(ev.at).toLocaleString()}');
+    expect(timeline).toContain("title={new Date(e.at).toLocaleString()}");
   });
 
-  it("drops the bare calendar-date render", () => {
-    expect(body).not.toContain('toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })');
+  it("carries no second implementation of them", () => {
+    expect(timeline).toContain('from "@/lib/friendly-datetime"');
+    expect(timeline).not.toContain("function friendlyDate(");
+    expect(timeline).not.toContain("function friendlyDateTime(");
   });
 });
