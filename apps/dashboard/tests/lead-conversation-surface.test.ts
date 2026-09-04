@@ -140,10 +140,11 @@ describe("Leads — the panel reads the real conversation", () => {
     expect(body).toContain('{refusal === "unavailable" && (');
   });
 
-  it("never signs the prospect's own message", () => {
-    // The signature is OURS. Under an inbound message it would put our sign-off on
-    // words the customer's prospect wrote.
-    expect(timelineBody()).toContain('{e.kind === "message" && <EmailSignature className="text-xs" />}');
+  it("signs only a body we have NOT sent yet", () => {
+    // The signature is OURS and is appended at SEND time, so a message read back off
+    // the thread already carries it — printing ours under it renders it twice. Under
+    // an inbound message it would put our sign-off on the prospect's own words.
+    expect(timelineBody()).toContain('{e.kind === "message" && e.gated && <EmailSignature className="text-xs" />}');
   });
 
   it("draws both cards through classes the dark surface actually remaps", () => {

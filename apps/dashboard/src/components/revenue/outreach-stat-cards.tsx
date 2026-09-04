@@ -113,8 +113,6 @@ export function OutreachStatCards({
   funnelKey,
   outreachOverride,
   contactedOverride,
-  leadsOverride,
-  salesInterestOverride,
   signalSharePct,
   outreachLabel = "Outreach",
   economics,
@@ -176,34 +174,6 @@ export function OutreachStatCards({
    * as one broken figure. Absent → the single card, exactly as before.
    */
   contactedOverride?: number | null;
-  /**
-   * The POPULATION the leads board holds, when the caller is the surface that draws it.
-   *
-   * The Leads page states people and nothing else, so it replaces the
-   * "Leads contacted" + actions pair with ONE card labelled `Leads` — the same number
-   * its own heading counts and the same number its board partitions into columns. A
-   * page whose cards and whose board disagree about how many people are on it is the
-   * self-contradictory-surface bug inside one screen.
-   */
-  leadsOverride?: number | null;
-  /**
-   * How many of those leads stand at SALES INTEREST, counted off the very rows the
-   * board places into that column, plus their share of `leadsOverride`.
-   *
-   * This is NOT `spend.positiveRepliesCount`: that is features-service's aggregate over
-   * reply signals, while the board renders lead-service's funnel-aware `standing.state`
-   * — and on a funnel entered by a website visit the two legitimately differ (67 leads
-   * who clicked through stand at `sales_interest` on `form_magnet`, where no reply-based
-   * count sees them at all). So when this is supplied it is the ONE sales-interest count
-   * on the row: the funnel pair's own count card stands down rather than printing a
-   * second number under the same word.
-   *
-   * The share divides two counts THIS PAGE already states side by side — a description
-   * of the board on screen, the same reading as the `/model` page's `summariseCells`,
-   * not a metric derived off served fields. Null when there is no population to divide
-   * by, never a 0%.
-   */
-  salesInterestOverride?: { count: number; sharePct: number | null } | null;
   /**
    * What share of the contacted leads reached the funnel's FIRST rung, SERVED as
    * `funnelSteps.steps[0].conversionFromPreviousPct` (0-100).
@@ -363,68 +333,33 @@ export function OutreachStatCards({
   return (
     <div className="mb-6">
     <div className="flex flex-nowrap gap-3 overflow-x-auto">
-      {/* The BOARD's own two numbers, on the surface that draws it: how many people are
-          on this page, and how many of them are showing sales interest. It replaces the
-          people/actions pair outright — a page that partitions leads into columns has no
-          use for an undeduped action count, and the two cards it used to show read the
-          same 1,896 twice on a funnel whose sequences are one step. */}
-      {showOutreach && leadsOverride != null ? (
-        <>
-          <Cell>
-            <ScoreCard
-              label="Leads"
-              tooltip="Every person this page holds, counted once. The same population the board below partitions into its columns."
-              value={formatCount(leadsOverride)}
-              pending={pending}
-            />
-          </Cell>
-          {salesInterestOverride != null && (
-            <Cell>
-              <ScoreCard
-                label="Sales Interests"
-                tooltip="People who reached the step this funnel sells, counted off the same rows the board places in its Sales interest column."
-                value={formatCount(salesInterestOverride.count)}
-                subtitle={
-                  salesInterestOverride.sharePct != null
-                    ? `${formatSharePct(salesInterestOverride.sharePct)} of leads`
-                    : undefined
-                }
-                pending={pending}
-              />
-            </Cell>
-          )}
-        </>
-      ) : (
-        <>
-          {/* People, then actions. A lead is contacted ONCE and outreached as many times as
-              the sequence has steps, so the two grains are different numbers and each says
-              which it is. The second card only explains itself when the first is beside it —
-              alone, "Outreach" is the only figure on screen and needs no disambiguation. */}
-          {showOutreach && contactedOverride != null && (
-            <Cell>
-              <ScoreCard
-                label="Leads contacted"
-                tooltip="Distinct people this campaign reached. Each one is counted once, however many emails they received."
-                value={formatCount(contactedOverride)}
-                pending={pending}
-              />
-            </Cell>
-          )}
-          {showOutreach && (
-            <Cell>
-              <ScoreCard
-                label={outreachLabel}
-                tooltip={
-                  contactedOverride != null
-                    ? "Email sequences sent. A lead can be outreached several times over their lifetime."
-                    : undefined
-                }
-                value={formatCount(outreach)}
-                pending={pending}
-              />
-            </Cell>
-          )}
-        </>
+      {/* People, then actions. A lead is contacted ONCE and outreached as many times as
+          the sequence has steps, so the two grains are different numbers and each says
+          which it is. The second card only explains itself when the first is beside it —
+          alone, "Outreach" is the only figure on screen and needs no disambiguation. */}
+      {showOutreach && contactedOverride != null && (
+        <Cell>
+          <ScoreCard
+            label="Leads contacted"
+            tooltip="Distinct people this campaign reached. Each one is counted once, however many emails they received."
+            value={formatCount(contactedOverride)}
+            pending={pending}
+          />
+        </Cell>
+      )}
+      {showOutreach && (
+        <Cell>
+          <ScoreCard
+            label={outreachLabel}
+            tooltip={
+              contactedOverride != null
+                ? "Email sequences sent. A lead can be outreached several times over their lifetime."
+                : undefined
+            }
+            value={formatCount(outreach)}
+            pending={pending}
+          />
+        </Cell>
       )}
       {/* The brand-level money cards. A brand sells through SEVERAL sales funnels at
           once, so the only figures that describe the whole brand are what the pipeline
@@ -516,26 +451,20 @@ export function OutreachStatCards({
           Inbox-sourced attribution → no conversion-tracker CTA. */}
       {showFunnelMetrics && showReplyPair && (
         <>
-          {/* Stands down when the caller counted the sales interests itself off the
-              board: two numbers under one word, one from reply signals and one from
-              lead-service's funnel-aware standing, is one screen contradicting itself.
-              The COST card stays — it is the only thing that prices them. */}
-          {salesInterestOverride == null && (
-            <Cell>
-              <ScoreCard
-                label="Sales Interests"
-                value={
-                  spend?.positiveRepliesCount != null
-                    ? formatCount(spend.positiveRepliesCount)
-                    : "—"
-                }
-                subtitle={
-                  signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted` : undefined
-                }
-                pending={pending}
-              />
-            </Cell>
-          )}
+          <Cell>
+            <ScoreCard
+              label="Sales Interests"
+              value={
+                spend?.positiveRepliesCount != null
+                  ? formatCount(spend.positiveRepliesCount)
+                  : "—"
+              }
+              subtitle={
+                signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted` : undefined
+              }
+              pending={pending}
+            />
+          </Cell>
           <Cell>
             <ScoreCard
               label="Cost per sales interest"
@@ -561,17 +490,14 @@ export function OutreachStatCards({
           card above); a tracker-sourced outcome states no pair at all. */}
       {showFunnelMetrics && outcomeCard && (
         <>
-          {/* Same stand-down as the pair above, for the same reason. */}
-          {salesInterestOverride == null && (
-            <Cell>
-              <ScoreCard
-                label={outcomeCard.label}
-                value={outcomeCard.countValue}
-                subtitle={outcomeCard.countSubtitle}
-                pending={pending}
-              />
-            </Cell>
-          )}
+          <Cell>
+            <ScoreCard
+              label={outcomeCard.label}
+              value={outcomeCard.countValue}
+              subtitle={outcomeCard.countSubtitle}
+              pending={pending}
+            />
+          </Cell>
           <Cell>
             <ScoreCard
               label={outcomeCard.costLabel}

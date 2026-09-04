@@ -824,9 +824,12 @@ function LeadTimeline({
                         </summary>
                         <div className={`mt-1.5 bg-white border rounded p-2 ${e.kind === "inbound" ? "border-violet-200" : "border-brand-200"}`}>
                           <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                          {/* The signature is OURS. It belongs under something we wrote,
-                              never under the prospect's message. */}
-                          {e.kind === "message" && <EmailSignature className="text-xs" />}
+                          {/* The signature is OURS, and it is appended AT SEND TIME. So it
+                              belongs under a body that has not been sent — the generation's
+                              own copy (`gated`) — and never under a message read back off the
+                              thread, which already carries the signature it really went out
+                              with. Never under the prospect's message either. */}
+                          {e.kind === "message" && e.gated && <EmailSignature className="text-xs" />}
                         </div>
                       </details>
                     )}
@@ -1637,47 +1640,28 @@ export function EngagedLeadsPage({
   }));
 
 
-  // The two numbers the stat row states, taken off the SAME rows the board partitions
-  // into columns — the page's own population, and how many of those people stand at
-  // sales interest. Placement is `leadBoardColumnFor(standing)`, lead-service's own
-  // funnel-aware answer, exactly as the board reads it (plus the same held latch, so a
-  // move the person just made counts here for the round trip it takes to land): a card
-  // and a column disagreeing about one screen is the self-contradictory-surface bug.
+  // The stat row states SERVED figures, never a count of the rows this page happens to
+  // hold.
   //
-  // Computed over the BOARD's own rows, so the row and the columns under it describe the
-  // same set — including the cap. Those rows are the most recently active
-  // LEAD_BOARD_CARD_CAP of the population, which is what the board draws and therefore
-  // what this row may state.
+  // It used to count its two numbers off the board's own rows, which was correct while
+  // the page held every lead and became a lie the moment that read gained a bound: the
+  // board fetches at most LEAD_BOARD_CARD_CAP of the population, so the row printed the
+  // CAP as if it were the population. Measured on one production campaign: `Leads 200`
+  // and `Sales Interests 19 (9.5%)` directly under a heading correctly reading
+  // `2,052 leads`, beside a served website-visit figure of 85 — three populations on one
+  // screen, every number real, none of them agreeing.
   //
-  // Deliberately NOT `spend.positiveRepliesCount`. That is features-service's aggregate
-  // over REPLY signals; the board renders `standing.state`, which is funnel-aware, and on
-  // a funnel entered by a website visit the two are legitimately different numbers (67
-  // leads who clicked through stand at `sales_interest` on `form_magnet`, where a
-  // reply-based count sees none of them).
-  const boardPopulation = useMemo(() => {
-    let leads = 0;
-    let salesInterest = 0;
-    for (const lead of boardLeads) {
-      const held =
-        lead.email && statedReplyKinds.has(lead.email)
-          ? (statedReplyKinds.get(lead.email) ?? null)
-          : undefined;
-      const column = held?.column ?? leadBoardColumnFor(lead.standing);
-      if (!column) continue;
-      leads += 1;
-      if (column === "sales_interest") salesInterest += 1;
-    }
-    return {
-      leads,
-      // A share of two counts THIS row states side by side — a description of the board
-      // on screen, not a metric divided out of served fields. Null on an empty
-      // population: "we have nothing to divide by", never a 0%.
-      salesInterest: {
-        count: salesInterest,
-        sharePct: leads > 0 ? (salesInterest / leads) * 100 : null,
-      },
-    };
-  }, [boardLeads, statedReplyKinds]);
+  // So the row reads what the producers already answer: the population from
+  // lead-service's bucket counts (the SAME number the heading states, so the two cannot
+  // disagree), and the sales-interest pair from features-service's funnel steps — the
+  // one `salesInterestSharePct` the campaign Overview reads, so those two surfaces
+  // cannot state it two ways either.
+  //
+  // Consequence to hold: the row's sales interests count REPLY SIGNALS while the board's
+  // own column renders lead-service's funnel-aware standing, and on a funnel entered by
+  // a website visit those legitimately differ. The board states its own bound above
+  // itself; closing that gap needs standing counts from lead-service, which is a
+  // producer ask, not a number to derive here.
 
   // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
   // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
@@ -2082,8 +2066,11 @@ export function EngagedLeadsPage({
     <div className="flex flex-col h-full relative">
       <div className="w-full p-4 md:p-8 pb-24 overflow-y-auto transition-all">
         <OutreachStatCardsAuto
-          leadsOverride={loading ? null : boardPopulation.leads}
-          salesInterestOverride={loading ? null : boardPopulation.salesInterest}
+          // The population lead-service counted, not the page of it we fetched. `null`
+          // while the counts are unsettled — a population we have not been told is not a
+          // population of zero — and the row then states its single Outreach card, the
+          // same reading it has always had off a scope that supplies no count.
+          contactedOverride={reachableCount}
         />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
