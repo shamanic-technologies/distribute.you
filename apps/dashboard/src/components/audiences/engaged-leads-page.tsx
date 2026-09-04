@@ -19,6 +19,8 @@ import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
 import {
   conversationRefusal,
   hasInbound,
+  sequenceStopNote,
+  sequenceStopReason,
   messageLabel,
   orderedMessages,
   unsentFollowUps,
@@ -739,8 +741,19 @@ function LeadTimeline({
   // carrying what it really said; the derived rows are then only worth showing for
   // the steps still AHEAD, which is the cadence the reader is waiting on.
   const followUps = derived?.followUps ?? [];
+  // ...unless the sequence has STOPPED. The provider creates the campaign with
+  // `stop_on_reply: true`, so a reply ends it; an unsubscribe and a bounce end it too.
+  // Listing the planned steps as `scheduled` after that promises sends that will never
+  // happen — a timeline states what will happen, not what was planned before the
+  // prospect answered. A website VISIT does not stop it and is deliberately not here.
+  const stopReason = sequenceStopReason(delivery);
   entries.push(
-    ...(hasThread ? unsentFollowUps(followUps, Date.now()) : followUps).map((f) => ({
+    ...(stopReason
+      ? []
+      : hasThread
+        ? unsentFollowUps(followUps, Date.now())
+        : followUps
+    ).map((f) => ({
       ...f,
       gated: true,
     })),
@@ -934,6 +947,12 @@ function LeadTimeline({
           );
         })}
       </ol>
+      {/* Why nothing more is coming, in place of the steps that were planned. The
+          rows are gone because they will not be sent; saying so is what stops that
+          reading as a timeline that simply ends. */}
+      {stopReason && (
+        <p className="mt-2 text-xs text-gray-500">{sequenceStopNote(stopReason)}</p>
+      )}
     </div>
   );
 }
@@ -1135,6 +1154,17 @@ export function EngagedLeadsPage({
   // audiences joined onto them are the offer's, which is every scope the backend
   // can honestly answer today.
   const offerId = params.offerId as string | undefined;
+  // WHAT the reader is standing in, for the one board blurb whose sentence depends on
+  // it: "disqualified as leads for this <scope>" is a judgement about ONE grain, and
+  // this page renders at four. Read off the route rather than the data — the sentence
+  // is about where the reader is, not about what the leads did.
+  const boardScopeNoun = campaignId
+    ? "campaign"
+    : params.funnelKey
+      ? "sales funnel"
+      : offerId
+        ? "offer"
+        : "brand";
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   // Board first: it is the view that answers where a lead IS.
   //
@@ -2300,6 +2330,7 @@ export function EngagedLeadsPage({
                   and grows its own page. */}
               <LeadBoard
                 columns={boardColumns}
+                scopeNoun={boardScopeNoun}
                 onShowMore={(column) =>
                   setColumnShown((prev) => ({
                     ...prev,

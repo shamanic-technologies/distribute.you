@@ -127,28 +127,31 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
     // what the word means. The column is simply everybody still in play.
     key: "contacted",
     label: "Leads",
-    blurb: "Still in play, a no for now included. Nothing has happened yet, or nothing this campaign sells.",
+    blurb: "Individuals we have identified as potential clients.",
     writable: true,
     hideWhenEmpty: false,
   },
   {
     key: "sales_interest",
     label: "Sales interest",
-    blurb: "They reached the step this campaign sells, or bought.",
+    blurb: "Leads who have shown or expressed sales interest.",
     writable: true,
     hideWhenEmpty: false,
   },
   {
     key: "disqualified",
     label: "Disqualified",
-    blurb: "Not our target: wrong contact, they left the role, or the company is not who we sell to.",
+    // The scope is what the reader is standing in, so the sentence names it rather
+    // than assuming a campaign: this board renders at brand, offer, funnel and
+    // campaign grain, and "not our target" is a judgement about ONE of those.
+    blurb: "Individuals disqualified as leads for this {scope}.",
     writable: true,
     hideWhenEmpty: false,
   },
   {
     key: "opt_out",
     label: "Opt-out",
-    blurb: "They asked us to stop, however they told us. We never contact them again.",
+    blurb: "Leads who requested to be unsubscribed.",
     writable: true,
     hideWhenEmpty: false,
   },
@@ -160,6 +163,18 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
     hideWhenEmpty: true,
   },
 ];
+
+/**
+ * The blurb, with the scope the reader is standing in filled in.
+ *
+ * `{scope}` rather than four copies of the sentence: one column's wording depends on
+ * the grain and the rest do not, and a second column needing it later is one token.
+ * An absent scope reads "campaign", which is the grain this board is mounted at
+ * whenever it can be written to.
+ */
+export function columnBlurb(column: LeadBoardColumn, scopeNoun?: string | null): string {
+  return column.blurb.replace("{scope}", scopeNoun || "campaign");
+}
 
 /**
  * The kinds a person may state to put a card in Sales interest.

@@ -17,7 +17,7 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { salesInterestSharePct } from "@/lib/funnel-share";
+import { salesInterestSharePct, websiteVisitSharePct } from "@/lib/funnel-share";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { isRunningStatus } from "@/lib/campaign-controls";
@@ -213,6 +213,7 @@ export function OutreachStatCardsAuto({
       // The share of contacted that showed sales interest, through the one helper the
       // campaign Overview reads too, so the two surfaces cannot state it two ways.
       signalSharePct={salesInterestSharePct(revenueData?.funnelSteps)}
+      clickSharePct={websiteVisitSharePct(revenueData?.funnelSteps)}
       outreachLabel={contactedOverride != null ? (outreachLabel ?? "Outreaches") : outreachLabel}
     />
   );

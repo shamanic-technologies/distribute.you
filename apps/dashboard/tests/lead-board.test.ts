@@ -4,6 +4,7 @@ import {
   INTEREST_STATEMENT_KINDS,
   LEAD_BOARD_COLUMNS,
   LEAD_BOARD_PAGE_SIZE,
+  columnBlurb,
   columnMoveConfirmation,
   columnMoveRefusal,
   columnPage,
@@ -319,3 +320,32 @@ function readBoardSource(): string {
   const { join } = require("node:path") as typeof import("node:path");
   return readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
 }
+
+describe("columnBlurb", () => {
+  const disqualified = LEAD_BOARD_COLUMNS.find((c) => c.key === "disqualified")!;
+
+  // "Not our target" is a judgement about ONE grain, and this board renders at four.
+  it("names the scope the reader is standing in", () => {
+    expect(columnBlurb(disqualified, "offer")).toBe(
+      "Individuals disqualified as leads for this offer.",
+    );
+    expect(columnBlurb(disqualified, "sales funnel")).toBe(
+      "Individuals disqualified as leads for this sales funnel.",
+    );
+  });
+
+  // Absent scope reads "campaign" — the grain this board is mounted at whenever it can
+  // be written to — rather than leaving a `{scope}` token on screen.
+  it("falls back to campaign rather than printing the token", () => {
+    for (const scope of [undefined, null, ""]) {
+      expect(columnBlurb(disqualified, scope)).toBe(
+        "Individuals disqualified as leads for this campaign.",
+      );
+    }
+  });
+
+  it("leaves a blurb with no token alone", () => {
+    const leads = LEAD_BOARD_COLUMNS.find((c) => c.key === "contacted")!;
+    expect(columnBlurb(leads, "offer")).toBe(leads.blurb);
+  });
+});

@@ -4,6 +4,8 @@ import { join } from "node:path";
 import {
   conversationRefusal,
   hasInbound,
+  sequenceStopNote,
+  sequenceStopReason,
   messageLabel,
   orderedMessages,
   unsentFollowUps,
@@ -160,5 +162,52 @@ describe("the module stays alias-free", () => {
       "utf8",
     );
     expect(src).not.toContain('from "@/');
+  });
+});
+
+/**
+ * WHY nothing more will be sent — the rule the timeline reads before listing a
+ * follow-up as `scheduled`.
+ *
+ * instantly-service creates every campaign with `stop_on_reply: true`, so the sequence
+ * really does end on a reply; promising two more sends after that is the status-label
+ * bug one surface over.
+ */
+describe("sequenceStopReason", () => {
+  it("stops on a reply, an unsubscribe and a bounce", () => {
+    expect(sequenceStopReason({ firstRepliedAt: "2026-09-04T10:00:00Z" })).toBe("replied");
+    expect(sequenceStopReason({ firstUnsubscribedAt: "2026-09-04T10:00:00Z" })).toBe(
+      "unsubscribed",
+    );
+    expect(sequenceStopReason({ firstBouncedAt: "2026-09-04T10:00:00Z" })).toBe("bounced");
+  });
+
+  // The one that matters most, and the case that was reported: link tracking is on and
+  // nothing in the provider's config stops a sequence on a click, so the follow-ups
+  // really are still coming. Dropping them there would hide a send about to be paid for.
+  it("does NOT stop on a website visit", () => {
+    expect(sequenceStopReason({ firstRepliedAt: null, firstBouncedAt: null })).toBeNull();
+    expect(sequenceStopReason({})).toBeNull();
+    expect(sequenceStopReason(null)).toBeNull();
+  });
+
+  // The prospect's own instruction outranks the rest as the REASON, even when they also
+  // replied — that is the sentence a customer needs to read.
+  it("prefers the unsubscribe when several are on record", () => {
+    expect(
+      sequenceStopReason({
+        firstRepliedAt: "2026-09-01T10:00:00Z",
+        firstBouncedAt: "2026-09-02T10:00:00Z",
+        firstUnsubscribedAt: "2026-09-03T10:00:00Z",
+      }),
+    ).toBe("unsubscribed");
+  });
+
+  it("says why, in its own words per reason", () => {
+    const notes = (["replied", "unsubscribed", "bounced"] as const).map(sequenceStopNote);
+    expect(new Set(notes).size).toBe(3);
+    for (const note of notes) expect(note.length).toBeGreaterThan(0);
+    // No em-dash in customer-facing copy.
+    for (const note of notes) expect(note).not.toContain("\u2014");
   });
 });

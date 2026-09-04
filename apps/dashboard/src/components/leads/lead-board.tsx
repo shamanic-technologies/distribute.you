@@ -6,6 +6,7 @@ import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
 import {
   LEAD_BOARD_COLUMNS,
+  columnBlurb,
   columnMoveConfirmation,
   columnMoveRefusal,
   columnReplyKinds,
@@ -221,6 +222,7 @@ function CardBody({ card }: { card: LeadBoardCard }) {
 
 export function LeadBoard({
   columns,
+  scopeNoun,
   onShowMore,
   busy,
   error,
@@ -228,6 +230,9 @@ export function LeadBoard({
   onOpen,
   onMove,
 }: {
+  /** What the reader is standing in (`campaign`, `offer`, `sales funnel`, `brand`) —
+   *  the one blurb whose sentence names the grain it judges against. */
+  scopeNoun?: string | null;
   /**
    * One entry per column, each holding its OWN page and its OWN size.
    *
@@ -496,7 +501,9 @@ export function LeadBoard({
                     {total == null ? "" : total.toLocaleString("en-US")}
                   </span>
                 </div>
-                <span className="mt-1 block text-[11px] text-gray-500">{column.blurb}</span>
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  {columnBlurb(column, scopeNoun)}
+                </span>
               </header>
 
               <div className="space-y-2">

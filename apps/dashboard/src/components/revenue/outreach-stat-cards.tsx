@@ -114,6 +114,7 @@ export function OutreachStatCards({
   outreachOverride,
   contactedOverride,
   signalSharePct,
+  clickSharePct,
   outreachLabel = "Outreach",
   economics,
   totalPipelineUsd,
@@ -184,6 +185,16 @@ export function OutreachStatCards({
    * measure this" (either side unmeasured, or a base of 0) → no subtitle, never a 0%.
    */
   signalSharePct?: number | null;
+  /**
+   * The same share for a funnel whose FIRST rung is a website visit, served as that
+   * rung's `conversionFromPreviousPct`.
+   *
+   * Its own prop rather than a reuse of `signalSharePct`: a funnel begins at ONE step,
+   * so the two are mutually exclusive by construction and a single prop would let a
+   * caller state the reply share under the visit card. Read verbatim; null renders no
+   * subtitle, never a 0%.
+   */
+  clickSharePct?: number | null;
   /**
    * features-service `/revenue` `costEconomics` block — the money cards (ROI,
    * $ CAC, % CAC), rendered verbatim. Absent on a surface that carries no
@@ -295,7 +306,7 @@ export function OutreachStatCards({
   const outcomeCard: {
     label: string;
     countValue: string;
-    /** Small grey line under the count (the sales-interest share of contacted). */
+    /** Small grey line under the count (the share of the leads contacted). */
     countSubtitle?: string;
     costLabel: string;
     costTooltip: string;
@@ -310,7 +321,9 @@ export function OutreachStatCards({
             ? formatCount(spend.positiveRepliesCount)
             : "—",
         countSubtitle:
-          signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted` : undefined,
+          signalSharePct != null
+            ? `${formatSharePct(signalSharePct)} of leads contacted`
+            : undefined,
         costLabel: "Cost per sales interest",
         costTooltip: `Cost per sales interest: committed spend divided by the real sales interests attributed to your outreach. ${EXPECTED_COST_NOTE}`,
         // features-service owns the zero-reply case: it floors the aggregate to
@@ -430,6 +443,11 @@ export function OutreachStatCards({
               label={clickMetric.label}
               tooltip={clickMetric.tooltip}
               value={clickMetric.value}
+              subtitle={
+                clickSharePct != null
+                  ? `${formatSharePct(clickSharePct)} of leads contacted`
+                  : undefined
+              }
               pending={pending}
             />
           </Cell>
@@ -460,7 +478,9 @@ export function OutreachStatCards({
                   : "—"
               }
               subtitle={
-                signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted` : undefined
+                signalSharePct != null
+                  ? `${formatSharePct(signalSharePct)} of leads contacted`
+                  : undefined
               }
               pending={pending}
             />

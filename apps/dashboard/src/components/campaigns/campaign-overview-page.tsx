@@ -28,7 +28,7 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
-import { salesInterestSharePct } from "@/lib/funnel-share";
+import { salesInterestSharePct, websiteVisitSharePct } from "@/lib/funnel-share";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { tenantBasePath } from "@/lib/offer-path";
 import {
@@ -202,6 +202,7 @@ export function CampaignOverviewPage() {
   // helper both this page and the Leads page read, so they cannot state the same
   // percentage two ways.
   const salesInterestShare = salesInterestSharePct(data?.funnelSteps);
+  const websiteVisitShare = websiteVisitSharePct(data?.funnelSteps);
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
     const outreachByDay = countByDay(data?.sequences ?? data?.outreachContacted);
@@ -629,6 +630,7 @@ export function CampaignOverviewPage() {
             contactedOverride={leadsContacted}
             outreachLabel="Outreaches"
             signalSharePct={salesInterestShare}
+            clickSharePct={websiteVisitShare}
             paused={campaignPaused}
           />
         }

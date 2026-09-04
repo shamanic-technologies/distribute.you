@@ -35,9 +35,39 @@ import type { FunnelStepBreakdown } from "./revenue-view";
 export function salesInterestSharePct(
   funnelSteps: FunnelStepBreakdown | null | undefined,
 ): number | null {
+  return contactedSharePct(funnelSteps, "repliedPositive");
+}
+
+/**
+ * The same sentence for the funnel whose first rung is a WEBSITE VISIT.
+ *
+ * The two are mutually exclusive by construction — a funnel begins at one step — so a
+ * campaign states one of them and never both. It is a separate wrapper rather than a
+ * bare `steps[0]` read for the same reason `salesInterestSharePct` is: a rung deeper in
+ * the funnel converts from the rung BEFORE it, so labelling it "of contacted" would be
+ * false, and the guard is what stops that.
+ */
+export function websiteVisitSharePct(
+  funnelSteps: FunnelStepBreakdown | null | undefined,
+): number | null {
+  return contactedSharePct(funnelSteps, "clicked");
+}
+
+/**
+ * The share of the contacted base that reached the funnel's FIRST rung, when that rung
+ * is the one named.
+ *
+ * One implementation for both callers: the guard is the whole content of the rule, and
+ * two copies of it is how one surface comes to state a deeper rung's share under the
+ * word "contacted".
+ */
+function contactedSharePct(
+  funnelSteps: FunnelStepBreakdown | null | undefined,
+  leadField: string,
+): number | null {
   const first = funnelSteps?.steps?.[0];
   if (!first) return null;
-  if (first.leadField !== "repliedPositive") return null;
+  if (first.leadField !== leadField) return null;
   if (first.fromStep !== "Contacted") return null;
   return first.conversionFromPreviousPct;
 }
