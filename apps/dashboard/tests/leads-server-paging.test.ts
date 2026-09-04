@@ -76,16 +76,18 @@ describe("the Leads page pages instead of holding the population", () => {
     expect(PAGE).toContain("const loading = isPending || isPlaceholderData;");
   });
 
-  it("exports by walking, bounded, and drops the per-row campaign nesting to do it", () => {
-    expect(API).toContain("export async function fetchLeadsForExport(");
-    expect(API).toContain("export const EXPORT_MAX_ROWS = 25000;");
-    expect(API).toContain("{ includeCampaigns: false }");
-    // A cursor, not the numbered pager's offset: lead-service documents the cursor as the
-    // one that cannot drift while rows are being written under it.
-    const at = API.indexOf("export async function fetchLeadsForExport(");
-    const body = API.slice(at, API.indexOf("\n}", at));
-    expect(body).toContain("cursor");
-    expect(body).toContain("delete base.offset;");
+  it("lets the producer stream the export instead of assembling a second one", () => {
+    // It walked the filter page by page for a while, purely to control the column
+    // headings — lead-service headed them with the API's field names. It heads them in
+    // the customer's words as of v0.70.0, so the walk (a 25,000-row ceiling and megabytes
+    // of transient traffic on a press) had nothing left to buy.
+    expect(API).toContain("export async function fetchLeadsCsv(");
+    expect(API).toContain('format: "csv"');
+    expect(API).not.toContain("fetchLeadsForExport");
+    expect(API).not.toContain("EXPORT_MAX_ROWS");
+    // Through `apiCall`, so the export carries the same per-tab bearer and the same
+    // org-desync retry as every other read rather than being a second auth path.
+    expect(API).toContain('responseType: "text"');
   });
 
   it("parses the rows through the SAME reader every other leads read uses", () => {
