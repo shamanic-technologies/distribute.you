@@ -30,6 +30,14 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     return src.slice(at, at + length);
   };
 
+  /** Bounded to the next top-level `function`, for `toContain`-only guards. */
+  const sliceToNextFunction = (marker: string) => {
+    const at = src.indexOf(marker);
+    expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
+    const end = src.indexOf("\nfunction ", at + marker.length);
+    return src.slice(at, end > at ? end : undefined);
+  };
+
   it("names the queue state Queued and drops the Contacted claim", () => {
     // The label moved to `lib/lead-status.ts` so the leads TABLE's badge, the CSV and
     // the BOARD card's tag all read one map — a lead must not say "Delivered" in the
@@ -93,6 +101,9 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("shows the queue row only while nothing has been sent", () => {
+    // 3000 is a MEASURED bound and stays one: the `not.toContain` below would read the
+    // next function's body if the slice ran past this one. `label: QUEUED_LABEL` sits
+    // at 1600 and `note: SEND_WINDOW_NOTE` at 1874, so it has real headroom.
     const body = sliceFrom("function LeadTimeline(", 3000);
     // The queue row is gated on the absence of a real send, so Queued and Sent can
     // never both appear for one lead — they are the two branches of one ternary.
@@ -106,17 +117,21 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("groups each message's delivery rows inside that message", () => {
-    const body = sliceFrom("function LeadTimeline(", 3000);
+    // Bounded to the NEXT declaration, not a number: every assertion below is a
+    // `toContain`, which a long slice cannot hurt, and a measured length expires on
+    // the next comment added to the function — it did, when the timeline took a
+    // structural `delivery` prop and grew a doc comment above its signature.
+    const body = sliceToNextFunction("function LeadTimeline(");
     // "Sent" on its own never said sent WHAT, and a lead receives several messages.
     expect(body).toContain('label: "Initial email"');
     expect(body).toContain("events: initialEvents");
     // Delivered is dropped when absent rather than rendered empty.
-    expect(body).toContain("...(lead.firstDeliveredAt ? [{ label: \"Delivered\"");
+    expect(body).toContain("...(delivery.firstDeliveredAt ? [{ label: \"Delivered\"");
     // Engagement is NOT nested: the wire gives one first-occurrence per LEAD, and a
     // reply can land after follow-up 2, so filing it under the initial email would
     // state something we never observed.
     expect(body).toContain('{ kind: "event", label: "Website visit"');
-    expect(body).toContain('label: lead.replyClassification ? `Replied');
+    expect(body).toContain('label: delivery.replyClassification ? `Replied');
   });
 
   it("spaces consecutive rows off the index, not a :last-child modifier", () => {
