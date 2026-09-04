@@ -69,13 +69,28 @@ describe("Leads — the panel reads the real conversation", () => {
   it("threads the conversation into the OPEN card's timeline at the call site", () => {
     // The prop, not only the component: a page that renders <LeadTimeline> without
     // passing the thread ships a correct component and no feature.
-    const at = src.indexOf("<LeadTimeline");
+    // Anchored on the campaign-card renderer, not on the FIRST `<LeadTimeline` in the
+    // file: the panel now also draws one directly for a person with a single campaign
+    // (every level above it is its own card there, so there is nothing to nest), and
+    // that call is earlier in the source.
+    const at = src.indexOf("<LeadTimeline", src.indexOf("renderDetail={(node) =>"));
     expect(at).toBeGreaterThan(-1);
     const call = src.slice(at, src.indexOf("/>", at));
     // Only the OPEN card may show it. Handing it to every card would print one
     // campaign's conversation under each of the others' names.
     expect(call).toContain("conversation={node.rowId === openCampaignRowId ? conversationData ?? null : null}");
     expect(call).toContain("refusal={node.rowId === openCampaignRowId ? conversationRefusalKind : null}");
+  });
+
+  it("threads it into the single-campaign timeline too", () => {
+    // With one campaign there is no card to open and no other card to confuse it with,
+    // so the thread is passed outright. A panel that drew that timeline without it
+    // would silently lose the conversation on exactly the commonest lead.
+    const at = src.indexOf("<LeadTimeline");
+    const call = src.slice(at, src.indexOf("/>", at));
+    expect(call).toContain("delivery={panelScope.sole.card.delivery}");
+    expect(call).toContain("conversation={conversationData ?? null}");
+    expect(call).toContain("refusal={conversationRefusalKind}");
   });
 
   it("keeps the thread off the brand-wide roll-up", () => {
