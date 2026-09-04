@@ -8,6 +8,8 @@ import {
   sequenceStopReason,
   messageLabel,
   orderedMessages,
+  threadCarriesFirstSend,
+  THREAD_SEND_MATCH_MS,
   unsentFollowUps,
   type ConversationMessage,
 } from "../src/lib/lead-conversation";
@@ -91,6 +93,60 @@ describe("messageLabel", () => {
 
   it("returns nothing for an index the list does not hold", () => {
     expect(messageLabel([], 0)).toBe("");
+  });
+
+  it("calls the first message a follow-up when an earlier send is not on this thread", () => {
+    // The delivery evidence reports a send this thread does not carry — the campaign
+    // identity spans several stored rows and the thread covers one. Calling this the
+    // initial email would name a July message after a May one.
+    const ordered = orderedMessages([msg()]);
+    expect(messageLabel(ordered, 0, true)).toBe("Follow-up");
+  });
+
+  it("still names a reply of ours an answer, prior send or not", () => {
+    const ordered = orderedMessages([
+      msg({ at: "2026-08-01T10:00:00.000Z", direction: "inbound" }),
+      msg({ at: "2026-08-02T10:00:00.000Z" }),
+    ]);
+    expect(messageLabel(ordered, 1, true)).toBe("Our reply");
+  });
+});
+
+describe("threadCarriesFirstSend", () => {
+  it("is true when the thread's first outbound IS the send the evidence reports", () => {
+    const ordered = orderedMessages([msg({ at: "2026-05-09T11:37:00.000Z" })]);
+    expect(threadCarriesFirstSend(ordered, "2026-05-09T11:37:01.171Z")).toBe(true);
+  });
+
+  it("is FALSE when the thread covers a later sequence entirely", () => {
+    // The reported bug: evidence is the campaign identity's (first send in May, under
+    // an ancestor row), the thread is the current row's (July). Nesting May's `Sent`
+    // under the July card made it sort after the May reply it precedes.
+    const ordered = orderedMessages([
+      msg({ at: "2026-07-01T00:05:42.000Z" }),
+      msg({ at: "2026-07-04T00:07:29.000Z" }),
+    ]);
+    expect(threadCarriesFirstSend(ordered, "2026-05-09T11:37:01.171Z")).toBe(false);
+  });
+
+  it("allows an hour between two systems' clocks and refuses more", () => {
+    const base = Date.parse("2026-05-09T11:37:00.000Z");
+    const within = orderedMessages([msg({ at: new Date(base + THREAD_SEND_MATCH_MS).toISOString() })]);
+    const beyond = orderedMessages([msg({ at: new Date(base + THREAD_SEND_MATCH_MS + 1000).toISOString() })]);
+    expect(threadCarriesFirstSend(within, "2026-05-09T11:37:00.000Z")).toBe(true);
+    expect(threadCarriesFirstSend(beyond, "2026-05-09T11:37:00.000Z")).toBe(false);
+  });
+
+  it("is false with no send reported — there is nothing for the thread to carry", () => {
+    const ordered = orderedMessages([msg()]);
+    expect(threadCarriesFirstSend(ordered, null)).toBe(false);
+    expect(threadCarriesFirstSend(ordered, "")).toBe(false);
+    expect(threadCarriesFirstSend(ordered, "not a date")).toBe(false);
+  });
+
+  it("is false on a thread holding only their words", () => {
+    const ordered = orderedMessages([msg({ direction: "inbound" })]);
+    expect(threadCarriesFirstSend(ordered, "2026-08-01T10:00:00.000Z")).toBe(false);
   });
 });
 

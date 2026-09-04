@@ -119,19 +119,73 @@ export function orderedMessages(messages: ConversationMessage[]): ConversationMe
  * Takes the ALREADY-ORDERED list: the label depends on what precedes the message,
  * so computing it against an unsorted array reads the wrong neighbours.
  */
-export function messageLabel(ordered: ConversationMessage[], index: number): string {
+export function messageLabel(
+  ordered: ConversationMessage[],
+  index: number,
+  priorSendOutsideThread = false,
+): string {
   const m = ordered[index];
   if (!m) return "";
   if (m.direction === "inbound") return "Their reply";
   const before = ordered.slice(0, index);
-  if (before.length === 0) return "Initial email";
   if (before.some((p) => p.direction === "inbound")) return "Our reply";
+  // "Initial email" is a claim about the WHOLE scope, not about this thread. A
+  // campaign as the customer knows it is many stored rows and the thread covers one
+  // of them, so a send the delivery evidence already reports from an earlier row
+  // means this message is not the first thing we sent — whatever its position here.
+  if (before.length === 0) return priorSendOutsideThread ? "Follow-up" : "Initial email";
   return "Follow-up";
 }
 
 /** True once the prospect has written at least one message we can show. */
 export function hasInbound(messages: ConversationMessage[]): boolean {
   return orderedMessages(messages).some((m) => m.direction === "inbound");
+}
+
+/**
+ * How far apart a send's own timestamp and the delivery layer's first-sent event may
+ * sit and still be the SAME send.
+ *
+ * The two come from different systems with different clocks (the provider stamps the
+ * message row, email-gateway stamps the delivery event), so they are seconds apart in
+ * practice. An hour is generous for that and nowhere near the gap this exists to
+ * detect, which is a whole other sequence weeks or months later.
+ */
+export const THREAD_SEND_MATCH_MS = 60 * 60 * 1000;
+
+/**
+ * Does this thread contain the send the delivery evidence is reporting?
+ *
+ * ⚠️ THE TWO SIDES ARE SCOPED DIFFERENTLY AND THAT IS NOT A BUG TO PAPER OVER. The
+ * delivery facts a card carries (`firstSentAt`, `firstDeliveredAt`, `firstRepliedAt`)
+ * are the campaign IDENTITY's — every stored row of it, because campaign-service mints
+ * a fresh row on each workflow switch and keeps the ancestors. The thread is ONE of
+ * those rows: instantly-service resolves a single logical campaign to a single
+ * provider campaign. So on a lead contacted under an older row, the thread's first
+ * outbound message is NOT the send `firstSentAt` describes — it is a later sequence,
+ * from a different mailbox, weeks after.
+ *
+ * Nesting the delivery rows under it anyway is what makes the panel read out of
+ * order: the card sorts at its own instant while displaying a much earlier `Sent`, so
+ * a reply that really did land between the two appears ABOVE the send it answered.
+ * Nothing errors, every timestamp is real, and the timeline simply states an
+ * impossible sequence.
+ *
+ * False here means the rows belong to a send this thread does not carry, so they get
+ * their own entry at their own instant instead.
+ */
+export function threadCarriesFirstSend(
+  ordered: ConversationMessage[],
+  firstSentAt: string | null | undefined,
+): boolean {
+  if (!firstSentAt) return false;
+  const sent = new Date(firstSentAt).getTime();
+  if (!Number.isFinite(sent)) return false;
+  const first = ordered.find((m) => m.direction === "outbound");
+  if (!first) return false;
+  const at = new Date(first.at).getTime();
+  if (!Number.isFinite(at)) return false;
+  return Math.abs(at - sent) <= THREAD_SEND_MATCH_MS;
 }
 
 /**
@@ -188,7 +242,15 @@ export function sequenceStopReason(delivery: {
   return null;
 }
 
-/** What to say in place of the follow-ups that will not be sent. */
+/**
+ * What to say in place of the follow-ups that will not be sent.
+ *
+ * ⚠️ Only worth saying when it REPLACED something. A reply stops the sequence, so the
+ * reason is true whenever one landed — but on a lead whose planned steps had all gone
+ * out anyway there is nothing missing to explain, and the sentence then sits under a
+ * timeline showing sends AFTER the reply, contradicting the cards above it. The caller
+ * renders it only when rows were actually dropped.
+ */
 export function sequenceStopNote(reason: SequenceStopReason): string {
   if (reason === "unsubscribed") return "No further emails: they asked us to stop.";
   if (reason === "bounced") return "No further emails: their address bounced.";
