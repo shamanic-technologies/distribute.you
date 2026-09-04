@@ -61,6 +61,7 @@ import {
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
+import { LeadLocationMap } from "@/components/leads/lead-location-map";
 import {
   leadFunnelLegStages,
   leadStepErrorMessage,
@@ -2622,6 +2623,15 @@ export function EngagedLeadsPage({
                 </div>
               </div>
             )}
+            {/* Where those two `Location:` rows PUT this lead, shown rather than
+                spelled. It renders below the Organization card because it is about
+                both halves at once — the person and the employer — so it cannot sit
+                inside either. It draws nothing when we recognise neither country. */}
+            <LeadLocationMap
+              person={selectedFull ?? null}
+              organization={selectedOrg ?? null}
+              organizationName={selectedOrg?.name ?? null}
+            />
             {/* This person's campaigns, each holding what IT decided about them. The
                 offer, the audience AND the timeline live in here rather than as
                 panel-level cards: all three are a campaign's answer, and stating one of
