@@ -25,11 +25,12 @@ const billingGrowthRowSchema = z.object({
   revenue_cents: z.string(),
 });
 
-// CASH COLLECTED (Stripe), the money twin of the usage-consumed revenue the
-// fleet stats report. billing-service composes it from stripe-service:
-//   total_paid_cents      GROSS charged (Stripe never mutates a succeeded
-//                         PaymentIntent when money goes back, so this alone
-//                         over-reports by exactly what was returned)
+// CASH COLLECTED, the money twin of the usage-consumed revenue the fleet stats
+// report. billing-service composes it from stripe-service, which mirrors every
+// acquirer we take money through, not only the one it is named after:
+//   total_paid_cents      GROSS charged (a settled payment is never mutated
+//                         when money goes back, so this alone over-reports by
+//                         exactly what was returned)
 //   total_returned_cents  settled refunds + LOST disputes
 //   total_revenue_cents   NET = paid − returned. This is what we keep.
 // The growth rows carry the same net figure per period (`revenue_cents`), with a

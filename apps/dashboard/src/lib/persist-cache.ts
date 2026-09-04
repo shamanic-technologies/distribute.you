@@ -160,6 +160,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Per-lead generated email content — the leads detail-panel fetch, click-gated, so
   // re-opening a lead paints its last-known email from disk.
   "leadEmail",
+  // The messages actually exchanged with one lead, behind the same detail panel.
+  // Unlisted, the thread cold-fetches on every panel open — a live third-party read
+  // — so the words a customer just looked at vanish the moment they close the row.
+  "leadConversation",
   // What a human stated about a lead's reply, behind the same detail panel. Written by
   // the mutation's own `setQueryData`, so an unlisted root would cold-fetch it back on
   // every panel open.

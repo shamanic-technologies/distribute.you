@@ -360,7 +360,7 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
     <>
       <SectionHeading
         title="Cash collected"
-        blurb="What customers paid us through Stripe, minus what went back out. Runs ahead of consumption below by the credit that is bought and not yet spent."
+        blurb="What customers paid us, whichever acquirer took the payment, minus what went back out. Runs ahead of consumption below by the credit that is bought and not yet spent."
       />
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -374,7 +374,7 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
         <StatCard
           label="Gross charged"
           value={usdFull(cash.grossUsd)}
-          detail="Every succeeded Stripe charge, before anything went back"
+          detail="Every payment that went through, before anything went back"
           accent="bg-sky-500"
           pending={false}
         />
@@ -390,7 +390,7 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
       <section className="grid gap-6 md:grid-cols-2">
         <PeriodCard
           title="Monthly net cash"
-          subtitle="Stripe cash per month, net of refunds and lost disputes, with compound monthly growth since the first charge."
+          subtitle="Cash per month, net of refunds and lost disputes, with compound monthly growth since the first charge."
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
           latestPct={cash.monthlyCmgr.latestPct}
@@ -403,7 +403,7 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
         />
         <PeriodCard
           title="Weekly net cash"
-          subtitle="Stripe cash per week, net of refunds and lost disputes, with compound weekly growth since the first charge."
+          subtitle="Cash per week, net of refunds and lost disputes, with compound weekly growth since the first charge."
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
           latestPct={cash.weeklyCmgr.latestPct}
@@ -418,7 +418,7 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
 
       <SectionHeading
         title="Revenue consumed"
-        blurb="What customers actually burned in cold-email sending, after each org's usage discount. Stripe is nowhere in this figure — a refund reverses a payment, it cannot un-send an email, so refunds move the cash above and not this."
+        blurb="What customers actually burned in cold-email sending, after each org's usage discount. No payment is in this figure: a refund reverses a payment, it cannot un-send an email, so refunds move the cash above and not this."
       />
 
       <section className="grid gap-4 md:grid-cols-3">

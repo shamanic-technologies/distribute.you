@@ -189,13 +189,14 @@ export function retentionSeries(rows: RetentionBucket[], granularity: "month" | 
   };
 }
 
-// ── Cash collected (Stripe), net of refunds ──────────────────────────────────
+// ── Cash collected, net of refunds ───────────────────────────────────────────
 // A SECOND, genuinely different money notion from the realized-revenue series
 // above, and the two must never be read as one number:
 //   realized revenue = what customers CONSUMED (cold-email spend actualized on
-//                      the runs ledger). Stripe is nowhere in that path.
-//   cash collected   = what customers PAID us (Stripe charges), minus what went
-//                      back out (settled refunds + lost disputes).
+//                      the runs ledger). No acquirer is in that path.
+//   cash collected   = what customers PAID us, through whichever acquirer took
+//                      the payment, minus what went back out (settled refunds
+//                      + lost disputes).
 // They differ by prepaid credit bought and not yet burned, so cash legitimately
 // runs ahead of consumption. Refunds only exist on the cash side — a refund
 // reverses a payment, it cannot un-consume the sending that already happened —

@@ -10,6 +10,7 @@ import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import type { LeadStanding } from "./lead-standing";
+import type { LeadConversation } from "./lead-conversation";
 import type { ReplyKind } from "./reply-kind";
 import type { OptOutChannel } from "./opt-out-channel";
 import { parseFeatureRevenue } from "./revenue-parse";
@@ -4916,6 +4917,75 @@ export async function getLeadEmail(
     throw new Error("[dashboard] getLeadEmail: invalid response shape");
   }
   return parsed.data as unknown as { generation: LeadEmailGeneration | null };
+}
+
+/**
+ * The conversation actually exchanged with a lead — every message of the thread,
+ * oldest first, read from instantly-service through the api-service proxy.
+ *
+ * This is what the lead panel could never show: the generation read above states
+ * the emails we WROTE, and the delivery flags state that something happened to
+ * them, while the words the prospect sent back — and the words we sent in answer —
+ * lived nowhere a customer could reach. instantly-service holds them for BOTH
+ * transports (the Instantly Unibox and our own SMTP/IMAP self-send) behind one
+ * shape, so a reader never has to know which pipe carried a given lead.
+ *
+ * ⚠️ `campaignId` is the LEAD's own (`lead.campaignId`), never the URL's. See the
+ * note in `lib/lead-conversation.ts`: a campaign as a customer knows it is dozens
+ * of stored rows, the URL names the live one, and the thread is resolved against
+ * the row the lead was actually served under.
+ *
+ * ⚠️ Every field is declared REQUIRED because the producer marks them required.
+ * Declaring them optional is how a rename reads `undefined` forever and every
+ * message silently vanishes; `accountEmail` is the one the producer itself makes
+ * nullable (a row predating the mailbox persist), so it is nullable here too.
+ *
+ * The three outcomes stay distinguishable and the caller must keep them apart: a
+ * 404 means nobody has this exchange on record, a 200 with no messages means the
+ * sequence exists and nothing has been said yet, and a 502 means we hold the
+ * thread and could not read it. Declares no cost — it is a read of what happened.
+ */
+const ConversationMessageSchema = z.object({
+  direction: z.enum(["inbound", "outbound"]),
+  from: z.string(),
+  to: z.string(),
+  at: z.string(),
+  subject: z.string(),
+  text: z.string(),
+});
+
+const LeadConversationSchema = z.object({
+  campaignId: z.string(),
+  instantlyCampaignId: z.string(),
+  leadEmail: z.string(),
+  accountEmail: z.string().nullable(),
+  transport: z.enum(["instantly", "smtp"]),
+  messageCount: z.number(),
+  messages: z.array(ConversationMessageSchema),
+});
+
+const GetLeadConversationResponseSchema = z.object({
+  success: z.literal(true),
+  conversation: LeadConversationSchema,
+});
+
+/** GET /v1/conversations?campaign_id=&email= → the whole thread.
+ *  The gateway named its own path; this conforms to what it deployed (api-service
+ *  v0.103.1), which is the only authority on it — the downstream route it proxies
+ *  is instantly-service's `/orgs/conversations`. */
+export async function getLeadConversation(
+  campaignId: string,
+  email: string,
+  token?: string,
+): Promise<LeadConversation> {
+  const qs = `?campaign_id=${encodeURIComponent(campaignId)}&email=${encodeURIComponent(email)}`;
+  const raw = await apiCall<unknown>(`/conversations${qs}`, { token });
+  const parsed = GetLeadConversationResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadConversation: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadConversation: invalid response shape");
+  }
+  return parsed.data.conversation;
 }
 
 /** A past generated email surfaced as an EXAMPLE for a workflow (campaigns/new picker).

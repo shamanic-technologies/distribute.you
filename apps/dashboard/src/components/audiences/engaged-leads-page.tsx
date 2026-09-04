@@ -12,6 +12,15 @@ import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import type { OptOutChannel } from "@/lib/opt-out-channel";
 import { leadBoardColumnFor, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
+import {
+  conversationRefusal,
+  hasInbound,
+  messageLabel,
+  orderedMessages,
+  unsentFollowUps,
+  type ConversationRefusal,
+  type LeadConversation,
+} from "@/lib/lead-conversation";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -28,6 +37,7 @@ import {
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
   getLeadEmail,
+  getLeadConversation,
   listAudiences,
   type Lead,
   type LeadConsolidatedStatus,
@@ -385,7 +395,9 @@ type MessageEvent = { label: string; at: string; dot: string; note?: string };
 //     data to carry. Inventing one is the thing not to do; the gap is a producer
 //     feature request (lead-service / email-gateway), not a client-side guess.
 type TimelineEntry = {
-  kind: "message" | "event";
+  // "message" = something WE sent, "inbound" = something the PROSPECT sent,
+  // "event" = a lead-level fact belonging to no single message.
+  kind: "message" | "inbound" | "event";
   at: string;
   label: string;
   dot: string;
@@ -405,6 +417,16 @@ type TimelineEntry = {
   // place timing is stated — a second relative figure beside it ("10d after the
   // first email" next to a `+7d` gutter) asks the reader to reconcile two numbers.
   estimated?: boolean;
+  // The mailbox on the other side of this message, printed quietly under the label
+  // so a reader knows which inbox spoke. Only real messages carry one; a derived
+  // follow-up has not been sent, so no mailbox has touched it.
+  who?: string;
+  // A body the reader may not be allowed to read. TRUE only for the generation's
+  // copy, which is our own writing and stays behind the beta gate. A real message
+  // — ours as sent, or the prospect's own words to this customer — is GA: it is
+  // the customer's conversation, and the reason our unsent drafts are gated does
+  // not apply to it.
+  gated?: boolean;
 };
 
 function emailBodyText(html: string | null | undefined, text: string | null | undefined): string {
@@ -510,6 +532,8 @@ function LeadTimeline({
   scopeNote,
   heading = "Activity timeline",
   bare = false,
+  conversation = null,
+  refusal = null,
 }: {
   delivery: TimelineDelivery;
   email: LeadEmailGeneration | null;
@@ -520,8 +544,21 @@ function LeadTimeline({
   /** Rendered INSIDE a campaign card, so it drops the card chrome and separates with a
    *  rule like the audience row above it. The card is what frames it. */
   bare?: boolean;
+  /** The messages actually exchanged on THIS scope, once we have them. Null off a
+   *  campaign card: the thread is a campaign's, and a brand-wide roll-up spans
+   *  several, so borrowing one campaign's words for it would state a wider scope's
+   *  answer under a narrower one's evidence. */
+  conversation?: LeadConversation | null;
+  refusal?: ConversationRefusal | null;
 }) {
   const canReadEmailCopy = useIsBetaUser();
+  // The real exchange, once we have one. Everything below branches on whether it
+  // holds anything: with a thread, each message is its own card carrying what was
+  // ACTUALLY said; without one, the timeline reads exactly as it did before, off
+  // the generation and the delivery flags.
+  const messages = conversation ? orderedMessages(conversation.messages) : [];
+  const hasThread = messages.length > 0;
+  const threadHasInbound = hasInbound(messages);
   const replyColor =
     delivery.replyClassification === "positive" ? "bg-green-500"
       : delivery.replyClassification === "negative" ? "bg-red-500"
@@ -555,19 +592,41 @@ function LeadTimeline({
         ...(delivery.firstDeliveredAt ? [{ label: "Delivered", at: delivery.firstDeliveredAt, dot: "bg-blue-500" }] : []),
       ];
 
-  // The card sits at the moment the message left (or started waiting), so it sorts
-  // into the chronology at the right place even though it prints no date itself.
-  const initialAt = queuedOnly ? (delivery.firstContactedAt || anchor) : sentAt;
-  if (initialAt) {
-    entries.push({
-      kind: "message",
-      label: "Initial email",
-      at: initialAt,
-      dot: "bg-brand-500",
-      subject: initial?.subject ?? null,
-      body: initial?.body,
-      events: initialEvents,
+  if (hasThread) {
+    // One card per message actually exchanged. The delivery rows nest under the
+    // FIRST thing we sent — the first send IS the initial email, which is the same
+    // reasoning that put them there before; every later message carries none,
+    // because the wire gives one first-occurrence per SCOPE and not per step.
+    const firstOutbound = messages.findIndex((m) => m.direction === "outbound");
+    messages.forEach((m, i) => {
+      entries.push({
+        kind: m.direction === "inbound" ? "inbound" : "message",
+        label: messageLabel(messages, i),
+        at: m.at,
+        dot: m.direction === "inbound" ? "bg-violet-500" : "bg-brand-500",
+        subject: m.subject || null,
+        body: m.text,
+        who: m.direction === "inbound" ? m.from : m.to,
+        ...(i === firstOutbound ? { events: initialEvents } : {}),
+      });
     });
+  } else {
+    // No thread on record. The card sits at the moment the message left (or started
+    // waiting), so it sorts into the chronology at the right place even though it
+    // prints no date itself.
+    const initialAt = queuedOnly ? (delivery.firstContactedAt || anchor) : sentAt;
+    if (initialAt) {
+      entries.push({
+        kind: "message",
+        label: "Initial email",
+        at: initialAt,
+        dot: "bg-brand-500",
+        subject: initial?.subject ?? null,
+        body: initial?.body,
+        gated: true,
+        events: initialEvents,
+      });
+    }
   }
 
   // Lead-level, deliberately NOT nested under a message: the wire gives one
@@ -575,17 +634,32 @@ function LeadTimeline({
   // place in the chronology is what says which send preceded them.
   entries.push(
     { kind: "event", label: "Website visit", at: delivery.firstClickedAt ?? "", dot: "bg-violet-500" },
-    {
-      kind: "event",
-      label: delivery.replyClassification ? `Replied (${delivery.replyClassification})` : "Replied",
-      at: delivery.firstRepliedAt ?? "",
-      dot: replyColor,
-    },
+    // The bare `Replied` row exists only while the words do not. Once the thread
+    // carries an inbound message, that message IS the reply — stating it twice, once
+    // as a row saying it happened and once as a card containing it, is one screen
+    // describing one event two ways.
+    ...(threadHasInbound
+      ? []
+      : [{
+          kind: "event" as const,
+          label: delivery.replyClassification ? `Replied (${delivery.replyClassification})` : "Replied",
+          at: delivery.firstRepliedAt ?? "",
+          dot: replyColor,
+        }]),
     { kind: "event", label: "Bounced", at: delivery.firstBouncedAt ?? "", dot: "bg-red-500" },
     { kind: "event", label: "Unsubscribed", at: delivery.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
   );
 
-  entries.push(...(derived?.followUps ?? []));
+  // With a thread on screen, every follow-up that already went out has its own card
+  // carrying what it really said; the derived rows are then only worth showing for
+  // the steps still AHEAD, which is the cadence the reader is waiting on.
+  const followUps = derived?.followUps ?? [];
+  entries.push(
+    ...(hasThread ? unsentFollowUps(followUps, Date.now()) : followUps).map((f) => ({
+      ...f,
+      gated: true,
+    })),
+  );
 
   // Same-instant tie-break only (the primary sort is the timestamp): a message card
   // comes before the lead-level events sharing its instant, because those are
@@ -593,6 +667,9 @@ function LeadTimeline({
   const stageRank = (e: TimelineEntry): number => {
     const l = e.label;
     if (e.kind === "message") return 1;
+    // An inbound message is a RESPONSE to whatever shares its instant, so it sorts
+    // after our own card rather than with it.
+    if (e.kind === "inbound") return 2;
     if (l.startsWith("Replied")) return 9;
     if (l === "Unsubscribed") return 8;
     if (l === "Bounced") return 8;
@@ -608,7 +685,11 @@ function LeadTimeline({
       return dt !== 0 ? dt : stageRank(a) - stageRank(b);
     });
 
-  if (sorted.length === 0) return null;
+  // A thread we hold and could NOT read is stated, never rendered as an absence:
+  // "they never wrote back" and "we could not fetch what they wrote" are different
+  // facts. A 404 is the other one — nobody has this exchange on record — and needs
+  // no line, because the timeline below already says everything we know.
+  if (sorted.length === 0 && refusal !== "unavailable") return null;
 
   // Split past (already happened) from future (scheduled-but-unsent follow-up
   // steps, placed at their estimated send time). The "Now" divider sits between
@@ -634,6 +715,11 @@ function LeadTimeline({
         {heading}
       </h3>
       {scopeNote && <p className="-mt-2 mb-3 text-xs text-gray-500">{scopeNote}</p>}
+      {refusal === "unavailable" && (
+        <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+          We could not read this conversation right now, so the messages below may be incomplete.
+        </p>
+      )}
       <ol className="relative">
         {sorted.map((e, i) => {
           const isFuture = new Date(e.at).getTime() > nowMs;
@@ -668,10 +754,19 @@ function LeadTimeline({
                   <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
                   {/* A message is a demarcated block; a lead-level event is a plain
                       row. Tint plus a full 1px border, never a thick side accent. */}
-                  <div className={e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2" : ""}>
+                  {/* A message we sent, a message they sent, and a lead-level fact each
+                      read as a different kind of thing. Both messages are demarcated
+                      blocks; the prospect's wears its own tint so a glance down the
+                      column shows who was speaking. Tint plus a full 1px border,
+                      never a thick side accent. */}
+                  <div className={
+                    e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2"
+                      : e.kind === "inbound" ? "rounded-lg border border-violet-200 bg-violet-50 px-3 py-2"
+                        : ""
+                  }>
                     <p className="text-sm font-medium text-gray-800">
-                      {e.kind === "message" && (
-                        <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      {e.kind !== "event" && (
+                        <svg className={`inline-block w-3.5 h-3.5 mr-1 -mt-0.5 ${e.kind === "inbound" ? "text-violet-500" : "text-brand-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                       )}
                       {e.label}
                       {e.note && (
@@ -692,19 +787,31 @@ function LeadTimeline({
                         {isFuture ? friendlyDate(e.at) : friendlyDateTime(e.at)}
                       </p>
                     )}
-                    {/* The message itself. Beta-gated: the subject is content too, so
-                        the summary is inside the gate rather than a GA line hiding a
-                        gated body. A non-beta reader sees the card, its cadence and
-                        its delivery rows, and no copy. */}
-                    {canReadEmailCopy && e.body && (
+                    {/* Which inbox is on the other side of this message. Only a real
+                        message has one; a follow-up nobody has sent has touched no
+                        mailbox, so claiming an address for it would state a send. */}
+                    {e.who && <p className="text-xs text-gray-500">{e.who}</p>}
+                    {/* The message itself.
+                        A REAL message — one we sent, or the prospect's own words to
+                        this customer — is GA. It is their conversation; the reason our
+                        unsent drafts are gated (the copy is our writing) does not apply
+                        to something that already left, and least of all to what someone
+                        wrote back to them.
+                        A DERIVED body is the generation's copy for a step that has not
+                        happened, and it stays behind the beta gate — subject included,
+                        since a subject is content too and a GA line hiding a gated body
+                        would leak the headline of it. */}
+                    {e.body && (!e.gated || canReadEmailCopy) && (
                       <details className="mt-1.5 group">
-                        <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
+                        <summary className={`cursor-pointer text-xs select-none ${e.kind === "inbound" ? "text-violet-600 hover:text-violet-700" : "text-brand-600 hover:text-brand-700"}`}>
                           {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
-                          <span className="ml-1.5 inline-flex align-middle"><MaturityBadge level="beta" /></span>
+                          {e.gated && <span className="ml-1.5 inline-flex align-middle"><MaturityBadge level="beta" /></span>}
                         </summary>
-                        <div className="mt-1.5 bg-white border border-brand-200 rounded p-2">
+                        <div className={`mt-1.5 bg-white border rounded p-2 ${e.kind === "inbound" ? "border-violet-200" : "border-brand-200"}`}>
                           <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                          <EmailSignature className="text-xs" />
+                          {/* The signature is OURS. It belongs under something we wrote,
+                              never under the prospect's message. */}
+                          {e.kind === "message" && <EmailSignature className="text-xs" />}
                         </div>
                       </details>
                     )}
@@ -1645,6 +1752,35 @@ export function EngagedLeadsPage({
     { enabled: !!selectedLeadId },
   );
 
+  // The messages actually exchanged on the OPEN CAMPAIGN — what the prospect wrote and
+  // what we answered — read on-demand from instantly-service through the gateway.
+  //
+  // Scoped to that card for the same reason its email is: the thread belongs to a
+  // campaign, a person contacted by several campaigns of one brand has one thread per
+  // campaign, and the card is the only place the panel states a campaign's own answer.
+  // It is also the campaign row the lead was SERVED under rather than whichever row is
+  // live today, which matters because a campaign as a customer knows it is dozens of
+  // stored rows and the live one 404s for the older leads with the longest threads.
+  //
+  // A 404 (nobody has this exchange on record) and a 502 (we hold it and could not read
+  // it) are kept apart and handed to the timeline; anything else is logged loud and
+  // leaves the card reading as it did before, never silently swallowed.
+  const conversationEmail = selectedLead?.email ?? null;
+  const { data: conversationData, error: conversationError } = useAuthQuery(
+    ["leadConversation", openCampaignId ?? "none", conversationEmail ?? "none"],
+    () => getLeadConversation(openCampaignId as string, conversationEmail as string),
+    // No retry: the producer's 404 and 502 are ANSWERS, not blips, and re-asking a
+    // third party for a thread it has already told us it cannot give costs a round
+    // trip per open card for nothing.
+    { enabled: !!(openCampaignId && conversationEmail), retry: false },
+  );
+  const conversationRefusalKind = conversationRefusal(conversationError);
+  useEffect(() => {
+    if (conversationError && !conversationRefusal(conversationError)) {
+      console.error("[dashboard] lead conversation: unexpected read failure", conversationError);
+    }
+  }, [conversationError]);
+
   // Everything the panel can resolve about a card's audience. The card carries an id
   // only — the resolved name and avatar ride the ROW, and only for the campaign the row
   // represents — so the rest comes from the audiences list the page already holds.
@@ -2293,6 +2429,11 @@ export function EngagedLeadsPage({
                   <LeadTimeline
                     delivery={node.card.delivery}
                     email={leadEmailData?.generation ?? null}
+                    // Only the OPEN card has a thread read for it, and only that card
+                    // may show one: handing it to every card would print the open
+                    // campaign's conversation under each of the others' names.
+                    conversation={node.rowId === openCampaignRowId ? conversationData ?? null : null}
+                    refusal={node.rowId === openCampaignRowId ? conversationRefusalKind : null}
                     heading="Activity"
                     bare
                   />
