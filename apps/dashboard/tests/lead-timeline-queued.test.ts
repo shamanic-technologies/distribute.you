@@ -30,18 +30,12 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     return src.slice(at, at + length);
   };
 
-  // The WHOLE timeline component, bounded by the next declaration rather than a
-  // measured char count. A number expires on the next comment added to the function
-  // — which is exactly what happened when the real conversation landed and pushed
-  // every later assertion out of an 11000-char window. The boundary moves with the
-  // file; `LeadsLoadingSkeleton` carries none of the literals asserted below, so an
-  // over-long slice cannot make a `not.toContain` pass or fail by accident.
-  const timelineBody = () => {
-    const at = src.indexOf("function LeadTimeline(");
-    expect(at, "marker not found: function LeadTimeline(").toBeGreaterThan(-1);
-    const end = src.indexOf("function LeadsLoadingSkeleton(");
-    expect(end).toBeGreaterThan(at);
-    return src.slice(at, end);
+  /** Bounded to the next top-level `function`, for `toContain`-only guards. */
+  const sliceToNextFunction = (marker: string) => {
+    const at = src.indexOf(marker);
+    expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
+    const end = src.indexOf("\nfunction ", at + marker.length);
+    return src.slice(at, end > at ? end : undefined);
   };
 
   it("names the queue state Queued and drops the Contacted claim", () => {
@@ -87,14 +81,14 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   it("carries the note on the shared InfoTooltip, never a native title", () => {
     // A native `title` waits ~1s, cannot be styled, and shows NOTHING on touch —
     // which is exactly how this shipped broken the first time.
-    const body = timelineBody();
+    const body = sliceToNextFunction("function LeadTimeline(");
     expect(body).toContain("<InfoTooltip tip={e.note}");
     expect(body).not.toContain("title={e.note}");
     expect(src).toContain('import { InfoTooltip } from "@/components/visibility/metric-info"');
   });
 
   it("states each piece of timing exactly once", () => {
-    const body = timelineBody();
+    const body = sliceToNextFunction("function LeadTimeline(");
     // The gutter carries the GAP only. It used to print the first row's own date,
     // one inch from that row's own "Jul 30, 2026".
     expect(body).toContain('const gutter = i === 0 ? "" : gapLabel(sorted[i - 1].at, e.at)');
@@ -107,7 +101,10 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("shows the queue row only while nothing has been sent", () => {
-    const body = timelineBody();
+    // 3000 is a MEASURED bound and stays one: the `not.toContain` below would read the
+    // next function's body if the slice ran past this one. `label: QUEUED_LABEL` sits
+    // at 1600 and `note: SEND_WINDOW_NOTE` at 1874, so it has real headroom.
+    const body = sliceFrom("function LeadTimeline(", 3000);
     // The queue row is gated on the absence of a real send, so Queued and Sent can
     // never both appear for one lead — they are the two branches of one ternary.
     expect(body).toContain("const queuedOnly = !sentAt");
@@ -120,21 +117,25 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("groups each message's delivery rows inside that message", () => {
-    const body = timelineBody();
+    // Bounded to the NEXT declaration, not a number: every assertion below is a
+    // `toContain`, which a long slice cannot hurt, and a measured length expires on
+    // the next comment added to the function — it did, when the timeline took a
+    // structural `delivery` prop and grew a doc comment above its signature.
+    const body = sliceToNextFunction("function LeadTimeline(");
     // "Sent" on its own never said sent WHAT, and a lead receives several messages.
     expect(body).toContain('label: "Initial email"');
     expect(body).toContain("events: initialEvents");
     // Delivered is dropped when absent rather than rendered empty.
-    expect(body).toContain("...(lead.firstDeliveredAt ? [{ label: \"Delivered\"");
+    expect(body).toContain("...(delivery.firstDeliveredAt ? [{ label: \"Delivered\"");
     // Engagement is NOT nested: the wire gives one first-occurrence per LEAD, and a
     // reply can land after follow-up 2, so filing it under the initial email would
     // state something we never observed.
     expect(body).toContain('{ kind: "event", label: "Website visit"');
-    expect(body).toContain('label: lead.replyClassification ? `Replied');
+    expect(body).toContain('label: delivery.replyClassification ? `Replied');
   });
 
   it("spaces consecutive rows off the index, not a :last-child modifier", () => {
-    const body = timelineBody();
+    const body = sliceToNextFunction("function LeadTimeline(");
     // `last:` resolves to `:last-child` of the PARENT, and this div is the final
     // child of its <li> on EVERY row — so `pb-4 last:pb-0` zeroed the padding
     // everywhere and consecutive message cards sat edge to edge. Verified headlessly:
@@ -147,7 +148,7 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("draws a message as a demarcated block, never a thick side accent", () => {
-    const body = timelineBody();
+    const body = sliceToNextFunction("function LeadTimeline(");
     // Repo rule: tint + a full 1px border, no border-left accent.
     expect(body).toContain('e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2"');
     // A message the PROSPECT sent is a card too, in its own tint, so a glance down

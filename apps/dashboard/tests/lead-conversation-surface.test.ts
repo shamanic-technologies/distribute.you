@@ -25,16 +25,16 @@ describe("Leads — the panel reads the real conversation", () => {
     return src.slice(at, end);
   };
 
-  it("keys the read on the LEAD's own campaign, never the page's", () => {
-    // A campaign as the customer knows it is dozens of stored rows — campaign-service
-    // mints a fresh one on every workflow switch and keeps the ancestors — and the
-    // thread is resolved against the row the lead was SERVED under. The URL names the
-    // live row, so keying on it 404s exactly the older leads with the longest
-    // conversations.
-    expect(src).toContain("const conversationCampaignId = selectedLead?.campaignId ?? null;");
+  it("keys the read on the OPEN CAMPAIGN CARD, never the page's campaign", () => {
+    // The thread belongs to a campaign, and the card is the only place the panel
+    // states a campaign's own answer — so the read is scoped exactly as that card's
+    // generated email is, on the same `openCampaignId`. It is also the campaign row
+    // the lead was SERVED under rather than whichever row is live today, which
+    // matters because a campaign as a customer knows it is dozens of stored rows and
+    // the live one 404s for the older leads with the longest threads.
     expect(src).toContain("const conversationEmail = selectedLead?.email ?? null;");
     expect(src).toContain(
-      '["leadConversation", conversationCampaignId ?? "none", conversationEmail ?? "none"]',
+      '["leadConversation", openCampaignId ?? "none", conversationEmail ?? "none"]',
     );
     // Not the page-level campaign prop, which is the live row.
     expect(src).not.toContain("getLeadConversation(campaignId as string");
@@ -52,7 +52,7 @@ describe("Leads — the panel reads the real conversation", () => {
     // The producer's 404 and 502 are ANSWERS, not blips. Retrying spends a round trip
     // per open lead to be told the same thing.
     expect(src).toContain(
-      "{ enabled: !!(conversationCampaignId && conversationEmail), retry: false }",
+      "{ enabled: !!(openCampaignId && conversationEmail), retry: false }",
     );
   });
 
@@ -66,14 +66,28 @@ describe("Leads — the panel reads the real conversation", () => {
     );
   });
 
-  it("threads the conversation into the timeline at the call site", () => {
+  it("threads the conversation into the OPEN card's timeline at the call site", () => {
     // The prop, not only the component: a page that renders <LeadTimeline> without
     // passing the thread ships a correct component and no feature.
     const at = src.indexOf("<LeadTimeline");
     expect(at).toBeGreaterThan(-1);
     const call = src.slice(at, src.indexOf("/>", at));
-    expect(call).toContain("conversation={conversationData ?? null}");
-    expect(call).toContain("refusal={conversationRefusalKind}");
+    // Only the OPEN card may show it. Handing it to every card would print one
+    // campaign's conversation under each of the others' names.
+    expect(call).toContain("conversation={node.rowId === openCampaignRowId ? conversationData ?? null : null}");
+    expect(call).toContain("refusal={node.rowId === openCampaignRowId ? conversationRefusalKind : null}");
+  });
+
+  it("keeps the thread off the brand-wide roll-up", () => {
+    // That timeline spans every campaign of the brand, and a thread belongs to one —
+    // borrowing a campaign's words for it would state a wider scope's answer under a
+    // narrower one's evidence. It is rendered with neither prop, so the component's
+    // defaults apply.
+    const rollupAt = src.lastIndexOf("<LeadTimeline");
+    const rollup = src.slice(rollupAt, src.indexOf("/>", rollupAt));
+    expect(rollup).toContain("delivery={selectedLead}");
+    expect(rollup).not.toContain("conversation=");
+    expect(rollup).not.toContain("refusal=");
   });
 
   it("builds one card per message actually exchanged", () => {
@@ -99,6 +113,7 @@ describe("Leads — the panel reads the real conversation", () => {
     // Every follow-up already sent has its own card carrying what it really said;
     // keeping the derived row too would state one email twice.
     expect(body).toContain("hasThread ? unsentFollowUps(followUps, Date.now()) : followUps");
+    expect(body).toContain("const hasThread = messages.length > 0;");
   });
 
   it("falls back to the derived view when nobody has the exchange on record", () => {

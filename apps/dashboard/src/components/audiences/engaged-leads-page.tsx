@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -26,6 +26,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
+  listCampaignsByBrand,
   listBrandLeads,
   listCampaignLeads,
   getLeadConsolidatedStatus,
@@ -38,6 +39,7 @@ import {
   type Lead,
   type LeadConsolidatedStatus,
   type LeadEmailGeneration,
+  type LeadCampaignEvidence,
   type AudienceWire,
 } from "@/lib/api";
 import {
@@ -96,6 +98,12 @@ import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { tenantBasePath } from "@/lib/offer-path";
+import {
+  buildLeadCampaignTree,
+  firstCampaignRowId,
+  type CampaignInfo,
+} from "@/lib/lead-campaign-tree";
+import { LeadCampaignSections } from "@/components/audiences/lead-campaign-sections";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // funnels (`leadTabsForFunnels`); this map only names them.
@@ -241,10 +249,17 @@ function htmlToText(html: string): string {
 // Per-lead audience — served ready-made on the lead row by lead-service
 // (`lead.audience` = {id,name,avatarUrl} from the leads_campaigns attribution).
 // Null when the lead was never attributed to an audience.
-type LeadAudience = { name: string; avatarUrl: string | null };
+//
+// `extra` = how many FURTHER audiences this person carries across their other
+// campaigns. The table lists one row per person now, and a person contacted by
+// several campaigns was picked by each of them for its own reason — so a cell
+// stating one name alone would state one campaign's answer as the person's. The
+// panel lists them per campaign; the cell only says there are more.
+type LeadAudience = { name: string; avatarUrl: string | null; extra?: number };
 
 function AudienceCell({ audience }: { audience: LeadAudience | null }) {
   if (!audience) return <span className="text-xs text-gray-300">-</span>;
+  const extra = audience.extra ?? 0;
   // `min-w-0` + `truncate`: an audience name is free text and a long one used to push
   // the row past a phone's viewport (measured at 360px), which is the whole reason the
   // table scrolled sideways.
@@ -263,127 +278,13 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
         </span>
       )}
       <span className="truncate text-gray-700">{audience.name}</span>
-    </div>
-  );
-}
-
-// Right-panel "Audience" card — which saved audience this lead was attributed to.
-// `inline` = the {id,name,avatarUrl} served on the lead row (always present when
-// attributed); `full` = the matching human-service audience row looked up by id
-// (description only), null until listAudiences resolves or when the audience was
-// archived away. Renders nothing when the lead has no audience.
-//
-// Size / remaining-to-contact deliberately do NOT live here: the Audiences page
-// owns every audience number and the targeting filters. The card links there with
-// `?audienceId=` (the deep-link seed CustomerAudiencesPage reads on first paint,
-// same as the brand-overview Top-3-audiences card), which opens that audience's
-// detail panel with its colored targeting tags. That page lives under the audience's
-// OWN offer, so the link waits on the human-service lookup that states it — see
-// `audienceOfferId` below for why the route's offer is only the fallback.
-/**
- * The OFFER this lead belongs to — what it was contacted to be sold.
- *
- * It sits ABOVE the audience deliberately, and the order is the model: an offer
- * is WHAT we were selling this person, an audience is WHY we picked them for
- * it. The audience was chosen for the offer, so reading the panel top-down
- * gives the proposition before the reason.
- *
- * Rendered straight from `lead.offer`, which lead-service resolves off the
- * campaign the lead was served under. No client-side join — the dashboard holds
- * neither the campaign-to-offer map nor the offer's name, and the audience card
- * below is this repo's own precedent for why that join belongs upstream even
- * where it is possible.
- *
- * A lead with no offer renders NOTHING rather than an empty card: lead-service
- * is fail-soft here, so an absent offer means "we could not say" as often as
- * "there is none", and a card reading `-` would assert the second.
- *
- * A present id with a null NAME still renders, without the name. The
- * attribution is real and the link works; hiding it would lose a true fact over
- * a missing label.
- */
-function OfferSection({ offer }: { offer: { id: string; name: string | null } }) {
-  const params = useParams();
-  const orgId = params.orgId as string;
-  const brandId = params.brandId as string;
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Offer</h3>
-      {/* The mark leads the name here exactly as it does in the top bar, the tenant
-          switcher, the Offers table and the leads table's own Offer column — an offer
-          wears one mark on every surface that names one. */}
-      <div className="flex min-w-0 items-center gap-2">
-        <OfferMark size="sm" />
-        <p className="truncate text-sm font-medium text-gray-800">
-          {offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
-        </p>
-      </div>
-      <Link
-        href={`/orgs/${orgId}/brands/${brandId}/offers/${offer.id}`}
-        className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
-      >
-        View offer
-      </Link>
-    </div>
-  );
-}
-
-function AudienceSection({
-  inline,
-  full,
-}: {
-  inline: { id: string; name: string; avatarUrl: string | null };
-  full: AudienceWire | null;
-}) {
-  const params = useParams();
-  const orgId = params.orgId as string;
-  const brandId = params.brandId as string;
-  // Present on the offer and campaign routes, absent on the brand one.
-  const routeOfferId = params.offerId as string | undefined;
-  // An audience's page lives under the OFFER it was assembled for, so the link is
-  // built from the AUDIENCE's own `offerId` — not from whichever route the reader
-  // happens to be on. Building it from the route sent every brand-level reader to
-  // `/brands/:id/audiences`, a path that does not exist (audiences moved down to
-  // the offer), so the card's one affordance was a 404 on the brand Leads page.
-  // The route id stays as the fallback for the case the lookup misses (an audience
-  // archived out of the list): inside an offer, that offer's page is the right one.
-  const audienceOfferId = full?.offerId ?? routeOfferId ?? null;
-  // No offer resolvable ⟹ NO link. Some audiences predate the offer level and are
-  // filed under none, so there is no page to open; a link to a 404 is worse than a
-  // card that simply states the audience. Same render while the lookup is in
-  // flight — we do not claim either way before we know.
-  const detailHref = audienceOfferId
-    ? `${tenantBasePath(orgId, brandId, audienceOfferId)}/audiences?audienceId=${inline.id}`
-    : null;
-  const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
-  const description = full?.description ?? null;
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Audience</h3>
-      <div className="flex items-center gap-3">
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt=""
-            className="w-9 h-9 rounded object-cover bg-white border border-gray-200 shrink-0"
-            loading="lazy"
-          />
-        ) : (
-          <span className="w-9 h-9 rounded bg-brand-100 text-brand-700 text-sm font-semibold flex items-center justify-center shrink-0">
-            {inline.name.charAt(0).toUpperCase()}
-          </span>
-        )}
-        <p className="font-medium text-gray-800 text-sm">{inline.name}</p>
-      </div>
-      {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
-      {detailHref && (
-        <Link
-          href={detailHref}
-          className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
+      {extra > 0 && (
+        <span
+          className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500"
+          title={`${extra + 1} audiences across this person's campaigns`}
         >
-          View audience details
-        </Link>
+          +{extra}
+        </span>
       )}
     </div>
   );
@@ -570,16 +471,49 @@ function deriveEmailRows(
 // browser and is readable in devtools. It is the org's own copy to its own leads, so
 // this is a display decision, not a security boundary — same posture as every other
 // beta gate in this app.
+/**
+ * The delivery facts a timeline reads.
+ *
+ * Structural, and satisfied by BOTH the lead row (the brand-wide roll-up) and one of
+ * lead-service's per-campaign cards — they carry the same field names for the same
+ * facts at two scopes. That is what lets one timeline serve a campaign card without a
+ * second implementation, and it is why the scope is the CALLER's to state.
+ */
+interface TimelineDelivery {
+  replyClassification: "positive" | "negative" | "neutral" | null;
+  firstSentAt?: string | null;
+  firstContactedAt?: string | null;
+  firstDeliveredAt?: string | null;
+  firstClickedAt?: string | null;
+  firstRepliedAt?: string | null;
+  firstBouncedAt?: string | null;
+  firstUnsubscribedAt?: string | null;
+}
+
 function LeadTimeline({
-  lead,
+  delivery,
   email,
-  conversation,
-  refusal,
+  scopeNote,
+  heading = "Activity timeline",
+  bare = false,
+  conversation = null,
+  refusal = null,
 }: {
-  lead: Lead;
+  delivery: TimelineDelivery;
   email: LeadEmailGeneration | null;
-  conversation: LeadConversation | null;
-  refusal: ConversationRefusal | null;
+  /** WHICH campaign these rows are about, stated only where the answer is not
+   *  "the one campaign above". Null renders no line. */
+  scopeNote?: string | null;
+  heading?: string;
+  /** Rendered INSIDE a campaign card, so it drops the card chrome and separates with a
+   *  rule like the audience row above it. The card is what frames it. */
+  bare?: boolean;
+  /** The messages actually exchanged on THIS scope, once we have them. Null off a
+   *  campaign card: the thread is a campaign's, and a brand-wide roll-up spans
+   *  several, so borrowing one campaign's words for it would state a wider scope's
+   *  answer under a narrower one's evidence. */
+  conversation?: LeadConversation | null;
+  refusal?: ConversationRefusal | null;
 }) {
   const canReadEmailCopy = useIsBetaUser();
   // The real exchange, once we have one. Everything below branches on whether it
@@ -590,14 +524,14 @@ function LeadTimeline({
   const hasThread = messages.length > 0;
   const threadHasInbound = hasInbound(messages);
   const replyColor =
-    lead.replyClassification === "positive" ? "bg-green-500"
-      : lead.replyClassification === "negative" ? "bg-red-500"
+    delivery.replyClassification === "positive" ? "bg-green-500"
+      : delivery.replyClassification === "negative" ? "bg-red-500"
         : "bg-violet-500";
 
   // A lead handed to Instantly with no send observed yet. The push and the message
   // still waiting to go out are ONE fact, so they share a row; the moment a real send
   // exists the queue step becomes technical noise and disappears.
-  const sentAt = lead.firstSentAt ?? "";
+  const sentAt = delivery.firstSentAt ?? "";
   const queuedOnly = !sentAt;
   const anchor = sentAt || email?.createdAt || "";
   const derived = email ? deriveEmailRows(email, anchor, queuedOnly) : null;
@@ -613,20 +547,20 @@ function LeadTimeline({
         label: QUEUED_LABEL,
         // The push timestamp when we have it; otherwise the generation time, which is
         // when the message started waiting. Either way the row claims no send.
-        at: lead.firstContactedAt || anchor,
+        at: delivery.firstContactedAt || anchor,
         dot: "bg-slate-400",
         note: SEND_WINDOW_NOTE,
       }]
     : [
         { label: "Sent", at: sentAt, dot: "bg-blue-400" },
-        ...(lead.firstDeliveredAt ? [{ label: "Delivered", at: lead.firstDeliveredAt, dot: "bg-blue-500" }] : []),
+        ...(delivery.firstDeliveredAt ? [{ label: "Delivered", at: delivery.firstDeliveredAt, dot: "bg-blue-500" }] : []),
       ];
 
   if (hasThread) {
     // One card per message actually exchanged. The delivery rows nest under the
     // FIRST thing we sent — the first send IS the initial email, which is the same
     // reasoning that put them there before; every later message carries none,
-    // because the wire gives one first-occurrence per LEAD and not per step.
+    // because the wire gives one first-occurrence per SCOPE and not per step.
     const firstOutbound = messages.findIndex((m) => m.direction === "outbound");
     messages.forEach((m, i) => {
       entries.push({
@@ -644,7 +578,7 @@ function LeadTimeline({
     // No thread on record. The card sits at the moment the message left (or started
     // waiting), so it sorts into the chronology at the right place even though it
     // prints no date itself.
-    const initialAt = queuedOnly ? (lead.firstContactedAt || anchor) : sentAt;
+    const initialAt = queuedOnly ? (delivery.firstContactedAt || anchor) : sentAt;
     if (initialAt) {
       entries.push({
         kind: "message",
@@ -663,7 +597,7 @@ function LeadTimeline({
   // first-occurrence per lead, and a visit or a reply can follow any step. Their
   // place in the chronology is what says which send preceded them.
   entries.push(
-    { kind: "event", label: "Website visit", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
+    { kind: "event", label: "Website visit", at: delivery.firstClickedAt ?? "", dot: "bg-violet-500" },
     // The bare `Replied` row exists only while the words do not. Once the thread
     // carries an inbound message, that message IS the reply — stating it twice, once
     // as a row saying it happened and once as a card containing it, is one screen
@@ -672,12 +606,12 @@ function LeadTimeline({
       ? []
       : [{
           kind: "event" as const,
-          label: lead.replyClassification ? `Replied (${lead.replyClassification})` : "Replied",
-          at: lead.firstRepliedAt ?? "",
+          label: delivery.replyClassification ? `Replied (${delivery.replyClassification})` : "Replied",
+          at: delivery.firstRepliedAt ?? "",
           dot: replyColor,
         }]),
-    { kind: "event", label: "Bounced", at: lead.firstBouncedAt ?? "", dot: "bg-red-500" },
-    { kind: "event", label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
+    { kind: "event", label: "Bounced", at: delivery.firstBouncedAt ?? "", dot: "bg-red-500" },
+    { kind: "event", label: "Unsubscribed", at: delivery.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
   );
 
   // With a thread on screen, every follow-up that already went out has its own card
@@ -728,8 +662,23 @@ function LeadTimeline({
   const firstFutureIdx = sorted.findIndex((e) => new Date(e.at).getTime() > nowMs);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Activity timeline</h3>
+    <div
+      className={
+        bare
+          ? "mt-3 border-t border-gray-200 pt-3"
+          : "bg-white rounded-lg border border-gray-200 p-4 mb-4"
+      }
+    >
+      <h3
+        className={
+          bare
+            ? "mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400"
+            : "text-xs font-medium text-gray-500 uppercase tracking-wider mb-3"
+        }
+      >
+        {heading}
+      </h3>
+      {scopeNote && <p className="-mt-2 mb-3 text-xs text-gray-500">{scopeNote}</p>}
       {refusal === "unavailable" && (
         <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
           We could not read this conversation right now, so the messages below may be incomplete.
@@ -1087,7 +1036,38 @@ export function EngagedLeadsPage({
     { refetchInterval: LEADS_POLL_INTERVAL },
   );
 
+  // lead-service answers a brand-scoped read with ONE ROW PER PERSON already
+  // (`DISTINCT ON (lead_id)`), so there is nothing to dedupe here. What a person's
+  // several campaigns did lives on `lead.campaigns`, served under `?include=campaigns`
+  // — the row is the person, the cards are their campaigns.
   const leads = useMemo(() => data?.leads ?? [], [data]);
+
+  // Every campaign of the brand, keyed by its own id — what the panel's tree needs to
+  // name a campaign's funnel, channel and leg. The key is byte-equal to the one
+  // `useCampaignRows` already polls below, so this costs no request. Its OWN rows are
+  // feature-filtered and identity-collapsed, which is right for a table listing
+  // campaigns and wrong here: this person may have been contacted by a channel the
+  // brand's table does not list, and by a stopped ancestor of a live campaign.
+  const { data: allCampaignsData } = useAuthQuery(
+    ["campaigns", brandId],
+    () => listCampaignsByBrand(brandId),
+    { refetchInterval: POLL_INTERVAL },
+  );
+  const campaignInfoOf = useCallback(
+    (id: string): CampaignInfo | null => {
+      const c = allCampaignsData?.campaigns.find((x) => x.id === id);
+      if (!c) return null;
+      return {
+        // Normalized here rather than in the tree: the wire carries two spellings of
+        // every funnel, and the normalizer is typed against the closed key union.
+        funnelKey: c.funnelKey ? normalizeSalesFunnelKey(c.funnelKey) : null,
+        featureSlug: c.featureSlug,
+        legKey: c.legKey,
+        status: c.status,
+      };
+    },
+    [allCampaignsData],
+  );
 
   // Deep-link seed: `?leadRowId=` (a funnel-leg board card navigates here rather
   // than carrying its own copy of the lead panel) opens that lead's panel on first
@@ -1236,8 +1216,23 @@ export function EngagedLeadsPage({
   // Audience per lead — read straight off the lead row. lead-service serves
   // `lead.audience` ({id,name,avatarUrl}) from the leads_campaigns attribution,
   // so the column renders on every tab with no client-side membership join.
-  const audienceOf = (lead: Lead): LeadAudience | null =>
-    lead.audience ? { name: lead.audience.name, avatarUrl: lead.audience.avatarUrl } : null;
+  //
+  // The row names the audience of the campaign it represents; `extra` counts the
+  // person's OTHER distinct audiences across their remaining campaigns, read off the
+  // served cards. Without it a cell states one campaign's answer as the whole of what
+  // we know. The panel lists them per campaign.
+  const audienceOf = (lead: Lead): LeadAudience | null => {
+    if (!lead.audience) return null;
+    const ids = new Set<string>([lead.audience.id]);
+    for (const card of lead.campaigns ?? []) {
+      if (card.audienceId) ids.add(card.audienceId);
+    }
+    return {
+      name: lead.audience.name,
+      avatarUrl: lead.audience.avatarUrl,
+      extra: Math.max(0, ids.size - 1),
+    };
+  };
 
   // Ordered by the value the Date column SHOWS — the timestamp of each row's own
   // status, newest first. Sorting on a different field than the column displays
@@ -1626,38 +1621,6 @@ export function EngagedLeadsPage({
   // several brands in one org, each with its own generated email. Without brandId the
   // read returns the wrong brand's email under this brand's lead. brandId is in the key
   // so switching brand refetches the correct generation.
-  const { data: leadEmailData } = useAuthQuery(
-    ["leadEmail", selectedLeadId, brandId],
-    () => getLeadEmail(selectedLeadId as string, brandId),
-    { enabled: !!selectedLeadId },
-  );
-  // The conversation actually exchanged with this lead — every message of the thread,
-  // read on-demand when a lead is opened. Two things decide the key and both are the
-  // LEAD's own, never the page's:
-  //  - `selectedLead.campaignId` is the stored campaign row this lead was served
-  //    under. A campaign as the customer knows it is dozens of stored rows, and the
-  //    URL names the LIVE one — keying on it 404s exactly the older leads with the
-  //    longest conversations.
-  //  - the lead's email is what instantly-service resolves the thread by.
-  // A 404 (nobody has this exchange on record) and a 502 (we hold it and could not
-  // read it) are kept apart and handed to the timeline; anything else is logged loud
-  // and leaves the timeline reading as it did before, never silently swallowed.
-  const conversationCampaignId = selectedLead?.campaignId ?? null;
-  const conversationEmail = selectedLead?.email ?? null;
-  const { data: conversationData, error: conversationError } = useAuthQuery(
-    ["leadConversation", conversationCampaignId ?? "none", conversationEmail ?? "none"],
-    () => getLeadConversation(conversationCampaignId as string, conversationEmail as string),
-    // No retry: the producer's 404 and 502 are ANSWERS, not blips, and re-asking a
-    // third party for a thread it has already told us it cannot give costs a round
-    // trip per open lead for nothing.
-    { enabled: !!(conversationCampaignId && conversationEmail), retry: false },
-  );
-  const conversationRefusalKind = conversationRefusal(conversationError);
-  useEffect(() => {
-    if (conversationError && !conversationRefusal(conversationError)) {
-      console.error("[dashboard] lead conversation: unexpected read failure", conversationError);
-    }
-  }, [conversationError]);
   const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");
   const orgLocation = [selectedOrg?.city, selectedOrg?.state, selectedOrg?.country].filter(Boolean).join(", ");
 
@@ -1669,11 +1632,111 @@ export function EngagedLeadsPage({
     () => listAudiences(brandId, { offerId }),
     {},
   );
-  const selectedAudienceInline = selectedLead?.audience ?? null;
-  const selectedAudienceFull =
-    selectedAudienceInline
-      ? audiencesData?.audiences.find((a) => a.id === selectedAudienceInline.id) ?? null
-      : null;
+  // The OPEN PERSON's campaigns, nested offer > funnel > campaign.
+  //
+  // The cards are lead-service's own (`?include=campaigns`), never a grouping of rows: a
+  // brand-scoped read answers one row per person, so grouping rows draws one card
+  // however many campaigns the person is really in.
+  const leadCampaignTree = useMemo(
+    () => buildLeadCampaignTree(selectedLead?.campaigns ?? [], campaignInfoOf),
+    [selectedLead, campaignInfoOf],
+  );
+
+  // ONE CARD OPEN AT A TIME, and the first one by default so a person in a single
+  // campaign never has to click to see anything. Latched on the lead's identity rather
+  // than set in an effect: a poll must not re-open a card the reader closed, and a
+  // freshly opened lead must not inherit the previous one's open row.
+  const [openCampaign, setOpenCampaign] = useState<{ leadRowId: string; rowId: string | null } | null>(null);
+  const defaultOpenRowId = firstCampaignRowId(leadCampaignTree);
+  const openCampaignRowId =
+    selectedLead && openCampaign?.leadRowId === selectedLead.id
+      ? openCampaign.rowId
+      : defaultOpenRowId;
+  const toggleCampaign = useCallback(
+    (rowId: string) => {
+      if (!selectedLead) return;
+      setOpenCampaign((prev) => {
+        const current =
+          prev?.leadRowId === selectedLead.id ? prev.rowId : defaultOpenRowId;
+        return { leadRowId: selectedLead.id, rowId: current === rowId ? null : rowId };
+      });
+    },
+    [selectedLead, defaultOpenRowId],
+  );
+
+  // Which campaign the open card belongs to — what the email read below is scoped by.
+  const openCampaignId = useMemo(() => {
+    for (const offer of leadCampaignTree.offers) {
+      for (const funnel of offer.funnels) {
+        for (const node of funnel.campaigns) {
+          if (node.rowId === openCampaignRowId) return node.campaignId;
+        }
+      }
+    }
+    return null;
+  }, [leadCampaignTree, openCampaignRowId]);
+
+  //
+  // Scoped to the OPEN CAMPAIGN as well, because a person contacted by several campaigns
+  // of one brand has ONE GENERATION PER CAMPAIGN — 5,539 leads carry two or more — and
+  // without the scope this returns whichever the read picked, under another campaign's
+  // name. `openCampaignId` is in the key so opening a second card refetches rather than
+  // showing the first card's copy.
+  const { data: leadEmailData } = useAuthQuery(
+    ["leadEmail", selectedLeadId, brandId, openCampaignId],
+    () => getLeadEmail(selectedLeadId as string, brandId, openCampaignId ?? undefined),
+    { enabled: !!selectedLeadId },
+  );
+
+  // The messages actually exchanged on the OPEN CAMPAIGN — what the prospect wrote and
+  // what we answered — read on-demand from instantly-service through the gateway.
+  //
+  // Scoped to that card for the same reason its email is: the thread belongs to a
+  // campaign, a person contacted by several campaigns of one brand has one thread per
+  // campaign, and the card is the only place the panel states a campaign's own answer.
+  // It is also the campaign row the lead was SERVED under rather than whichever row is
+  // live today, which matters because a campaign as a customer knows it is dozens of
+  // stored rows and the live one 404s for the older leads with the longest threads.
+  //
+  // A 404 (nobody has this exchange on record) and a 502 (we hold it and could not read
+  // it) are kept apart and handed to the timeline; anything else is logged loud and
+  // leaves the card reading as it did before, never silently swallowed.
+  const conversationEmail = selectedLead?.email ?? null;
+  const { data: conversationData, error: conversationError } = useAuthQuery(
+    ["leadConversation", openCampaignId ?? "none", conversationEmail ?? "none"],
+    () => getLeadConversation(openCampaignId as string, conversationEmail as string),
+    // No retry: the producer's 404 and 502 are ANSWERS, not blips, and re-asking a
+    // third party for a thread it has already told us it cannot give costs a round
+    // trip per open card for nothing.
+    { enabled: !!(openCampaignId && conversationEmail), retry: false },
+  );
+  const conversationRefusalKind = conversationRefusal(conversationError);
+  useEffect(() => {
+    if (conversationError && !conversationRefusal(conversationError)) {
+      console.error("[dashboard] lead conversation: unexpected read failure", conversationError);
+    }
+  }, [conversationError]);
+
+  // Everything the panel can resolve about a card's audience. The card carries an id
+  // only — the resolved name and avatar ride the ROW, and only for the campaign the row
+  // represents — so the rest comes from the audiences list the page already holds.
+  // An audience in neither (archived away, or still loading) keeps its id and says so
+  // rather than being dropped: the attribution is real either way.
+  const audienceForCard = useCallback(
+    (card: LeadCampaignEvidence) => {
+      if (!card.audienceId) return null;
+      const full = audiencesData?.audiences.find((a) => a.id === card.audienceId) ?? null;
+      const inline = selectedLead?.audience?.id === card.audienceId ? selectedLead.audience : null;
+      return {
+        id: card.audienceId,
+        name: inline?.name ?? full?.name ?? null,
+        avatarUrl: inline?.avatarUrl ?? full?.avatarUrl ?? null,
+        description: full?.description ?? null,
+        offerId: full?.offerId ?? null,
+      };
+    },
+    [audiencesData, selectedLead],
+  );
 
 
   // ── Funnel-stage statements for the open lead ────────────────────────────────
@@ -2229,20 +2292,63 @@ export function EngagedLeadsPage({
                 </div>
               </div>
             )}
-            {selectedLead.offer && <OfferSection offer={selectedLead.offer} />}
-            {selectedAudienceInline && (
-              <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
-            )}
+            {/* This person's campaigns, each holding what IT decided about them. The
+                offer, the audience AND the timeline live in here rather than as
+                panel-level cards: all three are a campaign's answer, and stating one of
+                them at person level presents one campaign's answer as the person's.
+
+                The open card's timeline reads that campaign's OWN delivery evidence
+                (lead-service `?include=campaigns`) and that campaign's OWN generated
+                email (content-generation-service `?campaignId=`), so two cards can and
+                do differ. A card the provider holds no evidence for says so rather than
+                drawing an all-false timeline: "we cannot tell" is not "nothing
+                happened". */}
+            <LeadCampaignSections
+              tree={leadCampaignTree}
+              audienceFor={audienceForCard}
+              openRowId={openCampaignRowId}
+              onToggle={toggleCampaign}
+              renderDetail={(node) =>
+                node.card.delivery ? (
+                  <LeadTimeline
+                    delivery={node.card.delivery}
+                    email={leadEmailData?.generation ?? null}
+                    // Only the OPEN card has a thread read for it, and only that card
+                    // may show one: handing it to every card would print the open
+                    // campaign's conversation under each of the others' names.
+                    conversation={node.rowId === openCampaignRowId ? conversationData ?? null : null}
+                    refusal={node.rowId === openCampaignRowId ? conversationRefusalKind : null}
+                    heading="Activity"
+                    bare
+                  />
+                ) : (
+                  <p className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-500">
+                    No delivery events recorded for this campaign yet.
+                  </p>
+                )
+              }
+            />
             {/* No `Served:` footer. It printed an internal pipeline instant, in a
                 different date format than every row above it, for a step the customer
                 has no use for. The one place `servedAt` is worth showing is the row's
-                own Status/Date pair while the lead still reads `Processing`. */}
-            <LeadTimeline
-              lead={selectedLead}
-              email={leadEmailData?.generation ?? null}
-              conversation={conversationData ?? null}
-              refusal={conversationRefusalKind}
-            />
+                own Status/Date pair while the lead still reads `Processing`.
+
+                The BRAND-wide timeline, kept only where there are campaigns whose cards
+                do not already account for it: with one campaign it would print the same
+                rows twice under two headings. It reads the row's own delivery fields,
+                which lead-service serves as the roll-up across every campaign of the
+                brand — including any this read's scope did not return. */}
+            {leadCampaignTree.campaignCount !== 1 && (
+              <LeadTimeline
+                delivery={selectedLead}
+                email={leadCampaignTree.campaignCount === 0 ? (leadEmailData?.generation ?? null) : null}
+                scopeNote={
+                  leadCampaignTree.campaignCount > 1
+                    ? "Everything this brand did, across every campaign above."
+                    : null
+                }
+              />
+            )}
           </div>
         </div>
       )}
