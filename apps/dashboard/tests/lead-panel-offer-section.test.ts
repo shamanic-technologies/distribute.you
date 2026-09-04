@@ -28,19 +28,19 @@ describe("the lead panel names the offer the lead was contacted for", () => {
   // at person level. A person contacted by campaigns of nine different offers had one
   // of those nine printed as theirs.
   it("bands the offer above its campaigns rather than stating one per person", () => {
-    expect(sections).toContain("function OfferBand(");
+    expect(sections).toContain("function OfferBand<");
     expect(page).not.toContain("<OfferSection offer=");
     // The tree groups on the row's own served offer; nothing joins a campaign to an
     // offer in the browser.
     const tree = readFileSync(join(process.cwd(), "src/lib/lead-campaign-tree.ts"), "utf8");
-    expect(tree).toContain("row.offer?.id ?? null");
+    expect(tree).toContain("card.offer?.id ?? null");
   });
 
   // lead-service resolves it off the campaign and serves it on the row. The dashboard
   // holds neither the campaign-to-offer map nor the offer's name, and the audience is
   // this repo's own precedent for why that join belongs upstream even where possible.
   it("reads the served field rather than joining anything", () => {
-    const body = sliceTo(sections, "function OfferBand(", "function CampaignCard(");
+    const body = sliceTo(sections, "function OfferBand<", "function CampaignCard<");
     expect(body).not.toContain("useAuthQuery");
     expect(body).not.toContain("listCampaigns");
     expect(body).not.toContain("getBrandOffer");
@@ -51,7 +51,7 @@ describe("the lead panel names the offer the lead was contacted for", () => {
   // either way, so the band renders with no name and no link rather than vanishing
   // with the campaigns inside it.
   it("still draws the band, without a link, when the offer could not be resolved", () => {
-    const body = sliceTo(sections, "function OfferBand(", "function CampaignCard(");
+    const body = sliceTo(sections, "function OfferBand<", "function CampaignCard<");
     expect(body).toContain("Unnamed offer");
     expect(body).toContain("{offer.offerId && (");
   });
@@ -64,7 +64,7 @@ describe("the lead panel names the offer the lead was contacted for", () => {
   // table and this band all draw the SHARED `OfferMark`. A second icon definition is
   // how two surfaces come to disagree about what an offer looks like.
   it("leads the offer name with the shared mark", () => {
-    const body = sliceTo(sections, "function OfferBand(", "function CampaignCard(");
+    const body = sliceTo(sections, "function OfferBand<", "function CampaignCard<");
     expect(body).toContain('<OfferMark size="sm" />');
     expect(sections).toContain('import { OfferMark } from "@/components/marks/offer-mark"');
   });

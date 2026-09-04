@@ -4450,7 +4450,76 @@ export interface Lead {
    * never `.optional()` — the producer means to send those nulls.
    */
   standing?: LeadStanding | null;
+  /**
+   * THIS PERSON'S CAMPAIGNS, each card stating what happened IN THAT CAMPAIGN
+   * (lead-service v0.67.0, served only when the read asks `?include=campaigns`).
+   *
+   * A brand-scoped read answers ONE ROW PER PERSON (`DISTINCT ON (lead_id)`) and the
+   * delivery fields above are the BRAND-wide roll-up — right for "did this brand reach
+   * this person", wrong for "did this campaign reach them". 56,809 people in production
+   * sit in more than one campaign of one brand, one of them in 11 campaign identities
+   * across 9 offers, so a panel nesting campaign cards under a person without this would
+   * print byte-identical evidence under every card.
+   *
+   * Both facts are served at once: the row's own fields stay the brand-wide roll-up
+   * (the table's status badge, its tabs, the triage board and the covered-lead count all
+   * read them) and these cards answer the per-campaign question beside them.
+   *
+   * `.optional()` because it is OPT-IN, not because the producer might omit it: a read
+   * that does not ask carries no key at all. `delivery: null` means the provider reports
+   * none for that campaign — "we cannot tell", never "nothing happened".
+   */
+  campaigns?: LeadCampaignEvidence[];
   lead: FullLead | null;
+}
+
+/** One campaign of a person, with the delivery evidence of THAT campaign alone. */
+export interface LeadCampaignEvidence {
+  /** The `leads_campaigns` row this card speaks for. */
+  id: string;
+  /** The campaign row that membership names. */
+  campaignId: string;
+  /** Every stored campaign id whose evidence the card reads — the identity's members. */
+  campaignIds: string[];
+  status: "buffered" | "skipped" | "claimed" | "served";
+  servedAt: string | null;
+  /**
+   * The audience THIS campaign picked the person for. An id only — the resolved
+   * `{name, avatarUrl}` rides the ROW, and only for the row's own campaign, so a card's
+   * name is looked up in the audiences list the panel already holds.
+   */
+  audienceId: string | null;
+  offer: { id: string; name: string | null } | null;
+  standing: LeadStanding;
+  /** Null = the provider reports no evidence for this campaign. Not "nothing happened". */
+  delivery: LeadCampaignDelivery | null;
+}
+
+/** The delivery facts of ONE campaign — the same fields the row carries at top level,
+ *  answering for that campaign instead of for the brand. */
+export interface LeadCampaignDelivery {
+  contacted: boolean;
+  sent: boolean;
+  delivered: boolean;
+  opened: boolean;
+  clicked: boolean;
+  bounced: boolean;
+  unsubscribed: boolean;
+  replied: boolean;
+  replyClassification: "positive" | "negative" | "neutral" | null;
+  /** Tri-state: absent means nobody can tell us, which is not `false`. */
+  disqualified?: boolean;
+  sentCount: number;
+  lastDeliveredAt: string | null;
+  firstContactedAt: string | null;
+  firstSentAt: string | null;
+  firstDeliveredAt: string | null;
+  firstOpenedAt: string | null;
+  firstClickedAt: string | null;
+  firstRepliedAt: string | null;
+  firstBouncedAt: string | null;
+  firstUnsubscribedAt: string | null;
+  global: { bounced: boolean; unsubscribed: boolean };
 }
 
 export type LeadConsolidatedStatus = "replied" | "clicked" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";
@@ -4571,13 +4640,30 @@ export function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } 
 // memory, which is what OOM-crash-looped api-service.
 // Requires api-service to forward the `view` param.
 // See shamanic-technologies/distribute.you#1620.
+//
+// `include=campaigns` nests THIS PERSON'S campaigns under each row (lead-service
+// v0.67.0), each card carrying the delivery evidence and the standing of that campaign
+// alone. Asked for on BOTH readers because the lead panel is the same component at every
+// grain: a person's campaigns are what it nests, and a read that does not ask carries no
+// key at all, so the panel would silently draw one card for a person in eleven.
+//
+// The row's own top-level delivery fields are UNCHANGED by it — they stay the brand-wide
+// roll-up the table's badge, its tabs, the board and the covered-lead count all read.
+const LEADS_INCLUDE = "campaigns";
+
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}&view=basic`, { token });
+  const raw = await apiCall<unknown>(
+    `/leads?campaignId=${campaignId}&view=basic&include=${LEADS_INCLUDE}`,
+    { token },
+  );
   return parseLeadsResponse(raw, "listCampaignLeads");
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}&view=basic`, { token });
+  const raw = await apiCall<unknown>(
+    `/leads?brandId=${brandId}&view=basic&include=${LEADS_INCLUDE}`,
+    { token },
+  );
   return parseLeadsResponse(raw, "listBrandLeads");
 }
 
@@ -4652,8 +4738,21 @@ const GetLeadEmailResponseSchema = z.object({ generation: LeadEmailGenerationSch
  *  lead under several brands in one org (each with its OWN generated email), so without
  *  the scope the by-lead read returns whichever generation it finds — the wrong brand's
  *  email under the current brand's lead. Pass the viewed brand's id to disambiguate. */
-export async function getLeadEmail(leadId: string, brandId?: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
-  const qs = brandId ? `?brandId=${encodeURIComponent(brandId)}` : "";
+export async function getLeadEmail(
+  leadId: string,
+  brandId?: string,
+  campaignId?: string,
+  token?: string,
+): Promise<{ generation: LeadEmailGeneration | null }> {
+  const params = new URLSearchParams();
+  if (brandId) params.set("brandId", brandId);
+  // Narrows the read to ONE campaign (content-generation-service, live). A person
+  // contacted by several campaigns of one brand has one generation per campaign — 5,539
+  // leads carry two or more — so without it this returns whichever the read picked and
+  // the panel shows one campaign's copy under another's name. Absent leaves the read
+  // exactly as it was.
+  if (campaignId) params.set("campaignId", campaignId);
+  const qs = params.toString() ? `?${params.toString()}` : "";
   const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}${qs}`, { token });
   const parsed = GetLeadEmailResponseSchema.safeParse(raw);
   if (!parsed.success) {

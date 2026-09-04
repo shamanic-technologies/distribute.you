@@ -55,8 +55,8 @@ describe("Leads right panel — audience row and email copy", () => {
     // The card that decided it renders it; nothing states one audience for the person.
     expect(sections).toContain("<AudienceRow");
     expect(page).not.toContain("<AudienceSection inline=");
-    const card = sliceTo(sections, "function CampaignCard(", "function AudienceRow(");
-    expect(card).toContain("campaign.audience");
+    const card = sliceTo(sections, "function CampaignCard<", "function AudienceRow(");
+    expect(card).toContain("audience ? (");
     // A campaign that attributed none says so rather than rendering an empty card.
     expect(card).toContain("No audience attributed");
   });
@@ -65,14 +65,14 @@ describe("Leads right panel — audience row and email copy", () => {
     const body = sliceTo(sections, "function AudienceRow(", "\n}\n");
     expect(body).not.toContain("Size:");
     expect(body).not.toContain("Remaining:");
-    expect(body).toContain("/audiences?audienceId=${inline.id}");
+    expect(body).toContain("/audiences?audienceId=${audience.id}");
     expect(body).toContain("View audience details");
   });
 
   it("audience link is built from the audience's own offer, and is absent when it has none", () => {
     const body = sliceTo(sections, "function AudienceRow(", "\n}\n");
     // The audience states its offer; the route's is only the fallback for a lookup miss.
-    expect(body).toContain("const audienceOfferId = full?.offerId ?? routeOfferId ?? null;");
+    expect(body).toContain("const audienceOfferId = audience.offerId ?? routeOfferId ?? null;");
     expect(body).toContain("tenantBasePath(orgId, brandId, audienceOfferId)");
     // Never the route's offer alone — that is what 404'd on the brand Leads page.
     expect(body).not.toContain("tenantBasePath(orgId, brandId, offerId)");

@@ -90,7 +90,7 @@ describe("Leads — the email copy is beta, the timeline is GA", () => {
     // The follow-up rows are derived from the generation's sequence steps, so a read
     // gated on the beta flag would delete the cadence from a GA timeline instead of
     // hiding the words. The query's own condition stays the selected lead.
-    expect(src).toContain('["leadEmail", selectedLeadId, brandId]');
+    expect(src).toContain('["leadEmail", selectedLeadId, brandId, openCampaignId]');
     expect(src).toContain("{ enabled: !!selectedLeadId }");
     expect(src).not.toContain("enabled: !!selectedLeadId && canReadEmailCopy");
   });
