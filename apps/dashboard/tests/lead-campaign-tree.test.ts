@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLeadCampaignTree,
   firstCampaignRowId,
+  leadPanelScope,
   type CampaignInfo,
   type LeadCampaignCardLike,
 } from "../src/lib/lead-campaign-tree";
@@ -221,5 +222,86 @@ describe("firstCampaignRowId", () => {
 
   it("is null when there is nothing to open", () => {
     expect(firstCampaignRowId(buildLeadCampaignTree([], lookup))).toBeNull();
+  });
+});
+
+/**
+ * WHICH levels the panel states as its own stacked cards.
+ *
+ * The rule is CASCADING agreement across the person's own cards, never the route: a
+ * funnel-scoped page serves the brand's rows, so a lead listed there routinely carries
+ * campaigns of another funnel and stating the route's funnel about them would be false.
+ */
+describe("leadPanelScope", () => {
+  it("states offer, funnel and the sole card when the person has one campaign", () => {
+    const tree = buildLeadCampaignTree(
+      [card({ id: "r1", campaignId: "c1", offer: OFFER_A, audienceId: "a1" })],
+      lookup,
+    );
+    const scope = leadPanelScope(tree);
+    expect(scope.offer).toEqual({ id: "o1", name: "Acme Pro" });
+    expect(scope.funnelKey).toBe("reply_meeting");
+    expect(scope.sole?.rowId).toBe("r1");
+  });
+
+  // Two campaigns of one offer on one funnel: the offer and the funnel are still facts
+  // about the person, but the leg, the channel and the audience are each card's own.
+  it("keeps offer and funnel but no sole card when two campaigns share both", () => {
+    const tree = buildLeadCampaignTree(
+      [
+        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
+        card({ id: "r3", campaignId: "c3", offer: OFFER_A }),
+      ],
+      lookup,
+    );
+    const scope = leadPanelScope(tree);
+    expect(scope.offer?.id).toBe("o1");
+    expect(scope.funnelKey).toBe("reply_meeting");
+    expect(scope.sole).toBeNull();
+  });
+
+  it("drops the funnel when the offer's campaigns sell two of them", () => {
+    const tree = buildLeadCampaignTree(
+      [
+        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
+        card({ id: "r2", campaignId: "c2", offer: OFFER_A }),
+      ],
+      lookup,
+    );
+    const scope = leadPanelScope(tree);
+    expect(scope.offer?.id).toBe("o1");
+    expect(scope.funnelKey).toBeNull();
+  });
+
+  // Cascading: an offer that varies makes "one funnel" meaningless even when the two
+  // campaigns happen to sell the same one.
+  it("drops offer AND funnel when two offers are in play", () => {
+    const tree = buildLeadCampaignTree(
+      [
+        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
+        card({ id: "r3", campaignId: "c3", offer: OFFER_B }),
+      ],
+      lookup,
+    );
+    const scope = leadPanelScope(tree);
+    expect(scope.offer).toBeNull();
+    expect(scope.funnelKey).toBeNull();
+  });
+
+  // An offer lead-service could not resolve is not an agreed offer: null there means
+  // "we could not say" as often as "there is none", and a card would assert the second.
+  it("states no offer when the one card names none", () => {
+    const tree = buildLeadCampaignTree([card({ id: "r1", campaignId: "c1" })], lookup);
+    const scope = leadPanelScope(tree);
+    expect(scope.offer).toBeNull();
+    expect(scope.funnelKey).toBeNull();
+    // The card itself is still sole — its leg, channel and audience are still facts
+    // about this person, and only the levels above it are unstated.
+    expect(scope.sole?.rowId).toBe("r1");
+  });
+
+  it("states nothing for a person with no campaigns", () => {
+    const scope = leadPanelScope(buildLeadCampaignTree([], lookup));
+    expect(scope).toEqual({ offer: null, funnelKey: null, sole: null });
   });
 });

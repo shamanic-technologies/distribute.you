@@ -160,3 +160,62 @@ export function firstCampaignRowId(tree: LeadCampaignTree): string | null {
   }
   return null;
 }
+
+/**
+ * WHICH levels of the hierarchy every one of a person's campaigns agrees on.
+ *
+ * The panel states the AGREED part as its own stacked cards — Brand, then Offer, then
+ * Funnel, then (when there is only one campaign) Leg, Channel and Audience — and lists
+ * only what varies underneath. So a campaign-scoped panel reads as six cards one above
+ * another, a funnel-scoped one as three cards over a list of leg x channel, and a
+ * brand-scoped one as one card over the whole nest.
+ *
+ * DERIVED FROM THE CARDS, never from the route, and that is the load-bearing half. The
+ * rows a funnel- or offer-scoped page receives are the BRAND's (lead-service filters
+ * neither), so a person listed on a funnel page routinely carries campaigns of another
+ * funnel. Stating the route's funnel as a fact about them would be false; stating what
+ * their own cards agree on never is, and in the ordinary case the two coincide.
+ *
+ * CASCADING: a level is agreed only when every level above it is. An offer that varies
+ * makes "one funnel" meaningless, so the walk stops at the first disagreement.
+ */
+export interface LeadPanelScope<C extends LeadCampaignCardLike = LeadCampaignCardLike> {
+  /** The one offer every card names, or null when they differ or none is stated. */
+  offer: { id: string; name: string | null } | null;
+  /** The one funnel, or null. Requires the offer to be agreed first. */
+  funnelKey: string | null;
+  /** The single card, when the person has exactly one campaign — the only case in
+   *  which the leg, the channel and the audience are facts about the PERSON rather
+   *  than about one of several campaigns. */
+  sole: LeadCampaignNode<C> | null;
+}
+
+export function leadPanelScope<C extends LeadCampaignCardLike>(
+  tree: LeadCampaignTree<C>,
+): LeadPanelScope<C> {
+  const onlyOffer = tree.offers.length === 1 ? tree.offers[0] : null;
+  // An offer lead-service could not resolve is NOT an agreed offer: `null` there means
+  // "we could not say" as often as "there is none", and a card stating an unnamed offer
+  // asserts the second.
+  const offer =
+    onlyOffer && onlyOffer.offerId
+      ? { id: onlyOffer.offerId, name: onlyOffer.offerName }
+      : null;
+  const onlyFunnel = offer && onlyOffer && onlyOffer.funnels.length === 1 ? onlyOffer.funnels[0] : null;
+  const funnelKey = onlyFunnel?.funnelKey ?? null;
+  const sole = tree.campaignCount === 1 ? firstCampaignNode(tree) : null;
+  return { offer, funnelKey, sole };
+}
+
+/** The first card in render order, as a node. */
+export function firstCampaignNode<C extends LeadCampaignCardLike>(
+  tree: LeadCampaignTree<C>,
+): LeadCampaignNode<C> | null {
+  for (const offer of tree.offers) {
+    for (const funnel of offer.funnels) {
+      const first = funnel.campaigns[0];
+      if (first) return first;
+    }
+  }
+  return null;
+}
