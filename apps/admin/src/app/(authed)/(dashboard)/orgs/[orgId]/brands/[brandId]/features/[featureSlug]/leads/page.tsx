@@ -31,14 +31,18 @@ import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
 import { useManualQualifications } from "@/lib/use-manual-qualification";
 import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 
+// ⚠️ Most-advanced FIRST, and this list MUST stay in the same order as
+// `getLeadConsolidatedStatus` (lib/api.ts). `useMonotonicStatuses` suppresses a
+// "downgrade", so a `bounced` ranked below `sent` here would pin a bounced lead on Sent
+// however the derivation reads it.
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
   "clicked",
+  "bounced",
+  "unsubscribed",
   "opened",
   "delivered",
   "sent",
-  "bounced",
-  "unsubscribed",
   "contacted",
   "served",
   "skipped",

@@ -1937,15 +1937,34 @@ export interface Lead {
 
 export type LeadConsolidatedStatus = "replied" | "clicked" | "opened" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";
 
-/** Derive consolidated status from email-gateway booleans + local status, matching journalists page pattern */
+/**
+ * The lead's most-advanced delivery state, most-advanced FIRST.
+ *
+ * A BOUNCE and an UNSUBSCRIBE outrank `delivered` and `sent`, and that ordering is the
+ * whole point of this function rather than a detail of it. A bounce can only happen to
+ * a message that was SENT, so lead-service reports `sent: true` alongside `bounced: true`
+ * on every bounced lead (729 of 732 on the campaign that surfaced this) — with `sent`
+ * tested first, every bounce in the fleet read **Sent**, in the table badge, on the board
+ * card and in the CSV, while the lead panel right beside it said the address had bounced.
+ * The same shape hid `unsubscribed` behind `delivered`, since an unsubscribe requires a
+ * delivered message.
+ *
+ * `replied` and `clicked` stay on top: a lead who answered or came to the site did those
+ * things, and a later follow-up bouncing does not un-do them.
+ *
+ * ⚠️ `LEAD_STATUS_ORDER` (the priority `useMonotonicStatuses` latches on) MUST list these
+ * in the SAME order. The latch suppresses a "downgrade", so an order that still ranked
+ * `sent` above `bounced` would keep a row on Sent even once this function said Bounced,
+ * and the fix would look like it had not shipped.
+ */
 export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
   if (lead.replied) return "replied";
   if (lead.clicked) return "clicked";
+  if (lead.bounced) return "bounced";
+  if (lead.unsubscribed) return "unsubscribed";
   if (lead.opened) return "opened";
   if (lead.delivered) return "delivered";
   if (lead.sent) return "sent";
-  if (lead.bounced) return "bounced";
-  if (lead.unsubscribed) return "unsubscribed";
   if (lead.contacted) return "contacted";
   return lead.status;
 }
