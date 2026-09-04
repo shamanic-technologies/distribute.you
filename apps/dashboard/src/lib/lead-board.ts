@@ -78,7 +78,7 @@
 // this module carries REAL unit tests. Keep it that way.
 
 import { REPLY_KINDS, type ReplyKind } from "./reply-kind";
-import type { LeadStanding } from "./lead-standing";
+import type { LeadStanding, LeadStandingState } from "./lead-standing";
 
 /** The column key. Every lead the producer can place is in exactly one. */
 export type LeadBoardColumnKey =
@@ -285,6 +285,33 @@ export function leadBoardColumnFor(
       return "unresolved";
   }
 }
+
+/**
+ * Which standings a column HOLDS — the inverse of `leadBoardColumnFor`, and the thing a
+ * consumer asks the producer for when it draws one column at a time.
+ *
+ * There are seven standings and five columns, so two columns hold two standings each:
+ * a person nobody has heard from and a person who did something this campaign does not
+ * sell are both still in play, and a person who reached the step and a person who went
+ * all the way and bought are both showing interest. Those are decisions about what
+ * somebody triaging a list needs to see side by side, so they live here rather than
+ * upstream.
+ *
+ * `not_contacted` is in NO column, deliberately: there is nothing to show about what
+ * happened to a lead nobody wrote to, and giving it a column would make the board
+ * disagree with the page's own count of the population.
+ *
+ * Kept in lockstep with `leadBoardColumnFor` by a guard that walks every standing
+ * through both — a second table that could drift is exactly what this file exists to
+ * avoid, so the two must be one statement read two ways.
+ */
+export const STANDINGS_BY_COLUMN: Record<LeadBoardColumnKey, readonly LeadStandingState[]> = {
+  contacted: ["contacted", "engaged"],
+  sales_interest: ["sales_interest", "customer"],
+  disqualified: ["disqualified"],
+  opt_out: ["opted_out"],
+  unresolved: ["unresolved"],
+};
 
 /**
  * Which columns a card in `from` may be MOVED to — every writable column except the one

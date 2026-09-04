@@ -146,7 +146,7 @@ describe("one colour per tag, and the hue says which tag", () => {
     const control = readFileSync(join(__dirname, "..", "src", "components", "leads", "reply-kind-control.tsx"), "utf8");
     // The table badge and the board card.
     expect(page).toContain("${leadStatusPill(status)}");
-    expect(page).toContain("statusPill: leadStatusPill(getLeadConsolidatedStatus(lead))");
+    expect(page).toContain("statusPill: leadStatusPill(status)");
     expect(board).toContain("pill: replyKindPill(stated.kind)");
     expect(board).toContain("${tag.pill}");
     // The panel's own pill and its picker rows.

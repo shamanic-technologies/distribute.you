@@ -22,13 +22,18 @@ const sliceFrom = (src: string, marker: string, len: number) => {
 describe("the leads board is wired, not merely written", () => {
   it("is mounted by the page with the cards the page derives", () => {
     // A guard on the component alone passes forever over a page that never renders it.
-    const mount = sliceFrom(page, "<LeadBoard", 1800);
-    expect(mount).toContain("cards={boardCards}");
+    // Anchored on the JSX tag with its newline: a bare `<LeadBoard` also matches
+    // `Record<LeadBoardColumnKey, ...>` further up the file, and the slice then asserts
+    // against a type declaration rather than the mount.
+    const mount = sliceFrom(page, "<LeadBoard\n", 1800);
+    expect(mount).toContain("columns={boardColumns}");
+    expect(mount).toContain("onShowMore={");
     expect(mount).toContain("canMove={Boolean(campaignId)}");
     expect(mount).toContain("onMove={");
     expect(mount).toContain("onOpen={");
-    // The columns are the module's own now — a funnel decides nothing here.
-    expect(mount).not.toContain("columns={");
+    // The bound the board used to apologise for is gone: each column has its own page.
+    expect(page).not.toContain("LEAD_BOARD_CARD_CAP");
+    expect(mount).not.toContain("most recently");
   });
 
   it("draws the board at EVERY scope, since triage needs no funnel to order it", () => {
@@ -37,17 +42,16 @@ describe("the leads board is wired, not merely written", () => {
     expect(page).not.toContain("leadBoardColumns(");
   });
 
-  it("places every card from the PRODUCER's answer plus ONE campaign-scoped read", () => {
-    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 2400);
-    // Where a card sits is lead-service's `standing`, rendered — not derived here from
-    // the reply signals on the row beside it. Those signals stay on the wire and stay
-    // read; "is this person still in play" has one owner now.
-    expect(cards).toContain("leadBoardColumnFor(lead.standing)");
-    expect(cards).not.toContain("lead.unsubscribed === true");
-    expect(cards).not.toContain("lead.replyClassification ?? null");
+  it("places every card by the column it was READ from, never a second opinion", () => {
+    const cards = sliceFrom(page, "const boardColumns = useMemo(", 2600);
+    // lead-service filtered that page BY STANDING, so re-deriving a column from the row
+    // would be a second opinion over the answer that selected it. The only thing that
+    // overrides it is a statement somebody just made, for the round trip it takes.
+    expect(cards).not.toContain("leadBoardColumnFor(lead.standing)");
+    expect(cards).toContain("held?.column && held.column !== column.key");
     // The person's own face rides the row the page already holds — never a per-card
     // fetch, and never a fabricated avatar when the enrichment carried none.
-    expect(cards).toContain("photoUrl: full?.photoUrl ?? null");
+    expect(page).toContain("photoUrl: full?.photoUrl ?? null");
     // A board of N cards must never be N requests.
     expect(cards).not.toContain("useAuthQuery");
   });
@@ -63,22 +67,28 @@ describe("the leads board is wired, not merely written", () => {
     expect(page).toContain("console.warn(");
   });
 
-  it("reads its own rows, spanning the population rather than the active tab", () => {
-    // A partition scoped to one tab draws a board with most of its cards missing, so it
-    // reads the widest bucket (`contacted`) rather than whatever tab the table is on.
-    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 2400);
-    expect(cards).toContain("of boardLeads");
-    expect(cards).not.toContain("of pagedLeads");
-    expect(page).toContain('leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 })');
+  it("reads ONE page and ONE size PER COLUMN, so no column is a slice of another", () => {
+    // It used to be a single bounded read of the widest bucket, sorted into columns
+    // here — so a column's head counted the rows that read returned rather than the
+    // people in it, and no column could be grown past what the others had consumed.
+    expect(page).toContain("useBoardColumnPage(columnArgs(");
+    expect(page).toContain("leadsColumnPageQuery({");
+    expect(page).not.toContain('leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 })');
+    // The sizes are the producer's counts, added over the standings a column holds.
+    expect(page).toContain("getLeadStandingCounts(scope, standingCountsQuery(wireSearch))");
+    expect(page).toContain("boardColumnTotals(standingCounts)");
+    // An empty column costs no read once its size is known; before that every column is
+    // read in parallel rather than waiting a round trip to find out.
+    expect(page).toContain("columnTotals == null || columnTotals[column] > 0");
   });
 
-  it("is BOUNDED, and says so rather than passing a cap off as the pipeline", () => {
-    // The board is a partition, not a window: a column showing rows 200-400 of itself is
-    // not a triage queue. So it takes the most recently active N and states the bound.
-    expect(page).toContain("const LEAD_BOARD_CARD_CAP = 200;");
-    expect(page).toContain("limit: String(LEAD_BOARD_CARD_CAP)");
-    expect(page).toContain("boardTotal != null && boardTotal > LEAD_BOARD_CARD_CAP");
-    expect(page).toContain("most recently");
+  it("grows a column by asking for a WIDER page, not a bigger slice of one it holds", () => {
+    // How far each column is drawn lives on the page because it drives a fetch now.
+    expect(page).toContain("const [columnShown, setColumnShown] = useState<Record<string, number>>({});");
+    expect(page).toContain("(prev[column] ?? LEAD_BOARD_PAGE_SIZE) + LEAD_BOARD_PAGE_SIZE");
+    // A search re-queries every column, so how far one was grown describes a set that
+    // no longer exists.
+    expect(page).toContain("setColumnShown({});");
   });
 
   it("keeps ONE search, and it is the producer's", () => {
@@ -166,7 +176,7 @@ describe("a move states a reply KIND, and it asks which", () => {
     // instant it was dropped.
     expect(page).toContain("new Map(prev).set(email, held.kind");
     expect(page).toContain("at: new Date().toISOString(), column: held.column }");
-    expect(page).toContain("const column = held?.column ?? leadBoardColumnFor(lead.standing);");
+    expect(page).toContain("if (!held?.column || held.column !== column.key) continue;");
     // A refusal drops it: the board must never state something nobody recorded.
     expect(page).toContain("next.delete(email)");
   });
@@ -331,12 +341,10 @@ describe("the card says what it is in two lines and one tag", () => {
     // One map, three surfaces (table badge, CSV, card): a second spelling is how one
     // lead comes to read "Delivered" in the table and "Sent" on a card one click away.
     expect(page).toContain('import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";');
-    expect(page).toContain("statusLabel: leadStatusLabel(getLeadConsolidatedStatus(lead))");
-    expect(page).toContain("statusPill: leadStatusPill(getLeadConsolidatedStatus(lead))");
+    expect(page).toContain("statusLabel: leadStatusLabel(status)");
+    expect(page).toContain("statusPill: leadStatusPill(status)");
     // And the date under it proves THAT status — one statement, one event.
-    expect(page).toContain(
-      "statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead))",
-    );
+    expect(page).toContain("statusAt: statedAt ?? leadDateForStatus(lead, status)");
   });
 
   it("says HOW LONG it has been that, beside the tag and never as its own line", () => {
@@ -355,9 +363,7 @@ describe("the card says what it is in two lines and one tag", () => {
     // different moment. And the un-stated case reads the ONE map the table's own Date
     // column reads, so the two surfaces cannot date one lead two ways.
     expect(page).toContain("out.set(q.email, { kind: q.replyKind, at: q.qualifiedAt })");
-    expect(page).toContain(
-      "statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead))",
-    );
+    expect(page).toContain("statusAt: statedAt ?? leadDateForStatus(lead, status)");
   });
 
   it("says nothing rather than dating a status it holds no instant for", () => {
@@ -412,20 +418,28 @@ describe("the board explains the two splits a reader would not guess", () => {
 
   it("draws the producer-failure column only when it has something to report", () => {
     // "Not placed" on a healthy campaign advertises a problem that is not there.
-    expect(board).toContain("if (column.hideWhenEmpty && inColumn.length === 0) return null;");
+    // On its SERVED size, not on how many rows arrived: a column drawn from a page is
+    // empty for as long as that page is in flight, which would make "Not placed" appear
+    // a moment after the board rather than not at all.
+    expect(board).toContain("if (column.hideWhenEmpty && total === 0) return null;");
   });
 
   it("draws a page of a column and states what is LEFT, never scroll-loading", () => {
-    // A column that draws every card is unusable on Contacted, which holds the whole
+    // A column that draws every card is unusable on Leads, which holds the whole
     // campaign; a column that hides the size of its tail cannot be judged at all.
-    expect(board).toContain("LEAD_BOARD_PAGE_SIZE");
-    expect(board).toContain("columnPage(");
+    expect(board).toContain("Math.max(0, total - drawn.length)");
     expect(board).toContain("left)");
-    // The header count stays the WHOLE column — it answers "how many are here", which
-    // is what the board is read for, not "how many fit".
-    expect(board).toContain("{inColumn.length}");
-    // The reveal falls back when the page re-queries the set, and NOT on a poll.
-    expect(board).toContain("}, [filterKey]);");
+    expect(board).toContain("onShowMore(column.key)");
+    // The header count is the COLUMN's SERVED size, never the cards drawn — which is a
+    // fact about the viewport and would make a column of 1,966 read as a column of 20.
+    expect(board).toContain('{total == null ? "" : total.toLocaleString("en-US")}');
+    expect(board).not.toContain("{inColumn.length}");
+    // An unknown remainder offers no button rather than a guessed one.
+    expect(board).toContain("remaining != null && remaining > 0");
+    // How far a column is drawn is the PAGE's now: it drives a fetch, so the board
+    // holding its own copy would let the two disagree about what has been asked for.
+    expect(board).not.toContain("const [shown, setShown]");
+    expect(board).not.toContain("columnPage(");
   });
 
   it("shares the page width between the columns rather than pinning each one", () => {
