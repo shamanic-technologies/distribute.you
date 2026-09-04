@@ -203,41 +203,30 @@ describe("OutreachStatCards copy", () => {
     );
   });
 
-  it("swaps the people/actions pair for the board's own two cards when the caller counts them", () => {
-    // The Leads page draws a board, so its row states the population it holds and how
-    // many of those people show sales interest — both off the rows the board partitions.
-    // The undeduped action count has no place beside a board; on a one-step sequence it
-    // printed the very same number twice.
-    expect(cards).toContain("leadsOverride?: number | null;");
-    expect(cards).toContain(
-      "salesInterestOverride?: { count: number; sharePct: number | null } | null;",
-    );
-    expect(cards).toContain("{showOutreach && leadsOverride != null ? (");
-    expect(cards).toContain('label="Leads"');
-    expect(cards).toContain("value={formatCount(leadsOverride)}");
-    expect(cards).toContain("value={formatCount(salesInterestOverride.count)}");
-    // Same adaptive share formatter every other card on the row uses, of the number the
-    // card beside it states.
-    expect(cards).toContain("`${formatSharePct(salesInterestOverride.sharePct)} of leads`");
-  });
-
-  it("stands the funnel pair's own sales-interest COUNT down when the board supplied one", () => {
-    // Two numbers under one word — one from reply signals, one from lead-service's
-    // funnel-aware standing — is one screen contradicting itself. The COST card stays:
-    // it is the only thing that prices them.
-    expect(cards.match(/\{salesInterestOverride == null && \(/g) ?? []).toHaveLength(2);
-    expect(cards).toContain('label="Cost per sales interest"');
+  it("carries no board-population override at all", () => {
+    // The row briefly took the population and the sales-interest count from whoever
+    // drew the board. That was correct while the Leads page held every lead and became
+    // a lie the moment its board read gained a bound: the row printed the CAP as the
+    // population. Both props are DELETED rather than left unused — an unpassed prop is
+    // an unexercised branch, and the two stand-downs it gated were dead code.
+    expect(cards).not.toContain("leadsOverride");
+    expect(cards).not.toContain("salesInterestOverride");
+    expect(auto).not.toContain("leadsOverride");
+    expect(auto).not.toContain("salesInterestOverride");
+    // The people/actions pair is what the Leads page states again, and the funnel pair
+    // below it states the sales interests from features-service.
+    expect(cards).toContain('label="Leads contacted"');
+    expect(cards).toContain('label="Sales Interests"');
   });
 
   // The prop is only real if the PAGE passes it.
-  it("has the Leads page pass the board's population and its sales-interest count", () => {
+  it("has the Leads page state lead-service's own count, not a page of it", () => {
     const leads = read("../src/components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain("leadsOverride={loading ? null : boardPopulation.leads}");
-    expect(leads).toContain(
-      "salesInterestOverride={loading ? null : boardPopulation.salesInterest}",
-    );
-    expect(auto).toContain("leadsOverride={leadsOverride}");
-    expect(auto).toContain("salesInterestOverride={salesInterestOverride}");
+    // `reachableCount` is the served bucket count the page's own heading states, so the
+    // card and the heading cannot disagree about the population.
+    expect(leads).toContain("contactedOverride={reachableCount}");
+    expect(leads).not.toContain("boardPopulation");
+    expect(auto).toContain("contactedOverride={contactedOverride}");
   });
 
   // The share is SERVED (`funnelSteps.steps[0].conversionFromPreviousPct`). A browser

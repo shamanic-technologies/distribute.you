@@ -32,36 +32,19 @@ describe("the Leads page names what it counts", () => {
     expect(leads).not.toContain('outreach: "Outreach"');
   });
 
-  it("states its BOARD's own two numbers, not an undeduped action count", () => {
-    // The page counts PEOPLE and partitions them into board columns, so its cards are
-    // the population and the sales-interest column — off the very rows the board places,
-    // so a card and a column cannot disagree about one screen. The people/actions pair
-    // is gone from here: an action count is what the Overview states beside its spend.
-    expect(leads).toContain("leadsOverride={loading ? null : boardPopulation.leads}");
-    expect(leads).toContain(
-      "salesInterestOverride={loading ? null : boardPopulation.salesInterest}",
-    );
-    expect(leads).not.toContain("contactedOverride=");
-    expect(leads).not.toContain('outreachLabel="Contacted"');
-  });
-
-  it("counts the board population off the same placement the board renders", () => {
-    // `leadBoardColumnFor(standing)` is lead-service's own funnel-aware answer, with the
-    // same held latch the cards use, over the UNFILTERED population (the cards describe
-    // the page, the board's columns thin out with the search box).
-    const at = leads.indexOf("const boardPopulation = useMemo(");
-    expect(at).toBeGreaterThan(-1);
-    const body = leads.slice(at, leads.indexOf("}, [boardLeads, statedReplyKinds]);", at));
-    // The board's OWN rows: the row above the columns must describe the same set the
-    // columns draw, cap included.
-    expect(body).toContain("for (const lead of boardLeads)");
-    expect(body).toContain("held?.column ?? leadBoardColumnFor(lead.standing)");
-    expect(body).toContain('if (column === "sales_interest") salesInterest += 1;');
-    // Never the reply-signal aggregate: on a funnel entered by a website visit that
-    // count sees none of the people the board places in Sales interest.
-    expect(body).not.toContain("positiveRepliesCount");
-    // No population means nothing to divide by — never a fabricated 0%.
-    expect(body).toContain("leads > 0 ? (salesInterest / leads) * 100 : null");
+  it("states the SERVED population, never the page of it the board fetched", () => {
+    // The row used to count its two numbers off the board's own rows. That was correct
+    // while the page held every lead and became a lie the moment that read gained a
+    // bound: it printed LEAD_BOARD_CARD_CAP as if it were the population (a production
+    // campaign read `Leads 200` under a heading correctly reading `2,052 leads`). So it
+    // reads lead-service's own count — the SAME number the heading states.
+    expect(leads).toContain("contactedOverride={reachableCount}");
+    // The two derivations that made the truncation possible are DELETED, not merely
+    // unused: a prop nobody passes is a branch nobody exercises, and re-adding either
+    // brings the cap back as a population.
+    expect(leads).not.toContain("boardPopulation");
+    expect(leads).not.toContain("leadsOverride");
+    expect(leads).not.toContain("salesInterestOverride");
   });
 
   it("passes the label through the wrapper, and names the actions card when both show", () => {
