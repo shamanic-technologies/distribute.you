@@ -73,7 +73,14 @@ describe("the Leads page pages instead of holding the population", () => {
   it("skeletons on a tab or page CHANGE rather than showing the previous one's rows", () => {
     // The global `keepPreviousData` hands back the old key's data while the new one
     // loads; rendering it shows one tab's leads under another's heading.
-    expect(PAGE).toContain("const loading = isPending || isPlaceholderData;");
+    expect(PAGE).toContain("(isPending || isPlaceholderData)");
+  });
+
+  it("does not hold the BOARD behind the table's page read", () => {
+    // The board draws from five per-column reads with their own skeletons. Gating it on
+    // the table's page made a board whose rows are already on disk wait for a request it
+    // never uses.
+    expect(PAGE).toContain("const loading = (isPending || isPlaceholderData) && !showBoard;");
   });
 
   it("lets the producer stream the export instead of assembling a second one", () => {

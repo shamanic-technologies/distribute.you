@@ -1673,7 +1673,6 @@ export function EngagedLeadsPage({
       unresolvedColumn.data,
     ],
   );
-  const boardPending = LEAD_BOARD_COLUMNS.some((c) => columnReads[c.key].isPending);
   // How many people the board is about, for the search bar. The columns partition the
   // population, so adding their served sizes is a count of the same kind — and it is
   // deliberately NOT `standingCounts.total`, which includes the people nobody wrote to
@@ -1723,15 +1722,23 @@ export function EngagedLeadsPage({
         if (cards.some((c) => c.id === lead.id)) continue;
         cards.push(toBoardCard(lead, column.key, held.kind, held.at));
       }
+      // A column is LOADING only while it could still receive rows. `isPending` alone
+      // cannot say that: a column the counts report EMPTY is never read again (see the
+      // `enabled` gate above), and a disabled query in v5 stays `isPending` FOREVER — so
+      // every empty column sat on a loading state that could not resolve. Two honest
+      // states instead: nothing drawn and nothing to draw is "nobody here", nothing
+      // drawn and a read still owed is a skeleton. An errored read is settled too — the
+      // board states the failure separately rather than skeletoning forever.
+      const knownEmpty = columnTotals != null && columnTotals[column.key] === 0;
       out[column.key] = {
         cards,
         total: columnTotals?.[column.key] ?? null,
-        pending: read.isPending,
+        pending: !knownEmpty && read.data === undefined && !read.isError,
       };
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardLeads, replyKindByEmail, statedReplyKinds, columnTotals]);
+  }, [boardLeads, replyKindByEmail, statedReplyKinds, columnTotals, boardReadError]);
 
   const [boardError, setBoardError] = useState<string | null>(null);
   // A board move states a REPLY KIND, the same write the lead panel makes — never a
@@ -1819,7 +1826,11 @@ export function EngagedLeadsPage({
   // the previous tab's rows under the new tab's name: the global `keepPreviousData` hands
   // back the old key's data while the new one loads, and rendering that would show one
   // tab's leads under another's heading.
-  const loading = isPending || isPlaceholderData;
+  // ...and only the TABLE's own page read may gate it. The board draws from five
+  // per-column reads of its own, each with its own skeleton, so holding it behind the
+  // table's page meant a board whose rows were already on disk still waited on a request
+  // it does not use — the opposite of the local-first paint every other surface gets.
+  const loading = (isPending || isPlaceholderData) && !showBoard;
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;

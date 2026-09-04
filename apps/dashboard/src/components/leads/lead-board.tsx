@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BoardSlot } from "@/components/boards/board-slot";
 import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
+import { Skeleton } from "@/components/skeleton";
 import {
   LEAD_BOARD_COLUMNS,
   columnBlurb,
@@ -546,10 +547,36 @@ export function LeadBoard({
                     confirmed rather than discovered. Last in the column: the cards carry
                     no order anybody stated, so claiming a position would be inventing one. */}
                 {under && <BoardSlot variant="target" />}
-                {drawn.length === 0 && !under && (
-                  <p className="px-1 py-3 text-xs text-gray-400">
-                    {columnPending ? "Loading..." : "Nobody here yet."}
-                  </p>
+                {/* A column with nothing drawn is TWO different statements and they must
+                    not share a word. Cards still on their way get card-shaped skeletons
+                    — the local-first cache paints the real ones on the first frame when
+                    it holds them, and the skeleton is what the reader sees only on a
+                    genuinely cold column. A column we KNOW is empty says so. The old
+                    loading WORD is deliberately gone: on an empty column it never
+                    resolved, so it read as a board stuck mid-fetch. */}
+                {drawn.length === 0 && !under && columnPending && (
+                  <div
+                    className="space-y-2"
+                    aria-hidden
+                    data-testid={`lead-board-skeleton-${column.key}`}
+                  >
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg border border-gray-200 bg-white p-2 space-y-1.5"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-5 w-5 rounded" />
+                          <Skeleton className="h-3.5 w-24 rounded" />
+                        </div>
+                        <Skeleton className="h-3 w-32 rounded" />
+                        <Skeleton className="h-3 w-16 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {drawn.length === 0 && !under && !columnPending && (
+                  <p className="px-1 py-3 text-xs text-gray-400">Nobody here yet.</p>
                 )}
                 {/* States what is LEFT, not what a press adds: the reader is deciding
                     whether to keep going, and the size of the tail is what answers that.

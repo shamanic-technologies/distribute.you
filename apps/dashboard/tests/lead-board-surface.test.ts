@@ -505,3 +505,25 @@ describe("the column blurbs name who is in them", () => {
     }
   });
 });
+
+describe("an empty column says it is empty, and a cold one draws a skeleton", () => {
+  it("never states a loading state a disabled query can never leave", () => {
+    // A column the counts report EMPTY is not read again, and a disabled query in v5
+    // stays `isPending` forever — so the word "Loading..." sat there permanently.
+    expect(board).not.toContain("Loading...");
+    expect(board).toContain("Nobody here yet.");
+  });
+
+  it("draws card-shaped skeletons while a column is still owed rows", () => {
+    expect(board).toContain("lead-board-skeleton-");
+    expect(board).toContain("drawn.length === 0 && !under && columnPending");
+  });
+
+  it("computes a column's pending from what it can still receive, not from isPending", () => {
+    expect(page).toContain(
+      "const knownEmpty = columnTotals != null && columnTotals[column.key] === 0;",
+    );
+    expect(page).toContain("pending: !knownEmpty && read.data === undefined && !read.isError,");
+    expect(page).not.toContain("pending: read.isPending,");
+  });
+});
