@@ -225,6 +225,15 @@ html.dark .dy-eyebrow {
  * over the near-black page + glow). */
 html.dark .bg-white { background-color: var(--dy-surface); }
 html.dark .bg-gray-50 { background-color: var(--dy-bg-alt); }
+/* An SVG `fill` is reached by no utility remap, so the lead panel's world map —
+   whose pin ring is the map surface punched out from under a dot, so two pins
+   never dissolve into the landmass — needs its own dark rule. It matches the map
+   container's own `bg-gray-50` directly above. */
+html.dark .fill-gray-50 { fill: var(--dy-bg-alt); }
+/* The same map's landmass. `--dy-surface-hi` rather than a text tone: the
+   continents are a surface the pins sit on, not something to be read, so the
+   readable-gray remaps above paint them far too loud on the dark theme. */
+html.dark .fill-gray-300 { fill: var(--dy-surface-hi); }
 
 /* Gradient stops */
 html.dark .from-white { --tw-gradient-from: var(--dy-surface); }
