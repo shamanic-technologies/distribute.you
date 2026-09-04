@@ -40,6 +40,14 @@ describe("Leads — the panel reads the real conversation", () => {
     expect(src).not.toContain("getLeadConversation(campaignId as string");
   });
 
+  it("calls the path the gateway actually deployed", () => {
+    // The gateway names its own path and the deployed contract is the only authority
+    // on it: api-service mounted this at `/v1/conversations`, not under `/v1/orgs`.
+    // Guessing the downstream's own prefix would 404 every open lead.
+    const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf-8");
+    expect(api).toContain("apiCall<unknown>(`/conversations${qs}`");
+  });
+
   it("asks once and does not re-ask on a refusal", () => {
     // The producer's 404 and 502 are ANSWERS, not blips. Retrying spends a round trip
     // per open lead to be told the same thing.

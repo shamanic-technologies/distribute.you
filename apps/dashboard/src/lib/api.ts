@@ -4714,14 +4714,17 @@ const GetLeadConversationResponseSchema = z.object({
   conversation: LeadConversationSchema,
 });
 
-/** GET /v1/orgs/conversations?campaign_id=&email= → the whole thread. */
+/** GET /v1/conversations?campaign_id=&email= → the whole thread.
+ *  The gateway named its own path; this conforms to what it deployed (api-service
+ *  v0.103.1), which is the only authority on it — the downstream route it proxies
+ *  is instantly-service's `/orgs/conversations`. */
 export async function getLeadConversation(
   campaignId: string,
   email: string,
   token?: string,
 ): Promise<LeadConversation> {
   const qs = `?campaign_id=${encodeURIComponent(campaignId)}&email=${encodeURIComponent(email)}`;
-  const raw = await apiCall<unknown>(`/orgs/conversations${qs}`, { token });
+  const raw = await apiCall<unknown>(`/conversations${qs}`, { token });
   const parsed = GetLeadConversationResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] getLeadConversation: response shape mismatch", { issues: parsed.error.issues, raw });
