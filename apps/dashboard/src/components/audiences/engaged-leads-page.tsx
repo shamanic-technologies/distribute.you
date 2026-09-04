@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -17,6 +17,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
+  listCampaignsByBrand,
   listBrandLeads,
   listCampaignLeads,
   getLeadConsolidatedStatus,
@@ -86,6 +87,13 @@ import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { tenantBasePath } from "@/lib/offer-path";
+import {
+  buildLeadCampaignTree,
+  dedupeLeadRowsByPerson,
+  leadPersonKey,
+  type CampaignInfo,
+} from "@/lib/lead-campaign-tree";
+import { LeadCampaignSections } from "@/components/audiences/lead-campaign-sections";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // funnels (`leadTabsForFunnels`); this map only names them.
@@ -231,10 +239,17 @@ function htmlToText(html: string): string {
 // Per-lead audience — served ready-made on the lead row by lead-service
 // (`lead.audience` = {id,name,avatarUrl} from the leads_campaigns attribution).
 // Null when the lead was never attributed to an audience.
-type LeadAudience = { name: string; avatarUrl: string | null };
+//
+// `extra` = how many FURTHER audiences this person carries across their other
+// campaigns. The table lists one row per person now, and a person contacted by
+// several campaigns was picked by each of them for its own reason — so a cell
+// stating one name alone would state one campaign's answer as the person's. The
+// panel lists them per campaign; the cell only says there are more.
+type LeadAudience = { name: string; avatarUrl: string | null; extra?: number };
 
 function AudienceCell({ audience }: { audience: LeadAudience | null }) {
   if (!audience) return <span className="text-xs text-gray-300">-</span>;
+  const extra = audience.extra ?? 0;
   // `min-w-0` + `truncate`: an audience name is free text and a long one used to push
   // the row past a phone's viewport (measured at 360px), which is the whole reason the
   // table scrolled sideways.
@@ -253,127 +268,13 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
         </span>
       )}
       <span className="truncate text-gray-700">{audience.name}</span>
-    </div>
-  );
-}
-
-// Right-panel "Audience" card — which saved audience this lead was attributed to.
-// `inline` = the {id,name,avatarUrl} served on the lead row (always present when
-// attributed); `full` = the matching human-service audience row looked up by id
-// (description only), null until listAudiences resolves or when the audience was
-// archived away. Renders nothing when the lead has no audience.
-//
-// Size / remaining-to-contact deliberately do NOT live here: the Audiences page
-// owns every audience number and the targeting filters. The card links there with
-// `?audienceId=` (the deep-link seed CustomerAudiencesPage reads on first paint,
-// same as the brand-overview Top-3-audiences card), which opens that audience's
-// detail panel with its colored targeting tags. That page lives under the audience's
-// OWN offer, so the link waits on the human-service lookup that states it — see
-// `audienceOfferId` below for why the route's offer is only the fallback.
-/**
- * The OFFER this lead belongs to — what it was contacted to be sold.
- *
- * It sits ABOVE the audience deliberately, and the order is the model: an offer
- * is WHAT we were selling this person, an audience is WHY we picked them for
- * it. The audience was chosen for the offer, so reading the panel top-down
- * gives the proposition before the reason.
- *
- * Rendered straight from `lead.offer`, which lead-service resolves off the
- * campaign the lead was served under. No client-side join — the dashboard holds
- * neither the campaign-to-offer map nor the offer's name, and the audience card
- * below is this repo's own precedent for why that join belongs upstream even
- * where it is possible.
- *
- * A lead with no offer renders NOTHING rather than an empty card: lead-service
- * is fail-soft here, so an absent offer means "we could not say" as often as
- * "there is none", and a card reading `-` would assert the second.
- *
- * A present id with a null NAME still renders, without the name. The
- * attribution is real and the link works; hiding it would lose a true fact over
- * a missing label.
- */
-function OfferSection({ offer }: { offer: { id: string; name: string | null } }) {
-  const params = useParams();
-  const orgId = params.orgId as string;
-  const brandId = params.brandId as string;
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Offer</h3>
-      {/* The mark leads the name here exactly as it does in the top bar, the tenant
-          switcher, the Offers table and the leads table's own Offer column — an offer
-          wears one mark on every surface that names one. */}
-      <div className="flex min-w-0 items-center gap-2">
-        <OfferMark size="sm" />
-        <p className="truncate text-sm font-medium text-gray-800">
-          {offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
-        </p>
-      </div>
-      <Link
-        href={`/orgs/${orgId}/brands/${brandId}/offers/${offer.id}`}
-        className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
-      >
-        View offer
-      </Link>
-    </div>
-  );
-}
-
-function AudienceSection({
-  inline,
-  full,
-}: {
-  inline: { id: string; name: string; avatarUrl: string | null };
-  full: AudienceWire | null;
-}) {
-  const params = useParams();
-  const orgId = params.orgId as string;
-  const brandId = params.brandId as string;
-  // Present on the offer and campaign routes, absent on the brand one.
-  const routeOfferId = params.offerId as string | undefined;
-  // An audience's page lives under the OFFER it was assembled for, so the link is
-  // built from the AUDIENCE's own `offerId` — not from whichever route the reader
-  // happens to be on. Building it from the route sent every brand-level reader to
-  // `/brands/:id/audiences`, a path that does not exist (audiences moved down to
-  // the offer), so the card's one affordance was a 404 on the brand Leads page.
-  // The route id stays as the fallback for the case the lookup misses (an audience
-  // archived out of the list): inside an offer, that offer's page is the right one.
-  const audienceOfferId = full?.offerId ?? routeOfferId ?? null;
-  // No offer resolvable ⟹ NO link. Some audiences predate the offer level and are
-  // filed under none, so there is no page to open; a link to a 404 is worse than a
-  // card that simply states the audience. Same render while the lookup is in
-  // flight — we do not claim either way before we know.
-  const detailHref = audienceOfferId
-    ? `${tenantBasePath(orgId, brandId, audienceOfferId)}/audiences?audienceId=${inline.id}`
-    : null;
-  const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
-  const description = full?.description ?? null;
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Audience</h3>
-      <div className="flex items-center gap-3">
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt=""
-            className="w-9 h-9 rounded object-cover bg-white border border-gray-200 shrink-0"
-            loading="lazy"
-          />
-        ) : (
-          <span className="w-9 h-9 rounded bg-brand-100 text-brand-700 text-sm font-semibold flex items-center justify-center shrink-0">
-            {inline.name.charAt(0).toUpperCase()}
-          </span>
-        )}
-        <p className="font-medium text-gray-800 text-sm">{inline.name}</p>
-      </div>
-      {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
-      {detailHref && (
-        <Link
-          href={detailHref}
-          className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
+      {extra > 0 && (
+        <span
+          className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500"
+          title={`${extra + 1} audiences across this person's campaigns`}
         >
-          View audience details
-        </Link>
+          +{extra}
+        </span>
       )}
     </div>
   );
@@ -548,7 +449,17 @@ function deriveEmailRows(
 // browser and is readable in devtools. It is the org's own copy to its own leads, so
 // this is a display decision, not a security boundary — same posture as every other
 // beta gate in this app.
-function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration | null }) {
+function LeadTimeline({
+  lead,
+  email,
+  scopeNote,
+}: {
+  lead: Lead;
+  email: LeadEmailGeneration | null;
+  /** WHICH campaign these rows are about, stated only where the answer is not
+   *  "the one campaign above". Null renders no line. */
+  scopeNote?: string | null;
+}) {
   const canReadEmailCopy = useIsBetaUser();
   const replyColor =
     lead.replyClassification === "positive" ? "bg-green-500"
@@ -647,6 +558,7 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Activity timeline</h3>
+      {scopeNote && <p className="-mt-2 mb-3 text-xs text-gray-500">{scopeNote}</p>}
       <ol className="relative">
         {sorted.map((e, i) => {
           const isFuture = new Date(e.at).getTime() > nowMs;
@@ -978,7 +890,54 @@ export function EngagedLeadsPage({
     { refetchInterval: LEADS_POLL_INTERVAL },
   );
 
-  const leads = useMemo(() => data?.leads ?? [], [data]);
+  // ONE ROW PER PERSON.
+  //
+  // lead-service serves `leads_campaigns` rows — `UNIQUE(lead_id, campaign_id)` — so a
+  // person contacted by several campaigns arrives as several rows. Measured in
+  // production: 56,809 people sit in more than one campaign, and one sampled person is
+  // in 11 distinct campaign identities across 9 offers. Listing them raw showed that
+  // person eleven times, every row opening a panel about the same human being, and made
+  // the header count people-times-campaigns while the stat card beside it counted
+  // people.
+  //
+  // First-wins over the raw order and then the sort runs, so which row represents a
+  // person is decided by one rule rather than by the backend's heap order. Delivery
+  // evidence is identical across a person's rows today (lead-service flattens it
+  // brand-wide), so there is no more-advanced row to prefer.
+  //
+  // A no-op at CAMPAIGN grain, where every row is already one campaign.
+  const rawLeads = useMemo(() => data?.leads ?? [], [data]);
+  const { rows: leads, byPerson: rowsByPerson } = useMemo(
+    () => dedupeLeadRowsByPerson(rawLeads),
+    [rawLeads],
+  );
+
+  // Every campaign of the brand, keyed by its own id — what the panel's tree needs to
+  // name a campaign's funnel, channel and leg. The key is byte-equal to the one
+  // `useCampaignRows` already polls below, so this costs no request. Its OWN rows are
+  // feature-filtered and identity-collapsed, which is right for a table listing
+  // campaigns and wrong here: this person may have been contacted by a channel the
+  // brand's table does not list, and by a stopped ancestor of a live campaign.
+  const { data: allCampaignsData } = useAuthQuery(
+    ["campaigns", brandId],
+    () => listCampaignsByBrand(brandId),
+    { refetchInterval: POLL_INTERVAL },
+  );
+  const campaignInfoOf = useCallback(
+    (id: string): CampaignInfo | null => {
+      const c = allCampaignsData?.campaigns.find((x) => x.id === id);
+      if (!c) return null;
+      return {
+        // Normalized here rather than in the tree: the wire carries two spellings of
+        // every funnel, and the normalizer is typed against the closed key union.
+        funnelKey: c.funnelKey ? normalizeSalesFunnelKey(c.funnelKey) : null,
+        featureSlug: c.featureSlug,
+        legKey: c.legKey,
+        status: c.status,
+      };
+    },
+    [allCampaignsData],
+  );
 
   // Deep-link seed: `?leadRowId=` (a funnel-leg board card navigates here rather
   // than carrying its own copy of the lead panel) opens that lead's panel on first
@@ -990,11 +949,16 @@ export function EngagedLeadsPage({
   const hasSeededLead = useRef(false);
   useEffect(() => {
     if (hasSeededLead.current || !initialLeadRowId) return;
-    const seeded = leads.find((l) => l.id === initialLeadRowId);
+    // The RAW rows, not the deduped ones: a funnel-leg board card links to the row it
+    // holds, which may be a campaign whose person is represented in the table by a
+    // different row. The panel is about the person either way, so opening the linked
+    // row opens the right panel — while looking it up in the deduped list would find
+    // nothing and silently open none.
+    const seeded = rawLeads.find((l) => l.id === initialLeadRowId);
     if (!seeded) return;
     hasSeededLead.current = true;
     setSelectedLead(seeded);
-  }, [initialLeadRowId, leads]);
+  }, [initialLeadRowId, rawLeads]);
 
   // The published channel catalogue, derived from the `["features"]` query this app
   // already holds — a `useMemo`, not a request. Read twice below: to decide whether the
@@ -1127,8 +1091,22 @@ export function EngagedLeadsPage({
   // Audience per lead — read straight off the lead row. lead-service serves
   // `lead.audience` ({id,name,avatarUrl}) from the leads_campaigns attribution,
   // so the column renders on every tab with no client-side membership join.
-  const audienceOf = (lead: Lead): LeadAudience | null =>
-    lead.audience ? { name: lead.audience.name, avatarUrl: lead.audience.avatarUrl } : null;
+  //
+  // The row states ITS campaign's pick; `extra` counts the person's OTHER distinct
+  // audiences across their remaining campaigns, so a cell can never present one
+  // campaign's answer as the whole of what we know. The panel lists them per campaign.
+  const audienceOf = (lead: Lead): LeadAudience | null => {
+    if (!lead.audience) return null;
+    const ids = new Set<string>();
+    for (const row of rowsByPerson.get(leadPersonKey(lead)) ?? []) {
+      if (row.audience) ids.add(row.audience.id);
+    }
+    return {
+      name: lead.audience.name,
+      avatarUrl: lead.audience.avatarUrl,
+      extra: Math.max(0, ids.size - 1),
+    };
+  };
 
   // Ordered by the value the Date column SHOWS — the timestamp of each row's own
   // status, newest first. Sorting on a different field than the column displays
@@ -1533,11 +1511,28 @@ export function EngagedLeadsPage({
     () => listAudiences(brandId, { offerId }),
     {},
   );
-  const selectedAudienceInline = selectedLead?.audience ?? null;
-  const selectedAudienceFull =
-    selectedAudienceInline
-      ? audiencesData?.audiences.find((a) => a.id === selectedAudienceInline.id) ?? null
-      : null;
+  // Looked up by id for the DESCRIPTION only — name and avatar ride the lead row, so a
+  // campaign card renders in full before this resolves and simply gains its description
+  // when it does.
+  const audienceFullOf = useCallback(
+    (audienceId: string) => audiencesData?.audiences.find((a) => a.id === audienceId) ?? null,
+    [audiencesData],
+  );
+
+  // The OPEN PERSON's campaigns, nested offer > funnel > campaign.
+  //
+  // A lead row is a `(person x campaign)` row, so the panel is about a person and the
+  // rows are what each of their campaigns decided. `rowsByPerson` is built off the same
+  // deduped list the table renders, so the panel can never show a campaign the page did
+  // not receive.
+  const selectedPersonRows = useMemo(
+    () => (selectedLead ? rowsByPerson.get(leadPersonKey(selectedLead)) ?? [selectedLead] : []),
+    [selectedLead, rowsByPerson],
+  );
+  const leadCampaignTree = useMemo(
+    () => buildLeadCampaignTree(selectedPersonRows, campaignInfoOf),
+    [selectedPersonRows, campaignInfoOf],
+  );
 
 
   // ── Funnel-stage statements for the open lead ────────────────────────────────
@@ -2093,15 +2088,33 @@ export function EngagedLeadsPage({
                 </div>
               </div>
             )}
-            {selectedLead.offer && <OfferSection offer={selectedLead.offer} />}
-            {selectedAudienceInline && (
-              <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
-            )}
+            {/* This person's campaigns, each holding what IT decided about them. The
+                offer and the audience live in here rather than as panel-level cards:
+                both are a campaign's answer, and stating one of them at person level
+                presents one campaign's answer as the person's. */}
+            <LeadCampaignSections tree={leadCampaignTree} audienceFullOf={audienceFullOf} />
             {/* No `Served:` footer. It printed an internal pipeline instant, in a
                 different date format than every row above it, for a step the customer
                 has no use for. The one place `servedAt` is worth showing is the row's
                 own Status/Date pair while the lead still reads `Processing`. */}
-            <LeadTimeline lead={selectedLead} email={leadEmailData?.generation ?? null} />
+            <LeadTimeline
+              lead={selectedLead}
+              email={leadEmailData?.generation ?? null}
+              // Stated only where it is actually ambiguous. A person in ONE campaign has
+              // a timeline that is that campaign's by construction, so the line would be
+              // noise; in several, the reader is looking at campaign cards above and
+              // would otherwise read these rows as belonging to whichever one they last
+              // looked at. Both halves are wire facts, not layout: lead-service flattens
+              // delivery evidence brand-wide on a brand-scoped read, and the by-lead
+              // email read answers with one generation for a person who has one per
+              // campaign. The rows move inside the cards once both producers answer per
+              // campaign.
+              scopeNote={
+                leadCampaignTree.campaignCount > 1
+                  ? "Across every campaign above. We cannot split these per campaign yet."
+                  : null
+              }
+            />
           </div>
         </div>
       )}
