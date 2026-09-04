@@ -1,6 +1,9 @@
 import { z } from "zod";
 import type { AnyLeadTab } from "./goal-steps";
 import type { LeadStageKey } from "./lead-funnel-stages";
+import type { LeadBoardColumnKey } from "./lead-board";
+import { STANDINGS_BY_COLUMN } from "./lead-board";
+import type { LeadStandingState } from "./lead-standing";
 
 /**
  * Asking lead-service for ONE page of a brand's leads, instead of all of them.
@@ -211,6 +214,108 @@ export function tabCount(counts: LeadBucketCounts | undefined, tab: AnyLeadTab):
 export function reachablePopulation(counts: LeadBucketCounts | undefined): number | null {
   if (!counts) return null;
   return counts.counts.contacted;
+}
+
+/**
+ * The STANDING dimension — what the board partitions on, and a different question from
+ * the engagement buckets above.
+ *
+ * A bucket asks what HAPPENED to somebody and they are not exclusive: a person who
+ * bought was also contacted, and appears under both. A standing asks WHERE THEY STAND on
+ * the funnel their campaign sells, and it is a partition — exactly one per lead — which
+ * is what a column can be drawn from and what makes the counts add up to the population.
+ * Conflating the two would state a wrong number rather than a truncated one.
+ */
+export const LEAD_STANDINGS = [
+  "unresolved",
+  "not_contacted",
+  "contacted",
+  "engaged",
+  "sales_interest",
+  "customer",
+  "opted_out",
+  "disqualified",
+] as const;
+
+/** Counts only — never any rows. Every key is always present; a state nobody is in is 0. */
+export const LeadStandingCountsSchema = z.object({
+  total: z.number(),
+  counts: z.object({
+    unresolved: z.number(),
+    not_contacted: z.number(),
+    contacted: z.number(),
+    engaged: z.number(),
+    sales_interest: z.number(),
+    customer: z.number(),
+    opted_out: z.number(),
+    disqualified: z.number(),
+  }),
+});
+export type LeadStandingCounts = z.infer<typeof LeadStandingCountsSchema>;
+
+/** Same scope and same search as the list, no standing and no bound. */
+export function standingCountsQuery(search: string): Record<string, string> {
+  const query: Record<string, string> = {};
+  const q = leadsSearchParam(search);
+  if (q) query.q = q;
+  return query;
+}
+
+/**
+ * How many people a board COLUMN holds — the producer's own per-standing counts, added
+ * up over the standings that column holds.
+ *
+ * Adding them is a DISPLAY LOOKUP, not a computed metric: a standing is a partition, so
+ * the counts are disjoint and their sum is a count of the same kind, at the grain this
+ * surface renders. Nothing is divided and nothing is inferred. The alternative — sizing
+ * a column from the rows a bounded page happened to return — is what made every number
+ * on this page describe a different population.
+ *
+ * `null` while the counts are unsettled: a column whose size we have not been told is
+ * not a column with nobody in it.
+ */
+export function boardColumnTotals(
+  counts: LeadStandingCounts | undefined,
+): Record<LeadBoardColumnKey, number> | null {
+  if (!counts) return null;
+  const out = {} as Record<LeadBoardColumnKey, number>;
+  for (const [column, standings] of Object.entries(STANDINGS_BY_COLUMN) as [
+    LeadBoardColumnKey,
+    readonly LeadStandingState[],
+  ][]) {
+    out[column] = standings.reduce((sum, state) => sum + counts.counts[state], 0);
+  }
+  return out;
+}
+
+/**
+ * ONE board column's page.
+ *
+ * `standing` takes the column's standings as a comma-separated SET (the same list form
+ * `status` has always had), so a column holding two standings is one bounded, ordered,
+ * walkable page with one `total` — not two lists stitched in the browser, which cannot
+ * be ordered across, cannot be grown, and would put the column straight back to stating
+ * whichever half it consumed as its size.
+ *
+ * `shown` is how many cards the reader has asked for, so growing a column is a wider
+ * bound rather than an offset: the column is a set somebody is working top-down, and a
+ * second request starting where the first stopped would let a row that moved in between
+ * be skipped or drawn twice.
+ */
+export function leadsColumnPageQuery(req: {
+  column: LeadBoardColumnKey;
+  search: string;
+  shown: number;
+}): Record<string, string> {
+  const query: Record<string, string> = {
+    view: "basic",
+    standing: STANDINGS_BY_COLUMN[req.column].join(","),
+    sort: "activity",
+    limit: String(Math.max(1, Math.trunc(req.shown))),
+  };
+  const q = leadsSearchParam(req.search);
+  if (q) query.q = q;
+  return query;
 }
 
 /** Pages available for a total, never fewer than one (an empty tab still has page 1). */

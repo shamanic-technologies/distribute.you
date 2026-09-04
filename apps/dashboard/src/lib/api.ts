@@ -1,8 +1,10 @@
 import { z } from "zod";
 import {
   LeadBucketCountsSchema,
+  LeadStandingCountsSchema,
   LeadsPageEnvelopeSchema,
   type LeadBucketCounts,
+  type LeadStandingCounts,
 } from "./leads-server-page";
 import type { PublicChannelLegsWire } from "./stated-campaign-leg";
 import type { ChannelFunnelEconomicsPair } from "./funnel-leg-price";
@@ -4790,6 +4792,37 @@ export async function getLeadBucketCounts(
       raw,
     });
     throw new Error("[dashboard] getLeadBucketCounts: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Every STANDING's population for a scope, without a single lead row.
+ *
+ * This is what lets the board's columns state their true size. A standing is a
+ * partition — one per lead — so a column holding two of them adds two served numbers
+ * (`boardColumnTotals`) rather than counting whatever rows a page happened to return,
+ * which is what made the whole screen describe three different populations.
+ *
+ * Same scope and same search as the list, so a column's stated size and what the column
+ * shows cannot disagree.
+ */
+export async function getLeadStandingCounts(
+  scope: LeadScope,
+  query: Record<string, string>,
+  token?: string,
+): Promise<LeadStandingCounts> {
+  const raw = await apiCall<unknown>(
+    `/leads/standing-counts?${leadQueryString(scope, query)}`,
+    { token },
+  );
+  const parsed = LeadStandingCountsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadStandingCounts: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getLeadStandingCounts: invalid response shape");
   }
   return parsed.data;
 }

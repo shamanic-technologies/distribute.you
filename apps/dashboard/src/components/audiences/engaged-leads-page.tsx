@@ -10,7 +10,11 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import type { OptOutChannel } from "@/lib/opt-out-channel";
-import { leadBoardColumnFor, type LeadBoardColumnKey } from "@/lib/lead-board";
+import {
+  LEAD_BOARD_COLUMNS,
+  LEAD_BOARD_PAGE_SIZE,
+  type LeadBoardColumnKey,
+} from "@/lib/lead-board";
 import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
 import {
   conversationRefusal,
@@ -30,6 +34,7 @@ import {
   listCampaignsByBrand,
   fetchLeadsCsv,
   getLeadBucketCounts,
+  getLeadStandingCounts,
   listLeadsPage,
   type LeadScope,
   getLeadConsolidatedStatus,
@@ -96,12 +101,15 @@ import type { LeadOutcome, RevenueOverview } from "@/lib/revenue-view";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import {
   LEADS_PAGE_SIZE,
+  boardColumnTotals,
   leadBucketCountsQuery,
+  leadsColumnPageQuery,
   leadsPageQuery,
   leadsSearchParam,
   leadsSearchProblem,
   pageCountFor,
   reachablePopulation,
+  standingCountsQuery,
   tabCount,
 } from "@/lib/leads-server-page";
 import { CsvDownloadButton } from "@/components/report/csv-button";
@@ -142,15 +150,81 @@ const MAX_REPLY_KINDS = 500;
 const LEADS_SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * How many cards the triage board draws.
+ * ONE board column's page, and its poll.
  *
- * The board is a PARTITION of the population, so unlike the table it cannot page: a
- * column showing rows 50-100 of its own contents is not a triage queue. It reads the
- * most recently active leads instead and STATES the bound, which is the same choice the
- * funnel-leg board already makes. Drawing a brand's 12,945 people as cards was never a
- * usable surface anyway.
+ * At module scope and taking everything it needs, so the five calls in the page are five
+ * ordinary hook calls in a fixed order rather than a loop somebody has to re-reason about
+ * the day a column is added.
+ *
+ * The key carries `shown`, so growing a column is a new entry rather than a mutation of
+ * the one on screen: the global `keepPreviousData` keeps the current cards up while the
+ * wider page lands, so a press never blanks the column it is growing.
  */
-const LEAD_BOARD_CARD_CAP = 200;
+function useBoardColumnPage(args: {
+  column: LeadBoardColumnKey;
+  scope: LeadScope;
+  scopeKey: string;
+  search: string;
+  shown: number;
+  enabled: boolean;
+}) {
+  return useAuthQuery(
+    ["leadsPage", args.scopeKey, "column", args.column, args.search, args.shown],
+    () =>
+      listLeadsPage(
+        args.scope,
+        leadsColumnPageQuery({
+          column: args.column,
+          search: args.search,
+          shown: args.shown,
+        }),
+      ),
+    { enabled: args.enabled, refetchInterval: LEADS_POLL_INTERVAL },
+  );
+}
+
+/**
+ * One lead as the board draws it.
+ *
+ * `column` is passed IN rather than derived: lead-service selected this row by standing,
+ * so re-deriving a column here would be a second opinion over the answer that fetched it.
+ */
+function toBoardCard(
+  lead: Lead,
+  column: LeadBoardColumnKey,
+  // A bare string, like the card's own field: lead-service and instantly-service own the
+  // kind vocabulary and can widen it before this app ships, so a kind with no label here
+  // renders as itself rather than failing to type.
+  replyKind: string | null,
+  statedAt: string | null,
+): LeadBoardCard {
+  const full = lead.lead;
+  const status = getLeadConsolidatedStatus(lead);
+  return {
+    id: lead.id,
+    email: lead.email ?? null,
+    name: `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.trim() || lead.email || "Lead",
+    // Absent on the slim projection and routinely hotlink-blocked at the source, so the
+    // card falls back to an initial rather than a broken image.
+    photoUrl: full?.photoUrl ?? null,
+    orgName: full?.organization?.name ?? null,
+    orgDomain: full?.organization?.primaryDomain ?? null,
+    column,
+    replyKind,
+    // The card states what we last OBSERVED about this person, not the column it is
+    // already sitting in — a tag reading "Sales interest" under a heading reading "Sales
+    // interest" spends the card's one tag saying nothing. The status is the shared
+    // `getLeadConsolidatedStatus`, so the card and the table's own badge cannot name one
+    // lead two ways, and the date below is `leadDateForStatus` of that same status: one
+    // statement, one event.
+    statusLabel: leadStatusLabel(status),
+    statusPill: leadStatusPill(status),
+    // When a kind was STATED, the card is dated by that statement; otherwise by the
+    // timestamp that proves the lead's own delivery status. Neither available means the
+    // card says nothing rather than borrowing a date.
+    statusAt: statedAt ?? leadDateForStatus(lead, status),
+  };
+}
 
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
   "positive-replies": "Sales interests",
@@ -1504,87 +1578,130 @@ export function EngagedLeadsPage({
   const boardOnly = Boolean(campaignId);
   const showBoard = boardOnly || view === "board";
 
-  // The board's OWN read, and it is bounded.
+  // The board's reads: ONE COUNT and ONE PAGE PER COLUMN.
   //
-  // The board is a PARTITION of the population, not a window onto it, so unlike the
-  // table it cannot page: a column showing rows 50-100 of its own contents is not a
-  // triage queue. It reads the most recently active leads and STATES the bound — the
-  // same choice the funnel-leg board already makes — rather than pretending to hold a
-  // brand's 12,945 people as cards, which was never a usable surface.
+  // It used to be a single bounded read of the widest bucket, sorted into columns in the
+  // browser, on the reasoning that a partition cannot page the way a list can. The
+  // partition part is right and the conclusion was not: what could not page was a column
+  // drawn as a SLICE of somebody else's page. lead-service partitions by standing now, so
+  // each column is its own page with its own total, and the cap — and the line that had
+  // to apologise for it — are gone.
   //
-  // `contacted` is the widest bucket, so the board covers everyone the columns can
-  // place. Same search as the table, so the two never disagree about what is on screen.
-  const {
-    data: boardPage,
-    isPending: boardPending,
-    isError: boardReadError,
-  } = useAuthQuery(
-    ["leadsPage", scopeKey, "board", wireSearch, LEAD_BOARD_CARD_CAP],
-    () =>
-      listLeadsPage(scope, {
-        ...leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 }),
-        limit: String(LEAD_BOARD_CARD_CAP),
-      }),
+  // The counts come first and cost no rows. They also decide which columns are worth
+  // reading at all: an empty column's page is not fetched once its size is known, while
+  // before the counts land every column is read in parallel rather than waiting a round
+  // trip to find out.
+  const { data: standingCounts } = useAuthQuery(
+    ["leadStandingCounts", scopeKey, wireSearch],
+    () => getLeadStandingCounts(scope, standingCountsQuery(wireSearch)),
     { enabled: showBoard, refetchInterval: LEADS_POLL_INTERVAL },
   );
-  const boardLeads = useMemo(() => boardPage?.leads ?? [], [boardPage]);
-  // How many the board is a bounded view OF, so the cap can be stated honestly rather
-  // than leaving a reader to assume 200 is the whole pipeline.
-  const boardTotal = boardPage?.total ?? null;
+  const columnTotals = boardColumnTotals(standingCounts);
 
-  // Cards come off the board's own rows plus that one campaign-scoped read of the fine
+  // How far each column is drawn. It lives HERE rather than in the board because it
+  // drives a fetch now: growing a column asks lead-service for a wider page of that
+  // column, not for a bigger slice of one we already hold.
+  const [columnShown, setColumnShown] = useState<Record<string, number>>({});
+  // A search re-queries every column, so how far the reader had grown one describes a
+  // set that no longer exists.
+  useEffect(() => {
+    setColumnShown({});
+  }, [wireSearch]);
+
+  const columnArgs = (column: LeadBoardColumnKey) => ({
+    column,
+    scope,
+    scopeKey,
+    search: wireSearch,
+    shown: columnShown[column] ?? LEAD_BOARD_PAGE_SIZE,
+    // Before the counts land every column is read; after, an empty one is not read again.
+    enabled: showBoard && (columnTotals == null || columnTotals[column] > 0),
+  });
+  // Five explicit calls rather than a loop: the column set is a module constant, but a
+  // hook in a loop is a rule nobody should have to re-check on the day a column is added.
+  const contactedColumn = useBoardColumnPage(columnArgs("contacted"));
+  const salesInterestColumn = useBoardColumnPage(columnArgs("sales_interest"));
+  const disqualifiedColumn = useBoardColumnPage(columnArgs("disqualified"));
+  const optOutColumn = useBoardColumnPage(columnArgs("opt_out"));
+  const unresolvedColumn = useBoardColumnPage(columnArgs("unresolved"));
+  const columnReads: Record<LeadBoardColumnKey, ReturnType<typeof useBoardColumnPage>> = {
+    contacted: contactedColumn,
+    sales_interest: salesInterestColumn,
+    disqualified: disqualifiedColumn,
+    opt_out: optOutColumn,
+    unresolved: unresolvedColumn,
+  };
+
+  const boardLeads = useMemo(
+    () => LEAD_BOARD_COLUMNS.flatMap((c) => columnReads[c.key].data?.leads ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      contactedColumn.data,
+      salesInterestColumn.data,
+      disqualifiedColumn.data,
+      optOutColumn.data,
+      unresolvedColumn.data,
+    ],
+  );
+  const boardPending = LEAD_BOARD_COLUMNS.some((c) => columnReads[c.key].isPending);
+  // How many people the board is about, for the search bar. The columns partition the
+  // population, so adding their served sizes is a count of the same kind — and it is
+  // deliberately NOT `standingCounts.total`, which includes the people nobody wrote to
+  // and who therefore appear in no column at all.
+  const boardDrawnTotal = columnTotals
+    ? LEAD_BOARD_COLUMNS.reduce((sum, c) => sum + columnTotals[c.key], 0)
+    : null;
+  const boardReadError = LEAD_BOARD_COLUMNS.some((c) => columnReads[c.key].isError);
+
+  // Cards come off each column's own rows plus that one campaign-scoped read of the fine
   // reply kinds. No per-lead fetch.
-  const boardCards: LeadBoardCard[] = useMemo(() => {
-    const out: LeadBoardCard[] = [];
-    for (const lead of boardLeads) {
-      // A statement somebody just made outranks the served one for the round trip it
-      // takes to land. `has` decides whether the latch speaks, never `??`: `null` is a
-      // real entry there — a statement just taken BACK — and `??` would read it as
-      // silence and fall straight back to the kind that was withdrawn.
-      const held = lead.email && statedReplyKinds.has(lead.email)
-        ? (statedReplyKinds.get(lead.email) ?? null)
-        : undefined;
-      const statement =
-        held !== undefined ? held : lead.email ? (replyKindByEmail.get(lead.email) ?? null) : null;
-      const stated = statement?.kind ?? null;
-      // WHERE the card sits is lead-service's own answer, rendered — never derived
-      // from the reply signals on the row beside it. Those signals are still what the
-      // table's badge and the panel's timeline read; "is this person still in play" is
-      // funnel-aware commercial policy with one owner. See `lib/lead-standing.ts`.
-      // The held column speaks only over the round trip a move takes, and only when
-      // the latch is the thing speaking — a served qualification carries no column.
-      const column = held?.column ?? leadBoardColumnFor(lead.standing);
-      if (!column) continue;
-      const full = lead.lead;
-      const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.trim() || lead.email || "Lead";
-      out.push({
-        id: lead.id,
-        email: lead.email ?? null,
-        name,
-        // Absent on the slim projection and routinely hotlink-blocked at the source,
-        // so the card falls back to an initial rather than a broken image.
-        photoUrl: full?.photoUrl ?? null,
-        orgName: full?.organization?.name ?? null,
-        orgDomain: full?.organization?.primaryDomain ?? null,
-        column,
-        replyKind: stated,
-        // The card states what we last OBSERVED about this person, not the column it
-        // is already sitting in — a tag reading "Sales interest" under a heading
-        // reading "Sales interest" spends the card's one tag saying nothing. The
-        // status is the shared `getLeadConsolidatedStatus`, so the card and the
-        // table's own badge cannot name one lead two ways, and the date below is
-        // `leadDateForStatus` of that same status: one statement, one event.
-        statusLabel: leadStatusLabel(getLeadConsolidatedStatus(lead)),
-        statusPill: leadStatusPill(getLeadConsolidatedStatus(lead)),
-        // When a kind was STATED, the card is dated by that statement; otherwise by the
-        // timestamp that proves the lead's own delivery status — the same one map the
-        // table's Date column reads, so the two surfaces cannot date one lead two ways.
-        // Neither available means the card says nothing rather than borrowing a date.
-        statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)),
-      });
+  //
+  // A card is placed by the column it was READ from, not by re-deriving one from the row:
+  // lead-service filtered that page by standing, so asking `leadBoardColumnFor` again
+  // would be a second opinion over the answer that selected the row in the first place.
+  // The one thing that overrides it is a statement somebody just made, which speaks for
+  // the round trip it takes to land.
+  const boardColumns = useMemo(() => {
+    const out = {} as Record<
+      LeadBoardColumnKey,
+      { cards: LeadBoardCard[]; total: number | null; pending: boolean }
+    >;
+    for (const column of LEAD_BOARD_COLUMNS) {
+      const read = columnReads[column.key];
+      const cards: LeadBoardCard[] = [];
+      for (const lead of read.data?.leads ?? []) {
+        // `has` decides whether the latch speaks, never `??`: `null` is a real entry
+        // there — a statement just taken BACK — and `??` would read it as silence and
+        // fall straight back to the kind that was withdrawn.
+        const held =
+          lead.email && statedReplyKinds.has(lead.email)
+            ? (statedReplyKinds.get(lead.email) ?? null)
+            : undefined;
+        const statement =
+          held !== undefined ? held : lead.email ? (replyKindByEmail.get(lead.email) ?? null) : null;
+        if (held?.column && held.column !== column.key) continue;
+        cards.push(toBoardCard(lead, column.key, statement?.kind ?? null, statement?.at ?? null));
+      }
+      // A card held into THIS column by a move the reader just made, whose served page
+      // still has it somewhere else. Without this the card vanishes for the round trip.
+      for (const lead of boardLeads) {
+        const held =
+          lead.email && statedReplyKinds.has(lead.email)
+            ? (statedReplyKinds.get(lead.email) ?? null)
+            : undefined;
+        if (!held?.column || held.column !== column.key) continue;
+        if (cards.some((c) => c.id === lead.id)) continue;
+        cards.push(toBoardCard(lead, column.key, held.kind, held.at));
+      }
+      out[column.key] = {
+        cards,
+        total: columnTotals?.[column.key] ?? null,
+        pending: read.isPending,
+      };
     }
     return out;
-  }, [boardLeads, replyKindByEmail, statedReplyKinds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardLeads, replyKindByEmail, statedReplyKinds, columnTotals]);
 
   const [boardError, setBoardError] = useState<string | null>(null);
   // A board move states a REPLY KIND, the same write the lead panel makes — never a
@@ -1645,8 +1762,8 @@ export function EngagedLeadsPage({
   //
   // It used to count its two numbers off the board's own rows, which was correct while
   // the page held every lead and became a lie the moment that read gained a bound: the
-  // board fetches at most LEAD_BOARD_CARD_CAP of the population, so the row printed the
-  // CAP as if it were the population. Measured on one production campaign: `Leads 200`
+  // board fetched a bounded page of the population, so the row printed that bound as
+  // if it were the population. Measured on one production campaign: `Leads 200`
   // and `Sales Interests 19 (9.5%)` directly under a heading correctly reading
   // `2,052 leads`, beside a served website-visit figure of 85 — three populations on one
   // screen, every number real, none of them agreeing.
@@ -2163,7 +2280,7 @@ export function EngagedLeadsPage({
               value={search}
               onChange={setSearch}
               placeholder="Search by name, company, title, or email..."
-              resultCount={(showBoard ? boardTotal : activeTotal) ?? 0}
+              resultCount={(showBoard ? boardDrawnTotal : activeTotal) ?? 0}
               totalCount={(showBoard ? reachableCount : tabCount(bucketCounts, activeTab)) ?? 0}
             />
             {/* A search the producer would refuse is refused HERE, with the reason, and
@@ -2179,18 +2296,16 @@ export function EngagedLeadsPage({
               </div>
             ) : showBoard ? (
               <>
-              {/* The board draws the most recently active leads, not the whole pipeline.
-                  It is a PARTITION, so it cannot page the way the table does — a column
-                  showing rows 200-400 of itself is not a triage queue — so it states the
-                  bound rather than letting a reader take 200 cards for everyone. */}
-              {boardTotal != null && boardTotal > LEAD_BOARD_CARD_CAP && (
-                <p className="mb-3 text-sm text-gray-500">
-                  Showing the {LEAD_BOARD_CARD_CAP.toLocaleString("en-US")} most recently
-                  active of {boardTotal.toLocaleString("en-US")} leads. Search to narrow it.
-                </p>
-              )}
+              {/* No bound to apologise for: each column states its own size and draws
+                  and grows its own page. */}
               <LeadBoard
-                cards={boardCards}
+                columns={boardColumns}
+                onShowMore={(column) =>
+                  setColumnShown((prev) => ({
+                    ...prev,
+                    [column]: (prev[column] ?? LEAD_BOARD_PAGE_SIZE) + LEAD_BOARD_PAGE_SIZE,
+                  }))
+                }
                 busy={
                   moveOnBoard.isPending ||
                   optOutOnBoard.isPending ||
@@ -2198,7 +2313,6 @@ export function EngagedLeadsPage({
                 }
                 error={boardError}
                 canMove={Boolean(campaignId)}
-                filterKey={search}
                 onOpen={(leadRowId) => {
                   const lead = boardLeads.find((l) => l.id === leadRowId);
                   if (lead) setSelectedLead(lead);

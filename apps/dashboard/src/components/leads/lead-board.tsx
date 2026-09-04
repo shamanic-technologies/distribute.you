@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { BoardSlot } from "@/components/boards/board-slot";
 import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
 import {
   LEAD_BOARD_COLUMNS,
-  LEAD_BOARD_PAGE_SIZE,
   columnMoveConfirmation,
   columnMoveRefusal,
-  columnPage,
   columnReplyKinds,
   movableColumnsFrom,
   type LeadBoardColumn,
@@ -222,28 +220,36 @@ function CardBody({ card }: { card: LeadBoardCard }) {
 }
 
 export function LeadBoard({
-  cards,
+  columns,
+  onShowMore,
   busy,
   error,
   canMove,
-  filterKey,
   onOpen,
   onMove,
 }: {
-  cards: LeadBoardCard[];
+  /**
+   * One entry per column, each holding its OWN page and its OWN size.
+   *
+   * The board used to take one flat `cards` array and sort it into columns here. That
+   * made every column a slice of whatever single bounded read the page had made, so a
+   * column's head counted the rows that read happened to return rather than the people
+   * in it, and no column could be grown past what the others had already consumed.
+   * lead-service partitions by standing now, so each column is its own page with its own
+   * total and the board renders them.
+   *
+   * `total` is `null` while the counts are unsettled — a column whose size we have not
+   * been told is not a column with nobody in it, and its head says nothing rather than
+   * `0`.
+   */
+  columns: Record<
+    LeadBoardColumnKey,
+    { cards: LeadBoardCard[]; total: number | null; pending: boolean }
+  >;
+  /** Grow one column by another page. The page owns how far each one is drawn. */
+  onShowMore: (column: LeadBoardColumnKey) => void;
   busy: boolean;
   error: string | null;
-  /**
-   * What the page filtered this set by — the search box's text today.
-   *
-   * A column's reveal is a statement about the set the reader was looking at, so it
-   * has to fall back when the set is re-queried, or a search that narrows Contacted to
-   * three cards leaves the previous "showing 200" in place and the reader reads an
-   * empty tail as the board loading. It is a PROP rather than a diff on `cards`
-   * because `cards` is rebuilt on every poll: resetting on that would collapse a
-   * column the reader had opened, every thirty seconds, for no reason they could see.
-   */
-  filterKey: string;
   /**
    * Whether a statement can be written at all. A reply kind is recorded against the
    * lead's CAMPAIGN, so a brand-level board — which spans several — can show the
@@ -264,22 +270,13 @@ export function LeadBoard({
   onMove: (move: LeadBoardMove) => void;
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
-  // How many cards each column has been asked for. Per column, because the columns are
-  // wildly different sizes — Contacted holds the whole campaign and Opt-out holds a
-  // handful — so one shared count would either hide most of the board or defeat itself.
-  const [shown, setShown] = useState<Record<string, number>>({});
-  useEffect(() => {
-    setShown({});
-  }, [filterKey]);
 
-  // One pass rather than a `filter` per column inside the render: the whole campaign's
-  // leads go through this, and the render already walks four columns.
-  const byColumn = useMemo(() => {
-    const out = new Map<LeadBoardColumnKey, LeadBoardCard[]>();
-    for (const column of LEAD_BOARD_COLUMNS) out.set(column.key, []);
-    for (const card of cards) out.get(card.column)?.push(card);
-    return out;
-  }, [cards]);
+  // Every card on screen, for the gesture: a drag reads the card it lifted out of one
+  // flat list, and which column it came from is on the card itself.
+  const cards = useMemo(
+    () => LEAD_BOARD_COLUMNS.flatMap((column) => columns[column.key].cards),
+    [columns],
+  );
 
   const startMove = (card: LeadBoardCard, to: LeadBoardColumn) => {
     setPending({ card, to });
@@ -458,16 +455,17 @@ export function LeadBoard({
 
       <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
         {LEAD_BOARD_COLUMNS.map((column) => {
-          const inColumn = byColumn.get(column.key) ?? [];
+          const { cards: drawn, total, pending: columnPending } = columns[column.key];
           // "Not placed" reports that lead-service could not place some leads, so
           // drawing it on a healthy campaign advertises a problem that is not there.
-          // The other four are the shape of the board and stay either way.
-          if (column.hideWhenEmpty && inColumn.length === 0) return null;
-          const { visible, remaining } = columnPage(
-            inColumn.length,
-            shown[column.key] ?? LEAD_BOARD_PAGE_SIZE,
-          );
-          const drawn = inColumn.slice(0, visible);
+          // It goes on its SERVED size, not on how many rows arrived: a column drawn
+          // from a page is empty for as long as that page is in flight, which would
+          // make it appear a moment after the board rather than not at all.
+          if (column.hideWhenEmpty && total === 0) return null;
+          // What is LEFT to draw, off the column's own served size. `null` means we have
+          // not been told, and an unknown remainder offers no button rather than a
+          // guessed one.
+          const remaining = total == null ? null : Math.max(0, total - drawn.length);
           // Every column lights up under a dragged card — the drop is accepted
           // everywhere and the form is where it is refused.
           const under = board.showsSlot(column.key);
@@ -491,7 +489,12 @@ export function LeadBoard({
                   <span className="truncate text-sm font-medium text-gray-800">
                     {column.label}
                   </span>
-                  <span className="text-xs text-gray-500">{inColumn.length}</span>
+                  {/* The COLUMN's size, served — never a count of the cards drawn,
+                      which is a fact about the viewport and would make a column of
+                      1,966 read as a column of 20. Nothing while it is unsettled. */}
+                  <span className="text-xs text-gray-500">
+                    {total == null ? "" : total.toLocaleString("en-US")}
+                  </span>
                 </div>
                 <span className="mt-1 block text-[11px] text-gray-500">{column.blurb}</span>
               </header>
@@ -536,24 +539,22 @@ export function LeadBoard({
                     confirmed rather than discovered. Last in the column: the cards carry
                     no order anybody stated, so claiming a position would be inventing one. */}
                 {under && <BoardSlot variant="target" />}
-                {inColumn.length === 0 && !under && (
-                  <p className="px-1 py-3 text-xs text-gray-400">Nobody here yet.</p>
+                {drawn.length === 0 && !under && (
+                  <p className="px-1 py-3 text-xs text-gray-400">
+                    {columnPending ? "Loading..." : "Nobody here yet."}
+                  </p>
                 )}
                 {/* States what is LEFT, not what a press adds: the reader is deciding
                     whether to keep going, and the size of the tail is what answers that.
                     A button rather than scroll-triggered loading — a board is a set
                     somebody is working, so the column grows when they ask and the page
                     never moves under them. */}
-                {remaining > 0 && (
+                {remaining != null && remaining > 0 && (
                   <button
                     type="button"
+                    disabled={columnPending}
                     data-testid={`lead-board-more-${column.key}`}
-                    onClick={() =>
-                      setShown((prev) => ({
-                        ...prev,
-                        [column.key]: visible + LEAD_BOARD_PAGE_SIZE,
-                      }))
-                    }
+                    onClick={() => onShowMore(column.key)}
                     className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
                   >
                     Show more ({remaining.toLocaleString("en-US")} left)
