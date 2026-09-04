@@ -177,7 +177,9 @@ describe("brand surfaces list campaigns and state money", () => {
     // retired goal — a goal cannot separate the two meeting funnels, so it printed the
     // visit pair on a campaign whose funnel starts at a positive reply. `!brandLevelMoney`
     // is still what turns both off at brand level.
-    expect(audiences).toContain('const showVisitCols = hasStep("website_visits") && !brandLevelMoney;');
+    // The funnel gate is the fallback under a campaign whose leg we can place (see
+    // campaign-leg-columns.test.ts); `!brandLevelMoney` is still what turns it off here.
+    expect(audiences).toContain('hasStep("website_visits") && !brandLevelMoney');
     expect(audiences).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
     expect(audiences).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");
     expect(audiences).toContain('label="ROI"');

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { goalForFunnelKey } from "@/lib/sales-funnels";
+import { goalForFunnelKey, normalizeSalesFunnelKey, salesFunnelByKey } from "@/lib/sales-funnels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -36,6 +36,10 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
+import { campaignLegFor } from "@/lib/campaign-leg";
+import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
+import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
+import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -300,8 +304,32 @@ export function CampaignOverviewPage() {
   const trackerSetUp =
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
-  // Same cost column the Audiences table leads with — never features-service's sortMetric.
-  const audienceStatsMetric = audienceRankMetric(optimizationGoal, trackerSetUp);
+  // WHICH ARROW this campaign performs, resolved with the SAME precedence every other
+  // leg-aware surface uses (the campaign's own stated leg, else the derivation from the
+  // channel's legs). A campaign sells one leg of its funnel, so ranking its audiences on
+  // the funnel's TERMINAL outcome prices an arrow it does not run — this card read "Cost
+  // per form submission" on a campaign buying website visits. Both reads are already in
+  // flight, so this costs no request.
+  const legIndex = useFunnelLegIndex();
+  const campaignFunnel = campaignFunnelKey
+    ? salesFunnelByKey(normalizeSalesFunnelKey(campaignFunnelKey))
+    : null;
+  const campaignLeg = useMemo(() => {
+    if (!campaignFunnel || !featureSlug) return null;
+    const stated = statedCampaignLeg(campaignFunnel, campaign?.legKey, legIndex);
+    if (stated) return stated;
+    const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
+    return campaignLegFor(campaignFunnel, channel?.legs);
+  }, [campaignFunnel, featureSlug, channels, campaign?.legKey, legIndex]);
+  // Same cost column the Audiences table leads with — never features-service's
+  // sortMetric, and keyed on the leg exactly as that table is, so the card and the table
+  // one click away cannot lead with two different prices for one campaign. Null (an
+  // unplaceable leg, a meeting step features-service prices no per-audience column for,
+  // or a tracked pair with no tracker) falls back to the goal-keyed answer.
+  const legMetric = legPairIsAvailable(legColumnPair(campaignLeg), trackerSetUp)
+    ? legRankMetric(campaignLeg)
+    : null;
+  const audienceStatsMetric = legMetric ?? audienceRankMetric(optimizationGoal, trackerSetUp);
   const monthlyBudgetUsd =
     runningDailyBudgetCents != null && runningDailyBudgetCents > 0
       ? (runningDailyBudgetCents / 100) * 30

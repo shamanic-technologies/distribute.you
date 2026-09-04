@@ -84,7 +84,11 @@ describe("Audiences page", () => {
     // positive reply. `!brandLevelMoney` still drops both at brand level, where a visit
     // names one funnel's first step while the rows are attributed across every funnel.
     expect(src).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");
-    expect(src).toContain('const showVisitCols = hasStep("website_visits") && !brandLevelMoney;');
+    // The funnel gate is the FALLBACK now: a campaign whose own LEG we can place shows
+    // that leg's pair alone (a `visit_form` campaign performing only the entry leg was
+    // reading "Cost per form submission" for an arrow it never runs). The funnel-wide
+    // gate is what a brand-level table and an unplaceable leg still read.
+    expect(src).toContain('hasStep("website_visits") && !brandLevelMoney');
     expect(src).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
     expect(src).toContain("{showVisitCols && (");
     // The retired goal no longer decides either pair.
