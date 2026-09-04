@@ -18,8 +18,11 @@ import { useIsBetaUser } from "@/lib/use-beta-user";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listCampaignsByBrand,
-  listBrandLeads,
-  listCampaignLeads,
+  EXPORT_MAX_ROWS,
+  fetchLeadsForExport,
+  getLeadBucketCounts,
+  listLeadsPage,
+  type LeadScope,
   getLeadConsolidatedStatus,
   leadDateForStatus,
   getFeatureRevenue,
@@ -81,6 +84,17 @@ import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { LeadOutcome, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
+import {
+  LEADS_PAGE_SIZE,
+  leadBucketCountsQuery,
+  leadsPageQuery,
+  leadsSearchParam,
+  leadsSearchProblem,
+  pageCountFor,
+  reachablePopulation,
+  tabCount,
+} from "@/lib/leads-server-page";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { EntitySearchBar } from "@/components/entity-search-bar";
@@ -108,6 +122,24 @@ import { LeadCampaignSections } from "@/components/audiences/lead-campaign-secti
  * many stated kinds as one request can carry; past that it says so.
  */
 const MAX_REPLY_KINDS = 500;
+
+/**
+ * How long the search box holds still before it becomes a request. The box itself is
+ * never debounced — only what goes on the wire — so typing stays instant while the
+ * whole-population search behind it fires once.
+ */
+const LEADS_SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * How many cards the triage board draws.
+ *
+ * The board is a PARTITION of the population, so unlike the table it cannot page: a
+ * column showing rows 50-100 of its own contents is not a triage queue. It reads the
+ * most recently active leads instead and STATES the bound, which is the same choice the
+ * funnel-leg board already makes. Drawing a brand's 12,945 people as cards was never a
+ * usable surface anyway.
+ */
+const LEAD_BOARD_CARD_CAP = 200;
 
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
   "positive-replies": "Sales interests",
@@ -141,9 +173,13 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "buffered",
 ];
 
-// "all" is NOT a rendered tab — it's the base ordering for `sortedLeads`. The All
-// UI tab was removed; the funnel tabs are the four below.
-type Tab = "positive-replies" | "clicks" | "outreach" | "all" | OutcomeTab;
+// Every tab a Leads page can render, and every one of them asks lead-service for its
+// own bucket. `"all"` used to sit in this union as the base ordering key for an array
+// held in the browser; there is no such array any more, and it had no bucket to ask for
+// — a read naming no bucket returns the whole scoped population INCLUDING the people
+// carrying no evidence at all, who can appear under no tab. So it is gone, and this
+// union is now exactly `AnyLeadTab`.
+type Tab = AnyLeadTab;
 
 // The Date column reports the date of the STATUS on the same row, so the two cells
 // state one fact together. It used to be per-TAB — Outreach dated every row at
@@ -918,22 +954,72 @@ export function EngagedLeadsPage({
   const [page, setPage] = useState(0);
   const hasAutoSelectedTab = useRef(false);
 
-  // Campaign-scoped (v2 staff preview) when a campaignId is passed, else brand-scoped.
-  // Both readers return the same Lead[] shape; the campaign variant filters to one
-  // campaign's leads_campaigns rows.
-  const { data, isPending, isPlaceholderData } = useAuthQuery(
-    campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
-    () => (campaignId ? listCampaignLeads(campaignId) : listBrandLeads(brandId)),
-    // The one read on a slower tier: unpaginated by design and huge on a heavy brand.
-    // Every user action that can change it invalidates it explicitly below.
+  // ── The reads ────────────────────────────────────────────────────────────────
+  // This page used to ask for a brand's ENTIRE lead population and derive everything in
+  // the browser: the tab counts, the search, the sort, the export and the board all came
+  // out of one array. That array is 44.5 MB over 12,945 rows on one real brand and 99 MB
+  // on the largest of the seven past the limit, so it was far over the 2 MB on-disk cache
+  // entry cap, was never written, and the table cold-loaded on EVERY visit. That is the
+  // loading skeleton this replaces — not a caching bug, a payload that could not be cached.
+  //
+  // lead-service answers each of those questions directly now. Two reads here: every
+  // bucket's COUNT (no lead rows at all), and ONE page of the active bucket. Both are
+  // small enough to be written to disk, so the table paints on arrival.
+  //
+  // lead-service answers a scoped read with ONE ROW PER PERSON (`DISTINCT ON (lead_id)`),
+  // so there is nothing to dedupe here. What a person's several campaigns did lives on
+  // `lead.campaigns`, served under `?include=campaigns` — the row is the person, the
+  // cards are their campaigns.
+  const scope = useMemo<LeadScope>(
+    () => (campaignId ? { campaignId } : { brandId }),
+    [campaignId, brandId],
+  );
+  const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`;
+
+  // What the WIRE carries for the search box. Debounced, because a request per keystroke
+  // would be evaluated over the whole population; and refused locally when the producer
+  // would 400 it (blank, over 200 characters, over 8 words), so a bad search says why
+  // instead of taking the table down.
+  const debouncedSearch = useDebouncedValue(search, LEADS_SEARCH_DEBOUNCE_MS);
+  const searchProblem = leadsSearchProblem(search);
+  const wireSearch = leadsSearchParam(debouncedSearch) ?? "";
+
+  // Every tab's size in one round trip, without a single lead row. It takes the SAME
+  // search the list takes, so the counts follow the search box rather than describing a
+  // different set from the rows underneath them.
+  const {
+    data: bucketCounts,
+    isError: countsError,
+    isPending: countsPending,
+  } = useAuthQuery(
+    ["leadBucketCounts", scopeKey, wireSearch],
+    () => getLeadBucketCounts(scope, leadBucketCountsQuery(wireSearch)),
     { refetchInterval: LEADS_POLL_INTERVAL },
   );
 
-  // lead-service answers a brand-scoped read with ONE ROW PER PERSON already
-  // (`DISTINCT ON (lead_id)`), so there is nothing to dedupe here. What a person's
-  // several campaigns did lives on `lead.campaigns`, served under `?include=campaigns`
-  // — the row is the person, the cards are their campaigns.
-  const leads = useMemo(() => data?.leads ?? [], [data]);
+  // ONE page of the active tab's bucket. The key carries the scope, the tab, the search
+  // and the page number, so two windows onto one brand can never share an entry — and
+  // each entry is a few hundred KB rather than tens of megabytes.
+  //
+  // `sort=activity` is the ordering the Date column shows: newest first on the timestamp
+  // that proves each lead's most advanced status. It used to be computed here over the
+  // whole array; it is the producer's now, over the same rule, with a total order so a
+  // page can neither repeat a lead nor skip one.
+  const {
+    data: pageData,
+    isPending,
+    isPlaceholderData,
+    isError: pageError,
+  } = useAuthQuery(
+    ["leadsPage", scopeKey, activeTab, wireSearch, page],
+    () => listLeadsPage(scope, leadsPageQuery({ tab: activeTab, search: wireSearch, page })),
+    { refetchInterval: LEADS_POLL_INTERVAL },
+  );
+
+  const leads = useMemo(() => pageData?.leads ?? [], [pageData]);
+  // How many leads the ACTIVE tab holds in total — what the pager is a window onto.
+  // `null` means the producer did not say, which is never read as zero.
+  const activeTotal = pageData?.total ?? tabCount(bucketCounts, activeTab);
 
   // Every campaign of the brand, keyed by its own id — what the panel's tree needs to
   // name a campaign's funnel, channel and leg. The key is byte-equal to the one
@@ -1029,11 +1115,15 @@ export function EngagedLeadsPage({
   const funnelTabs = useMemo(() => leadTabsForFunnels(activeFunnelKeys), [activeFunnelKeys]);
 
   // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
-  // live on the /revenue `leads[]` rows, NOT the lead-service `listBrandLeads` row —
-  // so fetch /revenue (same query key as the stat cards → React Query dedupes to one
-  // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `LeadOutcome.leadId`, not
-  // the leads_campaigns row `id`). The outcome tab (Signups/Meetings/Form submissions/
-  // Sales) buckets on the join boolean + dates on its timestamp.
+  // live on the /revenue `leads[]` rows rather than on the lead row itself — so fetch
+  // /revenue (same query key as the stat cards, so React Query dedupes it to one poll)
+  // and join by the lead IDENTITY (`lead.leadId` ↔ `LeadOutcome.leadId`, not the
+  // leads_campaigns row `id`).
+  //
+  // Two things it is read for, and one it is NOT: it dates each row's outcome, and it
+  // decides which outcome tabs EXIST at all. It no longer decides tab MEMBERSHIP — that
+  // is a bucket lead-service answers, off the same attributed ledger, because membership
+  // has to be pageable and a client-side join can only ever see the page in hand.
   // Gated on the channel CATALOGUE under a campaign, not on the brand's revenue-feature
   // set: that set decides which features get a revenue page on a BRAND-scoped surface,
   // and gating a campaign on it blanks every campaign that is not on the brand's one GA
@@ -1127,24 +1217,12 @@ export function EngagedLeadsPage({
     };
   };
 
-  // Ordered by the value the Date column SHOWS — the timestamp of each row's own
-  // status, newest first. Sorting on a different field than the column displays
-  // makes the column read as unordered, so the two move together. Null sinks to
-  // the bottom. (Unlatched status here: this decides row ORDER only, while the
-  // latch below exists to keep a row's rendered BUCKET from bouncing on a poll.)
-  const sortByStatusDate = (arr: Lead[]): Lead[] =>
-    [...arr].sort((a, b) => {
-      const at = leadDateForStatus(a, getLeadConsolidatedStatus(a));
-      const bt = leadDateForStatus(b, getLeadConsolidatedStatus(b));
-      const d = (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
-      // Deterministic tiebreak: leads sharing a timestamp (batch send → same
-      // firstContactedAt) or both-null dates would otherwise fall back to the
-      // backend array order, which lead-service does not sort (physical/heap
-      // order shifts when a row is UPDATED — e.g. on a follow-up send), so they
-      // reshuffle on the 30s poll. Freeze ties by lead id.
-      return d !== 0 ? d : a.id.localeCompare(b.id);
-    });
-  const sortedLeads = useMemo(() => sortByStatusDate(leads), [leads]);
+  // The rows arrive ORDERED — `sort=activity`, newest first on the timestamp that proves
+  // each lead's most advanced status, which is the value the Date column shows. That
+  // used to be sorted here over the whole population; it is the producer's now, over the
+  // same rule and with a total order (ties broken on the row id), so a page can neither
+  // repeat a lead nor skip one. Re-sorting a PAGE here would be worse than redundant: it
+  // would order 50 rows among themselves and read as if the whole tab were ordered.
 
   // Monotonic status latch: each lead's tab is derived from the email-gateway
   // delivery overlay, which can transiently drop on a poll and bounce a lead
@@ -1154,50 +1232,24 @@ export function EngagedLeadsPage({
   // philosophy). `statusOf` is the single source the table, tabs, and side
   // panel all bucket on.
   const statusEntries = useMemo(
-    () => sortedLeads.map((l) => ({ id: l.id, status: getLeadConsolidatedStatus(l) })),
-    [sortedLeads],
+    () => leads.map((l) => ({ id: l.id, status: getLeadConsolidatedStatus(l) })),
+    [leads],
   );
   const latchedStatus = useMonotonicStatuses(statusEntries, LEAD_STATUS_ORDER, "leads");
   const statusOf = (lead: Lead): LeadConsolidatedStatus =>
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
-  const groupedByTab = useMemo(() => {
-    const positive: Lead[] = [];
-    const clicks: Lead[] = [];
-    const outreach: Lead[] = [];
-    for (const lead of leads) {
-      if (lead.replyClassification === "positive") positive.push(lead);
-      if (lead.clicked) clicks.push(lead);
-      if (lead.contacted) outreach.push(lead);
-    }
-    const groups = new Map<Tab, Lead[]>();
-    // Every engagement tab sorts by the same thing its Date column shows: each
-    // row's own status date. The tabs differ in MEMBERSHIP, not in what a date means.
-    groups.set("positive-replies", sortByStatusDate(positive));
-    groups.set("clicks", sortByStatusDate(clicks));
-    groups.set("outreach", sortByStatusDate(outreach));
-    // Realized-outcome bucket: leads the /revenue join flags for the funnel's outcome,
-    // sorted desc by the outcome timestamp. Only leads present in the join AND flagged
-    // true qualify (null/undefined = not reached).
-    if (outcomeTab) {
-      const field = outcomeTab.leadField;
-      const reached = leads.filter((lead) => {
-        const cl = lead.leadId ? outcomeByLeadId.get(lead.leadId) : undefined;
-        return cl?.[field] === true;
-      });
-      reached.sort((a, b) => {
-        const at = outcomeDates.get(a.id);
-        const bt = outcomeDates.get(b.id);
-        const d = (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
-        // Same deterministic tiebreak as sortByStatusDate — freeze equal/null
-        // outcome timestamps by lead id so the tab order is poll-stable.
-        return d !== 0 ? d : a.id.localeCompare(b.id);
-      });
-      groups.set(outcomeTab.tab, reached);
-    }
-    return groups;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads, sortedLeads, outcomeTab, outcomeByLeadId, outcomeDates]);
+  // There is no client-side bucketing left. Which leads are in a tab is the QUESTION
+  // this page asks lead-service (`?bucket=`), and the answer arrives already narrowed,
+  // ordered and bounded — so the rows on screen ARE the active tab's page. Bucketing a
+  // page here would partition 50 rows and read as if it had partitioned the tab.
+  //
+  // Note the outcome tabs moved with the rest: lead-service buckets them off its own
+  // attributed conversion ledger (tracker-reported and hand-stated alike, withdrawn
+  // statements excluded), which is the ledger features-service reads to price them. The
+  // `/revenue` join is still read below, for the outcome DATE on each row and for
+  // deciding which outcome tabs EXIST at all — never for membership, which cannot be
+  // paged.
 
   // Open, once (after leads + the sales-economics query have settled), the leftmost
   // on-path tab that has leads, in the OUTCOME-FIRST order (goal-steps single
@@ -1212,74 +1264,45 @@ export function EngagedLeadsPage({
     ...funnelTabs.engagement,
   ];
 
-  // The population the tabs can actually reach — every tab is an ENGAGEMENT step
-  // (contacted, clicked, replied, outcome), so a lead that lead-service served but
-  // that carries no delivery evidence belongs to no bucket and is unreachable from
-  // this page. Counting the raw list in the header therefore advertised rows the
-  // table could never show (reported: "(6 leads)" above a 5-row Outreach tab whose
-  // stat card also read 5). Header count, CSV export and the empty state all read
-  // this set so the page describes one population. Deduped (the tabs are nested
-  // subsets, not a partition) and kept in the base "all" order.
-  const coveredLeads = useMemo(() => {
-    const covered = new Set<string>();
-    for (const tab of visibleTabs) {
-      for (const lead of groupedByTab.get(tab) ?? []) covered.add(lead.id);
-    }
-    return sortedLeads.filter((l) => covered.has(l.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupedByTab, sortedLeads, visibleTabs.join("|")]);
+  // The population the tabs can actually reach, for the title.
+  //
+  // Every tab is an ENGAGEMENT step (contacted, clicked, replied, outcome), so a lead
+  // lead-service served that carries no delivery evidence belongs to no bucket and is
+  // unreachable from this page. Counting the whole scoped population here would
+  // advertise rows the table can never show — about 5,000 of the 12,945 on the brand
+  // that surfaced this — which is the bug #3071 fixed, so `bucket-counts.total` is
+  // deliberately NOT what this reads. It reads the CONTACTED bucket, the base tab that
+  // holds every lead we contacted whatever the funnel, and therefore the union's floor.
+  // `null` while the counts are unsettled: a population we have not been told is not a
+  // population of zero.
+  const reachableCount = reachablePopulation(bucketCounts);
 
-  // CSV export = the WHOLE covered list (every tab), not the active-tab/search
-  // subset. Status label uses the same latched `statusOf` the badge renders, so
-  // the exported Status matches on-screen. Recomputed only when leads/latch move.
-  const leadsCsv = useMemo(
-    () => buildLeadsCsv(coveredLeads, (l) => leadStatusLabel(statusOf(l))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [coveredLeads, latchedStatus],
-  );
-
+  // Opened once, on the leftmost tab that has anybody in it, in the OUTCOME-FIRST order
+  // (goal-steps single source). It reads the COUNTS rather than the rows now, which is
+  // what makes it right: it used to look at the loaded array, so with a page it would
+  // have judged a tab empty because the page it happened to hold was.
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
-    if (sortedLeads.length === 0) return;
-    // Wait for the CAMPAIGNS query, which is what decides the tab set now: firing the
-    // latch first lands on a tab the funnels do not even offer, and it is one-shot, so
-    // a later answer cannot correct it.
+    // Wait for the CAMPAIGNS query, which is what decides the tab set: firing the latch
+    // first lands on a tab the funnels do not even offer, and it is one-shot, so a later
+    // answer cannot correct it. And wait for the counts, for the same reason.
     if (!(campaignScoped ? scopeSettled : campaignRows.settled)) return;
+    if (!bucketCounts) return;
     hasAutoSelectedTab.current = true;
-    const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
-    setActiveTab(visibleTabs.find((t) => count(t) > 0) ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
+    const populated = visibleTabs.find((t) => (tabCount(bucketCounts, t) ?? 0) > 0);
+    setActiveTab(populated ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedLeads.length, campaignRows.settled, scopeSettled, campaignScoped, groupedByTab, outcomeAvailable]);
+  }, [bucketCounts, campaignRows.settled, scopeSettled, campaignScoped, outcomeAvailable]);
 
-  const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
-
-  // ONE predicate, so the table and the board answer the same query. A second copy is
-  // how a search comes to mean one thing in a row and another on a card.
-  const matchesSearch = (l: Lead, q: string): boolean => {
-    const full = l.lead;
-    const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.toLowerCase();
-    return name.includes(q)
-      || (full?.organization?.name?.toLowerCase().includes(q) ?? false)
-      || (full?.headline?.toLowerCase().includes(q) ?? false)
-      || (l.email?.toLowerCase().includes(q) ?? false);
-  };
-
-  const filteredLeads = useMemo(() => {
-    if (!search) return activeList;
-    const q = search.toLowerCase();
-    return activeList.filter((l) => matchesSearch(l, q));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeList, search]);
-
-  // The board spans the WHOLE population rather than one tab's slice — it is a
-  // partition, so scoping it to a tab would draw a board with most of its cards
-  // missing and no way to tell that from an empty pipeline.
-  const searchedLeads = useMemo(() => {
-    if (!search) return coveredLeads;
-    const q = search.toLowerCase();
-    return coveredLeads.filter((l) => matchesSearch(l, q));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coveredLeads, search]);
+  // The rows on screen ARE the active tab's page: narrowed, searched and ordered by
+  // lead-service. The three client-side steps this replaces — bucket, filter by a local
+  // predicate, then slice — each only ever saw whatever was in memory, which is the whole
+  // reason the page had to hold a brand's entire population to be correct.
+  //
+  // The SEARCH went with them. It used to be a local predicate over name, company,
+  // headline and email; lead-service searches the same four fields over the WHOLE
+  // matching population, so a match on page 40 is now findable, which it never was.
+  const pagedLeads = leads;
 
   // ── The BOARD ────────────────────────────────────────────────────────────────
   // The tabs answer "how many cleared each bar"; the board answers "where is each
@@ -1352,11 +1375,43 @@ export function EngagedLeadsPage({
     return out;
   }, [qualifications]);
 
-  // Cards come off the lead row the page already holds plus that one campaign-scoped
-  // read. No per-lead fetch.
+  // A campaign page has no table to switch to, so it has no switch either.
+  const boardOnly = Boolean(campaignId);
+  const showBoard = boardOnly || view === "board";
+
+  // The board's OWN read, and it is bounded.
+  //
+  // The board is a PARTITION of the population, not a window onto it, so unlike the
+  // table it cannot page: a column showing rows 50-100 of its own contents is not a
+  // triage queue. It reads the most recently active leads and STATES the bound — the
+  // same choice the funnel-leg board already makes — rather than pretending to hold a
+  // brand's 12,945 people as cards, which was never a usable surface.
+  //
+  // `contacted` is the widest bucket, so the board covers everyone the columns can
+  // place. Same search as the table, so the two never disagree about what is on screen.
+  const {
+    data: boardPage,
+    isPending: boardPending,
+    isError: boardReadError,
+  } = useAuthQuery(
+    ["leadsPage", scopeKey, "board", wireSearch, LEAD_BOARD_CARD_CAP],
+    () =>
+      listLeadsPage(scope, {
+        ...leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 }),
+        limit: String(LEAD_BOARD_CARD_CAP),
+      }),
+    { enabled: showBoard, refetchInterval: LEADS_POLL_INTERVAL },
+  );
+  const boardLeads = useMemo(() => boardPage?.leads ?? [], [boardPage]);
+  // How many the board is a bounded view OF, so the cap can be stated honestly rather
+  // than leaving a reader to assume 200 is the whole pipeline.
+  const boardTotal = boardPage?.total ?? null;
+
+  // Cards come off the board's own rows plus that one campaign-scoped read of the fine
+  // reply kinds. No per-lead fetch.
   const boardCards: LeadBoardCard[] = useMemo(() => {
     const out: LeadBoardCard[] = [];
-    for (const lead of searchedLeads) {
+    for (const lead of boardLeads) {
       // A statement somebody just made outranks the served one for the round trip it
       // takes to land. `has` decides whether the latch speaks, never `??`: `null` is a
       // real entry there — a statement just taken BACK — and `??` would read it as
@@ -1404,11 +1459,7 @@ export function EngagedLeadsPage({
       });
     }
     return out;
-  }, [searchedLeads, replyKindByEmail, statedReplyKinds]);
-
-  // A campaign page has no table to switch to, so it has no switch either.
-  const boardOnly = Boolean(campaignId);
-  const showBoard = boardOnly || view === "board";
+  }, [boardLeads, replyKindByEmail, statedReplyKinds]);
 
   const [boardError, setBoardError] = useState<string | null>(null);
   // A board move states a REPLY KIND, the same write the lead panel makes — never a
@@ -1433,27 +1484,34 @@ export function EngagedLeadsPage({
     mutationFn: ({ email }: { email: string }) => withdrawLeadOptOut({ email }),
   });
 
-  // Paginate the active-tab (post-search) list at 50/page. Pure display slice —
-  // the tab count badge + CSV export stay whole-list. Reset to page 0 whenever the
-  // tab or search changes (else you land on an out-of-range page after the subset
-  // shrinks). Clamp defensively in case a poll shrinks the list under the cursor.
-  const PAGE_SIZE = 50;
-  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  // The pager is a window onto `activeTotal` — the size of the whole tab, which
+  // lead-service states — not onto the rows in memory. That distinction is the point:
+  // it used to count pages over a slice of the loaded array, which is only correct when
+  // the array IS the population. Reset to page 0 whenever the tab or the search changes,
+  // and clamp so a tab that shrank under the cursor lands on a page that exists.
+  const PAGE_SIZE = LEADS_PAGE_SIZE;
+  const pageCount = pageCountFor(activeTotal);
   const safePage = Math.min(page, pageCount - 1);
-  const pagedLeads = useMemo(
-    () => filteredLeads.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE),
-    [filteredLeads, safePage],
-  );
   useEffect(() => {
     setPage(0);
-  }, [activeTab, search]);
+  }, [activeTab, wireSearch]);
+  // A clamp that only ever moves the cursor BACK, and only once the producer has told us
+  // how big the tab is — never on an unsettled read, which would bounce the reader to
+  // page 1 mid-poll.
+  useEffect(() => {
+    if (activeTotal == null) return;
+    if (page > pageCount - 1) setPage(pageCount - 1);
+  }, [activeTotal, page, pageCount]);
 
   // Tabs = the realized-outcome tab (when available) + the goal's on-path engagement
-  // steps, outcome-first (goal-steps single source), off-funnel steps dropped.
-  const tabs: { key: Tab; label: string; count: number }[] = visibleTabs.map((key) => ({
+  // steps, outcome-first (goal-steps single source), off-funnel steps dropped. Each
+  // states its OWN size, straight off `bucket-counts` — the whole tab, not the page.
+  // `null` while that read is unsettled: a tab we have not been told the size of is not
+  // a tab with nobody in it.
+  const tabs: { key: Tab; label: string; count: number | null }[] = visibleTabs.map((key) => ({
     key,
     label: LEAD_TAB_LABEL[key as AnyLeadTab],
-    count: groupedByTab.get(key)?.length ?? 0,
+    count: tabCount(bucketCounts, key),
   }));
 
 
@@ -1464,8 +1522,10 @@ export function EngagedLeadsPage({
   // move the person just made counts here for the round trip it takes to land): a card
   // and a column disagreeing about one screen is the self-contradictory-surface bug.
   //
-  // Computed over `coveredLeads`, NOT `searchedLeads`: the cards describe the population,
-  // the board's own columns thin out with the search box like the table does.
+  // Computed over the BOARD's own rows, so the row and the columns under it describe the
+  // same set — including the cap. Those rows are the most recently active
+  // LEAD_BOARD_CARD_CAP of the population, which is what the board draws and therefore
+  // what this row may state.
   //
   // Deliberately NOT `spend.positiveRepliesCount`. That is features-service's aggregate
   // over REPLY signals; the board renders `standing.state`, which is funnel-aware, and on
@@ -1475,7 +1535,7 @@ export function EngagedLeadsPage({
   const boardPopulation = useMemo(() => {
     let leads = 0;
     let salesInterest = 0;
-    for (const lead of coveredLeads) {
+    for (const lead of boardLeads) {
       const held =
         lead.email && statedReplyKinds.has(lead.email)
           ? (statedReplyKinds.get(lead.email) ?? null)
@@ -1495,13 +1555,17 @@ export function EngagedLeadsPage({
         sharePct: leads > 0 ? (salesInterest / leads) * 100 : null,
       },
     };
-  }, [coveredLeads, statedReplyKinds]);
+  }, [boardLeads, statedReplyKinds]);
 
   // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
   // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
-  // search) paints immediately; only the table region skeletons while the slow
-  // `brandLeads` fetch (lead-service is the bottleneck) is still cold. Gating the
-  // WHOLE page on this blanked the screen for the entire load.
+  // search) paints immediately; only the table region skeletons while the page read is
+  // still in flight. Gating the WHOLE page on this blanked the screen for the entire load.
+  //
+  // `isPlaceholderData` is what makes a tab or page CHANGE paint a skeleton rather than
+  // the previous tab's rows under the new tab's name: the global `keepPreviousData` hands
+  // back the old key's data while the new one loads, and rendering that would show one
+  // tab's leads under another's heading.
   const loading = isPending || isPlaceholderData;
 
   const selectedFull = selectedLead?.lead ?? null;
@@ -1866,14 +1930,34 @@ export function EngagedLeadsPage({
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
-            {loading ? (
+            {reachableCount == null ? (
               <Skeleton className="ml-2 inline-block h-4 w-56 align-middle" />
             ) : (
-              <span className="ml-2 text-sm font-normal text-gray-500">({coveredLeads.length.toLocaleString("en-US")} leads)</span>
+              <span className="ml-2 text-sm font-normal text-gray-500">({reachableCount.toLocaleString("en-US")} leads)</span>
             )}
           </h1>
-          {!loading && (
-            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={coveredLeads.length === 0} label="Export leads" />
+          {reachableCount != null && (
+            /* The export is FETCHED on press — lead-service streams the whole matching
+               set, honouring the scope, the active tab and the search, so a download is
+               what the page is showing. It used to be built here from the population in
+               memory, which is what forced the page to hold it. */
+            <CsvDownloadButton
+              filename={`leads-${brandId}.csv`}
+              csv={async () => {
+                const { leads: all, truncated } = await fetchLeadsForExport(
+                  scope,
+                  leadsPageQuery({ tab: activeTab, search: wireSearch, page: 0 }),
+                );
+                if (truncated) {
+                  console.warn(
+                    `[dashboard] leads export capped at ${EXPORT_MAX_ROWS} rows; the file is not the whole set`,
+                  );
+                }
+                return buildLeadsCsv(all, (l) => leadStatusLabel(statusOf(l)));
+              }}
+              isEmpty={reachableCount === 0}
+              label="Export leads"
+            />
           )}
         </div>
 
@@ -1921,20 +2005,51 @@ export function EngagedLeadsPage({
                   }`}
                 >
                   {tab.label}
-                  <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
+                  {/* A tab whose size we have not been told states NOTHING — never
+                      `(0)`, which claims nobody is in it. */}
+                  {tab.count != null && (
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">
+                      ({tab.count.toLocaleString("en-US")})
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
             )}
 
-            <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={showBoard ? searchedLeads.length : filteredLeads.length} totalCount={showBoard ? coveredLeads.length : activeList.length} />
+            {/* The counts are the PRODUCER's: how many match the search across the whole
+                population, against how big the set is without it. Counting the rows in
+                memory would state "50 of 50" on every page of every search. */}
+            <EntitySearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search by name, company, title, or email..."
+              resultCount={(showBoard ? boardTotal : activeTotal) ?? 0}
+              totalCount={(showBoard ? reachableCount : tabCount(bucketCounts, activeTab)) ?? 0}
+            />
+            {/* A search the producer would refuse is refused HERE, with the reason, and
+                never sent — the alternative is a 400 that empties the table. */}
+            {searchProblem && (
+              <p className="mt-2 text-sm text-red-600">{searchProblem}</p>
+            )}
 
-            {coveredLeads.length === 0 ? (
+            {reachableCount === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
                 <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : showBoard ? (
+              <>
+              {/* The board draws the most recently active leads, not the whole pipeline.
+                  It is a PARTITION, so it cannot page the way the table does — a column
+                  showing rows 200-400 of itself is not a triage queue — so it states the
+                  bound rather than letting a reader take 200 cards for everyone. */}
+              {boardTotal != null && boardTotal > LEAD_BOARD_CARD_CAP && (
+                <p className="mb-3 text-sm text-gray-500">
+                  Showing the {LEAD_BOARD_CARD_CAP.toLocaleString("en-US")} most recently
+                  active of {boardTotal.toLocaleString("en-US")} leads. Search to narrow it.
+                </p>
+              )}
               <LeadBoard
                 cards={boardCards}
                 busy={
@@ -1946,7 +2061,7 @@ export function EngagedLeadsPage({
                 canMove={Boolean(campaignId)}
                 filterKey={search}
                 onOpen={(leadRowId) => {
-                  const lead = coveredLeads.find((l) => l.id === leadRowId);
+                  const lead = boardLeads.find((l) => l.id === leadRowId);
                   if (lead) setSelectedLead(lead);
                 }}
                 onMove={(move) => {
@@ -2035,16 +2150,17 @@ export function EngagedLeadsPage({
                   withdrawOptOutOnBoard.mutate({ email }, { onSuccess: settle, onError: fail });
                 }}
               />
+              </>
             ) : (
               <>
                 <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} outcomeDates={outcomeDates} />
                 {/* The right gutter clears the floating WhatsApp support FAB, which
                     sits at z-30 over the rightmost 64/72px at every scroll position
                     — without it a tap on `Next` lands on the FAB. */}
-                {filteredLeads.length > PAGE_SIZE && (
+                {activeTotal != null && activeTotal > PAGE_SIZE && (
                   <div className={`mt-4 flex items-center justify-between ${SUPPORT_FAB_CLEARANCE}`}>
                     <span className="text-sm text-gray-500">
-                      {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filteredLeads.length)} of {filteredLeads.length.toLocaleString("en-US")}
+                      {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, activeTotal)} of {activeTotal.toLocaleString("en-US")}
                     </span>
                     <div className="flex items-center gap-2">
                       <button

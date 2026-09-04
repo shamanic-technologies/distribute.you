@@ -14,7 +14,7 @@ const FAB = readFileSync(
 
 /** Slice the pagination block so the assertions cannot match markup elsewhere. */
 function paginationBlock(): string {
-  const at = LEADS.indexOf("filteredLeads.length > PAGE_SIZE");
+  const at = LEADS.indexOf("activeTotal != null && activeTotal > PAGE_SIZE");
   expect(at).toBeGreaterThan(-1);
   return LEADS.slice(at, at + 2400);
 }

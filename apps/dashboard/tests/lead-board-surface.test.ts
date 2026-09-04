@@ -63,18 +63,32 @@ describe("the leads board is wired, not merely written", () => {
     expect(page).toContain("console.warn(");
   });
 
-  it("spans the whole population rather than the active tab's slice", () => {
-    // A partition scoped to one tab draws a board with most of its cards missing.
+  it("reads its own rows, spanning the population rather than the active tab", () => {
+    // A partition scoped to one tab draws a board with most of its cards missing, so it
+    // reads the widest bucket (`contacted`) rather than whatever tab the table is on.
     const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 2400);
-    expect(cards).toContain("of searchedLeads");
-    expect(cards).not.toContain("of filteredLeads");
+    expect(cards).toContain("of boardLeads");
     expect(cards).not.toContain("of pagedLeads");
+    expect(page).toContain('leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 })');
   });
 
-  it("keeps ONE search predicate for the table and the board", () => {
-    expect(page).toContain("const matchesSearch = (l: Lead, q: string): boolean =>");
-    expect(page).toContain("activeList.filter((l) => matchesSearch(l, q))");
-    expect(page).toContain("coveredLeads.filter((l) => matchesSearch(l, q))");
+  it("is BOUNDED, and says so rather than passing a cap off as the pipeline", () => {
+    // The board is a partition, not a window: a column showing rows 200-400 of itself is
+    // not a triage queue. So it takes the most recently active N and states the bound.
+    expect(page).toContain("const LEAD_BOARD_CARD_CAP = 200;");
+    expect(page).toContain("limit: String(LEAD_BOARD_CARD_CAP)");
+    expect(page).toContain("boardTotal != null && boardTotal > LEAD_BOARD_CARD_CAP");
+    expect(page).toContain("most recently");
+  });
+
+  it("keeps ONE search, and it is the producer's", () => {
+    // The table and the board pass the SAME `wireSearch` to lead-service, which searches
+    // the whole matching population — so a match on page 40 is findable, which a local
+    // predicate over the loaded rows never made it. A second local predicate is how a
+    // search comes to mean one thing in a row and another on a card.
+    expect(page).not.toContain("const matchesSearch");
+    expect(page).toContain("const wireSearch = leadsSearchParam(debouncedSearch) ?? \"\";");
+    expect(page).toContain("leadBucketCountsQuery(wireSearch)");
   });
 });
 

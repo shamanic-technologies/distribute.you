@@ -52,8 +52,10 @@ describe("the Leads page names what it counts", () => {
     // the page, the board's columns thin out with the search box).
     const at = leads.indexOf("const boardPopulation = useMemo(");
     expect(at).toBeGreaterThan(-1);
-    const body = leads.slice(at, leads.indexOf("}, [coveredLeads, statedReplyKinds]);", at));
-    expect(body).toContain("for (const lead of coveredLeads)");
+    const body = leads.slice(at, leads.indexOf("}, [boardLeads, statedReplyKinds]);", at));
+    // The board's OWN rows: the row above the columns must describe the same set the
+    // columns draw, cap included.
+    expect(body).toContain("for (const lead of boardLeads)");
     expect(body).toContain("held?.column ?? leadBoardColumnFor(lead.standing)");
     expect(body).toContain('if (column === "sales_interest") salesInterest += 1;');
     // Never the reply-signal aggregate: on a funnel entered by a website visit that

@@ -142,10 +142,21 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerFunnels",
   "offerFunnelRevenue",
   "offerFunnelPipelineActivity",
-  // The brand's leads. Big — over the size cap on a heavy brand, so it is allowlisted
-  // and still refused at write time; the query keeps `keepPreviousData` in memory and
-  // the per-query persister restores it lazily on its own fetch.
+  // The brand's WHOLE lead population. Big — over the size cap on a heavy brand (44.5 MB
+  // over 12,945 rows on one, 99 MB on the largest), so it is allowlisted and still
+  // refused at write time; the query keeps `keepPreviousData` in memory and the
+  // per-query persister restores it lazily on its own fetch. The Leads page no longer
+  // reads it: it asks for one page at a time (`leadsPage` below). What still does is the
+  // funnel-leg board, which partitions the population rather than paging it.
   "brandLeads",
+  // ONE page of a scope's leads, and every bucket's count. These are what the Leads page
+  // reads now, and the point of them is that each entry is SMALL enough to be written:
+  // a 50-row page is a few hundred KB against the 2 MB cap, so the table paints from
+  // disk on arrival instead of cold-loading a whole population every visit. Each key
+  // carries the scope, the tab, the search and the page number, so two windows onto one
+  // brand never share an entry.
+  "leadsPage",
+  "leadBucketCounts",
   // Per-lead generated email content — the leads detail-panel fetch, click-gated, so
   // re-opening a lead paints its last-known email from disk.
   "leadEmail",

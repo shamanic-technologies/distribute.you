@@ -129,16 +129,19 @@ describe("leads table Date column", () => {
   });
 
   it("orders every row by the value the Date column shows", () => {
-    // Sorting on a different field than the column displays makes the column read
-    // as unordered.
-    const at = src.indexOf("const sortByStatusDate =");
-    expect(at).toBeGreaterThan(-1);
-    const sort = src.slice(at, at + 800);
-    expect(sort).toContain("leadDateForStatus(a, getLeadConsolidatedStatus(a))");
-    expect(sort).toContain("leadDateForStatus(b, getLeadConsolidatedStatus(b))");
-    // Membership is what differs per tab, never what a date means.
-    expect(src).toContain("sortByStatusDate(positive)");
-    expect(src).toContain("sortByStatusDate(clicks)");
-    expect(src).toContain("sortByStatusDate(outreach)");
+    // Sorting on a different field than the column displays makes the column read as
+    // unordered. That order is the PRODUCER's now — `sort=activity`, newest first on the
+    // timestamp that proves each lead's most advanced status, which is what this column
+    // renders — because a client-side sort can only order the page it holds, and a page
+    // ordered among itself reads as if the whole tab were ordered.
+    const q = fs.readFileSync(
+      path.resolve(__dirname, "../src/lib/leads-server-page.ts"),
+      "utf-8",
+    );
+    expect(q).toContain('sort: "activity"');
+    expect(src).not.toContain("const sortByStatusDate");
+    // Membership is what differs per tab, never what a date means — and membership is a
+    // bucket the producer answers, so no tab re-sorts anything here.
+    expect(q).toContain("bucket: bucketForTab(req.tab)");
   });
 });
