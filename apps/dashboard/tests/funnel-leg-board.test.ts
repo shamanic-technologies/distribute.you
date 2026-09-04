@@ -5,6 +5,7 @@ import {
   buildLegBoardCards,
   legBoardColumns,
   legBoardSideFor,
+  legBoardTotals,
   LEG_BOARD_COLUMN_CAP,
   type LegBoardLead,
 } from "../src/lib/funnel-leg-board";
@@ -260,14 +261,35 @@ describe("the leg page, and what it deliberately does not show", () => {
     expect(page).not.toContain("step?.costPerReachCents");
   });
 
-  it("reads the funnel page's own keys, so arriving here costs no request", () => {
+  it("reads the funnel page's own revenue key, so arriving here costs no request", () => {
     expect(page).toContain('["offerFunnelRevenue", brandId, offerId, wanted ?? "none"]');
-    expect(page).toContain('["brandLeads", brandId]');
+  });
+
+  it("reads ONE bounded page per column, never the brand's whole population", () => {
+    // The board has never drawn more than LEG_BOARD_COLUMN_CAP cards a column, and it
+    // used to fetch 44.5 MB over 12,945 rows to fill them. A column is the people at one
+    // funnel step, which is a bucket lead-service answers directly — and those buckets
+    // measured 21 and 66 in production on that same brand.
+    expect(page).not.toContain("listBrandLeads");
+    expect(page).toContain("bucketForStage(columns.from.stage)");
+    expect(page).toContain("bucketForStage(columns.to.stage)");
+    expect(page).toContain("limit: String(LEG_BOARD_COLUMN_CAP)");
+    // The from column over-fetches: a lead in that bucket may have CROSSED, and would
+    // then be drawn in the other column, so a read of exactly the cap could under-fill it.
+    expect(page).toContain("limit: String(LEG_BOARD_COLUMN_CAP * 2)");
+  });
+
+  it("counts each column off the producer's total, not off the rows it fetched", () => {
+    // Counting the rows in hand reports the CAP — "60" on an arrow 9,166 people stand at.
+    expect(page).toContain("legBoardTotals({");
+    expect(page).toContain("fromBucketTotal: fromQ.data?.total ?? null");
+    expect(page).toContain("toBucketTotal: toQ.data?.total ?? null");
   });
 
   it("reveals on SETTLE, never holding a skeleton on a failed read", () => {
     expect(page).toContain("isPending && !revenue.isError");
-    expect(page).toContain("isPending && !leadsQ.isError");
+    expect(page).toContain("fromQ.isPending && !fromQ.isError");
+    expect(page).toContain("toQ.isPending && !toQ.isError");
   });
 
   it("opens a card on a route that EXISTS, under the funnel this leg sits in", () => {
@@ -285,5 +307,45 @@ describe("the leg page, and what it deliberately does not show", () => {
     const leadsPage = read("components/audiences/engaged-leads-page.tsx");
     expect(leadsPage).toContain('searchParams.get("leadRowId")');
     expect(leadsPage).toContain("hasSeededLead.current = true;");
+  });
+});
+
+describe("legBoardTotals — what a column HOLDS, not what it drew", () => {
+  it("reads the to column straight off its own bucket", () => {
+    const t = legBoardTotals({
+      fromBucketTotal: 9166,
+      toBucketTotal: 21,
+      counted: { from: 60, to: 21 },
+    });
+    expect(t.to).toBe(21);
+  });
+
+  it("subtracts the crossers from the step before, so a column counts who is STILL there", () => {
+    const t = legBoardTotals({
+      fromBucketTotal: 9166,
+      toBucketTotal: 21,
+      counted: { from: 60, to: 21 },
+    });
+    expect(t.from).toBe(9145);
+  });
+
+  it("never claims to hold fewer people than it is showing", () => {
+    // A crossing recorded with the earlier evidence lost makes the subtraction
+    // understate; the floor is the cards actually on screen.
+    const t = legBoardTotals({
+      fromBucketTotal: 30,
+      toBucketTotal: 28,
+      counted: { from: 12, to: 28 },
+    });
+    expect(t.from).toBe(12);
+  });
+
+  it("falls back to what it drew when the producer stated no total", () => {
+    const t = legBoardTotals({
+      fromBucketTotal: null,
+      toBucketTotal: null,
+      counted: { from: 7, to: 3 },
+    });
+    expect(t).toEqual({ from: 7, to: 3 });
   });
 });

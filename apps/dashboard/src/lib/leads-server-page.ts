@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AnyLeadTab } from "./goal-steps";
+import type { LeadStageKey } from "./lead-funnel-stages";
 
 /**
  * Asking lead-service for ONE page of a brand's leads, instead of all of them.
@@ -58,6 +59,23 @@ const BUCKET_BY_TAB: Record<AnyLeadTab, LeadBucket> = {
 
 export function bucketForTab(tab: AnyLeadTab): LeadBucket {
   return BUCKET_BY_TAB[tab];
+}
+
+/**
+ * Which bucket holds the people at one funnel STAGE.
+ *
+ * `LeadStageKey` and lead-service's bucket vocabulary are the same seven tokens — the
+ * stage keys were spelled to match the producer, which is exactly why this is a checked
+ * identity rather than a second table that could drift. `null` is the base of a funnel's
+ * FIRST arrow: a lead that has been contacted is on no step yet, and "contacted" is the
+ * base every funnel converts from.
+ *
+ * A stage the producer does not bucket returns null rather than a guess — the caller then
+ * reads no rows for that column, which is honest, instead of reading the wrong ones.
+ */
+export function bucketForStage(stage: LeadStageKey | null): LeadBucket | null {
+  if (stage === null) return "contacted";
+  return (LEAD_BUCKETS as readonly string[]).includes(stage) ? (stage as LeadBucket) : null;
 }
 
 /** Rows per page. The page numbers the reader clicks are windows onto `total`. */
