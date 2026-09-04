@@ -101,10 +101,11 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("shows the queue row only while nothing has been sent", () => {
-    // 3000 is a MEASURED bound and stays one: the `not.toContain` below would read the
+    // 4200 is a MEASURED bound and stays one: the `not.toContain` below would read the
     // next function's body if the slice ran past this one. `label: QUEUED_LABEL` sits
-    // at 1600 and `note: SEND_WINDOW_NOTE` at 1874, so it has real headroom.
-    const body = sliceFrom("function LeadTimeline(", 3000);
+    // at 3140, `note: SEND_WINDOW_NOTE` at 3414 and the `Sent` row at 3463, so it has
+    // real headroom.
+    const body = sliceFrom("function LeadTimeline(", 4200);
     // The queue row is gated on the absence of a real send, so Queued and Sent can
     // never both appear for one lead — they are the two branches of one ternary.
     expect(body).toContain("const queuedOnly = !sentAt");
