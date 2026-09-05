@@ -1257,6 +1257,40 @@ export function EngagedLeadsPage({
   const boardOnly = Boolean(campaignId);
   const showBoard = boardOnly || view === "board";
 
+  // What the OFFER said each of its funnels is worth, read for ONE reason: it is what
+  // the deal-value field opens with when somebody states a won deal, so they confirm
+  // their own stated lifetime revenue instead of retyping it per lead.
+  //
+  // OFFER-scoped, because that is the grain the brand states a lifetime revenue at: it
+  // is a property of (offer, funnel), so a brand-wide read would open the field with a
+  // number a DIFFERENT proposition is worth. The key is byte-equal to the one the Sales
+  // Funnels card already polls, so this dedupes to no extra request.
+  //
+  // Consequence, accepted: at BRAND grain there is no offer to name — a lead can be on
+  // any of the brand's — so the read is disabled and the field opens EMPTY, exactly as
+  // it did before. Reading the brand-wide figure there instead would be this surface
+  // borrowing a sibling offer's number, which is the one thing a prefill must not do.
+  const { data: salesFunnelsData } = useAuthQuery(
+    ["offerSalesFunnels", brandId, offerId ?? "none"],
+    () => getOfferSalesFunnels(brandId, offerId as string),
+    { enabled: !!offerId },
+  );
+  // The prefill for ONE lead: its own campaign's funnel, never a sibling funnel's. An
+  // offer is sold through several funnels at once and prices each one, and the lead is
+  // on exactly one of them.
+  const prefillUsdFor = useCallback(
+    (lead: Lead) => saleValuePrefillUsd(salesFunnelsData?.funnels, closeWonFunnelKey(lead)),
+    [salesFunnelsData],
+  );
+
+  // ⚠️ Declared ABOVE the board's reads on purpose. `boardColumns` calls `prefillUsdFor`
+  // while it builds its cards, and a `const` read before its own declaration is a
+  // ReferenceError at RENDER time — `tsc` cannot see it (the binding exists on the
+  // type), the deps array is eslint-disabled, and every source-substring guard passes,
+  // so the page threw on mount with only a minified TDZ in the console. Keep this pair
+  // above the first thing that reads it.
+
+
   // The board's reads: ONE COUNT and ONE PAGE PER COLUMN.
   //
   // It used to be a single bounded read of the widest bucket, sorted into columns in the
@@ -1507,32 +1541,6 @@ export function EngagedLeadsPage({
     () => listAudiences(brandId, { offerId }),
     {},
   );
-  // What the OFFER said each of its funnels is worth, read for ONE reason: it is what
-  // the deal-value field opens with when somebody states a won deal, so they confirm
-  // their own stated lifetime revenue instead of retyping it per lead.
-  //
-  // OFFER-scoped, because that is the grain the brand states a lifetime revenue at: it
-  // is a property of (offer, funnel), so a brand-wide read would open the field with a
-  // number a DIFFERENT proposition is worth. The key is byte-equal to the one the Sales
-  // Funnels card already polls, so this dedupes to no extra request.
-  //
-  // Consequence, accepted: at BRAND grain there is no offer to name — a lead can be on
-  // any of the brand's — so the read is disabled and the field opens EMPTY, exactly as
-  // it did before. Reading the brand-wide figure there instead would be this surface
-  // borrowing a sibling offer's number, which is the one thing a prefill must not do.
-  const { data: salesFunnelsData } = useAuthQuery(
-    ["offerSalesFunnels", brandId, offerId ?? "none"],
-    () => getOfferSalesFunnels(brandId, offerId as string),
-    { enabled: !!offerId },
-  );
-  // The prefill for ONE lead: its own campaign's funnel, never a sibling funnel's. An
-  // offer is sold through several funnels at once and prices each one, and the lead is
-  // on exactly one of them.
-  const prefillUsdFor = useCallback(
-    (lead: Lead) => saleValuePrefillUsd(salesFunnelsData?.funnels, closeWonFunnelKey(lead)),
-    [salesFunnelsData],
-  );
-
   // Stating a won deal from a TABLE ROW. The row-scoped hook is what the board already
   // uses for the same reason: the target is decided at press time, so holding it in
   // state first so a per-lead hook could be built would race the submit.
