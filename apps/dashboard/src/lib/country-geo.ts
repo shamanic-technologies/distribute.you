@@ -251,14 +251,6 @@ export function locationPins(
   return pins;
 }
 
-/**
- * The COARSEST grain any pin on screen was placed at, so the card's own note is
- * true of every dot it draws. Claiming "by region" while one pin fell back to a
- * country is the card overstating what it knows.
- */
-export function coarsestGrain(pins: LocationPin[]): LocationGrain {
-  return pins.some((p) => p.grain === "country") ? "country" : "region";
-}
 
 /**
  * Are the two pins on the same country? Compared on the RESOLVED point rather

@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   MAP_HEIGHT,
-  coarsestGrain,
   countryIso2,
   foldRegionName,
   locationPoint,
@@ -396,21 +395,3 @@ describe("REGION_POINTS reachability", () => {
   });
 });
 
-describe("coarsestGrain", () => {
-  it("reports COUNTRY as soon as any one pin fell back to it", () => {
-    const pins = locationPins(
-      { state: "Colorado", country: "United States" },
-      { country: "France" },
-    );
-    expect(pins.map((p) => p.grain)).toEqual(["region", "country"]);
-    expect(coarsestGrain(pins)).toBe("country");
-  });
-
-  it("reports REGION only when every pin got one", () => {
-    const pins = locationPins(
-      { state: "Colorado", country: "United States" },
-      { state: "Minnesota", country: "United States" },
-    );
-    expect(coarsestGrain(pins)).toBe("region");
-  });
-});
