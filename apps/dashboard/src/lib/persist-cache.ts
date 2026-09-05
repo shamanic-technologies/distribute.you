@@ -117,6 +117,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brands",
   "brandSalesEconomics",
   "brandFunnelBudgets",
+  "brandSalesRepPhone",
   // The fleet price list behind a funnel-leg card. Public and org-less, so it is the
   // same answer for every tenant — and it changes on the fleet's cadence, not this
   // brand's, which is exactly what a cached-to-disk read is for.

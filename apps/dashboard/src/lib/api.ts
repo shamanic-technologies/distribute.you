@@ -1601,6 +1601,84 @@ export async function attachBrandWebsite(
   return { domain: parsed.data.domain ?? null, url: parsed.data.url ?? null };
 }
 
+// ── Sales-rep phone (the number rung when a sales interest lands) ──
+// Per brand, one number. When a prospect replies to a campaign saying they are
+// interested, instantly-service rings this number within a minute or two, and —
+// when Apollo revealed the prospect's own number in time — offers to bridge the
+// two. Absence is a FIRST-CLASS answer meaning nobody to ring, not an error and
+// not an empty string: the overwhelming majority of brands will never set one,
+// and a brand with no number simply produces no call, silently.
+//
+// BRAND grain, deliberately. A campaign is (offer x funnel x channel), so storing
+// it there would mean retyping one number per channel selling the same offer —
+// four rows for one fact on the brand that asked for this, drifting from the
+// first edit — and a brand with no campaign yet could declare nothing at all.
+//
+// Reached via api-service GET/PUT/DELETE /v1/brands/:id/sales-rep-phone ->
+// brand-service, which owns what a valid number is: it accepts any typed format
+// carrying a country code and stores strict E.164, and REFUSES a national number
+// with no country code rather than inferring one (a guess dials a different
+// person). Its 400 is the answer — never re-implement that rule here.
+const SalesRepPhoneResponseSchema = z.object({
+  salesRepPhone: z.string().nullable(),
+});
+
+export async function getBrandSalesRepPhone(
+  brandId: string,
+  token?: string,
+): Promise<string | null> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep-phone`, { token });
+  const parsed = SalesRepPhoneResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandSalesRepPhone: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandSalesRepPhone: invalid response shape");
+  }
+  return parsed.data.salesRepPhone;
+}
+
+export async function setBrandSalesRepPhone(
+  brandId: string,
+  salesRepPhone: string,
+  token?: string,
+): Promise<string | null> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep-phone`, {
+    token,
+    method: "PUT",
+    body: { salesRepPhone },
+  });
+  const parsed = SalesRepPhoneResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setBrandSalesRepPhone: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] setBrandSalesRepPhone: invalid response shape");
+  }
+  return parsed.data.salesRepPhone;
+}
+
+export async function clearBrandSalesRepPhone(
+  brandId: string,
+  token?: string,
+): Promise<string | null> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep-phone`, {
+    token,
+    method: "DELETE",
+  });
+  const parsed = SalesRepPhoneResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] clearBrandSalesRepPhone: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] clearBrandSalesRepPhone: invalid response shape");
+  }
+  return parsed.data.salesRepPhone;
+}
+
 // ── Conversion tracking token (per-brand publishable write-key) ──
 // A per-brand token the client embeds in a snippet on their own site to fire
 // "Signup" / "Meeting Booked" events back to us; lead-service ingests them and

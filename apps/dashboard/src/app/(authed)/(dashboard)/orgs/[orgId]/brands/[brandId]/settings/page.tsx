@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { DashboardPage } from "@/components/dashboard-page";
 import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
+import { BrandSalesRepPhoneCard } from "@/components/settings/brand-sales-rep-phone-card";
 
 /**
  * Brand Settings holds what a brand IS, and nothing about what it sells.
@@ -14,9 +15,15 @@ import { BrandConversionTrackingCard } from "@/components/settings/brand-convers
  * Settings (`.../offers/[offerId]/settings`), where they carry the offer and can
  * be answered once per proposition instead of once per brand.
  *
- * Two sections are left, and both are identity. The domain card renders only on a
- * brand created without a website, and it is the ONLY place such a brand can ever
- * attach one — every website-led funnel refuses to be declared until it has.
+ * The domain card renders only on a brand created without a website, and it is the
+ * ONLY place such a brand can ever attach one — every website-led funnel refuses to
+ * be declared until it has.
+ *
+ * The sales-rep number is here for the same reason: WHO picks up when a buyer says
+ * yes is a property of the brand, not of one campaign. A campaign is
+ * (offer x funnel x channel), so per-campaign storage would be the same number
+ * retyped once per channel selling one offer, and a brand with no campaign yet
+ * could declare nothing at all.
  */
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -27,6 +34,13 @@ export default function BrandSettingsPage() {
       <h1 className="mb-8 text-2xl font-semibold text-gray-900">Brand Settings</h1>
 
       <BrandDomainCard brandId={brandId} />
+
+      <section id="sales-rep-phone" className="mb-10 scroll-mt-24">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Sales rep</h2>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <BrandSalesRepPhoneCard brandId={brandId} />
+        </div>
+      </section>
 
       <section id="conversion-tracking" className="mb-10 scroll-mt-24">
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Conversion Tracking</h2>
