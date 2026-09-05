@@ -3,7 +3,6 @@
 import {
   MAP_HEIGHT,
   MAP_WIDTH,
-  coarsestGrain,
   locationLabel,
   locationPins,
   pinDistance,
@@ -13,8 +12,8 @@ import {
 import { WORLD_MAP_PATH } from "@/lib/world-map-path";
 
 /**
- * Two pins on a world map: where the lead is, and where the company they work
- * for is. The panel already STATES both as text, one row in the contact card and
+ * Two pins on a world map: where the lead is, in the brand's PRIMARY, and where
+ * the company they work for is, in the brand's SECONDARY. The panel already STATES both as text, one row in the contact card and
  * one in the Organization card; this is the same two facts shown rather than
  * spelled, which is the whole reason it exists — a reader takes "United States"
  * and "France" off a map in one glance and off two text rows in two.
@@ -65,13 +64,6 @@ export function LeadLocationMap({ person, organization }: LeadLocationMapProps) 
   const personLabel = personPin?.label || locationLabel(person);
   const orgLabel = orgPin?.label || locationLabel(organization);
 
-  // True of EVERY dot on screen: a card claiming "by region" while one pin fell
-  // back to a country would overstate what it knows about that pin.
-  const grainNote =
-    coarsestGrain(pins) === "region"
-      ? "Pins are placed by state or region, not by street address."
-      : "Pins are placed by country, not by city.";
-
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Location</h3>
@@ -104,12 +96,13 @@ export function LeadLocationMap({ person, organization }: LeadLocationMapProps) 
           ) : (
             <>
               {orgPin && (
-                // `tone-tile` is what makes the orange rotate to the brand's own
-                // tertiary; without that ancestor the class renders our orange on
-                // a customer's dashboard.
+                // The person wears the brand's PRIMARY, their employer the brand's
+                // SECONDARY — one pair, one relationship. `tone-tile` is what makes
+                // the purple rotate to the customer's own hue; without that ancestor
+                // the class renders OUR purple on their dashboard.
                 <Pin
                   at={orgPin.at}
-                  toneClassName="tone-tile text-orange-600"
+                  toneClassName="tone-tile text-purple-600"
                   title={orgLabel}
                 />
               )}
@@ -131,10 +124,10 @@ export function LeadLocationMap({ person, organization }: LeadLocationMapProps) 
         )}
         {orgPin && (
           <LegendRow
-            /* Merged into one pin ⟹ the legend wears that pin's colour. An orange
-               dot beside a map holding only a blue pin is one card contradicting
+            /* Merged into one pin ⟹ the legend wears that pin's colour. A secondary
+               dot beside a map holding only a primary pin is one card contradicting
                itself about which dot the reader is looking for. */
-            dotClassName={merged ? "bg-brand-600" : "bg-orange-600"}
+            dotClassName={merged ? "bg-brand-600" : "bg-purple-600"}
             rowClassName={merged ? undefined : "tone-tile"}
             /* "Organization", never the employer's own name: the row beside it
                reads "Lead", so naming one side and labelling the other makes the
@@ -151,8 +144,6 @@ export function LeadLocationMap({ person, organization }: LeadLocationMapProps) 
           This lead is not in the same country as the company they work for.
         </p>
       )}
-
-      <p className="mt-2 text-xs text-gray-400">{grainNote}</p>
     </div>
   );
 }
@@ -191,8 +182,8 @@ function LegendRow({
   term: string;
   detail: string;
   /* `tone-tile` rides the ROW, not the dot: the brand-hue rotation for
-     `bg-orange-600` is a DESCENDANT selector, so a dot carrying both classes on
-     one element keeps our orange on a customer's own dashboard. */
+     `bg-purple-600` is a DESCENDANT selector, so a dot carrying both classes on
+     one element keeps OUR secondary on a customer's own dashboard. */
   rowClassName?: string;
 }) {
   return (

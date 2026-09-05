@@ -738,6 +738,18 @@ html.dark:root[data-brand-tint] .tone-tile.text-purple-600,
 html.dark:root[data-brand-tint] .tone-tile .text-purple-600 {
   color: oklch(62.7% 0.233 calc(303.9 + var(--brand-hue-delta, 0)));
 }
+/* The lead map's legend dot for the organization, which wears the charter's
+   SECONDARY beside the person's primary. A dot is a FILL, and `bg-purple-600`
+   above only rotates for the tag's own weights — without this a customer's map
+   would show their hue on the pin and ours on the dot naming it. Descendant-only,
+   like the orange twin below: `tone-tile` rides the legend ROW. L/C read off the
+   computed token, never the gamut-mapped hex. */
+:root[data-brand-tint] .tone-tile .bg-purple-600 {
+  background-color: oklch(55.8% 0.288 calc(302.321 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile .bg-purple-600 {
+  background-color: oklch(62.7% 0.233 calc(303.9 + var(--brand-hue-delta, 0)));
+}
 /* The Learning tag is a purple tile that carries a 1px border, so the border rotates
    with the fill or the pill reads as two different hues at once. Measured L/C off the
    computed `border-purple-200`, same discipline as the fill above. */
