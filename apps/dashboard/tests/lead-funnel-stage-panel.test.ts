@@ -38,8 +38,13 @@ describe("lead funnel stage panel", () => {
     expect(slice).not.toContain("stepsFor(");
   });
 
-  it("mounts ONLY under a campaign, where exactly one funnel is sold", () => {
-    expect(PAGE).toContain("{campaignId && panelFunnel && (");
+  it("mounts wherever a funnel is STATED, and states nothing where several run", () => {
+    // Two scopes name one funnel — the campaign's own row, and the funnel route's own
+    // URL — and the gate is the resolved funnel rather than the campaign, or the funnel
+    // page's reader is offered no control on the page whose subject that funnel is.
+    // Brand and offer name none, so the section does not render there at all.
+    expect(PAGE).toContain("{panelFunnel && (");
+    expect(PAGE).not.toContain("{campaignId && panelFunnel && (");
   });
 
   it("states the lead by its ROW id, which is what carries the campaign", () => {
@@ -486,6 +491,48 @@ describe("the panel walks the campaign's OWN arrow, not the whole funnel", () =>
     expect(SECTION).toContain("...stages.slice(stageIndex + 1), ...(laterStages ?? [])");
     // And `laterStages` is never DRAWN — it exists for that sentence alone.
     expect(SECTION).not.toContain("laterStages.map(");
+  });
+});
+
+/**
+ * At FUNNEL grain the panel walks the funnel WHOLE — the union of every arrow it
+ * contains, since `funnelLegs` tiles the steps end to end. A leg is a campaign's
+ * answer; a funnel page has no campaign and therefore no arrow to narrow to.
+ */
+describe("the funnel page states the union of its legs", () => {
+  it("resolves the funnel from the ROUTE when no campaign is open", () => {
+    const slice = PAGE.slice(PAGE.indexOf("const routeFunnelKey ="), PAGE.indexOf("const legIndex ="));
+    expect(slice).toContain("params.funnelKey");
+    expect(slice).toContain("campaignFunnel(routeFunnelKey)");
+    // The campaign's own funnel still wins where there is one: its row is the narrower
+    // answer, and a campaign route carries no funnelKey segment to read anyway.
+    expect(slice).toContain("activeFunnelKeys[0]");
+  });
+
+  it("derives NO leg off a campaign route, so the walk is the whole funnel", () => {
+    // `featureSlug` there is the brand's SOLE channel, not one this page is about, so a
+    // leg derived from it would slice the funnel by a channel the reader never named.
+    // A null leg walks every step, which is exactly the union of the funnel's arrows.
+    const slice = PAGE.slice(PAGE.indexOf("const panelLeg ="), PAGE.indexOf("const panelWalk ="));
+    expect(slice).toContain("if (!campaignId || !panelFunnel || !featureSlug) return null;");
+  });
+
+  it("reads the statements wherever the section renders, not only under a campaign", () => {
+    // A statement is keyed on the leads_campaigns row the table already carries, so a
+    // funnel-scoped reader writes exactly as the leg board one level down already does.
+    const slice = PAGE.slice(PAGE.indexOf("useLeadStepStatements("), PAGE.indexOf("const setStage ="));
+    expect(slice).toContain("panelFunnel && selectedLead");
+    expect(slice).not.toContain("campaignId && selectedLead");
+  });
+
+  it("offers NO reply picker off a campaign, because a reply kind is a campaign's row", () => {
+    // instantly-service keys a reply kind on (campaign, email), so off a campaign route
+    // there is nothing to write it to and the read is disabled. Null rather than a
+    // picker that would meet a refusal; the Replied row falls back to Seen / Not seen.
+    const call = stageSectionCall();
+    expect(call).toContain("campaignId");
+    expect(call).toContain(": null");
+    expect(SECTION).toContain('stage.key === "positive_reply" && reply ?');
   });
 });
 

@@ -11,6 +11,7 @@ import {
   WRITABLE_STAGE_KEYS,
 } from "../src/lib/lead-funnel-stages";
 import { SALES_FUNNELS } from "../src/lib/sales-funnels";
+import { funnelLegs } from "../src/lib/campaign-leg";
 
 describe("leadFunnelStages", () => {
   it("covers EVERY step of EVERY funnel in the catalogue, in order", () => {
@@ -294,5 +295,40 @@ describe("leadFunnelLegStages", () => {
         }
       }
     }
+  });
+});
+
+/**
+ * The FUNNEL page's own walk. It has no campaign, so no arrow to narrow to — it states
+ * the union of every arrow its funnel contains, and that union is the funnel whole.
+ */
+describe("the union of a funnel's legs is the funnel whole", () => {
+  const labels = (stages: { label: string }[]) => stages.map((x) => x.label);
+
+  it("equals leadFunnelStages for every funnel in the catalogue", () => {
+    // `funnelLegs` tiles the steps end to end — an entry arrow onto step 0, then one
+    // arrow per step after it — so every step belongs to at least one leg and the union
+    // of the leg slices is exactly the funnel's own walk. That is why the funnel page
+    // needs no union helper of its own: passing a null leg already states it.
+    for (const funnel of SALES_FUNNELS) {
+      const union: string[] = [];
+      for (const leg of funnelLegs(funnel)) {
+        for (const label of labels(leadFunnelLegStages(funnel.key, leg).stages)) {
+          if (!union.includes(label)) union.push(label);
+        }
+      }
+      expect(union).toEqual(labels(leadFunnelStages(funnel.key)));
+    }
+  });
+
+  it("offers a control on exactly the writable stages of that union", () => {
+    // Two stages of every funnel are readings rather than statements: a reply is a fact
+    // about a message (instantly-service owns that vocabulary) and a visit is a click
+    // the delivery layer measures. A funnel-scoped reader states the rest.
+    const reply = SALES_FUNNELS.find((f) => f.key === "reply_meeting")!;
+    const writable = leadFunnelStages(reply.key)
+      .filter((s) => isWritableStage(s.key))
+      .map((s) => s.label);
+    expect(writable).toEqual(["Meeting booked", "Meeting attended", "Paid client"]);
   });
 });
