@@ -95,7 +95,12 @@ describe("recording an opt-out is a different write from stating a reply", () =>
 
   it("disables the picker while ANY of the three writes is in flight", () => {
     // One shared `busy`, or a second click lands on top of the first.
-    const busy = page.slice(page.indexOf("busy={"), page.indexOf("busy={") + 200);
+    //
+    // Anchored on the BOARD's mount, not on the first `busy={` in the file: the leads
+    // table's Close won cell carries one too and is declared earlier, so a bare
+    // first-index lookup reads that one and asserts against the wrong control.
+    const mount = page.slice(page.indexOf("<LeadBoard\n"));
+    const busy = mount.slice(mount.indexOf("busy={"), mount.indexOf("busy={") + 200);
     expect(busy).toContain("moveOnBoard.isPending");
     expect(busy).toContain("optOutOnBoard.isPending");
     expect(busy).toContain("withdrawOptOutOnBoard.isPending");

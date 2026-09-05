@@ -152,7 +152,11 @@ describe("a move states a reply KIND, and it asks which", () => {
     expect(page).toContain("setManualQualification({ campaignId: campaignId as string, email, status: kind })");
     expect(board).not.toContain("StageStatementForm");
     expect(board).not.toContain("stageRequiresValue");
-    expect(page).not.toContain("useSetAnyLeadStepStatement()");
+    // Scoped to the board's own MOUNT, not the whole page. The leads table's Close won
+    // column legitimately states a funnel step through that hook, so a file-wide check
+    // would forbid a write it does not mean to forbid — it is the BOARD's move that
+    // must be a reply kind.
+    expect(sliceFrom(page, "<LeadBoard\n", 1800)).not.toContain("useSetAnyLeadStepStatement");
   });
 
   it("never writes straight from a drop", () => {

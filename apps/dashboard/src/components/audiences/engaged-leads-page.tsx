@@ -32,6 +32,7 @@ import {
   leadDateForStatus,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
+  getOfferSalesFunnels,
   listAudiences,
   type Lead,
   type LeadConsolidatedStatus,
@@ -47,8 +48,17 @@ import {
 } from "@/lib/goal-steps";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
+import {
+  LeadFunnelStageSection,
+  StageStatementForm,
+} from "@/components/leads/lead-funnel-stage-section";
 import { LeadLocationMap } from "@/components/leads/lead-location-map";
+import {
+  closeWonFunnelKey,
+  dealCause,
+  leadCloseWonState,
+  saleValuePrefillUsd,
+} from "@/lib/lead-close-won";
 import {
   leadFunnelLegStages,
   leadStepErrorMessage,
@@ -495,7 +505,143 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, outcomeDates }: {
+const CAUSE_TIP =
+  "Whether the outreach we run for you is what produced this deal. Say no when it came from something else you already do — a referral, an event, a pipeline you already had — even though we had also emailed them. A no costs you nothing: the deal still counts as yours and stays in your revenue. It only keeps its value out of the return we report on our own outreach, so that number is about what we actually caused.";
+
+/**
+ * Whether one lead's deal is won, and the control that states it.
+ *
+ * The one place in the table that WRITES. Everything it needs comes off the row the
+ * page already holds — lead-service decides `won` (a standing of `customer` means the
+ * funnel's last step is reached) — so a column over pages of rows costs no request per
+ * lead.
+ *
+ * Three states, and the middle one is not the absence of the other two: a funnel we
+ * cannot place has no sale step to offer, so the cell states nothing rather than a
+ * blank that reads as "not won" or a button that would be refused.
+ */
+function CloseWonCell({ lead, prefillUsd, busy, onState }: {
+  lead: Lead;
+  /** The brand's own stated lifetime revenue for THIS lead's funnel, in whole dollars. */
+  prefillUsd: number | null;
+  busy: boolean;
+  onState: (input: { costCents: number; valueCents: number; causedByOutreach: boolean }) => void;
+}) {
+  // Which of the two answers the person has picked, if any. `null` means they have not
+  // picked yet, and the submit stays disabled — the whole point of the column is that
+  // the answer is STATED, so defaulting one here would put words in their mouth and
+  // record them as if somebody had said them.
+  const [cause, setCause] = useState<boolean | null>(null);
+  const [asking, setAsking] = useState(false);
+  const state = leadCloseWonState(lead);
+
+  if (state === "unavailable") return <span className="text-gray-300">-</span>;
+
+  if (state === "won" || state === "won-unstated") {
+    const caused = dealCause(lead);
+    // Three readings, and the third is why they are three: a deal nobody was asked
+    // about is not a deal we did not cause. It reads in the neutral grey and says so,
+    // rather than borrowing either verdict's colour.
+    const tone =
+      caused === "outreach"
+        ? "bg-green-50 text-green-700 border-green-200"
+        : caused === "other"
+          ? "bg-gray-100 text-gray-600 border-gray-200"
+          : "bg-gray-50 text-gray-500 border-gray-200";
+    const label =
+      caused === "outreach" ? "Won, ours" : caused === "other" ? "Won, not ours" : "Won";
+    const tip =
+      caused === "outreach"
+        ? "You said our outreach caused this deal, so its value counts toward the return on the outreach we run for you."
+        : caused === "other"
+          ? "You said something else of yours caused this deal. It stays in your own revenue; we leave its value out of the return we report on our outreach."
+          : "Nobody was asked whose win this was — it was recorded before we started asking, or it came from your conversion tracker, which cannot know why somebody bought.";
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${tone}`}>
+          {label}
+        </span>
+        <InfoTooltip tip={tip} />
+      </span>
+    );
+  }
+
+  // Every press inside this cell stops the row's own click: the row opens the detail
+  // panel, and a form whose inputs open a panel underneath them is unusable.
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+
+  if (asking) {
+    return (
+      <div onClick={stop} className="flex flex-col items-end gap-1">
+        {/* Asked BEFORE the amounts, because it is the question the column exists for
+            and the one a person can answer without looking anything up. Two named
+            buttons rather than a checkbox: "did we cause this" has two real answers and
+            an unticked box would read as the second one without anybody choosing it. */}
+        <div className="flex items-center justify-end gap-1 flex-wrap">
+          <span className="text-xs text-gray-500">Caused by us?</span>
+          {([true, false] as const).map((value) => (
+            <button
+              key={String(value)}
+              type="button"
+              onClick={(e) => {
+                stop(e);
+                setCause(value);
+              }}
+              aria-pressed={cause === value}
+              className={`px-2 py-1 text-xs font-medium rounded-md border transition-colors ${
+                cause === value
+                  ? value
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-gray-100 text-gray-700 border-gray-300"
+                  : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              {value ? "Yes" : "No"}
+            </button>
+          ))}
+          <InfoTooltip tip={CAUSE_TIP} />
+        </div>
+        <StageStatementForm
+          label="Close won"
+          tone="outcome"
+          // lead-service refuses a sale with no value, so the form always asks — the
+          // prefill is what it opens with, not what it sends.
+          needsValue
+          defaultValueUsd={prefillUsd}
+          busy={busy}
+          // Held back until the cause is answered. The form's own submit already
+          // refuses a blank amount; this is the same rule for the same reason.
+          disabled={cause === null}
+          onSubmit={({ costCents, valueCents }) => {
+            if (cause === null) return;
+            setAsking(false);
+            setCause(null);
+            onState({ costCents, valueCents: valueCents as number, causedByOutreach: cause });
+          }}
+          onCancel={() => {
+            setAsking(false);
+            setCause(null);
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        stop(e);
+        setAsking(true);
+      }}
+      className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md border bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+    >
+      Mark won
+    </button>
+  );
+}
+
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, outcomeDates, closeWon }: {
   leads: Lead[];
   tab: Tab;
   selectedLead: Lead | null;
@@ -509,6 +655,22 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   // Realized-outcome timestamp per leadId (from the /revenue join) — the Date column
   // for an outcome tab reads this, since the lead-service row carries no outcome date.
   outcomeDates?: Map<string, string | null>;
+  /**
+   * The Close won column: what to open the deal-value field with per lead, the write
+   * itself, which row is in flight, and a refusal already turned into a sentence.
+   *
+   * Absent and the column does not render at all — this table is the same component at
+   * four grains and a surface with no writer must not draw a control that cannot write.
+   */
+  closeWon?: {
+    prefillUsd: (lead: Lead) => number | null;
+    onState: (
+      lead: Lead,
+      input: { costCents: number; valueCents: number; causedByOutreach: boolean },
+    ) => void;
+    pendingRowId: string | null;
+    error: string | null;
+  };
 }) {
   if (leads.length === 0) {
     return (
@@ -528,6 +690,11 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
           auto layout a column grows to its content, so a long audience or company name
           widened the row past the viewport no matter how many `truncate`s it carried
           (measured at 360px: one cell reached 649px). Two columns, 62/38. */}
+      {/* The floor stays at 720px WITH the Close won column, deliberately. Raising it to
+          fit the two-input form made a 820px tablet scroll sideways (measured: the card
+          wanted 840 in 754), and the form does not need it — it wraps onto three lines
+          in a ~196px cell and stays usable, and only ONE row is ever asking. The steady
+          state of the column is a small button or a tag, both of which fit easily. */}
       <table className="w-full table-fixed text-sm md:table-auto md:min-w-[720px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -537,6 +704,12 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 w-[38%] md:w-auto">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Date</th>
+            {/* LAST, and hidden below `lg` — one breakpoint later than the columns
+                beside it, because this one holds a two-input form rather than a value.
+                Measured: at `md` the cell is ~120px and the form wraps onto four lines;
+                from `lg` it sits on one. Below that the lead panel states the same
+                thing, with the same prefill, in a column that has room for it. */}
+            {closeWon && <th className="px-4 py-3 hidden lg:table-cell">Close won</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -624,11 +797,27 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                   <div className="mt-1 md:hidden">{dateNode}</div>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">{dateNode}</td>
+                {closeWon && (
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <CloseWonCell
+                      lead={lead}
+                      prefillUsd={closeWon.prefillUsd(lead)}
+                      busy={closeWon.pendingRowId === lead.id}
+                      onState={(input) => closeWon.onState(lead, input)}
+                    />
+                  </td>
+                )}
               </tr>
             );
           })}
         </tbody>
       </table>
+      {/* A refusal is stated once, under the table, rather than per row: the write is
+          row-scoped but the message is lead-service's sentence about the last one, and
+          repeating it in every cell would say it as many times as there are rows. */}
+      {closeWon?.error && (
+        <p className="px-4 py-3 text-xs text-red-600 border-t border-gray-100">{closeWon.error}</p>
+      )}
     </div>
   );
 }
@@ -1354,6 +1543,57 @@ export function EngagedLeadsPage({
     () => listAudiences(brandId, { offerId }),
     {},
   );
+  // What the OFFER said each of its funnels is worth, read for ONE reason: it is what
+  // the deal-value field opens with when somebody states a won deal, so they confirm
+  // their own stated lifetime revenue instead of retyping it per lead.
+  //
+  // OFFER-scoped, because that is the grain the brand states a lifetime revenue at: it
+  // is a property of (offer, funnel), so a brand-wide read would open the field with a
+  // number a DIFFERENT proposition is worth. The key is byte-equal to the one the Sales
+  // Funnels card already polls, so this dedupes to no extra request.
+  //
+  // Consequence, accepted: at BRAND grain there is no offer to name — a lead can be on
+  // any of the brand's — so the read is disabled and the field opens EMPTY, exactly as
+  // it did before. Reading the brand-wide figure there instead would be this surface
+  // borrowing a sibling offer's number, which is the one thing a prefill must not do.
+  const { data: salesFunnelsData } = useAuthQuery(
+    ["offerSalesFunnels", brandId, offerId ?? "none"],
+    () => getOfferSalesFunnels(brandId, offerId as string),
+    { enabled: !!offerId },
+  );
+  // The prefill for ONE lead: its own campaign's funnel, never a sibling funnel's. An
+  // offer is sold through several funnels at once and prices each one, and the lead is
+  // on exactly one of them.
+  const prefillUsdFor = useCallback(
+    (lead: Lead) => saleValuePrefillUsd(salesFunnelsData?.funnels, closeWonFunnelKey(lead)),
+    [salesFunnelsData],
+  );
+
+  // Stating a won deal from a TABLE ROW. The row-scoped hook is what the board already
+  // uses for the same reason: the target is decided at press time, so holding it in
+  // state first so a per-lead hook could be built would race the submit.
+  const [closeWonError, setCloseWonError] = useState<string | null>(null);
+  const [closeWonRowId, setCloseWonRowId] = useState<string | null>(null);
+  const setAnyStage = useSetAnyLeadStepStatement();
+  const stateCloseWon = useCallback(
+    (
+      lead: Lead,
+      input: { costCents: number; valueCents: number; causedByOutreach: boolean },
+    ) => {
+      setCloseWonError(null);
+      setCloseWonRowId(lead.id);
+      setAnyStage.mutate(
+        { leadRowId: lead.id, step: "sale", kind: "outcome", ...input },
+        {
+          onSettled: () => setCloseWonRowId(null),
+          // lead-service writes its refusal for a person to read; the raw thrown error
+          // is the whole downstream body verbatim and never reaches a customer.
+          onError: (err) => setCloseWonError(leadStepErrorMessage(err)),
+        },
+      );
+    },
+    [setAnyStage],
+  );
   // The OPEN PERSON's campaigns, nested offer > funnel > campaign.
   //
   // The cards are lead-service's own (`?include=campaigns`), never a grouping of rows: a
@@ -1943,7 +2183,21 @@ export function EngagedLeadsPage({
               </>
             ) : (
               <>
-                <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} outcomeDates={outcomeDates} />
+                <LeadsTable
+                  leads={pagedLeads}
+                  tab={activeTab}
+                  selectedLead={selectedLead}
+                  onSelectLead={setSelectedLead}
+                  statusOf={statusOf}
+                  audienceOf={audienceOf}
+                  outcomeDates={outcomeDates}
+                  closeWon={{
+                    prefillUsd: prefillUsdFor,
+                    onState: stateCloseWon,
+                    pendingRowId: closeWonRowId,
+                    error: closeWonError,
+                  }}
+                />
                 {/* The right gutter clears the floating WhatsApp support FAB, which
                     sits at z-30 over the rightmost 64/72px at every scroll position
                     — without it a tap on `Next` lands on the FAB. */}
@@ -2033,6 +2287,9 @@ export function EngagedLeadsPage({
                 pending={panelPending}
                 error={panelError}
                 onSet={onSetStage}
+                // The same prefill the table column opens with, off the same resolver:
+                // one lead's deal is worth one thing, whichever surface asks for it.
+                saleValuePrefillUsd={selectedLead ? prefillUsdFor(selectedLead) : null}
                 withdrawable={panelWithdrawable}
                 onWithdraw={onWithdrawStage}
                 reply={{
@@ -2066,11 +2323,7 @@ export function EngagedLeadsPage({
                 spelled. It renders below the Organization card because it is about
                 both halves at once — the person and the employer — so it cannot sit
                 inside either. It draws nothing when we recognise neither country. */}
-            <LeadLocationMap
-              person={selectedFull ?? null}
-              organization={selectedOrg ?? null}
-              organizationName={selectedOrg?.name ?? null}
-            />
+            <LeadLocationMap person={selectedFull ?? null} organization={selectedOrg ?? null} />
             {/* This person's campaigns, each holding what IT decided about them. The
                 offer, the audience AND the timeline live in here rather than as
                 panel-level cards: all three are a campaign's answer, and stating one of

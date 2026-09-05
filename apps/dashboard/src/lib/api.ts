@@ -2199,6 +2199,16 @@ export async function setLeadStepStatement(
      */
     costCents: number;
     valueCents?: number;
+    /**
+     * Whether OUR outreach caused this outcome. Optional, and a 400 on a `never` —
+     * nothing happened, so nothing caused it.
+     *
+     * OMITTING it is a real third answer, not a default: the producer records `null`,
+     * which reads as "nobody was asked", and that is what every deal stated before the
+     * field shipped carries. So a caller that cannot ask the question must leave it out
+     * rather than guessing either way.
+     */
+    causedByOutreach?: boolean;
     note?: string;
     occurredAt?: string;
   },
@@ -4478,6 +4488,36 @@ export interface Lead {
    */
   standing?: LeadStanding | null;
   /**
+   * The CLOSED DEAL on this row, or null when nobody has stated one (lead-service
+   * v0.76.0, on every scope of both list paths).
+   *
+   * Derived by the producer in the same pass as `standing`, off the same two statement
+   * reads, so a page of leads costs no request per lead and the row and the panel
+   * cannot disagree about whether somebody bought. Nothing is stored, so withdrawing or
+   * restating the statement moves it with no write.
+   *
+   * `causedByOutreach` is the answer to "did OUR outreach cause this deal", and it has
+   * THREE states that must never collapse into two: `true` ours, `false` theirs, and
+   * `null` NOBODY WAS ASKED — every deal stated before the field shipped, and every
+   * tracker-reported one, because a page-load tag cannot know why somebody bought.
+   * Reading null as either answer is the whole thing this field exists to stop.
+   *
+   * It is emphatically NOT the tracker's own attribution reading (`attributed` /
+   * `needs_review` / `unmatched`), which answers whether we managed to identify who a
+   * conversion belonged to. Different question; the producer keeps the two apart.
+   *
+   * `.optional()` on the OBJECT only — a payload written before v0.76.0 carries none.
+   * Its fields are the producer's required-and-nullable, so they are `T | null`.
+   */
+  closedDeal?: {
+    occurredAt: string | null;
+    valueCents: number | null;
+    /** What the customer said closing it cost THEM. Their own money; never billed. */
+    costCents: number | null;
+    causedByOutreach: boolean | null;
+    source: string | null;
+  } | null;
+  /**
    * THIS PERSON'S CAMPAIGNS, each card stating what happened IN THAT CAMPAIGN
    * (lead-service v0.67.0, served only when the read asks `?include=campaigns`).
    *
@@ -4649,6 +4689,15 @@ const LeadDeliverySchema = z
     // passthrough rather than being restated.
     standing: z
       .object({ state: z.string(), signal: z.string() })
+      .passthrough()
+      .nullish(),
+    // Declared rather than left to the envelope's passthrough: the Close won column
+    // renders off it, and a field nothing validates is one nobody notices going away.
+    // `.nullish()` because the object is the producer's required-and-NULLABLE (null is
+    // "nobody has stated a deal", the ordinary case) AND absent on a payload written
+    // before v0.76.0 — `.optional()` alone would reject the null it means to send.
+    closedDeal: z
+      .object({ causedByOutreach: z.boolean().nullable() })
       .passthrough()
       .nullish(),
   })

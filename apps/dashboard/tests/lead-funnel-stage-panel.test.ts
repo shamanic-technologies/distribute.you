@@ -9,6 +9,23 @@ const SECTION = read("src/components/leads/lead-funnel-stage-section.tsx");
 const HOOK = read("src/lib/use-lead-step-statements.ts");
 const API = read("src/lib/api.ts");
 
+/**
+ * The `<LeadFunnelStageSection …/>` element, bounded by its OWN close rather than by a
+ * measured character count. A number expires on the next prop or comment added to the
+ * call site — which is exactly how these guards last read as "the code is missing" for
+ * code that had not changed — and a `toContain` cannot be hurt by an over-long slice.
+ */
+const stageSectionCall = () => {
+  const at = PAGE.indexOf("<LeadFunnelStageSection");
+  expect(at).toBeGreaterThan(-1);
+  // Bounded by the section that FOLLOWS it, never by the first `/>` after the anchor —
+  // that one closes a self-closing CHILD (the delivery badge), which cuts the element
+  // in half. Every assertion below is a `toContain`, so an over-long slice cannot hurt.
+  const end = PAGE.indexOf(">Organization<", at);
+  expect(end).toBeGreaterThan(at);
+  return PAGE.slice(at, end);
+};
+
 describe("lead funnel stage panel", () => {
   it("keys the control set on the campaign's FUNNEL, never on a goal", () => {
     // `sales_meetings` covers both meeting funnels, so a goal cannot say whether the
@@ -69,7 +86,7 @@ describe("lead funnel stage panel", () => {
     expect(HOOK).toContain('entry.source !== "manual"');
     expect(SECTION).toContain("const canWithdraw = withdrawable?.[stage.key] === true && onWithdraw != null;");
     // The CALL SITE, not only the component that would honour it.
-    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 1200);
+    const call = stageSectionCall();
     expect(call).toContain("withdrawable={panelWithdrawable}");
     expect(call).toContain("onWithdraw={onWithdrawStage}");
   });
@@ -186,7 +203,7 @@ describe("the reply row", () => {
     expect(PAGE).toContain("replyData?.qualifications.find((q) => !q.withdrawnAt) ?? null");
     expect(PAGE).toContain("const replyKind = standingQualification?.replyKind ?? null;");
     expect(PAGE).toContain("if (q.withdrawnAt) continue;");
-    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 1200);
+    const call = stageSectionCall();
     expect(call).toContain("onWithdraw: shownReplyKind ? onWithdrawReply : undefined");
   });
 });
@@ -197,7 +214,7 @@ describe("the panel answers the click at once", () => {
     // as a control that did nothing. The CALL SITE is what puts it on screen — a page
     // that computes the value and passes the served one is the feature entirely absent
     // with the component perfectly correct.
-    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
+    const call = stageSectionCall();
     expect(call).toContain("kind: shownReplyKind");
     expect(PAGE).toContain("statedReply.email === replyEmail");
   });
@@ -274,7 +291,12 @@ describe("stating what a won deal was worth", () => {
 
   it("cannot submit the amount form until what was typed IS an amount", () => {
     expect(SECTION).toContain("saleValueCentsFrom(rawValue)");
-    expect(SECTION).toContain("const ready = costCents != null && (!needsValue || valueCents != null);");
+    // `!disabled` joined the guard when the leads table's Close won column started asking
+    // whose win the deal was before it asks what it was worth — one place a statement is
+    // refused for being incomplete, rather than a second gate at each call site.
+    expect(SECTION).toContain(
+      "const ready = !disabled && costCents != null && (!needsValue || valueCents != null);",
+    );
     expect(SECTION).toContain("disabled={!ready || busy}");
   });
 
@@ -338,7 +360,7 @@ describe("stating what the step cost the customer", () => {
     // A component that merely HANDLES the prop renders nothing if nobody passes it.
     expect(SECTION).toContain('data-testid="lead-funnel-stage-cost"');
     expect(PAGE).toContain("stageCostsFrom(stepStatements)");
-    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
+    const call = stageSectionCall();
     expect(call).toContain("costs={panelCosts}");
   });
 
@@ -427,7 +449,7 @@ describe("the funnel constrains its neighbours", () => {
     expect(SECTION).toContain("delivery?: ReactNode;");
     expect(SECTION).toContain("{delivery != null && (");
     expect(SECTION).toContain("{delivery}</span>");
-    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
+    const call = stageSectionCall();
     expect(call).toContain("delivery={<StatusBadge status={statusOf(selectedLead)} />}");
   });
 });

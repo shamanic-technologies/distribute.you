@@ -126,7 +126,9 @@ export function StageStatementForm({
   label,
   tone,
   needsValue,
+  defaultValueUsd,
   busy,
+  disabled = false,
   onSubmit,
   onCancel,
 }: {
@@ -134,22 +136,48 @@ export function StageStatementForm({
   tone: "outcome" | "never";
   /** Whether this statement also has to say what the deal was worth. */
   needsValue: boolean;
+  /**
+   * What to put in the value field before anybody types, in whole dollars — the brand's
+   * own stated lifetime revenue for the funnel this lead is on, resolved by the caller.
+   *
+   * A PREFILL, not a default. What is sent is whatever the field holds when the person
+   * submits, so this is a suggestion they confirm or replace rather than a number this
+   * app decides on their behalf. Absent (or null) opens the field EMPTY, which is the
+   * honest reading for a funnel the brand never priced: lead-service still refuses a
+   * sale with no value, so they meet exactly the question they should.
+   *
+   * Seeded through the `useState` initializer so it applies once. Re-seeding on a later
+   * render would rewrite an amount somebody is in the middle of typing.
+   */
+  defaultValueUsd?: number | null;
   busy: boolean;
+  /**
+   * A question the CALLER still needs answered before this statement can be sent — the
+   * leads table asks whose win the deal was before it asks what it was worth. Held here
+   * rather than by disabling the submit at the call site, so there is ONE place a
+   * statement can be refused for being incomplete.
+   */
+  disabled?: boolean;
   onSubmit: (input: { costCents: number; valueCents?: number }) => void;
   onCancel: () => void;
 }) {
-  const [rawValue, setRawValue] = useState("");
+  const [rawValue, setRawValue] = useState(() =>
+    defaultValueUsd != null && defaultValueUsd > 0 ? String(defaultValueUsd) : "",
+  );
   const [rawCost, setRawCost] = useState("");
   const valueCents = saleValueCentsFrom(rawValue);
   const costCents = stepCostCentsFrom(rawCost);
   // Both questions have to be answered before anything is sent. `costCents == null` is
   // an unanswered field, never a zero: `stepCostCentsFrom("0")` is 0 and submits.
-  const ready = costCents != null && (!needsValue || valueCents != null);
+  const ready = !disabled && costCents != null && (!needsValue || valueCents != null);
   return (
     <form
       className="flex flex-col items-end gap-1"
       onSubmit={(e) => {
         e.preventDefault();
+        // The button is disabled, but Enter in a text field submits a form regardless,
+        // so the refusal lives in the handler as well as in the button's state.
+        if (disabled) return;
         if (costCents == null) return;
         if (needsValue && valueCents == null) return;
         onSubmit(needsValue ? { costCents, valueCents: valueCents as number } : { costCents });
@@ -234,6 +262,7 @@ export function LeadFunnelStageSection({
   withdrawable,
   onWithdraw,
   reply,
+  saleValuePrefillUsd,
   disabled = false,
 }: {
   /** The campaign's funnel, named so the reader knows which funnel's steps these are. */
@@ -319,6 +348,17 @@ export function LeadFunnelStageSection({
     /** Pressing the kind already stated takes it back. */
     onWithdraw?: () => void;
   } | null;
+  /**
+   * What to offer in the deal-value field before anybody types, in whole dollars — the
+   * brand's own stated lifetime revenue for THIS lead's funnel, resolved by the caller
+   * (see `saleValuePrefillUsd` in `lib/lead-close-won.ts`).
+   *
+   * The one stage that asks for a value is the sale, so this reaches exactly it. Absent
+   * and the field opens empty, exactly as it did before: an absent lifetime revenue and
+   * a stated one are different facts, and a number this app invented would be what every
+   * money figure downstream is then built on.
+   */
+  saleValuePrefillUsd?: number | null;
   disabled?: boolean;
 }) {
   // The statement being composed, if any. It carries the TARGET state as well as the
@@ -414,6 +454,9 @@ export function LeadFunnelStageSection({
                     // Only the sale carries an amount, and only when it HAPPENED: the
                     // producer refuses a value on a "never".
                     needsValue={asking.next === "outcome" && stageRequiresValue(stage.key)}
+                    // Reaches the sale and nothing else, because the sale is the one
+                    // stage that asks for a value at all.
+                    defaultValueUsd={saleValuePrefillUsd}
                     busy={busyHere}
                     onSubmit={({ costCents, valueCents }) => {
                       const next = asking.next;
