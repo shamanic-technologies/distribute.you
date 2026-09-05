@@ -1,4 +1,4 @@
-// The leads board: FIVE triage columns, each lead in exactly ONE of them.
+// The leads board: SIX triage columns, each lead in exactly ONE of them.
 //
 // The tabs this sits beside are NESTED SUBSETS — a lead that replied is also in
 // Contacted — which is why the page has to dedupe them to count its own population. A
@@ -84,6 +84,7 @@ import type { LeadStanding, LeadStandingState } from "./lead-standing";
 export type LeadBoardColumnKey =
   | "contacted"
   | "sales_interest"
+  | "won"
   | "disqualified"
   | "opt_out"
   | "unresolved";
@@ -135,6 +136,18 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
     key: "sales_interest",
     label: "Sales interest",
     blurb: "Leads who have shown or expressed sales interest.",
+    writable: true,
+    hideWhenEmpty: false,
+  },
+  {
+    // The deal closed. It is the producer's `customer` standing, which used to fold into
+    // Sales interest — right while the board was four buckets of "still in play or not",
+    // and wrong the moment somebody wants to see what they actually WON. A won deal is
+    // not a strong sales interest, it is the outcome the funnel exists to produce, and
+    // burying it in the column above states one fact under another's name.
+    key: "won",
+    label: "Close won",
+    blurb: "Leads who bought. Say what the deal was worth and whether our outreach caused it.",
     writable: true,
     hideWhenEmpty: false,
   },
@@ -222,14 +235,15 @@ export const DISQUALIFYING_STATEMENT_KINDS: readonly string[] = [
  * Derived from the catalogue rather than re-listed, so a kind the producer adds shows
  * up in the picker of whichever column already claims it.
  *
- * `opt_out` and `unresolved` offer none, for different reasons. Moving into Opt-out
- * states the CHANNEL somebody told us through (`OPT_OUT_CHANNELS`), not a reply kind —
- * a different write, to a different producer, scoped to the person rather than to this
- * campaign — so an empty list here is not "nothing can be written". `unresolved` really
- * is nothing: it is lead-service reporting it could not answer.
+ * THREE columns offer none, and only one of them means "nothing can be written".
+ * Moving into Opt-out states the CHANNEL somebody told us through (`OPT_OUT_CHANNELS`),
+ * scoped to the person rather than to this campaign. Moving into Close won states the
+ * SALE — what it cost, what it was worth, and whether our outreach caused it — which is
+ * a funnel-step statement to lead-service, not a fact about a message. `unresolved`
+ * really is nothing: it is lead-service reporting it could not answer.
  */
 export function columnReplyKinds(key: LeadBoardColumnKey): ReplyKind[] {
-  if (key === "opt_out" || key === "unresolved") return [];
+  if (key === "opt_out" || key === "won" || key === "unresolved") return [];
   return REPLY_KINDS.filter((o) => {
     if (key === "sales_interest") return INTEREST_STATEMENT_KINDS.includes(o.kind);
     if (key === "disqualified") return DISQUALIFYING_STATEMENT_KINDS.includes(o.kind);
@@ -254,9 +268,8 @@ export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
  * (`opted_out`), so telling it apart from the other ways of being out of play is a
  * render of that word rather than a rule of ours over the deciding evidence — which is
  * what it used to be, and which quietly misfiled every opt-out into "Not placed" the
- * moment the producer split the state. `customer` folds into Sales interest
- * because a customer reached the step this campaign sells and then some — four triage
- * buckets have no room for a fifth verdict, and the blurb says so.
+ * moment the producer split the state. `customer` has its OWN column (`won`): it used
+ * to fold into Sales interest, which read a closed deal as a warm one.
  *
  * `not_contacted` lands nowhere (`null`) and the lead is left off the board entirely:
  * there is nothing to show about what happened to it, and inventing a column would make
@@ -283,8 +296,12 @@ export function leadBoardColumnFor(
     case "engaged":
       return "contacted";
     case "sales_interest":
-    case "customer":
       return "sales_interest";
+    case "customer":
+      // The funnel's last step is reached — the deal closed. Its own column since the
+      // board grew one: folding it into Sales interest made a won deal read as a warm
+      // one, which is the fact a person triaging a list most wants told apart.
+      return "won";
     case "opted_out":
       return "opt_out";
     case "disqualified":
@@ -305,12 +322,10 @@ export function leadBoardColumnFor(
  * Which standings a column HOLDS — the inverse of `leadBoardColumnFor`, and the thing a
  * consumer asks the producer for when it draws one column at a time.
  *
- * There are seven standings and five columns, so two columns hold two standings each:
- * a person nobody has heard from and a person who did something this campaign does not
- * sell are both still in play, and a person who reached the step and a person who went
- * all the way and bought are both showing interest. Those are decisions about what
- * somebody triaging a list needs to see side by side, so they live here rather than
- * upstream.
+ * There are seven standings and six columns, so ONE column holds two: a person nobody
+ * has heard from and a person who did something this campaign does not sell are both
+ * still in play. That is a decision about what somebody triaging a list needs to see
+ * side by side, so it lives here rather than upstream.
  *
  * `not_contacted` is in NO column, deliberately: there is nothing to show about what
  * happened to a lead nobody wrote to, and giving it a column would make the board
@@ -322,7 +337,8 @@ export function leadBoardColumnFor(
  */
 export const STANDINGS_BY_COLUMN: Record<LeadBoardColumnKey, readonly LeadStandingState[]> = {
   contacted: ["contacted", "engaged"],
-  sales_interest: ["sales_interest", "customer"],
+  sales_interest: ["sales_interest"],
+  won: ["customer"],
   disqualified: ["disqualified"],
   opt_out: ["opted_out"],
   unresolved: ["unresolved"],
@@ -342,6 +358,12 @@ export const STANDINGS_BY_COLUMN: Record<LeadBoardColumnKey, readonly LeadStandi
  * protects the person is not a locked column, it is that leaving is a WITHDRAWAL —
  * appended, never an erasure, and it does not resume anything that was stopped. The
  * board says so before it does it (`columnMoveConfirmation`).
+ *
+ * That includes out of `won`, on the same reasoning and with the same shape: a sale
+ * gets recorded on the wrong lead, and the undo lead-service offers is a WITHDRAWAL of
+ * the statement (its own words: correcting one is never the opposite statement). So the
+ * card leaves, the money it carried stops counting, and where it lands afterwards is
+ * the producer's answer rather than the column the reader happened to drop it on.
  *
  * `unresolved` still lets nothing out, and `writable: false` does not cover it — that
  * only stops a card ARRIVING. A card is there when lead-service could not resolve the
@@ -375,14 +397,28 @@ export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
  * What a move OUT of `from` needs somebody to confirm before it is written, or null
  * when it needs nothing.
  *
- * Only leaving `opt_out` does. Every other move states something about a reply and is
- * superseded by the next statement; this one puts a person who asked us to stop back
- * where we can contact them, so it says out loud both what it does and — the half that
- * is easy to assume — what it does NOT do.
+ * TWO moves do, and both are the same shape: a card leaving a column whose state
+ * somebody WROTE, where the undo is a withdrawal rather than the opposite statement.
+ * Every other move states something about a reply and is superseded by the next one.
+ *
+ * Leaving Opt-out puts a person who asked us to stop back where we can contact them, so
+ * it says out loud both what it does and — the half that is easy to assume — what it
+ * does NOT do.
+ *
+ * Leaving Close won takes the SALE back. lead-service is explicit that correcting a
+ * statement is a WITHDRAWAL and never the opposite statement ("stating the other thing
+ * to undo a mistake is itself a false statement, and it keeps counting"), so this is its
+ * own undo and not a reply kind dressed as one — and the money it removes is the money
+ * it removes at every grain, which is the half worth saying before it happens.
  */
 export function columnMoveConfirmation(from: LeadBoardColumnKey | null): string | null {
-  if (from !== "opt_out") return null;
-  return "They asked us to stop. Only take that back if they have asked to hear from us again — the record stays either way, and nothing that was stopped starts again on its own.";
+  if (from === "opt_out") {
+    return "They asked us to stop. Only take that back if they have asked to hear from us again — the record stays either way, and nothing that was stopped starts again on its own.";
+  }
+  if (from === "won") {
+    return "This takes the deal back. Its value stops counting toward your revenue and the cost you stated for it stops counting as your spend, at every grain — only do it if the sale was recorded by mistake. What was stated stays readable either way.";
+  }
+  return null;
 }
 
 /**

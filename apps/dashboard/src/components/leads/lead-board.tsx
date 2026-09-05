@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BoardSlot } from "@/components/boards/board-slot";
 import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
+import { CloseWonForm } from "@/components/leads/close-won-form";
 import { Skeleton } from "@/components/skeleton";
 import {
   LEAD_BOARD_COLUMNS,
@@ -92,6 +93,15 @@ export interface LeadBoardCard {
    * is worse than a tag with none.
    */
   statusAt: string | null;
+  /**
+   * What to open the deal-value field with, in whole dollars — the brand's own stated
+   * lifetime revenue for THIS lead's funnel, resolved by the page.
+   *
+   * On the card rather than looked up in the form: a board draws hundreds of cards and
+   * the funnel a lead is on is a property of the lead, so resolving it per-card at the
+   * page's one read costs nothing and the form stays free of a second lookup.
+   */
+  prefillUsd: number | null;
 }
 
 /**
@@ -106,11 +116,25 @@ export interface LeadBoardCard {
  *                    PERSON, so it carries no column and no campaign.
  *   - `withdrawal` — take an opt-out back. It carries no destination on purpose: where
  *                    the card lands afterwards is lead-service's answer, not ours.
+ *   - `sale`       — the deal closed: what it cost, what it was worth, and whether our
+ *                    outreach caused it. A funnel-step statement against the lead's own
+ *                    ROW, which is why it carries a row id rather than an email.
+ *   - `saleWithdrawal` — take that back. lead-service's own undo for a statement, never
+ *                    the opposite statement, so it carries no amounts and no
+ *                    destination.
  */
 export type LeadBoardMove =
   | { type: "reply"; email: string; replyKind: ReplyKind; column: LeadBoardColumnKey }
   | { type: "optOut"; email: string; channel: OptOutChannel }
-  | { type: "withdrawal"; email: string };
+  | { type: "withdrawal"; email: string }
+  | {
+      type: "sale";
+      leadRowId: string;
+      costCents: number;
+      valueCents: number;
+      causedByOutreach: boolean;
+    }
+  | { type: "saleWithdrawal"; leadRowId: string };
 
 /** The move a person has picked but not yet said the kind of. */
 interface PendingMove {
@@ -307,11 +331,13 @@ export function LeadBoard({
 
   const pendingKinds = pending ? columnReplyKinds(pending.to.key) : [];
   const pendingRefusal = pending ? columnMoveRefusal(pending.to.key) : null;
-  // Leaving Opt-out is asked about BEFORE the target's own question: whatever column
-  // the card was dropped on, the write is the same withdrawal, and the thing worth
-  // reading is what taking it back does — and does not — do.
+  // Leaving Opt-out or Close won is asked about BEFORE the target's own question:
+  // whatever column the card was dropped on, the write is the same withdrawal of what
+  // was stated, and the thing worth reading is what taking it back does — and does not
+  // — do. The two are one branch because they are one shape; only the button says which.
   const pendingConfirmation = pending ? columnMoveConfirmation(pending.card.column) : null;
   const pendingOptOut = pending?.to.key === "opt_out" && !pendingConfirmation;
+  const pendingWon = pending?.to.key === "won" && !pendingConfirmation;
 
   return (
     <div className="space-y-3">
@@ -323,7 +349,16 @@ export function LeadBoard({
           {pendingConfirmation && pending.card.email ? (
             <>
               <p className="mb-2 text-sm text-gray-800">
-                Put <span className="font-medium">{pending.card.name}</span> back in play?
+                {pending.card.column === "won" ? (
+                  <>
+                    Take back the deal on{" "}
+                    <span className="font-medium">{pending.card.name}</span>?
+                  </>
+                ) : (
+                  <>
+                    Put <span className="font-medium">{pending.card.name}</span> back in play?
+                  </>
+                )}
               </p>
               <p className="mb-2 text-xs text-gray-500">{pendingConfirmation}</p>
               <div className="flex flex-wrap gap-2">
@@ -331,14 +366,18 @@ export function LeadBoard({
                   type="button"
                   disabled={busy}
                   onClick={() => {
-                    onMove({ type: "withdrawal", email: pending.card.email as string });
+                    onMove(
+                      pending.card.column === "won"
+                        ? { type: "saleWithdrawal", leadRowId: pending.card.id }
+                        : { type: "withdrawal", email: pending.card.email as string },
+                    );
                     setPending(null);
                   }}
                   className={`rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-xs text-amber-700 ${
                     busy ? "cursor-wait" : "hover:opacity-80"
                   }`}
                 >
-                  Take the opt-out back
+                  {pending.card.column === "won" ? "Take the deal back" : "Take the opt-out back"}
                 </button>
                 <button
                   type="button"
@@ -390,6 +429,30 @@ export function LeadBoard({
                 >
                   Cancel
                 </button>
+              </div>
+            </>
+          ) : pendingWon ? (
+            <>
+              <p className="mb-2 text-sm text-gray-800">
+                What did <span className="font-medium">{pending.card.name}</span> buy?
+              </p>
+              {/* The SAME form the leads table's Close won column mounts — one place
+                  the two questions are asked, and one place lead-service's mandatory
+                  cost lives. A sale is a funnel-step statement, not a fact about a
+                  message, which is why this column offers no reply kinds. */}
+              {/* Bounded, because the form is built for a table CELL and stacks its
+                  fields to the right. Left to the panel's full width the question sits
+                  a thousand pixels from the inputs that answer it. */}
+              <div className="w-64">
+              <CloseWonForm
+                prefillUsd={pending.card.prefillUsd}
+                busy={busy}
+                onSubmit={(input) => {
+                  onMove({ type: "sale", leadRowId: pending.card.id, ...input });
+                  setPending(null);
+                }}
+                onCancel={() => setPending(null)}
+              />
               </div>
             </>
           ) : pendingRefusal || pendingKinds.length === 0 || !pending.card.email ? (

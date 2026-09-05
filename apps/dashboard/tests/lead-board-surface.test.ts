@@ -19,6 +19,21 @@ const sliceFrom = (src: string, marker: string, len: number) => {
   return src.slice(at, at + len);
 };
 
+/**
+ * From `marker` up to `end`, so the window moves with the file.
+ *
+ * For a `toContain` guard this is strictly better than a measured length: a slice that
+ * runs long cannot hurt it, while a measured one expires on the next comment somebody
+ * adds inside the block.
+ */
+const sliceTo = (src: string, marker: string, end: string) => {
+  const at = src.indexOf(marker);
+  expect(at).toBeGreaterThan(-1);
+  const to = src.indexOf(end, at);
+  expect(to).toBeGreaterThan(at);
+  return src.slice(at, to);
+};
+
 describe("the leads board is wired, not merely written", () => {
   it("is mounted by the page with the cards the page derives", () => {
     // A guard on the component alone passes forever over a page that never renders it.
@@ -145,18 +160,16 @@ describe("a campaign page is the board and nothing else", () => {
   });
 });
 
-describe("a move states a reply KIND, and it asks which", () => {
-  it("writes the reply kind, never a funnel-step statement", () => {
-    // The funnel columns are gone, and with them the cost/value form they needed. A
-    // triage move is the same write the lead panel makes.
+describe("a TRIAGE move states a reply KIND, and it asks which", () => {
+  it("writes the reply kind for every column but Close won", () => {
+    // A triage move is the same write the lead panel makes. Close won is the one
+    // exception and it is not a reply at all — see its own block below.
     expect(page).toContain("setManualQualification({ campaignId: campaignId as string, email, status: kind })");
-    expect(board).not.toContain("StageStatementForm");
     expect(board).not.toContain("stageRequiresValue");
-    // Scoped to the board's own MOUNT, not the whole page. The leads table's Close won
-    // column legitimately states a funnel step through that hook, so a file-wide check
-    // would forbid a write it does not mean to forbid — it is the BOARD's move that
-    // must be a reply kind.
-    expect(sliceFrom(page, "<LeadBoard\n", 1800)).not.toContain("useSetAnyLeadStepStatement");
+    // The board never builds its own amounts form: the ONE `CloseWonForm` is what asks,
+    // here and in the table, so the two cannot come to ask differently.
+    expect(board).not.toContain("StageStatementForm");
+    expect(board).toContain("<CloseWonForm");
   });
 
   it("never writes straight from a drop", () => {
@@ -190,7 +203,9 @@ describe("a move states a reply KIND, and it asks which", () => {
     // somewhere else — which it does: stating "Interested" on a campaign whose funnel is
     // entered by a website visit is a positive reply, and a positive reply is not the
     // step that campaign sells. That is the correct answer and the reader must see it.
-    const move = sliceFrom(page, "onMove={(move) => {", 4400);
+    // Bounded to the handler's own end rather than a measured length: the sale
+    // branch was added at its head, and a number here expires on the next comment.
+    const move = sliceTo(page, "onMove={(move) => {", "<LeadsTable");
     expect(move).toContain("void settled.then(drop);");
     expect(move).toContain("next.delete(email)");
     // A WITHDRAWAL holds nothing at all: where a released person lands is
@@ -529,5 +544,48 @@ describe("an empty column says it is empty, and a cold one draws a skeleton", ()
     );
     expect(page).toContain("pending: !knownEmpty && read.data === undefined && !read.isError,");
     expect(page).not.toContain("pending: read.isPending,");
+  });
+});
+
+describe("Close won is a column, and moving into it states a SALE", () => {
+  it("reads its own page and its own size, like every other column", () => {
+    // A column drawn as a slice of another states that other column's cap as its size.
+    expect(page).toContain('useBoardColumnPage(columnArgs("won"))');
+    expect(page).toContain("won: wonColumn,");
+  });
+
+  it("states the sale against the lead ROW, not the person's email", () => {
+    // A funnel-step statement belongs to the (lead, campaign) row; the reply and
+    // opt-out writes are keyed on the email so they reach every campaign at once.
+    const move = sliceTo(page, "onMove={(move) => {", "<LeadsTable");
+    expect(move).toContain('if (move.type === "sale" || move.type === "saleWithdrawal")');
+    expect(move).toContain('{ leadRowId, step: "sale", kind: "outcome", ...input }');
+    expect(board).toContain('type: "sale",');
+    expect(board).toContain("leadRowId: pending.card.id");
+  });
+
+  it("undoes a sale by WITHDRAWING the statement, never by stating the opposite", () => {
+    // lead-service's own rule: "stating the other thing to undo a mistake is itself a
+    // false statement, and it keeps counting". So leaving Close won carries no amounts
+    // and no destination — where the card lands is the producer's answer.
+    const move = sliceTo(page, "onMove={(move) => {", "<LeadsTable");
+    expect(move).toContain('withdrawAnyStage.mutate(');
+    expect(move).toContain('{ leadRowId: move.leadRowId, step: "sale" }');
+    expect(board).toContain('{ type: "saleWithdrawal", leadRowId: pending.card.id }');
+    // And it asks first, exactly like taking an opt-out back.
+    expect(board).toContain("columnMoveConfirmation(pending.card.column)");
+  });
+
+  it("opens the value field with the lead's OWN funnel price, resolved by the page", () => {
+    // The board has no business reading the offer's declared funnels, and a per-card
+    // lookup in the form would be a second resolution of the same fact.
+    expect(page).toContain("prefillUsdFor(lead)");
+    expect(board).toContain("prefillUsd={pending.card.prefillUsd}");
+  });
+
+  it("disables the picker while either sale write is in flight", () => {
+    const mount = sliceFrom(page, "<LeadBoard\n", 1800);
+    expect(mount).toContain("setAnyStage.isPending");
+    expect(mount).toContain("withdrawAnyStage.isPending");
   });
 });

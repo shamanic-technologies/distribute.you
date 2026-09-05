@@ -137,6 +137,33 @@ export function useSetAnyLeadStepStatement() {
 }
 
 /**
+ * The WITHDRAWAL, for a surface whose target lead is decided at press time.
+ *
+ * Same relationship to `useWithdrawLeadStepStatement` as `useSetAnyLeadStepStatement`
+ * has to its own per-lead sibling: the leads BOARD has no open lead, so the row id
+ * rides in the mutation variables. It exists because a card can be dragged OUT of the
+ * board's Close won column, and lead-service is explicit that the undo for a statement
+ * is a withdrawal and never the opposite statement.
+ *
+ * The response is thrown away rather than written into a per-lead cache: the board has
+ * no per-lead statements query open, and what actually moves the card is the outcome
+ * invalidation below.
+ */
+export function useWithdrawAnyLeadStepStatement() {
+  const queryClient = useQueryClient();
+
+  return useMutation<LeadStepStatements, Error, { leadRowId: string; step: LeadStepName }>({
+    mutationFn: ({ leadRowId, step }) => withdrawLeadStepStatement(leadRowId, step),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(leadStepStatementsQueryKey(variables.leadRowId), data);
+      // A withdrawn outcome stops being counted and the cost stated for that leg stops
+      // counting as the customer's spend, so the same money moves at every grain.
+      invalidateLeadOutcome(queryClient);
+    },
+  });
+}
+
+/**
  * The served per-step states, as the panel's map.
  *
  * A step the producer did not mention is simply absent, which the panel already reads as

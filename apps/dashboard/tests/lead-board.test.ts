@@ -19,11 +19,14 @@ import { REPLY_KINDS } from "../src/lib/reply-kind";
 const at = (state: string, signal = "none") =>
   leadBoardColumnFor({ state, signal } as unknown as LeadBoardStanding);
 
-describe("the board is five triage columns", () => {
+describe("the board is six triage columns", () => {
   it("states them in triage order, and only Not-placed refuses a card", () => {
+    // Close won sits between the warm column and the out-of-play ones: it is what the
+    // funnel produces, so it reads after interest and before every way of being done.
     expect(LEAD_BOARD_COLUMNS.map((c) => c.key)).toEqual([
       "contacted",
       "sales_interest",
+      "won",
       "disqualified",
       "opt_out",
       "unresolved",
@@ -34,7 +37,7 @@ describe("the board is five triage columns", () => {
     // one who clicked the link, and refusing to RECORD that is not protecting their
     // consent, it is ignoring it while we keep emailing them.
     expect(LEAD_BOARD_COLUMNS.find((c) => c.key === "unresolved")?.writable).toBe(false);
-    for (const key of ["contacted", "sales_interest", "disqualified", "opt_out"] as const) {
+    for (const key of ["contacted", "sales_interest", "won", "disqualified", "opt_out"] as const) {
       expect(LEAD_BOARD_COLUMNS.find((c) => c.key === key)?.writable).toBe(true);
     }
   });
@@ -47,7 +50,7 @@ describe("the board is five triage columns", () => {
 
   it("drops ONLY the producer-failure column when it holds nothing", () => {
     // Drawing "Not placed" on a healthy campaign advertises a problem that is not
-    // there; the other four are the shape of the board and stay either way.
+    // there; the other five are the shape of the board and stay either way.
     for (const column of LEAD_BOARD_COLUMNS) {
       expect(column.hideWhenEmpty).toBe(column.key === "unresolved");
     }
@@ -56,7 +59,7 @@ describe("the board is five triage columns", () => {
   it("needs no funnel to lay out, unlike the rungs it replaced", () => {
     // Triage states are not ordered by a funnel, so a brand selling through several
     // gets the same columns a campaign does.
-    expect(LEAD_BOARD_COLUMNS).toHaveLength(5);
+    expect(LEAD_BOARD_COLUMNS).toHaveLength(6);
   });
 });
 
@@ -87,7 +90,9 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
   it("folds a CUSTOMER into Sales interest rather than inventing a verdict for it", () => {
     // They reached the step this campaign sells and then some. Four triage buckets
     // have no room for a fifth verdict, and the column's blurb says so.
-    expect(at("customer", "stated_outcome")).toBe("sales_interest");
+    // Its own column since the board grew one: a closed deal is the outcome the funnel
+    // exists to produce, and folding it into Sales interest read it as a warm one.
+    expect(at("customer", "stated_outcome")).toBe("won");
   });
 
   it("reads an OPT-OUT as the state lead-service now names, not as a signal of ours", () => {
@@ -211,11 +216,13 @@ describe("which columns a card may move to", () => {
   it("offers every writable column except the one it is in", () => {
     expect(movableColumnsFrom("contacted").map((c) => c.key)).toEqual([
       "sales_interest",
+      "won",
       "disqualified",
       "opt_out",
     ]);
     expect(movableColumnsFrom("sales_interest").map((c) => c.key)).toEqual([
       "contacted",
+      "won",
       "disqualified",
       "opt_out",
     ]);
@@ -225,7 +232,10 @@ describe("which columns a card may move to", () => {
     // Every pair, both ways. The four triage columns are states somebody can be wrong
     // about, so every correction has to be reachable — including out of Opt-out, which
     // used to be a dead end whose only fix was a database write.
-    const triage = ["contacted", "sales_interest", "disqualified", "opt_out"] as const;
+    // Close won included, in BOTH directions: a sale gets recorded on the wrong lead,
+    // and the undo lead-service offers is a withdrawal of the statement rather than the
+    // opposite statement — so leaving is a real move, not a dead end.
+    const triage = ["contacted", "sales_interest", "won", "disqualified", "opt_out"] as const;
     for (const from of triage) {
       expect(movableColumnsFrom(from).map((c) => c.key).sort()).toEqual(
         triage.filter((k) => k !== from).slice().sort(),
@@ -239,7 +249,7 @@ describe("which columns a card may move to", () => {
     }
   });
 
-  it("asks somebody to confirm ONLY when a card leaves Opt-out", () => {
+  it("asks somebody to confirm when a card leaves a column somebody WROTE", () => {
     // Every other move states something about a reply and the next statement supersedes
     // it. This one puts a person who asked us to stop back where we can contact them,
     // so it says what it does AND what it does not do — nothing that was stopped starts
@@ -247,6 +257,11 @@ describe("which columns a card may move to", () => {
     for (const key of ["contacted", "sales_interest", "disqualified", "unresolved"] as const) {
       expect(columnMoveConfirmation(key)).toBeNull();
     }
+    // Leaving Close won asks too, and for the same reason: it takes back something
+    // somebody WROTE, and the money it removes is removed at every grain.
+    const leavingWon = columnMoveConfirmation("won");
+    expect(leavingWon).toMatch(/takes the deal back/i);
+    expect(leavingWon).toMatch(/stops counting/i);
     expect(columnMoveConfirmation(null)).toBeNull();
     const leaving = columnMoveConfirmation("opt_out");
     expect(leaving).toMatch(/asked us to stop/i);
@@ -269,7 +284,7 @@ describe("which columns a card may move to", () => {
 
 describe("a drop lands everywhere, and the form is where a move is refused", () => {
   it("refuses Not-placed alone, and says why", () => {
-    for (const key of ["contacted", "sales_interest", "disqualified", "opt_out"] as const) {
+    for (const key of ["contacted", "sales_interest", "won", "disqualified", "opt_out"] as const) {
       expect(columnMoveRefusal(key)).toBeNull();
     }
     // The reason, not a bare "not allowed": nothing anybody states about the person

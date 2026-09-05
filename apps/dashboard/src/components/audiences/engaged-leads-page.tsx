@@ -48,10 +48,8 @@ import {
 } from "@/lib/goal-steps";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import {
-  LeadFunnelStageSection,
-  StageStatementForm,
-} from "@/components/leads/lead-funnel-stage-section";
+import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
+import { CloseWonForm } from "@/components/leads/close-won-form";
 import { LeadLocationMap } from "@/components/leads/lead-location-map";
 import {
   closeWonFunnelKey,
@@ -75,6 +73,7 @@ import {
   stageValuesFrom,
   useLeadStepStatements,
   useSetAnyLeadStepStatement,
+  useWithdrawAnyLeadStepStatement,
   useSetLeadStepStatement,
   useWithdrawLeadStepStatement,
   withdrawableStages,
@@ -194,6 +193,12 @@ function useBoardColumnPage(args: {
 function toBoardCard(
   lead: Lead,
   column: LeadBoardColumnKey,
+  /**
+   * What to open the deal-value field with for THIS lead, in whole dollars — its own
+   * campaign's funnel, never a sibling funnel's. Resolved by the page because it needs
+   * the offer's declared funnels, which the board has no business reading.
+   */
+  prefillUsd: number | null,
   // A bare string, like the card's own field: lead-service and instantly-service own the
   // kind vocabulary and can widen it before this app ships, so a kind with no label here
   // renders as itself rather than failing to type.
@@ -225,6 +230,7 @@ function toBoardCard(
     // timestamp that proves the lead's own delivery status. Neither available means the
     // card says nothing rather than borrowing a date.
     statusAt: statedAt ?? leadDateForStatus(lead, status),
+    prefillUsd,
   };
 }
 
@@ -506,9 +512,6 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-const CAUSE_TIP =
-  "Whether the outreach we run for you is what produced this deal. Say no when it came from something else you already do — a referral, an event, a pipeline you already had — even though we had also emailed them. A no costs you nothing: the deal still counts as yours and stays in your revenue. It only keeps its value out of the return we report on our own outreach, so that number is about what we actually caused.";
-
 /**
  * Whether one lead's deal is won, and the control that states it.
  *
@@ -528,11 +531,6 @@ function CloseWonCell({ lead, prefillUsd, busy, onState }: {
   busy: boolean;
   onState: (input: { costCents: number; valueCents: number; causedByOutreach: boolean }) => void;
 }) {
-  // Which of the two answers the person has picked, if any. `null` means they have not
-  // picked yet, and the submit stays disabled — the whole point of the column is that
-  // the answer is STATED, so defaulting one here would put words in their mouth and
-  // record them as if somebody had said them.
-  const [cause, setCause] = useState<boolean | null>(null);
   const [asking, setAsking] = useState(false);
   const state = leadCloseWonState(lead);
 
@@ -572,59 +570,19 @@ function CloseWonCell({ lead, prefillUsd, busy, onState }: {
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
 
   if (asking) {
+    // The SAME form the board's Close won column mounts. Two copies of "whose win was
+    // it, and what was it worth" is how one surface comes to ask a question the other
+    // does not, about the same deal.
     return (
-      <div onClick={stop} className="flex flex-col items-end gap-1">
-        {/* Asked BEFORE the amounts, because it is the question the column exists for
-            and the one a person can answer without looking anything up. Two named
-            buttons rather than a checkbox: "did we cause this" has two real answers and
-            an unticked box would read as the second one without anybody choosing it. */}
-        <div className="flex items-center justify-end gap-1 flex-wrap">
-          <span className="text-xs text-gray-500">Caused by us?</span>
-          {([true, false] as const).map((value) => (
-            <button
-              key={String(value)}
-              type="button"
-              onClick={(e) => {
-                stop(e);
-                setCause(value);
-              }}
-              aria-pressed={cause === value}
-              className={`px-2 py-1 text-xs font-medium rounded-md border transition-colors ${
-                cause === value
-                  ? value
-                    ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-gray-100 text-gray-700 border-gray-300"
-                  : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {value ? "Yes" : "No"}
-            </button>
-          ))}
-          <InfoTooltip tip={CAUSE_TIP} />
-        </div>
-        <StageStatementForm
-          label="Close won"
-          tone="outcome"
-          // lead-service refuses a sale with no value, so the form always asks — the
-          // prefill is what it opens with, not what it sends.
-          needsValue
-          defaultValueUsd={prefillUsd}
-          busy={busy}
-          // Held back until the cause is answered. The form's own submit already
-          // refuses a blank amount; this is the same rule for the same reason.
-          disabled={cause === null}
-          onSubmit={({ costCents, valueCents }) => {
-            if (cause === null) return;
-            setAsking(false);
-            setCause(null);
-            onState({ costCents, valueCents: valueCents as number, causedByOutreach: cause });
-          }}
-          onCancel={() => {
-            setAsking(false);
-            setCause(null);
-          }}
-        />
-      </div>
+      <CloseWonForm
+        prefillUsd={prefillUsd}
+        busy={busy}
+        onSubmit={(input) => {
+          setAsking(false);
+          onState(input);
+        }}
+        onCancel={() => setAsking(false)}
+      />
     );
   }
 
@@ -1343,11 +1301,13 @@ export function EngagedLeadsPage({
   const contactedColumn = useBoardColumnPage(columnArgs("contacted"));
   const salesInterestColumn = useBoardColumnPage(columnArgs("sales_interest"));
   const disqualifiedColumn = useBoardColumnPage(columnArgs("disqualified"));
+  const wonColumn = useBoardColumnPage(columnArgs("won"));
   const optOutColumn = useBoardColumnPage(columnArgs("opt_out"));
   const unresolvedColumn = useBoardColumnPage(columnArgs("unresolved"));
   const columnReads: Record<LeadBoardColumnKey, ReturnType<typeof useBoardColumnPage>> = {
     contacted: contactedColumn,
     sales_interest: salesInterestColumn,
+    won: wonColumn,
     disqualified: disqualifiedColumn,
     opt_out: optOutColumn,
     unresolved: unresolvedColumn,
@@ -1359,6 +1319,7 @@ export function EngagedLeadsPage({
     [
       contactedColumn.data,
       salesInterestColumn.data,
+      wonColumn.data,
       disqualifiedColumn.data,
       optOutColumn.data,
       unresolvedColumn.data,
@@ -1400,7 +1361,9 @@ export function EngagedLeadsPage({
         const statement =
           held !== undefined ? held : lead.email ? (replyKindByEmail.get(lead.email) ?? null) : null;
         if (held?.column && held.column !== column.key) continue;
-        cards.push(toBoardCard(lead, column.key, statement?.kind ?? null, statement?.at ?? null));
+        cards.push(
+          toBoardCard(lead, column.key, prefillUsdFor(lead), statement?.kind ?? null, statement?.at ?? null),
+        );
       }
       // A card held into THIS column by a move the reader just made, whose served page
       // still has it somewhere else. Without this the card vanishes for the round trip.
@@ -1411,7 +1374,7 @@ export function EngagedLeadsPage({
             : undefined;
         if (!held?.column || held.column !== column.key) continue;
         if (cards.some((c) => c.id === lead.id)) continue;
-        cards.push(toBoardCard(lead, column.key, held.kind, held.at));
+        cards.push(toBoardCard(lead, column.key, prefillUsdFor(lead), held.kind, held.at));
       }
       // A column is LOADING only while it could still receive rows. `isPending` alone
       // cannot say that: a column the counts report EMPTY is never read again (see the
@@ -1576,6 +1539,9 @@ export function EngagedLeadsPage({
   const [closeWonError, setCloseWonError] = useState<string | null>(null);
   const [closeWonRowId, setCloseWonRowId] = useState<string | null>(null);
   const setAnyStage = useSetAnyLeadStepStatement();
+  // The undo for a sale, for the board's Close won column. lead-service's own words:
+  // correcting a statement is a WITHDRAWAL, never the opposite statement.
+  const withdrawAnyStage = useWithdrawAnyLeadStepStatement();
   const stateCloseWon = useCallback(
     (
       lead: Lead,
@@ -2116,7 +2082,9 @@ export function EngagedLeadsPage({
                 busy={
                   moveOnBoard.isPending ||
                   optOutOnBoard.isPending ||
-                  withdrawOptOutOnBoard.isPending
+                  withdrawOptOutOnBoard.isPending ||
+                  setAnyStage.isPending ||
+                  withdrawAnyStage.isPending
                 }
                 error={boardError}
                 canMove={Boolean(campaignId)}
@@ -2126,6 +2094,41 @@ export function EngagedLeadsPage({
                 }}
                 onMove={(move) => {
                   setBoardError(null);
+                  // Stating a SALE, and taking one back. Handled before anything else
+                  // because they are the only two moves that address a lead ROW rather
+                  // than a person's email — a funnel-step statement belongs to the
+                  // (lead, campaign) row, and the reply/opt-out writes below are keyed
+                  // on the email so they can reach every campaign at once.
+                  //
+                  // Neither holds the card optimistically, exactly like the opt-out
+                  // writes: the money a sale moves is re-read at every grain and the
+                  // producer decides where the card lands, so pinning it to the column
+                  // it was dropped on would state a placement we do not have yet.
+                  if (move.type === "sale" || move.type === "saleWithdrawal") {
+                    const settleSale = () => {
+                      void queryClient.invalidateQueries({
+                        queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
+                      });
+                      invalidateLeadOutcome(queryClient);
+                    };
+                    const failSale = (err: unknown) => {
+                      console.error("[dashboard] board sale move failed", err);
+                      setBoardError(leadStepErrorMessage(err));
+                    };
+                    if (move.type === "sale") {
+                      const { leadRowId, ...input } = move;
+                      setAnyStage.mutate(
+                        { leadRowId, step: "sale", kind: "outcome", ...input },
+                        { onSuccess: settleSale, onError: failSale },
+                      );
+                    } else {
+                      withdrawAnyStage.mutate(
+                        { leadRowId: move.leadRowId, step: "sale" },
+                        { onSuccess: settleSale, onError: failSale },
+                      );
+                    }
+                    return;
+                  }
                   const email = move.email;
                   // A reply kind holds the card in the column it was dropped in for the
                   // round trip. An opt-out holds it in Opt-out for the same reason. A

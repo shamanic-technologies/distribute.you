@@ -164,14 +164,16 @@ describe("call sites", () => {
     }
   });
 
-  it("the three lead-outcome mutations each invalidate the whole set", () => {
+  it("the four lead-outcome mutations each invalidate the whole set", () => {
+    // set + withdraw per-lead, and their two row-scoped twins for the board.
     const src = read("lib/use-lead-step-statements.ts");
-    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(3);
+    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(4);
   });
 
-  it("the three lead-page writes each invalidate the whole set", () => {
-    // setReply, withdrawReply and the board move.
+  it("the four lead-page writes each invalidate the whole set", () => {
+    // setReply, withdrawReply, the board's triage move, and the board's sale move —
+    // the last one states or takes back a deal, which moves money at every grain.
     const src = read("components/audiences/engaged-leads-page.tsx");
-    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(3);
+    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(4);
   });
 });

@@ -164,14 +164,14 @@ describe("pager", () => {
 
 describe("the standing dimension the board's columns are drawn from", () => {
   const counts = {
-    total: 2055,
+    total: 2059,
     counts: {
       unresolved: 0,
       not_contacted: 3,
       contacted: 1965,
       engaged: 1,
       sales_interest: 86,
-      customer: 0,
+      customer: 4,
       opted_out: 0,
       disqualified: 0,
     },
@@ -185,7 +185,10 @@ describe("the standing dimension the board's columns are drawn from", () => {
     const totals = boardColumnTotals(counts);
     expect(totals).not.toBeNull();
     expect(totals?.contacted).toBe(1966); // contacted + engaged
-    expect(totals?.sales_interest).toBe(86); // sales_interest + customer
+    expect(totals?.sales_interest).toBe(86);
+    // Its own column since the board grew one — a closed deal is not a warm one, and
+    // adding it into the column above stated one fact under another's name.
+    expect(totals?.won).toBe(4);
     expect(totals?.opt_out).toBe(0);
     expect(totals?.unresolved).toBe(0);
   });

@@ -7,6 +7,11 @@ const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 const PAGE = read("src/components/audiences/engaged-leads-page.tsx");
 const SECTION = read("src/components/leads/lead-funnel-stage-section.tsx");
 const LIB = read("src/lib/lead-close-won.ts");
+// The FORM the cell mounts. It moved out of the page when the board grew its own Close
+// won column: two copies of "whose win was it, and what was it worth" is how one
+// surface comes to ask a question the other does not, about the same deal.
+const FORM = read("src/components/leads/close-won-form.tsx");
+const BOARD = read("src/components/leads/lead-board.tsx");
 
 const sliceTo = (src: string, from: string, to: string) => {
   const at = src.indexOf(from);
@@ -77,11 +82,20 @@ describe("the Close won column", () => {
     // Defaulting the answer would record words nobody said, which is the one thing the
     // column exists to stop. Two named buttons rather than a checkbox: an unticked box
     // reads as "not ours" without anybody choosing it.
+    expect(FORM).toContain("Caused by us?");
+    expect(FORM).toContain("useState<boolean | null>(null)");
+    expect(FORM).toContain("disabled={cause === null}");
+    expect(FORM).toContain("if (cause === null) return;");
+  });
+
+  it("asks it in ONE form, mounted by the table cell AND by the board", () => {
+    // A guard on the form alone passes forever over a surface that never renders it.
     const cell = sliceTo(PAGE, "function CloseWonCell(", "function LeadsTable(");
-    expect(cell).toContain("Caused by us?");
-    expect(cell).toContain("useState<boolean | null>(null)");
-    expect(cell).toContain("disabled={cause === null}");
-    expect(cell).toContain("if (cause === null) return;");
+    expect(cell).toContain("<CloseWonForm");
+    expect(BOARD).toContain("<CloseWonForm");
+    // And there is no second copy: the cell states the amounts through the form, never
+    // its own StageStatementForm.
+    expect(cell).not.toContain("StageStatementForm");
   });
 
   it("sends the answer as the producer's own optional field", () => {
@@ -94,6 +108,9 @@ describe("the Close won column", () => {
   it("stops the row's own click, or the form opens the detail panel underneath itself", () => {
     const cell = sliceTo(PAGE, "function CloseWonCell(", "function LeadsTable(");
     expect(cell).toContain("stopPropagation");
+    // The form does too, for the board: a card is draggable, so a press on an input
+    // inside it would otherwise lift the card.
+    expect(FORM).toContain("stopPropagation");
   });
 
   it("writes through the row-scoped hook, the same one the board uses", () => {
