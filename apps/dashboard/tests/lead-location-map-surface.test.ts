@@ -68,12 +68,11 @@ describe("the map itself", () => {
     expect(card).toContain("if (pins.length === 0) return null;");
   });
 
-  it("states the grain it ACTUALLY used, per card, not a fixed sentence", () => {
-    // A card claiming "by region" while one pin fell back to a country overstates
-    // what it knows about that pin.
-    expect(card).toContain("coarsestGrain(pins)");
-    expect(card).toContain("Pins are placed by state or region, not by street address.");
-    expect(card).toContain("Pins are placed by country, not by city.");
+  it("explains NOTHING about its own grain — the map is looked at, not read", () => {
+    // A footnote under a two-dot picture is a sentence nobody asked for. Removed
+    // on the owner's call; do not re-add one.
+    expect(card).not.toContain("Pins are placed by");
+    expect(card).not.toContain("coarsestGrain");
   });
 
   it('labels the second row "Organization", never the employer\'s own name', () => {
@@ -99,15 +98,27 @@ describe("the map itself", () => {
     }
   });
 
-  it("puts `tone-tile` where each orange rotation can actually see it", () => {
-    // `.tone-tile.text-orange-600` has a SELF selector, so the pin may carry both
-    // classes; `bg-orange-600` only rotates as a DESCENDANT, so the legend dot's
+  it("wears the brand's PRIMARY on the person and its SECONDARY on the employer", () => {
+    // One pair, one relationship — and both read off the brand's own ramp rather
+    // than a literal, so a tinted dashboard rotates them together.
+    expect(card).toContain('toneClassName="text-brand-600"');
+    expect(card).toContain('dotClassName="bg-brand-600"');
+    expect(card).toContain('toneClassName="tone-tile text-purple-600"');
+    expect(card).toContain('dotClassName={merged ? "bg-brand-600" : "bg-purple-600"}');
+    expect(card).not.toContain("orange");
+  });
+
+  it("puts `tone-tile` where each purple rotation can actually see it", () => {
+    // `.tone-tile.text-purple-600` has a SELF selector, so the pin may carry both
+    // classes; `bg-purple-600` only rotates as a DESCENDANT, so the legend dot's
     // tone-tile has to ride the row.
     const pin = sliceToNextFunction(card, "function Pin(");
-    expect(pin).not.toContain("bg-orange-600");
-    expect(card).toContain('toneClassName="tone-tile text-orange-600"');
-    expect(card).toContain('dotClassName={merged ? "bg-brand-600" : "bg-orange-600"}');
+    expect(pin).not.toContain("bg-purple-600");
     expect(card).toContain('rowClassName={merged ? undefined : "tone-tile"}');
+    // Both halves of the dot's rotation, or a tinted dashboard shows the customer's
+    // hue on the pin and ours on the dot naming it.
+    expect(globals).toContain(":root[data-brand-tint] .tone-tile .bg-purple-600 {");
+    expect(globals).toContain("html.dark:root[data-brand-tint] .tone-tile .bg-purple-600 {");
   });
 
   it("keeps the pin ring on a class that carries its own dark rule", () => {
@@ -123,7 +134,7 @@ describe("the map itself", () => {
   });
 
   it("recolours the legend when the two pins merged, so it names a dot that is on screen", () => {
-    expect(card).toContain('dotClassName={merged ? "bg-brand-600" : "bg-orange-600"}');
+    expect(card).toContain('dotClassName={merged ? "bg-brand-600" : "bg-purple-600"}');
   });
 
   it("reads the viewBox from the same module the projection comes from", () => {
