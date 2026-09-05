@@ -102,7 +102,8 @@ import {
 } from "@/lib/api";
 import type { ReplyKind } from "@/lib/reply-kind";
 import { useMutation } from "@tanstack/react-query";
-import { normalizeSalesFunnelKey } from "@/lib/sales-funnels";
+import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { campaignFunnel } from "@/lib/campaign-funnel";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -2274,10 +2275,28 @@ export function EngagedLeadsPage({
 
 
   // ── Funnel-stage statements for the open lead ────────────────────────────────
-  // Campaign scope only: the panel walks ONE funnel's steps, and a brand runs several funnels
-  // at once. `activeFunnelKeys` is already narrowed to this campaign's own row above,
-  // so there is nothing extra to fetch and no goal to fall back to.
-  const panelFunnel = campaignId && activeFunnelKeys[0] ? salesFunnelByKey(activeFunnelKeys[0]) : null;
+  // WHICH funnel this panel walks. Exactly two scopes STATE one, and neither guesses:
+  //
+  //  - a CAMPAIGN states its own — `activeFunnelKeys` is already narrowed to that
+  //    campaign's row above, so there is nothing extra to fetch;
+  //  - a FUNNEL route states it in the URL, and that funnel is the page's whole subject.
+  //
+  // Brand and offer state NOTHING, deliberately: several funnels run at once there, so
+  // there is no single walk and the section does not render at all.
+  //
+  // The route key is read the way every other funnel-scoped surface reads it —
+  // `campaignFunnel` normalizes both wire spellings and THROWS on a key the catalogue
+  // does not carry, which is the same contract `funnel-scoped-pages` and the leg page
+  // already honour on this route. Absent (`params.funnelKey` undefined at the other
+  // three scopes) is null, which is a different statement from unknown.
+  const routeFunnelKey = params.funnelKey
+    ? (decodeURIComponent(params.funnelKey as string) as SalesFunnelKeyWire)
+    : null;
+  const panelFunnel = campaignId
+    ? activeFunnelKeys[0]
+      ? salesFunnelByKey(activeFunnelKeys[0])
+      : null
+    : campaignFunnel(routeFunnelKey);
   // WHICH ARROW of that funnel this campaign performs. A funnel is sold leg by leg, so
   // walking the whole funnel here offers a control for arrows this campaign does not
   // run — each of which has its own page, worked by whoever performs it. The channel
@@ -2290,14 +2309,21 @@ export function EngagedLeadsPage({
   // that predates the column. Both reads are already in flight — the campaign row is
   // the key the top bar polls, the leg catalogue is a platform-wide one — so this costs
   // no request.
+  //
+  // A leg is a CAMPAIGN's answer and only a campaign's: off a campaign route there is
+  // no arrow to narrow to, and `featureSlug` there is the brand's SOLE channel rather
+  // than one this page is about — so deriving a leg from it would slice the funnel by
+  // a channel the reader never named. Null instead, which walks the whole funnel: the
+  // UNION of every arrow, since `funnelLegs` tiles the steps end to end and that union
+  // is exactly what a funnel-scoped reader can state.
   const legIndex = useFunnelLegIndex();
   const panelLeg = useMemo(() => {
-    if (!panelFunnel || !featureSlug) return null;
+    if (!campaignId || !panelFunnel || !featureSlug) return null;
     const stated = statedCampaignLeg(panelFunnel, scopedCampaign?.legKey, legIndex);
     if (stated) return stated;
     const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
     return campaignLegFor(panelFunnel, channel?.legs);
-  }, [panelFunnel, featureSlug, channels, scopedCampaign?.legKey, legIndex]);
+  }, [campaignId, panelFunnel, featureSlug, channels, scopedCampaign?.legKey, legIndex]);
   // A leg we cannot place falls back to the whole funnel, the sentence this panel read
   // before legs existed. `later` is never rendered — it is what a `never` also ends.
   const panelWalk = useMemo(
@@ -2305,8 +2331,12 @@ export function EngagedLeadsPage({
     [panelFunnel, panelLeg],
   );
   const panelStages = panelWalk.stages;
+  // Read wherever the section RENDERS, which is wherever a funnel is stated — the gate
+  // is `panelFunnel`, not `campaignId`. A statement is keyed on the leads_campaigns row
+  // the table already carries, so a funnel-scoped reader writes exactly as the leg board
+  // one level down already does; there is no campaign to have.
   const { data: stepStatements } = useLeadStepStatements(
-    campaignId && selectedLead ? selectedLead.id : null,
+    panelFunnel && selectedLead ? selectedLead.id : null,
   );
   const setStage = useSetLeadStepStatement(selectedLead?.id ?? null);
   // The target of the statement in flight. Held here rather than derived from the
@@ -2851,9 +2881,10 @@ export function EngagedLeadsPage({
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
-            {/* Campaign scope only. A brand runs several funnels at once, so there is no
-                single funnel to walk this lead through and the section states nothing. */}
-            {campaignId && panelFunnel && (
+            {/* Wherever a funnel is STATED: the campaign's own, or the one the funnel
+                route names. At brand and offer grain several funnels run at once, so
+                there is no single walk and the section states nothing at all. */}
+            {panelFunnel && (
               <LeadFunnelStageSection
                 funnelName={panelFunnel.name}
                 stages={panelStages}
@@ -2872,15 +2903,26 @@ export function EngagedLeadsPage({
                 saleValuePrefillUsd={selectedLead ? prefillUsdFor(selectedLead) : null}
                 withdrawable={panelWithdrawable}
                 onWithdraw={onWithdrawStage}
-                reply={{
-                  kind: shownReplyKind,
-                  pending: replyPending,
-                  onSet: onSetReply,
-                  // Only offered while something STANDS. Every row this read serves is a
-                  // human statement, so a standing kind is by construction somebody's own
-                  // words — unlike a funnel step, where a tracker can be the author.
-                  onWithdraw: shownReplyKind ? onWithdrawReply : undefined,
-                }}
+                // A reply kind is recorded against a CAMPAIGN — instantly-service owns
+                // that vocabulary and keys it on (campaign, email) — so off a campaign
+                // route there is nothing to write it to and the read is disabled. Null
+                // rather than a picker that would meet a refusal: the Replied row then
+                // reads exactly as it did before the control existed, which is the
+                // honest surface for a statement this scope cannot make.
+                reply={
+                  campaignId
+                    ? {
+                        kind: shownReplyKind,
+                        pending: replyPending,
+                        onSet: onSetReply,
+                        // Only offered while something STANDS. Every row this read serves
+                        // is a human statement, so a standing kind is by construction
+                        // somebody's own words — unlike a funnel step, where a tracker
+                        // can be the author.
+                        onWithdraw: shownReplyKind ? onWithdrawReply : undefined,
+                      }
+                    : null
+                }
               />
             )}
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (
