@@ -576,6 +576,18 @@ describe("Close won is a column, and moving into it states a SALE", () => {
     expect(board).toContain("columnMoveConfirmation(pending.card.column)");
   });
 
+  it("declares the prefill ABOVE the board's reads, or the page throws on mount", () => {
+    // `boardColumns` calls `prefillUsdFor` while it builds its cards, so a `const`
+    // declared below it is a ReferenceError at RENDER time. Nothing else catches it:
+    // `tsc` sees the binding on the type, the memo's deps array is eslint-disabled, and
+    // every source-substring guard here passes — the page threw on mount with only a
+    // minified TDZ in the console. An index comparison is the only thing that can.
+    expect(page.indexOf("const prefillUsdFor = useCallback(")).toBeGreaterThan(-1);
+    expect(page.indexOf("const prefillUsdFor = useCallback(")).toBeLessThan(
+      page.indexOf("const boardColumns = useMemo("),
+    );
+  });
+
   it("opens the value field with the lead's OWN funnel price, resolved by the page", () => {
     // The board has no business reading the offer's declared funnels, and a per-card
     // lookup in the form would be a second resolution of the same fact.
