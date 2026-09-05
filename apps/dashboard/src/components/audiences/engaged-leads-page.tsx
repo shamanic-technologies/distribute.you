@@ -2412,6 +2412,7 @@ export function EngagedLeadsPage({
                   history={openHistory}
                   heading="Activity"
                   canReadDraftCopy={canReadDraftCopy}
+                  showNextFollowup
                 />
               ) : (
                 <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
@@ -2446,6 +2447,7 @@ export function EngagedLeadsPage({
                     heading="Activity"
                     canReadDraftCopy={canReadDraftCopy}
                     bare
+                    showNextFollowup
                   />
                 ) : (
                   <p className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-500">

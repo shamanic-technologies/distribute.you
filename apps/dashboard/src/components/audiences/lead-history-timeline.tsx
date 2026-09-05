@@ -1,6 +1,7 @@
 "use client";
 
 import { EmailSignature } from "@/components/email-signature";
+import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import {
@@ -29,6 +30,7 @@ export function LeadHistoryTimeline({
   heading = "Activity",
   bare = false,
   canReadDraftCopy,
+  showNextFollowup = false,
 }: {
   history: LeadHistory;
   heading?: string;
@@ -42,6 +44,14 @@ export function LeadHistoryTimeline({
    * stays behind the beta gate.
    */
   canReadDraftCopy: boolean;
+  /**
+   * Whether to state what we owe this person NEXT, under the rows.
+   *
+   * Only a CAMPAIGN-scoped timeline may: the follow-up debt belongs to the (person,
+   * campaign) pair, so on the brand-wide roll-up one sentence would stand for several
+   * schedules and the control beside it would not know which one it moves.
+   */
+  showNextFollowup?: boolean;
 }) {
   const note = incompleteNote(history);
   const events = history.events;
@@ -155,6 +165,12 @@ export function LeadHistoryTimeline({
           );
         })}
       </ol>
+      {/* What is about to happen, after everything that already did. The rows above are
+          the past; a reader who has just watched a prospect answer still cannot tell
+          whether we reply in an hour or in nine days without this. */}
+      {showNextFollowup && (
+        <LeadNextFollowup history={history} leadRowId={history.leadCampaignId} />
+      )}
     </div>
   );
 }
