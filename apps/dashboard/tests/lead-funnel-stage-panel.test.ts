@@ -495,29 +495,35 @@ describe("the panel walks the campaign's OWN arrow, not the whole funnel", () =>
  * phone: somebody records it by hand, and the note they wrote is the only copy of that
  * exchange we hold.
  */
-describe("a hand-recorded reply shows the words somebody wrote down", () => {
-  it("carries the statement's note onto the Replied row", () => {
-    expect(PAGE).toContain("statement?: { at: string; note: string | null } | null;");
-    expect(PAGE).toContain("...(statement ? { stated: statement } : {})");
-    // Shown outright, not behind the ⓘ the queue row uses: reading the words is the
-    // whole reason to open the panel.
-    expect(PAGE).toContain("Recorded by hand");
-    expect(PAGE).toContain("{e.stated.note}");
-    // A statement with no note is its own answer, never an empty block.
-    expect(PAGE).toContain("No note was recorded with this statement.");
+/**
+ * A reply we never RECEIVED is still a reply, and a reply we CAN produce the words of
+ * is a different fact from one somebody wrote down.
+ *
+ * That distinction moved to lead-service, which serves a `message` for the first and a
+ * `reply_statement` for the second and never folds them together. The panel renders
+ * what it is told and marks an asserted fact as asserted.
+ */
+describe("a hand-recorded reply is stated as one", () => {
+  const TIMELINE = readFileSync(
+    join(__dirname, "..", "src", "components", "audiences", "lead-history-timeline.tsx"),
+    "utf8",
+  );
+
+  it("marks an asserted fact rather than letting it read like an observed one", () => {
+    expect(TIMELINE).toContain('e.evidence === "asserted"');
+    expect(TIMELINE).toContain("recorded by hand");
   });
 
-  it("falls back to the statement's own instant, or the row would vanish", () => {
-    // A row with no `at` is filtered out of the timeline entirely, so a reply the
-    // delivery layer never saw would be recorded and then invisible.
-    expect(PAGE).toContain("at: delivery.firstRepliedAt ?? statement?.at ?? \"\",");
+  it("renders the recorded reply and what was written with it", () => {
+    expect(TIMELINE).toContain('case "reply_statement":');
+    expect(TIMELINE).toContain("Reply recorded");
+    expect(TIMELINE).toContain("e.note ?? undefined");
   });
 
-  it("only reaches the campaign the statement was recorded against", () => {
-    // A statement belongs to ONE campaign, and this panel renders several of a
-    // person's campaigns at once — printing it under each would attribute somebody's
-    // words to a conversation they were not about.
-    expect(PAGE).toContain("statement={node.campaignId === campaignId ? replyStatement : null}");
-    expect(PAGE).toContain("panelScope.sole.campaignId === campaignId ? replyStatement : null");
+  it("keeps the panel out of the business of deciding it", () => {
+    // The page used to hand the timeline a hand-made statement it had resolved itself.
+    // Which fact outranks which is the producer's now.
+    expect(PAGE).not.toContain("const replyStatement =");
+    expect(PAGE).not.toContain("statement={");
   });
 });
