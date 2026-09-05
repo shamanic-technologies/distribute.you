@@ -2222,6 +2222,37 @@ export async function setLeadStepStatement(
 }
 
 /**
+ * Say the next follow-up to this person is owed NOW.
+ *
+ * A customer looking at a lead whose next answer is days out can bring it forward:
+ * lead-service writes the due date and releases any claim, so the campaign that answers
+ * interested buyers picks that person up on its next turn instead of waiting the
+ * schedule out. Until api-service#911 the whole follow-up surface was service-to-service
+ * only, so no browser could state anything about it.
+ *
+ * `kind: "scheduled"` and the timestamp are lead-service's own vocabulary, forwarded
+ * verbatim by the gateway. `now` is stated by the CALLER rather than left to the
+ * producer: the person pressing the button is saying "at this moment", and lead-service
+ * bounds it (never in the past beyond a few minutes of clock slack, never past its
+ * horizon) rather than clamping it to something nobody asked for.
+ *
+ * The response is the resulting follow-up state. Nothing here reads it — the line that
+ * renders it is drawn from the lead's HISTORY, which moves as a whole (the timeline gains
+ * a row), so the caller re-reads that rather than patching one field of it.
+ */
+export async function setLeadFollowupNow(
+  leadRowId: string,
+  now: Date = new Date(),
+  token?: string,
+): Promise<unknown> {
+  return apiCall<unknown>(`/leads/${leadRowId}/followups`, {
+    token,
+    method: "POST",
+    body: { kind: "scheduled", dueAt: now.toISOString() },
+  });
+}
+
+/**
  * Take back a statement somebody made by hand about one funnel step of one lead.
  *
  * The undo for the write above, and the ONLY one: a person who picked the wrong lead,

@@ -87,3 +87,37 @@ export function timeAgo(at: string | Date, now: Date = new Date()): string {
   if (days > 30) return friendlyDate(d, now);
   return `${days} ${days === 1 ? "day" : "days"} ago`;
 }
+
+/**
+ * How long UNTIL something, for a reader deciding whether to wait or to act now.
+ *
+ * The mirror of `timeAgo`, and it exists because that function deliberately refuses
+ * the future: it reads a later instant as `Just now` so a few seconds of clock skew
+ * cannot print `-1 minutes ago`. A follow-up we owe is legitimately days out, so the
+ * one surface that renders it needs the other direction rather than a negated copy.
+ *
+ * Days are CALENDAR days, the same local-midnight diff the rest of this module uses,
+ * so a follow-up due tomorrow morning cannot read `in 14 hours` here while the row
+ * above it says `Tomorrow`. Past ~30 days the count stops helping and it falls back to
+ * the plain calendar date.
+ *
+ * A PAST instant reads `now`, never a negative count. That is not a rounding: a due
+ * date in the past means the person is owed an answer and is waiting in the queue,
+ * which is exactly what `now` says.
+ */
+export function timeUntil(at: string | Date, now: Date = new Date()): string {
+  const d = new Date(at);
+  const remaining = d.getTime() - now.getTime();
+  if (remaining < MINUTE_MS) return "now";
+  if (remaining < HOUR_MS) {
+    const minutes = Math.floor(remaining / MINUTE_MS);
+    return `in ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  }
+  const days = Math.round((startOfLocalDay(d) - startOfLocalDay(now)) / DAY_MS);
+  if (days < 1) {
+    const hours = Math.floor(remaining / HOUR_MS);
+    return `in ${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+  if (days > 30) return `on ${friendlyDate(d, now)}`;
+  return `in ${days} ${days === 1 ? "day" : "days"}`;
+}
