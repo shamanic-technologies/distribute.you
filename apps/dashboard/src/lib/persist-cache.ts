@@ -158,6 +158,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadsPage",
   "leadBucketCounts",
   "leadStandingCounts",
+  "leadHistory",
   // Per-lead generated email content — the leads detail-panel fetch, click-gated, so
   // re-opening a lead paints its last-known email from disk.
   "leadEmail",

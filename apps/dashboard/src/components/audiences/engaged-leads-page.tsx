@@ -16,36 +16,22 @@ import {
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
 import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
-import {
-  conversationRefusal,
-  hasInbound,
-  sequenceStopNote,
-  sequenceStopReason,
-  threadCarriesFirstSend,
-  messageLabel,
-  orderedMessages,
-  unsentFollowUps,
-  type ConversationRefusal,
-  type LeadConversation,
-} from "@/lib/lead-conversation";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { hasSalesInterest } from "@/lib/lead-sales-interest";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listCampaignsByBrand,
   fetchLeadsCsv,
   getLeadBucketCounts,
   getLeadStandingCounts,
+  getLeadHistory,
   listLeadsPage,
   type LeadScope,
   getLeadConsolidatedStatus,
   leadDateForStatus,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
-  getLeadEmail,
-  getLeadConversation,
   getOfferSalesFunnels,
   listAudiences,
   type Lead,
@@ -142,6 +128,7 @@ import {
 } from "@/lib/lead-campaign-tree";
 import { LeadCampaignSections } from "@/components/audiences/lead-campaign-sections";
 import { LeadScopeCards } from "@/components/audiences/lead-scope-cards";
+import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // funnels (`leadTabsForFunnels`); this map only names them.
@@ -467,572 +454,20 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
 
 // The queue step, named for what it is. Instantly holds the lead until its next
 // weekday sending window, so this row routinely precedes the first email by days.
-const QUEUED_LABEL = "Queued for sending";
-const SEND_WINDOW_NOTE =
-  "We only send on weekdays, 8am to 5pm during the recipient's local business hours.";
-
-// The lifecycle of ONE message, rendered inside that message's card. A bare "Sent"
-// row on its own does not say sent WHAT, and a lead has several messages.
-type MessageEvent = { label: string; at: string; dot: string; note?: string };
-
-// A timeline entry: a MESSAGE we generated (a demarcated, expandable card carrying
-// its own delivery rows), or a lead-level EVENT that belongs to no single message.
+// The panel used to assemble a lead's timeline HERE, in the browser, out of six
+// services: the delivery evidence and funnel statements from lead-service, the copy we
+// generated and its planned cadence from content-generation-service, the messages
+// exchanged and the hand-recorded reply statements from instantly-service, the outcomes
+// from features-service. The customer's own mailbox, which for some prospects holds the
+// ONLY copy of the exchange, was read by nobody. It fetched all of it, de-duplicated it,
+// sorted it and decided what to hide.
 //
-// The split is what the wire can actually prove. lead-service forwards LEAD-level
-// first-occurrence timestamps, not per-step ones, so:
-//   - `Sent` / `Delivered` belong to the initial email — the first send IS it.
-//   - `Website visit` / `Replied` / `Bounced` / `Unsubscribed` belong to no message
-//     in particular: a reply can land after follow-up 2, so filing it under the
-//     initial email would state something we did not observe. They stay top-level,
-//     where their position in the chronology already says which send preceded them.
-//   - Follow-up cards carry NO delivery rows, because there is no per-step delivery
-//     data to carry. Inventing one is the thing not to do; the gap is a producer
-//     feature request (lead-service / email-gateway), not a client-side guess.
-type TimelineEntry = {
-  // "message" = something WE sent, "inbound" = something the PROSPECT sent,
-  // "event" = a lead-level fact belonging to no single message.
-  kind: "message" | "inbound" | "event";
-  at: string;
-  label: string;
-  dot: string;
-  // Explains a row whose label alone raises a question. Only the queue row uses it,
-  // to say why a pushed lead has not been emailed.
-  note?: string;
-  subject?: string | null;
-  body?: string;
-  // Delivery rows nested under a message card. A message that has any prints NO date
-  // of its own: its instant IS its `Sent` row's instant, and showing both is the
-  // duplication #3155 removed ("Initial email · Jul 30" over "Sent · Jul 30").
-  events?: MessageEvent[];
-  // `at` is DERIVED rather than observed, so the row prints NO date. An unsent
-  // follow-up is offset from the generation time rather than a real send, so any
-  // date shown for it drifts by however long the lead waits in the weekday queue.
-  // The left gutter's gap (`+3d`) already carries the cadence, and it is the only
-  // place timing is stated — a second relative figure beside it ("10d after the
-  // first email" next to a `+7d` gutter) asks the reader to reconcile two numbers.
-  estimated?: boolean;
-  // The mailbox on the other side of this message, printed quietly under the label
-  // so a reader knows which inbox spoke. Only real messages carry one; a derived
-  // follow-up has not been sent, so no mailbox has touched it.
-  who?: string;
-  // A statement a PERSON made, rather than something the delivery layer observed.
-  //
-  // A reply we never received is still a reply: a mailbox that drains to somebody's
-  // own inbox, a webhook the provider stopped delivering, a prospect who answered on
-  // the phone. Somebody then records it by hand, and the words they wrote down are the
-  // only copy of that conversation we hold — so the row says WHO said it happened and
-  // shows the note, rather than reading identically to a reply we can produce.
-  stated?: { at: string; note: string | null };
-  // A body the reader may not be allowed to read. TRUE only for the generation's
-  // copy, which is our own writing and stays behind the beta gate. A real message
-  // — ours as sent, or the prospect's own words to this customer — is GA: it is
-  // the customer's conversation, and the reason our unsent drafts are gated does
-  // not apply to it.
-  gated?: boolean;
-};
-
-function emailBodyText(html: string | null | undefined, text: string | null | undefined): string {
-  if (text && text.trim()) return text.trim();
-  if (html && html.trim()) return htmlToText(html);
-  return "";
-}
-
-// Split the generated message into its initial email and its follow-up steps.
-// `anchor` is when the initial email went out; each follow-up is offset by the
-// cumulative `daysSinceLastStep`. When `estimated`, the anchor is the generation time
-// instead of a real send, so the follow-up rows show no date at all rather than one
-// they cannot honour — the gutter's gap is left to carry the cadence.
-function deriveEmailRows(
-  email: LeadEmailGeneration,
-  anchor: string,
-  estimated: boolean,
-): { initial: { subject: string | null; body: string } | null; followUps: TimelineEntry[] } {
-  const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
-  const topLevelBody = emailBodyText(email.bodyHtml, email.bodyText);
-  // Some generations leave the top-level body empty and carry the initial email as
-  // sequence step 1, so never claim an empty initial here — fall through and let the
-  // step claim it below.
-  let initial = topLevelBody ? { subject: email.subject ?? null, body: topLevelBody } : null;
-  const followUps: TimelineEntry[] = [];
-  let cumDays = 0;
-  for (const step of email.sequence ?? []) {
-    const body = emailBodyText(step.bodyHtml, step.bodyText);
-    if (!body) continue;
-    cumDays += step.daysSinceLastStep || 0;
-    // Step 1 IS the initial email. If the top-level body was empty this step becomes
-    // the initial; otherwise it duplicates it, so skip.
-    const isInitial = step.step === 1 || (cumDays === 0 && body === topLevelBody);
-    if (isInitial) {
-      if (!initial) initial = { subject: email.subject ?? null, body };
-      continue;
-    }
-    followUps.push({
-      kind: "message",
-      label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`,
-      at: Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "",
-      dot: "bg-brand-500",
-      subject: email.subject ?? null,
-      body,
-      ...(estimated ? { estimated: true } : {}),
-    });
-  }
-  return { initial, followUps };
-}
-
-// Per-lead activity timeline: delivery events (from the email-gateway
-// first-occurrence timestamps forwarded by lead-service) interleaved with the
-// generated message (initial + each follow-up step), oldest first.
-//
-// The state the reader cares about is whether an email has actually LEFT. Instantly
-// holds a pushed lead until its next weekday sending window, so a lead can sit
-// queued for days: while that is true the timeline shows one queue row carrying the
-// waiting message, and once a real send exists that row is gone and the message
-// rides the Sent row instead. The two are never both on screen.
-//
-// The timeline is grouped BY MESSAGE. Each message is a demarcated card you can open
-// to read it, and its own delivery rows sit inside it — "Sent" alone never says sent
-// WHAT, and a lead receives several messages. A message card prints no date of its
-// own when it has delivery rows: its instant IS its `Sent` row's, and stating both is
-// the duplication removed in #3155.
-//
-// The email content is fetched on-demand by leadId (content-generation). Renders
-// nothing until at least one event timestamp OR an email is present.
-//
-// READING the message is BETA-gated; the timeline's SHAPE is not. What a campaign
-// did — an initial email left, three follow-ups are scheduled at this cadence, it
-// was delivered, they visited, they replied — is what the page is for and stays GA.
-// The copy itself (subject + body + signature) is ours, so it sits behind
-// `useIsBetaUser` with the badge the gate rule requires beside it. The generation is
-// still FETCHED for everyone, deliberately: the follow-up ROWS are derived from its
-// sequence steps, so skipping the read would delete the cadence from the timeline
-// rather than merely hiding the words. Consequence accepted: the body travels to the
-// browser and is readable in devtools. It is the org's own copy to its own leads, so
-// this is a display decision, not a security boundary — same posture as every other
-// beta gate in this app.
-/**
- * The delivery facts a timeline reads.
- *
- * Structural, and satisfied by BOTH the lead row (the brand-wide roll-up) and one of
- * lead-service's per-campaign cards — they carry the same field names for the same
- * facts at two scopes. That is what lets one timeline serve a campaign card without a
- * second implementation, and it is why the scope is the CALLER's to state.
- */
-interface TimelineDelivery {
-  replyClassification: "positive" | "negative" | "neutral" | null;
-  firstSentAt?: string | null;
-  firstContactedAt?: string | null;
-  firstDeliveredAt?: string | null;
-  firstClickedAt?: string | null;
-  firstRepliedAt?: string | null;
-  firstBouncedAt?: string | null;
-  firstUnsubscribedAt?: string | null;
-}
-
-function LeadTimeline({
-  delivery,
-  email,
-  scopeNote,
-  heading = "Activity timeline",
-  bare = false,
-  conversation = null,
-  refusal = null,
-  statement = null,
-}: {
-  delivery: TimelineDelivery;
-  email: LeadEmailGeneration | null;
-  /** WHICH campaign these rows are about, stated only where the answer is not
-   *  "the one campaign above". Null renders no line. */
-  scopeNote?: string | null;
-  heading?: string;
-  /** Rendered INSIDE a campaign card, so it drops the card chrome and separates with a
-   *  rule like the audience row above it. The card is what frames it. */
-  bare?: boolean;
-  /** The messages actually exchanged on THIS scope, once we have them. Null off a
-   *  campaign card: the thread is a campaign's, and a brand-wide roll-up spans
-   *  several, so borrowing one campaign's words for it would state a wider scope's
-   *  answer under a narrower one's evidence. */
-  conversation?: LeadConversation | null;
-  refusal?: ConversationRefusal | null;
-  /**
-   * The standing hand-made statement about this lead's reply, when there is one.
-   *
-   * Scoped to the campaign this timeline is about, like the thread beside it: a
-   * statement is recorded against one campaign, and printing one campaign's under
-   * another's name would attribute somebody's words to the wrong conversation.
-   */
-  statement?: { at: string; note: string | null } | null;
-}) {
-  // A scope that produced a SALES INTEREST — they replied positively, or they came to
-  // the site — reads its copy GA. The gate exists because an unsent draft is our
-  // writing; once the campaign has bought the thing it was bought for, the customer
-  // is owed the words that did it, and they are reading this panel precisely to find
-  // out what worked. Everything else stays beta.
-  //
-  // Scoped by whatever `delivery` the CALLER stated: a campaign card unlocks on ITS
-  // own evidence, the brand roll-up on the brand's, so one campaign's reply never
-  // opens another's drafts.
-  const salesInterest = hasSalesInterest(delivery);
-  const canReadEmailCopy = useIsBetaUser() || salesInterest;
-  // The real exchange, once we have one. Everything below branches on whether it
-  // holds anything: with a thread, each message is its own card carrying what was
-  // ACTUALLY said; without one, the timeline reads exactly as it did before, off
-  // the generation and the delivery flags.
-  const messages = conversation ? orderedMessages(conversation.messages) : [];
-  const hasThread = messages.length > 0;
-  const threadHasInbound = hasInbound(messages);
-  const replyColor =
-    delivery.replyClassification === "positive" ? "bg-green-500"
-      : delivery.replyClassification === "negative" ? "bg-red-500"
-        : "bg-violet-500";
-
-  // A lead handed to Instantly with no send observed yet. The push and the message
-  // still waiting to go out are ONE fact, so they share a row; the moment a real send
-  // exists the queue step becomes technical noise and disappears.
-  const sentAt = delivery.firstSentAt ?? "";
-  const queuedOnly = !sentAt;
-  const anchor = sentAt || email?.createdAt || "";
-  const derived = email ? deriveEmailRows(email, anchor, queuedOnly) : null;
-  const initial = derived?.initial ?? null;
-
-  const entries: TimelineEntry[] = [];
-
-  // The initial email's own lifecycle. Queued: it has not left, so the single row
-  // says so and carries the send-window note. Sent: the rows we actually observed.
-  // `Delivered` is dropped when absent rather than shown empty.
-  const initialEvents: MessageEvent[] = queuedOnly
-    ? [{
-        label: QUEUED_LABEL,
-        // The push timestamp when we have it; otherwise the generation time, which is
-        // when the message started waiting. Either way the row claims no send.
-        at: delivery.firstContactedAt || anchor,
-        dot: "bg-slate-400",
-        note: SEND_WINDOW_NOTE,
-      }]
-    : [
-        { label: "Sent", at: sentAt, dot: "bg-blue-400" },
-        ...(delivery.firstDeliveredAt ? [{ label: "Delivered", at: delivery.firstDeliveredAt, dot: "bg-blue-500" }] : []),
-      ];
-
-  // Do the delivery rows belong to a message this thread actually carries? The
-  // evidence is the campaign IDENTITY's (every stored row of it) while the thread is
-  // ONE row, so on a lead first contacted under an ancestor the answer is NO — see
-  // `threadCarriesFirstSend`. Nothing is observed for a queued lead, so there is no
-  // send to disagree with and the queue row rides the thread as it always did.
-  const deliveryOnThread =
-    hasThread && (queuedOnly || threadCarriesFirstSend(messages, sentAt));
-
-  if (hasThread) {
-    // One card per message actually exchanged. The delivery rows nest under the
-    // FIRST thing we sent — the first send IS the initial email, which is the same
-    // reasoning that put them there before; every later message carries none,
-    // because the wire gives one first-occurrence per SCOPE and not per step.
-    const firstOutbound = messages.findIndex((m) => m.direction === "outbound");
-    messages.forEach((m, i) => {
-      entries.push({
-        kind: m.direction === "inbound" ? "inbound" : "message",
-        // A send this thread does not carry means its first outbound is not the
-        // initial email, whatever its position here.
-        label: messageLabel(messages, i, !deliveryOnThread),
-        at: m.at,
-        dot: m.direction === "inbound" ? "bg-violet-500" : "bg-brand-500",
-        subject: m.subject || null,
-        body: m.text,
-        who: m.direction === "inbound" ? m.from : m.to,
-        ...(deliveryOnThread && i === firstOutbound ? { events: initialEvents } : {}),
-      });
-    });
-  }
-
-  // The send the delivery rows describe, whenever no message on screen IS it — with
-  // no thread at all, and equally when the thread covers a LATER sequence. The card
-  // sits at the moment the message left (or started waiting), so it sorts into the
-  // chronology at the right place even though it prints no date itself. Placing it
-  // there rather than folding it into a message it does not belong to is what keeps
-  // a reply from appearing above the send it answered.
-  if (!deliveryOnThread) {
-    const initialAt = queuedOnly ? (delivery.firstContactedAt || anchor) : sentAt;
-    if (initialAt) {
-      entries.push({
-        kind: "message",
-        label: "Initial email",
-        at: initialAt,
-        dot: "bg-brand-500",
-        subject: initial?.subject ?? null,
-        body: initial?.body,
-        gated: true,
-        events: initialEvents,
-      });
-    }
-  }
-
-  // Lead-level, deliberately NOT nested under a message: the wire gives one
-  // first-occurrence per lead, and a visit or a reply can follow any step. Their
-  // place in the chronology is what says which send preceded them.
-  entries.push(
-    { kind: "event", label: "Website visit", at: delivery.firstClickedAt ?? "", dot: "bg-violet-500" },
-    // The bare `Replied` row exists only while the words do not. Once the thread
-    // carries an inbound message, that message IS the reply — stating it twice, once
-    // as a row saying it happened and once as a card containing it, is one screen
-    // describing one event two ways.
-    ...(threadHasInbound
-      ? []
-      : [{
-          kind: "event" as const,
-          label: delivery.replyClassification ? `Replied (${delivery.replyClassification})` : "Replied",
-          // The statement's own instant when the delivery layer has none: a reply
-          // nobody observed still happened at the moment somebody recorded it, and a
-          // row with no instant is dropped from the timeline entirely.
-          at: delivery.firstRepliedAt ?? statement?.at ?? "",
-          dot: replyColor,
-          ...(statement ? { stated: statement } : {}),
-        }]),
-    { kind: "event", label: "Bounced", at: delivery.firstBouncedAt ?? "", dot: "bg-red-500" },
-    { kind: "event", label: "Unsubscribed", at: delivery.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
-  );
-
-  // With a thread on screen, every follow-up that already went out has its own card
-  // carrying what it really said; the derived rows are then only worth showing for
-  // the steps still AHEAD, which is the cadence the reader is waiting on.
-  const followUps = derived?.followUps ?? [];
-  const plannedRows = hasThread ? unsentFollowUps(followUps, Date.now()) : followUps;
-  // ...unless the sequence has STOPPED. The provider creates the campaign with
-  // `stop_on_reply: true`, so a reply ends it; an unsubscribe and a bounce end it too.
-  // Listing the planned steps as `scheduled` after that promises sends that will never
-  // happen — a timeline states what will happen, not what was planned before the
-  // prospect answered. A website VISIT does not stop it and is deliberately not here.
-  const stopReason = sequenceStopReason(delivery);
-  entries.push(
-    ...(stopReason ? [] : plannedRows).map((f) => ({
-      ...f,
-      gated: true,
-    })),
-  );
-  // The sentence explaining the missing steps is only true of steps that ARE missing.
-  // A reply makes the reason true forever, so on a lead whose planned sends had all
-  // gone out anyway it sat under a timeline showing sends AFTER the reply — one screen
-  // saying the sequence stopped above the cards proving it did not.
-  const stopNote = stopReason && plannedRows.length > 0 ? sequenceStopNote(stopReason) : null;
-
-  // Same-instant tie-break only (the primary sort is the timestamp): a message card
-  // comes before the lead-level events sharing its instant, because those are
-  // responses to it. Delivery rows no longer compete here — they live inside a card.
-  const stageRank = (e: TimelineEntry): number => {
-    const l = e.label;
-    if (e.kind === "message") return 1;
-    // An inbound message is a RESPONSE to whatever shares its instant, so it sorts
-    // after our own card rather than with it.
-    if (e.kind === "inbound") return 2;
-    if (l.startsWith("Replied")) return 9;
-    if (l === "Unsubscribed") return 8;
-    if (l === "Bounced") return 8;
-    if (l === "Website visit") return 7;
-    return 0;
-  };
-
-  // Oldest → newest, top → bottom (past reads down into the future).
-  const sorted = entries
-    .filter((e) => !!e.at)
-    .sort((a, b) => {
-      const dt = new Date(a.at).getTime() - new Date(b.at).getTime();
-      return dt !== 0 ? dt : stageRank(a) - stageRank(b);
-    });
-
-  // A thread we hold and could NOT read is stated, never rendered as an absence:
-  // "they never wrote back" and "we could not fetch what they wrote" are different
-  // facts. A 404 is the other one — nobody has this exchange on record — and needs
-  // no line, because the timeline below already says everything we know.
-  if (sorted.length === 0 && refusal !== "unavailable") return null;
-
-  // Split past (already happened) from future (scheduled-but-unsent follow-up
-  // steps, placed at their estimated send time). The "Now" divider sits between
-  // them so past/present/future are visually distinct.
-  const nowMs = Date.now();
-  const firstFutureIdx = sorted.findIndex((e) => new Date(e.at).getTime() > nowMs);
-
-  return (
-    <div
-      className={
-        bare
-          ? "mt-3 border-t border-gray-200 pt-3"
-          : "bg-white rounded-lg border border-gray-200 p-4 mb-4"
-      }
-    >
-      <h3
-        className={
-          bare
-            ? "mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400"
-            : "text-xs font-medium text-gray-500 uppercase tracking-wider mb-3"
-        }
-      >
-        {heading}
-      </h3>
-      {scopeNote && <p className="-mt-2 mb-3 text-xs text-gray-500">{scopeNote}</p>}
-      {refusal === "unavailable" && (
-        <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-          We could not read this conversation right now, so the messages below may be incomplete.
-        </p>
-      )}
-      <ol className="relative">
-        {sorted.map((e, i) => {
-          const isFuture = new Date(e.at).getTime() > nowMs;
-          // Left gutter: the GAP since the previous entry (+2d, +4h…), and nothing
-          // else. The first row has no previous entry, so it has no gap — it used to
-          // repeat its own date here, which printed "Jul 30" one inch from the
-          // "Jul 30, 2026" on the row itself. Each piece of timing is stated once:
-          // the gap in the gutter, the calendar date on the row.
-          const gutter = i === 0 ? "" : gapLabel(sorted[i - 1].at, e.at);
-          return (
-            <Fragment key={`${e.kind}-${e.label}-${e.at}-${i}`}>
-              {i === firstFutureIdx && firstFutureIdx !== -1 && (
-                <li className="flex items-center gap-2 py-2" aria-hidden>
-                  <span className="w-14 shrink-0" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-600 bg-brand-50 border border-brand-200 rounded-full px-2 py-0.5">Now</span>
-                  <span className="flex-1 border-t border-dashed border-gray-200" />
-                </li>
-              )}
-              <li className="flex gap-2">
-                <div className={`w-14 shrink-0 text-right pr-1 pt-1 text-[11px] tabular-nums ${i === 0 ? "text-gray-500" : "text-gray-400"}`}>
-                  {gutter}
-                </div>
-                {/* The gap below a row is keyed on the INDEX, like the connector line
-                    right under it. It used to be a `:last-child` modifier, which
-                    resolves against the PARENT — and this div is the second and final
-                    child of its `<li>` on every row, so the modifier fired every time
-                    and the padding never applied at all. Consecutive message cards
-                    therefore sat edge to edge; the rows before the "Now" divider only
-                    looked spaced because that divider carries its own `py-2`. */}
-                <div className={`relative flex-1 pl-4 ${i < sorted.length - 1 ? "pb-4" : ""} ${isFuture ? "opacity-70" : ""}`}>
-                  {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
-                  <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
-                  {/* A message is a demarcated block; a lead-level event is a plain
-                      row. Tint plus a full 1px border, never a thick side accent. */}
-                  {/* A message we sent, a message they sent, and a lead-level fact each
-                      read as a different kind of thing. Both messages are demarcated
-                      blocks; the prospect's wears its own tint so a glance down the
-                      column shows who was speaking. Tint plus a full 1px border,
-                      never a thick side accent. */}
-                  <div className={
-                    e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2"
-                      : e.kind === "inbound" ? "rounded-lg border border-violet-200 bg-violet-50 px-3 py-2"
-                        : ""
-                  }>
-                    <p className="text-sm font-medium text-gray-800">
-                      {e.kind !== "event" && (
-                        <svg className={`inline-block w-3.5 h-3.5 mr-1 -mt-0.5 ${e.kind === "inbound" ? "text-violet-500" : "text-brand-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                      )}
-                      {e.label}
-                      {e.note && (
-                        <span className="ml-1 inline-flex">
-                          <InfoTooltip tip={e.note} placement="bottom" />
-                        </span>
-                      )}
-                      {isFuture && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">scheduled</span>}
-                    </p>
-                    {/* A message with delivery rows states no date here — its instant IS
-                        its `Sent` row's. A derived timestamp gets none either: the
-                        gutter's gap carries the cadence and `scheduled` says it has not
-                        happened. What is left is a scheduled send, and a FUTURE instant
-                        gets its plain calendar date with no clock time — Instantly sends
-                        inside a weekday window, so an exact minute would be invented. */}
-                    {!e.estimated && !e.events?.length && (
-                      <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
-                        {isFuture ? friendlyDate(e.at) : friendlyDateTime(e.at)}
-                      </p>
-                    )}
-                    {/* Which inbox is on the other side of this message. Only a real
-                        message has one; a follow-up nobody has sent has touched no
-                        mailbox, so claiming an address for it would state a send. */}
-                    {e.who && <p className="text-xs text-gray-500">{e.who}</p>}
-                    {/* A reply somebody RECORDED rather than one we received. The words
-                        they wrote down are the only copy of that exchange we hold, so
-                        they are shown outright rather than behind a tooltip — reading
-                        them is the whole reason to open this panel. Stated as recorded
-                        by hand, because a reply we cannot produce and one we can are
-                        different facts and must not read the same. */}
-                    {e.stated && (
-                      <div className="mt-1.5 rounded border border-violet-200 bg-violet-50 p-2">
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-violet-700">
-                          Recorded by hand
-                        </p>
-                        {e.stated.note ? (
-                          <p className="mt-1 whitespace-pre-wrap break-words text-xs text-gray-700">
-                            {e.stated.note}
-                          </p>
-                        ) : (
-                          /* No note is a real answer: somebody stated the reply and
-                             wrote nothing down, so there is nothing of the prospect's
-                             to show. Saying so beats an empty block. */
-                          <p className="mt-1 text-xs text-gray-500">
-                            No note was recorded with this statement.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {/* The message itself.
-                        A REAL message — one we sent, or the prospect's own words to
-                        this customer — is GA. It is their conversation; the reason our
-                        unsent drafts are gated (the copy is our writing) does not apply
-                        to something that already left, and least of all to what someone
-                        wrote back to them.
-                        A DERIVED body is the generation's copy for a step that has not
-                        happened, and it stays behind the beta gate — subject included,
-                        since a subject is content too and a GA line hiding a gated body
-                        would leak the headline of it. */}
-                    {e.body && (!e.gated || canReadEmailCopy) && (
-                      <details className="mt-1.5 group">
-                        <summary className={`cursor-pointer text-xs select-none ${e.kind === "inbound" ? "text-violet-600 hover:text-violet-700" : "text-brand-600 hover:text-brand-700"}`}>
-                          {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
-                          {/* The badge rides the gate, so it goes where the gate does:
-                              on a scope that produced a sales interest the copy is GA
-                              for everyone and a beta badge there would claim a gate
-                              that is no longer holding anything. */}
-                          {e.gated && !salesInterest && <span className="ml-1.5 inline-flex align-middle"><MaturityBadge level="beta" /></span>}
-                        </summary>
-                        <div className={`mt-1.5 bg-white border rounded p-2 ${e.kind === "inbound" ? "border-violet-200" : "border-brand-200"}`}>
-                          <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                          {/* The signature is OURS, and it is appended AT SEND TIME. So it
-                              belongs under a body that has not been sent — the generation's
-                              own copy (`gated`) — and never under a message read back off the
-                              thread, which already carries the signature it really went out
-                              with. Never under the prospect's message either. */}
-                          {e.kind === "message" && e.gated && <EmailSignature className="text-xs" />}
-                        </div>
-                      </details>
-                    )}
-                    {/* This message's own delivery rows. "Sent" on its own never said
-                        sent WHAT; inside the card it does. */}
-                    {!!e.events?.length && (
-                      <ul className="mt-2 space-y-1 border-t border-brand-200 pt-2">
-                        {e.events.map((ev) => (
-                          <li key={`${ev.label}-${ev.at}`} className="flex items-baseline gap-2">
-                            <span className={`w-[5px] h-[5px] shrink-0 translate-y-[-1px] rounded-full ${ev.dot}`} aria-hidden />
-                            <span className="text-xs font-medium text-gray-700">{ev.label}</span>
-                            {ev.note && (
-                              <span className="inline-flex">
-                                <InfoTooltip tip={ev.note} placement="bottom" />
-                              </span>
-                            )}
-                            <span className="ml-auto text-xs text-gray-500" title={new Date(ev.at).toLocaleString()}>
-                              {friendlyDateTime(ev.at)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </li>
-            </Fragment>
-          );
-        })}
-      </ol>
-      {/* Why nothing more is coming, in place of the steps that were planned. The
-          rows are gone because they will not be sent; saying so is what stops that
-          reading as a timeline that simply ends. */}
-      {stopNote && <p className="mt-2 text-xs text-gray-500">{stopNote}</p>}
-    </div>
-  );
-}
+// That merge is DELETED. lead-service assembles it now and `LeadHistoryTimeline` draws
+// what it sends. Every timeline bug of that week was one defect seen from a different
+// angle - a reply whose words we held rendering as a bare "they replied", follow-ups
+// promised after the sequence had stopped, an exchange in the owner's Gmail invisible,
+// a reply somebody typed by hand reading exactly like one we could produce - and all of
+// them came from this file deciding what happened to a person. Do not bring it back.
 
 function LeadsLoadingSkeleton() {
   return (
@@ -2211,47 +1646,40 @@ export function EngagedLeadsPage({
     return null;
   }, [leadCampaignTree, openCampaignRowId]);
 
+  // The per-campaign generated-email read and the per-campaign thread read are GONE
+  // from here. Both were sources this file merged by hand; lead-service asks them now
+  // and hands back one ordered list.
+  // WHAT HAPPENED TO THIS PERSON, assembled by lead-service.
   //
-  // Scoped to the OPEN CAMPAIGN as well, because a person contacted by several campaigns
-  // of one brand has ONE GENERATION PER CAMPAIGN — 5,539 leads carry two or more — and
-  // without the scope this returns whichever the read picked, under another campaign's
-  // name. `openCampaignId` is in the key so opening a second card refetches rather than
-  // showing the first card's copy.
-  const { data: leadEmailData } = useAuthQuery(
-    ["leadEmail", selectedLeadId, brandId, openCampaignId],
-    () => getLeadEmail(selectedLeadId as string, brandId, openCampaignId ?? undefined),
-    { enabled: !!selectedLeadId },
+  // This is the read that replaced a merge done HERE, across six services, with the
+  // customer's own mailbox read by nobody. It arrives ordered and de-duplicated, with
+  // the words of every message in both directions — including the exchanges that never
+  // reached the outreach provider at all and live only in the owner's Gmail.
+  //
+  // Keyed on the `leads_campaigns` row, which is what the producer scopes by. The OPEN
+  // card is the only one read for, exactly as its thread was: a panel listing eleven
+  // campaigns must not fire eleven of these.
+  const isBetaUserForPanel = useIsBetaUser();
+  // Whether the copy we GENERATED but never sent may be read. A real message is always
+  // readable — it is the customer's own conversation — while an unsent draft is our
+  // writing and stays behind the beta gate, unless this scope has already produced the
+  // thing it was bought for, in which case the customer is owed the words that did it.
+  const canReadDraftCopy = isBetaUserForPanel || Boolean(selectedLead?.clicked || selectedLead?.replyClassification === "positive");
+  const openHistoryRowId = panelScope.sole?.rowId ?? openCampaignRowId;
+  const { data: openHistory, isError: openHistoryError } = useAuthQuery(
+    ["leadHistory", openHistoryRowId ?? "none", brandId, "campaign"],
+    () => getLeadHistory(openHistoryRowId as string, { brandId, scope: "campaign" }),
+    { enabled: Boolean(openHistoryRowId) },
   );
 
-  // The messages actually exchanged on the OPEN CAMPAIGN — what the prospect wrote and
-  // what we answered — read on-demand from instantly-service through the gateway.
-  //
-  // Scoped to that card for the same reason its email is: the thread belongs to a
-  // campaign, a person contacted by several campaigns of one brand has one thread per
-  // campaign, and the card is the only place the panel states a campaign's own answer.
-  // It is also the campaign row the lead was SERVED under rather than whichever row is
-  // live today, which matters because a campaign as a customer knows it is dozens of
-  // stored rows and the live one 404s for the older leads with the longest threads.
-  //
-  // A 404 (nobody has this exchange on record) and a 502 (we hold it and could not read
-  // it) are kept apart and handed to the timeline; anything else is logged loud and
-  // leaves the card reading as it did before, never silently swallowed.
-  const conversationEmail = selectedLead?.email ?? null;
-  const { data: conversationData, error: conversationError } = useAuthQuery(
-    ["leadConversation", openCampaignId ?? "none", conversationEmail ?? "none"],
-    () => getLeadConversation(openCampaignId as string, conversationEmail as string),
-    // No retry: the producer's 404 and 502 are ANSWERS, not blips, and re-asking a
-    // third party for a thread it has already told us it cannot give costs a round
-    // trip per open card for nothing.
-    { enabled: !!(openCampaignId && conversationEmail), retry: false },
+  // The roll-up across every campaign of the brand, for the panel's brand-wide section.
+  // Asked of the producer under its own `scope`, rather than added up here.
+  const brandHistoryRowId = selectedLead?.id ?? null;
+  const { data: brandHistory } = useAuthQuery(
+    ["leadHistory", brandHistoryRowId ?? "none", brandId, "brand"],
+    () => getLeadHistory(brandHistoryRowId as string, { brandId, scope: "brand" }),
+    { enabled: Boolean(brandHistoryRowId && leadCampaignTree.campaignCount !== 1) },
   );
-  const conversationRefusalKind = conversationRefusal(conversationError);
-  useEffect(() => {
-    if (conversationError && !conversationRefusal(conversationError)) {
-      console.error("[dashboard] lead conversation: unexpected read failure", conversationError);
-    }
-  }, [conversationError]);
-
   // Everything the panel can resolve about a card's audience. The card carries an id
   // only — the resolved name and avatar ride the ROW, and only for the campaign the row
   // represents — so the rest comes from the audiences list the page already holds.
@@ -2406,14 +1834,6 @@ export function EngagedLeadsPage({
   const standingQualification =
     replyData?.qualifications.find((q) => !q.withdrawnAt) ?? null;
   const replyKind = standingQualification?.replyKind ?? null;
-  // What a person RECORDED about this lead's reply, for the timeline to show.
-  //
-  // Kept separate from the pill above: the pill states the KIND, this carries the
-  // words. Scoped to the route campaign, because a statement is recorded against one
-  // campaign and this page can render several of a person's campaigns at once.
-  const replyStatement = standingQualification
-    ? { at: standingQualification.qualifiedAt, note: standingQualification.notes }
-    : null;
   // The kind just picked, shown before the producer has answered. A picker that keeps
   // reading "Replied, kind not stated" for the whole write reads as a control that did
   // nothing. Dropped the moment the producer answers — its own resolution is what
@@ -2976,26 +2396,24 @@ export function EngagedLeadsPage({
               /* One campaign: every level above is already its own card, so there is
                  nothing to nest and nothing to switch between — the timeline is the
                  whole of what is left to say. */
-              panelScope.sole.card.delivery ? (
-                <LeadTimeline
-                  delivery={panelScope.sole.card.delivery}
-                  email={leadEmailData?.generation ?? null}
-                  conversation={conversationData ?? null}
-                  refusal={conversationRefusalKind}
-                  // Only for the campaign the statement was recorded against, so one
-                  // campaign's words never appear under another's name.
-                  statement={
-                    panelScope.sole.campaignId === campaignId ? replyStatement : null
-                  }
+              openHistory ? (
+                <LeadHistoryTimeline
+                  history={openHistory}
                   heading="Activity"
+                  canReadDraftCopy={canReadDraftCopy}
                 />
               ) : (
                 <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                   <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
                     Activity
                   </h3>
+                  {/* Reveal on SETTLE: a failed read says so rather than skeletoning
+                      forever, and "we could not read this" is never rendered as
+                      "nothing happened". */}
                   <p className="text-sm text-gray-500">
-                    No delivery events recorded for this campaign yet.
+                    {openHistoryError
+                      ? "We could not read this person's history right now."
+                      : "Loading..."}
                   </p>
                 </div>
               )
@@ -3009,22 +2427,20 @@ export function EngagedLeadsPage({
               showOffers={!panelScope.offer}
               showFunnels={panelScope.funnelKey ? false : undefined}
               renderDetail={(node) =>
-                node.card.delivery ? (
-                  <LeadTimeline
-                    delivery={node.card.delivery}
-                    email={leadEmailData?.generation ?? null}
-                    // Only the OPEN card has a thread read for it, and only that card
-                    // may show one: handing it to every card would print the open
-                    // campaign's conversation under each of the others' names.
-                    conversation={node.rowId === openCampaignRowId ? conversationData ?? null : null}
-                    refusal={node.rowId === openCampaignRowId ? conversationRefusalKind : null}
-                    statement={node.campaignId === campaignId ? replyStatement : null}
+                // Only the OPEN card is read for — a person in eleven campaigns must
+                // not fire eleven of these — so only that card can draw one.
+                node.rowId === openCampaignRowId && openHistory ? (
+                  <LeadHistoryTimeline
+                    history={openHistory}
                     heading="Activity"
+                    canReadDraftCopy={canReadDraftCopy}
                     bare
                   />
                 ) : (
                   <p className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-500">
-                    No delivery events recorded for this campaign yet.
+                    {node.rowId === openCampaignRowId && openHistoryError
+                      ? "We could not read this campaign's history right now."
+                      : "Loading..."}
                   </p>
                 )
               }
@@ -3040,15 +2456,11 @@ export function EngagedLeadsPage({
                 rows twice under two headings. It reads the row's own delivery fields,
                 which lead-service serves as the roll-up across every campaign of the
                 brand — including any this read's scope did not return. */}
-            {leadCampaignTree.campaignCount !== 1 && (
-              <LeadTimeline
-                delivery={selectedLead}
-                email={leadCampaignTree.campaignCount === 0 ? (leadEmailData?.generation ?? null) : null}
-                scopeNote={
-                  leadCampaignTree.campaignCount > 1
-                    ? "Everything this brand did, across every campaign above."
-                    : null
-                }
+            {leadCampaignTree.campaignCount !== 1 && brandHistory && (
+              <LeadHistoryTimeline
+                history={brandHistory}
+                heading="Everything this brand did"
+                canReadDraftCopy={canReadDraftCopy}
               />
             )}
           </div>
