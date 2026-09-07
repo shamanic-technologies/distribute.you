@@ -58,6 +58,10 @@ const SURFACES = [
   "apps/landing/public/landing/js/pricing-modal-v1.js",
   "apps/landing/public/landing/pricing.html",
   "apps/landing/public/llms.txt",
+  // The referred-signup banner injected into every static page. It stated the
+  // whole retired offer ("$5 lands now, $400 once your payments reach $400") and
+  // was outside this list, so nothing went red while it shipped to production.
+  "apps/landing/src/lib/static-html.ts",
 ] as const;
 
 // Each pattern is a claim we must never make again, with the reason it is false.
@@ -69,6 +73,12 @@ const FALSE_CLAIMS: [RegExp, string][] = [
   // WELCOME credits on payments is describing the retired match.
   [/welcome credits (land|arrive)[^.]{0,40}payments reach/i, "the welcome credits land at signup, with no threshold"],
   [/rest lands[^.]{0,40}payments reach/i, "there is no second instalment left to land"],
+  // Phrasing-independent: the welcome credits are not gated on ANY payment, so a
+  // "$N once your payments reach $N" clause is the retired match whatever words
+  // surround it. The referral sentence survives because its bar is the SUM, which
+  // is never equal to itself on both sides.
+  [/\$(\d[\d,]*) once your payments reach \$\1\b/i, "the welcome credits are not gated on a payment"],
+  [/\$5 lands (now|at signup)/i, "the whole gift lands at signup; there is no up-front slice"],
   [/\$400 (in |of )?(free |welcome |matched )?credits/i, "the offer is $30, not the retired $400"],
   [/\$25 (in |of )?(free |welcome |matched )?credits/i, "the offer is $30, not the retired $25"],
 ];
