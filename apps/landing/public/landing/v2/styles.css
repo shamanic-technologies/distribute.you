@@ -518,7 +518,10 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 .marquee:hover .marquee-track { animation-play-state: paused; }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 8px)); } }
 .quote { width: 380px; flex: none; display: flex; flex-direction: column; justify-content: space-between; gap: 26px; padding: 26px; border-radius: 16px; background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card); }
-.quote blockquote { font-size: 16px; line-height: 1.55; color: var(--text); }
+.quote blockquote { font-size: 18px; line-height: 1.5; color: var(--text); }
+/* The stars sit tight above the quote they rate, so they do not take the card's
+   full gap, which is sized for the space between the quote and its author. */
+.quote .stars { font-size: 15px; margin-bottom: -12px; }
 .quote blockquote::before { content: "\201C"; } .quote blockquote::after { content: "\201D"; }
 .quote figcaption { display: flex; align-items: center; gap: 12px; }
 .quote figcaption img, .quote figcaption .face-initial { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }

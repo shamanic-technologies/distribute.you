@@ -172,10 +172,27 @@ describe("the offer the page states", () => {
     expect((html.match(/data-live/g) ?? []).length).toBe(3);
   });
 
+  it("rates every card five stars, hidden from a screen reader", () => {
+    // Same five stars on every card, so they are decoration beside a quote that already
+    // carries the praise — announcing them before each one is noise. 7 quotes, and the
+    // marquee ships the set twice so it can scroll seamlessly.
+    const rated = html.match(/<div class="stars" aria-hidden="true">\u2605{5}<\/div>/g) ?? [];
+    expect(rated).toHaveLength(14);
+    expect(css).toContain(".quote .stars");
+  });
+
+  it("sets the quote text bigger than the caption around it", () => {
+    expect(css).toContain(".quote blockquote { font-size: 18px;");
+  });
+
   it("quotes only people who said the words, and never a fabricated founder", () => {
-    for (const who of ["Ryan W.D. Parenti", "Andrew Becker", "Nazim Zidi", "Christian Lemke", "Katherine Fleishman", "Totoche"]) {
+    for (const who of ["Ryan W.D. Parenti", "Andrew Becker", "Bohdan Petryshyn", "Nazim Zidi", "Christian Lemke", "Katherine Fleishman", "Christopher Lafay"]) {
       expect(html).toContain(who);
     }
+    // A role is the one the person publishes, never the one the company name suggests:
+    // bosar.agency's team section states Co-Founder & CTO, and his LinkedIn headline
+    // states no title at all, so "Founder" would have been invented.
+    expect(html).toContain("Co-Founder &amp; CTO, Bosar Agency");
     // The first cut carried an invented Shockwave quote; nobody there said it.
     expect(html).not.toContain("somebody who asked for a call");
     // Katherine is an expert, not an Opsfolio customer: her quote lives in the quotes grid only.
