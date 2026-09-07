@@ -90,6 +90,17 @@ describe("hotLeadRowHtml", () => {
     expect(row).toContain("median cost per hot lead");
   });
 
+  it("reads as one inline line per stat: a mark, the number, the words", () => {
+    const row = hotLeadRowHtml({ hotLeads: 740, companies: 21, medianCostUsd: 6 });
+    // the mark belongs to the count, not to the price
+    expect(row.indexOf("hstat-i")).toBeLessThan(row.indexOf("data-hot-leads"));
+    expect(row.match(/hstat-i/g)).toHaveLength(1);
+    // the number is wrapped so the floating +N has something to hang off
+    expect(row).toContain('<span class="hstat-n"><b data-hot-leads');
+    // the words are the quiet half
+    expect(row).toContain('<span class="hstat-l">hot leads for 21 companies</span>');
+  });
+
   it("rounds the price rather than flooring it", () => {
     expect(hotLeadRowHtml({ hotLeads: 10, companies: 3, medianCostUsd: 6.6 })).toContain(">$7</b>");
   });
@@ -133,14 +144,14 @@ describe("the hero proof row on the homepage", () => {
     expect(html).not.toContain("median cost per hot lead");
   });
 
-  it("sits under the launch form, above the paragraph", () => {
-    expect(html.indexOf("__HOT_LEAD_ROW__")).toBeGreaterThan(html.indexOf('class="no-site"'));
-    expect(html.indexOf("__HOT_LEAD_ROW__")).toBeLessThan(html.indexOf('class="hero-sub"'));
+  it("sits ABOVE the headline - the proof you walk past on the way to it", () => {
+    expect(html.indexOf("__HOT_LEAD_ROW__")).toBeLessThan(html.indexOf("<h1>"));
+    expect(html.indexOf("__HOT_LEAD_ROW__")).toBeGreaterThan(html.indexOf('class="hero-inner"'));
   });
 
   it("bumps the asset cache-busters, or the edge keeps serving the old css and js", () => {
-    expect(html).toContain('href="/landing/v2/styles.css?v=8"');
-    expect(html).toContain('src="/landing/v2/main.js?v=6"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=9"');
+    expect(html).toContain('src="/landing/v2/main.js?v=7"');
   });
 });
 
@@ -173,12 +184,12 @@ describe("the live nudge", () => {
 
   it("reuses the cards' flash and float rather than a second animation", () => {
     expect(css).toContain(".sf b.up, .hstat b.up");
-    expect(css).toContain(".sf .delta, .hstat .delta");
+    expect(css).toContain(".sf .delta, .hstat-n .delta");
     expect(css.match(/@keyframes lp-delta-flash/g)).toHaveLength(1);
   });
 
   it("gives the floating +N a positioned parent to sit in", () => {
-    expect(css).toContain(".hstat { position: relative;");
+    expect(css).toContain(".hstat-n { position: relative;");
   });
 
   it("floats the +N clear of the number instead of on top of it", () => {
@@ -186,7 +197,7 @@ describe("the live nudge", () => {
     // This row's number is 26px and centred, so the same offsets land the "+1" ON
     // the digits - measured, then corrected. `margin-left` rather than a transform:
     // lp-delta-flash animates transform, so a translateX here is overwritten mid-flight.
-    expect(css).toContain(".hstat .delta { left: 50%; top: -22px; margin-left: 10px; }");
-    expect(css).not.toMatch(/\.hstat \.delta \{[^}]*transform:/);
+    expect(css).toContain(".hstat-n .delta { left: 50%; top: -13px; margin-left: -5px; }");
+    expect(css).not.toMatch(/\.hstat-n \.delta \{[^}]*transform:/);
   });
 });

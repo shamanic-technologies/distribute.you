@@ -420,6 +420,10 @@ async function withLivePerformanceMetrics(html: string) {
 // second endpoint. `distribute.you` is in the fleet on purpose: we ran the
 // product on ourselves.
 
+// A flame beside the count, the way the row it is modelled on marks its own.
+const FLAME_PATH =
+  '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>';
+
 const HOT_LEAD_ROW_TOKEN = "__HOT_LEAD_ROW__";
 // The comparison cluster states the SAME two figures as a full dark band (compare-page.ts).
 // One token for the whole section, so an unmeasurable fleet drops the band rather than
@@ -488,9 +492,13 @@ export function hotLeadRowHtml(stats: HotLeadStats): string {
   const cost = `$${Math.round(stats.medianCostUsd).toLocaleString("en-US")}`;
   return (
     '<div class="hero-stats">' +
-    `<div class="hstat"><b data-hot-leads data-n="${stats.hotLeads}">${leads}</b>` +
-    `<small>hot leads for ${companies} companies</small></div>` +
-    `<div class="hstat"><b>${cost}</b><small>median cost per hot lead</small></div>` +
+    '<span class="hstat">' +
+    `<svg class="hstat-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLAME_PATH}</svg>` +
+    `<span class="hstat-n"><b data-hot-leads data-n="${stats.hotLeads}">${leads}</b></span>` +
+    `<span class="hstat-l">hot leads for ${companies} companies</span></span>` +
+    '<span class="hstat">' +
+    `<span class="hstat-n"><b>${cost}</b></span>` +
+    '<span class="hstat-l">median cost per hot lead</span></span>' +
     "</div>"
   );
 }

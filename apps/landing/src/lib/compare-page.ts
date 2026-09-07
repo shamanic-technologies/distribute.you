@@ -28,7 +28,7 @@ const SIGN_IN = "https://dashboard.distribute.you/sign-in";
 /** Same publishable token the homepage and the dashboard bundle carry. */
 const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 /** Bumped together with the homepage's link: the compare styles live in the same file. */
-export const V2_STYLES_VERSION = 8;
+export const V2_STYLES_VERSION = 9;
 
 function esc(s: string): string {
   return s
