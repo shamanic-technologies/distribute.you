@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { hotLeadRowHtml, hotLeadStats } from "@/lib/static-html";
+import { hotLeadBandHtml, hotLeadRowHtml, hotLeadStats } from "@/lib/static-html";
 
 const LANDING = path.join(process.cwd(), "public/landing");
 const html = readFileSync(path.join(LANDING, "index-v2.html"), "utf8");
@@ -117,6 +117,26 @@ describe("hotLeadRowHtml", () => {
   });
 });
 
+describe("hotLeadBandHtml", () => {
+  const band = hotLeadBandHtml({ hotLeads: 760, companies: 21, medianCostUsd: 6.4 });
+
+  it("states the same two figures as the hero row, as a two-stat dark band", () => {
+    expect(band).toContain('<section class="framed dark">');
+    expect(band).toContain('class="stats two"');
+    expect(band).toContain('data-count="760"');
+    expect(band).toContain("hot leads for 21 companies");
+    expect(band).toContain('<span class="u">$</span><span data-count="6">0</span>');
+    expect(band).toContain("median cost per hot lead");
+  });
+
+  it("is what every comparison page closes on", () => {
+    const compare = readFileSync(path.resolve(__dirname, "../../src/lib/compare-page.ts"), "utf8");
+    expect(compare).toContain('return "__HOT_LEAD_BAND__";');
+    const css = readFileSync(path.resolve(__dirname, "../../public/landing/v2/styles.css"), "utf8");
+    expect(css).toContain(".stats.two { grid-template-columns: repeat(2, 1fr);");
+  });
+});
+
 describe("the hero proof row on the homepage", () => {
   it("is a server-rendered token, so a failed read drops the row instead of freezing a number", () => {
     expect(html).toContain("__HOT_LEAD_ROW__");
@@ -130,7 +150,7 @@ describe("the hero proof row on the homepage", () => {
   });
 
   it("bumps the asset cache-busters, or the edge keeps serving the old css and js", () => {
-    expect(html).toContain('href="/landing/v2/styles.css?v=8"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=9"');
     expect(html).toContain('src="/landing/v2/main.js?v=7"');
   });
 });

@@ -67,9 +67,9 @@ export const COMPARE_VERIFIED_LABEL = "September 2026";
 
 /**
  * How WE answer each row. Stated once, so eleven pages cannot describe us eleven ways.
- * The three `__TOKEN__` values resolve to live figures at serve time (see
- * `withLivePerformanceMetrics` in static-html.ts): the cost of a sales interest across
- * every client, the reply rate, and the emails sent.
+ * The fleet figures (hot leads, companies, median cost per hot lead) are NOT here: they
+ * are the `__HOT_LEAD_BAND__` token static-html.ts resolves from the same read as the
+ * homepage hero, so a compare page and the homepage cannot state two different fleets.
  */
 export const DISTRIBUTE_ROW = {
   entryPrice: "From $1/day, first $30 free",
@@ -80,7 +80,7 @@ export const DISTRIBUTE_ROW = {
   leads: "We find and qualify the buyers from your website. Bring your own list as an extra audience if you like.",
   replies: "We read every reply and answer the interested ones until the meeting is booked.",
   channels: "Cold email today, more channels as they prove out, all measured the same way.",
-  costPerMeeting: "Yes. __BEST_POSITIVE_REPLY_COST__ per sales interest across our clients right now, and your own figure on your dashboard.",
+  costPerMeeting: "Yes. What a hot lead and a meeting cost you is on your dashboard, and the fleet's median cost per hot lead is published on this page.",
   freeTier: "$30 of budget at signup, no card needed to see the plan.",
   contract: "None. Pause in one click, the daily budget is a hard cap.",
 } as const;

@@ -425,6 +425,10 @@ const FLAME_PATH =
   '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>';
 
 const HOT_LEAD_ROW_TOKEN = "__HOT_LEAD_ROW__";
+// The comparison cluster states the SAME two figures as a full dark band (compare-page.ts).
+// One token for the whole section, so an unmeasurable fleet drops the band rather than
+// leaving a heading over nothing.
+const HOT_LEAD_BAND_TOKEN = "__HOT_LEAD_BAND__";
 
 // A median over a single brand is that brand's own price, not a fleet figure.
 const MIN_HOT_LEAD_BRANDS = 2;
@@ -499,6 +503,28 @@ export function hotLeadRowHtml(stats: HotLeadStats): string {
   );
 }
 
+/**
+ * The same two figures as the hero row, as the dark stat band the comparison pages
+ * close on. Same `HotLeadStats`, so a compare page and the homepage cannot state two
+ * different fleets; the numerals ride `data-count` so main.js counts them up like the
+ * homepage's own band.
+ */
+export function hotLeadBandHtml(stats: HotLeadStats): string {
+  const companies = stats.companies.toLocaleString("en-US");
+  const cost = Math.round(stats.medianCostUsd).toLocaleString("en-US");
+  return (
+    '<section class="framed dark">' +
+    '<div class="wrap">' +
+    '<div class="section-head center"><span class="eyebrow">Measured, not quoted</span>' +
+    "<h2>What the fleet has produced, read off every campaign we run</h2>" +
+    "<p>A hot lead is a buyer who replied with interest or came to the site. No competitor on this page publishes this figure.</p></div>" +
+    '<div class="stats two">' +
+    `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">hot leads for ${companies} companies</div></div>` +
+    `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(stats.medianCostUsd)}">0</span></div><div class="l">median cost per hot lead</div></div>` +
+    "</div></div></section>"
+  );
+}
+
 async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
   const apiUrl = resolvePublicApiUrl();
   const res = await fetch(
@@ -517,7 +543,7 @@ async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
 }
 
 async function withHotLeadStats(html: string) {
-  if (!html.includes(HOT_LEAD_ROW_TOKEN)) return html;
+  if (!html.includes(HOT_LEAD_ROW_TOKEN) && !html.includes(HOT_LEAD_BAND_TOKEN)) return html;
 
   let stats: HotLeadStats | null = null;
   try {
@@ -529,7 +555,9 @@ async function withHotLeadStats(html: string) {
     console.error("[landing] hot-lead proof row unavailable, dropping it", error);
   }
 
-  return html.replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats) : "");
+  return html
+    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats) : "")
+    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats) : "");
 }
 
 // ─────────────────────────────────────────────────────────────────────────

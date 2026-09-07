@@ -695,6 +695,7 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
    dark stat band for the live figures. Only the side-by-side table and the hub grid are
    new; the table is outrank's compare table recoloured (our column tinted, first
    column a row header). */
+.stats.two { grid-template-columns: repeat(2, 1fr); max-width: 760px; margin: 0 auto; }
 .cmp-hero { min-height: 0; padding: 72px 0 56px; }
 .cmp-hero h1 { max-width: 900px; }
 .cmp-hero .hero-sub { margin-top: 18px; max-width: 720px; font-size: 18px; }
@@ -731,6 +732,7 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 .cmp-card p { font-size: 14px; }
 /* Responsive rules sit AFTER the base rules above: same specificity, so order decides. */
 @media (max-width: 960px) {
+  .stats.two { grid-template-columns: 1fr; gap: 28px; }
   .cmp-table th:first-child, .cmp-table td:first-child { display: none; }
   .cmp-cols { grid-template-columns: 1fr; }
   .cmp-grid { grid-template-columns: 1fr; }
