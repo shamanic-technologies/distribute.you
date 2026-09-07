@@ -93,7 +93,7 @@ https://distribute.you/developers
 - ICP: The Serial Builder. 16 to 40 years old, solo CEO founder, ships 3 or more
   products a year, refuses subscriptions, wants the founder reachable.
 - Pricing model: pay as you go. You are charged the budget the campaign spent.
-  $400 free credits ($5 at signup, the rest once your payments reach $400).
+  $30 free credits, granted at signup with no threshold to reach.
   Auto top-up keeps daily campaigns funded. No seat, no retainer, no term.
 - Open source: workflows at https://github.com/shamanic-technologies
 

@@ -38,9 +38,9 @@ export const WELCOME_STEPS: WelcomeStep[] = [
       "We run your cold email outreach end to end. You give us a URL and a budget. We find the right people, write every email, send it from our own inboxes, and report back. Nothing for you to set up.",
   },
   {
-    title: "Your $400 in free credits",
+    title: "Your $30 in free credits",
     description:
-      "$5 is in your account already. The rest lands once your payments reach $400, so your first $400 buys $800 of outreach. It arrives on its own, nothing to claim.",
+      "It is in your account already, with nothing to claim and nothing to pay first. Your first campaign runs on it, and you only pay for whatever you spend beyond it.",
   },
   {
     title: "We email on your behalf",

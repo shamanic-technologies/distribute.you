@@ -148,6 +148,7 @@ import { validateInvite } from "@/lib/api";
 import { inviteCodeFromCookie } from "@/lib/invite-link";
 import { onboardingBrandCookieAssignment } from "@/lib/onboarding-brand-cookie";
 import { welcomeHeadline, welcomeDetail, referredByLine } from "@/lib/welcome-offer-copy";
+import { planFirstCharge } from "@/lib/onboarding-charge";
 import {
   formatLocaleInteger,
   formatLocaleNumberInputValue,
@@ -938,10 +939,11 @@ export function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   // Whether this signup arrived through someone's referral link, and who sent them.
   //
-  // A referred signup is owed BOTH offers ($400 welcome + $500 referral, at $400
-  // and $900 of payments), so the gift step must not quote the welcome figure
-  // alone: that understates what they get by $500 on the screen where they decide
-  // to pay, and contradicts the link that brought them here.
+  // A referred signup is owed BOTH offers: the $30 welcome, given outright at
+  // signup, and $500 of referral credits earned once their payments reach the
+  // stacked bar. The gift step must not quote the welcome figure alone: that
+  // understates what they get by $500 on the screen where they decide to pay, and
+  // contradicts the link that brought them here.
   //
   // The claim itself cannot have happened yet (it needs an org, and it runs on the
   // authed dashboard shell), so the promise does not exist in billing at this
@@ -2167,7 +2169,11 @@ export function Onboarding() {
       Object.keys(liveFunnelBudgets).length > 0
         ? liveFunnelBudgets
         : storedPending?.funnelBudgets ?? {};
-    const checkoutAmountCents = Math.round(budget * 100);
+    // The first charge is the budget MINUS the welcome gift; the auto-topup reload
+    // below is the FULL budget. Reusing the discounted figure for both would leave
+    // every later reload short by the gift, forever, on a one-time discount.
+    const firstCharge = planFirstCharge(budget);
+    const checkoutAmountCents = firstCharge.chargeCents;
     const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
     if (!workflowSlug) {
       throw new Error("Campaign workflow setup is still missing. Please try again.");
@@ -2185,7 +2191,7 @@ export function Onboarding() {
       budgetUsd: budget,
       workflowSlug,
       checkoutAmountCents,
-      topupAmountCents: checkoutAmountCents,
+      topupAmountCents: Math.round(budget * 100),
       topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
       featureInputs: storedPending?.featureInputs,
       // "brand in memory matches this launch" holds for a URL brand (url resolved) OR
@@ -2212,22 +2218,41 @@ export function Onboarding() {
       const budget = pending.budgetUsd;
       const checkoutAmountCents = pending.checkoutAmountCents;
 
+      const charges = checkoutAmountCents > 0;
+
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
       successUrl.searchParams.set("launch_checkout", "success");
-      // Google Ads PURCHASE conversion value = the 1-day budget the user picked
-      // (dollars). Read on the checkout RETURN (payment succeeded) by
-      // AdsPurchaseTracker. Reflects the recurring per-day commitment, not the
-      // one-off charge amount.
-      successUrl.searchParams.set("daily_budget", String(budget));
+      if (charges) {
+        // Google Ads PURCHASE conversion value = the 1-day budget the user picked
+        // (dollars). Read on the checkout RETURN (payment succeeded) by
+        // AdsPurchaseTracker. Reflects the recurring per-day commitment, not the
+        // one-off charge amount.
+        //
+        // Set ONLY when money actually moves. A budget covered by the welcome gift
+        // returns through the same success URL having paid nothing, and the tracker
+        // reads this param as the conversion value — so leaving it on would report a
+        // purchase to Google Ads for a $0 card imprint, at the full budget.
+        successUrl.searchParams.set("daily_budget", String(budget));
+      }
       const cancelUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       cancelUrl.searchParams.set("launch_checkout", "cancelled");
 
-      const session = await createCheckoutSession({
-        topup_amount_cents: checkoutAmountCents,
-        success_url: successUrl.toString(),
-        cancel_url: cancelUrl.toString(),
-      });
+      // Nothing left to charge once the gift covers the budget: take the card
+      // imprint and no money. Same success URL, so the launch resumes identically.
+      const session = await createCheckoutSession(
+        charges
+          ? {
+              topup_amount_cents: checkoutAmountCents,
+              success_url: successUrl.toString(),
+              cancel_url: cancelUrl.toString(),
+            }
+          : {
+              mode: "setup",
+              success_url: successUrl.toString(),
+              cancel_url: cancelUrl.toString(),
+            },
+      );
       window.location.href = session.url;
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
@@ -2275,7 +2300,7 @@ export function Onboarding() {
 
   // Direct launch — NO Stripe redirect. Used when an existing org ADDS a brand
   // (`?from=add`) and already has a payment method on file: card capture + the
-  // first-$400 welcome match are new-org-only, so we skip the checkout screen and
+  // the welcome gift is new-org-only, so we skip the checkout screen and
   // launch straight into the post-payment sequence (celebrate → phone → ltr → …).
   // Funding is covered by the org's existing card via configureAutoTopup (re-armed
   // in runLaunchWork) — never a re-charge. Mirrors resumeCheckoutLaunch, but builds
@@ -2306,7 +2331,7 @@ export function Onboarding() {
   }
 
   // Pricing-step "Continue". For an existing org ADDING a brand (`?from=add`) with a
-  // card already on file, skip the $400-welcome screen + Stripe checkout and launch
+  // card already on file, skip the welcome screen + Stripe checkout and launch
   // directly. New orgs — or an add-brand org with no payment method yet — keep the
   // checkout path (bonus → beginCheckoutAndLaunch) so the card is captured + auto-topup
   // armed. The billing-account check is fail-safe: on any error we fall back to
@@ -3834,6 +3859,12 @@ export function Onboarding() {
 
   if (step === "bonus") {
     const amount = budgetForCharge();
+    // What the buyer actually pays here: their budget minus the welcome gift. The
+    // CTA has to state THAT, not the budget — a button reading "$50" that charges
+    // $20 is a worse surprise than one reading "$20", in both directions.
+    const firstChargePlan = planFirstCharge(amount);
+    const chargeUsd = amount == null ? null : firstChargePlan.chargeCents / 100;
+    const giftCoversBudget = amount != null && !firstChargePlan.charges;
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
@@ -3846,7 +3877,11 @@ export function Onboarding() {
               </>
             ) : (
               <>
-                {amount != null ? `Continue to checkout (${fmtUsd0(amount)})` : "Continue to checkout"} <ArrowRightIcon className="h-4 w-4" />
+                {giftCoversBudget
+                  ? "Continue. No payment today"
+                  : chargeUsd != null
+                    ? `Continue to checkout (${fmtUsd0(chargeUsd)})`
+                    : "Continue to checkout"} <ArrowRightIcon className="h-4 w-4" />
               </>
             )}
           </button>
@@ -3859,17 +3894,21 @@ export function Onboarding() {
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
             <h2 className="font-display text-2xl font-bold text-gray-900">{welcomeHeadline(referredSignup)}</h2>
-            {/* The gift is earned on PAYMENTS RECEIVED, never on usage consumed: the
-                account is threshold-postpaid, so an org can consume on credit before
-                paying anything. This one sentence is true in BOTH branches — when the
-                first checkout is $800+ the $400 comes off it as a Stripe discount, so the
-                buyer still pays $400 and still crosses the threshold that lands the rest.
-                It is NOT a per-dollar match: a flat $400 gated at $400 of payments, so
-                paying $10 earns nothing yet. Guard: welcome-credits-promise.test.ts.
+            {/* The gift is GIVEN, not earned: $30 lands when the account is created,
+                with no payments threshold and no second instalment. It used to be a
+                match ($5 up front, the rest once payments reached $400), which is why
+                this screen once explained a threshold — there is none left to explain.
 
-                The org's entitlement and threshold are FROZEN on its billing account when
-                that account is created, so an org that signed up under the old offer keeps
-                $25/$25 forever and this screen (new orgs only) is the $400 cohort. */}
+                What the buyer pays here is their daily budget MINUS that $30, so the
+                gift reaches them as cash off the first checkout rather than as a second
+                grant on top of it. Below $30 there is nothing to charge and the session
+                only takes a card imprint. Either way the gift is exactly $30, which is
+                the invariant planFirstCharge exists to hold.
+
+                The entitlement is FROZEN on the billing account when it is created, so
+                an org that signed up under an older offer keeps $400/$400 or $25/$25
+                forever and this screen (new orgs only) is the $30 cohort.
+                Guard: welcome-credits-promise.test.ts. */}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
               {welcomeDetail(referredSignup)}
             </p>

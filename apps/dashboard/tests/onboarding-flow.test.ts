@@ -46,11 +46,12 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).not.toContain("brand daily budget cap");
   });
 
-  it("uses first-day payment checkout, configures auto-topup, and launches after return", () => {
+  it("charges the budget minus the welcome gift, configures auto-topup, and launches after return", () => {
     expect(content).toContain("createCheckoutSession");
-    expect(content).toContain("const checkoutAmountCents = Math.round(budget * 100)");
+    expect(content).toContain("const checkoutAmountCents = firstCharge.chargeCents;");
     expect(content).toContain("topup_amount_cents: checkoutAmountCents");
-    expect(content).toContain("topupAmountCents: checkoutAmountCents");
+    // The reload is the FULL budget; only the FIRST charge carries the welcome discount.
+    expect(content).toContain("topupAmountCents: Math.round(budget * 100),");
     expect(content).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");
     expect(content).toContain("const AUTO_TOPUP_THRESHOLD_CENTS = 500");
     expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
@@ -59,7 +60,9 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).toContain("saveBrandDailyBudget");
     expect(content).toContain("featureInputs,");
     expect(content).toContain("createCampaignWithoutBrandEnrichment");
-    expect(content).not.toContain('mode: "setup"');
+    // Setup mode is now the path for a budget the $30 welcome gift covers: card
+    // imprint, no money. It used to be forbidden here, when onboarding always charged.
+    expect(content).toContain('mode: "setup"');
     expect(content).not.toContain("setupBillingWallet");
     expect(content).not.toContain("wallet_setup");
     expect(content).not.toContain('mode: "subscription"');

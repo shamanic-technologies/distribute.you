@@ -217,8 +217,9 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("funnelBudgetUsd");
     expect(src).toContain("budgetForCount");
     expect(src).toContain("Continue to checkout");
-    expect(src).toContain("const checkoutAmountCents = Math.round(budget * 100)");
-    expect(src).toContain("topupAmountCents: checkoutAmountCents");
+    expect(src).toContain("const checkoutAmountCents = firstCharge.chargeCents;");
+    // The reload is the FULL budget; only the FIRST charge carries the welcome discount.
+    expect(src).toContain("topupAmountCents: Math.round(budget * 100),");
     expect(src).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");
     expect(src).not.toContain("Set up your org wallet.");
   });

@@ -17,7 +17,7 @@
        (same as the onboarding / launch pricing preview), not a
        server-owned stat.
 
-   Flow: goal → [rates, indirect only] → price + $400 credit + budget.
+   Flow: goal → [rates, indirect only] → price + $30 credit + budget.
    ═══════════════════════════════════════════════ */
 (function () {
   var SIGNUP = 'https://dashboard.distribute.you/sign-up';
@@ -311,7 +311,7 @@
     body.querySelector('[data-next]').addEventListener('click', function () { state.count = null; state.step = 2; render(); });
   }
 
-  /* Result — price + $400 credit + budget + get started */
+  /* Result — price + $30 credit + budget + get started */
   function renderResult() {
     var g = state.goal;
     var uc = unitCostFor(g, state.rates);   // number, or undefined while atoms load
@@ -354,12 +354,12 @@
     }
     var startDisabled = state.count == null || state.unitCost == null;
     body.innerHTML = priceBlock()
-      + '<div class="pm-credit"><div><div class="pm-credit-t">Your first $400 is on us.</div>'
-      + '<div class="pm-credit-d">$5 lands the moment you sign up, the rest once your payments reach $400.</div></div></div>'
+      + '<div class="pm-credit"><div><div class="pm-credit-t">Your first $30 is on us.</div>'
+      + '<div class="pm-credit-d">It lands the moment you sign up. Nothing to claim, nothing to pay first.</div></div></div>'
       + tiersBlock()
       + summaryBlock()
       + '<div class="pm-nav"><button type="button" class="pm-back" data-back>← Back</button>'
-      + '<button type="button" class="button primary" data-start' + (startDisabled ? ' disabled' : '') + '>Get started. $400 free →</button></div>';
+      + '<button type="button" class="button primary" data-start' + (startDisabled ? ' disabled' : '') + '>Get started. $30 free →</button></div>';
 
     // Atoms still loading → re-render once they land to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === resultStep() && overlay.classList.contains('open')) renderResult(); }
