@@ -34,8 +34,8 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=2"');
-    expect(html).toContain('src="/landing/v2/main.js?v=2"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=3"');
+    expect(html).toContain('src="/landing/v2/main.js?v=3"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -218,11 +218,29 @@ describe("the offer the page states", () => {
   it("counts the people on board from the signups in client-service", () => {
     // 71 real users on 2026-09-06 (`system-` principals excluded); refresh when it moves.
     expect(html).toContain("70+ founders and GTM experts");
+    // Two rows: one under the live showcase cards (explee's trust caption), one in the footer.
+    // Each carries six people and no person appears in both, so twelve faces page-wide.
     const hero = html.slice(html.indexOf('class="hero"'), html.indexOf('id="proof"'));
-    expect(hero).not.toContain("faces-row");
     const footer = html.slice(html.indexOf("<footer>"));
-    expect(footer).toContain("faces-row");
-    expect((footer.match(/<img src="\/landing\/v2\/assets\/[a-z-]+\.jpe?g"/g) ?? []).length).toBe(6);
+    const facesOf = (part: string) => part.match(/<img src="\/landing\/v2\/assets\/[a-z-]+\.jpe?g"/g) ?? [];
+    expect(hero.match(/faces-row/g)?.length).toBe(1);
+    expect(footer.match(/faces-row/g)?.length).toBe(1);
+    const heroRow = hero.slice(hero.indexOf("faces-row"), hero.indexOf("faces-text"));
+    const footerRow = footer.slice(footer.indexOf("faces-row"), footer.indexOf("faces-text"));
+    expect(facesOf(heroRow).length).toBe(6);
+    expect(facesOf(footerRow).length).toBe(6);
+    expect(new Set([...facesOf(heroRow), ...facesOf(footerRow)]).size).toBe(12);
+    // The showcase row sits inside the showcase block, right under the four cards.
+    expect(hero.indexOf('id="live-cards"')).toBeLessThan(hero.indexOf("faces-showcase"));
+  });
+
+  it("puts a named person on every proof card, never a company logo", () => {
+    const proof = html.slice(html.indexOf('id="proof"'), html.indexOf('id="quotes"'));
+    expect(proof).not.toContain("img.logo.dev");
+    expect((proof.match(/<img class="face" src="\/landing\/v2\/assets\/[a-z-]+\.jpe?g"/g) ?? []).length).toBe(3);
+    for (const person of ["Ryan W.D. Parenti", "Shahid Shah", "David Tucker"]) expect(proof).toContain(person);
+    for (const role of ["Founder, Doc Dinners", "CEO Netspective, Opsfolio", "Cofounder, Shockwave Centers"]) expect(proof).toContain(role);
+    expect(css).toContain(".proof-top img.face { border-radius: 50%; }");
   });
 
   it("states the reply-handling feature, and no channel map", () => {

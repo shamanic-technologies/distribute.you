@@ -232,6 +232,8 @@ section.framed::after {
 }
 .proof-top { display: flex; align-items: center; gap: 12px; }
 .proof-top img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+/* A person, not a company: the portrait is round so it never reads as a logo. */
+.proof-top img.face { border-radius: 50%; }
 .proof-top .name { font-weight: 500; line-height: 1.2; }
 .proof-top .meta { font-size: 13px; color: var(--muted); }
 .proof-roi { display: flex; align-items: baseline; gap: 14px; }
@@ -491,6 +493,8 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 .face-initial { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--tint, var(--accent-100)); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0; flex: none; }
 .faces-text { display: flex; flex-direction: column; line-height: 1.2; font-size: 14px; color: var(--muted); }
 .faces-text .stars { font-size: 15px; letter-spacing: 1px; }
+/* Under the live showcase cards the row is a caption of the grid, not a section of its own. */
+.faces-showcase { margin: 22px 0 0; }
 
 /* ---------- v3: live showcase cards (explee live pulse + delta flash) ---------- */
 .show-card { height: auto; gap: 14px; }
