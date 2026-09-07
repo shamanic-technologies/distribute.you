@@ -41,11 +41,15 @@ describe("INVITE_FORWARD_SCRIPT", () => {
   });
 
   it("announces the real total, not the plain welcome figure", () => {
-    // The link lands on a page that otherwise says $400 while this visitor is
-    // being offered $900, which reads as the referrer's pitch being contradicted
-    // by the first page their friend sees.
-    expect(INVITE_FORWARD_SCRIPT).toContain("$900 in free credits instead of $400");
-    expect(INVITE_FORWARD_SCRIPT).toContain("payments reach $400");
+    // The link lands on a page that otherwise states the plain welcome figure while
+    // this visitor is being offered both, which reads as the referrer's pitch being
+    // contradicted by the first page their friend sees.
+    expect(INVITE_FORWARD_SCRIPT).toContain("$530 in free credits instead of $30");
+    // The welcome half is GIVEN, so the banner may not gate it on a payment; only
+    // the referral half names a bar, and that bar is the stacked sum.
+    expect(INVITE_FORWARD_SCRIPT).toContain("lands the moment you sign up");
+    expect(INVITE_FORWARD_SCRIPT).toContain("payments reach $530");
+    expect(INVITE_FORWARD_SCRIPT).not.toContain("payments reach $400");
   });
 
   it("shows the banner at most once", () => {
