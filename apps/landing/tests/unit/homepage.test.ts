@@ -34,8 +34,8 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=1"');
-    expect(html).toContain('src="/landing/v2/main.js?v=1"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=2"');
+    expect(html).toContain('src="/landing/v2/main.js?v=2"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -213,5 +213,58 @@ describe("the offer the page states", () => {
     // The 36-channel hub read as far-fetched and was cut; the #1 channel row carries the best ROI.
     expect(html).not.toContain('id="channels"');
     expect(html).toContain('<span class="win">Sales cold email</span></td><td></td><td class="roi">10.2x</td>');
+  });
+});
+
+describe("the third pipeline card shows the calendar filling up", () => {
+  // The dream outcome is a calendar full of meetings, not the A/B test that produced
+  // them, so the third stacked card draws a week calendar rather than a ranking table.
+  // The recipe is gojiberry's "books demos" visual: five states, one second each, each
+  // one fuller than the last, looping. Ours is DOM rather than five stacked PNGs.
+  const pipeline = html.slice(html.indexOf('id="pipeline"'), html.indexOf('id="features"'));
+  const third = pipeline.slice(pipeline.lastIndexOf("<article"));
+
+  it("is the third stacked card, and it draws a calendar, not a table", () => {
+    expect(third).toContain('class="cal"');
+    expect(third).not.toContain("roi-table");
+    expect(pipeline).not.toContain("Learns what works");
+  });
+
+  it("states the outcome, and no acquisition-testing vocabulary", () => {
+    expect(third).toContain("<h3>Your calendar fills up</h3>");
+    expect(third).not.toMatch(/doubles down|winners|A\/B/);
+  });
+
+  it("carries five fill stages, weekdays only, and no vendor's copy", () => {
+    for (const stage of [1, 2, 3, 4, 5]) expect(third).toContain(`data-stage="${stage}"`);
+    expect(third).not.toMatch(/data-stage="[06-9]"/);
+    for (const day of ["Mon", "Tue", "Wed", "Thu", "Fri"]) expect(third).toContain(`<span>${day}</span>`);
+    expect(third).not.toMatch(/Gojiberry|Hubspot|Sat|Sun/);
+  });
+
+  it("names companies, never a person", () => {
+    // A calendar full of invented people is the fabricated-testimonial trap. Every
+    // event names the offer and the company already used on the two cards above it.
+    const events = [...third.matchAll(/<b>([^<]+)<\/b><span>([^<]+)<\/span>/g)];
+    expect(events.length).toBe(20);
+    for (const [, kind, who] of events) {
+      expect(kind).toMatch(/^(Demo|Intro call|Follow-up|Kickoff)$/);
+      expect(who).toMatch(/^[A-Z][A-Za-z]+( [A-Z][A-Za-z]+)*$/);
+      expect(who).toMatch(/Health|Clinic|Group|PT|Orthopedics|Care|Opsfolio/);
+    }
+  });
+
+  it("advances one stage a second and loops, unless motion is reduced", () => {
+    const block = js.slice(js.indexOf("/* Calendar fills up"));
+    expect(block).toContain("CAL_STAGE_MS = 1000");
+    expect(block).toContain("cal.setAttribute(\"data-cal-stage\"");
+    expect(block).toContain("% 5) + 1");
+    expect(block).toContain("reduced");
+  });
+
+  it("has a stylesheet for every stage and a fade for each event", () => {
+    expect(css).toContain(".cal-ev { ");
+    expect(css).toContain("transition: opacity 0.4s");
+    for (const s of [1, 2, 3, 4, 5]) expect(css).toContain(`.cal[data-cal-stage="${s}"]`);
   });
 });

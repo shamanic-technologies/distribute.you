@@ -36,6 +36,37 @@
     });
   }
 
+  /* Calendar fills up (gojiberry's "books demos" recipe): five stages, one second
+     each, looping. Runs only while the calendar is on screen. Reduced motion shows
+     the full week and never moves. */
+  var CAL_STAGE_MS = 1000;
+  var cal = document.querySelector(".cal");
+  if (cal) {
+    if (reduced || !("IntersectionObserver" in window)) {
+      cal.setAttribute("data-cal-stage", "5");
+    } else {
+      var calStage = 1;
+      var calTimer = null;
+      var calio = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting && calTimer === null) {
+              calTimer = setInterval(function () {
+                calStage = (calStage % 5) + 1;
+                cal.setAttribute("data-cal-stage", String(calStage));
+              }, CAL_STAGE_MS);
+            } else if (!e.isIntersecting && calTimer !== null) {
+              clearInterval(calTimer);
+              calTimer = null;
+            }
+          });
+        },
+        { threshold: 0.4 },
+      );
+      calio.observe(cal);
+    }
+  }
+
   /* Count-up on the stat numerals and the proof ROI figures. */
   function countUp(el) {
     var target = parseFloat(el.getAttribute("data-count"));
