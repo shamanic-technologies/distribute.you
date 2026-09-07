@@ -563,12 +563,27 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 .sf { position: relative; display: flex; flex: 1 1 0; min-width: 62px; flex-direction: column; gap: 2px; }
 .sf[data-zero] { display: none; }
 .sf b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); transition: color 0.4s; }
-.sf b.up { color: var(--good); }
+.sf b.up, .hstat b.up { color: var(--good); }
 .sf small { font-size: 11px; color: var(--muted); white-space: nowrap; }
-.sf .delta { position: absolute; left: 0; top: -2px; font-size: 11px; font-weight: 700; color: var(--good); pointer-events: none; animation: lp-delta-flash 1.4s ease-out forwards; }
+.sf .delta, .hstat .delta { position: absolute; left: 0; top: -2px; font-size: 11px; font-weight: 700; color: var(--good); pointer-events: none; animation: lp-delta-flash 1.4s ease-out forwards; }
 @keyframes lp-delta-flash { 0% { opacity: 0; transform: translateY(4px); } 15% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-16px); } }
 .show-card.yours .sf b { color: var(--muted-2); }
 .show-card.yours .sf b:last-child { color: var(--accent); }
+
+/* ---------- Hero proof row (live fleet hot leads) ---------- */
+.hero-stats { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px 40px; margin: 22px 0 0; }
+.hstat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hstat b { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); font-variant-numeric: tabular-nums; transition: color 0.4s; }
+.hstat small { font-size: 13px; color: var(--muted); }
+/* The cards' offsets sit above a left-aligned 15px number; this number is 26px and
+   centred, so the same offsets land the "+1" on the digits. Measured, then cleared.
+   margin-left rather than a transform: lp-delta-flash animates transform. */
+.hstat .delta { left: 50%; top: -22px; margin-left: 10px; }
+@media (max-width: 560px) {
+  .hero-stats { gap: 12px 26px; margin-top: 18px; }
+  .hstat b { font-size: 22px; }
+  .hstat small { font-size: 12px; }
+}
 
 /* ---------- v3: proof funnel line ---------- */
 .proof-funnel { display: flex; gap: 14px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--hair); font-size: 13px; color: var(--muted); }

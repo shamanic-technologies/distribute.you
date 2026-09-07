@@ -34,8 +34,8 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=6"');
-    expect(html).toContain('src="/landing/v2/main.js?v=5"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=7"');
+    expect(html).toContain('src="/landing/v2/main.js?v=6"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -45,9 +45,14 @@ describe("the homepage is self-contained", () => {
 
   it("carries no unresolved live-figure token", () => {
     // The page states its figures outright. It may grow tokens now that it is on the
-    // pipeline (`__CAC_PRICE__` and friends resolve here, unlike on the lab host), but an
-    // UNRESOLVED one would ship to a reader as itself.
-    expect(html).not.toMatch(/__[A-Z_]+__/);
+    // pipeline (`__CAC_PRICE__` and friends resolve here, unlike on the lab host), but a
+    // token the pipeline does not handle would ship to a reader as itself. So the check
+    // is not "no tokens" — it is "every token in the source is one `static-html.ts`
+    // replaces".
+    const pipeline = readFileSync(path.join(process.cwd(), "src/lib/static-html.ts"), "utf8");
+    for (const token of new Set(html.match(/__[A-Z_]+__/g) ?? [])) {
+      expect(pipeline, `${token} is in the homepage but nothing resolves it`).toContain(token);
+    }
   });
 
   it("is indexable, canonical, and states its own card", () => {

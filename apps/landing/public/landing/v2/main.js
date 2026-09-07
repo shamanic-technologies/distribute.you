@@ -241,6 +241,18 @@
   var STATUSES = ["Sending", "Writing emails", "Reading replies", "Finding leads", "Following up"];
   var liveCards = Array.prototype.slice.call(document.querySelectorAll("[data-live]"));
   function fmtInt(n) { return n.toLocaleString("en-US"); }
+  /* The one nudge: repaint the number green and float a "+N" above it. Shared by the
+     showcase cards and the hero proof row so the two cannot drift apart. */
+  function bump(el, add, value) {
+    el.textContent = fmtInt(value);
+    el.classList.add("up");
+    setTimeout(function () { el.classList.remove("up"); }, 1400);
+    var d = document.createElement("span");
+    d.className = "delta";
+    d.textContent = "+" + add;
+    el.parentElement.appendChild(d);
+    setTimeout(function () { d.remove(); }, 1500);
+  }
   function tick() {
     if (!liveCards.length || document.hidden) return;
     var card = liveCards[Math.floor(Math.random() * liveCards.length)];
@@ -258,14 +270,7 @@
        climbing in `data-steps` with nowhere to render, and the step would never come
        back however high it went. */
     el.parentElement.removeAttribute("data-zero");
-    el.textContent = fmtInt(steps[idx]);
-    el.classList.add("up");
-    setTimeout(function () { el.classList.remove("up"); }, 1400);
-    var d = document.createElement("span");
-    d.className = "delta";
-    d.textContent = "+" + add;
-    el.parentElement.appendChild(d);
-    setTimeout(function () { d.remove(); }, 1500);
+    bump(el, add, steps[idx]);
     var st = card.querySelector("[data-status]");
     if (st && Math.random() < 0.5) st.textContent = STATUSES[Math.floor(Math.random() * STATUSES.length)];
   }
@@ -273,6 +278,22 @@
     setTimeout(function () { tick(); schedule(); }, 2500 + Math.random() * 5500);
   }
   if (liveCards.length && !reduced) schedule();
+
+  /* Hero proof row: only the hot-lead COUNT moves. The company count does not gain a
+     customer every ten seconds, and a price ticking upward reads as bad news — one lead
+     does not move a median anyway. Slower than the cards: a hot lead is rarer than a
+     contact. */
+  var hotEl = document.querySelector("[data-hot-leads]");
+  function hotTick() {
+    if (!hotEl || document.hidden) return;
+    var next = Number(hotEl.getAttribute("data-n")) + 1;
+    hotEl.setAttribute("data-n", String(next));
+    bump(hotEl, 1, next);
+  }
+  function hotSchedule() {
+    setTimeout(function () { hotTick(); hotSchedule(); }, 8000 + Math.random() * 12000);
+  }
+  if (hotEl && !reduced) hotSchedule();
 
   /* Hero line art (explee canvas): curves from both edges converging on the launch
      field, with dots travelling along them toward the centre. */

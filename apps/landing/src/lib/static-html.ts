@@ -406,6 +406,125 @@ async function withLivePerformanceMetrics(html: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Homepage hero — the fleet's hot-lead proof row.
+//
+// A "hot lead" is a person who showed buying interest: a positive reply OR a
+// visit to the brand's site. Both are first steps of a sales funnel, so the sum
+// is the count of people the fleet actually put in front of a customer.
+//
+// All three figures describe ONE set of brands — those with at least one hot
+// lead AND recorded spend — so the count, the company count and the price can
+// never end up describing different populations.
+//
+// Derived at BUILD time from the per-brand ranked read; no client fetch and no
+// second endpoint. `distribute.you` is in the fleet on purpose: we ran the
+// product on ourselves.
+
+const HOT_LEAD_ROW_TOKEN = "__HOT_LEAD_ROW__";
+
+// A median over a single brand is that brand's own price, not a fleet figure.
+const MIN_HOT_LEAD_BRANDS = 2;
+
+interface RankedBrandItem {
+  stats: Record<string, number | null>;
+}
+
+export interface HotLeadStats {
+  hotLeads: number;
+  companies: number;
+  medianCostUsd: number;
+}
+
+/**
+ * Fleet hot-lead proof, or null when it cannot be stated honestly.
+ *
+ * A brand joins the set only when it has BOTH a hot lead and recorded spend:
+ * counting a brand with no spend would pull the median toward a $0 nobody was
+ * charged, and stating a company count over a wider set than the price
+ * describes would let the two numbers on the row contradict each other.
+ */
+export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
+  const priced = results
+    .map((item) => ({
+      hot: num(item.stats, "recipientsRepliesPositive") + num(item.stats, "recipientsClicked"),
+      costCents: num(item.stats, "totalCostInUsdCents"),
+    }))
+    .filter((brand) => brand.hot > 0 && brand.costCents > 0);
+
+  if (priced.length < MIN_HOT_LEAD_BRANDS) return null;
+
+  const hotLeads = priced.reduce((total, brand) => total + brand.hot, 0);
+  if (hotLeads <= 0) return null;
+
+  const perBrandUsd = priced
+    .map((brand) => brand.costCents / 100 / brand.hot)
+    .sort((a, b) => a - b);
+  const mid = Math.floor(perBrandUsd.length / 2);
+  const medianCostUsd =
+    perBrandUsd.length % 2 === 0
+      ? (perBrandUsd[mid - 1] + perBrandUsd[mid]) / 2
+      : perBrandUsd[mid];
+
+  return { hotLeads, companies: priced.length, medianCostUsd };
+}
+
+/**
+ * The row's markup. It lives here rather than in the HTML because the row must
+ * DISAPPEAR when the figures cannot be read — a hardcoded fallback would state
+ * numbers nobody measured, and "we could not measure this" is not "zero".
+ *
+ * `data-n` seeds the in-session nudge in v2/main.js; the class names are pinned
+ * on both sides by tests/unit/hot-lead-stats.test.ts.
+ */
+export function hotLeadRowHtml(stats: HotLeadStats): string {
+  const leads = stats.hotLeads.toLocaleString("en-US");
+  const companies = stats.companies.toLocaleString("en-US");
+  // Whole dollars: this is a headline price, and cents on a median that moves
+  // with every outcome read as precision we do not have.
+  const cost = `$${Math.round(stats.medianCostUsd).toLocaleString("en-US")}`;
+  return (
+    '<div class="hero-stats">' +
+    `<div class="hstat"><b data-hot-leads data-n="${stats.hotLeads}">${leads}</b>` +
+    `<small>hot leads for ${companies} companies</small></div>` +
+    `<div class="hstat"><b>${cost}</b><small>median cost per hot lead</small></div>` +
+    "</div>"
+  );
+}
+
+async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
+  const apiUrl = resolvePublicApiUrl();
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(
+      SALES_COLD_EMAIL_FEATURE_SLUG,
+    )}&objective=emailsSent&groupBy=brand&limit=200`,
+    { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/ranked?groupBy=brand failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${res.status}`,
+    );
+  }
+  const data = (await res.json()) as { results: RankedBrandItem[] };
+  return hotLeadStats(data.results ?? []);
+}
+
+async function withHotLeadStats(html: string) {
+  if (!html.includes(HOT_LEAD_ROW_TOKEN)) return html;
+
+  let stats: HotLeadStats | null = null;
+  try {
+    stats = await fetchHotLeadStats();
+  } catch (error) {
+    // Build-time prerender must stay shippable (CLAUDE.md "Exception — Vercel
+    // build-time prerender"). Log loud; the row is dropped rather than filled
+    // with a figure nobody measured.
+    console.error("[landing] hot-lead proof row unavailable, dropping it", error);
+  }
+
+  return html.replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats) : "");
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Homepage — cross-org cost-per-outcome stock-ticker board.
 // Four equal cards (cost per click / positive reply / meeting / signup), each
 // with the observed average price, an always-green ▲ weekly change (the board is
@@ -1147,8 +1266,10 @@ async function negotiatedResponse(
     });
   }
 
-  const html = await withCacBoot(
-    await withTickerMetrics(await withLivePerformanceMetrics(decorated)),
+  const html = await withHotLeadStats(
+    await withCacBoot(
+      await withTickerMetrics(await withLivePerformanceMetrics(decorated)),
+    ),
   );
 
   if (negotiated === "markdown") {
