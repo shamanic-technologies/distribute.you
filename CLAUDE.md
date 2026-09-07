@@ -94,6 +94,17 @@ Two defects rode the lab landing onto the apex and neither suite noticed: `Log i
 
 So the promote checklist is the REPLACED surface's guard list, read one by one: for each, does it hold on the new page? `git grep -l "<replaced-file>" tests/` is the list. And **rename every guard that now reads the archived file** (`archived-homepage-*.test.ts`), because a file called `homepage-*` will be read as covering the live homepage forever — the same stale-note trap as a comment describing a deployment that moved. (#3924)
 
+**A guard that bans a CLAIM must be phrasing-independent, and its surface list must include every INJECTOR — not just the documents.** A promise stated across several surfaces gets a guard that reads each file and forbids the sentences that are no longer true. Both halves of that rot in the same direction, silently, and a re-price is when they fail: the ban is written against the phrasings that existed when it was written, and the surface list holds the files somebody remembered.
+
+When the $400 welcome match became a flat $30 given at signup, the guard covered 8 surfaces and banned 6 patterns, and a page still shipped to production reading *"you get $900 in free credits instead of $400. $5 lands now, $400 once your payments reach $400."* Two independent misses, and neither made anything red:
+
+- The claim lived in `INVITE_FORWARD_SCRIPT` (`apps/landing/src/lib/static-html.ts`), a banner INJECTED into every statically-served page. The guard read the HTML documents and the two landing scripts under `public/`; a string that becomes page content at request time was in none of them.
+- No banned pattern matched its wording. `"$400 once your payments reach $400"` is not `"the rest lands…"`, and `"instead of $400"` carries no `"credits"` after it, so the two patterns that catch that exact claim elsewhere both slid past it.
+
+So: write the ban against the CLAIM's shape rather than its words (`/\$(\d[\d,]*) once your payments reach \$\1\b/` catches a self-equal threshold however it is phrased), and prove each new pattern BOTH ways — it must match the copy that shipped and pass the copy replacing it, checked before you trust it. For the surface list, ask what else becomes user-visible text: a head injector, a banner script, an email template, a JSON-LD block. `grep -rl "<a distinctive phrase from the claim>" src public` finds them all in one command, and that grep is the list.
+
+⚠️ The mirror of it, which cost a second PR the same hour: a figure DERIVED from a sibling service's rule must be derived from the rule that is DEPLOYED, not the one you expect. The referral bar was computed here as `welcome + referral` because billing stacked promises that way; a sibling PR then dropped granted promises out of that ladder, and two surfaces stated a bar billing no longer held. Conform to the shipped producer, and re-read it after any sibling ship that touches the same arithmetic. (#3936, #3942, #3943)
+
 ## `apps/docs` is a STATIC EXPORT whose ROOT LAYOUT must declare no canonical, and whose routes live in ONE list
 
 `apps/docs` builds with `output: "export"` and ships to Cloudflare Pages through `.github/workflows/deploy-static-sites.yml`, so a merge to `main` reaches it through that Actions run and NOT through the box's deploy cron. It has no server: no route handler, no middleware, no request-time API. Content negotiation (`Accept: text/markdown`) is therefore impossible there by construction, and the answer to "serve markdown" is a published file, never a handler.
