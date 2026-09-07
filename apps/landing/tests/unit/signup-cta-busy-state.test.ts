@@ -72,7 +72,7 @@ describe("landing signup CTA states what it is doing", () => {
  */
 describe("cache-buster tokens moved with the JS", () => {
   it("index-v1.html links a bumped pricing-modal-v1.js", () => {
-    expect(homepage).toContain("js/pricing-modal-v1.js?v=7");
+    expect(homepage).toContain("js/pricing-modal-v1.js?v=8");
     expect(homepage).not.toContain("js/pricing-modal-v1.js?v=6");
   });
 
@@ -83,8 +83,8 @@ describe("cache-buster tokens moved with the JS", () => {
       .filter((f) => read(f).includes("js/main.js"));
     expect(pages.length).toBeGreaterThan(0);
     for (const page of pages) {
-      expect(read(page)).toContain("js/main.js?v=11");
-      expect(read(page)).not.toContain("js/main.js?v=10");
+      expect(read(page)).toContain("js/main.js?v=12");
+      expect(read(page)).not.toContain("js/main.js?v=11");
     }
   });
 });

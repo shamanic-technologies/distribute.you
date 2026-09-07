@@ -37,7 +37,7 @@ describe("the $400 announcement bar is clickable across its whole width", () => 
     // The centred wrap must sit INSIDE the anchor, otherwise only the text is
     // clickable and the padding either side of it is dead.
     expect(bar).toContain('class="wrap announcement-inner"');
-    expect(bar).toContain("in matched credits until");
+    expect(bar).toContain("in free credits until");
   });
 
   it("names the destination for screen readers", () => {

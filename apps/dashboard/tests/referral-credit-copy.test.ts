@@ -44,28 +44,27 @@ describe("creditGrantLabel", () => {
 
 describe("the onboarding gift copy", () => {
   it("promises the plain welcome offer to an ordinary signup", () => {
-    expect(welcomeHeadline(false)).toBe("We will match your first $400 with $400 free credits.");
+    expect(welcomeHeadline(false)).toBe("$30 in free credits, on the house.");
     expect(welcomeDetail(false)).toBe(
-      "$5 is in your account already. The rest lands automatically once your payments reach $400.",
+      "$30 is in your account already. Nothing to claim, and nothing to pay first.",
     );
   });
 
   it("tells a REFERRED signup the full amount it is owed", () => {
-    // Quoting $400 to someone who is actually getting $900 understates the offer
-    // by $500 at the screen where they decide to pay, and contradicts the invite
-    // link that brought them here.
-    expect(welcomeHeadline(true)).toBe("You have $900 in free credits waiting.");
+    // Quoting the welcome figure alone to someone who is also owed the referral
+    // credits understates the offer by $500 at the screen where they decide to
+    // pay, and contradicts the invite link that brought them here.
+    expect(welcomeHeadline(true)).toBe("You have $530 in free credits waiting.");
   });
 
   it("states BOTH bars for a referred signup, because they stack", () => {
     const detail = welcomeDetail(true);
-    expect(detail).toContain("$400 lands once your payments reach $400");
-    expect(detail).toContain("$500 referral credits at $900");
+    expect(detail).toContain("$500 referral credits land once your payments reach $530");
   });
 
-  it("keeps the up-front $5 true in both cases", () => {
-    expect(welcomeDetail(false)).toContain("$5 is in your account already");
-    expect(welcomeDetail(true)).toContain("$5 is in your account already");
+  it("states the whole $30 as already banked in both cases", () => {
+    expect(welcomeDetail(false)).toContain("$30 is in your account already");
+    expect(welcomeDetail(true)).toContain("$30 is in your account already");
   });
 
   it("derives the stacked bar rather than hardcoding it", () => {

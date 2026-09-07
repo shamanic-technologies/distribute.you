@@ -4,36 +4,39 @@ import { join } from "node:path";
 import { welcomeHeadline, welcomeDetail } from "../src/lib/welcome-offer-copy";
 
 /**
- * The $400 welcome credits are ONE promise stated on several surfaces, and the
+ * The welcome credits are ONE promise stated on several surfaces, and the
  * statement has to be identical everywhere or the product contradicts itself.
  *
- * What is true: an org gets $400 of free credits in total. $5 lands at signup;
- * the rest lands automatically once its CUMULATIVE PAYMENTS reach $400. When the
- * very first checkout is $800 or more, that $400 comes off the checkout as a
- * Stripe discount instead, and the buyer still pays $400, so the same sentence
- * holds in both branches.
+ * What is true: a new org receives $30 of free credit the moment its account is
+ * created. There is no threshold, no second instalment and nothing to claim.
  *
- * The offer was re-priced from $25 to $400 for NEW customers only (2026-07-31).
- * An org's entitlement and its payments threshold are FROZEN on its billing
- * account when that account is created, so every org that signed up under the
- * old offer keeps $25 / $25 forever and nothing here re-prices it. These guards
- * therefore describe the copy shown to a NEW signup, which is the only cohort
- * any of these surfaces is rendered to.
+ * The offer used to be a MATCH — $5 up front and $395 more once cumulative
+ * payments reached $400 — so most of what these guards used to enforce was about
+ * naming that threshold correctly. There is no threshold left to name, which is
+ * why the assertions here INVERT rather than move: a surface that still tells a
+ * new signup to reach some figure before their credits land is now describing a
+ * retired offer.
  *
- * Two claims are FALSE and stay banned:
- *   - a PER-DOLLAR match ("$1 for $1", "dollar for dollar"). That reads as
- *     proportional at any amount, so it promises $10 back on a $10 payment, and
- *     nothing pays out below the $400 threshold.
- *   - a SPEND trigger ("once your spend reaches $400"). The account is
- *     threshold-postpaid, so an org can consume on credit long before it pays
- *     anything; the gift is earned on money received, never on usage.
+ * The gift reaches the buyer through TWO sides of one $30, never two gifts:
+ * billing grants the $30, and the first checkout charges the daily budget MINUS
+ * that $30 (`planFirstCharge`). A $50/day signup pays $20 and starts with $50 of
+ * balance; a $30/day signup pays nothing and starts with $30. The gift is exactly
+ * $30 in both, which is the invariant `onboarding-charge.test.ts` holds.
  *
- * "We will match your first $400 with $400 free credits" is ALLOWED, by owner
- * decision (2026-07-31). It names the $400 threshold and the $400 payout, the two
- * numbers that are true, and claims nothing about smaller amounts. The earlier
- * ban treated it as equivalent to the per-dollar claim; it is not, and the $5 that
- * lands up front does not change the concept the sentence describes. This is
- * marketing copy, not a contract. Do not re-add the pattern.
+ * Re-pricing is grandfather-safe by construction: an org's entitlement is FROZEN
+ * on its billing account at creation, so orgs that signed up under the $400 or
+ * the $25 offer keep theirs forever and nothing here re-prices them. These guards
+ * describe the copy shown to a NEW signup, which is the only cohort any of these
+ * surfaces is rendered to.
+ *
+ * Three claims are FALSE and stay banned:
+ *   - a PER-DOLLAR match ("$1 for $1", "dollar for dollar"). It reads as
+ *     proportional at any amount and nothing about this offer is proportional.
+ *   - a MATCH of any kind ("we will match your first…"). The $30 is given, not
+ *     matched; a match names a payment the buyer must make first.
+ *   - a THRESHOLD on the welcome credits ("once your payments reach…"). Only the
+ *     REFERRAL credits are still earned that way, and their sentence names the
+ *     referral explicitly.
  *
  * These guards read the served files directly because the surfaces span two
  * apps and only the dashboard suite is a CI merge gate. `archive-blue.html` is
@@ -58,15 +61,16 @@ const SURFACES = [
 ] as const;
 
 // Each pattern is a claim we must never make again, with the reason it is false.
-const FALSE_CLAIMS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/dollar for dollar/i, "not a per-dollar match: flat $400 gated at $400 of payments"],
-  [/\$1 for \$1/, "not a per-dollar match: flat $400 gated at $400 of payments"],
-  [/spend reaches \$400/i, "the trigger is payments received, not usage consumed"],
-  [/\$400 (of )?spend(ing)? dollar/i, "the trigger is payments received, not usage consumed"],
-  // The re-price is only honoured for orgs created after it shipped, so no
-  // customer-facing surface may still quote the retired $25 figure.
-  [/\$25 (in |of )?(free |welcome |matched )?credits/i, "the offer is $400, not the retired $25"],
-  [/payments reach \$25\b/i, "the offer is $400, not the retired $25"],
+const FALSE_CLAIMS: [RegExp, string][] = [
+  [/dollar for dollar/i, "the $30 is given outright, not matched per dollar"],
+  [/\$1 for \$1/, "the $30 is given outright, not matched per dollar"],
+  [/we will match your first/i, "the $30 is given at signup; a match names a payment first"],
+  // The threshold belongs to the REFERRAL credits alone. A sentence that gates the
+  // WELCOME credits on payments is describing the retired match.
+  [/welcome credits (land|arrive)[^.]{0,40}payments reach/i, "the welcome credits land at signup, with no threshold"],
+  [/rest lands[^.]{0,40}payments reach/i, "there is no second instalment left to land"],
+  [/\$400 (in |of )?(free |welcome |matched )?credits/i, "the offer is $30, not the retired $400"],
+  [/\$25 (in |of )?(free |welcome |matched )?credits/i, "the offer is $30, not the retired $25"],
 ];
 
 // Surfaces whose copy is BUILT from figures rather than written out, so the claim
@@ -94,28 +98,30 @@ describe("$400 welcome-credits promise", () => {
     });
   }
 
-  it("every surface names PAYMENTS as the trigger", () => {
+  it("every surface states the credits are already there", () => {
     for (const rel of SURFACES) {
       // The gift step builds its two sentences from figures rather than spelling
       // them out, so its claim is checked against the RENDERED string below. The
       // rest of the surfaces are static copy and are read as source.
       if (COMPUTED_SURFACES.has(rel)) continue;
-      expect(read(rel), `${rel} must state the payments threshold`).toMatch(
-        /payments reach \$400/i
-      );
+      expect(read(rel), `${rel} must name the $30`).toMatch(/\$30/);
     }
   });
 
-  it("the gift step's rendered copy names PAYMENTS as the trigger", () => {
+  it("the gift step's rendered copy states no threshold on the welcome credits", () => {
     // Asserted on the output, not the source: welcome-offer-copy.ts is alias-free
     // precisely so the real sentence can be tested instead of its ingredients.
-    expect(welcomeDetail(false)).toMatch(/payments reach \$400/i);
-    expect(welcomeDetail(true)).toMatch(/payments reach \$400/i);
+    // The plain signup states no threshold at all. The referred one states ONE, and
+    // it belongs to the referral credits — which is why the sentence names them.
+    expect(welcomeDetail(false)).not.toMatch(/payments reach/i);
+    expect(welcomeDetail(true)).toMatch(/referral credits land once your payments reach/i);
   });
 
-  it("the onboarding gift step states the $5 already banked", () => {
-    expect(welcomeDetail(false)).toContain("$5 is in your account already.");
-    expect(welcomeDetail(true)).toContain("$5 is in your account already.");
+  it("the onboarding gift step states the whole $30 already banked", () => {
+    // The whole gift, not a slice of it: there is no second instalment behind this
+    // sentence any more, so naming a smaller up-front figure would understate it.
+    expect(welcomeDetail(false)).toContain("$30 is in your account already.");
+    expect(welcomeDetail(true)).toContain("$30 is in your account already.");
   });
 
   it("the gift step makes no false claim once rendered", () => {
@@ -136,26 +142,32 @@ describe("$400 welcome-credits promise", () => {
  * The REFERRED cohort states a different total, and that is not a contradiction.
  *
  * The guards above describe one promise made identically everywhere. A signup that
- * arrived through a referral link is owed TWO offers, $400 of welcome credits and
- * $500 of referral credits, and their payment bars STACK rather than overlap, so
- * the second lands at $900. Quoting $400 alone to that person understates what
- * they get by $500 on the screen where they decide to pay.
+ * arrived through a referral link is owed TWO offers: $30 of welcome credits, given
+ * at signup, and $500 of referral credits, still earned on payments. Their bars
+ * STACK rather than overlap, so the referral one lands at the sum. Quoting the
+ * welcome figure alone to that person understates what they get by $500, on the
+ * screen where they decide to pay.
+ *
+ * The stacked figure is DERIVED from the two amounts and never written out: it is
+ * billing's ladder, so a literal here would state a bar billing does not hold the
+ * next time either offer is re-priced.
  *
  * It is shown only after the invite code has been VALIDATED against a real org, so
  * the larger figure is never promised on a code that resolves to nothing.
  */
-describe("$900 referred-signup promise", () => {
+describe("referred-signup promise", () => {
   const copy = read("apps/dashboard/src/lib/welcome-offer-copy.ts");
 
   it("derives the stacked bar instead of hardcoding it", () => {
-    // $900 is $400 + $500. Writing it as a literal is how the two drift apart the
-    // next time either offer is re-priced.
+    // Writing the sum as a literal is how the two drift apart the next time
+    // either offer is re-priced — which is exactly what this change is.
     expect(copy).toContain("WELCOME_CREDIT_USD + REFERRAL_CREDIT_USD");
     expect(copy).not.toContain("$900");
+    expect(copy).not.toContain("$530");
   });
 
-  it("names both bars, since the referral is gated on the second", () => {
-    expect(copy).toContain("referral credits at");
+  it("names the referral bar, since that half really is gated", () => {
+    expect(copy).toContain("referral credits land once your");
   });
 
   it("is gated on a validated code, never on the cookie alone", () => {
@@ -169,13 +181,13 @@ describe("$900 referred-signup promise", () => {
     // links it bumps `?v=N`: the old query string is its own long-lived edge
     // cache key. main.js is at v11 and pricing-modal-v1.js (the homepage) at v7.
     const linked = [
-      ["apps/landing/public/landing/index-v1.html", "js/pricing-modal-v1.js?v=7"],
-      ["apps/landing/public/landing/pricing.html", "js/main.js?v=11"],
-      ["apps/landing/public/landing/performance.html", "js/main.js?v=11"],
-      ["apps/landing/public/landing/use-cases.html", "js/main.js?v=11"],
-      ["apps/landing/public/landing/cold-email-cost-guide.html", "js/main.js?v=11"],
-      ["apps/landing/public/landing/cold-email-vs-linkedin.html", "js/main.js?v=11"],
-      ["apps/landing/public/landing/cold-email-for-saas-founders.html", "js/main.js?v=11"],
+      ["apps/landing/public/landing/index-v1.html", "js/pricing-modal-v1.js?v=8"],
+      ["apps/landing/public/landing/pricing.html", "js/main.js?v=12"],
+      ["apps/landing/public/landing/performance.html", "js/main.js?v=12"],
+      ["apps/landing/public/landing/use-cases.html", "js/main.js?v=12"],
+      ["apps/landing/public/landing/cold-email-cost-guide.html", "js/main.js?v=12"],
+      ["apps/landing/public/landing/cold-email-vs-linkedin.html", "js/main.js?v=12"],
+      ["apps/landing/public/landing/cold-email-for-saas-founders.html", "js/main.js?v=12"],
     ] as const;
     for (const [rel, expected] of linked) {
       expect(read(rel), `${rel} must link ${expected}`).toContain(expected);

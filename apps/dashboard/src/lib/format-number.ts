@@ -111,7 +111,7 @@ export function formatBillingCents(cents: string | number): string {
  * The same money as whole dollars, ceiling to the next one.
  *
  * For a free-credit PROMISE, not for a charge. Promise amounts are whole-dollar
- * offers by construction ($5 welcome, $400 completion, $500 referral), so cents
+ * offers by construction ($30 welcome, $500 referral), so cents
  * on them are noise on a 224px rail; the bar a customer still has to clear is
  * genuinely fractional, and ceiling it is what keeps it honest — rounding down
  * would state a lower bar than the one billing actually holds.
