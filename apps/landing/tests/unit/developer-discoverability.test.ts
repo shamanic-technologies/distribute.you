@@ -107,7 +107,7 @@ describe("a crawler that runs no JavaScript can find it", () => {
   it("is linked from the raw HTML of the served homepage", () => {
     // The homepage's nav is JS-injected; its footer is not. A JS-injected link
     // is invisible to the link graph, which is how a new page is born orphaned.
-    const home = read("public/landing/index-v1.html");
+    const home = read("public/landing/index-v2.html");
     expect(home).toContain('href="https://distribute.you/developers"');
   });
 

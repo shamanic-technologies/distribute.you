@@ -11,7 +11,12 @@ import { join } from "path";
 
 const ROOT = join(__dirname, "../..");
 
-const EXCLUDED_DIRS = new Set(["node_modules", ".next", ".git", "tests"]);
+// `clones` holds competitor landings captured BYTE-FOR-BYTE (see clone-catalogue.ts):
+// their content is deliberately not ours to rewrite, so a rule about which of OUR domains
+// may appear cannot apply to them. Excluding it also stops this sweep reading ~500
+// captured binaries per run, which is what pushed it past the 5s timeout under the
+// full-suite pool while passing in isolation.
+const EXCLUDED_DIRS = new Set(["node_modules", ".next", ".git", "tests", "clones"]);
 const EXCLUDED_FILES = new Set(["package.json", "package-lock.json"]);
 
 function collectFiles(dir: string): string[] {

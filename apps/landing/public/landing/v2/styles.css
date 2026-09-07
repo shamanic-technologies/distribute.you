@@ -459,7 +459,10 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
   body { font-size: 16px; }
   .hero { padding-top: 40px; min-height: 0; }
   .nav-pill { height: 52px; padding: 0 8px 0 14px; }
-  .nav-right .btn-ghost { display: none; }
+  .brand { font-size: 17px; gap: 7px; }
+  .brand img { width: 22px; height: 22px; }
+  .nav-right .btn { padding: 0 12px; font-size: 14px; }
+  .nav-right .btn-ghost { padding: 0 8px; }
   .launch-field { padding: 5px 5px 5px 14px; }
   .launch-field .btn span { display: none; }
   .launch-field .btn { padding: 0 14px; }

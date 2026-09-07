@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
+/**
+ * ⚠️ These guard the ARCHIVED homepage, served at /v3 — `index-v1.html` stopped
+ * being what `/` serves when the lab landing was promoted. They still hold,
+ * because that page is still served and still carries the live-figure machinery,
+ * but they say NOTHING about the live homepage. Its own guards are in
+ * `homepage.test.ts`.
+ */
 const homepagePath = path.resolve(
   __dirname,
   "../../public/landing/index-v1.html",
