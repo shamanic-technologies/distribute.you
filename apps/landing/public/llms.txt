@@ -110,6 +110,27 @@ https://distribute.you/developers
 - [Investors](https://distribute.you/investors): live platform metrics, growth data, infrastructure, SAFE round details, ICP definition
 - [Blog](https://distribute.you/blog): playbooks, benchmarks, field notes for solo builders
 
+## Comparisons
+
+One page per competitor, each stating their price as read from their own site with
+the date it was read, where they win, where we win, and our measured cost per sales
+interest beside it. The difference on every page: they sell software or an agent
+you run; we run the campaign.
+
+- [All comparisons](https://distribute.you/compare)
+- [Alternatives](https://distribute.you/alternatives)
+- [vs Instantly](https://distribute.you/compare/instantly)
+- [vs Gojiberry](https://distribute.you/compare/gojiberry)
+- [vs Explee](https://distribute.you/compare/explee)
+- [vs Apollo.io](https://distribute.you/compare/apollo)
+- [vs Salesforge](https://distribute.you/compare/salesforge)
+- [vs 11x](https://distribute.you/compare/11x)
+- [vs Smartlead](https://distribute.you/compare/smartlead)
+- [vs Lemlist](https://distribute.you/compare/lemlist)
+- [vs Clay](https://distribute.you/compare/clay)
+- [vs Artisan](https://distribute.you/compare/artisan)
+- [vs AiSDR](https://distribute.you/compare/aisdr)
+
 ## Cited industry stats (live on home page)
 
 - 3.43% average B2B cold email reply rate in 2025, [TheDigitalBloom](https://thedigitalbloom.com/learn/cold-outbound-reply-rate-benchmarks/)

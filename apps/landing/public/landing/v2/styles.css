@@ -490,7 +490,7 @@ section.framed::after {
 
 /* ---------- Footer ---------- */
 footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
-.foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
+.foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 32px; }
 .foot h4 { font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; margin-bottom: 14px; }
 .foot ul { list-style: none; display: grid; gap: 9px; }
 .foot a { font-size: 14px; color: var(--muted); }
@@ -667,4 +667,64 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 @media (max-width: 640px) {
   .cal-ev { padding: 3px 4px; font-size: 10px; } .cal-ev span { font-size: 9px; }
   .faces { gap: 10px; }
+}
+
+/* ---------- Comparison cluster (/compare, /compare/<slug>, /alternatives) ----------
+   Same recipes as the homepage: the hero, the framed sections, .fit-card for the two
+   "where each wins" columns, .roi-table for the competitor's plans, .plan for ours, the
+   dark stat band for the live figures. Only the side-by-side table and the hub grid are
+   new; the table is outrank's compare table recoloured (our column tinted, first
+   column a row header). */
+.cmp-hero { min-height: 0; padding: 72px 0 56px; }
+.cmp-hero h1 { max-width: 900px; }
+.cmp-hero .hero-sub { margin-top: 18px; max-width: 720px; font-size: 18px; }
+.cmp-logos { display: flex; align-items: center; gap: 16px; margin: 8px 0 22px; }
+.cmp-logo { display: inline-flex; width: 64px; height: 64px; border-radius: 16px; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card); }
+.cmp-logo img { width: 40px; height: 40px; border-radius: 8px; }
+.cmp-vs { font-family: var(--font-display); font-size: 22px; color: var(--muted-2); }
+.cmp-cta { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 26px; }
+.cmp-table-wrap { border-radius: 20px; border: 1px solid var(--hair); background: #fff; box-shadow: var(--shadow-card); overflow: hidden; }
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.cmp-table thead th { text-align: left; padding: 18px 20px; font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; font-weight: 400; border-bottom: 1px solid var(--hair); background: var(--surface); }
+.cmp-table thead th.us { background: var(--accent-50); color: var(--accent-text); }
+.cmp-table tbody th { text-align: left; padding: 16px 20px; font-weight: 500; color: var(--text); width: 22%; vertical-align: top; border-top: 1px solid var(--hair); }
+.cmp-table tbody td { padding: 16px 20px; color: var(--muted); vertical-align: top; border-top: 1px solid var(--hair); width: 39%; line-height: 1.5; }
+.cmp-table tbody td.us { background: linear-gradient(180deg, rgba(238, 243, 255, 0.6), rgba(238, 243, 255, 0.6)); color: var(--text); }
+.cmp-cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+.cmp-cols .panel { display: block; min-height: 0; }
+.cmp-prices td:last-child, .cmp-prices th:last-child { text-align: left; }
+.cmp-prices td:nth-child(2) { white-space: nowrap; }
+.cmp-source { margin-top: 14px; font-size: 13px; color: var(--muted-2); }
+.cmp-source a { color: var(--accent-text); text-decoration: underline; }
+.fit-card.no li i { font-weight: 700; }
+.cmp-more { margin-top: 40px; text-align: center; font-size: 14px; color: var(--muted); line-height: 2; }
+.cmp-more a { color: var(--accent-text); }
+.cmp-hub h3 { margin: 40px 0 16px; }
+.cmp-hub h3:first-child { margin-top: 0; }
+.cmp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.cmp-card { display: flex; flex-direction: column; gap: 12px; padding: 22px; border-radius: 16px; background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card); transition: border-color 0.3s, transform 0.3s; }
+.cmp-card:hover { border-color: var(--accent-100); transform: translateY(-2px); }
+.cmp-card-top { display: flex; align-items: center; gap: 12px; }
+.cmp-card-top img { width: 32px; height: 32px; border-radius: 8px; }
+.cmp-card-top b { display: block; font-weight: 500; color: var(--text); }
+.cmp-card-top small { display: block; font-size: 13px; color: var(--muted-2); }
+.cmp-card p { font-size: 14px; }
+/* Responsive rules sit AFTER the base rules above: same specificity, so order decides. */
+@media (max-width: 960px) {
+  .cmp-table th:first-child, .cmp-table td:first-child { display: none; }
+  .cmp-cols { grid-template-columns: 1fr; }
+  .cmp-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .cmp-table { font-size: 14px; }
+  .cmp-table thead th, .cmp-table tbody td { padding: 12px 14px; }
+  .cmp-logo { width: 52px; height: 52px; } .cmp-logo img { width: 32px; height: 32px; }
+  /* The plan table stacks: plan and price on one line, what it buys underneath. */
+  .cmp-prices, .cmp-prices tbody { display: block; width: 100%; }
+  .cmp-prices thead { display: none; }
+  .cmp-prices tbody tr { display: grid; grid-template-columns: 1fr auto; box-shadow: none; border-top: 1px solid var(--hair); padding: 10px 0; }
+  .cmp-prices tbody td { border: 0; padding: 2px 4px; }
+  .cmp-prices tbody td:nth-child(2) { text-align: right; }
+  .cmp-prices tbody td:last-child { grid-column: 1 / -1; text-align: left; color: var(--muted); }
+  .cmp-cta .btn { width: 100%; }
 }
