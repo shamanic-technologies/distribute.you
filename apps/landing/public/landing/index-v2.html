@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/landing/v2/styles.css?v=1">
+<link rel="stylesheet" href="/landing/v2/styles.css?v=2">
 </head>
 <body>
 
@@ -271,14 +271,36 @@
         </div>
       </article>
       <article class="stack-card">
-        <div class="stack-text"><h3>Learns what works and doubles down</h3><p>Every audience, angle and channel is priced by what it returns. Budget moves to the winners on its own.</p></div>
+        <div class="stack-text"><h3>Your calendar fills up</h3><p>Every week, new meetings land on your calendar with people who asked for them. That is the only number we optimise.</p></div>
         <div class="stack-visual">
-          <table class="roi-table"><thead><tr><th>Audience</th><th>Status</th><th>Cost / interest</th></tr></thead><tbody>
-            <tr><td>West clinic owner-operators</td><td><span class="st on">Scaling</span></td><td class="roi">$84</td></tr>
-            <tr><td>Pain management, small</td><td><span class="st on">Scaling</span></td><td class="roi">$112</td></tr>
-            <tr><td>PT clinics, small</td><td><span class="st on">Working</span></td><td class="roi">$150</td></tr>
-            <tr class="dim"><td>Hospital procurement</td><td><span class="st">Paused</span></td><td class="roi">$610</td></tr>
-          </tbody></table>
+          <div class="cal" data-cal-stage="1" aria-label="A week of booked meetings filling up">
+            <div class="cal-days"><span></span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+            <div class="cal-body">
+              <div class="cal-hours"><span>9 AM</span><span>10 AM</span><span>11 AM</span><span>12 PM</span><span>1 PM</span><span>2 PM</span></div>
+              <div class="cal-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <div class="cal-ev ta" data-stage="1" style="--d:1;--s:0;--l:4"><b>Demo</b><span>Northwind Health</span></div>
+                <div class="cal-ev tb short" data-stage="1" style="--d:3;--s:8;--l:2"><b>Intro call</b><span>Opsfolio</span></div>
+                <div class="cal-ev tc short" data-stage="2" style="--d:2;--s:2;--l:2"><b>Intro call</b><span>Riverbend Clinics</span></div>
+                <div class="cal-ev td" data-stage="2" style="--d:4;--s:12;--l:4"><b>Demo</b><span>Cedar Dental Group</span></div>
+                <div class="cal-ev te short" data-stage="2" style="--d:5;--s:4;--l:2"><b>Intro call</b><span>Lakeside PT</span></div>
+                <div class="cal-ev tb" data-stage="3" style="--d:1;--s:12;--l:4"><b>Follow-up</b><span>Northwind Health</span></div>
+                <div class="cal-ev ta" data-stage="3" style="--d:2;--s:16;--l:4"><b>Demo</b><span>Summit Orthopedics</span></div>
+                <div class="cal-ev td short" data-stage="3" style="--d:3;--s:14;--l:2"><b>Intro call</b><span>Harbor Family Care</span></div>
+                <div class="cal-ev tc" data-stage="3" style="--d:5;--s:10;--l:4"><b>Demo</b><span>Riverbend Clinics</span></div>
+                <div class="cal-ev te short" data-stage="4" style="--d:1;--s:20;--l:2"><b>Intro call</b><span>Cedar Dental Group</span></div>
+                <div class="cal-ev td" data-stage="4" style="--d:2;--s:8;--l:4"><b>Kickoff</b><span>Opsfolio</span></div>
+                <div class="cal-ev ta" data-stage="4" style="--d:3;--s:20;--l:4"><b>Demo</b><span>Lakeside PT</span></div>
+                <div class="cal-ev tb short" data-stage="4" style="--d:4;--s:2;--l:2"><b>Intro call</b><span>Summit Orthopedics</span></div>
+                <div class="cal-ev tc short" data-stage="4" style="--d:4;--s:18;--l:2"><b>Follow-up</b><span>Harbor Family Care</span></div>
+                <div class="cal-ev td" data-stage="5" style="--d:1;--s:6;--l:4"><b>Demo</b><span>Harbor Family Care</span></div>
+                <div class="cal-ev tb short" data-stage="5" style="--d:2;--s:22;--l:2"><b>Intro call</b><span>Northwind Health</span></div>
+                <div class="cal-ev te" data-stage="5" style="--d:3;--s:2;--l:4"><b>Demo</b><span>Cedar Dental Group</span></div>
+                <div class="cal-ev ta" data-stage="5" style="--d:4;--s:6;--l:4"><b>Demo</b><span>Opsfolio</span></div>
+                <div class="cal-ev td short" data-stage="5" style="--d:5;--s:0;--l:2"><b>Intro call</b><span>Summit Orthopedics</span></div>
+                <div class="cal-ev tb" data-stage="5" style="--d:5;--s:18;--l:4"><b>Demo</b><span>Harbor Family Care</span></div>
+              </div>
+            </div>
+          </div>
         </div>
       </article>
     </div>
@@ -576,6 +598,6 @@
   </div>
 </footer>
 
-<script src="/landing/v2/main.js?v=1" defer></script>
+<script src="/landing/v2/main.js?v=2" defer></script>
 </body>
 </html>
