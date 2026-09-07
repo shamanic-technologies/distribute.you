@@ -59,7 +59,7 @@ describe("the onboarding gift copy", () => {
 
   it("states BOTH bars for a referred signup, because they stack", () => {
     const detail = welcomeDetail(true);
-    expect(detail).toContain("$500 referral credits land once your payments reach $530");
+    expect(detail).toContain("$500 referral credits land once your payments reach $500");
   });
 
   it("states the whole $30 as already banked in both cases", () => {

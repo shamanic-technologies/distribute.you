@@ -9,10 +9,11 @@
  * name, and copy that mentions one is describing the retired offer.
  *
  * The REFERRAL offer is still earned: it releases once cumulative PAYMENTS reach
- * a bar, never on usage consumed. Its bar is billing's rule (each promise freezes
- * its own at `previous highest bar + its own amount`), restated here only as
- * words — so it is DERIVED from the two amounts here and never written out, or
- * this copy states a bar billing does not hold.
+ * a bar, never on usage consumed. Its bar is its OWN amount, because a promise
+ * that is GRANTED contributes no rung to billing's ladder — there is no payment
+ * behind the welcome credits, so stacking on them would charge the referral for
+ * money nobody was asked to spend. The TOTAL a referred signup receives is still
+ * the sum, and stays derived: it is two credits, and the headline states both.
  *
  * Why this screen may state the figures at all: an org's entitlement is frozen on
  * its billing account when the account is created, and this step is only ever
@@ -51,7 +52,8 @@ export function welcomeHeadline(referred: boolean): string {
  *
  * The welcome half states no condition because it has none. The referral half
  * states its bar, because that half really is gated and a single figure would
- * read as though the whole amount arrives at once.
+ * read as though the whole amount arrives at once. That bar is the referral's own
+ * amount, not the sum: billing drops a granted promise out of the ladder.
  */
 export function welcomeDetail(referred: boolean): string {
   const granted = `${usd(WELCOME_CREDIT_USD)} is in your account already.`;
@@ -60,7 +62,7 @@ export function welcomeDetail(referred: boolean): string {
   }
   return (
     `${granted} Your ${usd(REFERRAL_CREDIT_USD)} referral credits land once your ` +
-    `payments reach ${usd(WELCOME_CREDIT_USD + REFERRAL_CREDIT_USD)}.`
+    `payments reach ${usd(REFERRAL_CREDIT_USD)}.`
   );
 }
 

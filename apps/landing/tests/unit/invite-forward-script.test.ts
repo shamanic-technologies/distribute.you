@@ -48,7 +48,9 @@ describe("INVITE_FORWARD_SCRIPT", () => {
     // The welcome half is GIVEN, so the banner may not gate it on a payment; only
     // the referral half names a bar, and that bar is the stacked sum.
     expect(INVITE_FORWARD_SCRIPT).toContain("lands the moment you sign up");
-    expect(INVITE_FORWARD_SCRIPT).toContain("payments reach $530");
+    // The bar is the referral's OWN amount: billing drops a granted promise out of
+    // the ladder, so it does not stack on the $30.
+    expect(INVITE_FORWARD_SCRIPT).toContain("payments reach $500");
     expect(INVITE_FORWARD_SCRIPT).not.toContain("payments reach $400");
   });
 
