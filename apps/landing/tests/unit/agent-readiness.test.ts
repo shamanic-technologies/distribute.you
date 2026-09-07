@@ -132,7 +132,7 @@ describe("Organization structured data", () => {
     expect(org.identifier).toBe("882102775");
   });
 
-  for (const page of ["index-v1.html", "use-cases.html", "pricing.html", "about.html"]) {
+  for (const page of ["index-v2.html", "index-v1.html", "use-cases.html", "pricing.html", "about.html"]) {
     it(`injects exactly one Organization into ${page}`, () => {
       const html = staticHtml(page);
       const blocks =
@@ -209,7 +209,7 @@ describe("trust anchor pages", () => {
   it("is reachable from the site", () => {
     // Raw HTML on the homepage, because a JS-injected link is invisible to a
     // crawler that does not run scripts.
-    const home = read("public/landing/index-v1.html");
+    const home = read("public/landing/index-v2.html");
     expect(home).toContain('href="https://distribute.you/about"');
     expect(home).toContain('href="https://distribute.you/contact"');
     // Plus the shared footer every other static page injects.

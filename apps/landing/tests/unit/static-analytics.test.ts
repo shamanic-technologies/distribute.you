@@ -15,6 +15,8 @@ describe("Static landing pages carry GA + PostHog", () => {
   });
 
   const pages = [
+    // the live homepage, and the archive at /v3
+    "index-v2.html",
     "index-v1.html",
     "performance.html",
     "use-cases.html",

@@ -298,21 +298,21 @@ describe("the catalogue matches what is on disk", () => {
     for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9-]+$/);
   });
 
-  it("starts every clone as an unmodified copy, and an authored page as ours", () => {
-    // The whole point at t=0. A clone becomes ours deliberately, never by default. An
-    // authored page is the one entry that was never a copy: it is ours from the start and
-    // names a directory in this repo, not a URL, as its source.
+  it("starts every clone as an unmodified copy", () => {
+    // The whole point at t=0. A clone becomes ours deliberately, never by default.
     for (const clone of CLONES) {
-      if (clone.authored) {
-        expect(clone.brandised).toBe(true);
-        expect(clone.source).not.toMatch(/^https?:/);
-      } else {
-        expect(clone.brandised).toBe(false);
-        expect(clone.source).toMatch(/^https:\/\//);
-      }
+      expect(clone.brandised).toBe(false);
+      expect(clone.source).toMatch(/^https:\/\//);
     }
-    expect(CLONES.filter((clone) => clone.authored).map((clone) => clone.slug)).toEqual(["distribute"]);
-    expect(cloneSlugForHost("lab-distribute.distribute.you")).toBe("distribute");
+  });
+
+  it("carries no page of our own", () => {
+    // `lab-distribute` hosted the landing that now serves at `/`; it was promoted into
+    // `public/landing/index-v2.html` and retired here, so the catalogue is competitor
+    // photographs again and nothing more. A page of ours served through the clone
+    // machinery is behind a password and noindex — the wrong home for anything live.
+    expect(cloneSlugForHost("lab-distribute.distribute.you")).toBeNull();
+    expect(existsSync(path.join(CLONES_DIR, "distribute"))).toBe(false);
   });
 
   it("states which hosts a clone rapatriated, and mirrors them on disk", () => {
