@@ -34,8 +34,8 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=4"');
-    expect(html).toContain('src="/landing/v2/main.js?v=4"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=5"');
+    expect(html).toContain('src="/landing/v2/main.js?v=5"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -335,3 +335,53 @@ describe("the third pipeline card shows the calendar filling up", () => {
     for (const s of [1, 2, 3, 4, 5]) expect(css).toContain(`.cal[data-cal-stage="${s}"]`);
   });
 });
+
+describe("colour rhythm", () => {
+  // The page read as white plus grey plus one blue on hairlines. These pin the bands and
+  // the recipes that broke that: a tinted wash, a dark band, a lit hero, tones per card.
+  it("declares a secondary and a tertiary beside the charter blue", () => {
+    expect(css).toContain("--secondary: #7c3aed;");
+    expect(css).toContain("--tertiary: #ea580c;");
+    expect(css).toContain("--accent: #2563eb;");
+  });
+
+  it("alternates section backgrounds: tint, dark, tint", () => {
+    expect(html).toContain('<section class="framed tint" id="proof">');
+    expect(html).toContain('<section class="framed dark">');
+    expect(html).toContain('<section class="framed tint tint-both" id="pricing">');
+    expect(css).toMatch(/section\.tint \{ background: linear-gradient\(180deg, #ffffff 0%, var\(--accent-50\) 100%\); \}/);
+    expect(css).toMatch(/section\.dark \{ background: radial-gradient/);
+    // A "+" on white cannot straddle a dark edge.
+    expect(css).toContain("section.dark.framed::before, section.dark.framed::after { display: none; }");
+  });
+
+  it("lights the hero with a breathing dual-hue blob and reveals the headline per word", () => {
+    expect(html).toContain('<div class="hero-glow" aria-hidden="true"></div>');
+    expect(css).toMatch(/\.hero-glow \{[\s\S]*?rgba\(37, 99, 235, 0\.22\)[\s\S]*?rgba\(124, 58, 237, 0\.1\)/);
+    expect(css).toContain("animation: hero-glow 6s ease-in-out infinite;");
+    expect(js).toContain('w.className = "w";');
+    expect(css).toContain(".hero h1 .w { display: inline-block; opacity: 0.001; filter: blur(10px);");
+    // Reduced motion shows the finished state and never moves.
+    expect(css).toMatch(/prefers-reduced-motion: reduce\)[^\n]*\.hero-glow \{ animation: none; \}[^\n]*\.hero h1 \.w \{ animation: none; opacity: 1;/);
+  });
+
+  it("gives each pipeline card its own tone, blue then purple then orange", () => {
+    expect(css).toContain(".stack-card { --tone: var(--accent); --tone-50: var(--accent-50);");
+    expect(css).toContain(".stack-card:nth-child(2) { top: 108px; --tone: var(--secondary);");
+    expect(css).toContain(".stack-card:nth-child(3) { top: 124px; --tone: var(--tertiary);");
+    // The cap is a 1px gradient hairline, never a thick coloured border.
+    expect(css).toMatch(/\.stack-card::before \{[^\n]*height: 1px;/);
+    expect(css).not.toMatch(/border-(top|left|right): [2-9]px solid var\(--(accent|secondary|tertiary)\)/);
+  });
+
+  it("closes on a dark CTA slab lit by the accent", () => {
+    expect(css).toMatch(/\.cta-box \{[\s\S]*?var\(--dark\);[\s\S]*?color: #fff;/);
+    expect(css).toContain(".cta-box h2 .accent { color: #6ea0ff; }");
+  });
+
+  it("staggers scroll reveals through a CSS variable set by the observer", () => {
+    expect(css).toContain("transition-delay: var(--d, 0s);");
+    expect(js).toContain('e.target.style.setProperty("--d", Math.min(batch, 4) * 70 + "ms");');
+  });
+});
+
