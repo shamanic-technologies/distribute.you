@@ -285,7 +285,16 @@ export function staticHtml(fileName: string) {
     join(process.cwd(), "public/landing", fileName),
     "utf8",
   );
+  return decorateHtml(html);
+}
 
+/**
+ * Everything a served document gets on top of its own bytes: the path rewrites, the
+ * charter favicon, the analytics head and the one Organization JSON-LD. Shared by the
+ * hand-written pages under `public/landing` and the pages rendered from a catalogue
+ * (`compare-page.ts`), so a rendered page is indistinguishable from a static one.
+ */
+export function decorateHtml(html: string) {
   const rewritten = html
     .replaceAll('href="css/', 'href="/landing/css/')
     .replaceAll('src="js/', 'src="/landing/js/')
@@ -1104,6 +1113,26 @@ export async function staticResponse(
   request?: Request,
   options: StaticResponseOptions = {},
 ) {
+  return negotiatedResponse(staticHtml(fileName), request, options);
+}
+
+/**
+ * Serve a document rendered at request time (the comparison cluster) exactly as a
+ * hand-written one is served: decorated, token-resolved, negotiated, cached.
+ */
+export async function renderedResponse(
+  html: string,
+  request?: Request,
+  options: StaticResponseOptions = {},
+) {
+  return negotiatedResponse(decorateHtml(html), request, options);
+}
+
+async function negotiatedResponse(
+  decorated: string,
+  request: Request | undefined,
+  options: StaticResponseOptions,
+) {
   const status = options.status ?? 200;
   const negotiated = negotiateContentType(request?.headers.get("accept"));
 
@@ -1119,9 +1148,7 @@ export async function staticResponse(
   }
 
   const html = await withCacBoot(
-    await withTickerMetrics(
-      await withLivePerformanceMetrics(staticHtml(fileName)),
-    ),
+    await withTickerMetrics(await withLivePerformanceMetrics(decorated)),
   );
 
   if (negotiated === "markdown") {

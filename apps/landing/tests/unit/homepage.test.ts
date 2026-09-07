@@ -34,7 +34,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=5"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=6"');
     expect(html).toContain('src="/landing/v2/main.js?v=5"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");

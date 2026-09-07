@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
 import { listArticles } from "@/lib/blog/db";
+import { comparePaths } from "@/lib/competitors";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -86,6 +87,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/cold-email-for-saas-founders/cold-email-personalization-at-scale", priority: 0.6 },
     { path: "/cold-email-for-saas-founders/cold-email-subject-lines-saas", priority: 0.6 },
   ];
+
+  // The comparison cluster is rendered from the competitor catalogue, so its paths are
+  // read from it rather than listed here: a competitor added there is in the sitemap
+  // without a second edit. The hub and /alternatives rank above the per-competitor pages.
+  for (const path of comparePaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 2 ? 0.7 : 0.8 });
+  }
 
   staticEntries.push(
     ...STATIC_SEO_PATHS.map((e) => ({
