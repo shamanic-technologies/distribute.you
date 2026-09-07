@@ -35,7 +35,7 @@ describe("the homepage is self-contained", () => {
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
     expect(html).toContain('href="/landing/v2/styles.css?v=3"');
-    expect(html).toContain('src="/landing/v2/main.js?v=3"');
+    expect(html).toContain('src="/landing/v2/main.js?v=4"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -203,11 +203,16 @@ describe("the offer the page states", () => {
   it("prices the managed plan on the calculator the owner picked", () => {
     expect(html).toContain("Monthly paid acquisition budget");
     expect(js).toContain("var COST_PER_MEETING = 600;");
-    expect(js).toContain("var FEE_SHARE = 0.3;");
+    // $1,000 a month plus 10% of the budget, which is what the plan card beside the
+    // calculator states. A flat 30% share matched that at $5,000 and nowhere else.
+    expect(js).toContain("var FEE_BASE_USD = 1000;");
+    expect(js).toContain("var FEE_SHARE = 0.1;");
+    expect(js).toContain("fmt(FEE_BASE_USD + budget * FEE_SHARE)");
+    expect(html).toContain("From $1,000 a month plus 10% of the campaign budget");
     // The fee is stated, never called "included".
     expect(html).not.toContain("Our fee, included");
-    expect(html).toContain("Paid media budget 100% refunded");
-    expect(html).toContain("Agency fee excluded");
+    expect(html).toContain("100% refunded");
+    expect(html).toContain("Service fees excluded");
   });
 
   it("promises two minutes, never thirty seconds", () => {
@@ -217,7 +222,7 @@ describe("the offer the page states", () => {
 
   it("counts the people on board from the signups in client-service", () => {
     // 71 real users on 2026-09-06 (`system-` principals excluded); refresh when it moves.
-    expect(html).toContain("70+ founders and GTM experts");
+    expect(html).toContain("Loved by 70+ founders");
     // Two rows: one under the live showcase cards (explee's trust caption), one in the footer.
     // Each carries six people and no person appears in both, so twelve faces page-wide.
     const hero = html.slice(html.indexOf('class="hero"'), html.indexOf('id="proof"'));
@@ -232,6 +237,33 @@ describe("the offer the page states", () => {
     expect(new Set([...facesOf(heroRow), ...facesOf(footerRow)]).size).toBe(12);
     // The showcase row sits inside the showcase block, right under the four cards.
     expect(hero.indexOf('id="live-cards"')).toBeLessThan(hero.indexOf("faces-showcase"));
+  });
+
+  it("draws no funnel step whose value is zero", () => {
+    // A `0 Closed won` states nothing a reader can act on, so the label and the number
+    // are not drawn. Conditional render via a display class, never the `hidden`
+    // attribute: an author `display` on the flex row outranks the UA stylesheet.
+    const showcase = html.slice(html.indexOf('id="live-cards"'), html.indexOf("faces-showcase"));
+    // Only the cells that are DRAWN: a `data-zero` one is in the DOM and not on screen.
+    for (const [, step] of showcase.matchAll(/<span class="sf"><b[^>]*>([^<]+)<\/b>/g)) {
+      expect(step).not.toBe("0");
+    }
+    expect(showcase).toMatch(/<span class="sf" data-zero>/);
+    expect(css).toContain(".sf[data-zero] { display: none; }");
+    expect(css).not.toMatch(/\.sf\[data-zero\][^{]*\{[^}]*hidden/);
+    // The cell stays in the DOM: the counter keeps climbing in `data-steps`, so the tick
+    // that lands the first one has to be able to reveal it.
+    expect(js).toContain('el.parentElement.removeAttribute("data-zero")');
+  });
+
+  it("calls a booked meeting a booked meeting, everywhere it is a label", () => {
+    // "Meetings" alone does not say which step of the funnel it counts.
+    expect(html).not.toMatch(/<small>Meetings<\/small>/);
+    expect(html).not.toMatch(/<th>Meetings<\/th>/);
+    expect(html).not.toMatch(/<div class="k">Meetings<\/div>/);
+    expect(html).toContain("<small>Meetings booked</small>");
+    expect(html).toContain("<th>Meetings booked</th>");
+    expect(html).toContain("Meetings booked / month");
   });
 
   it("puts a named person on every proof card, never a company logo", () => {

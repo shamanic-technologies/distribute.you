@@ -178,7 +178,11 @@
   var meetingsEl = document.getElementById("calc-meetings");
   var feeEl = document.getElementById("calc-fee");
   var COST_PER_MEETING = 600;
-  var FEE_SHARE = 0.3;
+  /* The managed plan is $1,000 a month plus 10% of the campaign budget, which is what
+     the plan card beside this states. A flat share of the budget matched it at $5,000
+     and nowhere else: it read $300 at the low end and $3,000 at the high end. */
+  var FEE_BASE_USD = 1000;
+  var FEE_SHARE = 0.1;
   function fmt(n) {
     return "$" + Math.round(n).toLocaleString("en-US");
   }
@@ -190,7 +194,7 @@
     budgetEl.textContent = fmt(budget);
     var meetings = Math.max(1, Math.round(budget / COST_PER_MEETING));
     meetingsEl.textContent = "~" + meetings;
-    feeEl.textContent = fmt(budget * FEE_SHARE);
+    feeEl.textContent = fmt(FEE_BASE_USD + budget * FEE_SHARE);
   }
   if (slider) {
     slider.addEventListener("input", updateCalc);
@@ -215,6 +219,11 @@
     card.setAttribute("data-steps", steps.join(","));
     var el = card.querySelector('[data-n="' + idx + '"]');
     if (!el) return;
+    /* A step drawn at 0 is hidden, so the first one to land has to reveal its own cell.
+       The cell stays in the DOM for exactly this: removing it would leave the counter
+       climbing in `data-steps` with nowhere to render, and the step would never come
+       back however high it went. */
+    el.parentElement.removeAttribute("data-zero");
     el.textContent = fmtInt(steps[idx]);
     el.classList.add("up");
     setTimeout(function () { el.classList.remove("up"); }, 1400);

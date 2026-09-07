@@ -499,9 +499,9 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 /* ---------- v3: live showcase cards (explee live pulse + delta flash) ---------- */
 .show-card { height: auto; gap: 14px; }
 .show-live em { font-style: normal; }
-.show-funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.show-funnel.two { grid-template-columns: repeat(2, 1fr); }
-.sf { position: relative; display: flex; flex-direction: column; gap: 2px; }
+.show-funnel { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.sf { position: relative; display: flex; flex: 1 1 0; min-width: 62px; flex-direction: column; gap: 2px; }
+.sf[data-zero] { display: none; }
 .sf b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); transition: color 0.4s; }
 .sf b.up { color: var(--good); }
 .sf small { font-size: 11px; color: var(--muted); white-space: nowrap; }
@@ -595,6 +595,5 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 }
 @media (max-width: 640px) {
   .cal-ev { padding: 3px 4px; font-size: 10px; } .cal-ev span { font-size: 9px; }
-  .show-funnel { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .faces { gap: 10px; }
 }
