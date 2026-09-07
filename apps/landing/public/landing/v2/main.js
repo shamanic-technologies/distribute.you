@@ -13,13 +13,47 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
-  /* Reveal on scroll. */
+  /* The hero headline arrives one word at a time (gojiberry). Each word gets its own
+     span and an index the stylesheet turns into a delay. The "sub" line is left whole. */
+  var heroH1 = document.querySelector(".hero h1");
+  if (heroH1 && !reduced) {
+    var wordIndex = 0;
+    function splitWords(node) {
+      if (node.nodeType === 3) {
+        var parts = node.textContent.split(/(\s+)/);
+        if (parts.length === 1 && !parts[0].trim()) return;
+        var frag = document.createDocumentFragment();
+        parts.forEach(function (part) {
+          if (!part) return;
+          if (!part.trim()) {
+            frag.appendChild(document.createTextNode(part));
+            return;
+          }
+          var w = document.createElement("span");
+          w.className = "w";
+          w.style.setProperty("--i", String(wordIndex++));
+          w.textContent = part;
+          frag.appendChild(w);
+        });
+        node.parentNode.replaceChild(frag, node);
+      } else if (node.nodeType === 1 && !node.classList.contains("sub")) {
+        Array.prototype.slice.call(node.childNodes).forEach(splitWords);
+      }
+    }
+    splitWords(heroH1);
+  }
+
+  /* Reveal on scroll. Siblings revealed in the same frame stagger by 70ms (outrank's
+     CSS-var reveal), capped so a long list never waits on its last row. */
   var revealed = document.querySelectorAll(".rv");
   if ("IntersectionObserver" in window && !reduced) {
     var io = new IntersectionObserver(
       function (entries) {
+        var batch = 0;
         entries.forEach(function (e) {
           if (e.isIntersecting) {
+            e.target.style.setProperty("--d", Math.min(batch, 4) * 70 + "ms");
+            batch += 1;
             e.target.classList.add("in");
             io.unobserve(e.target);
           }
