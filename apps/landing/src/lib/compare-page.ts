@@ -3,13 +3,13 @@
  * hub) and `/alternatives`. Rendered from `competitors.ts` at request time and served
  * through the same pipeline as the hand-written pages (`renderedResponse` in
  * static-html.ts), so every page gets the analytics head, the Organization JSON-LD,
- * `Accept: text/markdown`, the edge cache and the live `__TOKEN__` figures for free.
+ * `Accept: text/markdown`, the edge cache and the live `__HOT_LEAD_BAND__` figures for free.
  *
  * The shape is outrank.so's, because it works for both a search engine and an agent
  * reading the page: a feature table, a pricing row with a source, "where each wins",
  * "choose X if", a FAQ (also as FAQPage JSON-LD), and a verified-on date. What earns the
- * page is the row nobody else can copy: our cost per sales interest, measured across
- * every client and resolved live.
+ * page is the band nobody else can copy: the hot leads the fleet produced and their
+ * median cost, measured across every client and resolved live.
  *
  * Alias-free apart from the catalogue, so the unit tests can render a page directly.
  */
@@ -28,7 +28,7 @@ const SIGN_IN = "https://dashboard.distribute.you/sign-in";
 /** Same publishable token the homepage and the dashboard bundle carry. */
 const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 /** Bumped together with the homepage's link: the compare styles live in the same file. */
-export const V2_STYLES_VERSION = 7;
+export const V2_STYLES_VERSION = 8;
 
 function esc(s: string): string {
   return s
@@ -45,7 +45,7 @@ function logo(domain: string, size = 40): string {
 /** The footer every page of the cluster carries, with the Compare column. */
 export function compareFooterColumn(): string {
   const items = COMPETITORS.map(
-    (c) => `<li><a href="/compare/${c.slug}">vs ${esc(c.name)}</a></li>`,
+    (c) => `<li><a href="/compare/${c.slug}">distribute.you vs ${esc(c.name)}</a></li>`,
   ).join("");
   return `<div><h4>Compare</h4><ul>${items}<li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div>`;
 }
@@ -104,18 +104,14 @@ function ctaBox(): string {
 </section>`;
 }
 
-/** The band only we can publish: live figures measured across every client. */
+/**
+ * The band only we can publish: the fleet's hot leads and their median cost, the SAME two
+ * figures the homepage hero states, rendered by static-html.ts from one read. A token
+ * for the whole section: when the fleet cannot be measured the band is dropped, never a
+ * heading over a number nobody measured.
+ */
 function liveBand(): string {
-  return `<section class="framed dark">
-  <div class="wrap">
-    <div class="section-head center"><span class="eyebrow">Measured, not quoted</span><h2>What our clients pay for a sales interest, right now</h2><p>Read off every campaign we run, updated as they run. No competitor on this page publishes this figure.</p></div>
-    <div class="stats">
-      <div class="stat rv"><div class="n">__BEST_POSITIVE_REPLY_COST__</div><div class="l">per sales interest, best model across clients</div></div>
-      <div class="stat rv"><div class="n">__POSITIVE_REPLY_RATE__</div><div class="l">of contacted buyers answer with interest</div></div>
-      <div class="stat rv"><div class="n">__EMAILS_SENT__</div><div class="l">emails sent from domains we own and warm</div></div>
-    </div>
-  </div>
-</section>`;
+  return "__HOT_LEAD_BAND__";
 }
 
 type Shell = {
@@ -316,7 +312,7 @@ ${liveBand()}
     <div class="section-head center rv"><h2>Questions people ask about ${esc(c.name)} and distribute.you</h2></div>
     <div class="faq-list rv">${faqList(c.faq)}</div>
     <p class="cmp-more rv">More comparisons: ${COMPETITORS.filter((o) => o.slug !== c.slug)
-      .map((o) => `<a href="/compare/${o.slug}">vs ${esc(o.name)}</a>`)
+      .map((o) => `<a href="/compare/${o.slug}">distribute.you vs ${esc(o.name)}</a>`)
       .join(" · ")} · <a href="/alternatives">all alternatives</a></p>
   </div>
 </section>`;

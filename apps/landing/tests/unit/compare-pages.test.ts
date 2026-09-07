@@ -78,13 +78,24 @@ describe("a comparison page", () => {
         expect(html).not.toContain("noindex");
       });
 
-      it("carries the live figures as tokens the pipeline resolves", () => {
-        for (const token of ["__BEST_POSITIVE_REPLY_COST__", "__POSITIVE_REPLY_RATE__", "__EMAILS_SENT__"]) {
-          expect(html).toContain(token);
+      it("closes on the fleet's hot-lead band, the same figures the homepage hero states", () => {
+        // One token for the whole section (static-html.ts `hotLeadBandHtml`), resolved
+        // from the same read as the homepage's `__HOT_LEAD_ROW__`. The retired cost per
+        // sales interest / reply rate / emails sent band is gone.
+        expect(html).toContain("__HOT_LEAD_BAND__");
+        expect(html).not.toContain("__BEST_POSITIVE_REPLY_COST__");
+        expect(html).not.toContain("__POSITIVE_REPLY_RATE__");
+        expect(html).not.toContain("__EMAILS_SENT__");
+        for (const [tok] of html.matchAll(/__[A-Z_]+__/g)) expect(tok).toBe("__HOT_LEAD_BAND__");
+      });
+
+      it("names every sibling comparison as distribute.you vs X, never a bare vs X", () => {
+        // The full phrase is the query people type and the entity a crawler links.
+        for (const other of COMPETITORS) {
+          if (other.slug === c.slug) continue;
+          expect(html).toContain(`href="/compare/${other.slug}">distribute.you vs ${other.name}</a>`);
         }
-        // And no token the pipeline does not know.
-        const known = new Set(["__BEST_POSITIVE_REPLY_COST__", "__POSITIVE_REPLY_RATE__", "__EMAILS_SENT__"]);
-        for (const [tok] of html.matchAll(/__[A-Z_]+__/g)) expect(known.has(tok), tok).toBe(true);
+        expect(html).not.toMatch(/href="\/compare\/[a-z0-9]+">vs /);
       });
 
       it("prints every plan and price from the catalogue", () => {
@@ -183,6 +194,8 @@ describe("every list that names the cluster reads the catalogue", () => {
     const footer = home.slice(home.indexOf("<footer>"));
     expect(footer).toContain("<h4>Compare</h4>");
     for (const p of comparePaths()) expect(footer).toContain(`href="${p}"`);
+    for (const c of COMPETITORS) expect(footer).toContain(`href="/compare/${c.slug}">distribute.you vs ${c.name}</a>`);
+    expect(footer).not.toMatch(/href="\/compare\/[a-z0-9]+">vs /);
     // The stylesheet gained the compare rules and a fifth footer column, so its key moved.
     expect(home).toContain(`href="/landing/v2/styles.css?v=${V2_STYLES_VERSION}"`);
   });
@@ -212,6 +225,10 @@ describe("served through the pipeline", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).not.toMatch(/__[A-Z_]+__/);
+    // The band is either the two fleet figures or nothing; never a heading over a blank.
+    const bands = (body.match(/Measured, not quoted/g) ?? []).length;
+    if (bands === 1) expect(body).toMatch(/hot leads for \d+ companies/);
+    else expect(bands).toBe(0);
     expect(body).toContain("googletagmanager");
     expect((body.match(/"@type":"Organization"/g) ?? []).length).toBe(1);
 
