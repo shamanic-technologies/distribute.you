@@ -129,6 +129,53 @@ describe("hotLeadBandHtml", () => {
     expect(band).toContain("median cost per hot lead");
   });
 
+  it("states the fleet's median return as a third figure when one can be measured", () => {
+    const withReturn = hotLeadBandHtml(
+      { hotLeads: 760, companies: 21, medianCostUsd: 6.4 },
+      { medianReturnPerDollar: 3.7, brandCount: 9 },
+    );
+    expect(withReturn).toContain("median ROI of our clients");
+    // One decimal under 10x, counted up by main.js like its two neighbours.
+    expect(withReturn).toContain('<span data-count="3.7" data-decimals="1">0</span>');
+    expect(withReturn).toContain('<span class="u">x</span>');
+    // Three figures are the base .stats grid; `two` only ever centres a 2-up band.
+    expect(withReturn).toContain('<div class="stats">');
+    expect(withReturn).not.toContain('class="stats two"');
+    // The pair it closes on is untouched.
+    expect(withReturn).toContain("hot leads for 21 companies");
+    expect(withReturn).toContain("median cost per hot lead");
+  });
+
+  it("reads a return of 10x and up as a whole number - a decimal there is precision we do not have", () => {
+    const big = hotLeadBandHtml(
+      { hotLeads: 760, companies: 21, medianCostUsd: 6.4 },
+      { medianReturnPerDollar: 41.4, brandCount: 9 },
+    );
+    expect(big).toContain('<span data-count="41" data-decimals="0">0</span>');
+  });
+
+  it("drops the return alone when it cannot be stated, and keeps the other two", () => {
+    // Absent return === the band as it shipped: two figures, never a third slot
+    // holding a dash. `null` is the default, so a caller that knows nothing renders it.
+    expect(hotLeadBandHtml({ hotLeads: 760, companies: 21, medianCostUsd: 6.4 }, null)).toBe(band);
+    expect(band).not.toContain("median ROI of our clients");
+  });
+
+  it("names the population the median is taken over, and bounds the read it makes", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
+    // The floor is the owner's, and it is stated once: a median over brands that have
+    // barely spent means nothing.
+    expect(src).toContain("const RETURN_MIN_SPEND_USD = 100;");
+    expect(src).toContain("minSpendUsd=${RETURN_MIN_SPEND_USD}");
+    // A build waits on this read, so it is bounded and drops its figure rather than
+    // holding the page.
+    expect(src).toContain("signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS)");
+    // The producer decides whether the figure is stateable; we never re-derive its
+    // brand floor, and never compute a return here.
+    expect(src).toContain("if (!data.measured)");
+    expect(src).not.toMatch(/medianReturnPerDollar\s*=\s*[^;]*\//);
+  });
+
   it("is what every comparison page closes on", () => {
     const compare = readFileSync(path.resolve(__dirname, "../../src/lib/compare-page.ts"), "utf8");
     expect(compare).toContain('return "__HOT_LEAD_BAND__";');

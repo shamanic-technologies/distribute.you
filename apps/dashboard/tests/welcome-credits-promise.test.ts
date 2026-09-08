@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { welcomeHeadline, welcomeDetail } from "../src/lib/welcome-offer-copy";
 
@@ -197,5 +197,112 @@ describe("referred-signup promise", () => {
     expect(version).toBeTruthy();
     const home = read("apps/landing/public/landing/index-v2.html");
     expect(home).toContain(`/landing/v2/styles.css?v=${version}`);
+  });
+});
+
+/**
+ * The two guards above are the ones that let a retired figure reach production,
+ * and they failed for two INDEPENDENT reasons — either one alone was enough.
+ *
+ * The first is that `SURFACES` is a hand-written list, so it says what somebody
+ * remembered rather than what the site serves. Two SEO pages under
+ * `apps/landing/public/landing/**` stated "$400 in free credits, granted at
+ * signup" for as long as the re-price had shipped, and `FALSE_CLAIMS` already
+ * carried a pattern that matches that sentence exactly. It never ran on them.
+ *
+ * The second is worse, because it survives any surface list: the claim was SPLIT
+ * ACROSS TWO ELEMENTS — `<span>$400</span><span>in free credits…</span>` — and a
+ * regex over source can only see one line at a time, so the figure and the words
+ * it qualifies never appeared in the same string. A tile, a stat row and a
+ * definition list all have this shape; prose is the exception, not the rule.
+ *
+ * So this sweep does the two things the enumerated guard cannot: it walks every
+ * page the landing actually serves rather than a list, and it strips the markup
+ * first, so a claim assembled out of neighbouring elements reads as the sentence
+ * a visitor sees. `archive-blue.html` is excluded by name — it is the frozen /v2
+ * era snapshot and keeps its period copy, which is the one place a retired figure
+ * is correct.
+ *
+ * The ban is on the SHAPE (any figure qualifying "credits") rather than on the
+ * retired amounts, so the next re-price does not need a new pattern; and the
+ * REFERRAL credits are exempt by their own qualifier, because they are a
+ * different offer with a different amount and are still earned on payments.
+ */
+describe("every served landing page states the gift at one figure", () => {
+  const LANDING = join(REPO, "apps/landing/public/landing");
+  const ARCHIVES = new Set(["archive-blue.html"]);
+
+  // "$30 in free credits", "$30 free credits", "$30 of free credit" — and the
+  // same sentence with the markup taken out from under it.
+  const CREDIT_FIGURE =
+    /\$([\d,]+)\s*(?:in |of )?(?:free |welcome |matched |bonus )?credits?\b/gi;
+  const REFERRAL_NEARBY = /referral/i;
+
+  function servedPages(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...servedPages(full));
+      else if (entry.name.endsWith(".html") && !ARCHIVES.has(entry.name)) out.push(full);
+    }
+    return out;
+  }
+
+  /** What a visitor reads, with the elements the claim was hiding between removed. */
+  function visibleText(html: string): string {
+    return html
+      .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+  }
+
+  function wrongFigures(html: string): string[] {
+    const text = visibleText(html);
+    const wrong: string[] = [];
+    for (const m of text.matchAll(CREDIT_FIGURE)) {
+      const context = text.slice(Math.max(0, m.index! - 60), m.index! + m[0].length + 20);
+      if (REFERRAL_NEARBY.test(context)) continue;
+      if (m[1] !== "30") wrong.push(`$${m[1]} — "${context.trim()}"`);
+    }
+    return wrong;
+  }
+
+  const pages = servedPages(LANDING);
+
+  it("finds the pages to check", () => {
+    // A sweep that walks nothing passes silently, which is the failure mode it
+    // exists to remove.
+    expect(pages.length).toBeGreaterThan(20);
+  });
+
+  for (const page of pages) {
+    const rel = page.slice(REPO.length + 1);
+    it(`${rel} names no gift figure but $30`, () => {
+      expect(wrongFigures(readFileSync(page, "utf8"))).toEqual([]);
+    });
+  }
+
+  // Both directions, per the rule that a ban is only trustworthy once it has been
+  // shown to catch the copy that shipped AND to pass the copy replacing it.
+  it("catches the retired claim, split across elements exactly as it shipped", () => {
+    const shipped =
+      '<div class="guide-callout guide-callout-green">\n' +
+      '  <span class="guide-callout-n">$400</span>\n' +
+      '  <span class="guide-callout-l">in free credits, granted at signup</span>\n' +
+      "</div>";
+    expect(wrongFigures(shipped)).toHaveLength(1);
+  });
+
+  it("passes the copy that replaced it", () => {
+    const fixed =
+      '<div class="guide-callout guide-callout-green">\n' +
+      '  <span class="guide-callout-n">$30</span>\n' +
+      '  <span class="guide-callout-l">in free credits, granted at signup</span>\n' +
+      "</div>";
+    expect(wrongFigures(fixed)).toEqual([]);
+  });
+
+  it("leaves the referral credits alone — a different offer at a different amount", () => {
+    expect(wrongFigures("<p>Your referral credits are $500 in free credits.</p>")).toEqual([]);
   });
 });

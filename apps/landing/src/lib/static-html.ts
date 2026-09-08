@@ -248,6 +248,35 @@ export interface HotLeadStats {
 }
 
 /**
+ * The fleet's median return on spend, as features-service states it.
+ *
+ * A SECOND read: the per-brand ranked read the two figures above come from carries
+ * spend and outcome counts and no revenue of any kind, so a return cannot be derived
+ * from it. features-service answers this one off a persisted snapshot it warms away
+ * from the request path — the read is milliseconds, the pass behind it is minutes.
+ *
+ * `measured: false` is a real answer, not an outage: the fleet has too few brands past
+ * the spend floor, or the first snapshot has not landed yet. The producer says which,
+ * and either way the stat is DROPPED — a median over a population nobody can stand
+ * behind is worse than two figures instead of three.
+ */
+export interface FleetReturnStats {
+  medianReturnPerDollar: number;
+  brandCount: number;
+}
+
+// The population the median is taken over. A brand that has barely spent produces a
+// multiple decided by whichever outcome happened to land, so the floor is what makes
+// the figure mean anything — features-service applies it, we only state which one we
+// asked for (owner-set: "la médiane des clients ayant dépensé au moins $100, sinon ça
+// ne veut rien dire").
+const RETURN_MIN_SPEND_USD = 100;
+
+// The landing renders while a build waits on it, so every live read is bounded and
+// drops its figure rather than holding the page.
+const FLEET_READ_TIMEOUT_MS = 8_000;
+
+/**
  * Fleet hot-lead proof, or null when it cannot be stated honestly.
  *
  * A brand joins the set only when it has BOTH a hot lead and recorded spend:
@@ -308,23 +337,49 @@ export function hotLeadRowHtml(stats: HotLeadStats): string {
 }
 
 /**
- * The same two figures as the hero row, as the dark stat band the comparison pages
- * close on. Same `HotLeadStats`, so a compare page and the homepage cannot state two
- * different fleets; the numerals ride `data-count` so main.js counts them up like the
- * homepage's own band.
+ * A return multiple reads with one decimal under 10x and whole from 10x up — `3.7x` is
+ * a different answer from `2.9x`, `41x` and `42x` are not, and a decimal there is
+ * precision we do not have on a figure that moves with every outcome. Same shape as the
+ * dashboard's own ROI formatter, so a client meets one convention in both places.
  */
-export function hotLeadBandHtml(stats: HotLeadStats): string {
+function formatReturnMultiple(value: number): { text: string; decimals: number } {
+  return value < 10
+    ? { text: value.toFixed(1), decimals: 1 }
+    : { text: String(Math.round(value)), decimals: 0 };
+}
+
+/**
+ * The dark stat band the comparison pages close on: the hero row's two figures, plus
+ * the fleet's median return when features-service can state one.
+ *
+ * The hot-lead pair rides the SAME `HotLeadStats` the homepage hero states, so a compare
+ * page and the homepage cannot describe two different fleets. The return is a separate
+ * read and therefore a separate argument: it is `null` whenever the producer says the
+ * figure is unmeasurable or the read failed, and then the band renders exactly as it did
+ * before — two figures, never a third slot holding a dash.
+ *
+ * The numerals ride `data-count` (+ `data-decimals` for the return) so main.js counts
+ * them up like the homepage's own band. `stats two` centres a 2-up band; a 3-up one is
+ * the base `.stats` grid, which already collapses to one column at 960px.
+ */
+export function hotLeadBandHtml(
+  stats: HotLeadStats,
+  fleetReturn: FleetReturnStats | null = null,
+): string {
   const companies = stats.companies.toLocaleString("en-US");
-  const cost = Math.round(stats.medianCostUsd).toLocaleString("en-US");
+  const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
   return (
     '<section class="framed dark">' +
     '<div class="wrap">' +
     '<div class="section-head center"><span class="eyebrow">Measured, not quoted</span>' +
     "<h2>What the fleet has produced, read off every campaign we run</h2>" +
     "<p>A hot lead is a buyer who replied with interest or came to the site. No competitor on this page publishes this figure.</p></div>" +
-    '<div class="stats two">' +
+    `<div class="stats${returnFigure ? "" : " two"}">` +
     `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">hot leads for ${companies} companies</div></div>` +
     `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(stats.medianCostUsd)}">0</span></div><div class="l">median cost per hot lead</div></div>` +
+    (returnFigure
+      ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
+      : "") +
     "</div></div></section>"
   );
 }
@@ -346,8 +401,55 @@ async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
   return hotLeadStats(data.results ?? []);
 }
 
+/**
+ * The fleet's median return on spend, or null when it cannot be stated.
+ *
+ * `measured: false` carries the producer's own reason and is logged rather than
+ * swallowed — "the first snapshot has not landed" and "too few brands past the floor"
+ * are different facts, and neither is an error. The response is read defensively for
+ * the one thing rendered: a non-finite or non-positive median is refused rather than
+ * printed, since `0.0x` on a comparison page would state a result no client got.
+ */
+async function fetchFleetReturn(): Promise<FleetReturnStats | null> {
+  const apiUrl = resolvePublicApiUrl();
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/return-on-spend?featureSlug=${encodeURIComponent(
+      SALES_COLD_EMAIL_FEATURE_SLUG,
+    )}&minSpendUsd=${RETURN_MIN_SPEND_USD}`,
+    {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/return-on-spend failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${res.status}`,
+    );
+  }
+  const data = (await res.json()) as {
+    measured?: boolean;
+    reason?: string | null;
+    medianReturnPerDollar?: number | null;
+    brandCount?: number | null;
+  };
+  if (!data.measured) {
+    console.warn(
+      `[landing] fleet return on spend not measurable (${data.reason ?? "no reason given"}), dropping the stat`,
+    );
+    return null;
+  }
+  const median = data.medianReturnPerDollar;
+  const brandCount = data.brandCount;
+  if (typeof median !== "number" || !Number.isFinite(median) || median <= 0) return null;
+  if (typeof brandCount !== "number" || brandCount <= 0) return null;
+  return { medianReturnPerDollar: median, brandCount };
+}
+
 async function withHotLeadStats(html: string) {
-  if (!html.includes(HOT_LEAD_ROW_TOKEN) && !html.includes(HOT_LEAD_BAND_TOKEN)) return html;
+  const wantsRow = html.includes(HOT_LEAD_ROW_TOKEN);
+  const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
+  if (!wantsRow && !wantsBand) return html;
 
   let stats: HotLeadStats | null = null;
   try {
@@ -359,9 +461,20 @@ async function withHotLeadStats(html: string) {
     console.error("[landing] hot-lead proof row unavailable, dropping it", error);
   }
 
+  // Only the comparison band states a return, so only a page carrying that token pays
+  // for the read. The hero row is two figures by design.
+  let fleetReturn: FleetReturnStats | null = null;
+  if (wantsBand && stats) {
+    try {
+      fleetReturn = await fetchFleetReturn();
+    } catch (error) {
+      console.error("[landing] fleet return on spend unavailable, dropping the stat", error);
+    }
+  }
+
   return html
     .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats) : "")
-    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats) : "");
+    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn) : "");
 }
 
 function canonicalUrlFrom(html: string, fallbackPath?: string): string | undefined {
