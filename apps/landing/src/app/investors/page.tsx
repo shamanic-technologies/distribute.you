@@ -20,7 +20,7 @@ export const revalidate = 86400;
 
 const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
 const PAGE_DESCRIPTION =
-  "Live platform metrics, growth data, infrastructure, and SAFE-round details for distribute.you. Public investor page, updated on every load.";
+  "Live platform metrics, growth data, infrastructure and SAFE-round details for distribute.you, the AI-native acquisition agency. Public investor page, refreshed daily.";
 
 export const metadata: Metadata = {
   title: "Investor Information",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     "distribute.you SAFE round",
     "distribute.you platform metrics",
     "distribute.you revenue",
-    "cold email startup investors",
+    "acquisition agency investors",
     "Y Combinator SAFE",
     "distribute.you growth metrics",
   ],
@@ -61,7 +61,7 @@ const investorsOrganizationJsonLd = {
   url: PROD_URLS.landing,
   logo: BRAND_LOGO_URL,
   image: BRAND_LOGO_URL,
-  description: "Pay-as-you-go cloud platform for AI cold email outreach. Every unit cost published live.",
+  description: "AI-native acquisition agency. Paste a website, set a daily budget, get sales meetings with their cost.",
   foundingDate: "2024",
   sameAs: [PROD_URLS.github, PROD_URLS.twitter],
   contactPoint: {
@@ -108,7 +108,7 @@ export default function InvestorsPage() {
             </div>
             <p className="text-xl text-gray-600 mb-2">Investor Information</p>
             <p className="text-sm text-gray-500">
-              Live data, updated on every page load
+              Live data, refreshed daily
             </p>
           </div>
         </section>
@@ -127,29 +127,30 @@ export default function InvestorsPage() {
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-900">
-              Product, AI Cold Email, Done For You
+              Product: sales meetings, done for you
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              One priced outbound surface: cold email. A builder drops a URL and sets a
-              daily budget. We find the prospects, write a personalized email for each,
-              send, qualify every reply, and forward only the buyers worth their time.
-              Every unit cost, prospect, email, reply qualification, is metered and
-              published live. They only pay for executions that run.
+              A company pastes its website and sets a daily budget. We find the buyers,
+              write and send the outreach from domains we own, answer the interested
+              replies until a meeting is on the calendar, and report what each one
+              cost. Cold email is the channel we run most today; the engine tests
+              offers, channels and audiences against each other and ranks them by
+              return, so the budget moves toward what pays.
             </p>
 
             <div className="grid sm:grid-cols-3 gap-3">
               {[
                 {
-                  label: "Find prospects",
-                  body: "We pull the contacts that match the ideal customer.",
+                  label: "Find the buyers",
+                  body: "We draft the ideal customer profile from the website and pull the people who match it.",
                 },
                 {
-                  label: "Write & send",
-                  body: "A personalized cold email per prospect, sent and tracked.",
+                  label: "Write, send, answer",
+                  body: "A personal email per lead from our own domains. Interested replies are answered until the meeting is booked.",
                 },
                 {
-                  label: "Qualify replies",
-                  body: "AI reads every reply; only real buyers reach the inbox.",
+                  label: "Report the cost",
+                  body: "Every outcome is priced against real spend and shown to the customer, per offer, channel and audience.",
                 },
               ].map((step) => (
                 <div
@@ -176,10 +177,10 @@ export default function InvestorsPage() {
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 text-sm leading-relaxed space-y-6">
               <blockquote className="bg-white border border-gray-200 rounded-lg p-4 italic text-gray-600">
-                &quot;16-40 years old. CEO-founder, mostly solo. I always have several SaaS in bench.
-                I have no time between newsletter, content, distribute.you campaigns, meetings,
-                monitoring, replies, and refining the ICP of my own campaigns. I want someone close
-                to me, founder reachable, bugs fixed fast, features shipped fast.&quot;
+                &quot;16-40 years old. CEO-founder, mostly solo. I always have several products on the
+                bench. I have no time between newsletter, content, campaigns, meetings, replies,
+                and refining who I sell to. I want someone close to me, founder reachable, bugs
+                fixed fast, features shipped fast.&quot;
               </blockquote>
 
               <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-blue-500/10 border border-brand-500/30 p-4">
@@ -187,10 +188,10 @@ export default function InvestorsPage() {
                   The dream
                 </p>
                 <p className="text-gray-900 italic">
-                  &quot;One of my products is going to take off. I need to monitor closely the
-                  CAC because I am looking for my marketing channel to scale. distribute.you is
-                  the lever that makes that math actionable, whether I stay 1 person or grow
-                  to 10.&quot;
+                  &quot;One of my products is going to take off. I need to know what a customer
+                  costs me on every channel, because I am looking for the one that scales.
+                  distribute.you is the lever that makes that math actionable, whether I stay
+                  1 person or grow to 10.&quot;
                 </p>
               </div>
 
@@ -219,10 +220,10 @@ export default function InvestorsPage() {
                 <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-gray-500">
                   <li>Writing the newsletter</li>
                   <li>Producing content</li>
-                  <li>Launching distribute.you campaigns across multiple products</li>
-                  <li>Meetings these generate</li>
-                  <li>Monitoring + qualified replies</li>
-                  <li>Refining own workflows / templates / ICPs</li>
+                  <li>Running acquisition across several products</li>
+                  <li>The meetings those campaigns generate</li>
+                  <li>Reading and answering replies</li>
+                  <li>Refining who each product sells to</li>
                 </ul>
                 <p className="text-gray-600 mt-3">
                   Buys <span className="text-gray-900 font-medium">time</span> and{" "}
@@ -245,11 +246,11 @@ export default function InvestorsPage() {
                 <div>
                   <h3 className="text-gray-900 font-semibold text-base mb-3">Accepts</h3>
                   <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-blue-500/60">
-                    <li>Agency-style sender on his behalf</li>
-                    <li>AI-qualified replies forwarded to Gmail</li>
-                    <li>Public unit prices + 2x margin baked in</li>
-                    <li>Pay-as-you-go credits, first $400 spent matched free</li>
-                    <li>Multi-brand portfolio in one dashboard</li>
+                    <li>An agency sending on their behalf, from domains it owns</li>
+                    <li>Interested replies answered and handed over with the meeting</li>
+                    <li>Our margin inside the budget, the cost per outcome shown</li>
+                    <li>Pay as you go, $30 free at signup, no subscription</li>
+                    <li>Every brand, offer, channel and audience in one dashboard, ranked by return</li>
                   </ul>
                 </div>
               </div>
@@ -257,8 +258,8 @@ export default function InvestorsPage() {
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">North-star metric</h3>
                 <p className="text-gray-600">
-                  Real <span className="text-gray-900 font-medium">CAC</span> ($/qualified reply, $/paid conversion)
-                  per product × per workflow. Kills losers under 4 weeks.
+                  Real <span className="text-gray-900 font-medium">CAC</span> ($ per sales meeting, $ per
+                  paying customer) per offer, per channel and per audience. Kills losers under 4 weeks.
                   Scales winners 10x when CAC &lt; LTV/3.
                 </p>
               </div>
@@ -266,7 +267,7 @@ export default function InvestorsPage() {
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">Founder proximity</h3>
                 <p className="text-gray-600">
-                  Wants the founder reachable. Twitter DM, GitHub issue, direct email , 
+                  Wants the founder reachable. Twitter DM, GitHub issue, direct email,
                   all acceptable. Bug fixed fast, feature shipped fast, roadmap public.
                   No enterprise support, no ticketing system.
                 </p>
@@ -275,10 +276,10 @@ export default function InvestorsPage() {
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">Roadmap expectation</h3>
                 <p className="text-gray-600">
-                  Cold email, compounding. <span className="text-gray-900 font-medium">Public roadmap:</span>{" "}
-                  every reply-rate and cost-per-reply gain ships continuously and is
-                  visible live on the <span className="text-gray-900 font-medium">Performance</span>{" "}
-                  page. Prices published, no lock-in.
+                  More channels, same measurement. <span className="text-gray-900 font-medium">Public roadmap:</span>{" "}
+                  every channel and audience we add is ranked by return on the customer&apos;s own
+                  dashboard, and the fleet&apos;s figures are published live on the homepage.
+                  No lock-in.
                 </p>
               </div>
             </div>
@@ -329,7 +330,7 @@ export default function InvestorsPage() {
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-900">
-              What We Need From Investors in May 2026
+              What We Need From Investors
             </h2>
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 text-sm leading-relaxed space-y-6">
               <div>
@@ -384,19 +385,19 @@ export default function InvestorsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-gray-600 mb-1">Hosting</p>
-                  <p className="text-gray-900">Railway (backend), Vercel (frontend)</p>
+                  <p className="text-gray-900">One Hetzner server, Docker Compose, Cloudflare in front</p>
                 </div>
                 <div>
                   <p className="text-gray-600 mb-1">Database</p>
-                  <p className="text-gray-900">Neon Postgres (27 databases)</p>
+                  <p className="text-gray-900">Postgres on the same server, one database per service</p>
                 </div>
                 <div>
                   <p className="text-gray-600 mb-1">Architecture</p>
-                  <p className="text-gray-900">27 microservices, DAG workflow orchestration</p>
+                  <p className="text-gray-900">40+ services, DAG workflow orchestration</p>
                 </div>
                 <div>
                   <p className="text-gray-600 mb-1">Payments</p>
-                  <p className="text-gray-900">Stripe (usage-based credit top-ups, auto-replenished)</p>
+                  <p className="text-gray-900">Stripe and Revolut (usage-based, auto top-up)</p>
                 </div>
                 <div>
                   <p className="text-gray-600 mb-1">Auth</p>

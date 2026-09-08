@@ -16,16 +16,4 @@ describe("WhatsApp support button fires support_whatsapp_clicked", () => {
     expect(src).toContain('posthog.capture("support_whatsapp_clicked"');
     expect(src).toContain('location: "landing"');
   });
-
-  it("static served-HTML FAB captures guarded on window.posthog", () => {
-    const src = readFileSync(
-      fileURLToPath(
-        new URL("../../public/landing/js/support-button.js", import.meta.url),
-      ),
-      "utf8",
-    );
-    expect(src).toContain("support_whatsapp_clicked");
-    expect(src).toContain("window.posthog");
-    expect(src).toContain("location: 'landing'");
-  });
 });

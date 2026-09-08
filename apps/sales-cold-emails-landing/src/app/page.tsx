@@ -239,10 +239,10 @@ export default async function Home() {
               </div>
             </div>
             <a
-              href={URLS.performance}
+              href={URLS.landing}
               className="text-sm text-brand-600 hover:text-brand-700 font-medium transition"
             >
-              See full leaderboard &rarr;
+              See the live figures &rarr;
             </a>
           </div>
         </section>

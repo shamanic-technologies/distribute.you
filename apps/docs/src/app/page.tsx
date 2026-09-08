@@ -156,7 +156,7 @@ export default function DocsHome() {
         <h2>Pricing</h2>
         <p>
           distribute.you charges transparent variable costs: every unit price we re-bill is published
-          live at <a href="https://distribute.you/pricing">distribute.you/pricing</a>, grouped by
+          live at <a href="https://api.distribute.you/v1/costs/platform-prices">api.distribute.you/v1/costs/platform-prices</a>, grouped by
           provider and cost type. You buy credits and only pay for what you use (AI calls, lead
           enrichment, email sends). No fixed subscription you only half-use. See your cost
           breakdown in real-time in the dashboard.

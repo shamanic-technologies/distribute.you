@@ -2,9 +2,9 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 export const SITE_NAME = "distribute.you";
 export const SITE_URL = PROD_URLS.landing;
-export const SITE_TITLE = "distribute.you - AI cold email, done for you";
+export const SITE_TITLE = "distribute.you: the AI-native acquisition agency";
 export const SITE_DESCRIPTION =
-  "Drop your website URL. We email your ideal customers. AI reads every reply. Only real buyers land in your Gmail. You read 5 emails, not 200. No SDR. No setup. Cancel anytime.";
+  "Paste your website and set a daily budget. We find the buyers, run the outreach from domains we own, answer interested leads until the meeting is booked, and show you what each one cost. First $30 free.";
 export const TWITTER_HANDLE = "@distribute_you";
 
 export const BRAND_LOGO_PATH = "/landing/logo/logo-distribute-blue.svg";
@@ -12,7 +12,6 @@ export const BRAND_LOGO_URL = `${SITE_URL}${BRAND_LOGO_PATH}`;
 
 export const DEFAULT_OG_IMAGE_PATH = "/opengraph-image";
 export const DEFAULT_OG_IMAGE_URL = `${SITE_URL}${DEFAULT_OG_IMAGE_PATH}`;
-export const PRICING_OG_IMAGE_PATH = "/pricing/opengraph-image";
 export const INVESTORS_OG_IMAGE_PATH = "/investors/opengraph-image";
 
 export function absoluteUrl(path: string) {

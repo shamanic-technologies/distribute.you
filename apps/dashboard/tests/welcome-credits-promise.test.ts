@@ -54,10 +54,11 @@ const SURFACES = [
   "apps/dashboard/src/lib/welcome-offer-copy.ts",
   "apps/dashboard/src/lib/onboarding-content.ts",
   "apps/dashboard/src/instrumentation.ts",
-  "apps/landing/public/landing/js/main.js",
-  "apps/landing/public/landing/js/pricing-modal-v1.js",
-  "apps/landing/public/landing/pricing.html",
   "apps/landing/public/llms.txt",
+  "apps/landing/src/lib/v2-shell.ts",
+  "apps/landing/src/lib/pages/about.ts",
+  "apps/landing/src/app/terms/page.tsx",
+  "apps/landing/src/app/layout.tsx",
   // The referred-signup banner injected into every static page. It stated the
   // whole retired offer ("$5 lands now, $400 once your payments reach $400") and
   // was outside this list, so nothing went red while it shipped to production.
@@ -186,22 +187,16 @@ describe("referred-signup promise", () => {
     expect(src).toContain("if (cancelled || !res.valid) return;");
   });
 
-  it("the landing JS surfaces bump their cache-buster past the fixed copy", () => {
-    // A `public/landing/**` JS edit ships nothing visible unless every HTML that
-    // links it bumps `?v=N`: the old query string is its own long-lived edge
-    // cache key. main.js is at v11 and pricing-modal-v1.js (the homepage) at v7.
-    const linked = [
-      ["apps/landing/public/landing/index-v1.html", "js/pricing-modal-v1.js?v=8"],
-      ["apps/landing/public/landing/pricing.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/performance.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/use-cases.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/cold-email-cost-guide.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/cold-email-vs-linkedin.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/cold-email-for-saas-founders.html", "js/main.js?v=12"],
-    ] as const;
-    for (const [rel, expected] of linked) {
-      expect(read(rel), `${rel} must link ${expected}`).toContain(expected);
-    }
+  it("the homepage and every rendered page read the same stylesheet version", () => {
+    // A `public/landing/v2/**` edit ships nothing visible unless every page that
+    // links it bumps `?v=N`: the old query string is its own long-lived edge cache
+    // key. The rendered pages read the constant; the hand-written homepage carries
+    // the literal, so the two are pinned equal here.
+    const shellSrc = read("apps/landing/src/lib/v2-shell.ts");
+    const version = /export const V2_STYLES_VERSION = (\d+);/.exec(shellSrc)?.[1];
+    expect(version).toBeTruthy();
+    const home = read("apps/landing/public/landing/index-v2.html");
+    expect(home).toContain(`/landing/v2/styles.css?v=${version}`);
   });
 });
 
@@ -224,9 +219,11 @@ describe("referred-signup promise", () => {
  * So this sweep does the two things the enumerated guard cannot: it walks every
  * page the landing actually serves rather than a list, and it strips the markup
  * first, so a claim assembled out of neighbouring elements reads as the sentence
- * a visitor sees. `archive-blue.html` is excluded by name — it is the frozen /v2
- * era snapshot and keeps its period copy, which is the one place a retired figure
- * is correct.
+ * a visitor sees. Since #3958 the landing serves ONE hand-written document
+ * (`index-v2.html`); every other page (About, Contact, Developers, the 404, the
+ * comparison cluster) is rendered from TypeScript under `apps/landing/src/lib`,
+ * so the sweep reads those sources too: the copy is a string literal in them and
+ * the same shape check applies.
  *
  * The ban is on the SHAPE (any figure qualifying "credits") rather than on the
  * retired amounts, so the next re-price does not need a new pattern; and the
@@ -235,7 +232,8 @@ describe("referred-signup promise", () => {
  */
 describe("every served landing page states the gift at one figure", () => {
   const LANDING = join(REPO, "apps/landing/public/landing");
-  const ARCHIVES = new Set(["archive-blue.html"]);
+  const RENDERED = join(REPO, "apps/landing/src/lib");
+  const ARCHIVES = new Set<string>();
 
   // "$30 in free credits", "$30 free credits", "$30 of free credit" — and the
   // same sentence with the markup taken out from under it.
@@ -249,6 +247,18 @@ describe("every served landing page states the gift at one figure", () => {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) out.push(...servedPages(full));
       else if (entry.name.endsWith(".html") && !ARCHIVES.has(entry.name)) out.push(full);
+    }
+    return out;
+  }
+
+  /** The TypeScript that renders every page that is not the homepage. */
+  function renderedPageSources(): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(join(RENDERED, "pages"))) {
+      if (entry.endsWith(".ts")) out.push(join(RENDERED, "pages", entry));
+    }
+    for (const name of ["v2-shell.ts", "compare-page.ts", "competitors.ts"]) {
+      out.push(join(RENDERED, name));
     }
     return out;
   }
@@ -272,12 +282,14 @@ describe("every served landing page states the gift at one figure", () => {
     return wrong;
   }
 
-  const pages = servedPages(LANDING);
+  const pages = [...servedPages(LANDING), ...renderedPageSources()];
 
   it("finds the pages to check", () => {
     // A sweep that walks nothing passes silently, which is the failure mode it
-    // exists to remove.
-    expect(pages.length).toBeGreaterThan(20);
+    // exists to remove: the homepage, four document pages, and the three modules
+    // the comparison cluster is rendered from.
+    expect(pages.length).toBeGreaterThanOrEqual(8);
+    expect(pages.some((p) => p.endsWith("index-v2.html"))).toBe(true);
   });
 
   for (const page of pages) {

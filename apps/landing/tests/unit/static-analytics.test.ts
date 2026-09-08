@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { staticHtml } from "../../src/lib/static-html";
+import { decorateHtml, staticHtml } from "../../src/lib/static-html";
+import { renderAboutPage } from "../../src/lib/pages/about";
+import { renderDevelopersPage } from "../../src/lib/pages/developers";
 
 // The landing pages are served as raw HTML via route handlers that bypass
 // the React root layout (GA) and Next client instrumentation (PostHog).
@@ -14,21 +16,15 @@ describe("Static landing pages carry GA + PostHog", () => {
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = prevToken;
   });
 
-  const pages = [
-    // the live homepage, and the archive at /v3
-    "index-v2.html",
-    "index-v1.html",
-    "performance.html",
-    "use-cases.html",
-    "cold-email-cost-guide.html",
-    "cold-email-cost-guide/cold-email-roi.html",
-    "cold-email-for-saas-founders/ai-cold-email-saas-founders.html",
-    "cold-email-vs-linkedin/multichannel-outreach-strategy.html",
-  ];
+  const pages: Record<string, () => string> = {
+    "index-v2.html": () => staticHtml("index-v2.html"),
+    about: () => decorateHtml(renderAboutPage()),
+    developers: () => decorateHtml(renderDevelopersPage()),
+  };
 
-  for (const page of pages) {
+  for (const page of Object.keys(pages)) {
     it(`injects GA + PostHog into ${page}`, () => {
-      const html = staticHtml(page);
+      const html = pages[page]();
       expect(html).toContain(
         "googletagmanager.com/gtag/js?id=G-YJHNGLEJPP",
       );
@@ -48,7 +44,7 @@ describe("Static landing pages carry GA + PostHog", () => {
 
   it("omits the PostHog snippet when no token is configured", () => {
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = "";
-    const html = staticHtml("index-v1.html");
+    const html = staticHtml("index-v2.html");
     expect(html).toContain("googletagmanager.com/gtag/js?id=G-YJHNGLEJPP");
     expect(html).not.toContain("posthog.init(");
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = "phc_test_token";

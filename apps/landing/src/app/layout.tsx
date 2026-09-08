@@ -1,34 +1,28 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
-import { SITE_NAME, organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
 import { INVITE_FORWARD_SCRIPT } from "@/lib/static-html";
 import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
-const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute.you finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $400 welcome credits, cancel anytime.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute.you - Sales cold email outreach done for you",
+    default: SITE_TITLE,
     template: "%s | distribute.you",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "client acquisition on autopilot",
-    "sales cold email outreach",
-    "cold email automation",
-    "done for you cold email",
-    "AI sales outreach",
-    "qualified reply automation",
-    "indie hacker outreach",
-    "cold email dashboard",
-    "AI reply qualification",
-    "pay-as-you-go cold email",
-    "no subscription cold email",
+    "acquisition agency",
+    "AI acquisition agency",
+    "sales meetings done for you",
+    "outbound done for you",
+    "cost per sales meeting",
+    "B2B lead generation agency",
+    "pay as you go outbound",
     "distribute.you",
-    "sales automation",
   ],
   authors: [{ name: "distribute.you" }],
   creator: "distribute.you",
@@ -43,21 +37,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute.you - Sales cold email outreach done for you",
-    description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "distribute.you - Sales cold email outreach done for you",
+        alt: SITE_TITLE,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute.you - Sales cold email outreach done for you",
-    description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: ["/opengraph-image"],
     creator: "@distribute_you",
   },
@@ -77,9 +71,6 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/apple-icon.png",
   },
-  alternates: {
-    canonical: SITE_URL,
-  },
 };
 
 const jsonLd = {
@@ -96,7 +87,7 @@ const jsonLd = {
       name: "Free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "$400 welcome credits for sales cold email outreach",
+      description: "$30 of free credits at signup, then a daily budget from $1 a day",
     },
   ],
   provider: {
@@ -115,9 +106,7 @@ const jsonLd = {
 // describe the company differently: this copy carried no logo, no legalName and
 // no address, so a crawler read a different Organization depending on which
 // half of the site it landed on.
-const organizationJsonLd = sharedOrganizationJsonLd(
-  "Sales cold email outreach done for you",
-);
+const organizationJsonLd = sharedOrganizationJsonLd();
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
@@ -130,26 +119,26 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to launch sales cold email outreach with distribute.you",
-  description: "Drop a URL, set a daily budget, and let distribute.you find prospects, write cold emails, send sequences, qualify replies, and forward buyers to Gmail.",
+  name: "How to get sales meetings with distribute.you",
+  description: "Paste your website, confirm what we found, and set a daily budget. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
   step: [
     {
       "@type": "HowToStep",
       position: 1,
-      name: "Drop a URL",
-      text: "Create an account and add your product URL. We analyze your offer, tone, proof, and ideal customer profile.",
+      name: "Paste your website",
+      text: "Create an account and paste your website. We read your offer and draft the ideal customer profile and the audiences to reach.",
     },
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Set a daily budget",
-      text: "Set a sales outreach budget before launch. distribute.you builds the list, writes the sequence, and sends from managed infrastructure.",
+      name: "Confirm what we found",
+      text: "Check the offer, the audiences and the sales funnel, then set a daily budget. The first $30 is free.",
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "We send, qualify, forward",
-      text: "AI qualifies every reply, and only buyer conversations land in your Gmail. Cost per qualified reply is tracked live.",
+      name: "Revenue lands, with its cost",
+      text: "We send from domains we own, answer interested replies until the meeting is booked, and report what every outcome cost you.",
     },
   ],
   totalTime: "PT2M",
