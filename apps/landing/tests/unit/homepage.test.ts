@@ -34,8 +34,8 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=9"');
-    expect(html).toContain('src="/landing/v2/main.js?v=7"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=10"');
+    expect(html).toContain('src="/landing/v2/main.js?v=8"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
@@ -205,21 +205,6 @@ describe("the offer the page states", () => {
     expect(proof).not.toContain("Katherine");
   });
 
-  it("prices the managed plan on the calculator the owner picked", () => {
-    expect(html).toContain("Monthly paid acquisition budget");
-    expect(js).toContain("var COST_PER_MEETING = 600;");
-    // $1,000 a month plus 10% of the budget, which is what the plan card beside the
-    // calculator states. A flat 30% share matched that at $5,000 and nowhere else.
-    expect(js).toContain("var FEE_BASE_USD = 1000;");
-    expect(js).toContain("var FEE_SHARE = 0.1;");
-    expect(js).toContain("fmt(FEE_BASE_USD + budget * FEE_SHARE)");
-    expect(html).toContain("From $1,000 a month plus 10% of the campaign budget");
-    // The fee is stated, never called "included".
-    expect(html).not.toContain("Our fee, included");
-    expect(html).toContain("100% refunded");
-    expect(html).toContain("Service fees excluded");
-  });
-
   it("promises two minutes, never thirty seconds", () => {
     expect(html).toContain("Start in 2 minutes");
     expect(html).not.toMatch(/30 ?s(econds)?\b/);
@@ -261,6 +246,28 @@ describe("the offer the page states", () => {
     expect(js).toContain('el.parentElement.removeAttribute("data-zero")');
   });
 
+  it("keeps a stacked card's corner sheen INSIDE the card on mobile", () => {
+    // The card is `position: sticky` on desktop, so its ::after (position:absolute,
+    // inset:0) is bounded by the card. The <=960px block set `position: static`, which
+    // stops the stacking AND stops the card being a containing block - so each card's
+    // tinted sheen resolved against `section.framed` and washed the whole section,
+    // heading included, in the card's tone. Light text on light pink, mobile only.
+    // `relative` does not stick either and keeps the sheen where it belongs.
+    expect(css).toContain("padding: 24px; position: relative; }");
+    expect(css).not.toMatch(/\.stack-card \{[^}]*position: static/);
+  });
+
+  it("states no budget calculator - the owner cut it", () => {
+    // It priced a managed plan against a slider; the page sells one thing now and the
+    // card was the last surface arguing a second one. Its JS and CSS went with it, so a
+    // markup-only revival would render unstyled and inert.
+    for (const gone of ["calc-slider", "Monthly paid acquisition budget", "Our services", "Meetings booked / month"]) {
+      expect(html).not.toContain(gone);
+    }
+    expect(js).not.toContain("COST_PER_MEETING");
+    expect(css).not.toContain(".slider {");
+  });
+
   it("calls a booked meeting a booked meeting, everywhere it is a label", () => {
     // "Meetings" alone does not say which step of the funnel it counts.
     expect(html).not.toMatch(/<small>Meetings<\/small>/);
@@ -268,7 +275,6 @@ describe("the offer the page states", () => {
     expect(html).not.toMatch(/<div class="k">Meetings<\/div>/);
     expect(html).toContain("<small>Meetings booked</small>");
     expect(html).toContain("<th>Meetings booked</th>");
-    expect(html).toContain("Meetings booked / month");
   });
 
   it("puts a named person on every proof card, never a company logo", () => {

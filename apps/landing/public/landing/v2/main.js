@@ -206,35 +206,6 @@
     });
   });
 
-  /* Pricing calculator (explee slider window). */
-  var slider = document.getElementById("calc-slider");
-  var budgetEl = document.getElementById("calc-budget");
-  var meetingsEl = document.getElementById("calc-meetings");
-  var feeEl = document.getElementById("calc-fee");
-  var COST_PER_MEETING = 600;
-  /* The managed plan is $1,000 a month plus 10% of the campaign budget, which is what
-     the plan card beside this states. A flat share of the budget matched it at $5,000
-     and nowhere else: it read $300 at the low end and $3,000 at the high end. */
-  var FEE_BASE_USD = 1000;
-  var FEE_SHARE = 0.1;
-  function fmt(n) {
-    return "$" + Math.round(n).toLocaleString("en-US");
-  }
-  function updateCalc() {
-    if (!slider) return;
-    var budget = parseInt(slider.value, 10);
-    var pct = ((budget - slider.min) / (slider.max - slider.min)) * 100;
-    slider.style.setProperty("--pct", pct + "%");
-    budgetEl.textContent = fmt(budget);
-    var meetings = Math.max(1, Math.round(budget / COST_PER_MEETING));
-    meetingsEl.textContent = "~" + meetings;
-    feeEl.textContent = fmt(FEE_BASE_USD + budget * FEE_SHARE);
-  }
-  if (slider) {
-    slider.addEventListener("input", updateCalc);
-    updateCalc();
-  }
-
   /* Live showcase cards (explee): counters seeded from the last read of each brand's
      ongoing campaign, then nudged in-session. A tick paints the number green and floats a
      "+N" above it (lp-delta-flash). Contacted moves often, the deeper steps rarely. */
