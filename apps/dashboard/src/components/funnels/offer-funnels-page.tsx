@@ -29,6 +29,7 @@ import {
   summariseFunnels,
   unpricedFunnelReasonLabel,
 } from "@/lib/offer-funnels";
+import { OfferFunnelCatalogue } from "@/components/funnels/offer-funnel-catalogue";
 
 const COLUMN_COUNT = 8;
 
@@ -368,6 +369,17 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
 
       {coverage && <p className="text-xs text-gray-500 max-w-3xl">{coverage}</p>}
 
+      {/* The funnels this offer does NOT sell through, under the ones it does. The
+          table above is what a customer stated; without this the catalogue's other
+          paths are invisible, so a reader cannot tell whether one more exists or
+          three, nor whether any of them pays. It renders nothing once all four are
+          declared, and it writes nothing: Offer Settings owns declaring a funnel and
+          is the only writer of it. */}
+      <OfferFunnelCatalogue
+        brandId={brandId}
+        offerId={offerId}
+        settingsHref={`${basePath}/settings`}
+      />
     </div>
   );
 }

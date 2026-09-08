@@ -40,6 +40,18 @@ export interface ChannelFunnelEconomicsPair {
     measured: boolean;
     economics?: {
       steps: { costPerStepUsd: number | null }[];
+      /**
+       * The fleet's return per dollar for this pair, and what a paid client cost.
+       *
+       * Read by the offer's funnel catalogue, which offers a funnel nobody here has
+       * declared and therefore has no spend of its own to price it with. Nullable
+       * because a pair can be measured at the STEP grain and still carry no priced
+       * sale — the producer says so rather than inventing one, and so does the card.
+       */
+      returnPerDollar?: number | null;
+      costPerSaleUsd?: number | null;
+      /** How many brands the figures rest on. Stated beside them, never divided by. */
+      evidence?: { brandCount?: number | null } | null;
     } | null;
   };
 }
