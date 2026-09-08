@@ -219,9 +219,11 @@ describe("referred-signup promise", () => {
  * So this sweep does the two things the enumerated guard cannot: it walks every
  * page the landing actually serves rather than a list, and it strips the markup
  * first, so a claim assembled out of neighbouring elements reads as the sentence
- * a visitor sees. `archive-blue.html` is excluded by name — it is the frozen /v2
- * era snapshot and keeps its period copy, which is the one place a retired figure
- * is correct.
+ * a visitor sees. Since #3958 the landing serves ONE hand-written document
+ * (`index-v2.html`); every other page (About, Contact, Developers, the 404, the
+ * comparison cluster) is rendered from TypeScript under `apps/landing/src/lib`,
+ * so the sweep reads those sources too: the copy is a string literal in them and
+ * the same shape check applies.
  *
  * The ban is on the SHAPE (any figure qualifying "credits") rather than on the
  * retired amounts, so the next re-price does not need a new pattern; and the
@@ -230,7 +232,8 @@ describe("referred-signup promise", () => {
  */
 describe("every served landing page states the gift at one figure", () => {
   const LANDING = join(REPO, "apps/landing/public/landing");
-  const ARCHIVES = new Set(["archive-blue.html"]);
+  const RENDERED = join(REPO, "apps/landing/src/lib");
+  const ARCHIVES = new Set<string>();
 
   // "$30 in free credits", "$30 free credits", "$30 of free credit" — and the
   // same sentence with the markup taken out from under it.
@@ -244,6 +247,18 @@ describe("every served landing page states the gift at one figure", () => {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) out.push(...servedPages(full));
       else if (entry.name.endsWith(".html") && !ARCHIVES.has(entry.name)) out.push(full);
+    }
+    return out;
+  }
+
+  /** The TypeScript that renders every page that is not the homepage. */
+  function renderedPageSources(): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(join(RENDERED, "pages"))) {
+      if (entry.endsWith(".ts")) out.push(join(RENDERED, "pages", entry));
+    }
+    for (const name of ["v2-shell.ts", "compare-page.ts", "competitors.ts"]) {
+      out.push(join(RENDERED, name));
     }
     return out;
   }
@@ -267,12 +282,14 @@ describe("every served landing page states the gift at one figure", () => {
     return wrong;
   }
 
-  const pages = servedPages(LANDING);
+  const pages = [...servedPages(LANDING), ...renderedPageSources()];
 
   it("finds the pages to check", () => {
     // A sweep that walks nothing passes silently, which is the failure mode it
-    // exists to remove.
-    expect(pages.length).toBeGreaterThan(20);
+    // exists to remove: the homepage, four document pages, and the three modules
+    // the comparison cluster is rendered from.
+    expect(pages.length).toBeGreaterThanOrEqual(8);
+    expect(pages.some((p) => p.endsWith("index-v2.html"))).toBe(true);
   });
 
   for (const page of pages) {
