@@ -1,4 +1,4 @@
-import type { ActiveUsersBucket, CommittedMrrBucket, FleetRevenueBucket, RetentionBucket } from "@/lib/api";
+import type { CommittedMrrBucket, FleetRevenueBucket, RetentionBucket } from "@/lib/api";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 import { barsBehindLatest, type CompoundGrowthSummary } from "@/lib/compound-growth";
 
@@ -292,12 +292,35 @@ export function cashBuckets(rows: CashGrowthRow[], granularity: "month" | "week"
 }
 
 // ── Average-revenue-per-X series ─────────────────────────────────────────────
-// avg-per-X[month] = revenue[month] / count[month]. Revenue is fleet-owned; the
-// denominators are the audience/paid-client counts each already-deployed source
-// owns (PostHog visitors + signups from the public-stats timeline; active users
-// from features-service active-users history). The division is a display join of
-// two legitimately-different-owner series, aligned by "YYYY-MM" — the same
-// pattern the Signups view uses for conversion-over-time.
+// avg-per-X = cumulative revenue ÷ the DISTINCT population that has ever reached
+// that funnel stage. Revenue is fleet-owned; the denominators are the distinct
+// audience / paid-client counts each already-deployed source owns (PostHog
+// first-seen visitors + first signup from the public-stats queries; orgs ever
+// active from features-service active-users-by-user).
+//
+// ⚠️ The denominator is a POPULATION, never a per-month count summed across
+// months. Summing a stock the way you sum a flow counts the same person once per
+// month they were around, so the figure answers "revenue per client-MONTH" while
+// the label promises "per client". Measured in prod 2026-09-08 the inflation was
+// 2.0x on paid clients (42 client-months over 21 orgs), 1.09x on signups and
+// 1.05x on visitors — all three real, all three invisible, because a plausible
+// wrong number reads as a bad month rather than as a bug. So every denominator
+// here arrives as NEW ENTRANTS PER MONTH (each id counted once, in the month it
+// first appeared) and is accumulated, never re-added.
+
+/**
+ * Roll a `{ month -> new entrants }` map into the running distinct population at
+ * each month. Entrants from BEFORE the charted window still count: a visitor who
+ * first landed in January is part of the population that March's revenue is
+ * divided by.
+ */
+function cumulativePopulation(newEntrantsByMonth: Map<string, number>, upToMonth: string): number {
+  let total = 0;
+  for (const [month, entrants] of newEntrantsByMonth) {
+    if (month <= upToMonth) total += entrants;
+  }
+  return total;
+}
 
 /** Sum a public-stats timeline field into monthly totals keyed by "YYYY-MM". */
 export function monthlyTimelineTotals(
@@ -317,60 +340,84 @@ export function monthlyRevenueByKey(buckets: FleetRevenueBucket[]): Map<string, 
   return new Map(buckets.map((b) => [b.period, b.revenueUsd]));
 }
 
-/** Monthly paid-client (active-user) counts keyed by "YYYY-MM". */
-export function monthlyActiveUsersByKey(buckets: ActiveUsersBucket[]): Map<string, number> {
-  return new Map(buckets.map((b) => [b.period, b.activeUsers]));
-}
-
-export interface AvgSeries {
-  buckets: RevenueBucket[];
-  /** Pooled avg-per-X since inception: Σrevenue ÷ Σcount over all concluded, defined months. */
-  pooledUsd: number | null;
-  /** Latest CONCLUDED month's avg-per-X (the current run-rate snapshot). */
-  snapshotUsd: number | null;
-  /** Mean of every concluded month's avg-per-X ("avg of the avg", discrete). */
-  avgOfAvgUsd: number | null;
+/** Structural — the one field of `ActiveUserRow` this needs, so the lib stays decoupled. */
+export interface FirstActiveMonth {
+  firstActiveMonth: string; // "YYYY-MM"
 }
 
 /**
- * Build the avg-revenue-per-X monthly series from a revenue map and a count map,
- * aligned by "YYYY-MM" over the revenue months. A month with a zero denominator
- * is charted as 0 and excluded from the snapshot / avg-of-avg (no fabricated
- * ratio).
+ * New paid clients per "YYYY-MM": each org counted ONCE, in the month it first
+ * billed cold-email spend. `ActiveUserRow.firstActiveMonth` is the producer's own
+ * answer to "when did this org become a client", so nothing is derived here.
  */
-export function avgPerSeries(
+export function newPaidClientsByMonth(users: FirstActiveMonth[]): Map<string, number> {
+  const entrants = new Map<string, number>();
+  for (const user of users) {
+    entrants.set(user.firstActiveMonth, (entrants.get(user.firstActiveMonth) ?? 0) + 1);
+  }
+  return entrants;
+}
+
+/** `[month, count]` rows from a PostHog first-seen query, as a month-keyed map. */
+export function firstSeenMonthTotals(rows: Array<[string, number]>): Map<string, number> {
+  return new Map(rows);
+}
+
+export interface AvgSeries {
+  /** Cumulative avg-per-X, month by month. The last CONCLUDED point IS `pooledUsd`. */
+  buckets: RevenueBucket[];
+  /** Σrevenue (concluded months) ÷ distinct population that ever reached this stage. */
+  pooledUsd: number | null;
+  /** The distinct population `pooledUsd` divides by — the headline's own denominator. */
+  denominator: number | null;
+}
+
+/**
+ * Build the cumulative avg-revenue-per-X series from a revenue map and a map of
+ * NEW ENTRANTS per month.
+ *
+ * The chart is cumulative rather than per-month so its last concluded point is
+ * exactly the headline: a global figure sitting above a chart of monthly ratios
+ * is two bases under one title, which is how a card comes to contradict itself.
+ * A month with no population yet charts 0 and never a fabricated ratio.
+ */
+export function cumulativeAvgSeries(
   revenueByMonth: Map<string, number>,
-  countByMonth: Map<string, number>,
+  newEntrantsByMonth: Map<string, number>,
 ): AvgSeries {
   const sortedKeys = [...revenueByMonth.keys()].sort();
   // "Since inception" starts at the first month that earned anything. The
   // producer's window reaches back years before the product existed, and those
-  // months DO have visitors and signups — so left in, each one contributes a
-  // real denominator against $0 of revenue and drags the pooled figure and the
-  // avg-of-avg down toward zero, while charting a run of empty bars in front of
-  // the series. A zero month INSIDE the history is kept: earning nothing in a
-  // month we were live is a fact, not padding.
+  // months DO have visitors and signups — so left in, each one charts an empty
+  // bar in front of the series. A zero month INSIDE the history is kept:
+  // earning nothing in a month we were live is a fact, not padding.
   const firstEarning = sortedKeys.findIndex((key) => (revenueByMonth.get(key) ?? 0) > 0);
   const keys = firstEarning > 0 ? sortedKeys.slice(firstEarning) : sortedKeys;
+
+  let cumulativeRevenue = 0;
   const rows = keys.map((key) => {
-    const revenue = revenueByMonth.get(key) ?? 0;
-    const count = countByMonth.get(key) ?? 0;
-    const defined = count > 0;
-    const value = defined ? Number((revenue / count).toFixed(2)) : 0;
-    return { key, label: monthLabelFromKey(key), revenue, count, value, defined };
+    cumulativeRevenue += revenueByMonth.get(key) ?? 0;
+    const population = cumulativePopulation(newEntrantsByMonth, key);
+    const defined = population > 0;
+    return {
+      key,
+      label: monthLabelFromKey(key),
+      population,
+      value: defined ? Number((cumulativeRevenue / population).toFixed(2)) : 0,
+      defined,
+    };
   });
 
   const buckets = withDerived(rows.map((r) => ({ key: r.key, label: r.label, value: r.value })));
 
-  const concludedDefined = rows.slice(0, -1).filter((r) => r.defined);
-  const pooledCount = concludedDefined.reduce((sum, r) => sum + r.count, 0);
-  const pooledUsd = pooledCount
-    ? Number((concludedDefined.reduce((sum, r) => sum + r.revenue, 0) / pooledCount).toFixed(2))
-    : null;
-  const snapshotUsd = concludedDefined.length ? concludedDefined[concludedDefined.length - 1].value : null;
-  const avgOfAvgUsd = concludedDefined.length
-    ? Number((concludedDefined.reduce((sum, r) => sum + r.value, 0) / concludedDefined.length).toFixed(2))
-    : null;
+  // The current month is still running, so the headline is the last CONCLUDED
+  // point — which, the series being cumulative, already carries every earlier
+  // month's revenue and every earlier entrant.
+  const lastConcluded = rows.slice(0, -1).filter((r) => r.defined).at(-1) ?? null;
 
-  return { buckets, pooledUsd, snapshotUsd, avgOfAvgUsd };
+  return {
+    buckets,
+    pooledUsd: lastConcluded?.value ?? null,
+    denominator: lastConcluded?.population ?? null,
+  };
 }
