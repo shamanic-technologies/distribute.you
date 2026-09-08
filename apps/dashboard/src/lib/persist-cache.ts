@@ -118,10 +118,14 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandSalesEconomics",
   "brandFunnelBudgets",
   "brandSalesRepPhone",
-  // The fleet price list behind a funnel-leg card. Public and org-less, so it is the
-  // same answer for every tenant — and it changes on the fleet's cadence, not this
-  // brand's, which is exactly what a cached-to-disk read is for.
+  // The fleet's own figures, behind a funnel-leg price tag and behind the cards
+  // offering the funnels an offer does not sell yet. Public and org-less, so both are
+  // the same answer for every tenant — and both change on the fleet's cadence, not this
+  // brand's, which is exactly what a cached-to-disk read is for. They are two different
+  // questions: the first is a projected unit price per step, the second is the median of
+  // what our clients actually got.
   "channelFunnelEconomics",
+  "fleetFunnelReturn",
   // What the brand may actually spend today (campaign status joined to its ceilings,
   // served by campaign-service). An unlisted root is default-OFF, so the header's
   // money cold-skeletons on every visit without this line.

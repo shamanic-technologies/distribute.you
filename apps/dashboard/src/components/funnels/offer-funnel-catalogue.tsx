@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getChannelFunnelEconomics, getOfferSalesFunnels } from "@/lib/api";
+import { getFleetFunnelReturn, getOfferSalesFunnels } from "@/lib/api";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -20,10 +20,10 @@ import {
 } from "@/lib/offer-funnel-catalogue";
 
 const RETURN_TIP =
-  "What a dollar came back as for every client selling through this funnel, on the channel that returned the most. It is the fleet's figure and not this offer's: it rests on what those clients said a customer is worth to them, so read it as what the path can do, not as what yours will do.";
+  "The median across our clients of what a dollar through this funnel came back as, on the channel where it came back most. It is their expected pipeline over what they spent, so read it as what the path has done for them and not as a forecast for you.";
 
 const CAC_TIP =
-  "What one paying client cost the clients selling through this funnel, on the same channel as the return beside it. It is the fleet's figure and not this offer's, so read it as what the path has cost other clients rather than what it will cost you.";
+  "The median across those clients of what one paying client cost them through this funnel. It is what they paid, not a price we are quoting you.";
 
 /**
  * The funnels this offer does NOT sell through yet, one card each.
@@ -59,12 +59,15 @@ export function OfferFunnelCatalogue({
     { enabled: Boolean(brandId && offerId) },
   );
 
-  // The fleet's price list. Public and org-less on purpose: a card offering a funnel
-  // nobody here sells has no spend of its own to price it with. One read for every card,
-  // the same key the funnel leg board already polls, so this costs no request.
-  const economicsQ = useAuthQuery(["channelFunnelEconomics"], () =>
-    getChannelFunnelEconomics(),
-  );
+  // What our other clients GOT through each funnel. Public and org-less on purpose: a
+  // card offering a funnel nobody here sells has no spend of its own to price it with.
+  // One read for every card on the page.
+  //
+  // Deliberately NOT the channel-funnel price list this card used to read. That one is a
+  // projection through the fleet's mean declared rates and its mean lifetime revenue, so
+  // it describes no client in particular; this is the middle client's own realized
+  // return, which is the figure a reader is entitled to compare their own against.
+  const economicsQ = useAuthQuery(["fleetFunnelReturn"], () => getFleetFunnelReturn());
 
   const channels = useAcquisitionChannels();
 
@@ -154,8 +157,14 @@ export function OfferFunnelCatalogue({
  * blurb and its way in) is on screen from the first paint. A read that FAILED states
  * nothing at all: we have no opinion, and reporting it as unmeasured would be a claim
  * about the fleet we cannot make. `$ CAC` is dropped rather than dashed when the
- * producer priced no sale, because a free-standing figure with a dash under a label
- * reads as a number we looked for and lost.
+ * producer states no cost per paying client, because a free-standing figure with a dash
+ * under a label reads as a number we looked for and lost.
+ *
+ * `thin` is the fleet's own verdict and it is a TAG, never a number: too few clients
+ * are past the spend floor for a median to describe anything, so the card says so and
+ * states nothing else. It deliberately names NEITHER the floor NOR how many clients are
+ * behind it — both are our own bookkeeping, they answer a question nobody asked, and
+ * printing a count next to a refusal invites a reader to do the arithmetic themselves.
  */
 function FleetFigures({
   state,
@@ -173,28 +182,36 @@ function FleetFigures({
     );
   }
   if (state.kind === "unread") return null;
-  if (state.kind === "unmeasured") {
-    return <p className="text-xs text-gray-400">Not measured yet</p>;
+  if (state.kind === "thin") {
+    // Full-perimeter 1px border, per the no-side-accent rule; the brand ramp so the pill
+    // rotates with the customer's own tint rather than staying our blue. Every class is
+    // in the `html.dark` remapped set, tinted and untinted alike.
+    return (
+      <span className="inline-flex w-fit items-center rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-brand-600">
+        Not enough data yet
+      </span>
+    );
   }
 
   const channel = acquisitionChannelForFeatureSlug(state.channelSlug, channels);
-  const channelName = channel?.name ?? channelSlugLabel(state.channelSlug);
+  const channelName =
+    channel?.name ?? state.channelName ?? channelSlugLabel(state.channelSlug);
 
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <span className="inline-flex items-baseline gap-1">
-          <span className="text-xs text-gray-500">Fleet return</span>
+          <span className="text-xs text-gray-500">Median return</span>
           <span className="text-sm font-semibold text-gray-800">
-            {formatRoi(state.returnPerDollar)}
+            {formatRoi(state.medianReturnPerDollar)}
           </span>
           <InfoTooltip tip={RETURN_TIP} />
         </span>
-        {state.costPerSaleUsd !== null && (
+        {state.medianCostPerPaidClientUsd !== null && (
           <span className="inline-flex items-baseline gap-1">
             <span className="text-xs text-gray-500">$ CAC</span>
             <span className="text-sm font-semibold text-gray-800">
-              {formatUsdAdaptive(state.costPerSaleUsd)}
+              {formatUsdAdaptive(state.medianCostPerPaidClientUsd)}
             </span>
             <InfoTooltip tip={CAC_TIP} />
           </span>
