@@ -16,14 +16,22 @@ import RevolutCheckout from "@revolut/checkout";
  * they are away — which is exactly what automatic top-ups need. The backend
  * returns that value rather than this file assuming it.
  *
- * ⚠️ Whether this SURFACE actually performs the save is UNPROVEN. The SDK's own
- * types accept the option here — `PopupOptions extends CommonOptions`, and
- * `CardFieldOptions` is that same shape plus a `target` — but the provider has
- * already accepted this exact request server-side and silently done nothing
- * with it, which is the bug this whole path exists to fix. Accepting is not
- * doing. The first real card through here settles it: if it does not appear in
- * the org's saved methods, move to `createCardField`, which is one `target`
- * away rather than a rewrite.
+ * This SURFACE carries the option all the way to the provider, which was read
+ * out of the DEPLOYED widget rather than out of the types. The npm package is
+ * only a loader — the widget itself is a rolling build fetched from the
+ * provider's CDN — so its `.d.ts` files describe a remote implementation and
+ * cannot settle anything either way. The bundles can: `embed.js`'s
+ * `payWithPopup` destructures `savePaymentMethodFor` and publishes it into the
+ * card-popup iframe exactly as `createCardField` publishes into its own, and
+ * `card-popup.js` receives it, threads it down, defaults it to `"customer"`
+ * when absent and branches on `"merchant"`. So do NOT rewrite this onto
+ * `createCardField` believing the popup cannot save — that claim is false.
+ *
+ * ⚠️ What is still open is one hop further out: whether the provider's BACKEND
+ * then attaches the method to the customer. It accepted the same request
+ * server-side on the order and silently did nothing with it, which is the bug
+ * this path exists to route around, and accepting is not doing. Only a real
+ * card appearing in the org's saved methods settles that.
  */
 
 export interface CardWidgetOptions {
