@@ -163,6 +163,10 @@ describe("the filter runs at the ONE reader boundary", () => {
       // it just happens to read a word the scan cannot tell apart. A NEW file matching
       // still fails, which is the point.
       "lib/funnel-leg-price.ts",
+      // Same producer, same field, one grain up: the offer's funnel catalogue reads
+      // `result.measured` off that very price list to decide whether the fleet has a
+      // figure for a funnel nobody here sells yet.
+      "lib/offer-funnel-catalogue.ts",
       "lib/workflow-projection-measured.ts",
     ]);
   });

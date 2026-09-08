@@ -1954,9 +1954,10 @@ export async function getPublicChannels(token?: string): Promise<PublicChannelWi
  * has never run) and carries no economics at all. It is NOT a zero: a consumer must say
  * nothing rather than state a price we have not measured.
  *
- * Declared NARROW on purpose, like `getPublicChannels` beside it: this reader exists
- * to price a step, so `returnPerDollar`, the evidence block and the per-step milestone
- * flags are left undeclared rather than mirrored.
+ * Declared NARROW on purpose, like `getPublicChannels` beside it: it carries what a
+ * price tag and a funnel card read (the per-step costs, the pair's return, the sale
+ * price and the brand count behind them) and nothing else. The per-step milestone flags
+ * and the rest of the evidence block are left undeclared rather than mirrored.
  */
 const ChannelFunnelEconomicsSchema = z.object({
   pairs: z.array(
@@ -1969,6 +1970,13 @@ const ChannelFunnelEconomicsSchema = z.object({
         economics: z
           .object({
             steps: z.array(z.object({ costPerStepUsd: z.number().nullable() })),
+            // The pair's own return and the price it rests on, read by the offer's
+            // funnel catalogue. `.nullish()` matches the producer: a pair can be
+            // measured at the step grain and carry no priced sale, and a brand count
+            // is stated only where there is one.
+            returnPerDollar: z.number().nullish(),
+            costPerSaleUsd: z.number().nullish(),
+            evidence: z.object({ brandCount: z.number().nullish() }).nullish(),
           })
           .nullish(),
       }),
