@@ -115,6 +115,39 @@ describe("hotLeadRowHtml", () => {
     const row = hotLeadRowHtml({ hotLeads: 740, companies: 21, medianCostUsd: 6 });
     expect(row).toContain('data-hot-leads data-n="740"');
   });
+
+  it("states the fleet's median return as a third stat when one can be measured", () => {
+    const row = hotLeadRowHtml(
+      { hotLeads: 740, companies: 21, medianCostUsd: 6 },
+      { medianReturnPerDollar: 2.1955731579141204, brandCount: 9 },
+    );
+    expect(row).toContain("<b>2.2x</b>");
+    expect(row).toContain('<span class="hstat-l">median ROI reported</span>');
+    // Last of the three, and it borrows no mark: the flame belongs to the count.
+    expect(row.indexOf("median ROI reported")).toBeGreaterThan(
+      row.indexOf("median cost per hot lead"),
+    );
+    expect(row.match(/hstat-i/g)).toHaveLength(1);
+    expect(row.match(/class="hstat"/g)).toHaveLength(3);
+  });
+
+  it("drops the return alone when it cannot be stated, and keeps the other two", () => {
+    const two = hotLeadRowHtml({ hotLeads: 740, companies: 21, medianCostUsd: 6 });
+    expect(hotLeadRowHtml({ hotLeads: 740, companies: 21, medianCostUsd: 6 }, null)).toBe(two);
+    expect(two).not.toContain("median ROI reported");
+    expect(two.match(/class="hstat"/g)).toHaveLength(2);
+  });
+
+  it("states the SAME median as the comparison band, from one read", () => {
+    const fleetReturn = { medianReturnPerDollar: 2.1955731579141204, brandCount: 9 };
+    const stats = { hotLeads: 740, companies: 21, medianCostUsd: 6 };
+    // Two surfaces, two wordings the owner picked, one figure — a second read here is
+    // how the homepage and a compare page come to quote different medians.
+    expect(hotLeadRowHtml(stats, fleetReturn)).toContain("2.2x");
+    expect(hotLeadBandHtml(stats, fleetReturn)).toContain('data-count="2.2"');
+    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
+    expect(src.match(/await fetchFleetReturn\(\)/g)).toHaveLength(1);
+  });
 });
 
 describe("hotLeadBandHtml", () => {
