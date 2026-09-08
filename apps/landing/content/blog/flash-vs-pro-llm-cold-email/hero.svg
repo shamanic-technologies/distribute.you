@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eff6ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#dbeafe"/>
+
+  <!-- eyebrow -->
+  <text x="72" y="92" font-size="16" letter-spacing="2" fill="#2563eb" font-weight="600">DISTRIBUTE.YOU DATA, APRIL TO SEPTEMBER 2026</text>
+
+  <!-- title -->
+  <text x="72" y="150" font-size="44" font-weight="700" fill="#0f172a">Flash or Pro for cold email?</text>
+  <text x="72" y="198" font-size="22" fill="#475569">20 production workflows, 6,715 USD of spend, 698 website visits, 31 positive replies.</text>
+
+  <!-- left chart: cost per website visit -->
+  <g transform="translate(72,260)">
+    <text x="0" y="0" font-size="18" font-weight="600" fill="#0f172a">Cost per website visit</text>
+    <text x="0" y="24" font-size="14" fill="#64748b">USD, lower is better</text>
+
+    <rect x="0" y="52" width="108" height="44" rx="6" fill="#2563eb"/>
+    <text x="120" y="82" font-size="26" font-weight="700" fill="#0f172a">$3.24</text>
+    <text x="0" y="118" font-size="14" fill="#475569">Flash tier (Gemini Flash-Lite, Gemini Flash)</text>
+
+    <rect x="0" y="146" width="460" height="44" rx="6" fill="#93c5fd"/>
+    <text x="472" y="176" font-size="26" font-weight="700" fill="#0f172a">$17.83</text>
+    <text x="0" y="212" font-size="14" fill="#475569">Pro tier (Gemini 3.1 Pro)</text>
+  </g>
+
+  <!-- right chart: positive replies per $1k -->
+  <g transform="translate(660,260)">
+    <text x="0" y="0" font-size="18" font-weight="600" fill="#0f172a">Positive replies per 1,000 USD</text>
+    <text x="0" y="24" font-size="14" fill="#64748b">count, higher is better</text>
+
+    <rect x="0" y="52" width="56" height="44" rx="6" fill="#93c5fd"/>
+    <text x="68" y="82" font-size="26" font-weight="700" fill="#0f172a">0.7</text>
+    <text x="0" y="118" font-size="14" fill="#475569">Flash tier (1 reply on 1,369 USD)</text>
+
+    <rect x="0" y="146" width="460" height="44" rx="6" fill="#2563eb"/>
+    <text x="472" y="176" font-size="26" font-weight="700" fill="#0f172a">6.0</text>
+    <text x="0" y="212" font-size="14" fill="#475569">Pro tier (29 replies on 4,869 USD)</text>
+  </g>
+
+  <!-- footer -->
+  <line x1="72" y1="540" x2="1128" y2="540" stroke="#dbeafe"/>
+  <text x="72" y="578" font-size="15" fill="#64748b">Flash buys the click. Pro buys the reply. Full tables and sources at distribute.you/blog</text>
+  <circle cx="1100" cy="572" r="9" fill="#2563eb"/>
+  <text x="1030" y="578" font-size="15" fill="#0f172a" font-weight="600" text-anchor="end">distribute.you</text>
+</svg>

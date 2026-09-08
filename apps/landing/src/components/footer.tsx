@@ -68,7 +68,7 @@ export function Footer({ disclaimer }: FooterProps) {
               distribute.you
             </a>
             <p className="mt-3 max-w-[260px] text-sm text-[#6b6b6b]">
-              The AI-native acquisition agency that finds and grows your best acquisition channel.
+              The AI-native acquisition agency
             </p>
           </div>
           <Column title="Product" links={PRODUCT} />

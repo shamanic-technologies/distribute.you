@@ -3,6 +3,8 @@ import { BillingGuardProvider } from "@/lib/billing-guard";
 import { OnboardingCreditGate } from "@/components/onboarding/onboarding-credit-gate";
 import { OnboardingTopChrome } from "@/components/onboarding/onboarding-top-chrome";
 import { SupportButton } from "@/components/support/support-button";
+import { AdsPurchaseTracker } from "@/components/ads-purchase-tracker";
+import { DistributeSaleTracker } from "@/components/distribute-sale-tracker";
 
 export default function OnboardingLayout({
   children,
@@ -19,6 +21,13 @@ export default function OnboardingLayout({
           onboarding opens the add-credit modal (in-modal Embedded Checkout) instead of
           a dead error. Mirrors the dashboard layout; onboarding lives outside it. */}
       <BillingGuardProvider>
+        {/* The onboarding launch returns HERE with `?launch_checkout=success` —
+            not on the dashboard layout, where these trackers used to be the only
+            mount. So the Google Ads PURCHASE conversion (and our own sale report)
+            never fired on the product's main payment path. Both read the same
+            return params the dashboard mount reads. */}
+        <AdsPurchaseTracker />
+        <DistributeSaleTracker />
         {/* Top chrome: just the account widget for first-run signup (focused, no
             escape), OR the full breadcrumb switcher + logo + Cancel when an existing
             user enters via ?from=add / ?new=1 (escape hatch back to any org×brand). */}
