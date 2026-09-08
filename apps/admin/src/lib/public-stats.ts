@@ -99,6 +99,14 @@ export interface TrafficSource {
   sharePct: number;
 }
 
+/**
+ * `[month, count]` rows: how many people reached a funnel stage for the FIRST
+ * time in that month. Accumulated, these give the distinct population at any
+ * point — which is what an avg-revenue-per-X divides by. Summing a per-month
+ * `uniq()` instead counts the same person once per month they came back.
+ */
+export type FirstSeenMonthRow = [string, number];
+
 export interface PublicStats {
   users: UsersStats;
   billing: BillingStats;
@@ -108,6 +116,10 @@ export interface PublicStats {
   cardsAdded: number;
   timeline: DailyFunnelPoint[];
   trafficSources: TrafficSource[];
+  /** Visitors by the month of their first-ever session on the landing. */
+  visitorFirstSeenMonths: FirstSeenMonthRow[];
+  /** Signups by the month each user first completed signup. */
+  signupFirstSeenMonths: FirstSeenMonthRow[];
   updatedAt: string;
 }
 
@@ -225,6 +237,55 @@ async function fetchLandingUniqueVisitors(): Promise<number> {
   const row = rows[0];
   if (!row) throw new Error("[public-stats] landing unique visitors query returned no rows");
   return asNumber(row[0], "landing unique visitors");
+}
+
+/**
+ * Visitors bucketed by the month of their FIRST session — the entrant series the
+ * avg-revenue-per-visitor denominator accumulates. `min($start_timestamp)` per
+ * `distinct_id` is what makes each person land in exactly one month; a per-month
+ * `uniq()` would count a returning visitor again in every month they came back.
+ */
+async function fetchVisitorFirstSeenMonths(): Promise<FirstSeenMonthRow[]> {
+  const rows = await posthogQuery(`
+    SELECT month, count() AS visitors
+    FROM (
+      SELECT
+        distinct_id,
+        formatDateTime(min(\`$start_timestamp\`), '%Y-%m') AS month
+      FROM sessions
+      WHERE \`$entry_hostname\` = 'distribute.you'
+      GROUP BY distinct_id
+    )
+    GROUP BY month
+    ORDER BY month ASC
+    LIMIT 500
+  `);
+  return rows.map((row) => [
+    asString(row[0], "visitor first-seen month"),
+    asNumber(row[1], "visitor first-seen count"),
+  ]);
+}
+
+/** Signups bucketed by the month each user FIRST completed signup (same rule as visitors). */
+async function fetchSignupFirstSeenMonths(): Promise<FirstSeenMonthRow[]> {
+  const rows = await posthogQuery(`
+    SELECT month, count() AS signups
+    FROM (
+      SELECT
+        if(notEmpty(properties['$user_id']), properties['$user_id'], distinct_id) AS person,
+        formatDateTime(min(timestamp), '%Y-%m') AS month
+      FROM events
+      WHERE event = 'signup_completed'
+      GROUP BY person
+    )
+    GROUP BY month
+    ORDER BY month ASC
+    LIMIT 500
+  `);
+  return rows.map((row) => [
+    asString(row[0], "signup first-seen month"),
+    asNumber(row[1], "signup first-seen count"),
+  ]);
 }
 
 async function fetchSignupDaily(): Promise<Map<string, number>> {
@@ -386,7 +447,21 @@ function buildTimeline(
 
 export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landing"): Promise<PublicStats> {
   const includeCardTimeline = view === "cards";
-  const [users, clerkUserCount, billing, runs, landingDaily, landingVisitors, signupDaily, cardDaily] = await Promise.all([
+  // The first-seen series only feed the Revenue view's avg-per-X denominators —
+  // two extra PostHog queries on every other tab would buy nothing.
+  const includeFirstSeen = view === "revenue";
+  const [
+    users,
+    clerkUserCount,
+    billing,
+    runs,
+    landingDaily,
+    landingVisitors,
+    signupDaily,
+    cardDaily,
+    visitorFirstSeenMonths,
+    signupFirstSeenMonths,
+  ] = await Promise.all([
     fetchPublicStats("/public/stats/users", usersStatsSchema),
     fetchClerkUserCount(),
     fetchPublicStats("/public/stats/billing", billingStatsSchema),
@@ -395,6 +470,8 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     fetchLandingUniqueVisitors(),
     fetchSignupDaily(),
     includeCardTimeline ? fetchStripeCardsDaily() : Promise.resolve(new Map<string, number>()),
+    includeFirstSeen ? fetchVisitorFirstSeenMonths() : Promise.resolve([] as FirstSeenMonthRow[]),
+    includeFirstSeen ? fetchSignupFirstSeenMonths() : Promise.resolve([] as FirstSeenMonthRow[]),
   ]);
   const signupEvents = [...signupDaily.values()].reduce((sum, value) => sum + value, 0);
   const trafficSources = await fetchTrafficSources(landingVisitors);
@@ -409,6 +486,8 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     cardsAdded: billing.accounts_with_payment_method,
     timeline: buildTimeline(landingDaily, signupDaily, cardDaily),
     trafficSources,
+    visitorFirstSeenMonths,
+    signupFirstSeenMonths,
     updatedAt: new Date().toISOString(),
   };
 }

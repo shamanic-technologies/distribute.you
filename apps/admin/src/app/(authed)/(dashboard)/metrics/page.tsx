@@ -398,7 +398,13 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           />
         )}
         {view === "active-users" && <ActiveUsersView />}
-        {view === "revenue" && stats && <RevenueView timeline={stats.timeline} billing={stats.billing} />}
+        {view === "revenue" && stats && (
+          <RevenueView
+            billing={stats.billing}
+            visitorFirstSeenMonths={stats.visitorFirstSeenMonths}
+            signupFirstSeenMonths={stats.signupFirstSeenMonths}
+          />
+        )}
         {view === "cards" && stats && (
           <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}
