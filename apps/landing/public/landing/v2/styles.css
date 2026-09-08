@@ -5,7 +5,7 @@
   charter blue and a light surface:
   - explee: the hero (trust strip, accent h1, gift pill, glass launch field with the
     gradient hairline, "I don't have a website"), the showcase card grid and its enter /
-    pulse keyframes, the pricing slider window and its stat tiles, the FAQ row.
+    pulse keyframes, the FAQ row.
   - gojiberry: the floating pill nav, the section hairline with a "+" and corner brackets,
     the numbered label pills, the two-column feature cards with a framed illustration panel,
     the dashed vertical step timeline, the big count-up stat band, the two pricing cards
@@ -406,28 +406,6 @@ section.framed::after {
 .fit-card.no li i { background: #eee; color: #999; }
 
 /* ---------- Pricing ---------- */
-.calc {
-  max-width: 720px; margin: 0 auto 48px; padding: 28px 36px 32px; border-radius: 16px;
-  background: radial-gradient(at 0 0, rgba(37, 99, 235, 0.12) 0%, transparent 60%), #fff;
-  border: 1px solid var(--accent-100); box-shadow: var(--shadow-ring);
-  position: relative;
-}
-.calc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 10px; }
-.calc-head .t { font-size: 15px; color: var(--muted); }
-.calc-val { font-family: var(--font-display); font-size: 34px; letter-spacing: -0.04em; color: var(--text); font-variant-numeric: tabular-nums; }
-.calc-val small { font-size: 15px; letter-spacing: 0; color: var(--muted); font-family: var(--font-body); }
-.slider { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 100px; background: linear-gradient(90deg, var(--accent) var(--pct, 40%), #ececec var(--pct, 40%)); outline: none; margin: 8px 0 6px; }
-.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1px solid #d0d0d0; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); cursor: pointer; transition: box-shadow 0.2s; }
-.slider::-webkit-slider-thumb:hover { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.15), 0 1px 4px rgba(0, 0, 0, 0.18); }
-.slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1px solid #d0d0d0; }
-.slider-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-2); font-family: var(--font-mono); margin-bottom: 22px; }
-.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.tile { position: relative; display: flex; flex-direction: column; padding: 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--hair); min-height: 86px; }
-.tile .n { font-size: 24px; line-height: 32px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
-.tile .l { margin-top: auto; padding-top: 6px; font-size: 14px; font-weight: 500; color: var(--muted); }
-.tile svg { position: absolute; top: 12px; right: 12px; width: 16px; height: 16px; color: var(--muted-2); }
-.calc-note { margin-top: 16px; font-size: 13px; color: var(--muted-2); text-align: center; }
-
 .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .plan { position: relative; padding: 32px; border-radius: 20px; background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card); }
 .plan { transition: border-color 0.3s, transform 0.3s; }
@@ -531,8 +509,6 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
   .showcase-grid { grid-template-columns: 1fr; }
   .show-card { height: auto; gap: 14px; }
   .controls { grid-template-columns: 1fr; }
-  .tiles { grid-template-columns: 1fr 1fr; }
-  .calc { padding: 22px 20px 26px; }
   .feature h3, .step h3 { font-size: 28px; }
   .bar { grid-template-columns: 104px 1fr 48px; }
   .fake-row { flex-wrap: wrap; }
@@ -682,7 +658,7 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 
 @media (max-width: 960px) {
   .quote { width: 300px; }
-  .stack-card { grid-template-columns: 1fr; gap: 20px; padding: 24px; position: static; }
+  .stack-card { grid-template-columns: 1fr; gap: 20px; padding: 24px; position: relative; }
 }
 @media (max-width: 640px) {
   .cal-ev { padding: 3px 4px; font-size: 10px; } .cal-ev span { font-size: 9px; }

@@ -150,8 +150,8 @@ describe("the hero proof row on the homepage", () => {
   });
 
   it("bumps the asset cache-busters, or the edge keeps serving the old css and js", () => {
-    expect(html).toContain('href="/landing/v2/styles.css?v=9"');
-    expect(html).toContain('src="/landing/v2/main.js?v=7"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=10"');
+    expect(html).toContain('src="/landing/v2/main.js?v=8"');
   });
 });
 
