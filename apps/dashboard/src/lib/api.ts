@@ -2000,6 +2000,68 @@ export async function getChannelFunnelEconomics(
   return parsed.data.pairs;
 }
 
+/**
+ * What the MIDDLE client actually got through one sales funnel, per acquisition channel.
+ *
+ * `GET /public/features/funnel-return-on-spend` answers a different question from the
+ * price list above it, and the two must never be relabelled as each other. That one is a
+ * PROJECTION: a pooled unit price run through the fleet's MEAN declared conversion rates
+ * and its MEAN lifetime revenue, which describes no client in particular and in
+ * production differs from what clients get by an order of magnitude. This one is
+ * REALIZED and per BRAND: each data point is one client's own expected pipeline through
+ * that funnel over what that client committed on that channel, which is byte-same as the
+ * ROI that brand reads on its own dashboard, and the statistic across them is the MEDIAN.
+ *
+ * The population is brands that declared the funnel and are past a spend floor, so a
+ * client who has barely started cannot move it. A pair with too few brands behind it
+ * answers `measured: false` with a reason, never a figure taken over a wider population
+ * to make one appear, so a consumer states that shortfall rather than a number.
+ *
+ * Declared NARROW, like the two public readers above it: the identity of the pair, the
+ * verdict, and the two medians a card renders. The distribution (p25 / p75 / min / max)
+ * and the snapshot timestamp are the producer's own and are deliberately not mirrored.
+ *
+ * `measured` is REQUIRED, and every figure beside it is required-and-nullable, so those
+ * are `.nullish()` rather than `.optional()`: the producer MEANS to send the nulls on an
+ * unmeasured pair, and `.optional()` parses every body except the ones they exist for.
+ */
+const FleetFunnelReturnSchema = z.object({
+  pairs: z.array(
+    z.object({
+      channelSlug: z.string(),
+      channelName: z.string().nullish(),
+      funnelKey: z.string(),
+      measured: z.boolean(),
+      reason: z.string().nullish(),
+      brandCount: z.number().nullish(),
+      medianReturnPerDollar: z.number().nullish(),
+      medianCostPerPaidClientUsd: z.number().nullish(),
+      costPerPaidClientBrandCount: z.number().nullish(),
+    }),
+  ),
+});
+
+/** One (channel x funnel) pair's fleet median, as narrowly as this app reads one. */
+export type FleetFunnelReturnPair = z.infer<
+  typeof FleetFunnelReturnSchema
+>["pairs"][number];
+
+/** GET /public/features/funnel-return-on-spend — the fleet median per pair. */
+export async function getFleetFunnelReturn(
+  token?: string,
+): Promise<FleetFunnelReturnPair[]> {
+  const raw = await apiCall<unknown>(`/public/features/funnel-return-on-spend`, { token });
+  const parsed = FleetFunnelReturnSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFleetFunnelReturn: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getFleetFunnelReturn: invalid response shape");
+  }
+  return parsed.data.pairs;
+}
+
 /** GET /brands/:brandId/funnel-budgets — the ceilings, plus the total they sum to. */
 export async function getBrandFunnelBudgets(
   brandId: string,

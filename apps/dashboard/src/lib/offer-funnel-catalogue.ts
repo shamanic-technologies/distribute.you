@@ -1,10 +1,10 @@
-// The sales funnels an offer has NOT stated yet, and what the fleet paid for each.
+// The sales funnels an offer has NOT stated yet, and what our other clients got from each.
 //
 // An offer's Sales funnels table lists only the funnels the customer already declared,
 // so the ways they are not selling are invisible: a reader cannot tell whether the
 // catalogue holds one more path or three, nor whether any of them pays. This module
-// answers both halves — which funnels are missing, and the fleet's own price for each —
-// and nothing else. It renders nothing and it writes nothing: declaring a funnel is
+// answers both halves — which funnels are missing, and the median return our other
+// clients got through each — and nothing else. It renders nothing and it writes nothing: declaring a funnel is
 // Offer Settings' job and there is exactly one writer of it.
 //
 // Only relative, alias-free imports live here (vitest does not resolve `@`), so this
@@ -17,7 +17,7 @@ import {
   type SalesFunnelKey,
   type SalesFunnelKeyWire,
 } from "./sales-funnels";
-import type { ChannelFunnelEconomicsPair } from "./funnel-leg-price";
+import type { FleetFunnelReturnPair } from "./api";
 
 /**
  * What each funnel IS, in one line.
@@ -67,11 +67,13 @@ export function undeclaredFunnels(declaredKeys: readonly string[]): SalesFunnelD
 export interface FleetFunnelEconomics {
   /** The channel that produced these figures. Its price and its return are one row. */
   channelSlug: string;
-  /** Cross-client return per dollar, served verbatim. Never divided here. */
-  returnPerDollar: number;
-  /** What a paid client cost through that channel, or null when the producer could not price one. */
-  costPerSaleUsd: number | null;
-  /** How many brands the figures rest on, or null when the producer states none. */
+  /** The producer's own name for that channel, when it states one. */
+  channelName: string | null;
+  /** The MIDDLE client's return per dollar, served verbatim. Never divided here. */
+  medianReturnPerDollar: number;
+  /** The middle client's cost per paying client, or null where the producer states none. */
+  medianCostPerPaidClientUsd: number | null;
+  /** How many clients the RETURN median was taken over, or null when unstated. */
   brandCount: number | null;
 }
 
@@ -79,14 +81,17 @@ export interface FleetFunnelEconomics {
  * What a card states about the fleet.
  *
  * Four answers, and the last three are genuinely different statements. `unread` is a
- * failed price list: we have no opinion, so the card says nothing rather than claiming
- * the fleet never measured this. `unmeasured` is the fleet's own answer. `null` means a
- * read has not settled, so the card draws a skeleton instead of stating a verdict it
- * would replace a moment later.
+ * failed read: we have no opinion, so the card says nothing rather than claiming the
+ * fleet never measured this. `thin` is the fleet's OWN answer, covering both of the
+ * producer's reasons at once (too few clients past the spend floor, or no snapshot
+ * computed yet) — a card cannot act differently on the two, and both mean the same thing
+ * to a reader: there is not enough behind this to state a figure. `null` means a read
+ * has not settled, so the card draws a skeleton instead of a verdict it would replace a
+ * moment later.
  */
 export type FleetFunnelState =
   | { kind: "unread" }
-  | { kind: "unmeasured" }
+  | { kind: "thin" }
   | ({ kind: "measured" } & FleetFunnelEconomics);
 
 /**
@@ -94,30 +99,32 @@ export type FleetFunnelState =
  *
  * Cross-org and best, which is the fleet rule everywhere in this app: an average over
  * channels describes no channel anybody can buy, and the figure a card offers has to be
- * one a customer could actually get. Both figures come off the SAME pair, so the return
- * and the price it rests on can never describe two different channels.
+ * one a customer could actually get. Taking the max of a served field is a display
+ * SELECTION and computes nothing; both figures then come off the SAME pair, so the
+ * return and the price beside it can never describe two different channels.
  *
- * A pair can be `measured` and still carry no return (the producer priced the steps and
- * not the sale). Such a pair cannot lead the card, so it is skipped — but its presence
- * still means the fleet HAS measured this funnel, which is why `fleetFunnelState` below
- * asks that question separately.
+ * `measured: false` is the producer's verdict and is skipped outright — a pair below the
+ * client floor carries nulls, and reading a null as a zero is how a surface states a
+ * return nobody got. A pair can also be measured and carry no cost per paying client
+ * (that needs one ingredient the return does not, the client's own lifetime revenue), so
+ * the price is allowed to be null while the return leads the card.
  */
 export function bestFleetEconomics(
-  pairs: readonly ChannelFunnelEconomicsPair[],
+  pairs: readonly FleetFunnelReturnPair[],
   funnelKey: SalesFunnelKey,
 ): FleetFunnelEconomics | null {
   let best: FleetFunnelEconomics | null = null;
   for (const pair of pairsForFunnel(pairs, funnelKey)) {
-    if (!pair.result.measured) continue;
-    const economics = pair.result.economics;
-    const roi = economics?.returnPerDollar;
-    if (roi == null || !Number.isFinite(roi)) continue;
-    if (best !== null && roi <= best.returnPerDollar) continue;
+    if (!pair.measured) continue;
+    const median = pair.medianReturnPerDollar;
+    if (median == null || !Number.isFinite(median)) continue;
+    if (best !== null && median <= best.medianReturnPerDollar) continue;
     best = {
       channelSlug: pair.channelSlug,
-      returnPerDollar: roi,
-      costPerSaleUsd: economics?.costPerSaleUsd ?? null,
-      brandCount: economics?.evidence?.brandCount ?? null,
+      channelName: pair.channelName ?? null,
+      medianReturnPerDollar: median,
+      medianCostPerPaidClientUsd: pair.medianCostPerPaidClientUsd ?? null,
+      brandCount: pair.brandCount ?? null,
     };
   }
   return best;
@@ -125,9 +132,9 @@ export function bestFleetEconomics(
 
 /** The pairs describing one funnel, matched on the key under either wire spelling. */
 function pairsForFunnel(
-  pairs: readonly ChannelFunnelEconomicsPair[],
+  pairs: readonly FleetFunnelReturnPair[],
   funnelKey: SalesFunnelKey,
-): ChannelFunnelEconomicsPair[] {
+): FleetFunnelReturnPair[] {
   return pairs.filter((pair) => {
     try {
       return normalizeSalesFunnelKey(pair.funnelKey as SalesFunnelKeyWire) === funnelKey;
@@ -151,7 +158,7 @@ export function fleetFunnelState({
   settled,
   errored,
 }: {
-  pairs: readonly ChannelFunnelEconomicsPair[] | undefined;
+  pairs: readonly FleetFunnelReturnPair[] | undefined;
   funnelKey: SalesFunnelKey;
   settled: boolean;
   errored: boolean;
@@ -159,6 +166,6 @@ export function fleetFunnelState({
   if (errored) return { kind: "unread" };
   if (!settled || pairs === undefined) return null;
   const best = bestFleetEconomics(pairs, funnelKey);
-  if (best === null) return { kind: "unmeasured" };
+  if (best === null) return { kind: "thin" };
   return { kind: "measured", ...best };
 }
