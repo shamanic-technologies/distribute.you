@@ -61,7 +61,7 @@ export function footer(): string {
     <div class="foot">
       <div>
         <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-        <p class="tag">The AI-native acquisition agency that finds and grows your best acquisition channel.</p>
+        <p class="tag">The AI-native acquisition agency</p>
       </div>
       <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
       ${compareFooterColumn()}
