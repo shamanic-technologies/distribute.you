@@ -21,87 +21,23 @@ import {
   type Category,
   type Competitor,
 } from "./competitors";
+import {
+  SIGN_UP,
+  SITE,
+  V2_STYLES_VERSION,
+  breadcrumb,
+  compareFooterColumn,
+  esc,
+  shell,
+} from "./v2-shell";
 
-const SITE = "https://distribute.you";
-const SIGN_UP = "https://dashboard.distribute.you/sign-up";
-const SIGN_IN = "https://dashboard.distribute.you/sign-in";
+export { V2_STYLES_VERSION };
+
 /** Same publishable token the homepage and the dashboard bundle carry. */
 const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
-/** Bumped together with the homepage's link: the compare styles live in the same file. */
-export const V2_STYLES_VERSION = 10;
-
-function esc(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 function logo(domain: string, size = 40): string {
   return `<img src="https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=${size * 2}&format=png" alt="" width="${size}" height="${size}">`;
-}
-
-/** The footer every page of the cluster carries, with the Compare column. */
-export function compareFooterColumn(): string {
-  const items = COMPETITORS.map(
-    (c) => `<li><a href="/compare/${c.slug}">distribute.you vs ${esc(c.name)}</a></li>`,
-  ).join("");
-  return `<div><h4>Compare</h4><ul>${items}<li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div>`;
-}
-
-function nav(): string {
-  return `<div class="nav" id="nav">
-  <div class="nav-pill">
-    <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-    <nav class="nav-links">
-      <a href="/#how">How it works</a>
-      <a href="/#pricing">Pricing</a>
-      <a href="/compare">Compare</a>
-      <a href="/#faq">FAQ</a>
-    </nav>
-    <div class="nav-right">
-      <a class="btn btn-ghost" href="${SIGN_IN}">Log in</a>
-      <a class="btn btn-primary" href="${SIGN_UP}">Start free</a>
-    </div>
-  </div>
-</div>`;
-}
-
-function footer(): string {
-  return `<footer>
-  <div class="wrap">
-    <div class="foot">
-      <div>
-        <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-        <p class="tag">The AI-native acquisition agency that finds and grows your best acquisition channel.</p>
-      </div>
-      <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
-      ${compareFooterColumn()}
-      <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/investors">Investors</a></li><li><a href="/contact">Contact</a></li><li><a href="/blog">Blog</a></li></ul></div>
-      <div><h4>Legal</h4><ul><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li><li><a href="/developers">Developers</a></li></ul></div>
-    </div>
-    <div class="foot-bottom"><span>© 2026 distribute.you</span></div>
-  </div>
-</footer>`;
-}
-
-function ctaBox(): string {
-  return `<section class="framed">
-  <div class="wrap">
-    <div class="cta-box rv">
-      <h2>Your next <span class="accent">customers</span><br>are already out there.</h2>
-      <p class="lead">Paste your website and let the campaign find them.</p>
-      <form class="launch" action="${SIGN_UP}" method="get">
-        <div class="launch-field">
-          <input name="url" type="text" autocomplete="off" placeholder="https://yourwebsite.com">
-          <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        </div>
-      </form>
-      <div class="fine">First $30 free · Live in 2 minutes · Stop any time</div>
-    </div>
-  </div>
-</section>`;
 }
 
 /**
@@ -112,67 +48,6 @@ function ctaBox(): string {
  */
 function liveBand(): string {
   return "__HOT_LEAD_BAND__";
-}
-
-type Shell = {
-  title: string;
-  description: string;
-  path: string;
-  body: string;
-  jsonLd: unknown[];
-};
-
-function shell(s: Shell): string {
-  const url = `${SITE}${s.path}`;
-  const ld = s.jsonLd
-    .map((node) => `<script type="application/ld+json">${JSON.stringify(node)}</script>`)
-    .join("");
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(s.title)}</title>
-<meta name="description" content="${esc(s.description)}">
-<meta name="theme-color" content="#ffffff">
-<link rel="canonical" href="${url}">
-<meta property="og:type" content="website">
-<meta property="og:title" content="${esc(s.title)}">
-<meta property="og:description" content="${esc(s.description)}">
-<meta property="og:url" content="${url}">
-<meta property="og:image" content="${SITE}/opengraph-image">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="${SITE}/opengraph-image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/landing/v2/styles.css?v=${V2_STYLES_VERSION}">
-${ld}
-</head>
-<body>
-${nav()}
-${s.body}
-${ctaBox()}
-${footer()}
-<script src="/landing/v2/main.js?v=5" defer></script>
-</body>
-</html>
-`;
-}
-
-function breadcrumb(items: { name: string; path: string }[]) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((it, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: it.name,
-      item: `${SITE}${it.path}`,
-    })),
-  };
 }
 
 function faqJsonLd(faq: readonly { q: string; a: string }[]) {

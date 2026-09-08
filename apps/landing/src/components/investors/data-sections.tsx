@@ -7,9 +7,9 @@ import { formatCents, formatNumber, computeCAGR } from "@/lib/investors/format";
 import { BarChart, CGRLineChart } from "@/components/investors/charts";
 
 // Last-resort zero metrics. The sections render SSR-sync (no <Suspense>), so a
-// throw from fetchInvestorMetrics would abort the whole Vercel prerender
-// (CLAUDE.md "Exception — Vercel build-time prerender"). Fail soft to zeros so
-// the page always ships; a healthy build still renders the real numbers.
+// throw from fetchInvestorMetrics would abort the whole build-time prerender
+// (CLAUDE.md, the build-time prerender exception to fail-loud). Fail soft to
+// zeros so the page always ships; a healthy build still renders the real numbers.
 const EMPTY_INVESTOR_METRICS: InvestorMetrics = {
   updatedAt: new Date().toISOString(),
   users: { total: 0, orgs: 0 },
@@ -66,16 +66,18 @@ export async function CompanyOverviewSection() {
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 space-y-4 text-sm leading-relaxed">
       <p>
-        <strong className="text-gray-900">distribute.you</strong> is a pay-as-you-go
-        cloud platform for AI cold email outreach. Builders provide a URL and a
-        daily budget; AI workflows handle prospecting, email generation, sending,
-        reply qualification, and reporting — ranked by real cost-per-positive-reply.
+        <strong className="text-gray-900">distribute.you</strong> is an AI-native
+        acquisition agency sold as software. A company pastes its website and sets a
+        daily budget. We find the buyers, write and send the outreach from domains we
+        own, answer the interested replies until a meeting is booked, and show what
+        each one cost. Cold email is the channel we run most today; the engine tests
+        offers, channels and audiences against each other and ranks them by return.
       </p>
       <p>
         The business model is{" "}
-        <strong className="text-gray-900">credit-based</strong> with no
-        subscriptions. Users top up their account balance and pay per workflow
-        execution. Revenue scales linearly with usage.
+        <strong className="text-gray-900">pay as you go</strong>. A customer is
+        charged the budget the campaign spent, with our margin inside it. No seat, no
+        retainer, no subscription. Revenue moves with usage.
       </p>
       <p>
         The platform runs{" "}
@@ -277,7 +279,7 @@ export async function MonthlyGrowthSection() {
           />
           {monthlyCreditsCgrRows && (
             <CGRLineChart
-              title="Compound monthly growth — Credits Spent"
+              title="Compound monthly growth: credits spent"
               data={monthlyCreditsCgrRows.map((row) => ({
                 label: row.month,
                 value: row.consumedCents,
@@ -286,7 +288,7 @@ export async function MonthlyGrowthSection() {
           )}
           {monthlyRevenueCgrRows && (
             <CGRLineChart
-              title="Compound monthly growth — Revenue"
+              title="Compound monthly growth: revenue"
               data={monthlyRevenueCgrRows.map((row) => ({
                 label: row.month,
                 value: row.revenueCents,
@@ -426,7 +428,7 @@ export async function WeeklyGrowthSection() {
             <CGRLineChart
               rotateLabels
               displayStart={WEEKLY_CGR_LINE_DISPLAY_START}
-              title="Compound weekly growth — Credits Spent"
+              title="Compound weekly growth: credits spent"
               data={weeklyCreditsCgrRows.map((row) => ({
                 label: row.period,
                 value: row.consumedCents,
@@ -437,7 +439,7 @@ export async function WeeklyGrowthSection() {
             <CGRLineChart
               rotateLabels
               displayStart={WEEKLY_CGR_LINE_DISPLAY_START}
-              title="Compound weekly growth — Revenue"
+              title="Compound weekly growth: revenue"
               data={weeklyRevenueCgrRows.map((row) => ({
                 label: row.period,
                 value: row.revenueCents,

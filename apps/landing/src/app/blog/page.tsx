@@ -13,23 +13,23 @@ export const revalidate = 60;
 const BLOG_URL = `${PROD_URLS.landing}/blog`;
 
 export const metadata: Metadata = {
-  title: "Blog — Stories from the Solo Path",
+  title: "Blog: playbooks and field notes on B2B acquisition",
   description:
-    "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+    "Playbooks, benchmarks and field notes on finding buyers, running outbound, and measuring what a sales meeting costs.",
   alternates: { canonical: BLOG_URL },
   openGraph: {
     type: "website",
     url: BLOG_URL,
-    title: "Blog — Stories from the Solo Path | distribute.you",
+    title: "Blog | distribute.you",
     description:
-      "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+      "Playbooks, benchmarks and field notes on finding buyers, running outbound, and measuring what a sales meeting costs.",
     images: [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute.you Blog" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog — Stories from the Solo Path | distribute.you",
+    title: "Blog | distribute.you",
     description:
-      "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+      "Playbooks, benchmarks and field notes on finding buyers, running outbound, and measuring what a sales meeting costs.",
     images: [DEFAULT_OG_IMAGE_PATH],
     creator: TWITTER_HANDLE,
   },

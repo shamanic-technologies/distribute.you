@@ -44,12 +44,6 @@ export function DocsLayout({ children }: { children: React.ReactNode }) {
               Home
             </a>
             <a
-              href={URLS.performance}
-              className="text-sm text-gray-500 hover:text-gray-900 transition hidden md:block"
-            >
-              Performance
-            </a>
-            <a
               href={URLS.github}
               target="_blank"
               rel="noopener noreferrer"
