@@ -7,6 +7,7 @@ import {
   DISTRIBUTE_CONVERSION_TOKEN,
   DISTRIBUTE_CONVERSION_INGEST_URL,
 } from "@/lib/distribute-conversion";
+import { gclidFromCookie } from "@/lib/gclid-cookie";
 
 const INTENT_KEY = "distribute_auth_intent";
 const POSTHOG_AUTH_KEY_PREFIX = "distribute_posthog_auth";
@@ -47,6 +48,20 @@ export function PostHogAuthTracker() {
     if (authType === "signup") {
       const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
       gtag?.("event", "manual_event_SIGNUP");
+
+      // Record WHICH ad click brought this org, on the org itself, so the
+      // offline-conversion feed can later tell Google "this click signed up /
+      // paid" — the gtag event above reaches Google for about one signup in
+      // six (ad blockers, consent), which is too little signal to bid on.
+      // First-touch: the route keeps an existing gclid. Fire-and-forget.
+      const click = gclidFromCookie(document.cookie);
+      if (click) {
+        void fetch("/api/ads/attribution", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ gclid: click.gclid }),
+        }).catch(() => {});
+      }
 
       // distribute conversion tracking — reports the signup back to
       // api.distribute.you keyed on the real Clerk email (strongest match).

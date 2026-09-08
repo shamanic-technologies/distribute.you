@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
+import { isCheckoutReturn } from "./ads-purchase-tracker";
 import {
   DISTRIBUTE_CONVERSION_TOKEN,
   DISTRIBUTE_CONVERSION_INGEST_URL,
@@ -42,7 +43,10 @@ export function DistributeSaleTracker() {
 
   useEffect(() => {
     if (fired.current) return;
-    if (searchParams.get("success") !== "true") return;
+    // Two return shapes reach a tracker: the billing top-up returns with
+    // `?success=true`, the onboarding launch with `?launch_checkout=success`.
+    // Gating on the first alone missed every onboarding payment for months.
+    if (!isCheckoutReturn(searchParams)) return;
 
     // Resolve the payment value. daily_budget is DOLLARS (onboarding launch, the
     // 1-day budget); paid_amount is CENTS (billing top-up). Their presence proves
