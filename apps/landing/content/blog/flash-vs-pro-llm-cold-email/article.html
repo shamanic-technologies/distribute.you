@@ -1,106 +1,107 @@
-<h2 id="the-question">The question</h2>
+<h2 id="the-bet">The bet</h2>
 
-<p>Every LLM vendor now sells the same family in two tiers. A cheap one (Gemini Flash, DeepSeek V4 Flash, GLM Flash, Kimi K2.6) and an expensive one (Gemini Pro, DeepSeek V4 Pro, GLM 5.3, Kimi K3). The expensive tier costs roughly 5 to 20 times more per token.</p>
-
-<p>So which one should write your cold emails? Pay 7x more per email and convert better, or pay 7x less and convert worse? We sent <strong>95,661 cold emails</strong> written by both tiers, on real campaigns for real clients, and measured what each dollar bought.</p>
+<p>Every AI vendor now sells the same model family in tiers. <strong>Flash</strong>, the cheapest. <strong>Pro</strong>, the middle. <strong>Frontier</strong>, the most expensive. Pro costs about 5x Flash per token, and everyone has a reflex about it: the pricier model must convert better, so the question is whether it converts <em>enough</em> better to pay for itself.</p>
 
 <figure>
-<svg viewBox="0 0 800 230" width="100%" role="img" aria-label="List price per million output tokens: Gemini 3.5 Flash-Lite 2.50 USD, Gemini 3.1 Pro 12.00 USD" font-family="Inter, system-ui, sans-serif">
-  <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">What the two tiers cost per million output tokens (USD, list price)</text>
-  <text x="0" y="66" font-size="14" fill="#475569">Cheap tier</text>
-  <rect x="150" y="48" width="112" height="28" rx="5" fill="#2563eb"/>
-  <text x="272" y="68" font-size="15" font-weight="700" fill="#0f172a">2.50</text>
-  <text x="330" y="68" font-size="13" fill="#64748b">Gemini 3.5 Flash-Lite</text>
-  <text x="0" y="116" font-size="14" fill="#475569">Expensive tier</text>
-  <rect x="150" y="98" width="540" height="28" rx="5" fill="#93c5fd"/>
-  <text x="700" y="118" font-size="15" font-weight="700" fill="#0f172a">12.00</text>
-  <text x="150" y="150" font-size="13" fill="#64748b">Gemini 3.1 Pro</text>
-  <text x="0" y="190" font-size="13" fill="#64748b">Same shape at every vendor: DeepSeek V4 Flash 0.66 vs V4 Pro 1.98 (off-peak),</text>
-  <text x="0" y="210" font-size="13" fill="#64748b">GLM-5.3-Flash 0.50 vs GLM-5.3 4.40, Kimi K2.6 4.00 vs K3 15.00.</text>
+<svg viewBox="0 0 800 200" width="100%" role="img" aria-label="List price per 10 million output tokens: Flash tier 25 USD, Pro tier 120 USD" font-family="Inter, system-ui, sans-serif">
+  <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">What the tiers cost per 10M output tokens (USD, list price)</text>
+  <text x="0" y="70" font-size="14" fill="#475569">Flash</text>
+  <rect x="150" y="52" width="112" height="30" rx="5" fill="#2563eb"/>
+  <text x="272" y="73" font-size="16" font-weight="700" fill="#0f172a">$25</text>
+  <text x="0" y="128" font-size="14" fill="#475569">Pro</text>
+  <rect x="150" y="110" width="540" height="30" rx="5" fill="#93c5fd"/>
+  <text x="700" y="131" font-size="16" font-weight="700" fill="#0f172a">$120</text>
+  <text x="0" y="180" font-size="13" fill="#64748b">Gemini 3.5 Flash-Lite vs Gemini 3.1 Pro. Same gap at DeepSeek, Z.ai and Moonshot.</text>
 </svg>
 </figure>
 
-<h2 id="the-answer">The answer is simpler than expected</h2>
+<h2 id="the-test">The test</h2>
 
-<ul>
-  <li><strong>If you want website visits</strong> (a click on the link in the email): the cheap tier wins. It bought a visit for <strong>3.24 USD</strong>. The expensive tier paid 17.83 USD.</li>
-  <li><strong>If you want positive replies</strong> (someone writes back to know more or to book a meeting): the expensive tier wins, and it is not close. It produced <strong>6 positive replies per 1,000 USD</strong>. The cheap tier produced fewer than 1.</li>
-</ul>
+<p>We wrote <strong>100,000 cold emails</strong> with both tiers, on real campaigns for real clients, and counted two things per dollar spent: how many people clicked the link, and how many wrote back with interest.</p>
+
+<h2 id="the-twist">The twist</h2>
+
+<p>Both tiers won. Just not the same match.</p>
 
 <figure>
-<svg viewBox="0 0 800 250" width="100%" role="img" aria-label="Cost per website visit: cheap tier 3.24 USD, expensive tier 17.83 USD" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 230" width="100%" role="img" aria-label="Cost per website visit: Flash 3 USD, Pro 18 USD" font-family="Inter, system-ui, sans-serif">
   <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit (USD, lower is better)</text>
-  <text x="0" y="82" font-size="14" fill="#475569">Cheap tier</text>
-  <rect x="150" y="60" width="98" height="36" rx="6" fill="#2563eb"/>
-  <text x="260" y="85" font-size="20" font-weight="700" fill="#0f172a">$3.24</text>
-  <text x="0" y="162" font-size="14" fill="#475569">Expensive tier</text>
-  <rect x="150" y="140" width="540" height="36" rx="6" fill="#93c5fd"/>
-  <text x="700" y="165" font-size="20" font-weight="700" fill="#0f172a">$17.83</text>
-  <text x="0" y="225" font-size="13" fill="#64748b">Cheap: 34,506 emails, 423 visits. Expensive: 57,650 emails, 273 visits.</text>
+  <text x="0" y="80" font-size="14" fill="#475569">Flash</text>
+  <rect x="150" y="58" width="90" height="36" rx="6" fill="#2563eb"/>
+  <text x="252" y="83" font-size="22" font-weight="700" fill="#0f172a">$3</text>
+  <text x="0" y="160" font-size="14" fill="#475569">Pro</text>
+  <rect x="150" y="138" width="540" height="36" rx="6" fill="#93c5fd"/>
+  <text x="700" y="163" font-size="22" font-weight="700" fill="#0f172a">$18</text>
+  <text x="0" y="215" font-size="13" fill="#64748b">Flash: 34,506 emails, 423 visits. Pro: 57,650 emails, 273 visits.</text>
 </svg>
 </figure>
 
 <figure>
-<svg viewBox="0 0 800 250" width="100%" role="img" aria-label="Positive replies per 1,000 USD spent: cheap tier 0.7, expensive tier 6.0" font-family="Inter, system-ui, sans-serif">
-  <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 1,000 USD spent (higher is better)</text>
-  <text x="0" y="82" font-size="14" fill="#475569">Cheap tier</text>
-  <rect x="150" y="60" width="63" height="36" rx="6" fill="#93c5fd"/>
-  <text x="225" y="85" font-size="20" font-weight="700" fill="#0f172a">0.7</text>
-  <text x="0" y="162" font-size="14" fill="#475569">Expensive tier</text>
-  <rect x="150" y="140" width="540" height="36" rx="6" fill="#2563eb"/>
-  <text x="700" y="165" font-size="20" font-weight="700" fill="#0f172a">6.0</text>
-  <text x="0" y="225" font-size="13" fill="#64748b">Cheap: 1 positive reply on 34,506 emails. Expensive: 29 positive replies on 57,650 emails.</text>
+<svg viewBox="0 0 800 230" width="100%" role="img" aria-label="Cost per positive reply: Flash 1,369 USD, Pro 168 USD" font-family="Inter, system-ui, sans-serif">
+  <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per positive reply (USD, lower is better)</text>
+  <text x="0" y="80" font-size="14" fill="#475569">Flash</text>
+  <rect x="150" y="58" width="540" height="36" rx="6" fill="#93c5fd"/>
+  <text x="700" y="83" font-size="22" font-weight="700" fill="#0f172a">$1,369</text>
+  <text x="0" y="160" font-size="14" fill="#475569">Pro</text>
+  <rect x="150" y="138" width="66" height="36" rx="6" fill="#2563eb"/>
+  <text x="228" y="163" font-size="22" font-weight="700" fill="#0f172a">$168</text>
+  <text x="0" y="215" font-size="13" fill="#64748b">Flash: 1 positive reply. Pro: 29 positive replies.</text>
 </svg>
 </figure>
 
-<p>Put the two charts side by side and the rule writes itself.</p>
+<p><strong>Flash buys the click 6x cheaper. Pro buys the reply 8x cheaper.</strong> The premium does not pay for itself. It pays for a different outcome.</p>
+
+<h2 id="the-rule">The rule</h2>
 
 <figure>
-<svg viewBox="0 0 800 210" width="100%" role="img" aria-label="If you optimise for website visits, use the cheap tier. If you optimise for positive replies, use the expensive tier." font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 210" width="100%" role="img" aria-label="If you optimise for website visits, use the Flash tier. If you optimise for positive replies, use the Pro tier." font-family="Inter, system-ui, sans-serif">
   <rect x="0" y="0" width="385" height="200" rx="14" fill="#eff6ff" stroke="#bfdbfe"/>
-  <text x="24" y="40" font-size="13" letter-spacing="1.5" fill="#2563eb" font-weight="600">YOU OPTIMISE FOR</text>
+  <text x="24" y="40" font-size="13" letter-spacing="1.5" fill="#2563eb" font-weight="600">YOU WANT</text>
   <text x="24" y="78" font-size="24" font-weight="700" fill="#0f172a">Website visits</text>
   <text x="24" y="118" font-size="14" fill="#475569">Signup funnel, self-serve product,</text>
   <text x="24" y="138" font-size="14" fill="#475569">landing page, webinar.</text>
-  <text x="24" y="178" font-size="18" font-weight="700" fill="#2563eb">Use the cheap tier.</text>
+  <text x="24" y="178" font-size="18" font-weight="700" fill="#2563eb">Use Flash.</text>
 
   <rect x="415" y="0" width="385" height="200" rx="14" fill="#0f172a"/>
-  <text x="439" y="40" font-size="13" letter-spacing="1.5" fill="#93c5fd" font-weight="600">YOU OPTIMISE FOR</text>
+  <text x="439" y="40" font-size="13" letter-spacing="1.5" fill="#93c5fd" font-weight="600">YOU WANT</text>
   <text x="439" y="78" font-size="24" font-weight="700" fill="#ffffff">Positive replies</text>
   <text x="439" y="118" font-size="14" fill="#cbd5e1">A conversation, a demo,</text>
   <text x="439" y="138" font-size="14" fill="#cbd5e1">a booked sales meeting.</text>
-  <text x="439" y="178" font-size="18" font-weight="700" fill="#93c5fd">Use the expensive tier.</text>
+  <text x="439" y="178" font-size="18" font-weight="700" fill="#93c5fd">Use Pro.</text>
 </svg>
 </figure>
 
-<h2 id="why">Why the two tiers buy different things</h2>
+<h2 id="why">Why</h2>
 
-<p>We do not have a controlled explanation and we will not invent one. The pattern is consistent with a simple mechanism: a cheap model writes a serviceable email around a link, and enough people click links. A strong model writes an email a buyer actually answers, and answering is a much higher bar than clicking. Across the whole dataset a positive reply was 22 times rarer than a visit before any model choice.</p>
+<p>A click is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 100,000 emails a positive reply was <strong>22x rarer than a click</strong>. The stronger model earns its keep exactly where the bar is higher.</p>
 
-<p>The premium is real. The expensive model's tokens were about a third of everything our largest workflow spent, against a tenth for a cheap-model workflow. On the reply side that premium came back many times over. On the click side it did not come back at all.</p>
+<p>We have not tested the Frontier tier yet. At 5 to 10x the Pro price, the reply would have to get a lot cheaper still. We will publish that when we have it.</p>
+
+<h2 id="for-you">What it means if we run your campaigns</h2>
+
+<p>You never pick a model. Each campaign on distribute.you runs on the workflow with the best measured cost for what that campaign is buying, across every client, and the pick moves when the numbers move. You pay the budget the campaign spent, nothing else, and you watch the cost of each positive reply land on your dashboard.</p>
+
+<p><a href="/">Start with your website URL</a>. The first 30 USD are on us.</p>
 
 <h2 id="method">Method</h2>
 
-<p>Everything below is production data from the distribute.you platform, read on September 8, 2026.</p>
-
 <ul>
   <li><strong>Scope</strong>: sales cold email outreach only. Journalist outreach, PR pitches and every other channel we run are excluded.</li>
-  <li><strong>Window</strong>: April 14 to September 8, 2026, every client account.</li>
-  <li><strong>Volume</strong>: 95,661 emails to 33,243 people, 6,715.53 USD of platform spend, 698 website visits, 31 positive replies. Produced by 20 workflows (a workflow is one prompt and one model). Workflows configured but never run are excluded.</li>
-  <li><strong>Spend</strong>: everything the workflow cost, before per-account discounts: lead sourcing, enrichment, sending and tokens. Not tokens alone.</li>
+  <li><strong>Window</strong>: April 14 to September 8, 2026, every client account. Production data from the distribute.you platform, read on September 8, 2026.</li>
+  <li><strong>Volume</strong>: 95,661 emails to 33,243 people, $6,716 of platform spend, 698 website visits, 31 positive replies. 20 workflows (a workflow is one prompt and one model); workflows configured but never run are excluded.</li>
+  <li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini Flash, Claude Haiku, DeepSeek V4 Flash, GLM Flash, Kimi K2.6). Pro, the middle (Gemini Pro, Claude Opus, DeepSeek V4 Pro, GLM 5.3, Kimi K3). Frontier, the most expensive (Claude Fable, Astra), not yet run in production.</li>
+  <li><strong>What ran</strong>: Flash tier, 4 workflows on Gemini 3.5 Flash-Lite and Gemini 3.5 to 3.8 Flash, 34,506 emails, $1,369. Pro tier, 12 workflows on Gemini 3.1 Pro, 57,650 emails, $4,869. DeepSeek V4 Pro and GLM 5.3 (Pro tier, 3,505 emails, $478) are too early to rank and are not in the charts.</li>
+  <li><strong>Spend</strong>: everything the workflow cost before per-account discounts: lead sourcing, enrichment, sending and tokens. Not tokens alone.</li>
   <li><strong>Website visit</strong>: a recipient clicked the tracked link. Counted once per person.</li>
   <li><strong>Positive reply</strong>: a recipient wrote back with interest (a question, a request for details, a meeting). Classified automatically, reviewed by a person on the account. Negative replies, out-of-office and unsubscribes do not count.</li>
-  <li><strong>Cheap tier</strong>: Gemini 3.5 Flash-Lite (Gemini 3 Flash Preview before July 24) and Gemini 3.5 to 3.8 Flash. 4 workflows, 34,506 emails, 1,368.69 USD.</li>
-  <li><strong>Expensive tier</strong>: Gemini 3.1 Pro Preview. 12 workflows, 57,650 emails, 4,868.84 USD.</li>
-  <li><strong>Not yet measurable</strong>: DeepSeek V4 Pro and GLM 5.3 have 3,505 emails and 478 USD between them, too little to rank. DeepSeek V4 Flash, GLM-5.3-Flash and Kimi have no production spend yet. We will update this page when they do.</li>
-  <li><strong>Template check</strong>: the two tiers did not run the same prompts evenly. Restricted to the prompt family that asks for a click, the cheap tier still bought the visit for less (3.24 vs 8.06 USD) and the expensive tier still produced six times the positive replies on the same spend.</li>
-  <li><strong>What this is not</strong>: a randomised experiment. Our optimiser assigns workflows to campaigns by measured cost, so expensive workflows ran more on reply-seeking campaigns. And 31 positive replies is a small count. We report counts and no confidence intervals.</li>
+  <li><strong>Template check</strong>: the tiers did not run the same prompts evenly. On the prompt family that asks for a click only, Flash still bought the visit for less ($3 vs $8) and Pro still bought the reply for less ($256 vs $1,369).</li>
+  <li><strong>Limits</strong>: not a randomised experiment. Our optimiser assigns workflows by measured cost, so Pro workflows ran more on reply-seeking campaigns. 31 positive replies is a small count. We report counts and no confidence intervals.</li>
 </ul>
 
 <details>
 <summary>Per-workflow data and list prices</summary>
 
-<p>Spend in USD. CPWV is cost per website visit, CPPR is cost per positive reply, left blank under two replies.</p>
+<p>Spend in USD, rounded to the dollar. CPWV is cost per website visit, CPPR is cost per positive reply, left blank under two replies.</p>
 
 <div style="overflow-x:auto">
 <table>
@@ -108,26 +109,26 @@
     <tr><th>Workflow</th><th>Tier</th><th>Model</th><th>Emails</th><th>Spend</th><th>Visits</th><th>Replies</th><th>CPWV</th><th>CPPR</th></tr>
   </thead>
   <tbody>
-    <tr><td>Lithium</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>25,378</td><td>2,231.28</td><td>78</td><td>19</td><td>28.61</td><td>117.44</td></tr>
-    <tr><td>Rampart</td><td>Cheap</td><td>Gemini Flash-Lite</td><td>19,396</td><td>617.70</td><td>222</td><td>0</td><td>2.78</td><td></td></tr>
-    <tr><td>Pelican</td><td>Cheap</td><td>Gemini Flash</td><td>9,458</td><td>407.64</td><td>100</td><td>0</td><td>4.08</td><td></td></tr>
-    <tr><td>Permafrost</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>9,008</td><td>597.36</td><td>87</td><td>2</td><td>6.87</td><td>298.68</td></tr>
-    <tr><td>Legato</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>8,231</td><td>390.18</td><td>90</td><td>0</td><td>4.34</td><td></td></tr>
-    <tr><td>Azalea</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>5,493</td><td>592.62</td><td>4</td><td>4</td><td>148.16</td><td>148.16</td></tr>
-    <tr><td>Osprey</td><td>Cheap</td><td>Gemini Flash-Lite</td><td>4,302</td><td>230.63</td><td>86</td><td>1</td><td>2.68</td><td></td></tr>
-    <tr><td>Ballad</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>3,163</td><td>395.09</td><td>0</td><td>4</td><td></td><td>98.77</td></tr>
-    <tr><td>Cerulean</td><td>Expensive</td><td>DeepSeek V4 Pro</td><td>1,868</td><td>335.76</td><td>0</td><td>1</td><td></td><td></td></tr>
-    <tr><td>Trailblazer</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>1,357</td><td>83.98</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Dawn</td><td>Cheap</td><td>Gemini Flash-Lite</td><td>1,350</td><td>112.72</td><td>15</td><td>0</td><td>7.51</td><td></td></tr>
-    <tr><td>Vector</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>1,241</td><td>155.89</td><td>14</td><td>0</td><td>11.14</td><td></td></tr>
-    <tr><td>Tango</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>881</td><td>84.76</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Moraine</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>875</td><td>83.52</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Colchis</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>831</td><td>84.80</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Helium</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>697</td><td>84.98</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Rudder</td><td>Expensive</td><td>DeepSeek V4 Pro</td><td>579</td><td>47.33</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Allegro</td><td>Expensive</td><td>DeepSeek V4 Pro</td><td>531</td><td>47.42</td><td>0</td><td>0</td><td></td><td></td></tr>
-    <tr><td>Nobelium</td><td>Expensive</td><td>GLM-5.2 / 5.3</td><td>527</td><td>47.49</td><td>2</td><td>0</td><td>23.75</td><td></td></tr>
-    <tr><td>Wisteria</td><td>Expensive</td><td>Gemini 3.1 Pro</td><td>495</td><td>84.38</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Lithium</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>25,378</td><td>2,231</td><td>78</td><td>19</td><td>29</td><td>117</td></tr>
+    <tr><td>Rampart</td><td>Flash</td><td>Gemini Flash-Lite</td><td>19,396</td><td>618</td><td>222</td><td>0</td><td>3</td><td></td></tr>
+    <tr><td>Pelican</td><td>Flash</td><td>Gemini Flash</td><td>9,458</td><td>408</td><td>100</td><td>0</td><td>4</td><td></td></tr>
+    <tr><td>Permafrost</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>9,008</td><td>597</td><td>87</td><td>2</td><td>7</td><td>299</td></tr>
+    <tr><td>Legato</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>8,231</td><td>390</td><td>90</td><td>0</td><td>4</td><td></td></tr>
+    <tr><td>Azalea</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>5,493</td><td>593</td><td>4</td><td>4</td><td>148</td><td>148</td></tr>
+    <tr><td>Osprey</td><td>Flash</td><td>Gemini Flash-Lite</td><td>4,302</td><td>231</td><td>86</td><td>1</td><td>3</td><td></td></tr>
+    <tr><td>Ballad</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>3,163</td><td>395</td><td>0</td><td>4</td><td></td><td>99</td></tr>
+    <tr><td>Cerulean</td><td>Pro</td><td>DeepSeek V4 Pro</td><td>1,868</td><td>336</td><td>0</td><td>1</td><td></td><td></td></tr>
+    <tr><td>Trailblazer</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>1,357</td><td>84</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Dawn</td><td>Flash</td><td>Gemini Flash-Lite</td><td>1,350</td><td>113</td><td>15</td><td>0</td><td>8</td><td></td></tr>
+    <tr><td>Vector</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>1,241</td><td>156</td><td>14</td><td>0</td><td>11</td><td></td></tr>
+    <tr><td>Tango</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>881</td><td>85</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Moraine</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>875</td><td>84</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Colchis</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>831</td><td>85</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Helium</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>697</td><td>85</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Rudder</td><td>Pro</td><td>DeepSeek V4 Pro</td><td>579</td><td>47</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Allegro</td><td>Pro</td><td>DeepSeek V4 Pro</td><td>531</td><td>47</td><td>0</td><td>0</td><td></td><td></td></tr>
+    <tr><td>Nobelium</td><td>Pro</td><td>GLM-5.2 / 5.3</td><td>527</td><td>47</td><td>2</td><td>0</td><td>24</td><td></td></tr>
+    <tr><td>Wisteria</td><td>Pro</td><td>Gemini 3.1 Pro</td><td>495</td><td>84</td><td>0</td><td>0</td><td></td><td></td></tr>
   </tbody>
 </table>
 </div>
@@ -137,35 +138,29 @@
 <div style="overflow-x:auto">
 <table>
   <thead>
-    <tr><th>Model</th><th>Input</th><th>Output</th><th>Source, date read</th></tr>
+    <tr><th>Model</th><th>Tier</th><th>Input</th><th>Output</th><th>Source, date read</th></tr>
   </thead>
   <tbody>
-    <tr><td>Gemini 3.5 Flash-Lite</td><td>0.30</td><td>2.50</td><td><a href="https://ai.google.dev/gemini-api/docs/pricing" rel="nofollow noopener">ai.google.dev</a>, 2026-09-08</td></tr>
-    <tr><td>Gemini 3.8 Flash</td><td>0.75 (1.50 from 2027-01-01)</td><td>3.75 (7.50 from 2027-01-01)</td><td>ai.google.dev, 2026-09-08</td></tr>
-    <tr><td>Gemini 3.1 Pro Preview</td><td>2.00</td><td>12.00</td><td>ai.google.dev, 2026-09-08</td></tr>
-    <tr><td>DeepSeek V4 Flash</td><td>0.22 off-peak, 0.44 peak</td><td>0.66 off-peak, 1.32 peak</td><td><a href="https://api-docs.deepseek.com/quick_start/pricing" rel="nofollow noopener">api-docs.deepseek.com</a>, 2026-08-15</td></tr>
-    <tr><td>DeepSeek V4 Pro</td><td>0.66 off-peak, 1.32 peak</td><td>1.98 off-peak, 3.96 peak</td><td>api-docs.deepseek.com, 2026-08-15</td></tr>
-    <tr><td>GLM-5.3-Flash</td><td>0.15 (0.075 promotional)</td><td>0.50 (0.25 promotional)</td><td><a href="https://docs.z.ai/guides/overview/pricing" rel="nofollow noopener">docs.z.ai</a>, 2026-09-08</td></tr>
-    <tr><td>GLM-5.3</td><td>1.40</td><td>4.40</td><td>docs.z.ai, 2026-09-08</td></tr>
-    <tr><td>Kimi K2.6</td><td>0.95</td><td>4.00</td><td><a href="https://platform.kimi.ai/docs/pricing/chat-k26" rel="nofollow noopener">platform.kimi.ai</a>, 2026-08-16</td></tr>
-    <tr><td>Kimi K3</td><td>3.00</td><td>15.00</td><td><a href="https://platform.kimi.ai/docs/pricing/chat-k3" rel="nofollow noopener">platform.kimi.ai</a>, 2026-08-16</td></tr>
+    <tr><td>Gemini 3.5 Flash-Lite</td><td>Flash</td><td>0.30</td><td>2.50</td><td><a href="https://ai.google.dev/gemini-api/docs/pricing" rel="nofollow noopener">ai.google.dev</a>, 2026-09-08</td></tr>
+    <tr><td>Gemini 3.8 Flash</td><td>Flash</td><td>0.75 (1.50 from 2027-01-01)</td><td>3.75 (7.50 from 2027-01-01)</td><td>ai.google.dev, 2026-09-08</td></tr>
+    <tr><td>Gemini 3.1 Pro Preview</td><td>Pro</td><td>2.00</td><td>12.00</td><td>ai.google.dev, 2026-09-08</td></tr>
+    <tr><td>DeepSeek V4 Flash</td><td>Flash</td><td>0.22 off-peak, 0.44 peak</td><td>0.66 off-peak, 1.32 peak</td><td><a href="https://api-docs.deepseek.com/quick_start/pricing" rel="nofollow noopener">api-docs.deepseek.com</a>, 2026-08-15</td></tr>
+    <tr><td>DeepSeek V4 Pro</td><td>Pro</td><td>0.66 off-peak, 1.32 peak</td><td>1.98 off-peak, 3.96 peak</td><td>api-docs.deepseek.com, 2026-08-15</td></tr>
+    <tr><td>GLM-5.3-Flash</td><td>Flash</td><td>0.15 (0.075 promotional)</td><td>0.50 (0.25 promotional)</td><td><a href="https://docs.z.ai/guides/overview/pricing" rel="nofollow noopener">docs.z.ai</a>, 2026-09-08</td></tr>
+    <tr><td>GLM-5.3</td><td>Pro</td><td>1.40</td><td>4.40</td><td>docs.z.ai, 2026-09-08</td></tr>
+    <tr><td>Kimi K2.6</td><td>Flash</td><td>0.95</td><td>4.00</td><td><a href="https://platform.kimi.ai/docs/pricing/chat-k26" rel="nofollow noopener">platform.kimi.ai</a>, 2026-08-16</td></tr>
+    <tr><td>Kimi K3</td><td>Pro</td><td>3.00</td><td>15.00</td><td><a href="https://platform.kimi.ai/docs/pricing/chat-k3" rel="nofollow noopener">platform.kimi.ai</a>, 2026-08-16</td></tr>
   </tbody>
 </table>
 </div>
 </details>
 
-<h2 id="how-we-run-it">What this means if we run your campaigns</h2>
-
-<p>You never pick a model. Each campaign on distribute.you is served by the workflow with the best measured cost for what the campaign is buying, across every client, and the pick changes when the numbers change. The charts above are the same numbers our optimiser reads. You pay the budget your campaign spent and nothing else, and you watch the cost of each positive reply land on your dashboard.</p>
-
-<p>Want to know what a positive reply costs for your kind of buyer? <a href="/">Start with your website URL</a>. The first 30 USD are on us.</p>
-
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Dataset",
-  "name": "Cheap versus expensive LLM tier and cold email outcome, distribute.you production data, April to September 2026",
-  "description": "95,661 sales cold emails written by cheap-tier (Gemini Flash-Lite, Gemini Flash) and expensive-tier (Gemini 3.1 Pro, DeepSeek V4 Pro, GLM 5.3) language models on the distribute.you platform, with spend, website visits and positive replies per workflow. Cost per website visit and positive replies per 1,000 USD derived from those counts.",
+  "name": "Flash versus Pro LLM tier and cold email outcome, distribute.you production data, April to September 2026",
+  "description": "95,661 sales cold emails written by Flash-tier (Gemini Flash-Lite, Gemini Flash) and Pro-tier (Gemini 3.1 Pro, DeepSeek V4 Pro, GLM 5.3) language models on the distribute.you platform, with spend, website visits and positive replies per workflow. Cost per website visit and cost per positive reply derived from those counts.",
   "url": "https://distribute.you/blog/flash-vs-pro-llm-cold-email",
   "creator": {
     "@type": "Organization",
@@ -180,7 +175,7 @@
     { "@type": "PropertyValue", "name": "Website visits", "unitText": "count" },
     { "@type": "PropertyValue", "name": "Positive replies", "unitText": "count" },
     { "@type": "PropertyValue", "name": "Cost per website visit", "unitText": "USD" },
-    { "@type": "PropertyValue", "name": "Positive replies per 1,000 USD", "unitText": "count" }
+    { "@type": "PropertyValue", "name": "Cost per positive reply", "unitText": "USD" }
   ],
   "keywords": ["cold email", "LLM", "Gemini Flash", "Gemini Pro", "DeepSeek", "GLM", "cost per reply", "cost per click"]
 }

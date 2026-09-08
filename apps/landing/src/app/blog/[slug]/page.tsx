@@ -89,7 +89,10 @@ export default async function BlogArticlePage({ params }: Props) {
       />
       <Navbar />
 
-      <Section variant="prose" outerClassName="dy-section-tight" as="div">
+      {/* pt-28 clears the sticky pill nav (58px + 14px top offset). The class it
+          replaced was never defined in globals.css, so the back link and the
+          date row sat under the nav on desktop. */}
+      <Section variant="prose" outerClassName="pt-28 pb-4" as="div">
         <Link
           href="/blog"
           className="mb-8 inline-flex items-center gap-1 text-sm text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"

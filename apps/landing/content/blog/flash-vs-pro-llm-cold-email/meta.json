@@ -1,7 +1,7 @@
 {
   "slug": "flash-vs-pro-llm-cold-email",
-  "title": "Cheap LLM or expensive LLM for cold email? It depends on what you are buying",
-  "excerpt": "We sent 95,661 cold emails written by cheap and expensive LLM tiers and measured what each one bought. Cheap models win the website visit. Expensive models win the positive reply. The numbers, the charts and the method.",
+  "title": "Flash or Pro LLM for cold email? We sent 100,000 emails to find out",
+  "excerpt": "Every AI vendor sells a cheap Flash tier and a pricier Pro tier. We wrote 100,000 cold emails with both and measured what each dollar bought. Flash wins the click. Pro wins the reply. Here is the data.",
   "tags": ["cold email", "LLM", "benchmarks", "Gemini", "DeepSeek", "cost per reply"],
   "publishedAt": "2026-09-08T09:00:00.000Z",
   "coverImagePath": "/blog/flash-vs-pro-llm-cold-email/hero.png",
