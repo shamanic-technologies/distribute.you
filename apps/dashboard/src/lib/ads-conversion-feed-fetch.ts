@@ -74,6 +74,8 @@ const PaymentsResponseSchema = z.object({
 
 export interface FeedResult {
   attributedOrgs: number;
+  /** Orgs whose payments read failed; their signup row still ships. */
+  failedOrgs: number;
   rows: ConversionRow[];
   csv: string;
 }
@@ -85,15 +87,31 @@ export async function buildAdsConversionFeed(
 ): Promise<FeedResult> {
   const orgs = await listAttributedOrgs(config, fetchFn);
   const rows: ConversionRow[] = [];
+  let failedOrgs = 0;
   for (let i = 0; i < orgs.length; i += ORG_CONCURRENCY) {
     const batch = orgs.slice(i, i + ORG_CONCURRENCY);
     const perOrg = await Promise.all(
-      batch.map(async (org) => conversionRowsForOrg(org, await listPaidTopUps(config, fetchFn, org.orgId), since)),
+      batch.map(async (org) => {
+        // One org's payments read failing must not empty the whole feed: an org
+        // that never reached checkout has no billing account, and api-service
+        // answers that with a 5xx. Loud (the failure is named, and the count
+        // rides the response) but per-org — the signup row for THIS org is
+        // already correct, and every other org's is untouched. Aborting here
+        // would hand Google an empty CSV over one org's missing account.
+        let payments: PaidTopUp[] = [];
+        try {
+          payments = await listPaidTopUps(config, fetchFn, org.orgId);
+        } catch (err) {
+          failedOrgs += 1;
+          console.error(`[dashboard-ads-feed] org=${org.orgId} payments unavailable, purchases omitted:`, err);
+        }
+        return conversionRowsForOrg(org, payments, since);
+      }),
     );
     for (const r of perOrg) rows.push(...r);
   }
   rows.sort((a, b) => a.conversionTime.getTime() - b.conversionTime.getTime());
-  return { attributedOrgs: orgs.length, rows, csv: conversionRowsToCsv(rows) };
+  return { attributedOrgs: orgs.length, failedOrgs, rows, csv: conversionRowsToCsv(rows) };
 }
 
 async function listAttributedOrgs(config: FeedConfig, fetchFn: FeedFetch): Promise<AttributedOrg[]> {
