@@ -13,10 +13,11 @@ import {
   trackedWeeks,
   monthlyRevenueByKey,
   monthlyTimelineTotals,
-  monthlyActiveUsersByKey,
-  avgPerSeries,
+  firstSeenMonthTotals,
+  newPaidClientsByMonth,
+  cumulativeAvgSeries,
 } from "../src/lib/revenue-buckets";
-import type { FleetRevenueBucket, ActiveUsersBucket, CommittedMrrBucket, RetentionBucket } from "../src/lib/api";
+import type { FleetRevenueBucket, CommittedMrrBucket, RetentionBucket } from "../src/lib/api";
 import type { DailyFunnelPoint } from "../src/lib/public-stats";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
@@ -74,8 +75,12 @@ describe("Revenue metrics view — wiring", () => {
     expect(revenueView).toContain("Avg revenue per unique visitor");
     expect(revenueView).toContain("Avg revenue per signup");
     expect(revenueView).toContain("Avg revenue per paid client");
-    expect(revenueView).toContain("last complete month");
     expect(revenueView).not.toContain("average of the monthly averages");
+    // The headline is a global figure over a DISTINCT population, so the line under
+    // it states that population — a monthly ratio there would be a second basis
+    // under one title. See the cumulative-denominator block below.
+    expect(revenueView).toContain("since inception");
+    expect(revenueView).not.toContain("last complete month");
     // The bar charts come from the shared signups chart (current-period pencil + growth line).
     expect(revenueView).toContain("PeriodCompoundChart");
   });
@@ -130,23 +135,48 @@ describe("Revenue bucket derivations", () => {
     expect(trackedWeeks(days)).toBe(18);
   });
 
-  it("avg-per-X aligns revenue and denominators by month, excludes zero-denominator months from headline", () => {
-    const timeline: DailyFunnelPoint[] = [
-      { date: "2026-05-10", landingVisitors: 50, signups: 5, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-05-20", landingVisitors: 50, signups: 5, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-06-10", landingVisitors: 100, signups: 10, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-07-10", landingVisitors: 200, signups: 20, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-    ];
-    const revenueByMonth = monthlyRevenueByKey(monthly); // 100 / 200 / 400
-    const visitorsByMonth = monthlyTimelineTotals(timeline, "landingVisitors"); // 100 / 100 / 200
-    const perVisitor = avgPerSeries(revenueByMonth, visitorsByMonth);
-    // per-visitor: 100/100=1, 200/100=2, 400/200=2
-    expect(perVisitor.buckets.map((b) => b.value)).toEqual([1, 2, 2]);
-    // pooled since inception (concluded May+June) = (100+200)/(100+100) = 1.5
+  it("divides cumulative revenue by the cumulative DISTINCT population, headline = last concluded point", () => {
+    const revenueByMonth = monthlyRevenueByKey(monthly); // May 100 / June 200 / July 400
+    // New visitors per month — each person counted once, in the month they first landed.
+    const newVisitors = firstSeenMonthTotals([
+      ["2026-05", 100],
+      ["2026-06", 100],
+      ["2026-07", 200],
+    ]);
+    const perVisitor = cumulativeAvgSeries(revenueByMonth, newVisitors);
+    // cumulative: 100/100=1, 300/200=1.5, 700/400=1.75
+    expect(perVisitor.buckets.map((b) => b.value)).toEqual([1, 1.5, 1.75]);
+    // The headline is the last CONCLUDED point (July is still running), and the
+    // chart being cumulative it IS that point — never a second basis.
     expect(perVisitor.pooledUsd).toBe(1.5);
-    // snapshot = latest CONCLUDED month (June) = 2; avg of avg over May+June = (1+2)/2 = 1.5
-    expect(perVisitor.snapshotUsd).toBe(2);
-    expect(perVisitor.avgOfAvgUsd).toBe(1.5);
+    expect(perVisitor.pooledUsd).toBe(perVisitor.buckets.at(-2)?.value);
+    // The denominator it divides by, for the line under the headline.
+    expect(perVisitor.denominator).toBe(200);
+  });
+
+  it("counts entrants from BEFORE the charted window — the population is not truncated", () => {
+    // A visitor who first landed in January is part of the population May's
+    // revenue is divided by, even though January charts nothing.
+    const series = cumulativeAvgSeries(
+      monthlyRevenueByKey(monthly),
+      firstSeenMonthTotals([
+        ["2026-01", 900],
+        ["2026-05", 100],
+        ["2026-06", 0],
+        ["2026-07", 0],
+      ]),
+    );
+    // May: 100 / (900+100) = 0.1 — not 100/100.
+    expect(series.buckets[0].value).toBe(0.1);
+    expect(series.denominator).toBe(1000);
+  });
+
+  it("a population with no entrants yet charts 0 and states no headline", () => {
+    const series = cumulativeAvgSeries(monthlyRevenueByKey(monthly), firstSeenMonthTotals([]));
+    expect(series.buckets.map((b) => b.value)).toEqual([0, 0, 0]);
+    // "we could not measure this" is not "$0 per visitor".
+    expect(series.pooledUsd).toBeNull();
+    expect(series.denominator).toBeNull();
   });
 
   it("ignores the months before the first earning one, so 'since inception' means it", () => {
@@ -158,20 +188,16 @@ describe("Revenue bucket derivations", () => {
       { period: "2026-04", periodStart: "2026-04-01", revenueUsd: 0 },
       ...monthly,
     ];
-    const timeline: DailyFunnelPoint[] = [
-      { date: "2026-03-10", landingVisitors: 900, signups: 90, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-04-10", landingVisitors: 900, signups: 90, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-05-10", landingVisitors: 100, signups: 10, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-06-10", landingVisitors: 100, signups: 10, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-      { date: "2026-07-10", landingVisitors: 200, signups: 20, cardsAdded: 0, signupConversionPct: 0, cardConversionPct: 0 },
-    ];
-    const series = avgPerSeries(
+    const series = cumulativeAvgSeries(
       monthlyRevenueByKey(withDeadMonths),
-      monthlyTimelineTotals(timeline, "landingVisitors"),
+      firstSeenMonthTotals([
+        ["2026-05", 100],
+        ["2026-06", 100],
+        ["2026-07", 200],
+      ]),
     );
     // Only May / June / July are charted — the two dead months are gone.
-    expect(series.buckets.map((b) => b.value)).toEqual([1, 2, 2]);
-    // Pooled over the concluded earning months only: (100+200)/(100+100) = 1.5.
+    expect(series.buckets.map((b) => b.value)).toEqual([1, 1.5, 1.75]);
     expect(series.pooledUsd).toBe(1.5);
 
     // The realized series drops them too, so the CMGR anchor is the first real
@@ -188,20 +214,71 @@ describe("Revenue bucket derivations", () => {
     expect(trimLeadingZeroBuckets([{ value: 0 }, { value: 0 }])).toEqual([]);
   });
 
-  it("avg-per-paid-client uses active-user monthly counts as the denominator", () => {
-    const active: ActiveUsersBucket[] = [
-      { period: "2026-05", periodStart: "2026-05-01", activeUsers: 10, growthPct: null },
-      { period: "2026-06", periodStart: "2026-06-01", activeUsers: 20, growthPct: 100 },
-      { period: "2026-07", periodStart: "2026-07-01", activeUsers: 40, growthPct: 100 },
+  it("avg-per-paid-client counts each org ONCE, at its first active month", () => {
+    // Two orgs active in May, both still active in June, one more joining in June.
+    // Summing the monthly active-user counts would read 2 + 3 = 5 client-months;
+    // the population is 3 orgs. Measured in prod 2026-09-08 that gap was 2.0x
+    // (42 client-months over 21 orgs), which halved the headline.
+    const users = [
+      { firstActiveMonth: "2026-05" },
+      { firstActiveMonth: "2026-05" },
+      { firstActiveMonth: "2026-06" },
     ];
-    const revenueByMonth = monthlyRevenueByKey(monthly); // 100 / 200 / 400
-    const byClient = monthlyActiveUsersByKey(active);
-    const series = avgPerSeries(revenueByMonth, byClient);
-    // 100/10=10, 200/20=10, 400/40=10
-    expect(series.buckets.map((b) => b.value)).toEqual([10, 10, 10]);
-    // pooled since inception (concluded May+June) = (100+200)/(10+20) = 10
-    expect(series.pooledUsd).toBe(10);
-    expect(series.snapshotUsd).toBe(10);
+    const entrants = newPaidClientsByMonth(users);
+    expect(entrants.get("2026-05")).toBe(2);
+    expect(entrants.get("2026-06")).toBe(1);
+
+    const series = cumulativeAvgSeries(monthlyRevenueByKey(monthly), entrants);
+    // cumulative: 100/2=50, 300/3=100, 700/3=233.33
+    expect(series.buckets.map((b) => b.value)).toEqual([50, 100, 233.33]);
+    expect(series.pooledUsd).toBe(100);
+    expect(series.denominator).toBe(3);
+  });
+
+  it("reproduces the prod figures the old summed denominator got wrong", () => {
+    // Read off prod 2026-09-08. The old code summed the monthly active-user counts
+    // (2+4+4+12+12+8 = 42 client-months) and reported $189; the population is 21
+    // distinct orgs, so the honest figure is $378.58 — the label said "per client"
+    // and the arithmetic answered "per client-month".
+    const revenue = monthlyRevenueByKey([
+      { period: "2026-03", periodStart: "2026-03-01", revenueUsd: 178.95 },
+      { period: "2026-04", periodStart: "2026-04-01", revenueUsd: 470.92 },
+      { period: "2026-05", periodStart: "2026-05-01", revenueUsd: 2016.74 },
+      { period: "2026-06", periodStart: "2026-06-01", revenueUsd: 938.65 },
+      { period: "2026-07", periodStart: "2026-07-01", revenueUsd: 2347.31 },
+      { period: "2026-08", periodStart: "2026-08-01", revenueUsd: 1997.71 },
+      { period: "2026-09", periodStart: "2026-09-01", revenueUsd: 490.53 }, // still running
+    ]);
+    const entrants = firstSeenMonthTotals([
+      ["2026-03", 2],
+      ["2026-04", 2],
+      ["2026-06", 9],
+      ["2026-07", 7],
+      ["2026-08", 1],
+    ]);
+    const series = cumulativeAvgSeries(revenue, entrants);
+    expect(series.pooledUsd).toBe(378.58);
+    expect(series.denominator).toBe(21);
+    // A month with no NEW client still moves the curve, because the revenue grows.
+    expect(series.buckets.map((b) => b.value)).toEqual([89.47, 162.47, 666.65, 277.33, 297.63, 378.58, 401.94]);
+  });
+
+  it("reads the per-USER active history, so a client is never counted once per month", () => {
+    // The aggregate monthly endpoint answers "how many were active in month M",
+    // which cannot be accumulated into a population. Only firstActiveMonth can.
+    expect(revenueView).toContain("getActiveUsersByUser");
+    expect(revenueView).toContain("newPaidClientsByMonth");
+    expect(revenueView).not.toContain("monthlyActiveUsersByKey");
+    expect(revenueView).not.toContain("getActiveUsersHistory");
+    // Visitors + signups arrive as first-seen months from PostHog, same rule.
+    expect(revenueView).toContain("firstSeenMonthTotals");
+    expect(revenueView).not.toContain("monthlyTimelineTotals");
+    expect(publicStats).toContain("fetchVisitorFirstSeenMonths");
+    expect(publicStats).toContain("fetchSignupFirstSeenMonths");
+    // min() per person is what puts each id in exactly one month (the query is a
+    // template literal, so the PostHog column name is backslash-escaped in source).
+    expect(publicStats).toContain("min(\\`$start_timestamp\\`)");
+    expect(publicStats).toContain("min(timestamp)");
   });
 });
 

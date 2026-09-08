@@ -4,16 +4,16 @@ import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getFleetRevenue,
-  getActiveUsersHistory,
+  getActiveUsersByUser,
   type FleetRevenue,
-  type ActiveUsersHistory,
+  type ActiveUsersByUser,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { CmgrStat } from "@/components/cmgr-stat";
 import { PeriodCompoundChart } from "@/components/period-compound-chart";
 import { formatUsd } from "@/lib/format-number";
-import type { BillingStats, DailyFunnelPoint } from "@/lib/public-stats";
+import type { BillingStats, FirstSeenMonthRow } from "@/lib/public-stats";
 import {
   revenueBuckets,
   revenueCmgrSummary,
@@ -24,9 +24,9 @@ import {
   toCompoundPoints,
   trackedWeeks,
   monthlyRevenueByKey,
-  monthlyTimelineTotals,
-  monthlyActiveUsersByKey,
-  avgPerSeries,
+  firstSeenMonthTotals,
+  newPaidClientsByMonth,
+  cumulativeAvgSeries,
   type RevenueBucket,
   type AvgSeries,
   type RetentionSeries,
@@ -130,36 +130,56 @@ function PeriodCard({
   );
 }
 
-/** Snapshot + "avg of the avg" headline for an average-revenue-per-X card. */
-function AvgHeadline({ series }: { series: AvgSeries }) {
+/**
+ * Headline for an average-revenue-per-X card: the global figure, with the DISTINCT
+ * population it divides by underneath.
+ *
+ * The line under the number states the denominator rather than the latest month's
+ * own ratio: a monthly figure sits on a different basis than the headline, so one
+ * card would carry two answers under one title.
+ */
+function AvgHeadline({ series, denominatorLabel }: { series: AvgSeries; denominatorLabel: string }) {
   return (
     <div>
       <p className="text-2xl font-semibold text-gray-950">{series.pooledUsd === null ? "—" : usdFull(series.pooledUsd)}</p>
       <p className="mt-0.5 text-xs text-gray-400">
-        {series.snapshotUsd === null ? "—" : usdFull(series.snapshotUsd)} last complete month
+        {series.denominator === null
+          ? "—"
+          : `${series.denominator.toLocaleString("en-US")} ${denominatorLabel} since inception`}
       </p>
     </div>
   );
 }
+
+/** Nothing measured yet — every figure reads "—", never a fabricated zero. */
+const EMPTY_AVG_SERIES: AvgSeries = { buckets: [], pooledUsd: null, denominator: null };
 
 function AvgCard({
   title,
   subtitle,
   series,
   valueLabel,
+  denominatorLabel,
   pending,
 }: {
   title: string;
   subtitle: string;
   series: AvgSeries;
   valueLabel: string;
+  denominatorLabel: string;
   pending: boolean;
 }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
       <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
       <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
-      <div className="mt-4">{pending ? <Skeleton className="h-16 w-32 rounded" /> : <AvgHeadline series={series} />}</div>
+      <div className="mt-4">
+        {pending ? (
+          <Skeleton className="h-16 w-32 rounded" />
+        ) : (
+          <AvgHeadline series={series} denominatorLabel={denominatorLabel} />
+        )}
+      </div>
       <div className="mt-5">
         {pending ? (
           <Skeleton className="h-[280px] w-full rounded" />
@@ -275,18 +295,28 @@ function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
   );
 }
 
-export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[]; billing: BillingStats }) {
+export function RevenueView({
+  billing,
+  visitorFirstSeenMonths,
+  signupFirstSeenMonths,
+}: {
+  billing: BillingStats;
+  visitorFirstSeenMonths: FirstSeenMonthRow[];
+  signupFirstSeenMonths: FirstSeenMonthRow[];
+}) {
   const { data, isPending, isError, error } = useAuthQuery<FleetRevenue>(
     ["fleetRevenue"],
     () => getFleetRevenue(),
     pollOptionsSlower,
   );
 
+  // Per-USER rather than the monthly totals: the avg-per-client denominator is the
+  // DISTINCT orgs ever active, which only `firstActiveMonth` per org can answer.
   const {
     data: history,
     isError: historyError,
     error: historyErr,
-  } = useAuthQuery<ActiveUsersHistory>(["activeUsersHistory"], () => getActiveUsersHistory(), pollOptionsSlower);
+  } = useAuthQuery<ActiveUsersByUser>(["activeUsersByUser"], () => getActiveUsersByUser(), pollOptionsSlower);
 
   const derived = useMemo(() => {
     if (!data) return null;
@@ -301,10 +331,13 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
     const monthlyArr = committedBuckets(cm.monthly, "arrUsd", "month");
     const weeklyArr = committedBuckets(cm.weekly, "arrUsd", "week");
 
+    // Each denominator is NEW ENTRANTS per month — one row per person, in the month
+    // they first reached that stage — which `cumulativeAvgSeries` accumulates into
+    // the distinct population. Never a per-month count summed across months.
     const revenueByMonth = monthlyRevenueByKey(data.monthly);
-    const visitorsByMonth = monthlyTimelineTotals(timeline, "landingVisitors");
-    const signupsByMonth = monthlyTimelineTotals(timeline, "signups");
-    const paidClientsByMonth = monthlyActiveUsersByKey(history?.monthly ?? []);
+    const newVisitorsByMonth = firstSeenMonthTotals(visitorFirstSeenMonths);
+    const newSignupsByMonth = firstSeenMonthTotals(signupFirstSeenMonths);
+    const newPaidClients = newPaidClientsByMonth(history?.users ?? []);
 
     return {
       monthly,
@@ -318,13 +351,13 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
       // ARR = MRR × 12 → same growth, so MRR & ARR share these.
       monthlyMrrCmgr: revenueCmgrSummary(monthlyMrr),
       weeklyMrrCmgr: revenueCmgrSummary(weeklyMrr),
-      perVisitor: avgPerSeries(revenueByMonth, visitorsByMonth),
-      perSignup: avgPerSeries(revenueByMonth, signupsByMonth),
-      perPaidClient: avgPerSeries(revenueByMonth, paidClientsByMonth),
+      perVisitor: cumulativeAvgSeries(revenueByMonth, newVisitorsByMonth),
+      perSignup: cumulativeAvgSeries(revenueByMonth, newSignupsByMonth),
+      perPaidClient: cumulativeAvgSeries(revenueByMonth, newPaidClients),
       monthlyNrr: retentionSeries(data.netRevenueRetention?.monthly ?? [], "month"),
       weeklyNrr: retentionSeries(data.netRevenueRetention?.weekly ?? [], "week"),
     };
-  }, [data, history, timeline]);
+  }, [data, history, visitorFirstSeenMonths, signupFirstSeenMonths]);
 
   // Cash collected is server-side data on the page's own props — no query, no
   // poll, already fetched on every render of this route.
@@ -567,29 +600,32 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
 
       <SectionHeading
         title="Revenue consumed per audience"
-        blurb="The consumed revenue above divided by each funnel stage's population, month by month. The headline is pooled across every concluded month since the first earning one; the line under it is the last complete month on its own."
+        blurb="The consumed revenue above divided by the DISTINCT population that has ever reached each funnel stage — every person counted once, however many months they were around. The chart is cumulative, so its last concluded point IS the headline."
       />
 
       <section className="grid gap-6 lg:grid-cols-3">
         <AvgCard
           title="Avg revenue per unique visitor"
-          subtitle="Total revenue divided by total unique website visitors, since inception."
-          series={derived?.perVisitor ?? { buckets: [], pooledUsd: null, snapshotUsd: null, avgOfAvgUsd: null }}
+          subtitle="All revenue divided by every distinct visitor since inception."
+          series={derived?.perVisitor ?? EMPTY_AVG_SERIES}
           valueLabel="per visitor"
+          denominatorLabel="visitors"
           pending={isPending || !derived}
         />
         <AvgCard
           title="Avg revenue per signup"
-          subtitle="Total revenue divided by total signups, since inception."
-          series={derived?.perSignup ?? { buckets: [], pooledUsd: null, snapshotUsd: null, avgOfAvgUsd: null }}
+          subtitle="All revenue divided by every distinct signup since inception."
+          series={derived?.perSignup ?? EMPTY_AVG_SERIES}
           valueLabel="per signup"
+          denominatorLabel="signups"
           pending={isPending || !derived}
         />
         <AvgCard
           title="Avg revenue per paid client"
-          subtitle="Total revenue divided by total active paying clients, since inception."
-          series={derived?.perPaidClient ?? { buckets: [], pooledUsd: null, snapshotUsd: null, avgOfAvgUsd: null }}
+          subtitle="All revenue divided by every org that has ever billed cold-email spend — a client counted once, not once per month."
+          series={derived?.perPaidClient ?? EMPTY_AVG_SERIES}
           valueLabel="per client"
+          denominatorLabel="clients"
           pending={isPending || !derived}
         />
       </section>
