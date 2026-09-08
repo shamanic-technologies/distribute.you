@@ -317,12 +317,19 @@ export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
  * `data-n` seeds the in-session nudge in v2/main.js; the class names are pinned
  * on both sides by tests/unit/hot-lead-stats.test.ts.
  */
-export function hotLeadRowHtml(stats: HotLeadStats): string {
+export function hotLeadRowHtml(
+  stats: HotLeadStats,
+  fleetReturn: FleetReturnStats | null = null,
+): string {
   const leads = stats.hotLeads.toLocaleString("en-US");
   const companies = stats.companies.toLocaleString("en-US");
   // Whole dollars: this is a headline price, and cents on a median that moves
   // with every outcome read as precision we do not have.
   const cost = `$${Math.round(stats.medianCostUsd).toLocaleString("en-US")}`;
+  // The return is a SECOND read and states its own absence: unmeasurable, failed or
+  // slow, the row renders the two figures it always did. The row wraps (centred flex),
+  // so a third item costs no height at any width — measured, not assumed.
+  const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
   return (
     '<div class="hero-stats">' +
     '<span class="hstat">' +
@@ -332,6 +339,11 @@ export function hotLeadRowHtml(stats: HotLeadStats): string {
     '<span class="hstat">' +
     `<span class="hstat-n"><b>${cost}</b></span>` +
     '<span class="hstat-l">median cost per hot lead</span></span>' +
+    (returnFigure
+      ? '<span class="hstat">' +
+        `<span class="hstat-n"><b>${returnFigure.text}x</b></span>` +
+        '<span class="hstat-l">median ROI reported</span></span>'
+      : "") +
     "</div>"
   );
 }
@@ -461,10 +473,12 @@ async function withHotLeadStats(html: string) {
     console.error("[landing] hot-lead proof row unavailable, dropping it", error);
   }
 
-  // Only the comparison band states a return, so only a page carrying that token pays
-  // for the read. The hero row is two figures by design.
+  // Both surfaces state the return, from ONE read, so the homepage hero and a
+  // comparison page cannot quote two different medians. Nothing is fetched for a page
+  // that carries neither token, and nothing is fetched when the fleet itself could not
+  // be measured — a return with no hot leads beside it states half a picture.
   let fleetReturn: FleetReturnStats | null = null;
-  if (wantsBand && stats) {
+  if (stats) {
     try {
       fleetReturn = await fetchFleetReturn();
     } catch (error) {
@@ -473,7 +487,7 @@ async function withHotLeadStats(html: string) {
   }
 
   return html
-    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats) : "")
+    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats, fleetReturn) : "")
     .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn) : "");
 }
 
