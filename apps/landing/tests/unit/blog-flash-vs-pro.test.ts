@@ -3,18 +3,19 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Guards for the hand-written "Cheap LLM or expensive LLM" article.
+ * Guards for the hand-written "Flash or Pro" article.
  *
- * The article is user-facing copy AND a public dataset, so two families of
- * rule apply: the landing's copy rules (no em-dash, the cost is the client's
- * and never ours, no promised meetings, no rate card, no opens) and the
- * dataset's own coherence (the answer, the charts and the method state the
- * same figures). A third family is the owner's editorial rules from the first
- * version's review: the workflow count stays out of the title and the answer,
- * the answer is stated without "except" clauses or a one-reply price, the
- * charts are inline SVG that scale with the column, and the hero is a 16:9
- * illustration because both the blog card and the article page crop the
- * cover to 16:9.
+ * Three families of rule. The landing's copy rules (no em-dash, the cost is
+ * the client's and never ours, no promised meetings, no rate card, no opens).
+ * The dataset's coherence (the answer, the charts and the method state the
+ * same figures). And the owner's editorial rules from two reviews: no
+ * workflow count outside Method, the volume is a round 100,000 with the exact
+ * count under Method only, every money figure is a whole dollar, the two
+ * outcome charts are symmetric (both cost-per-outcome, lower is better), the
+ * tiers are called Flash / Pro / Frontier, the charts are inline SVG, and the
+ * hero is a 16:9 illustration whose content sits in a central safe zone
+ * because the blog list crops the featured cover to a different ratio than
+ * the article page does.
  */
 
 const SLUG = "flash-vs-pro-llm-cold-email";
@@ -24,11 +25,13 @@ const meta = JSON.parse(readFileSync(join(DIR, "meta.json"), "utf8")) as Record<
 const hero = readFileSync(join(DIR, "hero.svg"), "utf8");
 const publish = readFileSync(join(__dirname, "..", "..", "scripts", "publish-blog-article.mjs"), "utf8");
 const render = readFileSync(join(__dirname, "..", "..", "scripts", "render-blog-hero.mjs"), "utf8");
+const slugPage = readFileSync(join(__dirname, "..", "..", "src", "app", "blog", "[slug]", "page.tsx"), "utf8");
 
 const prose = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<svg[\s\S]*?<\/svg>/g, "");
-const answer = html.slice(0, html.indexOf('<h2 id="method">'));
+const story = html.slice(0, html.indexOf('<h2 id="method">'));
+const svgs = html.match(/<svg[\s\S]*?<\/svg>/g) ?? [];
 
-describe("cheap-vs-expensive article: copy rules", () => {
+describe("flash-or-pro article: copy rules", () => {
   it("carries no em-dash anywhere (body, meta, hero)", () => {
     expect(html).not.toContain("—");
     expect(JSON.stringify(meta)).not.toContain("—");
@@ -58,17 +61,42 @@ describe("cheap-vs-expensive article: copy rules", () => {
   });
 });
 
-describe("cheap-vs-expensive article: editorial rules from the first review", () => {
-  it("the title and excerpt lead with emails sent, never with the workflow count", () => {
-    expect(String(meta.title)).not.toMatch(/\d+ workflows?/i);
-    expect(String(meta.excerpt)).not.toMatch(/\d+ workflows?/i);
-    expect(String(meta.excerpt)).toContain("95,661");
+describe("flash-or-pro article: editorial rules", () => {
+  it("the tiers are Flash, Pro and Frontier, never cheap and expensive", () => {
+    expect(story).toMatch(/<strong>Flash<\/strong>, the cheapest\. <strong>Pro<\/strong>, the middle\. <strong>Frontier<\/strong>, the most expensive\./);
+    expect(story).not.toMatch(/cheap tier|expensive tier/i);
+    expect(hero).not.toMatch(/CHEAP|EXPENSIVE/);
+    expect(hero).toContain("FLASH TIER");
+    expect(hero).toContain("PRO TIER");
   });
 
-  it("the workflow count appears only under Method", () => {
-    expect(answer).not.toMatch(/\b20 workflows?\b/);
+  it("the method gives examples for every tier", () => {
     const method = html.slice(html.indexOf('<h2 id="method">'));
-    expect(method).toContain("20 workflows");
+    expect(method).toMatch(/Flash, the cheapest model of a family \(Gemini Flash, Claude Haiku, DeepSeek V4 Flash/);
+    expect(method).toMatch(/Pro, the middle \(Gemini Pro, Claude Opus, DeepSeek V4 Pro/);
+    expect(method).toMatch(/Frontier, the most expensive \(Claude Fable, Astra\), not yet run/);
+  });
+
+  it("the volume is a round 100,000 in the title, excerpt, story and hero; the exact count lives under Method only", () => {
+    expect(String(meta.title)).toContain("100,000");
+    expect(String(meta.excerpt)).toContain("100,000");
+    expect(story).toContain("100,000 cold emails");
+    expect(hero).toContain("100,000 emails sent");
+    expect(story).not.toContain("95,661");
+    expect(html.slice(html.indexOf('<h2 id="method">'))).toContain("95,661");
+  });
+
+  it("no money figure carries cents", () => {
+    expect(prose).not.toMatch(/\$\d[\d,]*\.\d/);
+    expect(hero).not.toMatch(/\$\d[\d,]*\.\d/);
+    for (const svg of svgs) expect(svg).not.toMatch(/\$\d[\d,]*\.\d/);
+  });
+
+  it("the workflow count stays out of the title, the excerpt and the story", () => {
+    expect(String(meta.title)).not.toMatch(/\d+ workflows?/i);
+    expect(String(meta.excerpt)).not.toMatch(/\d+ workflows?/i);
+    expect(story).not.toMatch(/\b20 workflows?\b/);
+    expect(html.slice(html.indexOf('<h2 id="method">'))).toContain("20 workflows");
   });
 
   it("the method restricts the scope to sales cold email outreach", () => {
@@ -76,22 +104,32 @@ describe("cheap-vs-expensive article: editorial rules from the first review", ()
     expect(html).toMatch(/Journalist outreach, PR pitches/);
   });
 
-  it("the answer is stated straight: no except-clause, no one-reply price", () => {
-    expect(answer).not.toMatch(/\bexcept\b/i);
-    expect(answer).not.toMatch(/1,368\.69|1,369/);
-    expect(answer).toMatch(/If you want website visits/);
-    expect(answer).toMatch(/If you want positive replies/);
+  it("the story runs bet, test, twist, rule, why, then the pitch, and every story section is short", () => {
+    const ids = [...html.matchAll(/<h2 id="([^"]+)">/g)].map((m) => m[1]);
+    expect(ids).toEqual(["the-bet", "the-test", "the-twist", "the-rule", "why", "for-you", "method"]);
+    const sections = story.split(/<h2 id="[^"]+">[^<]*<\/h2>/).slice(1);
+    for (const section of sections) {
+      const words = section.replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, " ").trim().split(/\s+/).length;
+      expect(words).toBeLessThan(120);
+    }
   });
 
-  it("the stake is asked before the answer", () => {
-    expect(html.indexOf("Pay 7x more per email and convert better")).toBeGreaterThan(-1);
-    expect(html.indexOf("Pay 7x more per email")).toBeLessThan(html.indexOf('<h2 id="the-answer">'));
+  it("the two outcome charts are symmetric: both cost per outcome, both lower is better, no except-clause", () => {
+    const charts = svgs.filter((s) => /Cost per (website visit|positive reply)/.test(s));
+    expect(charts.length).toBe(2);
+    for (const chart of charts) {
+      expect(chart).toContain("(USD, lower is better)");
+      expect(chart).toMatch(/>Flash</);
+      expect(chart).toMatch(/>Pro</);
+    }
+    expect(story).not.toMatch(/\bexcept\b/i);
+    expect(story).not.toMatch(/per 1,000 USD/);
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
-    const svgs = html.match(/<svg[^>]*>/g) ?? [];
-    expect(svgs.length).toBe(4);
-    for (const tag of svgs) {
+    const tags = html.match(/<svg[^>]*>/g) ?? [];
+    expect(tags.length).toBe(4);
+    for (const tag of tags) {
       expect(tag).toContain('viewBox="0 0 800 ');
       expect(tag).toContain('width="100%"');
       expect(tag).toContain('role="img"');
@@ -106,24 +144,28 @@ describe("cheap-vs-expensive article: editorial rules from the first review", ()
   });
 });
 
-describe("cheap-vs-expensive article: dataset coherence", () => {
-  it("answer, charts and method state the same headline figures", () => {
-    for (const figure of ["3.24", "17.83", "95,661", "34,506", "57,650", "6,715.53"]) {
+describe("flash-or-pro article: dataset coherence", () => {
+  it("story, charts, hero and method state the same headline figures", () => {
+    for (const figure of ["$3", "$18", "$168", "$1,369", "34,506", "57,650", "$6,716"]) {
       expect(html).toContain(figure);
     }
-    expect(hero).toContain("$3.24");
-    expect(hero).toContain("6.0");
-    expect(hero).toContain("95,661");
+    expect(hero).toContain(">$3<");
+    expect(hero).toContain(">$168<");
+  });
+
+  it("the ratios in the verdict follow from the chart figures", () => {
+    expect(Math.round(18 / 3)).toBe(6);
+    expect(Math.round(1369 / 168)).toBe(8);
+    expect(story).toContain("Flash buys the click 6x cheaper. Pro buys the reply 8x cheaper.");
   });
 
   it("the tier email counts add up to the emails sent", () => {
-    // Cheap 34,506 + expensive 57,650 + not-yet-measurable 3,505.
     expect(34_506 + 57_650 + 3_505).toBe(95_661);
     expect(html).toContain("3,505 emails");
   });
 
   it("every workflow row that states a CPPR has at least two replies", () => {
-    const rows = html.match(/<tr><td>[A-Z][a-z]+<\/td><td>(Cheap|Expensive)<\/td>.*?<\/tr>/g) ?? [];
+    const rows = html.match(/<tr><td>[A-Z][a-z]+<\/td><td>(Flash|Pro)<\/td>.*?<\/tr>/g) ?? [];
     expect(rows.length).toBe(20);
     for (const row of rows) {
       const cells = [...row.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
@@ -143,8 +185,8 @@ describe("cheap-vs-expensive article: dataset coherence", () => {
   });
 
   it("states the limits rather than hiding them", () => {
-    expect(html).toMatch(/What this is not<\/strong>: a randomised experiment/);
-    expect(html).toMatch(/31 positive replies is a small count/);
+    expect(html).toMatch(/<strong>Limits<\/strong>: not a randomised experiment/);
+    expect(html).toContain("31 positive replies is a small count");
     expect(html).toMatch(/no confidence intervals/);
   });
 
@@ -158,7 +200,7 @@ describe("cheap-vs-expensive article: dataset coherence", () => {
   });
 });
 
-describe("cheap-vs-expensive article: publishing", () => {
+describe("flash-or-pro article: publishing and rendering", () => {
   it("meta.json names the directory slug, a manual source and a cover under public/", () => {
     expect(meta.slug).toBe(SLUG);
     expect(meta.source).toBe("manual");
@@ -166,9 +208,29 @@ describe("cheap-vs-expensive article: publishing", () => {
     expect(existsSync(join(__dirname, "..", "..", "public", "blog", SLUG, "hero.png"))).toBe(true);
   });
 
-  it("the hero is a 16:9 illustration, and the renderer refuses any other shape", () => {
+  it("the hero is 16:9 and every text sits inside the central safe zone (x 200..1400)", () => {
     expect(hero).toMatch(/<svg[^>]*\swidth="1600"[^>]*\sheight="900"/);
     expect(render).toContain("16 / 9");
+    // Groups translate their children; resolve each <text> x against its group.
+    const groups = [...hero.matchAll(/<g transform="translate\((\d+),\d+\)">([\s\S]*?)<\/g>/g)];
+    for (const [, dx, body] of groups) {
+      for (const [, x, anchor] of body.matchAll(/<text x="(\d+)"[^>]*?(?:text-anchor="(\w+)")?[^>]*>/g)) {
+        const abs = Number(dx) + Number(x);
+        expect(abs).toBeGreaterThanOrEqual(200);
+        expect(abs).toBeLessThanOrEqual(1400);
+        void anchor;
+      }
+    }
+    const topLevel = hero.replace(/<g[\s\S]*?<\/g>/g, "");
+    for (const [, x] of topLevel.matchAll(/<text x="(\d+)"/g)) {
+      expect(Number(x)).toBeGreaterThanOrEqual(200);
+      expect(Number(x)).toBeLessThanOrEqual(1400);
+    }
+  });
+
+  it("the article page clears the sticky nav above its header", () => {
+    expect(slugPage).not.toContain("dy-section-tight");
+    expect(slugPage).toMatch(/outerClassName="pt-28 pb-4"/);
   });
 
   it("the publish script upserts on slug and refuses an em-dash", () => {
