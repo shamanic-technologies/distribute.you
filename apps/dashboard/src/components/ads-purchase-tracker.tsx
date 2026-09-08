@@ -36,13 +36,21 @@ import { useSearchParams } from "next/navigation";
  */
 const FIRED_KEY_PREFIX = "distribute_ads_purchase_fired";
 
+/** True on the return leg of either payment-mode checkout the product runs. */
+export function isCheckoutReturn(params: { get(name: string): string | null }): boolean {
+  return params.get("success") === "true" || params.get("launch_checkout") === "success";
+}
+
 export function AdsPurchaseTracker() {
   const searchParams = useSearchParams();
   const fired = useRef(false);
 
   useEffect(() => {
     if (fired.current) return;
-    if (searchParams.get("success") !== "true") return;
+    // Two return shapes reach a tracker: the billing top-up returns with
+    // `?success=true`, the onboarding launch with `?launch_checkout=success`.
+    // Gating on the first alone missed every onboarding payment for months.
+    if (!isCheckoutReturn(searchParams)) return;
 
     // Resolve the payment value. daily_budget is DOLLARS (onboarding launch, the
     // 1-day budget); paid_amount is CENTS (billing top-up). Their presence proves

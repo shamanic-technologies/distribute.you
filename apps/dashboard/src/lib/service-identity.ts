@@ -28,6 +28,9 @@ export const SERVICE_IDENTITY = {
   outcomeDigest: "system-outcome-digest",
   /** The no-login public report proxy (`admin/lib/report-api.ts`). */
   reportPublic: "system-report-public",
+  /** The Google Ads offline-conversion feed (`dashboard/lib/ads-conversion-feed.ts`),
+   *  read by a Google Ads Script that uploads gclid conversions daily. */
+  adsConversionFeed: "system-ads-conversion-feed",
 } as const;
 
 /**
