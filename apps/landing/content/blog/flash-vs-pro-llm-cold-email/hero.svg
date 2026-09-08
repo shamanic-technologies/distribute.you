@@ -1,51 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eff6ff"/>
+      <stop offset="1" stop-color="#dbeafe"/>
     </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1e3a8a" flood-opacity="0.16"/>
+    </filter>
   </defs>
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#dbeafe"/>
 
-  <!-- eyebrow -->
-  <text x="72" y="92" font-size="16" letter-spacing="2" fill="#2563eb" font-weight="600">DISTRIBUTE.YOU DATA, APRIL TO SEPTEMBER 2026</text>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1320" cy="180" r="420" fill="url(#glow)"/>
+  <circle cx="220" cy="760" r="320" fill="url(#glow)"/>
 
-  <!-- title -->
-  <text x="72" y="150" font-size="44" font-weight="700" fill="#0f172a">Flash or Pro for cold email?</text>
-  <text x="72" y="198" font-size="22" fill="#475569">20 production workflows, 6,715 USD of spend, 698 website visits, 31 positive replies.</text>
+  <!-- title block -->
+  <text x="100" y="150" font-size="26" letter-spacing="3" fill="#2563eb" font-weight="600">COLD EMAIL AND LLMS</text>
+  <text x="100" y="236" font-size="72" font-weight="800" fill="#0f172a">Cheap model</text>
+  <text x="100" y="318" font-size="72" font-weight="800" fill="#0f172a">or expensive model?</text>
+  <text x="100" y="384" font-size="30" fill="#475569">95,661 emails sent. One surprisingly simple answer.</text>
 
-  <!-- left chart: cost per website visit -->
-  <g transform="translate(72,260)">
-    <text x="0" y="0" font-size="18" font-weight="600" fill="#0f172a">Cost per website visit</text>
-    <text x="0" y="24" font-size="14" fill="#64748b">USD, lower is better</text>
-
-    <rect x="0" y="52" width="108" height="44" rx="6" fill="#2563eb"/>
-    <text x="120" y="82" font-size="26" font-weight="700" fill="#0f172a">$3.24</text>
-    <text x="0" y="118" font-size="14" fill="#475569">Flash tier (Gemini Flash-Lite, Gemini Flash)</text>
-
-    <rect x="0" y="146" width="460" height="44" rx="6" fill="#93c5fd"/>
-    <text x="472" y="176" font-size="26" font-weight="700" fill="#0f172a">$17.83</text>
-    <text x="0" y="212" font-size="14" fill="#475569">Pro tier (Gemini 3.1 Pro)</text>
+  <!-- left card: cheap -> click -->
+  <g transform="translate(100,470)">
+    <rect x="0" y="0" width="640" height="330" rx="28" fill="#ffffff" stroke="#bfdbfe" filter="url(#shadow)"/>
+    <!-- lightning chip -->
+    <rect x="40" y="40" width="88" height="88" rx="22" fill="#eff6ff" stroke="#bfdbfe"/>
+    <path d="M91 58 L70 92 L85 92 L78 116 L100 80 L86 80 Z" fill="#2563eb"/>
+    <text x="150" y="78" font-size="22" letter-spacing="2" fill="#2563eb" font-weight="700">CHEAP TIER</text>
+    <text x="150" y="116" font-size="30" font-weight="700" fill="#0f172a">Buys the click</text>
+    <!-- envelope -->
+    <rect x="40" y="180" width="200" height="120" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+    <path d="M40 190 L140 262 L240 190" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+    <!-- link pill in envelope -->
+    <rect x="80" y="266" width="120" height="18" rx="9" fill="#dbeafe"/>
+    <!-- arrow -->
+    <path d="M270 240 L360 240" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+    <path d="M345 226 L362 240 L345 254" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- cursor -->
+    <path d="M400 195 L400 285 L424 262 L440 300 L458 292 L442 254 L474 254 Z" fill="#2563eb" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
+    <text x="500" y="210" font-size="40" font-weight="800" fill="#0f172a">$3.24</text>
+    <text x="500" y="244" font-size="18" fill="#64748b">per website visit</text>
   </g>
 
-  <!-- right chart: positive replies per $1k -->
-  <g transform="translate(660,260)">
-    <text x="0" y="0" font-size="18" font-weight="600" fill="#0f172a">Positive replies per 1,000 USD</text>
-    <text x="0" y="24" font-size="14" fill="#64748b">count, higher is better</text>
-
-    <rect x="0" y="52" width="56" height="44" rx="6" fill="#93c5fd"/>
-    <text x="68" y="82" font-size="26" font-weight="700" fill="#0f172a">0.7</text>
-    <text x="0" y="118" font-size="14" fill="#475569">Flash tier (1 reply on 1,369 USD)</text>
-
-    <rect x="0" y="146" width="460" height="44" rx="6" fill="#2563eb"/>
-    <text x="472" y="176" font-size="26" font-weight="700" fill="#0f172a">6.0</text>
-    <text x="0" y="212" font-size="14" fill="#475569">Pro tier (29 replies on 4,869 USD)</text>
+  <!-- right card: expensive -> reply -->
+  <g transform="translate(860,470)">
+    <rect x="0" y="0" width="640" height="330" rx="28" fill="#0f172a" filter="url(#shadow)"/>
+    <!-- diamond chip -->
+    <rect x="40" y="40" width="88" height="88" rx="22" fill="#1e293b" stroke="#334155"/>
+    <path d="M84 60 L112 84 L84 116 L56 84 Z" fill="#93c5fd"/>
+    <path d="M56 84 L112 84" stroke="#0f172a" stroke-width="3"/>
+    <text x="150" y="78" font-size="22" letter-spacing="2" fill="#93c5fd" font-weight="700">EXPENSIVE TIER</text>
+    <text x="150" y="116" font-size="30" font-weight="700" fill="#ffffff">Buys the reply</text>
+    <!-- envelope -->
+    <rect x="40" y="180" width="200" height="120" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+    <path d="M40 190 L140 262 L240 190" fill="none" stroke="#475569" stroke-width="2"/>
+    <rect x="70" y="240" width="140" height="10" rx="5" fill="#334155"/>
+    <rect x="70" y="260" width="100" height="10" rx="5" fill="#334155"/>
+    <!-- arrow -->
+    <path d="M270 240 L360 240" stroke="#93c5fd" stroke-width="5" stroke-linecap="round"/>
+    <path d="M345 226 L362 240 L345 254" fill="none" stroke="#93c5fd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- reply bubble -->
+    <path d="M390 192 h84 a20 20 0 0 1 20 20 v52 a20 20 0 0 1 -20 20 h-44 l-26 24 v-24 h-14 a20 20 0 0 1 -20 -20 v-52 a20 20 0 0 1 20 -20 z" fill="#2563eb"/>
+    <path d="M414 238 l12 12 l26 -28" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="612" y="212" font-size="40" font-weight="800" fill="#ffffff" text-anchor="end">6.0</text>
+    <text x="612" y="244" font-size="16" fill="#94a3b8" text-anchor="end">replies per $1k spent</text>
   </g>
 
-  <!-- footer -->
-  <line x1="72" y1="540" x2="1128" y2="540" stroke="#dbeafe"/>
-  <text x="72" y="578" font-size="15" fill="#64748b">Flash buys the click. Pro buys the reply. Full tables and sources at distribute.you/blog</text>
-  <circle cx="1100" cy="572" r="9" fill="#2563eb"/>
-  <text x="1030" y="578" font-size="15" fill="#0f172a" font-weight="600" text-anchor="end">distribute.you</text>
+  <!-- brand -->
+  <circle cx="1470" cy="120" r="14" fill="#2563eb"/>
+  <text x="1440" y="129" font-size="26" font-weight="700" fill="#0f172a" text-anchor="end">distribute.you</text>
 </svg>
