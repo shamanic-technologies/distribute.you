@@ -4,15 +4,19 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/blog/db", () => ({ listArticles: vi.fn(async () => []) }));
 
-import { staticHtml, staticResponse } from "@/lib/static-html";
+import { decorateHtml, renderedResponse } from "@/lib/static-html";
+import { renderDevelopersPage } from "@/lib/pages/developers";
+import { renderAboutPage } from "@/lib/pages/about";
+import { renderContactPage } from "@/lib/pages/contact";
+import { renderNotFoundPage } from "@/lib/pages/not-found";
 
 function read(relative: string): string {
   return readFileSync(join(process.cwd(), relative), "utf8");
 }
 
-const PAGE = "developers.html";
-const source = read(`public/landing/${PAGE}`);
-const rendered = staticHtml(PAGE);
+const PAGE = renderDevelopersPage();
+const source = PAGE;
+const rendered = decorateHtml(PAGE);
 
 /**
  * The is-agentic audit's "Developer resource discoverability" finding is not
@@ -25,9 +29,9 @@ const rendered = staticHtml(PAGE);
  * a crawler that runs no JavaScript can find it.
  */
 describe("/developers exists at a predictable URL", () => {
-  it("is wired to a route that serves the static page", () => {
+  it("is wired to a route that renders the page", () => {
     const route = read("src/app/developers/route.ts");
-    expect(route).toContain('staticResponse("developers.html"');
+    expect(route).toContain("renderedResponse(renderDevelopersPage(), request");
   });
 
   it("canonicalises to the apex, not to a docs subdomain", () => {
@@ -112,25 +116,12 @@ describe("a crawler that runs no JavaScript can find it", () => {
   });
 
   it("is linked from the raw HTML of the trust pages and the 404", () => {
-    for (const page of ["about.html", "contact.html", "404.html"]) {
-      expect(read(`public/landing/${page}`), page).toContain('href="/developers"');
-    }
-  });
-
-  it("is in the shared footer every other static page injects", () => {
-    const components = read("public/landing/js/components.js");
-    expect(components).toContain('href="/developers"');
-  });
-
-  it("bumps the components.js cache-buster on every page that links it", () => {
-    // Editing the injected nav/footer ships nothing to a returning visitor
-    // unless the `?v=N` token moves: it is its own edge cache key.
-    const pages = ["index-v1.html", "about.html", "contact.html", "pricing.html"];
-    for (const page of pages) {
-      const html = read(`public/landing/${page}`);
-      if (!html.includes("js/components.js")) continue;
-      expect(html, page).toContain("js/components.js?v=2");
-      expect(html, page).not.toContain("js/components.js?v=1");
+    for (const [name, html] of [
+      ["about", renderAboutPage()],
+      ["contact", renderContactPage()],
+      ["404", renderNotFoundPage()],
+    ] as const) {
+      expect(html, name).toContain('href="/developers"');
     }
   });
 });
@@ -182,7 +173,7 @@ describe("the page itself holds the repo's conventions", () => {
   });
 
   it("answers markdown as well as HTML, like every other static page", async () => {
-    const asMarkdown = await staticResponse(
+    const asMarkdown = await renderedResponse(
       PAGE,
       new Request("https://distribute.you/developers", {
         headers: { accept: "text/markdown" },
@@ -196,7 +187,7 @@ describe("the page itself holds the repo's conventions", () => {
   });
 
   it("refuses a client that accepts neither HTML nor markdown", async () => {
-    const res = await staticResponse(
+    const res = await renderedResponse(
       PAGE,
       new Request("https://distribute.you/developers", {
         headers: { accept: "application/pdf" },

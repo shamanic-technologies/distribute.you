@@ -394,6 +394,7 @@ export default function BillingPage() {
       const { openCardWidget } = await import("@/lib/card-setup-widget");
       await openCardWidget({
         token: setup.token,
+        environment: setup.environment,
         savePaymentMethodFor: setup.save_payment_method_for,
         name: setup.customer_name ?? undefined,
         email: setup.customer_email ?? undefined,

@@ -4,8 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/blog/db", () => ({ listArticles: vi.fn(async () => []) }));
 
-import { staticHtml, staticResponse } from "@/lib/static-html";
+import { decorateHtml, renderedResponse, staticHtml } from "@/lib/static-html";
 import { organizationJsonLd } from "@/lib/seo";
+import { renderAboutPage } from "@/lib/pages/about";
+import { renderContactPage } from "@/lib/pages/contact";
+import { renderDevelopersPage } from "@/lib/pages/developers";
+import { renderNotFoundPage } from "@/lib/pages/not-found";
 
 function read(relative: string): string {
   return readFileSync(join(process.cwd(), relative), "utf8");
@@ -17,26 +21,34 @@ function accepting(accept?: string): Request {
   });
 }
 
-// about.html carries none of the live-metric tokens, so rendering it makes no
+// The About page carries none of the live-figure tokens, so rendering it makes no
 // network call and the negotiation is the only thing under test here.
-const PAGE = "about.html";
+const PAGE = renderAboutPage();
+
+/** Every document page the apex renders from TypeScript, by file-name-like key. */
+const RENDERED: Record<string, string> = {
+  "about": renderAboutPage(),
+  "contact": renderContactPage(),
+  "developers": renderDevelopersPage(),
+  "404": renderNotFoundPage(),
+};
 
 describe("Accept negotiation on a statically-served page", () => {
   it("serves the HTML document to a browser, and varies on Accept", async () => {
-    const res = await staticResponse(
+    const res = await renderedResponse(
       PAGE,
       accepting("text/html,application/xhtml+xml;q=0.9,*/*;q=0.8"),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(res.headers.get("vary")).toContain("Accept");
-    expect(await res.text()).toContain("<!DOCTYPE html>");
+    expect(await res.text()).toContain("<!doctype html>");
   });
 
   it("is byte-unchanged when no Accept header is sent", async () => {
-    const withHeader = await staticResponse(PAGE, accepting("text/html"));
-    const without = await staticResponse(PAGE, accepting());
-    const bare = await staticResponse(PAGE);
+    const withHeader = await renderedResponse(PAGE, accepting("text/html"));
+    const without = await renderedResponse(PAGE, accepting());
+    const bare = await renderedResponse(PAGE);
     const baseline = await withHeader.text();
     expect(await without.text()).toBe(baseline);
     expect(await bare.text()).toBe(baseline);
@@ -44,13 +56,13 @@ describe("Accept negotiation on a statically-served page", () => {
   });
 
   it("serves markdown of that page's own content when asked", async () => {
-    const res = await staticResponse(PAGE, accepting("text/markdown"));
+    const res = await renderedResponse(PAGE, accepting("text/markdown"));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("text/markdown; charset=utf-8");
     expect(res.headers.get("vary")).toContain("Accept");
 
     const body = await res.text();
-    expect(body).not.toContain("<!DOCTYPE html>");
+    expect(body).not.toContain("<!doctype html>");
     expect(body).not.toMatch(/<[a-z/][^>]*>/i);
     expect(body).toContain("# About distribute.you");
     expect(body).toContain("> Source: https://distribute.you/about");
@@ -63,21 +75,21 @@ describe("Accept negotiation on a statically-served page", () => {
   it("keeps the markdown variant out of a shared cache", async () => {
     // Cloudflare honours Vary only for Accept-Encoding, so a cacheable markdown
     // body could be handed to a browser asking the same URL for HTML.
-    const res = await staticResponse(PAGE, accepting("text/markdown"));
+    const res = await renderedResponse(PAGE, accepting("text/markdown"));
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
 
   it("returns 406 for a type it cannot produce", async () => {
-    const res = await staticResponse(PAGE, accepting("application/json"));
+    const res = await renderedResponse(PAGE, accepting("application/json"));
     expect(res.status).toBe(406);
     expect(res.headers.get("vary")).toContain("Accept");
     expect(await res.text()).toContain("text/markdown");
   });
 
   it("honours a status override for the 404 handler, in both variants", async () => {
-    const html = await staticResponse("404.html", accepting("text/html"), { status: 404 });
+    const html = await renderedResponse(RENDERED["404"], accepting("text/html"), { status: 404 });
     expect(html.status).toBe(404);
-    const md = await staticResponse("404.html", accepting("text/markdown"), {
+    const md = await renderedResponse(RENDERED["404"], accepting("text/markdown"), {
       status: 404,
       canonicalPath: "/404",
     });
@@ -85,27 +97,20 @@ describe("Accept negotiation on a statically-served page", () => {
     const body = await md.text();
     expect(body).toContain("/sitemap.xml");
     expect(body).toContain("/llms.txt");
-    expect(body).toContain("https://distribute.you/pricing");
+    expect(body).toContain("https://distribute.you/compare");
   });
 });
 
 describe("every static route passes the request through", () => {
-  it("has no staticResponse call that drops the Accept header", () => {
-    const files = [
-      "src/app/route.ts",
-      "src/app/pricing/route.ts",
-      "src/app/performance/route.ts",
-      "src/app/use-cases/route.ts",
+  it("has no response call that drops the Accept header", () => {
+    expect(read("src/app/route.ts")).toMatch(/staticResponse\("[^"]+", request/);
+    for (const file of [
       "src/app/about/route.ts",
       "src/app/contact/route.ts",
-      "src/app/cold-email-cost-guide/route.ts",
-      "src/app/cold-email-vs-linkedin/route.ts",
-      "src/app/cold-email-for-saas-founders/route.ts",
+      "src/app/developers/route.ts",
       "src/app/[...notFound]/route.ts",
-    ];
-    for (const file of files) {
-      const src = read(file);
-      expect(src, file).toMatch(/staticResponse\("[^"]+", request/);
+    ]) {
+      expect(read(file), file).toMatch(/renderedResponse\(render\w+Page\(\), request/);
     }
   });
 });
@@ -132,9 +137,15 @@ describe("Organization structured data", () => {
     expect(org.identifier).toBe("882102775");
   });
 
-  for (const page of ["index-v2.html", "index-v1.html", "use-cases.html", "pricing.html", "about.html"]) {
+  const DECORATED: Record<string, string> = {
+    "index-v2.html": staticHtml("index-v2.html"),
+    about: decorateHtml(RENDERED.about),
+    contact: decorateHtml(RENDERED.contact),
+    developers: decorateHtml(RENDERED.developers),
+  };
+  for (const page of Object.keys(DECORATED)) {
     it(`injects exactly one Organization into ${page}`, () => {
-      const html = staticHtml(page);
+      const html = DECORATED[page];
       const blocks =
         html.match(
           /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
@@ -161,15 +172,15 @@ describe("Organization structured data", () => {
   it("leaves an unparseable ld+json block alone rather than deleting it", () => {
     // Guards the fail-soft branch: broken structured data is a bug to fix at its
     // source, and dropping it because we could not read it is strictly worse.
-    const html = staticHtml("about.html");
+    const html = decorateHtml(RENDERED.about);
     expect(html).toContain("AboutPage");
   });
 });
 
 describe("trust anchor pages", () => {
-  for (const page of ["about.html", "contact.html"]) {
+  for (const page of ["about", "contact"]) {
     it(`${page} carries real content and is indexable`, () => {
-      const html = read(`public/landing/${page}`);
+      const html = RENDERED[page];
       const text = html
         .replace(/<script[\s\S]*?<\/script>/gi, "")
         .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -183,21 +194,21 @@ describe("trust anchor pages", () => {
     });
 
     it(`${page} ships no em-dash`, () => {
-      expect(read(`public/landing/${page}`)).not.toContain(String.fromCharCode(0x2014));
+      expect(RENDERED[page]).not.toContain(String.fromCharCode(0x2014));
     });
   }
 
   it("states the company address on both pages", () => {
-    for (const page of ["about.html", "contact.html"]) {
-      const html = read(`public/landing/${page}`);
+    for (const page of ["about", "contact"]) {
+      const html = RENDERED[page];
       expect(html).toContain("285 rue de l");
       expect(html).toContain("46140 Douelle");
     }
   });
 
   it("never calls the product a cold email tool", () => {
-    for (const page of ["about.html", "contact.html", "404.html"]) {
-      const html = read(`public/landing/${page}`).toLowerCase();
+    for (const page of ["about", "contact", "404"]) {
+      const html = RENDERED[page].toLowerCase();
       expect(html).not.toContain("cold email tool");
       expect(html).not.toContain("at cost");
       expect(html).not.toContain("pass-through");
@@ -212,10 +223,11 @@ describe("trust anchor pages", () => {
     const home = read("public/landing/index-v2.html");
     expect(home).toContain('href="https://distribute.you/about"');
     expect(home).toContain('href="https://distribute.you/contact"');
-    // Plus the shared footer every other static page injects.
-    const components = read("public/landing/js/components.js");
-    expect(components).toContain('href="/about"');
-    expect(components).toContain('href="/contact"');
+    // Plus the footer every rendered page carries.
+    for (const page of ["about", "contact", "developers"]) {
+      expect(RENDERED[page]).toContain('href="/about"');
+      expect(RENDERED[page]).toContain('href="/contact"');
+    }
   });
 
   it("is in the sitemap", async () => {

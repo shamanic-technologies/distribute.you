@@ -46,9 +46,9 @@ describe("Investors page: ICP #1 section", () => {
     expect(page).toMatch(/Founder proximity/);
   });
 
-  it("mentions the public cold-email roadmap expectation", () => {
+  it("mentions the public roadmap expectation", () => {
     expect(page).toMatch(/Roadmap expectation/);
-    expect(page).toMatch(/Cold email, compounding/);
+    expect(page).toMatch(/More channels, same measurement/);
   });
 });
 

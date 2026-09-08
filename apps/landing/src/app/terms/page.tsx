@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "June 24, 2026";
+const LAST_UPDATED = "September 8, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -18,10 +18,10 @@ const SUPPORT_EMAIL = "support@distribute.you";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for the distribute.you platform — pricing, credits, outreach on your behalf, public performance data, and acceptable use.",
+    "Terms of Service for distribute.you: pricing, credits, outreach on your behalf, public performance data, and acceptable use.",
   alternates: { canonical: TERMS_URL },
   openGraph: {
-    title: "Terms of Service — distribute.you",
+    title: "Terms of Service | distribute.you",
     description:
       "How distribute.you works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
     url: TERMS_URL,
@@ -31,13 +31,13 @@ export const metadata: Metadata = {
         url: DEFAULT_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
-        alt: "distribute.you — Terms of Service",
+        alt: "distribute.you Terms of Service",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Terms of Service — distribute.you",
+    title: "Terms of Service | distribute.you",
     description:
       "How distribute.you works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
     images: [DEFAULT_OG_IMAGE_PATH],
@@ -113,11 +113,12 @@ const SECTIONS: SectionDef[] = [
     body: (
       <>
         <p>
-          {SERVICE} is a done-for-you (DFY), bring-your-own-keys (BYOK)
-          cold email outreach platform built on the Model Context Protocol.
-          You provide a URL and a budget; we orchestrate lead discovery,
-          message generation, cold email delivery, reply qualification, and
-          reporting on your behalf.
+          {SERVICE} is an acquisition agency delivered as a service. You
+          provide a website and a daily budget; we find the buyers, write
+          and send the outreach from domains we own, qualify and answer the
+          replies, and report what each outcome cost you. Cold email is the
+          channel we run today. Other acquisition channels may be added over
+          time and are governed by these same Terms.
         </p>
         <p>
           The Service depends on AI providers, data providers, email
@@ -178,36 +179,31 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>The welcome offer is a total, not a top-up.</strong> The
-          advertised welcome amount (currently $400) is the most free credit an
-          account can ever receive under that offer, counting every free credit
-          that account has already been given under it. Promotional or discount
-          codes, support and goodwill grants, and any other credit granted under
-          the welcome offer count against that same total and reduce what is
-          left of it. No combination of them entitles an account to more than
-          the advertised welcome amount.
+          advertised welcome amount (currently $30) is credited when the
+          account is created and is the most free credit an account can ever
+          receive under that offer, counting every free credit that account has
+          already been given under it. Promotional or discount codes, support
+          and goodwill grants, and any other credit granted under the welcome
+          offer count against that same total and reduce what is left of it. No
+          combination of them entitles an account to more than the advertised
+          welcome amount.
         </p>
         <p>
           <strong>Referral credits are separate and additional.</strong> The
           referral offer (currently $500 for each side of a referral) is its own
           offer with its own total, and it does not count against the welcome
-          amount. An account can hold more than one offer at a time, and each
-          one is released on its own threshold. Those thresholds add up rather
-          than overlap: an account that still has $400 of welcome credit coming
-          at $400 of payments, and is then referred $500, receives the second
-          amount at $900 of cumulative payments. An account may earn the
+          amount. Unlike the welcome credits, referral credits are earned: each
+          side receives its amount once the referred account&apos;s cumulative
+          successful payments reach the referral amount. An account may earn the
           referral amount any number of times, once for each separate person it
-          refers who reaches their own threshold.
+          refers who reaches that threshold.
         </p>
         <p>
-          <strong>How the welcome amount is released.</strong> Part of the
-          welcome amount is credited when the account is created. The remainder
-          is released once the account&apos;s cumulative successful payments
-          reach the advertised threshold, and only to the extent it has not
-          already been used up by the other credits described above. Payments
-          means money actually received and not refunded or charged back, not
-          usage accrued on credit. The welcome amount and the threshold that
-          apply to an account are the ones in effect when that account was
-          created; if we change the offer afterwards, existing accounts keep the
+          <strong>Which offer applies to you.</strong> Payments means money
+          actually received and not refunded or charged back, not usage accrued
+          on credit. The welcome amount, the referral amount and any threshold
+          that apply to an account are the ones in effect when that account was
+          created; if we change an offer afterwards, existing accounts keep the
           terms they signed up under and are not re-priced in either direction.
         </p>
         <p>
@@ -370,7 +366,7 @@ const SECTIONS: SectionDef[] = [
         <p>
           The Service relies on third-party providers, including without
           limitation Anthropic, OpenAI, Google, Apollo, Postmark, Instantly,
-          Stripe, Clerk, Vercel, Neon, Railway, and others. We are not
+          Stripe, Revolut, Clerk, Cloudflare, Hetzner, and others. We are not
           responsible for the availability,
           accuracy, or behavior of third-party services. Outages, rate limits,
           API changes, deprecations, and policy changes at any provider may

@@ -11,188 +11,6 @@ import {
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 
-interface BestPublicMetric {
-  workflowSlug: string;
-  workflowName: string;
-  createdForBrandId: string | null;
-  value: number;
-}
-
-interface BestPublicResponse {
-  best: Record<string, BestPublicMetric | null>;
-}
-
-interface RankedWorkflowItem {
-  stats: Record<string, number | null>;
-}
-
-interface RankedWorkflowResponse {
-  results: RankedWorkflowItem[];
-}
-
-interface LivePerformanceMetrics {
-  costPerPositiveReplyLabel: string;
-  costPerPositiveReplyNumeric: string;
-  positiveReplyRateLabel: string;
-  positiveReplyRateNumeric: string;
-  positiveRepliesPerHundredLabel: string;
-  positiveRepliesPerHundredNumeric: string;
-  positiveRepliesPerHundredRangeLabel: string;
-  positiveRepliesPerHundredBarNumeric: string;
-  emailsSentLabel: string;
-  emailsSentNumeric: string;
-}
-
-const SALES_COLD_EMAIL_FEATURE_SLUG = "sales-cold-email-outreach";
-const BEST_POSITIVE_REPLY_KEY = "recipientsRepliesPositive";
-
-// Last-known-good marketing numbers (the values these stats held before they
-// were sourced live). Used only when the public metrics API is unreachable or
-// transiently omits a field, so a build-time prerender never aborts the whole
-// landing deploy and a page never ships raw __PLACEHOLDER__ tokens.
-const FALLBACK_LIVE_PERFORMANCE_METRICS: LivePerformanceMetrics = {
-  costPerPositiveReplyLabel: "$1.42",
-  costPerPositiveReplyNumeric: "1.42",
-  positiveReplyRateLabel: "2.1%",
-  positiveReplyRateNumeric: "2.1",
-  positiveRepliesPerHundredLabel: "2",
-  positiveRepliesPerHundredNumeric: "2.1",
-  positiveRepliesPerHundredRangeLabel: "1-2",
-  positiveRepliesPerHundredBarNumeric: "2.1",
-  emailsSentLabel: "14k",
-  emailsSentNumeric: "14000",
-};
-const BEST_POSITIVE_REPLY_COST_LABEL = "__BEST_POSITIVE_REPLY_COST__";
-const BEST_POSITIVE_REPLY_COST_NUMERIC = "__BEST_POSITIVE_REPLY_COST_NUMERIC__";
-const POSITIVE_REPLY_RATE_LABEL = "__POSITIVE_REPLY_RATE__";
-const POSITIVE_REPLY_RATE_NUMERIC = "__POSITIVE_REPLY_RATE_NUMERIC__";
-const POSITIVE_REPLIES_PER_HUNDRED_LABEL = "__POSITIVE_REPLIES_PER_HUNDRED__";
-const POSITIVE_REPLIES_PER_HUNDRED_NUMERIC = "__POSITIVE_REPLIES_PER_HUNDRED_NUMERIC__";
-const POSITIVE_REPLIES_PER_HUNDRED_RANGE_LABEL = "__POSITIVE_REPLIES_PER_HUNDRED_RANGE__";
-const POSITIVE_REPLIES_PER_HUNDRED_BAR_NUMERIC = "__POSITIVE_REPLIES_PER_HUNDRED_BAR_NUMERIC__";
-const EMAILS_SENT_LABEL = "__EMAILS_SENT__";
-const EMAILS_SENT_NUMERIC = "__EMAILS_SENT_NUMERIC__";
-
-function resolvePublicApiUrl(): string {
-  return process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL ?? URLS.api;
-}
-
-function formatCostCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-function num(stats: Record<string, number | null>, key: string): number {
-  return stats[key] ?? 0;
-}
-
-function formatPercent(rate: number): string {
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
-function formatCount(value: number): string {
-  if (value < 1 && value > 0) return value.toFixed(1);
-  return String(Math.round(value));
-}
-
-function formatCompactCount(value: number): string {
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-  return value.toLocaleString("en-US");
-}
-
-async function fetchLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
-  const apiUrl = resolvePublicApiUrl();
-  const headers = { Accept: "application/json" };
-  const [bestRes, rankedRes] = await Promise.all([
-    fetch(
-      `${apiUrl}/v1/public/features/best?featureSlug=${encodeURIComponent(
-        SALES_COLD_EMAIL_FEATURE_SLUG,
-      )}&groupBy=workflow`,
-      { headers, next: { revalidate: 300 } },
-    ),
-    fetch(
-      `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(
-        SALES_COLD_EMAIL_FEATURE_SLUG,
-      )}&objective=emailsSent&groupBy=workflow&limit=100`,
-      { headers, next: { revalidate: 300 } },
-    ),
-  ]);
-
-  if (!bestRes.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/best failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${bestRes.status}`,
-    );
-  }
-  if (!rankedRes.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/ranked failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${rankedRes.status}`,
-    );
-  }
-
-  const bestData = (await bestRes.json()) as BestPublicResponse;
-  const rankedData = (await rankedRes.json()) as RankedWorkflowResponse;
-  const record = bestData.best[BEST_POSITIVE_REPLY_KEY];
-
-  if (!record || typeof record.value !== "number") {
-    throw new Error(
-      `[landing] Missing ${BEST_POSITIVE_REPLY_KEY} in /v1/public/features/best response`,
-    );
-  }
-
-  const totals = rankedData.results.reduce(
-    (acc, item) => {
-      acc.sent += num(item.stats, "recipientsSent");
-      acc.positiveReplies += num(item.stats, "recipientsRepliesPositive");
-      return acc;
-    },
-    { sent: 0, positiveReplies: 0 },
-  );
-
-  if (totals.sent <= 0) {
-    throw new Error(
-      `[landing] /v1/public/features/ranked returned no sent recipients for ${SALES_COLD_EMAIL_FEATURE_SLUG}`,
-    );
-  }
-
-  const dollars = record.value / 100;
-  const positiveReplyRate = totals.positiveReplies / totals.sent;
-  const positiveRepliesPerHundred = positiveReplyRate * 100;
-  const positiveRepliesRounded = Math.round(positiveRepliesPerHundred);
-  const positiveRepliesRange =
-    positiveRepliesRounded <= 1
-      ? "1"
-      : `${Math.max(1, positiveRepliesRounded - 1)}-${positiveRepliesRounded}`;
-
-  return {
-    costPerPositiveReplyLabel: formatCostCents(record.value),
-    costPerPositiveReplyNumeric: dollars.toFixed(2),
-    positiveReplyRateLabel: formatPercent(positiveReplyRate),
-    positiveReplyRateNumeric: (positiveReplyRate * 100).toFixed(1),
-    positiveRepliesPerHundredLabel: formatCount(positiveRepliesPerHundred),
-    positiveRepliesPerHundredNumeric: positiveRepliesPerHundred.toFixed(1),
-    positiveRepliesPerHundredRangeLabel: positiveRepliesRange,
-    positiveRepliesPerHundredBarNumeric: Math.max(1, positiveRepliesPerHundred).toFixed(1),
-    emailsSentLabel: formatCompactCount(totals.sent),
-    emailsSentNumeric: String(Math.round(totals.sent)),
-  };
-}
-
-async function resolveLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
-  try {
-    return await fetchLivePerformanceMetrics();
-  } catch (error) {
-    // Build-time prerender must stay shippable: a missing/transient public
-    // metric (the public best endpoint occasionally omits a key while a
-    // workflow has no data for it) must not abort the entire landing deploy.
-    // Log loud and fall back to the last-known-good numbers. (CLAUDE.md
-    // "Exception — Vercel build-time prerender")
-    console.error(
-      "[landing] live performance metrics unavailable, using fallback values",
-      error,
-    );
-    return FALLBACK_LIVE_PERFORMANCE_METRICS;
-  }
-}
-
 // Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
 // instrumentation (PostHog), so the trackers must be injected here — otherwise
@@ -379,32 +197,6 @@ function withCanonicalOrganization(html: string): string {
   );
 }
 
-async function withLivePerformanceMetrics(html: string) {
-  if (
-    !html.includes(BEST_POSITIVE_REPLY_COST_LABEL) &&
-    !html.includes(POSITIVE_REPLY_RATE_LABEL) &&
-    !html.includes("$1.42")
-  ) {
-    return html;
-  }
-
-  const liveMetrics = await resolveLivePerformanceMetrics();
-
-  return html
-    .replaceAll(BEST_POSITIVE_REPLY_COST_NUMERIC, liveMetrics.costPerPositiveReplyNumeric)
-    .replaceAll(BEST_POSITIVE_REPLY_COST_LABEL, liveMetrics.costPerPositiveReplyLabel)
-    .replaceAll(POSITIVE_REPLY_RATE_NUMERIC, liveMetrics.positiveReplyRateNumeric)
-    .replaceAll(POSITIVE_REPLY_RATE_LABEL, liveMetrics.positiveReplyRateLabel)
-    .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_NUMERIC, liveMetrics.positiveRepliesPerHundredNumeric)
-    .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_LABEL, liveMetrics.positiveRepliesPerHundredLabel)
-    .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_RANGE_LABEL, liveMetrics.positiveRepliesPerHundredRangeLabel)
-    .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_BAR_NUMERIC, liveMetrics.positiveRepliesPerHundredBarNumeric)
-    .replaceAll(EMAILS_SENT_NUMERIC, liveMetrics.emailsSentNumeric)
-    .replaceAll(EMAILS_SENT_LABEL, liveMetrics.emailsSentLabel)
-    .replaceAll("data-n=\"1.42\"", `data-n="${liveMetrics.costPerPositiveReplyNumeric}"`)
-    .replaceAll("$1.42", liveMetrics.costPerPositiveReplyLabel);
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Homepage hero — the fleet's hot-lead proof row.
 //
@@ -419,6 +211,18 @@ async function withLivePerformanceMetrics(html: string) {
 // Derived at BUILD time from the per-brand ranked read; no client fetch and no
 // second endpoint. `distribute.you` is in the fleet on purpose: we ran the
 // product on ourselves.
+
+const SALES_COLD_EMAIL_FEATURE_SLUG = "sales-cold-email-outreach";
+
+function resolvePublicApiUrl(): string {
+  const base = process.env.API_SERVICE_URL || URLS.api;
+  return base.replace(/\/$/, "");
+}
+
+function num(stats: Record<string, number | null>, key: string): number {
+  const value = stats[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
 
 // A flame beside the count, the way the row it is modelled on marks its own.
 const FLAME_PATH =
@@ -442,6 +246,35 @@ export interface HotLeadStats {
   companies: number;
   medianCostUsd: number;
 }
+
+/**
+ * The fleet's median return on spend, as features-service states it.
+ *
+ * A SECOND read: the per-brand ranked read the two figures above come from carries
+ * spend and outcome counts and no revenue of any kind, so a return cannot be derived
+ * from it. features-service answers this one off a persisted snapshot it warms away
+ * from the request path — the read is milliseconds, the pass behind it is minutes.
+ *
+ * `measured: false` is a real answer, not an outage: the fleet has too few brands past
+ * the spend floor, or the first snapshot has not landed yet. The producer says which,
+ * and either way the stat is DROPPED — a median over a population nobody can stand
+ * behind is worse than two figures instead of three.
+ */
+export interface FleetReturnStats {
+  medianReturnPerDollar: number;
+  brandCount: number;
+}
+
+// The population the median is taken over. A brand that has barely spent produces a
+// multiple decided by whichever outcome happened to land, so the floor is what makes
+// the figure mean anything — features-service applies it, we only state which one we
+// asked for (owner-set: "la médiane des clients ayant dépensé au moins $100, sinon ça
+// ne veut rien dire").
+const RETURN_MIN_SPEND_USD = 100;
+
+// The landing renders while a build waits on it, so every live read is bounded and
+// drops its figure rather than holding the page.
+const FLEET_READ_TIMEOUT_MS = 8_000;
 
 /**
  * Fleet hot-lead proof, or null when it cannot be stated honestly.
@@ -484,12 +317,19 @@ export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
  * `data-n` seeds the in-session nudge in v2/main.js; the class names are pinned
  * on both sides by tests/unit/hot-lead-stats.test.ts.
  */
-export function hotLeadRowHtml(stats: HotLeadStats): string {
+export function hotLeadRowHtml(
+  stats: HotLeadStats,
+  fleetReturn: FleetReturnStats | null = null,
+): string {
   const leads = stats.hotLeads.toLocaleString("en-US");
   const companies = stats.companies.toLocaleString("en-US");
   // Whole dollars: this is a headline price, and cents on a median that moves
   // with every outcome read as precision we do not have.
   const cost = `$${Math.round(stats.medianCostUsd).toLocaleString("en-US")}`;
+  // The return is a SECOND read and states its own absence: unmeasurable, failed or
+  // slow, the row renders the two figures it always did. The row wraps (centred flex),
+  // so a third item costs no height at any width — measured, not assumed.
+  const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
   return (
     '<div class="hero-stats">' +
     '<span class="hstat">' +
@@ -499,28 +339,59 @@ export function hotLeadRowHtml(stats: HotLeadStats): string {
     '<span class="hstat">' +
     `<span class="hstat-n"><b>${cost}</b></span>` +
     '<span class="hstat-l">median cost per hot lead</span></span>' +
+    (returnFigure
+      ? '<span class="hstat">' +
+        `<span class="hstat-n"><b>${returnFigure.text}x</b></span>` +
+        '<span class="hstat-l">median ROI reported</span></span>'
+      : "") +
     "</div>"
   );
 }
 
 /**
- * The same two figures as the hero row, as the dark stat band the comparison pages
- * close on. Same `HotLeadStats`, so a compare page and the homepage cannot state two
- * different fleets; the numerals ride `data-count` so main.js counts them up like the
- * homepage's own band.
+ * A return multiple reads with one decimal under 10x and whole from 10x up — `3.7x` is
+ * a different answer from `2.9x`, `41x` and `42x` are not, and a decimal there is
+ * precision we do not have on a figure that moves with every outcome. Same shape as the
+ * dashboard's own ROI formatter, so a client meets one convention in both places.
  */
-export function hotLeadBandHtml(stats: HotLeadStats): string {
+function formatReturnMultiple(value: number): { text: string; decimals: number } {
+  return value < 10
+    ? { text: value.toFixed(1), decimals: 1 }
+    : { text: String(Math.round(value)), decimals: 0 };
+}
+
+/**
+ * The dark stat band the comparison pages close on: the hero row's two figures, plus
+ * the fleet's median return when features-service can state one.
+ *
+ * The hot-lead pair rides the SAME `HotLeadStats` the homepage hero states, so a compare
+ * page and the homepage cannot describe two different fleets. The return is a separate
+ * read and therefore a separate argument: it is `null` whenever the producer says the
+ * figure is unmeasurable or the read failed, and then the band renders exactly as it did
+ * before — two figures, never a third slot holding a dash.
+ *
+ * The numerals ride `data-count` (+ `data-decimals` for the return) so main.js counts
+ * them up like the homepage's own band. `stats two` centres a 2-up band; a 3-up one is
+ * the base `.stats` grid, which already collapses to one column at 960px.
+ */
+export function hotLeadBandHtml(
+  stats: HotLeadStats,
+  fleetReturn: FleetReturnStats | null = null,
+): string {
   const companies = stats.companies.toLocaleString("en-US");
-  const cost = Math.round(stats.medianCostUsd).toLocaleString("en-US");
+  const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
   return (
     '<section class="framed dark">' +
     '<div class="wrap">' +
     '<div class="section-head center"><span class="eyebrow">Measured, not quoted</span>' +
     "<h2>What the fleet has produced, read off every campaign we run</h2>" +
     "<p>A hot lead is a buyer who replied with interest or came to the site. No competitor on this page publishes this figure.</p></div>" +
-    '<div class="stats two">' +
+    `<div class="stats${returnFigure ? "" : " two"}">` +
     `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">hot leads for ${companies} companies</div></div>` +
     `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(stats.medianCostUsd)}">0</span></div><div class="l">median cost per hot lead</div></div>` +
+    (returnFigure
+      ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
+      : "") +
     "</div></div></section>"
   );
 }
@@ -542,8 +413,55 @@ async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
   return hotLeadStats(data.results ?? []);
 }
 
+/**
+ * The fleet's median return on spend, or null when it cannot be stated.
+ *
+ * `measured: false` carries the producer's own reason and is logged rather than
+ * swallowed — "the first snapshot has not landed" and "too few brands past the floor"
+ * are different facts, and neither is an error. The response is read defensively for
+ * the one thing rendered: a non-finite or non-positive median is refused rather than
+ * printed, since `0.0x` on a comparison page would state a result no client got.
+ */
+async function fetchFleetReturn(): Promise<FleetReturnStats | null> {
+  const apiUrl = resolvePublicApiUrl();
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/return-on-spend?featureSlug=${encodeURIComponent(
+      SALES_COLD_EMAIL_FEATURE_SLUG,
+    )}&minSpendUsd=${RETURN_MIN_SPEND_USD}`,
+    {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/return-on-spend failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${res.status}`,
+    );
+  }
+  const data = (await res.json()) as {
+    measured?: boolean;
+    reason?: string | null;
+    medianReturnPerDollar?: number | null;
+    brandCount?: number | null;
+  };
+  if (!data.measured) {
+    console.warn(
+      `[landing] fleet return on spend not measurable (${data.reason ?? "no reason given"}), dropping the stat`,
+    );
+    return null;
+  }
+  const median = data.medianReturnPerDollar;
+  const brandCount = data.brandCount;
+  if (typeof median !== "number" || !Number.isFinite(median) || median <= 0) return null;
+  if (typeof brandCount !== "number" || brandCount <= 0) return null;
+  return { medianReturnPerDollar: median, brandCount };
+}
+
 async function withHotLeadStats(html: string) {
-  if (!html.includes(HOT_LEAD_ROW_TOKEN) && !html.includes(HOT_LEAD_BAND_TOKEN)) return html;
+  const wantsRow = html.includes(HOT_LEAD_ROW_TOKEN);
+  const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
+  if (!wantsRow && !wantsBand) return html;
 
   let stats: HotLeadStats | null = null;
   try {
@@ -555,688 +473,22 @@ async function withHotLeadStats(html: string) {
     console.error("[landing] hot-lead proof row unavailable, dropping it", error);
   }
 
+  // Both surfaces state the return, from ONE read, so the homepage hero and a
+  // comparison page cannot quote two different medians. Nothing is fetched for a page
+  // that carries neither token, and nothing is fetched when the fleet itself could not
+  // be measured — a return with no hot leads beside it states half a picture.
+  let fleetReturn: FleetReturnStats | null = null;
+  if (stats) {
+    try {
+      fleetReturn = await fetchFleetReturn();
+    } catch (error) {
+      console.error("[landing] fleet return on spend unavailable, dropping the stat", error);
+    }
+  }
+
   return html
-    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats) : "")
-    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats) : "");
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Homepage — cross-org cost-per-outcome stock-ticker board.
-// Four equal cards (cost per click / positive reply / meeting / signup), each
-// with the observed average price, an always-green ▲ weekly change (the board is
-// a marketing surface — demand framing, never a red down-signal — so the change
-// badge + sparkline render green/positive regardless of sign), and an inline SVG
-// sparkline. Fully server-rendered so the real numbers + chart ship in raw HTML
-// (SEO / AI-scraper safe), from the same public trend endpoint the admin
-// feature-stats page reads. `__TICKER_CPC__`/`__TICKER_CPR__`/`__TICKER_CPM__` scalars feed
-// the pricing card / mockup that reuse the same figures.
-// ─────────────────────────────────────────────────────────────────────────
-// `measuredByUs`: website visits (clicks) + positive replies are OBSERVED by
-// distribute (email-gateway tracking); meetings + signups are client-reported
-// (derived from each brand's conversion, not measured by us) — surfaced as a
-// per-card source tag + a legend under the board.
-const TICKER_OBJECTIVES = [
-  // Headline metrics, in order: (1) positive reply for a sales meeting, then
-  // (2) website visits — the two vedette outcomes; signup is tertiary.
-  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", unit: "per positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
-  { key: "websiteVisit", sym: "WEB", label: "Website visits", unit: "per website visit", measuredByUs: true, slug: "website-visits" },
-  // meetingBooked is beta-gated out of the public board; the __TICKER_CPM__
-  // scalar (legacy /v0 homepage) is still computed from a separate fetch below.
-  { key: "signup", sym: "SIG", label: "Signup", unit: "per signup", measuredByUs: false, slug: "signups" },
-] as const;
-
-const BOARD_TOKEN = "__TICKER_BOARD__";
-
-interface TickerMetrics {
-  board: string; // server-rendered <div class="ticker-board">…</div> (index-agency /v0)
-  heroPos: string; // compact non-clickable hero proof-rail stat: positive reply
-  heroWeb: string; // compact non-clickable hero proof-rail stat: website visits
-  cpc: string; // scalars for the reused pricing card / mockup / compare rows
-  cpr: string;
-  cpm: string;
-  bestPos: string; // best-model scalars for the homepage "Cost per outcome" snapshot
-  bestWeb: string;
-}
-
-interface SeriesPoint {
-  date: string;
-  v: number;
-}
-
-function usdWhole(value: number): string {
-  return `$${Math.round(value).toLocaleString("en-US")}`;
-}
-
-function usd2(value: number): string {
-  return `$${value.toFixed(2)}`;
-}
-
-// Stock-style: sub-$10 keeps two decimals (a click can cost cents); $10+ rounds
-// to whole dollars.
-function usdSmart(value: number): string {
-  return value < 10 ? usd2(value) : usdWhole(value);
-}
-
-function numericOrNull(value: number | null | undefined): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-// Weekly change: latest backed point vs the closest backed point ~7 days
-// before it, as a signed fraction (a display delta over the two points the
-// sparkline already draws — no hidden metric). Null when either side missing.
-function growth7d(points: SeriesPoint[]): number | null {
-  if (points.length < 2) return null;
-  const latest = points[points.length - 1];
-  const targetMs =
-    Date.parse(`${latest.date}T00:00:00.000Z`) - 7 * 24 * 60 * 60 * 1000;
-  let prev: SeriesPoint | null = null;
-  for (let i = points.length - 2; i >= 0; i--) {
-    prev = points[i];
-    if (Date.parse(`${points[i].date}T00:00:00.000Z`) <= targetMs) break;
-  }
-  if (!prev || prev.v === 0) return null;
-  return (latest.v - prev.v) / prev.v;
-}
-
-// Always-green stroke — the board never shows a red down-signal (marketing
-// surface, positive demand framing regardless of the underlying sign).
-const TREND_GREEN = "#16a34a";
-function trendStroke(): string {
-  return TREND_GREEN;
-}
-
-function sparklineSvg(
-  points: SeriesPoint[],
-  stroke: string,
-  cls = "tkr-spark",
-): string {
-  if (points.length < 2) {
-    return `<div class="${cls} tkr-spark-empty" aria-hidden="true"></div>`;
-  }
-  const vals = points.map((p) => p.v);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const span = max - min || 1;
-  const W = 120;
-  const H = 34;
-  const pad = 3;
-  const coords = vals
-    .map((v, i) => {
-      const x = (i / (vals.length - 1)) * W;
-      const y = pad + (1 - (v - min) / span) * (H - 2 * pad);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
-}
-
-// Compact NON-CLICKABLE hero proof-rail stat (positive reply / website visits):
-// price + green ▲ growth + micro sparkline + label. No link, no detail page —
-// the homepage board section was removed; these two live below the hero.
-//
-// The headline PRICE is the BEST cross-org workflow's cost per outcome (the
-// model we deploy to new clients by default), passed as `bestModelUsd` — NOT a
-// pooled/trend average. The sparkline + weekly ▲ still ride the observed trend
-// series as a demand-direction decoration.
-function heroStatCard(
-  cfg: { label: string; unit: string },
-  points: SeriesPoint[],
-  bestModelUsd: number | null,
-): string {
-  const priceStr = bestModelUsd === null ? "&mdash;" : usdSmart(bestModelUsd);
-  const g = growth7d(points);
-  let chg = "";
-  if (g !== null && g !== 0) {
-    const pct = (Math.abs(g) * 100).toFixed(1);
-    chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
-  }
-  const spark = sparklineSvg(points, trendStroke(), "prs-spark");
-  // Big white lead reads as a full phrase ("$200 per positive reply for a sales
-  // meeting"), the price emphasised; the grey note clarifies it's our best
-  // model = the cheapest cross-org workflow that actually delivers the outcome.
-  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-lead"><span class="prs-price">${priceStr}</span> ${cfg.unit}</span>${chg}</div>${spark}<small class="prs-note">Our best model · cheapest workflow that delivers it</small></div>`;
-}
-
-function tickerCard(
-  cfg: { sym: string; label: string; measuredByUs: boolean; slug: string },
-  points: SeriesPoint[],
-): string {
-  const price = points.length ? points[points.length - 1].v : null;
-  const priceStr = price === null ? "&mdash;" : usdSmart(price);
-  const g = growth7d(points);
-  let chg: string;
-  if (g === null || g === 0) {
-    chg = `<span class="tkr-chg flat">&mdash;</span>`;
-  } else {
-    // Always a green ▲ positive change — never a red down-signal (inline color
-    // so it holds on every page regardless of that page's .tkr-chg.up/.down CSS).
-    const pct = (Math.abs(g) * 100).toFixed(1);
-    chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
-  }
-  const src = cfg.measuredByUs
-    ? `<span class="tkr-src tkr-src-us">measured by us</span>`
-    : `<span class="tkr-src tkr-src-client">client-reported</span>`;
-  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke())}${src}</div>`;
-}
-
-function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
-  const cards = TICKER_OBJECTIVES.map((o) =>
-    tickerCard(o, seriesByObjective[o.key] ?? []),
-  ).join("");
-  return `<div class="ticker-board">${cards}</div>`;
-}
-
-// Last-known-good (observed 2026-07-10) — synthetic descending series per
-// objective so the fallback board still renders prices + a green ▲ + sparkline
-// when the public API is unreachable (a build-time prerender must never abort).
-function fallbackSeries(end: number): SeriesPoint[] {
-  return [
-    { date: "2026-06-25", v: end * 1.5 },
-    { date: "2026-07-02", v: end * 1.2 },
-    { date: "2026-07-09", v: end },
-  ];
-}
-// Last-known-good BEST-model cost per outcome (observed 2026-07-17) — the hero
-// numbers fall back to these when the workflow-cost-per-outcome endpoint is
-// unreachable, so a cold/slow API still ships real-shaped best-model prices.
-const FALLBACK_BEST = { positiveReply: 52.57, websiteVisit: 0.62 } as const;
-
-function buildFallbackTicker(): TickerMetrics {
-  const series: Record<string, SeriesPoint[]> = {
-    websiteVisit: fallbackSeries(0.88),
-    positiveReply: fallbackSeries(151),
-    signup: fallbackSeries(22),
-  };
-  return {
-    board: tickerBoard(series),
-    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply, FALLBACK_BEST.positiveReply),
-    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit, FALLBACK_BEST.websiteVisit),
-    cpc: "$0.88",
-    cpr: "$151",
-    cpm: "$5.68",
-    bestPos: usdSmart(FALLBACK_BEST.positiveReply),
-    bestWeb: usdSmart(FALLBACK_BEST.websiteVisit),
-  };
-}
-
-// Best cross-org workflow cost for an objective = the cheapest workflow whose
-// OBJECTIVE outcome was actually observed > 0. We filter on the observed COUNT,
-// never a cost threshold: a 0-outcome "husk" workflow (spent money, produced
-// nothing) must never be crowned "best", and its cost can drop to its own spend
-// on the backend — only observed-count filtering is correct. Bounded 8s so a
-// slow cold endpoint can't blow the homepage prerender budget (throws → the
-// caller falls back to last-known-good).
-async function fetchBestModelUsd(
-  apiUrl: string,
-  headers: Record<string, string>,
-  slug: string,
-  objective: string,
-): Promise<number | null> {
-  const res = await fetch(
-    `${apiUrl}/v1/public/features/workflow-cost-per-outcome?featureSlug=${slug}&objective=${objective}`,
-    { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/workflow-cost-per-outcome ${objective} failed: ${res.status}`,
-    );
-  }
-  const data = (await res.json()) as {
-    workflows?: Array<{
-      observedClicks?: number | null;
-      observedPositiveReplies?: number | null;
-      costPerOutcomeUsd?: number | null;
-    }>;
-  };
-  const observed = (w: {
-    observedClicks?: number | null;
-    observedPositiveReplies?: number | null;
-  }): number =>
-    (numericOrNull(
-      objective === "websiteVisit" ? w.observedClicks : w.observedPositiveReplies,
-    ) ?? 0);
-  const priced = (data.workflows ?? [])
-    .filter((w) => observed(w) > 0)
-    .flatMap((w) => {
-      const v = numericOrNull(w.costPerOutcomeUsd);
-      return v !== null ? [v] : [];
-    });
-  return priced.length ? Math.min(...priced) : null;
-}
-
-// The REAL best-model dated cost-per-outcome trend (features-service, non-pooled
-// single best workflow). `best` = the best model's lifetime cost (the headline
-// number the last backed point tracks). `points` = only the BACKED days
-// (null-cost days dropped). Bounded 8s so a slow cold endpoint can't blow the
-// homepage prerender budget.
-async function fetchBestModelTrend(
-  apiUrl: string,
-  headers: Record<string, string>,
-  slug: string,
-  objective: string,
-  days = 180,
-): Promise<{ best: number | null; points: SeriesPoint[] }> {
-  const res = await fetch(
-    `${apiUrl}/v1/public/features/best-model-cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=${days}`,
-    { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/best-model-cost-per-outcome-trend ${objective} failed: ${res.status}`,
-    );
-  }
-  const data = (await res.json()) as {
-    bestWorkflowLifetimeCostPerOutcomeUsd?: number | null;
-    points?: Array<{ date?: string | null; costPerOutcomeUsd?: number | null }>;
-  };
-  const points = (data.points ?? []).flatMap((p) => {
-    const v = numericOrNull(p?.costPerOutcomeUsd);
-    return v !== null && typeof p.date === "string" ? [{ date: p.date, v }] : [];
-  });
-  return { best: numericOrNull(data.bestWorkflowLifetimeCostPerOutcomeUsd), points };
-}
-
-async function fetchTicker(): Promise<TickerMetrics> {
-  const apiUrl = resolvePublicApiUrl();
-  const headers = { Accept: "application/json" };
-  const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
-
-  // Every number here is the BEST single-model cost per outcome, cross-org — the
-  // MIN over per-workflow ratios (fetchBestModelUsd), NEVER a cross-workflow
-  // pooled average. The pooled `cost-per-outcome-trend` series is eradicated.
-  const [bestReply, bestVisit, bestSignup, bestMeeting] = await Promise.all([
-    fetchBestModelUsd(apiUrl, headers, slug, "positiveReply").catch(() => null),
-    fetchBestModelUsd(apiUrl, headers, slug, "websiteVisit").catch(() => null),
-    fetchBestModelUsd(apiUrl, headers, slug, "signup").catch(() => null),
-    fetchBestModelUsd(apiUrl, headers, slug, "meetingBooked").catch(() => null),
-  ]);
-
-  if (bestReply === null && bestVisit === null && bestSignup === null) {
-    throw new Error("[landing] workflow-cost-per-outcome returned no best model");
-  }
-
-  const fb = buildFallbackTicker();
-  const reply = bestReply ?? FALLBACK_BEST.positiveReply;
-  const visit = bestVisit ?? FALLBACK_BEST.websiteVisit;
-  const signup = bestSignup ?? 22;
-  // Sparkline shape = a deterministic best-shaped curve ending on the best-model
-  // price (real per-day best-model points land once the non-pooled best-model
-  // dated-trend endpoint ships). Board is /v0-only; the live scalars below are
-  // the best-model numbers.
-  const series: Record<string, SeriesPoint[]> = {
-    positiveReply: fallbackSeries(reply),
-    websiteVisit: fallbackSeries(visit),
-    signup: fallbackSeries(signup),
-  };
-
-  return {
-    board: tickerBoard(series),
-    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply, reply),
-    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit, visit),
-    cpc: bestVisit !== null ? usdSmart(bestVisit) : fb.cpc,
-    cpr: bestReply !== null ? usdSmart(bestReply) : fb.cpr,
-    cpm: bestMeeting !== null ? usdSmart(bestMeeting) : fb.cpm,
-    bestPos: bestReply !== null ? usdSmart(bestReply) : fb.bestPos,
-    bestWeb: bestVisit !== null ? usdSmart(bestVisit) : fb.bestWeb,
-  };
-}
-
-async function resolveTicker(): Promise<TickerMetrics> {
-  try {
-    return await fetchTicker();
-  } catch (error) {
-    console.error(
-      "[landing] ticker unavailable, using fallback values",
-      error,
-    );
-    return buildFallbackTicker();
-  }
-}
-
-async function withTickerMetrics(html: string) {
-  // Fire on the ticker board OR any of the live cost-per-outcome scalars, so
-  // scalar-only pages (e.g. /pricing, which has no board) still get real rates.
-  const needsMetrics =
-    html.includes(BOARD_TOKEN) ||
-    html.includes("__HERO_POS__") ||
-    html.includes("__HERO_WEB__") ||
-    html.includes("__TICKER_CPC__") ||
-    html.includes("__TICKER_CPR__") ||
-    html.includes("__TICKER_CPM__") ||
-    html.includes("__BEST_POS__") ||
-    html.includes("__BEST_WEB__");
-  if (!needsMetrics) return html;
-
-  const t = await resolveTicker();
-  return html
-    .replaceAll(BOARD_TOKEN, t.board)
-    .replaceAll("__HERO_POS__", t.heroPos)
-    .replaceAll("__HERO_WEB__", t.heroWeb)
-    .replaceAll("__TICKER_CPC__", t.cpc)
-    .replaceAll("__TICKER_CPR__", t.cpr)
-    .replaceAll("__TICKER_CPM__", t.cpm)
-    .replaceAll("__BEST_POS__", t.bestPos)
-    .replaceAll("__BEST_WEB__", t.bestWeb);
-}
-
-// Homepage live cost-of-acquisition chart — SSR "boot" payload so the chart +
-// numbers paint on FIRST byte (no client-fetch delay). The client reads
-// window.__CAC_BOOT__ to render instantly, then refetches live to refresh.
-// NOTE: distinct from the client global `window.__CAC_BOOT__`. A bare
-// `__CAC_BOOT__` placeholder collided with the reader's `window.__CAC_BOOT__`
-// reference under replaceAll — it rewrote the reader to
-// `var boot=window.<script>…</script>` (SyntaxError → chart never rendered).
-const CAC_BOOT_TOKEN = "__CAC_BOOT_SLOT__";
-
-// Deterministic best-model CAC timeline, baked into the boot payload. This IS
-// the chart series (there is no live per-day series — the pooled
-// cost-per-outcome-trend was eradicated; a non-pooled best-model dated trend
-// will replace this once it ships). Without a series the chart div renders EMPTY
-// (client guard clears it on a zero-length series). The landing does not have to
-// be live — it has to be instant and never blank. Ends at `end` (the
-// resolved price, live or fallback) so the sparkline agrees with the headline
-// number. Weekly points over ~6 months, smooth decline + a tiny fixed wiggle.
-function fallbackCacSeries(end: number): SeriesPoint[] {
-  // One point PER DAY over the trailing window, up to and INCLUDING today (the
-  // last point is today at `end`). ISR (revalidate 300) re-renders it so "today"
-  // stays current. The client forward-fills any gaps / extends to its own today.
-  const DAYS = 120;
-  const now = new Date();
-  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const day = 24 * 60 * 60 * 1000;
-  const out: SeriesPoint[] = [];
-  for (let i = DAYS - 1; i >= 0; i--) {
-    const date = new Date(todayUTC - i * day).toISOString().slice(0, 10);
-    const progress = (DAYS - 1 - i) / (DAYS - 1); // 0 (oldest) -> 1 (today)
-    // Ease-out decline (fast early improvement, flattening near today) instead of
-    // a straight line, plus IRREGULAR texture (incommensurate harmonics + a
-    // deterministic hash jitter) so it reads like real noisy declining data —
-    // not the clean periodic sine wave it used to be. Today (i=0) sits at `end`.
-    const trend = 1 + 0.9 * Math.pow(1 - progress, 1.7);
-    const wave =
-      0.03 * Math.sin(i * 0.19) +
-      0.02 * Math.sin(i * 0.53 + 1.3) +
-      0.013 * Math.sin(i * 1.11 + 2.7);
-    const hx = Math.sin(i * 12.9898) * 43758.5453;
-    const jitter = (hx - Math.floor(hx) - 0.5) * 2 * 0.02;
-    const mult = i === 0 ? 1 : trend * (1 + wave + jitter);
-    out.push({ date, v: Math.round(end * mult * 100) / 100 });
-  }
-  return out;
-}
-
-// The chart under the headline price says one thing: acquisition gets cheaper
-// with us. A series whose first point sits BELOW its last one says the opposite
-// on the page that sells the opposite, so it is not drawn — the deterministic
-// descending curve is, ending on the same live `best` the headline reads. This
-// is a DISPLAY choice over the real number, not a fabricated number: the price,
-// the multiple and every figure around the chart stay exactly what the endpoint
-// returned. Strictly greater, so a flat line falls back too — a flat line
-// carries no direction and the badge beside it would read as a rise.
-export function cacChartSeries(
-  trendPoints: SeriesPoint[] | null | undefined,
-  best: number,
-): SeriesPoint[] {
-  const points = trendPoints ?? [];
-  if (points.length >= 2 && points[0].v > points[points.length - 1].v) return points;
-  return fallbackCacSeries(best);
-}
-
-async function resolveCacBoot(): Promise<{
-  best: number;
-  points: SeriesPoint[];
-  renderedAt: number;
-}> {
-  const apiUrl = resolvePublicApiUrl();
-  const headers = { Accept: "application/json" };
-  const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
-  // REAL best-model dated trend (single best workflow, cross-org, never pooled).
-  const trend = await fetchBestModelTrend(
-    apiUrl,
-    headers,
-    slug,
-    "positiveReply",
-    180,
-  ).catch((error) => {
-    console.error("[landing] cac boot best-model trend unavailable, using fallback", error);
-    return null;
-  });
-  const best: number | null = trend?.best ?? FALLBACK_BEST.positiveReply;
-  // Use the real backed daily points when there are enough of them AND they
-  // actually descend; otherwise (cold start, or a rising/flat stretch) draw the
-  // deterministic best-shaped curve so the chart is never near-empty and never
-  // climbs. See cacChartSeries.
-  const points = cacChartSeries(trend?.points, best ?? FALLBACK_BEST.positiveReply);
-  // `renderedAt` = when this ISR snapshot was server-rendered (refreshed every
-  // ~300s). The client shows "Updated X min ago" from it — the freshness of the
-  // SSR data, NOT the last data-point date.
-  const renderedAt = Date.now();
-  return { best: best ?? FALLBACK_BEST.positiveReply, points, renderedAt };
-}
-
-// ROI calculator defaults. They live HERE rather than as literals in the HTML so
-// the server-rendered multiple and the two input values can never drift apart,
-// and so the raw HTML a scraper reads already carries a correct number instead
-// of an empty box the client script fills in later.
-const ROI_DEFAULT_LTR_USD = 2500;
-const ROI_DEFAULT_WIN_RATE_PCT = 30;
-
-// Whole numbers above 10, one decimal below, so a 14x reads as "14x" and a 3.4x
-// keeps its precision. One rule, so the calculator and the hero steps cannot
-// round a multiple two different ways.
-export function formatMultiple(value: number): string | null {
-  if (!Number.isFinite(value) || value < 0) return null;
-  return value >= 10 ? `${Math.round(value)}×` : `${value.toFixed(1)}×`;
-}
-
-// Shared by the server render and the client script, which must agree exactly or
-// the number visibly changes on the first keystroke.
-export function formatRoiMultiple(
-  ltrUsd: number,
-  winRatePct: number,
-  costPerMeetingUsd: number,
-): string | null {
-  if (!(costPerMeetingUsd > 0) || !(ltrUsd >= 0) || !(winRatePct >= 0)) return null;
-  return formatMultiple((ltrUsd * (winRatePct / 100)) / costPerMeetingUsd);
-}
-
-// Per-segment cost of acquisition, on the #measure dashboard preview. The card
-// already headlines the live account-wide rate, and a segment line that sat on a
-// hardcoded dollar figure would freeze the day it was written while the headline
-// kept moving — the same number under two labels, disagreeing. So the three
-// segment prices are DERIVED from that one rate: one a little under, one on it,
-// one a little over, which is what a real per-segment spread looks like.
-const SEGMENT_COST_SPREAD_USD = 5;
-
-// Exported for unit tests. The low leg is clamped so it can never reach zero or
-// go negative on a very cheap rate; at any realistic rate the spread is exactly
-// the constant above.
-export function segmentCostBand(bestUsd: number): {
-  low: string;
-  mid: string;
-  high: string;
-} {
-  const spread = Math.min(SEGMENT_COST_SPREAD_USD, Math.max(0, bestUsd - 1));
-  return {
-    low: usdSmart(bestUsd - spread),
-    mid: usdSmart(bestUsd),
-    high: usdSmart(bestUsd + spread),
-  };
-}
-
-// Hero console. The budget is stated DAILY (a small number a visitor can own)
-// and the outcome MONTHLY, which is the house convention and the same pair the
-// onboarding budget picker uses — so the two numbers a visitor reads here are
-// the two they meet again 30 seconds later at signup. Both derive from the
-// SAME constants and the SAME live rate, so they cannot drift apart.
-const HERO_DAILY_BUDGET_USD = 50;
-const HERO_MONTH_DAYS = 31;
-
-// Whole interested buyers a month of the hero budget buys at the live rate.
-// Null when the rate cannot be graded: the row is then dropped, because "we
-// could not measure this" and "it buys N" are different statements.
-export function heroMonthlyOutcomes(
-  dailyBudgetUsd: number,
-  monthDays: number,
-  costPerOutcomeUsd: number,
-): number | null {
-  if (!(costPerOutcomeUsd > 0)) return null;
-  if (!(dailyBudgetUsd > 0) || !(monthDays > 0)) return null;
-  const count = Math.round((dailyBudgetUsd * monthDays) / costPerOutcomeUsd);
-  if (!Number.isFinite(count) || count < 1) return null;
-  return count;
-}
-
-// The win rate is banded because closing is the reader's job and it varies. The
-// lifetime revenue is NOT banded, and that is deliberate: a high ticket closes
-// at a LOW rate, so pairing the top of both bands describes a client who does
-// not exist, and $2,500 × 70% ÷ the live rate prints a multiple nobody believes
-// (a $20,000 top end reaches 194×, which would undo the five measured sections
-// below it). One band, anchored on the figure the #roi calculator already
-// defaults to, so the hero and the calculator cannot tell different stories.
-const HERO_WIN_RATE_LOW_PCT = 30;
-const HERO_WIN_RATE_HIGH_PCT = 70;
-
-export type HeroRoiSteps = {
-  buyers: number;
-  salesLow: number;
-  salesHigh: number;
-  cacPctLow: string;
-  cacPctHigh: string;
-};
-
-// Whole percents, one decimal below 1% so a very cheap acquisition never
-// rounds to a meaningless "0%".
-export function formatCacPercent(value: number): string | null {
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return value < 1 ? `${value.toFixed(1)}%` : `${Math.round(value)}%`;
-}
-
-// Spend to cost of acquisition, in one derivation. Every figure below the
-// buyers count is computed from the ROUNDED count above it rather than from the
-// raw ratio, because a reader can multiply what is on screen and the derivation has
-// to survive that: 22 buyers, 7 sales, $1,550 against 7 × $2,500 really is 9%.
-// The exact unrounded arithmetic lives in #roi, where the reader supplies their
-// own two inputs and nothing is rounded to whole people.
-//
-// The band INVERTS: closing more of the same buyers earns more revenue for the
-// same spend, so the BEST case is the LOW percentage. Reported low-to-high, the
-// way a cost is read.
-export function heroRoiSteps(
-  dailyBudgetUsd: number,
-  monthDays: number,
-  costPerOutcomeUsd: number,
-  ltrUsd: number,
-  winLowPct: number,
-  winHighPct: number,
-): HeroRoiSteps | null {
-  const buyers = heroMonthlyOutcomes(dailyBudgetUsd, monthDays, costPerOutcomeUsd);
-  if (buyers === null) return null;
-  if (!(ltrUsd > 0) || !(winLowPct > 0) || !(winHighPct >= winLowPct)) return null;
-
-  const spendUsd = dailyBudgetUsd * monthDays;
-  const salesLow = Math.round((buyers * winLowPct) / 100);
-  const salesHigh = Math.round((buyers * winHighPct) / 100);
-  // A band that reads "0 to 1 sales" is not an argument, and dividing by a zero
-  // low end would print an infinite cost beside a running campaign.
-  if (salesLow < 1 || salesHigh < salesLow) return null;
-
-  const cacPctLow = formatCacPercent((spendUsd / (salesHigh * ltrUsd)) * 100);
-  const cacPctHigh = formatCacPercent((spendUsd / (salesLow * ltrUsd)) * 100);
-  if (cacPctLow === null || cacPctHigh === null) return null;
-
-  return { buyers, salesLow, salesHigh, cacPctLow, cacPctHigh };
-}
-
-// The counts are rendered server-side into the text, and repeated on the
-// attributes the count-up animation reads, so a scraper (and a reader with JS
-// off) still sees the real figures rather than zeroes that JS fills in.
-// Each arrow carries the assumption it applies, so a reader can see that the
-// win rate is THEIRS, not a result we are claiming.
-function heroRoiStepRows(costPerOutcomeUsd: number): string {
-  const budgetRow =
-    `<div class="console-metric">` +
-    `<span>Daily budget</span><b>$${HERO_DAILY_BUDGET_USD} / day</b>` +
-    `</div>`;
-
-  const steps = heroRoiSteps(
-    HERO_DAILY_BUDGET_USD,
-    HERO_MONTH_DAYS,
-    costPerOutcomeUsd,
-    ROI_DEFAULT_LTR_USD,
-    HERO_WIN_RATE_LOW_PCT,
-    HERO_WIN_RATE_HIGH_PCT,
-  );
-  // The budget is true whatever the rate does, but with nothing to hand over
-  // there are no two zones, and a lone "distribute.you handles" would name a
-  // division of work the card is no longer showing.
-  if (steps === null) return budgetRow;
-
-  const sales = `${steps.salesLow} to ${steps.salesHigh}`;
-  return (
-    // Who does what, by LABEL plus whitespace rather than a nested container.
-    // A boundary would be the stronger grouping (NN/g: common region overpowers
-    // proximity) but it is only the right tool when whitespace is unavailable,
-    // and here it is available; a second border inside a bordered card is ink
-    // that carries no data. The derivation STOPS at the reader's own sales: their
-    // lifetime revenue is an input only they hold, so pricing it here would
-    // state a number about their business we never measured.
-    `<p class="zone-label">distribute.you handles</p>` +
-    budgetRow +
-    // The one step nothing ever explained: why that budget buys that many.
-    // Every step is checkable now, $50 × 31 ÷ this rate is the count below.
-    `<p class="step-arrow">${usdSmart(costPerOutcomeUsd)} per interested buyer</p>` +
-    `<div class="console-outcome">` +
-    `<span>Interested B2B buyers</span>` +
-    `<b><i data-hero-outcome="${steps.buyers}">${steps.buyers}</i> per month 🎉</b>` +
-    `</div>` +
-    `<div class="console-steps" data-hero-steps>` +
-    `<p class="zone-label">You handle</p>` +
-    `<p class="step-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
-    `<div class="console-metric"><span>Your sales</span><b>${sales} per month</b></div>` +
-    `</div>`
-  );
-}
-
-async function withCacBoot(html: string) {
-  if (
-    !html.includes(CAC_BOOT_TOKEN) &&
-    !html.includes("__CAC_PRICE__") &&
-    !html.includes("__CAC_PRICE_NUMERIC__") &&
-    !html.includes("__CAC_MULT__") &&
-    !html.includes("__SEG_COST_MID__") &&
-    !html.includes("__HERO_CONSOLE__")
-  ) {
-    return html;
-  }
-  const boot = await resolveCacBoot();
-  // Bake the price + multiple into the SERVED HTML so the correct number paints
-  // on the FIRST byte — no static placeholder, no client re-fetch, no flash. The
-  // number only changes when the ISR snapshot re-renders (every ~300s).
-  const price = usdSmart(boot.best);
-  const mult = `${Math.round(700 / boot.best)}×`;
-  const segment = segmentCostBand(boot.best);
-  return html
-    .replaceAll(
-      CAC_BOOT_TOKEN,
-      `<script>window.__CAC_BOOT__=${JSON.stringify(boot)}</script>`,
-    )
-    // Raw number for arithmetic (the ROI calculator divides by it). Replaced
-    // BEFORE the formatted token, since "__CAC_PRICE__" is a prefix of
-    // "__CAC_PRICE_NUMERIC__" and would otherwise rewrite it to "$53_NUMERIC__".
-    .replaceAll("__CAC_PRICE_NUMERIC__", String(boot.best))
-    .replaceAll("__CAC_PRICE__", price)
-    .replaceAll("__CAC_MULT__", mult)
-    .replaceAll("__SEG_COST_LOW__", segment.low)
-    .replaceAll("__SEG_COST_MID__", segment.mid)
-    .replaceAll("__SEG_COST_HIGH__", segment.high)
-    .replaceAll("__HERO_CONSOLE__", heroRoiStepRows(boot.best))
-    .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
-    .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
-    .replaceAll(
-      "__ROI_MULT__",
-      formatRoiMultiple(ROI_DEFAULT_LTR_USD, ROI_DEFAULT_WIN_RATE_PCT, boot.best) ?? "–",
-    );
+    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats, fleetReturn) : "")
+    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn) : "");
 }
 
 function canonicalUrlFrom(html: string, fallbackPath?: string): string | undefined {
@@ -1302,11 +554,7 @@ async function negotiatedResponse(
     });
   }
 
-  const html = await withHotLeadStats(
-    await withCacBoot(
-      await withTickerMetrics(await withLivePerformanceMetrics(decorated)),
-    ),
-  );
+  const html = await withHotLeadStats(decorated);
 
   if (negotiated === "markdown") {
     const markdown = htmlToMarkdown(html, {
@@ -1343,7 +591,7 @@ async function negotiatedResponse(
       // window continuously, so the traffic-driven cost was effectively a timer.
       //
       // A day matches the routes' `revalidate` and the figures these pages carry:
-      // `__CAC_PRICE__` and the fleet cost per outcome move over weeks. The long
+      // the fleet's hot-lead figures move over weeks. The long
       // `stale-while-revalidate` is unchanged and is what keeps the swap invisible
       // - a reader is always served instantly from the edge, never waiting on a
       // revalidation. Raising this without raising `revalidate` (or vice versa)

@@ -6624,7 +6624,23 @@ export type CardSetup =
   | {
       object: "card_setup";
       mode: "embedded_widget";
-      public_key: string;
+      /**
+       * The provider's browser SDK and the environment to load it in. Served
+       * rather than hardcoded so the environment is decided next to the key that
+       * created the order, instead of in a dashboard build.
+       */
+      script_url: string;
+      environment: "prod" | "sandbox";
+      /**
+       * The PER-ORDER public identifier the SDK is initialised with. The only
+       * credential the browser gets, scoped to this one order, and not a secret.
+       *
+       * There used to be a `public_key` here. It was REMOVED at the provider
+       * (stripe-service v0.48.0) because the merchant key belongs to the entry
+       * points that cannot save a card, so this flow has no use for it. Do not
+       * re-add it: a field this page does not need is a credential it should not
+       * hold.
+       */
       token: string;
       save_payment_method_for: "merchant";
       /** Prefilled so the provider does not ask for what we already know. */
