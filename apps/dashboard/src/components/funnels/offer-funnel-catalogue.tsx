@@ -22,6 +22,9 @@ import {
 const RETURN_TIP =
   "What a dollar came back as for every client selling through this funnel, on the channel that returned the most. It is the fleet's figure and not this offer's: it rests on what those clients said a customer is worth to them, so read it as what the path can do, not as what yours will do.";
 
+const CAC_TIP =
+  "What one paying client cost the clients selling through this funnel, on the same channel as the return beside it. It is the fleet's figure and not this offer's, so read it as what the path has cost other clients rather than what it will cost you.";
+
 /**
  * The funnels this offer does NOT sell through yet, one card each.
  *
@@ -193,6 +196,7 @@ function FleetFigures({
             <span className="text-sm font-semibold text-gray-800">
               {formatUsdAdaptive(state.costPerSaleUsd)}
             </span>
+            <InfoTooltip tip={CAC_TIP} />
           </span>
         )}
       </div>

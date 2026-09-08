@@ -235,6 +235,25 @@ describe("the card states served figures and writes nothing", () => {
     expect(CARD).not.toContain("toFixed(");
   });
 
+  it("explains BOTH figures: `$ CAC` carries its own (i), like the return beside it", () => {
+    // A figure a reader has never seen on this surface needs its basis stated. The
+    // return already carried one; the price it rests on did not, so the card explained
+    // half of what it shows.
+    expect(CARD).toContain("<InfoTooltip tip={RETURN_TIP} />");
+    expect(CARD).toContain("<InfoTooltip tip={CAC_TIP} />");
+    // The tip sits with the figure it explains, never in the other cell.
+    const cacCell = CARD.slice(CARD.indexOf("$ CAC"), CARD.indexOf("via {channelName}"));
+    expect(cacCell).toContain("<InfoTooltip tip={CAC_TIP} />");
+  });
+
+  it("says the CAC is the FLEET's price, not this offer's, and names no other basis", () => {
+    const tip = CARD.slice(CARD.indexOf("const CAC_TIP"), CARD.indexOf("/**"));
+    expect(tip).toContain("paying client");
+    expect(tip).toContain("this funnel");
+    expect(tip).toContain("not this offer's");
+    expect(tip).not.toContain("—");
+  });
+
   it("states `Not measured yet` and no number when the fleet has none", () => {
     expect(CARD).toContain("Not measured yet");
   });
