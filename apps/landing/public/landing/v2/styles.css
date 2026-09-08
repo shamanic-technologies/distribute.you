@@ -726,3 +726,21 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
   .cmp-prices tbody td:last-child { grid-column: 1 / -1; text-align: left; color: var(--muted); }
   .cmp-cta .btn { width: 100%; }
 }
+
+/* ---------- Document pages (About, Contact, Developers, 404): the hero recipe with the
+   words left-aligned, then one framed section of running prose per heading. ---------- */
+.doc-hero { min-height: 0; padding: 72px 0 40px; }
+.doc-hero .hero-inner { align-items: flex-start; text-align: left; }
+.doc-hero h1 { margin: 18px 0 0; max-width: 820px; }
+.doc-hero .hero-sub { margin-top: 20px; max-width: 680px; font-size: 19px; }
+.doc { max-width: 680px; }
+.doc p, .doc li { font-size: 17px; line-height: 1.6; color: var(--muted); }
+.doc p + p, .doc ul + p, .doc p + ul { margin-top: 16px; }
+.doc strong { color: var(--text); font-weight: 500; }
+.doc a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.doc ul { list-style: none; display: grid; gap: 10px; }
+.doc li { position: relative; padding-left: 22px; }
+.doc li::before { content: ""; position: absolute; left: 0; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.doc code { font-family: var(--font-mono); font-size: 14px; padding: 2px 6px; border-radius: 6px; background: var(--surface); border: 1px solid var(--hair); color: var(--text); }
+.doc .code-block { margin: 16px 0; padding: 16px 18px; border-radius: 12px; background: var(--dark, #0a0a0a); color: #fff; font-family: var(--font-mono); font-size: 14px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+.doc .code-block code { background: none; border: 0; padding: 0; color: inherit; font-size: inherit; }

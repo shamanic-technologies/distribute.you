@@ -54,10 +54,11 @@ const SURFACES = [
   "apps/dashboard/src/lib/welcome-offer-copy.ts",
   "apps/dashboard/src/lib/onboarding-content.ts",
   "apps/dashboard/src/instrumentation.ts",
-  "apps/landing/public/landing/js/main.js",
-  "apps/landing/public/landing/js/pricing-modal-v1.js",
-  "apps/landing/public/landing/pricing.html",
   "apps/landing/public/llms.txt",
+  "apps/landing/src/lib/v2-shell.ts",
+  "apps/landing/src/lib/pages/about.ts",
+  "apps/landing/src/app/terms/page.tsx",
+  "apps/landing/src/app/layout.tsx",
   // The referred-signup banner injected into every static page. It stated the
   // whole retired offer ("$5 lands now, $400 once your payments reach $400") and
   // was outside this list, so nothing went red while it shipped to production.
@@ -186,21 +187,15 @@ describe("referred-signup promise", () => {
     expect(src).toContain("if (cancelled || !res.valid) return;");
   });
 
-  it("the landing JS surfaces bump their cache-buster past the fixed copy", () => {
-    // A `public/landing/**` JS edit ships nothing visible unless every HTML that
-    // links it bumps `?v=N`: the old query string is its own long-lived edge
-    // cache key. main.js is at v11 and pricing-modal-v1.js (the homepage) at v7.
-    const linked = [
-      ["apps/landing/public/landing/index-v1.html", "js/pricing-modal-v1.js?v=8"],
-      ["apps/landing/public/landing/pricing.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/performance.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/use-cases.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/cold-email-cost-guide.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/cold-email-vs-linkedin.html", "js/main.js?v=12"],
-      ["apps/landing/public/landing/cold-email-for-saas-founders.html", "js/main.js?v=12"],
-    ] as const;
-    for (const [rel, expected] of linked) {
-      expect(read(rel), `${rel} must link ${expected}`).toContain(expected);
-    }
+  it("the homepage and every rendered page read the same stylesheet version", () => {
+    // A `public/landing/v2/**` edit ships nothing visible unless every page that
+    // links it bumps `?v=N`: the old query string is its own long-lived edge cache
+    // key. The rendered pages read the constant; the hand-written homepage carries
+    // the literal, so the two are pinned equal here.
+    const shellSrc = read("apps/landing/src/lib/v2-shell.ts");
+    const version = /export const V2_STYLES_VERSION = (\d+);/.exec(shellSrc)?.[1];
+    expect(version).toBeTruthy();
+    const home = read("apps/landing/public/landing/index-v2.html");
+    expect(home).toContain(`/landing/v2/styles.css?v=${version}`);
   });
 });

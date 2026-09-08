@@ -1,7 +1,8 @@
-import { staticResponse } from "@/lib/static-html";
+import { renderedResponse } from "@/lib/static-html";
+import { renderContactPage } from "@/lib/pages/contact";
 
 export const revalidate = 86400;
 
-export function GET(request: Request) {
-  return staticResponse("contact.html", request);
+export async function GET(request: Request) {
+  return renderedResponse(renderContactPage(), request);
 }

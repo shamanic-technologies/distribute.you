@@ -34,7 +34,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=10"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=11"');
     expect(html).toContain('src="/landing/v2/main.js?v=8"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
@@ -67,28 +67,6 @@ describe("the homepage is self-contained", () => {
     // `staticHtml` injects the charter icon into every served page. A second
     // `rel="icon"` here would leave which one the browser picks unspecified.
     expect(html).not.toMatch(/<link[^>]+rel="icon"/);
-  });
-});
-
-describe("the previous homepage is archived, not deleted", () => {
-  const v3 = readFileSync(path.resolve(__dirname, "../../src/app/v3/route.ts"), "utf8");
-
-  it("still serves at /v3, non-indexed", () => {
-    expect(v3).toContain('staticResponse("index-v1.html"');
-    expect(v3).toContain("noindex, nofollow");
-  });
-
-  it("is still on disk, because it is the only page carrying the live-figure machinery", () => {
-    // `__CAC_PRICE__`, `__HERO_CONSOLE__`, the ROI calculator and the segment-cost band
-    // are used by no other page. Deleting the file makes all of it dead code, and a
-    // CI-gated dashboard guard pins this path.
-    const previous = readFileSync(path.join(LANDING, "index-v1.html"), "utf8");
-    expect(previous).toContain("__CAC_PRICE__");
-  });
-
-  it("is absent from the sitemap", () => {
-    const sitemap = readFileSync(path.resolve(__dirname, "../../src/app/sitemap.ts"), "utf8");
-    expect(sitemap).not.toContain("/v3");
   });
 });
 

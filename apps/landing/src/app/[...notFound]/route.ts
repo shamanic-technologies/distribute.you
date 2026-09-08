@@ -1,4 +1,5 @@
-import { staticResponse } from "@/lib/static-html";
+import { renderedResponse } from "@/lib/static-html";
+import { renderNotFoundPage } from "@/lib/pages/not-found";
 
 /**
  * Catch-all 404 for every unmatched path.
@@ -15,5 +16,5 @@ import { staticResponse } from "@/lib/static-html";
  * routing, so `/robots.txt` and `/llms.txt` are unaffected.
  */
 export function GET(request: Request) {
-  return staticResponse("404.html", request, { status: 404, canonicalPath: "/404" });
+  return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
 }

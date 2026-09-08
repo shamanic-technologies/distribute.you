@@ -26,18 +26,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
-      url: `${baseUrl}/pricing`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/performance`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
       url: `${baseUrl}/investors`,
       lastModified: new Date(),
       changeFrequency: "weekly",
@@ -60,32 +48,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Statically-served pages (src/app/<page>/route.ts → staticResponse) that were
   // missing from the sitemap — all live + indexable. Keep in lockstep with the
   // public/landing/**.html set when adding/removing a static page.
+  // Every other indexable page. Keep in lockstep with the routes under src/app: a page
+  // added there and not here is live and absent from the sitemap.
   const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
     { path: "/developers", priority: 0.7 },
     { path: "/brand", priority: 0.5 },
-    { path: "/use-cases", priority: 0.8 },
     { path: "/about", priority: 0.6 },
     { path: "/contact", priority: 0.5 },
     { path: "/privacy", priority: 0.3 },
-    // NOTE: /performance/brands + /performance/models are 308-redirected to
-    // /performance (next.config.ts). Redirecting URLs must NOT be in the sitemap
-    // (Ahrefs "3XX redirect in sitemap") — only the canonical /performance (above).
-    // Cold-email SEO cluster (3 pillars + 12 supporting pages)
-    { path: "/cold-email-cost-guide", priority: 0.7 },
-    { path: "/cold-email-cost-guide/cold-email-cost-per-contact", priority: 0.6 },
-    { path: "/cold-email-cost-guide/cold-email-roi", priority: 0.6 },
-    { path: "/cold-email-cost-guide/cold-email-setup-cost", priority: 0.6 },
-    { path: "/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email", priority: 0.6 },
-    { path: "/cold-email-vs-linkedin", priority: 0.7 },
-    { path: "/cold-email-vs-linkedin/b2b-outbound-channel-comparison", priority: 0.6 },
-    { path: "/cold-email-vs-linkedin/cold-email-vs-linkedin-ads", priority: 0.6 },
-    { path: "/cold-email-vs-linkedin/linkedin-connection-request-vs-cold-email", priority: 0.6 },
-    { path: "/cold-email-vs-linkedin/multichannel-outreach-strategy", priority: 0.6 },
-    { path: "/cold-email-for-saas-founders", priority: 0.7 },
-    { path: "/cold-email-for-saas-founders/ai-cold-email-saas-founders", priority: 0.6 },
-    { path: "/cold-email-for-saas-founders/b2b-cold-email-reply-rate", priority: 0.6 },
-    { path: "/cold-email-for-saas-founders/cold-email-personalization-at-scale", priority: 0.6 },
-    { path: "/cold-email-for-saas-founders/cold-email-subject-lines-saas", priority: 0.6 },
   ];
 
   // The comparison cluster is rendered from the competitor catalogue, so its paths are
