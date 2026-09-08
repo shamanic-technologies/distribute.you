@@ -10,6 +10,7 @@ import {
 } from "@/lib/content-negotiation";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
+import { reseedShowcaseCards, type ShowcaseFunnels } from "@/lib/showcase-funnels";
 
 // Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
@@ -422,6 +423,55 @@ async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
  * the one thing rendered: a non-finite or non-positive median is refused rather than
  * printed, since `0.0x` on a comparison page would state a result no client got.
  */
+/**
+ * The three named clients' funnel counts, read at render.
+ *
+ * Through the gateway rather than the producer directly: features-service's CORS
+ * allowlist still names a retired brand's domains, and the gateway is the one public
+ * surface this landing talks to. Bounded like every other build-time read here — a
+ * cold endpoint must never hold the prerender.
+ */
+async function fetchShowcaseFunnels(): Promise<ShowcaseFunnels | null> {
+  const apiUrl = resolvePublicApiUrl();
+  const res = await fetch(`${apiUrl}/v1/public/features/showcase-funnels`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`[landing] /v1/public/features/showcase-funnels failed: ${res.status}`);
+  }
+  const data = (await res.json()) as ShowcaseFunnels;
+  if (!Array.isArray(data?.brands) || data.brands.length === 0) return null;
+  for (const brand of data.brands) {
+    if (!brand.measured) {
+      console.warn(
+        `[landing] showcase funnel not measurable for ${brand?.brand?.domain ?? "an unnamed brand"} (${brand.unmeasuredReason ?? "no reason given"}), keeping the shipped figures`,
+      );
+    }
+  }
+  return data;
+}
+
+/**
+ * Reseed the homepage's showcase cards, leaving the page untouched when it carries
+ * none and when the read fails.
+ *
+ * A failed read keeps the figures the page ships with — the last read we know landed
+ * — because blanking a client's card, or standing a zero in for a number nobody told
+ * us, is worse than showing a figure a few hours old. It is logged loud either way.
+ */
+async function withShowcaseFunnels(html: string): Promise<string> {
+  if (!html.includes('data-brand="')) return html;
+  try {
+    const data = await fetchShowcaseFunnels();
+    return data ? reseedShowcaseCards(html, data) : html;
+  } catch (error) {
+    console.error("[landing] showcase funnel counts unavailable, keeping the shipped figures", error);
+    return html;
+  }
+}
+
 async function fetchFleetReturn(): Promise<FleetReturnStats | null> {
   const apiUrl = resolvePublicApiUrl();
   const res = await fetch(
@@ -554,7 +604,7 @@ async function negotiatedResponse(
     });
   }
 
-  const html = await withHotLeadStats(decorated);
+  const html = await withShowcaseFunnels(await withHotLeadStats(decorated));
 
   if (negotiated === "markdown") {
     const markdown = htmlToMarkdown(html, {
