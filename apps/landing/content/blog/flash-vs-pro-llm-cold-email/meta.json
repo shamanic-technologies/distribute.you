@@ -1,0 +1,9 @@
+{
+  "slug": "flash-vs-pro-llm-cold-email",
+  "title": "Flash or Pro? What 20 cold email workflows and $6.7k of spend say about LLM tiers",
+  "excerpt": "Across 20 production cold email workflows, Flash-tier models bought website visits at $3.24 each and Pro-tier models bought positive replies at $168 each. Flash produced one positive reply on $1,369 of spend. The full tables, the model map and the limits of the data.",
+  "tags": ["cold email", "LLM", "benchmarks", "Gemini", "DeepSeek", "cost per reply"],
+  "publishedAt": "2026-09-08T09:00:00.000Z",
+  "coverImagePath": "/blog/flash-vs-pro-llm-cold-email/hero.png",
+  "source": "manual"
+}
