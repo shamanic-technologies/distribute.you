@@ -111,7 +111,7 @@ function IdentitySkeleton({ markClass, barClass }: { markClass: string; barClass
  * the bar come to disagree about what an offer looks like, which is the same
  * reason the acquisition-channel and sales-funnel marks are components.
  */
-const OfferTile = ({ logoUrl }: { logoUrl?: string | null }) => <OfferMark size="md" logoUrl={logoUrl} />;
+const OfferTile = ({ imageUrl }: { imageUrl?: string | null }) => <OfferMark size="md" imageUrl={imageUrl} />;
 
 const OrgSettingsIcon = () => (
   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,7 +381,7 @@ function TenantMenu({
               <IdentitySkeleton markClass="w-5 h-5" barClass="h-3.5 flex-1" />
             ) : (
               <>
-                <OfferTile logoUrl={t.displayOffer?.logoUrl} />
+                <OfferTile imageUrl={t.displayOffer?.imageUrl} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
                   {t.offerId ? t.displayOffer?.name : "All offers"}
                 </span>
@@ -406,7 +406,7 @@ function TenantMenu({
                         t.offerId === o.offerId ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
-                      <OfferTile logoUrl={o.logoUrl} />
+                      <OfferTile imageUrl={o.imageUrl} />
                       <span className="truncate">{o.name}</span>
                       {t.offerId === o.offerId && <CheckMark />}
                     </button>

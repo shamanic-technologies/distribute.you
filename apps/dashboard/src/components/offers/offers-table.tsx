@@ -209,7 +209,7 @@ export function OffersTable({
                     `truncate` bite inside a fixed-layout cell. */}
                 <td className="px-4 py-3 font-medium text-gray-800">
                   <div className="flex min-w-0 items-center gap-2">
-                    <OfferMark size="sm" logoUrl={offer.logoUrl} />
+                    <OfferMark size="sm" imageUrl={offer.imageUrl} />
                     <span className="truncate">{offer.name}</span>
                   </div>
                 </td>

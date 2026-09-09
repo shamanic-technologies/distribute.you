@@ -22,7 +22,7 @@ import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
  * top-bar breadcrumb both draw an offer, and two icon definitions is how they
  * come to disagree about what an offer looks like.
  *
- * ── The generated logo ──────────────────────────────────────────────────────
+ * ── The generated image ──────────────────────────────────────────────────────
  *
  * A brand selling several propositions could not tell them apart at a glance:
  * every offer wore this same tag. So an offer now carries an image it can
@@ -33,36 +33,36 @@ import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
  *
  * The glyph is the FALLBACK, not the legacy: an offer created today has no
  * image, and a hotlink that fails to decode has none either. Both keep the tag
- * rather than an empty square, which is why `logoUrl` is optional at every call
+ * rather than an empty square, which is why `imageUrl` is optional at every call
  * site — a surface that cannot resolve the offer's own row (the leads table
  * reads lead-service's `{offerId, name}`, which carries no image) passes
  * nothing and is unchanged.
  */
 export function OfferMark({
   size = "md",
-  logoUrl,
+  imageUrl,
 }: {
   /** `lg` (64px) is the CHOOSING size: every surface that names an offer draws
    *  the mark at 18-20px, which is too small to tell two generated images apart
    *  while you are deciding whether to keep one. Offer Settings is the only
    *  caller. */
   size?: "sm" | "md" | "lg";
-  /** The offer's generated logo. Absent/null/undecodable ⟹ the glyph. */
-  logoUrl?: string | null;
+  /** The offer's generated image. Absent/null/undecodable ⟹ the glyph. */
+  imageUrl?: string | null;
 }) {
   const [broken, setBroken] = useState(false);
   // A NEW image gets a fresh chance to decode. Without this the flag is sticky
-  // for the mount, so an offer whose logo failed once keeps the glyph even after
+  // for the mount, so an offer whose image failed once keeps the glyph even after
   // it is regenerated — which reads as the regeneration having done nothing.
-  useEffect(() => setBroken(false), [logoUrl]);
+  useEffect(() => setBroken(false), [imageUrl]);
   const tile =
     size === "lg" ? "h-16 w-16 rounded-xl" : size === "sm" ? "h-[18px] w-[18px] rounded" : "h-5 w-5 rounded";
   const glyph = size === "lg" ? "h-8 w-8" : size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
 
-  if (logoUrl && !broken) {
+  if (imageUrl && !broken) {
     return (
       <img
-        src={logoUrl}
+        src={imageUrl}
         alt=""
         onError={() => setBroken(true)}
         className={`${tile} flex-shrink-0 object-cover`}

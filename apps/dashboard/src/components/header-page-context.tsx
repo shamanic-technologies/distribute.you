@@ -185,7 +185,7 @@ export function HeaderPageContext() {
 
   const offerLabel = offer ? (
     <>
-      <OfferMark size="sm" logoUrl={offer.logoUrl} />
+      <OfferMark size="sm" imageUrl={offer.imageUrl} />
       <span className="truncate">{offer.name}</span>
     </>
   ) : (

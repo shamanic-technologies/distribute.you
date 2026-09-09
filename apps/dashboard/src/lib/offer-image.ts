@@ -1,5 +1,5 @@
 /**
- * WHERE a surface gets an offer's logo, when all it holds is an offer id.
+ * WHERE a surface gets an offer's image, when all it holds is an offer id.
  *
  * The offer's own row (brand-service) carries the image. Three surfaces already
  * read that row and can pass it straight to `OfferMark` — the top bar
@@ -9,7 +9,7 @@
  *
  * Leaving those on the glyph would mean one offer wearing two different marks on
  * one screen, which is the coherence this repo keeps recording as a bug. So they
- * resolve the logo from the brand's own offer LIST — a display lookup over a
+ * resolve the image from the brand's own offer LIST — a display lookup over a
  * query the tenant switcher already polls on every brand page (`["brandOffers",
  * brandId]`, `enabled: !!brandId`), so it dedupes to no request at all. It is a
  * lookup, never a derivation: nothing here computes or invents a value.
@@ -18,10 +18,10 @@
  * flight) resolves to `null` and the mark keeps its glyph — the same reading as
  * an offer that has no image yet.
  */
-export function offerLogoLookup(
-  offers: { offerId: string; logoUrl?: string | null }[] | undefined,
+export function offerImageLookup(
+  offers: { offerId: string; imageUrl?: string | null }[] | undefined,
 ): (offerId: string | null | undefined) => string | null {
   const byId = new Map<string, string | null>();
-  for (const o of offers ?? []) byId.set(o.offerId, o.logoUrl ?? null);
+  for (const o of offers ?? []) byId.set(o.offerId, o.imageUrl ?? null);
   return (offerId) => (offerId ? byId.get(offerId) ?? null : null);
 }

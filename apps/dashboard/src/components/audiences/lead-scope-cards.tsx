@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { tenantBasePath } from "@/lib/offer-path";
 import { BrandLogo } from "@/components/brand-logo";
 import { OfferMark } from "@/components/marks/offer-mark";
-import { useOfferLogos } from "@/lib/use-offer-logos";
+import { useOfferImages } from "@/lib/use-offer-images";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -58,8 +58,8 @@ export function LeadScopeCards({
   const legIndex = useFunnelLegIndex();
   // The offer arrives from lead-service as `{id, name}` and carries no image, so the
   // mark is resolved from the brand's own offer list — a lookup over a query this page
-  // already polls. See `lib/offer-logo.ts`.
-  const offerLogo = useOfferLogos(brandId);
+  // already polls. See `lib/offer-image.ts`.
+  const offerImage = useOfferImages(brandId);
 
   // A lookup that ANSWERS rather than one that throws on a key it does not carry: the
   // key here comes off a campaign row, so a funnel we cannot name renders no card.
@@ -99,7 +99,7 @@ export function LeadScopeCards({
       {offer && (
         <ScopeCard
           heading="Offer"
-          mark={<OfferMark size="sm" logoUrl={offerLogo(offer.id)} />}
+          mark={<OfferMark size="sm" imageUrl={offerImage(offer.id)} />}
           title={offer.name}
           unnamed="Unnamed offer"
           subtitle="What this person was contacted to be sold."

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { offerLogoLookup } from "../src/lib/offer-logo";
+import { offerImageLookup } from "../src/lib/offer-image";
 
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
@@ -13,41 +13,41 @@ const OFFER_SETTINGS = `${APP}/offers/[offerId]/settings/page.tsx`;
  * An offer's NAME and its MARK — the two things that tell one proposition from
  * another, and neither was editable anywhere in the product before this.
  */
-describe("offerLogoLookup", () => {
+describe("offerImageLookup", () => {
   const offers = [
-    { offerId: "a", logoUrl: "https://cdn/a.png" },
-    { offerId: "b", logoUrl: null },
+    { offerId: "a", imageUrl: "https://cdn/a.png" },
+    { offerId: "b", imageUrl: null },
     { offerId: "c" },
   ];
 
-  it("answers a logo for an offer that has one", () => {
-    expect(offerLogoLookup(offers)("a")).toBe("https://cdn/a.png");
+  it("answers an image for an offer that has one", () => {
+    expect(offerImageLookup(offers)("a")).toBe("https://cdn/a.png");
   });
 
-  it("reads an offer with no logo, an absent field and an unknown id the SAME way — the mark keeps its glyph", () => {
-    const at = offerLogoLookup(offers);
+  it("reads an offer with no image, an absent field and an unknown id the SAME way — the mark keeps its glyph", () => {
+    const at = offerImageLookup(offers);
     expect(at("b")).toBeNull();
     expect(at("c")).toBeNull();
     expect(at("nobody")).toBeNull();
   });
 
   it("answers null while the list is still in flight rather than throwing", () => {
-    expect(offerLogoLookup(undefined)("a")).toBeNull();
+    expect(offerImageLookup(undefined)("a")).toBeNull();
   });
 
   it("answers null for no offer at all — a lead attributed to none has nothing to draw", () => {
-    const at = offerLogoLookup(offers);
+    const at = offerImageLookup(offers);
     expect(at(null)).toBeNull();
     expect(at(undefined)).toBeNull();
   });
 });
 
-describe("OfferMark carries the offer's own logo", () => {
+describe("OfferMark carries the offer's own image", () => {
   const mark = read("components/marks/offer-mark.tsx");
 
-  it("takes a logoUrl and renders it", () => {
-    expect(mark).toContain("logoUrl?: string | null");
-    expect(mark).toContain("src={logoUrl}");
+  it("takes a imageUrl and renders it", () => {
+    expect(mark).toContain("imageUrl?: string | null");
+    expect(mark).toContain("src={imageUrl}");
   });
 
   it("falls back to the glyph — an offer created today has no image, and neither does one whose image fails to decode", () => {
@@ -56,7 +56,7 @@ describe("OfferMark carries the offer's own logo", () => {
   });
 
   it("gives a NEW image a fresh chance to decode, so a regeneration is not swallowed by a sticky failure flag", () => {
-    expect(mark).toContain("useEffect(() => setBroken(false), [logoUrl])");
+    expect(mark).toContain("useEffect(() => setBroken(false), [imageUrl])");
   });
 
   it("keeps the tinted tile inside the html.dark remap's closed set", () => {
@@ -65,23 +65,23 @@ describe("OfferMark carries the offer's own logo", () => {
   });
 });
 
-describe("every surface that CAN resolve an offer's logo passes it", () => {
+describe("every surface that CAN resolve an offer's image passes it", () => {
   it("the top bar reads the offer's own row", () => {
     expect(read("components/header-page-context.tsx")).toContain(
-      '<OfferMark size="sm" logoUrl={offer.logoUrl} />',
+      '<OfferMark size="sm" imageUrl={offer.imageUrl} />',
     );
   });
 
   it("the Offers table reads the row it already renders", () => {
     expect(read("components/offers/offers-table.tsx")).toContain(
-      '<OfferMark size="sm" logoUrl={offer.logoUrl} />',
+      '<OfferMark size="sm" imageUrl={offer.imageUrl} />',
     );
   });
 
   it("the tenant switcher passes one on BOTH the current offer and every row of its list", () => {
     const switcher = read("components/tenant-switcher.tsx");
-    expect(switcher).toContain("<OfferTile logoUrl={t.displayOffer?.logoUrl} />");
-    expect(switcher).toContain("<OfferTile logoUrl={o.logoUrl} />");
+    expect(switcher).toContain("<OfferTile imageUrl={t.displayOffer?.imageUrl} />");
+    expect(switcher).toContain("<OfferTile imageUrl={o.imageUrl} />");
     // No bare tile left: one offer wearing two marks on one screen is the bug this closes.
     expect(switcher).not.toContain("<OfferTile />");
   });
@@ -92,20 +92,20 @@ describe("every surface that CAN resolve an offer's logo passes it", () => {
       "components/audiences/lead-campaign-sections.tsx",
       "components/audiences/engaged-leads-page.tsx",
     ]) {
-      expect(read(file)).toContain("useOfferLogos");
+      expect(read(file)).toContain("useOfferImages");
     }
   });
 
   it("the leads table takes a RESOLVER, so the read stays on the page and the table stays a pure render", () => {
     const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain("offerLogoOf: (lead: Lead) => string | null");
-    expect(leads).toContain("<OfferMark size=\"sm\" logoUrl={offerLogoOf(lead)} />");
+    expect(leads).toContain("offerImageOf: (lead: Lead) => string | null");
+    expect(leads).toContain("<OfferMark size=\"sm\" imageUrl={offerImageOf(lead)} />");
   });
 
   it("the lookup rides the key the tenant switcher ALREADY polls, so it costs no request", () => {
-    expect(read("lib/use-offer-logos.ts")).toContain('["brandOffers", brandId ?? "none"]');
+    expect(read("lib/use-offer-images.ts")).toContain('["brandOffers", brandId ?? "none"]');
     // Never a per-offer by-id fan-out: a leads table naming forty offers is not forty requests.
-    expect(read("lib/use-offer-logos.ts")).not.toContain("getBrandOffer");
+    expect(read("lib/use-offer-images.ts")).not.toContain("getBrandOffer");
   });
 });
 

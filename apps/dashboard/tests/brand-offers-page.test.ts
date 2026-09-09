@@ -83,8 +83,8 @@ describe("the Offers table fits a phone", () => {
     const head = table.indexOf("<thead>");
     expect(table.indexOf(">Offer</th>", head)).toBeLessThan(table.indexOf('label="ROI"', head));
     expect(table).toContain('import { OfferMark } from "@/components/marks/offer-mark"');
-    // The offer's own generated logo rides the shared mark; the glyph is its fallback.
-    expect(table).toContain('<OfferMark size="sm" logoUrl={offer.logoUrl} />');
+    // The offer's own generated image rides the shared mark; the glyph is its fallback.
+    expect(table).toContain('<OfferMark size="sm" imageUrl={offer.imageUrl} />');
     // truncate only bites inside a fixed-layout cell when the flex wrapper can shrink
     expect(table).toContain("flex min-w-0 items-center");
   });

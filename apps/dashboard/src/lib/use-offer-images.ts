@@ -2,14 +2,14 @@
 
 import { useMemo } from "react";
 import { listBrandOffers } from "@/lib/api";
-import { offerLogoLookup } from "@/lib/offer-logo";
+import { offerImageLookup } from "@/lib/offer-image";
 import { useAuthQuery } from "@/lib/use-auth-query";
 
 /**
- * The brand's offers, as a logo lookup — for a surface that holds an offer ID and
+ * The brand's offers, as an image lookup — for a surface that holds an offer ID and
  * nothing else.
  *
- * See `offer-logo.ts` for WHY this exists (lead-service serves an offer as
+ * See `offer-image.ts` for WHY this exists (lead-service serves an offer as
  * `{offerId, name}` with no image, and one offer wearing two marks on one screen
  * is the coherence bug this repo keeps recording).
  *
@@ -18,11 +18,11 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * NO request — the lookup is free. Never a per-offer by-id fan-out: a leads table
  * naming forty offers must not be forty requests.
  */
-export function useOfferLogos(brandId: string | null | undefined) {
+export function useOfferImages(brandId: string | null | undefined) {
   const { data } = useAuthQuery(
     ["brandOffers", brandId ?? "none"],
     () => listBrandOffers(brandId!),
     { enabled: !!brandId },
   );
-  return useMemo(() => offerLogoLookup(data?.offers), [data]);
+  return useMemo(() => offerImageLookup(data?.offers), [data]);
 }

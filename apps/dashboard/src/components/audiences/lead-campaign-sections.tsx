@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { tenantBasePath } from "@/lib/offer-path";
 import { OfferMark } from "@/components/marks/offer-mark";
-import { useOfferLogos } from "@/lib/use-offer-logos";
+import { useOfferImages } from "@/lib/use-offer-images";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { SALES_FUNNELS } from "@/lib/sales-funnels";
 import type {
@@ -140,8 +140,8 @@ function OfferBand<C extends LeadCampaignCardLike>({
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   // lead-service serves the offer as `{offerId, offerName}` with no image; the mark is
-  // resolved from the brand's own offer list. See `lib/offer-logo.ts`.
-  const offerLogo = useOfferLogos(brandId);
+  // resolved from the brand's own offer list. See `lib/offer-image.ts`.
+  const offerImage = useOfferImages(brandId);
   return (
     <div>
       {/* The mark leads the name here exactly as it does in the top bar, the tenant
@@ -149,7 +149,7 @@ function OfferBand<C extends LeadCampaignCardLike>({
           wears one mark on every surface that names one. */}
       {showOffer && (
         <div className="flex min-w-0 items-center gap-2">
-          <OfferMark size="sm" logoUrl={offerLogo(offer.offerId)} />
+          <OfferMark size="sm" imageUrl={offerImage(offer.offerId)} />
           <p className="truncate text-sm font-medium text-gray-800">
             {offer.offerName ?? <span className="text-gray-500">Unnamed offer</span>}
           </p>
