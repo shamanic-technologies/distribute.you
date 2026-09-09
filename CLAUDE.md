@@ -475,8 +475,8 @@ because the answer is routinely "it exists and nothing calls it".
 - **The rename ships WITH the create, not after it.** The name is the only mutable
   field brand-service had on an offer when this shipped and this card was the only
   surface anywhere that could change it, so shipping create alone would make a typo
-  permanent. It sits LAST on Offer Settings: Sales Funnels leads, because how the
-  offer is sold is what a reader comes there to do.
+  permanent. It sits FIRST on Offer Settings, on the identity card: every card
+  under it is about a proposition a reader has to be able to name first.
 - ⚠️ **The rename card is `offer-identity-card.tsx`, NOT the `offer-name-card.tsx`
   this section shipped** — see the identity section below. Two workspaces built the
   same screen in one afternoon: this one gave the offer a rename, a sibling gave it
@@ -506,7 +506,7 @@ because the answer is routinely "it exists and nothing calls it".
 
 ## An offer's NAME and its MARK are ONE card, and the mark is brand-service's image
 
-`components/settings/offer-identity-card.tsx`, LAST on Offer Settings. It answers one
+`components/settings/offer-identity-card.tsx`, FIRST on Offer Settings. It answers one
 question — which offer is this — so the two halves are one card: a page with a name
 field near the bottom and a name field plus a picture near the top is one screen
 asking it twice, which is exactly what shipped for one merge when two workspaces

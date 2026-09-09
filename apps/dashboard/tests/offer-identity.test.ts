@@ -113,9 +113,9 @@ describe("Offer Settings states the offer's identity", () => {
   const page = read(OFFER_SETTINGS);
   const card = read("components/settings/offer-identity-card.tsx");
 
-  it("mounts the card LAST — Sales Funnels leads, and the identity edit is the rare one", () => {
+  it("mounts the card FIRST — every card under it is about an offer you must name first", () => {
     expect(page).toContain("<OfferIdentityCard brandId={brandId} offerId={offerId} />");
-    expect(page.indexOf("<OfferIdentityCard")).toBeGreaterThan(page.indexOf("<BrandSalesFunnelsCard"));
+    expect(page.indexOf("<OfferIdentityCard")).toBeLessThan(page.indexOf("<BrandSalesFunnelsCard"));
   });
 
   it("writes the name through the reader that had no caller at all before this", () => {

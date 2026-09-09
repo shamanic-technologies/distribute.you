@@ -25,9 +25,10 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * Both cards take the offer explicitly rather than reading the route themselves,
  * so the page states the scope once and neither card can drift onto another one.
  *
- * Sales Funnels leads: how the offer is sold is what a reader comes here to fund
- * and change. Offer identity sits LAST, where a settings page of this shape puts
- * the rare identity edit — its name, and the mark it wears everywhere.
+ * Offer identity leads: its name and the mark it wears. Everything under it (the
+ * funnels it is sold through, what it promises) is about a proposition a reader
+ * has to be able to name first, so the page states WHICH offer this is before it
+ * states anything about it.
  *
  * The Hormozi levers now live on the COLD EMAIL campaign's own Settings, because
  * they are the words that channel's emails are written around. They are stored on
@@ -43,10 +44,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * worse than showing the card twice, and losing the only editor to a blip is
  * worse than both.
  *
- * The offer's NAME sits last. It is the only mutable field brand-service has on an
- * offer and the only surface anywhere that can change it, so without it a name
- * typed once at creation would be permanent — but it is a rare identity edit, and
- * how the offer is SOLD is what a reader comes here to do.
  */
 export default function OfferSettingsPage() {
   const params = useParams();
@@ -65,7 +62,15 @@ export default function OfferSettingsPage() {
     <DashboardPage width="wide">
       <h1 className="mb-8 text-2xl font-semibold text-gray-900">Offer Settings</h1>
 
-      <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
+      {/* Identity first: which offer this IS, its name and its mark. Both had no
+          other home (the name was stated at creation and never again, and every
+          offer wore the same glyph), and both name the thing every card under
+          them is about. Then how it is sold, then what it promises. */}
+      <OfferIdentityCard brandId={brandId} offerId={offerId} />
+
+      <div className="mt-10">
+        <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
+      </div>
 
       {!isPending && (
         <div className="mt-10">
@@ -91,13 +96,6 @@ export default function OfferSettingsPage() {
         </div>
       )}
 
-      {/* Last: how the offer is sold, then what it promises, then the identity:
-          which offer this IS, its name and its mark. Both are the rare edit, and
-          both had no other home. The name was stated at creation and never again,
-          and every offer wore the same glyph. */}
-      <div className="mt-10">
-        <OfferIdentityCard brandId={brandId} offerId={offerId} />
-      </div>
     </DashboardPage>
   );
 }
