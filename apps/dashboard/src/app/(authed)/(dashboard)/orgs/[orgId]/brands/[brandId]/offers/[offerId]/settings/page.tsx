@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { DashboardPage } from "@/components/dashboard-page";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
+import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
 import { BrandSalesFunnelsCard } from "@/components/settings/brand-sales-funnels-card";
-import { OfferNameCard } from "@/components/settings/offer-name-card";
 import { listCampaignsByBrand } from "@/lib/api";
 import { coldEmailCampaignForOffer } from "@/lib/offer-levers-home";
 import { tenantBasePath } from "@/lib/offer-path";
@@ -26,7 +26,8 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * so the page states the scope once and neither card can drift onto another one.
  *
  * Sales Funnels leads: how the offer is sold is what a reader comes here to fund
- * and change.
+ * and change. Offer identity sits LAST, where a settings page of this shape puts
+ * the rare identity edit — its name, and the mark it wears everywhere.
  *
  * The Hormozi levers now live on the COLD EMAIL campaign's own Settings, because
  * they are the words that channel's emails are written around. They are stored on
@@ -90,10 +91,13 @@ export default function OfferSettingsPage() {
         </div>
       )}
 
-      {/* Last: how the offer is sold, then what it promises, then the rare identity
-          edit. A rename has no other home: the name is stated at creation and
-          brand-service has no other mutable field on an offer. */}
-      <OfferNameCard brandId={brandId} offerId={offerId} />
+      {/* Last: how the offer is sold, then what it promises, then the identity:
+          which offer this IS, its name and its mark. Both are the rare edit, and
+          both had no other home. The name was stated at creation and never again,
+          and every offer wore the same glyph. */}
+      <div className="mt-10">
+        <OfferIdentityCard brandId={brandId} offerId={offerId} />
+      </div>
     </DashboardPage>
   );
 }

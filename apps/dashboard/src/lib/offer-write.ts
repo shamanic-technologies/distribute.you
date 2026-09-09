@@ -1,4 +1,4 @@
-// What to tell a customer when brand-service refuses to create or rename an offer.
+// What to tell a customer when brand-service refuses to create, rename or draw an offer.
 //
 // The message is chosen from the HTTP STATUS and nothing else. `apiCall` sets the
 // thrown Error's `message` to the whole downstream body verbatim, so rendering it
@@ -14,12 +14,21 @@
 // Keep it that way; a runtime `@/...` import here turns them into resolution
 // failures.
 
-export type OfferWriteKind = "create" | "rename";
+export type OfferWriteKind = "create" | "rename" | "generate";
 
 /** The name rules, stated the way brand-service enforces them. */
 export const OFFER_NAME_RULES = "at most 2 words and 20 characters";
 
 export function offerWriteErrorMessage(status: number | null, kind: OfferWriteKind): string {
+  // The image write carries no name, so the three name-shaped refusals cannot
+  // reach it — it answers on access, on the offer being gone, and on everything
+  // else. A 402 never gets here at all: `apiCall` opens the billing-guard modal on
+  // that status, and a second sentence under it describes one refusal twice.
+  if (kind === "generate") {
+    if (status === 403) return "You do not have access to this offer.";
+    if (status === 404) return "This offer no longer exists.";
+    return "We could not draw this offer. Try again in a moment.";
+  }
   if (status === 409) {
     return kind === "create"
       ? "This brand already sells something under that name. Pick another one."

@@ -114,6 +114,7 @@ import {
 } from "@/lib/leads-server-page";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { OfferMark } from "@/components/marks/offer-mark";
+import { useOfferImages } from "@/lib/use-offer-images";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
@@ -600,7 +601,7 @@ function CloseWonCell({ lead, prefillUsd, busy, onState }: {
   );
 }
 
-function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, outcomeDates, closeWon }: {
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, offerImageOf, outcomeDates, closeWon }: {
   leads: Lead[];
   tab: Tab;
   selectedLead: Lead | null;
@@ -611,6 +612,11 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   // while its own detail panel said Sent.
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
   audienceOf: (lead: Lead) => LeadAudience | null;
+  /** The offer's generated image, resolved from the brand's own offer list — lead-service
+   *  serves the offer as `{offerId, name}` and carries no image. See `lib/offer-image.ts`.
+   *  A resolver rather than a hook here, matching `statusOf` / `audienceOf`: the read
+   *  belongs to the page, so the table stays a pure render. */
+  offerImageOf: (lead: Lead) => string | null;
   // Realized-outcome timestamp per leadId (from the /revenue join) — the Date column
   // for an outcome tab reads this, since the lead-service row carries no outcome date.
   outcomeDates?: Map<string, string | null>;
@@ -739,7 +745,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 <td className="px-4 py-3 hidden lg:table-cell">
                   {lead.offer ? (
                     <div className="flex min-w-0 items-center gap-2">
-                      <OfferMark size="sm" />
+                      <OfferMark size="sm" imageUrl={offerImageOf(lead)} />
                       <span className="truncate text-gray-700 max-w-[160px]" title={lead.offer.name ?? undefined}>
                         {lead.offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
                       </span>
@@ -1082,6 +1088,13 @@ export function EngagedLeadsPage({
   // person's OTHER distinct audiences across their remaining campaigns, read off the
   // served cards. Without it a cell states one campaign's answer as the whole of what
   // we know. The panel lists them per campaign.
+  // The offer's mark, from the brand's own offer list — `lead.offer` carries the id and
+  // the name and no image, and leaving this column on the glyph would have one offer
+  // wearing two different marks on one screen. Free: the same `["brandOffers", brandId]`
+  // read the tenant switcher already polls on every brand page.
+  const offerImages = useOfferImages(brandId);
+  const offerImageOf = (lead: Lead): string | null => offerImages(lead.offer?.id ?? null);
+
   const audienceOf = (lead: Lead): LeadAudience | null => {
     if (!lead.audience) return null;
     const ids = new Set<string>([lead.audience.id]);
@@ -2231,6 +2244,7 @@ export function EngagedLeadsPage({
                   onSelectLead={setSelectedLead}
                   statusOf={statusOf}
                   audienceOf={audienceOf}
+                  offerImageOf={offerImageOf}
                   outcomeDates={outcomeDates}
                   closeWon={{
                     prefillUsd: prefillUsdFor,

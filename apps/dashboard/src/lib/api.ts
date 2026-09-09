@@ -1380,6 +1380,17 @@ const OfferSchema = z.object({
   offerId: z.string(),
   brandId: z.string(),
   name: z.string(),
+  // The offer's own generated mark (brand-service v0.78.2). `null` = none yet, which
+  // is the state of every offer created before it shipped and of every offer created
+  // today — so the dashboard falls back to its glyph rather than an empty square
+  // (`OfferMark`). brand-service states it outright: null is a first-class state, and
+  // there is no placeholder and no derived image.
+  //
+  // `.nullish()` and not `.nullable()`: the producer serves it on every offer read,
+  // but this schema is shared by the list, the by-id read and the write responses, and
+  // a reader that REQUIRES it throws on any body predating the field. Absent and null
+  // read the same here — the mark has nothing to draw either way.
+  imageUrl: z.string().nullish(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -1471,6 +1482,38 @@ export async function renameBrandOffer(
       raw,
     });
     throw new Error("[dashboard] renameBrandOffer: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * POST /brands/:brandId/offers/:offerId/image — (re)generate the offer's mark.
+ *
+ * brand-service builds the prompt from the offer's own descriptors and delegates the
+ * image to chat-service, which OWNS the cost: the org that presses the button pays
+ * for it, on the identity headers this request already carries. Returns the offer
+ * with its new mark, so the caller writes the response into the cache rather than
+ * re-reading.
+ *
+ * May 402 when the org cannot afford it — `apiCall` dispatches the billing-guard
+ * modal on that status, so the call site shows NO error line of its own for it.
+ */
+export async function generateOfferImage(
+  brandId: string,
+  offerId: string,
+  token?: string,
+): Promise<{ offer: Offer }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/image`, {
+    token,
+    method: "POST",
+  });
+  const parsed = BrandOfferResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] generateOfferImage: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] generateOfferImage: invalid response shape");
   }
   return parsed.data;
 }

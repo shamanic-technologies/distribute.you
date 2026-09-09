@@ -18,6 +18,18 @@ const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
  * zero callers. What was missing was a control, so this is a consumer-only change.
  */
 describe("what brand-service refuses, in a customer's words", () => {
+  it("answers the image write on access and on absence, and generically otherwise", () => {
+    // The image body carries no name, so the three name-shaped refusals cannot reach
+    // it. A 402 never gets here at all — the billing-guard modal already has it.
+    expect(offerWriteErrorMessage(403, "generate")).toContain("access to this offer");
+    expect(offerWriteErrorMessage(404, "generate")).toContain("offer no longer exists");
+    for (const status of [null, 400, 409, 500] as const) {
+      expect(offerWriteErrorMessage(status, "generate")).toBe(
+        "We could not draw this offer. Try again in a moment.",
+      );
+    }
+  });
+
   it("names the duplicate on a 409, per kind", () => {
     expect(offerWriteErrorMessage(409, "create")).toContain("already sells something under that name");
     expect(offerWriteErrorMessage(409, "rename")).toContain("already uses that name");
@@ -89,15 +101,24 @@ describe("the create control", () => {
 });
 
 describe("renaming an offer", () => {
-  const card = read("components/settings/offer-name-card.tsx");
+  // The rename lives on the IDENTITY card now. `OfferNameCard` shipped rename-only
+  // from one workspace while another was building the offer's generated mark; a
+  // name and a mark answer ONE question — which offer is this — so two cards on one
+  // page was one screen asking it twice. The card that absorbed it keeps every
+  // invariant below.
+  const card = read("components/settings/offer-identity-card.tsx");
 
-  it("is mounted on Offer Settings", () => {
-    expect(read(`${APP}/offers/[offerId]/settings/page.tsx`)).toContain("<OfferNameCard");
+  it("is mounted on Offer Settings, and there is exactly ONE rename surface", () => {
+    const page = read(`${APP}/offers/[offerId]/settings/page.tsx`);
+    expect(page).toContain("<OfferIdentityCard");
+    expect(page).not.toContain("OfferNameCard");
+    expect(() => read("components/settings/offer-name-card.tsx")).toThrow();
   });
 
   it("calls the reader that was already there, and renders no raw error body", () => {
     expect(card).toContain("renameBrandOffer(");
-    expect(card).toContain('offerWriteErrorMessage(status, "rename")');
+    expect(card).toContain('refusal(err, "rename")');
+    expect(card).toContain("offerWriteErrorMessage(err instanceof ApiError ? err.status : null, kind)");
     expect(card).not.toContain("error.message");
     expect(card).not.toContain("err.message");
   });
