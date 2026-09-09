@@ -473,10 +473,16 @@ because the answer is routinely "it exists and nothing calls it".
   reached a customer (the brand-domain case). Same shape as
   `controlWriteErrorMessage` beside it.
 - **The rename ships WITH the create, not after it.** The name is the only mutable
-  field brand-service has on an offer and this card is the only surface anywhere
-  that can change it, so shipping create alone would make a typo permanent. It sits
-  LAST on Offer Settings: Sales Funnels leads, because how the offer is sold is what
-  a reader comes there to do.
+  field brand-service had on an offer when this shipped and this card was the only
+  surface anywhere that could change it, so shipping create alone would make a typo
+  permanent. It sits LAST on Offer Settings: Sales Funnels leads, because how the
+  offer is sold is what a reader comes there to do.
+- ⚠️ **The rename card is `offer-identity-card.tsx`, NOT the `offer-name-card.tsx`
+  this section shipped** — see the identity section below. Two workspaces built the
+  same screen in one afternoon: this one gave the offer a rename, a sibling gave it
+  a generated mark, and for one merge the page mounted both. The absorbing card
+  keeps every invariant in this section verbatim (the two caches, the re-seed, the
+  status-to-sentence module, the placement); only the file moved.
 - ⚠️ **A rename writes BOTH caches** — `["brandOffers", brandId]` backs the table and
   the tenant switcher's third tier, `["brandOffer", brandId, offerId]` backs the
   top-bar crumb and this page's own read. Updating one leaves the other stating the
@@ -497,6 +503,57 @@ because the answer is routinely "it exists and nothing calls it".
   fails it), the no-raw-error-body guards match their OWN explanatory comment, and
   the em-dash copy guards slice from `return (`, so a JSX comment inside the render
   block counts as user-facing copy.
+
+## An offer's NAME and its MARK are ONE card, and the mark is brand-service's image
+
+`components/settings/offer-identity-card.tsx`, LAST on Offer Settings. It answers one
+question — which offer is this — so the two halves are one card: a page with a name
+field near the bottom and a name field plus a picture near the top is one screen
+asking it twice, which is exactly what shipped for one merge when two workspaces
+built it in parallel (#3991 renamed, #3996 drew, and #3996 absorbed the rename).
+
+Until then an offer's name was fixed at the moment it was created and every offer in
+the product wore the same purple tag, so a brand selling several propositions could
+not tell them apart in the tenant switcher, the top bar, the Offers table or the
+leads surfaces.
+
+- **brand-service owns the image and named it `imageUrl`** (v0.78.2), served on every
+  offer read and regenerated through `POST /orgs/brands/:brandId/offers/:offerId/image`,
+  proxied at `/v1/brands/{id}/offers/{offerId}/image`. This side guessed `logoUrl` +
+  `/logo` while the producer was still building; the consumer CONFORMED to the
+  deployed contract afterwards rather than asking for a rename. That is the whole of
+  the cross-repo rule: express the NEED, let the producer design, read the deployed
+  shape, conform.
+- **The visual template is the audience avatars'** — flat vector, thick outlines,
+  square, no text, on a bold single solid background from the SAME 16-colour palette,
+  **seeded on the offer's own id** so a regeneration keeps its colour and a brand's
+  offers spread across the hue wheel. What differs is the subject and it is the
+  point: an audience is a PERSON, so human-service draws a character; an offer is a
+  PROPOSITION, so brand-service draws a central object or emblem and forbids faces
+  outright. A face here would read as the audience sitting next to it.
+- **`OfferMark` takes the image and keeps the GLYPH as its fallback** — an offer
+  created today has none, a hotlinked image can fail to decode, and both keep the
+  tag rather than an empty square. `broken` RESETS on a new `imageUrl`, or a
+  regeneration after one failure is swallowed by a sticky flag and reads as having
+  done nothing. `size="lg"` (64px) exists because every surface that NAMES an offer
+  draws the mark at 18-20px, which is too small to tell two generated images apart
+  while you are deciding whether to keep one.
+- **Three surfaces pass the offer's own row** (the top bar's `getBrandOffer`, the
+  Offers table, the tenant switcher on both the current offer and every list row).
+  **The three lead surfaces resolve it from the brand's offer LIST** (`useOfferImages`
+  -> `offerImageLookup`, `lib/offer-image.ts`): lead-service serves an offer as
+  `{offerId, name}` with no image, and leaving those on the glyph is one offer
+  wearing two different marks on one screen. The read is byte-equal to the key the
+  tenant switcher already polls on every brand page, so it dedupes to NO request —
+  never a per-offer by-id fan-out, which on a leads table is one request per row.
+- **Refusals go through `lib/offer-write.ts`**, the module the create modal shares,
+  with a `generate` kind: the image body carries no name, so the three name-shaped
+  refusals cannot reach it. A **402 says NOTHING** — `apiCall` has already opened the
+  billing-guard modal, and two surfaces for one refusal is worse than one. chat-service
+  owns the image cost and the affordability gate; the org that presses the button pays.
+- Guards: `tests/offer-identity.test.ts` (real unit tests on the lookup + every call
+  site) and the rename half of `tests/offer-create.test.ts`, which asserts there is
+  exactly ONE rename surface and that `offer-name-card.tsx` is gone. (#3996)
 
 ## The Sales Funnels section is what a brand STATES about how it sells, and every field on it persists per funnel
 
