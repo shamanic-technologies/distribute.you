@@ -83,7 +83,7 @@ describe("the top bar names where you are below the tenant", () => {
     expect((inline.match(/size="xs"/g) ?? []).length).toBe(3);
 
     const offer = read("src/components/marks/offer-mark.tsx");
-    expect(offer).toContain('size === "sm" ? "h-[18px] w-[18px]"');
+    expect(offer).toContain('size === "sm" ? "h-[18px] w-[18px] rounded"');
 
     for (const rel of [
       "src/components/marks/sales-funnel-mark.tsx",

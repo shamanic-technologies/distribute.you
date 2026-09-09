@@ -1380,6 +1380,15 @@ const OfferSchema = z.object({
   offerId: z.string(),
   brandId: z.string(),
   name: z.string(),
+  // The offer's own generated mark. `null` = none yet, which is the state of every
+  // offer created before this shipped and of every offer created today — so the
+  // dashboard falls back to its glyph rather than an empty square (`OfferMark`).
+  //
+  // `.nullish()` and not `.nullable()`: brand-service may serve it required, but a
+  // reader that REQUIRES it throws on any older body, and this schema is shared by
+  // the list read, the by-id read and the write responses. Absent and null read the
+  // same here — the mark has nothing to draw either way.
+  logoUrl: z.string().nullish(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -1471,6 +1480,38 @@ export async function renameBrandOffer(
       raw,
     });
     throw new Error("[dashboard] renameBrandOffer: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * POST /brands/:brandId/offers/:offerId/logo — (re)generate the offer's mark.
+ *
+ * brand-service builds the prompt from the offer's own descriptors and delegates the
+ * image to chat-service, which OWNS the cost: the org that presses the button pays
+ * for it, on the identity headers this request already carries. Returns the offer
+ * with its new mark, so the caller writes the response into the cache rather than
+ * re-reading.
+ *
+ * May 402 when the org cannot afford it — `apiCall` dispatches the billing-guard
+ * modal on that status, so the call site shows NO error line of its own for it.
+ */
+export async function generateOfferLogo(
+  brandId: string,
+  offerId: string,
+  token?: string,
+): Promise<{ offer: Offer }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/logo`, {
+    token,
+    method: "POST",
+  });
+  const parsed = BrandOfferResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] generateOfferLogo: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] generateOfferLogo: invalid response shape");
   }
   return parsed.data;
 }

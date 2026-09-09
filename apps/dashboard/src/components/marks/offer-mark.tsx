@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 
 /**
@@ -20,14 +21,58 @@ import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
  * acquisition-channel and sales-funnel marks are: the tenant switcher and the
  * top-bar breadcrumb both draw an offer, and two icon definitions is how they
  * come to disagree about what an offer looks like.
+ *
+ * ── The generated logo ──────────────────────────────────────────────────────
+ *
+ * A brand selling several propositions could not tell them apart at a glance:
+ * every offer wore this same tag. So an offer now carries an image it can
+ * regenerate (brand-service owns it, chat-service generates it, and the org
+ * that asks pays for it), on the same visual template as the audience avatars —
+ * flat vector, bold single solid background seeded on the row's own id — so the
+ * two read as one product rather than two.
+ *
+ * The glyph is the FALLBACK, not the legacy: an offer created today has no
+ * image, and a hotlink that fails to decode has none either. Both keep the tag
+ * rather than an empty square, which is why `logoUrl` is optional at every call
+ * site — a surface that cannot resolve the offer's own row (the leads table
+ * reads lead-service's `{offerId, name}`, which carries no image) passes
+ * nothing and is unchanged.
  */
-export function OfferMark({ size = "md" }: { size?: "sm" | "md" }) {
-  const tile = size === "sm" ? "h-[18px] w-[18px]" : "h-5 w-5";
-  const glyph = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+export function OfferMark({
+  size = "md",
+  logoUrl,
+}: {
+  /** `lg` (64px) is the CHOOSING size: every surface that names an offer draws
+   *  the mark at 18-20px, which is too small to tell two generated images apart
+   *  while you are deciding whether to keep one. Offer Settings is the only
+   *  caller. */
+  size?: "sm" | "md" | "lg";
+  /** The offer's generated logo. Absent/null/undecodable ⟹ the glyph. */
+  logoUrl?: string | null;
+}) {
+  const [broken, setBroken] = useState(false);
+  // A NEW image gets a fresh chance to decode. Without this the flag is sticky
+  // for the mount, so an offer whose logo failed once keeps the glyph even after
+  // it is regenerated — which reads as the regeneration having done nothing.
+  useEffect(() => setBroken(false), [logoUrl]);
+  const tile =
+    size === "lg" ? "h-16 w-16 rounded-xl" : size === "sm" ? "h-[18px] w-[18px] rounded" : "h-5 w-5 rounded";
+  const glyph = size === "lg" ? "h-8 w-8" : size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+
+  if (logoUrl && !broken) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        onError={() => setBroken(true)}
+        className={`${tile} flex-shrink-0 object-cover`}
+      />
+    );
+  }
 
   return (
     <span
-      className={`tone-tile ${tile} flex flex-shrink-0 items-center justify-center rounded bg-purple-50 text-purple-600`}
+      className={`tone-tile ${tile} flex flex-shrink-0 items-center justify-center bg-purple-50 text-purple-600`}
     >
       <TagIcon weight="duotone" className={glyph} />
     </span>

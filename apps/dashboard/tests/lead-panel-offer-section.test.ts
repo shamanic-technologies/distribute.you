@@ -65,7 +65,9 @@ describe("the lead panel names the offer the lead was contacted for", () => {
   // how two surfaces come to disagree about what an offer looks like.
   it("leads the offer name with the shared mark", () => {
     const body = sliceTo(sections, "function OfferBand<", "function CampaignCard<");
-    expect(body).toContain('<OfferMark size="sm" />');
+    // The logo is resolved from the brand's own offer list — lead-service serves the
+    // offer with no image, and one offer wearing two marks on one screen is the bug.
+    expect(body).toContain('<OfferMark size="sm" logoUrl={offerLogo(offer.offerId)} />');
     expect(sections).toContain('import { OfferMark } from "@/components/marks/offer-mark"');
   });
 });
@@ -89,7 +91,7 @@ describe("the leads table states the OFFER, not the industry", () => {
     const marker = "{lead.offer ? (";
     const cell = page.slice(page.indexOf(marker), page.indexOf(marker) + 529);
     expect(cell).toContain("lead.offer.name");
-    expect(cell).toContain('<OfferMark size="sm" />');
+    expect(cell).toContain('<OfferMark size="sm" logoUrl={offerLogoOf(lead)} />');
     // No client-side join, and the company's industry is gone from the table.
     expect(page).not.toContain("org?.industry");
   });
