@@ -193,8 +193,10 @@ describe("the offer the page states", () => {
   });
 
   it("counts the people on board from the signups in client-service", () => {
-    // 71 real users on 2026-09-06 (`system-` principals excluded); refresh when it moves.
-    expect(html).toContain("Loved by 70+ founders");
+    // The count is READ at render (see `founder-count.test.ts`), so the literal in the
+    // file is the SEED that serves only when the read fails — what is pinned here is
+    // the keying that makes the reseed reach both rows, never the number itself.
+    expect(html.match(/<span data-founder-count[^>]*>/g)).toHaveLength(2);
     // Two rows: one under the live showcase cards (explee's trust caption), one in the footer.
     // Each carries six people and no person appears in both, so twelve faces page-wide.
     const hero = html.slice(html.indexOf('class="hero"'), html.indexOf('id="proof"'));
