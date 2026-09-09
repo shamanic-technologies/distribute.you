@@ -208,7 +208,7 @@ export function BreadcrumbNav() {
           <Sep />
           <div className="relative flex items-center">
             <Link href={explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
-              {displayBrand?.domain && <BrandLogo domain={displayBrand.domain} size={16} className="rounded-sm flex-shrink-0" fallbackClassName="w-4 h-4 text-gray-400 flex-shrink-0" />}
+              {displayBrand?.domain && <BrandLogo domain={displayBrand.domain} logoUrl={displayBrand.logoUrl} size={16} className="rounded-sm flex-shrink-0" fallbackClassName="w-4 h-4 text-gray-400 flex-shrink-0" />}
               {displayBrand?.name || displayBrand?.domain || "Brand"}
             </Link>
             <button onClick={() => toggleDropdown("brand")} className="p-1 hover:bg-gray-100 rounded transition">
@@ -232,7 +232,7 @@ export function BreadcrumbNav() {
                         brandId === b.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
-                      <BrandLogo domain={b.domain} size={18} className="rounded-sm flex-shrink-0" fallbackClassName="w-[18px] h-[18px] text-gray-400 flex-shrink-0" />
+                      <BrandLogo domain={b.domain} logoUrl={b.logoUrl} size={18} className="rounded-sm flex-shrink-0" fallbackClassName="w-[18px] h-[18px] text-gray-400 flex-shrink-0" />
                       <span className="truncate">{b.name || b.domain}</span>
                       {brandId === b.id && (
                         <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

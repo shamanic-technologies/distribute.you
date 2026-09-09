@@ -96,7 +96,7 @@ export default function OrgOverviewPage() {
                 href={landingHref(`/orgs/${orgId}/brands/${brand.id}`)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:border-brand-300 transition min-w-0 shrink-0"
               >
-                <BrandLogo domain={brand.domain} size={24} fallbackClassName="h-5 w-5 text-gray-400" />
+                <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={24} fallbackClassName="h-5 w-5 text-gray-400" />
                 <span className="text-sm font-medium text-gray-700 truncate">{brand.name || brand.domain}</span>
               </Link>
             ))}

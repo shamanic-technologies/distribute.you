@@ -52,8 +52,18 @@ export interface RememberedOrg {
 export interface RememberedBrand {
   /** name */
   n: string | null;
-  /** domain — drives the logo.dev mark, so it is the load-bearing half. */
+  /** domain — the FALLBACK mark (logo.dev crawls it), and the load-bearing half. */
   d: string | null;
+  /**
+   * logoUrl — the brand's OWN stored logo, when somebody chose one.
+   *
+   * Here for the same reason the org's `i` is: without it the first frame draws
+   * the crawled logo.dev mark and swaps to the real one a moment later, which is
+   * the exact flip this whole feature exists to stop. Optional and short-lived by
+   * construction — a brand that has stored none simply omits the key, which is why
+   * adding it needs no version bump (an older blob parses unchanged).
+   */
+  l?: string;
 }
 
 export interface TenantIdentitySnapshot {
@@ -92,7 +102,8 @@ function readBrands(raw: unknown): Record<string, RememberedBrand> {
     // A row with neither half is not an identity — it would only re-introduce the
     // placeholder one layer down.
     if (name === null && domain === null) continue;
-    out[id] = { n: name, d: domain };
+    const logoUrl = typeof value.l === "string" && value.l ? value.l : undefined;
+    out[id] = logoUrl ? { n: name, d: domain, l: logoUrl } : { n: name, d: domain };
   }
   return out;
 }
@@ -162,7 +173,9 @@ export function mergeTenantIdentity(
   const brandChanged =
     !!brandId &&
     !!brand &&
-    (base.brands[brandId]?.n !== brand.n || base.brands[brandId]?.d !== brand.d);
+    (base.brands[brandId]?.n !== brand.n ||
+      base.brands[brandId]?.d !== brand.d ||
+      base.brands[brandId]?.l !== brand.l);
 
   if (!orgChanged && !brandChanged) return base;
 

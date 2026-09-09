@@ -308,6 +308,7 @@ function TenantMenu({
               <>
                 <BrandLogo
                   domain={t.displayBrand?.domain ?? null}
+                  logoUrl={t.displayBrand?.logoUrl}
                   size={20}
                   className="rounded flex-shrink-0"
                   fallbackClassName="w-5 h-5 text-gray-400 flex-shrink-0"
@@ -338,6 +339,7 @@ function TenantMenu({
                     >
                       <BrandLogo
                         domain={b.domain}
+                        logoUrl={b.logoUrl}
                         size={18}
                         className="rounded flex-shrink-0"
                         fallbackClassName="w-[18px] h-[18px] text-gray-400 flex-shrink-0"
@@ -501,6 +503,7 @@ export function TenantSwitcher() {
             {t.brandId ? (
               <BrandLogo
                 domain={t.displayBrand?.domain ?? null}
+                logoUrl={t.displayBrand?.logoUrl}
                 size={22}
                 className="rounded flex-shrink-0"
                 fallbackClassName="w-[22px] h-[22px] text-gray-400 flex-shrink-0"
@@ -571,6 +574,7 @@ export function MobileTenantChip() {
             {t.brandId ? (
               <BrandLogo
                 domain={t.displayBrand?.domain ?? null}
+                logoUrl={t.displayBrand?.logoUrl}
                 size={20}
                 className="rounded flex-shrink-0"
                 fallbackClassName="w-5 h-5 text-gray-400 flex-shrink-0"

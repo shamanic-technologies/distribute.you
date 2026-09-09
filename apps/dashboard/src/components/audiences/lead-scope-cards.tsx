@@ -85,6 +85,7 @@ export function LeadScopeCards({
         mark={
           <BrandLogo
             domain={displayBrand?.domain ?? null}
+            logoUrl={displayBrand?.logoUrl}
             size={20}
             className="h-5 w-5 shrink-0 rounded"
             fallbackClassName="h-5 w-5 shrink-0 text-gray-400"
