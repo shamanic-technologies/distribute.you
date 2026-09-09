@@ -4,12 +4,15 @@ import {
   GCLID_MAX_AGE_DAYS,
   OFFLINE_PURCHASE_CONVERSION,
   OFFLINE_SIGNUP_CONVERSION,
+  OFFLINE_SIGNUP_PAGE_CONVERSION,
   conversionRowsForOrg,
+  conversionRowsForSignUpPageViews,
   conversionRowsToCsv,
   feedWindowStart,
   formatAdsTime,
   type AttributedOrg,
   type PaidTopUp,
+  type SignUpPageView,
 } from "../src/lib/ads-conversion-feed";
 import { gclidFromCookie, isPlausibleGclid } from "../src/lib/gclid-cookie";
 import { buildAdsConversionFeed, verifyFeedRequest, type FeedConfig } from "../src/lib/ads-conversion-feed-fetch";
@@ -156,11 +159,78 @@ describe("the CSV is exactly what Google's bulk upload reads", () => {
     ]);
   });
 
-  it("names the two conversion actions byte-equal with the Ads account's own", () => {
+  it("names the three conversion actions byte-equal with the Ads account's own", () => {
     // These strings are the join with Google: an "Import from clicks" action
     // whose name differs by one character silently imports nothing.
     expect(OFFLINE_SIGNUP_CONVERSION).toBe("offline_signup");
     expect(OFFLINE_PURCHASE_CONVERSION).toBe("offline_purchase");
+    expect(OFFLINE_SIGNUP_PAGE_CONVERSION).toBe("offline_signup_page");
+  });
+
+  it("ships the micro-conversion with BOTH money columns empty, same five fields", () => {
+    // A sign-up page view is not money. An invented value would go straight into
+    // "maximize conversion value" bidding; a blank tells Google to use the
+    // action's own default, and the column count still matches the header.
+    const rows = conversionRowsForSignUpPageViews(
+      [view("s1", "2026-07-04T09:15:00Z")],
+      at("2026-06-01T00:00:00Z"),
+    );
+    expect(conversionRowsToCsv(rows).trim().split("\n")).toEqual([
+      CONVERSION_CSV_HEADER,
+      `${GCLID},offline_signup_page,2026-07-04 09:15:00+00:00,,`,
+    ]);
+    expect(conversionRowsToCsv(rows).trim().split("\n")[1].split(",")).toHaveLength(5);
+  });
+});
+
+const view = (sessionId: string, viewedAt: string, gclid = GCLID): SignUpPageView => ({
+  sessionId,
+  gclid,
+  viewedAt: at(viewedAt),
+});
+
+describe("what a sign-up page view contributes to the feed", () => {
+  const since = at("2026-06-01T00:00:00Z");
+
+  it("is one row per session, carrying no value and no currency", () => {
+    const rows = conversionRowsForSignUpPageViews([view("s1", "2026-07-04T09:15:00Z")], since);
+    expect(rows).toEqual([
+      {
+        gclid: GCLID,
+        conversionName: OFFLINE_SIGNUP_PAGE_CONVERSION,
+        conversionTime: at("2026-07-04T09:15:00Z"),
+        conversionValue: null,
+        currency: null,
+      },
+    ]);
+  });
+
+  it("a reload of the page is not a second conversion", () => {
+    const rows = conversionRowsForSignUpPageViews(
+      [view("s1", "2026-07-04T09:15:00Z"), view("s1", "2026-07-04T09:20:00Z")],
+      since,
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it("two sessions on the same click are two rows", () => {
+    // Google dedupes on (gclid, name, time), so two genuine visits days apart
+    // are two conversions and it is Google's job to keep or collapse them.
+    const rows = conversionRowsForSignUpPageViews(
+      [view("s1", "2026-07-04T09:15:00Z"), view("s2", "2026-07-20T11:00:00Z")],
+      since,
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it("drops a view outside the window rather than uploading a click Google refuses", () => {
+    expect(conversionRowsForSignUpPageViews([view("s1", "2026-05-01T09:15:00Z")], since)).toEqual([]);
+  });
+
+  it("a session with no gclid is not a row", () => {
+    // An unattributed sign-up page view is real and unusable: there is no click
+    // to credit, and inventing one uploads garbage.
+    expect(conversionRowsForSignUpPageViews([view("s1", "2026-07-04T09:15:00Z", "")], since)).toEqual([]);
   });
 });
 
@@ -185,6 +255,9 @@ const config: FeedConfig = {
   adminApiKey: "admin-key",
   clerkSecretKey: "sk_test",
   feedToken: "feed-token",
+  posthogApiHost: "https://eu.posthog.test",
+  posthogProjectId: "171095",
+  posthogPersonalApiKey: "phx_test",
 };
 
 describe("only the Ads Script's token opens the feed", () => {
@@ -198,9 +271,17 @@ describe("only the Ads Script's token opens the feed", () => {
   });
 });
 
-function stubFetch(handlers: { orgs: unknown; payments: (orgId: string) => { ok: boolean; body: unknown } }) {
+function stubFetch(handlers: {
+  orgs: unknown;
+  payments: (orgId: string) => { ok: boolean; body: unknown };
+  posthog?: { ok: boolean; body: unknown };
+}) {
   return vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const href = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+    if (href.includes("posthog")) {
+      const ph = handlers.posthog ?? { ok: true, body: { results: [] } };
+      return new Response(JSON.stringify(ph.body), { status: ph.ok ? 200 : 500 });
+    }
     if (href.includes("api.clerk.com")) {
       return new Response(JSON.stringify(handlers.orgs), { status: 200 });
     }
@@ -328,7 +409,82 @@ describe("building the feed off Clerk + the billing read", () => {
   });
 
   it("a Clerk failure fails the WHOLE feed, since a short org list reads as a quiet day", async () => {
-    const fetchFn = vi.fn(async () => new Response("nope", { status: 500 })) as unknown as typeof fetch;
+    const fetchFn = vi.fn(async (url: string | URL | Request) => {
+      const href = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (href.includes("posthog")) return new Response(JSON.stringify({ results: [] }), { status: 200 });
+      return new Response("nope", { status: 500 });
+    }) as unknown as typeof fetch;
     await expect(buildAdsConversionFeed(config, since, fetchFn)).rejects.toThrow(/listOrganizations 500/);
+  });
+
+  it("reads the sign-up page views out of PostHog and ships them beside the org rows", async () => {
+    const fetchFn = stubFetch({
+      orgs: clerkOrgs([{ id: "org_a", gclid: GCLID, gclidAt: "2026-07-01T10:00:00Z" }]),
+      payments: () => ({ ok: true, body: { data: [] } }),
+      posthog: {
+        ok: true,
+        body: {
+          results: [
+            ["sess_1", `${GCLID}Z`, "2026-07-02T08:00:00.000000Z"],
+            // PostHog also answers without the trailing Z; it is UTC either way,
+            // and reading it as local time would date the conversion wrong.
+            ["sess_2", `${GCLID}Y`, "2026-07-03T08:00:00.000000"],
+          ],
+        },
+      },
+    });
+    const result = await buildAdsConversionFeed(config, since, fetchFn);
+    expect(result.signUpPageViews).toBe(2);
+    const micro = result.rows.filter((r) => r.conversionName === OFFLINE_SIGNUP_PAGE_CONVERSION);
+    expect(micro.map((r) => r.conversionTime.toISOString())).toEqual([
+      "2026-07-02T08:00:00.000Z",
+      "2026-07-03T08:00:00.000Z",
+    ]);
+    expect(micro.every((r) => r.conversionValue === null && r.currency === null)).toBe(true);
+    // The org legs are untouched: the feed carries all three actions.
+    expect(result.rows.some((r) => r.conversionName === OFFLINE_SIGNUP_CONVERSION)).toBe(true);
+  });
+
+  it("a PostHog failure fails the WHOLE feed rather than uploading a file that reads as zero", async () => {
+    // The degraded-empty case is indistinguishable from a real quiet day, and
+    // Google would learn from it. A 500 makes the Ads Script skip the upload.
+    const fetchFn = stubFetch({
+      orgs: clerkOrgs([{ id: "org_a", gclid: GCLID, gclidAt: "2026-07-01T10:00:00Z" }]),
+      payments: () => ({ ok: true, body: { data: [] } }),
+      posthog: { ok: false, body: { error: "posthog down" } },
+    });
+    await expect(buildAdsConversionFeed(config, since, fetchFn)).rejects.toThrow(/signUpPageViews 500/);
+  });
+
+  it("authenticates PostHog with the personal API key on the project's query endpoint", async () => {
+    const fetchFn = stubFetch({
+      orgs: clerkOrgs([]),
+      payments: () => ({ ok: true, body: { data: [] } }),
+    });
+    await buildAdsConversionFeed(config, since, fetchFn);
+    const call = (fetchFn as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.find(([u]) =>
+      u.includes("posthog"),
+    );
+    expect(call?.[0]).toBe("https://eu.posthog.test/api/projects/171095/query/");
+    expect((call?.[1].headers as Record<string, string>).Authorization).toBe("Bearer phx_test");
+    expect(String(call?.[1].body)).toContain("HogQLQuery");
+    // The window is pushed into the query rather than filtered after the fact.
+    expect(String(call?.[1].body)).toContain("2026-06-01 00:00:00");
+  });
+
+  it("skips a PostHog row whose shape or timestamp is wrong, rather than dating it now", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetchFn = stubFetch({
+      orgs: clerkOrgs([]),
+      payments: () => ({ ok: true, body: { data: [] } }),
+      posthog: {
+        ok: true,
+        body: { results: [["sess_1", GCLID, "not-a-date"], ["sess_2", null, "2026-07-02T08:00:00Z"]] },
+      },
+    });
+    const result = await buildAdsConversionFeed(config, since, fetchFn);
+    expect(result.signUpPageViews).toBe(0);
+    expect(result.rows).toEqual([]);
+    expect(err).toHaveBeenCalled();
   });
 });

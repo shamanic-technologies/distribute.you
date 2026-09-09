@@ -10,10 +10,12 @@
  * feed states every signup and every paid top-up against that gclid. A Google
  * Ads Script fetches it daily and bulk-uploads it, which needs no API token.
  *
- * Two conversion actions, named byte-equal with the account's "Import from
- * clicks" actions: `offline_signup` (value 1) and `offline_purchase` (value =
- * the amount Stripe actually received, so "maximize conversion value" bids on
- * real money).
+ * Three conversion actions, named byte-equal with the account's "Import from
+ * clicks" actions: `offline_signup` (value 1), `offline_purchase` (value = the
+ * amount Stripe actually received, so "maximize conversion value" bids on real
+ * money) and `offline_signup_page` (no value — reaching the sign-up page is the
+ * micro-conversion smart bidding has the volume to learn on, and it is read
+ * from PostHog rather than from an org that signed up).
  *
  * Google dedupes an upload on (gclid, conversion name, conversion time), so the
  * feed is re-uploadable every day with no double counting.
@@ -23,6 +25,18 @@
 
 export const OFFLINE_SIGNUP_CONVERSION = "offline_signup";
 export const OFFLINE_PURCHASE_CONVERSION = "offline_purchase";
+/**
+ * The MICRO-conversion, and the one smart bidding can actually learn on. Google
+ * wants 15-30 conversions per 30 days; the account produces ~5 signups and ~2
+ * purchases, so bidding on those two bids blind. Reaching the sign-up page is
+ * ~30 a month with a gclid on the same session, which is the volume the
+ * algorithm needs, and it is the same move Explee makes (their triggers are a
+ * free search and `generate_lead`, not the paid signup).
+ *
+ * It carries NO value and NO currency: it is a page view, not money. Both CSV
+ * columns ship empty so the file keeps one shape for all three actions.
+ */
+export const OFFLINE_SIGNUP_PAGE_CONVERSION = "offline_signup_page";
 
 /** Google refuses a conversion whose click is older than 90 days. */
 export const GCLID_MAX_AGE_DAYS = 90;
@@ -47,8 +61,23 @@ export interface ConversionRow {
   gclid: string;
   conversionName: string;
   conversionTime: Date;
-  conversionValue: number;
-  currency: "USD";
+  /** null = the action's own default value; the sign-up page view states none. */
+  conversionValue: number | null;
+  currency: "USD" | null;
+}
+
+/**
+ * One session that reached `/sign-up` carrying a Google click on the same
+ * session. PostHog sees these where `gtag` does not: it is served through our
+ * own first-party proxy (`e.distribute.you`), so an ad blocker that drops
+ * `googleads.g.doubleclick.net` does not drop this.
+ */
+export interface SignUpPageView {
+  /** PostHog session id, the dedup key: one row per session, not per view. */
+  sessionId: string;
+  gclid: string;
+  /** First `/sign-up` view of that session. */
+  viewedAt: Date;
 }
 
 /** Google's upload time format: `yyyy-MM-dd HH:mm:ss+00:00`. */
@@ -101,6 +130,37 @@ export function conversionRowsForOrg(
   return rows;
 }
 
+/**
+ * The micro-conversion rows. One per session (a reload is not a second
+ * conversion), dropped when it falls outside the rolling window — Google
+ * refuses a conversion whose click is older than 90 days.
+ *
+ * A session whose gclid is blank is not a row: it is a sign-up page view we
+ * cannot attribute, and inventing a click id for it would upload garbage.
+ */
+export function conversionRowsForSignUpPageViews(
+  views: SignUpPageView[],
+  since: Date,
+): ConversionRow[] {
+  const seen = new Set<string>();
+  const rows: ConversionRow[] = [];
+  for (const v of views) {
+    if (!v.gclid) continue;
+    if (v.viewedAt.getTime() < since.getTime()) continue;
+    const key = `${v.gclid}:${v.sessionId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({
+      gclid: v.gclid,
+      conversionName: OFFLINE_SIGNUP_PAGE_CONVERSION,
+      conversionTime: v.viewedAt,
+      conversionValue: null,
+      currency: null,
+    });
+  }
+  return rows;
+}
+
 export const CONVERSION_CSV_HEADER =
   "Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency";
 
@@ -108,7 +168,7 @@ export const CONVERSION_CSV_HEADER =
 export function conversionRowsToCsv(rows: ConversionRow[]): string {
   const lines = rows.map(
     (r) =>
-      `${r.gclid},${r.conversionName},${formatAdsTime(r.conversionTime)},${r.conversionValue},${r.currency}`,
+      `${r.gclid},${r.conversionName},${formatAdsTime(r.conversionTime)},${r.conversionValue ?? ""},${r.currency ?? ""}`,
   );
   return [CONVERSION_CSV_HEADER, ...lines].join("\n") + "\n";
 }

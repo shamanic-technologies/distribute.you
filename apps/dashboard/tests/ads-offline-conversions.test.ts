@@ -111,6 +111,75 @@ describe("the attribution route is first-touch and org-scoped", () => {
   });
 });
 
+describe("the sign-up page micro-conversion", () => {
+  const tracker = read("src/components/ads-signup-page-tracker.tsx");
+  const layout = read("src/app/(authed)/sign-up/[[...sign-up]]/layout.tsx");
+
+  it("fires the event name the Ads conversion action listens to", () => {
+    // Byte-equal with the "website event" action in the Ads UI. One character
+    // out and the action never fires, silently.
+    expect(tracker).toContain('gtag?.("event", "manual_event_SIGNUP_PAGE")');
+  });
+
+  it("sends no value and no currency, because a page view is not money", () => {
+    // Scoped to the gtag CALL: the comment above it explains the rule and
+    // therefore writes the words a file-wide ban would trip on.
+    const at = tracker.indexOf('gtag?.("event"');
+    expect(at).toBeGreaterThan(-1);
+    const call = tracker.slice(at, tracker.indexOf("\n", at));
+    expect(call).toBe('gtag?.("event", "manual_event_SIGNUP_PAGE");');
+  });
+
+  it("fires once per browser session, so a reload is not a second arrival", () => {
+    expect(tracker).toContain("sessionStorage.getItem(FIRED_KEY)");
+    expect(tracker).toContain('sessionStorage.setItem(FIRED_KEY, "1")');
+  });
+
+  it("is MOUNTED on the sign-up layout, not parked in one branch of the page", () => {
+    // The page is one client component rendering several steps; a tracker
+    // inside one of them fires on some arrivals and not others.
+    expect(layout).toContain("<AdsSignUpPageTracker />");
+    expect(layout).toContain('from "@/components/ads-signup-page-tracker"');
+  });
+
+  it("leaves the two existing gtag conversions alone", () => {
+    expect(read("src/components/ads-purchase-tracker.tsx")).toContain('"event", "manual_event_PURCHASE"');
+    expect(read("src/components/posthog-auth-tracker.tsx")).toContain("manual_event_SIGNUP");
+  });
+});
+
+describe("the offline micro-conversion", () => {
+  const fetchLib = read("src/lib/ads-conversion-feed-fetch.ts");
+
+  it("reads the sign-up page views out of PostHog, which sees what gtag misses", () => {
+    // PostHog is served through our own first-party proxy, so an ad blocker
+    // that drops the Google tag does not drop this.
+    expect(fetchLib).toContain("listSignUpPageViews(");
+    expect(fetchLib).toContain("HogQLQuery");
+    expect(fetchLib).toContain("posthogPersonalApiKey");
+  });
+
+  it("joins the sign-up view to a gclid on the SAME session", () => {
+    expect(fetchLib).toContain("properties.$session_id AS sid");
+    expect(fetchLib).toContain("extractURLParameter(properties.$current_url, 'gclid')");
+    expect(fetchLib).toContain("properties.$pathname LIKE '%sign-up%'");
+  });
+
+  it("FAILS LOUD on a PostHog error rather than shipping a partial file", () => {
+    // The read is awaited outside any try/catch, unlike the per-org payments
+    // read below it: an empty set here is indistinguishable from a real zero,
+    // and Google would learn from it.
+    const at = fetchLib.indexOf("const pageViews = await listSignUpPageViews(");
+    expect(at).toBeGreaterThan(-1);
+    const before = fetchLib.slice(fetchLib.indexOf("export async function buildAdsConversionFeed"), at);
+    expect(before).not.toContain("try {");
+  });
+
+  it("states the count on the response line, like the org legs", () => {
+    expect(read("src/app/api/cron/ads-conversion-feed/route.ts")).toContain("signUpPageViews=");
+  });
+});
+
 describe("the feed route", () => {
   const route = read("src/app/api/cron/ads-conversion-feed/route.ts");
 
