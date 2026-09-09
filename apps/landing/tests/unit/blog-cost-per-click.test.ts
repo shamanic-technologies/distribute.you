@@ -77,8 +77,11 @@ describe("cost-per-click article: editorial rules", () => {
     expect(method).toContain("120,652");
   });
 
-  it("no money figure carries cents", () => {
-    expect(prose).not.toMatch(/\$\d[\d,]*\.\d/);
+  it("no money figure of ours carries cents; a competitor's published price is quoted as published", () => {
+    // The market and competitor tables quote third-party prices verbatim ($5.42 a click on Google
+    // Ads is LocaliQ's number, not ours); rounding them would misquote the source.
+    const ours = prose.replace(/<h2 id="the-market">[\s\S]*?(?=<h2 id="the-rule">)/, "");
+    expect(ours).not.toMatch(/\$\d[\d,]*\.\d/);
     expect(hero).not.toMatch(/\$\d[\d,]*\.\d/);
     for (const svg of svgs) expect(svg).not.toMatch(/\$\d[\d,]*\.\d/);
   });
@@ -97,6 +100,7 @@ describe("cost-per-click article: editorial rules", () => {
     for (const section of sections) {
       const text = section
         .replace(/<svg[\s\S]*?<\/svg>/g, "")
+        .replace(/<table>[\s\S]*?<\/table>/g, "")
         .replace(/<[^>]+>/g, " ")
         .replace(/&[a-z]+;/g, " ");
       const words = text.trim().split(/\s+/).filter(Boolean);
@@ -129,8 +133,10 @@ describe("cost-per-click article: editorial rules", () => {
 
   it("the tables are folded away, not in the main flow", () => {
     expect(html).toMatch(/<details>\s*<summary>Every bucket, every client, every workflow<\/summary>/);
-    expect(html.indexOf("<details>")).toBeLessThan(html.indexOf("<table>"));
-    expect(story).not.toContain("<table>");
+    // The bucket tables fold; the three comparison tables in the story are the
+    // market research and stay in the flow.
+    expect(html.indexOf("<details>")).toBeLessThan(html.indexOf("<th>Bucket</th>"));
+    expect((story.match(/<table>/g) ?? []).length).toBe(4);
   });
 });
 
@@ -175,6 +181,8 @@ describe("cost-per-click article: dataset coherence", () => {
     const tables = html.match(/<table>[\s\S]*?<\/table>/g) ?? [];
     expect(tables.length).toBeGreaterThanOrEqual(15);
     for (const table of tables) {
+      // The three market-comparison tables carry prices and rates, not clicks.
+      if (!/<th>(Bucket|Client|Workflow)<\/th>/.test(table)) continue;
       const isEntity = /<th>(Client|Workflow)<\/th>/.test(table);
       for (const row of table.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? []) {
         const cells = [...row.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
@@ -205,6 +213,33 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(dataset["@type"]).toBe("Dataset");
     expect(dataset.temporalCoverage).toBe("2026-04-15/2026-09-09");
     expect(dataset.url).toBe(`https://distribute.you/blog/${SLUG}`);
+  });
+
+  it("every competitor figure is quoted from the competitor's own site, dated, and never invents a click cost", () => {
+    const table = story.slice(story.indexOf('<h2 id="the-competitors">'), story.indexOf('<h2 id="the-implied-price">'));
+    const rows = table.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? [];
+    expect(rows.length).toBe(11);
+    for (const row of rows) {
+      expect(row).toMatch(/<a href="https:\/\/[^"]+" rel="nofollow noopener">[^<]+<\/a>, read 2026-09-\d\d/);
+      // Nobody publishes a cost per click; the column must never claim one.
+      expect(row).not.toMatch(/per click/i);
+    }
+    for (const name of ["Instantly", "Smartlead", "Lemlist", "Salesforge", "Apollo.io", "Clay", "Gojiberry", "Explee", "11x", "Artisan", "AiSDR"]) {
+      expect(table).toContain(`<td>${name}`);
+    }
+    expect(story).toContain("<strong>None of them publishes a cost per click.</strong>");
+  });
+
+  it("the implied-price table states the arithmetic is ours and reconciles with the entry prices", () => {
+    const table = story.slice(story.indexOf('<h2 id="the-implied-price">'), story.indexOf('<h2 id="the-rule">'));
+    expect(table).toContain("at our measured rates (6 clicks per 1,000 emails, 21 per 1,000 people)");
+    expect(method).toContain("it is our arithmetic on their price, not a figure they state");
+    // 6.2 clicks per 1,000 emails -> 161 emails per click; 21 per 1,000 people -> 48 people per click.
+    expect(Math.round((47 / 5000) * (1000 / 6.2))).toBe(2);
+    expect(Math.round((30 / 1000) * (1000 / 6.2))).toBe(5);
+    expect(Math.round(1.25 * (1000 / 21))).toBe(60);
+    expect(Math.round((3750 / 2000) * (1000 / 21))).toBe(89);
+    expect(table).toContain("<td>$11 measured</td>");
   });
 
   it("links to the Flash-or-Pro study rather than restating it", () => {
