@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { DashboardPage } from "@/components/dashboard-page";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { BrandSalesFunnelsCard } from "@/components/settings/brand-sales-funnels-card";
+import { OfferNameCard } from "@/components/settings/offer-name-card";
 import { listCampaignsByBrand } from "@/lib/api";
 import { coldEmailCampaignForOffer } from "@/lib/offer-levers-home";
 import { tenantBasePath } from "@/lib/offer-path";
@@ -40,6 +41,11 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * the editor here: showing a link to a campaign we could not confirm exists is
  * worse than showing the card twice, and losing the only editor to a blip is
  * worse than both.
+ *
+ * The offer's NAME sits last. It is the only mutable field brand-service has on an
+ * offer and the only surface anywhere that can change it, so without it a name
+ * typed once at creation would be permanent — but it is a rare identity edit, and
+ * how the offer is SOLD is what a reader comes here to do.
  */
 export default function OfferSettingsPage() {
   const params = useParams();
@@ -83,6 +89,11 @@ export default function OfferSettingsPage() {
           )}
         </div>
       )}
+
+      {/* Last: how the offer is sold, then what it promises, then the rare identity
+          edit. A rename has no other home: the name is stated at creation and
+          brand-service has no other mutable field on an offer. */}
+      <OfferNameCard brandId={brandId} offerId={offerId} />
     </DashboardPage>
   );
 }

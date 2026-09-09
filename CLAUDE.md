@@ -438,6 +438,66 @@ Rules (`apps/dashboard/src/components/onboarding/onboarding.tsx`):
 
 **Sibling fix, features-service v0.106.0 (#659): the workflow projection reads live economics on every request and caches only the evidence fan-out.** Before that, `servedCached` keyed the whole body on `(org, brand, objective, pricing)` with a 5s TTL / 60s hard-max and no invalidation on an economics change, so a read right after the write could still return the pre-write `roiMultiple`/`cacPct`. Do NOT re-fold economics-derived fields back into the cached body, and do NOT add a consumer-side cache-bypass param — the split (heavy LTR-independent fan-out cached, cheap LTR division live) is what makes read-your-own-write correct.
 
+## A brand STATES a new offer, and renames one — the whole path was live and only the button was missing
+
+An OFFER is one distinct thing a brand sells, and until #3991 there was no way to
+say it had a second one: an offer was only ever born IMPLICITLY, on the first
+brand-scoped write (`resolveOfferForWrite`, get-or-create). The capability itself
+was never missing — brand-service serves `POST /orgs/brands/:brandId/offers` and
+`PATCH .../:offerId`, api-service proxies both, and `createBrandOffer` /
+`renameBrandOffer` had sat in `lib/api.ts` with **zero callers** for as long as the
+offer level had existed, named only by a test. This is the capability-reported-as-
+missing rule in its cheapest form: `git grep` the reader before designing a feature,
+because the answer is routinely "it exists and nothing calls it".
+
+- **The create control is on the Offers PAGE header, never in `OffersTable`.** That
+  table is ONE component and the brand Overview renders it under its chart, where
+  its own doc says it carries no controls. It is also NOT the create control the
+  Campaigns page used to have and correctly deleted: a campaign is set up with us,
+  an offer is what the brand sells and only they can say it.
+- **One field, because that is the whole of the request.** brand-service documents
+  the new offer as starting with NOTHING (no funnel, no confirmed field), so the
+  modal asks the name and routes to **Offer Settings** — the funnels and the
+  levers live there and collecting them here would be a second copy of two editors
+  one click away. Routing to the offer's Overview instead would land on a page with
+  nothing to state.
+- **The name rules are brand-service's and its refusal is the answer** (at most 2
+  words, at most 20 characters, unique per brand — a collision is a 409, never a
+  suffixed name). Nothing is pre-validated beyond "you typed something". They are
+  STATED under the field anyway: a rule a customer only learns by being refused is
+  a rule we made them discover.
+- **`lib/offer-write.ts` turns a STATUS into a sentence, and takes a plain number**
+  so it stays alias-free and carries real unit tests — the caller extracts
+  `err instanceof ApiError ? err.status : null`. NEVER `err.message`: `apiCall`
+  sets it to the whole downstream body verbatim, which is how a JSON blob once
+  reached a customer (the brand-domain case). Same shape as
+  `controlWriteErrorMessage` beside it.
+- **The rename ships WITH the create, not after it.** The name is the only mutable
+  field brand-service has on an offer and this card is the only surface anywhere
+  that can change it, so shipping create alone would make a typo permanent. It sits
+  LAST on Offer Settings: Sales Funnels leads, because how the offer is sold is what
+  a reader comes there to do.
+- ⚠️ **A rename writes BOTH caches** — `["brandOffers", brandId]` backs the table and
+  the tenant switcher's third tier, `["brandOffer", brandId, offerId]` backs the
+  top-bar crumb and this page's own read. Updating one leaves the other stating the
+  old name until its next poll, which is one offer named two ways on one screen. The
+  card also RE-SEEDS its field on a payload change (identity compare on a ref, the
+  `brand-sales-funnels-card` discipline) or the first thing to settle — the on-disk
+  snapshot from the previous visit — is what the field keeps forever.
+- ⚠️ **A SECOND offer flips every brand-scoped route to `409 SEVERAL_OFFERS`**, and
+  brand-service refuses rather than guessing which offer a caller meant. The only
+  consumer left on those routes is `onboarding.tsx`, so the resume-an-abandoned-
+  onboarding path (`/onboarding?brandId=` via `BrandSetupGate`) breaks on a brand
+  with two offers. Stated, not fixed here; scoping onboarding on the offer is its
+  own ship.
+- Guards: `tests/offer-create.test.ts` (real unit tests on the pure module + call
+  sites for both controls). ⚠️ Writing them tripped three repo-wide guards at once,
+  all of them the source-substring trap wearing different hats: the one-word-for-a-
+  sales-funnel sweep scans `tests/` too (so a doc comment naming the banned word
+  fails it), the no-raw-error-body guards match their OWN explanatory comment, and
+  the em-dash copy guards slice from `return (`, so a JSX comment inside the render
+  block counts as user-facing copy.
+
 ## The Sales Funnels section is what a brand STATES about how it sells, and every field on it persists per funnel
 
 `BrandSalesFunnelsCard` (`components/settings/brand-sales-funnels-card.tsx`, model in `lib/sales-funnels.ts`) is **GA** and is the brand Settings page's ONLY sales-economics surface: it REPLACED the flat `Click Destination` and `Sales Economics` sections, whose cards were deleted from `apps/dashboard` with them (`apps/admin` keeps its own separate copies — staff fork, deliberately not synced). A funnel owns the conversion rates, the lifetime revenue and the landing page those two held ONE set of for the whole brand, so a brand selling a $200 self-serve plan and a $20k contract prices each one. It renders its own heading and offers FOUR funnels, multi-select, each with its own conversion rates, its own customer lifetime revenue and its own destinations:
