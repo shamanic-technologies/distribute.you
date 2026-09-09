@@ -146,10 +146,13 @@ describe("the offer the page states", () => {
     expect(outsidePricing.toLowerCase()).not.toContain("coming soon");
   });
 
-  it("names the three customers with the figures features-service served on 2026-09-06", () => {
-    // Read off /brands/:id/revenue in prod, not off the whiteboard: ROI, cost per outcome and
-    // the funnel counts the live cards are seeded from.
-    for (const line of ["Doc Dinners", "Opsfolio", "Shockwave", "2.2", "9.3", "3.8", "12,307", "2,157", "2,875"]) {
+  it("names the three customers, and states a return read off prod rather than a whiteboard", () => {
+    // The RETURN is still the figure read off /brands/:id/revenue in prod on 2026-09-06 and
+    // frozen here — the counts-only showcase read cannot answer it, so it is pinned until a
+    // per-brand money read exists. The COUNTS beside it are no longer pinned anywhere: they
+    // are reseeded from the wire at render, so a literal in this file is a seed, not a claim
+    // (proof-cards.test.ts pins the keying that makes that reseed possible).
+    for (const line of ["Doc Dinners", "Opsfolio", "Shockwave", "2.2", "9.3", "3.8"]) {
       expect(html).toContain(line);
     }
     expect((html.match(/data-live/g) ?? []).length).toBe(3);

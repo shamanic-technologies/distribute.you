@@ -108,6 +108,64 @@ function reseedCard(card: string, counts: Map<string, number>): string {
  * they are the last read we know landed, which is strictly better than blanking a
  * card or standing a zero in for a number we simply were not told.
  */
+/**
+ * Rewrite one proof card's funnel cells from the counts the producer states.
+ *
+ * Only the FIGURE is touched. The label beside it ("sales interests") is the
+ * customer's vocabulary and ours to choose — the producer calls that rung
+ * `start_to_conversation` — so the wire decides the number and the page decides
+ * the words, exactly as it does for the showcase cards above.
+ */
+function reseedProofCard(card: string, counts: Map<string, number>): string {
+  return card.replace(
+    /<span data-proof-step="([a-z_]+)"><b>([^<]*)<\/b>/g,
+    (whole, key: string, current: string) => {
+      const served = counts.get(key);
+      // A step the read does not answer for keeps the figure the page ships with:
+      // it is the last count we know landed, which beats blanking a client's card
+      // or standing a zero in for a number nobody told us.
+      if (served === undefined) return whole;
+      void current;
+      return `<span data-proof-step="${key}"><b>${formatInt(served)}</b>`;
+    }
+  );
+}
+
+/**
+ * Reseed the three named clients' proof cards from the SAME payload the showcase
+ * cards above are reseeded from.
+ *
+ * The two surfaces state the same clients' counts about 600px apart, so they must
+ * ride one read: while the showcase cards were live (#3976) and these were frozen
+ * literals, the page stated two different contacted counts for one client on one
+ * screen — Doc Dinners read 12,552 at the top and 12,307 further down.
+ *
+ * ⚠️ The RETURN and the COST-PER-OUTCOME on these cards are still the figures the
+ * page ships with. This read is counts-only by the producer's own design, and the
+ * per-brand money read that would answer them does not exist yet — so those two
+ * lines are deliberately left alone here rather than derived from anything. A ratio
+ * computed in this file would be a metric invented by a consumer, which is the one
+ * thing every figure on this page is not.
+ */
+export function reseedProofCards(html: string, data: ShowcaseFunnels): string {
+  const byDomain = new Map<string, ShowcaseBrand>();
+  for (const brand of data.brands ?? []) {
+    if (brand?.brand?.domain) byDomain.set(brand.brand.domain, brand);
+  }
+  if (byDomain.size === 0) return html;
+
+  return html.replace(
+    /<article class="proof-card rv" data-proof-brand="([^"]+)">[\s\S]*?<\/article>/g,
+    (card, domain: string) => {
+      const brand = byDomain.get(domain);
+      if (!brand) return card;
+      const counts = countsByStep(brand);
+      if (counts.size === 0) return card;
+      return reseedProofCard(card, counts);
+    }
+  );
+}
+
 export function reseedShowcaseCards(html: string, data: ShowcaseFunnels): string {
   const byDomain = new Map<string, ShowcaseBrand>();
   for (const brand of data.brands ?? []) {

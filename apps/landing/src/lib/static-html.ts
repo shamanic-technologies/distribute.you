@@ -10,7 +10,11 @@ import {
 } from "@/lib/content-negotiation";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
-import { reseedShowcaseCards, type ShowcaseFunnels } from "@/lib/showcase-funnels";
+import {
+  reseedProofCards,
+  reseedShowcaseCards,
+  type ShowcaseFunnels,
+} from "@/lib/showcase-funnels";
 
 // Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
@@ -462,10 +466,17 @@ async function fetchShowcaseFunnels(): Promise<ShowcaseFunnels | null> {
  * us, is worse than showing a figure a few hours old. It is logged loud either way.
  */
 async function withShowcaseFunnels(html: string): Promise<string> {
-  if (!html.includes('data-brand="')) return html;
+  // The homepage states the same clients' counts on TWO surfaces — the live cards in
+  // the hero and the named proof cards further down — so both ride ONE read. A second
+  // fetch would be a second answer, and the page would be free to state two different
+  // contacted counts for one client on one screen (it did, until #3976 fixed only the
+  // first of them).
+  const wanted = html.includes('data-brand="') || html.includes("data-proof-brand=");
+  if (!wanted) return html;
   try {
     const data = await fetchShowcaseFunnels();
-    return data ? reseedShowcaseCards(html, data) : html;
+    if (!data) return html;
+    return reseedProofCards(reseedShowcaseCards(html, data), data);
   } catch (error) {
     console.error("[landing] showcase funnel counts unavailable, keeping the shipped figures", error);
     return html;
