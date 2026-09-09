@@ -28,6 +28,18 @@ export interface TenantBrand {
   id: string;
   name: string | null;
   domain: string | null;
+  /**
+   * The logo somebody at this brand CHOSE, when they have. Carried here so the tab
+   * mark, the switcher mark and every scope card resolve the SAME brand's logo —
+   * three surfaces resolving it independently is how they come to disagree
+   * mid-switch. `null` means nobody chose one, which is when `BrandLogo` falls back
+   * to the logo.dev crawl of the domain.
+   *
+   * Unlike `colors`, this IS on the cookie-seeded path: it decides what is painted
+   * in the first frame, and the flip it prevents (a retired third-party mark for a
+   * beat, then the real one) is the reported bug this exists to fix.
+   */
+  logoUrl?: string | null;
   // The brand's own colours (brand-service, off logo.dev). Carried here so
   // `BrandTint` reads the SAME brand the tab mark and the switcher label do —
   // three surfaces resolving the open brand independently is how they come to
@@ -417,9 +429,15 @@ export function useTenantSwitcher() {
   const displayBrand: TenantBrand | undefined = brandId
     ? brands.find((b) => b.id === brandId) ??
       (byIdBrand
-        ? { id: byIdBrand.id, name: byIdBrand.name, domain: byIdBrand.domain, colors: byIdBrand.colors }
+        ? {
+            id: byIdBrand.id,
+            name: byIdBrand.name,
+            domain: byIdBrand.domain,
+            logoUrl: byIdBrand.logoUrl,
+            colors: byIdBrand.colors,
+          }
         : seededBrand
-          ? { id: brandId, name: seededBrand.n, domain: seededBrand.d }
+          ? { id: brandId, name: seededBrand.n, domain: seededBrand.d, logoUrl: seededBrand.l ?? null }
           : undefined)
     : undefined;
   const brandKnown = !!displayBrand;
@@ -438,6 +456,9 @@ export function useTenantSwitcher() {
   // row would just re-serve the placeholder from the cookie on the next load.
   const rememberedBrandName = displayBrand?.name ?? null;
   const rememberedBrandDomain = displayBrand?.domain ?? null;
+  // Only a REAL stored logo is remembered. A brand with none omits the key, so the
+  // seed never asserts "nobody chose one" on a brand we simply have not read yet.
+  const rememberedBrandLogo = displayBrand?.logoUrl || undefined;
   useEffect(() => {
     if (!orgId && !brandId) return;
     rememberIdentity({
@@ -450,7 +471,11 @@ export function useTenantSwitcher() {
       brandId,
       brand:
         rememberedBrandName || rememberedBrandDomain
-          ? { n: rememberedBrandName, d: rememberedBrandDomain }
+          ? {
+              n: rememberedBrandName,
+              d: rememberedBrandDomain,
+              ...(rememberedBrandLogo ? { l: rememberedBrandLogo } : {}),
+            }
           : null,
     });
   }, [
@@ -460,6 +485,7 @@ export function useTenantSwitcher() {
     rememberedOrgImage,
     rememberedBrandName,
     rememberedBrandDomain,
+    rememberedBrandLogo,
     rememberIdentity,
   ]);
 

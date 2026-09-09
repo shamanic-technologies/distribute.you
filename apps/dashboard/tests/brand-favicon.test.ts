@@ -49,8 +49,10 @@ describe("Brand favicon", () => {
     expect(onerror).toContain("restoreDefaultFavicon()");
   });
 
-  it("restores the distribute mark when no brand is in the URL", () => {
-    const guard = sliceFrom(src, "if (!domain)", 80);
+  it("restores the distribute mark when there is no mark to show", () => {
+    // No brand in the URL, or a brand with neither a stored logo nor a domain —
+    // both resolve to no src, and the distribute mark is the right tab icon.
+    const guard = sliceFrom(src, "if (!src)", 80);
     expect(guard).toContain("restoreDefaultFavicon()");
   });
 

@@ -1581,6 +1581,89 @@ const AttachBrandWebsiteResponseSchema = z.object({
   url: z.string().nullable().optional(),
 });
 
+/**
+ * The brand IDENTITY write: the display name, and the logo the brand is shown under.
+ *
+ * Both are DERIVED by default — the name from a one-off extraction at signup, the
+ * logo from whatever logo.dev has indexed for the domain — and until brand-service
+ * widened this route neither could be corrected by the person they describe. That
+ * is the whole feature: a brand whose third-party logo is stale (ours was, for two
+ * months after a rebrand) had no way back.
+ *
+ * PARTIAL, and the partiality is load-bearing in BOTH directions:
+ *  - a field omitted is left as stored, so correcting the name cannot overwrite a
+ *    logo somebody set an hour ago from a copy this tab read on load;
+ *  - `logoUrl: null` CLEARS it and is NOT the same as omitting it — it is how a
+ *    customer returns to the derived logo. So the body is built off key PRESENCE
+ *    in `patch`, never off truthiness, which cannot tell the two apart.
+ *
+ * The URL is one storage handed back (`uploadOrgImage`), never one a person typed:
+ * see `brand-logo-file.ts` for why a logo is uploaded rather than linked.
+ */
+const UpdateBrandIdentityResponseSchema = z.object({
+  brandId: z.string().optional(),
+  domain: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  // Optional so this ships ahead of the producer without breaking (additive
+  // rollout): absent reads as undefined and the caller keeps what it had.
+  logoUrl: z.string().nullable().optional(),
+});
+
+export async function updateBrandIdentity(
+  brandId: string,
+  patch: { name?: string; logoUrl?: string | null },
+  token?: string,
+): Promise<{ name: string | null; logoUrl: string | null }> {
+  const body: Record<string, unknown> = {};
+  if (patch.name !== undefined) body.name = patch.name;
+  // `'logoUrl' in patch` — a null here is an instruction, not an absence.
+  if ("logoUrl" in patch) body.logoUrl = patch.logoUrl;
+
+  const raw = await apiCall<unknown>(`/brands/${brandId}`, { token, method: "PATCH", body });
+  const parsed = UpdateBrandIdentityResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] updateBrandIdentity: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] updateBrandIdentity: invalid response shape");
+  }
+  return { name: parsed.data.name ?? null, logoUrl: parsed.data.logoUrl ?? null };
+}
+
+/**
+ * Put an image on OUR storage and get the public URL back.
+ *
+ * Org-scoped by construction: the gateway route opens a run under the caller's org
+ * and declares the storage cost against it, so the file a customer uploads is filed
+ * under the org that uploaded it — not under the platform, which is what the
+ * staff-only `/platform-uploads` route does and why it is not this one.
+ *
+ * The response shape is cloudflare-service's and comes through the gateway
+ * untouched; only `url` is read here, because that is the only field anything
+ * downstream of this call has a use for.
+ */
+const OrgUploadResponseSchema = z.object({
+  url: z.string(),
+});
+
+export async function uploadOrgImage(
+  input: { contentBase64: string; folder: string; filename: string; contentType: string },
+  token?: string,
+): Promise<{ url: string }> {
+  const raw = await apiCall<unknown>("/orgs/uploads", { token, method: "POST", body: input });
+  const parsed = OrgUploadResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] uploadOrgImage: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] uploadOrgImage: invalid response shape");
+  }
+  return { url: parsed.data.url };
+}
+
 export async function attachBrandWebsite(
   brandId: string,
   url: string,

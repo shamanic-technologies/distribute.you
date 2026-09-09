@@ -13,8 +13,21 @@ const MANAGED_ATTR = "data-brand-favicon";
 /** Parks the app's own icon `rel` while a brand mark is showing. */
 const PARKED_ATTR = "data-brand-favicon-parked";
 
-function brandFaviconSrc(domain: string): string {
-  return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64&format=png&retina=true`;
+/**
+ * The mark for this tab, from the same two sources `BrandLogo` reads and in the
+ * same order: a logo somebody at the brand CHOSE beats what a third party crawled
+ * for its domain. The order is the point — logo.dev served our own brand under a
+ * retired identity for two months, on every tab, with nobody able to correct it.
+ *
+ * A stored logo is used AS IS: it is already a PNG/JPEG/GIF on our own storage
+ * (see `brand-logo-file.ts`), so there is no size/format query to append and no
+ * second host to trust. Only the derived URL carries logo.dev's parameters.
+ */
+function brandFaviconSrc(brand: { domain: string | null; logoUrl?: string | null }): string | null {
+  const stored = brand.logoUrl?.trim();
+  if (stored) return stored;
+  if (!brand.domain) return null;
+  return `https://img.logo.dev/${encodeURIComponent(brand.domain)}?token=${LOGO_DEV_TOKEN}&size=64&format=png&retina=true`;
 }
 
 /**
@@ -96,14 +109,18 @@ function brandFaviconHolds(src: string): boolean {
 export function BrandFavicon() {
   const { displayBrand } = useTenantSwitcher();
   const domain = displayBrand?.domain ?? null;
+  const logoUrl = displayBrand?.logoUrl ?? null;
+  // Depend on the resolved SRC, not on the brand object: that object is rebuilt on
+  // every render, and re-running this effect tears the mark down (its cleanup
+  // restores the distribute one) and rebuilds it — a flip on every poll.
+  const src = displayBrand ? brandFaviconSrc({ domain, logoUrl }) : null;
 
   useEffect(() => {
-    if (!domain) {
+    if (!src) {
       restoreDefaultFavicon();
       return;
     }
 
-    const src = brandFaviconSrc(domain);
     let cancelled = false;
     let observer: MutationObserver | null = null;
     const probe = new Image();
@@ -123,7 +140,7 @@ export function BrandFavicon() {
       });
     };
     probe.onerror = () => {
-      console.error(`[dashboard] No logo for "${domain}" — keeping the distribute tab mark`);
+      console.error(`[dashboard] Tab mark unavailable (${src}) — keeping the distribute one`);
       if (!cancelled) restoreDefaultFavicon();
     };
     probe.src = src;
@@ -135,7 +152,7 @@ export function BrandFavicon() {
       probe.onerror = null;
       restoreDefaultFavicon();
     };
-  }, [domain]);
+  }, [src]);
 
   return null;
 }
