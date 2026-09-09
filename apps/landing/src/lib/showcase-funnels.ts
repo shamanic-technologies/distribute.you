@@ -1,3 +1,5 @@
+import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
+
 /**
  * The homepage's three named clients state funnel counts we READ, not counts we
  * pasted in.
@@ -33,11 +35,27 @@ export interface ShowcaseStep {
   label: string;
   /** People who reached it. `null` means the producer could not measure it. */
   peopleReached: number | null;
+  /**
+   * What reaching this rung cost the client, in dollars. `null` is "we have no
+   * figure" and sits beside a MEASURED `0` count on a rung nobody reached — the two
+   * say different things, which is what lets a card blank one and print the other.
+   * A `$0` there would read as this client's customers having been free.
+   */
+  costPerReachUsd?: number | null;
 }
 
 export interface ShowcaseFunnel {
   funnelKey: string;
   funnelName: string;
+  /**
+   * What the client got back on the budget they paid, on this funnel.
+   *
+   * The REALIZED return their own dashboard states — expected pipeline over
+   * committed spend — never the forward projection published elsewhere under the
+   * identical word. Production has had the two an order apart; relabelling one as
+   * the other would put a number on the homepage no client ever saw.
+   */
+  returnPerDollar?: number | null;
   steps: ShowcaseStep[];
 }
 
@@ -62,6 +80,31 @@ function countsByStep(brand: ShowcaseBrand): Map<string, number> {
       // and the card hides a real zero rather than stating it.
       if (typeof step.peopleReached === "number") out.set(step.key, step.peopleReached);
     }
+  }
+  return out;
+}
+
+/**
+ * The funnel a card states it is about.
+ *
+ * A brand may sell through several, and a card names ONE outcome, so the funnel is
+ * read off the card's own key rather than taken as the brand's first — that default
+ * is right today by accident (every showcase brand sells one) and silently wrong the
+ * day one of them adds a second.
+ */
+function funnelNamedBy(card: string, brand: ShowcaseBrand): ShowcaseFunnel | null {
+  const named = /data-proof-funnel="([a-z_]+)"/.exec(card)?.[1];
+  if (!named) return null;
+  return (brand.funnels ?? []).find((funnel) => funnel.funnelKey === named) ?? null;
+}
+
+/** Every rung the producer priced on that funnel, keyed. */
+function costsByStep(funnel: ShowcaseFunnel | null): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const step of funnel?.steps ?? []) {
+    // Same rule as the counts: a rung we have no figure for is LEFT ALONE, never
+    // written as a zero.
+    if (typeof step.costPerReachUsd === "number") out.set(step.key, step.costPerReachUsd);
   }
   return out;
 }
@@ -116,8 +159,13 @@ function reseedCard(card: string, counts: Map<string, number>): string {
  * `start_to_conversation` — so the wire decides the number and the page decides
  * the words, exactly as it does for the showcase cards above.
  */
-function reseedProofCard(card: string, counts: Map<string, number>): string {
-  return card.replace(
+function reseedProofCard(
+  card: string,
+  counts: Map<string, number>,
+  costs: Map<string, number>,
+  returnPerDollar: number | null
+): string {
+  let out = card.replace(
     /<span data-proof-step="([a-z_]+)"><b>([^<]*)<\/b>/g,
     (whole, key: string, current: string) => {
       const served = counts.get(key);
@@ -128,6 +176,31 @@ function reseedProofCard(card: string, counts: Map<string, number>): string {
       void current;
       return `<span data-proof-step="${key}"><b>${formatInt(served)}</b>`;
     }
+  );
+
+  // The card names ONE rung in its own words ("Cost per meeting booked") and carries
+  // that rung's key beside it, so the price is joined by key like every count above.
+  // The producer prices every rung on one formula, base included, which is what lets
+  // one card ask for a booked meeting and its neighbour for a website visit with no
+  // branch here for either.
+  out = out.replace(
+    /(<div class="proof-line" data-proof-cost-step="([a-z_]+)"><span>[^<]*<\/span><b>)([^<]*)(<\/b>)/,
+    (whole, open: string, key: string, current: string, close: string) => {
+      const served = costs.get(key);
+      if (served === undefined) return whole;
+      void current;
+      return `${open}${formatCostUsd(served)}${close}`;
+    }
+  );
+
+  if (returnPerDollar === null) return out;
+  const shaped = formatReturnMultiple(returnPerDollar);
+  // `data-decimals` moves with the figure: main.js reads it to format every frame of
+  // the count-up, so a return that crosses 10x and keeps a stale `1` would animate
+  // to a decimal it no longer states.
+  return out.replace(
+    /(<span class="big") data-count="[^"]*" data-decimals="[^"]*"/,
+    `$1 data-count="${shaped.text}" data-decimals="${shaped.decimals}"`
   );
 }
 
@@ -155,13 +228,17 @@ export function reseedProofCards(html: string, data: ShowcaseFunnels): string {
   if (byDomain.size === 0) return html;
 
   return html.replace(
-    /<article class="proof-card rv" data-proof-brand="([^"]+)">[\s\S]*?<\/article>/g,
+    /<article class="proof-card rv" data-proof-brand="([^"]+)"[^>]*>[\s\S]*?<\/article>/g,
     (card, domain: string) => {
       const brand = byDomain.get(domain);
       if (!brand) return card;
       const counts = countsByStep(brand);
-      if (counts.size === 0) return card;
-      return reseedProofCard(card, counts);
+      const funnel = funnelNamedBy(card, brand);
+      const costs = costsByStep(funnel);
+      const roi =
+        funnel && typeof funnel.returnPerDollar === "number" ? funnel.returnPerDollar : null;
+      if (counts.size === 0 && costs.size === 0 && roi === null) return card;
+      return reseedProofCard(card, counts, costs, roi);
     }
   );
 }
