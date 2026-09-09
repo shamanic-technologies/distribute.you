@@ -6,7 +6,6 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
 import { BrandSalesFunnelsCard } from "@/components/settings/brand-sales-funnels-card";
-import { OfferNameCard } from "@/components/settings/offer-name-card";
 import { listCampaignsByBrand } from "@/lib/api";
 import { coldEmailCampaignForOffer } from "@/lib/offer-levers-home";
 import { tenantBasePath } from "@/lib/offer-path";
@@ -26,13 +25,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * Both cards take the offer explicitly rather than reading the route themselves,
  * so the page states the scope once and neither card can drift onto another one.
  *
- * Offer identity leads: an offer's name and its mark are what tells one
- * proposition from another, and everything under them is about a thing you have
- * to be able to name first. Neither was editable anywhere in the product before
- * this card — `renameBrandOffer` had shipped with no caller at all.
- *
- * Sales Funnels follows: how the offer is sold is what a reader comes here to
- * fund and change.
+ * Sales Funnels leads: how the offer is sold is what a reader comes here to fund
+ * and change. Offer identity sits LAST, where a settings page of this shape puts
+ * the rare identity edit — its name, and the mark it wears everywhere.
  *
  * The Hormozi levers now live on the COLD EMAIL campaign's own Settings, because
  * they are the words that channel's emails are written around. They are stored on
@@ -70,11 +65,7 @@ export default function OfferSettingsPage() {
     <DashboardPage width="wide">
       <h1 className="mb-8 text-2xl font-semibold text-gray-900">Offer Settings</h1>
 
-      <OfferIdentityCard brandId={brandId} offerId={offerId} />
-
-      <div className="mt-10">
-        <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
-      </div>
+      <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
 
       {!isPending && (
         <div className="mt-10">
@@ -100,10 +91,13 @@ export default function OfferSettingsPage() {
         </div>
       )}
 
-      {/* Last: how the offer is sold, then what it promises, then the rare identity
-          edit. A rename has no other home: the name is stated at creation and
-          brand-service has no other mutable field on an offer. */}
-      <OfferNameCard brandId={brandId} offerId={offerId} />
+      {/* Last: how the offer is sold, then what it promises, then the identity:
+          which offer this IS, its name and its mark. Both are the rare edit, and
+          both had no other home. The name was stated at creation and never again,
+          and every offer wore the same glyph. */}
+      <div className="mt-10">
+        <OfferIdentityCard brandId={brandId} offerId={offerId} />
+      </div>
     </DashboardPage>
   );
 }

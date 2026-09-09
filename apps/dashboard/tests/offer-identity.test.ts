@@ -113,9 +113,9 @@ describe("Offer Settings states the offer's identity", () => {
   const page = read(OFFER_SETTINGS);
   const card = read("components/settings/offer-identity-card.tsx");
 
-  it("mounts the card, and mounts it FIRST — everything under it is about a thing you have to be able to name", () => {
+  it("mounts the card LAST — Sales Funnels leads, and the identity edit is the rare one", () => {
     expect(page).toContain("<OfferIdentityCard brandId={brandId} offerId={offerId} />");
-    expect(page.indexOf("<OfferIdentityCard")).toBeLessThan(page.indexOf("<BrandSalesFunnelsCard"));
+    expect(page.indexOf("<OfferIdentityCard")).toBeGreaterThan(page.indexOf("<BrandSalesFunnelsCard"));
   });
 
   it("writes the name through the reader that had no caller at all before this", () => {
@@ -127,10 +127,16 @@ describe("Offer Settings states the offer's identity", () => {
     // that moves upstream moves here for free.
     expect(card).not.toMatch(/\.split\(\/\\s\+\//);
     expect(card).not.toContain("length > 20");
+    // It STATES them before the customer types, from the one constant that words them.
+    expect(card).toContain("OFFER_NAME_RULES");
   });
 
-  it("renders a refusal as the producer's own sentence, never the whole body", () => {
-    expect(card).toContain("err instanceof ApiError && err.message.trim()");
+  it("words a refusal through the module the create modal SHARES, never a second copy", () => {
+    expect(card).toContain('from "@/lib/offer-write"');
+    expect(card).toContain("offerWriteErrorMessage(err instanceof ApiError ? err.status : null, kind)");
+    // `apiCall` sets the message from the body, so rendering it is how a JSON blob
+    // reaches a customer.
+    expect(card).not.toContain("{err.message}");
   });
 
   it("says NOTHING on a 402 — apiCall already opened the billing-guard modal, and two surfaces for one refusal is worse than one", () => {

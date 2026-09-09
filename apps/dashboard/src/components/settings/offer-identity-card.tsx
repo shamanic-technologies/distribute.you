@@ -13,6 +13,7 @@ import {
   renameBrandOffer,
   type Offer,
 } from "@/lib/api";
+import { OFFER_NAME_RULES, offerWriteErrorMessage, type OfferWriteKind } from "@/lib/offer-write";
 import { useAuthQuery } from "@/lib/use-auth-query";
 
 /**
@@ -94,7 +95,7 @@ export function OfferIdentityCard({ brandId, offerId }: { brandId: string; offer
       setError(null);
       writeOffer(res.offer);
     },
-    onError: (err) => setError(offerWriteErrorMessage(err)),
+    onError: (err) => setError(refusal(err, "rename")),
   });
 
   const imageMut = useMutation({
@@ -104,7 +105,7 @@ export function OfferIdentityCard({ brandId, offerId }: { brandId: string; offer
       setError(null);
       writeOffer(res.offer);
     },
-    onError: (err) => setError(offerWriteErrorMessage(err)),
+    onError: (err) => setError(refusal(err, "generate")),
   });
 
   const trimmed = name.trim();
@@ -168,8 +169,8 @@ export function OfferIdentityCard({ brandId, offerId }: { brandId: string; offer
             className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 transition focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50"
           />
           <p className="mt-1.5 text-xs text-gray-400">
-            At most two words and twenty characters, and different from every other offer on
-            this brand. It is the only word anyone reads for this offer.
+            An offer name is {OFFER_NAME_RULES}, and different from every other offer on this
+            brand. It is the only word anyone reads for this offer.
           </p>
         </div>
       </div>
@@ -187,21 +188,19 @@ export function OfferIdentityCard({ brandId, offerId }: { brandId: string; offer
 }
 
 /**
- * A refusal from brand-service, as a sentence.
+ * A refusal from brand-service, as a sentence — through the module the create modal
+ * and this card SHARE.
  *
- * `ApiError.message` is ALREADY the producer's own `error` field — apiCall reads
- * it out of the body — so brand-service's sentences for a person ("a name is at
- * most two words", "that name is taken") reach the reader verbatim, and a limit
- * that moves upstream moves here for free. Anything that is not an ApiError gets
- * one generic line with the real thing in the console; a raw `err.message` on a
- * network/parse failure is a stack trace in front of a customer.
+ * The message is chosen from the STATUS and nothing else, per that module: rendering
+ * a thrown error's own message is how a JSON blob ends up in front of a customer,
+ * and a second copy of one refusal is how two surfaces come to word one 409
+ * differently.
  *
- * `null` means SAY NOTHING: a 402 has already opened the billing-guard modal, and
- * a red line under it would describe the same refusal twice.
+ * `null` means SAY NOTHING: a 402 has already opened the billing-guard modal, and a
+ * red line under it would describe the same refusal twice.
  */
-function offerWriteErrorMessage(err: unknown): string | null {
+function refusal(err: unknown, kind: OfferWriteKind): string | null {
   console.error("[dashboard] offer identity write failed", err);
   if (isInsufficientCredit(err)) return null;
-  if (err instanceof ApiError && err.message.trim()) return err.message;
-  return "Could not save. Please try again.";
+  return offerWriteErrorMessage(err instanceof ApiError ? err.status : null, kind);
 }
