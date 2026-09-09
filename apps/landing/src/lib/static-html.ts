@@ -10,6 +10,7 @@ import {
 } from "@/lib/content-negotiation";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
+import { formatReturnMultiple } from "@/lib/landing-format";
 import {
   reseedProofCards,
   reseedShowcaseCards,
@@ -359,12 +360,6 @@ export function hotLeadRowHtml(
  * precision we do not have on a figure that moves with every outcome. Same shape as the
  * dashboard's own ROI formatter, so a client meets one convention in both places.
  */
-function formatReturnMultiple(value: number): { text: string; decimals: number } {
-  return value < 10
-    ? { text: value.toFixed(1), decimals: 1 }
-    : { text: String(Math.round(value)), decimals: 0 };
-}
-
 /**
  * The dark stat band the comparison pages close on: the hero row's two figures, plus
  * the fleet's median return when features-service can state one.

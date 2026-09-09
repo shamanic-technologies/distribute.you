@@ -146,16 +146,17 @@ describe("the offer the page states", () => {
     expect(outsidePricing.toLowerCase()).not.toContain("coming soon");
   });
 
-  it("names the three customers, and states a return read off prod rather than a whiteboard", () => {
-    // The RETURN is still the figure read off /brands/:id/revenue in prod on 2026-09-06 and
-    // frozen here — the counts-only showcase read cannot answer it, so it is pinned until a
-    // per-brand money read exists. The COUNTS beside it are no longer pinned anywhere: they
-    // are reseeded from the wire at render, so a literal in this file is a seed, not a claim
-    // (proof-cards.test.ts pins the keying that makes that reseed possible).
-    for (const line of ["Doc Dinners", "Opsfolio", "Shockwave", "2.2", "9.3", "3.8"]) {
+  it("names the three customers, and pins nothing they are measured by", () => {
+    // Every figure on these cards — the counts, the return and the cost per outcome —
+    // is reseeded from the wire at render, so a literal in this file is a SEED and
+    // pinning one would assert a number no visitor sees. What is pinned here is the
+    // part that cannot come off the wire: who the clients are. proof-cards.test.ts
+    // pins the keying that makes the reseed reach them.
+    for (const line of ["Doc Dinners", "Opsfolio", "Shockwave"]) {
       expect(html).toContain(line);
     }
     expect((html.match(/data-live/g) ?? []).length).toBe(3);
+    expect((html.match(/data-proof-brand=/g) ?? []).length).toBe(3);
   });
 
   it("rates every card five stars, hidden from a screen reader", () => {
