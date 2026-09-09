@@ -11,6 +11,7 @@ import {
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
+import { reseedFounderCount } from "@/lib/founder-count";
 import {
   reseedProofCards,
   reseedShowcaseCards,
@@ -514,6 +515,53 @@ async function fetchFleetReturn(): Promise<FleetReturnStats | null> {
   return { medianReturnPerDollar: median, brandCount };
 }
 
+/**
+ * How many people have signed up, as client-service counts them.
+ *
+ * A different read from every other live figure on this page — the fleet reads answer
+ * for campaigns, this one answers for the platform — and the cheapest one here: it is
+ * the same public endpoint `/investors` already prints, no auth, no org scope, one
+ * small body. Bounded like the rest, because the landing renders while a build waits
+ * on it.
+ */
+async function fetchFounderCount(): Promise<number | null> {
+  const apiUrl = resolvePublicApiUrl();
+  const res = await fetch(`${apiUrl}/public/stats/users`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`[landing] /public/stats/users failed: ${res.status}`);
+  }
+  const data = (await res.json()) as { totalUsers?: number | null };
+  const total = data.totalUsers;
+  return typeof total === "number" && Number.isFinite(total) ? total : null;
+}
+
+/**
+ * Restate the trust rows, or leave the page exactly as it shipped.
+ *
+ * Nothing is fetched for a page that carries no such row. A failed read keeps the
+ * shipped figure and is logged loud: the line is a lower bound, so the figure on disk
+ * is the last one we know landed and understating ourselves for a few hours costs
+ * nothing, while a blank where a count was reads as the product having lost its users.
+ */
+async function withFounderCount(html: string): Promise<string> {
+  if (!html.includes("data-founder-count")) return html;
+  try {
+    const total = await fetchFounderCount();
+    if (total === null) {
+      console.warn("[landing] user count unreadable, keeping the shipped founder figure");
+      return html;
+    }
+    return reseedFounderCount(html, total);
+  } catch (error) {
+    console.error("[landing] user count unavailable, keeping the shipped founder figure", error);
+    return html;
+  }
+}
+
 async function withHotLeadStats(html: string) {
   const wantsRow = html.includes(HOT_LEAD_ROW_TOKEN);
   const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
@@ -610,7 +658,9 @@ async function negotiatedResponse(
     });
   }
 
-  const html = await withShowcaseFunnels(await withHotLeadStats(decorated));
+  const html = await withFounderCount(
+    await withShowcaseFunnels(await withHotLeadStats(decorated)),
+  );
 
   if (negotiated === "markdown") {
     const markdown = htmlToMarkdown(html, {

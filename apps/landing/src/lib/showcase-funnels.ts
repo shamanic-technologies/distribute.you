@@ -213,12 +213,11 @@ function reseedProofCard(
  * literals, the page stated two different contacted counts for one client on one
  * screen — Doc Dinners read 12,552 at the top and 12,307 further down.
  *
- * ⚠️ The RETURN and the COST-PER-OUTCOME on these cards are still the figures the
- * page ships with. This read is counts-only by the producer's own design, and the
- * per-brand money read that would answer them does not exist yet — so those two
- * lines are deliberately left alone here rather than derived from anything. A ratio
+ * The RETURN and the COST-PER-OUTCOME are read too, since features-service widened
+ * this same pass to carry them (v0.160.0) — nothing here divides anything. A ratio
  * computed in this file would be a metric invented by a consumer, which is the one
- * thing every figure on this page is not.
+ * thing every figure on this page is not; a `null` from the producer means "not
+ * measured" and leaves the shipped figure alone.
  */
 export function reseedProofCards(html: string, data: ShowcaseFunnels): string {
   const byDomain = new Map<string, ShowcaseBrand>();
