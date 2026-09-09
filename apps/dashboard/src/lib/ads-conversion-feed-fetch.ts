@@ -2,10 +2,12 @@ import { z } from "zod";
 import { SERVICE_IDENTITY } from "./service-identity";
 import {
   conversionRowsForOrg,
+  conversionRowsForSignUpPageViews,
   conversionRowsToCsv,
   type AttributedOrg,
   type ConversionRow,
   type PaidTopUp,
+  type SignUpPageView,
 } from "./ads-conversion-feed";
 
 /**
@@ -21,6 +23,7 @@ import {
  */
 
 const CLERK_API_URL = "https://api.clerk.com/v1";
+const DEFAULT_POSTHOG_API_HOST = "https://eu.posthog.com";
 const PAGE_LIMIT = 100;
 const ORG_CONCURRENCY = 4;
 const FETCH_TIMEOUT_MS = 60_000;
@@ -30,6 +33,9 @@ export interface FeedConfig {
   adminApiKey: string;
   clerkSecretKey: string;
   feedToken: string;
+  posthogApiHost: string;
+  posthogProjectId: string;
+  posthogPersonalApiKey: string;
 }
 
 export type FeedFetch = typeof fetch;
@@ -40,7 +46,17 @@ export function adsConversionFeedConfigFromEnv(): FeedConfig {
     adminApiKey: requireEnv("ADMIN_DISTRIBUTE_API_KEY"),
     clerkSecretKey: requireEnv("CLERK_SECRET_KEY"),
     feedToken: requireEnv("ADS_CONVERSION_FEED_TOKEN"),
+    // The ingestion host the browser posts to is a first-party proxy
+    // (`e.distribute.you`) and the personal-API host is not the same thing, so
+    // the API host is its own var rather than derived from NEXT_PUBLIC_POSTHOG_HOST.
+    posthogApiHost: normalizePostHogHost(process.env.POSTHOG_API_HOST || DEFAULT_POSTHOG_API_HOST),
+    posthogProjectId: requireEnv("POSTHOG_PROJECT_ID"),
+    posthogPersonalApiKey: requireEnv("POSTHOG_PERSONAL_API_KEY"),
   };
+}
+
+function normalizePostHogHost(host: string): string {
+  return host.replace("https://eu.i.posthog.com", "https://eu.posthog.com").replace(/\/$/, "");
 }
 
 /** The Ads Script authenticates with a bearer token; nothing else reads this. */
@@ -76,6 +92,8 @@ export interface FeedResult {
   attributedOrgs: number;
   /** Orgs whose payments read failed; their signup row still ships. */
   failedOrgs: number;
+  /** Sessions that reached /sign-up carrying a gclid, i.e. micro-conversions. */
+  signUpPageViews: number;
   rows: ConversionRow[];
   csv: string;
 }
@@ -85,8 +103,13 @@ export async function buildAdsConversionFeed(
   since: Date,
   fetchFn: FeedFetch = fetch,
 ): Promise<FeedResult> {
+  // FAIL LOUD, deliberately not per-source like the per-org payments read below:
+  // a PostHog outage that degraded to an empty set would hand the Ads Script a
+  // file that reads as "nobody reached the sign-up page", which Google cannot
+  // tell apart from a real zero. A 500 makes the Script skip the upload instead.
+  const pageViews = await listSignUpPageViews(config, since, fetchFn);
   const orgs = await listAttributedOrgs(config, fetchFn);
-  const rows: ConversionRow[] = [];
+  const rows: ConversionRow[] = conversionRowsForSignUpPageViews(pageViews, since);
   let failedOrgs = 0;
   for (let i = 0; i < orgs.length; i += ORG_CONCURRENCY) {
     const batch = orgs.slice(i, i + ORG_CONCURRENCY);
@@ -111,7 +134,94 @@ export async function buildAdsConversionFeed(
     for (const r of perOrg) rows.push(...r);
   }
   rows.sort((a, b) => a.conversionTime.getTime() - b.conversionTime.getTime());
-  return { attributedOrgs: orgs.length, failedOrgs, rows, csv: conversionRowsToCsv(rows) };
+  return {
+    attributedOrgs: orgs.length,
+    failedOrgs,
+    signUpPageViews: pageViews.length,
+    rows,
+    csv: conversionRowsToCsv(rows),
+  };
+}
+
+const PostHogQueryResponseSchema = z.object({
+  results: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
+});
+
+/**
+ * Every session that reached `/sign-up` carrying a Google click, read out of
+ * PostHog with HogQL.
+ *
+ * The join is the one that works against the live data: a `$pageview` on
+ * `/sign-up`, and a `$pageview` on the SAME `$session_id` whose `$current_url`
+ * carries a `gclid` (the landing entry). One scan, grouped by session, rather
+ * than a self-join on `events` — `argMinIf` takes the FIRST gclid of the
+ * session (first touch, matching how the org-level attribution is recorded) and
+ * `minIf` the first sign-up view.
+ *
+ * A session with no gclid, or with no sign-up view, is filtered by the HAVING;
+ * a null session id is excluded in the WHERE, because grouping on it would fold
+ * unrelated events into one bogus row.
+ */
+async function listSignUpPageViews(
+  config: FeedConfig,
+  since: Date,
+  fetchFn: FeedFetch,
+): Promise<SignUpPageView[]> {
+  const query = `
+    SELECT
+      properties.$session_id AS sid,
+      argMinIf(
+        extractURLParameter(properties.$current_url, 'gclid'),
+        timestamp,
+        coalesce(extractURLParameter(properties.$current_url, 'gclid'), '') != ''
+      ) AS gclid,
+      minIf(timestamp, properties.$pathname LIKE '%sign-up%') AS signup_at
+    FROM events
+    WHERE event = '$pageview'
+      AND timestamp >= toDateTime('${formatClickHouseTime(since)}')
+      AND properties.$session_id IS NOT NULL
+    GROUP BY sid
+    HAVING coalesce(gclid, '') != '' AND countIf(properties.$pathname LIKE '%sign-up%') > 0
+    ORDER BY signup_at ASC
+    LIMIT 10000
+  `;
+  const data = await fetchJson(
+    `${config.posthogApiHost}/api/projects/${config.posthogProjectId}/query/`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.posthogPersonalApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
+    },
+    fetchFn,
+    PostHogQueryResponseSchema,
+    "signUpPageViews",
+  );
+  const out: SignUpPageView[] = [];
+  for (const row of data.results) {
+    const [sessionId, gclid, viewedAt] = row;
+    if (typeof sessionId !== "string" || typeof gclid !== "string" || typeof viewedAt !== "string") {
+      console.error("[dashboard-ads-feed] signUpPageViews row shape mismatch", { row });
+      continue;
+    }
+    // PostHog returns a naive `YYYY-MM-DDTHH:mm:ss.SSS` in the project's own
+    // timezone marker-free form; it is UTC, so state it rather than letting the
+    // server's local zone decide.
+    const at = new Date(viewedAt.endsWith("Z") ? viewedAt : `${viewedAt}Z`);
+    if (Number.isNaN(at.getTime())) {
+      console.error(`[dashboard-ads-feed] signUpPageViews unparseable timestamp: ${viewedAt}`);
+      continue;
+    }
+    out.push({ sessionId, gclid, viewedAt: at });
+  }
+  return out;
+}
+
+/** `YYYY-MM-DD HH:mm:ss`, UTC — what ClickHouse `toDateTime()` reads. */
+function formatClickHouseTime(d: Date): string {
+  return d.toISOString().slice(0, 19).replace("T", " ");
 }
 
 async function listAttributedOrgs(config: FeedConfig, fetchFn: FeedFetch): Promise<AttributedOrg[]> {

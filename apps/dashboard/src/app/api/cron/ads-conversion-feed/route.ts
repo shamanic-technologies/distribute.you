@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     const since = feedWindowStart(new Date(), new URL(req.url).searchParams.get("since"));
     const result = await buildAdsConversionFeed(config, since);
     console.log(
-      `[dashboard-ads-feed] attributedOrgs=${result.attributedOrgs} failedOrgs=${result.failedOrgs} rows=${result.rows.length} since=${since.toISOString()}`,
+      `[dashboard-ads-feed] attributedOrgs=${result.attributedOrgs} failedOrgs=${result.failedOrgs} signUpPageViews=${result.signUpPageViews} rows=${result.rows.length} since=${since.toISOString()}`,
     );
     return new NextResponse(result.csv, {
       status: 200,
