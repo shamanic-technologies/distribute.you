@@ -27,7 +27,7 @@
   <!-- title block, centred -->
   <text x="800" y="150" font-size="24" letter-spacing="3" fill="#2563eb" font-weight="600" text-anchor="middle">COLD EMAIL AND LLMS</text>
   <text x="800" y="240" font-size="72" font-weight="800" fill="#0f172a" text-anchor="middle">Flash or Pro?</text>
-  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">100,000 emails sent. One surprisingly simple answer.</text>
+  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">117,000 emails, 17 workflows A/B tested. Our best model, not the average.</text>
 
   <!-- left card: flash -> click -->
   <g transform="translate(210,380)">
@@ -35,15 +35,15 @@
     <rect x="36" y="36" width="80" height="80" rx="20" fill="#eff6ff" stroke="#bfdbfe"/>
     <path d="M82 52 L63 84 L77 84 L70 106 L91 72 L78 72 Z" fill="#2563eb"/>
     <text x="136" y="70" font-size="20" letter-spacing="2" fill="#2563eb" font-weight="700">FLASH TIER</text>
-    <text x="136" y="106" font-size="28" font-weight="700" fill="#0f172a">Buys the click</text>
+    <text x="136" y="106" font-size="28" font-weight="700" fill="#0f172a">Best workflow, the click</text>
     <rect x="36" y="170" width="170" height="108" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
     <path d="M36 180 L121 244 L206 180" fill="none" stroke="#cbd5e1" stroke-width="2"/>
     <rect x="70" y="250" width="102" height="16" rx="8" fill="#dbeafe"/>
     <path d="M232 224 L302 224" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
     <path d="M288 210 L304 224 L288 238" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M336 182 L336 270 L359 248 L374 284 L391 277 L376 240 L407 240 Z" fill="#2563eb" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
-    <text x="536" y="214" font-size="40" font-weight="800" fill="#0f172a" text-anchor="end">$3</text>
-    <text x="536" y="246" font-size="17" fill="#64748b" text-anchor="end">per website visit</text>
+    <text x="536" y="214" font-size="40" font-weight="800" fill="#0f172a" text-anchor="end">$1</text>
+    <text x="536" y="304" font-size="17" fill="#64748b" text-anchor="end">per website visit, tier $2</text>
   </g>
 
   <!-- right card: pro -> reply -->
@@ -53,7 +53,7 @@
     <path d="M76 54 L102 76 L76 106 L50 76 Z" fill="#93c5fd"/>
     <path d="M50 76 L102 76" stroke="#0f172a" stroke-width="3"/>
     <text x="136" y="70" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">PRO TIER</text>
-    <text x="136" y="106" font-size="28" font-weight="700" fill="#ffffff">Buys the reply</text>
+    <text x="136" y="106" font-size="28" font-weight="700" fill="#ffffff">Best workflow, the reply</text>
     <rect x="36" y="170" width="170" height="108" rx="14" fill="#1e293b" stroke="#475569" stroke-width="2"/>
     <path d="M36 180 L121 244 L206 180" fill="none" stroke="#475569" stroke-width="2"/>
     <rect x="62" y="226" width="118" height="9" rx="4" fill="#334155"/>
@@ -62,8 +62,8 @@
     <path d="M260 210 L276 224 L260 238" fill="none" stroke="#93c5fd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M300 178 h74 a20 20 0 0 1 20 20 v50 a20 20 0 0 1 -20 20 h-38 l-22 22 v-22 h-14 a20 20 0 0 1 -20 -20 v-50 a20 20 0 0 1 20 -20 z" fill="#2563eb"/>
     <path d="M320 222 l12 12 l26 -28" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="536" y="214" font-size="40" font-weight="800" fill="#ffffff" text-anchor="end">$168</text>
-    <text x="536" y="246" font-size="17" fill="#94a3b8" text-anchor="end">per positive reply</text>
+    <text x="536" y="214" font-size="40" font-weight="800" fill="#ffffff" text-anchor="end">$122</text>
+    <text x="536" y="304" font-size="17" fill="#94a3b8" text-anchor="end">per positive reply, tier $193</text>
   </g>
 
   <!-- brand, inside the safe zone -->
