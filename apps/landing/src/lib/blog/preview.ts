@@ -9,7 +9,7 @@
  *
  * Alias-free and `node:`-free on purpose: it is imported by the proxy.
  */
-export const PREVIEW_ARTICLE_SLUGS: ReadonlySet<string> = new Set(["cost-per-click-cold-email"]);
+export const PREVIEW_ARTICLE_SLUGS: ReadonlySet<string> = new Set([]);
 
 export function isPreviewArticle(slug: string): boolean {
   return PREVIEW_ARTICLE_SLUGS.has(slug);
