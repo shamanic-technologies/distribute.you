@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { basicAuthOk } from "@/lib/clone-auth";
+import { previewArticleSlugFor } from "@/lib/blog/preview";
 import { CLONE_ROUTE_PREFIX, cloneSlugForHost } from "@/lib/clone-catalogue";
 
 /**
@@ -66,10 +67,31 @@ export default function proxy(request: NextRequest) {
  * competitor's copy with no password in front of it.
  */
 function offCloneHost(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith(CLONE_ROUTE_PREFIX)) {
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith(CLONE_ROUTE_PREFIX)) {
     return new NextResponse("Not found.", {
       status: 404,
       headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+    });
+  }
+
+  // A blog article under review sits in the DB so the real page renders it, and behind
+  // the lab password so nobody outside reads it before the owner does. Same secret as
+  // the clones; an unset one locks the article rather than opening it. The response is
+  // never cached (a gate in front of a cached body is no gate) and never indexed.
+  if (previewArticleSlugFor(pathname) !== null) {
+    if (!basicAuthOk(request.headers.get("authorization"), process.env.CLONE_BASIC_AUTH)) {
+      return new NextResponse("Authentication required.", {
+        status: 401,
+        headers: {
+          "www-authenticate": 'Basic realm="distribute preview", charset="UTF-8"',
+          "x-robots-tag": "noindex, nofollow",
+          "cache-control": "no-store",
+        },
+      });
+    }
+    return NextResponse.next({
+      headers: { "x-robots-tag": "noindex, nofollow", "cache-control": "private, no-store" },
     });
   }
   return NextResponse.next();

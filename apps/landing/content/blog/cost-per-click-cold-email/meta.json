@@ -5,5 +5,6 @@
   "tags": ["cold email", "cost per click", "benchmarks", "LLM", "Gemini", "Europe", "seniority"],
   "publishedAt": "2026-09-09T18:00:00.000Z",
   "coverImagePath": "/blog/cost-per-click-cold-email/hero.png",
-  "source": "manual"
+  "source": "manual",
+  "preview": true
 }
