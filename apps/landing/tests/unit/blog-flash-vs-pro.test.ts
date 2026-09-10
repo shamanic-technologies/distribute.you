@@ -120,7 +120,8 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
   it("the A/B section names the winner of each outcome and the gap distribute.you hands its clients", () => {
     const spread = section("the-spread");
     expect(spread).toContain("17 workflows, one winner per outcome");
-    expect(spread).toContain("Positive replies per 10,000 emails by workflow, Pro");
+    // The per-workflow reply chart was cut on review: twelve of thirteen rows sat under five replies, so it charted nothing.
+    expect(spread).not.toContain("Positive replies per 10,000 emails by workflow");
     expect(spread).toContain("Cost per website visit by workflow, Flash");
     expect(spread).toContain("Cost per website visit by workflow, Pro");
     expect(spread).toContain("<strong>This is the gap distribute.you gives its clients.</strong>");
@@ -276,34 +277,29 @@ describe("flash-or-pro article: dataset coherence", () => {
     expect(34_305 + 82_620).toBe(116_925);
   });
 
-  it("every workflow row that states a CPPR has at least ten replies, and every CPWV at least 20 visits", () => {
+  it("every workflow row that states a CPPR has at least ten replies, and every CPWV at least one visit", () => {
     const rows = html.match(/<tr><td>(Flash|Pro) workflow \d+<\/td><td>(Flash|Pro)<\/td>.*?<\/tr>/g) ?? [];
     expect(rows.length).toBe(17);
     for (const row of rows) {
       const cells = [...row.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
       const [, , , , , linked, visits, cpwv, replies, cppr] = cells;
       if (cppr !== "") expect(Number(replies)).toBeGreaterThanOrEqual(10);
-      if (cpwv !== "") {
-        expect(Number(visits)).toBeGreaterThanOrEqual(20);
-        expect(Number(linked.replace(/,/g, ""))).toBeGreaterThanOrEqual(1000);
-      }
+      if (cpwv !== "") expect(Number(visits)).toBeGreaterThanOrEqual(1);
+      void linked;
     }
   });
 
-  it("a chart row is priced only above the floors Method declares", () => {
-    // A priced pair states its counts beside it; any pair under the floor
-    // reads "too few to price" / "too few to rate" instead of a number.
+  it("every chart row is a bar with its counts under it; no placeholder row anywhere", () => {
+    // Owner rule (2026-09-10): "mets les barres". A thin bucket is drawn with
+    // its counts printed under the bar, never replaced by a grey sentence.
+    expect(html).not.toMatch(/too few to (price|rate)/);
     for (const svg of svgs) {
-      if (!svg.includes("Cost per website visit by")) continue;
-      for (const [, emails, clicks] of svg.matchAll(/clicks per 1,000, ([\d,]+) emails, (\d+) clicks<\/text>/g)) {
-        const priced = Number(emails.replace(/,/g, "")) >= 1000 && Number(clicks) >= 20;
-        void priced;
-      }
+      const labels = (svg.match(/<text x="0" y="\d+" font-size="14" fill="#475569">/g) ?? []).length;
+      const bars = (svg.match(/<rect x="\d+" y="\d+" width="\d+" height="26" rx="5"/g) ?? []).length;
+      if (labels) expect(bars).toBe(labels);
     }
-    expect(method).toContain("A click pair is priced only at 1,000 emails and 20 clicks.");
-    expect(method).toContain("priced at 10. A workflow's reply is priced at 10 replies, which only the best Pro workflow clears.");
-    expect(html).toContain("too few to price");
-    expect(html).toContain("too few to rate");
+    expect(method).toContain("Every bucket with at least one outcome is drawn");
+    expect(method).toContain("A cost per positive reply is stated from 10 replies, which only the best Pro workflow clears");
   });
 
   it("names the vendor model that ran and sources every list price", () => {
