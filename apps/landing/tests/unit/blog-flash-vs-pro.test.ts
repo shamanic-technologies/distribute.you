@@ -120,10 +120,10 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
   it("the A/B section names the winner of each outcome and the gap distribute.you hands its clients", () => {
     const spread = section("the-spread");
     expect(spread).toContain("17 workflows, one winner per outcome");
-    // The per-workflow reply chart was cut on review: twelve of thirteen rows sat under five replies, so it charted nothing.
-    expect(spread).not.toContain("Positive replies per 10,000 emails by workflow");
-    expect(spread).toContain("Cost per website visit by workflow, Flash");
-    expect(spread).toContain("Cost per website visit by workflow, Pro");
+    // Owner rule (2026-09-10): no per-workflow chart at all, named or numbered.
+    // The page states the best workflow per outcome and the tier it beats, nothing finer.
+    expect(spread).not.toContain("<svg");
+    expect(html).not.toMatch(/by workflow, (Flash|Pro)/);
     expect(spread).toContain("<strong>This is the gap distribute.you gives its clients.</strong>");
     expect(spread).toContain("They get its winner");
   });
@@ -169,12 +169,16 @@ describe("flash-or-pro article: editorial rules", () => {
     expect((cuts.match(/Positive replies per 10,000 emails by /g) ?? []).length).toBeGreaterThanOrEqual(9);
   });
 
-  it("the twist states that every positive reply came from an email with no link, and prices no visit on an email that had nothing to click", () => {
+  it("the twist charts the reply by link and by brand naming, per tier, and prices no visit on an email that had nothing to click", () => {
     const twist = section("the-twist");
     expect(twist).toContain("<strong>every one came from an email with no link in it</strong>");
-    expect(twist).not.toContain("<svg");
-    expect(html).not.toMatch(/no link<\/text>/);
-    expect(html).not.toMatch(/Cost per website visit by tier and by link/);
+    for (const title of [
+      "Positive replies per 10,000 emails by link in the email, Pro",
+      "Positive replies per 10,000 emails by link in the email, Flash",
+      "Positive replies per 10,000 emails by whether the email names the brand, Pro",
+      "Positive replies per 10,000 emails by whether the email names the brand, Flash",
+    ]) expect(twist).toContain(title);
+    expect(html).not.toMatch(/Cost per website visit by (tier and by )?link/);
   });
 
   it("names no workflow: a workflow is a number on the page, never a codename", () => {
@@ -184,8 +188,7 @@ describe("flash-or-pro article: editorial rules", () => {
     expect(html).not.toMatch(codenames);
     expect(hero).not.toMatch(codenames);
     expect(JSON.stringify(meta)).not.toMatch(codenames);
-    expect(html).toContain("Pro workflow 1");
-    expect(html).toContain("Flash workflow 1");
+    expect(html).not.toMatch(/(Flash|Pro) workflow \d/);
   });
 
   it("every chart is one tier: Flash and Pro never alternate inside a chart", () => {
@@ -220,8 +223,9 @@ describe("flash-or-pro article: editorial rules", () => {
     expect(wrappers).toBe(tables);
   });
 
-  it("the per-workflow table is folded away, not in the main flow", () => {
-    expect(html).toMatch(/<details>\s*<summary>Every workflow past 1,000 emails, and list prices<\/summary>/);
+  it("the list prices are folded away, and there is no per-workflow table", () => {
+    expect(html).toMatch(/<details>\s*<summary>List prices<\/summary>/);
+    expect(html).not.toMatch(/<th>Workflow<\/th>/);
   });
 });
 
@@ -275,18 +279,6 @@ describe("flash-or-pro article: dataset coherence", () => {
 
   it("the tier email counts add up to the emails sent", () => {
     expect(34_305 + 82_620).toBe(116_925);
-  });
-
-  it("every workflow row that states a CPPR has at least ten replies, and every CPWV at least one visit", () => {
-    const rows = html.match(/<tr><td>(Flash|Pro) workflow \d+<\/td><td>(Flash|Pro)<\/td>.*?<\/tr>/g) ?? [];
-    expect(rows.length).toBe(17);
-    for (const row of rows) {
-      const cells = [...row.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
-      const [, , , , , linked, visits, cpwv, replies, cppr] = cells;
-      if (cppr !== "") expect(Number(replies)).toBeGreaterThanOrEqual(10);
-      if (cpwv !== "") expect(Number(visits)).toBeGreaterThanOrEqual(1);
-      void linked;
-    }
   });
 
   it("every chart row is a bar with its counts under it; no placeholder row anywhere", () => {
