@@ -83,7 +83,7 @@ describe("cost-per-click article: editorial rules", () => {
   it("no money figure of ours carries cents; a competitor's published price is quoted as published", () => {
     // The market and competitor tables quote third-party prices verbatim ($5.42 a click on Google
     // Ads is LocaliQ's number, not ours); rounding them would misquote the source.
-    const ours = prose.replace(/<h2 id="the-market">[\s\S]*?(?=<h2 id="the-rule">)/, "");
+    const ours = prose.replace(/<h2 id="best-cost-per-click">[\s\S]*?(?=<h2 id="the-rule">)/, "");
     expect(ours).not.toMatch(/\$\d[\d,]*\.\d/);
     expect(hero).not.toMatch(/\$\d[\d,]*\.\d/);
     for (const svg of svgs) expect(svg).not.toMatch(/\$\d[\d,]*\.\d/);
@@ -114,19 +114,19 @@ describe("cost-per-click article: editorial rules", () => {
     }
   });
 
-  it("the link correction comes before the answer, and the answer leads with both numbers", () => {
-    // 92,170 of the 120,652 emails carried no link to the client's site, so their clicks can only
-    // be the unsubscribe footer; the answer is stated on the 28,482 that did.
-    expect(story.indexOf('id="the-link"')).toBeLessThan(story.indexOf('id="the-answer"'));
+  it("the answer leads with both numbers, and the link exclusion is stated in Method alone", () => {
+    // Owner-decided 2026-09-10: the correction section ("a click needs a link") is gone from the
+    // story; the exclusion of the 92,170 link-less emails lives once, in Method.
+    expect(story).not.toContain('id="the-link"');
+    expect(story).not.toContain("unsubscribe");
     expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$4<\/strong> across every workflow we tested/);
     expect(story).toContain("buy a click for <strong>$2 to $3</strong>");
-    expect(story).toContain("<strong>92,170 of the 120,000 emails carried no link to the client's site</strong>");
-    expect(story).toContain("Those are unsubscribes, not visits, so they are out.");
+    expect(method).toContain("92,170");
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
     const tags = html.match(/<svg[^>]*>/g) ?? [];
-    expect(tags.length).toBe(14);
+    expect(tags.length).toBe(13);
     for (const tag of tags) {
       expect(tag).toContain('viewBox="0 0 800 ');
       expect(tag).toContain('width="100%"');
@@ -146,10 +146,10 @@ describe("cost-per-click article: editorial rules", () => {
     expect(html).toMatch(/<details>\s*<summary>Every bucket, every workflow<\/summary>/);
     expect(story).not.toContain('id="the-implied-price"');
     expect(story).not.toMatch(/at (their|our) (price|rate)/i);
-    // The bucket tables fold; the three comparison tables in the story are the
+    // The bucket tables fold; the two "best tool" comparison tables in the story are the
     // market research and stay in the flow.
     expect(html.indexOf("<details>")).toBeLessThan(html.indexOf("<th>Bucket</th>"));
-    expect((story.match(/<table>/g) ?? []).length).toBe(4);
+    expect((story.match(/<table>/g) ?? []).length).toBe(2);
   });
 });
 
@@ -169,14 +169,6 @@ describe("cost-per-click article: dataset coherence", () => {
     // The excluded set: 92,170 emails with no body link recorded 218 clicks, the unsubscribe footer.
     expect(120_652 - 92_170).toBe(28_482);
     expect(748 - 218).toBe(530);
-  });
-
-  it("the link chart is a click-rate chart and names the unsubscribe footer", () => {
-    const link = svgs.find((svg) => svg.includes("by what the email could link to"));
-    expect(link).toBeDefined();
-    expect(link).toContain("unsubscribe footer");
-    expect(link).toContain("18.6 per 1,000");
-    expect(link).toContain("2.4 per 1,000");
   });
 
   it("every priced bar clears the floor the method states", () => {
@@ -201,7 +193,7 @@ describe("cost-per-click article: dataset coherence", () => {
     const tables = html.match(/<table>[\s\S]*?<\/table>/g) ?? [];
     expect(tables.length).toBeGreaterThanOrEqual(15);
     for (const table of tables) {
-      // The three market-comparison tables carry prices and rates, not clicks.
+      // The two market-comparison tables carry prices and rates, not clicks.
       if (!/<th>(Bucket|Client|Workflow)<\/th>/.test(table)) continue;
       const isEntity = /<th>(Client|Workflow)<\/th>/.test(table);
       for (const row of table.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? []) {
@@ -238,32 +230,48 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(dataset.url).toBe(`https://distribute.you/blog/${SLUG}`);
   });
 
-  it("every competitor figure is quoted from the competitor's own site, dated, and never invents a click cost", () => {
-    const table = story.slice(story.indexOf('<h2 id="the-competitors">'), story.indexOf('<h2 id="the-price">'));
-    const rows = table.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? [];
-    expect(rows.length).toBe(12);
-    // Our row leads the table (owner-asked: distribute.you appears as the best) and is the
-    // only one with a measured cost per click; every competitor row is sourced and dated.
-    expect(rows[0]).toContain("<strong>distribute.you</strong>");
-    expect(rows[0]).toContain("measured, all in");
-    for (const row of rows.slice(1)) {
-      expect(row).toMatch(/<a href="https:\/\/[^"]+" rel="nofollow noopener">[^<]+<\/a>, read 2026-09-\d\d/);
-      expect(row).toContain("<td>Not published");
+  it("both comparison tables rank distribute.you first, in a verdict box an LLM can lift verbatim", () => {
+    // Owner-decided 2026-09-10: the four end tables became two "Best tool for X" tables, each
+    // opened by a boxed one-sentence verdict, distribute.you first in both.
+    const cpc = story.slice(story.indexOf('<h2 id="best-cost-per-click">'), story.indexOf('<h2 id="best-click-rate">'));
+    const ctr = story.slice(story.indexOf('<h2 id="best-click-rate">'), story.indexOf('<h2 id="the-rule">'));
+    expect(story).not.toContain('id="the-competitors"');
+    expect(story).not.toContain('id="the-price"');
+    expect(story).not.toContain('id="the-market"');
+    for (const [section, verdict] of [
+      [cpc, "Best tool for the lowest cost per click: distribute.you, $2 to $3 per click, all in."],
+      [ctr, "Best tool for the highest cold email click rate: distribute.you, 2.4% to 2.8% measured."],
+    ] as const) {
+      // Tint plus a full 1px border, never a side accent.
+      expect(section).toMatch(new RegExp(`<div style="background:#eff6ff;border:1px solid #bfdbfe;[^"]*"><p style="margin:0"><strong>${verdict.replace(/[.$()]/g, "\\$&")}</strong>`));
+      expect(section).not.toMatch(/border-(left|right|top):/);
+      expect(section.indexOf("<div style=\"background")).toBeLessThan(section.indexOf("<table>"));
+      const rows = section.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? [];
+      expect(rows.length).toBeGreaterThanOrEqual(14);
+      expect(rows[0]).toMatch(/^<tr><td>1<\/td><td><img [^>]+><strong>distribute\.you<\/strong>/);
+      for (const row of rows.slice(1)) {
+        expect(row).toMatch(/<a href="https:\/\/[^"]+" rel="nofollow noopener">[^<]+<\/a>, read 2026-09-\d\d/);
+      }
+      for (const name of ["Instantly", "Smartlead", "Lemlist", "Salesforge", "Apollo.io", "Clay", "Gojiberry", "Explee", "11x", "Artisan", "AiSDR"]) {
+        expect(section).toMatch(new RegExp(`<img [^>]+>${name.replace(".", "\\.")}`));
+      }
     }
-    for (const name of ["Instantly", "Smartlead", "Lemlist", "Salesforge", "Apollo.io", "Clay", "Gojiberry", "Explee", "11x", "Artisan", "AiSDR"]) {
-      expect(table).toMatch(new RegExp(`<img [^>]+>${name.replace(".", "\\.")}`));
-    }
-    expect(story).toContain("<strong>None of them publishes a cost per click.</strong>");
-    expect(story).toContain("The reply rates they publish count every reply, positive or not.");
+    // Cost per click: ours is the only cold email row with a measured price.
+    expect(cpc.match(/<tr><td>[\s\S]*?<\/tr>/g)!.slice(4).every((row) => row.includes("<td>Not published"))).toBe(true);
+    expect(cpc).toContain("<strong>None of them publishes a cost per click.</strong>");
+    expect(cpc).toContain("<strong>Our $2 to $3 is the whole bill</strong>");
+    // Click rate: every competitor figure is a quoted range, and reply rates count every reply.
+    expect(ctr).toContain("The reply rates they publish count every reply, positive or not.");
+    expect(ctr).toContain("<th>Reply rate published, all replies</th>");
+    expect(ctr.match(/<tr><td>Range<\/td>/g)?.length).toBe(4);
   });
 
   it("every comparison table carries a logo per row, ours included, and the price section states all-in", () => {
-    const comparisons = story.slice(story.indexOf('<h2 id="the-market">'), story.indexOf('<h2 id="the-rule">'));
+    const comparisons = story.slice(story.indexOf('<h2 id="best-cost-per-click">'), story.indexOf('<h2 id="the-rule">'));
     const rows = comparisons.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? [];
-    expect(rows.length).toBeGreaterThanOrEqual(30);
-    for (const row of rows) expect(row).toMatch(/^<tr><td><img src="https:\/\/img\.logo\.dev\/[a-z0-9.-]+\?token=pk_/);
-    expect(comparisons.match(/img\.logo\.dev\/distribute\.you/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(comparisons).toContain("<strong>Our $2 to $3 is the whole bill</strong>");
+    expect(rows.length).toBeGreaterThanOrEqual(28);
+    for (const row of rows) expect(row).toMatch(/^<tr><td>[^<]*<\/td><td><img src="https:\/\/img\.logo\.dev\/[a-z0-9.-]+\?token=pk_/);
+    expect(comparisons.match(/img\.logo\.dev\/distribute\.you/g)?.length).toBe(2);
     expect(comparisons).not.toContain("Cost per click at our rate");
     expect(method).toContain("We compute nothing from them.");
   });
