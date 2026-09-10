@@ -178,12 +178,13 @@ describe("cost-per-click article: dataset coherence", () => {
     for (const svg of bars) {
       const notes = [...svg.matchAll(/([\d.]+) clicks per 1,000 emails, ([\d,]+) emails/g)];
       expect(notes.length).toBeGreaterThan(0);
-      // The lunch-hour bucket is drawn and labelled "(thin)" without a price, owner-asked.
+      // A thin bucket (lunch hour, follow-up 2, 2 to 3 paragraphs) is drawn and labelled "(thin)"
+      // with a "shown, not priced" footer, owner-asked; it may sit under either floor.
       const drawnNotPriced = svg.includes("shown, not priced");
       for (const [, ctr, emails] of notes) {
         const n = Number(emails.replace(/,/g, ""));
         const clicks = (Number(ctr) * n) / 1000;
-        if (drawnNotPriced && n < MIN_EMAILS) continue;
+        if (drawnNotPriced && (n < MIN_EMAILS || Math.round(clicks) < MIN_CLICKS)) continue;
         expect(n).toBeGreaterThanOrEqual(MIN_EMAILS);
         expect(Math.round(clicks)).toBeGreaterThanOrEqual(MIN_CLICKS);
       }
@@ -205,11 +206,20 @@ describe("cost-per-click article: dataset coherence", () => {
     }
   });
 
-  it("names the models that ran and states the Chinese models as not yet priceable", () => {
-    for (const model of ["Gemini 3.1 Pro", "Gemini 3.5 Flash-Lite", "DeepSeek V4 Pro", "GLM 5.3"]) {
-      expect(html).toContain(model);
+  it("names the models that ran in Method, and the story says nothing about the unpriceable Chinese models", () => {
+    // Owner-decided 2026-09-10: 67 emails on DeepSeek/GLM is not a finding, so the story does
+    // not mention them; Method still names every model that ran.
+    for (const model of ["Gemini 3.1 Pro", "Gemini 3.5 Flash-Lite", "DeepSeek V4 Pro", "GLM 5.2 to 5.3"]) {
+      expect(method).toContain(model);
     }
-    expect(story).toContain("Not enough to price yet.");
+    expect(story).not.toMatch(/Chinese|DeepSeek|GLM|Not enough to price/);
+  });
+
+  it("a thin bucket is drawn and labelled (thin), never dropped to a footnote", () => {
+    // Owner-asked 2026-09-10 ("remets la barre"): Follow-up 2 (19 clicks) and 2 to 3 paragraphs
+    // (508 emails) are drawn like the lunch hour, with a "shown, not priced" footer.
+    for (const label of ["Follow-up 2 (thin)", "2 to 3 (thin)", "Noon to 1pm (thin)"]) expect(story).toContain(label);
+    expect(story).not.toMatch(/too few to price/);
   });
 
   it("states the limits rather than hiding them", () => {
