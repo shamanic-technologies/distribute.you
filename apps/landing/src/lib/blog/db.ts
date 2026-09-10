@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { isPreviewArticle } from "./preview";
 import { unstable_cache } from "next/cache";
 
 export interface BlogArticle {
@@ -171,7 +172,9 @@ export const listArticles = unstable_cache(
         ORDER BY published_at DESC
         LIMIT ${limit}
       `) as RawBlogArticle[];
-      return rows.map(mapRow);
+      // A preview article is in the table so its page renders behind the lab password;
+      // it is not listed anywhere (/blog, the sitemap) until the flag comes off.
+      return rows.map(mapRow).filter((a) => !isPreviewArticle(a.slug));
     } catch (err) {
       if (isMissingBlogTable(err)) {
         console.warn(
