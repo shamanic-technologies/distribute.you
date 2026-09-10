@@ -37,32 +37,18 @@
     <rect x="80" y="180" width="110" height="10" rx="5" fill="#cbd5e1"/>
     <rect x="80" y="198" width="150" height="10" rx="5" fill="#2563eb"/>
     <path d="M236 206 L236 256 L249 244 L258 265 L268 261 L259 240 L277 240 Z" fill="#0f172a" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
-    <text x="330" y="150" font-size="88" font-weight="800" fill="#0f172a">$11</text>
-    <text x="330" y="190" font-size="20" fill="#64748b">per click, on average</text>
-    <text x="330" y="222" font-size="18" fill="#2563eb" font-weight="600">6 clicks per 1,000 emails</text>
+    <text x="330" y="150" font-size="88" font-weight="800" fill="#0f172a">$4</text>
+    <text x="330" y="190" font-size="20" fill="#64748b">per click, all workflows tested</text>
+    <text x="330" y="222" font-size="18" fill="#2563eb" font-weight="600">19 clicks per 1,000 emails</text>
   </g>
 
-  <!-- right: the spread, one dot per client -->
+  <!-- right: the workflow we run for you -->
   <g transform="translate(820,380)">
     <rect x="0" y="0" width="570" height="330" rx="28" fill="#0f172a" filter="url(#shadow)"/>
-    <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">ONE DOT PER CLIENT</text>
-    <line x1="40" y1="190" x2="530" y2="190" stroke="#334155" stroke-width="3"/>
-    <text x="40" y="240" font-size="18" fill="#94a3b8">$1</text>
-    <text x="530" y="240" font-size="18" fill="#94a3b8" text-anchor="end">$45</text>
-    <circle cx="48" cy="190" r="11" fill="#93c5fd"/>
-    <circle cx="62" cy="168" r="11" fill="#93c5fd"/>
-    <circle cx="74" cy="190" r="11" fill="#93c5fd"/>
-    <circle cx="80" cy="212" r="11" fill="#93c5fd"/>
-    <circle cx="86" cy="146" r="11" fill="#93c5fd"/>
-    <circle cx="100" cy="190" r="11" fill="#93c5fd"/>
-    <circle cx="106" cy="168" r="11" fill="#93c5fd"/>
-    <circle cx="150" cy="190" r="11" fill="#93c5fd"/>
-    <circle cx="188" cy="190" r="11" fill="#93c5fd"/>
-    <circle cx="232" cy="190" r="11" fill="#93c5fd"/>
-    <circle cx="520" cy="190" r="11" fill="#93c5fd"/>
-    <line x1="112" y1="110" x2="112" y2="150" stroke="#ffffff" stroke-width="3" stroke-dasharray="6 5"/>
-    <text x="112" y="100" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">median $7</text>
-    <text x="40" y="292" font-size="17" fill="#cbd5e1">Half of our clients pay between $4 and $13.</text>
+    <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">THE WORKFLOW WE RUN FOR YOU</text>
+    <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$2 to $3</text>
+    <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 39 workflows</text>
+    <text x="40" y="292" font-size="17" fill="#94a3b8">Leads, writing, sending and the team, all in the price.</text>
   </g>
 
   <!-- brand, inside the safe zone -->
