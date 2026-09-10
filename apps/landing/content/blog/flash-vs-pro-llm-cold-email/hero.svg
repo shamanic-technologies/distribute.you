@@ -27,7 +27,7 @@
   <!-- title block, centred -->
   <text x="800" y="150" font-size="24" letter-spacing="3" fill="#2563eb" font-weight="600" text-anchor="middle">COLD EMAIL AND LLMS</text>
   <text x="800" y="240" font-size="72" font-weight="800" fill="#0f172a" text-anchor="middle">Flash or Pro?</text>
-  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">117,000 emails, 17 workflows A/B tested. Our best model, not the average.</text>
+  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">120,000 emails, 17 A/B tests. Our best model, not the average.</text>
 
   <!-- left card: flash -> click -->
   <g transform="translate(210,380)">
