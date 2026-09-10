@@ -16,10 +16,14 @@ describe("a preview article is behind the lab password and listed nowhere", () =
     expect(new Set(flagged)).toEqual(new Set(PREVIEW_ARTICLE_SLUGS));
   });
 
-  it("matches the article path and nothing else", () => {
-    expect(previewArticleSlugFor("/blog/cost-per-click-cold-email")).toBe("cost-per-click-cold-email");
-    expect(previewArticleSlugFor("/blog/cost-per-click-cold-email/")).toBe("cost-per-click-cold-email");
-    expect(previewArticleSlugFor("/blog/flash-vs-pro-llm-cold-email")).toBeNull();
+  it("matches only a preview article's own path; a published article is never gated", () => {
+    // cost-per-click-cold-email was released 2026-09-10 (owner: "enleve le pwd"), so the set is
+    // empty today and every published slug resolves to null.
+    for (const slug of readdirSync(join(root, "content/blog"))) {
+      if (isPreviewArticle(slug)) continue;
+      expect(previewArticleSlugFor(`/blog/${slug}`)).toBeNull();
+      expect(previewArticleSlugFor(`/blog/${slug}/`)).toBeNull();
+    }
     expect(previewArticleSlugFor("/blog")).toBeNull();
     expect(previewArticleSlugFor("/blog/cost-per-click-cold-email/hero.png")).toBeNull();
     expect(isPreviewArticle("nope")).toBe(false);
