@@ -120,8 +120,9 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
   it("the A/B section names the winner of each outcome and the gap distribute.you hands its clients", () => {
     const spread = section("the-spread");
     expect(spread).toContain("17 workflows, one winner per outcome");
-    expect(spread).toContain("Lithium");
-    expect(spread).toContain("Rampart, Flash");
+    expect(spread).toContain("Positive replies per 10,000 emails by workflow, Pro");
+    expect(spread).toContain("Cost per website visit by workflow, Flash");
+    expect(spread).toContain("Cost per website visit by workflow, Pro");
     expect(spread).toContain("<strong>This is the gap distribute.you gives its clients.</strong>");
     expect(spread).toContain("They get its winner");
   });
@@ -163,14 +164,40 @@ describe("flash-or-pro article: editorial rules", () => {
       "9. Local time of delivery", "10. Day of the week",
     ]) expect(cuts).toContain(`<h3>${h}</h3>`);
     // Every cut prices the click on both tiers and rates the reply on Pro.
-    expect((cuts.match(/Cost per website visit by /g) ?? []).length).toBeGreaterThanOrEqual(10);
+    expect((cuts.match(/Cost per website visit by /g) ?? []).length).toBeGreaterThanOrEqual(20);
     expect((cuts.match(/Positive replies per 10,000 emails by /g) ?? []).length).toBeGreaterThanOrEqual(9);
   });
 
-  it("the twist states that every positive reply came from an email with no link", () => {
+  it("the twist states that every positive reply came from an email with no link, and prices no visit on an email that had nothing to click", () => {
     const twist = section("the-twist");
     expect(twist).toContain("<strong>every one came from an email with no link in it</strong>");
-    expect(twist).toContain("these clicks are the unsubscribe footer");
+    expect(twist).not.toContain("<svg");
+    expect(html).not.toMatch(/no link<\/text>/);
+    expect(html).not.toMatch(/Cost per website visit by tier and by link/);
+  });
+
+  it("names no workflow: a workflow is a number on the page, never a codename", () => {
+    // Owner rule (2026-09-10): nobody outside the team knows the codenames, so
+    // the page numbers workflows per tier and names the model instead.
+    const codenames = /\b(Lithium|Rampart|Permafrost|Pelican|Legato|Azalea|Ballad|Osprey|Bronze|Cerulean|Tectonic|Cirque|Alnitak|Dawn|Trailblazer|Vector|Arcadia|Nobelium|Maelstrom|Lyonesse)\b/;
+    expect(html).not.toMatch(codenames);
+    expect(hero).not.toMatch(codenames);
+    expect(JSON.stringify(meta)).not.toMatch(codenames);
+    expect(html).toContain("Pro workflow 1");
+    expect(html).toContain("Flash workflow 1");
+  });
+
+  it("every chart is one tier: Flash and Pro never alternate inside a chart", () => {
+    for (const svg of svgs) {
+      const labels = [...svg.matchAll(/<text x="0" y="\d+" font-size="14" fill="#475569">([^<]*)<\/text>/g)].map((m) => m[1]);
+      const flash = labels.filter((l) => /Flash/.test(l)).length;
+      const pro = labels.filter((l) => /\bPro\b/.test(l)).length;
+      // A chart may state both tiers only as whole-tier rows (the two headline charts), never as per-bucket pairs.
+      if (flash && pro) expect(labels.length).toBeLessThanOrEqual(4);
+    }
+    const cuts = section("ten-cuts");
+    expect((cuts.match(/Cost per website visit by [^"<]*, Flash \(USD/g) ?? []).length).toBeGreaterThanOrEqual(10);
+    expect((cuts.match(/Cost per website visit by [^"<]*, Pro \(USD/g) ?? []).length).toBeGreaterThanOrEqual(10);
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
@@ -250,7 +277,7 @@ describe("flash-or-pro article: dataset coherence", () => {
   });
 
   it("every workflow row that states a CPPR has at least ten replies, and every CPWV at least 20 visits", () => {
-    const rows = html.match(/<tr><td>[A-Z][a-z0-9-]+<\/td><td>(Flash|Pro)<\/td>.*?<\/tr>/g) ?? [];
+    const rows = html.match(/<tr><td>(Flash|Pro) workflow \d+<\/td><td>(Flash|Pro)<\/td>.*?<\/tr>/g) ?? [];
     expect(rows.length).toBe(17);
     for (const row of rows) {
       const cells = [...row.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
@@ -274,7 +301,7 @@ describe("flash-or-pro article: dataset coherence", () => {
       }
     }
     expect(method).toContain("A click pair is priced only at 1,000 emails and 20 clicks.");
-    expect(method).toContain("priced at 10. A workflow's reply is priced at 10 replies, which only Lithium clears.");
+    expect(method).toContain("priced at 10. A workflow's reply is priced at 10 replies, which only the best Pro workflow clears.");
     expect(html).toContain("too few to price");
     expect(html).toContain("too few to rate");
   });
