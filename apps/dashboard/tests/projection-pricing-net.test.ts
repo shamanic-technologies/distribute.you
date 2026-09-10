@@ -66,6 +66,11 @@ describe("every Overview money reader asks for net pricing", () => {
     "fetchFeatureAudienceStats",
     "getWorkflowProjectionLadder",
     "getFeaturePipelineActivity",
+    // The campaign's per-workflow table and the one-workflow drill-down behind it.
+    // Both answer about money, both sit beside the campaign's own net cards, and a
+    // gross figure there would state a different basis inches from a net one.
+    "getFeatureRevenueByWorkflow",
+    "getWorkflowRevenue",
   ]) {
     it(`${reader} requests net pricing`, () => {
       expect(readerBody(reader)).toContain('query.set("pricing", "net")');

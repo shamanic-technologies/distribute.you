@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getBrandOffer, getCampaign } from "@/lib/api";
+import { getBrandOffer, getCampaign, listChannelWorkflows } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { CampaignTitle } from "@/components/campaigns/campaign-title";
@@ -45,6 +45,8 @@ export interface OfferRoute {
   funnelKey: string | null;
   /** Present only on `.../funnels/:funnelKey/legs/:legKey`. */
   legKey: string | null;
+  /** Present only on `.../campaigns/:campaignId/workflows/:workflowDynastySlug`. */
+  workflowDynastySlug: string | null;
 }
 
 /**
@@ -76,6 +78,14 @@ export function offerRouteFromPath(pathname: string): OfferRoute | null {
     // `Offer / <funnel>` and never named the arrow it had opened, so two
     // different legs of one funnel wore the same crumb.
     legKey: funnelKey !== null && sixth === "legs" && seventh ? decodeURIComponent(seventh) : null,
+    // ONE WORKFLOW of that campaign — the deepest thing a campaign path names. Read
+    // off the same two segments the leg is read off, one level under the campaign, so
+    // a future level shift breaks here with a test on it rather than in whichever
+    // component hardcoded an index.
+    workflowDynastySlug:
+      section === "campaigns" && fourth && sixth === "workflows" && seventh
+        ? decodeURIComponent(seventh)
+        : null,
   };
 }
 
@@ -146,6 +156,19 @@ export function HeaderPageContext() {
     { enabled: route?.campaignId != null, ...pollOptions },
   );
 
+  // The workflow crumb's LABEL. Keyed on the channel the campaign states — byte-equal
+  // to the key the Workflows table polls, so the bar costs no request there either —
+  // and resolved through the catalogue rather than by prettifying the slug.
+  const campaignFeatureSlug = campaignQ.data?.campaign?.featureSlug ?? null;
+  const workflowsQ = useAuthQuery(
+    ["workflows", campaignFeatureSlug ?? "none"],
+    () => listChannelWorkflows(campaignFeatureSlug as string),
+    {
+      enabled: route?.workflowDynastySlug != null && campaignFeatureSlug !== null,
+      ...pollOptions,
+    },
+  );
+
   if (!route) return null;
 
   const brandPath = `/orgs/${route.orgId}/brands/${route.brandId}`;
@@ -168,6 +191,14 @@ export function HeaderPageContext() {
   // renders no crumb rather than a guessed one, and the crumb simply arrives with
   // the campaign read the bar already makes.
   const funnelKey = route.funnelKey ?? campaign?.funnelKey ?? null;
+  // Null only while the catalogue read is in flight — a settled read that does not
+  // describe the slug falls back to the slug, which is a true name for it.
+  const workflowName =
+    route.workflowDynastySlug === null
+      ? null
+      : (workflowsQ.data?.find((w) => w.workflowDynastySlug === route.workflowDynastySlug)
+          ?.workflowDynastyName ??
+        (workflowsQ.isPending && !workflowsQ.isError ? null : route.workflowDynastySlug));
   // The funnel off the shared catalogue — the same one the table and the campaign
   // crumb resolve it from, never a second spelling.
   const funnelDef = funnelKey ? campaignFunnel(funnelKey as SalesFunnelKeyWire) : null;
@@ -255,9 +286,39 @@ export function HeaderPageContext() {
               channel it buys it on — by the same component the Campaigns table
               renders, marks included. */}
           {campaign ? (
-            <CampaignTitle campaign={campaign} className="font-medium text-gray-800" />
+            route.workflowDynastySlug !== null ? (
+              <Link
+                href={`${offerPath}/campaigns/${route.campaignId}`}
+                className="flex min-w-0 items-center gap-1.5 text-gray-500 transition hover:text-gray-800"
+              >
+                <CampaignTitle campaign={campaign} />
+              </Link>
+            ) : (
+              <CampaignTitle campaign={campaign} className="font-medium text-gray-800" />
+            )
           ) : (
             <CrumbSkeleton width="w-28" />
+          )}
+        </>
+      )}
+
+      {route.workflowDynastySlug !== null && (
+        <>
+          <Separator />
+          {/* The workflow, named as the DYNASTY the drill-down is keyed on — the
+              catalogue's own display name, off the key the table already polls, so the
+              crumb and the row cannot call one workflow two things. A slug neither
+              source describes falls back to the slug itself rather than a blank crumb;
+              it is where you already are, so it is never a link. */}
+          {workflowName === null ? (
+            <CrumbSkeleton width="w-28" />
+          ) : (
+            <span
+              aria-current="page"
+              className="flex min-w-0 items-center gap-1.5 font-medium text-gray-800"
+            >
+              <span className="truncate">{workflowName}</span>
+            </span>
           )}
         </>
       )}

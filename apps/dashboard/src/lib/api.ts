@@ -12,6 +12,11 @@ import type { ChannelFunnelEconomicsPair } from "./funnel-leg-price";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
+import type {
+  WorkflowCatalogueRow,
+  WorkflowRevenueGroup,
+  FleetWorkflowCost,
+} from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
 import type { ReplyKind } from "./reply-kind";
@@ -4228,6 +4233,235 @@ export async function getFeatureRevenueByCampaign(
     websiteClicks: g.outcomes?.recipientsClicked,
     cpprCents: g.outcomes?.cpprCents,
     cpcCents: g.outcomes?.cpcCents,
+  }));
+}
+
+// ─── The WORKFLOWS a campaign's channel runs ─────────────────────────────────
+// A campaign is (offer x funnel x channel) and the channel is worked by a WORKFLOW.
+// Three reads answer "which workflows could run this, which one is, and what did
+// each do for me": the channel's catalogue (workflow-service), this campaign's money
+// per workflow (features-service `?groupBy=workflow`), and one workflow's whole body
+// (the same un-grouped read narrowed by `?workflow=`).
+//
+// The join between them is the DYNASTY slug — a workflow's identity across its
+// versions, which both producers already speak. Everything else lives in the
+// alias-free `lib/campaign-workflow-rows`.
+
+/**
+ * The wire row `GET /v1/workflows` serves.
+ *
+ * Deliberately NARROW: only what the table renders plus the two keys it joins on.
+ * `dag` is on the wire and is NOT declared — a DAG serializes to hundreds of KB and
+ * this surface parses nothing out of it (the model and the template are workflow-
+ * service's to state, and it states neither today; a consumer reading them out of the
+ * DAG would be re-deriving another service's answer from its internals).
+ *
+ * `.nullish()` on every tag: workflow-service serves them nullable, and a row missing
+ * one renders without it rather than failing the whole read.
+ */
+const WorkflowCatalogueWireSchema = z.object({
+  workflowSlug: z.string(),
+  workflowDynastySlug: z.string(),
+  workflowDynastyName: z.string(),
+  version: z.number(),
+  status: z.string().nullish(),
+  channel: z.string().nullish(),
+  audienceType: z.string().nullish(),
+  // The gateway computes this for every row (one deduped key-service call per list
+  // request), so a consumer never fans out per workflow for it.
+  requiredProviders: z
+    .array(z.object({ name: z.string(), domain: z.string().nullable() }))
+    .nullish(),
+});
+const WorkflowCatalogueResponseSchema = z.object({
+  workflows: z.array(WorkflowCatalogueWireSchema),
+});
+
+/**
+ * GET /v1/workflows?featureSlug= — the workflows a channel currently offers.
+ *
+ * The gateway forwards `featureSlug` and asks workflow-service for its EXECUTABLE
+ * set, so a RETIRED dynasty this campaign once ran is absent here by construction.
+ * That is why the table is a union with the revenue groups rather than a walk of
+ * this list: dropping a retired workflow would delete the campaign's own history
+ * from the page that exists to show it.
+ */
+export async function listChannelWorkflows(
+  featureSlug: string,
+  token?: string,
+): Promise<WorkflowCatalogueRow[]> {
+  const query = new URLSearchParams({ featureSlug });
+  const raw = await apiCall<unknown>(`/workflows?${query.toString()}`, { token });
+  const parsed = WorkflowCatalogueResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listChannelWorkflows: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] listChannelWorkflows: invalid response shape");
+  }
+  return parsed.data.workflows.map((w) => ({
+    workflowSlug: w.workflowSlug,
+    workflowDynastySlug: w.workflowDynastySlug,
+    workflowDynastyName: w.workflowDynastyName,
+    version: w.version,
+    status: w.status ?? null,
+    channel: w.channel ?? null,
+    audienceType: w.audienceType ?? null,
+    requiredProviders: w.requiredProviders ?? [],
+  }));
+}
+
+/**
+ * The VOLUME half of a workflow group, read verbatim under features-service's own
+ * names — the same block `?groupBy=campaignId` already serves.
+ *
+ * NULLISH, both halves load-bearing, for the reason the campaign block states: ABSENT
+ * covers a producer that predates it, NULL is the producer's own word for "no funnel
+ * is wired for this channel and the leads were never read". Reading it `.optional()`
+ * refuses that null and blanks the whole table.
+ */
+const WorkflowRevenueOutcomesSchema = z.object({
+  recipientsContacted: z.number().nullish(),
+  recipientsClicked: z.number().nullish(),
+  recipientsRepliesPositive: z.number().nullish(),
+  cpprCents: z.number().nullish(),
+  cpcCents: z.number().nullish(),
+});
+const FeatureRevenueByWorkflowSchema = z.object({
+  groupBy: z.string(),
+  groups: z.array(
+    z.object({
+      workflowDynastySlug: z.string(),
+      // Null when workflow-service does not describe the slug — the producer says so
+      // rather than inventing a name, and the row falls back to the slug.
+      workflowDynastyName: z.string().nullish(),
+      workflowSlugs: z.array(z.string()),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: CampaignRevenueCostEconomicsSchema,
+      outcomes: WorkflowRevenueOutcomesSchema.nullish(),
+    }),
+  ),
+});
+
+/**
+ * GET /features/:slug/revenue?groupBy=workflow — one lean money row per workflow
+ * dynasty, SCOPED TO ONE CAMPAIGN.
+ *
+ * `campaignId` is what makes the page honest: without it the read answers for the
+ * whole BRAND, and printing a brand-grain figure under a campaign's name is the
+ * wrong-scope bug this repo keeps recording. Measured in prod before features-service
+ * honoured it (brand `01800fc5`, 53 campaigns): the campaign-scoped read returned all
+ * five of the brand's dynasties at the brand's own spend, to the cent.
+ *
+ * pricing=net, like every other money read here — the org's frozen post-discount
+ * figures, so this table cannot state a different basis from the cards above it.
+ */
+export async function getFeatureRevenueByWorkflow(
+  featureSlug: string,
+  brandId: string,
+  campaignId: string,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, campaignId, groupBy: "workflow" });
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    { token },
+  );
+  const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByWorkflow: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByWorkflow: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    workflowDynastySlug: g.workflowDynastySlug,
+    workflowDynastyName: g.workflowDynastyName ?? null,
+    workflowSlugs: g.workflowSlugs,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    committedCostUsd: g.costEconomics.committedCostUsd ?? null,
+    roiMultiple: g.costEconomics.roiMultiple,
+    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
+    recipientsContacted: g.outcomes?.recipientsContacted ?? null,
+    recipientsClicked: g.outcomes?.recipientsClicked ?? null,
+    recipientsRepliesPositive: g.outcomes?.recipientsRepliesPositive ?? null,
+    cpprCents: g.outcomes?.cpprCents ?? null,
+    cpcCents: g.outcomes?.cpcCents ?? null,
+  }));
+}
+
+/**
+ * GET /features/:slug/revenue?campaignId=&workflow=<dynastySlug> — ONE workflow's
+ * whole body, for the drill-down.
+ *
+ * Not a new computation: it is the same un-grouped body every campaign Overview
+ * reads, narrowed to the leads that workflow served and the spend it incurred. So the
+ * drill-down renders through the SAME `parseFeatureRevenue` and the same cards, and a
+ * figure cannot mean one thing on the campaign page and another one click in.
+ *
+ * `workflow` and `groupBy` are mutually exclusive at the producer (400) — a body is
+ * either one workflow's answer or a table of them, never both.
+ */
+export async function getWorkflowRevenue(
+  featureSlug: string,
+  brandId: string,
+  campaignId: string,
+  workflowDynastySlug: string,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ brandId, campaignId, workflow: workflowDynastySlug });
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    { token },
+  );
+  return parseFeatureRevenue(raw, "getWorkflowRevenue");
+}
+
+/**
+ * GET /v1/public/features/workflow-cost-per-outcome — the FLEET's per-workflow rate.
+ *
+ * Public, no org, no auth: it answers "what does this workflow cost everyone",
+ * which is a property of the workflow rather than of this customer. Its own
+ * `costBasis` is `incurred` — comped spend counts at full value — so it is NOT the
+ * same question as the charged figures beside it, and the surface says so rather
+ * than charting the two as one series.
+ */
+const FleetWorkflowCostSchema = z.object({
+  objective: z.string(),
+  workflows: z.array(
+    z.object({
+      workflowDynastySlug: z.string(),
+      workflowDynastyName: z.string(),
+      spentUsd: z.number(),
+      costPerOutcomeUsd: z.number().nullable(),
+    }),
+  ),
+});
+
+export async function getFleetWorkflowCost(
+  featureSlug: string,
+  objective: string,
+  token?: string,
+): Promise<FleetWorkflowCost[]> {
+  const query = new URLSearchParams({ featureSlug, objective });
+  const raw = await apiCall<unknown>(
+    `/public/features/workflow-cost-per-outcome?${query.toString()}`,
+    { token },
+  );
+  const parsed = FleetWorkflowCostSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFleetWorkflowCost: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFleetWorkflowCost: invalid response shape");
+  }
+  return parsed.data.workflows.map((w) => ({
+    workflowDynastySlug: w.workflowDynastySlug,
+    workflowDynastyName: w.workflowDynastyName,
+    spentUsd: w.spentUsd,
+    costPerOutcomeUsd: w.costPerOutcomeUsd,
   }));
 }
 

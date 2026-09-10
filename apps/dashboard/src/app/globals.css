@@ -240,6 +240,7 @@ html.dark .from-white { --tw-gradient-from: var(--dy-surface); }
 html.dark .to-gray-50 { --tw-gradient-to: var(--dy-bg-alt); }
 html.dark .bg-gray-100 { background-color: var(--dy-surface-hi); }
 html.dark .bg-gray-200 { background-color: var(--dy-surface-hi); }
+html.dark .bg-gray-300 { background-color: var(--dy-border-hi); }
 /* Skeleton / elevated dark: variants used directly in markup. */
 html.dark .bg-gray-800 { background-color: var(--dy-surface); }
 html.dark .bg-gray-700 { background-color: var(--dy-surface-hi); }
