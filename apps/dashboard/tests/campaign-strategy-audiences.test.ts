@@ -40,8 +40,10 @@ describe('campaign-level Audiences route', () => {
     const src = read('../src/components/context-sidebar.tsx');
     const at = src.indexOf('function CampaignLevelSidebar(');
     expect(at).toBeGreaterThan(-1);
-    // Measured: the item list ends well inside 1600 chars of the signature.
-    const body = src.slice(at, at + 1600);
+    // Bounded by the NEXT top-level declaration rather than a measured length: the
+    // number expired the first time the function gained a comment, and the failure
+    // read as the Audiences row having been deleted.
+    const body = src.slice(at, src.indexOf("\nfunction ", at + 1));
     expect(body).toContain('href: `${campaignBase}/audiences`');
     expect(body).not.toContain('href: `${campaignBase}/strategy`');
     expect(body).not.toContain('href: `${basePath}/strategy`');

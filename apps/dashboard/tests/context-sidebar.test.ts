@@ -149,12 +149,16 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
-  it("drops the Workflows entry — it was alpha-gated, so it rendered for nobody", () => {
-    // `useFeatureFlag` returns false unconditionally in the dashboard, so this entry
-    // was invisible to everyone and its page URL-reachable only. Workflows lives in
-    // `apps/admin`, where the gate resolves; the dashboard copy is deleted.
+  it("drops the BRAND-level Workflows entry — it was alpha-gated, so it rendered for nobody", () => {
+    // `useFeatureFlag` returns false unconditionally in the dashboard, so that entry
+    // was invisible to everyone and its page URL-reachable only; the brand copy of
+    // the workflow editor lives in `apps/admin`, where the gate resolves.
+    //
+    // A CAMPAIGN-level `Workflows` entry exists and is a different surface: it lists
+    // the workflows that campaign's channel can run and what each did for it, gated
+    // on the EMAIL allowlist (which actually evaluates) with the badge on the nav
+    // row. So the ban is on the brand-level href, never on the word.
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).not.toContain('"Workflows"');
     expect(content).not.toContain('`${basePath}/workflows`');
   });
 

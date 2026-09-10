@@ -55,8 +55,14 @@ describe("Campaigns page (GA)", () => {
     expect(page).not.toContain("MaturityBadge");
     // The campaign-level nav rows (Overview / Leads / Strategy / Audiences) drop
     // their badges too — a GA surface states no maturity.
-    const campaignSidebar = sidebar.slice(sidebar.indexOf("function CampaignLevelSidebar("));
-    expect(campaignSidebar).not.toContain('maturity: "beta"');
+    const campaignAt = sidebar.indexOf("function CampaignLevelSidebar(");
+    const campaignSidebar = sidebar.slice(campaignAt, sidebar.indexOf("\nfunction ", campaignAt + 1));
+    // The GA rows state no maturity. The one row that does is the BETA Workflows
+    // entry, which is a different surface and must carry its badge — so the guard
+    // pins WHICH row it sits on rather than banning the word from the function.
+    const betaRows = campaignSidebar.match(/maturity: "beta" as Maturity/g) ?? [];
+    expect(betaRows).toHaveLength(1);
+    expect(campaignSidebar).toContain('id: "campaign-workflows"');
   });
 
   // The surface is called Campaigns everywhere it is named: nav entry, page

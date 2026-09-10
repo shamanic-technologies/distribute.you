@@ -49,7 +49,10 @@ describe("no alpha gating in the dashboard", () => {
       "app/(authed)/(dashboard)/workflows",
       "app/(authed)/(dashboard)/orgs/[orgId]/services",
       "app/(authed)/services",
-      "components/workflows",
+      // NOT `components/workflows`: the campaign-level Workflows surface lives
+      // there and is gated on the EMAIL allowlist, which actually evaluates. What
+      // was deleted is the ALPHA-gated BRAND workflow editor, whose routes are
+      // still asserted absent above.
     ]) {
       expect(fs.existsSync(path.join(__dirname, "../src", dead)), dead).toBe(false);
     }
@@ -105,7 +108,10 @@ describe("context-sidebar — no alpha gating, badges kept for beta", () => {
   it("carries no link to a deleted surface", () => {
     expect(sidebar).not.toContain("/services/crm");
     expect(sidebar).not.toContain("/brand-info");
-    expect(sidebar).not.toContain("}/workflows");
+    // The deleted surface is the BRAND workflow editor, so the ban names its href.
+    // A whole-file ban on "}/workflows" would also forbid the campaign-level
+    // Workflows entry, which is a different, live, beta-gated surface.
+    expect(sidebar).not.toContain("`${basePath}/workflows`");
   });
 
   // Scope the next assertions to the OrgLevelSidebar function body only —
@@ -127,10 +133,11 @@ describe("context-sidebar — no alpha gating, badges kept for beta", () => {
 
   // Scope to the BrandLevelSidebar function body only. The Brand Settings level
   // was flattened into this sidebar, so its body now runs to ContextSidebar.
-  const brand = sidebar.slice(
-    sidebar.indexOf("function BrandLevelSidebar"),
-    sidebar.indexOf("export function ContextSidebar"),
-  );
+  // Bounded by the NEXT declaration, not by a marker far below it: the old bound
+  // swept in every sidebar function between the two, so an entry added to the
+  // CAMPAIGN level failed a guard about the BRAND one.
+  const brandAt = sidebar.indexOf("function BrandLevelSidebar");
+  const brand = sidebar.slice(brandAt, sidebar.indexOf("\nfunction ", brandAt + 1));
 
   it("no longer offers Brand Info or Workflows (both deleted)", () => {
     expect(brand.length).toBeGreaterThan(0);

@@ -194,6 +194,15 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "audiences",
   // The per-workflow projection behind the best-model card and the budget steps.
   "workflowProjection",
+  // The WORKFLOWS a campaign's channel can run, and what each one did for that
+  // campaign. Four roots, each a different question: the channel's catalogue
+  // (workflow-service), this campaign's money per workflow, ONE workflow's whole
+  // body, and the public cross-org rate. Unlisted, every one of them cold-fetches on
+  // each visit over the slow features read and the table skeletons every time.
+  "workflows",
+  "campaignWorkflowRevenue",
+  "workflowRevenue",
+  "fleetWorkflowCost",
   // Campaigns.
   "campaign",
   "campaigns",

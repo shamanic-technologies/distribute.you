@@ -97,7 +97,10 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "visibilityRuns", "visibilityRun",
       // Went with the flag-gated pages (Workflows, Brand Info, Google CRM), which in
       // this app rendered for nobody: the roots outlived their only readers.
-      "workflow", "workflows", "workflow-summary", "workflow-key-status",
+      // NOT `workflows`: the campaign Workflows table brought the channel catalogue
+      // back as a live read (a BETA surface on the email allowlist, not the dead
+      // alpha gate), so that root is allowlisted again and is asserted live above.
+      "workflow", "workflow-summary", "workflow-key-status",
       "globalRankedWorkflows", "featureWorkflows", "brandExtractedFields", "brandRuns",
       // Orphaned earlier, by the entity-page removals — the allowlist is an INVENTORY
       // of live roots, so a root whose surface is gone must leave it.

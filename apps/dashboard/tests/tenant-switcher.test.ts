@@ -26,12 +26,19 @@ describe("Tenant switcher", () => {
     // GA: the pre-switcher chrome is deleted, not gated off. A surviving
     // `useIsBetaUser` in the sidebar or the shell would mean a second chrome
     // path is still alive and can rot unnoticed.
-    for (const [name, src] of [
-      ["context-sidebar", sidebar],
-      ["layout", layout],
-    ] as const) {
-      expect(src, `${name} must not gate the chrome`).not.toContain("useIsBetaUser");
+    expect(layout, "layout must not gate the chrome").not.toContain("useIsBetaUser");
+    // The sidebar DOES read `useIsBetaUser` — for the beta Workflows NAV ROW inside
+    // `CampaignLevelSidebar`, which is a nav entry rather than a chrome branch. So
+    // the guard pins WHERE it may be read: every call site inside that one function,
+    // and the chrome itself (`<TenantSwitcher />` in each section's topSlot)
+    // unconditional. Banning the name outright would forbid any gated nav row.
+    const campaignAt = sidebar.indexOf("function CampaignLevelSidebar(");
+    const campaignEnd = sidebar.indexOf("\nfunction ", campaignAt + 1);
+    for (let i = sidebar.indexOf("useIsBetaUser("); i !== -1; i = sidebar.indexOf("useIsBetaUser(", i + 1)) {
+      expect(i > campaignAt && i < campaignEnd, "useIsBetaUser outside the campaign nav").toBe(true);
     }
+    expect(sidebar).toContain("topSlot={<TenantSwitcher />}");
+    expect(sidebar).not.toMatch(/topSlot=\{[^}]*isBeta/);
     // The header still reads `useIsBetaUser`, but ONLY for the unrelated beta
     // Profile entry in the account menu — never to branch the chrome.
     expect(header).not.toContain("!isBeta");
