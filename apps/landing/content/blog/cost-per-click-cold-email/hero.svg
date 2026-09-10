@@ -15,6 +15,10 @@
       <stop offset="0" stop-color="#2563eb" stop-opacity="0.18"/>
       <stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
     </linearGradient>
+    <linearGradient id="mark" x1="375" y1="155" x2="375" y2="596" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5786ED"/>
+      <stop offset="1" stop-color="#205CDD"/>
+    </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1e3a8a" flood-opacity="0.16"/>
     </filter>
@@ -38,20 +42,25 @@
     <rect x="80" y="198" width="150" height="10" rx="5" fill="#2563eb"/>
     <path d="M236 206 L236 256 L249 244 L258 265 L268 261 L259 240 L277 240 Z" fill="#0f172a" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
     <text x="330" y="150" font-size="88" font-weight="800" fill="#0f172a">$4</text>
-    <text x="330" y="190" font-size="20" fill="#64748b">per click, all workflows tested</text>
-    <text x="330" y="222" font-size="18" fill="#2563eb" font-weight="600">19 clicks per 1,000 emails</text>
+    <text x="330" y="190" font-size="20" fill="#64748b">per click,</text>
+    <text x="330" y="216" font-size="20" fill="#64748b">all workflows tested</text>
+    <text x="330" y="250" font-size="18" fill="#2563eb" font-weight="600">19 clicks per 1,000 emails</text>
   </g>
 
   <!-- right: the workflow we run for you -->
   <g transform="translate(820,380)">
     <rect x="0" y="0" width="570" height="330" rx="28" fill="#0f172a" filter="url(#shadow)"/>
     <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">THE WORKFLOW WE RUN FOR YOU</text>
-    <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$2 to $3</text>
+    <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$2</text>
     <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 39 workflows</text>
     <text x="40" y="292" font-size="17" fill="#94a3b8">Leads, writing, sending and the team, all in the price.</text>
   </g>
 
-  <!-- brand, inside the safe zone -->
-  <circle cx="800" cy="790" r="9" fill="#2563eb"/>
-  <text x="782" y="797" font-size="22" font-weight="700" fill="#0f172a" text-anchor="end">distribute.you</text>
+  <!-- brand: the mark from public/brand/logo-mark.svg beside the wordmark, inside the safe zone -->
+  <g transform="translate(698,768) scale(0.0587)">
+    <rect width="750" height="750" rx="150" fill="#06060F"/>
+    <rect x="2" y="2" width="746" height="746" rx="148" stroke="#2563EB" stroke-width="4" fill="none"/>
+    <path d="M607.516 364.872C609.36 392.926 605.952 421.301 596.982 447.961C576.156 509.864 525.472 561.138 463.552 581.843C420.185 596.341 373.48 596.211 327.747 595.93C279.238 595.629 230.739 595.328 182.23 595.028C193.075 564.828 203.919 534.619 214.763 504.419C216.688 499.055 218.903 493.32 223.684 490.222C227.983 487.435 233.435 487.395 238.547 487.445C269.777 487.756 301.007 488.056 332.237 488.367C360.631 488.648 389.947 490.062 417.279 480.948C459.343 466.74 490.633 425.091 492.588 380.714C494.542 336.337 467.02 292.101 426.359 274.254C402.175 263.636 375.044 261.992 348.634 262.413C334.162 262.644 318.707 263.787 307.201 272.56C295.635 281.373 291.907 294.718 287.006 307.652C282.105 320.586 276.953 332.197 272.754 345.211C269.136 356.41 262.731 368.011 251.616 371.871C246.685 373.585 241.343 373.555 236.121 373.505C204.751 373.234 173.37 372.954 142 372.683C150.549 341.762 159.9 311.061 170.053 280.631C171.607 275.979 173.461 270.966 177.64 268.409C180.927 266.404 184.997 266.333 188.855 266.333C211.917 266.313 234.969 266.293 258.031 266.273C265.848 266.273 274.327 266.043 280.471 261.2C285.563 257.179 288.008 250.772 290.233 244.676C299.033 220.563 307.823 196.45 316.622 172.336C318.156 168.135 319.8 163.764 323.117 160.766C327.808 156.515 334.693 155.993 341.017 155.723C365.202 154.71 389.546 154.299 413.52 157.678C478.175 166.792 538.361 204.902 573.5 259.947C593.504 291.279 605.091 327.815 607.526 364.882L607.516 364.872Z" fill="url(#mark)"/>
+  </g>
+  <text x="754" y="799" font-size="24" font-weight="700" fill="#0f172a">distribute.you</text>
 </svg>
