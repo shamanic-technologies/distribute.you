@@ -1,7 +1,7 @@
 {
   "slug": "flash-vs-pro-llm-cold-email",
-  "title": "Flash or Pro LLM for cold email? We A/B tested 17 workflows over 117,000 emails",
-  "excerpt": "Every AI vendor sells a cheap Flash tier and a pricier Pro tier. We ran both on 117,000 cold emails and priced every outcome: our best Pro workflow buys a positive reply for $122, our best Flash workflow a website visit for $1, and the winner beats its own tier's average. Ten cuts, Flash against Pro, plus what the industry measured.",
+  "title": "Flash or Pro LLM for cold email? We ran 17 A/B tests over 120,000 emails",
+  "excerpt": "Every AI vendor sells a cheap Flash tier and a pricier Pro tier. We ran both on 120,000 cold emails and priced every outcome: our best Pro workflow buys a positive reply for $122, our best Flash workflow a website visit for $1, and the winner beats its own tier's average. Ten cuts, Flash against Pro, plus what the industry measured.",
   "tags": [
     "cold email",
     "LLM",

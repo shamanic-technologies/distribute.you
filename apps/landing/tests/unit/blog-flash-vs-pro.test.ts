@@ -104,14 +104,14 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
     expect(hero).toContain(`per positive reply, tier ${PRO_CPPR}`);
     expect(hero).toContain("Best workflow, the click");
     expect(hero).toContain("Best workflow, the reply");
-    expect(hero).toContain("117,000 emails, 17 workflows A/B tested");
+    expect(hero).toContain("120,000 emails, 17 A/B tests");
     expect(hero).toContain("FLASH TIER");
     expect(hero).toContain("PRO TIER");
   });
 
   it("the title and the excerpt carry the A/B framing and the best-workflow figures", () => {
-    expect(String(meta.title)).toContain("A/B tested 17 workflows");
-    expect(String(meta.title)).toContain("117,000 emails");
+    expect(String(meta.title)).toContain("ran 17 A/B tests");
+    expect(String(meta.title)).toContain("120,000 emails");
     expect(String(meta.excerpt)).toContain(BEST_PRO_CPPR);
     expect(String(meta.excerpt)).toContain(BEST_FLASH_CPWV);
     expect(String(meta.excerpt)).toContain("beats its own tier's average");
@@ -119,7 +119,7 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
 
   it("the A/B section names the winner of each outcome and the gap distribute.you hands its clients", () => {
     const spread = section("the-spread");
-    expect(spread).toContain("17 workflows, one winner per outcome");
+    expect(spread).toContain("17 A/B tests, one winner per outcome");
     // Owner rule (2026-09-10): no per-workflow chart at all, named or numbered.
     // The page states the best workflow per outcome and the tier it beats, nothing finer.
     expect(spread).not.toContain("<svg");
@@ -151,8 +151,8 @@ describe("flash-or-pro article: editorial rules", () => {
     expect(method).toMatch(/Frontier, the most expensive \(Claude Fable, Astra\), not yet run/);
   });
 
-  it("the volume is a round 117,000 in the title, story and hero; the exact count lives under Method only", () => {
-    expect(story).toContain("117,000 cold emails");
+  it("the volume is a round 120,000 in the title, story and hero; the exact count lives under Method only", () => {
+    expect(story).toContain("120,000 cold emails");
     expect(story).not.toContain("116,925");
     expect(method).toContain("116,925 emails");
   });
