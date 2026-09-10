@@ -18,6 +18,8 @@ import {
   logoUrlProblem,
 } from "@/lib/brand-logo-file";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { CharCounter } from "@/components/char-counter";
+import { BRAND_NAME_MAX_CHARS, nameCounter, normalizeBrandName } from "@/lib/name-limits";
 
 /**
  * What a brand IS: the name it is shown under, and the logo beside it.
@@ -79,9 +81,15 @@ export function BrandIdentityCard({ brandId }: { brandId: string }) {
 
   const savedName = brand?.name ?? "";
   const savedLogo = brand?.logoUrl ?? null;
+  // The counter and the Save gate read ONE state, so the row cannot offer a write
+  // the number beside it is already showing as impossible. brand-service caps a
+  // brand name at 255 characters and applies NO word rule; its refusal still
+  // decides, this only stops us sending a write we know it will refuse.
+  const counter = nameCounter(name, BRAND_NAME_MAX_CHARS, normalizeBrandName);
   // A LIVE compare, never a sticky boolean: typing a change and undoing it must
   // disarm Save again.
-  const dirty = name.trim() !== savedName.trim() || logoUrl !== savedLogo;
+  const dirty =
+    (name.trim() !== savedName.trim() || logoUrl !== savedLogo) && !counter.over;
 
   const { mutate, isPending: saving } = useMutation({
     mutationFn: () =>
@@ -187,11 +195,25 @@ export function BrandIdentityCard({ brandId }: { brandId: string }) {
             setSaved(false);
             setProblem(null);
           }}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+          /* No maxLength — the counter shows the overrun as a negative number,
+             which a field that silently stops accepting keystrokes cannot. */
+          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+            counter.over
+              ? "border-red-300 focus:ring-red-200"
+              : "border-gray-200 focus:ring-brand-300"
+          }`}
         />
-        <p className="mt-1.5 text-xs text-gray-400">
-          What this brand is called across your dashboard.
-        </p>
+        <div className="mt-1.5 flex items-start gap-3">
+          <p className="min-w-0 flex-1 text-xs text-gray-400">
+            What this brand is called across your dashboard.
+          </p>
+          <CharCounter
+            value={name}
+            max={BRAND_NAME_MAX_CHARS}
+            normalize={normalizeBrandName}
+            className="shrink-0 pt-px"
+          />
+        </div>
       </div>
 
       <div className="mt-6">

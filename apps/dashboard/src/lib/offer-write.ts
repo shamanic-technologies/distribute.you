@@ -5,19 +5,26 @@
 // puts a JSON blob in front of a real customer — the reason travels in the status,
 // the details go to the console.
 //
-// brand-service owns the name rules (at most 2 words, at most 20 characters, unique
-// within the brand) and its refusal is the answer, so nothing is pre-empted client
-// side. What this module owns is only how the refusal READS.
+// brand-service owns the name rules (at most 60 characters, unique within the
+// brand) and its refusal is the answer, so nothing is pre-empted client side.
+// What this module owns is only how the refusal READS.
+//
+// There is NO word limit on a name a customer supplies. The 2-word rule that
+// used to sit beside the character one governs a name brand-service GENERATES
+// for itself and never reaches a field a person types into — saying it here
+// would tell a customer about a rule that does not apply to them.
 //
 // Alias-free on purpose — the caller extracts the status (`err instanceof ApiError
 // ? err.status : null`) and passes a number, so this file carries real unit tests.
 // Keep it that way; a runtime `@/...` import here turns them into resolution
 // failures.
 
+import { OFFER_NAME_MAX_CHARS } from "./name-limits";
+
 export type OfferWriteKind = "create" | "rename" | "generate";
 
 /** The name rules, stated the way brand-service enforces them. */
-export const OFFER_NAME_RULES = "at most 2 words and 20 characters";
+export const OFFER_NAME_RULES = `at most ${OFFER_NAME_MAX_CHARS} characters`;
 
 export function offerWriteErrorMessage(status: number | null, kind: OfferWriteKind): string {
   // The image write carries no name, so the three name-shaped refusals cannot
@@ -36,9 +43,10 @@ export function offerWriteErrorMessage(status: number | null, kind: OfferWriteKi
   }
   if (status === 400) {
     // NOT a generic "check your input". The only thing brand-service validates on
-    // this body is the name, and it validates it three ways at once — saying which
-    // three is the difference between a customer fixing it and re-typing the same
-    // thing.
+    // this body is the name — saying which rule it broke is the difference
+    // between a customer fixing it and re-typing the same thing. In practice the
+    // counter under the field has already said so before they could submit; this
+    // is the answer for a length the producer measures differently than we do.
     return `That name is not allowed. An offer name is ${OFFER_NAME_RULES}.`;
   }
   if (status === 403) {
