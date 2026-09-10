@@ -13,7 +13,9 @@ import {
   renameBrandOffer,
   type Offer,
 } from "@/lib/api";
+import { CharCounter } from "@/components/char-counter";
 import { OFFER_NAME_RULES, offerWriteErrorMessage, type OfferWriteKind } from "@/lib/offer-write";
+import { OFFER_NAME_MAX_CHARS, nameCounter, normalizeOfferName } from "@/lib/name-limits";
 import { useAuthQuery } from "@/lib/use-auth-query";
 
 /**
@@ -32,11 +34,16 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  *
  * ── Rules ───────────────────────────────────────────────────────────────────
  *
- * The NAME limits are brand-service's and are NOT re-implemented here: at most
- * two words, at most twenty characters, unique within the brand. Its 400/409 is
- * the answer and its sentence is what the reader sees, so a limit that moves
- * upstream moves here for free. Nothing is pre-empted client-side beyond
- * refusing to send a blank.
+ * The NAME limit is brand-service's and its 400/409 is still the answer: at most
+ * sixty characters, unique within the brand, and NO word rule (the 2-word limit
+ * that used to sit beside it governs a name brand-service generates for itself,
+ * never one a person types).
+ *
+ * What IS pre-empted client-side is only the DISPLAY: a counter shows what is
+ * left once the end is in sight, and Save disarms past the ceiling rather than
+ * sending a write everyone already knows will be refused. The producer still
+ * decides — a name it rejects for a reason we cannot see still renders its
+ * sentence.
  *
  * The card SEEDS from the wire and RE-SEEDS when the payload changes identity —
  * a once-per-mount latch would take the on-disk snapshot the local-first cache
@@ -109,7 +116,10 @@ export function OfferIdentityCard({ brandId, offerId }: { brandId: string; offer
   });
 
   const trimmed = name.trim();
-  const dirty = offer !== null && trimmed.length > 0 && trimmed !== offer.name;
+  // The counter and the Save gate read ONE state, so the row cannot offer a write
+  // the number beside it is already showing as impossible.
+  const counter = nameCounter(name, OFFER_NAME_MAX_CHARS, normalizeOfferName);
+  const dirty = offer !== null && trimmed.length > 0 && trimmed !== offer.name && !counter.over;
 
   return (
     <section className="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
@@ -166,12 +176,27 @@ export function OfferIdentityCard({ brandId, offerId }: { brandId: string; offer
             }}
             disabled={isPending || isError}
             placeholder={isPending ? "" : "Offer name"}
-            className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 transition focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50"
+            /* Deliberately NO maxLength: a field that silently stops accepting
+               keystrokes reads as broken, and the counter's whole job is to show
+               the overrun as a negative number. */
+            className={`mt-1.5 w-full rounded-lg border px-3 py-2 text-sm text-gray-800 transition focus:outline-none focus:ring-2 disabled:bg-gray-50 ${
+              counter.over
+                ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+                : "border-gray-200 focus:border-brand-300 focus:ring-brand-300"
+            }`}
           />
-          <p className="mt-1.5 text-xs text-gray-400">
-            An offer name is {OFFER_NAME_RULES}, and different from every other offer on this
-            brand. It is the only word anyone reads for this offer.
-          </p>
+          <div className="mt-1.5 flex items-start gap-3">
+            <p className="min-w-0 flex-1 text-xs text-gray-400">
+              An offer name is {OFFER_NAME_RULES}, and different from every other offer on this
+              brand. It is the only word anyone reads for this offer.
+            </p>
+            <CharCounter
+              value={name}
+              max={OFFER_NAME_MAX_CHARS}
+              normalize={normalizeOfferName}
+              className="shrink-0 pt-px"
+            />
+          </div>
         </div>
       </div>
 

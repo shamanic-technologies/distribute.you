@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { ApiError, createBrandOffer, type Offer } from "@/lib/api";
 import { useQueryClient } from "@/lib/use-auth-query";
+import { CharCounter } from "@/components/char-counter";
 import { OFFER_NAME_RULES, offerWriteErrorMessage } from "@/lib/offer-write";
+import { OFFER_NAME_MAX_CHARS, nameCounter, normalizeOfferName } from "@/lib/name-limits";
 import { OfferMark } from "@/components/marks/offer-mark";
 
 /**
@@ -24,7 +26,7 @@ import { OfferMark } from "@/components/marks/offer-mark";
  * to get one was implicitly, on the first brand-scoped write — so a brand that
  * sold a second thing had nowhere to say so.
  *
- * The name rules are brand-service's (at most 2 words, at most 20 characters,
+ * The name rules are brand-service's (at most 60 characters, no word limit,
  * unique within the brand) and its refusal is the answer — nothing is validated
  * here beyond "you typed something". They are STATED under the field anyway,
  * because a rule a customer only learns by being refused is a rule we made them
@@ -70,6 +72,10 @@ export function NewOfferModal({
   });
 
   const trimmed = name.trim();
+  // One state behind the counter AND the submit gate, so the button cannot offer
+  // a write the number beside it already shows as impossible.
+  const counter = nameCounter(name, OFFER_NAME_MAX_CHARS, normalizeOfferName);
+  const submittable = trimmed.length > 0 && !counter.over;
   const status = error instanceof ApiError ? error.status : null;
 
   return (
@@ -103,7 +109,7 @@ export function NewOfferModal({
           className="px-5 py-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (trimmed.length > 0 && !isPending) mutate(trimmed);
+            if (submittable && !isPending) mutate(trimmed);
           }}
         >
           <label htmlFor="new-offer-name" className="block text-xs text-gray-500">
@@ -115,12 +121,26 @@ export function NewOfferModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Starter plan"
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+            /* No maxLength — the counter shows the overrun as a negative number,
+               which a field that silently stops accepting keystrokes cannot. */
+            className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+              counter.over
+                ? "border-red-300 focus:ring-red-200"
+                : "border-gray-200 focus:ring-brand-300"
+            }`}
           />
-          <p className="mt-1.5 text-xs text-gray-400">
-            One thing this brand sells, {OFFER_NAME_RULES}. It gets its own funnels,
-            audiences and campaigns, and returns its own number.
-          </p>
+          <div className="mt-1.5 flex items-start gap-3">
+            <p className="min-w-0 flex-1 text-xs text-gray-400">
+              One thing this brand sells, {OFFER_NAME_RULES}. It gets its own funnels,
+              audiences and campaigns, and returns its own number.
+            </p>
+            <CharCounter
+              value={name}
+              max={OFFER_NAME_MAX_CHARS}
+              normalize={normalizeOfferName}
+              className="shrink-0 pt-px"
+            />
+          </div>
 
           {error !== null && (
             <p className="mt-4 text-sm text-red-600">{offerWriteErrorMessage(status, "create")}</p>
@@ -139,7 +159,7 @@ export function NewOfferModal({
                 as dead at the one moment it is busiest. */}
             <button
               type="submit"
-              disabled={trimmed.length === 0 || isPending}
+              disabled={!submittable || isPending}
               className={`rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 ${
                 isPending ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"
               }`}
