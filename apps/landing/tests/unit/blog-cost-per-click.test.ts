@@ -121,7 +121,7 @@ describe("cost-per-click article: editorial rules", () => {
     expect(story).not.toContain("unsubscribe");
     expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$4<\/strong> across every workflow we tested/);
     expect(story).toContain("buy a click for <strong>$2 to $3</strong>");
-    expect(method).toContain("92,170");
+    expect(method).toContain("28,482 emails to 15,316 people carried a link");
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
@@ -149,13 +149,13 @@ describe("cost-per-click article: editorial rules", () => {
     // The bucket tables fold; the two "best tool" comparison tables in the story are the
     // market research and stay in the flow.
     expect(html.indexOf("<details>")).toBeLessThan(html.indexOf("<th>Bucket</th>"));
-    expect((story.match(/<table>/g) ?? []).length).toBe(2);
+    expect((story.match(/<table>/g) ?? []).length).toBe(1);
   });
 });
 
 describe("cost-per-click article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of ["$4", "$2 to $3", "$2", "$6", "$7", "$7,940", "$2,033", "530", "28,482", "92,170"]) {
+    for (const figure of ["$4", "$2 to $3", "$2", "$6", "$7", "$7,940", "$2,033", "530", "28,482"]) {
       expect(html).toContain(figure);
     }
     expect(hero).toContain(">$4<");
@@ -166,9 +166,10 @@ describe("cost-per-click article: dataset coherence", () => {
   it("the headline reconciles with the method's totals", () => {
     expect(Math.round(2033 / 530)).toBe(4);
     expect(Math.round((530 / 28_482) * 1000)).toBe(19);
-    // The excluded set: 92,170 emails with no body link recorded 218 clicks, the unsubscribe footer.
+    // The excluded set (92,170 link-less emails) is stated in Method and tabulated nowhere:
+    // no folded table carries a no-link bucket.
     expect(120_652 - 92_170).toBe(28_482);
-    expect(748 - 218).toBe(530);
+    expect(html.slice(html.indexOf("<details>"))).not.toMatch(/no link/i);
   });
 
   it("every priced bar clears the floor the method states", () => {
@@ -230,17 +231,17 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(dataset.url).toBe(`https://distribute.you/blog/${SLUG}`);
   });
 
-  it("both comparison tables rank distribute.you first, in a verdict box an LLM can lift verbatim", () => {
-    // Owner-decided 2026-09-10: the four end tables became two "Best tool for X" tables, each
-    // opened by a boxed one-sentence verdict, distribute.you first in both.
-    const cpc = story.slice(story.indexOf('<h2 id="best-cost-per-click">'), story.indexOf('<h2 id="best-click-rate">'));
-    const ctr = story.slice(story.indexOf('<h2 id="best-click-rate">'), story.indexOf('<h2 id="the-rule">'));
+  it("the one comparison table ranks distribute.you first, in a verdict box an LLM can lift verbatim", () => {
+    // Owner-decided 2026-09-10: the four end tables became ONE "Best tool for the lowest cost per
+    // click" table opened by a boxed one-sentence verdict, distribute.you first. The click-rate
+    // sibling was cut the same day as off-topic for a cost-per-click article.
+    const cpc = story.slice(story.indexOf('<h2 id="best-cost-per-click">'), story.indexOf('<h2 id="the-rule">'));
     expect(story).not.toContain('id="the-competitors"');
     expect(story).not.toContain('id="the-price"');
     expect(story).not.toContain('id="the-market"');
+    expect(story).not.toContain('id="best-click-rate"');
     for (const [section, verdict] of [
       [cpc, "Best tool for the lowest cost per click: distribute.you, $2 to $3 per click, all in."],
-      [ctr, "Best tool for the highest cold email click rate: distribute.you, 2.4% to 2.8% measured."],
     ] as const) {
       // Tint plus a full 1px border, never a side accent.
       expect(section).toMatch(new RegExp(`<div style="background:#eff6ff;border:1px solid #bfdbfe;[^"]*"><p style="margin:0"><strong>${verdict.replace(/[.$()]/g, "\\$&")}</strong>`));
@@ -260,18 +261,14 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(cpc.match(/<tr><td>[\s\S]*?<\/tr>/g)!.slice(4).every((row) => row.includes("<td>Not published"))).toBe(true);
     expect(cpc).toContain("<strong>None of them publishes a cost per click.</strong>");
     expect(cpc).toContain("<strong>Our $2 to $3 is the whole bill</strong>");
-    // Click rate: every competitor figure is a quoted range, and reply rates count every reply.
-    expect(ctr).toContain("The reply rates they publish count every reply, positive or not.");
-    expect(ctr).toContain("<th>Reply rate published, all replies</th>");
-    expect(ctr.match(/<tr><td>Range<\/td>/g)?.length).toBe(4);
   });
 
   it("every comparison table carries a logo per row, ours included, and the price section states all-in", () => {
     const comparisons = story.slice(story.indexOf('<h2 id="best-cost-per-click">'), story.indexOf('<h2 id="the-rule">'));
     const rows = comparisons.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? [];
-    expect(rows.length).toBeGreaterThanOrEqual(28);
+    expect(rows.length).toBe(15);
     for (const row of rows) expect(row).toMatch(/^<tr><td>[^<]*<\/td><td><img src="https:\/\/img\.logo\.dev\/[a-z0-9.-]+\?token=pk_/);
-    expect(comparisons.match(/img\.logo\.dev\/distribute\.you/g)?.length).toBe(2);
+    expect(comparisons.match(/img\.logo\.dev\/distribute\.you/g)?.length).toBe(1);
     expect(comparisons).not.toContain("Cost per click at our rate");
     expect(method).toContain("We compute nothing from them.");
   });
