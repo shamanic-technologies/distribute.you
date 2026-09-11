@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listAudiences, type AudienceWire } from "@/lib/api";
+import { listAudiences, listBrandOffers, type AudienceWire } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
+import { audienceCtaHref } from "@/lib/audience-cta-href";
 import {
   NO_AUDIENCE_BANNER_COPY,
   AUDIENCE_EXHAUSTED_BANNER_COPY,
@@ -29,11 +30,21 @@ export function NoAudienceBanner() {
   const params = useParams();
   const orgId = params?.orgId as string | undefined;
   const brandId = (params?.brandId as string | undefined) ?? null;
+  // Present on the offer, funnel and campaign routes; absent on the brand one.
+  const routeOfferId = (params?.offerId as string | undefined) ?? null;
 
   const { data } = useAuthQuery<AudiencesResponse>(
     ["audiences", brandId],
     () => listAudiences(brandId!),
     { enabled: brandId !== null, ...pollOptions },
+  );
+  // The CTA's destination lives under an OFFER, so a brand-level reader needs the
+  // brand's offers to know which. Byte-equal to the key the tenant switcher polls
+  // on every brand page, so this dedupes to no extra request.
+  const { data: offersData } = useAuthQuery(
+    ["brandOffers", brandId],
+    () => listBrandOffers(brandId!),
+    { enabled: brandId !== null && routeOfferId === null, ...pollOptions },
   );
 
   const nudge = audienceNudge(data?.audiences ?? []);
@@ -74,7 +85,12 @@ export function NoAudienceBanner() {
         {message}
       </span>
       <Link
-        href={`/orgs/${orgId}/brands/${brandId}/audiences`}
+        href={audienceCtaHref({
+          orgId,
+          brandId,
+          routeOfferId,
+          offers: offersData?.offers,
+        })}
         className="rounded-full bg-white/15 px-3 py-0.5 font-semibold ring-1 ring-white/25 transition hover:bg-white/25"
       >
         {copy.cta} →
