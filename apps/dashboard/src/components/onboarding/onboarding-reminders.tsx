@@ -6,9 +6,11 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
   listAudiences,
+  listBrandOffers,
   type BillingAccount,
   type AudienceWire,
 } from "@/lib/api";
+import { audienceCtaHref } from "@/lib/audience-cta-href";
 
 type AudiencesResponse = { audiences: AudienceWire[]; total: number };
 import { useBillingGuard } from "@/lib/billing-guard";
@@ -54,6 +56,8 @@ export function OnboardingReminders() {
   const brandId = (params?.brandId as string | undefined) ?? null;
   const router = useRouter();
   const orgId = params?.orgId as string | undefined;
+  // Present on the offer, funnel and campaign routes; absent on the brand one.
+  const routeOfferId = (params?.offerId as string | undefined) ?? null;
   const { showPaymentRequired } = useBillingGuard();
 
   // Re-render trigger when a dismissal is written to sessionStorage.
@@ -68,6 +72,14 @@ export function OnboardingReminders() {
     ["audiences", brandId],
     () => listAudiences(brandId!),
     { enabled: brandId !== null, ...pollOptions },
+  );
+  // An audience's page lives under an OFFER, so the CTA needs the brand's offers
+  // to know which one this reader means. Byte-equal to the key the tenant
+  // switcher already polls on every brand page — no extra request.
+  const { data: offersData } = useAuthQuery(
+    ["brandOffers", brandId],
+    () => listBrandOffers(brandId!),
+    { enabled: brandId !== null && routeOfferId === null, ...pollOptions },
   );
 
   if (!brandId || !account || !audiencesData) return null;
@@ -109,7 +121,14 @@ export function OnboardingReminders() {
     if (kind === "topup") {
       showPaymentRequired({ balance_cents: account.balance_cents, proactive: true, autoReloadSupported });
     } else if (orgId) {
-      router.push(`/orgs/${orgId}/brands/${brandId}/audiences`);
+      router.push(
+        audienceCtaHref({
+          orgId,
+          brandId,
+          routeOfferId,
+          offers: offersData?.offers,
+        }),
+      );
     }
     dismiss(kind);
   };
