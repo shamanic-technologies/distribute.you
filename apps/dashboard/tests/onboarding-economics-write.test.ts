@@ -45,7 +45,7 @@ describe("Onboarding sales-economics writes", () => {
   it("picking the primary path persists nothing", () => {
     // 1199 chars = the whole body, measured to its closing brace.
     const body = sliceFrom("function savePrimaryFunnelAndContinue()", 1199);
-    expect(body).toContain('setStep("consent")');
+    expect(body).toContain('setStep("audiences")');
     // The pick still drives local state — the detail-screen order, the outcome the
     // budget step prices, the funnel the projection resolves against.
     expect(body).toContain("setOutcome(nextOutcome)");
