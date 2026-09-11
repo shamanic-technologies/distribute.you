@@ -49,6 +49,8 @@
  * tests. Keep it that way.
  */
 
+import type { LegColumnPair } from "./campaign-leg-columns";
+
 /** A dynasty the channel currently offers, as the catalogue states it. */
 export interface WorkflowCatalogueRow {
   workflowDynastySlug: string;
@@ -135,13 +137,61 @@ export interface CampaignWorkflowRow {
   websiteClicks: number | null;
   cpcCents: number | null;
   roiMultiple: number | null;
-  /** Fewer than the bar's worth of sales interests behind the price. */
+  /** Which of the two served outcomes this row is counted and priced by. */
+  outcomePair: WorkflowOutcomePair;
+  /** Fewer than the bar's worth of the PAIR's outcome behind the price. */
   learning: boolean;
   channel: string | null;
   audienceType: string | null;
   /** Both catalogue-only: workflow-service is the one producer that states them. */
   contentModel: string | null;
   contentPromptType: string | null;
+}
+
+/**
+ * WHICH OUTCOME THIS CAMPAIGN'S ROWS ARE PRICED BY.
+ *
+ * A campaign performs ONE leg of its funnel, so the outcome a workflow produced for it
+ * is that leg's own: cold email onto a visit-led funnel buys a WEBSITE VISIT and
+ * nothing else, while the same channel onto the reply-led funnel buys a SALES INTEREST.
+ * The table hardcoded the reply pair, so a visit-led campaign read `0 sales interests`
+ * on every row while it was measurably buying visits — the same mistake #3880 closed on
+ * the Audiences table, one surface over: a campaign-scoped surface keyed on the funnel
+ * instead of the leg.
+ *
+ * Only two pairs exist here, because only two are SERVED per workflow: the grouped read
+ * carries `recipientsRepliesPositive`/`cpprCents` and `recipientsClicked`/`cpcCents` and
+ * nothing else. A leg landing on a signup, a filled form, a sale or a meeting has no
+ * per-workflow figure at all, so the caller keeps the reply pair there — exactly what
+ * the page read before legs were consulted, rather than a column of dashes.
+ */
+export type WorkflowOutcomePair = "reply" | "visit";
+
+/**
+ * The pair a campaign's own LEG earns, or the reply pair when it earns none.
+ *
+ * The leg's column pair is the Audiences table's vocabulary (`lib/campaign-leg-columns`),
+ * and this narrows it to the two outcomes features-service serves PER WORKFLOW. A leg
+ * landing on a signup, a filled form, a sale, or either meeting step has no per-workflow
+ * figure, so the answer is the reply pair — the columns this table read before legs were
+ * consulted. That fallback is deliberate rather than a blank: a column of dashes tells a
+ * reader less than the figures they had yesterday, and a leg we cannot place is still a
+ * campaign whose replies were counted.
+ */
+export function workflowOutcomePairFor(
+  legPair: LegColumnPair | null | undefined,
+): WorkflowOutcomePair {
+  return legPair === "visit" ? "visit" : "reply";
+}
+
+/** The count this row is measured by — the pair's own, never the other one's. */
+export function workflowOutcomeCount(row: CampaignWorkflowRow): number | null {
+  return row.outcomePair === "visit" ? row.websiteClicks : row.positiveReplies;
+}
+
+/** The price this row states — the pair's own. */
+export function workflowOutcomeCostCents(row: CampaignWorkflowRow): number | null {
+  return row.outcomePair === "visit" ? row.cpcCents : row.cpprCents;
 }
 
 /**
@@ -287,12 +337,19 @@ export function buildCampaignWorkflowRows({
   catalogue,
   groups,
   running,
+  pair,
   isLearning,
 }: {
   catalogue: readonly WorkflowCatalogueRow[];
   groups: readonly WorkflowRevenueGroup[];
   /** Resolved ONCE by the caller (`resolveRunningWorkflow`), never re-derived here. */
   running: RunningWorkflow;
+  /**
+   * The outcome the campaign's own LEG buys. Required rather than defaulted, so a new
+   * caller answers the question instead of silently inheriting the reply pair — which
+   * is how a visit-led campaign came to read zero sales interests on every row.
+   */
+  pair: WorkflowOutcomePair;
   isLearning: (count: number | null | undefined) => boolean;
 }): CampaignWorkflowRow[] {
   const collapsed = collapseWorkflowCatalogue(catalogue);
@@ -304,6 +361,10 @@ export function buildCampaignWorkflowRows({
   const rows = collapsed.map((entry) => {
     const group = byDynasty.get(entry.workflowDynastySlug);
     const positiveReplies = group?.recipientsRepliesPositive ?? null;
+    const websiteClicks = group?.recipientsClicked ?? null;
+    // The bar is read against the outcome the row STATES, never the other one: a
+    // visit-led campaign with 400 visits is measured, whatever its reply count is.
+    const outcome = pair === "visit" ? websiteClicks : positiveReplies;
     return {
       workflowDynastySlug: entry.workflowDynastySlug,
       workflowDynastyName: entry.workflowDynastyName || entry.workflowDynastySlug,
@@ -312,12 +373,13 @@ export function buildCampaignWorkflowRows({
       cpprCents: group?.cpprCents ?? null,
       committedCostUsd: group?.committedCostUsd ?? null,
       outreach: group?.recipientsContacted ?? null,
-      websiteClicks: group?.recipientsClicked ?? null,
+      websiteClicks,
       cpcCents: group?.cpcCents ?? null,
       roiMultiple: group?.roiMultiple ?? null,
+      outcomePair: pair,
       // A row this scope has never run is not "learning" — there is nothing to be
       // thin. It has no price at all, which the null already says.
-      learning: group !== undefined && isLearning(positiveReplies),
+      learning: group !== undefined && isLearning(outcome),
       channel: entry.channel ?? null,
       audienceType: entry.audienceType ?? null,
       contentModel: entry.contentModel ?? null,
@@ -328,15 +390,18 @@ export function buildCampaignWorkflowRows({
   return withRunningRow(rows, running, (dynastySlug) => {
     const group = byDynasty.get(dynastySlug);
     const positiveReplies = group?.recipientsRepliesPositive ?? null;
+    const websiteClicks = group?.recipientsClicked ?? null;
+    const outcome = pair === "visit" ? websiteClicks : positiveReplies;
     return {
       positiveReplies,
       cpprCents: group?.cpprCents ?? null,
       committedCostUsd: group?.committedCostUsd ?? null,
       outreach: group?.recipientsContacted ?? null,
-      websiteClicks: group?.recipientsClicked ?? null,
+      websiteClicks,
       cpcCents: group?.cpcCents ?? null,
       roiMultiple: group?.roiMultiple ?? null,
-      learning: group !== undefined && isLearning(positiveReplies),
+      outcomePair: pair,
+      learning: group !== undefined && isLearning(outcome),
       name: group?.workflowDynastyName ?? null,
     };
   });
@@ -403,6 +468,37 @@ export interface FleetWorkflowOutreach {
 }
 
 /**
+ * The fleet row's counts, with its single served price on the field the ASKED-FOR
+ * objective priced.
+ *
+ * `costPerOutcomeUsd` is one number whose meaning is the objective the caller passed,
+ * so putting it on `cpprCents` regardless would print a cost per website visit under a
+ * "cost per sales interest" header. `outcome` is the count the bar is read against.
+ */
+function fleetPrice(
+  cost: FleetWorkflowCost | undefined,
+  pair: WorkflowOutcomePair,
+): {
+  positiveReplies: number | null;
+  websiteClicks: number | null;
+  cpprCents: number | null;
+  cpcCents: number | null;
+  outcome: number | null;
+} {
+  const positiveReplies = cost?.observedPositiveReplies ?? null;
+  const websiteClicks = cost?.observedClicks ?? null;
+  const cents =
+    cost?.costPerOutcomeUsd == null ? null : Math.round(cost.costPerOutcomeUsd * 100);
+  return {
+    positiveReplies,
+    websiteClicks,
+    cpprCents: pair === "visit" ? null : cents,
+    cpcCents: pair === "visit" ? cents : null,
+    outcome: pair === "visit" ? websiteClicks : positiveReplies,
+  };
+}
+
+/**
  * The same rows, at the GLOBAL grain: what each workflow did across every client.
  *
  * Two public reads, joined on the dynasty the catalogue already keys on — the cost
@@ -426,6 +522,7 @@ export function buildFleetWorkflowRows({
   fleet,
   outreach,
   running,
+  pair,
   isLearning,
 }: {
   catalogue: readonly WorkflowCatalogueRow[];
@@ -438,6 +535,13 @@ export function buildFleetWorkflowRows({
    * tab alone while the other three rendered it.
    */
   running: RunningWorkflow;
+  /**
+   * The outcome the campaign's own leg buys — and the objective the caller ASKED the
+   * public cost read for. `costPerOutcomeUsd` prices whichever objective was requested,
+   * so it lands on the pair's own cost field and the other one reads null rather than
+   * a price for an outcome nobody asked about.
+   */
+  pair: WorkflowOutcomePair;
   isLearning: (count: number | null | undefined) => boolean;
 }): CampaignWorkflowRow[] {
   const collapsed = collapseWorkflowCatalogue(catalogue);
@@ -451,22 +555,19 @@ export function buildFleetWorkflowRows({
   const rows = collapsed.map((entry) => {
     const cost = costBy.get(entry.workflowDynastySlug);
     const reach = outreachBy.get(entry.workflowDynastySlug);
-    const positiveReplies = cost?.observedPositiveReplies ?? null;
+    const { outcome, ...priced } = fleetPrice(cost, pair);
     return {
       workflowDynastySlug: entry.workflowDynastySlug,
       workflowDynastyName: entry.workflowDynastyName || entry.workflowDynastySlug,
       running: entry.workflowDynastySlug === runningDynasty,
-      positiveReplies,
-      cpprCents:
-        cost?.costPerOutcomeUsd == null ? null : Math.round(cost.costPerOutcomeUsd * 100),
+      ...priced,
       committedCostUsd: cost?.spentUsd ?? null,
       outreach: reach?.recipientsContacted ?? null,
-      websiteClicks: cost?.observedClicks ?? null,
-      // The fleet read carries neither a return nor a per-click price, and inventing
-      // one from the two figures it does carry is the division this model refuses.
-      cpcCents: null,
+      // The fleet read carries no return, and inventing one from the figures it does
+      // carry is the division this model refuses.
       roiMultiple: null,
-      learning: cost !== undefined && isLearning(positiveReplies),
+      outcomePair: pair,
+      learning: cost !== undefined && isLearning(outcome),
       channel: entry.channel ?? null,
       audienceType: entry.audienceType ?? null,
       contentModel: entry.contentModel ?? null,
@@ -477,17 +578,14 @@ export function buildFleetWorkflowRows({
   return withRunningRow(rows, running, (dynastySlug) => {
     const cost = costBy.get(dynastySlug);
     const reach = outreachBy.get(dynastySlug);
-    const positiveReplies = cost?.observedPositiveReplies ?? null;
+    const { outcome, ...priced } = fleetPrice(cost, pair);
     return {
-      positiveReplies,
-      cpprCents:
-        cost?.costPerOutcomeUsd == null ? null : Math.round(cost.costPerOutcomeUsd * 100),
+      ...priced,
       committedCostUsd: cost?.spentUsd ?? null,
       outreach: reach?.recipientsContacted ?? null,
-      websiteClicks: cost?.observedClicks ?? null,
-      cpcCents: null,
       roiMultiple: null,
-      learning: cost !== undefined && isLearning(positiveReplies),
+      outcomePair: pair,
+      learning: cost !== undefined && isLearning(outcome),
       name: cost?.workflowDynastyName ?? null,
     };
   });
@@ -500,13 +598,16 @@ export function buildFleetWorkflowRows({
  *    NOWHERE ELSE: a reader answering "what is happening right now" should not also
  *    have to find the same row again further down.
  *
- *  · MEASURED — every workflow that produced at least ONE sales interest at the grain
- *    being read, best first.
+ *  · MEASURED — every workflow that produced at least ONE of the campaign's own outcome
+ *    (`outcomePair`: a sales interest, or a website visit) at the grain being read,
+ *    best first.
  *
  *  · NOT MEASURED YET — nothing produced yet, ordered by how much outreach has gone
  *    through it, which is what shows the bar being approached.
  *
- * MEMBERSHIP is the COUNT (owner-decided: at least one sales interest, or none), so
+ * MEMBERSHIP is the COUNT of the row's OWN outcome (owner-decided: at least one, or
+ * none) — never the reply count on a campaign that buys visits, which read zero on
+ * every row and filed a working channel under "Not measured yet". So
  * every row lands in exactly one section. ORDER inside MEASURED is the price, and a
  * row under the learning bar has no price to be ranked on — it is deliberately not
  * showing one — so it sinks below the priced rows and orders among its peers by the
@@ -524,7 +625,8 @@ export interface CampaignWorkflowSections {
 
 /** A price this table may RANK on: stated, and standing on enough outcomes. */
 function rankablePrice(r: CampaignWorkflowRow): number | null {
-  return r.learning || r.cpprCents == null ? null : r.cpprCents;
+  const cost = workflowOutcomeCostCents(r);
+  return r.learning || cost == null ? null : cost;
 }
 
 function byName(a: CampaignWorkflowRow, b: CampaignWorkflowRow): number {
@@ -538,7 +640,7 @@ export function sectionCampaignWorkflowRows(
   const rest = rows.filter((r) => !r.running);
 
   const measured = rest
-    .filter((r) => (r.positiveReplies ?? 0) >= 1)
+    .filter((r) => (workflowOutcomeCount(r) ?? 0) >= 1)
     .sort((a, b) => {
       const pa = rankablePrice(a);
       const pb = rankablePrice(b);
@@ -547,14 +649,14 @@ export function sectionCampaignWorkflowRows(
       if (pa != null && pb != null) return pa - pb;
       if (pa != null) return -1;
       if (pb != null) return 1;
-      const oa = a.positiveReplies ?? -1;
-      const ob = b.positiveReplies ?? -1;
+      const oa = workflowOutcomeCount(a) ?? -1;
+      const ob = workflowOutcomeCount(b) ?? -1;
       if (oa !== ob) return ob - oa;
       return byName(a, b);
     });
 
   const notMeasured = rest
-    .filter((r) => (r.positiveReplies ?? 0) < 1)
+    .filter((r) => (workflowOutcomeCount(r) ?? 0) < 1)
     .sort((a, b) => {
       const oa = a.outreach ?? -1;
       const ob = b.outreach ?? -1;

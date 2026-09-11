@@ -118,8 +118,10 @@ describe("sales economics surfaces use locale-aware text inputs", () => {
     expect(content).toContain('from "@/lib/format-number"');
     expect(content).toContain("formatLocaleNumberInputValue");
     expect(content).toContain("parseLocaleNumberInput");
+    // The rate fields render through the shared RateInput (text + decimal inputMode
+    // live there); the card's own remaining inputs are text, never number.
+    expect(content).toContain("<RateInput");
     expect(content).toContain('type="text"');
-    expect(content).toContain('inputMode="decimal"');
     expect(content).not.toContain('type="number"');
   });
 

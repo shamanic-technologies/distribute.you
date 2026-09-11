@@ -91,6 +91,7 @@ import {
 import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
 import { Skeleton } from "@/components/skeleton";
 import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
+import { phoneSyntaxProblem } from "@/lib/phone-syntax";
 import {
   POST_PAYMENT_OFFER_LEVERS,
   buildLeverLLMPrompt,
@@ -115,9 +116,11 @@ import {
   type ChannelMinimums,
 } from "@/lib/channel-minimums";
 import { BrandLogo } from "@/components/brand-logo";
+import { RateInput } from "@/components/rate-input";
 import {
   SALES_FUNNELS,
   funnelRateFields,
+  roundPrefilledRate,
   funnelDraftFromBrand,
   salesFunnelByKey,
   normalizeSalesFunnelKey,
@@ -135,6 +138,7 @@ import {
 import { launchLegKey } from "@/lib/stated-campaign-leg";
 import { fundedLaunchFunnelKey } from "@/lib/launch-funnel";
 import { soleOfferId } from "@/lib/launch-offer";
+import { launchDestinationHref } from "@/lib/launch-destination";
 import {
   orderedForDetail,
   resolvePrimaryKey,
@@ -401,6 +405,21 @@ const fmtCount = (n: number) => formatLocaleInteger(n);
 // told WHY it is holding a locally-built sentence and says so.
 type AudiencePrefetch = {
   promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }>;
+};
+
+/**
+ * What the launch created, and the scope it created it in.
+ *
+ * The scope is carried out because the terminal redirect lands on the deepest level
+ * with no choice left in it, and the launch has already resolved both: the offer it
+ * read off the brand and the funnel the customer funded. `offerId` is null when the
+ * launch could not name ONE offer (several, or a failed read) — the campaign then
+ * ships unattributed and the redirect hands the landing to the walk instead.
+ */
+type LaunchResult = {
+  campaignId: string;
+  offerId: string | null;
+  funnelKey: string;
 };
 
 type PendingCheckoutLaunch = {
@@ -1092,6 +1111,15 @@ export function Onboarding() {
   // run completeLaunchAfterCheckout AFTER the user finishes these steps (with
   // their edited profile), instead of at the checkout-return effect.
   const [phone, setPhone] = useState<PhoneValue>(EMPTY_PHONE);
+  // Whether the syntax problem is on SCREEN. Separate from whether one EXISTS:
+  // a message under a half-typed number is noise, so it is revealed once the
+  // person has finished typing (blur) or has pressed Continue. Continue is only
+  // greyed out while the reason is visible, so the button never reads dead.
+  const [phoneProblemRevealed, setPhoneProblemRevealed] = useState(false);
+  // Declared here, ABOVE every consumer (`savePhoneAndContinue`, the step's
+  // render) — a const a consumer declared earlier would read is a TDZ throw at
+  // render time that `tsc` cannot see.
+  const phoneProblem = phoneSyntaxProblem({ dialCode: phone.dialCode, national: phone.national });
   const [offerIndex, setOfferIndex] = useState(0);
   const pendingCheckoutRef = useRef<PendingCheckoutLaunch | null>(null);
   // Best-model step (post-payment, after LTR). The 3-grain workflow-projection
@@ -1118,7 +1146,7 @@ export function Onboarding() {
   // user quits before reaching the dashboard. `backgroundLaunchRef` holds the single
   // in-flight promise (fire once); `launchError` surfaces a background failure at the
   // terminal launching screen with a retry.
-  const backgroundLaunchRef = useRef<Promise<{ campaignId: string }> | null>(null);
+  const backgroundLaunchRef = useRef<Promise<LaunchResult> | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Loading-sequence + real fetch coordination. The visible checks follow real
@@ -1558,22 +1586,22 @@ export function Onboarding() {
     if (econRes.economics && !ratesEditedRef.current) {
       const e = econRes.economics;
       econRef.current = e;
-      // Cap the prefilled DEFAULT to a single decimal (8.8429 → 8.8). The backend
-      // economics carry full precision; we never seed a default with more than one
-      // decimal digit. The user can still type finer precision manually.
-      const round1 = (n: number) => Math.round(n * 10) / 10;
+      // A prefilled DEFAULT is a whole number (8.8429 → 9): the backend economics
+      // carry full precision, and a guess offered with decimals reads as a
+      // measurement. The user can still type finer precision manually.
+      const roundRate = (n: number) => roundPrefilledRate(n);
       const loaded: Record<RateKey, number> = {
-        ltv: round1(e.lifetimeRevenueUsd),
-        v2s: round1(e.visitToSignupPct),
-        s2c: round1(e.signupToPaidClientPct),
-        v2m: round1(e.visitToMeetingPct),
-        r2m: round1(e.replyToMeetingPct),
-        m2c: round1(e.meetingToClosePct),
+        ltv: Math.round(e.lifetimeRevenueUsd),
+        v2s: roundRate(e.visitToSignupPct),
+        s2c: roundRate(e.signupToPaidClientPct),
+        v2m: roundRate(e.visitToMeetingPct),
+        r2m: roundRate(e.replyToMeetingPct),
+        m2c: roundRate(e.meetingToClosePct),
         // The effective economics carry only the signup/meeting funnel + the derived
         // visit→close. Seed website_visits' visit→paid from visitToClosePct (same grain);
         // the reply/form beta rates have no effective-econ source → keep the seeded
         // defaults (the user tweaks them on the rates step).
-        v2p: round1(e.visitToClosePct),
+        v2p: roundRate(e.visitToClosePct),
         r2p: rates.r2p,
         v2f: rates.v2f,
         f2p: rates.f2p,
@@ -1905,8 +1933,13 @@ export function Onboarding() {
   // dashboard. Does NOT navigate or clear the resume snapshot — the terminal
   // (finalizePostPaymentAndLaunch) owns that, so a mid-flow refresh can still resume
   // the optional post-payment steps. Uses the as-of-checkout profile; the terminal
-  // re-saves any offer-lever edits on top. Returns the created campaign id.
-  async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<{ campaignId: string }> {
+  // re-saves any offer-lever edits on top.
+  //
+  // Returns the created campaign id AND the scope it was created in — the offer it
+  // sells and the funnel it runs — because the terminal redirect lands on the deepest
+  // scope with no choice left in it, and this is where both are already resolved. A
+  // null offer is the launch failing to name one (see below), never a level to invent.
+  async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<LaunchResult> {
     // Confirm the 7 user-fields (services + the offer levers). Every key sent is
     // marked "confirmed" server-side.
     // NOTE: agency consent is ASKED on the onboarding consent step (kept), but by
@@ -2070,14 +2103,14 @@ export function Onboarding() {
     sendAuthNotification("goal_launched", undefined, {
       outcomeNoun: outcomeNounPlural(pending.outcome),
     }).catch(() => {});
-    return { campaignId: campaign.id };
+    return { campaignId: campaign.id, offerId: launchOfferId, funnelKey: launchFunnelKey };
   }
 
   // Fire the full launch ONCE, in the background, the moment checkout returns. Idempotent
   // via `backgroundLaunchRef` (never creates two campaigns). A failure is surfaced at the
   // terminal launching screen (launchError) with a retry; the fire-site swallow keeps it
   // from becoming an unhandled rejection while the user is still on an earlier step.
-  function startBackgroundLaunch(): Promise<{ campaignId: string }> {
+  function startBackgroundLaunch(): Promise<LaunchResult> {
     if (backgroundLaunchRef.current) return backgroundLaunchRef.current;
     const pending = pendingCheckoutRef.current;
     if (!pending) {
@@ -2439,7 +2472,17 @@ export function Onboarding() {
   // ── Post-payment steps ────────────────────────────────────────────
   // Save the optional phone (Clerk user metadata) and advance to the LTR step.
   // An empty number is a valid skip — no write, just advance.
+  //
+  // A number that cannot be a number does NOT advance: a US customer typed one
+  // that was syntactically impossible and it was stored, so the step accepted an
+  // answer it could tell was wrong. Refusing here is what makes the reason
+  // visible; `/api/onboarding/phone` refuses it again, because a control the UI
+  // blocks is still a request anyone can send.
   async function savePhoneAndContinue() {
+    if (phoneProblem) {
+      setPhoneProblemRevealed(true);
+      return;
+    }
     if (phone.national.trim()) {
       setBusy(true);
       try {
@@ -2762,7 +2805,18 @@ export function Onboarding() {
       clearOnboardingState();
       const pending = pendingCheckoutRef.current;
       const orgId = pending?.orgId ?? orgIdRef.current;
-      router.push(`/orgs/${orgId}/brands/${id}?launched=${result.campaignId}`);
+      // Land on the DEEPEST scope with no choice left in it, the same place signing in
+      // lands — and name it outright rather than handing the walk a bare brand URL: the
+      // launch just created this campaign, so it holds the offer and the funnel already,
+      // and the walk's own reads would be cold here (see `lib/launch-destination.ts`).
+      router.push(
+        launchDestinationHref({
+          orgId: String(orgId),
+          brandId: String(id),
+          offerId: result.offerId,
+          funnelKey: result.funnelKey,
+        }),
+      );
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "post_payment_finalize" });
       const detail = err instanceof Error ? err.message : "unknown error";
@@ -3440,14 +3494,32 @@ export function Onboarding() {
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
-        footer={<NextButton onClick={savePhoneAndContinue} busy={busy} label="Continue" />}
+        footer={
+          <NextButton
+            onClick={savePhoneAndContinue}
+            disabled={phoneProblemRevealed && phoneProblem !== null}
+            busy={busy}
+            label="Continue"
+          />
+        }
       >
         <div className="mb-4 flex items-start gap-2">
           <PaperAirplaneIcon className="h-5 w-5 text-brand-600" />
           <h2 className="font-display text-2xl font-bold text-gray-900">Your phone number.</h2>
         </div>
         <p className="mb-6 text-sm leading-6 text-gray-500">Optional. We only use it to reach you quickly about your own campaign, never for outreach. Add it or skip it.</p>
-        <PhoneInput value={phone} onChange={setPhone} autoFocus />
+        <PhoneInput
+          value={phone}
+          onChange={(v) => {
+            // Hide the message the moment they start correcting it. It comes
+            // back on the next blur if the number is still impossible.
+            setPhoneProblemRevealed(false);
+            setPhone(v);
+          }}
+          onBlur={() => setPhoneProblemRevealed(true)}
+          problem={phoneProblemRevealed ? phoneProblem : null}
+          autoFocus
+        />
         <button
           onClick={() => { setFunnelIndex(0); setStep("funnelStats"); }}
           className="mt-4 text-sm text-gray-400 underline transition hover:text-gray-600"
@@ -3520,16 +3592,11 @@ export function Onboarding() {
                 {rate.label}
                 {rate.tip && <InfoTooltip tip={rate.tip} />}
               </span>
-              <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={draft.rates[rate.key] ?? ""}
-                  onChange={(e) => editFunnelDraft(funnel, { rates: { [rate.key]: e.target.value } })}
-                  className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
-                />
-                <span className="text-sm text-gray-500">%</span>
-              </span>
+              <RateInput
+                ariaLabel={rate.label}
+                value={draft.rates[rate.key] ?? ""}
+                onChange={(next) => editFunnelDraft(funnel, { rates: { [rate.key]: next } })}
+              />
             </label>
           ))}
 
@@ -3700,19 +3767,13 @@ export function Onboarding() {
             {economicsRates.map((rate) => (
               <label key={rate.key} className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-700">{rate.label}</span>
-                <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={economicsDraft?.rates[rate.key] ?? ""}
-                    onChange={(e) =>
-                      economicsFunnel &&
-                      editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })
-                    }
-                    className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
-                  />
-                  <span className="text-sm text-gray-500">%</span>
-                </span>
+                <RateInput
+                  ariaLabel={rate.label}
+                  value={economicsDraft?.rates[rate.key] ?? ""}
+                  onChange={(next) =>
+                    economicsFunnel && editFunnelDraft(economicsFunnel, { rates: { [rate.key]: next } })
+                  }
+                />
               </label>
             ))}
           </div>

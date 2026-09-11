@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { funnelDraftFromBrand, salesFunnelByKey } from "../src/lib/sales-funnels";
 
@@ -163,5 +163,56 @@ describe("funnelDraftFromBrand seeds from the EFFECTIVE economics shape", () => 
     // as "we have no figure", not as 0% conversion.
     const draft = funnelDraftFromBrand(salesFunnelByKey("visit_form"), effective, null);
     Object.values(draft.rates).forEach((v) => expect(v === "" || Number(v) > 0).toBe(true));
+  });
+});
+
+describe("a PREFILLED rate is a whole number — 8.322 reads as a claim of precision we do not have", () => {
+  const effective = {
+    lifetimeRevenueUsd: 10_000,
+    replyToMeetingPct: 8.322,
+    visitToMeetingPct: 4.5,
+    meetingToClosePct: 0.2,
+    visitToSignupPct: 8,
+    signupToPaidClientPct: 16.66,
+    visitToClosePct: 1.3,
+  };
+
+  it("rounds the seed to the nearest integer", () => {
+    const draft = funnelDraftFromBrand(salesFunnelByKey("reply_meeting"), effective, null);
+    expect(draft.rates.replyToMeetingPct).toBe("8");
+    const signup = funnelDraftFromBrand(salesFunnelByKey("visit_signup"), effective, null);
+    expect(signup.rates.signupToPaidClientPct).toBe("17");
+  });
+
+  it("never rounds a real conversion down to 0% — a rate under half a percent seeds 1", () => {
+    const draft = funnelDraftFromBrand(salesFunnelByKey("reply_meeting"), effective, null);
+    expect(draft.rates.meetingToClosePct).toBe("1");
+  });
+
+  it("onboarding's own economics seed rounds to the integer too, not one decimal", () => {
+    const src = readFileSync(resolve(__dirname, "../src/components/onboarding/onboarding.tsx"), "utf8");
+    expect(src).not.toContain("Math.round(n * 10) / 10");
+    expect(src).toContain("const roundRate = (n: number) => roundPrefilledRate(n)");
+  });
+
+  it("the % sits beside the number on every rate field, never floated to the far right of a full-width box", () => {
+    const onboarding = readFileSync(resolve(__dirname, "../src/components/onboarding/onboarding.tsx"), "utf8");
+    const card = readFileSync(
+      resolve(__dirname, "../src/components/settings/brand-sales-funnels-card.tsx"),
+      "utf8",
+    );
+    // The settings card used to float the % at the right edge of a w-full input
+    // (the `/day` addon on the budget field keeps that shape: an amount is not a rate).
+    expect(card).not.toMatch(/absolute right-3[^>]*>\s*%\s*</);
+    for (const src of [onboarding, card]) {
+      expect(src).toContain("<RateInput");
+    }
+    const rateInput = readFileSync(resolve(__dirname, "../src/components/rate-input.tsx"), "utf8");
+    expect(rateInput).toContain("text-right");
+    expect(rateInput).toContain("w-28");
+    // Inside a flex-col label an inline-flex box stretches to the column: measured 606px
+    // at 1280 without it, 153px with. The box must not fill the row.
+    expect(rateInput).toContain("self-start");
+    expect(rateInput).not.toContain("w-full");
   });
 });

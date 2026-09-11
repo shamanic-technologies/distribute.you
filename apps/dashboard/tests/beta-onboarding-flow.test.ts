@@ -171,7 +171,7 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("parseRateTextInput");
     // Funnel rates are typed into the funnel's own draft, keyed by the catalogue's
     // rate name rather than the retired goal's short key.
-    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })");
+    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: next } })");
     expect(src).not.toContain("formatRateInput(e.target.value)");
   });
 
