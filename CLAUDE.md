@@ -328,6 +328,15 @@ Three surfaces share that screen and all three now read the hook: `engaged-leads
 
 Open follow-up: `audience-stats` now prefers a `funnel` param and marks `goal` deprecated — the dashboard still sends `goal`, which features-service keeps working.
 
+## A customer who OWES money never gets a way to remove the card it is collected on: the card page is REPLACE-ONLY, and the balance settles BEFORE it opens (#4092)
+
+Google Ads / Meta / AWS pattern. Four halves, one rule, and only the last is in this repo:
+- **stripe-service (v0.48.2)** mints every portal session on a pinned configuration: "Change card" opens straight into Stripe's `payment_method_update` flow (add a card, it becomes the default, no list, no remove control); "View invoices" runs on a configuration with card management OFF. A caller-supplied configuration is refused. Two `STRIPE_PORTAL_*_CONFIGURATION_ID` env vars on the box, minted once via `npm run portal:configurations`; a missing one is a 5xx, never a fallback to the account's default (full) portal.
+- **billing-service (v0.79.0)** settles a negative balance on the card on file BEFORE handing back the session, the same "settle to zero" amount the month-end sweep computes; a failed charge is `402 {code: "outstanding_balance_unsettled", owed_cents}` and no session. An org with a negative balance and no chargeable card is never `skipped` any more: spend stops (the credit-line floor drops to 0), the customer gets `credit-debt-card-required`, staff get `unpaid_debt_uncollectable`, and `GET /internal/unpaid-debts` lists it. stripe-service posts `payment_method.detached` → billing `POST /internal/payment-methods/lost` so that fires within seconds rather than on the hourly scan.
+- **api-service (#933)** forwards billing's refusal body field-for-field; it used to rebuild `{error: message}`, which destroyed the `code`.
+- **This page** reads `Change card` (not `Manage`), tells a customer running on credit that the balance settles first, keys the refusal on the `code` through `portalRefusalMessage` (prints `owed_cents`, never `err.message`) and passes `suppressPaymentRequired` on the portal call so a refused settle does not open the credits modal. Guards: `tests/portal-refusal-message.test.ts` + `tests/billing.test.ts`.
+⚠️ Do NOT probe `POST /v1/portal-sessions` on a real org with a negative balance to "verify" it: the probe CHARGES that org's card. Probe stripe-service's `/internal/card_setup/by-org/:orgId` instead, which mints the session without settling.
+
 ## A REFUSED charge is on the wire already, and two independent gates made it invisible
 
 `lib/payment-failure.ts` (alias-free, real unit tests) answers one question off the payments list the Billing page already polls: has a charge been refused since the last one that went through. `PaymentFailedBanner` renders it at the top of `/billing` with Stripe's own reason and a retry.
