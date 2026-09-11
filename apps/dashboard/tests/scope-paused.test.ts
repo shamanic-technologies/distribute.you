@@ -201,6 +201,37 @@ describe("every surface PASSES the flag, not merely handles it", () => {
     expect(src).toContain("scopePausedFor(");
   });
 
+  it("the funnel's own page hands its verdict to the leg walk", () => {
+    // The walk's figures are the ARROW's, not any one campaign's, so a page that states
+    // `Paused` on its stat row while the table under it reads `Learning` is one screen
+    // contradicting itself.
+    const src = read("components/funnels/funnel-overview-page.tsx");
+    expect(src).toContain("useScopePaused(");
+    expect(src).toContain("paused={scopePaused}");
+  });
+
+  it("a leg row with NO campaign falls back to the scope's verdict", () => {
+    // The gap this closes: an arrow the brand works itself has no campaign to be
+    // stopped, so `campaign ? ... : false` left every `Done by you` row reading
+    // `Learning` on a funnel nothing sells. Pinned as the CALL SITE, not only the
+    // component — a table that handles `paused` while no page passes it is the feature
+    // entirely absent with the component perfectly correct.
+    const src = read("components/campaigns/campaigns-table.tsx");
+    expect(src).toContain(
+      "paused={campaign ? !isActiveStatus(campaign.campaign.status) : scopePaused}",
+    );
+    expect(src).toContain("scopePaused={paused}");
+  });
+
+  it("the leg walk never re-derives the verdict from the rows it holds", () => {
+    // `scope-paused.ts` owns the rule. This component fetches the very rows it would
+    // need to restate it, which is exactly why the ban is worth pinning: two spellings
+    // of one answer drift the day `rollupStatus` gains a state.
+    const src = read("components/campaigns/campaigns-table.tsx");
+    expect(src).not.toContain("scopeIsPaused");
+    expect(src).not.toContain("rollupStatus");
+  });
+
   it("leaves the Outcome chart alone, because a COUNT is never gated", () => {
     // The learning bar governs a figure that DIVIDES by an outcome count. This chart
     // states the count itself, which is a fact at any size — and the count is also what

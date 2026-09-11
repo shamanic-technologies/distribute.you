@@ -673,6 +673,7 @@ export function FunnelLegTable({
   extra,
   basePath,
   settled,
+  scopePaused = false,
 }: {
   funnel: SalesFunnelDef;
   rows: FunnelLegRow<CampaignRow>[];
@@ -681,6 +682,20 @@ export function FunnelLegTable({
   extra: CampaignRow[];
   basePath: string;
   settled: boolean;
+  /**
+   * NOTHING sells this funnel right now — the verdict the page's own header pill
+   * renders, passed in rather than re-derived from `rows` (`scope-paused.ts` owns that
+   * rule, and restating it here as `rows.every(...)` is a second source for one answer).
+   *
+   * It matters because the figures on this walk are ARROW-scoped: a rung's cost is what
+   * reaching that step has cost the funnel, and the conversion is a share of the step
+   * before. With nothing running, nobody reaches any rung, so `Learning` promises a
+   * number that cannot arrive until the customer restarts something. An arrow the brand
+   * works ITSELF has no campaign of its own to be stopped, which is exactly why it
+   * needs this: without it, those arrows kept reading `Learning` under a header that
+   * already said `Paused`.
+   */
+  scopePaused?: boolean;
 }) {
   const router = useRouter();
   // Warm both destinations on hover — a leg row opens either its campaign or, for an
@@ -772,7 +787,10 @@ export function FunnelLegTable({
                     }
                     sharesArrow={sharesArrow}
                     arrowLead={arrowLead}
-                    paused={campaign ? !isActiveStatus(campaign.campaign.status) : false}
+                    /* The row's own campaign where there is one; the SCOPE's verdict
+                       where there is not. An arrow the brand works itself is never
+                       `stopped` on its own — what stops it is the funnel going quiet. */
+                    paused={campaign ? !isActiveStatus(campaign.campaign.status) : scopePaused}
                   />
                   {/* Money the CAMPAIGN spent and may spend. An arrow the brand works
                       itself costs us nothing to run, so it states neither rather than $0
@@ -872,6 +890,7 @@ function CampaignsTableInner({
   offerId,
   funnelKey,
   funnelSteps,
+  paused = false,
 }: {
   brandId: string;
   featureSlug: string;
@@ -902,6 +921,17 @@ function CampaignsTableInner({
    * with no figures rather than dropping them.
    */
   funnelSteps?: FunnelStepBreakdown | null;
+  /**
+   * NOTHING in this scope is running — the verdict `useScopePaused` builds and the
+   * header pill above this table already renders. Read by the funnel WALK, whose
+   * figures are the arrow's rather than any one campaign's, so an arrow with no
+   * campaign of ours still has to say `Paused` rather than `Learning`.
+   *
+   * Passed in, never re-derived: this component holds `rows` and could test them, and a
+   * second spelling of the rule is how a header and the table under it come to
+   * disagree about one funnel.
+   */
+  paused?: boolean;
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
@@ -942,6 +972,7 @@ function CampaignsTableInner({
         extra={legTable.extra}
         basePath={basePath}
         settled={settled}
+        scopePaused={paused}
       />
     );
   }
