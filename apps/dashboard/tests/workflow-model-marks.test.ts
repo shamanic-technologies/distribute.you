@@ -123,7 +123,8 @@ describe("workflowModelMark", () => {
 
 describe("the surfaces that draw a model", () => {
   const table = read("src/components/workflows/campaign-workflows-page.tsx");
-  const detail = read("src/components/workflows/campaign-workflow-detail-page.tsx");
+  // The detail PAGE is gone: one workflow is read in a panel over the ranking.
+  const panel = read("src/components/workflows/workflow-rank-panel.tsx");
   const rows = read("src/lib/campaign-workflow-rows.ts");
   const cells = read("src/components/workflows/workflow-cells.tsx");
   const api = read("src/lib/api.ts");
@@ -156,7 +157,7 @@ describe("the surfaces that draw a model", () => {
     expect(cells).toContain("workflowModelMark(");
     for (const [name, src] of [
       ["table", table],
-      ["detail", detail],
+      ["panel", panel],
     ] as const) {
       expect(src, name).toContain("WorkflowModelCell");
     }
@@ -170,7 +171,7 @@ describe("the surfaces that draw a model", () => {
     expect(cells).toContain("line2={template.id}");
     for (const [name, src] of [
       ["table", table],
-      ["detail", detail],
+      ["panel", panel],
     ] as const) {
       expect(src, name).toContain("WorkflowTemplateCell");
     }
@@ -184,9 +185,9 @@ describe("the surfaces that draw a model", () => {
   });
 
   it("names the model on the sibling price bars, which is what they differ by", () => {
-    expect(detail).toContain("${r.workflowDynastyName} · ${m.label}");
+    expect(panel).toContain("${r.workflowDynastyName} · ${m.label}");
     // A truncated label states its whole self on hover.
-    expect(detail).toContain("title={r.label}");
+    expect(panel).toContain("title={r.label}");
   });
 
   it("puts the model where the channel and audience type used to be", () => {

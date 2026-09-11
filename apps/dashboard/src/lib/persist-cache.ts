@@ -207,6 +207,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // version cold-fetches it on every visit before it can even name what is running.
   "workflowDynasties",
   "campaignWorkflowRevenue",
+  // The projection ladder the Workflows table is RANKED on. Unlisted, the whole
+  // ordering plus every "why" cold-fetches over the slowest features read there is.
+  "workflowRankLadder",
   "brandWorkflowRevenue",
   "offerWorkflowRevenue",
   "workflowRevenue",
