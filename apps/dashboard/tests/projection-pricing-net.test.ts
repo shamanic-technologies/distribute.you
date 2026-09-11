@@ -74,6 +74,10 @@ describe("every Overview money reader asks for net pricing", () => {
     // grain that changed the basis as well as the population would make the two tabs
     // two different questions rather than one question at two scopes.
     "getBrandRevenueByWorkflow",
+    // And at the OFFER grain, the tab between them. Same reason again: the grain a
+    // tab states is the POPULATION, never the basis, so three tabs of one table
+    // cannot be three different questions.
+    "getOfferRevenueByWorkflow",
     "getWorkflowRevenue",
   ]) {
     it(`${reader} requests net pricing`, () => {

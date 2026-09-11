@@ -27,13 +27,20 @@
  *
  * Campaign / Offer / Brand / Global. Only the SOURCE changes — every grain builds the
  * same rows and renders the same columns, so a figure cannot mean two things one tab
- * apart. The grain a tab states is the parameter its read sends: the campaign grain
- * sends `campaignId`, the brand grain omits it (which is what the producer documents
- * the omission as meaning), and the global grain reads the two PUBLIC cross-org
- * endpoints. No grain ever falls back to another one's answer — rendering brand
- * figures under an offer's name is the wrong-scope bug this repo keeps recording, so
- * the OFFER tab is DISABLED until features-service honours `offerId` on the grouped
- * read, and it says so rather than showing a number it cannot stand behind.
+ * apart. The grain a tab states IS the parameter its read sends: the campaign grain
+ * sends `campaignId`, the offer grain sends `offerId`, the brand grain sends neither
+ * (which is what the producer documents the omission as meaning), and the global
+ * grain reads the two PUBLIC cross-org endpoints. No grain ever falls back to
+ * another one's answer — rendering brand figures under an offer's name is the
+ * wrong-scope bug this repo keeps recording, and it is why the offer tab shipped
+ * DISABLED until features-service honoured `offerId` on the grouped read (#923 ->
+ * v0.162.1). Proven on the wire before wiring it, on a subject where the two scopes
+ * MUST differ rather than a single-offer brand where they agree by construction:
+ * brand `f4d73dab` returns 31 workflow dynasties at the brand grain and 28 at the
+ * offer grain, the three `pr-*` lineages belonging to campaigns that sell another
+ * offer. A sibling offer no campaign sells 404s rather than answering with the
+ * brand's numbers, and `offerId` beside `campaignId` is a 400 — which the tabs make
+ * unreachable, since exactly one grain is active at a time.
  *
  * ── THE REST OF THE RULES, EACH ONE A MISTAKE ALREADY PAID FOR ───────────────────
  *
@@ -69,6 +76,7 @@ import {
   listChannelWorkflows,
   getFeatureRevenueByWorkflow,
   getBrandRevenueByWorkflow,
+  getOfferRevenueByWorkflow,
   getFleetWorkflowCost,
   getFleetWorkflowOutreach,
 } from "@/lib/api";
@@ -96,9 +104,6 @@ const GRAINS: { key: WorkflowGrain; label: string }[] = [
   { key: "brand", label: "Brand" },
   { key: "global", label: "Global" },
 ];
-
-const OFFER_SOON_TIP =
-  "Coming soon. We can already answer this for your campaign, your brand and across every client — the offer grain needs one change on our side first, and we would rather show you nothing than show you your brand's numbers under your offer's name.";
 
 const WORKFLOW_TIP =
   "A workflow is the pipeline that runs this channel: it finds the people, writes the email and sends it. Your campaign runs one at a time, and we switch it for a better one when the numbers say so.";
@@ -317,6 +322,19 @@ export function CampaignWorkflowsPage() {
     },
   );
 
+  // The same read at the OFFER grain — the campaigns selling THIS offer, folded per
+  // workflow. The offer is in the key as well as in the request, for the same reason
+  // the campaign is: a brand entry answering an offer-scoped question is the
+  // wrong-scope bug wearing a cache key.
+  const offerRevQ = useAuthQuery(
+    ["offerWorkflowRevenue", brandId, offerId],
+    () => getOfferRevenueByWorkflow(featureSlug as string, brandId, offerId),
+    {
+      ...pollOptions,
+      enabled: ready && Boolean(brandId) && Boolean(offerId) && grain === "offer",
+    },
+  );
+
   // The same read at the BRAND grain, under its own key for the same reason.
   const brandRevQ = useAuthQuery(
     ["brandWorkflowRevenue", brandId],
@@ -338,8 +356,8 @@ export function CampaignWorkflowsPage() {
   );
 
   // A stopped campaign produces nothing, so a thin price there is not "learning" — it
-  // is waiting on a restart. Only the CAMPAIGN grain can say that: at brand and global
-  // grain the scope spans campaigns and the word would describe none of them.
+  // is waiting on a restart. Only the CAMPAIGN grain can say that: at offer, brand and
+  // global grain the scope spans campaigns and the word would describe none of them.
   const { paused: campaignPaused } = useScopePaused(brandId, { campaignId, enabled: isBeta });
   const paused = grain === "campaign" && campaignPaused;
 
@@ -355,9 +373,11 @@ export function CampaignWorkflowsPage() {
         isLearning,
       });
     }
+    const scoped =
+      grain === "brand" ? brandRevQ.data : grain === "offer" ? offerRevQ.data : campaignRevQ.data;
     return buildCampaignWorkflowRows({
       catalogue,
-      groups: (grain === "brand" ? brandRevQ.data : campaignRevQ.data) ?? [],
+      groups: scoped ?? [],
       campaignWorkflowSlug,
       isLearning,
     });
@@ -365,6 +385,7 @@ export function CampaignWorkflowsPage() {
     grain,
     catalogueQ.data,
     campaignRevQ.data,
+    offerRevQ.data,
     brandRevQ.data,
     fleetCostQ.data,
     fleetOutreachQ.data,
@@ -382,7 +403,9 @@ export function CampaignWorkflowsPage() {
         (fleetOutreachQ.isPending && !fleetOutreachQ.isError)
       : grain === "brand"
         ? brandRevQ.isPending && !brandRevQ.isError
-        : campaignRevQ.isPending && !campaignRevQ.isError;
+        : grain === "offer"
+          ? offerRevQ.isPending && !offerRevQ.isError
+          : campaignRevQ.isPending && !campaignRevQ.isError;
   const pending =
     !slugSettled || (catalogueQ.isPending && !catalogueQ.isError) || figuresPending;
 
@@ -423,26 +446,20 @@ export function CampaignWorkflowsPage() {
           switching one tab. */}
       <div className="inline-flex flex-wrap gap-1 rounded-lg border border-brand-200 bg-brand-50 p-1">
         {GRAINS.map((g) => {
-          const disabled = g.key === "offer";
           const active = grain === g.key;
           return (
-            <span key={g.key} className="inline-flex items-center">
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => !disabled && setGrain(g.key)}
-                className={`rounded-md px-3 py-1.5 text-sm transition ${
-                  active
-                    ? "bg-white font-medium text-gray-900 shadow-sm"
-                    : disabled
-                      ? "cursor-not-allowed text-gray-400"
-                      : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                {g.label}
-              </button>
-              {disabled && <InfoTooltip tip={OFFER_SOON_TIP} placement="top" />}
-            </span>
+            <button
+              key={g.key}
+              type="button"
+              onClick={() => setGrain(g.key)}
+              className={`rounded-md px-3 py-1.5 text-sm transition ${
+                active
+                  ? "bg-white font-medium text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              {g.label}
+            </button>
           );
         })}
       </div>

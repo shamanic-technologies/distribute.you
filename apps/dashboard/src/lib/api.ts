@@ -4401,6 +4401,39 @@ export async function getBrandRevenueByWorkflow(
   return readWorkflowGroups(featureSlug, query, "getBrandRevenueByWorkflow", token);
 }
 
+/**
+ * The SAME grouped read at the OFFER grain — the campaigns selling ONE offer, folded
+ * per workflow. The grain between the brand and its campaigns.
+ *
+ * `offerId` is the parameter the grain states, exactly as `campaignId` is one grain
+ * finer and its absence is the brand: features-service resolves the offer to the
+ * campaigns selling it and computes every figure over exactly those, re-attributing
+ * nothing. Measured in prod on brand `f4d73dab` before this shipped: the brand read
+ * returned 31 workflow dynasties and the offer read 28 — the three `pr-*` lineages
+ * belong to campaigns selling a DIFFERENT offer, so the scope is genuinely narrower
+ * and this is not the single-member tautology a scoping probe has to avoid.
+ *
+ * Two refusals the producer owns and this reader must not paper over. An offer no
+ * campaign of the brand sells is a **404 `offer_has_no_campaigns`** — never the
+ * brand's own numbers under the offer's name, and never a fabricated zero; the query
+ * errors, the catalogue still supplies the rows, and the money columns read `—`,
+ * which is the honest "we have no figure". And `offerId` beside `campaignId` is a
+ * **400**: a campaign already sells exactly one offer, so the two can never be sent
+ * together (the page's tabs are mutually exclusive by construction).
+ *
+ * pricing=net, like every other money read here.
+ */
+export async function getOfferRevenueByWorkflow(
+  featureSlug: string,
+  brandId: string,
+  offerId: string,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, offerId, groupBy: "workflow" });
+  query.set("pricing", "net");
+  return readWorkflowGroups(featureSlug, query, "getOfferRevenueByWorkflow", token);
+}
+
 /** One parse for every grain: a second copy is a second place for the shape to drift. */
 async function readWorkflowGroups(
   featureSlug: string,
