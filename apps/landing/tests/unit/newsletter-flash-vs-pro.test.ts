@@ -23,7 +23,8 @@ describe("newsletter: flash vs pro", () => {
     expect(srcs.length).toBeGreaterThan(5);
     for (const src of srcs) {
       expect(src.startsWith("https://distribute.you/")).toBe(true);
-      const local = join(ROOT, "public", src.replace("https://distribute.you/", ""));
+      // a cache-buster is not part of the path on disk
+      const local = join(ROOT, "public", src.replace("https://distribute.you/", "").split("?")[0]);
       expect(existsSync(local), `${src} is not under public/`).toBe(true);
     }
   });
@@ -44,6 +45,6 @@ describe("newsletter: flash vs pro", () => {
   });
 
   it("states the article's headline figures", () => {
-    for (const figure of ["$122", "$1", "117,000", "36", "34,305"]) expect(html).toContain(figure);
+    for (const figure of ["$139", "$1", "125,000", "36", "$198"]) expect(html).toContain(figure);
   });
 });

@@ -221,6 +221,7 @@ describe("the comparison bars read on the dark surface", () => {
 describe("every new query root is persisted", () => {
   for (const root of [
     "workflows",
+    "workflowDynasties",
     "campaignWorkflowRevenue",
     "brandWorkflowRevenue",
     "workflowRevenue",
@@ -231,6 +232,54 @@ describe("every new query root is persisted", () => {
       expect(PERSIST).toContain(`"${root}",`);
     });
   }
+});
+
+describe("the channel's version-to-dynasty map reaches BOTH resolution call sites", () => {
+  // The map is the only source that can name a SUPERSEDED version, which is what
+  // campaign-service routinely pins a campaign to. A page that reads it but never
+  // PASSES it is the feature entirely absent with the lib perfectly correct — so the
+  // guard pins the call site, not the reader.
+  for (const [name, src] of [
+    ["the table", TABLE],
+    ["the detail page", DETAIL],
+  ] as const) {
+    it(`${name} reads the map`, () => {
+      expect(src).toContain("listChannelWorkflowDynasties");
+      expect(src).toContain('["workflowDynasties", featureSlug ?? "none"]');
+    });
+
+    it(`${name} hands it to resolveRunningWorkflow`, () => {
+      const at = src.indexOf("resolveRunningWorkflow(");
+      expect(at).toBeGreaterThan(-1);
+      const call = src.slice(at, src.indexOf("isLearning", at) + 40 || at + 600);
+      expect(call).toContain("dynastiesQ.data ?? []");
+    });
+
+    it(`${name} re-resolves when the map arrives`, () => {
+      // Without the dep the memo keeps the pre-map answer for the life of the mount,
+      // so the section stays missing until something unrelated invalidates it.
+      const at = src.indexOf("resolveRunningWorkflow(");
+      expect(src.slice(at, at + 900)).toContain("dynastiesQ.data,");
+    });
+  }
+
+  it("the reader asks for ONE feature, never the fleet", () => {
+    // The unscoped listing is every internal workflow codename we have, and a codename
+    // must never reach a customer's browser.
+    const at = API.indexOf("export async function listChannelWorkflowDynasties");
+    expect(at).toBeGreaterThan(-1);
+    const body = API.slice(at, API.indexOf("\nexport ", at + 10));
+    expect(body).toContain("URLSearchParams({ featureSlug })");
+    expect(body).toContain("/workflows/dynasties?");
+  });
+
+  it("the reader fails loud on a shape it does not recognise", () => {
+    const at = API.indexOf("export async function listChannelWorkflowDynasties");
+    const body = API.slice(at, API.indexOf("\nexport ", at + 10));
+    expect(body).toContain("safeParse");
+    expect(body).toContain("throw new Error");
+    expect(body).not.toContain("?? []");
+  });
 });
 
 describe("the top bar names the open workflow", () => {
@@ -489,15 +538,23 @@ describe("the grain is a TAB, and no tab falls back to another one's answer", ()
     // by a revenue group's folded `workflowSlugs`, and the global grain holds no groups
     // — so a builder resolving from its own source lost `Running now` on that tab alone.
     // The page must resolve from the catalogue AND every group set it holds, once.
-    expect(TABLE).toContain("resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [");
-    expect(TABLE).toContain("campaignRevQ.data ?? [],");
-    expect(TABLE).toContain("offerRevQ.data ?? [],");
-    expect(TABLE).toContain("brandRevQ.data ?? [],");
+    const call = TABLE.slice(
+      TABLE.indexOf("resolveRunningWorkflow("),
+      TABLE.indexOf("const rows = useMemo("),
+    );
+    expect(call).toContain("campaign?.workflowSlug ?? null");
+    expect(call).toContain("catalogueQ.data ?? []");
+    expect(call).toContain("campaignRevQ.data ?? []");
+    expect(call).toContain("offerRevQ.data ?? []");
+    expect(call).toContain("brandRevQ.data ?? []");
     // Neither builder may be handed the raw slug again — that is the per-grain
     // resolution this replaced.
     expect(TABLE).not.toContain("campaignWorkflowSlug");
     expect(DETAIL).not.toContain("campaignWorkflowSlug");
-    expect(DETAIL).toContain("resolveRunningWorkflow(campaign?.workflowSlug ?? null");
+    expect(DETAIL).toContain("resolveRunningWorkflow(");
+    expect(
+      DETAIL.slice(DETAIL.indexOf("resolveRunningWorkflow("), DETAIL.indexOf("isLearning,")),
+    ).toContain("campaign?.workflowSlug ?? null");
   });
 
   it("only the CAMPAIGN grain can say a scope is paused", () => {

@@ -3,6 +3,7 @@
 import { EmailSignature } from "@/components/email-signature";
 import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { emailBodySegments } from "@/lib/email-body-links";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import {
   hasReadableBody,
@@ -140,7 +141,30 @@ export function LeadHistoryTimeline({
                       <p className="mb-1 text-xs font-medium text-gray-700">{e.subject}</p>
                     )}
                     <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">
-                      {e.bodyText}
+                      {/* A destination is a LINK, so a reader can follow it and see where
+                          it goes. The label drops the query string and the href keeps it,
+                          which is the rule the sender already applies when it composes the
+                          message: the panel shows what the prospect saw, and hovering
+                          reveals the full destination in the browser's status bar.
+                          On a message we HOLD, the provider stripped our tracking
+                          parameters out of the body entirely, so the destination comes
+                          from the producer's own resolution against the copy we wrote. */}
+                      {emailBodySegments(e.bodyText ?? "", e.links).map((seg, s) =>
+                        seg.kind === "link" ? (
+                          <a
+                            key={s}
+                            href={seg.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={seg.href}
+                            className="break-all text-brand-600 underline-offset-2 hover:underline"
+                          >
+                            {seg.text}
+                          </a>
+                        ) : (
+                          <span key={s}>{seg.text}</span>
+                        ),
+                      )}
                     </pre>
                     {/* The signature is appended AT SEND TIME, so it belongs under copy
                         that has not been sent — never under a message read back off the

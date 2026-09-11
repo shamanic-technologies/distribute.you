@@ -71,13 +71,13 @@ describe("cost-per-click article: copy rules", () => {
 });
 
 describe("cost-per-click article: editorial rules", () => {
-  it("the volume is a round 120,000 in the title, excerpt, story and hero; the exact count lives under Method only", () => {
-    expect(String(meta.title)).toContain("120,000");
-    expect(String(meta.excerpt)).toContain("120,000");
-    expect(story).toContain("120,000 cold emails");
-    expect(hero).toContain("120,000 emails sent");
-    expect(story).not.toContain("120,652");
-    expect(method).toContain("120,652");
+  it("the volume is a round 125,000 in the title, excerpt, story and hero; the exact count lives under Method only", () => {
+    expect(String(meta.title)).toContain("125,000");
+    expect(String(meta.excerpt)).toContain("125,000");
+    expect(story).toContain("125,000 cold emails");
+    expect(hero).toContain("125,000 emails sent");
+    expect(story).not.toContain("124,664");
+    expect(method).toContain("124,664");
   });
 
   it("no money figure of ours carries cents; a competitor's published price is quoted as published", () => {
@@ -93,10 +93,10 @@ describe("cost-per-click article: editorial rules", () => {
     // Owner-decided 2026-09-10: the intro states the scope (39 A/B-tested workflows) and the
     // difference between the all-workflows price and the price on the workflow clients run.
     expect(String(meta.title)).not.toMatch(/\d+ (workflows?|clients?)/i);
-    expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>39 workflows<\/strong> we A\/B tested/);
+    expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>25 workflows<\/strong> we A\/B tested/);
     expect(story).toContain("Our clients only ever get the winner");
     expect(story).not.toMatch(/\b33 clients?\b/);
-    expect(method).toContain("39 workflows");
+    expect(method).toContain("25 of them past 1,000 emails");
     expect(method).toContain("33 clients");
   });
 
@@ -120,11 +120,11 @@ describe("cost-per-click article: editorial rules", () => {
     expect(story).not.toContain('id="the-link"');
     expect(story).not.toContain("unsubscribe");
     expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$4<\/strong> across every workflow we tested/);
-    expect(story).toContain("buys a click for <strong>$2</strong>");
+    expect(story).toContain("buys a click for <strong>$1</strong>");
     // Owner-decided 2026-09-10: one client price, the best workflow alone; no range, no four-workflow chart.
     expect(story).not.toContain("$2 to $3");
     expect(story).not.toContain("four best workflows");
-    expect(method).toContain("28,482 emails to 15,316 people carried a link");
+    expect(method).toContain("42,387 emails to 20,506 people carried a link");
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
@@ -146,7 +146,7 @@ describe("cost-per-click article: editorial rules", () => {
   });
 
   it("the tables are folded away, not in the main flow", () => {
-    expect(html).toMatch(/<details>\s*<summary>Every bucket, every workflow<\/summary>/);
+    expect(html).toMatch(/<details>\s*<summary>Every bucket, every cut<\/summary>/);
     expect(story).not.toContain('id="the-implied-price"');
     expect(story).not.toMatch(/at (their|our) (price|rate)/i);
     // The bucket tables fold; the two "best tool" comparison tables in the story are the
@@ -158,40 +158,39 @@ describe("cost-per-click article: editorial rules", () => {
 
 describe("cost-per-click article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of ["$4", "$2", "$6", "$7", "$7,940", "$2,033", "530", "28,482"]) {
+    for (const figure of ["$4", "$1", "$2", "$6", "$8,381", "$2,494", "677", "42,387"]) {
       expect(html).toContain(figure);
     }
     expect(hero).toContain(">$4<");
-    expect(hero).toContain(">$2<");
+    expect(hero).toContain(">$1<");
     expect(hero).not.toContain("$2 to $3");
-    expect(hero).toContain("19 clicks per 1,000 emails");
+    expect(hero).toContain("16 clicks per 1,000 emails");
   });
 
   it("the headline reconciles with the method's totals", () => {
-    expect(Math.round(2033 / 530)).toBe(4);
-    expect(Math.round((530 / 28_482) * 1000)).toBe(19);
-    // The excluded set (92,170 link-less emails) is stated in Method and tabulated nowhere:
+    expect(Math.round(2494 / 677)).toBe(4);
+    expect(Math.round((677 / 42_387) * 1000)).toBe(16);
+    // The link-less emails are stated in Method and tabulated nowhere:
     // no folded table carries a no-link bucket.
-    expect(120_652 - 92_170).toBe(28_482);
     expect(html.slice(html.indexOf("<details>"))).not.toMatch(/no link/i);
   });
 
   it("every priced bar clears the floor the method states", () => {
     expect(method).toContain(`at least ${MIN_EMAILS.toLocaleString("en-US")} emails and ${MIN_CLICKS} clicks`);
     const bars = svgs.filter((svg) => svg.includes("clicks per 1,000 emails"));
+    // Owner-asked ("mets les putain de barres"): every bucket with a click is drawn and
+    // priced; one under either floor carries "(thin)" beside its label so a reader weighs it.
     for (const svg of bars) {
+      const rows = [...svg.matchAll(/fill="#475569">([^<]*)<\/text>/g)].map((m) => m[1]);
       const notes = [...svg.matchAll(/([\d.]+) clicks per 1,000 emails, ([\d,]+) emails/g)];
       expect(notes.length).toBeGreaterThan(0);
-      // A thin bucket (lunch hour, follow-up 2, 2 to 3 paragraphs) is drawn and labelled "(thin)"
-      // with a "shown, not priced" footer, owner-asked; it may sit under either floor.
-      const drawnNotPriced = svg.includes("shown, not priced");
-      for (const [, ctr, emails] of notes) {
+      expect(rows.length).toBe(notes.length);
+      notes.forEach(([, ctr, emails], i) => {
         const n = Number(emails.replace(/,/g, ""));
         const clicks = (Number(ctr) * n) / 1000;
-        if (drawnNotPriced && (n < MIN_EMAILS || Math.round(clicks) < MIN_CLICKS)) continue;
-        expect(n).toBeGreaterThanOrEqual(MIN_EMAILS);
-        expect(Math.round(clicks)).toBeGreaterThanOrEqual(MIN_CLICKS);
-      }
+        const solid = n >= MIN_EMAILS && Math.round(clicks) >= MIN_CLICKS;
+        expect(rows[i].includes("(thin)"), rows[i]).toBe(!solid);
+      });
     }
   });
 
@@ -201,11 +200,13 @@ describe("cost-per-click article: dataset coherence", () => {
     for (const table of tables) {
       // The two market-comparison tables carry prices and rates, not clicks.
       if (!/<th>(Bucket|Client|Workflow)<\/th>/.test(table)) continue;
-      const isEntity = /<th>(Client|Workflow)<\/th>/.test(table);
       for (const row of table.match(/<tr><td>[\s\S]*?<\/tr>/g) ?? []) {
-        const cells = [...row.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
+        const cells = [...row.matchAll(/<td[^>]*>(.*?)<\/td>/g)].map((m) => m[1]);
+        const emails = Number(cells[1].replace(/,/g, ""));
         const clicks = Number(cells[2].replace(/,/g, ""));
-        if (cells[5] !== "") expect(clicks).toBeGreaterThanOrEqual(isEntity ? 5 : MIN_CLICKS);
+        const solid = emails >= MIN_EMAILS && clicks >= MIN_CLICKS;
+        // A row priced under either floor says so beside its name, the same as its bar.
+        if (clicks > 0) expect(cells[0].includes("(thin)"), cells[0]).toBe(!solid);
       }
     }
   });
@@ -217,20 +218,25 @@ describe("cost-per-click article: dataset coherence", () => {
       expect(method).toContain(model);
     }
     expect(story).not.toMatch(/Chinese|DeepSeek|GLM|Not enough to price/);
+    // A workflow codename never reaches a reader: nobody outside the team knows them.
+    expect(html).not.toMatch(/\b(Rampart|Permafrost|Pelican|Legato|Lithium|Osprey|Cirque|Azalea|Bronze-2|Dawn|Vector)\b/);
   });
 
   it("a thin bucket is drawn and labelled (thin), never dropped to a footnote", () => {
-    // Owner-asked 2026-09-10 ("remets la barre"): Follow-up 2 (19 clicks) and 2 to 3 paragraphs
-    // (508 emails) are drawn like the lunch hour, with a "shown, not priced" footer.
-    for (const label of ["Follow-up 2 (thin)", "2 to 3 (thin)", "Noon to 1pm (thin)"]) expect(story).toContain(label);
-    expect(story).not.toMatch(/too few to price/);
+    // Owner-asked 2026-09-10 ("remets la barre"): a bucket under either floor keeps its bar
+    // and its price, and says (thin) beside its name rather than being sent to a footnote.
+    expect(story).toMatch(/\(thin\)/);
+    expect(story).not.toMatch(/too few to price|shown, not priced/);
   });
 
   it("states the limits rather than hiding them", () => {
     expect(method).toMatch(/<strong>Limits<\/strong>: not a randomised experiment/);
-    expect(method).toContain("530 clicks is a small count");
+    expect(method).toContain("677 clicks is a small count");
     expect(method).toMatch(/no confidence intervals/);
-    expect(method).toContain("its clicks are unsubscribes and those emails are excluded from every price");
+    // Production shows zero overlap between the people who clicked and the people who
+    // unsubscribed, so the page states only that link-less emails are excluded.
+    expect(html).not.toMatch(/clicks are unsubscribes/);
+    expect(method).toContain("Emails with no link in the body are excluded from every price");
     // The price is what the client is charged, all in, and the method says so.
     expect(method).toMatch(/<strong>Pricing<\/strong>: every dollar here is what the client is charged, all in/);
     expect(method).toContain("no subscription and no retainer");
@@ -241,7 +247,7 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(blocks.length).toBe(1);
     const dataset = JSON.parse(blocks[0][1]) as { "@type": string; temporalCoverage: string; url: string };
     expect(dataset["@type"]).toBe("Dataset");
-    expect(dataset.temporalCoverage).toBe("2026-04-15/2026-09-09");
+    expect(dataset.temporalCoverage).toBe("2026-04-15/2026-09-11");
     expect(dataset.url).toBe(`https://distribute.you/blog/${SLUG}`);
   });
 
@@ -255,7 +261,7 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(story).not.toContain('id="the-market"');
     expect(story).not.toContain('id="best-click-rate"');
     for (const [section, verdict] of [
-      [cpc, "Best tool for the lowest cost per click: distribute.you, $2 per click, all in."],
+      [cpc, "Best tool for the lowest cost per click: distribute.you, $1 per click, all in."],
     ] as const) {
       // Tint plus a full 1px border, never a side accent.
       expect(section).toMatch(new RegExp(`<div style="background:#eff6ff;border:1px solid #bfdbfe;[^"]*"><p style="margin:0"><strong>${verdict.replace(/[.$()]/g, "\\$&")}</strong>`));
@@ -274,7 +280,7 @@ describe("cost-per-click article: dataset coherence", () => {
     // Cost per click: ours is the only cold email row with a measured price.
     expect(cpc.match(/<tr><td>[\s\S]*?<\/tr>/g)!.slice(4).every((row) => row.includes("<td>Not published"))).toBe(true);
     expect(cpc).toContain("<strong>None of them publishes a cost per click.</strong>");
-    expect(cpc).toContain("<strong>Our $2 is the whole bill</strong>");
+    expect(cpc).toContain("<strong>Our $1 is the whole bill</strong>");
   });
 
   it("every comparison table carries a logo per row, ours included, and the price section states all-in", () => {
