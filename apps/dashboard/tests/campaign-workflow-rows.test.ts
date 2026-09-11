@@ -12,6 +12,7 @@ import {
   buildFleetWorkflowRows,
   collapseWorkflowCatalogue,
   runningDynastyFor,
+  resolveRunningWorkflow,
   sectionCampaignWorkflowRows,
   fleetComparison,
   type CampaignWorkflowRow,
@@ -106,7 +107,7 @@ describe("buildCampaignWorkflowRows", () => {
     const rows = buildCampaignWorkflowRows({
       catalogue: [cat({ workflowDynastySlug: "chan-offered", workflowSlug: "chan-offered", workflowDynastyName: "Offered" })],
       groups: [grp({ workflowDynastySlug: "chan-retired", workflowDynastyName: "Retired" })],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(rows.map((r) => r.workflowDynastySlug)).toEqual(["chan-offered"]);
@@ -119,7 +120,7 @@ describe("buildCampaignWorkflowRows", () => {
     const rows = buildCampaignWorkflowRows({
       catalogue: [],
       groups: [grp()],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(rows).toEqual([]);
@@ -129,7 +130,7 @@ describe("buildCampaignWorkflowRows", () => {
     const rows = buildCampaignWorkflowRows({
       catalogue: [cat()],
       groups: [],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(rows[0].cpprCents).toBeNull();
@@ -144,14 +145,14 @@ describe("buildCampaignWorkflowRows", () => {
     const thin = buildCampaignWorkflowRows({
       catalogue: [cat()],
       groups: [grp({ recipientsRepliesPositive: 9 })],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(thin[0].learning).toBe(true);
     const measured = buildCampaignWorkflowRows({
       catalogue: [cat()],
       groups: [grp({ recipientsRepliesPositive: 10 })],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(measured[0].learning).toBe(false);
@@ -161,10 +162,114 @@ describe("buildCampaignWorkflowRows", () => {
     const rows = buildCampaignWorkflowRows({
       catalogue: [cat({ workflowDynastyName: "" })],
       groups: [grp({ workflowDynastyName: null })],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(rows[0].workflowDynastyName).toBe("chan-legato");
+  });
+});
+
+describe("the running workflow is resolved ONCE, for every grain", () => {
+  // campaign-service states a VERSIONED slug and the catalogue carries only each
+  // dynasty's CURRENT version, so an older pin is nameable only by a group's folded
+  // `workflowSlugs`. Measured in prod 2026-09-11: 30 of 30 versioned cold-email
+  // campaign slugs match no current catalogue entry.
+  const cur = cat({ workflowSlug: "chan-legato-v9", workflowDynastySlug: "chan-legato", version: 9 });
+  const group = grp({ workflowDynastySlug: "chan-legato", workflowSlugs: ["chan-legato-v2"] });
+
+  it("names the dynasty from a group when the catalogue only carries a newer version", () => {
+    expect(resolveRunningWorkflow("chan-legato-v2", [cur], [[group]])).toEqual({
+      dynastySlug: "chan-legato",
+      dynastyName: "Legato",
+    });
+  });
+
+  it("answers the SAME at the global grain, which holds no groups of its own", () => {
+    // The regression: resolving per grain returned null here, so `Running now` vanished
+    // on the Global tab alone while the other three rendered it.
+    const resolved = resolveRunningWorkflow("chan-legato-v2", [cur], [[group]]);
+    const rows = buildFleetWorkflowRows({
+      catalogue: [cur],
+      fleet: [],
+      outreach: [],
+      running: resolved,
+      isLearning,
+    });
+    expect(rows.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([
+      "chan-legato",
+    ]);
+  });
+
+  it("states NO running workflow when no source names the version", () => {
+    expect(resolveRunningWorkflow("chan-unknown-v3", [cur], [[group]])).toEqual({
+      dynastySlug: null,
+      dynastyName: null,
+    });
+    expect(resolveRunningWorkflow(null, [cur], [[group]]).dynastySlug).toBeNull();
+  });
+});
+
+describe("the RUNNING workflow always gets a row, even once its lineage is retired", () => {
+  // Rows are keyed on the catalogue, and a dynasty retired while a campaign still runs
+  // it is absent from it — so the row was dropped and `Running now` had nothing to put
+  // under a heading whose whole job is to say what is happening. 17 prod cold-email
+  // campaigns are pinned to `tectonic` / `atlantis`, neither of which the catalogue
+  // carries.
+  const catalogue = [cat({ workflowSlug: "chan-other", workflowDynastySlug: "chan-other" })];
+  const retired = grp({
+    workflowDynastySlug: "chan-tectonic",
+    workflowDynastyName: "Chan Tectonic",
+    workflowSlugs: ["chan-tectonic-v16"],
+    recipientsRepliesPositive: 3,
+    committedCostUsd: 42,
+  });
+
+  it("synthesizes the row at a scoped grain, named and figured from the group", () => {
+    const running = resolveRunningWorkflow("chan-tectonic-v16", catalogue, [[retired]]);
+    const rows = buildCampaignWorkflowRows({
+      catalogue,
+      groups: [retired],
+      running,
+      isLearning,
+    });
+    const row = rows.find((r) => r.workflowDynastySlug === "chan-tectonic")!;
+    expect(row.running).toBe(true);
+    expect(row.workflowDynastyName).toBe("Chan Tectonic");
+    expect(row.positiveReplies).toBe(3);
+    expect(row.committedCostUsd).toBe(42);
+    // Everything only the CATALOGUE knows reads null rather than a guess.
+    expect(row.contentModel).toBeNull();
+    expect(row.contentPromptType).toBeNull();
+    expect(rows.filter((r) => r.running)).toHaveLength(1);
+  });
+
+  it("synthesizes it at the global grain too, with no figures to borrow", () => {
+    const running = resolveRunningWorkflow("chan-tectonic-v16", catalogue, [[retired]]);
+    const rows = buildFleetWorkflowRows({
+      catalogue,
+      fleet: [],
+      outreach: [],
+      running,
+      isLearning,
+    });
+    const row = rows.find((r) => r.workflowDynastySlug === "chan-tectonic")!;
+    expect(row.running).toBe(true);
+    expect(row.positiveReplies).toBeNull();
+    expect(row.committedCostUsd).toBeNull();
+    // Nothing named it here, so the name falls back to what the resolver carried.
+    expect(row.workflowDynastyName).toBe("Chan Tectonic");
+  });
+
+  it("never duplicates a dynasty the catalogue already offers", () => {
+    const offered = [cat({ workflowSlug: "chan-legato-v9", workflowDynastySlug: "chan-legato", version: 9 })];
+    const rows = buildCampaignWorkflowRows({
+      catalogue: offered,
+      groups: [],
+      running: { dynastySlug: "chan-legato", dynastyName: "Legato" },
+      isLearning,
+    });
+    expect(rows.filter((r) => r.workflowDynastySlug === "chan-legato")).toHaveLength(1);
+    expect(rows[0].running).toBe(true);
   });
 });
 
@@ -298,7 +403,7 @@ describe("buildFleetWorkflowRows", () => {
       catalogue,
       fleet,
       outreach: [{ workflowDynastySlug: "a", recipientsContacted: 5000 }],
-      campaignWorkflowSlug: "a",
+      running: { dynastySlug: "a", dynastyName: null },
       isLearning,
     });
     const a = rows.find((r) => r.workflowDynastySlug === "a")!;
@@ -316,7 +421,7 @@ describe("buildFleetWorkflowRows", () => {
       catalogue,
       fleet,
       outreach: [],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(rows.map((r) => r.workflowDynastySlug)).toEqual(["a", "b"]);
@@ -327,7 +432,7 @@ describe("buildFleetWorkflowRows", () => {
       catalogue,
       fleet,
       outreach: [],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     const b = rows.find((r) => r.workflowDynastySlug === "b")!;
@@ -343,7 +448,7 @@ describe("buildFleetWorkflowRows", () => {
       catalogue,
       fleet,
       outreach: [],
-      campaignWorkflowSlug: null,
+      running: { dynastySlug: null, dynastyName: null },
       isLearning,
     });
     expect(rows.every((r) => r.roiMultiple === null && r.cpcCents === null)).toBe(true);

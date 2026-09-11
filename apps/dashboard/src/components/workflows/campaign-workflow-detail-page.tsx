@@ -61,6 +61,7 @@ import {
 } from "@/lib/api";
 import {
   buildCampaignWorkflowRows,
+  resolveRunningWorkflow,
   fleetComparison,
   type CampaignWorkflowRow,
 } from "@/lib/campaign-workflow-rows";
@@ -225,7 +226,12 @@ export function CampaignWorkflowDetailPage() {
       buildCampaignWorkflowRows({
         catalogue: catalogueQ.data ?? [],
         groups: groupsQ.data ?? [],
-        campaignWorkflowSlug: campaign?.workflowSlug ?? null,
+        // Resolved from the catalogue AND this campaign's own groups, because the
+        // catalogue carries only each dynasty's current version and campaign-service
+        // states a versioned slug — see `resolveRunningWorkflow`.
+        running: resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [
+          groupsQ.data ?? [],
+        ]),
         isLearning,
       }),
     [catalogueQ.data, groupsQ.data, campaign?.workflowSlug],

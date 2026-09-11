@@ -83,6 +83,7 @@ import {
 import {
   buildCampaignWorkflowRows,
   buildFleetWorkflowRows,
+  resolveRunningWorkflow,
   sectionCampaignWorkflowRows,
   type CampaignWorkflowRow,
 } from "@/lib/campaign-workflow-rows";
@@ -361,15 +362,30 @@ export function CampaignWorkflowsPage() {
   const { paused: campaignPaused } = useScopePaused(brandId, { campaignId, enabled: isBeta });
   const paused = grain === "campaign" && campaignPaused;
 
+  // WHICH workflow is running is a fact about the CAMPAIGN, so it is resolved ONCE from
+  // every source the page holds — never per grain. campaign-service states a VERSIONED
+  // slug and the catalogue carries only each dynasty's CURRENT version, so a campaign
+  // pinned to an older one is nameable only by a revenue group's folded `workflowSlugs`
+  // — and the global grain holds no groups at all. Resolving per grain therefore lost
+  // the running row on that tab alone.
+  const running = useMemo(
+    () =>
+      resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [
+        campaignRevQ.data ?? [],
+        offerRevQ.data ?? [],
+        brandRevQ.data ?? [],
+      ]),
+    [campaign?.workflowSlug, catalogueQ.data, campaignRevQ.data, offerRevQ.data, brandRevQ.data],
+  );
+
   const rows = useMemo(() => {
     const catalogue = catalogueQ.data ?? [];
-    const campaignWorkflowSlug = campaign?.workflowSlug ?? null;
     if (grain === "global") {
       return buildFleetWorkflowRows({
         catalogue,
         fleet: fleetCostQ.data ?? [],
         outreach: fleetOutreachQ.data ?? [],
-        campaignWorkflowSlug,
+        running,
         isLearning,
       });
     }
@@ -378,7 +394,7 @@ export function CampaignWorkflowsPage() {
     return buildCampaignWorkflowRows({
       catalogue,
       groups: scoped ?? [],
-      campaignWorkflowSlug,
+      running,
       isLearning,
     });
   }, [
@@ -389,7 +405,7 @@ export function CampaignWorkflowsPage() {
     brandRevQ.data,
     fleetCostQ.data,
     fleetOutreachQ.data,
-    campaign?.workflowSlug,
+    running,
   ]);
 
   const sections = useMemo(() => sectionCampaignWorkflowRows(rows), [rows]);
