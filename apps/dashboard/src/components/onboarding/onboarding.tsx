@@ -91,6 +91,7 @@ import {
 import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
 import { Skeleton } from "@/components/skeleton";
 import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
+import { phoneSyntaxProblem } from "@/lib/phone-syntax";
 import {
   POST_PAYMENT_OFFER_LEVERS,
   buildLeverLLMPrompt,
@@ -1092,6 +1093,15 @@ export function Onboarding() {
   // run completeLaunchAfterCheckout AFTER the user finishes these steps (with
   // their edited profile), instead of at the checkout-return effect.
   const [phone, setPhone] = useState<PhoneValue>(EMPTY_PHONE);
+  // Whether the syntax problem is on SCREEN. Separate from whether one EXISTS:
+  // a message under a half-typed number is noise, so it is revealed once the
+  // person has finished typing (blur) or has pressed Continue. Continue is only
+  // greyed out while the reason is visible, so the button never reads dead.
+  const [phoneProblemRevealed, setPhoneProblemRevealed] = useState(false);
+  // Declared here, ABOVE every consumer (`savePhoneAndContinue`, the step's
+  // render) — a const a consumer declared earlier would read is a TDZ throw at
+  // render time that `tsc` cannot see.
+  const phoneProblem = phoneSyntaxProblem({ dialCode: phone.dialCode, national: phone.national });
   const [offerIndex, setOfferIndex] = useState(0);
   const pendingCheckoutRef = useRef<PendingCheckoutLaunch | null>(null);
   // Best-model step (post-payment, after LTR). The 3-grain workflow-projection
@@ -2439,7 +2449,17 @@ export function Onboarding() {
   // ── Post-payment steps ────────────────────────────────────────────
   // Save the optional phone (Clerk user metadata) and advance to the LTR step.
   // An empty number is a valid skip — no write, just advance.
+  //
+  // A number that cannot be a number does NOT advance: a US customer typed one
+  // that was syntactically impossible and it was stored, so the step accepted an
+  // answer it could tell was wrong. Refusing here is what makes the reason
+  // visible; `/api/onboarding/phone` refuses it again, because a control the UI
+  // blocks is still a request anyone can send.
   async function savePhoneAndContinue() {
+    if (phoneProblem) {
+      setPhoneProblemRevealed(true);
+      return;
+    }
     if (phone.national.trim()) {
       setBusy(true);
       try {
@@ -3440,14 +3460,32 @@ export function Onboarding() {
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
-        footer={<NextButton onClick={savePhoneAndContinue} busy={busy} label="Continue" />}
+        footer={
+          <NextButton
+            onClick={savePhoneAndContinue}
+            disabled={phoneProblemRevealed && phoneProblem !== null}
+            busy={busy}
+            label="Continue"
+          />
+        }
       >
         <div className="mb-4 flex items-start gap-2">
           <PaperAirplaneIcon className="h-5 w-5 text-brand-600" />
           <h2 className="font-display text-2xl font-bold text-gray-900">Your phone number.</h2>
         </div>
         <p className="mb-6 text-sm leading-6 text-gray-500">Optional. We only use it to reach you quickly about your own campaign, never for outreach. Add it or skip it.</p>
-        <PhoneInput value={phone} onChange={setPhone} autoFocus />
+        <PhoneInput
+          value={phone}
+          onChange={(v) => {
+            // Hide the message the moment they start correcting it. It comes
+            // back on the next blur if the number is still impossible.
+            setPhoneProblemRevealed(false);
+            setPhone(v);
+          }}
+          onBlur={() => setPhoneProblemRevealed(true)}
+          problem={phoneProblemRevealed ? phoneProblem : null}
+          autoFocus
+        />
         <button
           onClick={() => { setFunnelIndex(0); setStep("funnelStats"); }}
           className="mt-4 text-sm text-gray-400 underline transition hover:text-gray-600"

@@ -1,5 +1,6 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { phoneSyntaxProblem, toE164 } from "@/lib/phone-syntax";
 
 /**
  * Stores the user's OPTIONAL onboarding phone number on Clerk user
@@ -10,6 +11,10 @@ import { NextResponse } from "next/server";
  *
  * An empty national number is a valid no-op skip (the client only POSTs when
  * the user typed something).
+ *
+ * The SYNTAX is checked here as well as in the step, through the same module.
+ * The step blocking Continue is a display decision; this is the one a caller
+ * cannot go around, and it is what stops an impossible number reaching Clerk.
  */
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -30,8 +35,16 @@ export async function POST(req: Request) {
   }
 
   const national = body.national.trim();
-  // E.164-ish: dial code + digits only. Empty stays empty (nothing to store).
-  const phone = national ? `+${body.dialCode.replace(/\D/g, "")}${national.replace(/\D/g, "")}` : "";
+
+  const problem = phoneSyntaxProblem({ dialCode: body.dialCode, national });
+  if (problem) {
+    // The sentence the step would have shown, so a caller reaching this route
+    // directly learns the same thing rather than a bare "invalid".
+    return NextResponse.json({ error: problem }, { status: 400 });
+  }
+
+  // Strict E.164. Empty stays empty (nothing to store).
+  const phone = toE164({ dialCode: body.dialCode, national });
 
   const client = await clerkClient();
   await client.users.updateUserMetadata(userId, {

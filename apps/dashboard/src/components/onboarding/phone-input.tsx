@@ -24,15 +24,26 @@ export const EMPTY_PHONE: PhoneValue = {
  * parent owns the { countryCode, dialCode, national } value. Optional by
  * design: an empty national number is valid (the onboarding step skips the
  * write).
+ *
+ * It does NOT decide what a valid number is — the syntax module in `src/lib`
+ * does, and the step owns when to reveal the answer (a message under a
+ * half-typed number is noise). This renders whatever sentence it is handed, and
+ * `onBlur` tells the step the person has finished typing. A guard asserts that
+ * rule module is not reachable from here, so name it in prose, never in code.
  */
 export function PhoneInput({
   value,
   onChange,
   autoFocus = false,
+  problem = null,
+  onBlur,
 }: {
   value: PhoneValue;
   onChange: (v: PhoneValue) => void;
   autoFocus?: boolean;
+  /** The sentence to show under the field, or null while there is nothing to say. */
+  problem?: string | null;
+  onBlur?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -82,8 +93,15 @@ export function PhoneInput({
           autoFocus={autoFocus}
           value={value.national}
           onChange={(e) => onChange({ ...value, national: e.target.value })}
+          onBlur={onBlur}
+          aria-invalid={problem ? true : undefined}
+          aria-describedby={problem ? "onboarding-phone-problem" : undefined}
           placeholder="Phone number"
-          className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 focus:border-brand-400 focus:outline-none"
+          className={`min-w-0 flex-1 rounded-xl border px-4 py-3 text-base text-gray-900 focus:outline-none ${
+            problem
+              ? "border-red-300 focus:border-red-300"
+              : "border-gray-200 focus:border-brand-400"
+          }`}
         />
       </div>
 
@@ -121,6 +139,15 @@ export function PhoneInput({
             )}
           </div>
         </div>
+      )}
+
+      {/* After the dropdown in the DOM on purpose: the dropdown is absolutely
+          positioned off its static spot, so a message declared before it would
+          push it down the height of the sentence. */}
+      {problem && (
+        <p id="onboarding-phone-problem" role="alert" className="mt-2 text-sm text-red-600">
+          {problem}
+        </p>
       )}
     </div>
   );
