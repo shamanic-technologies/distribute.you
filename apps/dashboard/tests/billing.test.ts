@@ -548,3 +548,22 @@ describe("Billing sidebar link", () => {
     expect(content).toContain("BillingIcon");
   });
 });
+
+describe("billing page — change card settles first (T4 of the card-removal guard)", () => {
+  const page = fs.readFileSync(
+    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+    "utf8"
+  );
+  const paymentMethod = page.slice(page.indexOf("Payment method — short dedicated section"));
+
+  it("the card button reads Change card, never Manage (the page lets a customer replace a card, not manage a list)", () => {
+    expect(paymentMethod).toContain('"Change card"');
+    expect(paymentMethod).not.toContain('"Manage"');
+  });
+
+  it("a customer running on credit is told the balance settles on the current card before the card page opens", () => {
+    expect(paymentMethod).toContain("availableCents < 0 && (");
+    expect(paymentMethod).toContain("Changing your card first settles your");
+    expect(paymentMethod).toContain("formatBillingCents(Math.abs(availableCents))");
+  });
+});

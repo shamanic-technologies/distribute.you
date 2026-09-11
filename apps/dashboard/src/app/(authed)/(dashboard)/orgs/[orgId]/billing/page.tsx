@@ -668,10 +668,22 @@ export default function BillingPage() {
                 disabled={portalLoadingSource !== null}
                 className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50 flex-shrink-0"
               >
-                {portalLoadingSource === "manage" ? "Opening..." : "Manage"}
+                {portalLoadingSource === "manage" ? "Opening..." : "Change card"}
               </button>
             )}
           </div>
+
+          {/* Settle-first notice (Google Ads pattern): a customer running on credit
+              settles what they owe on the CURRENT card before the card page opens,
+              so a card change can never leave an outstanding balance with nothing
+              to collect it on. billing-service does the charge; this only says so
+              before the click. The card page itself lets a customer REPLACE a
+              card, never remove one (stripe-service owns that). */}
+          {account?.has_payment_method && availableCents < 0 && (
+            <p className="mt-2 text-xs text-gray-500">
+              Changing your card first settles your {formatBillingCents(Math.abs(availableCents))} balance on the card on file.
+            </p>
+          )}
 
           {account?.has_payment_method ? (
             // Card row — network logo tile + masked number on one line, expiry +
