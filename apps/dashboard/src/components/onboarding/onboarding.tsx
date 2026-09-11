@@ -135,6 +135,7 @@ import {
 import { launchLegKey } from "@/lib/stated-campaign-leg";
 import { fundedLaunchFunnelKey } from "@/lib/launch-funnel";
 import { soleOfferId } from "@/lib/launch-offer";
+import { launchDestinationHref } from "@/lib/launch-destination";
 import {
   orderedForDetail,
   resolvePrimaryKey,
@@ -401,6 +402,21 @@ const fmtCount = (n: number) => formatLocaleInteger(n);
 // told WHY it is holding a locally-built sentence and says so.
 type AudiencePrefetch = {
   promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }>;
+};
+
+/**
+ * What the launch created, and the scope it created it in.
+ *
+ * The scope is carried out because the terminal redirect lands on the deepest level
+ * with no choice left in it, and the launch has already resolved both: the offer it
+ * read off the brand and the funnel the customer funded. `offerId` is null when the
+ * launch could not name ONE offer (several, or a failed read) — the campaign then
+ * ships unattributed and the redirect hands the landing to the walk instead.
+ */
+type LaunchResult = {
+  campaignId: string;
+  offerId: string | null;
+  funnelKey: string;
 };
 
 type PendingCheckoutLaunch = {
@@ -1118,7 +1134,7 @@ export function Onboarding() {
   // user quits before reaching the dashboard. `backgroundLaunchRef` holds the single
   // in-flight promise (fire once); `launchError` surfaces a background failure at the
   // terminal launching screen with a retry.
-  const backgroundLaunchRef = useRef<Promise<{ campaignId: string }> | null>(null);
+  const backgroundLaunchRef = useRef<Promise<LaunchResult> | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Loading-sequence + real fetch coordination. The visible checks follow real
@@ -1905,8 +1921,13 @@ export function Onboarding() {
   // dashboard. Does NOT navigate or clear the resume snapshot — the terminal
   // (finalizePostPaymentAndLaunch) owns that, so a mid-flow refresh can still resume
   // the optional post-payment steps. Uses the as-of-checkout profile; the terminal
-  // re-saves any offer-lever edits on top. Returns the created campaign id.
-  async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<{ campaignId: string }> {
+  // re-saves any offer-lever edits on top.
+  //
+  // Returns the created campaign id AND the scope it was created in — the offer it
+  // sells and the funnel it runs — because the terminal redirect lands on the deepest
+  // scope with no choice left in it, and this is where both are already resolved. A
+  // null offer is the launch failing to name one (see below), never a level to invent.
+  async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<LaunchResult> {
     // Confirm the 7 user-fields (services + the offer levers). Every key sent is
     // marked "confirmed" server-side.
     // NOTE: agency consent is ASKED on the onboarding consent step (kept), but by
@@ -2070,14 +2091,14 @@ export function Onboarding() {
     sendAuthNotification("goal_launched", undefined, {
       outcomeNoun: outcomeNounPlural(pending.outcome),
     }).catch(() => {});
-    return { campaignId: campaign.id };
+    return { campaignId: campaign.id, offerId: launchOfferId, funnelKey: launchFunnelKey };
   }
 
   // Fire the full launch ONCE, in the background, the moment checkout returns. Idempotent
   // via `backgroundLaunchRef` (never creates two campaigns). A failure is surfaced at the
   // terminal launching screen (launchError) with a retry; the fire-site swallow keeps it
   // from becoming an unhandled rejection while the user is still on an earlier step.
-  function startBackgroundLaunch(): Promise<{ campaignId: string }> {
+  function startBackgroundLaunch(): Promise<LaunchResult> {
     if (backgroundLaunchRef.current) return backgroundLaunchRef.current;
     const pending = pendingCheckoutRef.current;
     if (!pending) {
@@ -2762,7 +2783,18 @@ export function Onboarding() {
       clearOnboardingState();
       const pending = pendingCheckoutRef.current;
       const orgId = pending?.orgId ?? orgIdRef.current;
-      router.push(`/orgs/${orgId}/brands/${id}?launched=${result.campaignId}`);
+      // Land on the DEEPEST scope with no choice left in it, the same place signing in
+      // lands — and name it outright rather than handing the walk a bare brand URL: the
+      // launch just created this campaign, so it holds the offer and the funnel already,
+      // and the walk's own reads would be cold here (see `lib/launch-destination.ts`).
+      router.push(
+        launchDestinationHref({
+          orgId: String(orgId),
+          brandId: String(id),
+          offerId: result.offerId,
+          funnelKey: result.funnelKey,
+        }),
+      );
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "post_payment_finalize" });
       const detail = err instanceof Error ? err.message : "unknown error";
