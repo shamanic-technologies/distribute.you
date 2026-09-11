@@ -299,6 +299,12 @@ function agg(rows) {
     cprThin: !replies || replies < MIN_REPLIES,
   };
 }
+// An `order` makes the cut ORDINAL: its buckets are a sequence, a length band, an hour of the
+// day, and reading them in any other order says something false about the thing measured. Every
+// row carries that fact (`ordinal`) so the renderer draws the cut in this order rather than
+// ranking it. A cut with no `order` is CATEGORICAL (a role, an industry, a country): its keys
+// only sort alphabetically here so the derivation is deterministic, and the renderer ranks it
+// by the value it is drawing.
 function cut(rows, keyFn, order) {
   const by = new Map();
   for (const r of rows) {
@@ -310,7 +316,7 @@ function cut(rows, keyFn, order) {
   let keys = [...by.keys()];
   if (order) keys = order.filter((k) => by.has(k)).concat(keys.filter((k) => !order.includes(k)).sort());
   else keys.sort();
-  return keys.map((k) => ({ bucket: String(k), ...agg(by.get(k)) }));
+  return keys.map((k) => ({ bucket: String(k), ordinal: Boolean(order), ...agg(by.get(k)) }));
 }
 
 const linked = facts.filter((f) => f.hasLink);
@@ -354,7 +360,9 @@ function cutsFor(rows, label) {
     byIndustry: cut(rows.filter((r) => topIndustries.includes(r.industry)), (r) => r.industry),
     byHour: cut(rows, (r) => (r.localHour === null ? null : hourBucket(r.localHour)), HOUR),
     byWeekday: cut(rows, (r) => r.weekday, DAYS),
-    byMonth: cut(rows, (r) => r.month),
+    // a month is a sequence like every other ordinal cut; the keys happen to sort chronologically
+    // (`2026-04`), and passing them as the order is what says so rather than leaving it to luck
+    byMonth: cut(rows, (r) => r.month, [...new Set(rows.map((r) => r.month))].filter(Boolean).sort()),
     byLink: cut(rows, (r) => (r.hasLink ? "link in the body" : "no link"), ["link in the body", "no link"]),
   };
 }
