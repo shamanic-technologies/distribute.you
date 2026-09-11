@@ -152,8 +152,8 @@ describe("flash-or-pro article: editorial rules", () => {
 
   it("the volume is a round 125,000 in the title, story and hero; the exact count lives under Method only", () => {
     expect(story).toContain("125,000 cold emails");
-    expect(story).not.toContain("124,664");
-    expect(method).toContain("124,664 emails");
+    expect(story).not.toContain("124,460");
+    expect(method).toContain("124,460 emails");
   });
 
   it("cuts the data the same ten ways as the cost-per-click article, Flash against Pro", () => {
@@ -170,7 +170,8 @@ describe("flash-or-pro article: editorial rules", () => {
 
   it("the twist charts the reply by link and by brand naming, per tier, and prices no visit on an email that had nothing to click", () => {
     const twist = section("the-twist");
-    expect(twist).toMatch(/<strong>\d+ came from a Pro email with no link in it<\/strong>/);
+    expect(twist).toContain("<strong>The positive replies come from Pro emails with no link in them</strong>");
+    expect(twist).not.toMatch(/\b\d+ (of|came from)/);
     expect(twist).toContain("Positive replies per 10,000 emails by link in the email, Pro");
     // The brand-naming cut is gone: the generation record carries the client's name on too
     // few emails in this window to draw anything, and a chart nobody can read is not a chart.
@@ -263,20 +264,22 @@ describe("flash-or-pro article: what others measured, and where we stand", () =>
 
 describe("flash-or-pro article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "35,102", "89,038", "$8,381"]) {
+    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "35,080", "88,856", "$8,412"]) {
       expect(html).toContain(figure);
     }
   });
 
-  it("the ratios in the twist follow from the tier figures", () => {
-    // Flash earned one positive reply in the whole window, so its reply has no price to
-    // compare; the visit does, and Pro pays three times what Flash pays for it.
-    expect(Math.round(6 / 2)).toBe(3);
-    expect(story).toContain("Pro is the only tier that prices one at all; on the visit, Flash wins by a factor of 3");
+  it("the twist reads the tier gap off the charts, never as a multiple they do not print", () => {
+    // A chart prices each tier; it does not print the ratio between them, so neither does
+    // the prose. Flash earned too few positive replies to price one at all.
+    expect(story).toContain("Pro is the only tier that prices one at all; on the visit, Flash is the cheaper tier by a wide margin");
+    expect(story).not.toMatch(/factor of \d|\d+x (rarer|cheaper|more)/);
   });
 
-  it("the tier email counts add up to the emails sent", () => {
-    expect(35_102 + 89_038 + 44).toBe(124_184);
+  it("the two tier counts sit inside the window's total", () => {
+    // The remainder is the Frontier tier plus the emails whose generation record names no
+    // model; neither is charted, so neither is stated anywhere but here.
+    expect(35_080 + 88_856).toBeLessThan(124_460);
   });
 
   it("every chart row is a bar with its counts under it; no placeholder row anywhere", () => {

@@ -76,8 +76,8 @@ describe("cost-per-click article: editorial rules", () => {
     expect(String(meta.excerpt)).toContain("125,000");
     expect(story).toContain("125,000 cold emails");
     expect(hero).toContain("125,000 emails sent");
-    expect(story).not.toContain("124,664");
-    expect(method).toContain("124,664");
+    expect(story).not.toContain("124,460");
+    expect(method).toContain("124,460");
   });
 
   it("no money figure of ours carries cents; a competitor's published price is quoted as published", () => {
@@ -95,9 +95,9 @@ describe("cost-per-click article: editorial rules", () => {
     expect(String(meta.title)).not.toMatch(/\d+ (workflows?|clients?)/i);
     expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>25 workflows<\/strong> we A\/B tested/);
     expect(story).toContain("Our clients only ever get the winner");
-    expect(story).not.toMatch(/\b33 clients?\b/);
+    expect(story).not.toMatch(/\b34 clients?\b/);
     expect(method).toContain("25 of them past 1,000 emails");
-    expect(method).toContain("33 clients");
+    expect(method).toContain("34 clients");
   });
 
   it("every story section stays under 120 words", () => {
@@ -120,11 +120,11 @@ describe("cost-per-click article: editorial rules", () => {
     expect(story).not.toContain('id="the-link"');
     expect(story).not.toContain("unsubscribe");
     expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$4<\/strong> across every workflow we tested/);
-    expect(story).toContain("buys a click for <strong>$1</strong>");
+    expect(story).toContain("buys one for <strong>$1</strong>");
     // Owner-decided 2026-09-10: one client price, the best workflow alone; no range, no four-workflow chart.
     expect(story).not.toContain("$2 to $3");
     expect(story).not.toContain("four best workflows");
-    expect(method).toContain("42,387 emails to 20,506 people carried a link");
+    expect(method).toContain("42,325 emails to 20,483 people carried a link");
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
@@ -158,7 +158,7 @@ describe("cost-per-click article: editorial rules", () => {
 
 describe("cost-per-click article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of ["$4", "$1", "$2", "$6", "$8,381", "$2,494", "677", "42,387"]) {
+    for (const figure of ["$4", "$1", "$2", "$6", "$8,412", "$2,522", "677", "42,325"]) {
       expect(html).toContain(figure);
     }
     expect(hero).toContain(">$4<");
@@ -168,8 +168,8 @@ describe("cost-per-click article: dataset coherence", () => {
   });
 
   it("the headline reconciles with the method's totals", () => {
-    expect(Math.round(2494 / 677)).toBe(4);
-    expect(Math.round((677 / 42_387) * 1000)).toBe(16);
+    expect(Math.round(2522 / 677)).toBe(4);
+    expect(Math.round((677 / 42_325) * 1000)).toBe(16);
     // The link-less emails are stated in Method and tabulated nowhere:
     // no folded table carries a no-link bucket.
     expect(html.slice(html.indexOf("<details>"))).not.toMatch(/no link/i);

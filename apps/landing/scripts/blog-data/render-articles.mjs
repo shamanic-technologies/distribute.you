@@ -55,7 +55,26 @@ function rowsOf(cutPath, { metric, min, drop }) {
   if (metric === "cpc") rows = rows.filter((r) => r.clicks > 0);
   if (metric === "cpr" || metric === "rate") rows = rows.filter((r) => r.replies > 0);
   if (min) rows = rows.filter((r) => r.emails >= Number(min));
-  return rows;
+  return rankRows(rows, metric);
+}
+
+// A CATEGORICAL cut (a role, an industry, a country) has no order of its own, so the chart ranks
+// it on the value it draws: best first, which is cheapest on a cost chart and highest on a rate
+// one. Alphabetical says nothing about the thing measured and reads as unordered. An ORDINAL cut
+// (the sequence, a length band, an hour, a month) keeps the order derive declared, because any
+// other order would state something false about it.
+// A THIN row is priced on too few outcomes to be ranked on that price, so it sinks below every
+// measured row and orders among the thin ones, the same rule a learning row follows everywhere.
+function rankRows(rows, metric) {
+  if (rows.some((r) => r.ordinal)) return rows;
+  const field = metric === "rate" ? "repliesPerTenThousand" : metric;
+  const thinField = metric === "rate" ? "cprThin" : `${metric}Thin`;
+  const dir = metric === "rate" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const thin = Number(Boolean(a[thinField])) - Number(Boolean(b[thinField]));
+    if (thin) return thin;
+    return dir * (Number(a[field]) - Number(b[field]));
+  });
 }
 
 const countLine = (r, metric) =>

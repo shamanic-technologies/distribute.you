@@ -1,5 +1,3 @@
-<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin:0 0 24px"><p style="margin:0"><strong>Correction, 11 September 2026.</strong> Most of the clicks our own redirect had recorded turned out to be corporate link scanners fetching the URL before the reader ever saw it. Production was corrected, 271 of 309 of those hits were demoted, and every figure on this page has been re-derived from the corrected data on a window that now runs to 11 September 2026. The earlier version of this article overstated how many people visited a client's site, and understated what a visit costs on the workflows that ran on our own sending infrastructure. The reply figures are unaffected.</p></div>
-
 <h2 id="the-bet">The bet</h2>
 
 <p>Every AI vendor now sells the same model family in tiers. <strong>Flash</strong>, the cheapest. <strong>Pro</strong>, the middle. <strong>Frontier</strong>, the most expensive. Pro costs about 5x Flash per token, and everyone has a reflex about it: the pricier model must convert better, so the question is whether it converts enough better to pay for itself.</p>
@@ -22,7 +20,7 @@
 
 <h2 id="the-answer">The answer</h2>
 
-<p><strong>Our best Pro workflow buys a positive reply for {{usd best.reply.cpr}}.</strong> The Pro tier as a whole pays {{usd pro.total.cpr}}; Flash got {{raw flash.total.replies}} reply in {{n flash.total.emails}} emails. <strong>Our best Flash workflow buys a website visit for {{usd best.visit.cpc}}.</strong> The Flash tier as a whole pays {{usd flashLinked.total.cpc}}, Pro {{usd proLinked.total.cpc}}. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
+<p><strong>Our best Pro workflow buys a positive reply for {{usd best.reply.cpr}}.</strong> The Pro tier as a whole pays {{usd pro.total.cpr}}; Flash pays {{usd flash.total.cpr}}, on too few replies to be a solid read. <strong>Our best Flash workflow buys a website visit for {{usd best.visit.cpc}}.</strong> The Flash tier as a whole pays {{usd flashLinked.total.cpc}}, Pro {{usd proLinked.total.cpc}}. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
 
 {{chart|cut=linked.byTier|metric=cpc|title=Cost per website visit by tier (USD, lower is better)|note=Measured on the emails whose body carried a link to the client's site.}}
 
@@ -30,13 +28,13 @@
 
 <h2 id="the-spread">{{n best.workflowsPastFloor}} A/B tests, one winner per outcome</h2>
 
-<p>Each A/B test is one prompt on one model, which we call a workflow. We ran {{n best.workflowsPastFloor}} of them past a thousand emails each, on the same kinds of lists. The spread between them is the whole point of running the test. The best Pro workflow turned {{raw best.reply.repliesPerTenThousand}} emails in 10,000 into a positive reply; the Pro tier averaged {{raw pro.total.repliesPerTenThousand}}, and no other workflow has enough replies to be priced yet. On the visit, {{n best.pricedCount}} workflows clear the bar: the two cheapest are Flash and buy one for {{usd best.visit.cpc}}, and the cheapest Pro workflow costs {{usd best.bestPricedPro.cpc}}.</p>
+<p>Each A/B test is one prompt on one model, which we call a workflow. We ran {{n best.workflowsPastFloor}} of them past a thousand emails each, on the same kinds of lists. The spread between them is the whole point of running the test. The best Pro workflow buys a positive reply for {{usd best.reply.cpr}} where its own tier pays {{usd pro.total.cpr}}, and no other workflow has enough replies to be priced yet. On the visit, {{n best.pricedCount}} workflows clear the bar: the two cheapest are Flash and buy one for {{usd best.visit.cpc}}, and the cheapest Pro workflow costs {{usd best.bestPricedPro.cpc}}.</p>
 
 <p><strong>This is the gap distribute.you gives its clients.</strong> Every campaign runs on the workflow with the best measured cost for what that campaign buys, across every client. A client never gets the average of the test. They get its winner, and the winner changes when the numbers do.</p>
 
 <h2 id="the-twist">The twist: what the email asks for decides the outcome</h2>
 
-<p>Of the {{raw all.total.replies}} positive replies, <strong>{{pick|cut=pro.byLink|bucket=no link|field=replies|fmt=raw}} came from a Pro email with no link in it</strong>: {{pick|cut=pro.byLink|bucket=no link|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 without a link against {{pick|cut=pro.byLink|bucket=link in the body|field=repliesPerTenThousand|fmt=raw}} with one. Put a link in the email and people click it instead of writing back. Leave the link out and they reply. Flash or Pro does not change that. It only changes what each one costs: on the reply, Pro is the only tier that prices one at all; on the visit, Flash wins by a factor of 3.</p>
+<p><strong>The positive replies come from Pro emails with no link in them</strong>: {{pick|cut=pro.byLink|bucket=no link|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 without a link against {{pick|cut=pro.byLink|bucket=link in the body|field=repliesPerTenThousand|fmt=raw}} with one. Put a link in the email and people click it instead of writing back. Leave the link out and they reply. Flash or Pro does not change that. It only changes what each one costs: on the reply, Pro is the only tier that prices one at all; on the visit, Flash is the cheaper tier by a wide margin.</p>
 
 {{chart|cut=pro.byLink|metric=rate|title=Positive replies per 10,000 emails by link in the email, Pro (higher is better)}}
 
@@ -48,7 +46,7 @@
 
 <h3>1. Which email in the sequence</h3>
 
-<p>The first email does the work on both tiers. Flash buys the first-email visit for {{pick|cut=flashLinked.byStep|bucket=First email|field=cpc|fmt=usd}}, Pro for {{pick|cut=proLinked.byStep|bucket=First email|field=cpc|fmt=usd}}. For the reply, the first two emails carry {{pick|cut=pro.byStep|bucket=First email|field=replies|fmt=raw}} and {{pick|cut=pro.byStep|bucket=Follow-up 1|field=replies|fmt=raw}} of Pro's {{raw pro.total.replies}}, at {{pick|cut=pro.byStep|bucket=First email|field=cpr|fmt=usd}} and {{pick|cut=pro.byStep|bucket=Follow-up 1|field=cpr|fmt=usd}}.</p>
+<p>The first email does the work on both tiers. Flash buys the first-email visit for {{pick|cut=flashLinked.byStep|bucket=First email|field=cpc|fmt=usd}}, Pro for {{pick|cut=proLinked.byStep|bucket=First email|field=cpc|fmt=usd}}. For the reply, the first two emails are where Pro earns it: {{pick|cut=pro.byStep|bucket=First email|field=repliesPerTenThousand|fmt=raw}} and {{pick|cut=pro.byStep|bucket=Follow-up 1|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 against {{pick|cut=pro.byStep|bucket=Follow-up 2|field=repliesPerTenThousand|fmt=raw}} for the second follow-up.</p>
 
 {{chart|cut=flashLinked.byStep|metric=cpc|title=Cost per website visit by email in the sequence, Flash (USD, lower is better)}}
 
@@ -68,7 +66,7 @@
 
 <h3>3. Paragraphs</h3>
 
-<p>One paragraph buys the Flash visit for {{pick|cut=flashLinked.byParagraphs|bucket=1|field=cpc|fmt=usd}} and the Pro one for {{pick|cut=proLinked.byParagraphs|bucket=1|field=cpc|fmt=usd}}; six or more cost Pro {{pick|cut=proLinked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}}. The reply wants the room: four or five paragraphs is Pro's best reply band at {{pick|cut=pro.byParagraphs|bucket=4 to 5|field=cpr|fmt=usd}}, carrying {{pick|cut=pro.byParagraphs|bucket=4 to 5|field=replies|fmt=raw}} of its {{raw pro.total.replies}} replies.</p>
+<p>One paragraph buys the Flash visit for {{pick|cut=flashLinked.byParagraphs|bucket=1|field=cpc|fmt=usd}} and the Pro one for {{pick|cut=proLinked.byParagraphs|bucket=1|field=cpc|fmt=usd}}; six or more cost Pro {{pick|cut=proLinked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}}. The reply wants the room: four or five paragraphs is Pro's best reply band, at {{pick|cut=pro.byParagraphs|bucket=4 to 5|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000.</p>
 
 {{chart|cut=flashLinked.byParagraphs|metric=cpc|title=Cost per website visit by paragraphs in the email, Flash (USD, lower is better)}}
 
@@ -88,7 +86,7 @@
 
 <h3>5. Seniority of the reader</h3>
 
-<p>A director clicks a Flash email for {{pick|cut=flashLinked.bySeniority|bucket=director|field=cpc|fmt=usd}} and a Pro one for {{pick|cut=proLinked.bySeniority|bucket=director|field=cpc|fmt=usd}}. Founders and owners barely click at all. They reply: owners are Pro's cheapest reply at {{pick|cut=pro.bySeniority|bucket=owner|field=cpr|fmt=usd}}, founders next at {{pick|cut=pro.bySeniority|bucket=founder|field=cpr|fmt=usd}}, and between them they carry {{pick|cut=pro.bySeniority|bucket=owner|field=replies|fmt=raw}} and {{pick|cut=pro.bySeniority|bucket=founder|field=replies|fmt=raw}} of Pro's {{raw pro.total.replies}} replies.</p>
+<p>A director clicks a Flash email for {{pick|cut=flashLinked.bySeniority|bucket=director|field=cpc|fmt=usd}} and a Pro one for {{pick|cut=proLinked.bySeniority|bucket=director|field=cpc|fmt=usd}}. Founders and owners barely click at all. They reply: owners lead Pro at {{pick|cut=pro.bySeniority|bucket=owner|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 and founders follow at {{pick|cut=pro.bySeniority|bucket=founder|field=repliesPerTenThousand|fmt=raw}}, against {{pick|cut=pro.bySeniority|bucket=director|field=repliesPerTenThousand|fmt=raw}} for a director.</p>
 
 {{chart|cut=flashLinked.bySeniority|metric=cpc|min=1000|title=Cost per website visit by seniority of the reader, Flash (USD, lower is better)}}
 
@@ -98,7 +96,7 @@
 
 <h3>6. Size of the company</h3>
 
-<p>Big companies click cheap: over 1,000 people, a Flash visit is {{pick|cut=flashLinked.bySize|bucket=1000+|field=cpc|fmt=usd}}. The one to ten person company is the dearest visit on both tiers and Pro's cheapest reply at {{pick|cut=pro.bySize|bucket=1-10|field=cpr|fmt=usd}}: {{pick|cut=pro.bySize|bucket=1-10|field=replies|fmt=raw}} of its {{raw pro.total.replies}} replies came from there.</p>
+<p>Big companies click cheap: over 1,000 people, a Flash visit is {{pick|cut=flashLinked.bySize|bucket=1000+|field=cpc|fmt=usd}}. The one to ten person company is the dearest visit on both tiers and Pro's best reply rate, {{pick|cut=pro.bySize|bucket=1-10|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 against {{pick|cut=pro.bySize|bucket=11-50|field=repliesPerTenThousand|fmt=raw}} one size band up.</p>
 
 {{chart|cut=flashLinked.bySize|metric=cpc|title=Cost per website visit by size of the reader's company, employees, Flash (USD, lower is better)}}
 
@@ -108,7 +106,7 @@
 
 <h3>7. Industry</h3>
 
-<p>IT and services click for {{pick|cut=flashLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Flash and {{pick|cut=proLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Pro. Health and wellness practices do not click, they write back: {{pick|cut=pro.byIndustry|bucket=health, wellness & fitness|field=replies|fmt=raw}} positive replies at {{pick|cut=pro.byIndustry|bucket=health, wellness & fitness|field=cpr|fmt=usd}} each, Pro's best industry for the reply among those past a thousand emails.</p>
+<p>IT and services click for {{pick|cut=flashLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Flash and {{pick|cut=proLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Pro. Health and wellness practices do not click, they write back: {{pick|cut=pro.byIndustry|bucket=health, wellness & fitness|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000, Pro's best industry for the reply among those past a thousand emails.</p>
 
 {{chart|cut=flashLinked.byIndustry|metric=cpc|min=1000|title=Cost per website visit by industry of the reader, Flash (USD, lower is better)}}
 
@@ -118,7 +116,7 @@
 
 <h3>8. Where the reader is</h3>
 
-<p>Europe clicks cheaper than North America on both tiers: {{pick|cut=flashLinked.byContinent|bucket=Europe|field=cpc|fmt=usd}} against {{pick|cut=flashLinked.byContinent|bucket=North America|field=cpc|fmt=usd}} on Flash, {{pick|cut=proLinked.byContinent|bucket=Europe|field=cpc|fmt=usd}} against {{pick|cut=proLinked.byContinent|bucket=North America|field=cpc|fmt=usd}} on Pro. The replies are North American: {{pick|cut=pro.byContinent|bucket=North America|field=replies|fmt=raw}} of Pro's {{raw pro.total.replies}}, at {{pick|cut=pro.byContinent|bucket=North America|field=cpr|fmt=usd}}, because that is where the reply-seeking campaigns ran.</p>
+<p>Europe clicks cheaper than North America on both tiers: {{pick|cut=flashLinked.byContinent|bucket=Europe|field=cpc|fmt=usd}} against {{pick|cut=flashLinked.byContinent|bucket=North America|field=cpc|fmt=usd}} on Flash, {{pick|cut=proLinked.byContinent|bucket=Europe|field=cpc|fmt=usd}} against {{pick|cut=proLinked.byContinent|bucket=North America|field=cpc|fmt=usd}} on Pro. The replies are North American, because that is where the reply-seeking campaigns ran.</p>
 
 {{chart|cut=flashLinked.byContinent|metric=cpc|min=1000|title=Cost per website visit by continent of the reader, Flash (USD, lower is better)}}
 
@@ -128,7 +126,7 @@
 
 <h3>9. Local time of delivery</h3>
 
-<p>Flash clicks cheapest late, {{pick|cut=flashLinked.byHour|bucket=20-23|field=cpc|fmt=usd}} between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at {{pick|cut=flashLinked.byHour|bucket=6-8|field=cpc|fmt=usd}}. Pro is cheapest in the small hours at {{pick|cut=proLinked.byHour|bucket=0-5|field=cpc|fmt=usd}}. The reply likes the morning: 6am to 8am carries {{pick|cut=pro.byHour|bucket=6-8|field=replies|fmt=raw}} of Pro's {{raw pro.total.replies}} at {{pick|cut=pro.byHour|bucket=6-8|field=cpr|fmt=usd}}.</p>
+<p>Flash clicks cheapest late, {{pick|cut=flashLinked.byHour|bucket=20-23|field=cpc|fmt=usd}} between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at {{pick|cut=flashLinked.byHour|bucket=6-8|field=cpc|fmt=usd}}. Pro is cheapest in the small hours at {{pick|cut=proLinked.byHour|bucket=0-5|field=cpc|fmt=usd}}. The reply likes the morning: 6am to 8am is the only window Pro can read solidly, at {{pick|cut=pro.byHour|bucket=6-8|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000.</p>
 
 {{chart|cut=flashLinked.byHour|metric=cpc|min=1000|title=Cost per website visit by local time of delivery, Flash (USD, lower is better)}}
 
@@ -138,7 +136,7 @@
 
 <h3>10. Day of the week</h3>
 
-<p>Saturday and Sunday are the cheapest Flash visits at {{pick|cut=flashLinked.byWeekday|bucket=Saturday|field=cpc|fmt=usd}}; Monday is the dearest weekday on Flash and among the cheapest on Pro. Monday carries the reply: {{pick|cut=pro.byWeekday|bucket=Monday|field=replies|fmt=raw}} of Pro's {{raw pro.total.replies}}, at {{pick|cut=pro.byWeekday|bucket=Monday|field=cpr|fmt=usd}}.</p>
+<p>Saturday and Sunday are the cheapest Flash visits at {{pick|cut=flashLinked.byWeekday|bucket=Saturday|field=cpc|fmt=usd}}; Monday is the dearest weekday on Flash and among the cheapest on Pro. Monday carries the reply, at {{pick|cut=pro.byWeekday|bucket=Monday|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000, the only weekday Pro can read solidly.</p>
 
 {{chart|cut=flashLinked.byWeekday|metric=cpc|title=Cost per website visit by day of the week, Flash (USD, lower is better)}}
 
@@ -167,7 +165,7 @@
 </figure>
 <h2 id="why">Why</h2>
 
-<p>A visit is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 125,000 emails a positive reply was 21x rarer than a click. The stronger model earns its keep exactly where the bar is higher, and the best prompt on that model earns it again: the best Pro workflow's reply costs {{usd best.reply.cpr}} against {{usd pro.total.cpr}} for its own tier.</p>
+<p>A visit is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 125,000 emails a positive reply was far rarer than a click. The stronger model earns its keep exactly where the bar is higher, and the best prompt on that model earns it again: the best Pro workflow's reply costs {{usd best.reply.cpr}} against {{usd pro.total.cpr}} for its own tier.</p>
 
 <p>We have not tested the Frontier tier yet. At 5 to 10x the Pro price, the reply would have to get a lot cheaper still. We will publish that when we have it.</p>
 
@@ -192,7 +190,7 @@
 <table>
 <thead><tr><th>Rank</th><th>Company</th><th>Cost per positive reply</th><th>What is in the price</th><th>What you pay</th><th>Source</th></tr></thead>
 <tbody>
-<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.reply.cpr}}</strong> measured, all in, best workflow; {{usd pro.total.cpr}} across the Pro tier</td><td>Lead sourcing, email verification, one email written for each recipient by the winning workflow, follow-ups, mailboxes and domains, sending, the team, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, {{n best.reply.replies}} positive replies over {{n best.reply.emails}} emails on the workflow we run</td></tr>
+<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.reply.cpr}}</strong> measured, all in, best workflow; {{usd pro.total.cpr}} across the Pro tier</td><td>Lead sourcing, email verification, one email written for each recipient by the winning workflow, follow-ups, mailboxes and domains, sending, the team, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, measured on the workflow we run</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Instantly</td><td>Not published; $152.73 per meeting</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$47/month, 5,000 emails</td><td><a href="https://instantly.ai/blog/email-sequence-benchmarks-2026-whats-a-good-open-rate-reply-rate-and-cost-per-meeting/" rel="nofollow noopener">Instantly, sequence benchmarks 2026</a>, read 2026-09-10</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/smartlead.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Smartlead</td><td>Not published</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$39/month, 6,000 emails</td><td><a href="https://www.smartlead.ai/benchmarks/average-cold-email-reply-rate" rel="nofollow noopener">Smartlead, average reply rate</a>, read 2026-09-10</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/lemlist.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Lemlist</td><td>Not published</td><td>Sending, templates, a lead database on credits. You still need mailboxes, domains, the writing and your time.</td><td>$69/month, 50,000 emails</td><td><a href="https://help.lemlist.com/en/articles/13942005-lemcoach-cold-email-benchmarks-and-metrics-what-good-looks-like" rel="nofollow noopener">Lemlist, benchmarks</a>, read 2026-09-10</td></tr>

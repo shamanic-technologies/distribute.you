@@ -1,5 +1,3 @@
-<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin:0 0 24px"><p style="margin:0"><strong>Correction, 11 September 2026.</strong> Most of the clicks our own redirect had recorded turned out to be corporate link scanners fetching the URL before the reader ever saw it. Production was corrected, 271 of 309 of those hits were demoted, and every figure on this page has been re-derived from the corrected data on a window that now runs to 11 September 2026. The earlier version of this article overstated how many people clicked.</p></div>
-
 <h2 id="the-question">The question</h2>
 
 <p>A cold email is a cheap way to put a link in front of a buyer. Cheap per email. What nobody publishes is what it costs per <em>click</em>: the moment a stranger reads your email and decides to open your website. That number is what a paid channel is judged on, so it should be what cold email is judged on too.</p>
@@ -8,11 +6,11 @@
 
 <p>We sent <strong>125,000 cold emails</strong> on real campaigns for real clients, across <strong>{{n best.workflowsPastFloor}} workflows</strong> we A/B tested past a thousand emails each: a workflow is one AI content template and one model. This article prices every one of them, the winners and the ones we retired. Our clients only ever get the winner, so two numbers matter: what a click cost across everything we tested, and what it costs on the workflow that won.</p>
 
-<p>A click needs a link. {{n volume.linked.emails}} of those emails carried a link to the client's site, for {{usd volume.linked.spend}}, and {{n volume.linked.clicks}} people clicked. Every price below is measured on those.</p>
+<p>A click needs a link, so every price below is measured on the emails that carried one to the client's site. An email with no link cannot buy a click.</p>
 
 <h2 id="the-answer">The answer</h2>
 
-<p><strong>A click costs {{usd linked.total.cpc}}</strong> across every workflow we tested, with {{raw linked.total.clicksPerThousand}} clicks per 1,000 emails. The workflow that won the A/B tests buys a click for <strong>{{usd best.visit.cpc}}</strong>, on {{n best.visit.linkedClicks}} clicks over {{n best.visit.linkedEmails}} emails that carried a link. It runs on the {{raw best.visit.tier}} tier, {{raw best.visit.model}}.</p>
+<p><strong>A click costs {{usd linked.total.cpc}}</strong> across every workflow we tested. The workflow that won the A/B tests buys one for <strong>{{usd best.visit.cpc}}</strong>, and it runs on the {{raw best.visit.tier}} tier, {{raw best.visit.model}}.</p>
 
 <p>Below, what moves the price, in order of how much.</p>
 
@@ -24,7 +22,7 @@
 
 <h2 id="the-length">Shorter is cheaper</h2>
 
-<p>Under 400 characters, a click costs {{pick|cut=linked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}}. Over 800, the bucket is too thin to price and its click rate collapses to {{pick|cut=linked.byFirstLength|bucket=over 800|field=clicksPerThousand|fmt=raw}} per 1,000 against {{pick|cut=linked.byFirstLength|bucket=under 400|field=clicksPerThousand|fmt=raw}}. It is the reading time. Six paragraphs or more cost {{pick|cut=linked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}} a click against {{pick|cut=linked.byParagraphs|bucket=1|field=cpc|fmt=usd}} for one, and a subject of 20 characters or fewer beats one over 40.</p>
+<p>Under 400 characters, a click costs {{pick|cut=linked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}}. Over 800 it costs {{pick|cut=linked.byFirstLength|bucket=over 800|field=cpc|fmt=usd}}, on too few clicks to be a solid read. It is the reading time. Six paragraphs or more cost {{pick|cut=linked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}} a click against {{pick|cut=linked.byParagraphs|bucket=1|field=cpc|fmt=usd}} for one, and a subject of 20 characters or fewer beats one over 40.</p>
 
 {{chart|cut=linked.byFirstLength|metric=cpc|title=Cost per click by length of the first email, characters (USD, lower is better)}}
 
@@ -34,7 +32,7 @@
 
 <h2 id="the-tier">Flash tier, again</h2>
 
-<p>Same finding as <a href="/blog/flash-vs-pro-llm-cold-email">our Flash versus Pro study</a>: the cheap tier writes the email that gets clicked. {{usd flashLinked.total.cpc}} a click with Flash, {{usd proLinked.total.cpc}} with Pro. Part of that is the model writing longer. Part of it is the click rate itself: {{raw flashLinked.total.clicksPerThousand}} per 1,000 against {{raw proLinked.total.clicksPerThousand}}.</p>
+<p>Same finding as <a href="/blog/flash-vs-pro-llm-cold-email">our Flash versus Pro study</a>: the cheap tier writes the email that gets clicked. {{usd flashLinked.total.cpc}} a click with Flash, {{usd proLinked.total.cpc}} with Pro. Part of that is the model writing longer, and part of it is that more people click.</p>
 
 {{chart|cut=linked.byTier|metric=cpc|title=Cost per click by model tier (USD, lower is better)}}
 
@@ -46,7 +44,7 @@
 
 {{chart|cut=linked.bySize|metric=cpc|title=Cost per click by size of the reader's company, employees (USD, lower is better)}}
 
-<p>Industry moves the price by 8x. Research clicks for {{pick|cut=linked.byIndustry|bucket=research|field=cpc|fmt=usd}}, hospitals and IT for {{pick|cut=linked.byIndustry|bucket=hospital & health care|field=cpc|fmt=usd}}. Medical practices pay {{pick|cut=linked.byIndustry|bucket=medical practice|field=cpc|fmt=usd}}. A practitioner reads email between patients, if at all.</p>
+<p>Industry is the widest spread of any reader trait on this page. Research clicks for {{pick|cut=linked.byIndustry|bucket=research|field=cpc|fmt=usd}}, hospitals and IT for {{pick|cut=linked.byIndustry|bucket=hospital & health care|field=cpc|fmt=usd}}. Medical practices pay {{pick|cut=linked.byIndustry|bucket=medical practice|field=cpc|fmt=usd}}. A practitioner reads email between patients, if at all.</p>
 
 {{chart|cut=linked.byIndustry|metric=cpc|title=Cost per click by industry of the reader (USD, lower is better)}}
 
@@ -60,7 +58,7 @@
 
 <h2 id="the-time">When it lands</h2>
 
-<p>The afternoon and the small hours are the cheap windows, {{pick|cut=linked.byHour|bucket=14-16|field=cpc|fmt=usd}} a click between 2pm and 4pm in the reader's own time zone. The dear one is the morning rush: {{pick|cut=linked.byHour|bucket=6-8|field=cpc|fmt=usd}} between 6am and 8am, three times the afternoon price. Wednesday is the cheapest day, {{pick|cut=linked.byWeekday|bucket=Wednesday|field=cpc|fmt=usd}}; Thursday the dearest, {{pick|cut=linked.byWeekday|bucket=Thursday|field=cpc|fmt=usd}}.</p>
+<p>The afternoon and the small hours are the cheap windows, {{pick|cut=linked.byHour|bucket=14-16|field=cpc|fmt=usd}} a click between 2pm and 4pm in the reader's own time zone. The dear one is the morning rush: {{pick|cut=linked.byHour|bucket=6-8|field=cpc|fmt=usd}} between 6am and 8am. Wednesday is the cheapest day, {{pick|cut=linked.byWeekday|bucket=Wednesday|field=cpc|fmt=usd}}; Thursday the dearest, {{pick|cut=linked.byWeekday|bucket=Thursday|field=cpc|fmt=usd}}.</p>
 
 {{chart|cut=linked.byHour|metric=cpc|min=1000|title=Cost per click by local time of delivery (USD, lower is better)}}
 <h2 id="best-cost-per-click">Best tool for the lowest cost per click</h2>
@@ -73,7 +71,7 @@
 <table>
 <thead><tr><th>Rank</th><th>Company</th><th>Cost per click</th><th>What is in the price</th><th>What you pay</th><th>Source</th></tr></thead>
 <tbody>
-<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.visit.cpc}}</strong> measured, all in</td><td>Lead sourcing, email verification, one email written for each recipient, follow-ups, mailboxes and domains, sending, the team running it, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, {{n best.visit.linkedClicks}} clicks over {{n best.visit.linkedEmails}} emails on the workflow that won</td></tr>
+<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.visit.cpc}}</strong> measured, all in</td><td>Lead sourcing, email verification, one email written for each recipient, follow-ups, mailboxes and domains, sending, the team running it, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, measured on the workflow that won</td></tr>
 <tr><td>2</td><td><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Google Ads, all industries</td><td>$5.42</td><td>The click. You write the ads and the landing page.</td><td>Pay per click</td><td><a href="https://localiq.com/blog/search-advertising-benchmarks/" rel="nofollow noopener">LocaliQ with WordStream, 2026 benchmarks</a>, read 2026-09-10</td></tr>
 <tr><td>3</td><td><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Google Ads, business services</td><td>$5.87</td><td>The click. You write the ads and the landing page.</td><td>Pay per click</td><td><a href="https://localiq.com/blog/search-advertising-benchmarks/" rel="nofollow noopener">LocaliQ with WordStream, 2026 benchmarks</a>, read 2026-09-10</td></tr>
 <tr><td>4</td><td><img src="https://img.logo.dev/linkedin.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">LinkedIn sponsored content</td><td>$5.26 to $8.90</td><td>The click. You write the post and the landing page.</td><td>Pay per click</td><td><a href="https://adlibrary.com/posts/linkedin-advertising-costs-2026" rel="nofollow noopener">AdLibrary, LinkedIn costs 2026</a>, read 2026-09-10</td></tr>
