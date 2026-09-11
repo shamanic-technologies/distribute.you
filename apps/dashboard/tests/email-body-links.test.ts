@@ -130,3 +130,47 @@ describe("linkDisplayText", () => {
     expect(linkDisplayText("https://?x=1")).toBe("https://?x=1");
   });
 });
+
+describe("a destination the producer resolved", () => {
+  const clean = "https://opsfolio.com/lp/cmmc/level-1-free-assessment/";
+  const real = `${clean}?utm_source=landing_page&utm_id=distribute`;
+
+  it("follows where the link truly leads while showing what the prospect saw", () => {
+    const [link] = links(
+      emailBodySegments(`See how it works here: ${clean}`, [{ text: clean, href: real }]),
+    );
+    expect(link.text).toBe(clean);
+    expect(link.href).toBe(real);
+  });
+
+  it("states the URL as written when the producer could not resolve it", () => {
+    const [link] = links(emailBodySegments(`Here: ${clean}`, [{ text: clean, href: null }]));
+    expect(link.href).toBe(clean);
+  });
+
+  it("resolves every occurrence of a link the producer states once", () => {
+    const body = `First ${clean} and again ${clean}`;
+    const resolved = links(emailBodySegments(body, [{ text: clean, href: real }]));
+    expect(resolved.map((l) => l.href)).toEqual([real, real]);
+  });
+
+  it("leaves a link the producer never mentions exactly as written", () => {
+    const other = "https://distribute.you/pricing";
+    const resolved = links(
+      emailBodySegments(`${clean} and ${other}`, [{ text: clean, href: real }]),
+    );
+    expect(resolved.map((l) => l.href)).toEqual([real, other]);
+  });
+
+  it("reads a body with no resolution exactly as it did before the field existed", () => {
+    const body = `Here: ${real}`;
+    expect(emailBodySegments(body)).toEqual(emailBodySegments(body, undefined));
+    expect(emailBodySegments(body, [])).toEqual(emailBodySegments(body, null));
+  });
+
+  it("never shows the tracking parameters in the label, only in the destination", () => {
+    const [link] = links(emailBodySegments(clean, [{ text: clean, href: real }]));
+    expect(link.text).not.toContain("utm_");
+    expect(link.href).toContain("utm_");
+  });
+});

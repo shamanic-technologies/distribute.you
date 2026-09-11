@@ -19,6 +19,13 @@ describe("lead history timeline renders destinations as links", () => {
     expect(TIMELINE).toContain('from "@/lib/email-body-links"');
   });
 
+  it("hands the producer's resolved destinations to it", () => {
+    // The reader declaring `links` is half the feature: a linkifier perfectly able to
+    // follow a resolved destination is the feature entirely absent if the timeline
+    // never passes one.
+    expect(TIMELINE).toContain("emailBodySegments(e.bodyText ?? \"\", e.links)");
+  });
+
   it("no longer prints the body as inert text", () => {
     // The bare interpolation the anchors replaced. Spelled in pieces so this guard
     // cannot trip on itself.
