@@ -32,7 +32,7 @@ describe("Beta onboarding guided flow", () => {
     // Not a feature tour (NN/g: "skip onboarding when possible"), and not a price
     // card — the visitor already converted on the landing.
     for (const copy of [
-      "Sell like crazy, autonomously.",
+      "Get revenue in 24h. From $1/day.",
       "We send, not you",
       "You set the ceiling",
       "Pause anytime",

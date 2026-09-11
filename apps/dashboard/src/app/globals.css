@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=DM+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -23,12 +23,16 @@
   --color-brand-800: oklch(41% 0.115 258);
   --color-brand-900: oklch(35% 0.09 258);
 
-  /* Display = Space Grotesk (the new landing charter's display face), falling
-   * back to Inter. Headings keep the tight tracking treatment below. */
-  --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, sans-serif;
+  /* Display = Fustat, the face the served landing declares (apps/landing/public/
+   * landing/v2/styles.css `--font-display`), falling back to Inter. The face
+   * named here before it belonged to a landing generation that no longer exists
+   * AND was loaded by nothing in this app, so every heading silently fell back to
+   * Inter while the token claimed otherwise. The retired name is spelled in the
+   * guard, never here: that guard reads this file. */
+  --font-display: "Fustat", "Inter", system-ui, -apple-system, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  /* Landing-aligned mono — labels, eyebrows, stat ticks (matches apps/landing). */
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Mono = DM Mono, the landing's own mono token. Labels, eyebrows, stat ticks. */
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Radius scale ported from the landing design system (apps/landing globals). */
   --dy-radius-sm: 0.375rem;
@@ -129,12 +133,18 @@ html.dark body::before {
     radial-gradient(ellipse 45% 45% at 10% 70%, oklch(64% 0.18 220 / 0.08), transparent 55%);
 }
 
-h1, h2, h3, .font-display {
-  font-family: var(--font-display);
-  font-weight: 700;
-  /* Landing heading treatment: Space Grotesk 700 with tight tracking, matching
-   * the landing's display headings. Font-size/line-height untouched (no shift). */
-  letter-spacing: -0.03em;
+/* Inside `@layer base` on purpose: the landing sets its display headings at
+ * weight 400 (`h1, h2, h3, h4 { font-weight: 400 }` in the v2 stylesheet), and
+ * an UNLAYERED rule here would outrank every `font-bold` / `font-semibold`
+ * utility and flatten all 93 headings in the app. Layered, the landing weight is
+ * the base a heading reads when it states none, and any explicit utility still
+ * wins. Font-size/line-height untouched (no shift). */
+@layer base {
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.03em;
+  }
 }
 
 @utility text-balance {
@@ -246,6 +256,7 @@ html.dark .bg-gray-800 { background-color: var(--dy-surface); }
 html.dark .bg-gray-700 { background-color: var(--dy-surface-hi); }
 
 /* Text — mapped to the landing's three text tiers (text/sub/muted). */
+html.dark .text-gray-950 { color: var(--dy-text); }
 html.dark .text-gray-900 { color: var(--dy-text); }
 html.dark .text-gray-800 { color: var(--dy-text); }
 html.dark .text-gray-700 { color: var(--dy-sub); }
