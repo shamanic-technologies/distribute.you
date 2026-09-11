@@ -156,12 +156,15 @@ describe("the filter runs at the ONE reader boundary", () => {
     };
     walk(dir);
     expect(hits.map((h) => path.relative(dir, h)).sort()).toEqual([
-      // NOT a producer's field at all: the campaign Workflows page splits its rows
-      // into three SECTIONS and the middle one is called `measured` — every workflow
-      // that produced at least one sales interest. It is this app's own word for its
-      // own layout, read off `sectionCampaignWorkflowRows`, and it never touches a
-      // projection row.
+      // The SECOND reader of the same endpoint, and the one surface that legitimately
+      // needs the unmeasured rows: the campaign Workflows table ranks on the producer's
+      // own ladder, and "this exists and you have not tried it" is an answer a customer
+      // picking what to run next wants. It reads them through `getWorkflowRankLadder`,
+      // whose schema declares `measured` REQUIRED, so a row is never PROBED for the
+      // flag — which is what this guard is actually about. Its panel and its ordering
+      // module read that same declared field.
       "components/workflows/campaign-workflows-page.tsx",
+      "components/workflows/workflow-rank-panel.tsx",
       // A DIFFERENT producer's field under the same name: features-service's
       // channel-funnel price list marks each (channel, funnel) pair `measured`, meaning
       // the fleet has spent enough through it to state a price. Nothing to do with a
@@ -174,6 +177,10 @@ describe("the filter runs at the ONE reader boundary", () => {
       // figure for a funnel nobody here sells yet.
       "lib/offer-funnel-catalogue.ts",
       "lib/workflow-projection-measured.ts",
+      // The ordering + "why" module for that second reader. It BRANCHES on `measured`
+      // on purpose: an explore row is the cheapest by construction, so it can never be
+      // ranked among the measured ones and its sentence says the figure is a floor.
+      "lib/workflow-rank-why.ts",
     ]);
   });
 });

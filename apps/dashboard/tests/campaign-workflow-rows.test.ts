@@ -12,11 +12,9 @@ import {
   workflowOutcomeCostCents,
   workflowOutcomeCount,
   workflowOutcomePairFor,
-  buildFleetWorkflowRows,
   collapseWorkflowCatalogue,
   runningDynastyFor,
   resolveRunningWorkflow,
-  sectionCampaignWorkflowRows,
   fleetComparison,
   type CampaignWorkflowRow,
   type FleetWorkflowCost,
@@ -216,21 +214,15 @@ describe("the running workflow is resolved ONCE, for every grain", () => {
     });
   });
 
-  it("answers the SAME at the global grain, which holds no groups of its own", () => {
-    // The regression: resolving per grain returned null here, so `Running now` vanished
-    // on the Global tab alone while the other three rendered it.
-    const resolved = resolveRunningWorkflow("chan-legato-v2", [cur], [[group]]);
-    const rows = buildFleetWorkflowRows({
-      catalogue: [cur],
-      fleet: [],
-      outreach: [],
-      running: resolved,
-      pair: "reply",
-      isLearning,
-    });
-    expect(rows.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([
-      "chan-legato",
-    ]);
+  it("answers the SAME when NO group set is supplied at all", () => {
+    // The regression this closed: resolving per grain returned null wherever the caller
+    // held no groups, so `Running now` vanished on that surface alone while every other
+    // one rendered it. The dynasty map answers with no groups in hand.
+    expect(
+      resolveRunningWorkflow("chan-legato-v2", [cur], [], [
+        { workflowDynastySlug: "chan-legato", workflowDynastyName: "Legato", workflowSlugs: ["chan-legato-v2"] },
+      ]),
+    ).toEqual({ dynastySlug: "chan-legato", dynastyName: "Legato" });
   });
 
   it("states NO running workflow when no source names the version", () => {
@@ -315,16 +307,15 @@ describe("a SUPERSEDED version is named by the channel's dynasty map, and by not
       isLearning,
     });
     expect(scoped.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([RUDDER]);
-    // The GLOBAL grain holds no groups at all, so it depends on the map entirely.
-    const fleet = buildFleetWorkflowRows({
-      catalogue: [prodCatalogue],
-      fleet: [],
-      outreach: [],
-      running,
-      pair: "reply",
-      isLearning,
-    });
-    expect(fleet.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([RUDDER]);
+    // And with NO groups in hand at all, which is what the map exists for: the two
+    // other sources can only ever name a CURRENT version or one that already SPENT.
+    const mapOnly = resolveRunningWorkflow(
+      `${RUDDER}-v3`,
+      [prodCatalogue],
+      [],
+      prodMemberships,
+    );
+    expect(mapOnly.dynastySlug).toBe(RUDDER);
   });
 
   it("does NOT override a catalogue match — the map is the last source, not the first", () => {
@@ -386,24 +377,6 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
     expect(rows.filter((r) => r.running)).toHaveLength(1);
   });
 
-  it("synthesizes it at the global grain too, with no figures to borrow", () => {
-    const running = resolveRunningWorkflow("chan-tectonic-v16", catalogue, [[retired]]);
-    const rows = buildFleetWorkflowRows({
-      catalogue,
-      fleet: [],
-      outreach: [],
-      running,
-      pair: "reply",
-      isLearning,
-    });
-    const row = rows.find((r) => r.workflowDynastySlug === "chan-tectonic")!;
-    expect(row.running).toBe(true);
-    expect(row.positiveReplies).toBeNull();
-    expect(row.committedCostUsd).toBeNull();
-    // Nothing named it here, so the name falls back to what the resolver carried.
-    expect(row.workflowDynastyName).toBe("Chan Tectonic");
-  });
-
   it("never duplicates a dynasty the catalogue already offers", () => {
     const offered = [cat({ workflowSlug: "chan-legato-v9", workflowDynastySlug: "chan-legato", version: 9 })];
     const rows = buildCampaignWorkflowRows({
@@ -451,143 +424,6 @@ describe("fleetComparison", () => {
   });
 });
 
-describe("sectionCampaignWorkflowRows", () => {
-  it("puts the RUNNING workflow in its OWN section and nowhere else", () => {
-    const out = sectionCampaignWorkflowRows([
-      row({ workflowDynastySlug: "live", running: true, positiveReplies: 40, cpprCents: 9000 }),
-      row({ workflowDynastySlug: "cheap", positiveReplies: 40, cpprCents: 100 }),
-    ]);
-    expect(out.running.map((r) => r.workflowDynastySlug)).toEqual(["live"]);
-    expect(out.measured.map((r) => r.workflowDynastySlug)).toEqual(["cheap"]);
-    expect(out.notMeasured).toEqual([]);
-  });
-
-  it("splits MEASURED from NOT MEASURED on the sales-interest COUNT", () => {
-    const out = sectionCampaignWorkflowRows([
-      row({ workflowDynastySlug: "one", positiveReplies: 1, cpprCents: 500, learning: true }),
-      row({ workflowDynastySlug: "none", positiveReplies: 0, learning: true }),
-      row({ workflowDynastySlug: "never" }),
-    ]);
-    expect(out.measured.map((r) => r.workflowDynastySlug)).toEqual(["one"]);
-    expect(out.notMeasured.map((r) => r.workflowDynastySlug)).toEqual(["none", "never"]);
-  });
-
-  it("ranks MEASURED cheapest-first, and sinks a row whose price is withheld", () => {
-    const out = sectionCampaignWorkflowRows([
-      row({ workflowDynastySlug: "dear", positiveReplies: 30, cpprCents: 800 }),
-      row({ workflowDynastySlug: "cheap", positiveReplies: 30, cpprCents: 100 }),
-      // A $0.01 price standing on two interests is deliberately NOT shown, so it must
-      // not take the top row either — ordering on a figure the table withholds reads
-      // as unordered.
-      row({ workflowDynastySlug: "thin", positiveReplies: 2, cpprCents: 1, learning: true }),
-    ]);
-    expect(out.measured.map((r) => r.workflowDynastySlug)).toEqual(["cheap", "dear", "thin"]);
-  });
-
-  it("orders NOT MEASURED by outreach descending, nulls last", () => {
-    const out = sectionCampaignWorkflowRows([
-      row({ workflowDynastySlug: "never", outreach: null }),
-      row({ workflowDynastySlug: "some", positiveReplies: 0, outreach: 40, learning: true }),
-      row({ workflowDynastySlug: "many", positiveReplies: 0, outreach: 900, learning: true }),
-    ]);
-    expect(out.notMeasured.map((r) => r.workflowDynastySlug)).toEqual([
-      "many",
-      "some",
-      "never",
-    ]);
-  });
-});
-
-describe("buildFleetWorkflowRows", () => {
-  const catalogue = [
-    cat({ workflowDynastySlug: "a", workflowSlug: "a", workflowDynastyName: "A" }),
-    cat({ workflowDynastySlug: "b", workflowSlug: "b", workflowDynastyName: "B" }),
-  ];
-  const fleet: FleetWorkflowCost[] = [
-    {
-      workflowDynastySlug: "a",
-      workflowDynastyName: "A",
-      spentUsd: 1234,
-      costPerOutcomeUsd: 61.5,
-      observedPositiveReplies: 20,
-      observedClicks: 7,
-    },
-    // A dynasty the catalogue no longer offers — RETIRED, so it gets no row here
-    // either. The rule is the same at every grain.
-    {
-      workflowDynastySlug: "gone",
-      workflowDynastyName: "Gone",
-      spentUsd: 10,
-      costPerOutcomeUsd: 1,
-      observedPositiveReplies: 99,
-      observedClicks: 1,
-    },
-  ];
-
-  it("joins the two public reads on the dynasty and converts the rate to cents", () => {
-    const rows = buildFleetWorkflowRows({
-      catalogue,
-      fleet,
-      outreach: [{ workflowDynastySlug: "a", recipientsContacted: 5000 }],
-      running: { dynastySlug: "a", dynastyName: null },
-      pair: "reply",
-      isLearning,
-    });
-    const a = rows.find((r) => r.workflowDynastySlug === "a")!;
-    expect(a.positiveReplies).toBe(20);
-    expect(a.cpprCents).toBe(6150);
-    expect(a.committedCostUsd).toBe(1234);
-    expect(a.outreach).toBe(5000);
-    expect(a.websiteClicks).toBe(7);
-    expect(a.running).toBe(true);
-    expect(a.learning).toBe(false);
-  });
-
-  it("drops a fleet row the catalogue no longer offers", () => {
-    const rows = buildFleetWorkflowRows({
-      catalogue,
-      fleet,
-      outreach: [],
-      running: { dynastySlug: null, dynastyName: null },
-      pair: "reply",
-      isLearning,
-    });
-    expect(rows.map((r) => r.workflowDynastySlug)).toEqual(["a", "b"]);
-  });
-
-  it("gives a workflow the fleet has no row for NULL figures, never zeros", () => {
-    const rows = buildFleetWorkflowRows({
-      catalogue,
-      fleet,
-      outreach: [],
-      running: { dynastySlug: null, dynastyName: null },
-      pair: "reply",
-      isLearning,
-    });
-    const b = rows.find((r) => r.workflowDynastySlug === "b")!;
-    expect(b.positiveReplies).toBeNull();
-    expect(b.cpprCents).toBeNull();
-    expect(b.committedCostUsd).toBeNull();
-    expect(b.outreach).toBeNull();
-    expect(b.learning).toBe(false);
-  });
-
-  it("invents NO return and NO per-click price from the two figures it has", () => {
-    const rows = buildFleetWorkflowRows({
-      catalogue,
-      fleet,
-      outreach: [],
-      running: { dynastySlug: null, dynastyName: null },
-      pair: "reply",
-      isLearning,
-    });
-    expect(rows.every((r) => r.roiMultiple === null && r.cpcCents === null)).toBe(true);
-  });
-});
-
-/**
- * The module has to stay importable by vitest, which resolves no `@` alias.
- */
 describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
   it("takes the VISIT pair for a leg that lands on a website visit", () => {
     expect(workflowOutcomePairFor("visit")).toBe("visit");
@@ -646,38 +482,11 @@ describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
     expect(reply.learning).toBe(true);
   });
 
-  it("puts the fleet's single served price on the pair's own field", () => {
-    // `costPerOutcomeUsd` prices whichever objective the caller ASKED for, so on a
-    // visit-led campaign it is a cost per website visit — and reading it as `cpprCents`
-    // is how a visit price ends up under a "cost per sales interest" header.
-    const [row] = buildFleetWorkflowRows({
-      catalogue: [cat({ workflowDynastySlug: "a", workflowSlug: "a", workflowDynastyName: "A" })],
-      fleet: [
-        {
-          workflowDynastySlug: "a",
-          workflowDynastyName: "A",
-          spentUsd: 900,
-          costPerOutcomeUsd: 3.5,
-          observedPositiveReplies: 2,
-          observedClicks: 260,
-        },
-      ],
-      outreach: [],
-      running: { dynastySlug: null, dynastyName: null },
-      pair: "visit",
-      isLearning,
-    });
-    expect(row.cpcCents).toBe(350);
-    expect(row.cpprCents).toBeNull();
-    expect(workflowOutcomeCount(row)).toBe(260);
-    expect(row.learning).toBe(false);
-  });
-
-  it("sections and ranks a VISIT-led scope on its visits", () => {
-    const rows = [
-      row({ workflowDynastySlug: "dear", outcomePair: "visit", websiteClicks: 300, cpcCents: 900 }),
+  it("measures a VISIT-led scope on its VISITS, never on its replies", () => {
+    // Plenty of replies and no visit at all is NOT measured on a campaign that buys
+    // visits — the pair decides which count the row stands on.
+    const visitRows = [
       row({ workflowDynastySlug: "cheap", outcomePair: "visit", websiteClicks: 300, cpcCents: 120 }),
-      // Plenty of replies, no visit at all: NOT measured on a campaign that buys visits.
       row({
         workflowDynastySlug: "repliesOnly",
         outcomePair: "visit",
@@ -688,9 +497,10 @@ describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
         learning: true,
       }),
     ];
-    const out = sectionCampaignWorkflowRows(rows);
-    expect(out.measured.map((r) => r.workflowDynastySlug)).toEqual(["cheap", "dear"]);
-    expect(out.notMeasured.map((r) => r.workflowDynastySlug)).toEqual(["repliesOnly"]);
+    expect(workflowOutcomeCount(visitRows[0])).toBe(300);
+    expect(workflowOutcomeCostCents(visitRows[0])).toBe(120);
+    expect(workflowOutcomeCount(visitRows[1])).toBe(0);
+    expect(workflowOutcomeCostCents(visitRows[1])).toBeNull();
   });
 });
 

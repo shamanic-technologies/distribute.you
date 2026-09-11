@@ -17,7 +17,6 @@ import type {
   WorkflowDynastyMembership,
   WorkflowRevenueGroup,
   FleetWorkflowCost,
-  FleetWorkflowOutreach,
 } from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
@@ -4600,53 +4599,6 @@ export async function getFleetWorkflowCost(
   }));
 }
 
-/**
- * GET /v1/public/features/ranked?groupBy=workflow — the fleet's OUTREACH per workflow.
- *
- * The cost read above carries the money and the outcome counts and no outreach; this
- * one carries the outreach. Both are public, org-less and keyed on the same dynasty,
- * so the Global grain is one join rather than a fan-out.
- *
- * `recipientsContacted`, never `completedRuns`: a workflow that contacted 638 people
- * logs ~15,000 runs, so a run count under an "Outreach" label overstates it ~23x.
- *
- * `limit` has to be STATED because the endpoint defaults to the top 3 — it is a
- * ceiling on a fleet-wide dynasty list (a couple of dozen rows), not a page size. This
- * table needs every workflow, not a leaderboard.
- */
-const FleetWorkflowOutreachSchema = z.object({
-  results: z.array(
-    z.object({
-      workflow: z.object({ workflowDynastySlug: z.string() }),
-      stats: z.object({ recipientsContacted: z.coerce.number().nullish() }),
-    }),
-  ),
-});
-
-export async function getFleetWorkflowOutreach(
-  featureSlug: string,
-  limit = 500,
-  token?: string,
-): Promise<FleetWorkflowOutreach[]> {
-  const query = new URLSearchParams({
-    featureSlug,
-    groupBy: "workflow",
-    limit: String(limit),
-  });
-  const raw = await apiCall<unknown>(`/public/features/ranked?${query.toString()}`, { token });
-  const parsed = FleetWorkflowOutreachSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFleetWorkflowOutreach: response shape mismatch", {
-      issues: parsed.error.issues,
-    });
-    throw new Error("[dashboard] getFleetWorkflowOutreach: invalid response shape");
-  }
-  return parsed.data.results.map((r) => ({
-    workflowDynastySlug: r.workflow.workflowDynastySlug,
-    recipientsContacted: r.stats.recipientsContacted ?? null,
-  }));
-}
-
 // ─── Per-offer revenue, at the OFFER grain ───────────────────────────────────
 // features-service `GET /brands/:brandId/offers` returns one LEAN row per offer,
 // each combined across EVERY acquisition channel that offer is sold through.
@@ -6697,6 +6649,167 @@ export async function getWorkflowProjectionLadder(
       raw,
     });
     throw new Error("[dashboard] getWorkflowProjectionLadder: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── The RANK ladder: the same endpoint, read WIDE ────────────────────────────
+/**
+ * GET /features/:slug/workflow-projection — the SAME read as
+ * `getWorkflowProjectionLadder`, kept as a SECOND reader because the two want
+ * opposite things from the same body.
+ *
+ * Every OTHER dashboard surface must never render an UNMEASURED row: its
+ * `resolved.costPerOutcomeUsd` is an explore allowance (the price of one outreach,
+ * set so an unproven workflow is reachable), which makes it the cheapest row by
+ * construction and would hand the "Your best model" headline to a workflow that has
+ * never run. So that reader drops them before its schema, which is also what keeps
+ * `resolved.grain` non-nullable for every consumer of it.
+ *
+ * The campaign Workflows page is the ONE surface that needs them — "this exists and
+ * you have not tried it" is an answer a customer picking what to run next wants —
+ * and it needs the fields that reader deliberately does not declare (`measured`,
+ * `costBasis`, the per-grain `costBasis`/`resolvedOutcomeCount`, the `leg` echo).
+ * Widening the existing schema to carry all of that would force every one of its
+ * consumers to branch on a case none of them may render, so this is a separate
+ * reader rather than a flag: the narrow path stays byte-identical.
+ *
+ * `leg` is what makes the answer the CAMPAIGN's: a campaign performs ONE arrow of its
+ * funnel, and features-service picks the brand's best-returning declared funnel
+ * containing that leg. It WINS over `funnel`, which wins over `goal` — so a caller
+ * states the narrowest thing it knows and nothing else.
+ */
+const WorkflowRankEvidenceSchema = z.object({
+  spentUsd: z.number(),
+  observedContacted: z.number(),
+  observedClicks: z.number(),
+  observedPositiveReplies: z.number(),
+});
+
+const WorkflowRankGrainSchema = z.object({
+  /** Which accounting question THIS grain answers — `charged` is the customer's own
+   *  billed money, `incurred` the fleet benchmark where comped spend counts in full.
+   *  Absent on an unmeasured row, where `estimatesByGrain` is empty. */
+  costBasis: z.union([z.literal("charged"), z.literal("incurred")]).nullish(),
+  evidence: WorkflowRankEvidenceSchema,
+  /** Floor-filled unit costs — NEVER null (spend / max(observed, 1)), so a grain that
+   *  observed nothing still states what it cost rather than a zero. */
+  unitCosts: z.object({
+    costPerClickUsd: z.number(),
+    costPerPositiveReplyUsd: z.number(),
+    costPerContactedUsd: z.number(),
+  }),
+  /** The grain's own PROJECTED outcome count — routinely fractional on a multi-step
+   *  funnel, which is why no surface renders it as a count of people. */
+  resolvedOutcomeCount: z.number().nullable(),
+  projected: z.object({
+    costPerSignupUsd: z.number().nullable(),
+    costPerPaidClientUsd: z.number().nullable(),
+    costPerMeetingBookedUsd: z.number().nullable(),
+    roiMultiple: z.number().nullable(),
+    cacPct: z.number().nullable(),
+  }),
+});
+
+/**
+ * `grain` and `costBasis` are NULLABLE here and non-nullable on the narrow reader,
+ * and that is the whole difference: only an UNMEASURED row nulls them, and one never
+ * reaches the narrow schema.
+ */
+const WorkflowRankResolvedSchema = z.object({
+  grain: z
+    .union([z.literal("crossOrg"), z.literal("brand"), z.literal("audience")])
+    .nullable(),
+  costBasis: z.union([z.literal("charged"), z.literal("incurred")]).nullable(),
+  costPerClickUsd: z.number().nullable(),
+  costPerOutcomeUsd: z.number().nullable(),
+  costPerPaidClientUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  cacPct: z.number().nullable(),
+  conversionRatePct: z.number().nullable(),
+});
+
+const WorkflowRankRowSchema = z.object({
+  audienceId: z.string().nullable(),
+  workflow: z.object({
+    workflowDynastySlug: z.string(),
+    workflowDynastyName: z.string().nullable(),
+  }),
+  estimatesByGrain: z.object({
+    crossOrg: WorkflowRankGrainSchema.optional(),
+    brand: WorkflowRankGrainSchema.optional(),
+    audience: WorkflowRankGrainSchema.optional(),
+  }),
+  resolved: WorkflowRankResolvedSchema,
+  /** REQUIRED — the flag is the whole reason this reader exists. */
+  measured: z.boolean(),
+});
+
+const WorkflowRankLadderSchema = z.object({
+  featureSlug: z.string(),
+  funnelKey: z.string().nullish(),
+  objective: z.string().nullish(),
+  goal: z.string().nullish(),
+  /** Present ⟺ the request named a LEG, and it states which funnel the leg was priced
+   *  through and what that choice rested on. `toStep` is the customer-facing word for
+   *  the outcome every figure on the body is about. */
+  leg: z
+    .object({
+      legKey: z.string(),
+      fromStep: z
+        .object({ key: z.string(), label: z.string() })
+        .nullable()
+        .optional(),
+      toStep: z.object({ key: z.string(), label: z.string() }),
+      basisFunnelKey: z.string().nullish(),
+      basis: z.string().nullish(),
+    })
+    .nullish(),
+  rows: z.array(WorkflowRankRowSchema),
+  /** The producer's own pick: the argmin of `resolved.costPerOutcomeUsd` over the
+   *  MEASURED rows. Nothing here re-derives it. */
+  recommendedWorkflowDynastySlug: z.string().nullable(),
+  recommendedBudgetUsd: z.number().nullable(),
+  /** FALSE ⟺ this channel has measured nothing for this brand at all; the reason then
+   *  names what is missing, and an empty ranking must never read as "no workflows". */
+  measured: z.boolean().nullish(),
+  unmeasuredReason: z.string().nullish(),
+});
+
+export type WorkflowRankLadder = z.infer<typeof WorkflowRankLadderSchema>;
+export type WorkflowRankLadderRow = z.infer<typeof WorkflowRankRowSchema>;
+
+export async function getWorkflowRankLadder(
+  params: {
+    featureSlug: string;
+    brandId: string;
+    /** The campaign's own arrow. Wins over `funnel` at the producer. */
+    leg?: string | null;
+    /** The campaign's funnel — sent only when it states no leg. */
+    funnel?: SalesFunnelKeyWire | null;
+  },
+  token?: string,
+): Promise<WorkflowRankLadder> {
+  const query = new URLSearchParams();
+  query.set("brandId", params.brandId);
+  // The NARROWEST thing the campaign states, and nothing else: sending both would
+  // have the producer ignore one of them, which reads as a second source of truth.
+  if (params.leg) query.set("leg", params.leg);
+  else if (params.funnel) query.set("funnel", canonicalSalesFunnelKey(params.funnel));
+  // net — the basis every money surface in this app reads, and what the org pays.
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
+    { token },
+  );
+  const parsed = WorkflowRankLadderSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getWorkflowRankLadder: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getWorkflowRankLadder: invalid response shape");
   }
   return parsed.data;
 }
