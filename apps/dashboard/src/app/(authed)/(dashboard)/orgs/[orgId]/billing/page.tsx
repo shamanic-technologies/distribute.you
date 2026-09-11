@@ -10,6 +10,7 @@ import {
   getBillingPayments,
   createCheckoutSession,
   createPortalSession,
+  portalRefusalMessage,
   listBrands,
   getBrandDailyBudget,
   type BillingAccount,
@@ -411,7 +412,8 @@ export default function BillingPage() {
         },
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to open payment portal");
+      console.error("[billing] card page refused", err);
+      setError(portalRefusalMessage(err));
       setPortalLoadingSource(null);
     }
   }

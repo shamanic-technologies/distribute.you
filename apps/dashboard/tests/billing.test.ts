@@ -567,3 +567,28 @@ describe("billing page — change card settles first (T4 of the card-removal gua
     expect(paymentMethod).toContain("formatBillingCents(Math.abs(availableCents))");
   });
 });
+
+describe("billing page — a refused card change states the owed amount, never err.message", () => {
+  const page = fs.readFileSync(
+    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+    "utf8"
+  );
+  const handler = page.slice(
+    page.indexOf("async function handleManagePayment("),
+    page.indexOf("async function handleTopup(")
+  );
+
+  it("keys the refusal on billing's stable code through the one helper", () => {
+    expect(handler).toContain("setError(portalRefusalMessage(err))");
+    expect(handler).not.toContain("err.message");
+  });
+
+  it("the portal call suppresses the credits modal (a refused settle is not insufficient credits)", () => {
+    const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf8");
+    const call = api.slice(
+      api.indexOf("export async function createPortalSession("),
+      api.indexOf("// Press Kits")
+    );
+    expect(call).toContain("suppressPaymentRequired: true");
+  });
+});
