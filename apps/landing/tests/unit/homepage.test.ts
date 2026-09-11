@@ -34,7 +34,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=12"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=13"');
     expect(html).toContain('src="/landing/v2/main.js?v=8"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
@@ -398,5 +398,11 @@ describe("step 01 is a real form, not a mock (#step-one-real-input)", () => {
     expect(css).toMatch(/\.launch-mini \.btn \{[^}]*display: none/);
     expect(css).toMatch(/\.launch-mini:focus-within \.btn[^{]*\{[^}]*display: inline-flex/);
     expect(css).toMatch(/\.launch-mini input:not\(:placeholder-shown\) \+ \.btn/);
+  });
+
+  it("keeps the blinking caret at rest and hides it on focus or typing", () => {
+    expect(step).toContain('<span class="ghost" aria-hidden="true">https://acme.com<span class="cursor"></span></span>');
+    expect(css).toMatch(/\.launch-mini \.ghost \.cursor \{[^}]*animation: blink/);
+    expect(css).toMatch(/\.launch-mini:focus-within \.ghost, \.launch-mini input:not\(:placeholder-shown\) ~ \.ghost \{ display: none; \}/);
   });
 });
