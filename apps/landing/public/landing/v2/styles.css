@@ -316,6 +316,16 @@ section.framed::after {
   margin-top: 22px; max-width: 560px; padding: 18px; border-radius: 14px;
   background: var(--surface); border: 1px solid var(--hair);
 }
+/* Step 01 is a real form (the mock read as clickable and people clicked it). Field only at rest, CTA revealed on focus or typed input. */
+.launch-mini { max-width: none; }
+.launch-mini .launch-field { padding: 0 4px 0 14px; border-radius: 10px; background: #fff; border: 1px solid var(--hair-2); }
+.launch-mini .launch-field:not(:focus-within) { box-shadow: none; }
+.launch-mini .launch-field::before { display: none; }
+.launch-mini input { height: 42px; font-size: 15px; color: var(--text); }
+.launch-mini input::placeholder { color: var(--muted); }
+.launch-mini .btn { display: none; height: 34px; padding: 0 14px; border-radius: 8px; }
+.launch-mini:focus-within .btn { display: inline-flex; }
+.launch-mini input:not(:placeholder-shown) + .btn { display: inline-flex; }
 .fake-field { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 10px; background: #fff; border: 1px solid var(--hair-2); font-size: 15px; color: var(--muted); }
 .fake-field .cursor { width: 1px; height: 18px; background: var(--text); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }

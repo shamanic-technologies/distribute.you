@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/landing/v2/styles.css?v=11">
+<link rel="stylesheet" href="/landing/v2/styles.css?v=12">
 </head>
 <body>
 
@@ -249,7 +249,14 @@
           <span class="eyebrow">01</span>
           <h3>Paste your website</h3>
           <p>We read what you sell, who you sell it to, and how you talk about it.</p>
-          <div class="step-visual"><div class="fake-field">https://acme.com<span class="cursor"></span></div></div>
+          <div class="step-visual">
+            <form class="launch launch-mini" action="https://dashboard.distribute.you/sign-up" method="get">
+              <div class="launch-field">
+                <input name="url" type="text" autocomplete="off" placeholder="https://acme.com" aria-label="Your website">
+                <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+              </div>
+            </form>
+          </div>
           <div class="note">Takes a minute.</div>
         </div>
         <div class="step rv" id="s2">
