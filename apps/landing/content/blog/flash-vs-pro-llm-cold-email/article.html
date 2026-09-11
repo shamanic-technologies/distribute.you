@@ -1,5 +1,9 @@
+<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin:0 0 24px"><p style="margin:0"><strong>Correction, 11 September 2026.</strong> Most of the clicks our own redirect had recorded turned out to be corporate link scanners fetching the URL before the reader ever saw it. Production was corrected, 271 of 309 of those hits were demoted, and every figure on this page has been re-derived from the corrected data on a window that now runs to 11 September 2026. The earlier version of this article overstated how many people visited a client's site, and understated what a visit costs on the workflows that ran on our own sending infrastructure. The reply figures are unaffected.</p></div>
+
 <h2 id="the-bet">The bet</h2>
-<p>Every AI vendor now sells the same model family in tiers. <strong>Flash</strong>, the cheapest. <strong>Pro</strong>, the middle. <strong>Frontier</strong>, the most expensive. Pro costs about 5x Flash per token, and everyone has a reflex about it: the pricier model must convert better, so the question is whether it converts <em>enough</em> better to pay for itself.</p>
+
+<p>Every AI vendor now sells the same model family in tiers. <strong>Flash</strong>, the cheapest. <strong>Pro</strong>, the middle. <strong>Frontier</strong>, the most expensive. Pro costs about 5x Flash per token, and everyone has a reflex about it: the pricier model must convert better, so the question is whether it converts enough better to pay for itself.</p>
+
 <figure>
 <svg viewBox="0 0 800 174" width="100%" role="img" aria-label="What the tiers cost per 10M output tokens (USD, list price) (USD, lower is better): Flash $25, Pro $120" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">What the tiers cost per 10M output tokens (USD, list price)</text>
@@ -13,828 +17,839 @@
 </svg>
 </figure>
 <h2 id="the-test">The test</h2>
-<p>We wrote <strong>120,000 cold emails</strong> with both tiers, on real campaigns for 32 clients, and counted two things per dollar spent: how many people clicked the link, and how many wrote back with interest. Not one prompt per tier. Every client runs an A/B test across our whole catalogue of writing workflows, so the question we can answer is sharper than <em>Flash or Pro</em>: which workflow, on which tier, buys the outcome for the least, and by how much it beats the average.</p>
+
+<p>We wrote <strong>125,000 cold emails</strong> with both tiers, on real campaigns for 33 clients, and counted two things per dollar spent: how many people clicked the link, and how many wrote back with interest. Not one prompt per tier. Every client runs an A/B test across our whole catalogue of writing workflows, so the question we can answer is sharper than Flash or Pro: which workflow, on which tier, buys the outcome for the least, and by how much it beats the average.</p>
+
 <h2 id="the-answer">The answer</h2>
-<p><strong>Our best Pro workflow buys a positive reply for $122.</strong> The Pro tier as a whole pays $193; Flash got one reply in 34,305 emails. <strong>Our best Flash workflow buys a website visit for $1.</strong> The Flash tier as a whole pays $2, Pro $4. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
+
+<p><strong>Our best Pro workflow buys a positive reply for $139.</strong> The Pro tier as a whole pays $198; Flash got 1 reply in 35,102 emails. <strong>Our best Flash workflow buys a website visit for $1.</strong> The Flash tier as a whole pays $2, Pro $6. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per positive reply (USD, lower is better) (USD, lower is better): Best Pro workflow $122, Pro tier, all workflows $193, Flash tier, all workflows $1,424" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per positive reply (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">Best Pro workflow</text>
-<rect x="210" y="56" width="42" height="26" rx="5" fill="#2563eb"/>
-<text x="262" y="75" font-size="16" font-weight="700" fill="#0f172a">$122</text>
-<text x="210" y="95" font-size="11" fill="#94a3b8">Gemini 3.1 Pro: 19 positive replies over 24,940 emails</text>
-<text x="0" y="126" font-size="14" fill="#475569">Pro tier, all workflows</text>
-<rect x="210" y="108" width="67" height="26" rx="5" fill="#93c5fd"/>
-<text x="287" y="127" font-size="16" font-weight="700" fill="#0f172a">$193</text>
-<text x="210" y="147" font-size="11" fill="#94a3b8">35 positive replies over 82,620 emails</text>
-<text x="0" y="178" font-size="14" fill="#475569">Flash tier, all workflows</text>
-<rect x="210" y="160" width="500" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$1,424</text>
-<text x="210" y="199" font-size="11" fill="#94a3b8">1 positive reply over 34,305 emails</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Every email, whatever it asked for. One positive reply per person.</text>
+<svg viewBox="0 0 800 166" width="100%" role="img" aria-label="Cost per website visit by tier (USD, lower is better): Flash $2, Pro $6" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by tier (USD, lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Flash</text>
+<rect x="150" y="56" width="217" height="26" rx="5" fill="#2563eb"/>
+<text x="377" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">22.9 clicks per 1,000 emails, 16,636 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Pro</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">11.5 clicks per 1,000 emails, 25,751 emails</text>
+<text x="0" y="158" font-size="13" fill="#64748b">Measured on the emails whose body carried a link to the client's site.</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit (USD, lower is better) (USD, lower is better): Best Flash workflow $1, Flash tier, all workflows $2, Best Pro workflow $3, Pro tier, all workflows $4" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">Best Flash workflow</text>
-<rect x="210" y="56" width="125" height="26" rx="5" fill="#2563eb"/>
-<text x="345" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="210" y="95" font-size="11" fill="#94a3b8">Gemini Flash: 140 visits over 4,297 emails, 32.6 per 1,000</text>
-<text x="0" y="126" font-size="14" fill="#475569">Flash tier, all workflows</text>
-<rect x="210" y="108" width="250" height="26" rx="5" fill="#93c5fd"/>
-<text x="470" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="210" y="147" font-size="11" fill="#94a3b8">251 visits over 9,449 emails, 26.6 per 1,000</text>
-<text x="0" y="178" font-size="14" fill="#475569">Best Pro workflow</text>
-<rect x="210" y="160" width="375" height="26" rx="5" fill="#93c5fd"/>
-<text x="595" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="210" y="199" font-size="11" fill="#94a3b8">Gemini 3.1 Pro: 93 visits over 3,573 emails, 26.0 per 1,000</text>
-<text x="0" y="230" font-size="14" fill="#475569">Pro tier, all workflows</text>
-<rect x="210" y="212" width="500" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="210" y="251" font-size="11" fill="#94a3b8">177 visits over 11,740 emails, 15.1 per 1,000</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Emails with a link to the client's site. One visit per person.</text>
+<svg viewBox="0 0 800 166" width="100%" role="img" aria-label="Cost per positive reply by tier (USD, lower is better): Flash (thin) $1,421, Pro $198" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per positive reply by tier (USD, lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Flash (thin)</text>
+<rect x="150" y="56" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="75" font-size="16" font-weight="700" fill="#0f172a">$1,421</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">1 positive reply, 35,102 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Pro</text>
+<rect x="150" y="108" width="75" height="26" rx="5" fill="#2563eb"/>
+<text x="235" y="127" font-size="16" font-weight="700" fill="#0f172a">$198</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">35 positive replies, 89,038 emails</text>
+<text x="0" y="158" font-size="13" fill="#64748b">Measured on every email, since a reply needs no link.</text>
 </svg>
 </figure>
-<h2 id="the-spread">17 A/B tests, one winner per outcome</h2>
-<p>Each A/B test is one prompt on one model, which we call a workflow. We ran 17 of them past a thousand emails each, 13 on Pro and 4 on Flash, on the same kinds of lists. The spread between them is the whole point of running the test. The best Pro workflow turned 7.6 emails in 10,000 into a positive reply; the Pro tier averaged 4.2; 4 Pro workflows got none at all, and no other workflow has enough replies to be priced yet. On the click, the Pro workflows run from $1 a visit to $6, the Flash ones from $1 to $4.</p>
+
+<h2 id="the-spread">25 A/B tests, one winner per outcome</h2>
+
+<p>Each A/B test is one prompt on one model, which we call a workflow. We ran 25 of them past a thousand emails each, on the same kinds of lists. The spread between them is the whole point of running the test. The best Pro workflow turned 7.9 emails in 10,000 into a positive reply; the Pro tier averaged 3.9, and no other workflow has enough replies to be priced yet. On the visit, 9 workflows clear the bar: the two cheapest are Flash and buy one for $1, and the cheapest Pro workflow costs $3.</p>
+
 <p><strong>This is the gap distribute.you gives its clients.</strong> Every campaign runs on the workflow with the best measured cost for what that campaign buys, across every client. A client never gets the average of the test. They get its winner, and the winner changes when the numbers do.</p>
+
 <h2 id="the-twist">The twist: what the email asks for decides the outcome</h2>
-<p>Of the 36 positive replies, <strong>every one came from an email with no link in it</strong>: 4.9 positive replies per 10,000 Pro emails without a link, none at all in 11,740 Pro emails with one. Put a link in the email and people click it instead of writing back. Leave the link out and they reply. Flash or Pro does not change that. It only changes what each one costs: on the reply, Pro wins by a factor of 7; on the click, Flash wins by 2.</p>
+
+<p>Of the 36 positive replies, <strong>31 came from a Pro email with no link in it</strong>: 4.9 positive replies per 10,000 without a link against 1.6 with one. Put a link in the email and people click it instead of writing back. Leave the link out and they reply. Flash or Pro does not change that. It only changes what each one costs: on the reply, Pro is the only tier that prices one at all; on the visit, Flash wins by a factor of 3.</p>
+
 <figure>
-<svg viewBox="0 0 800 174" width="100%" role="img" aria-label="Positive replies per 10,000 emails by link in the email, Pro (positive replies per 10,000 emails, higher is better): No link 4.9, Link in the email 0" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by link in the email, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">No link</text>
-<rect x="170" y="56" width="540" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">4.9</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">35 positive replies over 70,880 emails, $172 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">Link in the email</text>
-<rect x="170" y="108" width="24" height="26" rx="5" fill="#93c5fd"/>
-<text x="204" y="127" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">0 positive replies over 11,740 emails</text>
-<text x="0" y="164" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 140" width="100%" role="img" aria-label="Positive replies per 10,000 emails by link in the email, Pro (higher is better): A link in the body (thin) 1.6, No link 4.9" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by link in the email, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">A link in the body (thin)</text>
+<rect x="150" y="56" width="176" height="26" rx="5" fill="#cbd5e1"/>
+<text x="336" y="75" font-size="16" font-weight="700" fill="#0f172a">1.6</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">4 positive replies, 25,751 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">No link</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#2563eb"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">4.9</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">31 positive replies, 63,287 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 174" width="100%" role="img" aria-label="Positive replies per 10,000 emails by link in the email, Flash (positive replies per 10,000 emails, higher is better): No link 0.4, Link in the email 0" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by link in the email, Flash</text>
-<text x="0" y="74" font-size="14" fill="#475569">No link</text>
-<rect x="170" y="56" width="540" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">0.4</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">1 positive reply over 24,856 emails</text>
-<text x="0" y="126" font-size="14" fill="#475569">Link in the email</text>
-<rect x="170" y="108" width="24" height="26" rx="5" fill="#93c5fd"/>
-<text x="204" y="127" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">0 positive replies over 9,449 emails</text>
-<text x="0" y="164" font-size="13" fill="#64748b">Flash tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 140" width="100%" role="img" aria-label="Cost per website visit by tier, emails with a link only (USD, lower is better): Flash $2, Pro $6" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by tier, emails with a link only (USD, lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Flash</text>
+<rect x="150" y="56" width="217" height="26" rx="5" fill="#2563eb"/>
+<text x="377" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">22.9 clicks per 1,000 emails, 16,636 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Pro</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">11.5 clicks per 1,000 emails, 25,751 emails</text>
 </svg>
 </figure>
-<p>Naming the client's brand does not help the reply either. Pro emails that name the brand got 3.4 positive replies per 10,000 at $209 each; the ones that leave the brand out got 4.7 at $186. A reply is earned by a reason to answer, not by a name to look up. (Every email with a link names the brand, since the link is the brand's site, so the click has no brand cut to show.)</p>
-<figure>
-<svg viewBox="0 0 800 174" width="100%" role="img" aria-label="Positive replies per 10,000 emails by whether the email names the brand, Pro (positive replies per 10,000 emails, higher is better): Does not name it 4.7, Names the brand 3.4" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by whether the email names the brand, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">Does not name it</text>
-<rect x="170" y="56" width="540" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">4.7</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">24 positive replies over 50,560 emails, $186 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">Names the brand</text>
-<rect x="170" y="108" width="390" height="26" rx="5" fill="#93c5fd"/>
-<text x="570" y="127" font-size="16" font-weight="700" fill="#0f172a">3.4</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">11 positive replies over 32,060 emails, $209 each</text>
-<text x="0" y="164" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
-</svg>
-</figure>
-<figure>
-<svg viewBox="0 0 800 174" width="100%" role="img" aria-label="Positive replies per 10,000 emails by whether the email names the brand, Flash (positive replies per 10,000 emails, higher is better): Does not name it 2.4, Names the brand 0" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by whether the email names the brand, Flash</text>
-<text x="0" y="74" font-size="14" fill="#475569">Does not name it</text>
-<rect x="170" y="56" width="540" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">2.4</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">1 positive reply over 4,205 emails</text>
-<text x="0" y="126" font-size="14" fill="#475569">Names the brand</text>
-<rect x="170" y="108" width="24" height="26" rx="5" fill="#93c5fd"/>
-<text x="204" y="127" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">0 positive replies over 30,100 emails</text>
-<text x="0" y="164" font-size="13" fill="#64748b">Flash tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
-</svg>
-</figure>
+
 <h2 id="ten-cuts">The same ten cuts, Flash against Pro</h2>
-<p>We cut the click article ten ways. Here is the same knife on the tier question: for each cut, what a website visit costs on Flash and on Pro, on the emails that carried a link, and where Pro earns its positive replies. Every bucket is drawn, with its counts under the bar. A thin bucket is a thin read.</p>
+
+<p>We cut the click article ten ways. Here is the same knife on the tier question: for each cut, what a website visit costs on Flash and on Pro, on the emails that carried a link, and where Pro earns its positive replies. Every bucket with an outcome is drawn, with its counts under the bar. A thin bucket is a thin read and is labelled as one.</p>
+
 <h3>1. Which email in the sequence</h3>
-<p>The first email does the work on both tiers. Flash buys the first-email visit for $2, Pro for $5; on the second email the two tiers meet at $2. For the reply, the first two emails carry 30 of Pro's 35, at $149 and $174; the third email pays $396.</p>
+
+<p>The first email does the work on both tiers. Flash buys the first-email visit for $2, Pro for $3. For the reply, the first two emails carry 16 and 13 of Pro's 35, at $168 and $164.</p>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by email in the sequence, Flash (USD, lower is better) (USD, lower is better): First email $2, Second $2, Third $4" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Cost per website visit by email in the sequence, Flash (USD, lower is better): First email $2, Follow-up 1 $4, Follow-up 2 (thin) $58" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by email in the sequence, Flash (USD, lower is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">First email</text>
-<rect x="150" y="56" width="280" height="26" rx="5" fill="#2563eb"/>
-<text x="440" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="150" y="95" font-size="11" fill="#94a3b8">32.6 clicks per 1,000, 5,987 emails, 195 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">Second</text>
-<rect x="150" y="108" width="280" height="26" rx="5" fill="#2563eb"/>
-<text x="440" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="150" y="147" font-size="11" fill="#94a3b8">22.9 clicks per 1,000, 1,750 emails, 40 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Third</text>
-<rect x="150" y="160" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="150" y="199" font-size="11" fill="#94a3b8">9.3 clicks per 1,000, 1,712 emails, 16 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="56" width="14" height="26" rx="5" fill="#2563eb"/>
+<text x="174" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">36.7 clicks per 1,000 emails, 8,795 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Follow-up 1</text>
+<rect x="150" y="108" width="39" height="26" rx="5" fill="#93c5fd"/>
+<text x="199" y="127" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">11.3 clicks per 1,000 emails, 3,811 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Follow-up 2 (thin)</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">$58</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">0.8 clicks per 1,000 emails, 3,686 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by email in the sequence, Pro (USD, lower is better) (USD, lower is better): First email $5, Second $2, Third $6" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Cost per website visit by email in the sequence, Pro (USD, lower is better): First email $3, Follow-up 1 $9, Follow-up 2 $25" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by email in the sequence, Pro (USD, lower is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">First email</text>
-<rect x="150" y="56" width="466" height="26" rx="5" fill="#93c5fd"/>
-<text x="626" y="75" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="150" y="95" font-size="11" fill="#94a3b8">11.6 clicks per 1,000, 6,219 emails, 72 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">Second</text>
-<rect x="150" y="108" width="186" height="26" rx="5" fill="#2563eb"/>
-<text x="346" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="150" y="147" font-size="11" fill="#94a3b8">29.1 clicks per 1,000, 2,333 emails, 68 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Third</text>
-<rect x="150" y="160" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$6</text>
-<text x="150" y="199" font-size="11" fill="#94a3b8">11.6 clicks per 1,000, 3,188 emails, 37 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="56" width="67" height="26" rx="5" fill="#2563eb"/>
+<text x="227" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">19.2 clicks per 1,000 emails, 11,068 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Follow-up 1</text>
+<rect x="150" y="108" width="195" height="26" rx="5" fill="#93c5fd"/>
+<text x="355" y="127" font-size="16" font-weight="700" fill="#0f172a">$9</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">7.6 clicks per 1,000 emails, 5,553 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Follow-up 2</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">$25</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">3.1 clicks per 1,000 emails, 6,386 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Positive replies per 10,000 emails by email in the sequence, Pro (positive replies per 10,000 emails, higher is better): First email 5.6, Second 4.7, Third 2" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by email in the sequence, Pro</text>
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Positive replies per 10,000 emails by email in the sequence, Pro (higher is better): First email 5.1, Follow-up 1 4.6, Follow-up 2 (thin) 2" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by email in the sequence, Pro (higher is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">First email</text>
-<rect x="150" y="56" width="560" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">5.6</text>
-<text x="150" y="95" font-size="11" fill="#94a3b8">17 positive replies over 30,481 emails, $149 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">Second</text>
-<rect x="150" y="108" width="470" height="26" rx="5" fill="#93c5fd"/>
-<text x="630" y="127" font-size="16" font-weight="700" fill="#0f172a">4.7</text>
-<text x="150" y="147" font-size="11" fill="#94a3b8">13 positive replies over 27,640 emails, $174 each</text>
-<text x="0" y="178" font-size="14" fill="#475569">Third</text>
-<rect x="150" y="160" width="200" height="26" rx="5" fill="#93c5fd"/>
-<text x="360" y="179" font-size="16" font-weight="700" fill="#0f172a">2</text>
-<text x="150" y="199" font-size="11" fill="#94a3b8">5 positive replies over 24,498 emails</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<rect x="150" y="56" width="540" height="26" rx="5" fill="#2563eb"/>
+<text x="700" y="75" font-size="16" font-weight="700" fill="#0f172a">5.1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">16 positive replies, 31,447 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Follow-up 1</text>
+<rect x="150" y="108" width="487" height="26" rx="5" fill="#93c5fd"/>
+<text x="647" y="127" font-size="16" font-weight="700" fill="#0f172a">4.6</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">13 positive replies, 28,041 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Follow-up 2 (thin)</text>
+<rect x="150" y="160" width="212" height="26" rx="5" fill="#cbd5e1"/>
+<text x="372" y="179" font-size="16" font-weight="700" fill="#0f172a">2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">5 positive replies, 25,198 emails</text>
 </svg>
 </figure>
+
 <h3>2. Length of the email</h3>
-<p>Short wins the click on both tiers: 300 to 499 characters costs $1 on Flash and $4 on Pro, and Pro's emails past 700 characters bought 6 visits in 2,314 emails. The reply reads the other way: Pro's replies come from 300 to 999 characters, and the 700 to 999 band, which only Pro writes, replies most often at 9.1 per 10,000.</p>
+
+<p>Short wins the visit on Flash: under 400 characters costs $1 against $2 from 500 characters up. Pro is flat across the same range and only loses the visit past 800 characters. The reply reads the other way: Pro's best reply band is 650 to 800 characters, at 11.7 per 10,000, a length Flash almost never writes.</p>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by length of the email, characters, Flash (USD, lower is better) (USD, lower is better): under 300 $2, 300-499 $1, 500-699 $3" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by length of the email, characters, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">under 300</text>
-<rect x="170" y="56" width="360" height="26" rx="5" fill="#93c5fd"/>
-<text x="540" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">19.9 clicks per 1,000, 2,558 emails, 51 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">300-499</text>
-<rect x="170" y="108" width="180" height="26" rx="5" fill="#2563eb"/>
-<text x="360" y="127" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">33.0 clicks per 1,000, 5,213 emails, 172 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">500-699</text>
-<rect x="170" y="160" width="540" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="170" y="199" font-size="11" fill="#94a3b8">16.8 clicks per 1,000, 1,670 emails, 28 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<svg viewBox="0 0 800 244" width="100%" role="img" aria-label="Cost per website visit by length of the first email, characters, Flash (USD, lower is better): Under 400 $1, 400 to 500 $2, 500 to 650 $2, 650 to 800 (thin) $3" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by length of the first email, characters, Flash (USD, lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Under 400</text>
+<rect x="150" y="56" width="196" height="26" rx="5" fill="#2563eb"/>
+<text x="356" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">44.6 clicks per 1,000 emails, 2,738 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">400 to 500</text>
+<rect x="150" y="108" width="299" height="26" rx="5" fill="#93c5fd"/>
+<text x="459" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">32.1 clicks per 1,000 emails, 4,209 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">500 to 650</text>
+<rect x="150" y="160" width="331" height="26" rx="5" fill="#93c5fd"/>
+<text x="491" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">35.7 clicks per 1,000 emails, 1,764 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">650 to 800 (thin)</text>
+<rect x="150" y="212" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">35.7 clicks per 1,000 emails, 84 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by length of the email, characters, Pro (USD, lower is better) (USD, lower is better): under 300 $3, 300-499 $4, 500-699 $3, 700-999 $23" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by length of the email, characters, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">under 300</text>
-<rect x="170" y="56" width="70" height="26" rx="5" fill="#2563eb"/>
-<text x="250" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">19.3 clicks per 1,000, 2,123 emails, 41 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">300-499</text>
-<rect x="170" y="108" width="93" height="26" rx="5" fill="#93c5fd"/>
-<text x="273" y="127" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">17.8 clicks per 1,000, 4,601 emails, 82 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">500-699</text>
-<rect x="170" y="160" width="70" height="26" rx="5" fill="#2563eb"/>
-<text x="250" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="170" y="199" font-size="11" fill="#94a3b8">19.4 clicks per 1,000, 2,426 emails, 47 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">700-999</text>
-<rect x="170" y="212" width="540" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$23</text>
-<text x="170" y="251" font-size="11" fill="#94a3b8">2.6 clicks per 1,000, 2,314 emails, 6 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Cost per website visit by length of the first email, characters, Pro (USD, lower is better): Under 400 (thin) $4, 400 to 500 $2, 500 to 650 $3, 650 to 800 $2, Over 800 (thin) $7" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by length of the first email, characters, Pro (USD, lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Under 400 (thin)</text>
+<rect x="150" y="56" width="339" height="26" rx="5" fill="#cbd5e1"/>
+<text x="499" y="75" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">13.2 clicks per 1,000 emails, 1,138 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">400 to 500</text>
+<rect x="150" y="108" width="190" height="26" rx="5" fill="#93c5fd"/>
+<text x="350" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">26.1 clicks per 1,000 emails, 2,453 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">500 to 650</text>
+<rect x="150" y="160" width="237" height="26" rx="5" fill="#93c5fd"/>
+<text x="397" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">21.3 clicks per 1,000 emails, 3,752 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">650 to 800</text>
+<rect x="150" y="212" width="190" height="26" rx="5" fill="#2563eb"/>
+<text x="350" y="231" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">23.2 clicks per 1,000 emails, 1,684 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">Over 800 (thin)</text>
+<rect x="150" y="264" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="283" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">7.3 clicks per 1,000 emails, 2,041 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Positive replies per 10,000 emails by length, Pro (positive replies per 10,000 emails, higher is better): under 300 2.1, 300-499 4.3, 500-699 4.7, 700-999 9.1" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by length, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">under 300</text>
-<rect x="170" y="56" width="124" height="26" rx="5" fill="#93c5fd"/>
-<text x="304" y="75" font-size="16" font-weight="700" fill="#0f172a">2.1</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">4 positive replies over 19,257 emails</text>
-<text x="0" y="126" font-size="14" fill="#475569">300-499</text>
-<rect x="170" y="108" width="255" height="26" rx="5" fill="#93c5fd"/>
-<text x="435" y="127" font-size="16" font-weight="700" fill="#0f172a">4.3</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">15 positive replies over 34,947 emails, $195 each</text>
-<text x="0" y="178" font-size="14" fill="#475569">500-699</text>
-<rect x="170" y="160" width="278" height="26" rx="5" fill="#93c5fd"/>
-<text x="458" y="179" font-size="16" font-weight="700" fill="#0f172a">4.7</text>
-<text x="170" y="199" font-size="11" fill="#94a3b8">10 positive replies over 21,396 emails, $182 each</text>
-<text x="0" y="230" font-size="14" fill="#475569">700-999</text>
-<rect x="170" y="212" width="540" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">9.1</text>
-<text x="170" y="251" font-size="11" fill="#94a3b8">6 positive replies over 6,627 emails</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 244" width="100%" role="img" aria-label="Positive replies per 10,000 emails by length of the first email, characters, Pro (higher is better): 400 to 500 (thin) 3.9, 500 to 650 (thin) 3.6, 650 to 800 (thin) 11.7, Over 800 (thin) 2.9" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by length of the first email, characters, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">400 to 500 (thin)</text>
+<rect x="150" y="56" width="180" height="26" rx="5" fill="#cbd5e1"/>
+<text x="340" y="75" font-size="16" font-weight="700" fill="#0f172a">3.9</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">2 positive replies, 5,152 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">500 to 650 (thin)</text>
+<rect x="150" y="108" width="166" height="26" rx="5" fill="#cbd5e1"/>
+<text x="326" y="127" font-size="16" font-weight="700" fill="#0f172a">3.6</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">5 positive replies, 13,961 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">650 to 800 (thin)</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">11.7</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">8 positive replies, 6,816 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Over 800 (thin)</text>
+<rect x="150" y="212" width="134" height="26" rx="5" fill="#cbd5e1"/>
+<text x="294" y="231" font-size="16" font-weight="700" fill="#0f172a">2.9</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">1 positive reply, 3,505 emails</text>
 </svg>
 </figure>
+
 <h3>3. Paragraphs</h3>
-<p>One or two paragraphs buy the visit for $1 on Flash and $3 on Pro; five or six cost $6 and $8. The reply wants the room: five or six paragraphs is Pro's best reply band at $119, one or two paragraphs got 4 replies in 21,448 emails.</p>
+
+<p>One paragraph buys the Flash visit for $1 and the Pro one for $3; six or more cost Pro $7. The reply wants the room: four or five paragraphs is Pro's best reply band at $130, carrying 12 of its 35 replies.</p>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by paragraphs in the email, Flash (USD, lower is better) (USD, lower is better): 1 to 2 $1, 3 to 4 $2, 5 to 6 $6" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Cost per website visit by paragraphs in the email, Flash (USD, lower is better): 1 $1, 2 to 3 (thin) $2, 4 to 5 $2" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by paragraphs in the email, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 2</text>
-<rect x="140" y="56" width="95" height="26" rx="5" fill="#2563eb"/>
-<text x="245" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="140" y="95" font-size="11" fill="#94a3b8">43.9 clicks per 1,000, 3,735 emails, 164 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">3 to 4</text>
-<rect x="140" y="108" width="190" height="26" rx="5" fill="#93c5fd"/>
-<text x="340" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="140" y="147" font-size="11" fill="#94a3b8">27.6 clicks per 1,000, 2,068 emails, 57 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">5 to 6</text>
-<rect x="140" y="160" width="570" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$6</text>
-<text x="140" y="199" font-size="11" fill="#94a3b8">8.2 clicks per 1,000, 3,646 emails, 30 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">1</text>
+<rect x="150" y="56" width="381" height="26" rx="5" fill="#2563eb"/>
+<text x="541" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">39 clicks per 1,000 emails, 2,872 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">2 to 3 (thin)</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">37.2 clicks per 1,000 emails, 619 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">4 to 5</text>
+<rect x="150" y="160" width="456" height="26" rx="5" fill="#93c5fd"/>
+<text x="616" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">35.5 clicks per 1,000 emails, 5,303 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by paragraphs in the email, Pro (USD, lower is better) (USD, lower is better): 1 to 2 $3, 3 to 4 $4, 5 to 6 $8" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 244" width="100%" role="img" aria-label="Cost per website visit by paragraphs in the email, Pro (USD, lower is better): 1 $3, 2 to 3 (thin) $9, 4 to 5 $2, 6 or more $7" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by paragraphs in the email, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 2</text>
-<rect x="140" y="56" width="213" height="26" rx="5" fill="#2563eb"/>
-<text x="363" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="140" y="95" font-size="11" fill="#94a3b8">25.3 clicks per 1,000, 3,683 emails, 93 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">3 to 4</text>
-<rect x="140" y="108" width="285" height="26" rx="5" fill="#93c5fd"/>
-<text x="435" y="127" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="140" y="147" font-size="11" fill="#94a3b8">15.7 clicks per 1,000, 3,748 emails, 59 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">5 to 6</text>
-<rect x="140" y="160" width="570" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$8</text>
-<text x="140" y="199" font-size="11" fill="#94a3b8">7.3 clicks per 1,000, 3,403 emails, 25 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">1</text>
+<rect x="150" y="56" width="174" height="26" rx="5" fill="#93c5fd"/>
+<text x="334" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">36.9 clicks per 1,000 emails, 2,089 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">2 to 3 (thin)</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">$9</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">13.2 clicks per 1,000 emails, 151 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">4 to 5</text>
+<rect x="150" y="160" width="140" height="26" rx="5" fill="#2563eb"/>
+<text x="300" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">21.1 clicks per 1,000 emails, 5,069 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">6 or more</text>
+<rect x="150" y="212" width="434" height="26" rx="5" fill="#93c5fd"/>
+<text x="594" y="231" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">7.2 clicks per 1,000 emails, 3,759 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Positive replies per 10,000 emails by paragraphs, Pro (positive replies per 10,000 emails, higher is better): 1 to 2 1.9, 3 to 4 4.2, 5 to 6 7" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by paragraphs, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 2</text>
-<rect x="140" y="56" width="154" height="26" rx="5" fill="#93c5fd"/>
-<text x="304" y="75" font-size="16" font-weight="700" fill="#0f172a">1.9</text>
-<text x="140" y="95" font-size="11" fill="#94a3b8">4 positive replies over 21,448 emails</text>
-<text x="0" y="126" font-size="14" fill="#475569">3 to 4</text>
-<rect x="140" y="108" width="342" height="26" rx="5" fill="#93c5fd"/>
-<text x="492" y="127" font-size="16" font-weight="700" fill="#0f172a">4.2</text>
-<text x="140" y="147" font-size="11" fill="#94a3b8">17 positive replies over 40,103 emails, $197 each</text>
-<text x="0" y="178" font-size="14" fill="#475569">5 to 6</text>
-<rect x="140" y="160" width="570" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">7</text>
-<text x="140" y="199" font-size="11" fill="#94a3b8">14 positive replies over 20,014 emails, $119 each</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Positive replies per 10,000 emails by paragraphs, Pro (higher is better): 1 (thin) 3.4, 4 to 5 6.8, 6 or more (thin) 3.1" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by paragraphs, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">1 (thin)</text>
+<rect x="150" y="56" width="270" height="26" rx="5" fill="#cbd5e1"/>
+<text x="430" y="75" font-size="16" font-weight="700" fill="#0f172a">3.4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">2 positive replies, 5,799 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">4 to 5</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#2563eb"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">6.8</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">12 positive replies, 17,521 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">6 or more (thin)</text>
+<rect x="150" y="160" width="246" height="26" rx="5" fill="#cbd5e1"/>
+<text x="406" y="179" font-size="16" font-weight="700" fill="#0f172a">3.1</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">2 positive replies, 6,475 emails</text>
 </svg>
 </figure>
+
 <h3>4. Subject length</h3>
-<p>A 36 to 50 character subject buys the Flash visit for $1; on Pro the sweet spot is 21 to 35 at $4. The reply agrees with Pro: 21 to 35 characters carries 20 of its 35 replies at $160.</p>
+
+<p>A subject of 30 characters or fewer buys the Flash visit for $1; past 40 characters it costs $3. Pro is flat at $3 across every band it can price. The reply does not care much either way: Pro's replies are spread evenly from 21 characters up.</p>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by subject length, characters, Flash (USD, lower is better) (USD, lower is better): 1 to 20 $3, 21 to 35 $2, 36 to 50 $1, 51 and more $1" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 244" width="100%" role="img" aria-label="Cost per website visit by subject length, characters, Flash (USD, lower is better): 20 or fewer $1, 21 to 30 $1, 31 to 40 $2, Over 40 $3" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by subject length, characters, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 20</text>
-<rect x="160" y="56" width="550" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">16.2 clicks per 1,000, 1,919 emails, 31 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">21 to 35</text>
-<rect x="160" y="108" width="366" height="26" rx="5" fill="#93c5fd"/>
-<text x="536" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">20.8 clicks per 1,000, 4,320 emails, 90 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">36 to 50</text>
-<rect x="160" y="160" width="183" height="26" rx="5" fill="#2563eb"/>
-<text x="353" y="179" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">36.9 clicks per 1,000, 2,575 emails, 95 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">51 and more</text>
-<rect x="160" y="212" width="183" height="26" rx="5" fill="#2563eb"/>
-<text x="353" y="231" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="160" y="251" font-size="11" fill="#94a3b8">55.1 clicks per 1,000, 635 emails, 35 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">20 or fewer</text>
+<rect x="150" y="56" width="191" height="26" rx="5" fill="#2563eb"/>
+<text x="351" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">35.2 clicks per 1,000 emails, 2,585 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">21 to 30</text>
+<rect x="150" y="108" width="207" height="26" rx="5" fill="#93c5fd"/>
+<text x="367" y="127" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">42.4 clicks per 1,000 emails, 3,116 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">31 to 40</text>
+<rect x="150" y="160" width="349" height="26" rx="5" fill="#93c5fd"/>
+<text x="509" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">34.4 clicks per 1,000 emails, 1,800 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Over 40</text>
+<rect x="150" y="212" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">29.4 clicks per 1,000 emails, 1,294 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by subject length, characters, Pro (USD, lower is better) (USD, lower is better): 1 to 20 $7, 21 to 35 $4, 36 to 50 $5, 51 and more $30" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 244" width="100%" role="img" aria-label="Cost per website visit by subject length, characters, Pro (USD, lower is better): 20 or fewer (thin) $4, 21 to 30 $3, 31 to 40 $3, Over 40 $3" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by subject length, characters, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 20</text>
-<rect x="160" y="56" width="128" height="26" rx="5" fill="#93c5fd"/>
-<text x="298" y="75" font-size="16" font-weight="700" fill="#0f172a">$7</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">9.7 clicks per 1,000, 720 emails, 7 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">21 to 35</text>
-<rect x="160" y="108" width="73" height="26" rx="5" fill="#2563eb"/>
-<text x="243" y="127" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">17.8 clicks per 1,000, 6,346 emails, 113 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">36 to 50</text>
-<rect x="160" y="160" width="91" height="26" rx="5" fill="#93c5fd"/>
-<text x="261" y="179" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">13.4 clicks per 1,000, 4,186 emails, 56 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">51 and more</text>
-<rect x="160" y="212" width="550" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$30</text>
-<text x="160" y="251" font-size="11" fill="#94a3b8">2.0 clicks per 1,000, 488 emails, 1 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">20 or fewer (thin)</text>
+<rect x="150" y="56" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="75" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">12.8 clicks per 1,000 emails, 938 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">21 to 30</text>
+<rect x="150" y="108" width="325" height="26" rx="5" fill="#2563eb"/>
+<text x="485" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">22.6 clicks per 1,000 emails, 3,625 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">31 to 40</text>
+<rect x="150" y="160" width="372" height="26" rx="5" fill="#93c5fd"/>
+<text x="532" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">19.3 clicks per 1,000 emails, 4,138 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Over 40</text>
+<rect x="150" y="212" width="402" height="26" rx="5" fill="#93c5fd"/>
+<text x="562" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">16.5 clicks per 1,000 emails, 2,367 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Positive replies per 10,000 emails by subject length, Pro (positive replies per 10,000 emails, higher is better): 1 to 20 2.9, 21 to 35 5, 36 to 50 3.9, 51 and more 2.1" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by subject length, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 20</text>
-<rect x="160" y="56" width="319" height="26" rx="5" fill="#93c5fd"/>
-<text x="489" y="75" font-size="16" font-weight="700" fill="#0f172a">2.9</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">2 positive replies over 6,836 emails</text>
-<text x="0" y="126" font-size="14" fill="#475569">21 to 35</text>
-<rect x="160" y="108" width="550" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="127" font-size="16" font-weight="700" fill="#0f172a">5</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">20 positive replies over 39,929 emails, $160 each</text>
-<text x="0" y="178" font-size="14" fill="#475569">36 to 50</text>
-<rect x="160" y="160" width="429" height="26" rx="5" fill="#93c5fd"/>
-<text x="599" y="179" font-size="16" font-weight="700" fill="#0f172a">3.9</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">12 positive replies over 31,152 emails, $222 each</text>
-<text x="0" y="230" font-size="14" fill="#475569">51 and more</text>
-<rect x="160" y="212" width="231" height="26" rx="5" fill="#93c5fd"/>
-<text x="401" y="231" font-size="16" font-weight="700" fill="#0f172a">2.1</text>
-<text x="160" y="251" font-size="11" fill="#94a3b8">1 positive reply over 4,703 emails</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Positive replies per 10,000 emails by subject length, characters, Pro (higher is better): 21 to 30 (thin) 5.4, 31 to 40 (thin) 5.3, Over 40 (thin) 6" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by subject length, characters, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">21 to 30 (thin)</text>
+<rect x="150" y="56" width="486" height="26" rx="5" fill="#cbd5e1"/>
+<text x="646" y="75" font-size="16" font-weight="700" fill="#0f172a">5.4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">5 positive replies, 9,186 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">31 to 40 (thin)</text>
+<rect x="150" y="108" width="477" height="26" rx="5" fill="#cbd5e1"/>
+<text x="637" y="127" font-size="16" font-weight="700" fill="#0f172a">5.3</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">6 positive replies, 11,425 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Over 40 (thin)</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">6</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">5 positive replies, 8,331 emails</text>
 </svg>
 </figure>
+
 <h3>5. Seniority of the reader</h3>
-<p>C-suite readers click a Flash email for $1 and a Pro one for $3. Founders and owners barely click at all, on either tier. They reply: owners are Pro's cheapest reply at $108, founders next at $146, and the C-suite, which clicked for $1, replied once in 8,701 Pro emails.</p>
+
+<p>A director clicks a Flash email for $1 and a Pro one for $2. Founders and owners barely click at all. They reply: owners are Pro's cheapest reply at $108, founders next at $125, and between them they carry 15 and 10 of Pro's 35 replies.</p>
+
 <figure>
-<svg viewBox="0 0 800 382" width="100%" role="img" aria-label="Cost per website visit by seniority of the reader, Flash (USD, lower is better) (USD, lower is better): C-suite $1, Director $2, Manager $1, Founder $8, Owner $3, Entry level $1" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 348" width="100%" role="img" aria-label="Cost per website visit by seniority of the reader, Flash (USD, lower is better): C-suite $3, Director $1, Entry $2, Founder $7, Owner (thin) $4, VP $1" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by seniority of the reader, Flash (USD, lower is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">C-suite</text>
-<rect x="160" y="56" width="68" height="26" rx="5" fill="#2563eb"/>
-<text x="238" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">39.4 clicks per 1,000, 2,814 emails, 111 clicks</text>
+<rect x="150" y="56" width="246" height="26" rx="5" fill="#93c5fd"/>
+<text x="406" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">19.6 clicks per 1,000 emails, 4,088 emails</text>
 <text x="0" y="126" font-size="14" fill="#475569">Director</text>
-<rect x="160" y="108" width="137" height="26" rx="5" fill="#93c5fd"/>
-<text x="307" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">27.9 clicks per 1,000, 1,254 emails, 35 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Manager</text>
-<rect x="160" y="160" width="68" height="26" rx="5" fill="#2563eb"/>
-<text x="238" y="179" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">44.3 clicks per 1,000, 361 emails, 16 clicks</text>
+<rect x="150" y="108" width="99" height="26" rx="5" fill="#93c5fd"/>
+<text x="259" y="127" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">37.8 clicks per 1,000 emails, 2,302 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Entry</text>
+<rect x="150" y="160" width="114" height="26" rx="5" fill="#93c5fd"/>
+<text x="274" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">24.4 clicks per 1,000 emails, 1,107 emails</text>
 <text x="0" y="230" font-size="14" fill="#475569">Founder</text>
-<rect x="160" y="212" width="550" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$8</text>
-<text x="160" y="251" font-size="11" fill="#94a3b8">5.5 clicks per 1,000, 2,724 emails, 15 clicks</text>
-<text x="0" y="282" font-size="14" fill="#475569">Owner</text>
-<rect x="160" y="264" width="206" height="26" rx="5" fill="#93c5fd"/>
-<text x="376" y="283" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="160" y="303" font-size="11" fill="#94a3b8">18.0 clicks per 1,000, 778 emails, 14 clicks</text>
-<text x="0" y="334" font-size="14" fill="#475569">Entry level</text>
-<rect x="160" y="316" width="68" height="26" rx="5" fill="#2563eb"/>
-<text x="238" y="335" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="160" y="355" font-size="11" fill="#94a3b8">78.1 clicks per 1,000, 448 emails, 35 clicks</text>
-<text x="0" y="372" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="212" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="231" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">6.7 clicks per 1,000 emails, 4,928 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">Owner (thin)</text>
+<rect x="150" y="264" width="328" height="26" rx="5" fill="#cbd5e1"/>
+<text x="488" y="283" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">14.9 clicks per 1,000 emails, 1,006 emails</text>
+<text x="0" y="334" font-size="14" fill="#475569">VP</text>
+<rect x="150" y="316" width="59" height="26" rx="5" fill="#2563eb"/>
+<text x="219" y="335" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="355" font-size="11" fill="#94a3b8">43.4 clicks per 1,000 emails, 1,082 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 382" width="100%" role="img" aria-label="Cost per website visit by seniority of the reader, Pro (USD, lower is better) (USD, lower is better): C-suite $3, Director $4, Manager $2, Founder $5, Owner $10, Entry level $9" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Cost per website visit by seniority of the reader, Pro (USD, lower is better): C-suite $6, Director $2, Entry $9, Founder $5, Owner $8" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by seniority of the reader, Pro (USD, lower is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">C-suite</text>
-<rect x="160" y="56" width="165" height="26" rx="5" fill="#93c5fd"/>
-<text x="335" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">22.5 clicks per 1,000, 2,927 emails, 66 clicks</text>
+<rect x="150" y="56" width="367" height="26" rx="5" fill="#93c5fd"/>
+<text x="527" y="75" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">13.3 clicks per 1,000 emails, 5,042 emails</text>
 <text x="0" y="126" font-size="14" fill="#475569">Director</text>
-<rect x="160" y="108" width="220" height="26" rx="5" fill="#93c5fd"/>
-<text x="390" y="127" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">15.9 clicks per 1,000, 1,260 emails, 20 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Manager</text>
-<rect x="160" y="160" width="110" height="26" rx="5" fill="#2563eb"/>
-<text x="280" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">29.5 clicks per 1,000, 576 emails, 17 clicks</text>
+<rect x="150" y="108" width="151" height="26" rx="5" fill="#2563eb"/>
+<text x="311" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">21.5 clicks per 1,000 emails, 2,042 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Entry</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">$9</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">7.6 clicks per 1,000 emails, 3,934 emails</text>
 <text x="0" y="230" font-size="14" fill="#475569">Founder</text>
-<rect x="160" y="212" width="275" height="26" rx="5" fill="#93c5fd"/>
-<text x="445" y="231" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="160" y="251" font-size="11" fill="#94a3b8">10.2 clicks per 1,000, 2,442 emails, 25 clicks</text>
+<rect x="150" y="212" width="318" height="26" rx="5" fill="#93c5fd"/>
+<text x="478" y="231" font-size="16" font-weight="700" fill="#0f172a">$5</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">12.7 clicks per 1,000 emails, 6,120 emails</text>
 <text x="0" y="282" font-size="14" fill="#475569">Owner</text>
-<rect x="160" y="264" width="550" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="283" font-size="16" font-weight="700" fill="#0f172a">$10</text>
-<text x="160" y="303" font-size="11" fill="#94a3b8">6.8 clicks per 1,000, 1,925 emails, 13 clicks</text>
-<text x="0" y="334" font-size="14" fill="#475569">Entry level</text>
-<rect x="160" y="316" width="495" height="26" rx="5" fill="#93c5fd"/>
-<text x="665" y="335" font-size="16" font-weight="700" fill="#0f172a">$9</text>
-<text x="160" y="355" font-size="11" fill="#94a3b8">8.7 clicks per 1,000, 2,186 emails, 19 clicks</text>
-<text x="0" y="372" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="264" width="472" height="26" rx="5" fill="#93c5fd"/>
+<text x="632" y="283" font-size="16" font-weight="700" fill="#0f172a">$8</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">8.9 clicks per 1,000 emails, 3,829 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Positive replies per 10,000 emails by seniority, Pro (positive replies per 10,000 emails, higher is better): Owner 8.1, Founder 5.6, Entry level 2.7, C-suite 1.1, Director 1.9" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by seniority, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">Owner</text>
-<rect x="160" y="56" width="550" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">8.1</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">15 positive replies over 18,471 emails, $108 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">Founder</text>
-<rect x="160" y="108" width="380" height="26" rx="5" fill="#93c5fd"/>
-<text x="550" y="127" font-size="16" font-weight="700" fill="#0f172a">5.6</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">10 positive replies over 17,934 emails, $146 each</text>
-<text x="0" y="178" font-size="14" fill="#475569">Entry level</text>
-<rect x="160" y="160" width="183" height="26" rx="5" fill="#93c5fd"/>
-<text x="353" y="179" font-size="16" font-weight="700" fill="#0f172a">2.7</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">5 positive replies over 18,755 emails</text>
-<text x="0" y="230" font-size="14" fill="#475569">C-suite</text>
-<rect x="160" y="212" width="74" height="26" rx="5" fill="#93c5fd"/>
-<text x="244" y="231" font-size="16" font-weight="700" fill="#0f172a">1.1</text>
-<text x="160" y="251" font-size="11" fill="#94a3b8">1 positive reply over 8,701 emails</text>
-<text x="0" y="282" font-size="14" fill="#475569">Director</text>
-<rect x="160" y="264" width="129" height="26" rx="5" fill="#93c5fd"/>
-<text x="299" y="283" font-size="16" font-weight="700" fill="#0f172a">1.9</text>
-<text x="160" y="303" font-size="11" fill="#94a3b8">1 positive reply over 5,351 emails</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Positive replies per 10,000 emails by seniority, Pro (higher is better): C-suite (thin) 1, Director (thin) 1.7, Entry (thin) 2.4, Founder 5.3, Owner 7.6" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by seniority, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">C-suite (thin)</text>
+<rect x="150" y="56" width="71" height="26" rx="5" fill="#cbd5e1"/>
+<text x="231" y="75" font-size="16" font-weight="700" fill="#0f172a">1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">1 positive reply, 9,704 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Director (thin)</text>
+<rect x="150" y="108" width="121" height="26" rx="5" fill="#cbd5e1"/>
+<text x="281" y="127" font-size="16" font-weight="700" fill="#0f172a">1.7</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">1 positive reply, 5,824 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Entry (thin)</text>
+<rect x="150" y="160" width="171" height="26" rx="5" fill="#cbd5e1"/>
+<text x="331" y="179" font-size="16" font-weight="700" fill="#0f172a">2.4</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">5 positive replies, 20,955 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Founder</text>
+<rect x="150" y="212" width="377" height="26" rx="5" fill="#93c5fd"/>
+<text x="537" y="231" font-size="16" font-weight="700" fill="#0f172a">5.3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">10 positive replies, 19,004 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">Owner</text>
+<rect x="150" y="264" width="540" height="26" rx="5" fill="#2563eb"/>
+<text x="700" y="283" font-size="16" font-weight="700" fill="#0f172a">7.6</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">15 positive replies, 19,649 emails</text>
 </svg>
 </figure>
+
 <h3>6. Size of the company</h3>
-<p>Big companies click cheap: over 1,000 people, a visit is $1 on either tier. The one to ten person company is the dearest click on both ($7 Flash, $12 Pro) and Pro's cheapest reply at $135: 24 of its 35 replies came from there.</p>
+
+<p>Big companies click cheap: over 1,000 people, a Flash visit is $1. The one to ten person company is the dearest visit on both tiers and Pro's cheapest reply at $115: 27 of its 35 replies came from there.</p>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Cost per website visit by size of the reader's company, employees, Flash (USD, lower is better) (USD, lower is better): 1 to 10 $7, 11 to 50 $2, 51 to 200 $2, 201 to 1,000 $1, Over 1,000 $1" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Cost per website visit by size of the reader's company, employees, Flash (USD, lower is better): 1-10 $7, 11-50 $3, 51-200 $2, 201-1000 $2, 1000+ $1" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by size of the reader's company, employees, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 10</text>
-<rect x="180" y="56" width="530" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$7</text>
-<text x="180" y="95" font-size="11" fill="#94a3b8">7.5 clicks per 1,000, 2,280 emails, 17 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">11 to 50</text>
-<rect x="180" y="108" width="151" height="26" rx="5" fill="#93c5fd"/>
-<text x="341" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="180" y="147" font-size="11" fill="#94a3b8">23.4 clicks per 1,000, 3,330 emails, 78 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">51 to 200</text>
-<rect x="180" y="160" width="151" height="26" rx="5" fill="#93c5fd"/>
-<text x="341" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="180" y="199" font-size="11" fill="#94a3b8">27.2 clicks per 1,000, 2,206 emails, 60 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">201 to 1,000</text>
-<rect x="180" y="212" width="75" height="26" rx="5" fill="#2563eb"/>
-<text x="265" y="231" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="180" y="251" font-size="11" fill="#94a3b8">41.3 clicks per 1,000, 605 emails, 25 clicks</text>
-<text x="0" y="282" font-size="14" fill="#475569">Over 1,000</text>
-<rect x="180" y="264" width="75" height="26" rx="5" fill="#2563eb"/>
-<text x="265" y="283" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="180" y="303" font-size="11" fill="#94a3b8">59.5 clicks per 1,000, 958 emails, 57 clicks</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">1-10</text>
+<rect x="150" y="56" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="75" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">6.6 clicks per 1,000 emails, 3,946 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">11-50</text>
+<rect x="150" y="108" width="214" height="26" rx="5" fill="#93c5fd"/>
+<text x="374" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">21 clicks per 1,000 emails, 5,289 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">51-200</text>
+<rect x="150" y="160" width="139" height="26" rx="5" fill="#93c5fd"/>
+<text x="299" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">27.8 clicks per 1,000 emails, 4,068 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">201-1000</text>
+<rect x="150" y="212" width="117" height="26" rx="5" fill="#93c5fd"/>
+<text x="277" y="231" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">26 clicks per 1,000 emails, 1,344 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">1000+</text>
+<rect x="150" y="264" width="60" height="26" rx="5" fill="#2563eb"/>
+<text x="220" y="283" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">49.4 clicks per 1,000 emails, 1,924 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Cost per website visit by size of the reader's company, employees, Pro (USD, lower is better) (USD, lower is better): 1 to 10 $12, 11 to 50 $5, 51 to 200 $2, 201 to 1,000 $4, Over 1,000 $1" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Cost per website visit by size of the reader's company, employees, Pro (USD, lower is better): 1-10 $7, 11-50 $7, 51-200 $4, 201-1000 $3, 1000+ (thin) $3" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by size of the reader's company, employees, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 10</text>
-<rect x="180" y="56" width="530" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$12</text>
-<text x="180" y="95" font-size="11" fill="#94a3b8">5.3 clicks per 1,000, 4,172 emails, 22 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">11 to 50</text>
-<rect x="180" y="108" width="220" height="26" rx="5" fill="#93c5fd"/>
-<text x="410" y="127" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="180" y="147" font-size="11" fill="#94a3b8">12.2 clicks per 1,000, 3,922 emails, 48 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">51 to 200</text>
-<rect x="180" y="160" width="88" height="26" rx="5" fill="#93c5fd"/>
-<text x="278" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="180" y="199" font-size="11" fill="#94a3b8">30.3 clicks per 1,000, 2,311 emails, 70 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">201 to 1,000</text>
-<rect x="180" y="212" width="176" height="26" rx="5" fill="#93c5fd"/>
-<text x="366" y="231" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="180" y="251" font-size="11" fill="#94a3b8">17.0 clicks per 1,000, 882 emails, 15 clicks</text>
-<text x="0" y="282" font-size="14" fill="#475569">Over 1,000</text>
-<rect x="180" y="264" width="44" height="26" rx="5" fill="#2563eb"/>
-<text x="234" y="283" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="180" y="303" font-size="11" fill="#94a3b8">59.5 clicks per 1,000, 370 emails, 22 clicks</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">1-10</text>
+<rect x="150" y="56" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="75" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">7.4 clicks per 1,000 emails, 11,257 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">11-50</text>
+<rect x="150" y="108" width="531" height="26" rx="5" fill="#93c5fd"/>
+<text x="691" y="127" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">9.6 clicks per 1,000 emails, 8,200 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">51-200</text>
+<rect x="150" y="160" width="278" height="26" rx="5" fill="#93c5fd"/>
+<text x="438" y="179" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">19.9 clicks per 1,000 emails, 3,966 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">201-1000</text>
+<rect x="150" y="212" width="198" height="26" rx="5" fill="#2563eb"/>
+<text x="358" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">23.1 clicks per 1,000 emails, 1,556 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">1000+ (thin)</text>
+<rect x="150" y="264" width="212" height="26" rx="5" fill="#cbd5e1"/>
+<text x="372" y="283" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">25.5 clicks per 1,000 emails, 746 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Positive replies per 10,000 emails by company size, Pro (positive replies per 10,000 emails, higher is better): 1 to 10 6.3, 11 to 50 2.8, 51 to 200 2.3" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by company size, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">1 to 10</text>
-<rect x="180" y="56" width="530" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">6.3</text>
-<text x="180" y="95" font-size="11" fill="#94a3b8">24 positive replies over 38,109 emails, $135 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">11 to 50</text>
-<rect x="180" y="108" width="235" height="26" rx="5" fill="#93c5fd"/>
-<text x="425" y="127" font-size="16" font-weight="700" fill="#0f172a">2.8</text>
-<text x="180" y="147" font-size="11" fill="#94a3b8">6 positive replies over 21,377 emails</text>
-<text x="0" y="178" font-size="14" fill="#475569">51 to 200</text>
-<rect x="180" y="160" width="193" height="26" rx="5" fill="#93c5fd"/>
-<text x="383" y="179" font-size="16" font-weight="700" fill="#0f172a">2.3</text>
-<text x="180" y="199" font-size="11" fill="#94a3b8">2 positive replies over 8,710 emails</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Positive replies per 10,000 emails by company size, employees, Pro (higher is better): 1-10 6.2, 11-50 (thin) 2.4, 51-200 (thin) 2" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by company size, employees, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">1-10</text>
+<rect x="150" y="56" width="540" height="26" rx="5" fill="#2563eb"/>
+<text x="700" y="75" font-size="16" font-weight="700" fill="#0f172a">6.2</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">27 positive replies, 43,743 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">11-50 (thin)</text>
+<rect x="150" y="108" width="209" height="26" rx="5" fill="#cbd5e1"/>
+<text x="369" y="127" font-size="16" font-weight="700" fill="#0f172a">2.4</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">6 positive replies, 24,502 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">51-200 (thin)</text>
+<rect x="150" y="160" width="174" height="26" rx="5" fill="#cbd5e1"/>
+<text x="334" y="179" font-size="16" font-weight="700" fill="#0f172a">2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">2 positive replies, 9,949 emails</text>
 </svg>
 </figure>
+
 <h3>7. Industry</h3>
-<p>IT and services click for $2 on Flash and $4 on Pro, hospitals for $1 and $3. Health and wellness practices do not click, they write back: 13 positive replies at $96 each, Pro's best industry for the reply.</p>
+
+<p>IT and services click for $3 on Flash and $7 on Pro. Health and wellness practices do not click, they write back: 13 positive replies at $101 each, Pro's best industry for the reply among those past a thousand emails.</p>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by industry of the reader, Flash (USD, lower is better) (USD, lower is better): IT and services $2, Hospitals $1, Health and wellness $2, Medical practice $1" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Cost per website visit by industry of the reader, Flash (USD, lower is better): Information technology &amp; services $3, Marketing &amp; advertising (thin) $22, Research $1" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by industry of the reader, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">IT and services</text>
-<rect x="210" y="56" width="500" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="210" y="95" font-size="11" fill="#94a3b8">27.4 clicks per 1,000, 1,974 emails, 54 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">Hospitals</text>
-<rect x="210" y="108" width="250" height="26" rx="5" fill="#2563eb"/>
-<text x="470" y="127" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="210" y="147" font-size="11" fill="#94a3b8">75.1 clicks per 1,000, 213 emails, 16 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Health and wellness</text>
-<rect x="210" y="160" width="500" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="210" y="199" font-size="11" fill="#94a3b8">26.5 clicks per 1,000, 264 emails, 7 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">Medical practice</text>
-<rect x="210" y="212" width="250" height="26" rx="5" fill="#2563eb"/>
-<text x="470" y="231" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="210" y="251" font-size="11" fill="#94a3b8">65.7 clicks per 1,000, 213 emails, 14 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">Information technology &amp; services</text>
+<rect x="150" y="56" width="67" height="26" rx="5" fill="#93c5fd"/>
+<text x="227" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">20.4 clicks per 1,000 emails, 3,237 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Marketing &amp; advertising (thin)</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">$22</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">2.8 clicks per 1,000 emails, 1,065 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Research</text>
+<rect x="150" y="160" width="19" height="26" rx="5" fill="#2563eb"/>
+<text x="179" y="179" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">31.8 clicks per 1,000 emails, 1,101 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by industry of the reader, Pro (USD, lower is better) (USD, lower is better): IT and services $4, Hospitals $3, Health and wellness $9, Medical practice $21" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Cost per website visit by industry of the reader, Pro (USD, lower is better): Health, wellness &amp; fitness $8, Hospital &amp; health care $5, Information technology &amp; services $7, Marketing &amp; advertising (thin) $7, Medical practice $9" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by industry of the reader, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">IT and services</text>
-<rect x="210" y="56" width="95" height="26" rx="5" fill="#93c5fd"/>
-<text x="315" y="75" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="210" y="95" font-size="11" fill="#94a3b8">14.9 clicks per 1,000, 1,411 emails, 21 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">Hospitals</text>
-<rect x="210" y="108" width="71" height="26" rx="5" fill="#2563eb"/>
-<text x="291" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="210" y="147" font-size="11" fill="#94a3b8">28.4 clicks per 1,000, 811 emails, 23 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Health and wellness</text>
-<rect x="210" y="160" width="214" height="26" rx="5" fill="#93c5fd"/>
-<text x="434" y="179" font-size="16" font-weight="700" fill="#0f172a">$9</text>
-<text x="210" y="199" font-size="11" fill="#94a3b8">7.4 clicks per 1,000, 1,765 emails, 13 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">Medical practice</text>
-<rect x="210" y="212" width="500" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$21</text>
-<text x="210" y="251" font-size="11" fill="#94a3b8">3.5 clicks per 1,000, 1,415 emails, 5 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">Health, wellness &amp; fitness</text>
+<rect x="150" y="56" width="493" height="26" rx="5" fill="#93c5fd"/>
+<text x="653" y="75" font-size="16" font-weight="700" fill="#0f172a">$8</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">7.6 clicks per 1,000 emails, 3,673 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Hospital &amp; health care</text>
+<rect x="150" y="108" width="291" height="26" rx="5" fill="#2563eb"/>
+<text x="451" y="127" font-size="16" font-weight="700" fill="#0f172a">$5</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">15.9 clicks per 1,000 emails, 1,572 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Information technology &amp; services</text>
+<rect x="150" y="160" width="421" height="26" rx="5" fill="#93c5fd"/>
+<text x="581" y="179" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">9.1 clicks per 1,000 emails, 3,303 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Marketing &amp; advertising (thin)</text>
+<rect x="150" y="212" width="406" height="26" rx="5" fill="#cbd5e1"/>
+<text x="566" y="231" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">5.6 clicks per 1,000 emails, 2,508 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">Medical practice</text>
+<rect x="150" y="264" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="283" font-size="16" font-weight="700" fill="#0f172a">$9</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">7.4 clicks per 1,000 emails, 2,846 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Positive replies per 10,000 emails by industry, Pro (positive replies per 10,000 emails, higher is better): Health and wellness 8.7, Medical practice 4.4, Hospitals 2.2, IT and services 0" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by industry, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">Health and wellness</text>
-<rect x="210" y="56" width="500" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">8.7</text>
-<text x="210" y="95" font-size="11" fill="#94a3b8">13 positive replies over 15,005 emails, $96 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">Medical practice</text>
-<rect x="210" y="108" width="252" height="26" rx="5" fill="#93c5fd"/>
-<text x="472" y="127" font-size="16" font-weight="700" fill="#0f172a">4.4</text>
-<text x="210" y="147" font-size="11" fill="#94a3b8">6 positive replies over 13,519 emails</text>
-<text x="0" y="178" font-size="14" fill="#475569">Hospitals</text>
-<rect x="210" y="160" width="126" height="26" rx="5" fill="#93c5fd"/>
-<text x="346" y="179" font-size="16" font-weight="700" fill="#0f172a">2.2</text>
-<text x="210" y="199" font-size="11" fill="#94a3b8">2 positive replies over 9,209 emails</text>
-<text x="0" y="230" font-size="14" fill="#475569">IT and services</text>
-<rect x="210" y="212" width="24" height="26" rx="5" fill="#93c5fd"/>
-<text x="244" y="231" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="210" y="251" font-size="11" fill="#94a3b8">0 positive replies over 6,269 emails</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 400" width="100%" role="img" aria-label="Positive replies per 10,000 emails by industry, Pro (higher is better): Financial services (thin) 10.4, Health, wellness &amp; fitness 7.9, Hospital &amp; health care (thin) 1.9, Information technology &amp; services (thin) 1.3, Management consulting (thin) 11.5, Marketing &amp; advertising (thin) 2.1, Medical practice (thin) 4.1" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by industry, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Financial services (thin)</text>
+<rect x="150" y="56" width="488" height="26" rx="5" fill="#cbd5e1"/>
+<text x="648" y="75" font-size="16" font-weight="700" fill="#0f172a">10.4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">2 positive replies, 1,924 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Health, wellness &amp; fitness</text>
+<rect x="150" y="108" width="371" height="26" rx="5" fill="#2563eb"/>
+<text x="531" y="127" font-size="16" font-weight="700" fill="#0f172a">7.9</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">13 positive replies, 16,521 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Hospital &amp; health care (thin)</text>
+<rect x="150" y="160" width="89" height="26" rx="5" fill="#cbd5e1"/>
+<text x="249" y="179" font-size="16" font-weight="700" fill="#0f172a">1.9</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">2 positive replies, 10,313 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Information technology &amp; services (thin)</text>
+<rect x="150" y="212" width="61" height="26" rx="5" fill="#cbd5e1"/>
+<text x="221" y="231" font-size="16" font-weight="700" fill="#0f172a">1.3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">1 positive reply, 7,982 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">Management consulting (thin)</text>
+<rect x="150" y="264" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="283" font-size="16" font-weight="700" fill="#0f172a">11.5</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">3 positive replies, 2,605 emails</text>
+<text x="0" y="334" font-size="14" fill="#475569">Marketing &amp; advertising (thin)</text>
+<rect x="150" y="316" width="99" height="26" rx="5" fill="#cbd5e1"/>
+<text x="259" y="335" font-size="16" font-weight="700" fill="#0f172a">2.1</text>
+<text x="150" y="355" font-size="11" fill="#94a3b8">1 positive reply, 4,691 emails</text>
+<text x="0" y="386" font-size="14" fill="#475569">Medical practice (thin)</text>
+<rect x="150" y="368" width="193" height="26" rx="5" fill="#cbd5e1"/>
+<text x="353" y="387" font-size="16" font-weight="700" fill="#0f172a">4.1</text>
+<text x="150" y="407" font-size="11" fill="#94a3b8">6 positive replies, 14,684 emails</text>
 </svg>
 </figure>
+
 <h3>8. Where the reader is</h3>
-<p>Europe clicks cheaper than North America on both tiers: $1 against $2 on Flash, $3 against $5 on Pro. The replies are North American: 28 of Pro's 35, at $195, because that is where the reply-seeking campaigns ran.</p>
+
+<p>Europe clicks cheaper than North America on both tiers: $2 against $3 on Flash, $3 against $6 on Pro. The replies are North American: 28 of Pro's 35, at $211, because that is where the reply-seeking campaigns ran.</p>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by continent of the reader, Flash (USD, lower is better) (USD, lower is better): North America $2, Europe $1, Asia $4" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Cost per website visit by continent of the reader, Flash (USD, lower is better): Asia $1, Europe $2, North America $3" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by continent of the reader, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">North America</text>
-<rect x="170" y="56" width="270" height="26" rx="5" fill="#93c5fd"/>
-<text x="450" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">28.4 clicks per 1,000, 6,260 emails, 178 clicks</text>
+<text x="0" y="74" font-size="14" fill="#475569">Asia</text>
+<rect x="150" y="56" width="261" height="26" rx="5" fill="#2563eb"/>
+<text x="421" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">23.7 clicks per 1,000 emails, 1,902 emails</text>
 <text x="0" y="126" font-size="14" fill="#475569">Europe</text>
-<rect x="170" y="108" width="135" height="26" rx="5" fill="#2563eb"/>
-<text x="315" y="127" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">30.2 clicks per 1,000, 1,990 emails, 60 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Asia</text>
-<rect x="170" y="160" width="540" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="179" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="170" y="199" font-size="11" fill="#94a3b8">10.8 clicks per 1,000, 742 emails, 8 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="108" width="323" height="26" rx="5" fill="#93c5fd"/>
+<text x="483" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">32.5 clicks per 1,000 emails, 3,050 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">North America</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">20.6 clicks per 1,000 emails, 10,557 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 226" width="100%" role="img" aria-label="Cost per website visit by continent of the reader, Pro (USD, lower is better) (USD, lower is better): North America $5, Europe $3, Asia $3" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Cost per website visit by continent of the reader, Pro (USD, lower is better): Asia (thin) $4, Europe $3, North America $6" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by continent of the reader, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">North America</text>
-<rect x="170" y="56" width="540" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">14.2 clicks per 1,000, 9,209 emails, 131 clicks</text>
+<text x="0" y="74" font-size="14" fill="#475569">Asia (thin)</text>
+<rect x="150" y="56" width="305" height="26" rx="5" fill="#cbd5e1"/>
+<text x="465" y="75" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">12.1 clicks per 1,000 emails, 1,241 emails</text>
 <text x="0" y="126" font-size="14" fill="#475569">Europe</text>
-<rect x="170" y="108" width="324" height="26" rx="5" fill="#2563eb"/>
-<text x="504" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">17.8 clicks per 1,000, 1,857 emails, 33 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">Asia</text>
-<rect x="170" y="160" width="324" height="26" rx="5" fill="#2563eb"/>
-<text x="504" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="170" y="199" font-size="11" fill="#94a3b8">15.2 clicks per 1,000, 396 emails, 6 clicks</text>
-<text x="0" y="216" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="108" width="258" height="26" rx="5" fill="#2563eb"/>
+<text x="418" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">20.6 clicks per 1,000 emails, 3,106 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">North America</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">11.7 clicks per 1,000 emails, 17,201 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by country of the reader, Flash (USD, lower is better) (USD, lower is better): United States $2, United Kingdom $2, France $1, Canada $3" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by country of the reader, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">United States</text>
-<rect x="190" y="56" width="346" height="26" rx="5" fill="#93c5fd"/>
-<text x="546" y="75" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="190" y="95" font-size="11" fill="#94a3b8">29.5 clicks per 1,000, 5,832 emails, 172 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">United Kingdom</text>
-<rect x="190" y="108" width="346" height="26" rx="5" fill="#93c5fd"/>
-<text x="546" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="190" y="147" font-size="11" fill="#94a3b8">24.0 clicks per 1,000, 624 emails, 15 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">France</text>
-<rect x="190" y="160" width="173" height="26" rx="5" fill="#2563eb"/>
-<text x="373" y="179" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="190" y="199" font-size="11" fill="#94a3b8">27.0 clicks per 1,000, 371 emails, 10 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">Canada</text>
-<rect x="190" y="212" width="520" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="190" y="251" font-size="11" fill="#94a3b8">14.9 clicks per 1,000, 403 emails, 6 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<svg viewBox="0 0 800 192" width="100%" role="img" aria-label="Positive replies per 10,000 emails by country of the reader, Pro (higher is better): Canada (thin) 12.4, United Kingdom (thin) 13.5, United States 3.8" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by country of the reader, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Canada (thin)</text>
+<rect x="150" y="56" width="496" height="26" rx="5" fill="#cbd5e1"/>
+<text x="656" y="75" font-size="16" font-weight="700" fill="#0f172a">12.4</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">2 positive replies, 1,610 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">United Kingdom (thin)</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">13.5</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">3 positive replies, 2,225 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">United States</text>
+<rect x="150" y="160" width="152" height="26" rx="5" fill="#2563eb"/>
+<text x="312" y="179" font-size="16" font-weight="700" fill="#0f172a">3.8</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">26 positive replies, 67,864 emails</text>
 </svg>
 </figure>
-<figure>
-<svg viewBox="0 0 800 278" width="100%" role="img" aria-label="Cost per website visit by country of the reader, Pro (USD, lower is better) (USD, lower is better): United States $5, United Kingdom $2, France $2, Canada $4" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by country of the reader, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">United States</text>
-<rect x="190" y="56" width="520" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="190" y="95" font-size="11" fill="#94a3b8">14.3 clicks per 1,000, 8,901 emails, 127 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">United Kingdom</text>
-<rect x="190" y="108" width="208" height="26" rx="5" fill="#2563eb"/>
-<text x="408" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="190" y="147" font-size="11" fill="#94a3b8">24.5 clicks per 1,000, 326 emails, 8 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">France</text>
-<rect x="190" y="160" width="208" height="26" rx="5" fill="#2563eb"/>
-<text x="408" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="190" y="199" font-size="11" fill="#94a3b8">24.1 clicks per 1,000, 705 emails, 17 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">Canada</text>
-<rect x="190" y="212" width="416" height="26" rx="5" fill="#93c5fd"/>
-<text x="616" y="231" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="190" y="251" font-size="11" fill="#94a3b8">13.5 clicks per 1,000, 296 emails, 4 clicks</text>
-<text x="0" y="268" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
-</svg>
-</figure>
+
 <h3>9. Local time of delivery</h3>
-<p>The 9 to 12 window is the cheapest click on both tiers: $1 on Flash, $2 on Pro. Pro's evening emails pay $20 a visit. The reply likes the early morning: 6 to 9 local carries 19 of Pro's 35 at $157.</p>
+
+<p>Flash clicks cheapest late, $1 between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at $4. Pro is cheapest in the small hours at $3. The reply likes the morning: 6am to 8am carries 19 of Pro's 35 at $175.</p>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Cost per website visit by local time of delivery, Flash (USD, lower is better) (USD, lower is better): 6 to 9 $3, 9 to 12 $1, 14 to 18 $2, 18 to 24 $3, 0 to 6 $4" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 348" width="100%" role="img" aria-label="Cost per website visit by local time of delivery, Flash (USD, lower is better): 0-5 $1, 6-8 $4, 9-11 $3, 14-16 $2, 17-19 $1, 20-23 $1" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by local time of delivery, Flash (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">6 to 9</text>
-<rect x="140" y="56" width="427" height="26" rx="5" fill="#93c5fd"/>
-<text x="577" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="140" y="95" font-size="11" fill="#94a3b8">11.7 clicks per 1,000, 3,491 emails, 41 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">9 to 12</text>
-<rect x="140" y="108" width="142" height="26" rx="5" fill="#2563eb"/>
-<text x="292" y="127" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="140" y="147" font-size="11" fill="#94a3b8">67.5 clicks per 1,000, 2,044 emails, 138 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">14 to 18</text>
-<rect x="140" y="160" width="285" height="26" rx="5" fill="#93c5fd"/>
-<text x="435" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="140" y="199" font-size="11" fill="#94a3b8">21.4 clicks per 1,000, 1,542 emails, 33 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">18 to 24</text>
-<rect x="140" y="212" width="427" height="26" rx="5" fill="#93c5fd"/>
-<text x="577" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="140" y="251" font-size="11" fill="#94a3b8">14.6 clicks per 1,000, 959 emails, 14 clicks</text>
-<text x="0" y="282" font-size="14" fill="#475569">0 to 6</text>
-<rect x="140" y="264" width="570" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="283" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="140" y="303" font-size="11" fill="#94a3b8">12.5 clicks per 1,000, 641 emails, 8 clicks</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">0-5</text>
+<rect x="150" y="56" width="150" height="26" rx="5" fill="#2563eb"/>
+<text x="310" y="75" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">18.3 clicks per 1,000 emails, 2,507 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">6-8</text>
+<rect x="150" y="108" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="127" font-size="16" font-weight="700" fill="#0f172a">$4</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">18.7 clicks per 1,000 emails, 4,438 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">9-11</text>
+<rect x="150" y="160" width="415" height="26" rx="5" fill="#93c5fd"/>
+<text x="575" y="179" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">24.9 clicks per 1,000 emails, 2,886 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">14-16</text>
+<rect x="150" y="212" width="212" height="26" rx="5" fill="#93c5fd"/>
+<text x="372" y="231" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">44.7 clicks per 1,000 emails, 1,722 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">17-19</text>
+<rect x="150" y="264" width="175" height="26" rx="5" fill="#93c5fd"/>
+<text x="335" y="283" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">21.8 clicks per 1,000 emails, 1,606 emails</text>
+<text x="0" y="334" font-size="14" fill="#475569">20-23</text>
+<rect x="150" y="316" width="152" height="26" rx="5" fill="#93c5fd"/>
+<text x="312" y="335" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="355" font-size="11" fill="#94a3b8">21.1 clicks per 1,000 emails, 2,278 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Cost per website visit by local time of delivery, Pro (USD, lower is better) (USD, lower is better): 6 to 9 $5, 9 to 12 $2, 14 to 18 $6, 18 to 24 $20, 0 to 6 $5" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Cost per website visit by local time of delivery, Pro (USD, lower is better): 0-5 $3, 6-8 $6, 9-11 $6, 17-19 (thin) $13, 20-23 $7" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by local time of delivery, Pro (USD, lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">6 to 9</text>
-<rect x="140" y="56" width="142" height="26" rx="5" fill="#93c5fd"/>
-<text x="292" y="75" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="140" y="95" font-size="11" fill="#94a3b8">15.7 clicks per 1,000, 4,720 emails, 74 clicks</text>
-<text x="0" y="126" font-size="14" fill="#475569">9 to 12</text>
-<rect x="140" y="108" width="57" height="26" rx="5" fill="#2563eb"/>
-<text x="207" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="140" y="147" font-size="11" fill="#94a3b8">39.3 clicks per 1,000, 1,500 emails, 59 clicks</text>
-<text x="0" y="178" font-size="14" fill="#475569">14 to 18</text>
-<rect x="140" y="160" width="171" height="26" rx="5" fill="#93c5fd"/>
-<text x="321" y="179" font-size="16" font-weight="700" fill="#0f172a">$6</text>
-<text x="140" y="199" font-size="11" fill="#94a3b8">9.8 clicks per 1,000, 1,118 emails, 11 clicks</text>
-<text x="0" y="230" font-size="14" fill="#475569">18 to 24</text>
-<rect x="140" y="212" width="570" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="231" font-size="16" font-weight="700" fill="#0f172a">$20</text>
-<text x="140" y="251" font-size="11" fill="#94a3b8">2.8 clicks per 1,000, 2,473 emails, 7 clicks</text>
-<text x="0" y="282" font-size="14" fill="#475569">0 to 6</text>
-<rect x="140" y="264" width="142" height="26" rx="5" fill="#93c5fd"/>
-<text x="292" y="283" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="140" y="303" font-size="11" fill="#94a3b8">10.1 clicks per 1,000, 1,383 emails, 14 clicks</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<text x="0" y="74" font-size="14" fill="#475569">0-5</text>
+<rect x="150" y="56" width="112" height="26" rx="5" fill="#2563eb"/>
+<text x="272" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">13.3 clicks per 1,000 emails, 5,246 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">6-8</text>
+<rect x="150" y="108" width="256" height="26" rx="5" fill="#93c5fd"/>
+<text x="416" y="127" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">15.7 clicks per 1,000 emails, 7,089 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">9-11</text>
+<rect x="150" y="160" width="230" height="26" rx="5" fill="#93c5fd"/>
+<text x="390" y="179" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">17.3 clicks per 1,000 emails, 2,253 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">17-19 (thin)</text>
+<rect x="150" y="212" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="231" font-size="16" font-weight="700" fill="#0f172a">$13</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">3.3 clicks per 1,000 emails, 4,545 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">20-23</text>
+<rect x="150" y="264" width="293" height="26" rx="5" fill="#93c5fd"/>
+<text x="453" y="283" font-size="16" font-weight="700" fill="#0f172a">$7</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">5.9 clicks per 1,000 emails, 4,924 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Positive replies per 10,000 emails by local time, Pro (positive replies per 10,000 emails, higher is better): 6 to 9 6.1, 9 to 12 5.5, 0 to 6 4.3, 18 to 24 2.3, 14 to 18 0" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by local time, Pro</text>
-<text x="0" y="74" font-size="14" fill="#475569">6 to 9</text>
-<rect x="140" y="56" width="570" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">6.1</text>
-<text x="140" y="95" font-size="11" fill="#94a3b8">19 positive replies over 30,952 emails, $157 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">9 to 12</text>
-<rect x="140" y="108" width="513" height="26" rx="5" fill="#93c5fd"/>
-<text x="663" y="127" font-size="16" font-weight="700" fill="#0f172a">5.5</text>
-<text x="140" y="147" font-size="11" fill="#94a3b8">5 positive replies over 9,056 emails</text>
-<text x="0" y="178" font-size="14" fill="#475569">0 to 6</text>
-<rect x="140" y="160" width="401" height="26" rx="5" fill="#93c5fd"/>
-<text x="551" y="179" font-size="16" font-weight="700" fill="#0f172a">4.3</text>
-<text x="140" y="199" font-size="11" fill="#94a3b8">4 positive replies over 9,318 emails</text>
-<text x="0" y="230" font-size="14" fill="#475569">18 to 24</text>
-<rect x="140" y="212" width="214" height="26" rx="5" fill="#93c5fd"/>
-<text x="364" y="231" font-size="16" font-weight="700" fill="#0f172a">2.3</text>
-<text x="140" y="251" font-size="11" fill="#94a3b8">4 positive replies over 17,183 emails</text>
-<text x="0" y="282" font-size="14" fill="#475569">14 to 18</text>
-<rect x="140" y="264" width="24" height="26" rx="5" fill="#93c5fd"/>
-<text x="174" y="283" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="140" y="303" font-size="11" fill="#94a3b8">0 positive replies over 7,067 emails</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<svg viewBox="0 0 800 296" width="100%" role="img" aria-label="Positive replies per 10,000 emails by local time of delivery, Pro (higher is better): 0-5 (thin) 4.1, 6-8 5.8, 9-11 (thin) 5.9, 17-19 (thin) 2.3, 20-23 (thin) 1.5" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by local time of delivery, Pro (higher is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">0-5 (thin)</text>
+<rect x="150" y="56" width="375" height="26" rx="5" fill="#cbd5e1"/>
+<text x="535" y="75" font-size="16" font-weight="700" fill="#0f172a">4.1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">5 positive replies, 12,288 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">6-8</text>
+<rect x="150" y="108" width="531" height="26" rx="5" fill="#2563eb"/>
+<text x="691" y="127" font-size="16" font-weight="700" fill="#0f172a">5.8</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">19 positive replies, 32,799 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">9-11 (thin)</text>
+<rect x="150" y="160" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="179" font-size="16" font-weight="700" fill="#0f172a">5.9</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">6 positive replies, 10,241 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">17-19 (thin)</text>
+<rect x="150" y="212" width="211" height="26" rx="5" fill="#cbd5e1"/>
+<text x="371" y="231" font-size="16" font-weight="700" fill="#0f172a">2.3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">3 positive replies, 12,949 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">20-23 (thin)</text>
+<rect x="150" y="264" width="137" height="26" rx="5" fill="#cbd5e1"/>
+<text x="297" y="283" font-size="16" font-weight="700" fill="#0f172a">1.5</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">2 positive replies, 13,492 emails</text>
 </svg>
 </figure>
+
 <h3>10. Day of the week</h3>
-<p>Wednesday is the cheapest Flash click at $1 and the cheapest Pro one at $2. Monday carries the reply: 11 of Pro's 35, at $139.</p>
+
+<p>Saturday and Sunday are the cheapest Flash visits at $1; Monday is the dearest weekday on Flash and among the cheapest on Pro. Monday carries the reply: 12 of Pro's 35, at $136.</p>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Cost per website visit by day of the week, Flash (USD, lower is better) (USD, lower is better): Monday $3, Tuesday $3, Wednesday $1, Thursday $2, Friday $3" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 400" width="100%" role="img" aria-label="Cost per website visit by day of the week, Flash (USD, lower is better): Monday $3, Tuesday $2, Wednesday $2, Thursday $3, Friday $2, Saturday $1, Sunday $1" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by day of the week, Flash (USD, lower is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">Monday</text>
-<rect x="150" y="56" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="150" y="95" font-size="11" fill="#94a3b8">15.7 clicks per 1,000, 2,555 emails, 40 clicks</text>
+<rect x="150" y="56" width="520" height="26" rx="5" fill="#93c5fd"/>
+<text x="680" y="75" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">19.6 clicks per 1,000 emails, 3,824 emails</text>
 <text x="0" y="126" font-size="14" fill="#475569">Tuesday</text>
-<rect x="150" y="108" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="150" y="147" font-size="11" fill="#94a3b8">16.9 clicks per 1,000, 1,299 emails, 22 clicks</text>
+<rect x="150" y="108" width="297" height="26" rx="5" fill="#93c5fd"/>
+<text x="457" y="127" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">26 clicks per 1,000 emails, 2,465 emails</text>
 <text x="0" y="178" font-size="14" fill="#475569">Wednesday</text>
-<rect x="150" y="160" width="186" height="26" rx="5" fill="#2563eb"/>
-<text x="346" y="179" font-size="16" font-weight="700" fill="#0f172a">$1</text>
-<text x="150" y="199" font-size="11" fill="#94a3b8">97.3 clicks per 1,000, 1,172 emails, 114 clicks</text>
+<rect x="150" y="160" width="289" height="26" rx="5" fill="#93c5fd"/>
+<text x="449" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">36.1 clicks per 1,000 emails, 2,162 emails</text>
 <text x="0" y="230" font-size="14" fill="#475569">Thursday</text>
-<rect x="150" y="212" width="373" height="26" rx="5" fill="#93c5fd"/>
-<text x="533" y="231" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="150" y="251" font-size="11" fill="#94a3b8">23.0 clicks per 1,000, 2,090 emails, 48 clicks</text>
+<rect x="150" y="212" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="231" font-size="16" font-weight="700" fill="#0f172a">$3</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">18.5 clicks per 1,000 emails, 3,246 emails</text>
 <text x="0" y="282" font-size="14" fill="#475569">Friday</text>
-<rect x="150" y="264" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="283" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="150" y="303" font-size="11" fill="#94a3b8">14.0 clicks per 1,000, 1,001 emails, 14 clicks</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Flash tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="264" width="382" height="26" rx="5" fill="#93c5fd"/>
+<text x="542" y="283" font-size="16" font-weight="700" fill="#0f172a">$2</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">20.2 clicks per 1,000 emails, 2,224 emails</text>
+<text x="0" y="334" font-size="14" fill="#475569">Saturday</text>
+<rect x="150" y="316" width="213" height="26" rx="5" fill="#93c5fd"/>
+<text x="373" y="335" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="355" font-size="11" fill="#94a3b8">21.5 clicks per 1,000 emails, 1,304 emails</text>
+<text x="0" y="386" font-size="14" fill="#475569">Sunday</text>
+<rect x="150" y="368" width="168" height="26" rx="5" fill="#2563eb"/>
+<text x="328" y="387" font-size="16" font-weight="700" fill="#0f172a">$1</text>
+<text x="150" y="407" font-size="11" fill="#94a3b8">22 clicks per 1,000 emails, 1,411 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Cost per website visit by day of the week, Pro (USD, lower is better) (USD, lower is better): Monday $5, Tuesday $3, Wednesday $2, Thursday $4, Friday $5" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 400" width="100%" role="img" aria-label="Cost per website visit by day of the week, Pro (USD, lower is better): Monday $5, Tuesday $6, Wednesday $6, Thursday $8, Friday $5, Saturday (thin) $5, Sunday (thin) $5" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Cost per website visit by day of the week, Pro (USD, lower is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">Monday</text>
-<rect x="150" y="56" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="150" y="95" font-size="11" fill="#94a3b8">12.1 clicks per 1,000, 3,136 emails, 38 clicks</text>
+<rect x="150" y="56" width="304" height="26" rx="5" fill="#2563eb"/>
+<text x="464" y="75" font-size="16" font-weight="700" fill="#0f172a">$5</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">15.8 clicks per 1,000 emails, 5,641 emails</text>
 <text x="0" y="126" font-size="14" fill="#475569">Tuesday</text>
-<rect x="150" y="108" width="336" height="26" rx="5" fill="#93c5fd"/>
-<text x="496" y="127" font-size="16" font-weight="700" fill="#0f172a">$3</text>
-<text x="150" y="147" font-size="11" fill="#94a3b8">22.7 clicks per 1,000, 1,717 emails, 39 clicks</text>
+<rect x="150" y="108" width="371" height="26" rx="5" fill="#93c5fd"/>
+<text x="531" y="127" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">11.8 clicks per 1,000 emails, 3,816 emails</text>
 <text x="0" y="178" font-size="14" fill="#475569">Wednesday</text>
-<rect x="150" y="160" width="224" height="26" rx="5" fill="#2563eb"/>
-<text x="384" y="179" font-size="16" font-weight="700" fill="#0f172a">$2</text>
-<text x="150" y="199" font-size="11" fill="#94a3b8">25.9 clicks per 1,000, 1,043 emails, 27 clicks</text>
+<rect x="150" y="160" width="416" height="26" rx="5" fill="#93c5fd"/>
+<text x="576" y="179" font-size="16" font-weight="700" fill="#0f172a">$6</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">9.1 clicks per 1,000 emails, 3,074 emails</text>
 <text x="0" y="230" font-size="14" fill="#475569">Thursday</text>
-<rect x="150" y="212" width="448" height="26" rx="5" fill="#93c5fd"/>
-<text x="608" y="231" font-size="16" font-weight="700" fill="#0f172a">$4</text>
-<text x="150" y="251" font-size="11" fill="#94a3b8">15.9 clicks per 1,000, 2,069 emails, 33 clicks</text>
+<rect x="150" y="212" width="540" height="26" rx="5" fill="#93c5fd"/>
+<text x="700" y="231" font-size="16" font-weight="700" fill="#0f172a">$8</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">9.4 clicks per 1,000 emails, 4,350 emails</text>
 <text x="0" y="282" font-size="14" fill="#475569">Friday</text>
-<rect x="150" y="264" width="560" height="26" rx="5" fill="#93c5fd"/>
-<text x="720" y="283" font-size="16" font-weight="700" fill="#0f172a">$5</text>
-<text x="150" y="303" font-size="11" fill="#94a3b8">12.3 clicks per 1,000, 1,713 emails, 21 clicks</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Pro tier, emails with a link to the client's site. The counts sit under each bar; read a thin one as a thin read.</text>
+<rect x="150" y="264" width="346" height="26" rx="5" fill="#93c5fd"/>
+<text x="506" y="283" font-size="16" font-weight="700" fill="#0f172a">$5</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">12.4 clicks per 1,000 emails, 4,519 emails</text>
+<text x="0" y="334" font-size="14" fill="#475569">Saturday (thin)</text>
+<rect x="150" y="316" width="326" height="26" rx="5" fill="#cbd5e1"/>
+<text x="486" y="335" font-size="16" font-weight="700" fill="#0f172a">$5</text>
+<text x="150" y="355" font-size="11" fill="#94a3b8">8.9 clicks per 1,000 emails, 2,014 emails</text>
+<text x="0" y="386" font-size="14" fill="#475569">Sunday (thin)</text>
+<rect x="150" y="368" width="324" height="26" rx="5" fill="#cbd5e1"/>
+<text x="484" y="387" font-size="16" font-weight="700" fill="#0f172a">$5</text>
+<text x="150" y="407" font-size="11" fill="#94a3b8">8.1 clicks per 1,000 emails, 2,337 emails</text>
 </svg>
 </figure>
+
 <figure>
-<svg viewBox="0 0 800 330" width="100%" role="img" aria-label="Positive replies per 10,000 emails by day of the week, Pro (positive replies per 10,000 emails, higher is better): Monday 6.3, Tuesday 2.5, Wednesday 5.1, Thursday 3, Friday 1.8" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by day of the week, Pro</text>
+<svg viewBox="0 0 800 400" width="100%" role="img" aria-label="Positive replies per 10,000 emails by day of the week, Pro (higher is better): Monday 6.1, Tuesday (thin) 2.2, Wednesday (thin) 5, Thursday (thin) 1.8, Friday (thin) 2.7, Saturday (thin) 6.6, Sunday (thin) 4.5" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Positive replies per 10,000 emails by day of the week, Pro (higher is better)</text>
 <text x="0" y="74" font-size="14" fill="#475569">Monday</text>
-<rect x="150" y="56" width="560" height="26" rx="5" fill="#2563eb"/>
-<text x="720" y="75" font-size="16" font-weight="700" fill="#0f172a">6.3</text>
-<text x="150" y="95" font-size="11" fill="#94a3b8">11 positive replies over 17,377 emails, $139 each</text>
-<text x="0" y="126" font-size="14" fill="#475569">Tuesday</text>
-<rect x="150" y="108" width="222" height="26" rx="5" fill="#93c5fd"/>
-<text x="382" y="127" font-size="16" font-weight="700" fill="#0f172a">2.5</text>
-<text x="150" y="147" font-size="11" fill="#94a3b8">3 positive replies over 12,058 emails</text>
-<text x="0" y="178" font-size="14" fill="#475569">Wednesday</text>
-<rect x="150" y="160" width="453" height="26" rx="5" fill="#93c5fd"/>
-<text x="613" y="179" font-size="16" font-weight="700" fill="#0f172a">5.1</text>
-<text x="150" y="199" font-size="11" fill="#94a3b8">5 positive replies over 9,806 emails</text>
-<text x="0" y="230" font-size="14" fill="#475569">Thursday</text>
-<rect x="150" y="212" width="266" height="26" rx="5" fill="#93c5fd"/>
-<text x="426" y="231" font-size="16" font-weight="700" fill="#0f172a">3</text>
-<text x="150" y="251" font-size="11" fill="#94a3b8">4 positive replies over 13,363 emails</text>
-<text x="0" y="282" font-size="14" fill="#475569">Friday</text>
-<rect x="150" y="264" width="160" height="26" rx="5" fill="#93c5fd"/>
-<text x="320" y="283" font-size="16" font-weight="700" fill="#0f172a">1.8</text>
-<text x="150" y="303" font-size="11" fill="#94a3b8">2 positive replies over 11,223 emails</text>
-<text x="0" y="320" font-size="13" fill="#64748b">Pro tier, every email. The counts sit under each bar; a price is stated from 10 replies.</text>
+<rect x="150" y="56" width="499" height="26" rx="5" fill="#2563eb"/>
+<text x="659" y="75" font-size="16" font-weight="700" fill="#0f172a">6.1</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">12 positive replies, 19,579 emails</text>
+<text x="0" y="126" font-size="14" fill="#475569">Tuesday (thin)</text>
+<rect x="150" y="108" width="180" height="26" rx="5" fill="#cbd5e1"/>
+<text x="340" y="127" font-size="16" font-weight="700" fill="#0f172a">2.2</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">3 positive replies, 13,576 emails</text>
+<text x="0" y="178" font-size="14" fill="#475569">Wednesday (thin)</text>
+<rect x="150" y="160" width="409" height="26" rx="5" fill="#cbd5e1"/>
+<text x="569" y="179" font-size="16" font-weight="700" fill="#0f172a">5</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">6 positive replies, 12,015 emails</text>
+<text x="0" y="230" font-size="14" fill="#475569">Thursday (thin)</text>
+<rect x="150" y="212" width="147" height="26" rx="5" fill="#cbd5e1"/>
+<text x="307" y="231" font-size="16" font-weight="700" fill="#0f172a">1.8</text>
+<text x="150" y="251" font-size="11" fill="#94a3b8">3 positive replies, 16,272 emails</text>
+<text x="0" y="282" font-size="14" fill="#475569">Friday (thin)</text>
+<rect x="150" y="264" width="221" height="26" rx="5" fill="#cbd5e1"/>
+<text x="381" y="283" font-size="16" font-weight="700" fill="#0f172a">2.7</text>
+<text x="150" y="303" font-size="11" fill="#94a3b8">4 positive replies, 14,909 emails</text>
+<text x="0" y="334" font-size="14" fill="#475569">Saturday (thin)</text>
+<rect x="150" y="316" width="540" height="26" rx="5" fill="#cbd5e1"/>
+<text x="700" y="335" font-size="16" font-weight="700" fill="#0f172a">6.6</text>
+<text x="150" y="355" font-size="11" fill="#94a3b8">4 positive replies, 6,069 emails</text>
+<text x="0" y="386" font-size="14" fill="#475569">Sunday (thin)</text>
+<rect x="150" y="368" width="368" height="26" rx="5" fill="#cbd5e1"/>
+<text x="528" y="387" font-size="16" font-weight="700" fill="#0f172a">4.5</text>
+<text x="150" y="407" font-size="11" fill="#94a3b8">3 positive replies, 6,618 emails</text>
 </svg>
 </figure>
+
 <h2 id="the-rule">The rule</h2>
+
 <figure>
 <svg viewBox="0 0 800 210" width="100%" role="img" aria-label="If you optimise for website visits, use the Flash tier. If you optimise for positive replies, use the Pro tier." font-family="Inter, system-ui, sans-serif">
   <rect x="0" y="0" width="385" height="200" rx="14" fill="#eff6ff" stroke="#bfdbfe"/>
@@ -853,8 +868,11 @@
 </svg>
 </figure>
 <h2 id="why">Why</h2>
-<p>A click is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 120,000 emails a positive reply was 25x rarer than a click. The stronger model earns its keep exactly where the bar is higher, and the best prompt on that model earns it again: the best Pro workflow's reply costs 37% less than its own tier's.</p>
+
+<p>A visit is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 125,000 emails a positive reply was 21x rarer than a click. The stronger model earns its keep exactly where the bar is higher, and the best prompt on that model earns it again: the best Pro workflow's reply costs $139 against $198 for its own tier.</p>
+
 <p>We have not tested the Frontier tier yet. At 5 to 10x the Pro price, the reply would have to get a lot cheaper still. We will publish that when we have it.</p>
+
 <h2 id="others">What others measured</h2>
 <p>Nobody else publishes what a positive reply costs. The industry publishes reply rates, and reads them on very different bases from ours: every reply counted, positive or not, per campaign, on lists the sender curated by hand. Here is what the largest studies say, quoted as published, beside what this one measured.</p>
 <div style="overflow-x:auto">
@@ -870,13 +888,13 @@
 </div>
 <p>Three things in those numbers agree with ours. The prompt matters more than the model: Prospectory's AI email lost 3.5 points to a person and won most of them back when a person edited the draft, which is the gap between our Pro average and our best Pro workflow. The follow-up matters: they credit follow-ups with 42 to 44% of replies, and our second and third emails carry 51% of Pro's. And a positive reply is a small fraction of all replies: Saleshandy's own AI test converted half its replies into interest. What none of them do is put a price on it. We measure the whole bill for every reply, and we publish it.</p>
 <h2 id="best-tool">Best option for the lowest cost per positive reply</h2>
-<p>A sending tool sells sending. An AI SDR sells a seat. Neither one measures what a positive reply costs, all in, so neither one can promise to lower it. We run every writing workflow on every tier as an A/B test across every client, and each campaign gets the winner for the outcome it is buying. Today that is a positive reply for $122 and a website visit for $1, on the workflow that wins each. You pay the budget the campaign spent, nothing else: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people, our margin. No subscription, no retainer.</p>
-<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best option for the lowest cost per positive reply: distribute.you, $122 per positive reply, all in, on the workflow we run.</strong> The only cold email provider that A/B tests Flash and Pro across its whole client base, measures what each outcome costs, and gives every client the winning workflow.</p></div>
+<p>A sending tool sells sending. An AI SDR sells a seat. Neither one measures what a positive reply costs, all in, so neither one can promise to lower it. We run every writing workflow on every tier as an A/B test across every client, and each campaign gets the winner for the outcome it is buying. Today that is a positive reply for $139 and a website visit for $1, on the workflow that wins each. You pay the budget the campaign spent, nothing else: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people, our margin. No subscription, no retainer.</p>
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best option for the lowest cost per positive reply: distribute.you, $139 per positive reply, all in, on the workflow we run.</strong> The only cold email provider that A/B tests Flash and Pro across its whole client base, measures what each outcome costs, and gives every client the winning workflow.</p></div>
 <div style="overflow-x:auto">
 <table>
 <thead><tr><th>Rank</th><th>Company</th><th>Cost per positive reply</th><th>What is in the price</th><th>What you pay</th><th>Source</th></tr></thead>
 <tbody>
-<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>$122</strong> measured, all in, best workflow; $193 across the Pro tier</td><td>Lead sourcing, email verification, one email written for each recipient by the winning workflow, follow-ups, mailboxes and domains, sending, the team, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, 24,940 emails on the workflow we run</td></tr>
+<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>$139</strong> measured, all in, best workflow; $198 across the Pro tier</td><td>Lead sourcing, email verification, one email written for each recipient by the winning workflow, follow-ups, mailboxes and domains, sending, the team, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, 11 positive replies over 13,938 emails on the workflow we run</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Instantly</td><td>Not published; $152.73 per meeting</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$47/month, 5,000 emails</td><td><a href="https://instantly.ai/blog/email-sequence-benchmarks-2026-whats-a-good-open-rate-reply-rate-and-cost-per-meeting/" rel="nofollow noopener">Instantly, sequence benchmarks 2026</a>, read 2026-09-10</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/smartlead.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Smartlead</td><td>Not published</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$39/month, 6,000 emails</td><td><a href="https://www.smartlead.ai/benchmarks/average-cold-email-reply-rate" rel="nofollow noopener">Smartlead, average reply rate</a>, read 2026-09-10</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/lemlist.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Lemlist</td><td>Not published</td><td>Sending, templates, a lead database on credits. You still need mailboxes, domains, the writing and your time.</td><td>$69/month, 50,000 emails</td><td><a href="https://help.lemlist.com/en/articles/13942005-lemcoach-cold-email-benchmarks-and-metrics-what-good-looks-like" rel="nofollow noopener">Lemlist, benchmarks</a>, read 2026-09-10</td></tr>
@@ -892,25 +910,29 @@
 </table>
 </div>
 <h2 id="for-you">What it means if we run your campaigns</h2>
-<p>You never pick a model, a prompt, a length or a send time. Each campaign on distribute.you runs on the workflow with the best measured cost for what that campaign is buying, across every client, and the pick moves when the numbers move. Today a positive reply costs $122 and a website visit $1 on the workflows we run. You pay the budget the campaign spent, nothing else, and you watch the cost of each positive reply land on your dashboard.</p>
+<p>You never pick a model, a prompt, a length or a send time. Each campaign on distribute.you runs on the workflow with the best measured cost for what that campaign is buying, across every client, and the pick moves when the numbers move. Today a positive reply costs $139 and a website visit $1 on the workflows we run. You pay the budget the campaign spent, nothing else, and you watch the cost of each positive reply land on your dashboard.</p>
 <p><a href="/">Start with your website URL</a>. The first 30 USD are on us.</p>
+
 <h2 id="method">Method</h2>
+
 <ul>
 <li><strong>Scope</strong>: sales cold email outreach only. Journalist outreach, PR pitches and every other channel we run are excluded.</li>
-<li><strong>Window</strong>: April 15 to September 10, 2026, every client account. Production data from the distribute.you platform, read on September 10, 2026.</li>
-<li><strong>Volume</strong>: 116,925 emails to 42,883 people across 32 clients, $8,187 of platform spend, 895 clicks and 36 positive replies. Of those emails, 21,189 carried a link to the client's site; they cost $1,190 and 428 people clicked. 40 workflows ran (a workflow is one prompt and one model); 17 of them past 1,000 emails, and only those are ranked. Two 130-email pilots that clicked at 25% are in the totals and in no chart.</li>
-<li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini Flash, Claude Haiku, DeepSeek V4 Flash, GLM Flash, Kimi K2.6). Pro, the middle (Gemini Pro, Claude Opus, DeepSeek V4 Pro, GLM 5.3, Kimi K3). Frontier, the most expensive (Claude Fable, Astra), not yet run in production. The model is read per email from the generation record.</li>
-<li><strong>What ran</strong>: Flash tier, 4 workflows past 1,000 emails on Gemini 3 to 3.7 Flash and Gemini 3.5 Flash-Lite, 34,305 emails, $1,424. Pro tier, 13 workflows past 1,000 emails, almost all on Gemini 3.1 Pro, with DeepSeek V4 Pro and GLM 5.2 to 5.3, 82,620 emails, $6,763.</li>
+<li><strong>Window</strong>: 15 April to 11 September 2026, every client account. Production data from the distribute.you platform, read on 11 September 2026.</li>
+<li><strong>Volume</strong>: 124,664 emails to 37,358 people across 33 clients, $8,381 of platform spend, 745 website visits and 36 positive replies. Of those emails, 42,387 carried a link to the client's site; they cost $2,494 and 677 people clicked. 58 workflows ran with tracked spend (a workflow is one prompt and one model), 25 of them past 1,000 emails.</li>
+<li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini Flash, Claude Haiku, DeepSeek V4 Flash, GLM Flash, Kimi K2.6). Pro, the middle (Gemini Pro, Claude Opus, DeepSeek V4 Pro, GLM 5.3, Kimi K3). Frontier, the most expensive (Claude Fable, Astra), not yet run in production beyond a handful of emails. The model is read per email from the generation record.</li>
 <li><strong>Spend</strong>: everything the workflow cost before per-account discounts: lead sourcing, enrichment, sending and tokens. Not tokens alone. Each email carries its own workflow's cost per email, so a bucket's spend is the sum over the emails in it.</li>
 <li><strong>Pricing</strong>: every dollar here is what the client is charged, all in: lead sourcing, email verification, one email written for each recipient, the mailboxes and domains, sending, follow-ups, the team running it and our margin. There is no subscription and no retainer on top.</li>
-<li><strong>Website visit</strong>: the sending platform reported that the recipient clicked a link in the email. Counted once per person, on the last email sent before the click. An email with no link in the body has one anchor, the unsubscribe footer, so its clicks are unsubscribes; every visit price is measured on the emails whose body linked to the client's site. A link is a URL or a bare domain in the generated text; the sending layer turns both into a tracked link.</li>
-<li><strong>Positive reply</strong>: a recipient wrote back with interest (a question, a request for details, a meeting). Classified automatically, reviewed by a person on the account. Counted once per person, on the last email sent before the reply. Negative replies, out-of-office and unsubscribes do not count. Measured on every email, since a reply needs no link.</li>
-<li><strong>Cost per outcome</strong>: spend divided by outcomes. Every bucket with at least one outcome is drawn, and its emails and outcomes are printed under the bar so a reader can weigh it; a bucket under 1,000 emails or 20 clicks is a thin read. A cost per positive reply is stated from 10 replies, which only the best Pro workflow clears; the reply charts show the rate per 10,000 emails and the count.</li>
-<li><strong>Length, paragraphs, subject, links</strong>: measured on the generated text of the email that was sent, for each step of the sequence.</li>
-<li><strong>Reader</strong>: country, seniority, company size and industry from the lead enrichment record. Local time from the recipient's time zone where known.</li>
+<li><strong>Website visit</strong>: the sending platform reported that the recipient clicked a link in the email, attributed to the email the platform named. Counted once per person, on the first click. Emails with no link in the body are excluded from every visit price, because a click needs a link to land on.</li>
+<li><strong>Link scanners</strong>: a corporate mail gateway fetches every URL in a message before the reader sees it, so a raw hit on a tracking link is not a person. On the emails we send ourselves, a hit is classified before it counts: a HEAD request, a known scanner user agent, a browser string carrying a full build number that no current browser reports, or the same reader fetching the unsubscribe link within a minute. There is no time threshold, because a person on a phone reads a message within seconds too. 271 of 309 such hits were demoted. Clicks the sending provider reports on its own infrastructure are not affected.</li>
+<li><strong>Positive reply</strong>: a recipient wrote back with interest (a question, a request for details, a meeting). Classified automatically, reviewed by a person on the account. Counted once per person, on the last email sent at or before the reply. Negative replies, out-of-office and unsubscribes do not count. Measured on every email, since a reply needs no link.</li>
+<li><strong>Cost per outcome</strong>: spend divided by outcomes. Every bucket with at least one outcome is drawn and priced, and its emails and outcomes are printed under the bar so a reader can weigh it. A cost per positive reply is stated from 10 replies, which only the best Pro workflow clears; a bucket under 1,000 emails or 20 clicks, or under 10 positive replies, is a thin read and is labelled (thin).</li>
+<li><strong>Length, paragraphs, subject, links</strong>: measured on the generated text of the email that was sent, for each step of the sequence. A link is a URL or a bare domain in that text; the sending layer turns both into a tracked link.</li>
+<li><strong>Reader</strong>: country, seniority, company size and industry from the lead enrichment record. Local time from the reader's time zone where known.</li>
 <li><strong>Other studies</strong>: quoted as published, read on the date beside each. We compute nothing from them.</li>
+<li><strong>Reproducing this</strong>: the queries and the derivation are committed at <code>apps/landing/scripts/blog-data</code> in our repository. Every figure on this page comes out of them.</li>
 <li><strong>Limits</strong>: not a randomised experiment. Our optimiser assigns workflows by measured cost, so the tier, the prompt, the audience and the ask are correlated: the reply-seeking campaigns ran on Pro, in North America, without a link. Each cut is reported alone. 36 positive replies is a small count. We report counts and no confidence intervals.</li>
 </ul>
+
 <details>
 <summary>List prices</summary>
 <p>List prices per million tokens, USD, standard context, paid tier, read from each vendor's own page on the date shown.</p>
@@ -934,12 +956,166 @@
 </table>
 </div>
 </details>
+
+<details>
+<summary>Every bucket</summary>
+
+<h4>Website visits by email in the sequence, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>First email</td><td style="text-align:right">8,795</td><td style="text-align:right">323</td><td style="text-align:right">36.7</td><td style="text-align:right">$487</td><td style="text-align:right">$2</td></tr><tr><td>Follow-up 1</td><td style="text-align:right">3,811</td><td style="text-align:right">43</td><td style="text-align:right">11.3</td><td style="text-align:right">$181</td><td style="text-align:right">$4</td></tr><tr><td>Follow-up 2 (thin)</td><td style="text-align:right">3,686</td><td style="text-align:right">3</td><td style="text-align:right">0.8</td><td style="text-align:right">$175</td><td style="text-align:right">$58</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by email in the sequence, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>First email</td><td style="text-align:right">11,068</td><td style="text-align:right">213</td><td style="text-align:right">19.2</td><td style="text-align:right">$650</td><td style="text-align:right">$3</td></tr><tr><td>Follow-up 1</td><td style="text-align:right">5,553</td><td style="text-align:right">42</td><td style="text-align:right">7.6</td><td style="text-align:right">$375</td><td style="text-align:right">$9</td></tr><tr><td>Follow-up 2</td><td style="text-align:right">6,386</td><td style="text-align:right">20</td><td style="text-align:right">3.1</td><td style="text-align:right">$494</td><td style="text-align:right">$25</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by email in the sequence, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>First email</td><td style="text-align:right">31,447</td><td style="text-align:right">16</td><td style="text-align:right">5.1</td><td style="text-align:right">$2,695</td><td style="text-align:right">$168</td></tr><tr><td>Follow-up 1</td><td style="text-align:right">28,041</td><td style="text-align:right">13</td><td style="text-align:right">4.6</td><td style="text-align:right">$2,129</td><td style="text-align:right">$164</td></tr><tr><td>Follow-up 2 (thin)</td><td style="text-align:right">25,198</td><td style="text-align:right">5</td><td style="text-align:right">2</td><td style="text-align:right">$1,890</td><td style="text-align:right">$378</td></tr><tr><td>Follow-up 3</td><td style="text-align:right">1</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">under $1</td><td style="text-align:right">-</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by length of the first email, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>Under 400</td><td style="text-align:right">2,738</td><td style="text-align:right">122</td><td style="text-align:right">44.6</td><td style="text-align:right">$135</td><td style="text-align:right">$1</td></tr><tr><td>400 to 500</td><td style="text-align:right">4,209</td><td style="text-align:right">135</td><td style="text-align:right">32.1</td><td style="text-align:right">$226</td><td style="text-align:right">$2</td></tr><tr><td>500 to 650</td><td style="text-align:right">1,764</td><td style="text-align:right">63</td><td style="text-align:right">35.7</td><td style="text-align:right">$117</td><td style="text-align:right">$2</td></tr><tr><td>650 to 800 (thin)</td><td style="text-align:right">84</td><td style="text-align:right">3</td><td style="text-align:right">35.7</td><td style="text-align:right">$9</td><td style="text-align:right">$3</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by length of the first email, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>Under 400 (thin)</td><td style="text-align:right">1,138</td><td style="text-align:right">15</td><td style="text-align:right">13.2</td><td style="text-align:right">$64</td><td style="text-align:right">$4</td></tr><tr><td>400 to 500</td><td style="text-align:right">2,453</td><td style="text-align:right">64</td><td style="text-align:right">26.1</td><td style="text-align:right">$153</td><td style="text-align:right">$2</td></tr><tr><td>500 to 650</td><td style="text-align:right">3,752</td><td style="text-align:right">80</td><td style="text-align:right">21.3</td><td style="text-align:right">$238</td><td style="text-align:right">$3</td></tr><tr><td>650 to 800</td><td style="text-align:right">1,684</td><td style="text-align:right">39</td><td style="text-align:right">23.2</td><td style="text-align:right">$93</td><td style="text-align:right">$2</td></tr><tr><td>Over 800 (thin)</td><td style="text-align:right">2,041</td><td style="text-align:right">15</td><td style="text-align:right">7.3</td><td style="text-align:right">$102</td><td style="text-align:right">$7</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by length of the first email, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>Under 400</td><td style="text-align:right">2,013</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$148</td><td style="text-align:right">-</td></tr><tr><td>400 to 500 (thin)</td><td style="text-align:right">5,152</td><td style="text-align:right">2</td><td style="text-align:right">3.9</td><td style="text-align:right">$364</td><td style="text-align:right">$182</td></tr><tr><td>500 to 650 (thin)</td><td style="text-align:right">13,961</td><td style="text-align:right">5</td><td style="text-align:right">3.6</td><td style="text-align:right">$1,318</td><td style="text-align:right">$264</td></tr><tr><td>650 to 800 (thin)</td><td style="text-align:right">6,816</td><td style="text-align:right">8</td><td style="text-align:right">11.7</td><td style="text-align:right">$618</td><td style="text-align:right">$77</td></tr><tr><td>Over 800 (thin)</td><td style="text-align:right">3,505</td><td style="text-align:right">1</td><td style="text-align:right">2.9</td><td style="text-align:right">$248</td><td style="text-align:right">$248</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by seniority, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>C-suite</td><td style="text-align:right">4,088</td><td style="text-align:right">80</td><td style="text-align:right">19.6</td><td style="text-align:right">$261</td><td style="text-align:right">$3</td></tr><tr><td>Director</td><td style="text-align:right">2,302</td><td style="text-align:right">87</td><td style="text-align:right">37.8</td><td style="text-align:right">$115</td><td style="text-align:right">$1</td></tr><tr><td>Entry</td><td style="text-align:right">1,107</td><td style="text-align:right">27</td><td style="text-align:right">24.4</td><td style="text-align:right">$41</td><td style="text-align:right">$2</td></tr><tr><td>Founder</td><td style="text-align:right">4,928</td><td style="text-align:right">33</td><td style="text-align:right">6.7</td><td style="text-align:right">$237</td><td style="text-align:right">$7</td></tr><tr><td>Head (thin)</td><td style="text-align:right">872</td><td style="text-align:right">45</td><td style="text-align:right">51.6</td><td style="text-align:right">$41</td><td style="text-align:right">$1</td></tr><tr><td>Intern</td><td style="text-align:right">6</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$1</td><td style="text-align:right">-</td></tr><tr><td>Manager (thin)</td><td style="text-align:right">723</td><td style="text-align:right">28</td><td style="text-align:right">38.7</td><td style="text-align:right">$34</td><td style="text-align:right">$1</td></tr><tr><td>Owner (thin)</td><td style="text-align:right">1,006</td><td style="text-align:right">15</td><td style="text-align:right">14.9</td><td style="text-align:right">$65</td><td style="text-align:right">$4</td></tr><tr><td>Partner</td><td style="text-align:right">240</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$10</td><td style="text-align:right">-</td></tr><tr><td>Senior (thin)</td><td style="text-align:right">216</td><td style="text-align:right">17</td><td style="text-align:right">78.7</td><td style="text-align:right">$6</td><td style="text-align:right">under $1</td></tr><tr><td>VP</td><td style="text-align:right">1,082</td><td style="text-align:right">47</td><td style="text-align:right">43.4</td><td style="text-align:right">$37</td><td style="text-align:right">$1</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by seniority, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>C-suite</td><td style="text-align:right">5,042</td><td style="text-align:right">67</td><td style="text-align:right">13.3</td><td style="text-align:right">$399</td><td style="text-align:right">$6</td></tr><tr><td>Director</td><td style="text-align:right">2,042</td><td style="text-align:right">44</td><td style="text-align:right">21.5</td><td style="text-align:right">$108</td><td style="text-align:right">$2</td></tr><tr><td>Entry</td><td style="text-align:right">3,934</td><td style="text-align:right">30</td><td style="text-align:right">7.6</td><td style="text-align:right">$263</td><td style="text-align:right">$9</td></tr><tr><td>Founder</td><td style="text-align:right">6,120</td><td style="text-align:right">78</td><td style="text-align:right">12.7</td><td style="text-align:right">$404</td><td style="text-align:right">$5</td></tr><tr><td>Head (thin)</td><td style="text-align:right">72</td><td style="text-align:right">3</td><td style="text-align:right">41.7</td><td style="text-align:right">$7</td><td style="text-align:right">$2</td></tr><tr><td>Intern (thin)</td><td style="text-align:right">57</td><td style="text-align:right">2</td><td style="text-align:right">35.1</td><td style="text-align:right">$6</td><td style="text-align:right">$3</td></tr><tr><td>Manager (thin)</td><td style="text-align:right">964</td><td style="text-align:right">25</td><td style="text-align:right">25.9</td><td style="text-align:right">$73</td><td style="text-align:right">$3</td></tr><tr><td>Owner</td><td style="text-align:right">3,829</td><td style="text-align:right">34</td><td style="text-align:right">8.9</td><td style="text-align:right">$261</td><td style="text-align:right">$8</td></tr><tr><td>Partner (thin)</td><td style="text-align:right">115</td><td style="text-align:right">1</td><td style="text-align:right">8.7</td><td style="text-align:right">$5</td><td style="text-align:right">$5</td></tr><tr><td>Senior (thin)</td><td style="text-align:right">58</td><td style="text-align:right">4</td><td style="text-align:right">69</td><td style="text-align:right">$6</td><td style="text-align:right">$2</td></tr><tr><td>VP (thin)</td><td style="text-align:right">236</td><td style="text-align:right">6</td><td style="text-align:right">25.4</td><td style="text-align:right">$19</td><td style="text-align:right">$3</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by seniority, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>C-suite (thin)</td><td style="text-align:right">9,704</td><td style="text-align:right">1</td><td style="text-align:right">1</td><td style="text-align:right">$722</td><td style="text-align:right">$722</td></tr><tr><td>Director (thin)</td><td style="text-align:right">5,824</td><td style="text-align:right">1</td><td style="text-align:right">1.7</td><td style="text-align:right">$432</td><td style="text-align:right">$432</td></tr><tr><td>Entry (thin)</td><td style="text-align:right">20,955</td><td style="text-align:right">5</td><td style="text-align:right">2.4</td><td style="text-align:right">$1,859</td><td style="text-align:right">$372</td></tr><tr><td>Founder</td><td style="text-align:right">19,004</td><td style="text-align:right">10</td><td style="text-align:right">5.3</td><td style="text-align:right">$1,247</td><td style="text-align:right">$125</td></tr><tr><td>Head</td><td style="text-align:right">621</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$68</td><td style="text-align:right">-</td></tr><tr><td>Intern</td><td style="text-align:right">742</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$96</td><td style="text-align:right">-</td></tr><tr><td>Manager</td><td style="text-align:right">4,332</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$444</td><td style="text-align:right">-</td></tr><tr><td>Owner</td><td style="text-align:right">19,649</td><td style="text-align:right">15</td><td style="text-align:right">7.6</td><td style="text-align:right">$1,620</td><td style="text-align:right">$108</td></tr><tr><td>Partner</td><td style="text-align:right">329</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$24</td><td style="text-align:right">-</td></tr><tr><td>Senior</td><td style="text-align:right">658</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$83</td><td style="text-align:right">-</td></tr><tr><td>VP</td><td style="text-align:right">1,559</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$149</td><td style="text-align:right">-</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by company size, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>1-10</td><td style="text-align:right">3,946</td><td style="text-align:right">26</td><td style="text-align:right">6.6</td><td style="text-align:right">$187</td><td style="text-align:right">$7</td></tr><tr><td>11-50</td><td style="text-align:right">5,289</td><td style="text-align:right">111</td><td style="text-align:right">21</td><td style="text-align:right">$315</td><td style="text-align:right">$3</td></tr><tr><td>51-200</td><td style="text-align:right">4,068</td><td style="text-align:right">113</td><td style="text-align:right">27.8</td><td style="text-align:right">$209</td><td style="text-align:right">$2</td></tr><tr><td>201-1000</td><td style="text-align:right">1,344</td><td style="text-align:right">35</td><td style="text-align:right">26</td><td style="text-align:right">$55</td><td style="text-align:right">$2</td></tr><tr><td>1000+</td><td style="text-align:right">1,924</td><td style="text-align:right">95</td><td style="text-align:right">49.4</td><td style="text-align:right">$76</td><td style="text-align:right">$1</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by company size, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>1-10</td><td style="text-align:right">11,257</td><td style="text-align:right">83</td><td style="text-align:right">7.4</td><td style="text-align:right">$614</td><td style="text-align:right">$7</td></tr><tr><td>11-50</td><td style="text-align:right">8,200</td><td style="text-align:right">79</td><td style="text-align:right">9.6</td><td style="text-align:right">$574</td><td style="text-align:right">$7</td></tr><tr><td>51-200</td><td style="text-align:right">3,966</td><td style="text-align:right">79</td><td style="text-align:right">19.9</td><td style="text-align:right">$301</td><td style="text-align:right">$4</td></tr><tr><td>201-1000</td><td style="text-align:right">1,556</td><td style="text-align:right">36</td><td style="text-align:right">23.1</td><td style="text-align:right">$97</td><td style="text-align:right">$3</td></tr><tr><td>1000+ (thin)</td><td style="text-align:right">746</td><td style="text-align:right">19</td><td style="text-align:right">25.5</td><td style="text-align:right">$55</td><td style="text-align:right">$3</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by company size, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>1-10</td><td style="text-align:right">43,743</td><td style="text-align:right">27</td><td style="text-align:right">6.2</td><td style="text-align:right">$3,114</td><td style="text-align:right">$115</td></tr><tr><td>11-50 (thin)</td><td style="text-align:right">24,502</td><td style="text-align:right">6</td><td style="text-align:right">2.4</td><td style="text-align:right">$1,859</td><td style="text-align:right">$310</td></tr><tr><td>51-200 (thin)</td><td style="text-align:right">9,949</td><td style="text-align:right">2</td><td style="text-align:right">2</td><td style="text-align:right">$802</td><td style="text-align:right">$401</td></tr><tr><td>201-1000</td><td style="text-align:right">5,534</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$489</td><td style="text-align:right">-</td></tr><tr><td>1000+</td><td style="text-align:right">5,099</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$611</td><td style="text-align:right">-</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by continent, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>Africa (thin)</td><td style="text-align:right">162</td><td style="text-align:right">2</td><td style="text-align:right">12.3</td><td style="text-align:right">$6</td><td style="text-align:right">$3</td></tr><tr><td>Asia</td><td style="text-align:right">1,902</td><td style="text-align:right">45</td><td style="text-align:right">23.7</td><td style="text-align:right">$59</td><td style="text-align:right">$1</td></tr><tr><td>Europe</td><td style="text-align:right">3,050</td><td style="text-align:right">99</td><td style="text-align:right">32.5</td><td style="text-align:right">$160</td><td style="text-align:right">$2</td></tr><tr><td>North America</td><td style="text-align:right">10,557</td><td style="text-align:right">218</td><td style="text-align:right">20.6</td><td style="text-align:right">$592</td><td style="text-align:right">$3</td></tr><tr><td>Oceania (thin)</td><td style="text-align:right">282</td><td style="text-align:right">6</td><td style="text-align:right">21.3</td><td style="text-align:right">$12</td><td style="text-align:right">$2</td></tr><tr><td>Other (thin)</td><td style="text-align:right">342</td><td style="text-align:right">6</td><td style="text-align:right">17.5</td><td style="text-align:right">$13</td><td style="text-align:right">$2</td></tr><tr><td>South America (thin)</td><td style="text-align:right">310</td><td style="text-align:right">5</td><td style="text-align:right">16.1</td><td style="text-align:right">$8</td><td style="text-align:right">$2</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by continent, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>Africa (thin)</td><td style="text-align:right">132</td><td style="text-align:right">2</td><td style="text-align:right">15.2</td><td style="text-align:right">$5</td><td style="text-align:right">$2</td></tr><tr><td>Asia (thin)</td><td style="text-align:right">1,241</td><td style="text-align:right">15</td><td style="text-align:right">12.1</td><td style="text-align:right">$53</td><td style="text-align:right">$4</td></tr><tr><td>Europe</td><td style="text-align:right">3,106</td><td style="text-align:right">64</td><td style="text-align:right">20.6</td><td style="text-align:right">$192</td><td style="text-align:right">$3</td></tr><tr><td>North America</td><td style="text-align:right">17,201</td><td style="text-align:right">201</td><td style="text-align:right">11.7</td><td style="text-align:right">$1,264</td><td style="text-align:right">$6</td></tr><tr><td>Oceania (thin)</td><td style="text-align:right">188</td><td style="text-align:right">1</td><td style="text-align:right">5.3</td><td style="text-align:right">$10</td><td style="text-align:right">$10</td></tr><tr><td>Other (thin)</td><td style="text-align:right">421</td><td style="text-align:right">9</td><td style="text-align:right">21.4</td><td style="text-align:right">$21</td><td style="text-align:right">$2</td></tr><tr><td>South America (thin)</td><td style="text-align:right">167</td><td style="text-align:right">2</td><td style="text-align:right">12</td><td style="text-align:right">$7</td><td style="text-align:right">$3</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by continent, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>Africa</td><td style="text-align:right">247</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$11</td><td style="text-align:right">-</td></tr><tr><td>Asia (thin)</td><td style="text-align:right">2,865</td><td style="text-align:right">1</td><td style="text-align:right">3.5</td><td style="text-align:right">$139</td><td style="text-align:right">$139</td></tr><tr><td>Europe (thin)</td><td style="text-align:right">8,491</td><td style="text-align:right">3</td><td style="text-align:right">3.5</td><td style="text-align:right">$567</td><td style="text-align:right">$189</td></tr><tr><td>North America</td><td style="text-align:right">69,608</td><td style="text-align:right">28</td><td style="text-align:right">4</td><td style="text-align:right">$5,901</td><td style="text-align:right">$211</td></tr><tr><td>Oceania</td><td style="text-align:right">767</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$56</td><td style="text-align:right">-</td></tr><tr><td>Other</td><td style="text-align:right">979</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$49</td><td style="text-align:right">-</td></tr><tr><td>South America</td><td style="text-align:right">398</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$19</td><td style="text-align:right">-</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by local time of delivery, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>0-5</td><td style="text-align:right">2,507</td><td style="text-align:right">46</td><td style="text-align:right">18.3</td><td style="text-align:right">$50</td><td style="text-align:right">$1</td></tr><tr><td>6-8</td><td style="text-align:right">4,438</td><td style="text-align:right">83</td><td style="text-align:right">18.7</td><td style="text-align:right">$322</td><td style="text-align:right">$4</td></tr><tr><td>9-11</td><td style="text-align:right">2,886</td><td style="text-align:right">72</td><td style="text-align:right">24.9</td><td style="text-align:right">$214</td><td style="text-align:right">$3</td></tr><tr><td>12-13 (thin)</td><td style="text-align:right">278</td><td style="text-align:right">6</td><td style="text-align:right">21.6</td><td style="text-align:right">$9</td><td style="text-align:right">$2</td></tr><tr><td>14-16</td><td style="text-align:right">1,722</td><td style="text-align:right">77</td><td style="text-align:right">44.7</td><td style="text-align:right">$117</td><td style="text-align:right">$2</td></tr><tr><td>17-19</td><td style="text-align:right">1,606</td><td style="text-align:right">35</td><td style="text-align:right">21.8</td><td style="text-align:right">$44</td><td style="text-align:right">$1</td></tr><tr><td>20-23</td><td style="text-align:right">2,278</td><td style="text-align:right">48</td><td style="text-align:right">21.1</td><td style="text-align:right">$52</td><td style="text-align:right">$1</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by local time of delivery, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>0-5</td><td style="text-align:right">5,246</td><td style="text-align:right">70</td><td style="text-align:right">13.3</td><td style="text-align:right">$193</td><td style="text-align:right">$3</td></tr><tr><td>6-8</td><td style="text-align:right">7,089</td><td style="text-align:right">111</td><td style="text-align:right">15.7</td><td style="text-align:right">$696</td><td style="text-align:right">$6</td></tr><tr><td>9-11</td><td style="text-align:right">2,253</td><td style="text-align:right">39</td><td style="text-align:right">17.3</td><td style="text-align:right">$219</td><td style="text-align:right">$6</td></tr><tr><td>12-13 (thin)</td><td style="text-align:right">200</td><td style="text-align:right">3</td><td style="text-align:right">15</td><td style="text-align:right">$11</td><td style="text-align:right">$4</td></tr><tr><td>14-16 (thin)</td><td style="text-align:right">627</td><td style="text-align:right">17</td><td style="text-align:right">27.1</td><td style="text-align:right">$67</td><td style="text-align:right">$4</td></tr><tr><td>17-19 (thin)</td><td style="text-align:right">4,545</td><td style="text-align:right">15</td><td style="text-align:right">3.3</td><td style="text-align:right">$198</td><td style="text-align:right">$13</td></tr><tr><td>20-23</td><td style="text-align:right">4,924</td><td style="text-align:right">29</td><td style="text-align:right">5.9</td><td style="text-align:right">$208</td><td style="text-align:right">$7</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by local time of delivery, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>0-5 (thin)</td><td style="text-align:right">12,288</td><td style="text-align:right">5</td><td style="text-align:right">4.1</td><td style="text-align:right">$507</td><td style="text-align:right">$101</td></tr><tr><td>6-8</td><td style="text-align:right">32,799</td><td style="text-align:right">19</td><td style="text-align:right">5.8</td><td style="text-align:right">$3,324</td><td style="text-align:right">$175</td></tr><tr><td>9-11 (thin)</td><td style="text-align:right">10,241</td><td style="text-align:right">6</td><td style="text-align:right">5.9</td><td style="text-align:right">$1,168</td><td style="text-align:right">$195</td></tr><tr><td>12-13</td><td style="text-align:right">754</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$70</td><td style="text-align:right">-</td></tr><tr><td>14-16</td><td style="text-align:right">3,214</td><td style="text-align:right">0</td><td style="text-align:right">0</td><td style="text-align:right">$346</td><td style="text-align:right">-</td></tr><tr><td>17-19 (thin)</td><td style="text-align:right">12,949</td><td style="text-align:right">3</td><td style="text-align:right">2.3</td><td style="text-align:right">$617</td><td style="text-align:right">$206</td></tr><tr><td>20-23 (thin)</td><td style="text-align:right">13,492</td><td style="text-align:right">2</td><td style="text-align:right">1.5</td><td style="text-align:right">$635</td><td style="text-align:right">$318</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by day of the week, Flash</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>Monday</td><td style="text-align:right">3,824</td><td style="text-align:right">75</td><td style="text-align:right">19.6</td><td style="text-align:right">$235</td><td style="text-align:right">$3</td></tr><tr><td>Tuesday</td><td style="text-align:right">2,465</td><td style="text-align:right">64</td><td style="text-align:right">26</td><td style="text-align:right">$114</td><td style="text-align:right">$2</td></tr><tr><td>Wednesday</td><td style="text-align:right">2,162</td><td style="text-align:right">78</td><td style="text-align:right">36.1</td><td style="text-align:right">$136</td><td style="text-align:right">$2</td></tr><tr><td>Thursday</td><td style="text-align:right">3,246</td><td style="text-align:right">60</td><td style="text-align:right">18.5</td><td style="text-align:right">$195</td><td style="text-align:right">$3</td></tr><tr><td>Friday</td><td style="text-align:right">2,224</td><td style="text-align:right">45</td><td style="text-align:right">20.2</td><td style="text-align:right">$104</td><td style="text-align:right">$2</td></tr><tr><td>Saturday</td><td style="text-align:right">1,304</td><td style="text-align:right">28</td><td style="text-align:right">21.5</td><td style="text-align:right">$36</td><td style="text-align:right">$1</td></tr><tr><td>Sunday</td><td style="text-align:right">1,411</td><td style="text-align:right">31</td><td style="text-align:right">22</td><td style="text-align:right">$31</td><td style="text-align:right">$1</td></tr></tbody>
+</table>
+</div>
+<h4>Website visits by day of the week, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Clicks</th><th style="text-align:right">Clicks per 1,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per click</th></tr></thead>
+<tbody><tr><td>Monday</td><td style="text-align:right">5,641</td><td style="text-align:right">89</td><td style="text-align:right">15.8</td><td style="text-align:right">$408</td><td style="text-align:right">$5</td></tr><tr><td>Tuesday</td><td style="text-align:right">3,816</td><td style="text-align:right">45</td><td style="text-align:right">11.8</td><td style="text-align:right">$252</td><td style="text-align:right">$6</td></tr><tr><td>Wednesday</td><td style="text-align:right">3,074</td><td style="text-align:right">28</td><td style="text-align:right">9.1</td><td style="text-align:right">$176</td><td style="text-align:right">$6</td></tr><tr><td>Thursday</td><td style="text-align:right">4,350</td><td style="text-align:right">41</td><td style="text-align:right">9.4</td><td style="text-align:right">$334</td><td style="text-align:right">$8</td></tr><tr><td>Friday</td><td style="text-align:right">4,519</td><td style="text-align:right">56</td><td style="text-align:right">12.4</td><td style="text-align:right">$293</td><td style="text-align:right">$5</td></tr><tr><td>Saturday (thin)</td><td style="text-align:right">2,014</td><td style="text-align:right">18</td><td style="text-align:right">8.9</td><td style="text-align:right">$89</td><td style="text-align:right">$5</td></tr><tr><td>Sunday (thin)</td><td style="text-align:right">2,337</td><td style="text-align:right">19</td><td style="text-align:right">8.1</td><td style="text-align:right">$93</td><td style="text-align:right">$5</td></tr></tbody>
+</table>
+</div>
+<h4>Positive replies by day of the week, Pro</h4>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Bucket</th><th style="text-align:right">Emails</th><th style="text-align:right">Positive replies</th><th style="text-align:right">Per 10,000</th><th style="text-align:right">Spend</th><th style="text-align:right">Cost per positive reply</th></tr></thead>
+<tbody><tr><td>Monday</td><td style="text-align:right">19,579</td><td style="text-align:right">12</td><td style="text-align:right">6.1</td><td style="text-align:right">$1,627</td><td style="text-align:right">$136</td></tr><tr><td>Tuesday (thin)</td><td style="text-align:right">13,576</td><td style="text-align:right">3</td><td style="text-align:right">2.2</td><td style="text-align:right">$1,070</td><td style="text-align:right">$357</td></tr><tr><td>Wednesday (thin)</td><td style="text-align:right">12,015</td><td style="text-align:right">6</td><td style="text-align:right">5</td><td style="text-align:right">$886</td><td style="text-align:right">$148</td></tr><tr><td>Thursday (thin)</td><td style="text-align:right">16,272</td><td style="text-align:right">3</td><td style="text-align:right">1.8</td><td style="text-align:right">$1,471</td><td style="text-align:right">$490</td></tr><tr><td>Friday (thin)</td><td style="text-align:right">14,909</td><td style="text-align:right">4</td><td style="text-align:right">2.7</td><td style="text-align:right">$1,247</td><td style="text-align:right">$312</td></tr><tr><td>Saturday (thin)</td><td style="text-align:right">6,069</td><td style="text-align:right">4</td><td style="text-align:right">6.6</td><td style="text-align:right">$324</td><td style="text-align:right">$81</td></tr><tr><td>Sunday (thin)</td><td style="text-align:right">6,618</td><td style="text-align:right">3</td><td style="text-align:right">4.5</td><td style="text-align:right">$293</td><td style="text-align:right">$98</td></tr></tbody>
+</table>
+</div>
+
+</details>
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Dataset",
   "name": "Flash versus Pro LLM tier and cold email outcome, by workflow and by ten cuts, distribute.you production data, April to September 2026",
-  "description": "116,925 sales cold emails written by Flash-tier (Gemini Flash, Gemini Flash-Lite) and Pro-tier (Gemini 3.1 Pro, DeepSeek V4 Pro, GLM 5.3) language models across 40 A/B-tested workflows on the distribute.you platform, with spend, website visits and positive replies per workflow and per tier, cut by sequence step, email length, paragraphs, subject length, reader seniority, company size, industry, continent, country, local delivery time and weekday. Cost per website visit and cost per positive reply derived from those counts.",
+  "description": "124,664 sales cold emails written by Flash-tier (Gemini Flash, Gemini Flash-Lite) and Pro-tier (Gemini 3.1 Pro, DeepSeek V4 Pro, GLM 5.3) language models across 40 A/B-tested workflows on the distribute.you platform, with spend, website visits and positive replies per workflow and per tier, cut by sequence step, email length, paragraphs, subject length, reader seniority, company size, industry, continent, country, local delivery time and weekday. Cost per website visit and cost per positive reply derived from those counts.",
   "url": "https://distribute.you/blog/flash-vs-pro-llm-cold-email",
   "creator": {
     "@type": "Organization",
@@ -947,7 +1123,7 @@
     "url": "https://distribute.you"
   },
   "license": "https://creativecommons.org/licenses/by/4.0/",
-  "temporalCoverage": "2026-04-15/2026-09-10",
+  "temporalCoverage": "2026-04-15/2026-09-11",
   "variableMeasured": [
     { "@type": "PropertyValue", "name": "Emails sent", "unitText": "count" },
     { "@type": "PropertyValue", "name": "Spend", "unitText": "USD" },

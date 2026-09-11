@@ -27,7 +27,7 @@
   <!-- title block, centred -->
   <text x="800" y="150" font-size="24" letter-spacing="3" fill="#2563eb" font-weight="600" text-anchor="middle">COLD EMAIL AND LLMS</text>
   <text x="800" y="240" font-size="72" font-weight="800" fill="#0f172a" text-anchor="middle">Flash or Pro?</text>
-  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">120,000 emails, 17 A/B tests. Our best model, not the average.</text>
+  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">125,000 emails, 25 A/B tests. Our best model, not the average.</text>
 
   <!-- left card: flash -> click -->
   <g transform="translate(210,380)">
@@ -62,8 +62,8 @@
     <path d="M260 210 L276 224 L260 238" fill="none" stroke="#93c5fd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M300 178 h74 a20 20 0 0 1 20 20 v50 a20 20 0 0 1 -20 20 h-38 l-22 22 v-22 h-14 a20 20 0 0 1 -20 -20 v-50 a20 20 0 0 1 20 -20 z" fill="#2563eb"/>
     <path d="M320 222 l12 12 l26 -28" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="536" y="214" font-size="40" font-weight="800" fill="#ffffff" text-anchor="end">$122</text>
-    <text x="536" y="304" font-size="17" fill="#94a3b8" text-anchor="end">per positive reply, tier $193</text>
+    <text x="536" y="214" font-size="40" font-weight="800" fill="#ffffff" text-anchor="end">$139</text>
+    <text x="536" y="304" font-size="17" fill="#94a3b8" text-anchor="end">per positive reply, tier $198</text>
   </g>
 
   <!-- brand, inside the safe zone -->

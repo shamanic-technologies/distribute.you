@@ -31,7 +31,7 @@
   <!-- title block, centred -->
   <text x="800" y="150" font-size="24" letter-spacing="3" fill="#2563eb" font-weight="600" text-anchor="middle">COLD EMAIL ECONOMICS</text>
   <text x="800" y="240" font-size="72" font-weight="800" fill="#0f172a" text-anchor="middle">What does a click cost?</text>
-  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">120,000 emails sent. One price, and ten things that move it.</text>
+  <text x="800" y="300" font-size="28" fill="#475569" text-anchor="middle">125,000 emails sent. One price, and ten things that move it.</text>
 
   <!-- left: an envelope with a link, a cursor, the price -->
   <g transform="translate(210,380)">
@@ -44,15 +44,15 @@
     <text x="330" y="150" font-size="88" font-weight="800" fill="#0f172a">$4</text>
     <text x="330" y="190" font-size="20" fill="#64748b">per click,</text>
     <text x="330" y="216" font-size="20" fill="#64748b">all workflows tested</text>
-    <text x="330" y="250" font-size="18" fill="#2563eb" font-weight="600">19 clicks per 1,000 emails</text>
+    <text x="330" y="250" font-size="18" fill="#2563eb" font-weight="600">16 clicks per 1,000 emails</text>
   </g>
 
   <!-- right: the workflow we run for you -->
   <g transform="translate(820,380)">
     <rect x="0" y="0" width="570" height="330" rx="28" fill="#0f172a" filter="url(#shadow)"/>
-    <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">THE WORKFLOW WE RUN FOR YOU</text>
-    <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$2</text>
-    <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 39 workflows</text>
+    <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">THE WORKFLOW THAT WON</text>
+    <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$1</text>
+    <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 25 workflows</text>
     <text x="40" y="292" font-size="17" fill="#94a3b8">Leads, writing, sending and the team, all in the price.</text>
   </g>
 

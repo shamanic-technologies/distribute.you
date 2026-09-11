@@ -1,0 +1,180 @@
+<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin:0 0 24px"><p style="margin:0"><strong>Correction, 11 September 2026.</strong> Most of the clicks our own redirect had recorded turned out to be corporate link scanners fetching the URL before the reader ever saw it. Production was corrected, 271 of 309 of those hits were demoted, and every figure on this page has been re-derived from the corrected data on a window that now runs to 11 September 2026. The earlier version of this article overstated how many people clicked.</p></div>
+
+<h2 id="the-question">The question</h2>
+
+<p>A cold email is a cheap way to put a link in front of a buyer. Cheap per email. What nobody publishes is what it costs per <em>click</em>: the moment a stranger reads your email and decides to open your website. That number is what a paid channel is judged on, so it should be what cold email is judged on too.</p>
+
+<h2 id="the-test">The test</h2>
+
+<p>We sent <strong>125,000 cold emails</strong> on real campaigns for real clients, across <strong>{{n best.workflowsPastFloor}} workflows</strong> we A/B tested past a thousand emails each: a workflow is one AI content template and one model. This article prices every one of them, the winners and the ones we retired. Our clients only ever get the winner, so two numbers matter: what a click cost across everything we tested, and what it costs on the workflow that won.</p>
+
+<p>A click needs a link. {{n volume.linked.emails}} of those emails carried a link to the client's site, for {{usd volume.linked.spend}}, and {{n volume.linked.clicks}} people clicked. Every price below is measured on those.</p>
+
+<h2 id="the-answer">The answer</h2>
+
+<p><strong>A click costs {{usd linked.total.cpc}}</strong> across every workflow we tested, with {{raw linked.total.clicksPerThousand}} clicks per 1,000 emails. The workflow that won the A/B tests buys a click for <strong>{{usd best.visit.cpc}}</strong>, on {{n best.visit.linkedClicks}} clicks over {{n best.visit.linkedEmails}} emails that carried a link. It runs on the {{raw best.visit.tier}} tier, {{raw best.visit.model}}.</p>
+
+<p>Below, what moves the price, in order of how much.</p>
+
+<h2 id="the-step">The first email does the work</h2>
+
+<p>The first email buys a click for {{pick|cut=linked.byStep|bucket=First email|field=cpc|fmt=usd}}. The first follow-up buys one for {{pick|cut=linked.byStep|bucket=Follow-up 1|field=cpc|fmt=usd}}, the second for {{pick|cut=linked.byStep|bucket=Follow-up 2|field=cpc|fmt=usd}}. Follow-ups earn replies, not clicks: someone who wanted to look at your site did it the first time.</p>
+
+{{chart|cut=linked.byStep|metric=cpc|title=Cost per click by email in the sequence (USD, lower is better)}}
+
+<h2 id="the-length">Shorter is cheaper</h2>
+
+<p>Under 400 characters, a click costs {{pick|cut=linked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}}. Over 800, the bucket is too thin to price and its click rate collapses to {{pick|cut=linked.byFirstLength|bucket=over 800|field=clicksPerThousand|fmt=raw}} per 1,000 against {{pick|cut=linked.byFirstLength|bucket=under 400|field=clicksPerThousand|fmt=raw}}. It is the reading time. Six paragraphs or more cost {{pick|cut=linked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}} a click against {{pick|cut=linked.byParagraphs|bucket=1|field=cpc|fmt=usd}} for one, and a subject of 20 characters or fewer beats one over 40.</p>
+
+{{chart|cut=linked.byFirstLength|metric=cpc|title=Cost per click by length of the first email, characters (USD, lower is better)}}
+
+{{chart|cut=linked.byParagraphs|metric=cpc|title=Cost per click by number of paragraphs in the first email (USD, lower is better)}}
+
+{{chart|cut=linked.bySubject|metric=cpc|title=Cost per click by subject length, characters (USD, lower is better)}}
+
+<h2 id="the-tier">Flash tier, again</h2>
+
+<p>Same finding as <a href="/blog/flash-vs-pro-llm-cold-email">our Flash versus Pro study</a>: the cheap tier writes the email that gets clicked. {{usd flashLinked.total.cpc}} a click with Flash, {{usd proLinked.total.cpc}} with Pro. Part of that is the model writing longer. Part of it is the click rate itself: {{raw flashLinked.total.clicksPerThousand}} per 1,000 against {{raw proLinked.total.clicksPerThousand}}.</p>
+
+{{chart|cut=linked.byTier|metric=cpc|title=Cost per click by model tier (USD, lower is better)}}
+
+<h2 id="the-reader">Who you write to</h2>
+
+<p>A director, a VP or a manager clicks for {{pick|cut=linked.bySeniority|bucket=director|field=cpc|fmt=usd}} or less. A C-suite contact, {{pick|cut=linked.bySeniority|bucket=c_suite|field=cpc|fmt=usd}}. A founder or an owner, {{pick|cut=linked.bySeniority|bucket=founder|field=cpc|fmt=usd}} to {{pick|cut=linked.bySeniority|bucket=owner|field=cpc|fmt=usd}}. Company size runs the same way: a click at a company over 1,000 people costs {{pick|cut=linked.bySize|bucket=1000+|field=cpc|fmt=usd}}, at a 1 to 10 person company {{pick|cut=linked.bySize|bucket=1-10|field=cpc|fmt=usd}}.</p>
+
+{{chart|cut=linked.bySeniority|metric=cpc|min=1000|title=Cost per click by seniority of the reader (USD, lower is better)}}
+
+{{chart|cut=linked.bySize|metric=cpc|title=Cost per click by size of the reader's company, employees (USD, lower is better)}}
+
+<p>Industry moves the price by 8x. Research clicks for {{pick|cut=linked.byIndustry|bucket=research|field=cpc|fmt=usd}}, hospitals and IT for {{pick|cut=linked.byIndustry|bucket=hospital & health care|field=cpc|fmt=usd}}. Medical practices pay {{pick|cut=linked.byIndustry|bucket=medical practice|field=cpc|fmt=usd}}. A practitioner reads email between patients, if at all.</p>
+
+{{chart|cut=linked.byIndustry|metric=cpc|title=Cost per click by industry of the reader (USD, lower is better)}}
+
+<h2 id="the-place">Where they are</h2>
+
+<p>A European or Asian reader clicks for {{pick|cut=linked.byContinent|bucket=Europe|field=cpc|fmt=usd}}, a North American one for {{pick|cut=linked.byContinent|bucket=North America|field=cpc|fmt=usd}}. France is the cheapest country we can price, {{pick|cut=linked.byCountry|bucket=France|field=cpc|fmt=usd}}; the United States the most expensive, {{pick|cut=linked.byCountry|bucket=United States|field=cpc|fmt=usd}}. Most of our volume is American, so the {{usd linked.total.cpc}} headline is mostly an American price.</p>
+
+{{chart|cut=linked.byContinent|metric=cpc|min=1000|title=Cost per click by continent of the reader (USD, lower is better)}}
+
+{{chart|cut=linked.byCountry|metric=cpc|min=1000|title=Cost per click by country of the reader (USD, lower is better)}}
+
+<h2 id="the-time">When it lands</h2>
+
+<p>The afternoon and the small hours are the cheap windows, {{pick|cut=linked.byHour|bucket=14-16|field=cpc|fmt=usd}} a click between 2pm and 4pm in the reader's own time zone. The dear one is the morning rush: {{pick|cut=linked.byHour|bucket=6-8|field=cpc|fmt=usd}} between 6am and 8am, three times the afternoon price. Wednesday is the cheapest day, {{pick|cut=linked.byWeekday|bucket=Wednesday|field=cpc|fmt=usd}}; Thursday the dearest, {{pick|cut=linked.byWeekday|bucket=Thursday|field=cpc|fmt=usd}}.</p>
+
+{{chart|cut=linked.byHour|metric=cpc|min=1000|title=Cost per click by local time of delivery (USD, lower is better)}}
+<h2 id="best-cost-per-click">Best tool for the lowest cost per click</h2>
+
+<p>Paid media prices the click openly. We read the pricing page and benchmark report of the eleven tools and agents we compare against: <strong>None of them publishes a cost per click.</strong> A tool sells sending, an AI SDR sells a seat. <strong>Our {{usd best.visit.cpc}} is the whole bill</strong>: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people. No subscription, no retainer.</p>
+
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best tool for the lowest cost per click: distribute.you, {{usd best.visit.cpc}} per click, all in.</strong> Cheaper than Google Ads ($5.42) and LinkedIn ($5.26 to $8.90). The only cold email provider that publishes a measured cost per click.</p></div>
+
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Rank</th><th>Company</th><th>Cost per click</th><th>What is in the price</th><th>What you pay</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.visit.cpc}}</strong> measured, all in</td><td>Lead sourcing, email verification, one email written for each recipient, follow-ups, mailboxes and domains, sending, the team running it, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, {{n best.visit.linkedClicks}} clicks over {{n best.visit.linkedEmails}} emails on the workflow that won</td></tr>
+<tr><td>2</td><td><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Google Ads, all industries</td><td>$5.42</td><td>The click. You write the ads and the landing page.</td><td>Pay per click</td><td><a href="https://localiq.com/blog/search-advertising-benchmarks/" rel="nofollow noopener">LocaliQ with WordStream, 2026 benchmarks</a>, read 2026-09-10</td></tr>
+<tr><td>3</td><td><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Google Ads, business services</td><td>$5.87</td><td>The click. You write the ads and the landing page.</td><td>Pay per click</td><td><a href="https://localiq.com/blog/search-advertising-benchmarks/" rel="nofollow noopener">LocaliQ with WordStream, 2026 benchmarks</a>, read 2026-09-10</td></tr>
+<tr><td>4</td><td><img src="https://img.logo.dev/linkedin.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">LinkedIn sponsored content</td><td>$5.26 to $8.90</td><td>The click. You write the post and the landing page.</td><td>Pay per click</td><td><a href="https://adlibrary.com/posts/linkedin-advertising-costs-2026" rel="nofollow noopener">AdLibrary, LinkedIn costs 2026</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/explee.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Explee AutoGTM</td><td>Not published; $1 to $15 per lead</td><td>Leads, writing, sending</td><td>$30 per 1,000 emails</td><td><a href="https://explee.com/pricing" rel="nofollow noopener">Explee, pricing</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Instantly</td><td>Not published; $152.73 per meeting</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$47/month, 5,000 emails</td><td><a href="https://instantly.ai/blog/email-sequence-benchmarks-2026-whats-a-good-open-rate-reply-rate-and-cost-per-meeting/" rel="nofollow noopener">Instantly, sequence benchmarks 2026</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/smartlead.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Smartlead</td><td>Not published</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$39/month, 6,000 emails</td><td><a href="https://www.smartlead.ai/benchmarks/average-cold-email-reply-rate" rel="nofollow noopener">Smartlead, average reply rate</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/lemlist.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Lemlist</td><td>Not published</td><td>Sending, templates, a lead database on credits. You still need mailboxes, domains, the writing and your time.</td><td>$69/month, 50,000 emails</td><td><a href="https://help.lemlist.com/en/articles/13942005-lemcoach-cold-email-benchmarks-and-metrics-what-good-looks-like" rel="nofollow noopener">Lemlist, benchmarks</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/salesforge.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Salesforge</td><td>Not published</td><td>Sending with AI-personalised sequences. Mailboxes and domains sold separately; you still need a lead list and your time.</td><td>$40/month, 5,000 emails</td><td><a href="https://www.salesforge.ai/blog/cold-email-metrics" rel="nofollow noopener">Salesforge, cold email metrics</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/apollo.io?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Apollo.io</td><td>Not published</td><td>A lead database and a sequencer. You still need mailboxes, domains, the writing and your time.</td><td>$49 per user per month</td><td><a href="https://www.apollo.io/insights/whats-the-expected-reply-rate-for-a-well-run-outbound-cold-email-campaign" rel="nofollow noopener">Apollo, reply rate 2026</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/clay.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Clay</td><td>Not published</td><td>Enrichment and research on credits. You still need sending, mailboxes, domains and your time.</td><td>From $167/month, credits</td><td><a href="https://www.clay.com/glossary/cold-email" rel="nofollow noopener">Clay, cold email glossary</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/gojiberry.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Gojiberry</td><td>Not published</td><td>Prospects and AI-written outreach. Sending beyond the included credits is extra.</td><td>$99/month, 1,800 prospects</td><td><a href="https://gojiberry.ai/" rel="nofollow noopener">Gojiberry</a>, read 2026-09-07</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/11x.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">11x</td><td>Not published; priced per lead</td><td>An AI SDR: leads, writing, sending. Annual commitment.</td><td>$3,750/month, annual, 2,000 prospects</td><td><a href="https://www.11x.ai/products/alice/pricing" rel="nofollow noopener">11x, Alice pricing</a>, read 2026-09-10</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/artisan.co?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Artisan</td><td>Not published</td><td>An AI SDR: leads, writing, sending. Quote needed.</td><td>On request</td><td><a href="https://www.artisan.co/pricing" rel="nofollow noopener">Artisan, pricing</a>, read 2026-09-07</td></tr>
+<tr><td></td><td><img src="https://img.logo.dev/aisdr.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">AiSDR</td><td>Not published</td><td>An AI SDR: leads, writing, sending. Monthly commitment.</td><td>$250/month, 200 contacts</td><td><a href="https://aisdr.com/blog/ai-sdr-benchmarks/" rel="nofollow noopener">AiSDR, benchmarks 2026</a>, read 2026-09-10</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="the-rule">The rule</h2>
+
+<figure>
+<svg viewBox="0 0 800 300" width="100%" role="img" aria-label="The cheap click: a link to your site in the body, the first email, under 500 characters, a short subject, the Flash tier, a director or VP at a company of 50 or more, in Europe or Asia, delivered in the afternoon." font-family="Inter, system-ui, sans-serif">
+  <rect x="0" y="0" width="800" height="300" rx="14" fill="#0f172a"/>
+  <text x="32" y="44" font-size="13" letter-spacing="1.5" fill="#93c5fd" font-weight="600">THE CHEAP CLICK</text>
+  <text x="32" y="92" font-size="17" fill="#ffffff">A link to your site in the body. The first email, not a follow-up.</text>
+  <text x="32" y="126" font-size="17" fill="#ffffff">Under 500 characters, a subject of 30 characters or fewer.</text>
+  <text x="32" y="160" font-size="17" fill="#ffffff">Written by the Flash tier.</text>
+  <text x="32" y="194" font-size="17" fill="#ffffff">Sent to a director or a VP at a company of 50 people or more.</text>
+  <text x="32" y="228" font-size="17" fill="#ffffff">In Europe or Asia, delivered in their afternoon.</text>
+  <text x="32" y="272" font-size="15" fill="#94a3b8">Each line alone cuts the cost of a click by 2x to 5x in our data.</text>
+</svg>
+</figure>
+
+<h2 id="why">Why</h2>
+
+<p>A click is a small decision made in a few seconds. Everything that shortens those seconds lowers its price: a link to click, a short email, a short subject, a reader who is at their desk. And everything that makes the reader a decision-maker who does not own the company raises the odds: a director evaluates tools for a living, an owner of a three-person firm does not.</p>
+
+<h2 id="for-you">What it means if we run your campaigns</h2>
+
+<p>You do not set any of this by hand. Each campaign on distribute.you runs on the workflow with the best measured cost for what it is buying, across every client, and that pick moves as the data above moves. Today that is a click for {{usd best.visit.cpc}}. You pay the budget the campaign spent, nothing else, and the cost of each click lands on your dashboard.</p>
+
+<p><a href="/">Start with your website URL</a>. The first 30 USD are on us.</p>
+
+<h2 id="method">Method</h2>
+
+<ul>
+<li><strong>Scope</strong>: sales cold email outreach only. Journalist outreach, PR pitches and every other channel we run are excluded.</li>
+<li><strong>Window</strong>: 15 April to 11 September 2026, every client account. Production data from the distribute.you platform, read on 11 September 2026.</li>
+<li><strong>Volume</strong>: {{n volume.emails}} emails to {{n volume.people}} people across {{n volume.orgs}} clients, {{usd volume.spend}} of platform spend. Of those, {{n volume.linked.emails}} emails to {{n volume.linked.people}} people carried a link to the client's site; they cost {{usd volume.linked.spend}} and {{n volume.linked.clicks}} people clicked. {{n volume.workflows}} workflows ran with tracked spend (a workflow is one AI content template and one model), {{n best.workflowsPastFloor}} of them past 1,000 emails; workflows with no tracked spend are excluded.</li>
+<li><strong>Click</strong>: the sending platform reported that the recipient clicked a link in the email, attributed to the email the platform named. Counted once per person, on the first click. Emails with no link in the body are excluded from every price, because a click needs a link to land on.</li>
+<li><strong>Link scanners</strong>: a corporate mail gateway fetches every URL in a message before the reader sees it, so a raw hit on a tracking link is not a person. On the emails we send ourselves, a hit is classified before it counts: a HEAD request, a known scanner user agent, a browser string carrying a full build number that no current browser reports, or the same reader fetching the unsubscribe link within a minute. There is no time threshold, because a person on a phone reads a message within seconds too. 271 of 309 such hits were demoted. Clicks the sending provider reports on its own infrastructure are not affected.</li>
+<li><strong>Pricing</strong>: every dollar here is what the client is charged, all in: lead sourcing, email verification, one email written for each recipient, the mailboxes and domains, sending, follow-ups, the team running it and our margin. There is no subscription and no retainer on top. That is what makes it comparable with a paid-media click and not comparable with a sending tool's monthly fee.</li>
+<li><strong>Cost per click</strong>: spend divided by clicks. Spend is everything the workflow cost before per-account discounts. Each email carries its own workflow's cost per email, so a bucket's spend is the sum over the emails in it.</li>
+<li><strong>Buckets</strong>: a bucket is a solid read past at least 1,000 emails and 20 clicks. Every bucket with at least one click is still drawn and priced, with its emails and clicks printed under the bar so a reader can weigh it; one under either floor is labelled (thin).</li>
+<li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini 3 to 3.7 Flash, Gemini 3.5 Flash-Lite, DeepSeek V4 Flash and GLM 5.3 Flash ran). Pro, the middle (Gemini 3.1 Pro, DeepSeek V4 Pro and GLM 5.2 to 5.3 ran). Frontier, the most expensive, which has not run in production beyond a handful of emails. The model is read per email from the generation record.</li>
+<li><strong>Length, paragraphs, subject, links</strong>: measured on the generated text of the email that was sent. A link is a URL or a bare domain in that text; the sending layer turns both into a tracked link.</li>
+<li><strong>Reader</strong>: country, seniority, company size and industry from the lead enrichment record. Local time from the reader's time zone where known.</li>
+<li><strong>Competitor figures</strong>: read from each company's own pricing page or benchmark report on the date beside it, quoted as published. We compute nothing from them.</li>
+<li><strong>Reproducing this</strong>: the queries and the derivation are committed at <code>apps/landing/scripts/blog-data</code> in our repository. Every figure on this page comes out of them.</li>
+<li><strong>Limits</strong>: not a randomised experiment. Our optimiser assigns workflows by measured cost, so the model tier, the length and the audience are correlated with each other. Each cut is reported alone; where a finding holds inside one tier we say so. {{n volume.linked.clicks}} clicks is a small count. We report counts and no confidence intervals.</li>
+</ul>
+
+<details>
+<summary>Every bucket, every cut</summary>
+
+{{table|cut=linked.byModel|title=Model}}
+{{table|cut=linked.byStep|title=Email in the sequence}}
+{{table|cut=linked.byFirstLength|title=Length of the first email, characters}}
+{{table|cut=flashLinked.byFirstLength|title=Length of the first email, Flash tier only}}
+{{table|cut=proLinked.byFirstLength|title=Length of the first email, Pro tier only}}
+{{table|cut=linked.byParagraphs|title=Paragraphs in the first email}}
+{{table|cut=linked.bySubject|title=Subject length, characters}}
+{{table|cut=linked.byContinent|title=Continent of the reader}}
+{{table|cut=linked.byCountry|title=Country of the reader}}
+{{table|cut=linked.bySeniority|title=Seniority of the reader}}
+{{table|cut=proLinked.bySeniority|title=Seniority, Pro tier only}}
+{{table|cut=linked.bySize|title=Company size, employees}}
+{{table|cut=proLinked.bySize|title=Company size, Pro tier only}}
+{{table|cut=linked.byIndustry|title=Industry of the reader}}
+{{table|cut=linked.byHour|title=Local time of delivery}}
+{{table|cut=linked.byWeekday|title=Day of the week}}
+{{table|cut=linked.byMonth|title=Month}}
+
+</details>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "Cost per click in cold email by workflow, model tier, message length, recipient seniority, company size, industry, geography and delivery time, distribute.you production data, April to September 2026",
+  "description": "{{n volume.emails}} sales cold emails sent by the distribute.you platform to {{n volume.people}} people, of which {{n volume.linked.emails}} carried a link to the client's site, with platform spend and link clicks, cut by workflow, LLM model tier, first-email length, paragraph count, subject length, email step, recipient seniority, company size, industry, continent, country and local delivery time. Cost per click derived from spend and clicks per bucket.",
+  "url": "https://distribute.you/blog/cost-per-click-cold-email",
+  "creator": { "@type": "Organization", "name": "distribute.you", "url": "https://distribute.you" },
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "temporalCoverage": "2026-04-15/2026-09-11",
+  "variableMeasured": [
+    { "@type": "PropertyValue", "name": "Emails sent", "unitText": "count" },
+    { "@type": "PropertyValue", "name": "Spend", "unitText": "USD" },
+    { "@type": "PropertyValue", "name": "Clicks", "unitText": "count" },
+    { "@type": "PropertyValue", "name": "Clicks per 1,000 emails", "unitText": "per 1,000" },
+    { "@type": "PropertyValue", "name": "Cost per click", "unitText": "USD" }
+  ],
+  "keywords": ["cold email", "cost per click", "CPC", "LLM", "Gemini Flash", "Gemini Pro", "email length", "seniority", "Europe", "United States"]
+}
+</script>
