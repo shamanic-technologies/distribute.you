@@ -4252,9 +4252,11 @@ export async function getFeatureRevenueByCampaign(
  *
  * Deliberately NARROW: only what the table renders plus the two keys it joins on.
  * `dag` is on the wire and is NOT declared — a DAG serializes to hundreds of KB and
- * this surface parses nothing out of it (the model and the template are workflow-
- * service's to state, and it states neither today; a consumer reading them out of the
- * DAG would be re-deriving another service's answer from its internals).
+ * this surface parses nothing out of it. The MODEL and the TEMPLATE are workflow-
+ * service's to state, and it now does (v0.45.7): it derives both off the DAG's own
+ * content-generation call and serves them as `contentModel` / `contentPromptType`. A
+ * consumer reading them out of the DAG itself would be re-deriving another service's
+ * answer from its internals; reading the fields it publishes is the opposite.
  *
  * `.nullish()` on every tag: workflow-service serves them nullable, and a row missing
  * one renders without it rather than failing the whole read.
@@ -4267,6 +4269,12 @@ const WorkflowCatalogueWireSchema = z.object({
   status: z.string().nullish(),
   channel: z.string().nullish(),
   audienceType: z.string().nullish(),
+  // The chat-service model alias the DAG's content-generation call states, and the
+  // prompt template it asks for. NULL is workflow-service's own word for "the call
+  // names none" — half the live channel — so both are `.nullish()` and a null renders
+  // as a dash rather than a guessed default.
+  contentModel: z.string().nullish(),
+  contentPromptType: z.string().nullish(),
   // The gateway computes this for every row (one deduped key-service call per list
   // request), so a consumer never fans out per workflow for it.
   requiredProviders: z
@@ -4307,6 +4315,8 @@ export async function listChannelWorkflows(
     status: w.status ?? null,
     channel: w.channel ?? null,
     audienceType: w.audienceType ?? null,
+    contentModel: w.contentModel ?? null,
+    contentPromptType: w.contentPromptType ?? null,
     requiredProviders: w.requiredProviders ?? [],
   }));
 }
