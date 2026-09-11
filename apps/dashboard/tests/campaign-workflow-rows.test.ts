@@ -18,6 +18,7 @@ import {
   type CampaignWorkflowRow,
   type FleetWorkflowCost,
   type WorkflowCatalogueRow,
+  type WorkflowDynastyMembership,
   type WorkflowRevenueGroup,
 } from "../src/lib/campaign-workflow-rows";
 
@@ -206,6 +207,113 @@ describe("the running workflow is resolved ONCE, for every grain", () => {
       dynastyName: null,
     });
     expect(resolveRunningWorkflow(null, [cur], [[group]]).dynastySlug).toBeNull();
+  });
+});
+
+describe("a SUPERSEDED version is named by the channel's dynasty map, and by nothing else", () => {
+  // The catalogue carries each dynasty's CURRENT version only, and a group's folded
+  // `workflowSlugs` carries the versions that SPENT in the scope being read. A campaign
+  // pinned to a version that is neither was unnameable permanently, and `Running now`
+  // vanished with every figure on the page real and nothing red anywhere.
+  //
+  // Production 2026-09-11, the campaign that surfaced it: campaign-service pinned it to
+  // `sales-cold-email-outreach-rudder-v3`; workflow-service's catalogue answered with
+  // v5 alone (it filters to active versions whatever filter is passed); and the brand's
+  // revenue group folded ["rudder-v2", "rudder-v5"] because this brand never ran v3.
+  const RUDDER = "sales-cold-email-outreach-rudder";
+  const prodCatalogue = cat({
+    workflowSlug: `${RUDDER}-v5`,
+    workflowDynastySlug: RUDDER,
+    workflowDynastyName: "Sales Cold Email Outreach Rudder",
+    version: 5,
+  });
+  const prodGroup = grp({
+    workflowDynastySlug: RUDDER,
+    workflowDynastyName: "Sales Cold Email Outreach Rudder",
+    workflowSlugs: [`${RUDDER}-v2`, `${RUDDER}-v5`],
+  });
+  const prodMemberships: WorkflowDynastyMembership[] = [
+    {
+      workflowDynastySlug: RUDDER,
+      workflowDynastyName: "Sales Cold Email Outreach Rudder",
+      workflowSlugs: [
+        `${RUDDER}-v3`,
+        `${RUDDER}-v2`,
+        RUDDER,
+        `${RUDDER}-v4`,
+        `${RUDDER}-v5`,
+      ],
+    },
+  ];
+
+  it("names the dynasty of the prod slug neither the catalogue nor the group carries", () => {
+    // Both pre-existing sources answer null for this one — that IS the bug.
+    expect(runningDynastyFor(`${RUDDER}-v3`, [prodCatalogue], [prodGroup])).toBeNull();
+    expect(runningDynastyFor(`${RUDDER}-v3`, [prodCatalogue], [prodGroup], prodMemberships)).toBe(
+      RUDDER,
+    );
+  });
+
+  it("resolves it end to end, with the name the map states", () => {
+    expect(
+      resolveRunningWorkflow(`${RUDDER}-v3`, [prodCatalogue], [[prodGroup]], prodMemberships),
+    ).toEqual({ dynastySlug: RUDDER, dynastyName: "Sales Cold Email Outreach Rudder" });
+  });
+
+  it("names the dynasty from the map alone, when no catalogue and no group answer", () => {
+    // The name must come from the map too, or a resolvable dynasty renders as its slug.
+    expect(resolveRunningWorkflow(`${RUDDER}-v3`, [], [[]], prodMemberships)).toEqual({
+      dynastySlug: RUDDER,
+      dynastyName: "Sales Cold Email Outreach Rudder",
+    });
+  });
+
+  it("gives it a row on the Running now section at every grain", () => {
+    const running = resolveRunningWorkflow(
+      `${RUDDER}-v3`,
+      [prodCatalogue],
+      [[prodGroup]],
+      prodMemberships,
+    );
+    const scoped = buildCampaignWorkflowRows({
+      catalogue: [prodCatalogue],
+      groups: [prodGroup],
+      running,
+      isLearning,
+    });
+    expect(scoped.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([RUDDER]);
+    // The GLOBAL grain holds no groups at all, so it depends on the map entirely.
+    const fleet = buildFleetWorkflowRows({
+      catalogue: [prodCatalogue],
+      fleet: [],
+      outreach: [],
+      running,
+      isLearning,
+    });
+    expect(fleet.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([RUDDER]);
+  });
+
+  it("does NOT override a catalogue match — the map is the last source, not the first", () => {
+    // Every case that already resolved must stay byte-identical: the map adds coverage,
+    // never a different answer.
+    const other: WorkflowDynastyMembership[] = [
+      { workflowDynastySlug: "somewhere-else", workflowDynastyName: "Else", workflowSlugs: ["chan-legato"] },
+    ];
+    expect(runningDynastyFor("chan-legato", [cat()], [], other)).toBe("chan-legato");
+  });
+
+  it("is a no-op when the map has not loaded — never deletes the section", () => {
+    // A failed or in-flight read must degrade to the previous behaviour exactly.
+    const withMap = resolveRunningWorkflow("chan-legato", [cat()], [[]], []);
+    const without = resolveRunningWorkflow("chan-legato", [cat()], [[]]);
+    expect(withMap).toEqual(without);
+    expect(without.dynastySlug).toBe("chan-legato");
+  });
+
+  it("still states NO running workflow when the map does not name the version either", () => {
+    expect(
+      resolveRunningWorkflow("chan-unknown-v3", [prodCatalogue], [[prodGroup]], prodMemberships),
+    ).toEqual({ dynastySlug: null, dynastyName: null });
   });
 });
 

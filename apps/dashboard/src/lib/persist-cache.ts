@@ -203,6 +203,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // one of them cold-fetches on each visit over the slow features read and the table
   // skeletons every time.
   "workflows",
+  // The channel's version-to-dynasty map. Unlisted, a campaign pinned to a superseded
+  // version cold-fetches it on every visit before it can even name what is running.
+  "workflowDynasties",
   "campaignWorkflowRevenue",
   "brandWorkflowRevenue",
   "offerWorkflowRevenue",

@@ -14,6 +14,7 @@ import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import type {
   WorkflowCatalogueRow,
+  WorkflowDynastyMembership,
   WorkflowRevenueGroup,
   FleetWorkflowCost,
   FleetWorkflowOutreach,
@@ -4494,6 +4495,57 @@ export async function getWorkflowRevenue(
     { token },
   );
   return parseFeatureRevenue(raw, "getWorkflowRevenue");
+}
+
+/**
+ * The wire row the gateway's dynasty listing serves, as workflow-service states it.
+ *
+ * ⚠️ CONFORM THIS TO THE DEPLOYED CONTRACT BEFORE MERGING. workflow-service is scoping
+ * its dynasty listing to a single feature in parallel with this; the shape below mirrors
+ * what the unscoped listing already serves in production, and the scoping parameter's
+ * name is theirs to choose. Read the deployed shape from the api-registry (live beats
+ * source) and conform — never freeze a shape this side authored.
+ */
+const WorkflowDynastyWireSchema = z.object({
+  workflowDynastySlug: z.string(),
+  workflowDynastyName: z.string(),
+  workflowSlugs: z.array(z.string()),
+});
+const WorkflowDynastiesResponseSchema = z.object({
+  dynasties: z.array(WorkflowDynastyWireSchema),
+});
+
+/**
+ * GET /v1/workflows/dynasties?featureSlug= — every version of every dynasty a channel
+ * offers, superseded versions included.
+ *
+ * This is the ONLY thing in the fleet that can name the dynasty a superseded workflow
+ * version belongs to. The catalogue read above carries each dynasty's CURRENT version
+ * only, and a revenue group's folded `workflowSlugs` carries the versions that SPENT in
+ * that scope — so a campaign pinned to a version that is neither is unnameable by both,
+ * and its `Running now` row silently disappears. See `WorkflowDynastyMembership`.
+ *
+ * SCOPED to the feature on purpose: the unscoped listing is fleet-wide and is every
+ * internal workflow codename we have, which must never reach a customer's browser.
+ */
+export async function listChannelWorkflowDynasties(
+  featureSlug: string,
+  token?: string,
+): Promise<WorkflowDynastyMembership[]> {
+  const query = new URLSearchParams({ featureSlug });
+  const raw = await apiCall<unknown>(`/workflows/dynasties?${query.toString()}`, { token });
+  const parsed = WorkflowDynastiesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listChannelWorkflowDynasties: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] listChannelWorkflowDynasties: invalid response shape");
+  }
+  return parsed.data.dynasties.map((d) => ({
+    workflowDynastySlug: d.workflowDynastySlug,
+    workflowDynastyName: d.workflowDynastyName,
+    workflowSlugs: d.workflowSlugs,
+  }));
 }
 
 /**
