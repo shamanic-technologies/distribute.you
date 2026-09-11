@@ -125,6 +125,7 @@ describe("the surfaces that draw a model", () => {
   const table = read("src/components/workflows/campaign-workflows-page.tsx");
   const detail = read("src/components/workflows/campaign-workflow-detail-page.tsx");
   const rows = read("src/lib/campaign-workflow-rows.ts");
+  const cells = read("src/components/workflows/workflow-cells.tsx");
   const api = read("src/lib/api.ts");
 
   it("reads both fields off the wire under workflow-service's own names", () => {
@@ -137,52 +138,49 @@ describe("the surfaces that draw a model", () => {
   });
 
   it("carries both onto the row, from the CATALOGUE only", () => {
-    expect(rows).toContain("contentModel: entry?.contentModel ?? null");
-    expect(rows).toContain("contentPromptType: entry?.contentPromptType ?? null");
+    expect(rows).toContain("contentModel: entry.contentModel ?? null");
+    expect(rows).toContain("contentPromptType: entry.contentPromptType ?? null");
     // A revenue group states neither; reading one off it would invent a shape for a
     // retired workflow whose catalogue entry is gone.
     expect(rows).not.toContain("group?.contentModel");
     expect(rows).not.toContain("group?.contentPromptType");
   });
 
-  it("resolves the mark through the ONE catalogue, at both call sites", () => {
+  it("resolves the mark through the ONE catalogue, in the ONE cell", () => {
+    // Both surfaces render the SAME cell, so the catalogue is consulted once: a
+    // second resolution is how a table and the page it opens come to name one
+    // workflow's model two different ways.
+    expect(cells).toContain(
+      'import { workflowModelMark } from "@/lib/workflow-model-marks"',
+    );
+    expect(cells).toContain("workflowModelMark(");
     for (const [name, src] of [
       ["table", table],
       ["detail", detail],
     ] as const) {
-      expect(src, name).toContain(
-        'import { workflowModelMark } from "@/lib/workflow-model-marks"',
-      );
-      expect(src, name).toContain("workflowModelMark(");
+      expect(src, name).toContain("WorkflowModelCell");
     }
   });
 
   it("draws the provider logo by DOMAIN, never by a name", () => {
+    expect(cells).toMatch(/domain=\{model\.providerDomain/);
+  });
+
+  it("prints the template VERBATIM — it is the only template identity on the wire", () => {
+    expect(cells).toContain("line2={template.id}");
     for (const [name, src] of [
       ["table", table],
       ["detail", detail],
     ] as const) {
-      // `?? null` on the table's side is the ABSENT-model case, not a fallback: a
-      // row with no model renders no mark, which is what `ProviderLogo` does on null.
-      expect(src, name).toMatch(/domain=\{model\??\.providerDomain/);
+      expect(src, name).toContain("WorkflowTemplateCell");
     }
-  });
-
-  it("prints the template VERBATIM — it is the only template identity on the wire", () => {
-    expect(table).toContain("{row.contentPromptType}");
-    expect(detail).toContain("{row.contentPromptType}");
   });
 
   it("states a dash for a workflow that names no model, never a default", () => {
     // The guessed default is the one thing that would be silently wrong: half the
     // live channel states no model, so a fallback would mislabel twelve workflows.
-    for (const [name, src] of [
-      ["table", table],
-      ["detail", detail],
-    ] as const) {
-      expect(src, name).not.toMatch(/contentModel\s*\?\?\s*"/);
-      expect(src, name).not.toContain('workflowModelMark(row.contentModel ?? "');
-    }
+    expect(cells).not.toMatch(/contentModel\s*\?\?\s*"/);
+    expect(cells).not.toContain('workflowModelMark(contentModel ?? "');
   });
 
   it("names the model on the sibling price bars, which is what they differ by", () => {
@@ -198,11 +196,11 @@ describe("the surfaces that draw a model", () => {
   });
 
   it("uses only tints the dark remap already covers", () => {
-    // Grays only: `html.dark` remaps gray-900 down to gray-300, so no new rule is
-    // needed. A colour outside that set would render a light block on the dark theme.
-    const cell = table.slice(table.indexOf("export function WorkflowIdentity("));
-    const body = cell.slice(0, cell.indexOf("export function CampaignWorkflowsPage("));
-    const tints = body.match(/(?:bg|text|border)-(?!gray|brand|white)[a-z]+-\d{2,3}/g) ?? [];
+    // Grays, the brand ramp, and ORANGE — which `html.dark` remaps (`bg-orange-50`,
+    // `text-orange-600`) AND `:root[data-brand-tint] .tone-tile` rotates, so the
+    // template tile reads on the dark theme and in the customer's own hue. Anything
+    // outside that set would paint a light block on the dark surface.
+    const tints = cells.match(/(?:bg|text|border)-(?!gray|brand|white|orange)[a-z]+-\d{2,3}/g) ?? [];
     expect(tints).toEqual([]);
   });
 });

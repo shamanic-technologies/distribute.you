@@ -156,6 +156,12 @@ describe("the filter runs at the ONE reader boundary", () => {
     };
     walk(dir);
     expect(hits.map((h) => path.relative(dir, h)).sort()).toEqual([
+      // NOT a producer's field at all: the campaign Workflows page splits its rows
+      // into three SECTIONS and the middle one is called `measured` — every workflow
+      // that produced at least one sales interest. It is this app's own word for its
+      // own layout, read off `sectionCampaignWorkflowRows`, and it never touches a
+      // projection row.
+      "components/workflows/campaign-workflows-page.tsx",
       // A DIFFERENT producer's field under the same name: features-service's
       // channel-funnel price list marks each (channel, funnel) pair `measured`, meaning
       // the fleet has spent enough through it to state a price. Nothing to do with a

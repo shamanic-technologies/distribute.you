@@ -13,6 +13,7 @@ const read = (rel: string) => fs.readFileSync(path.join(__dirname, "..", rel), "
 
 const TABLE = read("src/components/workflows/campaign-workflows-page.tsx");
 const DETAIL = read("src/components/workflows/campaign-workflow-detail-page.tsx");
+const CELLS = read("src/components/workflows/workflow-cells.tsx");
 const SIDEBAR = read("src/components/context-sidebar.tsx");
 const API = read("src/lib/api.ts");
 const PERSIST = read("src/lib/persist-cache.ts");
@@ -83,6 +84,18 @@ describe("every money read is CAMPAIGN-scoped and net", () => {
     for (const src of [TABLE, DETAIL]) {
       expect(src).toContain('["campaignWorkflowRevenue", brandId, campaignId]');
     }
+  });
+
+  it("the BRAND grain has its own reader and its own key, never the campaign's", () => {
+    const body = sliceFn(API, "export async function getBrandRevenueByWorkflow(");
+    // Bounded to the function's own closing brace: `sliceFn` stops at the next
+    // `export`, which drags in the NEXT reader's doc comment — and that comment
+    // legitimately names `campaignId`, so an unbounded negative asserts nothing.
+    const fn = body.slice(0, body.indexOf("\n}") + 2);
+    expect(fn).toContain('new URLSearchParams({ brandId, groupBy: "workflow" })');
+    expect(fn).not.toContain("campaignId");
+    expect(body).toContain('query.set("pricing", "net")');
+    expect(TABLE).toContain('["brandWorkflowRevenue", brandId]');
   });
 
   it("the drill-down key carries the dynasty as well", () => {
@@ -167,15 +180,17 @@ describe("the table survives a phone and the dark theme", () => {
     // one long dynasty name widened the row and the wrapper scrolled sideways (752px
     // inside 378). Measured 378/378 after.
     expect(TABLE).toContain("table-fixed md:table-auto");
-    expect(TABLE).toContain('w-[46%] md:w-[40%]');
+    expect(TABLE).toContain('w-[42%] md:w-[22%]');
   });
 
   it("gates the min-width at the SAME breakpoint the folded columns return", () => {
     // An unconditional floor re-widens the row on a phone and pushes the columns that
     // DO render off to the right, which reads as the data being missing.
-    expect(TABLE).toContain("md:min-w-[820px]");
+    expect(TABLE).toContain("md:min-w-[1040px]");
     expect(TABLE).not.toContain('className="w-full min-w-[');
-    expect((TABLE.match(/hidden md:table-cell/g) ?? []).length).toBe(4);
+    // Four of the seven columns fold below `md`: LLM, Template, $ Invested, Outreach.
+    // Each one appears twice — its header and its cell.
+    expect((TABLE.match(/hidden md:table-cell/g) ?? []).length).toBe(8);
   });
 
   it("lets the identity row WRAP, or the pill squeezes the name to zero width", () => {
@@ -207,8 +222,10 @@ describe("every new query root is persisted", () => {
   for (const root of [
     "workflows",
     "campaignWorkflowRevenue",
+    "brandWorkflowRevenue",
     "workflowRevenue",
     "fleetWorkflowCost",
+    "fleetWorkflowOutreach",
   ]) {
     it(`${root} is allowlisted, so the surface paints from disk`, () => {
       expect(PERSIST).toContain(`"${root}",`);
@@ -236,38 +253,152 @@ describe("the top bar names the open workflow", () => {
   });
 });
 
-describe("the identity cell states the model and the template, from the wire", () => {
+describe("the LLM and the Template are their own columns, from the wire", () => {
   it("does not parse a DAG to invent either", () => {
     // Both are workflow-service's to derive, and it does (v0.45.7) — re-deriving its
     // answer from its own internals is the workaround this repo forbids, and it is a
     // different thing from reading the fields it publishes.
     expect(TABLE).not.toContain(".dag");
     expect(DETAIL).not.toContain(".dag");
+    expect(CELLS).not.toContain(".dag");
     const body = sliceFn(API, "export async function listChannelWorkflows(");
     expect(body).not.toContain("dag");
   });
 
-  it("draws the MODEL through the one marks catalogue, logo led by its domain", () => {
-    const cell = sliceFn(TABLE, "export function WorkflowIdentity(");
-    expect(cell).toContain("workflowModelMark(row.contentModel)");
-    expect(cell).toMatch(/domain=\{model\??\.providerDomain/);
+  it("the table gives each of them a column of its own", () => {
+    expect(TABLE).toContain("<WorkflowModelCell contentModel={row.contentModel} />");
+    expect(TABLE).toContain(
+      "<WorkflowTemplateCell contentPromptType={row.contentPromptType} />",
+    );
+  });
+
+  it("the MODEL cell draws through the one marks catalogue, logo led by its domain", () => {
+    expect(CELLS).toContain("workflowModelMark(contentModel)");
+    expect(CELLS).toContain("domain={model.providerDomain}");
     // An alias the catalogue does not know keeps its own text and draws no logo — the
     // catalogue decides that, so the cell must not second-guess it from the label or
     // the alias, which is how a wrong company's logo lands beside a customer's spend.
-    expect(cell).not.toContain("domain={model.label");
-    expect(cell).not.toContain("domain={model.alias");
+    expect(CELLS).not.toContain("domain={model.label");
+    expect(CELLS).not.toContain("domain={model.alias");
   });
 
-  it("prints the TEMPLATE verbatim, and a dash when there is no model", () => {
-    const cell = sliceFn(TABLE, "export function WorkflowIdentity(");
-    expect(cell).toContain("{row.contentPromptType}");
-    expect(cell).toContain("—");
+  it("the MODEL cell states the alias verbatim as its second line", () => {
+    expect(CELLS).toContain("line2={known ? model.alias : null}");
   });
 
-  it("states them on the DETAIL header too, not only in the table", () => {
+  it("the TEMPLATE cell names it from the id and prints the id verbatim under it", () => {
+    expect(CELLS).toContain("workflowTemplateLabel(contentPromptType)");
+    expect(CELLS).toContain("line1={template.label}");
+    expect(CELLS).toContain("line2={template.id}");
+  });
+
+  it("a thing with no model and no template reads a dash, never a default", () => {
+    expect((CELLS.match(/—/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("the template tile rotates to the BRAND's tertiary rather than staying ours", () => {
+    // `tone-tile` is what makes the orange follow the customer's own hue; without it
+    // the tile is the one control on the page that stays our colour.
+    expect(CELLS).toContain("tone-tile bg-orange-50 text-orange-600");
+  });
+
+  it("states them on the DETAIL header too, through the SAME cells", () => {
     // A guard pinned to the component and not to the call site passes while the page
     // renders nothing — so this reads the page, where the header is assembled.
-    expect(DETAIL).toContain("workflowModelMark(row?.contentModel)");
-    expect(DETAIL).toContain("{row.contentPromptType}");
+    expect(DETAIL).toContain("<WorkflowModelCell contentModel={row?.contentModel ?? null} />");
+    expect(DETAIL).toContain(
+      "<WorkflowTemplateCell contentPromptType={row?.contentPromptType ?? null} />",
+    );
+  });
+});
+
+describe("a RETIRED workflow gets no row at all", () => {
+  it("neither page renders the word, and the model no longer carries the flag", () => {
+    const MODEL = read("src/lib/campaign-workflow-rows.ts");
+    for (const src of [TABLE, DETAIL]) {
+      expect(src).not.toContain("row.retired");
+      expect(src).not.toContain("row?.retired");
+    }
+    expect(MODEL).not.toContain("retired:");
+  });
+});
+
+describe("no provider stack — the only logo on a row is the model's", () => {
+  it("the requiredProviders stack is GONE from the reader and from both pages", () => {
+    // Every workflow of one channel calls the same lead database and the same sender,
+    // so the stack distinguished nothing while attributing a customer's row to Apollo
+    // and Anthropic.
+    expect(API).not.toContain("requiredProviders: z");
+    for (const src of [TABLE, DETAIL]) {
+      expect(src).not.toContain("row.providers");
+      expect(src).not.toContain("row?.providers");
+    }
+    const MODEL = read("src/lib/campaign-workflow-rows.ts");
+    expect(MODEL).not.toContain("dedupeProviders");
+  });
+});
+
+describe("THREE sections, and the running workflow sits in exactly one of them", () => {
+  it("the page renders each section off the shared model, never a local sort", () => {
+    expect(TABLE).toContain("sectionCampaignWorkflowRows(rows)");
+    for (const title of ["Running now", "Measured", "Not measured yet"]) {
+      expect(TABLE).toContain(`title="${title}"`);
+    }
+    expect(TABLE).toContain("rows={sections.running}");
+    expect(TABLE).toContain("rows={sections.measured}");
+    expect(TABLE).toContain("rows={sections.notMeasured}");
+  });
+
+  it("only the running section is framed in the brand primary", () => {
+    expect(TABLE).toContain('running ? "border-brand-200" : "border-gray-200"');
+  });
+});
+
+describe("the grain is a TAB, and no tab falls back to another one's answer", () => {
+  it("offers all four grains and defaults to the campaign", () => {
+    expect(TABLE).toContain('useState<WorkflowGrain>("campaign")');
+    for (const label of ["Campaign", "Offer", "Brand", "Global"]) {
+      expect(TABLE).toContain(`label: "${label}"`);
+    }
+  });
+
+  it("DISABLES the offer tab until the producer honours the offer scope", () => {
+    // Rendering the brand's figures under the offer's name is the wrong-scope bug; a
+    // disabled tab that says why is the honest surface until features-service ships.
+    expect(TABLE).toContain('const disabled = g.key === "offer"');
+    expect(TABLE).toContain("OFFER_SOON_TIP");
+    expect(TABLE).toContain("Coming soon.");
+    // …and no read is wired for it, so it cannot answer with a neighbour's body.
+    expect(TABLE).not.toContain('grain === "offer"');
+  });
+
+  it("each grain sends its OWN read, gated on the tab", () => {
+    expect(TABLE).toContain('grain === "campaign"');
+    expect(TABLE).toContain('grain === "brand"');
+    expect(TABLE).toContain('grain === "global"');
+  });
+
+  it("the GLOBAL grain joins the two public cross-org reads", () => {
+    expect(TABLE).toContain("getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE)");
+    expect(TABLE).toContain("getFleetWorkflowOutreach(featureSlug as string)");
+    expect(TABLE).toContain("buildFleetWorkflowRows({");
+  });
+
+  it("the fleet outreach reader counts PEOPLE, never runs", () => {
+    const body = sliceFn(API, "export async function getFleetWorkflowOutreach(");
+    expect(body).toContain("recipientsContacted");
+    expect(body).not.toContain("completedRuns");
+    // The endpoint defaults to the top 3, so the ceiling has to be stated.
+    expect(body).toContain('limit: String(limit)');
+  });
+
+  it("the global grain states its own basis rather than charting it as ours", () => {
+    expect(TABLE).toContain("including spend we later refunded");
+  });
+
+  it("only the CAMPAIGN grain can say a scope is paused", () => {
+    // At brand and global grain the scope spans campaigns, so the word describes none
+    // of them.
+    expect(TABLE).toContain('grain === "campaign" && campaignPaused');
   });
 });

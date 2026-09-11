@@ -70,6 +70,10 @@ describe("every Overview money reader asks for net pricing", () => {
     // Both answer about money, both sit beside the campaign's own net cards, and a
     // gross figure there would state a different basis inches from a net one.
     "getFeatureRevenueByWorkflow",
+    // The SAME grouped read at the brand grain — the Workflows page's Brand tab. A
+    // grain that changed the basis as well as the population would make the two tabs
+    // two different questions rather than one question at two scopes.
+    "getBrandRevenueByWorkflow",
     "getWorkflowRevenue",
   ]) {
     it(`${reader} requests net pricing`, () => {
