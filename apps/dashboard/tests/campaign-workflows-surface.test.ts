@@ -236,14 +236,38 @@ describe("the top bar names the open workflow", () => {
   });
 });
 
-describe("the identity cell states no model or template it cannot source", () => {
-  it("does not parse a DAG to invent one", () => {
-    // workflow-service stores neither a model nor a template; the only place they
-    // exist is inside the DAG, and re-deriving another service's answer from its
-    // internals is the workaround this repo forbids.
+describe("the identity cell states the model and the template, from the wire", () => {
+  it("does not parse a DAG to invent either", () => {
+    // Both are workflow-service's to derive, and it does (v0.45.7) — re-deriving its
+    // answer from its own internals is the workaround this repo forbids, and it is a
+    // different thing from reading the fields it publishes.
     expect(TABLE).not.toContain(".dag");
     expect(DETAIL).not.toContain(".dag");
     const body = sliceFn(API, "export async function listChannelWorkflows(");
     expect(body).not.toContain("dag");
+  });
+
+  it("draws the MODEL through the one marks catalogue, logo led by its domain", () => {
+    const cell = sliceFn(TABLE, "export function WorkflowIdentity(");
+    expect(cell).toContain("workflowModelMark(row.contentModel)");
+    expect(cell).toMatch(/domain=\{model\??\.providerDomain/);
+    // An alias the catalogue does not know keeps its own text and draws no logo — the
+    // catalogue decides that, so the cell must not second-guess it from the label or
+    // the alias, which is how a wrong company's logo lands beside a customer's spend.
+    expect(cell).not.toContain("domain={model.label");
+    expect(cell).not.toContain("domain={model.alias");
+  });
+
+  it("prints the TEMPLATE verbatim, and a dash when there is no model", () => {
+    const cell = sliceFn(TABLE, "export function WorkflowIdentity(");
+    expect(cell).toContain("{row.contentPromptType}");
+    expect(cell).toContain("—");
+  });
+
+  it("states them on the DETAIL header too, not only in the table", () => {
+    // A guard pinned to the component and not to the call site passes while the page
+    // renders nothing — so this reads the page, where the header is assembled.
+    expect(DETAIL).toContain("workflowModelMark(row?.contentModel)");
+    expect(DETAIL).toContain("{row.contentPromptType}");
   });
 });

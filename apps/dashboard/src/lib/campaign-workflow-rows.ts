@@ -64,6 +64,13 @@ export interface WorkflowCatalogueRow {
   channel?: string | null;
   /** How it relates to the people it reaches (`cold-outreach` / …). */
   audienceType?: string | null;
+  /**
+   * The chat-service model alias the DAG's content-generation call states, as
+   * workflow-service derives it. Null = the call names none; never a default tier.
+   */
+  contentModel?: string | null;
+  /** The prompt template that call asks for (`cold-email-v39`), verbatim. */
+  contentPromptType?: string | null;
 }
 
 /** What this campaign's money looks like through one dynasty, as features-service states it. */
@@ -103,6 +110,14 @@ export interface CampaignWorkflowRow {
   providers: readonly { name: string; domain: string | null }[];
   channel: string | null;
   audienceType: string | null;
+  /**
+   * Catalogue-only, both of them: a RETIRED dynasty has a revenue group and no
+   * catalogue entry, so workflow-service states neither for it and the row reads null
+   * — which is the honest answer ("we no longer hold this workflow's shape"), not a
+   * gap to fill from the group.
+   */
+  contentModel: string | null;
+  contentPromptType: string | null;
 }
 
 /**
@@ -230,6 +245,8 @@ export function buildCampaignWorkflowRows({
       providers: dedupeProviders(entry?.requiredProviders),
       channel: entry?.channel ?? null,
       audienceType: entry?.audienceType ?? null,
+      contentModel: entry?.contentModel ?? null,
+      contentPromptType: entry?.contentPromptType ?? null,
     });
   };
 

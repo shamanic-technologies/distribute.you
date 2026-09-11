@@ -70,7 +70,7 @@ describe("the welcome step steps its sizes down on mobile", () => {
   });
 
   it("keeps the copy the beta-onboarding guard pins", () => {
-    expect(welcome).toContain("Sell like crazy, autonomously.");
+    expect(welcome).toContain("Get revenue in 24h. From $1/day.");
     expect(welcome).toContain("We send, not you");
     expect(welcome).toContain("You set the ceiling");
     expect(welcome).toContain("Pause anytime");

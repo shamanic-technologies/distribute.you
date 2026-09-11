@@ -193,7 +193,15 @@ describe("onboarding — the funnel screens no longer disclaim themselves", () =
 
 describe("onboarding — copy", () => {
   it("continues the landing's promise instead of re-pitching a converted user", () => {
-    expect(flow).toContain("Sell like crazy, autonomously.");
+    // Verbatim from the SERVED landing hero (index-v2.html), so the screen after
+    // signup cannot state a promise two generations older than the one that
+    // converted the visitor.
+    expect(flow).toContain("Get revenue in 24h. From $1/day.");
+    expect(flow).toContain(
+      "We run multiple acquisition channels for you and you keep the one working the best."
+    );
+    expect(flow).toContain("First $30 free, no commitment.");
+    expect(flow).not.toContain("Sell like crazy, autonomously.");
     expect(flow).not.toContain("Pay per outcome, like Google Ads.");
   });
 
