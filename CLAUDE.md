@@ -1006,6 +1006,16 @@ Guard: `apps/dashboard/tests/lead-timeline-queued.test.ts` (source-substring, sc
 - **The outcome tabs are the one exception**: their date is the realized-outcome instant from the `/revenue` join, because a signup has no delivery status to date. That is a different column meaning, deliberately.
 - Guards: `apps/dashboard/tests/lead-status-date.test.ts` (real unit tests on the map + source-substring on the cell and the comparator). Generalise it: two values printed together are one statement — before putting a number next to a label, check they are about the same event, and fix it by correcting the number that is there, not by adding another one.
 
+## A PIPELINE figure is a SUM OVER DISTINCT ORGS, so a predicted one is computed per company, never per lead — and a funnel-grain ROI is only as good as the producer's per-funnel pricing
+
+Two things worth knowing before you predict, or challenge, a number on a funnel's Overview.
+
+**Predicting.** features-service's revenue engine takes the MAX expected value across an organisation's people and SUMS over DISTINCT ORGS — one company is one client and is worth one lifetime revenue however many of its employees replied. So an acceptance criterion written as `<lead count> x <per-lead value>` is an UPPER BOUND, not the answer, and a correct fix can miss it: 47 website visits at $1.50 predicts $70.50 and prod serves $69.00, because those 47 people sit in 46 companies. State such an AC as "about", or take the distinct-org count first.
+
+**Challenging.** The repo-wide rule is that this app RENDERS a served stat and never computes one, which is right and has a blind spot: when the served number is wrong, every surface here is faithfully wrong and nothing looks broken. The check that localises it costs one division — take the funnel's own declared rates (brand-service serves them per `(brand, offer, funnel)` with a `provenance` per arrow) and multiply them into the lifetime revenue, then compare against what the pipeline implies per outcome. A figure that is merely surprising needs a data hunt; a figure that is IMPOSSIBLE against the rates the same screen is printing localises to the producer's pricing, immediately.
+
+Cost 2026-09-11 (features-service v0.162.0): a Form Magnet funnel (`Website visit -> Form filled -> Paid client`, 25% then 20% on a $30 lifetime revenue) was priced through a BOOKED-MEETING route it does not contain — the brand's brand-wide `visitToClosePct` combined with `visitToMeetingPct x meetingToClosePct` — so a visit was valued at $0.3739 where the brand's own arrows say $1.50. Eight live brands read about a quarter of their real return (this one: $17.20 pipeline / 0.30x, against $69.00 / 1.20x). The dashboard was correct throughout; the reply that matters is that a customer asked whether the ROI was buggy and it was.
+
 ## A funnel's page walks it ARROW BY ARROW, in the campaigns table, and every rung is served
 
 On a funnel's Overview the campaigns table lists the funnel's LEGS, one row each, whoever performs them — `CampaignsTable` switches into that mode whenever it is given a `funnelSteps` walk (`components/campaigns/campaigns-table.tsx` → `FunnelLegTable`). The four figures above say what the whole funnel returned; they cannot say WHERE people fall out of it, nor who works each arrow, which is the question somebody opening one funnel has.
