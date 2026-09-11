@@ -332,7 +332,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   const {
     data: activeData,
     isPending: activePending,
-    isFetching: activeFetching,
+    isFetchedAfterMount: activeFetchedAfterMount,
   } = useAuthQuery(
     ["audiences", brandId, "active", offerId ?? "brand"],
     () => listAudiences(brandId, { status: "active", offerId }),
@@ -341,7 +341,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   const {
     data: pausedData,
     isPending: pausedPending,
-    isFetching: pausedFetching,
+    isFetchedAfterMount: pausedFetchedAfterMount,
   } = useAuthQuery(
     ["audiences", brandId, "paused", offerId ?? "brand"],
     () => listAudiences(brandId, { status: "paused", offerId }),
@@ -350,7 +350,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   const {
     data: archivedData,
     isPending: archivedPending,
-    isFetching: archivedFetching,
+    isFetchedAfterMount: archivedFetchedAfterMount,
   } = useAuthQuery(
     ["audiences", brandId, "archived", offerId ?? "brand"],
     () => listAudiences(brandId, { status: "archived", offerId }),
@@ -643,20 +643,26 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
 
   // Per-TAB loading, not a single combined `isPending`. The Active tab shows
   // active+paused; the Archived tab shows archived — each fetched separately and
-  // human-service (0.25 CU) cold-starts seconds apart, so one tab can be settled
-  // while the other is still loading. Skeleton a tab whose own query is pending
-  // OR fetching-while-empty (the SWR cache can legitimately restore an EMPTY
-  // archived snapshot from before anything was archived, then revalidate in the
-  // background — `isPending` is false there, so gate on `isFetching` too) — the
-  // empty-state only shows once that tab settles with zero rows.
+  // human-service cold-starts seconds apart, so one tab can be settled while the
+  // other is still loading. Skeleton a tab whose own query is pending OR empty
+  // with no network answer yet since this page mounted (the SWR cache can
+  // legitimately restore an EMPTY snapshot from before anything existed, then
+  // revalidate in the background — `isPending` is false there). The empty-state
+  // only shows once that tab has settled with zero rows.
+  //
+  // `isFetchedAfterMount`, deliberately NOT `isFetching`: the latter is also true
+  // on every 5s poll refetch, so a tab that had settled EMPTY (a brand with no
+  // audience yet, an empty Archived tab) flashed its skeleton on every tick for
+  // as long as the page was open. A tab is loading until the network has answered
+  // once for it; after that, a refetch is silent whatever it returns.
   const activeTabRows = audiences.filter((a) => a.status !== "archived").length;
   const archivedTabRows = audiences.filter((a) => a.status === "archived").length;
   const activeTabLoading =
     activePending ||
     pausedPending ||
-    (activeTabRows === 0 && (activeFetching || pausedFetching));
+    (activeTabRows === 0 && !(activeFetchedAfterMount && pausedFetchedAfterMount));
   const archivedTabLoading =
-    archivedPending || (archivedTabRows === 0 && archivedFetching);
+    archivedPending || (archivedTabRows === 0 && !archivedFetchedAfterMount);
   const selected = selectedId ? audiences.find((a) => a.id === selectedId) ?? null : null;
 
   // Clear a stale selection only once the lists have loaded — otherwise a
