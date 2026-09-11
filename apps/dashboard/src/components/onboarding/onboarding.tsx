@@ -115,9 +115,11 @@ import {
   type ChannelMinimums,
 } from "@/lib/channel-minimums";
 import { BrandLogo } from "@/components/brand-logo";
+import { RateInput } from "@/components/rate-input";
 import {
   SALES_FUNNELS,
   funnelRateFields,
+  roundPrefilledRate,
   funnelDraftFromBrand,
   salesFunnelByKey,
   normalizeSalesFunnelKey,
@@ -1558,22 +1560,22 @@ export function Onboarding() {
     if (econRes.economics && !ratesEditedRef.current) {
       const e = econRes.economics;
       econRef.current = e;
-      // Cap the prefilled DEFAULT to a single decimal (8.8429 → 8.8). The backend
-      // economics carry full precision; we never seed a default with more than one
-      // decimal digit. The user can still type finer precision manually.
-      const round1 = (n: number) => Math.round(n * 10) / 10;
+      // A prefilled DEFAULT is a whole number (8.8429 → 9): the backend economics
+      // carry full precision, and a guess offered with decimals reads as a
+      // measurement. The user can still type finer precision manually.
+      const roundRate = (n: number) => roundPrefilledRate(n);
       const loaded: Record<RateKey, number> = {
-        ltv: round1(e.lifetimeRevenueUsd),
-        v2s: round1(e.visitToSignupPct),
-        s2c: round1(e.signupToPaidClientPct),
-        v2m: round1(e.visitToMeetingPct),
-        r2m: round1(e.replyToMeetingPct),
-        m2c: round1(e.meetingToClosePct),
+        ltv: Math.round(e.lifetimeRevenueUsd),
+        v2s: roundRate(e.visitToSignupPct),
+        s2c: roundRate(e.signupToPaidClientPct),
+        v2m: roundRate(e.visitToMeetingPct),
+        r2m: roundRate(e.replyToMeetingPct),
+        m2c: roundRate(e.meetingToClosePct),
         // The effective economics carry only the signup/meeting funnel + the derived
         // visit→close. Seed website_visits' visit→paid from visitToClosePct (same grain);
         // the reply/form beta rates have no effective-econ source → keep the seeded
         // defaults (the user tweaks them on the rates step).
-        v2p: round1(e.visitToClosePct),
+        v2p: roundRate(e.visitToClosePct),
         r2p: rates.r2p,
         v2f: rates.v2f,
         f2p: rates.f2p,
@@ -3520,16 +3522,11 @@ export function Onboarding() {
                 {rate.label}
                 {rate.tip && <InfoTooltip tip={rate.tip} />}
               </span>
-              <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={draft.rates[rate.key] ?? ""}
-                  onChange={(e) => editFunnelDraft(funnel, { rates: { [rate.key]: e.target.value } })}
-                  className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
-                />
-                <span className="text-sm text-gray-500">%</span>
-              </span>
+              <RateInput
+                ariaLabel={rate.label}
+                value={draft.rates[rate.key] ?? ""}
+                onChange={(next) => editFunnelDraft(funnel, { rates: { [rate.key]: next } })}
+              />
             </label>
           ))}
 
@@ -3700,19 +3697,13 @@ export function Onboarding() {
             {economicsRates.map((rate) => (
               <label key={rate.key} className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-700">{rate.label}</span>
-                <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={economicsDraft?.rates[rate.key] ?? ""}
-                    onChange={(e) =>
-                      economicsFunnel &&
-                      editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })
-                    }
-                    className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
-                  />
-                  <span className="text-sm text-gray-500">%</span>
-                </span>
+                <RateInput
+                  ariaLabel={rate.label}
+                  value={economicsDraft?.rates[rate.key] ?? ""}
+                  onChange={(next) =>
+                    economicsFunnel && editFunnelDraft(economicsFunnel, { rates: { [rate.key]: next } })
+                  }
+                />
               </label>
             ))}
           </div>

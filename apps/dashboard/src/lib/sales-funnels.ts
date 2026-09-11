@@ -615,6 +615,19 @@ export type FunnelSeedEconomics = Partial<
   optimizationGoal?: BrandOptimizationGoal | null;
 };
 
+/**
+ * A PREFILL is our guess, not the brand's statement, so it is offered as a whole
+ * number: `8.322%` reads as a precision nobody has, and the customer is asked to
+ * confirm a figure they can read at a glance. A real conversion under half a
+ * percent still seeds `1`, never `0` — "converts at 0%" is a different claim from
+ * "converts rarely". What the brand TYPED (`funnelDraftFromDeclared`) is never
+ * rounded: that is their number, in their precision.
+ */
+export function roundPrefilledRate(pct: number): number {
+  if (pct > 0 && pct < 0.5) return 1;
+  return Math.round(pct);
+}
+
 export function funnelDraftFromBrand(
   def: SalesFunnelDef,
   economics: FunnelSeedEconomics | null | undefined,
@@ -631,7 +644,7 @@ export function funnelDraftFromBrand(
     // pass everyone through, and the funnel multiplies back to what it gave us.
     if (endToEnd !== null && endToEnd !== undefined) {
       rates[rate.key] = formatLocaleNumberInputValue(
-        index === fields.length - 1 ? endToEnd : FULL_CONVERSION_PCT,
+        roundPrefilledRate(index === fields.length - 1 ? endToEnd : FULL_CONVERSION_PCT),
       );
       return;
     }
@@ -643,7 +656,9 @@ export function funnelDraftFromBrand(
     }
     const stored = economics ? economics[rate.key] : null;
     rates[rate.key] =
-      stored === null || stored === undefined ? "" : formatLocaleNumberInputValue(stored);
+      stored === null || stored === undefined
+        ? ""
+        : formatLocaleNumberInputValue(roundPrefilledRate(stored));
   });
 
   return {

@@ -79,7 +79,7 @@ describe("Onboarding sales-economics writes", () => {
     // The fields come from the funnel catalogue, so a rate reads the same words here
     // as on the funnel's own screen.
     expect(src).toContain("const economicsRates = economicsDef ? funnelRateFields(economicsDef) : []");
-    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })");
+    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: next } })");
   });
 
   it("arms the Update button on a live compare, never a sticky latch", () => {
