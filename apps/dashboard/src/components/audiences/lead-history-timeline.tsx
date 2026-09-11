@@ -145,8 +145,11 @@ export function LeadHistoryTimeline({
                           it goes. The label drops the query string and the href keeps it,
                           which is the rule the sender already applies when it composes the
                           message: the panel shows what the prospect saw, and hovering
-                          reveals the full destination in the browser's status bar. */}
-                      {emailBodySegments(e.bodyText ?? "").map((seg, s) =>
+                          reveals the full destination in the browser's status bar.
+                          On a message we HOLD, the provider stripped our tracking
+                          parameters out of the body entirely, so the destination comes
+                          from the producer's own resolution against the copy we wrote. */}
+                      {emailBodySegments(e.bodyText ?? "", e.links).map((seg, s) =>
                         seg.kind === "link" ? (
                           <a
                             key={s}

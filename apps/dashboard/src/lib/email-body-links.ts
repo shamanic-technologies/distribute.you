@@ -36,6 +36,24 @@ export type EmailBodySegment =
   | { kind: "link"; text: string; href: string };
 
 /**
+ * A link as lead-service resolved it: what the prospect SAW, and where it truly leads.
+ *
+ * `href` is the destination WE wrote, tracking parameters included, resolved against
+ * the copy we generated — so the outreach provider's click-tracking redirect can never
+ * appear here, and following one from the dashboard cannot register a click the prospect
+ * never made. `null` is a first-class answer meaning the producer could not resolve the
+ * link to a URL we wrote (it matched none, or matched several parameterizations of one
+ * page); it is never a guess.
+ *
+ * Structural on purpose, so this module stays alias-free: the producer owns the shape
+ * and the reader's schema declares it.
+ */
+export interface MessageLink {
+  text: string;
+  href: string | null;
+}
+
+/**
  * Only `http` and `https`.
  *
  * A bare domain is NOT linkified: an email body is full of them (the signature, the
@@ -110,14 +128,45 @@ export function linkDisplayText(href: string): string {
 }
 
 /**
+ * The destination for each link text the producer could resolve.
+ *
+ * Keyed on the text because lead-service states one entry per LINK, not one per
+ * occurrence — the same URL written twice in a body is one destination. An entry whose
+ * `href` is null is deliberately absent from the map: the caller then falls through to
+ * the URL as written, which is what the prospect saw and is the honest reading of a
+ * destination nobody can resolve.
+ */
+function resolvedHrefs(links: readonly MessageLink[] | null | undefined): Map<string, string> {
+  const byText = new Map<string, string>();
+  for (const link of links ?? []) {
+    if (link.href) byText.set(link.text, link.href);
+  }
+  return byText;
+}
+
+/**
  * Split a body into prose and links, in order.
  *
  * The caller renders each segment: a `text` run verbatim, a `link` as an anchor whose
  * label is `text` and whose destination is `href`. An empty body yields no segments,
  * so a caller cannot mistake "nothing to read" for "one empty line".
+ *
+ * `links` is what the producer resolved for a message we HOLD. Where it names a
+ * destination, that destination wins — it carries the tracking parameters the sender
+ * stripped out of the visible text, which is the whole reason a reader wants the link
+ * rather than the string. Where it does not (a drafted body, an older payload, a link
+ * the producer could not resolve), the URL as written is the destination, exactly as it
+ * was before this existed. ⚠️ The producer trims a trailing bracket unconditionally
+ * while this trims one the URL never opened, so a destination like `…/Foo_(bar)` is
+ * spelled differently on the two sides and simply does not match — it then renders as
+ * its own link, which is the same honest degrade.
  */
-export function emailBodySegments(body: string): EmailBodySegment[] {
+export function emailBodySegments(
+  body: string,
+  links?: readonly MessageLink[] | null,
+): EmailBodySegment[] {
   if (!body) return [];
+  const resolved = resolvedHrefs(links);
   const segments: EmailBodySegment[] = [];
   let cursor = 0;
   // A fresh regex per call: `lastIndex` on a module-level /g regex is shared state,
@@ -132,7 +181,11 @@ export function emailBodySegments(body: string): EmailBodySegment[] {
     if (match.index > cursor) {
       segments.push({ kind: "text", text: body.slice(cursor, match.index) });
     }
-    segments.push({ kind: "link", text: linkDisplayText(href), href });
+    segments.push({
+      kind: "link",
+      text: linkDisplayText(href),
+      href: resolved.get(href) ?? href,
+    });
     cursor = match.index + href.length;
     // Re-anchor after the trim, so punctuation we handed back to the prose is not
     // skipped over by the next scan.
