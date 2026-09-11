@@ -45,20 +45,28 @@ describe("onboarding — one flow, no gate", () => {
 });
 
 describe("onboarding — step order", () => {
-  it("sends services straight to audiences", () => {
-    expect(flow).toContain('setStep("audiences")');
+  // The audience step sits AFTER the funnels and the primary pick (#4037): the
+  // ICP + audience suggest prewarm takes ~35 s at p50 in prod, and two more
+  // screens of the user's own typing cover it. It also puts the step after the
+  // brand's first offer exists, which is what lets a future suggest name it.
+  it("sends services straight to the funnels", () => {
+    expect(flow).toContain('onClick={() => { addService(serviceDraft); setStep("funnels"); }}');
   });
 
-  it("puts the sales funnels AFTER audiences", () => {
-    expect(flow).toContain('onBack={() => setStep("services")}');
-    expect(flow).toContain('onContinue={() => setStep("funnels")}');
+  it("routes the funnels back to services", () => {
+    const funnels = sliceFrom('if (step === "funnels") {', 900);
+    expect(funnels).toContain('<BackButton onClick={() => setStep("services")} />');
   });
 
-  it("routes consent back to wherever the user came from", () => {
-    // A brand that picked ONE funnel skipped the primary pick, so back must go to
-    // the funnel selection — routing it into `primary` would bounce forward again
-    // on the single-funnel fail-safe and trap the user on consent.
-    expect(flow).toContain('<BackButton onClick={() => setStep(skipPrimaryStep ? "funnels" : "primary")} />');
+  it("puts the audiences AFTER the primary pick, and consent after the audiences", () => {
+    expect(flow).toContain('onBack={() => setStep(skipPrimaryStep ? "funnels" : "primary")}');
+    expect(flow).toContain('onContinue={() => setStep("consent")}');
+    expect(flow).not.toContain('onContinue={() => setStep("funnels")}');
+  });
+
+  it("routes consent back to the audiences", () => {
+    const consent = sliceFrom('if (step === "consent") {', 600);
+    expect(consent).toContain('<BackButton onClick={() => setStep("audiences")} />');
   });
 
   it("collects the economics per funnel after payment", () => {
@@ -138,7 +146,7 @@ describe("onboarding — what it writes", () => {
     // The pick still drives local state: the detail-screen order, the outcome the
     // budget step prices, the funnel the projection resolves against.
     expect(save).toContain("setOutcome(nextOutcome)");
-    expect(save).toContain('setStep("consent")');
+    expect(save).toContain('setStep("audiences")');
   });
 
   it("prices each funnel through the same partial patch the settings card uses", () => {
@@ -311,7 +319,7 @@ describe("onboarding — the primary step is skipped when there is nothing to pi
     // Written from `soleFunnelOutcome`, never from `primaryFunnelKey`: the setter
     // for that key runs in the same handler and has not applied on this render.
     const save = sliceFrom("async function saveFunnelsAndContinue()", 1600);
-    expect(save).toContain('const nextStep: Step = skipPrimaryStep ? "consent" : "primary";');
+    expect(save).toContain('const nextStep: Step = skipPrimaryStep ? "audiences" : "primary";');
     expect(save).toContain("if (skipPrimaryStep && soleFunnelOutcome) setOutcome(soleFunnelOutcome);");
   });
 
@@ -319,6 +327,8 @@ describe("onboarding — the primary step is skipped when there is nothing to pi
     // A snapshot or in-flight checkout blob written before the skip shipped can
     // still point at `primary`. Same fail-safe shape as the retired-step branch.
     expect(flow).toContain('if (step === "primary" && skipPrimaryStep) {');
+    const failsafe = sliceFrom('if (step === "primary" && skipPrimaryStep) {', 200);
+    expect(failsafe).toContain('setStep("audiences")');
   });
 });
 

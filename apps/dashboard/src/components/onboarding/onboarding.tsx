@@ -758,7 +758,7 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
 // step in this list, so old snapshots keep parsing and ONBOARDING_STATE_VERSION
 // stays put (a bump strands an in-flight checkout).
 const ALL_STEPS: Step[] = [
-  "welcome", "url", "loading", "services", "destination", "objective", "rates", "audiences", "funnels", "primary", "consent", "pricing", "bonus", "launching",
+  "welcome", "url", "loading", "services", "destination", "objective", "rates", "funnels", "primary", "audiences", "consent", "pricing", "bonus", "launching",
 ];
 
 function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
@@ -1332,9 +1332,9 @@ export function Onboarding() {
   // Cross-session brand resume (?brandId=, no snapshot): the per-brand setup gate
   // redirected a never-finished brand here. Fetch it to seed the URL, then replay the
   // loading-screen hydration (idempotent upsert + services/economics/projection/
-  // audience prewarm from backend) and land on the goal step — the user re-confirms
-  // goal → rates → audiences → consent → budget with everything before it prefilled.
-  // We stop at the goal step (not budget) because the pre-terminal audience picks +
+  // audience prewarm from backend) and land on the funnels step — the user re-confirms
+  // funnels → primary → audiences → consent → budget with everything before it prefilled.
+  // We stop at the funnels step (not budget) because the pre-terminal audience picks +
   // budget tier live only in the sessionStorage snapshot, which is gone cross-session
   // — so the user must re-pick those, but nothing typed earlier is lost (it's saved
   // in backend and re-hydrated). A live snapshot (same tab) wins and skips this.
@@ -1462,20 +1462,17 @@ export function Onboarding() {
   }
 
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
-    // Warm ONLY the 7 user-facing fields (services + the 6 offer levers) in suggest
-    // mode — the offer step reads these via getBrandUserFields and needs a best-effort
-    // value for every lever (never "Unknown"). The backend-only SALES_PROFILE_FIELDS
-    // (funding/competitors/leadership/...) are NOT extracted here: onboarding never reads
-    // them, and the brand-info alpha page regenerates them on demand.
-    await extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest" }).catch((e) => {
-      console.error("[dashboard] extractBrandFields (background) failed:", e);
-    });
-
-    // Pre-warm the audience step: now that the brand profile is extracted, draft
-    // the ICP prompt and fire the audience suggest in the background. By the time
-    // the user clicks through services/goal/rates to the audience step, candidates
-    // are ready. Fail-soft — a failed ICP/suggest resolves candidates:null and the
-    // step falls back to its own draft + manual "Suggest audiences".
+    // Pre-warm the audience step FIRST: draft the ICP prompt and fire the audience
+    // suggest in the background, before the lever extraction below is awaited. The
+    // ICP seeds from the services (extracted and awaited by the caller) and
+    // deliberately EXCLUDES the offer levers (brand-service curateIcpProfileFields),
+    // so it does not need that extraction — and awaiting it first (p90 35 s) left
+    // `prefetch` null when a fast click-through reached the audience step, which
+    // then fired its OWN ICP + suggest while this one ran unadopted: two ~35 s
+    // suggest runs per signup, both billed. By the time the user clicks through
+    // services → funnels → primary, candidates are ready. Fail-soft — a failed
+    // ICP/suggest resolves candidates:null and the step falls back to its own draft
+    // + manual "Suggest audiences".
     const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }> => {
       // Fetch the real ICP first and HOLD it independently of the audience-suggest
       // step. suggestAudiences is flaky (fails often); if it throws AFTER the ICP
@@ -1499,6 +1496,15 @@ export function Onboarding() {
       }
     })();
     setAudiencePrefetch({ promise: audiencePrewarm });
+
+    // Then warm ONLY the 7 user-facing fields (services + the 6 offer levers) in suggest
+    // mode — the offer step reads these via getBrandUserFields and needs a best-effort
+    // value for every lever (never "Unknown"). The backend-only SALES_PROFILE_FIELDS
+    // (funding/competitors/leadership/...) are NOT extracted here: onboarding never reads
+    // them, and the brand-info alpha page regenerates them on demand.
+    await extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest" }).catch((e) => {
+      console.error("[dashboard] extractBrandFields (background) failed:", e);
+    });
 
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandUserFields(id),
@@ -2468,7 +2474,7 @@ export function Onboarding() {
     // set (the outcome that prices the budget step) and go straight past it. The
     // outcome is written from the DERIVED funnel here rather than from
     // `primaryFunnelKey`, whose setter above has not applied yet on this render.
-    const nextStep: Step = skipPrimaryStep ? "consent" : "primary";
+    const nextStep: Step = skipPrimaryStep ? "audiences" : "primary";
     if (skipPrimaryStep && soleFunnelOutcome) setOutcome(soleFunnelOutcome);
     const id = brandIdRef.current;
     if (!id) {
@@ -2518,7 +2524,7 @@ export function Onboarding() {
     // resolves against.
     setOutcome(nextOutcome);
     setError(null);
-    setStep("consent");
+    setStep("audiences");
   }
 
   // v2 — the draft shown for one funnel's detail screen. Falls back in CASCADE so
@@ -3193,7 +3199,7 @@ export function Onboarding() {
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => { addService(serviceDraft); setStep("audiences"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); setStep("funnels"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
       >
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         {/* The "we drafted these" line is a claim about a successful extraction. With
@@ -3277,8 +3283,8 @@ export function Onboarding() {
         onCandidatesChange={setAudienceCandidates}
         selectedAudienceIds={selectedAudienceIds}
         onSelectedAudienceIdsChange={setSelectedAudienceIds}
-        onBack={() => setStep("services")}
-        onContinue={() => setStep("funnels")}
+        onBack={() => setStep(skipPrimaryStep ? "funnels" : "primary")}
+        onContinue={() => setStep("consent")}
         onEdit={() => setStep("url")}
       />
     );
@@ -3301,7 +3307,7 @@ export function Onboarding() {
           />
         }
       >
-        <BackButton onClick={() => setStep("audiences")} />
+        <BackButton onClick={() => setStep("services")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">How do you sell?</h2>
         <p className="mt-2 mb-6 text-gray-500">
           Pick every path a prospect can take to become a paying customer. You can pick more than one — we ask for the numbers behind each one once you are set up.
@@ -3344,7 +3350,7 @@ export function Onboarding() {
   // retired-step branch above — advance rather than render a one-option radio.
   if (step === "primary" && skipPrimaryStep) {
     if (soleFunnelOutcome) setOutcome(soleFunnelOutcome);
-    setStep("consent");
+    setStep("audiences");
     return null;
   }
 
@@ -3394,10 +3400,7 @@ export function Onboarding() {
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
       >
-          {/* Back goes where the user actually came FROM: a single-funnel brand
-              skipped the primary pick, so routing back into it would bounce
-              forward again on the fail-safe above and trap them on consent. */}
-          <BackButton onClick={() => setStep(skipPrimaryStep ? "funnels" : "primary")} />
+          <BackButton onClick={() => setStep("audiences")} />
           <div className="mb-4 flex items-start gap-2">
             <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
             <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
