@@ -3038,20 +3038,23 @@ export function Onboarding() {
           </button>
         }
       >
-        {/* Continues the landing: the visitor clicked "Launch from $1/day" on a
-            page headlined "Sell like crazy, autonomously.", so the first screen after
-            signup repeats that promise rather than re-pitching a converted user with a
-            different one. The three cards are not a feature tour (which NN/g's "skip
-            onboarding when possible" says to cut) — they answer the objections that
-            actually stand between this screen and the URL field. */}
+        {/* Continues the landing: the visitor clicked "Start free" on a page
+            headlined "Get revenue in 24h. From $1/day", so the first screen after
+            signup repeats THAT promise verbatim rather than re-pitching a converted
+            user with a different one. The headline and the line under it are the
+            served landing's own strings (apps/landing/public/landing/index-v2.html),
+            so they cannot drift from what the visitor just read. The three cards are
+            not a feature tour (which NN/g's "skip onboarding when possible" says to
+            cut). They answer the objections that actually stand between this
+            screen and the URL field. */}
         {/* Every size below steps down on mobile. The three cards alone were
             528px of a 926px column on a 667px screen, which is what pushed the
             CTA off. */}
         <h1 className="font-display text-3xl font-bold leading-tight text-gray-950 sm:text-4xl">
-          Sell like crazy, autonomously.
+          Get revenue in 24h. From $1/day.
         </h1>
         <p className="mt-2.5 text-sm leading-6 text-gray-500 sm:mt-3 sm:text-base sm:leading-7">
-          Drop your website. We find the buyers, reach out on your behalf, and forward the interested replies to your inbox. You handle the closing.
+          Drop your website. We run multiple acquisition channels for you and you keep the one working the best. First $30 free, no commitment.
         </p>
         <div className="mt-5 grid gap-2.5 sm:mt-7 sm:gap-4 sm:grid-cols-3">
           {[

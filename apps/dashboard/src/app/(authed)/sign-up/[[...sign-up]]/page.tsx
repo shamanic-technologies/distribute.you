@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
+import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import {
   authFailureProps,
   clerkErrorCode,
@@ -274,139 +275,14 @@ export default function SignUpPage() {
       className="min-h-screen flex"
       style={{ fontFamily: '"Inter", system-ui, sans-serif', fontSize: "1rem" }}
     >
-      {/* Left: Brand panel */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: "oklch(6.5% 0.012 264)" }}
-      >
-        {/* Radial glow */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 60% at 50% 0%, oklch(55% 0.24 264 / 0.18) 0%, transparent 70%)",
-          }}
-        />
-
-        {/* Logo */}
-        <div className="relative z-10">
-          <Link
-            href="https://distribute.you"
-            className="inline-flex items-center gap-3"
-          >
-            <Image
-              src="/logo-distribute.svg"
-              alt="distribute.you"
-              width={32}
-              height={32}
-            />
-            <span
-              style={{
-                fontFamily: '"Inter", system-ui, sans-serif',
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                color: "oklch(97% 0.003 264)",
-              }}
-            >
-              distribute.you
-            </span>
-            <span
-              style={{
-                fontFamily: '"JetBrains Mono", "Courier New", monospace',
-                fontSize: "0.625rem",
-                fontWeight: 500,
-                padding: "0.2em 0.5em",
-                borderRadius: "4px",
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                background: "oklch(55% 0.24 264 / 0.2)",
-                color: "oklch(72% 0.18 264)",
-              }}
-            >
-              beta
-            </span>
-          </Link>
-        </div>
-
-        {/* Tagline block */}
-        <div className="relative z-10">
-          <p
-            style={{
-              fontFamily: '"JetBrains Mono", "Courier New", monospace',
-              fontSize: "0.625rem",
-              fontWeight: 500,
-              textTransform: "uppercase",
-              letterSpacing: "0.2em",
-              color: "oklch(55% 0.24 264)",
-              marginBottom: "1.25rem",
-            }}
-          >
-            The Stripe of Distribution
-          </p>
-          <h2
-            style={{
-              fontFamily: '"Inter", system-ui, sans-serif',
-              fontSize: "clamp(2.25rem, 4vw, 3rem)",
-              fontWeight: 700,
-              lineHeight: 1.15,
-              letterSpacing: "-0.02em",
-              color: "oklch(97% 0.003 264)",
-              marginBottom: "1.25rem",
-            }}
-          >
-            Your distribution,
-            <br />
-            automated.
-          </h2>
-          <p
-            style={{
-              fontFamily: '"Inter", system-ui, sans-serif',
-              fontSize: "1.125rem",
-              fontWeight: 400,
-              lineHeight: 1.6,
-              color: "oklch(58% 0.008 264)",
-              maxWidth: "28rem",
-            }}
-          >
-            Give us your URL. We handle outreach, emails, and every touchpoint
-            in between.
-          </p>
-        </div>
-
-        {/* Footer bullets */}
-        <div
-          className="relative z-10 flex items-center gap-6"
-          style={{
-            fontFamily: '"Inter", system-ui, sans-serif',
-            fontSize: "0.875rem",
-            color: "oklch(42% 0.006 264)",
-          }}
-        >
-          {["Zero config", "Transparent variable costs", "Data-driven"].map(
-            (item) => (
-              <div key={item} className="flex items-center gap-2">
-                <span
-                  className="rounded-full flex-shrink-0"
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    background: "oklch(55% 0.24 264)",
-                  }}
-                />
-                {item}
-              </div>
-            )
-          )}
-        </div>
-      </div>
+      <AuthBrandPanel />
 
       {/* Right: Sign-up form */}
-      <div
-        className="flex-1 flex items-center justify-center p-8"
-        style={{ background: "oklch(98% 0.003 264)" }}
-      >
+      {/* `bg-gray-50` rather than the hardcoded oklch it carried: that literal
+          ignores the theme, so with the brand panel now following `html.dark`
+          the two columns would read light-beside-dark on one screen. The class
+          is remapped in globals.css, so both halves move together. */}
+      <div className="flex-1 flex items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex justify-center mb-10">
@@ -430,48 +306,29 @@ export default function SignUpPage() {
               >
                 distribute.you
               </span>
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono", "Courier New", monospace',
-                  fontSize: "0.625rem",
-                  fontWeight: 500,
-                  padding: "0.2em 0.5em",
-                  borderRadius: "4px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  background: "oklch(55% 0.24 264 / 0.1)",
-                  color: "oklch(38% 0.18 264)",
-                }}
-              >
-                beta
-              </span>
             </Link>
           </div>
 
           {/* Heading */}
           <div className="text-center mb-8">
+            {/* Colour through the remapped gray scale, never an inline literal:
+                these three strings sit OUTSIDE the white card, on the column
+                background, which follows `html.dark`. A hardcoded near-black
+                heading there is invisible on the dark surface. */}
             <h1
+              className="mb-2 text-gray-900"
               style={{
-                fontFamily: '"Inter", system-ui, sans-serif',
                 fontSize: "1.875rem",
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
-                color: "oklch(12% 0.008 264)",
-                marginBottom: "0.5rem",
               }}
             >
               {pendingVerification ? "Verify your email" : "Create your account"}
             </h1>
-            <p
-              style={{
-                fontFamily: '"Inter", system-ui, sans-serif',
-                fontSize: "1rem",
-                color: "oklch(48% 0.006 264)",
-              }}
-            >
+            <p className="text-base text-gray-500">
               {pendingVerification
                 ? `We sent a code to ${email}`
-                : "$30 free credits."}
+                : "First $30 free, no commitment."}
             </p>
           </div>
 
@@ -762,7 +619,10 @@ export default function SignUpPage() {
                       ...(!submitting && !canSubmitEmail ? { opacity: 0.5 } : {}),
                     }}
                   >
-                    {submitting ? "Creating account..." : "Create account"}
+                    {/* The landing's own CTA word, so the button a visitor
+                        pressed on `/` and the one that finishes the job read the
+                        same. The busy label stays literal about what is running. */}
+                    {submitting ? "Creating account..." : "Start free"}
                   </button>
                 </form>
 
@@ -787,14 +647,7 @@ export default function SignUpPage() {
             )}
           </div>
 
-          <p
-            className="mt-6 text-center"
-            style={{
-              fontFamily: '"Inter", system-ui, sans-serif',
-              fontSize: "0.75rem",
-              color: "oklch(62% 0.006 264)",
-            }}
-          >
+          <p className="mt-6 text-center text-xs text-gray-500">
             By signing up, you agree to our{" "}
             <a
               href="https://distribute.you/terms"
