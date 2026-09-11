@@ -421,6 +421,22 @@ describe("the grain is a TAB, and no tab falls back to another one's answer", ()
     expect(TABLE).toContain("including spend we later refunded");
   });
 
+  it("the running workflow is resolved ONCE and handed to every grain's builder", () => {
+    // A campaign pinned to anything but its dynasty's CURRENT version is nameable only
+    // by a revenue group's folded `workflowSlugs`, and the global grain holds no groups
+    // — so a builder resolving from its own source lost `Running now` on that tab alone.
+    // The page must resolve from the catalogue AND every group set it holds, once.
+    expect(TABLE).toContain("resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [");
+    expect(TABLE).toContain("campaignRevQ.data ?? [],");
+    expect(TABLE).toContain("offerRevQ.data ?? [],");
+    expect(TABLE).toContain("brandRevQ.data ?? [],");
+    // Neither builder may be handed the raw slug again — that is the per-grain
+    // resolution this replaced.
+    expect(TABLE).not.toContain("campaignWorkflowSlug");
+    expect(DETAIL).not.toContain("campaignWorkflowSlug");
+    expect(DETAIL).toContain("resolveRunningWorkflow(campaign?.workflowSlug ?? null");
+  });
+
   it("only the CAMPAIGN grain can say a scope is paused", () => {
     // At brand and global grain the scope spans campaigns, so the word describes none
     // of them.
