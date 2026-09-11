@@ -74,6 +74,7 @@ import { useScopePaused } from "@/lib/use-scope-paused";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listChannelWorkflows,
+  listChannelWorkflowDynasties,
   getFeatureRevenueByWorkflow,
   getBrandRevenueByWorkflow,
   getOfferRevenueByWorkflow,
@@ -311,6 +312,15 @@ export function CampaignWorkflowsPage() {
     { ...pollOptions, enabled: ready },
   );
 
+  // The channel's version-to-dynasty map — the only source that can name a SUPERSEDED
+  // version, which is what the campaign row is routinely pinned to. Read at every grain
+  // because which workflow is running is a fact about the CAMPAIGN, not about the tab.
+  const dynastiesQ = useAuthQuery(
+    ["workflowDynasties", featureSlug ?? "none"],
+    () => listChannelWorkflowDynasties(featureSlug as string),
+    { ...pollOptions, enabled: ready },
+  );
+
   // This CAMPAIGN's money per workflow. The campaign is in the key as well as in the
   // request: a brand-scoped entry answering a campaign-scoped question is the wrong-
   // scope bug wearing a cache key.
@@ -370,12 +380,20 @@ export function CampaignWorkflowsPage() {
   // the running row on that tab alone.
   const running = useMemo(
     () =>
-      resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [
-        campaignRevQ.data ?? [],
-        offerRevQ.data ?? [],
-        brandRevQ.data ?? [],
-      ]),
-    [campaign?.workflowSlug, catalogueQ.data, campaignRevQ.data, offerRevQ.data, brandRevQ.data],
+      resolveRunningWorkflow(
+        campaign?.workflowSlug ?? null,
+        catalogueQ.data ?? [],
+        [campaignRevQ.data ?? [], offerRevQ.data ?? [], brandRevQ.data ?? []],
+        dynastiesQ.data ?? [],
+      ),
+    [
+      campaign?.workflowSlug,
+      catalogueQ.data,
+      campaignRevQ.data,
+      offerRevQ.data,
+      brandRevQ.data,
+      dynastiesQ.data,
+    ],
   );
 
   const rows = useMemo(() => {

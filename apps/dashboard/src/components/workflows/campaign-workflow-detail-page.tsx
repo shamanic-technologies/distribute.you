@@ -55,6 +55,7 @@ import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import {
   listChannelWorkflows,
+  listChannelWorkflowDynasties,
   getFeatureRevenueByWorkflow,
   getWorkflowRevenue,
   getFleetWorkflowCost,
@@ -205,6 +206,14 @@ export function CampaignWorkflowDetailPage() {
     { ...pollOptions, enabled: ready },
   );
 
+  // The channel's version-to-dynasty map, on the table's own key so drilling in costs
+  // no extra request. The only source that names a SUPERSEDED version.
+  const dynastiesQ = useAuthQuery(
+    ["workflowDynasties", featureSlug ?? "none"],
+    () => listChannelWorkflowDynasties(featureSlug as string),
+    { ...pollOptions, enabled: ready },
+  );
+
   // The drill-down body: the whole un-grouped answer, narrowed to this workflow.
   const revenueQ = useAuthQuery(
     ["workflowRevenue", brandId, campaignId, dynastySlug],
@@ -226,15 +235,19 @@ export function CampaignWorkflowDetailPage() {
       buildCampaignWorkflowRows({
         catalogue: catalogueQ.data ?? [],
         groups: groupsQ.data ?? [],
-        // Resolved from the catalogue AND this campaign's own groups, because the
-        // catalogue carries only each dynasty's current version and campaign-service
-        // states a versioned slug — see `resolveRunningWorkflow`.
-        running: resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [
-          groupsQ.data ?? [],
-        ]),
+        // Resolved from the catalogue, this campaign's own groups, AND the channel's
+        // version-to-dynasty map, because the catalogue carries only each dynasty's
+        // current version while campaign-service states a versioned slug that is
+        // routinely a superseded one — see `resolveRunningWorkflow`.
+        running: resolveRunningWorkflow(
+          campaign?.workflowSlug ?? null,
+          catalogueQ.data ?? [],
+          [groupsQ.data ?? []],
+          dynastiesQ.data ?? [],
+        ),
         isLearning,
       }),
-    [catalogueQ.data, groupsQ.data, campaign?.workflowSlug],
+    [catalogueQ.data, groupsQ.data, dynastiesQ.data, campaign?.workflowSlug],
   );
 
   const row: CampaignWorkflowRow | undefined = rows.find(

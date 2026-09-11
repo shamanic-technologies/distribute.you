@@ -87,6 +87,40 @@ export interface WorkflowRevenueGroup {
   cpcCents: number | null;
 }
 
+/**
+ * A dynasty and EVERY versioned slug that belongs to it, superseded ones included.
+ *
+ * This is the one authoritative version-to-dynasty map in the fleet, and it exists
+ * because the two sources above cannot answer for a version that is neither current
+ * nor has spent money in this scope:
+ *
+ *  - The CATALOGUE carries each dynasty's CURRENT version only (workflow-service
+ *    filters its list to active versions whatever filter is passed), so a superseded
+ *    version is absent from it by construction.
+ *  - A revenue group's `workflowSlugs` is the set of versions that produced SPEND in
+ *    the scope being read — not the dynasty's membership. A version the campaign is
+ *    pinned to but never billed under, on this brand, is simply not in it.
+ *
+ * So a campaign pinned to a superseded version on a brand that never ran that exact
+ * version was unnameable, permanently, and the `Running now` section vanished with
+ * every figure on the page real and nothing red. Measured in production 2026-09-11:
+ * all 7 distinct workflow slugs on the 14 live cold-email campaigns are non-active
+ * versions; six resolve only because their slug happens to BE their dynasty slug (they
+ * are v1), and `sales-cold-email-outreach-rudder-v3` resolved through nothing at all.
+ * It grows every time a dynasty upgrades past v1.
+ *
+ * Read SCOPED TO ONE FEATURE. The unscoped listing is fleet-wide (625 dynasties, 1043
+ * versions, 122KB on the day this shipped) and is every internal workflow codename we
+ * have — those must never reach a customer's browser, where a workflow reads as "Pro
+ * workflow 3" and never its codename.
+ */
+export interface WorkflowDynastyMembership {
+  workflowDynastySlug: string;
+  workflowDynastyName: string;
+  /** Every versioned slug in the lineage, superseded versions included. */
+  workflowSlugs: readonly string[];
+}
+
 export interface CampaignWorkflowRow {
   workflowDynastySlug: string;
   /** The catalogue's name, else the producer's, else the slug. Never a blank cell. */
@@ -134,10 +168,19 @@ export function collapseWorkflowCatalogue(
 /**
  * The dynasty a campaign's own versioned workflow slug belongs to, or null.
  *
- * Resolved from whichever source NAMES that version — the catalogue's entry, or a
- * group's folded `workflowSlugs`. A campaign whose workflow neither source knows
- * states no running row rather than a guessed one: framing the wrong row as live is
- * worse than framing none.
+ * Resolved from whichever source NAMES that version, in order: the catalogue's entry,
+ * a group's folded `workflowSlugs`, then the dynasty MEMBERSHIP map. A campaign whose
+ * workflow no source knows states no running row rather than a guessed one — framing
+ * the wrong row as live is worse than framing none.
+ *
+ * The membership map is tried LAST deliberately, although it is the authoritative one:
+ * the three sources agree by construction wherever more than one answers, so ordering
+ * cannot change a resolution — and putting the new source at the end makes every case
+ * that already resolved byte-identical to before. It adds coverage, never a different
+ * answer.
+ *
+ * Never by string-prefix arithmetic on the slug: a dynasty slug is opaque, and
+ * `<dynasty>-v2` is a convention rather than a contract.
  *
  * ⚠️ WHICH source is available DEPENDS ON THE GRAIN, which is exactly why no builder
  * may call this itself — see `resolveRunningWorkflow`.
@@ -146,6 +189,7 @@ export function runningDynastyFor(
   campaignWorkflowSlug: string | null | undefined,
   catalogue: readonly WorkflowCatalogueRow[],
   groups: readonly WorkflowRevenueGroup[],
+  memberships: readonly WorkflowDynastyMembership[] = [],
 ): string | null {
   const slug = campaignWorkflowSlug?.trim();
   if (!slug) return null;
@@ -158,6 +202,10 @@ export function runningDynastyFor(
   for (const group of groups) {
     if (group.workflowDynastySlug === slug) return group.workflowDynastySlug;
     if (group.workflowSlugs.includes(slug)) return group.workflowDynastySlug;
+  }
+  for (const family of memberships) {
+    if (family.workflowDynastySlug === slug) return family.workflowDynastySlug;
+    if (family.workflowSlugs.includes(slug)) return family.workflowDynastySlug;
   }
   return null;
 }
@@ -191,21 +239,37 @@ export interface RunningWorkflow {
  * A group set that has not loaded contributes nothing rather than blocking: the first
  * source that names the version wins, and an unnameable version answers `{null, null}`
  * so the caller states no running row rather than a guessed one.
+ *
+ * ── THE THIRD SOURCE, AND WHY THE OTHER TWO ARE NOT ENOUGH ───────────────────────
+ *
+ * Both of the sources above can only ever name a version that is either the dynasty's
+ * CURRENT one or one that has already SPENT in the scope being read. A campaign pinned
+ * to a superseded version, on a brand that never billed under that exact version, is
+ * therefore unnameable by construction — and that is the ordinary case rather than an
+ * edge one (prod 2026-09-11: `sales-cold-email-outreach-rudder-v3`, whose brand ran v2
+ * and v5 and never v3). `memberships` is workflow-service's own version-to-dynasty map,
+ * read scoped to this channel, and it is the only thing in the fleet that answers.
+ *
+ * It defaults to empty so a failed or in-flight read degrades to exactly the previous
+ * behaviour rather than deleting the section — losing `Running now` to a blip is the
+ * regression this whole line of work exists to close.
  */
 export function resolveRunningWorkflow(
   campaignWorkflowSlug: string | null | undefined,
   catalogue: readonly WorkflowCatalogueRow[],
   groupSets: readonly (readonly WorkflowRevenueGroup[])[],
+  memberships: readonly WorkflowDynastyMembership[] = [],
 ): RunningWorkflow {
   const slug = campaignWorkflowSlug?.trim();
   if (!slug) return { dynastySlug: null, dynastyName: null };
   const collapsed = collapseWorkflowCatalogue(catalogue);
   const flat = groupSets.flat();
-  const dynastySlug = runningDynastyFor(slug, collapsed, flat);
+  const dynastySlug = runningDynastyFor(slug, collapsed, flat, memberships);
   if (!dynastySlug) return { dynastySlug: null, dynastyName: null };
   const named =
     collapsed.find((c) => c.workflowDynastySlug === dynastySlug)?.workflowDynastyName ??
     flat.find((g) => g.workflowDynastySlug === dynastySlug)?.workflowDynastyName ??
+    memberships.find((m) => m.workflowDynastySlug === dynastySlug)?.workflowDynastyName ??
     null;
   return { dynastySlug, dynastyName: named };
 }
