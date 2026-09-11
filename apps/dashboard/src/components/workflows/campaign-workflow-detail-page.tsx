@@ -43,6 +43,7 @@ import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { ProviderLogo } from "@/components/provider-logo";
+import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { LearningTag } from "@/components/learning-tag";
 import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
@@ -72,6 +73,9 @@ const FLEET_TIP =
 
 const SIBLINGS_TIP =
   "The same price for the other workflows this campaign has run. Only the ones with enough sales interests behind them to state a price are drawn.";
+
+const MODEL_TIP =
+  "The AI model this workflow writes your emails with, and the prompt template it writes them from. Both come from the workflow itself, so they are what ran for you.";
 
 const FUNNEL_TIP =
   "How far the people this workflow reached got down your funnel, and the share of each step that reached the next. Both come from us; nothing here is worked out in your browser.";
@@ -122,7 +126,12 @@ export function BarRows({
         return (
           <div key={r.key}>
             <div className="flex items-baseline justify-between gap-3 text-xs">
+              {/* A truncated label carries its whole self on hover — a native `title`
+                  is the right affordance for a truncation (it states nothing the
+                  reader needs that is not already on screen in full elsewhere), and
+                  it is what the repo's InfoTooltip rule explicitly leaves to `title`. */}
               <span
+                title={r.label}
                 className={`min-w-0 truncate ${r.highlight ? "font-medium text-gray-900" : "text-gray-600"}`}
               >
                 {r.label}
@@ -226,6 +235,10 @@ export function CampaignWorkflowDetailPage() {
     (r) => r.workflowDynastySlug === dynastySlug,
   );
 
+  // Null for a workflow that states no model, and for a RETIRED one (its shape is only
+  // in the catalogue, which no longer holds it). Both render "—" rather than a guess.
+  const model = workflowModelMark(row?.contentModel);
+
   const revenue = revenueQ.data;
   const funnel = revenue?.funnelSteps ?? null;
 
@@ -237,12 +250,20 @@ export function CampaignWorkflowDetailPage() {
     () =>
       rows
         .filter((r) => !r.learning && r.cpprCents != null)
-        .map((r) => ({
-          key: r.workflowDynastySlug,
-          label: r.workflowDynastyName,
-          value: r.cpprCents,
-          highlight: r.workflowDynastySlug === dynastySlug,
-        })),
+        .map((r) => {
+          // The model is what two sibling rows routinely differ BY, so a price
+          // comparison that does not name it hides the variable it is about. It is
+          // appended rather than given its own column: `BarRows` truncates and carries
+          // the whole string on the row's `title`, so a narrow viewport loses the
+          // suffix and keeps the name.
+          const m = workflowModelMark(r.contentModel);
+          return {
+            key: r.workflowDynastySlug,
+            label: m ? `${r.workflowDynastyName} · ${m.label}` : r.workflowDynastyName,
+            value: r.cpprCents,
+            highlight: r.workflowDynastySlug === dynastySlug,
+          };
+        }),
     [rows, dynastySlug],
   );
 
@@ -306,6 +327,32 @@ export function CampaignWorkflowDetailPage() {
             <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-600">
               Running now
             </span>
+          )}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {headerPending ? (
+            <Skeleton className="h-4 w-40" />
+          ) : (
+            <>
+              {model ? (
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <ProviderLogo
+                    domain={model.providerDomain}
+                    size={16}
+                    className="shrink-0 rounded-sm"
+                  />
+                  <span className="truncate text-sm text-gray-600">{model.label}</span>
+                </span>
+              ) : (
+                <span className="text-sm text-gray-400">—</span>
+              )}
+              {row?.contentPromptType && (
+                <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-500">
+                  {row.contentPromptType}
+                </span>
+              )}
+              <InfoTooltip tip={MODEL_TIP} placement="top" />
+            </>
           )}
         </div>
         <p className="mt-1 text-sm text-gray-500">
