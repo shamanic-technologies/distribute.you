@@ -138,6 +138,9 @@ export function collapseWorkflowCatalogue(
  * group's folded `workflowSlugs`. A campaign whose workflow neither source knows
  * states no running row rather than a guessed one: framing the wrong row as live is
  * worse than framing none.
+ *
+ * ⚠️ WHICH source is available DEPENDS ON THE GRAIN, which is exactly why no builder
+ * may call this itself — see `resolveRunningWorkflow`.
  */
 export function runningDynastyFor(
   campaignWorkflowSlug: string | null | undefined,
@@ -159,6 +162,54 @@ export function runningDynastyFor(
   return null;
 }
 
+/** The workflow a campaign states it is running, as every grain must state it. */
+export interface RunningWorkflow {
+  /** The dynasty, once some source has named the campaign's version. Null = unknown. */
+  dynastySlug: string | null;
+  /** Its name, from whichever source named it. Null = nothing named it; use the slug. */
+  dynastyName: string | null;
+}
+
+/**
+ * WHICH WORKFLOW THE CAMPAIGN IS RUNNING — a fact about the CAMPAIGN, never about the
+ * grain the reader picked.
+ *
+ * campaign-service states a VERSIONED slug on the row (`sales-cold-email-outreach-
+ * osprey-v4`), and the catalogue only carries each dynasty's CURRENT version, so a
+ * campaign pinned to anything but the newest version is nameable ONLY by a revenue
+ * group's folded `workflowSlugs`. Measured in prod 2026-09-11: of the 30 cold-email
+ * campaigns carrying a versioned slug, ZERO match their dynasty's current catalogue
+ * entry — so for every one of them the catalogue alone resolves nothing.
+ *
+ * That is why resolution takes EVERY group set the page holds rather than the one its
+ * active tab is reading. The GLOBAL grain reads two cross-org endpoints and has no
+ * groups at all, so a builder resolving from its own source answered `null` there and
+ * the `Running now` section simply VANISHED on that tab while the other three rendered
+ * it — one page contradicting itself about what is running, with every figure on it
+ * real. Resolve once, here, and hand the answer to every builder.
+ *
+ * A group set that has not loaded contributes nothing rather than blocking: the first
+ * source that names the version wins, and an unnameable version answers `{null, null}`
+ * so the caller states no running row rather than a guessed one.
+ */
+export function resolveRunningWorkflow(
+  campaignWorkflowSlug: string | null | undefined,
+  catalogue: readonly WorkflowCatalogueRow[],
+  groupSets: readonly (readonly WorkflowRevenueGroup[])[],
+): RunningWorkflow {
+  const slug = campaignWorkflowSlug?.trim();
+  if (!slug) return { dynastySlug: null, dynastyName: null };
+  const collapsed = collapseWorkflowCatalogue(catalogue);
+  const flat = groupSets.flat();
+  const dynastySlug = runningDynastyFor(slug, collapsed, flat);
+  if (!dynastySlug) return { dynastySlug: null, dynastyName: null };
+  const named =
+    collapsed.find((c) => c.workflowDynastySlug === dynastySlug)?.workflowDynastyName ??
+    flat.find((g) => g.workflowDynastySlug === dynastySlug)?.workflowDynastyName ??
+    null;
+  return { dynastySlug, dynastyName: named };
+}
+
 /**
  * The rows the Workflows table renders, one per workflow the channel OFFERS.
  *
@@ -171,21 +222,22 @@ export function runningDynastyFor(
 export function buildCampaignWorkflowRows({
   catalogue,
   groups,
-  campaignWorkflowSlug,
+  running,
   isLearning,
 }: {
   catalogue: readonly WorkflowCatalogueRow[];
   groups: readonly WorkflowRevenueGroup[];
-  campaignWorkflowSlug: string | null | undefined;
+  /** Resolved ONCE by the caller (`resolveRunningWorkflow`), never re-derived here. */
+  running: RunningWorkflow;
   isLearning: (count: number | null | undefined) => boolean;
 }): CampaignWorkflowRow[] {
   const collapsed = collapseWorkflowCatalogue(catalogue);
-  const runningDynasty = runningDynastyFor(campaignWorkflowSlug, collapsed, groups);
+  const runningDynasty = running.dynastySlug;
 
   const byDynasty = new Map<string, WorkflowRevenueGroup>();
   for (const g of groups) byDynasty.set(g.workflowDynastySlug, g);
 
-  return collapsed.map((entry) => {
+  const rows = collapsed.map((entry) => {
     const group = byDynasty.get(entry.workflowDynastySlug);
     const positiveReplies = group?.recipientsRepliesPositive ?? null;
     return {
@@ -208,6 +260,65 @@ export function buildCampaignWorkflowRows({
       contentPromptType: entry.contentPromptType ?? null,
     };
   });
+
+  return withRunningRow(rows, running, (dynastySlug) => {
+    const group = byDynasty.get(dynastySlug);
+    const positiveReplies = group?.recipientsRepliesPositive ?? null;
+    return {
+      positiveReplies,
+      cpprCents: group?.cpprCents ?? null,
+      committedCostUsd: group?.committedCostUsd ?? null,
+      outreach: group?.recipientsContacted ?? null,
+      websiteClicks: group?.recipientsClicked ?? null,
+      cpcCents: group?.cpcCents ?? null,
+      roiMultiple: group?.roiMultiple ?? null,
+      learning: group !== undefined && isLearning(positiveReplies),
+      name: group?.workflowDynastyName ?? null,
+    };
+  });
+}
+
+/**
+ * THE RUNNING WORKFLOW ALWAYS GETS A ROW, even when the catalogue no longer offers it.
+ *
+ * Rows are keyed on the catalogue on purpose — a lineage nobody can be put on is not an
+ * option for a reader picking what to run next (#4047). That rule has one exception it
+ * cannot survive without: the workflow the campaign is running RIGHT NOW. A dynasty
+ * retired while a campaign still runs it is absent from the catalogue, so the page
+ * dropped its row entirely and then had nothing to put under a heading whose whole job
+ * is to say what is happening — `Running now` vanished and the workflow appeared in no
+ * section at all. Measured in prod 2026-09-11: 17 cold-email campaigns are pinned to
+ * `tectonic` or `atlantis`, neither of which the catalogue carries.
+ *
+ * The synthesized row states only what a source actually named: its figures come from
+ * whichever group/fleet row carries the dynasty, and everything the CATALOGUE alone
+ * knows (the model, the template, the channel) reads null rather than a guess.
+ */
+function withRunningRow(
+  rows: CampaignWorkflowRow[],
+  running: RunningWorkflow,
+  figuresFor: (dynastySlug: string) => Omit<
+    CampaignWorkflowRow,
+    "workflowDynastySlug" | "workflowDynastyName" | "running" | "channel" | "audienceType" | "contentModel" | "contentPromptType"
+  > & { name: string | null },
+): CampaignWorkflowRow[] {
+  const slug = running.dynastySlug;
+  if (!slug) return rows;
+  if (rows.some((r) => r.workflowDynastySlug === slug)) return rows;
+  const { name, ...figures } = figuresFor(slug);
+  return [
+    {
+      workflowDynastySlug: slug,
+      workflowDynastyName: name || running.dynastyName || slug,
+      running: true,
+      ...figures,
+      channel: null,
+      audienceType: null,
+      contentModel: null,
+      contentPromptType: null,
+    },
+    ...rows,
+  ];
 }
 
 /** One fleet row, as the public cross-org cost read states it. */
@@ -250,24 +361,30 @@ export function buildFleetWorkflowRows({
   catalogue,
   fleet,
   outreach,
-  campaignWorkflowSlug,
+  running,
   isLearning,
 }: {
   catalogue: readonly WorkflowCatalogueRow[];
   fleet: readonly FleetWorkflowCost[];
   outreach: readonly FleetWorkflowOutreach[];
-  campaignWorkflowSlug: string | null | undefined;
+  /**
+   * Resolved ONCE by the caller. This grain reads two cross-org endpoints and holds no
+   * revenue groups, so a campaign pinned to anything but its dynasty's current version
+   * is unnameable from here — which is exactly how `Running now` came to vanish on this
+   * tab alone while the other three rendered it.
+   */
+  running: RunningWorkflow;
   isLearning: (count: number | null | undefined) => boolean;
 }): CampaignWorkflowRow[] {
   const collapsed = collapseWorkflowCatalogue(catalogue);
-  const runningDynasty = runningDynastyFor(campaignWorkflowSlug, collapsed, []);
+  const runningDynasty = running.dynastySlug;
 
   const costBy = new Map<string, FleetWorkflowCost>();
   for (const f of fleet) costBy.set(f.workflowDynastySlug, f);
   const outreachBy = new Map<string, FleetWorkflowOutreach>();
   for (const o of outreach) outreachBy.set(o.workflowDynastySlug, o);
 
-  return collapsed.map((entry) => {
+  const rows = collapsed.map((entry) => {
     const cost = costBy.get(entry.workflowDynastySlug);
     const reach = outreachBy.get(entry.workflowDynastySlug);
     const positiveReplies = cost?.observedPositiveReplies ?? null;
@@ -290,6 +407,24 @@ export function buildFleetWorkflowRows({
       audienceType: entry.audienceType ?? null,
       contentModel: entry.contentModel ?? null,
       contentPromptType: entry.contentPromptType ?? null,
+    };
+  });
+
+  return withRunningRow(rows, running, (dynastySlug) => {
+    const cost = costBy.get(dynastySlug);
+    const reach = outreachBy.get(dynastySlug);
+    const positiveReplies = cost?.observedPositiveReplies ?? null;
+    return {
+      positiveReplies,
+      cpprCents:
+        cost?.costPerOutcomeUsd == null ? null : Math.round(cost.costPerOutcomeUsd * 100),
+      committedCostUsd: cost?.spentUsd ?? null,
+      outreach: reach?.recipientsContacted ?? null,
+      websiteClicks: cost?.observedClicks ?? null,
+      cpcCents: null,
+      roiMultiple: null,
+      learning: cost !== undefined && isLearning(positiveReplies),
+      name: cost?.workflowDynastyName ?? null,
     };
   });
 }
