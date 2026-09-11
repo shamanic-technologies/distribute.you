@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { RateInput } from "@/components/rate-input";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -838,19 +839,12 @@ export function BrandSalesFunnelsCard({
                     {rate.label}
                     <InfoTooltip tip={rate.tip} placement="top" />
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={state.draft.rates[rate.key] ?? ""}
-                      onChange={(e) => editRate(def.key, rate.key, e.target.value)}
-                      onBlur={() => normalizeRate(def.key, rate.key)}
-                      className="w-full rounded-lg border border-gray-200 py-2 pl-3 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                      %
-                    </span>
-                  </div>
+                  <RateInput
+                    ariaLabel={rate.label}
+                    value={state.draft.rates[rate.key] ?? ""}
+                    onChange={(next) => editRate(def.key, rate.key, next)}
+                    onBlur={() => normalizeRate(def.key, rate.key)}
+                  />
                 </div>
               ))}
 
