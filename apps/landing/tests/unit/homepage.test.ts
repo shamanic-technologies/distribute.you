@@ -34,7 +34,7 @@ describe("the homepage is self-contained", () => {
     // own lab host, so every reference it carried was root-absolute. Keeping them that
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
-    expect(html).toContain('href="/landing/v2/styles.css?v=11"');
+    expect(html).toContain('href="/landing/v2/styles.css?v=12"');
     expect(html).toContain('src="/landing/v2/main.js?v=8"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
@@ -380,3 +380,23 @@ describe("colour rhythm", () => {
   });
 });
 
+
+describe("step 01 is a real form, not a mock (#step-one-real-input)", () => {
+  const step = html.slice(html.indexOf('id="s1"'), html.indexOf('id="s2"'));
+
+  it("carries a real input posting the url to sign-up, like the hero", () => {
+    expect(step).not.toContain('class="fake-field"');
+    expect(step).toContain('<form class="launch launch-mini"');
+    expect(step).toContain('action="https://dashboard.distribute.you/sign-up"');
+    expect(step).toContain('method="get"');
+    expect(step).toContain('name="url"');
+    expect(step).toContain('placeholder="https://acme.com"');
+    expect(step).toContain('type="submit"');
+  });
+
+  it("reveals the confirmation CTA on focus or typed input, hidden at rest", () => {
+    expect(css).toMatch(/\.launch-mini \.btn \{[^}]*display: none/);
+    expect(css).toMatch(/\.launch-mini:focus-within \.btn[^{]*\{[^}]*display: inline-flex/);
+    expect(css).toMatch(/\.launch-mini input:not\(:placeholder-shown\) \+ \.btn/);
+  });
+});
