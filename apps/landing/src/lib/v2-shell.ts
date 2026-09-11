@@ -18,7 +18,7 @@ export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 12;
+export const V2_STYLES_VERSION = 13;
 export const V2_MAIN_VERSION = 8;
 
 export function esc(s: string): string {
