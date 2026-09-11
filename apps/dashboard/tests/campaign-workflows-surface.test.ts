@@ -362,18 +362,43 @@ describe("the grain is a TAB, and no tab falls back to another one's answer", ()
     }
   });
 
-  it("DISABLES the offer tab until the producer honours the offer scope", () => {
-    // Rendering the brand's figures under the offer's name is the wrong-scope bug; a
-    // disabled tab that says why is the honest surface until features-service ships.
-    expect(TABLE).toContain('const disabled = g.key === "offer"');
-    expect(TABLE).toContain("OFFER_SOON_TIP");
-    expect(TABLE).toContain("Coming soon.");
-    // …and no read is wired for it, so it cannot answer with a neighbour's body.
-    expect(TABLE).not.toContain('grain === "offer"');
+  it("the offer tab is WIRED — no tab is disabled and none says coming soon", () => {
+    // It shipped disabled because features-service did not honour `offerId` on the
+    // grouped read; #923 -> v0.162.1 does, proven on the wire against a brand whose
+    // offer scope genuinely differs from its brand scope (31 dynasties vs 28), so the
+    // gate and the sentence explaining it both go. A disabled tab left behind a live
+    // producer is a capability reported as missing.
+    expect(TABLE).not.toContain('const disabled = g.key === "offer"');
+    expect(TABLE).not.toContain("OFFER_SOON_TIP");
+    expect(TABLE).not.toContain("Coming soon.");
+    expect(TABLE).not.toContain("disabled={disabled}");
+  });
+
+  it("the offer grain sends offerId, under its own key, and never the brand's body", () => {
+    // Bounded to the NEXT declaration rather than a measured length: a `toContain`
+    // cannot be hurt by an over-long slice, and a number expires on the next comment.
+    const at = TABLE.indexOf("  const offerRevQ = useAuthQuery(");
+    expect(at).toBeGreaterThan(-1);
+    const body = TABLE.slice(at, TABLE.indexOf("  const brandRevQ = useAuthQuery(", at));
+    expect(body).toContain('["offerWorkflowRevenue", brandId, offerId]');
+    expect(body).toContain("getOfferRevenueByWorkflow(featureSlug as string, brandId, offerId)");
+    expect(body).toContain('grain === "offer"');
+    // The reader is the one that states the grain; the page never borrows a sibling's.
+    expect(TABLE).not.toContain('grain === "offer" ? brandRevQ.data');
+    // Bounded to its own closing brace, for the reason the brand guard above spells
+    // out: `sliceFn` stops at the next `export`, dragging in the NEXT reader's doc
+    // comment, which legitimately names `campaignId`.
+    const slice = sliceFn(API, "export async function getOfferRevenueByWorkflow(");
+    const reader = slice.slice(0, slice.indexOf("\n}") + 2);
+    expect(reader).toContain('new URLSearchParams({ brandId, offerId, groupBy: "workflow" })');
+    expect(reader).toContain('query.set("pricing", "net")');
+    // `offerId` beside `campaignId` is a 400 — the two are never sent together.
+    expect(reader).not.toContain("campaignId");
   });
 
   it("each grain sends its OWN read, gated on the tab", () => {
     expect(TABLE).toContain('grain === "campaign"');
+    expect(TABLE).toContain('grain === "offer"');
     expect(TABLE).toContain('grain === "brand"');
     expect(TABLE).toContain('grain === "global"');
   });

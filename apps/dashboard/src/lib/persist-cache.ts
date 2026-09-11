@@ -205,6 +205,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "workflows",
   "campaignWorkflowRevenue",
   "brandWorkflowRevenue",
+  "offerWorkflowRevenue",
   "workflowRevenue",
   "fleetWorkflowCost",
   "fleetWorkflowOutreach",
