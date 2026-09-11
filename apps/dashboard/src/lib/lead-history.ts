@@ -93,6 +93,17 @@ const EventSchema = z
     to: z.array(z.string()).optional(),
     subject: z.string().nullable().optional(),
     bodyText: z.string().nullable().optional(),
+    // On a `message`: the links in it, so a reader can follow one to where it truly
+    // goes. `text` is the link verbatim as the prospect saw it (the sender strips our
+    // tracking parameters from the visible text on purpose); `href` is the destination
+    // WE wrote, parameters included, resolved by the producer against the copy we
+    // generated — never the outreach provider's click-tracking redirect, which
+    // following from here would register a click the prospect never made. `href: null`
+    // is the producer saying it cannot resolve that link, not an error to swallow.
+    // `.optional()` matches the producer, which states it only on a message.
+    links: z
+      .array(z.object({ text: z.string(), href: z.string().nullable() }))
+      .optional(),
     // `ok` these are the words · `empty` it genuinely says nothing · `unavailable` we
     // hold the message and could not read it. The last two are NOT the same answer.
     bodyStatus: z.string().optional(),
