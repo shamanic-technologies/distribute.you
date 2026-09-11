@@ -354,6 +354,67 @@ describe("THREE sections, and the running workflow sits in exactly one of them",
   });
 });
 
+describe("the outcome pair is the campaign's own LEG, never its funnel", () => {
+  it("the table RESOLVES the leg through the shared hook and hands it to every builder", () => {
+    // A page that resolves the pair and never passes it is the feature entirely absent
+    // with the model perfectly correct — the threaded-prop trap, so pin the CALL SITE.
+    expect(TABLE).toContain("useCampaignOutcomePair(campaign, featureSlug)");
+    expect(TABLE).toContain("const columns = OUTCOME_COLUMNS[pair];");
+    const scoped = TABLE.indexOf("buildCampaignWorkflowRows({");
+    expect(TABLE.slice(scoped, TABLE.indexOf("});", scoped))).toContain("pair,");
+    const fleet = TABLE.indexOf("buildFleetWorkflowRows({");
+    expect(TABLE.slice(fleet, TABLE.indexOf("});", fleet))).toContain("pair,");
+  });
+
+  it("states BOTH column pairs, in the words every other surface already uses", () => {
+    expect(TABLE).toContain('count: "Sales interests"');
+    expect(TABLE).toContain('cost: "Cost per sales interest"');
+    expect(TABLE).toContain('count: "Website visits"');
+    expect(TABLE).toContain('cost: "Cost per website visit"');
+    // A website visit is NEVER called a sales interest: the header reads the pair.
+    expect(TABLE).toContain("{columns.count}");
+    expect(TABLE).toContain("{columns.cost}");
+  });
+
+  it("reads the cell figures through the pair, never the reply fields directly", () => {
+    expect(TABLE).toContain("fmtCount(workflowOutcomeCount(row))");
+    expect(TABLE).toContain("fmtCents(workflowOutcomeCostCents(row))");
+    expect(TABLE).not.toContain("fmtCount(row.positiveReplies)");
+    expect(TABLE).not.toContain("fmtCents(row.cpprCents)");
+  });
+
+  it("asks the fleet read for the objective the pair is priced on", () => {
+    // One `costPerOutcomeUsd` per response, priced on whatever objective was asked for:
+    // the wrong one puts a cost per website visit under a sales-interest header.
+    expect(TABLE).toContain('reply: "positiveReply"');
+    expect(TABLE).toContain('visit: "websiteVisit"');
+    // ...and it rides the query key, so the two pairs never share a cache entry.
+    expect(TABLE).toContain('["fleetWorkflowCost", featureSlug ?? "none", FLEET_OBJECTIVE_BY_PAIR[pair]]');
+  });
+
+  it("the DETAIL page names the same outcome, resolved the same way", () => {
+    expect(DETAIL).toContain("useCampaignOutcomePair(campaign, featureSlug)");
+    expect(DETAIL).toContain("const labels = OUTCOME_LABELS[pair];");
+    expect(DETAIL).toContain("label={labels.count}");
+    expect(DETAIL).toContain("label={labels.cost}");
+    expect(DETAIL).toContain("workflowOutcomeCostCents(r)");
+    expect(DETAIL).toContain(
+      "getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE_BY_PAIR[pair])",
+    );
+    const built = DETAIL.indexOf("buildCampaignWorkflowRows({");
+    expect(DETAIL.slice(built, DETAIL.indexOf("}),", built))).toContain("pair,");
+  });
+
+  it("the hook takes the STATED leg first and the channel's legs as the fallback", () => {
+    const HOOK = read("src/lib/use-campaign-outcome-pair.ts");
+    expect(HOOK).toContain("statedCampaignLeg(funnel, campaign?.legKey, legIndex)");
+    expect(HOOK).toContain("campaignLegFor(");
+    expect(HOOK).toContain("workflowOutcomePairFor(legColumnPair(leg))");
+    // A campaign stating no funnel keeps the reply pair rather than a column of dashes.
+    expect(HOOK).toContain("if (!funnel || !featureSlug) return workflowOutcomePairFor(null);");
+  });
+});
+
 describe("the grain is a TAB, and no tab falls back to another one's answer", () => {
   it("offers all four grains and defaults to the campaign", () => {
     expect(TABLE).toContain('useState<WorkflowGrain>("campaign")');
@@ -404,7 +465,9 @@ describe("the grain is a TAB, and no tab falls back to another one's answer", ()
   });
 
   it("the GLOBAL grain joins the two public cross-org reads", () => {
-    expect(TABLE).toContain("getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE)");
+    expect(TABLE).toContain(
+      "getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE_BY_PAIR[pair])",
+    );
     expect(TABLE).toContain("getFleetWorkflowOutreach(featureSlug as string)");
     expect(TABLE).toContain("buildFleetWorkflowRows({");
   });

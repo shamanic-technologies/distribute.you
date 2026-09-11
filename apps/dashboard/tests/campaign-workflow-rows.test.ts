@@ -9,6 +9,9 @@ import path from "path";
 import { describe, it, expect } from "vitest";
 import {
   buildCampaignWorkflowRows,
+  workflowOutcomeCostCents,
+  workflowOutcomeCount,
+  workflowOutcomePairFor,
   buildFleetWorkflowRows,
   collapseWorkflowCatalogue,
   runningDynastyFor,
@@ -54,6 +57,28 @@ function grp(over: Partial<WorkflowRevenueGroup> = {}): WorkflowRevenueGroup {
     recipientsRepliesPositive: 12,
     cpprCents: 200,
     cpcCents: 100,
+    ...over,
+  };
+}
+
+function row(over: Partial<CampaignWorkflowRow> = {}): CampaignWorkflowRow {
+  return {
+    workflowDynastySlug: "x",
+    workflowDynastyName: "X",
+    running: false,
+    positiveReplies: null,
+    cpprCents: null,
+    committedCostUsd: null,
+    outreach: null,
+    websiteClicks: null,
+    cpcCents: null,
+    roiMultiple: null,
+    outcomePair: "reply",
+    learning: false,
+    channel: "email",
+    audienceType: "cold-outreach",
+    contentModel: null,
+    contentPromptType: null,
     ...over,
   };
 }
@@ -108,6 +133,7 @@ describe("buildCampaignWorkflowRows", () => {
       catalogue: [cat({ workflowDynastySlug: "chan-offered", workflowSlug: "chan-offered", workflowDynastyName: "Offered" })],
       groups: [grp({ workflowDynastySlug: "chan-retired", workflowDynastyName: "Retired" })],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(rows.map((r) => r.workflowDynastySlug)).toEqual(["chan-offered"]);
@@ -121,6 +147,7 @@ describe("buildCampaignWorkflowRows", () => {
       catalogue: [],
       groups: [grp()],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(rows).toEqual([]);
@@ -131,6 +158,7 @@ describe("buildCampaignWorkflowRows", () => {
       catalogue: [cat()],
       groups: [],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(rows[0].cpprCents).toBeNull();
@@ -146,6 +174,7 @@ describe("buildCampaignWorkflowRows", () => {
       catalogue: [cat()],
       groups: [grp({ recipientsRepliesPositive: 9 })],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(thin[0].learning).toBe(true);
@@ -153,6 +182,7 @@ describe("buildCampaignWorkflowRows", () => {
       catalogue: [cat()],
       groups: [grp({ recipientsRepliesPositive: 10 })],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(measured[0].learning).toBe(false);
@@ -163,6 +193,7 @@ describe("buildCampaignWorkflowRows", () => {
       catalogue: [cat({ workflowDynastyName: "" })],
       groups: [grp({ workflowDynastyName: null })],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(rows[0].workflowDynastyName).toBe("chan-legato");
@@ -193,6 +224,7 @@ describe("the running workflow is resolved ONCE, for every grain", () => {
       fleet: [],
       outreach: [],
       running: resolved,
+      pair: "reply",
       isLearning,
     });
     expect(rows.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([
@@ -230,6 +262,7 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
       catalogue,
       groups: [retired],
       running,
+      pair: "reply",
       isLearning,
     });
     const row = rows.find((r) => r.workflowDynastySlug === "chan-tectonic")!;
@@ -250,6 +283,7 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
       fleet: [],
       outreach: [],
       running,
+      pair: "reply",
       isLearning,
     });
     const row = rows.find((r) => r.workflowDynastySlug === "chan-tectonic")!;
@@ -266,6 +300,7 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
       catalogue: offered,
       groups: [],
       running: { dynastySlug: "chan-legato", dynastyName: "Legato" },
+      pair: "reply",
       isLearning,
     });
     expect(rows.filter((r) => r.workflowDynastySlug === "chan-legato")).toHaveLength(1);
@@ -307,25 +342,6 @@ describe("fleetComparison", () => {
 });
 
 describe("sectionCampaignWorkflowRows", () => {
-  const row = (over: Partial<CampaignWorkflowRow> = {}): CampaignWorkflowRow => ({
-    workflowDynastySlug: "x",
-    workflowDynastyName: "X",
-    running: false,
-    positiveReplies: null,
-    cpprCents: null,
-    committedCostUsd: null,
-    outreach: null,
-    websiteClicks: null,
-    cpcCents: null,
-    roiMultiple: null,
-    learning: false,
-    channel: "email",
-    audienceType: "cold-outreach",
-    contentModel: null,
-    contentPromptType: null,
-    ...over,
-  });
-
   it("puts the RUNNING workflow in its OWN section and nowhere else", () => {
     const out = sectionCampaignWorkflowRows([
       row({ workflowDynastySlug: "live", running: true, positiveReplies: 40, cpprCents: 9000 }),
@@ -404,6 +420,7 @@ describe("buildFleetWorkflowRows", () => {
       fleet,
       outreach: [{ workflowDynastySlug: "a", recipientsContacted: 5000 }],
       running: { dynastySlug: "a", dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     const a = rows.find((r) => r.workflowDynastySlug === "a")!;
@@ -422,6 +439,7 @@ describe("buildFleetWorkflowRows", () => {
       fleet,
       outreach: [],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(rows.map((r) => r.workflowDynastySlug)).toEqual(["a", "b"]);
@@ -433,6 +451,7 @@ describe("buildFleetWorkflowRows", () => {
       fleet,
       outreach: [],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     const b = rows.find((r) => r.workflowDynastySlug === "b")!;
@@ -449,6 +468,7 @@ describe("buildFleetWorkflowRows", () => {
       fleet,
       outreach: [],
       running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
       isLearning,
     });
     expect(rows.every((r) => r.roiMultiple === null && r.cpcCents === null)).toBe(true);
@@ -458,6 +478,112 @@ describe("buildFleetWorkflowRows", () => {
 /**
  * The module has to stay importable by vitest, which resolves no `@` alias.
  */
+describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
+  it("takes the VISIT pair for a leg that lands on a website visit", () => {
+    expect(workflowOutcomePairFor("visit")).toBe("visit");
+  });
+
+  it("keeps the REPLY pair for a leg that lands on a sales interest", () => {
+    expect(workflowOutcomePairFor("reply")).toBe("reply");
+  });
+
+  it("keeps the REPLY pair for every leg with NO per-workflow figure", () => {
+    // features-service serves no per-workflow signup / form / sale count, and a leg we
+    // could not place answers null. Both keep the columns this table read before legs
+    // were consulted rather than a column of dashes.
+    expect(workflowOutcomePairFor("signup")).toBe("reply");
+    expect(workflowOutcomePairFor("formSubmission")).toBe("reply");
+    expect(workflowOutcomePairFor("sale")).toBe("reply");
+    expect(workflowOutcomePairFor(null)).toBe("reply");
+    expect(workflowOutcomePairFor(undefined)).toBe("reply");
+  });
+
+  it("counts and prices a VISIT-led campaign on its visits, never its replies", () => {
+    const [row] = buildCampaignWorkflowRows({
+      catalogue: [cat()],
+      groups: [grp({ recipientsRepliesPositive: 0, cpprCents: null, recipientsClicked: 412, cpcCents: 130 })],
+      running: { dynastySlug: null, dynastyName: null },
+      pair: "visit",
+      isLearning,
+    });
+    expect(row.outcomePair).toBe("visit");
+    expect(workflowOutcomeCount(row)).toBe(412);
+    expect(workflowOutcomeCostCents(row)).toBe(130);
+    // The reply figures are still carried verbatim — nothing is dropped, the row simply
+    // states which of the two it is judged on.
+    expect(row.positiveReplies).toBe(0);
+  });
+
+  it("reads the LEARNING bar against the pair's own count", () => {
+    // 412 visits and zero replies: measured on a visit-led campaign, thin on a
+    // reply-led one. The bar cannot be read against a count the row is not about.
+    const groups = [grp({ recipientsRepliesPositive: 0, recipientsClicked: 412, cpcCents: 130 })];
+    const visit = buildCampaignWorkflowRows({
+      catalogue: [cat()],
+      groups,
+      running: { dynastySlug: null, dynastyName: null },
+      pair: "visit",
+      isLearning,
+    })[0];
+    const reply = buildCampaignWorkflowRows({
+      catalogue: [cat()],
+      groups,
+      running: { dynastySlug: null, dynastyName: null },
+      pair: "reply",
+      isLearning,
+    })[0];
+    expect(visit.learning).toBe(false);
+    expect(reply.learning).toBe(true);
+  });
+
+  it("puts the fleet's single served price on the pair's own field", () => {
+    // `costPerOutcomeUsd` prices whichever objective the caller ASKED for, so on a
+    // visit-led campaign it is a cost per website visit — and reading it as `cpprCents`
+    // is how a visit price ends up under a "cost per sales interest" header.
+    const [row] = buildFleetWorkflowRows({
+      catalogue: [cat({ workflowDynastySlug: "a", workflowSlug: "a", workflowDynastyName: "A" })],
+      fleet: [
+        {
+          workflowDynastySlug: "a",
+          workflowDynastyName: "A",
+          spentUsd: 900,
+          costPerOutcomeUsd: 3.5,
+          observedPositiveReplies: 2,
+          observedClicks: 260,
+        },
+      ],
+      outreach: [],
+      running: { dynastySlug: null, dynastyName: null },
+      pair: "visit",
+      isLearning,
+    });
+    expect(row.cpcCents).toBe(350);
+    expect(row.cpprCents).toBeNull();
+    expect(workflowOutcomeCount(row)).toBe(260);
+    expect(row.learning).toBe(false);
+  });
+
+  it("sections and ranks a VISIT-led scope on its visits", () => {
+    const rows = [
+      row({ workflowDynastySlug: "dear", outcomePair: "visit", websiteClicks: 300, cpcCents: 900 }),
+      row({ workflowDynastySlug: "cheap", outcomePair: "visit", websiteClicks: 300, cpcCents: 120 }),
+      // Plenty of replies, no visit at all: NOT measured on a campaign that buys visits.
+      row({
+        workflowDynastySlug: "repliesOnly",
+        outcomePair: "visit",
+        positiveReplies: 40,
+        cpprCents: 100,
+        websiteClicks: 0,
+        outreach: 12,
+        learning: true,
+      }),
+    ];
+    const out = sectionCampaignWorkflowRows(rows);
+    expect(out.measured.map((r) => r.workflowDynastySlug)).toEqual(["cheap", "dear"]);
+    expect(out.notMeasured.map((r) => r.workflowDynastySlug)).toEqual(["repliesOnly"]);
+  });
+});
+
 describe("the model module stays alias-free", () => {
   it("carries no runtime `@/` import", () => {
     const src = fs.readFileSync(

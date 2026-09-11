@@ -63,17 +63,45 @@ import {
   buildCampaignWorkflowRows,
   resolveRunningWorkflow,
   fleetComparison,
+  workflowOutcomeCostCents,
+  workflowOutcomeCount,
   type CampaignWorkflowRow,
+  type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
+import { useCampaignOutcomePair } from "@/lib/use-campaign-outcome-pair";
 
-/** The objective the fleet read is priced on — the outcome this channel sells. */
-const FLEET_OBJECTIVE = "positiveReply";
+/**
+ * The objective the fleet read is priced on — the outcome THIS CAMPAIGN'S LEG buys.
+ *
+ * The read prices one objective at a time and hands it back as a single
+ * `costPerOutcomeUsd`, so asking for the wrong one compares this workflow's cost per
+ * website visit against the fleet's cost per sales interest.
+ */
+const FLEET_OBJECTIVE_BY_PAIR: Record<WorkflowOutcomePair, string> = {
+  reply: "positiveReply",
+  visit: "websiteVisit",
+};
+
+/** The outcome pair's words, byte-equal to the table this page opens from. */
+const OUTCOME_LABELS: Record<WorkflowOutcomePair, { count: string; cost: string; noun: string }> = {
+  reply: {
+    count: "Sales interests",
+    cost: "Cost per sales interest",
+    noun: "sales interests",
+  },
+  visit: {
+    count: "Website visits",
+    cost: "Cost per website visit",
+    noun: "website visits",
+  },
+};
 
 const FLEET_TIP =
   "What this workflow costs across every client we run it for. It is a different question from your own cost above: it counts the spend the workflow incurs, including anything we later refunded, because what a workflow costs to produce an outcome does not depend on who was billed.";
 
-const SIBLINGS_TIP =
-  "The same price for the other workflows this campaign has run. Only the ones with enough sales interests behind them to state a price are drawn.";
+function siblingsTip(noun: string): string {
+  return `The same price for the other workflows this campaign has run. Only the ones with enough ${noun} behind them to state a price are drawn.`;
+}
 
 const MODEL_TIP =
   "The AI model this workflow writes your emails with, and the prompt template it writes them from. Both come from the workflow itself, so they are what ran for you.";
@@ -191,6 +219,10 @@ export function CampaignWorkflowDetailPage() {
 
   const { campaign, featureSlug, settled: slugSettled } = useScopedFeatureSlug(campaignId);
   const ready = isBeta && Boolean(featureSlug) && Boolean(brandId) && Boolean(campaignId) && Boolean(dynastySlug);
+  // The outcome this campaign's own LEG buys — the same resolution the table it opens
+  // from makes, so a row and the page behind it can never name two different outcomes.
+  const pair = useCampaignOutcomePair(campaign, featureSlug);
+  const labels = OUTCOME_LABELS[pair];
 
   // Byte-equal to the table's keys, so arriving here costs no request the table did
   // not already make — and the row's figures and this page's cannot diverge.
@@ -214,8 +246,8 @@ export function CampaignWorkflowDetailPage() {
 
   // Public, org-less, one answer for every tenant.
   const fleetQ = useAuthQuery(
-    ["fleetWorkflowCost", featureSlug ?? "none", FLEET_OBJECTIVE],
-    () => getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE),
+    ["fleetWorkflowCost", featureSlug ?? "none", FLEET_OBJECTIVE_BY_PAIR[pair]],
+    () => getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE_BY_PAIR[pair]),
     { ...pollOptions, enabled: ready },
   );
 
@@ -232,9 +264,10 @@ export function CampaignWorkflowDetailPage() {
         running: resolveRunningWorkflow(campaign?.workflowSlug ?? null, catalogueQ.data ?? [], [
           groupsQ.data ?? [],
         ]),
+        pair,
         isLearning,
       }),
-    [catalogueQ.data, groupsQ.data, campaign?.workflowSlug],
+    [catalogueQ.data, groupsQ.data, campaign?.workflowSlug, pair],
   );
 
   const row: CampaignWorkflowRow | undefined = rows.find(
@@ -255,7 +288,7 @@ export function CampaignWorkflowDetailPage() {
   const siblingRows = useMemo(
     () =>
       rows
-        .filter((r) => !r.learning && r.cpprCents != null)
+        .filter((r) => !r.learning && workflowOutcomeCostCents(r) != null)
         .map((r) => {
           // The model is what two sibling rows routinely differ BY, so a price
           // comparison that does not name it hides the variable it is about. It is
@@ -266,7 +299,7 @@ export function CampaignWorkflowDetailPage() {
           return {
             key: r.workflowDynastySlug,
             label: m ? `${r.workflowDynastyName} · ${m.label}` : r.workflowDynastyName,
-            value: r.cpprCents,
+            value: workflowOutcomeCostCents(r),
             highlight: r.workflowDynastySlug === dynastySlug,
           };
         }),
@@ -353,13 +386,13 @@ export function CampaignWorkflowDetailPage() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5 items-stretch">
         <ScoreCard
-          label="Sales interests"
-          value={fmtCount(row?.positiveReplies ?? null)}
+          label={labels.count}
+          value={fmtCount(row ? workflowOutcomeCount(row) : null)}
           pending={headerPending}
         />
         <ScoreCard
-          label="Cost per sales interest"
-          value={row?.learning ? "" : fmtCents(row?.cpprCents ?? null)}
+          label={labels.cost}
+          value={row?.learning ? "" : fmtCents(row ? workflowOutcomeCostCents(row) : null)}
           action={row?.learning ? <LearningTag paused={paused} /> : undefined}
           pending={headerPending}
         />
@@ -369,9 +402,12 @@ export function CampaignWorkflowDetailPage() {
           pending={headerPending}
         />
         <ScoreCard label="Outreach" value={fmtCount(row?.outreach ?? null)} pending={headerPending} />
+        {/* The OTHER served count, so a visit-led campaign still sees its replies and a
+            reply-led one still sees its visits. The pair above is what the campaign is
+            JUDGED on; this is context, and it never carries a price. */}
         <ScoreCard
-          label="Website visits"
-          value={fmtCount(row?.websiteClicks ?? null)}
+          label={pair === "visit" ? "Sales interests" : "Website visits"}
+          value={fmtCount((pair === "visit" ? row?.positiveReplies : row?.websiteClicks) ?? null)}
           pending={headerPending}
         />
       </div>
@@ -384,8 +420,8 @@ export function CampaignWorkflowDetailPage() {
           paused={paused}
         />
         <OutcomeTrendCard
-          series={revenue?.repliedPositive}
-          label="Sales interests"
+          series={pair === "visit" ? revenue?.clicked : revenue?.repliedPositive}
+          label={labels.count}
           pending={bodyPending}
         />
       </div>
@@ -403,7 +439,7 @@ export function CampaignWorkflowDetailPage() {
       </Panel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Panel title="Against your other workflows" tip={SIBLINGS_TIP}>
+        <Panel title="Against your other workflows" tip={siblingsTip(labels.noun)}>
           <BarRows
             rows={siblingRows}
             format={(v) => formatCentsAsUsdAdaptive(v)}

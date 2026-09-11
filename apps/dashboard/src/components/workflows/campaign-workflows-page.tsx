@@ -14,8 +14,8 @@
  *  · RUNNING NOW — what is happening right now. One row, framed in the brand's own
  *    primary, and it appears NOWHERE else: a reader should not find the same row again
  *    further down and have to work out that it is the same one.
- *  · MEASURED — everything that produced at least one sales interest, best (cheapest)
- *    first. This is the section the page exists for.
+ *  · MEASURED — everything that produced at least one of the campaign's OWN outcome,
+ *    best (cheapest) first. This is the section the page exists for.
  *  · NOT MEASURED YET — nothing produced yet, ordered by the outreach that has gone
  *    through it, which is what shows the bar being approached.
  *
@@ -49,9 +49,13 @@
  *  2. THE CHANNEL IS THE CAMPAIGN'S OWN (`useScopedFeatureSlug`), never the brand's
  *     sole feature — a campaign on another channel would otherwise list somebody
  *     else's workflows.
- *  3. A PRICE UNDER THE BAR SAYS SO. Fewer than `LEARNING_MIN_OUTCOMES` sales
- *     interests behind a cost and the cell states `Learning` — `Paused` while the
- *     campaign is stopped, because nothing is being measured then.
+ *  3. A PRICE UNDER THE BAR SAYS SO. Fewer than `LEARNING_MIN_OUTCOMES` outcomes
+ *     behind a cost and the cell states `Learning` — `Paused` while the campaign is
+ *     stopped, because nothing is being measured then.
+ *  5. THE OUTCOME IS THE CAMPAIGN'S OWN LEG, never its funnel. A campaign performs one
+ *     arrow, so a visit-led one is counted and priced in WEBSITE VISITS; the reply pair
+ *     is the fallback for a leg we cannot place or one features-service serves no
+ *     per-workflow figure for.
  *  4. A RETIRED workflow gets NO row. The rows are the channel's catalogue; a lineage
  *     nobody can be put on is not an option, and its money is still in the cards above.
  */
@@ -85,8 +89,12 @@ import {
   buildFleetWorkflowRows,
   resolveRunningWorkflow,
   sectionCampaignWorkflowRows,
+  workflowOutcomeCostCents,
+  workflowOutcomeCount,
   type CampaignWorkflowRow,
+  type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
+import { useCampaignOutcomePair } from "@/lib/use-campaign-outcome-pair";
 
 /**
  * Every column the header states. The skeleton and the empty state span all seven: a
@@ -94,8 +102,50 @@ import {
  */
 const COLUMN_COUNT = 7;
 
-/** The objective the fleet reads are priced on — the outcome this channel sells. */
-const FLEET_OBJECTIVE = "positiveReply";
+/**
+ * The objective the fleet read is priced on — the outcome THIS CAMPAIGN'S LEG buys.
+ *
+ * The public cost read prices one objective at a time and returns it as a single
+ * `costPerOutcomeUsd`, so asking for the wrong one puts a cost per website visit under
+ * a "cost per sales interest" header. It rides the query key, so the two pairs can never
+ * share a cache entry.
+ */
+const FLEET_OBJECTIVE_BY_PAIR: Record<WorkflowOutcomePair, string> = {
+  reply: "positiveReply",
+  visit: "websiteVisit",
+};
+
+/**
+ * THE OUTCOME COLUMN PAIR, in the words every other surface already uses.
+ *
+ * A campaign performs ONE leg of its funnel, so the outcome column pair is that leg's
+ * own: a visit-led campaign buys website visits and reading `0 sales interests` on every
+ * row describes an arrow it never runs. The words are byte-equal to the stat cards' and
+ * the Audiences table's — a website visit is never called a sales interest.
+ */
+const OUTCOME_COLUMNS: Record<
+  WorkflowOutcomePair,
+  { count: string; cost: string; countTip: string; costTip: string; noun: string }
+> = {
+  reply: {
+    count: "Sales interests",
+    cost: "Cost per sales interest",
+    noun: "sales interest",
+    countTip:
+      "Sales interests this workflow produced — people who replied wanting to talk. Counted per person, so somebody who replied twice is one.",
+    costTip:
+      "What one sales interest cost through this workflow. It is what we charged divided by the interests it produced, and we take it from the same place your campaign's own cost card does.",
+  },
+  visit: {
+    count: "Website visits",
+    cost: "Cost per website visit",
+    noun: "website visit",
+    countTip:
+      "Website visits this workflow produced — people who came to your site from one of its emails. Counted per person, so somebody who clicked twice is one.",
+    costTip:
+      "What one website visit cost through this workflow. It is what we charged divided by the visits it produced, and we take it from the same place your campaign's own cost card does.",
+  },
+};
 
 export type WorkflowGrain = "campaign" | "offer" | "brand" | "global";
 
@@ -115,12 +165,6 @@ const MODEL_TIP =
 const TEMPLATE_TIP =
   "The prompt template the emails are written from. The second line is its exact id, version included — that version is what tells two of them apart.";
 
-const OUTCOME_TIP =
-  "Sales interests this workflow produced — people who replied wanting to talk. Counted per person, so somebody who replied twice is one.";
-
-const COST_TIP =
-  "What one sales interest cost through this workflow. It is what we charged divided by the interests it produced, and we take it from the same place your campaign's own cost card does.";
-
 const INVESTED_TIP =
   "What has been spent through this workflow so far: billed usage plus the holds open on sends already queued. It is the same money the cost beside it divides.";
 
@@ -138,13 +182,15 @@ const GRAIN_NOTE: Record<WorkflowGrain, string> = {
     "Every number below is across every client we run this channel for. It counts what each workflow costs to produce an outcome — including spend we later refunded — so it is a different question from what you were charged.",
 };
 
-const SECTION_TIP = {
-  running: RUNNING_TIP,
-  measured:
-    "Workflows that have produced at least one sales interest, cheapest first. A price standing on fewer than ten interests is not stated — it moves by tens of dollars on the next one.",
-  notMeasured:
-    "Workflows that have not produced a sales interest yet, ordered by how many people they have reached.",
-} as const;
+/** The section tips name the CAMPAIGN'S OWN outcome, so they cannot describe an arrow
+ *  it never runs — the same reason the columns above them are keyed on the leg. */
+function sectionTips(noun: string) {
+  return {
+    running: RUNNING_TIP,
+    measured: `Workflows that have produced at least one ${noun}, cheapest first. A price standing on fewer than ten is not stated — it moves by tens of dollars on the next one.`,
+    notMeasured: `Workflows that have not produced a ${noun} yet, ordered by how many people they have reached.`,
+  };
+}
 
 function fmtCount(value: number | null): string {
   return value === null ? "—" : value.toLocaleString("en-US");
@@ -171,6 +217,7 @@ function WorkflowTable({
   title,
   tip,
   rows,
+  columns,
   paused,
   running,
   onOpen,
@@ -179,6 +226,8 @@ function WorkflowTable({
   title: string;
   tip: string;
   rows: CampaignWorkflowRow[];
+  /** The outcome pair this campaign's leg earns — its words and its tooltips. */
+  columns: (typeof OUTCOME_COLUMNS)[WorkflowOutcomePair];
   paused: boolean;
   running: boolean;
   onOpen: (row: CampaignWorkflowRow) => void;
@@ -208,10 +257,10 @@ function WorkflowTable({
                   Template <InfoTooltip tip={TEMPLATE_TIP} placement="top" />
                 </th>
                 <th className="w-[22%] md:w-auto px-4 py-3 md:whitespace-nowrap">
-                  Sales interests <InfoTooltip tip={OUTCOME_TIP} placement="top" />
+                  {columns.count} <InfoTooltip tip={columns.countTip} placement="top" />
                 </th>
                 <th className="w-[36%] md:w-auto px-4 py-3 md:whitespace-nowrap">
-                  Cost per sales interest <InfoTooltip tip={COST_TIP} placement="top" />
+                  {columns.cost} <InfoTooltip tip={columns.costTip} placement="top" />
                 </th>
                 <th className="hidden md:table-cell px-4 py-3 whitespace-nowrap">
                   $ Invested <InfoTooltip tip={INVESTED_TIP} placement="top" />
@@ -263,10 +312,14 @@ function WorkflowTable({
                     <WorkflowTemplateCell contentPromptType={row.contentPromptType} />
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-800">
-                    {fmtCount(row.positiveReplies)}
+                    {fmtCount(workflowOutcomeCount(row))}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-800">
-                    {row.learning ? <LearningTag paused={paused} /> : fmtCents(row.cpprCents)}
+                    {row.learning ? (
+                      <LearningTag paused={paused} />
+                    ) : (
+                      fmtCents(workflowOutcomeCostCents(row))
+                    )}
                   </td>
                   <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-gray-800">
                     {fmtUsd(row.committedCostUsd)}
@@ -297,6 +350,12 @@ export function CampaignWorkflowsPage() {
   const campaignId = String(params.id ?? "");
 
   const { campaign, featureSlug, settled: slugSettled } = useScopedFeatureSlug(campaignId);
+  // WHICH OUTCOME these rows are counted and priced by — the campaign's own LEG, never
+  // its funnel. A visit-led campaign read `0 sales interests` on every row before this,
+  // for an arrow it does not run.
+  const pair = useCampaignOutcomePair(campaign, featureSlug);
+  const columns = OUTCOME_COLUMNS[pair];
+  const tips = sectionTips(columns.noun);
   // Null while the campaign read is in flight — never the brand's sole slug as a
   // stand-in, and the `pending` gate below is what the table renders until then.
   const revenueOk = featureSlug !== null && isRevenueFeature(featureSlug);
@@ -346,8 +405,8 @@ export function CampaignWorkflowsPage() {
   // The GLOBAL grain: two PUBLIC cross-org reads, joined on the dynasty. The cost read
   // carries the money and the outcome counts; the ranked read carries the outreach.
   const fleetCostQ = useAuthQuery(
-    ["fleetWorkflowCost", featureSlug ?? "none", FLEET_OBJECTIVE],
-    () => getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE),
+    ["fleetWorkflowCost", featureSlug ?? "none", FLEET_OBJECTIVE_BY_PAIR[pair]],
+    () => getFleetWorkflowCost(featureSlug as string, FLEET_OBJECTIVE_BY_PAIR[pair]),
     { ...pollOptions, enabled: ready && grain === "global" },
   );
   const fleetOutreachQ = useAuthQuery(
@@ -386,6 +445,7 @@ export function CampaignWorkflowsPage() {
         fleet: fleetCostQ.data ?? [],
         outreach: fleetOutreachQ.data ?? [],
         running,
+        pair,
         isLearning,
       });
     }
@@ -395,6 +455,7 @@ export function CampaignWorkflowsPage() {
       catalogue,
       groups: scoped ?? [],
       running,
+      pair,
       isLearning,
     });
   }, [
@@ -406,6 +467,7 @@ export function CampaignWorkflowsPage() {
     fleetCostQ.data,
     fleetOutreachQ.data,
     running,
+    pair,
   ]);
 
   const sections = useMemo(() => sectionCampaignWorkflowRows(rows), [rows]);
@@ -502,8 +564,9 @@ export function CampaignWorkflowsPage() {
         <div className="space-y-6">
           <WorkflowTable
             title="Running now"
-            tip={SECTION_TIP.running}
+            tip={tips.running}
             rows={sections.running}
+            columns={columns}
             paused={paused}
             running
             onOpen={onOpen}
@@ -511,8 +574,9 @@ export function CampaignWorkflowsPage() {
           />
           <WorkflowTable
             title="Measured"
-            tip={SECTION_TIP.measured}
+            tip={tips.measured}
             rows={sections.measured}
+            columns={columns}
             paused={paused}
             running={false}
             onOpen={onOpen}
@@ -520,8 +584,9 @@ export function CampaignWorkflowsPage() {
           />
           <WorkflowTable
             title="Not measured yet"
-            tip={SECTION_TIP.notMeasured}
+            tip={tips.notMeasured}
             rows={sections.notMeasured}
+            columns={columns}
             paused={paused}
             running={false}
             onOpen={onOpen}
