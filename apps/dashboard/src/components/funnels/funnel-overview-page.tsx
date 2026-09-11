@@ -239,6 +239,13 @@ export function FunnelOverviewPage() {
           offerId={offerId}
           funnelKey={rawKey}
           funnelSteps={revenuePending ? null : (data?.funnelSteps ?? null)}
+          /* The walk's figures are the ARROW's — a rung's cost is what reaching that
+             step has cost this funnel, and the conversion is a share of the step above.
+             With nothing selling the funnel nobody reaches any rung, so the arrows the
+             brand works itself (which have no campaign of their own to be stopped) must
+             read `Paused` like every other figure on this page rather than promising a
+             number that cannot arrive. */
+          paused={scopePaused}
         />
       </div>
 

@@ -76,7 +76,12 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(legCells).toContain("if (paused) return <LearningTag withInfo={false} paused />;");
     // The gate is threaded from the CALL SITE, or the component is correct and the
     // feature is entirely absent.
-    expect(table).toContain("paused={campaign ? !isActiveStatus(campaign.campaign.status) : false}");
+    // An arrow the brand works itself has no campaign to be stopped, so it falls back to
+    // the SCOPE's verdict — the figures on that row are the arrow's, and with nothing
+    // selling the funnel nobody reaches its rungs. Pinned in `scope-paused.test.ts` too.
+    expect(table).toContain(
+      "paused={campaign ? !isActiveStatus(campaign.campaign.status) : scopePaused}",
+    );
     expect(table).toContain("paused={!isActiveStatus(row.campaign.status)}");
   });
 
