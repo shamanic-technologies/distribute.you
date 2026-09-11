@@ -16,6 +16,7 @@ import type {
   WorkflowCatalogueRow,
   WorkflowRevenueGroup,
   FleetWorkflowCost,
+  FleetWorkflowOutreach,
 } from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
@@ -4260,6 +4261,13 @@ export async function getFeatureRevenueByCampaign(
  *
  * `.nullish()` on every tag: workflow-service serves them nullable, and a row missing
  * one renders without it rather than failing the whole read.
+ *
+ * `requiredProviders` is on the wire and is deliberately NOT declared. The table used
+ * to draw a logo per provider a workflow CALLS (the lead database, the sending
+ * platform), and every workflow of one channel calls the same ones — so the stack
+ * distinguished nothing while attributing a customer's row to Apollo and Anthropic.
+ * The one logo a row carries is the MODEL's provider, which is what two rows differ
+ * by. Do not re-declare it here to draw a second stack.
  */
 const WorkflowCatalogueWireSchema = z.object({
   workflowSlug: z.string(),
@@ -4275,11 +4283,6 @@ const WorkflowCatalogueWireSchema = z.object({
   // as a dash rather than a guessed default.
   contentModel: z.string().nullish(),
   contentPromptType: z.string().nullish(),
-  // The gateway computes this for every row (one deduped key-service call per list
-  // request), so a consumer never fans out per workflow for it.
-  requiredProviders: z
-    .array(z.object({ name: z.string(), domain: z.string().nullable() }))
-    .nullish(),
 });
 const WorkflowCatalogueResponseSchema = z.object({
   workflows: z.array(WorkflowCatalogueWireSchema),
@@ -4317,7 +4320,6 @@ export async function listChannelWorkflows(
     audienceType: w.audienceType ?? null,
     contentModel: w.contentModel ?? null,
     contentPromptType: w.contentPromptType ?? null,
-    requiredProviders: w.requiredProviders ?? [],
   }));
 }
 
@@ -4374,16 +4376,48 @@ export async function getFeatureRevenueByWorkflow(
 ): Promise<WorkflowRevenueGroup[]> {
   const query = new URLSearchParams({ brandId, campaignId, groupBy: "workflow" });
   query.set("pricing", "net");
+  return readWorkflowGroups(featureSlug, query, "getFeatureRevenueByWorkflow", token);
+}
+
+/**
+ * The SAME grouped read at the BRAND grain — every campaign of the brand on this
+ * channel, folded per workflow.
+ *
+ * It is the campaign reader minus `campaignId`, which is exactly what the producer
+ * documents the omission as meaning ("the whole brand"), so the two can never answer
+ * different questions under one word: the grain the page states IS the parameter it
+ * sends. Its cache key carries no campaign for the same reason — a brand entry must
+ * never be served to a campaign-scoped question, and the reverse.
+ *
+ * pricing=net, like every other money read here.
+ */
+export async function getBrandRevenueByWorkflow(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "workflow" });
+  query.set("pricing", "net");
+  return readWorkflowGroups(featureSlug, query, "getBrandRevenueByWorkflow", token);
+}
+
+/** One parse for every grain: a second copy is a second place for the shape to drift. */
+async function readWorkflowGroups(
+  featureSlug: string,
+  query: URLSearchParams,
+  caller: string,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
   const raw = await apiCall<unknown>(
     `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
     { token },
   );
   const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getFeatureRevenueByWorkflow: response shape mismatch", {
+    console.error(`[dashboard] ${caller}: response shape mismatch`, {
       issues: parsed.error.issues,
     });
-    throw new Error("[dashboard] getFeatureRevenueByWorkflow: invalid response shape");
+    throw new Error(`[dashboard] ${caller}: invalid response shape`);
   }
   return parsed.data.groups.map((g) => ({
     workflowDynastySlug: g.workflowDynastySlug,
@@ -4446,6 +4480,10 @@ const FleetWorkflowCostSchema = z.object({
       workflowDynastyName: z.string(),
       spentUsd: z.number(),
       costPerOutcomeUsd: z.number().nullable(),
+      // REQUIRED at the producer, so required here: a rename must fail the parse
+      // loudly rather than read `undefined` forever and blank a column.
+      observedPositiveReplies: z.number(),
+      observedClicks: z.number(),
     }),
   ),
 });
@@ -4472,6 +4510,55 @@ export async function getFleetWorkflowCost(
     workflowDynastyName: w.workflowDynastyName,
     spentUsd: w.spentUsd,
     costPerOutcomeUsd: w.costPerOutcomeUsd,
+    observedPositiveReplies: w.observedPositiveReplies,
+    observedClicks: w.observedClicks,
+  }));
+}
+
+/**
+ * GET /v1/public/features/ranked?groupBy=workflow — the fleet's OUTREACH per workflow.
+ *
+ * The cost read above carries the money and the outcome counts and no outreach; this
+ * one carries the outreach. Both are public, org-less and keyed on the same dynasty,
+ * so the Global grain is one join rather than a fan-out.
+ *
+ * `recipientsContacted`, never `completedRuns`: a workflow that contacted 638 people
+ * logs ~15,000 runs, so a run count under an "Outreach" label overstates it ~23x.
+ *
+ * `limit` has to be STATED because the endpoint defaults to the top 3 — it is a
+ * ceiling on a fleet-wide dynasty list (a couple of dozen rows), not a page size. This
+ * table needs every workflow, not a leaderboard.
+ */
+const FleetWorkflowOutreachSchema = z.object({
+  results: z.array(
+    z.object({
+      workflow: z.object({ workflowDynastySlug: z.string() }),
+      stats: z.object({ recipientsContacted: z.coerce.number().nullish() }),
+    }),
+  ),
+});
+
+export async function getFleetWorkflowOutreach(
+  featureSlug: string,
+  limit = 500,
+  token?: string,
+): Promise<FleetWorkflowOutreach[]> {
+  const query = new URLSearchParams({
+    featureSlug,
+    groupBy: "workflow",
+    limit: String(limit),
+  });
+  const raw = await apiCall<unknown>(`/public/features/ranked?${query.toString()}`, { token });
+  const parsed = FleetWorkflowOutreachSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFleetWorkflowOutreach: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFleetWorkflowOutreach: invalid response shape");
+  }
+  return parsed.data.results.map((r) => ({
+    workflowDynastySlug: r.workflow.workflowDynastySlug,
+    recipientsContacted: r.stats.recipientsContacted ?? null,
   }));
 }
 

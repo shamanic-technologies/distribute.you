@@ -194,15 +194,20 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "audiences",
   // The per-workflow projection behind the best-model card and the budget steps.
   "workflowProjection",
-  // The WORKFLOWS a campaign's channel can run, and what each one did for that
-  // campaign. Four roots, each a different question: the channel's catalogue
-  // (workflow-service), this campaign's money per workflow, ONE workflow's whole
-  // body, and the public cross-org rate. Unlisted, every one of them cold-fetches on
-  // each visit over the slow features read and the table skeletons every time.
+  // The WORKFLOWS a campaign's channel can run, and what each one did — at each of
+  // the grains the page offers. Six roots, each a different question: the channel's
+  // catalogue (workflow-service), this campaign's money per workflow, the brand's,
+  // ONE workflow's whole body, and the two public cross-org reads (the fleet's rate
+  // and the fleet's outreach). A grain's key never carries a narrower scope's id, so
+  // a brand entry can never be served to a campaign-scoped question. Unlisted, every
+  // one of them cold-fetches on each visit over the slow features read and the table
+  // skeletons every time.
   "workflows",
   "campaignWorkflowRevenue",
+  "brandWorkflowRevenue",
   "workflowRevenue",
   "fleetWorkflowCost",
+  "fleetWorkflowOutreach",
   // Campaigns.
   "campaign",
   "campaigns",

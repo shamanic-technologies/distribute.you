@@ -42,8 +42,8 @@ import { pollOptions } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { ScoreCard } from "@/components/visibility/score-card";
-import { ProviderLogo } from "@/components/provider-logo";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
+import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { LearningTag } from "@/components/learning-tag";
 import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
@@ -312,9 +312,6 @@ export function CampaignWorkflowDetailPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          {row?.providers.map((p) => (
-            <ProviderLogo key={p.domain ?? p.name} domain={p.domain} size={20} />
-          ))}
           {headerPending ? (
             <Skeleton className="h-6 w-48" />
           ) : (
@@ -329,28 +326,16 @@ export function CampaignWorkflowDetailPage() {
             </span>
           )}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+        {/* The SAME two-line cells the table renders — the model and the template
+            read identically on the row and on the page it opens, which is the whole
+            reason they are one component rather than two spellings. */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2">
           {headerPending ? (
-            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-8 w-64" />
           ) : (
             <>
-              {model ? (
-                <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <ProviderLogo
-                    domain={model.providerDomain}
-                    size={16}
-                    className="shrink-0 rounded-sm"
-                  />
-                  <span className="truncate text-sm text-gray-600">{model.label}</span>
-                </span>
-              ) : (
-                <span className="text-sm text-gray-400">—</span>
-              )}
-              {row?.contentPromptType && (
-                <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-500">
-                  {row.contentPromptType}
-                </span>
-              )}
+              <WorkflowModelCell contentModel={row?.contentModel ?? null} />
+              <WorkflowTemplateCell contentPromptType={row?.contentPromptType ?? null} />
               <InfoTooltip tip={MODEL_TIP} placement="top" />
             </>
           )}

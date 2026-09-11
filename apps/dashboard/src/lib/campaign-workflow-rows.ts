@@ -1,39 +1,39 @@
 /**
- * ONE ROW PER WORKFLOW A CAMPAIGN'S CHANNEL CAN RUN, and what each one did for THIS
- * campaign.
+ * ONE ROW PER WORKFLOW A CAMPAIGN'S CHANNEL CAN RUN, and what each one did — at the
+ * grain the reader picked.
  *
  * A campaign is (offer x funnel x channel), and the channel is run by a WORKFLOW —
  * the pipeline that finds the people, writes the email and sends it. A customer
  * looking at one campaign wants to know which workflows their channel offers, which
- * one is running right now, and what each of the others produced when it ran for
- * them. Nothing in the product answered that: the money surfaces answer per campaign
- * and per funnel, and the workflow was a word on a settings screen.
+ * one is running right now, and what each of the others produced. Nothing in the
+ * product answered that: the money surfaces answer per campaign and per funnel, and
+ * the workflow was a word on a settings screen.
  *
- * ── THE ROWS ARE THE UNION OF TWO SOURCES, AND THAT IS LOAD-BEARING ──────────────
+ * ── THE CATALOGUE DECIDES WHICH ROWS EXIST ───────────────────────────────────────
  *
  * The CATALOGUE (workflow-service) states which workflows the channel currently
- * offers. The REVENUE GROUPS (features-service `?groupBy=workflow`) state which ones
- * this campaign has actually run and what they cost. Neither is a superset:
+ * offers; the FIGURES (features-service `?groupBy=workflow`, or the public fleet read)
+ * state what each one produced. A workflow the channel offers and this scope has never
+ * run keeps its row with no figures — "this exists, you have not tried it" is a real
+ * answer, and it is the only reason the two sources are unioned at all.
  *
- *   - a workflow the channel offers and this campaign has never run has a catalogue
- *     entry and no group — it is a real answer ("this exists, you have not tried
- *     it"), so it renders with no figures rather than being dropped;
- *   - a workflow that RAN and has since been RETIRED has a group and no catalogue
- *     entry, because the gateway's `/v1/workflows` proxy asks workflow-service for
- *     the EXECUTABLE set. Dropping it would delete the campaign's own history from
- *     the page that exists to show it — and a retired lineage is exactly the
- *     workflow a "what burned money" question is about.
+ * The mirror case is DROPPED: a figure group whose dynasty the catalogue no longer
+ * carries is a RETIRED workflow, and a customer picking what to run next has no use
+ * for a lineage nobody can put them on. It used to render as a `Retired` row on the
+ * argument that deleting it deletes the campaign's own history; the owner read the
+ * result and disagreed, and the history is still in the money above the table. So the
+ * union is keyed on the catalogue, never on the figures.
  *
- * So the union, keyed on the DYNASTY slug both producers already speak. A dynasty is
- * a workflow's identity across its versions: upgrading to v2 does not make it a
- * different workflow that earned nothing, and features-service folds the versions
- * for the same reason.
+ * The key is the DYNASTY slug, which both producers already speak. A dynasty is a
+ * workflow's identity across its versions: upgrading to v2 does not make it a
+ * different workflow that earned nothing, and features-service folds the versions for
+ * the same reason.
  *
  * ── WHICH ONE IS RUNNING IS THE CAMPAIGN'S OWN ANSWER ────────────────────────────
  *
  * campaign-service states the VERSIONED slug on the campaign row (`workflowSlug`),
  * so the dynasty it belongs to is resolved through whichever source names that
- * version — the catalogue's own `workflowSlug`, or the group's `workflowSlugs[]`.
+ * version — the catalogue's own `workflowSlug`, or a group's folded `workflowSlugs[]`.
  * Never by string-prefix arithmetic on the slug: a dynasty slug is opaque, and
  * `<dynasty>-v2` is a convention rather than a contract.
  *
@@ -58,8 +58,6 @@ export interface WorkflowCatalogueRow {
   version: number;
   /** Per-version lifecycle. A superseded version is not the dynasty's current face. */
   status?: string | null;
-  /** Providers the workflow calls, for the row's marks. Domain null = no logo drawn. */
-  requiredProviders?: readonly { name: string; domain: string | null }[];
   /** How the work reaches people, as workflow-service tags it (`email` / `ads` / …). */
   channel?: string | null;
   /** How it relates to the people it reaches (`cold-outreach` / …). */
@@ -69,11 +67,11 @@ export interface WorkflowCatalogueRow {
    * workflow-service derives it. Null = the call names none; never a default tier.
    */
   contentModel?: string | null;
-  /** The prompt template that call asks for (`cold-email-v39`), verbatim. */
+  /** The prompt template that call asks for (`blind-discovery-email-v26`), verbatim. */
   contentPromptType?: string | null;
 }
 
-/** What this campaign's money looks like through one dynasty, as features-service states it. */
+/** What one scope's money looks like through one dynasty, as features-service states it. */
 export interface WorkflowRevenueGroup {
   workflowDynastySlug: string;
   workflowDynastyName: string | null;
@@ -95,9 +93,7 @@ export interface CampaignWorkflowRow {
   workflowDynastyName: string;
   /** True for the workflow the campaign states it is running right now. */
   running: boolean;
-  /** Absent from the catalogue = workflow-service no longer offers it. */
-  retired: boolean;
-  /** Present only when this campaign has run it. Null = no figure, never zero. */
+  /** Present only when this scope has run it. Null = no figure, never zero. */
   positiveReplies: number | null;
   cpprCents: number | null;
   committedCostUsd: number | null;
@@ -107,15 +103,9 @@ export interface CampaignWorkflowRow {
   roiMultiple: number | null;
   /** Fewer than the bar's worth of sales interests behind the price. */
   learning: boolean;
-  providers: readonly { name: string; domain: string | null }[];
   channel: string | null;
   audienceType: string | null;
-  /**
-   * Catalogue-only, both of them: a RETIRED dynasty has a revenue group and no
-   * catalogue entry, so workflow-service states neither for it and the row reads null
-   * — which is the honest answer ("we no longer hold this workflow's shape"), not a
-   * gap to fill from the group.
-   */
+  /** Both catalogue-only: workflow-service is the one producer that states them. */
   contentModel: string | null;
   contentPromptType: string | null;
 }
@@ -169,33 +159,11 @@ export function runningDynastyFor(
   return null;
 }
 
-/** Providers deduped by domain, keeping the first name seen. Nameless entries dropped. */
-function dedupeProviders(
-  providers: readonly { name: string; domain: string | null }[] | undefined,
-): { name: string; domain: string | null }[] {
-  if (!providers?.length) return [];
-  const seen = new Set<string>();
-  const out: { name: string; domain: string | null }[] = [];
-  for (const p of providers) {
-    if (!p.name) continue;
-    const key = p.domain ?? `name:${p.name}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ name: p.name, domain: p.domain ?? null });
-  }
-  return out;
-}
-
 /**
- * The rows a campaign's Workflows table renders, ordered.
+ * The rows the Workflows table renders, one per workflow the channel OFFERS.
  *
- * ORDER: the running workflow first — it is the answer to "what is happening right
- * now", and a reader should not have to hunt for it. Then by cost per sales interest
- * ASCENDING, which is what the table is FOR (cheapest outcome wins). A row that is
- * LEARNING, or that this campaign has never run, has no price to be ranked on and
- * sinks below every measured row, ordered among its peers by outreach descending
- * (the count beside the price, and the thing that shows the bar being approached) —
- * ranking a row on a number the table is deliberately not showing reads as unordered.
+ * Ordering is the SECTIONS' job (`sectionCampaignWorkflowRows`) — this returns them in
+ * catalogue order so the caller has a stable list to look a dynasty up in.
  *
  * `isLearning` is injected rather than imported so this module stays alias-free; the
  * caller passes the repo's ONE bar (`lib/learning-threshold`), never a second copy.
@@ -217,21 +185,13 @@ export function buildCampaignWorkflowRows({
   const byDynasty = new Map<string, WorkflowRevenueGroup>();
   for (const g of groups) byDynasty.set(g.workflowDynastySlug, g);
 
-  const rows = new Map<string, CampaignWorkflowRow>();
-
-  const push = (
-    slug: string,
-    name: string,
-    entry: WorkflowCatalogueRow | undefined,
-    group: WorkflowRevenueGroup | undefined,
-  ) => {
-    if (rows.has(slug)) return;
+  return collapsed.map((entry) => {
+    const group = byDynasty.get(entry.workflowDynastySlug);
     const positiveReplies = group?.recipientsRepliesPositive ?? null;
-    rows.set(slug, {
-      workflowDynastySlug: slug,
-      workflowDynastyName: name,
-      running: slug === runningDynasty,
-      retired: entry === undefined,
+    return {
+      workflowDynastySlug: entry.workflowDynastySlug,
+      workflowDynastyName: entry.workflowDynastyName || entry.workflowDynastySlug,
+      running: entry.workflowDynastySlug === runningDynasty,
       positiveReplies,
       cpprCents: group?.cpprCents ?? null,
       committedCostUsd: group?.committedCostUsd ?? null,
@@ -239,58 +199,171 @@ export function buildCampaignWorkflowRows({
       websiteClicks: group?.recipientsClicked ?? null,
       cpcCents: group?.cpcCents ?? null,
       roiMultiple: group?.roiMultiple ?? null,
-      // A row this campaign has never run is not "learning" — there is nothing to be
+      // A row this scope has never run is not "learning" — there is nothing to be
       // thin. It has no price at all, which the null already says.
       learning: group !== undefined && isLearning(positiveReplies),
-      providers: dedupeProviders(entry?.requiredProviders),
-      channel: entry?.channel ?? null,
-      audienceType: entry?.audienceType ?? null,
-      contentModel: entry?.contentModel ?? null,
-      contentPromptType: entry?.contentPromptType ?? null,
-    });
-  };
-
-  for (const entry of collapsed) {
-    push(
-      entry.workflowDynastySlug,
-      entry.workflowDynastyName || entry.workflowDynastySlug,
-      entry,
-      byDynasty.get(entry.workflowDynastySlug),
-    );
-  }
-  for (const group of groups) {
-    push(
-      group.workflowDynastySlug,
-      group.workflowDynastyName || group.workflowDynastySlug,
-      undefined,
-      group,
-    );
-  }
-
-  // A price this table may RANK on: measured, and standing on enough outcomes.
-  const rank = (r: CampaignWorkflowRow): number | null =>
-    r.learning || r.cpprCents == null ? null : r.cpprCents;
-
-  return [...rows.values()].sort((a, b) => {
-    if (a.running !== b.running) return a.running ? -1 : 1;
-    const ra = rank(a);
-    const rb = rank(b);
-    if (ra != null && rb != null) return ra - rb;
-    if (ra != null) return -1;
-    if (rb != null) return 1;
-    const oa = a.outreach ?? -1;
-    const ob = b.outreach ?? -1;
-    if (oa !== ob) return ob - oa;
-    return a.workflowDynastyName.localeCompare(b.workflowDynastyName);
+      channel: entry.channel ?? null,
+      audienceType: entry.audienceType ?? null,
+      contentModel: entry.contentModel ?? null,
+      contentPromptType: entry.contentPromptType ?? null,
+    };
   });
 }
 
-/** One fleet row, as the public cross-org read states it. */
+/** One fleet row, as the public cross-org cost read states it. */
 export interface FleetWorkflowCost {
   workflowDynastySlug: string;
   workflowDynastyName: string;
   spentUsd: number;
   costPerOutcomeUsd: number | null;
+  /** Cross-org outcome counts the same row carries. */
+  observedPositiveReplies: number | null;
+  observedClicks: number | null;
+}
+
+/** One fleet OUTREACH row, as the public ranked read states it. */
+export interface FleetWorkflowOutreach {
+  workflowDynastySlug: string;
+  recipientsContacted: number | null;
+}
+
+/**
+ * The same rows, at the GLOBAL grain: what each workflow did across every client.
+ *
+ * Two public reads, joined on the dynasty the catalogue already keys on — the cost
+ * read carries the money and the outcome counts, the ranked read carries the outreach.
+ * OUTREACH is `recipientsContacted`, never `completedRuns`: a workflow that contacted
+ * 638 people logs ~15,000 runs, so a run count under an "Outreach" label overstates it
+ * ~23x, which is a mistake this repo has already paid for once.
+ *
+ * The fleet's basis is INCURRED (comped spend at full value — what the workflow costs
+ * to produce an outcome), not what any one customer was charged. The surface states
+ * that in its own words; nothing here reconciles the two, because they answer
+ * different questions.
+ *
+ * The cost read serves dollars and the table states cents, so `costPerOutcomeUsd` is
+ * converted to cents for ONE reason: every row in this model carries `cpprCents`, and
+ * a second unit on the same field is how a column comes to mean two things. That is a
+ * unit change on a served figure, not a metric computed here.
+ */
+export function buildFleetWorkflowRows({
+  catalogue,
+  fleet,
+  outreach,
+  campaignWorkflowSlug,
+  isLearning,
+}: {
+  catalogue: readonly WorkflowCatalogueRow[];
+  fleet: readonly FleetWorkflowCost[];
+  outreach: readonly FleetWorkflowOutreach[];
+  campaignWorkflowSlug: string | null | undefined;
+  isLearning: (count: number | null | undefined) => boolean;
+}): CampaignWorkflowRow[] {
+  const collapsed = collapseWorkflowCatalogue(catalogue);
+  const runningDynasty = runningDynastyFor(campaignWorkflowSlug, collapsed, []);
+
+  const costBy = new Map<string, FleetWorkflowCost>();
+  for (const f of fleet) costBy.set(f.workflowDynastySlug, f);
+  const outreachBy = new Map<string, FleetWorkflowOutreach>();
+  for (const o of outreach) outreachBy.set(o.workflowDynastySlug, o);
+
+  return collapsed.map((entry) => {
+    const cost = costBy.get(entry.workflowDynastySlug);
+    const reach = outreachBy.get(entry.workflowDynastySlug);
+    const positiveReplies = cost?.observedPositiveReplies ?? null;
+    return {
+      workflowDynastySlug: entry.workflowDynastySlug,
+      workflowDynastyName: entry.workflowDynastyName || entry.workflowDynastySlug,
+      running: entry.workflowDynastySlug === runningDynasty,
+      positiveReplies,
+      cpprCents:
+        cost?.costPerOutcomeUsd == null ? null : Math.round(cost.costPerOutcomeUsd * 100),
+      committedCostUsd: cost?.spentUsd ?? null,
+      outreach: reach?.recipientsContacted ?? null,
+      websiteClicks: cost?.observedClicks ?? null,
+      // The fleet read carries neither a return nor a per-click price, and inventing
+      // one from the two figures it does carry is the division this model refuses.
+      cpcCents: null,
+      roiMultiple: null,
+      learning: cost !== undefined && isLearning(positiveReplies),
+      channel: entry.channel ?? null,
+      audienceType: entry.audienceType ?? null,
+      contentModel: entry.contentModel ?? null,
+      contentPromptType: entry.contentPromptType ?? null,
+    };
+  });
+}
+
+/**
+ * THE THREE SECTIONS THE PAGE RENDERS, and what each one is FOR.
+ *
+ *  · RUNNING NOW — the workflow the campaign states it is running. It appears here and
+ *    NOWHERE ELSE: a reader answering "what is happening right now" should not also
+ *    have to find the same row again further down.
+ *
+ *  · MEASURED — every workflow that produced at least ONE sales interest at the grain
+ *    being read, best first.
+ *
+ *  · NOT MEASURED YET — nothing produced yet, ordered by how much outreach has gone
+ *    through it, which is what shows the bar being approached.
+ *
+ * MEMBERSHIP is the COUNT (owner-decided: at least one sales interest, or none), so
+ * every row lands in exactly one section. ORDER inside MEASURED is the price, and a
+ * row under the learning bar has no price to be ranked on — it is deliberately not
+ * showing one — so it sinks below the priced rows and orders among its peers by the
+ * count beside it. Ranking a row on a figure the table is withholding reads as
+ * unordered, which is the mistake this ordering exists to avoid.
+ *
+ * Cheapest-first is "best first" for a cost. The comparator lives here, alone, so
+ * flipping it is one line rather than a hunt through a component.
+ */
+export interface CampaignWorkflowSections {
+  running: CampaignWorkflowRow[];
+  measured: CampaignWorkflowRow[];
+  notMeasured: CampaignWorkflowRow[];
+}
+
+/** A price this table may RANK on: stated, and standing on enough outcomes. */
+function rankablePrice(r: CampaignWorkflowRow): number | null {
+  return r.learning || r.cpprCents == null ? null : r.cpprCents;
+}
+
+function byName(a: CampaignWorkflowRow, b: CampaignWorkflowRow): number {
+  return a.workflowDynastyName.localeCompare(b.workflowDynastyName);
+}
+
+export function sectionCampaignWorkflowRows(
+  rows: readonly CampaignWorkflowRow[],
+): CampaignWorkflowSections {
+  const running = rows.filter((r) => r.running);
+  const rest = rows.filter((r) => !r.running);
+
+  const measured = rest
+    .filter((r) => (r.positiveReplies ?? 0) >= 1)
+    .sort((a, b) => {
+      const pa = rankablePrice(a);
+      const pb = rankablePrice(b);
+      // CHEAPEST FIRST among the rows that state a price; flip the sign here to go
+      // dearest-first and every surface follows.
+      if (pa != null && pb != null) return pa - pb;
+      if (pa != null) return -1;
+      if (pb != null) return 1;
+      const oa = a.positiveReplies ?? -1;
+      const ob = b.positiveReplies ?? -1;
+      if (oa !== ob) return ob - oa;
+      return byName(a, b);
+    });
+
+  const notMeasured = rest
+    .filter((r) => (r.positiveReplies ?? 0) < 1)
+    .sort((a, b) => {
+      const oa = a.outreach ?? -1;
+      const ob = b.outreach ?? -1;
+      if (oa !== ob) return ob - oa;
+      return byName(a, b);
+    });
+
+  return { running, measured, notMeasured };
 }
 
 /**
