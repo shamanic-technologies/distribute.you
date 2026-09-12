@@ -66,11 +66,24 @@ describe("cross-org build-in-public metrics page", () => {
 
   it("renders the three requested public analytics sub-pages", () => {
     expect(metricsPage).toContain("Unique visitors over time");
-    expect(metricsPage).toContain("Signups vs unique visitors");
-    expect(metricsPage).toContain("Signup conversion over time");
     expect(metricsPage).toContain("Paid users vs signups");
     expect(metricsPage).toContain("Visitor origins");
     expect(metricsPage).toContain("Signup to paid conversion over time");
+  });
+
+  it("states the signup RATE per period, not the two daily funnel charts it replaced", () => {
+    expect(metricsPage).toContain("Monthly signup rate");
+    expect(metricsPage).toContain("Weekly signup rate");
+    expect(metricsPage).toContain("monthlySignupRates");
+    expect(metricsPage).toContain("weeklySignupRates");
+    // The rate's growth is labelled apart from the signup-COUNT CMGR one row up:
+    // the same acronym over two bases on one screen reads as a contradiction.
+    expect(metricsPage).toContain("Rate CMGR since inception");
+    expect(metricsPage).toContain("Rate CWGR since inception");
+    // The two daily charts these replaced are gone, and with them the only
+    // reader of the per-day conversion metric on this view.
+    expect(metricsPage).not.toContain("Signups vs unique visitors");
+    expect(metricsPage).not.toContain("signupConversionPct");
   });
 
   it("shows compound growth (CMGR/CWGR) on the monthly and weekly signup charts, no daily chart", () => {

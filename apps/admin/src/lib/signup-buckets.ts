@@ -119,6 +119,63 @@ export function weeklyVisitors(points: DailyFunnelPoint[]): SignupBucket[] {
   return aggregate(points, (date) => isoWeekKey(date), (p) => p.landingVisitors);
 }
 
+export interface RateBucket {
+  /** Sort/group key, e.g. "2026-07", "2026-W28". */
+  key: string;
+  /** Human label shown on the X axis. */
+  label: string;
+  /** Signup conversion rate for the period, in percent (signups / unique visitors * 100). */
+  ratePct: number;
+  /**
+   * Compound growth of the RATE since inception, in percent. Anchored on the
+   * first measured period whose rate is > 0; null for that anchor and anything
+   * before it. Distinct from a signup-COUNT CMGR: the base is a ratio, so a
+   * surface rendering both must say which one it means.
+   */
+  cmgrPct: number | null;
+}
+
+/**
+ * Joins a signup bucket series to its visitor series on the bucket key and
+ * states the conversion rate per period, with the compound growth of that rate.
+ *
+ * A period with ZERO visitors is DROPPED, never charted at 0%: nobody was
+ * measured, which is a different statement from "nobody converted". Visitor
+ * tracking starts later than signup tracking, so the earliest periods genuinely
+ * have no denominator and the rate series legitimately begins after the count one.
+ * The compound exponent counts MEASURED periods, so a dropped period is not a gap
+ * the growth line silently spans as if it had been flat.
+ */
+function rateBuckets(signups: SignupBucket[], visitors: SignupBucket[]): RateBucket[] {
+  const visitorsByKey = new Map(visitors.map((bucket) => [bucket.key, bucket.signups]));
+  const measured = signups.flatMap((bucket) => {
+    const denominator = visitorsByKey.get(bucket.key) ?? 0;
+    if (denominator <= 0) return [];
+    return [
+      {
+        key: bucket.key,
+        label: bucket.label,
+        ratePct: Number(((bucket.signups / denominator) * 100).toFixed(1)),
+      },
+    ];
+  });
+  const cmgr = compoundGrowthSeries(measured.map((bucket) => bucket.ratePct));
+  return measured.map((bucket, index) => ({ ...bucket, cmgrPct: cmgr[index] }));
+}
+
+export function monthlySignupRates(points: DailyFunnelPoint[]): RateBucket[] {
+  return rateBuckets(monthlySignups(points), monthlyVisitors(points));
+}
+
+export function weeklySignupRates(points: DailyFunnelPoint[]): RateBucket[] {
+  return rateBuckets(weeklySignups(points), weeklyVisitors(points));
+}
+
+/** Same headline/average as `cmgrSummary`, over the growth of a RATE series. */
+export function rateCmgrSummary(buckets: RateBucket[]): CompoundGrowthSummary {
+  return compoundGrowthSummary(buckets.map((bucket) => bucket.cmgrPct));
+}
+
 export function monthlyCards(points: DailyFunnelPoint[]): SignupBucket[] {
   return aggregate(points, monthKey, (p) => p.cardsAdded);
 }
