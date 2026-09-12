@@ -274,7 +274,19 @@ export function LeadBoard({
    */
   columns: Record<
     LeadBoardColumnKey,
-    { cards: LeadBoardCard[]; total: number | null; pending: boolean }
+    {
+      cards: LeadBoardCard[];
+      total: number | null;
+      pending: boolean;
+      /**
+       * A WIDER page of this column is in flight — the reader pressed "Show more" and
+       * the cards on screen are the previous, narrower answer. Distinct from `pending`,
+       * which is a column with nothing drawn at all: here there ARE cards, so the column
+       * must keep them up AND say that more are coming. Never the poll's own refetch,
+       * which changes nothing on screen and must not blink a control every 15 seconds.
+       */
+      growing?: boolean;
+    }
   >;
   /** Grow one column by another page. The page owns how far each one is drawn. */
   onShowMore: (column: LeadBoardColumnKey) => void;
@@ -524,7 +536,12 @@ export function LeadBoard({
 
       <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
         {LEAD_BOARD_COLUMNS.map((column) => {
-          const { cards: drawn, total, pending: columnPending } = columns[column.key];
+          const {
+            cards: drawn,
+            total,
+            pending: columnPending,
+            growing: columnGrowing,
+          } = columns[column.key];
           // "Not placed" reports that lead-service could not place some leads, so
           // drawing it on a healthy campaign advertises a problem that is not there.
           // It goes on its SERVED size, not on how many rows arrived: a column drawn
@@ -649,12 +666,28 @@ export function LeadBoard({
                 {remaining != null && remaining > 0 && (
                   <button
                     type="button"
-                    disabled={columnPending}
+                    disabled={columnPending || columnGrowing}
                     data-testid={`lead-board-more-${column.key}`}
                     onClick={() => onShowMore(column.key)}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300 disabled:cursor-wait"
                   >
-                    Show more ({remaining.toLocaleString("en-US")} left)
+                    {/* A wider page of a long column takes seconds, and the cards already
+                        on screen do not move while it is in flight — so without this the
+                        press is answered by nothing at all and the control reads as dead.
+                        The label stays FULL opacity while it works (a faded "Loading" is
+                        the disabled-button-reads-as-broken bug), and the row keeps its
+                        height so the column does not jump under the cursor. */}
+                    {columnGrowing ? (
+                      <>
+                        <span
+                          aria-hidden
+                          className="h-3 w-3 animate-spin rounded-full border border-gray-300 border-t-transparent"
+                        />
+                        Loading more...
+                      </>
+                    ) : (
+                      <>Show more ({remaining.toLocaleString("en-US")} left)</>
+                    )}
                   </button>
                 )}
               </div>
