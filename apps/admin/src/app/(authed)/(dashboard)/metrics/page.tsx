@@ -13,7 +13,7 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
+import { cmgrSummary, rateCmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlySignupRates, weeklySignupRates, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
 import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +41,11 @@ interface StatCardProps {
 function pct(numerator: number, denominator: number): string {
   if (denominator === 0) return "0%";
   return formatPctAdaptive((numerator / denominator) * 100);
+}
+
+/** A rate bar's own value, already a percentage. One decimal: 0.4% and 0.9% are different answers about a funnel and both round to 0%. */
+function formatRatePct(value: number): string {
+  return `${value.toFixed(1)}%`;
 }
 
 // The footer names where the numbers ABOVE it come from, so it cannot be one
@@ -208,6 +213,12 @@ function SignupView({
   const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
   const monthlyCmgr = cmgrSummary(monthly);
   const weeklyCmgr = cmgrSummary(weekly);
+  const monthlyRate = monthlySignupRates(timeline);
+  const weeklyRate = weeklySignupRates(timeline);
+  const monthlyRatePoints = monthlyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
+  const weeklyRatePoints = weeklyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
+  const monthlyRateCmgr = rateCmgrSummary(monthlyRate);
+  const weeklyRateCmgr = rateCmgrSummary(weeklyRate);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -237,25 +248,34 @@ function SignupView({
           </div>
         </div>
       </section>
-      <section className="grid gap-6 xl:grid-cols-2">
+      {/*
+        Rate charts, in the same shape as the count charts above: bars are the
+        period's conversion rate, the line is the compound growth OF that rate.
+        The growth label says "Rate CMGR" rather than "CMGR" because the row
+        above already states a CMGR over signup COUNTS, and one acronym over two
+        bases on one screen is a surface contradicting itself.
+        A period with no tracked visitors is dropped rather than drawn at 0%, so
+        these two legitimately start later than the two above them.
+      */}
+      <section className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Signups vs unique visitors</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily signups compared with daily unique visitors.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Monthly signup rate</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups divided by unique visitors, per month, with compound monthly growth of that rate.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={monthlyRateCmgr.latestPct} avgPct={monthlyRateCmgr.avgPct} barsUsed={monthlyRateCmgr.barsUsed} label="Rate CMGR" unit="monthly" />
+          </div>
           <div className="mt-5">
-            <PublicAnalyticsChart
-              data={timeline}
-              series={[
-                { metric: "landingVisitors", color: "#0ea5e9" },
-                { metric: "signups", color: "#6366f1" },
-              ]}
-            />
+            <PeriodCompoundChart data={monthlyRatePoints} valueLabel="conversion" growthLabel="Rate CMGR since inception" formatValue={formatRatePct} />
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Signup conversion over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily signup events divided by daily unique visitors.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Weekly signup rate</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups divided by unique visitors, per week, with compound weekly growth of that rate.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={weeklyRateCmgr.latestPct} avgPct={weeklyRateCmgr.avgPct} barsUsed={weeklyRateCmgr.barsUsed} label="Rate CWGR" unit="weekly" />
+          </div>
           <div className="mt-5">
-            <PublicAnalyticsChart data={timeline} metric="signupConversionPct" color="#10b981" />
+            <PeriodCompoundChart data={weeklyRatePoints} valueLabel="conversion" growthLabel="Rate CWGR since inception" formatValue={formatRatePct} />
           </div>
         </div>
       </section>
