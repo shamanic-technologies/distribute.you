@@ -51,3 +51,13 @@ a full build number (real Chrome reports `Chrome/142.0.0.0` under user-agent red
 or the same lead fetching the unsubscribe link within 60 seconds. There is no time
 threshold. `instantly_events` therefore already holds only promoted hits, and
 `clicks.csv` needs no filter of its own.
+
+`scanner-hits.csv` reads the bronze verdicts for the same window so the articles can STATE
+what the correction demoted instead of carrying a figure someone typed once: the sweep keeps
+classifying, so that number grows. The pages divide by the DECIDED hits, since one still
+awaiting its verdict is neither promoted nor demoted.
+
+The correction reaches our own `/c/` redirect and nothing else. That redirect only started
+carrying traffic in late August, so the provider's own tracking accounts for nearly every
+click either page prices; `volume.clicksBySource` splits the two and the Method paragraph
+states the share rather than leaving a reader to assume the bulk was scrubbed.

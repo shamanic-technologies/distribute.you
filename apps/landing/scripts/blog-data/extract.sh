@@ -140,4 +140,18 @@ WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
 GROUP BY 1
 " spend.csv
 
+# The link-scanner verdict on the clicks our OWN /c/ redirect recorded. Bronze holds every
+# hit and promotes none; the sweep classifies each one and only a `human` verdict becomes the
+# silver event the articles count. So this is what the correction DEMOTED, and the articles
+# state it rather than carrying a figure someone typed once.
+run instantly_service "
+SELECT count(*) AS hits,
+       count(*) FILTER (WHERE classification = 'human') AS human,
+       count(*) FILTER (WHERE classification IS NOT NULL AND classification <> 'human') AS demoted,
+       count(*) FILTER (WHERE classification IS NULL) AS undecided
+FROM tracking_hits_raw
+WHERE kind = 'click'
+  AND received_at >= '$FROM' AND received_at < '$TO'
+" scanner-hits.csv
+
 echo "done"
