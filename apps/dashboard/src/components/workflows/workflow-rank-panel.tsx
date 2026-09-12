@@ -48,6 +48,15 @@ import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { formatCentsAsUsdAdaptive, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
+import { GrainMark } from "@/components/marks/grain-mark";
+import { AudienceAvatar } from "@/components/audiences/audience-avatar";
+import {
+  grainFigures,
+  type WorkflowGrain,
+  type WorkflowGrainBlock,
+  type WorkflowAudienceRow,
+  type WorkflowLadderRowShape,
+} from "@/lib/workflow-grains";
 import { getWorkflowRevenue, getFleetWorkflowCost } from "@/lib/api";
 import {
   fleetComparison,
@@ -57,7 +66,6 @@ import {
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
 import {
-  observedOutcomeAt,
   type RankedWorkflow,
   type WorkflowLadderGrain,
   type WorkflowLadderGrainBlock,
@@ -81,11 +89,19 @@ const SIBLINGS_TIP =
   "The same price for the other workflows this campaign has run. Only the ones with enough behind them to state a price are drawn.";
 
 /** The grains, finest first — the order the cascade walks and the order a reader reads. */
-const GRAIN_ORDER: { key: WorkflowLadderGrain; label: string; blurb: string }[] = [
+/**
+ * THE GRAINS, FINEST FIRST — the cascade the producer prices through.
+ *
+ * The single `audience` pseudo-grain this used to carry is gone: it showed ONE
+ * audience's block with no way to tell which, while the producer sends a row per
+ * audience and the rank is scored over all of them. They have their own card now, which
+ * is what makes a rank standing on an audience readable instead of mysterious.
+ */
+const GRAIN_ORDER: { key: WorkflowGrain; label: string; blurb: string }[] = [
   {
-    key: "audience",
-    label: "One of your audiences",
-    blurb: "What it did for a single audience of yours.",
+    key: "campaign",
+    label: "This campaign",
+    blurb: "Everything it has done for the campaign you are reading.",
   },
   { key: "brand", label: "This brand", blurb: "Everything it has done for you on this channel." },
   {
@@ -94,6 +110,15 @@ const GRAIN_ORDER: { key: WorkflowLadderGrain; label: string; blurb: string }[] 
     blurb: "The benchmark, counted on what the workflow costs rather than on who was billed.",
   },
 ];
+
+const AUDIENCES_TIP =
+  "What this workflow did for each of your audiences, cheapest first. The rank above is scored over these too — so when the top row of the table is not the cheapest figure on screen, this is where its position comes from.";
+
+const BASIS_TIP =
+  "Charged is money you paid. Incurred counts spend we later refunded at full value, because it answers what the workflow COSTS to produce an outcome rather than what you were billed — which is why the fleet block is read apart from the rest.";
+
+const PROJECTED_TIP =
+  "This count was walked through your funnel's own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
 
 function fmtUsd(value: number | null | undefined): string {
   return value == null ? "—" : formatUsdAdaptive(value);
@@ -203,26 +228,42 @@ function GrainBlock({
   blurb,
   block,
   used,
-  outcomeStepKey,
   outcomeNoun,
+  grain,
+  brandDomain,
+  brandLogoUrl,
 }: {
   label: string;
   blurb: string;
-  block: WorkflowLadderGrainBlock | undefined;
+  block: WorkflowGrainBlock | undefined;
   used: boolean;
-  outcomeStepKey: string | null;
   outcomeNoun: string;
+  grain: WorkflowGrain;
+  brandDomain: string | null;
+  brandLogoUrl: string | null;
 }) {
-  const observed = observedOutcomeAt(block, outcomeStepKey);
+  const figures = grainFigures(block);
   return (
     <div
       className={`rounded-lg border p-3 ${used ? "border-brand-200 bg-brand-50" : "border-gray-200 bg-gray-50"}`}
     >
       <div className="flex flex-wrap items-center gap-2">
+        <GrainMark
+          grain={grain}
+          brandDomain={brandDomain}
+          brandLogoUrl={brandLogoUrl}
+          size={18}
+        />
         <span className="text-sm font-medium text-gray-900">{label}</span>
         {used && (
           <span className="inline-flex items-center rounded-full border border-brand-200 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-600">
             Used for the estimate
+          </span>
+        )}
+        {block?.costBasis && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-500">
+            {block.costBasis === "charged" ? "What you paid" : "What it costs us"}
+            <InfoTooltip tip={BASIS_TIP} placement="top" />
           </span>
         )}
       </div>
@@ -234,16 +275,89 @@ function GrainBlock({
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <Figure label="Spent" value={fmtUsd(block.evidence.spentUsd)} />
             <Figure label="People reached" value={fmtCount(block.evidence.observedContacted)} />
-            {observed != null && <Figure label={outcomeNoun} value={fmtCount(observed)} />}
-            {/* SERVED, never divided: the producer floors this at spend / max(reached, 1)
-                so it is never null and never zero. */}
-            <Figure
-              label="Cost per person reached"
-              value={fmtUsd(block.unitCosts.costPerContactedUsd)}
-            />
+            {/* THE FIGURE THE RANKING IS MADE OF. It replaced a "cost per person reached"
+                that nothing ranks on and that no reader could reconcile with the estimate
+                above — the whole point of this card is to show where that number came
+                from, so the number itself has to be in it. Served, never divided. */}
+            <div>
+              <span className="text-gray-500">Cost per {outcomeNoun.toLowerCase()}</span>
+              <p className="font-medium text-gray-900">
+                {figures == null ? "—" : fmtUsd(figures.costPerOutcomeUsd)}
+              </p>
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1 text-gray-500">
+                {outcomeNoun}
+                {figures != null && !figures.outcomeObserved && (
+                  <InfoTooltip tip={PROJECTED_TIP} placement="top" />
+                )}
+              </span>
+              <p className="font-medium text-gray-900">
+                {figures == null ? "—" : fmtCount(figures.outcomeCount)}
+              </p>
+            </div>
+            {block.projected && (
+              <>
+                <Figure
+                  label="Return on spend"
+                  value={formatRoi(block.projected.roiMultiple ?? null)}
+                />
+                <Figure
+                  label="Cost per paid client"
+                  value={fmtUsd(block.projected.costPerPaidClientUsd)}
+                />
+              </>
+            )}
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * EVERY AUDIENCE THIS WORKFLOW RAN FOR, cheapest first.
+ *
+ * The producer sends one row per (audience x workflow) and scores the rank over all of
+ * them, so a workflow can sit at the top of the table on a figure that appears in no
+ * column. This card is where that figure lives. Nothing is elected "the one the rank
+ * stands on" — the ordering is a display choice over served values, and the claim about
+ * which row won belongs to the producer.
+ *
+ * An audience we cannot name still gets its row: its evidence is real and its id is what
+ * the producer sent. A row whose grain states no price sorts last rather than vanishing.
+ */
+function AudienceGrainList({
+  rows,
+  audienceById,
+  outcomeNoun,
+}: {
+  rows: readonly WorkflowAudienceRow[];
+  audienceById: Map<string, { name: string; avatarUrl: string | null }>;
+  outcomeNoun: string;
+}) {
+  return (
+    <div className="divide-y divide-gray-100">
+      {rows.map((r) => {
+        const meta = audienceById.get(r.audienceId);
+        const name = meta?.name ?? "An audience we could not name";
+        return (
+          <div key={r.audienceId} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+            <AudienceAvatar name={name} avatarUrl={meta?.avatarUrl} size={24} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-gray-900">{name}</p>
+              <p className="text-xs text-gray-500">
+                {fmtUsd(r.figures?.spentUsd ?? null)} spent
+                {r.contacted != null && ` · ${fmtCount(r.contacted)} reached`}
+                {r.figures != null && ` · ${fmtCount(r.figures.outcomeCount)} ${outcomeNoun.toLowerCase()}`}
+              </p>
+            </div>
+            <span className="shrink-0 text-sm font-medium text-gray-900">
+              {r.figures == null ? "—" : fmtUsd(r.figures.costPerOutcomeUsd)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -261,6 +375,16 @@ export interface WorkflowRankPanelProps {
   /** Every row of the table, for the sibling comparison. */
   siblings: readonly CampaignWorkflowRow[];
   paused: boolean;
+  /** This workflow's BRAND-level ladder row — the cascade the grain cards read. */
+  ladderRow: WorkflowLadderRowShape | null;
+  /** Its audience rows, cheapest first, already ordered by `audienceRowsFor`. */
+  audienceRows: readonly WorkflowAudienceRow[];
+  /** A display lookup, id -> name + face. An id absent from it still gets its row. */
+  audienceById: Map<string, { name: string; avatarUrl: string | null }>;
+  brandDomain: string | null;
+  brandLogoUrl: string | null;
+  /** The leg's own step, in the producer's words — what every figure here is about. */
+  legStepLabel: string | null;
   onClose: () => void;
 }
 
@@ -273,6 +397,12 @@ export function WorkflowRankPanel({
   outcomeStepKey,
   outcomeNoun,
   siblings,
+  ladderRow,
+  audienceRows,
+  audienceById,
+  brandDomain,
+  brandLogoUrl,
+  legStepLabel,
   paused,
   onClose,
 }: WorkflowRankPanelProps) {
@@ -303,14 +433,25 @@ export function WorkflowRankPanel({
   // `resolved.grain`, which is a provenance LABEL for the finest grain that OBSERVED
   // the outcome — the two are decoupled on purpose, and marking the label's block
   // would point at the fleet on a row whose figure is this brand's own floored spend.
+  // THE GRAIN THE NUMBERS CAME FROM — the finest one WITH SPEND, which is the producer's
+  // own rule and is decoupled from `resolved.grain` (a provenance LABEL: the finest grain
+  // that OBSERVED the outcome). A grain that spent and observed nothing keeps its own
+  // floored spend as the number while being labelled `crossOrg`, so marking the label's
+  // block would point at the fleet on a figure that is the customer's own.
+  //
+  // `campaign` sits between brand and audience in that cascade since v0.164.0. Leaving it
+  // out marked THIS BRAND as the source on every campaign-scoped read — the mark pointing
+  // one block away from the number it describes.
   const usedGrain: WorkflowLadderGrain | null = ladder
-    ? ladder.estimatesByGrain.audience
+    ? ladderRow?.estimatesByGrain.audience
       ? "audience"
-      : ladder.estimatesByGrain.brand
-        ? "brand"
-        : ladder.estimatesByGrain.crossOrg
-          ? "crossOrg"
-          : null
+      : ladderRow?.estimatesByGrain.campaign
+        ? "campaign"
+        : ladderRow?.estimatesByGrain.brand
+          ? "brand"
+          : ladderRow?.estimatesByGrain.crossOrg
+            ? "crossOrg"
+            : null
     : null;
 
   const siblingRows = useMemo(
@@ -432,17 +573,29 @@ export function WorkflowRankPanel({
               {GRAIN_ORDER.map((g) => (
                 <GrainBlock
                   key={g.key}
+                  grain={g.key}
                   label={g.label}
                   blurb={g.blurb}
-                  block={ladder.estimatesByGrain[g.key]}
+                  block={ladderRow?.estimatesByGrain[g.key]}
                   used={usedGrain === g.key}
-                  outcomeStepKey={outcomeStepKey}
                   outcomeNoun={outcomeNoun}
+                  brandDomain={brandDomain}
+                  brandLogoUrl={brandLogoUrl}
                 />
               ))}
             </div>
           )}
         </Card>
+
+        {audienceRows.length > 0 && (
+          <Card title="Your audiences, through this workflow" tip={AUDIENCES_TIP}>
+            <AudienceGrainList
+              rows={audienceRows}
+              audienceById={audienceById}
+              outcomeNoun={outcomeNoun}
+            />
+          </Card>
+        )}
 
         <Card title="On this campaign" tip={CAMPAIGN_TIP}>
           <div className="grid grid-cols-2 gap-3 text-sm">
