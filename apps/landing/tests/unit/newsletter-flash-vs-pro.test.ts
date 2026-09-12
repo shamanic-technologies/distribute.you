@@ -12,6 +12,7 @@ import { join } from "node:path";
  */
 const ROOT = join(__dirname, "..", "..");
 const html = readFileSync(join(ROOT, "content", "newsletters", "flash-vs-pro", "index.html"), "utf8");
+const text = readFileSync(join(ROOT, "content", "newsletters", "flash-vs-pro", "index.txt"), "utf8");
 
 describe("newsletter: flash vs pro", () => {
   it("carries no em-dash (user-facing copy)", () => {
@@ -46,6 +47,34 @@ describe("newsletter: flash vs pro", () => {
 
   it("states the article's headline figures", () => {
     for (const figure of ["$139", "$1", "125,000", "36", "$198"]) expect(html).toContain(figure);
+  });
+
+  /**
+   * The plain-text part is what a client rendering no HTML shows, and what a
+   * spam filter reads beside the markup. It lived outside the repo once, went
+   * unguarded through two re-derivations, and was still publishing the retired
+   * figures when the HTML beside it had already moved. It ships here now, and
+   * it states the same figures.
+   */
+  describe("plain-text part", () => {
+    it("carries no em-dash", () => {
+      expect(text).not.toContain("\u2014");
+    });
+
+    it("states the same headline figures as the HTML", () => {
+      for (const figure of ["$139", "125,000", "$198", "$1,451"]) {
+        expect(html).toContain(figure);
+        expect(text).toContain(figure);
+      }
+    });
+
+    it("links to the article with the newsletter attribution", () => {
+      expect(text).toContain("utm_source=newsletter");
+    });
+
+    it("claims no all-of-them twist", () => {
+      expect(text).not.toMatch(/\d+ of \d+/);
+    });
   });
 
   /**
