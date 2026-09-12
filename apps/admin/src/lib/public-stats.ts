@@ -82,7 +82,13 @@ export type UsersStats = z.infer<typeof usersStatsSchema>;
 export type BillingStats = z.infer<typeof billingStatsSchema>;
 export type RunsStats = z.infer<typeof runsStatsSchema>;
 
-export type PublicAnalyticsView = "landing" | "signups" | "active-users" | "cards" | "revenue";
+export type PublicAnalyticsView =
+  | "overview"
+  | "landing"
+  | "signups"
+  | "active-users"
+  | "cards"
+  | "revenue";
 
 export interface DailyFunnelPoint {
   date: string;
@@ -120,7 +126,24 @@ export interface PublicStats {
   visitorFirstSeenMonths: FirstSeenMonthRow[];
   /** Signups by the month each user first completed signup. */
   signupFirstSeenMonths: FirstSeenMonthRow[];
+  /**
+   * Distinct visitors and signups over the trailing 30- and 90-day windows.
+   *
+   * Read DISTINCT over each window rather than summed off the daily series: those
+   * rows are `uniq()` per day, so adding 30 of them counts a person once per day
+   * they came back. Empty on every view but the Overview, which is the only one
+   * that states a windowed funnel.
+   */
+  windows: FunnelWindowTotals | null;
   updatedAt: string;
+}
+
+/** Distinct counts over the trailing windows the Overview's funnel is stated over. */
+export interface FunnelWindowTotals {
+  visitors30d: number;
+  visitors90d: number;
+  signups30d: number;
+  signups90d: number;
 }
 
 const posthogQueryResponseSchema = z.object({
@@ -288,6 +311,49 @@ async function fetchSignupFirstSeenMonths(): Promise<FirstSeenMonthRow[]> {
   ]);
 }
 
+/**
+ * Distinct visitors and signups over the trailing 30 and 90 days, in ONE query per
+ * stage so the two windows can never be read from two different moments.
+ *
+ * `uniqIf` counts each person once per window however many sessions or repeat
+ * `signup_completed` events they produced — which is the whole reason this is not
+ * a sum over the daily series the other tabs chart.
+ */
+async function fetchFunnelWindowTotals(): Promise<FunnelWindowTotals> {
+  const [visitorRows, signupRows] = await Promise.all([
+    posthogQuery(`
+      SELECT
+        uniqIf(distinct_id, \`$start_timestamp\` >= now() - INTERVAL 30 DAY) AS d30,
+        uniqIf(distinct_id, \`$start_timestamp\` >= now() - INTERVAL 90 DAY) AS d90
+      FROM sessions
+      WHERE \`$entry_hostname\` = 'distribute.you'
+    `),
+    posthogQuery(`
+      SELECT
+        uniqIf(person, timestamp >= now() - INTERVAL 30 DAY) AS d30,
+        uniqIf(person, timestamp >= now() - INTERVAL 90 DAY) AS d90
+      FROM (
+        SELECT
+          if(notEmpty(properties['$user_id']), properties['$user_id'], distinct_id) AS person,
+          timestamp
+        FROM events
+        WHERE event = 'signup_completed'
+      )
+    `),
+  ]);
+  const visitors = visitorRows[0];
+  const signups = signupRows[0];
+  if (!visitors || !signups) {
+    throw new Error("[public-stats] funnel window query returned no rows");
+  }
+  return {
+    visitors30d: asNumber(visitors[0], "visitors 30d"),
+    visitors90d: asNumber(visitors[1], "visitors 90d"),
+    signups30d: asNumber(signups[0], "signups 30d"),
+    signups90d: asNumber(signups[1], "signups 90d"),
+  };
+}
+
 async function fetchSignupDaily(): Promise<Map<string, number>> {
   const rows = await posthogQuery(`
     SELECT
@@ -446,7 +512,12 @@ function buildTimeline(
 }
 
 export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landing"): Promise<PublicStats> {
-  const includeCardTimeline = view === "cards";
+  // The Overview states the paid-user charts, so it pays the same Stripe fan-out the
+  // Paid-users tab does — that call is the only source of a per-day first-card series.
+  const includeCardTimeline = view === "cards" || view === "overview";
+  // Only the Overview states a windowed funnel; two extra PostHog reads elsewhere
+  // would buy nothing.
+  const includeWindows = view === "overview";
   // The first-seen series only feed the Revenue view's avg-per-X denominators —
   // two extra PostHog queries on every other tab would buy nothing.
   const includeFirstSeen = view === "revenue";
@@ -461,6 +532,7 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     cardDaily,
     visitorFirstSeenMonths,
     signupFirstSeenMonths,
+    windows,
   ] = await Promise.all([
     fetchPublicStats("/public/stats/users", usersStatsSchema),
     fetchClerkUserCount(),
@@ -472,6 +544,7 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     includeCardTimeline ? fetchStripeCardsDaily() : Promise.resolve(new Map<string, number>()),
     includeFirstSeen ? fetchVisitorFirstSeenMonths() : Promise.resolve([] as FirstSeenMonthRow[]),
     includeFirstSeen ? fetchSignupFirstSeenMonths() : Promise.resolve([] as FirstSeenMonthRow[]),
+    includeWindows ? fetchFunnelWindowTotals() : Promise.resolve(null),
   ]);
   const signupEvents = [...signupDaily.values()].reduce((sum, value) => sum + value, 0);
   const trafficSources = await fetchTrafficSources(landingVisitors);
@@ -488,6 +561,7 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     trafficSources,
     visitorFirstSeenMonths,
     signupFirstSeenMonths,
+    windows,
     updatedAt: new Date().toISOString(),
   };
 }

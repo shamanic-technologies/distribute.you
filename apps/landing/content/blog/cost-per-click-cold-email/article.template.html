@@ -22,7 +22,7 @@
 
 <h2 id="the-length">Shorter is cheaper</h2>
 
-<p>Under 400 characters, a click costs {{pick|cut=linked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}}. Over 800 it costs {{pick|cut=linked.byFirstLength|bucket=over 800|field=cpc|fmt=usd}}, on too few clicks to be a solid read. It is the reading time. Six paragraphs or more cost {{pick|cut=linked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}} a click against {{pick|cut=linked.byParagraphs|bucket=1|field=cpc|fmt=usd}} for one, and a subject of 20 characters or fewer beats one over 40.</p>
+<p>Under 400 characters, a click costs {{pick|cut=linked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}}. Over 800 it costs {{pick|cut=linked.byFirstLength|bucket=over 800|field=cpc|fmt=usd}}. It is the reading time. Six paragraphs or more cost {{pick|cut=linked.byParagraphs|bucket=6 or more|field=cpc|fmt=usd}} a click against {{pick|cut=linked.byParagraphs|bucket=1|field=cpc|fmt=usd}} for one, and a subject of 20 characters or fewer beats one over 40.</p>
 
 {{chart|cut=linked.byFirstLength|metric=cpc|title=Cost per click by length of the first email, characters (USD, lower is better)}}
 
@@ -50,7 +50,7 @@
 
 <h2 id="the-place">Where they are</h2>
 
-<p>A European or Asian reader clicks for {{pick|cut=linked.byContinent|bucket=Europe|field=cpc|fmt=usd}}, a North American one for {{pick|cut=linked.byContinent|bucket=North America|field=cpc|fmt=usd}}. France is the cheapest country we can price, {{pick|cut=linked.byCountry|bucket=France|field=cpc|fmt=usd}}; the United States the most expensive, {{pick|cut=linked.byCountry|bucket=United States|field=cpc|fmt=usd}}. Most of our volume is American, so the {{usd linked.total.cpc}} headline is mostly an American price.</p>
+<p>A European or Asian reader clicks for {{pick|cut=linked.byContinent|bucket=Europe|field=cpc|fmt=usd}}, a North American one for {{pick|cut=linked.byContinent|bucket=North America|field=cpc|fmt=usd}}. France is the cheapest country we price, {{pick|cut=linked.byCountry|bucket=France|field=cpc|fmt=usd}}; the United States and Canada the dearest, {{pick|cut=linked.byCountry|bucket=United States|field=cpc|fmt=usd}} each. Most of our volume is American, so the {{usd linked.total.cpc}} headline is mostly an American price.</p>
 
 {{chart|cut=linked.byContinent|metric=cpc|min=1000|title=Cost per click by continent of the reader (USD, lower is better)}}
 
@@ -125,7 +125,7 @@
 <li><strong>Link scanners</strong>: a corporate mail gateway fetches every URL in a message before the reader sees it, so a raw hit on a tracking link is not a person. On the emails we send ourselves, a hit is classified before it counts: a HEAD request, a known scanner user agent, a browser string carrying a full build number that no current browser reports, or the same reader fetching the unsubscribe link within a minute. There is no time threshold, because a person on a phone reads a message within seconds too. {{n scanner.demoted}} of {{n scanner.decided}} such hits were demoted. Clicks the sending provider reports on its own infrastructure are not affected, and they are most of this window: {{n volume.clicksBySource.provider}} of the {{n volume.clicks}} clicks counted here come from its tracking, {{n volume.clicksBySource.selfSend}} from our own redirect.</li>
 <li><strong>Pricing</strong>: every dollar here is what the client is charged, all in: lead sourcing, email verification, one email written for each recipient, the mailboxes and domains, sending, follow-ups, the team running it and our margin. There is no subscription and no retainer on top. That is what makes it comparable with a paid-media click and not comparable with a sending tool's monthly fee.</li>
 <li><strong>Cost per click</strong>: spend divided by clicks. Spend is everything the workflow cost before per-account discounts. Each email carries its own workflow's cost per email, so a bucket's spend is the sum over the emails in it.</li>
-<li><strong>Buckets</strong>: a bucket is a solid read past at least 1,000 emails and 20 clicks. Every bucket with at least one click is still drawn and priced, with its emails and clicks printed under the bar so a reader can weigh it; one under either floor is labelled (thin).</li>
+<li><strong>Buckets</strong>: every bucket with at least one click is drawn and priced, with its emails and clicks printed under the bar so a reader can weigh it. One under {{n floors.minEmails}} emails or {{n floors.minClicks}} clicks is labelled (thin): the send volume is what makes a bucket unreadable, and a few hundred emails is a real send.</li>
 <li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini 3 to 3.7 Flash, Gemini 3.5 Flash-Lite, DeepSeek V4 Flash and GLM 5.3 Flash ran). Pro, the middle (Gemini 3.1 Pro, DeepSeek V4 Pro and GLM 5.2 to 5.3 ran). Frontier, the most expensive, which has not run in production beyond a handful of emails. The model is read per email from the generation record.</li>
 <li><strong>Length, paragraphs, subject, links</strong>: measured on the generated text of the email that was sent. A link is a URL or a bare domain in that text; the sending layer turns both into a tracked link.</li>
 <li><strong>Reader</strong>: country, seniority, company size and industry from the lead enrichment record. Local time from the reader's time zone where known.</li>
