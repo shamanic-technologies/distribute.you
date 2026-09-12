@@ -389,6 +389,9 @@ function bestWorkflows(rows, minEmails = MIN_EMAILS) {
       cpr: a.replies ? round(a.spend / a.replies, 2) : null,
       cprThin: a.replies < MIN_REPLIES,
       linkedEmails: la.emails, linkedSpend: la.spend, linkedClicks: la.clicks,
+      // the click rate on the emails that carried a link, which is the only honest
+      // denominator for a workflow's cost per visit
+      linkedClicksPerThousand: la.clicksPerThousand,
       cpc: la.clicks ? round(la.spend / la.clicks, 2) : null,
       cpcThin: !la.clicks || la.emails < MIN_EMAILS || la.clicks < MIN_CLICKS,
     });
