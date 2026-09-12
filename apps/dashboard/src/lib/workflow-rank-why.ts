@@ -55,8 +55,10 @@
  * no `@` alias in this repo. Keep it that way.
  */
 
-/** Whose results a resolved figure is labelled as. Null on an unmeasured row. */
-export type WorkflowLadderGrain = "crossOrg" | "brand" | "audience";
+/** Whose results a resolved figure is labelled as. Null on an unmeasured row.
+ *  `campaign` arrived with features-service v0.164.0 — a campaign-keyed read labels a
+ *  figure with it, so a reader declaring only the older three throws on every row. */
+export type WorkflowLadderGrain = "crossOrg" | "brand" | "campaign" | "audience";
 
 /** Which accounting question the resolved numbers answer. Null on an unmeasured row. */
 export type WorkflowLadderCostBasis = "charged" | "incurred";
@@ -87,6 +89,14 @@ export interface WorkflowLadderGrainBlock {
    * count of people — the observed evidence above is what a sentence may quote.
    */
   resolvedOutcomeCount?: number | null;
+  /** THIS grain's figures for the leg the request named (features-service v0.164.0),
+   *  denominated in the leg's own step. Read by `lib/workflow-grains`, not here. */
+  legOutcome?: {
+    costPerOutcomeUsd: number | null;
+    outcomeCount: number | null;
+    outcomeObserved: boolean;
+    spentUsd: number;
+  } | null;
 }
 
 /** One ladder row, narrowed to what a rank and a sentence need. */
@@ -101,8 +111,13 @@ export interface WorkflowLadderRow {
   estimatesByGrain: {
     crossOrg?: WorkflowLadderGrainBlock;
     brand?: WorkflowLadderGrainBlock;
+    /** Present ⟺ the request named a campaign. */
+    campaign?: WorkflowLadderGrainBlock;
     audience?: WorkflowLadderGrainBlock;
   };
+  /** The producer's own position for this WORKFLOW. Read, never derived — see the
+   *  ordering note on `rankWorkflowRows`. */
+  rank?: number | null;
 }
 
 /**
@@ -123,8 +138,9 @@ const OBSERVED_BY_STEP_KEY: Record<string, keyof WorkflowLadderEvidence> = {
 /** A row ordered and explained. `rank` is its merit position, 1-based. */
 export interface RankedWorkflow<T> {
   row: T;
-  /** Position in the MERIT order — the running row keeps its own, it does not become 1. */
-  rank: number;
+  /** The producer's own position, verbatim. NULL when the ladder carries no rank for
+   *  this workflow — the row then states none rather than claiming last place. */
+  rank: number | null;
   /** `resolved.costPerOutcomeUsd`, verbatim. Null = the ladder states none. */
   estCostPerOutcomeUsd: number | null;
   /** False for an explore row and for a row the ladder does not carry. */
@@ -135,17 +151,6 @@ export interface RankedWorkflow<T> {
   why: string;
   /** The ladder row behind it, for the panel. Null = the ladder does not carry it. */
   ladder: WorkflowLadderRow | null;
-}
-
-/**
- * The MERIT tier a row sits in. Lower is better, and the tiers exist because the three
- * kinds of row are not comparable on one number: an explore allowance is cheap by
- * construction, and a row with no estimate at all has nothing to be cheap about.
- */
-function meritTier(ladder: WorkflowLadderRow | null): number {
-  if (!ladder) return 3;
-  if (!ladder.measured) return 2;
-  return ladder.costPerOutcomeUsd == null ? 1 : 0;
 }
 
 /**
@@ -169,6 +174,7 @@ function blockFor(
   grain: WorkflowLadderGrain | null,
 ): WorkflowLadderGrainBlock | undefined {
   if (grain === "audience") return ladder.estimatesByGrain.audience;
+  if (grain === "campaign") return ladder.estimatesByGrain.campaign;
   if (grain === "brand") return ladder.estimatesByGrain.brand;
   if (grain === "crossOrg") return ladder.estimatesByGrain.crossOrg;
   return undefined;
@@ -177,6 +183,7 @@ function blockFor(
 /** The finest grain this row actually SPENT at — which is where a `charged` figure came from. */
 function finestSpentGrain(ladder: WorkflowLadderRow): WorkflowLadderGrain | null {
   if (ladder.estimatesByGrain.audience) return "audience";
+  if (ladder.estimatesByGrain.campaign) return "campaign";
   if (ladder.estimatesByGrain.brand) return "brand";
   if (ladder.estimatesByGrain.crossOrg) return "crossOrg";
   return null;
@@ -227,10 +234,22 @@ export function workflowRankWhy(
   // WHOSE results, read off the PROVENANCE label — and the count quoted beside it is
   // that same grain's own observed evidence, so the sentence describes one body of
   // evidence rather than two.
-  if (ladder.grain === "audience" || ladder.grain === "brand") {
+  if (
+    ladder.grain === "audience" ||
+    ladder.grain === "brand" ||
+    // `campaign` arrived with features-service v0.164.0 and is a provenance label like
+    // the other two. Leaving it out sent every campaign-labelled row to the FLOORED
+    // sentence below — "produced no sales interest yet" printed on a workflow with 13 of
+    // them, which is the one sentence on the row a reader would act on.
+    ladder.grain === "campaign"
+  ) {
     const observed = observedOutcomeAt(blockFor(ladder, ladder.grain), opts.outcomeStepKey);
     const whose =
-      ladder.grain === "audience" ? "One of your audiences" : "Your own results on this brand";
+      ladder.grain === "audience"
+        ? "One of your audiences"
+        : ladder.grain === "campaign"
+          ? "This campaign's own results"
+          : "Your own results on this brand";
     const count =
       observed == null ? "" : ` ${observed.toLocaleString("en-US")} ${noun}${observed === 1 ? "" : "s"},`;
     return `${lead}${whose}:${count}${priced ? ` ${priced} each.` : " no price stated."}`.trim();
@@ -263,20 +282,27 @@ export interface RankWorkflowsInput<T> {
 }
 
 /**
- * THE ONE ORDERING, and it is the producer's.
+ * THE ORDER IS READ, NOT DERIVED.
  *
- * Merit order is ascending `resolved.costPerOutcomeUsd` over MEASURED rows — the exact
- * figure campaign-service ranks on — then the rows with no estimate, then the explore
- * rows (cheap by construction, so never mixed in), then anything the ladder does not
- * carry. Ranks are assigned over THAT order.
+ * features-service serves a `rank` per WORKFLOW (v0.164.0), scored over every row a
+ * dynasty has — the brand row, the campaign row and each audience — which is the
+ * identical population its own recommendation is chosen from. So `recommendedWorkflow-
+ * DynastySlug` is rank 1 by construction and nothing here can disagree with it.
+ *
+ * It used to sort on `resolved.costPerOutcomeUsd` over the BRAND rows it displays, and
+ * that produced a second order: in prod the recommended workflow sat 18th of 24 on a
+ * page whose own heading said the list was ranked the way we pick. Do NOT re-introduce a
+ * client sort — if the rank looks wrong, it is the producer's answer that is wrong, and
+ * that is a far more useful thing to know.
+ *
+ * A row the ladder does not carry, or one carrying no rank, sorts AFTER every ranked one
+ * and states no position at all — "we could not rank this" and "it ranks last" are
+ * different statements. Ties (which the producer's total order does not produce) break
+ * on the slug so the list is stable across polls.
  *
  * The row the campaign is RUNNING is then pinned to the top of the DISPLAY list while
- * KEEPING its merit rank, because a reader opening this page wants to see what is
- * happening first and still wants to know where it stands. It is never renumbered to 1:
- * a `#1` badge on a row the producer ranks fourth is the surface stating something the
- * ladder does not.
- *
- * Ties break on the slug so the list is stable across polls.
+ * KEEPING its rank, because a reader opening this page wants to see what is happening
+ * first and still wants to know where it stands.
  */
 export function rankWorkflowRows<T extends { workflowDynastySlug: string; running: boolean }>(
   input: RankWorkflowsInput<T>,
@@ -286,25 +312,22 @@ export function rankWorkflowRows<T extends { workflowDynastySlug: string; runnin
     if (!byDynasty.has(l.workflowDynastySlug)) byDynasty.set(l.workflowDynastySlug, l);
   }
 
-  const merit = [...input.rows].sort((a, b) => {
-    const la = byDynasty.get(a.workflowDynastySlug) ?? null;
-    const lb = byDynasty.get(b.workflowDynastySlug) ?? null;
-    const ta = meritTier(la);
-    const tb = meritTier(lb);
-    if (ta !== tb) return ta - tb;
-    const ca = la?.costPerOutcomeUsd;
-    const cb = lb?.costPerOutcomeUsd;
-    if (ca != null && cb != null && ca !== cb) return ca - cb;
+  const ordered = [...input.rows].sort((a, b) => {
+    const ra = byDynasty.get(a.workflowDynastySlug)?.rank ?? null;
+    const rb = byDynasty.get(b.workflowDynastySlug)?.rank ?? null;
+    if (ra != null && rb != null && ra !== rb) return ra - rb;
+    if (ra != null && rb == null) return -1;
+    if (ra == null && rb != null) return 1;
     return a.workflowDynastySlug.localeCompare(b.workflowDynastySlug);
   });
 
-  const ranked = merit.map((row, i) => {
+  const ranked = ordered.map((row) => {
     const ladder = byDynasty.get(row.workflowDynastySlug) ?? null;
     const recommended =
       input.recommended != null && input.recommended === row.workflowDynastySlug;
     return {
       row,
-      rank: i + 1,
+      rank: ladder?.rank ?? null,
       estCostPerOutcomeUsd: ladder?.costPerOutcomeUsd ?? null,
       measured: ladder?.measured ?? false,
       recommended,

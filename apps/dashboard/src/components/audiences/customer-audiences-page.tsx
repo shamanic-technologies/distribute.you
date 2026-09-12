@@ -1,5 +1,6 @@
 "use client";
 
+import { AudienceAvatar, audienceInitials } from "@/components/audiences/audience-avatar";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -218,45 +219,6 @@ function SortHeader({
  * targeting tags, the AI-generated avatar (with a (re)generate button), the
  * provider logo, the status actions, and a docked "Edit with AI" chat.
  */
-
-function audienceInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "A";
-  return words.slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
-}
-
-/** Avatar: the AI-generated image (data: URI) when present, else initials badge. */
-function AudienceAvatar({
-  name,
-  avatarUrl,
-  size = 28,
-}: {
-  name: string;
-  avatarUrl?: string | null;
-  size?: number;
-}) {
-  const [error, setError] = useState(false);
-  const box = { width: size, height: size };
-  if (avatarUrl && !error) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        style={box}
-        onError={() => setError(true)}
-        className="shrink-0 rounded-full border border-gray-200 object-cover"
-      />
-    );
-  }
-  return (
-    <span
-      style={{ ...box, fontSize: Math.max(10, Math.round(size * 0.32)) }}
-      className="flex shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 font-semibold text-brand-700"
-    >
-      {audienceInitials(name)}
-    </span>
-  );
-}
 
 /**
  * @param campaignId - Set by the campaign-scoped route (`campaigns/[id]/audiences`).

@@ -1,10 +1,10 @@
 /**
  * REAL unit tests — `lib/workflow-rank-why` is alias-free so vitest can import it.
  *
- * What is pinned: the ordering IS the producer's (`resolved.costPerOutcomeUsd` over
- * MEASURED rows), an explore row can never be ranked among them however cheap its
- * allowance, the running row keeps its own merit rank, and every sentence rests on a
- * served field rather than on arithmetic done here.
+ * What is pinned: the order is READ off the producer's own `rank` and derived nowhere
+ * here, a row the ladder does not carry claims no position at all, the running row keeps
+ * the rank it was given, and every sentence rests on a served field rather than on
+ * arithmetic done here.
  */
 import fs from "fs";
 import path from "path";
@@ -48,6 +48,7 @@ function ladder(p: Partial<WorkflowLadderRow> & { workflowDynastySlug: string })
     costPerOutcomeUsd: 10,
     roiMultiple: 3,
     estimatesByGrain: {},
+    rank: 1,
     ...p,
   };
 }
@@ -72,29 +73,34 @@ describe("the module stays alias-free, so these are real unit tests", () => {
   });
 });
 
-describe("the ordering is the producer's, ascending on the figure it ranks on", () => {
-  it("orders MEASURED rows cheapest first", () => {
+describe("the order is the producer's `rank`, read and never derived", () => {
+  it("orders on the served rank, whatever the costs say", () => {
+    // The rank is scored over every row a workflow has — its audiences included — so it
+    // legitimately disagrees with the brand-level cost this page displays. That is the
+    // whole reason it is read rather than re-derived: ranking the displayed rows put the
+    // recommended workflow 18th of 24 in prod.
     const out = rankWorkflowRows({
       rows: [row("dear"), row("cheap"), row("mid")],
       ladder: [
-        ladder({ workflowDynastySlug: "dear", costPerOutcomeUsd: 300 }),
-        ladder({ workflowDynastySlug: "cheap", costPerOutcomeUsd: 12 }),
-        ladder({ workflowDynastySlug: "mid", costPerOutcomeUsd: 80 }),
+        ladder({ workflowDynastySlug: "dear", costPerOutcomeUsd: 300, rank: 1 }),
+        ladder({ workflowDynastySlug: "cheap", costPerOutcomeUsd: 12, rank: 3 }),
+        ladder({ workflowDynastySlug: "mid", costPerOutcomeUsd: 80, rank: 2 }),
       ],
-      recommended: "cheap",
+      recommended: "dear",
       ...OPTS,
     });
-    expect(out.map((r) => r.row.workflowDynastySlug)).toEqual(["cheap", "mid", "dear"]);
+    expect(out.map((r) => r.row.workflowDynastySlug)).toEqual(["dear", "mid", "cheap"]);
     expect(out.map((r) => r.rank)).toEqual([1, 2, 3]);
   });
 
-  it("never ranks an EXPLORE row among the measured ones, however cheap its allowance", () => {
-    // The allowance is the price of ONE OUTREACH, so it is the cheapest figure on the
-    // page by construction. Mixing it in would put the least proven workflow on top.
+  it("keeps an EXPLORE row where the producer put it", () => {
+    // The allowance is the price of ONE OUTREACH, cheapest by construction — and the
+    // producer already refuses to let it outrank measured evidence, so nothing here
+    // needs a second rule about it.
     const out = rankWorkflowRows({
-      rows: [row("proven"), row("never-run")],
+      rows: [row("never-run"), row("proven")],
       ladder: [
-        ladder({ workflowDynastySlug: "proven", costPerOutcomeUsd: 90 }),
+        ladder({ workflowDynastySlug: "proven", costPerOutcomeUsd: 90, rank: 1 }),
         ladder({
           workflowDynastySlug: "never-run",
           measured: false,
@@ -102,6 +108,7 @@ describe("the ordering is the producer's, ascending on the figure it ranks on", 
           costBasis: null,
           costPerOutcomeUsd: 0.31,
           roiMultiple: null,
+          rank: 2,
         }),
       ],
       recommended: "proven",
@@ -114,21 +121,37 @@ describe("the ordering is the producer's, ascending on the figure it ranks on", 
   it("puts a row the ladder does not carry LAST, with no rank claim of its own", () => {
     const out = rankWorkflowRows({
       rows: [row("unknown"), row("priced")],
-      ladder: [ladder({ workflowDynastySlug: "priced", costPerOutcomeUsd: 40 })],
+      ladder: [ladder({ workflowDynastySlug: "priced", costPerOutcomeUsd: 40, rank: 1 })],
       recommended: null,
       ...OPTS,
     });
     expect(out.map((r) => r.row.workflowDynastySlug)).toEqual(["priced", "unknown"]);
+    expect(out[1].rank).toBeNull();
     expect(out[1].estCostPerOutcomeUsd).toBeNull();
     expect(out[1].ladder).toBeNull();
+  });
+
+  it("a row the producer ranked NOT AT ALL claims no position either", () => {
+    // "we could not rank this" and "it ranks last" are different statements.
+    const out = rankWorkflowRows({
+      rows: [row("unranked"), row("ranked")],
+      ladder: [
+        ladder({ workflowDynastySlug: "ranked", rank: 1 }),
+        ladder({ workflowDynastySlug: "unranked", rank: null }),
+      ],
+      recommended: null,
+      ...OPTS,
+    });
+    expect(out.map((r) => r.row.workflowDynastySlug)).toEqual(["ranked", "unranked"]);
+    expect(out[1].rank).toBeNull();
   });
 
   it("breaks a tie on the slug, so the list is stable across polls", () => {
     const a = rankWorkflowRows({
       rows: [row("bravo"), row("alpha")],
       ladder: [
-        ladder({ workflowDynastySlug: "alpha", costPerOutcomeUsd: 10 }),
-        ladder({ workflowDynastySlug: "bravo", costPerOutcomeUsd: 10 }),
+        ladder({ workflowDynastySlug: "alpha", rank: 7 }),
+        ladder({ workflowDynastySlug: "bravo", rank: 7 }),
       ],
       recommended: null,
       ...OPTS,
@@ -137,31 +160,31 @@ describe("the ordering is the producer's, ascending on the figure it ranks on", 
   });
 });
 
-describe("the RUNNING row is pinned first and keeps its own merit rank", () => {
+describe("the RUNNING row is pinned first and keeps the rank it was given", () => {
   it("pins it without renumbering it", () => {
     const out = rankWorkflowRows({
       rows: [row("cheap"), row("mid"), row("dear", true)],
       ladder: [
-        ladder({ workflowDynastySlug: "cheap", costPerOutcomeUsd: 10 }),
-        ladder({ workflowDynastySlug: "mid", costPerOutcomeUsd: 20 }),
-        ladder({ workflowDynastySlug: "dear", costPerOutcomeUsd: 300 }),
+        ladder({ workflowDynastySlug: "cheap", rank: 1 }),
+        ladder({ workflowDynastySlug: "mid", rank: 2 }),
+        ladder({ workflowDynastySlug: "dear", rank: 3 }),
       ],
       recommended: "cheap",
       ...OPTS,
     });
     expect(out[0].row.workflowDynastySlug).toBe("dear");
-    // Third on merit, first on screen. A `#1` badge here would be the surface stating
-    // something the ladder does not.
+    // Third on the producer's order, first on screen. A `#1` badge here would be the
+    // surface stating something the ladder does not.
     expect(out[0].rank).toBe(3);
     expect(out.map((r) => r.rank)).toEqual([3, 1, 2]);
   });
 
-  it("changes nothing when the running row is already the cheapest", () => {
+  it("changes nothing when the running row is already rank 1", () => {
     const out = rankWorkflowRows({
       rows: [row("cheap", true), row("dear")],
       ladder: [
-        ladder({ workflowDynastySlug: "cheap", costPerOutcomeUsd: 10 }),
-        ladder({ workflowDynastySlug: "dear", costPerOutcomeUsd: 99 }),
+        ladder({ workflowDynastySlug: "cheap", rank: 1 }),
+        ladder({ workflowDynastySlug: "dear", rank: 2 }),
       ],
       recommended: "cheap",
       ...OPTS,
