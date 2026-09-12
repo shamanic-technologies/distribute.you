@@ -136,8 +136,8 @@ export interface RateBucket {
 }
 
 /**
- * Joins a signup bucket series to its visitor series on the bucket key and
- * states the conversion rate per period, with the compound growth of that rate.
+ * Joins a numerator bucket series to its denominator series on the bucket key
+ * and states the conversion rate per period, with the compound growth of that rate.
  *
  * A period with ZERO visitors is DROPPED, never charted at 0%: nobody was
  * measured, which is a different statement from "nobody converted". Visitor
@@ -146,16 +146,19 @@ export interface RateBucket {
  * The compound exponent counts MEASURED periods, so a dropped period is not a gap
  * the growth line silently spans as if it had been flat.
  */
-function rateBuckets(signups: SignupBucket[], visitors: SignupBucket[]): RateBucket[] {
-  const visitorsByKey = new Map(visitors.map((bucket) => [bucket.key, bucket.signups]));
-  const measured = signups.flatMap((bucket) => {
-    const denominator = visitorsByKey.get(bucket.key) ?? 0;
+function rateBuckets(numerators: SignupBucket[], denominators: SignupBucket[]): RateBucket[] {
+  const numeratorByKey = new Map(numerators.map((bucket) => [bucket.key, bucket.signups]));
+  const measured = denominators.flatMap((bucket) => {
+    const denominator = bucket.signups;
     if (denominator <= 0) return [];
+    // A period the numerator series never mentions converted NOBODY, which is a
+    // measured zero — the denominator is what decides whether a period can be
+    // charted at all, so the walk is over it.
     return [
       {
         key: bucket.key,
         label: bucket.label,
-        ratePct: Number(((bucket.signups / denominator) * 100).toFixed(1)),
+        ratePct: Number((((numeratorByKey.get(bucket.key) ?? 0) / denominator) * 100).toFixed(1)),
       },
     ];
   });
@@ -176,66 +179,107 @@ export function rateCmgrSummary(buckets: RateBucket[]): CompoundGrowthSummary {
   return compoundGrowthSummary(buckets.map((bucket) => bucket.cmgrPct));
 }
 
-export function monthlyCards(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, monthKey, (p) => p.cardsAdded);
-}
-
-export function weeklyCards(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date) => isoWeekKey(date), (p) => p.cardsAdded);
+/**
+ * One period of the public billing stats, as the producer publishes it: how many
+ * distinct accounts paid in that period and how many were paying for the first
+ * time, across every acquirer. `period` is an ISO date at the start of the bucket.
+ */
+export interface PayerPeriod {
+  period: string;
+  payingAccounts: number;
+  firstTimePayingAccounts: number;
 }
 
 /**
- * The paid-user conversion rate per period: paid users divided by signups, with the
- * compound growth OF that rate. Mirrors the signup-rate pair one stage down the
- * funnel, through the same `rateBuckets` join, so the two read identically.
- *
- * A period with ZERO signups is DROPPED rather than charted at 0%: there was nobody
- * to convert, which is a different statement from "nobody converted".
+ * The producer's periods keyed the way this module keys its own buckets, so the
+ * two series join. Monthly periods are the first of the month; weekly ones are
+ * the ISO week's Monday, which is the anchor `isoWeekKey` already uses.
  */
-export function monthlyCardRates(points: DailyFunnelPoint[]): RateBucket[] {
-  return rateBuckets(monthlyCards(points), monthlySignups(points));
-}
-
-export function weeklyCardRates(points: DailyFunnelPoint[]): RateBucket[] {
-  return rateBuckets(weeklyCards(points), weeklySignups(points));
-}
-
-/** Monday (ISO week start) of the given date, as a YYYY-MM-DD key. */
-function mondayIso(date: Date): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() - (day - 1));
-  return d.toISOString().slice(0, 10);
-}
-
-function pct(numerator: number, denominator: number): number {
-  if (denominator === 0) return 0;
-  return Number(((numerator / denominator) * 100).toFixed(1));
-}
-
-/**
- * Roll a daily funnel timeline up to ISO weeks (date = the week's Monday), summing
- * counts and recomputing the conversion ratios. Lets the daily chart component render
- * a weekly series without any change to its shape.
- */
-export function weeklyTimeline(points: DailyFunnelPoint[]): DailyFunnelPoint[] {
-  const map = new Map<string, { landingVisitors: number; signups: number; cardsAdded: number }>();
-  for (const point of points) {
-    const key = mondayIso(new Date(`${point.date}T00:00:00.000Z`));
-    const existing = map.get(key) ?? { landingVisitors: 0, signups: 0, cardsAdded: 0 };
-    existing.landingVisitors += point.landingVisitors;
-    existing.signups += point.signups;
-    existing.cardsAdded += point.cardsAdded;
-    map.set(key, existing);
+function payersByKey(
+  periods: PayerPeriod[],
+  keyFn: (date: Date) => { key: string; label: string },
+): Map<string, { label: string; firstTime: number }> {
+  const map = new Map<string, { label: string; firstTime: number }>();
+  for (const period of periods) {
+    const { key, label } = keyFn(new Date(`${period.period}T00:00:00.000Z`));
+    const existing = map.get(key);
+    if (existing) existing.firstTime += period.firstTimePayingAccounts;
+    else map.set(key, { label, firstTime: period.firstTimePayingAccounts });
   }
-  return [...map.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, v]) => ({
-      date,
-      landingVisitors: v.landingVisitors,
-      signups: v.signups,
-      cardsAdded: v.cardsAdded,
-      signupConversionPct: pct(v.signups, v.landingVisitors),
-      cardConversionPct: pct(v.cardsAdded, v.signups),
-    }));
+  return map;
+}
+
+/**
+ * FIRST-TIME paying accounts per period, dense over the union of the producer's
+ * periods and the signup timeline's.
+ *
+ * Dense on purpose: a period nobody started paying in is a measured ZERO, not a
+ * gap. Dropping it would shorten the compound exponent and read as if the series
+ * had simply paused, and it would leave a hole in the middle of the axis.
+ *
+ * FIRST-TIME rather than the period's total payers, because this is the
+ * acquisition curve — an account that pays every month would otherwise be
+ * counted again in each of them.
+ */
+function payerBuckets(
+  signupBuckets: SignupBucket[],
+  periods: PayerPeriod[],
+  keyFn: (date: Date) => { key: string; label: string },
+): SignupBucket[] {
+  const payers = payersByKey(periods, keyFn);
+  const keys = new Map<string, string>();
+  for (const bucket of signupBuckets) keys.set(bucket.key, bucket.label);
+  for (const [key, value] of payers) if (!keys.has(key)) keys.set(key, value.label);
+  return withDerived(
+    [...keys.entries()].map(([key, label]) => ({
+      key,
+      label,
+      signups: payers.get(key)?.firstTime ?? 0,
+    })),
+  );
+}
+
+/**
+ * The producer's growth rows as payer periods. An adapter and nothing else: the
+ * wire names stay the producer's, and this module never re-derives either count.
+ */
+export function payerPeriods(
+  rows: Array<{ period: string; paying_accounts: number; first_time_paying_accounts: number }>,
+): PayerPeriod[] {
+  return rows.map((row) => ({
+    period: row.period,
+    payingAccounts: row.paying_accounts,
+    firstTimePayingAccounts: row.first_time_paying_accounts,
+  }));
+}
+
+export function monthlyPayers(points: DailyFunnelPoint[], periods: PayerPeriod[]): SignupBucket[] {
+  return payerBuckets(monthlySignups(points), periods, monthKey);
+}
+
+export function weeklyPayers(points: DailyFunnelPoint[], periods: PayerPeriod[]): SignupBucket[] {
+  return payerBuckets(weeklySignups(points), periods, isoWeekKey);
+}
+
+/**
+ * Signup-to-paid conversion rate per period: first-time paying accounts divided
+ * by the signups of that period, with the compound growth OF that rate. Mirrors
+ * the signup-rate pair one stage up the funnel, through the same `rateBuckets`
+ * join, so the two read identically.
+ *
+ * A period with no signups is DROPPED — there is no denominator, which is a
+ * different statement from nobody converting.
+ *
+ * The numerator is the PRODUCER's count of accounts that paid for the first time.
+ * It replaced a count of first SAVED STRIPE CARDS derived here, which missed
+ * every wallet payer, every payer on the second acquirer, and dated a September
+ * payment to whenever that customer's card was attached. In production that read
+ * 12 against 33 accounts that had actually paid.
+ */
+export function monthlyPaidRates(points: DailyFunnelPoint[], periods: PayerPeriod[]): RateBucket[] {
+  return rateBuckets(monthlyPayers(points, periods), monthlySignups(points));
+}
+
+export function weeklyPaidRates(points: DailyFunnelPoint[], periods: PayerPeriod[]): RateBucket[] {
+  return rateBuckets(weeklyPayers(points, periods), weeklySignups(points));
 }

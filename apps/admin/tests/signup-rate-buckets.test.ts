@@ -11,9 +11,7 @@ function day(date: string, landingVisitors: number, signups: number): DailyFunne
     date,
     landingVisitors,
     signups,
-    cardsAdded: 0,
     signupConversionPct: landingVisitors === 0 ? 0 : Number(((signups / landingVisitors) * 100).toFixed(1)),
-    cardConversionPct: 0,
   };
 }
 

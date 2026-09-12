@@ -18,7 +18,7 @@ import { PeriodCompoundCard } from "@/components/period-compound-card";
 import type { PeriodCompoundPoint } from "@/components/period-compound-chart";
 import { compoundGrowthSeries, compoundGrowthSummary, type CompoundGrowthSummary } from "@/lib/compound-growth";
 import { formatUsd } from "@/lib/format-number";
-import type { DailyFunnelPoint, FunnelWindowTotals } from "@/lib/public-stats";
+import type { BillingStats, DailyFunnelPoint, FunnelWindowTotals } from "@/lib/public-stats";
 import {
   EconomicsCard,
   FunnelIndexChart,
@@ -30,7 +30,6 @@ import {
   economicsRows,
   funnelSteps,
   funnelWindows,
-  sumSince,
 } from "@/lib/funnel-overview";
 import {
   cmgrSummary,
@@ -41,10 +40,11 @@ import {
   weeklySignups,
   monthlySignupRates,
   weeklySignupRates,
-  monthlyCards,
-  weeklyCards,
-  monthlyCardRates,
-  weeklyCardRates,
+  monthlyPayers,
+  weeklyPayers,
+  payerPeriods,
+  monthlyPaidRates,
+  weeklyPaidRates,
   type RateBucket,
   type SignupBucket,
 } from "@/lib/signup-buckets";
@@ -104,13 +104,13 @@ function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
 export function OverviewView({
   landingVisitors,
   totalUsers,
-  cardsAdded,
+  billing,
   timeline,
   windows,
 }: {
   landingVisitors: number;
   totalUsers: number;
-  cardsAdded: number;
+  billing: BillingStats;
   timeline: DailyFunnelPoint[];
   windows: FunnelWindowTotals | null;
 }) {
@@ -139,7 +139,6 @@ export function OverviewView({
     // `now` is read once so the three windows and the economics beside them are all
     // stated as of the same instant.
     const now = new Date();
-    const cardDays = timeline.map((point) => ({ date: point.date, value: point.cardsAdded }));
     const users = byUser?.users ?? null;
     return funnelWindows(now).map((window) => {
       const inception = window.sinceIso === null;
@@ -160,16 +159,20 @@ export function OverviewView({
               : window.key === "d30"
                 ? windows.signups30d
                 : windows.signups90d,
-          // Safe to sum: each row counts a customer's FIRST saved card, so nobody is
-          // in the series twice. Inception reads the billing total rather than this
-          // series, which only covers the days PostHog and Stripe both have.
-          paidUsers: inception ? cardsAdded : sumSince(cardDays, window.sinceIso),
+          // Inception is the producer's own count of accounts that have ever paid,
+          // every acquirer. The 30/90-day windows are UNMEASURED: the producer
+          // buckets payers by week and by month, and neither aligns to a rolling
+          // window, so there is no honest sum to state. It used to sum a per-day
+          // first-saved-CARD series, which missed every wallet payer and every payer
+          // on the second acquirer, and dated a September payment to whenever that
+          // customer's card was attached — 12 against 33 who had actually paid.
+          paidUsers: inception ? billing.total_paying_accounts : null,
           activeUsers: users === null ? null : activeOrgsSince(users, window.sinceIso),
         }),
         economics: clientEconomics(economicsRows(board?.customers ?? []), window.sinceIso),
       };
     });
-  }, [landingVisitors, totalUsers, cardsAdded, timeline, windows, byUser, board]);
+  }, [landingVisitors, totalUsers, billing, timeline, windows, byUser, board]);
 
   const funnelSeries = useMemo(() => {
     const monthlyVisitorBuckets = monthlyVisitors(timeline);
@@ -178,10 +181,12 @@ export function OverviewView({
     const weeklySignupBuckets = weeklySignups(timeline);
     const monthlyRate = monthlySignupRates(timeline);
     const weeklyRate = weeklySignupRates(timeline);
-    const monthlyCardBuckets = monthlyCards(timeline);
-    const weeklyCardBuckets = weeklyCards(timeline);
-    const monthlyCardRate = monthlyCardRates(timeline);
-    const weeklyCardRate = weeklyCardRates(timeline);
+    const monthlyPeriods = payerPeriods(billing.monthly_growth);
+    const weeklyPeriods = payerPeriods(billing.weekly_growth);
+    const monthlyCardBuckets = monthlyPayers(timeline, monthlyPeriods);
+    const weeklyCardBuckets = weeklyPayers(timeline, weeklyPeriods);
+    const monthlyCardRate = monthlyPaidRates(timeline, monthlyPeriods);
+    const weeklyCardRate = weeklyPaidRates(timeline, weeklyPeriods);
     return {
       monthlyVisitors: { points: countPoints(monthlyVisitorBuckets), summary: cmgrSummary(monthlyVisitorBuckets) },
       weeklyVisitors: { points: countPoints(weeklyVisitorBuckets), summary: cmgrSummary(weeklyVisitorBuckets) },
@@ -194,7 +199,7 @@ export function OverviewView({
       monthlyCardRate: { points: ratePoints(monthlyCardRate), summary: rateCmgrSummary(monthlyCardRate) },
       weeklyCardRate: { points: ratePoints(weeklyCardRate), summary: rateCmgrSummary(weeklyCardRate) },
     };
-  }, [timeline]);
+  }, [timeline, billing]);
 
   const active = useMemo(() => {
     const monthly = activePoints(history?.monthly ?? [], "month");

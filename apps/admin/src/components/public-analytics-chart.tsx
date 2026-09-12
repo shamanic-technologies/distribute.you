@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 
-type MetricKey = "landingVisitors" | "signups" | "cardsAdded" | "signupConversionPct" | "cardConversionPct";
+type MetricKey = "landingVisitors" | "signups" | "signupConversionPct";
 type ChartSeries = {
   metric: MetricKey;
   color: string;
@@ -21,9 +21,7 @@ type ChartSeries = {
 const METRIC_LABEL: Record<MetricKey, string> = {
   landingVisitors: "Unique visitors",
   signups: "Signups",
-  cardsAdded: "Paid users",
   signupConversionPct: "Signup conversion",
-  cardConversionPct: "Paid conversion",
 };
 
 function formatDateShort(iso: string): string {
