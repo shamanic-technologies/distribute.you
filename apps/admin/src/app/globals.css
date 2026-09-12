@@ -131,6 +131,8 @@ html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
 html.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.15); }
 html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.15); }
+html.dark .text-red-700 { color: #fca5a5; }
+html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
 html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.15); }
 html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
@@ -169,6 +171,7 @@ html.dark input::placeholder, html.dark textarea::placeholder {
 
 /* Amber accent (thinking blocks) in dark mode */
 html.dark .text-amber-700 { color: #fbbf24; }
+html.dark .text-amber-600 { color: #f59e0b; }
 html.dark .text-amber-800 { color: #f59e0b; }
 html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
 html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }

@@ -57,20 +57,20 @@ describe("Revenue metrics view — wiring", () => {
 
   it("renders every requested revenue surface", () => {
     expect(revenueView).toContain("Total revenue");
-    expect(revenueView).toContain("Current MRR");
     expect(revenueView).toContain("Tracked revenue weeks");
     expect(revenueView).toContain("Monthly revenue");
     expect(revenueView).toContain("Weekly revenue");
     expect(revenueView).toContain("CMGR since inception");
     expect(revenueView).toContain("CWGR since inception");
-    // MRR / ARR card pairs replace the old daily MRR line.
+    // The run-rate is stated ONCE, in the two halves it is earned in — see
+    // mrr-split-section.test.ts, which owns that band. What this file pins is
+    // that the OLD undifferentiated surfaces are gone, so the page can never
+    // carry a fleet MRR beside the split it is supposed to have replaced.
     expect(revenueView).toContain("Monthly MRR");
     expect(revenueView).toContain("Weekly MRR");
-    expect(revenueView).toContain("Monthly ARR");
-    expect(revenueView).toContain("Weekly ARR");
-    // MRR/ARR are the COMMITTED run-rate from the backend snapshot series.
-    expect(revenueView).toContain("committedBuckets");
-    expect(revenueView).toContain("Committed run-rate");
+    expect(revenueView).not.toContain("Current MRR (committed)");
+    expect(revenueView).not.toContain("committedBuckets");
+    expect(revenueView).not.toContain("Committed run-rate");
     expect(revenueView).not.toContain("MRR over time");
     expect(revenueView).toContain("Avg revenue per unique visitor");
     expect(revenueView).toContain("Avg revenue per signup");
@@ -423,10 +423,14 @@ describe("Revenue view — the two money notions are kept apart", () => {
     expect(revenueView).not.toContain('useAuthQuery<BillingStats>');
   });
 
-  it("names the two money notions rather than letting them read as one number", () => {
+  it("names the three money notions rather than letting them read as one number", () => {
     expect(revenueView).toContain("Cash collected");
     expect(revenueView).toContain("Revenue consumed");
-    expect(revenueView).toContain("Committed run-rate");
+    // The run-rate band is titled for what it states — what the fleet is worth
+    // per month — and it is the ONLY MRR surface on the page. The old heading is
+    // a banned literal now (see "renders every requested revenue surface"), so
+    // do not reach for it here.
+    expect(revenueView).toContain("Monthly run-rate");
   });
 
   it("asks the producer for a window that still contains inception", () => {
@@ -439,9 +443,13 @@ describe("Revenue view — the two money notions are kept apart", () => {
     expect(api).toContain("REVENUE_WEEKS_MAX = 104");
   });
 
-  it("stops promising 'since inception' growth on a series that only starts at the first snapshot", () => {
-    expect(revenueView).toContain("CMGR since the first snapshot");
-    expect(revenueView).toContain("CWGR since the first snapshot");
+  it("stops promising 'since inception' growth on a series that only starts at the first recorded day", () => {
+    // The run-rate series begins at the first recorded snapshot (2026-07-15) and
+    // the split is REPLAYED back to exactly that day — no further. Promising
+    // "since inception" on it would date a curve to a day it does not reach.
+    expect(revenueView).toContain("CMGR since the first recorded day");
+    expect(revenueView).toContain("CWGR since the first recorded day");
+    expect(revenueView).not.toContain("MRR since inception");
   });
 
   // Cash collected counts every acquirer stripe-service mirrors, not only the
