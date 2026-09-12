@@ -1380,6 +1380,13 @@ export function EngagedLeadsPage({
     ? LEAD_BOARD_COLUMNS.reduce((sum, c) => sum + columnTotals[c.key], 0)
     : null;
   const boardReadError = LEAD_BOARD_COLUMNS.some((c) => columnReads[c.key].isError);
+  // A dep the memo below can actually see: `isPlaceholderData` is a flag on each read,
+  // not one of the `data` references the memo already depends on, so without this the
+  // spinner would only appear when the wider page LANDED — i.e. exactly when it stops
+  // being true.
+  const boardGrowing = LEAD_BOARD_COLUMNS.map((c) =>
+    columnReads[c.key].isPlaceholderData ? "1" : "0",
+  ).join("");
 
   // Cards come off each column's own rows plus that one campaign-scoped read of the fine
   // reply kinds. No per-lead fetch.
@@ -1392,7 +1399,7 @@ export function EngagedLeadsPage({
   const boardColumns = useMemo(() => {
     const out = {} as Record<
       LeadBoardColumnKey,
-      { cards: LeadBoardCard[]; total: number | null; pending: boolean }
+      { cards: LeadBoardCard[]; total: number | null; pending: boolean; growing: boolean }
     >;
     for (const column of LEAD_BOARD_COLUMNS) {
       const read = columnReads[column.key];
@@ -1435,11 +1442,26 @@ export function EngagedLeadsPage({
         cards,
         total: columnTotals?.[column.key] ?? null,
         pending: !knownEmpty && read.data === undefined && !read.isError,
+        // Growing a column mints a NEW query key (`shown` rides it), and the global
+        // `keepPreviousData` keeps the narrower answer up while the wider one lands —
+        // which is right, and is also why the press had no visible effect for the
+        // seconds it takes on a long column. `isPlaceholderData` is exactly that
+        // window: true only while a new key is in flight over previous data, and
+        // FALSE on the 15s poll's own refetch of the same key, so the control cannot
+        // blink on a tick nobody asked for.
+        growing: read.isPlaceholderData,
       };
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardLeads, replyKindByEmail, statedReplyKinds, columnTotals, boardReadError]);
+  }, [
+    boardLeads,
+    replyKindByEmail,
+    statedReplyKinds,
+    columnTotals,
+    boardReadError,
+    boardGrowing,
+  ]);
 
   const [boardError, setBoardError] = useState<string | null>(null);
   // A board move states a REPLY KIND, the same write the lead panel makes — never a
