@@ -143,9 +143,22 @@ export function mrrSplitBuckets(
   field: "agencyMrrUsd" | "agencyArrUsd" | "selfServeMrrUsd" | "selfServeArrUsd" | "totalMrrUsd" | "totalArrUsd",
   granularity: Granularity,
 ): RevenueBucket[] {
+  // A period the producer could NOT measure is DROPPED, never charted as 0 — the
+  // same rule `retentionSeries` follows below, and for the same reason: a zero
+  // bar says the self-serve business went to nothing, while the truth is that
+  // the two sides of the subtraction were recorded on different bases and the
+  // difference is not a quantity. The self-serve and total fields are the only
+  // nullable ones; the agency ones are a sum of stated amounts and always real.
   return withDerived(
-    buckets.map((b) => ({ key: b.period, label: bucketLabel(b.periodStart, granularity), value: b[field] })),
+    buckets
+      .filter((b) => b[field] !== null)
+      .map((b) => ({ key: b.period, label: bucketLabel(b.periodStart, granularity), value: b[field] as number })),
   );
+}
+
+/** The periods the producer declined to split, oldest→newest. Empty when it could measure them all. */
+export function unmeasurableSplitPeriods(buckets: MrrSplitBucket[]): string[] {
+  return buckets.filter((b) => b.selfServeUnmeasurableReason !== null).map((b) => b.period);
 }
 
 /** Distinct weeks tracked since the first billed day (7-day blocks). */

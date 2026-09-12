@@ -19,6 +19,7 @@ import {
   revenueBuckets,
   revenueCmgrSummary,
   mrrSplitBuckets,
+  unmeasurableSplitPeriods,
   retentionSeries,
   cashBuckets,
   centsStringToUsd,
@@ -351,6 +352,11 @@ export function RevenueView({
       monthly,
       weekly,
       split,
+      // Periods the producer declined to split. Charted nowhere (a dropped bucket,
+      // never a zero bar), so they are NAMED instead — otherwise a month simply
+      // goes missing from the curve with nothing on the page saying why.
+      unmeasurableMonths: split ? unmeasurableSplitPeriods(split.monthly) : [],
+      unmeasurableWeeks: split ? unmeasurableSplitPeriods(split.weekly) : [],
       monthlySelfServe,
       weeklySelfServe,
       monthlyAgency,
@@ -413,6 +419,12 @@ export function RevenueView({
     split && split.currentAgencyBudgetMrrUsd > split.currentAgencyMrrUsd
       ? split.currentAgencyBudgetMrrUsd - split.currentAgencyMrrUsd
       : 0;
+  // Named rather than silently missing from the curve. The two sides of the
+  // subtraction were recorded on different bases — the fleet snapshot holds the
+  // RUNNING daily budget, billing's timeline the CONFIGURED one — so on a period
+  // where the agency's replayed budget exceeds the recorded total the difference
+  // comes out negative, and the producer declines to state it.
+  const unmeasurable = [...(derived?.unmeasurableMonths ?? []), ...(derived?.unmeasurableWeeks ?? [])];
 
   return (
     <>
@@ -615,6 +627,20 @@ export function RevenueView({
               a brand under an agency org nobody has stated an amount for yet.
               Stated rather than absorbed: without it the total silently sits
               below the fleet figure and nothing says why. */}
+          {unmeasurable.length > 0 && (
+            <section className="rounded-lg border border-amber-200 bg-white p-4">
+              <p className="text-sm text-amber-700">
+                The self-serve half could not be measured for {unmeasurable.length}{" "}
+                {unmeasurable.length === 1 ? "period" : "periods"} ({unmeasurable.join(", ")}), so they are
+                not on the charts. On those the agency&apos;s replayed daily budget came out larger than
+                the run-rate it is subtracted from — the fleet snapshot records the budget that was
+                RUNNING while the replay reads the budget that was CONFIGURED, and where those disagree
+                the difference is not a quantity. The agency half is unaffected: it is a sum of what you
+                stated, not a subtraction.
+              </p>
+            </section>
+          )}
+
           {unstatedAgencyUsd > 0 && (
             <section className="rounded-lg border border-amber-200 bg-white p-4">
               <p className="text-sm text-amber-700">

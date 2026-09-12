@@ -5768,10 +5768,22 @@ export interface MrrSplitBucket {
   referenceDate: string; // the day the point was read as of (last snapshot in the period, or today)
   agencyMrrUsd: number; // Σ STATED amounts in force on referenceDate — never those brands' budget × 30
   agencyArrUsd: number;
-  selfServeMrrUsd: number; // the period's committed run-rate MINUS the agency side's committed contribution
-  selfServeArrUsd: number;
-  totalMrrUsd: number; // agency + self-serve (disjoint by construction)
-  totalArrUsd: number;
+  // The period's committed run-rate MINUS the agency side's committed contribution.
+  //
+  // NULL is "we could not measure this", never a 0 and never a clamp. The fleet
+  // snapshot records the RUNNING daily budget while billing's timeline records
+  // the CONFIGURED one, so the replayed agency contribution is an UPPER BOUND on
+  // what those brands really held. When it EXCEEDS the figure it is subtracted
+  // from, the difference comes out negative — and a negative monthly run-rate is
+  // an incoherent output, not a slightly-low one. The producer declines instead,
+  // and names why in `selfServeUnmeasurableReason`.
+  selfServeMrrUsd: number | null;
+  selfServeArrUsd: number | null;
+  totalMrrUsd: number | null; // agency + self-serve (disjoint by construction); null whenever self-serve is
+  totalArrUsd: number | null;
+  // Why the self-serve half could not be measured, or null when it was. Reading
+  // this as a number anywhere is the crash it exists to prevent.
+  selfServeUnmeasurableReason: "agency_contribution_exceeds_recorded_total" | null;
   // What the agency side's BUDGET × 30 came to — i.e. exactly how much left the
   // self-serve half. Above agencyMrrUsd means some agency budget is in NEITHER
   // half: an agency brand nobody has stated an amount for yet. Served so that
