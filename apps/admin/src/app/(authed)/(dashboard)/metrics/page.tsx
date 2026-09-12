@@ -3,9 +3,9 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
-import { PeriodCompoundChart } from "@/components/period-compound-chart";
-import { CmgrStat } from "@/components/cmgr-stat";
+import { PeriodCompoundCard } from "@/components/period-compound-card";
 import { ActiveUsersView } from "@/components/active-users-view";
+import { OverviewView } from "@/components/overview-view";
 import { RevenueView } from "@/components/revenue-view";
 import {
   fetchPublicStatsSummary,
@@ -13,13 +13,14 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, rateCmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlySignupRates, weeklySignupRates, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
+import { cmgrSummary, rateCmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlySignupRates, weeklySignupRates, monthlyCards, weeklyCards, monthlyCardRates, weeklyCardRates, weeklyTimeline } from "@/lib/signup-buckets";
 import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
+  { id: "overview", label: "Overview", href: "/metrics?view=overview" },
   { id: "landing", label: "Unique visitors", href: "/metrics?view=landing" },
   { id: "signups", label: "Signups", href: "/metrics?view=signups" },
   { id: "cards", label: "Paid users", href: "/metrics?view=cards" },
@@ -61,6 +62,13 @@ function dataSourcesFor(view: PublicAnalyticsView): Array<{ tier: string; label:
       { tier: "Gold", label: "Fleet revenue history and committed-budget snapshots" },
     ];
   }
+  if (view === "overview") {
+    return [
+      { tier: "Bronze", label: "PostHog unique visitors and signup events" },
+      { tier: "Bronze", label: "Stripe saved payment methods" },
+      { tier: "Gold", label: "Fleet revenue, active users and the customer board" },
+    ];
+  }
   return [
     { tier: "Bronze", label: "PostHog unique visitors and signup events" },
     { tier: "Bronze", label: "Stripe saved payment methods" },
@@ -70,7 +78,15 @@ function dataSourcesFor(view: PublicAnalyticsView): Array<{ tier: string; label:
 
 function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "signups" || value === "cards" || value === "active-users" || value === "revenue") return value;
+  if (
+    value === "overview" ||
+    value === "signups" ||
+    value === "cards" ||
+    value === "active-users" ||
+    value === "revenue"
+  ) {
+    return value;
+  }
   return "landing";
 }
 
@@ -161,26 +177,26 @@ function LandingView({
         <StatCard label="Top origin" value={sources[0]?.source ?? "No source"} detail={sources[0] ? `${formatCount(sources[0].visitors)} unique visitors` : "No visitors yet"} accent="bg-emerald-500" />
       </section>
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Monthly unique visitors</h2>
-          <p className="mt-1 text-sm text-gray-500">Unique visitors per month with compound monthly growth since inception.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={monthlyPoints} valueLabel="Unique visitors" growthLabel="CMGR since inception" />
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Weekly unique visitors</h2>
-          <p className="mt-1 text-sm text-gray-500">Unique visitors per week with compound weekly growth since inception.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={weeklyPoints} valueLabel="Unique visitors" growthLabel="CWGR since inception" />
-          </div>
-        </div>
+        <PeriodCompoundCard
+          title="Monthly unique visitors"
+          subtitle="Unique visitors per month with compound monthly growth since inception."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          summary={monthlyCmgr}
+          data={monthlyPoints}
+          valueLabel="Unique visitors"
+          growthLabel="CMGR since inception"
+        />
+        <PeriodCompoundCard
+          title="Weekly unique visitors"
+          subtitle="Unique visitors per week with compound weekly growth since inception."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          summary={weeklyCmgr}
+          data={weeklyPoints}
+          valueLabel="Unique visitors"
+          growthLabel="CWGR since inception"
+        />
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -227,26 +243,26 @@ function SignupView({
         <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by unique visitors" accent="bg-emerald-500" />
       </section>
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Monthly signups</h2>
-          <p className="mt-1 text-sm text-gray-500">Signups per month with compound monthly growth since inception.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={monthlyPoints} valueLabel="Signups" growthLabel="CMGR since inception" />
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Weekly signups</h2>
-          <p className="mt-1 text-sm text-gray-500">Signups per week with compound weekly growth since inception.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={weeklyPoints} valueLabel="Signups" growthLabel="CWGR since inception" />
-          </div>
-        </div>
+        <PeriodCompoundCard
+          title="Monthly signups"
+          subtitle="Signups per month with compound monthly growth since inception."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          summary={monthlyCmgr}
+          data={monthlyPoints}
+          valueLabel="Signups"
+          growthLabel="CMGR since inception"
+        />
+        <PeriodCompoundCard
+          title="Weekly signups"
+          subtitle="Signups per week with compound weekly growth since inception."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          summary={weeklyCmgr}
+          data={weeklyPoints}
+          valueLabel="Signups"
+          growthLabel="CWGR since inception"
+        />
       </section>
       {/*
         Rate charts, in the same shape as the count charts above: bars are the
@@ -258,26 +274,28 @@ function SignupView({
         these two legitimately start later than the two above them.
       */}
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Monthly signup rate</h2>
-          <p className="mt-1 text-sm text-gray-500">Signups divided by unique visitors, per month, with compound monthly growth of that rate.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={monthlyRateCmgr.latestPct} avgPct={monthlyRateCmgr.avgPct} barsUsed={monthlyRateCmgr.barsUsed} label="Rate CMGR" unit="monthly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={monthlyRatePoints} valueLabel="conversion" growthLabel="Rate CMGR since inception" formatValue={formatRatePct} />
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Weekly signup rate</h2>
-          <p className="mt-1 text-sm text-gray-500">Signups divided by unique visitors, per week, with compound weekly growth of that rate.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={weeklyRateCmgr.latestPct} avgPct={weeklyRateCmgr.avgPct} barsUsed={weeklyRateCmgr.barsUsed} label="Rate CWGR" unit="weekly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={weeklyRatePoints} valueLabel="conversion" growthLabel="Rate CWGR since inception" formatValue={formatRatePct} />
-          </div>
-        </div>
+        <PeriodCompoundCard
+          title="Monthly signup rate"
+          subtitle="Signups divided by unique visitors, per month, with compound monthly growth of that rate."
+          cmgrLabel="Rate CMGR"
+          cmgrUnit="monthly"
+          summary={monthlyRateCmgr}
+          data={monthlyRatePoints}
+          valueLabel="conversion"
+          growthLabel="Rate CMGR since inception"
+          formatValue={formatRatePct}
+        />
+        <PeriodCompoundCard
+          title="Weekly signup rate"
+          subtitle="Signups divided by unique visitors, per week, with compound weekly growth of that rate."
+          cmgrLabel="Rate CWGR"
+          cmgrUnit="weekly"
+          summary={weeklyRateCmgr}
+          data={weeklyRatePoints}
+          valueLabel="conversion"
+          growthLabel="Rate CWGR since inception"
+          formatValue={formatRatePct}
+        />
       </section>
     </>
   );
@@ -299,6 +317,12 @@ function CardsView({
   const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
   const monthlyCmgr = cmgrSummary(monthly);
   const weeklyCmgr = cmgrSummary(weekly);
+  const monthlyRate = monthlyCardRates(timeline);
+  const weeklyRate = weeklyCardRates(timeline);
+  const monthlyRatePoints = monthlyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
+  const weeklyRatePoints = weeklyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
+  const monthlyRateCmgr = rateCmgrSummary(monthlyRate);
+  const weeklyRateCmgr = rateCmgrSummary(weeklyRate);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -307,26 +331,59 @@ function CardsView({
         <StatCard label="Tracked paid days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
       </section>
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Monthly paid users</h2>
-          <p className="mt-1 text-sm text-gray-500">Paid users per month with compound monthly growth since inception.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={monthlyPoints} valueLabel="Paid users" growthLabel="CMGR since inception" />
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Weekly paid users</h2>
-          <p className="mt-1 text-sm text-gray-500">Paid users per week with compound weekly growth since inception.</p>
-          <div className="mt-4">
-            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
-          </div>
-          <div className="mt-5">
-            <PeriodCompoundChart data={weeklyPoints} valueLabel="Paid users" growthLabel="CWGR since inception" />
-          </div>
-        </div>
+        <PeriodCompoundCard
+          title="Monthly paid users"
+          subtitle="Paid users per month with compound monthly growth since inception."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          summary={monthlyCmgr}
+          data={monthlyPoints}
+          valueLabel="Paid users"
+          growthLabel="CMGR since inception"
+        />
+        <PeriodCompoundCard
+          title="Weekly paid users"
+          subtitle="Paid users per week with compound weekly growth since inception."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          summary={weeklyCmgr}
+          data={weeklyPoints}
+          valueLabel="Paid users"
+          growthLabel="CWGR since inception"
+        />
+      </section>
+      {/*
+        The paid-user RATE, in the same shape as the signup rate one stage up: bars are
+        the period's conversion of signups into paid users, the line is the compound
+        growth OF that rate. The Overview states this pair too, from the same buckets —
+        a chart the Overview drew and this tab did not would be two pages disagreeing
+        about what exists.
+        A period with no signups is dropped rather than charted at 0%: there was nobody
+        to convert, which is a different statement from nobody converting.
+      */}
+      <section className="grid gap-6 md:grid-cols-2">
+        <PeriodCompoundCard
+          title="Monthly paid user rate"
+          subtitle="Paid users divided by signups, per month, with compound monthly growth of that rate."
+          cmgrLabel="Rate CMGR"
+          cmgrUnit="monthly"
+          summary={monthlyRateCmgr}
+          data={monthlyRatePoints}
+          valueLabel="conversion"
+          growthLabel="Rate CMGR since inception"
+          formatValue={formatRatePct}
+        />
+        <PeriodCompoundCard
+          title="Weekly paid user rate"
+          subtitle="Paid users divided by signups, per week, with compound weekly growth of that rate."
+          cmgrLabel="Rate CWGR"
+          cmgrUnit="weekly"
+          summary={weeklyRateCmgr}
+          data={weeklyRatePoints}
+          valueLabel="conversion"
+          growthLabel="Rate CWGR since inception"
+          formatValue={formatRatePct}
+        />
       </section>
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -406,6 +463,15 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           </div>
         </section>
 
+        {view === "overview" && stats && (
+          <OverviewView
+            landingVisitors={stats.landingVisitors}
+            totalUsers={stats.users.totalUsers}
+            cardsAdded={stats.cardsAdded}
+            timeline={stats.timeline}
+            windows={stats.windows}
+          />
+        )}
         {view === "landing" && stats && (
           <LandingView totalVisitors={stats.landingVisitors} timeline={stats.timeline} sources={stats.trafficSources} />
         )}

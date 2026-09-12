@@ -410,7 +410,8 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   // Cross-org metrics nav. The admin app is fully staff-gated at the edge, so
   // no per-viewer feature flag — every signed-in staff sees it.
   const analyticsItems: SidebarItem[] = [
-    { id: "landing", label: "Unique visitors", href: "/metrics?view=landing", icon: <OverviewIcon /> },
+    { id: "overview", label: "Overview", href: "/metrics?view=overview", icon: <OverviewIcon /> },
+    { id: "landing", label: "Unique visitors", href: "/metrics?view=landing", icon: <HomeIcon /> },
     { id: "signups", label: "Signups", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
     { id: "cards", label: "Paid users", href: "/metrics?view=cards", icon: <BillingIcon /> },
     { id: "active-users", label: "Active users", href: "/metrics?view=active-users", icon: <OrgIcon /> },
@@ -419,7 +420,11 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 
   const activeView = searchParams.get("view");
   const normalizedView =
-    activeView === "signups" || activeView === "cards" || activeView === "active-users" || activeView === "revenue"
+    activeView === "overview" ||
+    activeView === "signups" ||
+    activeView === "cards" ||
+    activeView === "active-users" ||
+    activeView === "revenue"
       ? activeView
       : "landing";
 
