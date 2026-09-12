@@ -6702,6 +6702,18 @@ const WorkflowRankGrainSchema = z.object({
   /** The grain's own PROJECTED outcome count — routinely fractional on a multi-step
    *  funnel, which is why no surface renders it as a count of people. */
   resolvedOutcomeCount: z.number().nullable(),
+  /** THIS grain's figures for the LEG the request named, denominated in the leg's own
+   *  step. Served only on a leg-keyed answer, which is the only kind this reader makes;
+   *  `outcomeObserved` says whether the count was observed or walked through the
+   *  funnel's declared rates, and a leg the brand states no rate for is priced `null`. */
+  legOutcome: z
+    .object({
+      costPerOutcomeUsd: z.number().nullable(),
+      outcomeCount: z.number().nullable(),
+      outcomeObserved: z.boolean(),
+      spentUsd: z.number(),
+    })
+    .nullish(),
   projected: z.object({
     costPerSignupUsd: z.number().nullable(),
     costPerPaidClientUsd: z.number().nullable(),
@@ -6718,7 +6730,15 @@ const WorkflowRankGrainSchema = z.object({
  */
 const WorkflowRankResolvedSchema = z.object({
   grain: z
-    .union([z.literal("crossOrg"), z.literal("brand"), z.literal("audience")])
+    .union([
+      z.literal("crossOrg"),
+      z.literal("brand"),
+      // The producer gained this grain in v0.164.0 and states it as a provenance label
+      // like any other. Declaring the old three would throw on every row of a
+      // campaign-keyed read — the too-narrow-schema bug, loud rather than silent.
+      z.literal("campaign"),
+      z.literal("audience"),
+    ])
     .nullable(),
   costBasis: z.union([z.literal("charged"), z.literal("incurred")]).nullable(),
   costPerClickUsd: z.number().nullable(),
@@ -6739,11 +6759,25 @@ const WorkflowRankRowSchema = z.object({
   estimatesByGrain: z.object({
     crossOrg: WorkflowRankGrainSchema.optional(),
     brand: WorkflowRankGrainSchema.optional(),
+    /** Present ⟺ the request named a campaign. It sits between brand and audience in
+     *  the producer's cascade and answers for the campaign's whole IDENTITY. */
+    campaign: WorkflowRankGrainSchema.optional(),
     audience: WorkflowRankGrainSchema.optional(),
   }),
   resolved: WorkflowRankResolvedSchema,
   /** REQUIRED — the flag is the whole reason this reader exists. */
   measured: z.boolean(),
+  /** THE PRODUCER'S OWN POSITION, and the reason nothing here re-derives one.
+   *
+   *  It is a property of the WORKFLOW, so every row of one dynasty carries the same
+   *  number, and `recommendedWorkflowDynastySlug` is rank 1 by construction. Scored over
+   *  every row the dynasty has — the brand row, the campaign row and each audience — so
+   *  a page ranking only the rows it displays produces a DIFFERENT order: that is
+   *  exactly how the recommended workflow came to sit 18th of 24.
+   *
+   *  `.nullish()` only because a funnel- or goal-keyed body carries none; this reader
+   *  always names a leg, so in practice it is always there. */
+  rank: z.number().nullish(),
 });
 
 const WorkflowRankLadderSchema = z.object({
@@ -6788,6 +6822,10 @@ export async function getWorkflowRankLadder(
     leg?: string | null;
     /** The campaign's funnel — sent only when it states no leg. */
     funnel?: SalesFunnelKeyWire | null;
+    /** Adds the CAMPAIGN grain to every row's cascade, so one read answers for every
+     *  grain a reader compares. The producer 400s it without a leg, so it rides the
+     *  leg branch and nothing else. */
+    campaignId?: string | null;
   },
   token?: string,
 ): Promise<WorkflowRankLadder> {
@@ -6795,8 +6833,12 @@ export async function getWorkflowRankLadder(
   query.set("brandId", params.brandId);
   // The NARROWEST thing the campaign states, and nothing else: sending both would
   // have the producer ignore one of them, which reads as a second source of truth.
-  if (params.leg) query.set("leg", params.leg);
-  else if (params.funnel) query.set("funnel", canonicalSalesFunnelKey(params.funnel));
+  if (params.leg) {
+    query.set("leg", params.leg);
+    // `campaign_requires_leg` — the producer refuses the pair rather than silently
+    // dropping one, so the campaign grain is asked for ONLY alongside a leg.
+    if (params.campaignId) query.set("campaignId", params.campaignId);
+  } else if (params.funnel) query.set("funnel", canonicalSalesFunnelKey(params.funnel));
   // net — the basis every money surface in this app reads, and what the org pays.
   query.set("pricing", "net");
   const raw = await apiCall<unknown>(

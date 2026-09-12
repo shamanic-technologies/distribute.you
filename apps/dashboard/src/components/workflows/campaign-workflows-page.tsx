@@ -55,7 +55,7 @@
  *     open workflow rides `?workflow=<dynasty>` so a link still works.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -65,7 +65,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { LearningTag } from "@/components/learning-tag";
 import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
 import { WorkflowRankPanel } from "@/components/workflows/workflow-rank-panel";
-import { formatCentsAsUsdAdaptive, formatUsdAdaptive } from "@/lib/format-number";
+import { formatUsdAdaptive } from "@/lib/format-number";
 import { isLearning } from "@/lib/learning-threshold";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
@@ -76,13 +76,26 @@ import {
   listChannelWorkflowDynasties,
   getFeatureRevenueByWorkflow,
   getWorkflowRankLadder,
+  listAudiences,
+  getBrand,
   type WorkflowRankLadder,
 } from "@/lib/api";
+import { GrainMark } from "@/components/marks/grain-mark";
+import { AudienceAvatar } from "@/components/audiences/audience-avatar";
+import {
+  WORKFLOW_GRAINS,
+  WORKFLOW_GRAIN_LABEL,
+  WORKFLOW_GRAIN_NOTE,
+  brandLevelRows,
+  grainFigures,
+  grainsWithEvidence,
+  audienceRowsFor,
+  type WorkflowGrain,
+  type WorkflowLadderRowShape,
+} from "@/lib/workflow-grains";
 import {
   buildCampaignWorkflowRows,
   resolveRunningWorkflow,
-  workflowOutcomeCostCents,
-  workflowOutcomeCount,
   type CampaignWorkflowRow,
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
@@ -153,15 +166,17 @@ const INVESTED_TIP =
 const WHY_TIP =
   "Where this workflow's estimate came from, in one line. Open the row for the full breakdown.";
 
+const PROJECTED_COUNT_TIP =
+  "This count was walked through your funnel's own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
+
+const GRAIN_TAB_TIP =
+  "Which evidence the three figures beside it are read from. The rank never moves with it: that is ours, and it is scored over every piece of evidence a workflow has — including the audiences it ran for, which is why the top row is sometimes not the cheapest figure on screen.";
+
 const RUNNING_TIP =
   "The workflow your campaign is running right now. We pick it, and we change it when another one is producing outcomes more cheaply.";
 
 function fmtCount(value: number | null): string {
   return value === null ? "—" : value.toLocaleString("en-US");
-}
-
-function fmtCents(value: number | null): string {
-  return value === null ? "—" : formatCentsAsUsdAdaptive(value);
 }
 
 function fmtUsd(value: number | null): string {
@@ -171,30 +186,39 @@ function fmtUsd(value: number | null): string {
 /**
  * The ladder's BRAND-LEVEL rows, narrowed to what a rank and a sentence need.
  *
- * The ladder also enumerates one row per (audience x workflow) couple; those answer a
- * different question and would give one workflow several ranks, so only `audienceId:
- * null` reaches the table. The FIRST brand row per dynasty wins, deterministically.
+ * The ladder also enumerates one row per (audience x workflow); those do not become
+ * table rows (a workflow would get several) but they are NOT discarded — the panel lists
+ * them, because a rank is scored over them and a reader who cannot see them cannot see
+ * what the rank stands on. `ladderAllRows` is what carries them through.
  */
 function ladderRows(ladder: WorkflowRankLadder | undefined): WorkflowLadderRow[] {
   if (!ladder) return [];
-  const out: WorkflowLadderRow[] = [];
-  const seen = new Set<string>();
-  for (const r of ladder.rows) {
-    if (r.audienceId !== null) continue;
-    const slug = r.workflow.workflowDynastySlug;
-    if (seen.has(slug)) continue;
-    seen.add(slug);
-    out.push({
-      workflowDynastySlug: slug,
-      measured: r.measured,
-      grain: r.resolved.grain,
-      costBasis: r.resolved.costBasis,
-      costPerOutcomeUsd: r.resolved.costPerOutcomeUsd,
-      roiMultiple: r.resolved.roiMultiple,
-      estimatesByGrain: r.estimatesByGrain,
-    });
-  }
-  return out;
+  return brandLevelRows(ladder.rows as unknown as WorkflowLadderRowShape[]).map((r) => {
+    const row = r as unknown as WorkflowRankLadder["rows"][number];
+    return {
+      workflowDynastySlug: row.workflow.workflowDynastySlug,
+      measured: row.measured,
+      grain: row.resolved.grain,
+      costBasis: row.resolved.costBasis,
+      costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
+      roiMultiple: row.resolved.roiMultiple,
+      estimatesByGrain: row.estimatesByGrain,
+      rank: row.rank ?? null,
+    };
+  });
+}
+
+/** Every row the producer sent, in its own shape — the panel reads the audiences off it. */
+function ladderAllRows(ladder: WorkflowRankLadder | undefined): WorkflowLadderRowShape[] {
+  return (ladder?.rows ?? []) as unknown as WorkflowLadderRowShape[];
+}
+
+/** The brand-level row of ONE workflow, for the grain columns and the provenance strip. */
+function brandRowFor(
+  rows: readonly WorkflowLadderRowShape[],
+  slug: string,
+): WorkflowLadderRowShape | null {
+  return brandLevelRows(rows).find((r) => r.workflow.workflowDynastySlug === slug) ?? null;
 }
 
 export function CampaignWorkflowsPage() {
@@ -247,16 +271,52 @@ export function CampaignWorkflowsPage() {
   const legKey = campaign?.legKey ?? null;
   const funnelKey = campaign?.funnelKey ?? null;
   const ladderQ = useAuthQuery(
-    ["workflowRankLadder", brandId, legKey ?? "none", legKey ? "none" : (funnelKey ?? "none")],
+    [
+      "workflowRankLadder",
+      brandId,
+      legKey ?? "none",
+      legKey ? "none" : (funnelKey ?? "none"),
+      // The campaign rides the KEY as well as the request: a body carrying the campaign
+      // grain and one without it are different answers and must never share an entry.
+      legKey ? campaignId : "none",
+    ],
     () =>
       getWorkflowRankLadder({
         featureSlug: featureSlug as string,
         brandId,
         leg: legKey,
         funnel: legKey ? null : funnelKey,
+        campaignId,
       }),
     { ...pollOptions, enabled: ready && Boolean(brandId), retry: false },
   );
+
+  // WHICH GRAIN the figure columns answer at. The RANK never moves with it — that is the
+  // producer's, scored over a wider population than any one column shows, so a tab is a
+  // change of SOURCE and never a change of ORDER.
+  const [grain, setGrain] = useState<WorkflowGrain>("campaign");
+
+  // The brand's own mark, for the `brand` grain. `["brand", brandId]` is the key the
+  // tenant switcher already polls on every brand page, so it costs no request.
+  const brandQ = useAuthQuery(["brand", brandId], () => getBrand(brandId), {
+    ...pollOptions,
+    enabled: ready && Boolean(brandId),
+  });
+
+  // A DISPLAY LOOKUP, id -> name + face, for the audience rows the panel lists. The
+  // producer sends an audience's evidence under its id and nothing else; naming it is
+  // the one join this page makes, on the key the brand Overview already polls.
+  const audiencesQ = useAuthQuery(["audiences", brandId], () => listAudiences(brandId), {
+    ...pollOptions,
+    enabled: ready && Boolean(brandId),
+  });
+  const audienceById = useMemo(() => {
+    const m = new Map<string, { name: string; avatarUrl: string | null }>();
+    for (const a of audiencesQ.data?.audiences ?? []) {
+      m.set(a.id, { name: a.name, avatarUrl: a.avatarUrl ?? null });
+    }
+    return m;
+  }, [audiencesQ.data]);
 
   // A stopped campaign produces nothing, so a thin price is not "learning" — it is
   // waiting on a restart.
@@ -307,6 +367,9 @@ export function CampaignWorkflowsPage() {
       }),
     [rows, ladderQ.data, outcomeStepKey, outcomeNoun],
   );
+
+  // Every row the producer sent, audiences included — the panel's own source.
+  const allLadderRows = useMemo(() => ladderAllRows(ladderQ.data), [ladderQ.data]);
 
   // Reveal on SETTLE (resolved OR errored). A failing read paints the table, never an
   // eternal skeleton — and the ladder is allowed to fail without taking the figures
@@ -363,10 +426,41 @@ export function CampaignWorkflowsPage() {
             <InfoTooltip tip={WORKFLOW_TIP} placement="top" />
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            Ranked the way we pick them for this campaign, cheapest estimated cost first.
-            The figures are this campaign&apos;s own.
+            Ranked the way we pick them for this campaign — the order is ours, read from
+            the same place we pick from. {WORKFLOW_GRAIN_NOTE[grain]}
           </p>
         </div>
+
+        {/* THE GRAIN IS A CHOICE OF SOURCE, NOT OF ORDER. Every tab renders the same
+            three columns off the same rows; only whose evidence they state changes, and
+            the rank column is byte-identical across all three. */}
+        {!pending && revenueOk && ranked.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {WORKFLOW_GRAINS.map((g) => {
+              const active = g === grain;
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGrain(g)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
+                    active
+                      ? "border-brand-200 bg-brand-50 font-medium text-brand-700"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <GrainMark
+                    grain={g}
+                    brandDomain={brandQ.data?.brand.domain ?? null}
+                    brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
+                    size={16}
+                  />
+                  {WORKFLOW_GRAIN_LABEL[g]}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {pending && (
           <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -437,6 +531,12 @@ export function CampaignWorkflowsPage() {
                     <WorkflowRow
                       key={r.row.workflowDynastySlug}
                       ranked={r}
+                      grain={grain}
+                      ladderRow={brandRowFor(allLadderRows, r.row.workflowDynastySlug)}
+                      audienceRows={audienceRowsFor(allLadderRows, r.row.workflowDynastySlug)}
+                      audienceById={audienceById}
+                      brandDomain={brandQ.data?.brand.domain ?? null}
+                      brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
                       paused={paused}
                       selected={openSlug === r.row.workflowDynastySlug}
                       onOpen={() => setOpen(r.row.workflowDynastySlug)}
@@ -460,6 +560,12 @@ export function CampaignWorkflowsPage() {
           outcomeNoun={outcomeNoun}
           siblings={rows}
           paused={paused}
+          ladderRow={brandRowFor(allLadderRows, openRanked.row.workflowDynastySlug)}
+          audienceRows={audienceRowsFor(allLadderRows, openRanked.row.workflowDynastySlug)}
+          audienceById={audienceById}
+          brandDomain={brandQ.data?.brand.domain ?? null}
+          brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
+          legStepLabel={ladderQ.data?.leg?.toStep.label ?? null}
           onClose={() => setOpen(null)}
         />
       )}
@@ -470,16 +576,36 @@ export function CampaignWorkflowsPage() {
 /** One row. The RUNNING one is framed in the brand's own primary; the rest are plain. */
 function WorkflowRow({
   ranked,
+  grain,
+  ladderRow,
+  audienceRows,
+  audienceById,
+  brandDomain,
+  brandLogoUrl,
   paused,
   selected,
   onOpen,
 }: {
   ranked: RankedWorkflow<CampaignWorkflowRow>;
+  grain: WorkflowGrain;
+  ladderRow: WorkflowLadderRowShape | null;
+  audienceRows: ReturnType<typeof audienceRowsFor>;
+  audienceById: Map<string, { name: string; avatarUrl: string | null }>;
+  brandDomain: string | null;
+  brandLogoUrl: string | null;
   paused: boolean;
   selected: boolean;
   onOpen: () => void;
 }) {
   const row = ranked.row;
+  // THE ACTIVE GRAIN'S OWN FIGURES, served. `null` = this workflow never spent at this
+  // grain, which is a different answer from having spent and produced nothing — the
+  // first renders a dash, the second renders the zero it measured.
+  const figures = grainFigures(ladderRow?.estimatesByGrain[grain]);
+  const evidenceGrains = ladderRow ? grainsWithEvidence(ladderRow) : [];
+  // The audiences that actually RAN it. They are what a rank standing on a figure no
+  // column shows is standing on, so the row shows they exist and the panel lists them.
+  const audiencesWithEvidence = audienceRows.filter((a) => a.figures != null);
   return (
     <tr
       onClick={onOpen}
@@ -505,7 +631,7 @@ function WorkflowRow({
                 : "bg-gray-100 text-gray-600"
           }`}
         >
-          {ranked.rank}
+          {ranked.rank ?? "—"}
         </span>
       </td>
       <td className="px-4 py-3">
@@ -528,6 +654,37 @@ function WorkflowRow({
             </span>
           )}
         </div>
+        {/* WHERE THIS WORKFLOW HAS EVIDENCE, as marks. The rank is scored over every row
+            a workflow has — its audiences included — so a reader seeing `#1` beside a
+            campaign figure that is not the cheapest on the page needs to SEE that an
+            audience is in the picture. The panel lists them; this says they exist. */}
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {evidenceGrains.map((g) => (
+            <GrainMark
+              key={g}
+              grain={g}
+              brandDomain={brandDomain}
+              brandLogoUrl={brandLogoUrl}
+              size={18}
+            />
+          ))}
+          {audiencesWithEvidence.slice(0, 3).map((a) => {
+            const meta = audienceById.get(a.audienceId);
+            return (
+              <AudienceAvatar
+                key={a.audienceId}
+                name={meta?.name ?? "Audience"}
+                avatarUrl={meta?.avatarUrl}
+                size={18}
+              />
+            );
+          })}
+          {audiencesWithEvidence.length > 3 && (
+            <span className="text-[10px] text-gray-500">
+              +{audiencesWithEvidence.length - 3}
+            </span>
+          )}
+        </div>
         {/* The sentence rides the NAME cell below `md`, where its own column folds away:
             it is the answer to the page's whole question, so it may not be the thing a
             phone loses. */}
@@ -543,7 +700,21 @@ function WorkflowRow({
         {ranked.estCostPerOutcomeUsd == null ? (
           "—"
         ) : ranked.measured ? (
-          fmtUsd(ranked.estCostPerOutcomeUsd)
+          <span className="inline-flex items-center gap-1.5">
+            {/* The producer's own PROVENANCE label for this figure — the finest grain
+                that actually OBSERVED the outcome, which is decoupled from the grain the
+                number was read at. A grain that spent and observed nothing is a floored
+                projection and is never marked as that grain's own result. */}
+            {ladderRow?.estimatesByGrain && ranked.ladder?.grain && ranked.ladder.grain !== "audience" && (
+              <GrainMark
+                grain={ranked.ladder.grain as WorkflowGrain}
+                brandDomain={brandDomain}
+                brandLogoUrl={brandLogoUrl}
+                size={14}
+              />
+            )}
+            {fmtUsd(ranked.estCostPerOutcomeUsd)}
+          </span>
         ) : (
           // An explore allowance is a FLOOR, not a price — it is the cost of one
           // outreach, set so an unproven workflow can earn a first run. Printing it as a
@@ -552,13 +723,36 @@ function WorkflowRow({
         )}
       </td>
       <td className="hidden px-4 py-3 whitespace-nowrap text-gray-800 md:table-cell">
-        {fmtCount(workflowOutcomeCount(row))}
+        {figures == null ? (
+          "—"
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            {fmtCount(figures.outcomeCount)}
+            {!figures.outcomeObserved && (
+              <InfoTooltip tip={PROJECTED_COUNT_TIP} placement="top" />
+            )}
+          </span>
+        )}
       </td>
       <td className="hidden px-4 py-3 whitespace-nowrap text-gray-800 md:table-cell">
-        {row.learning ? <LearningTag paused={paused} /> : fmtCents(workflowOutcomeCostCents(row))}
+        {figures == null ? (
+          "—"
+        ) : isLearning(figures.outcomeCount) ? (
+          <LearningTag paused={paused} />
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            <GrainMark
+              grain={grain}
+              brandDomain={brandDomain}
+              brandLogoUrl={brandLogoUrl}
+              size={14}
+            />
+            {fmtUsd(figures.costPerOutcomeUsd)}
+          </span>
+        )}
       </td>
       <td className="hidden px-4 py-3 whitespace-nowrap text-gray-800 md:table-cell">
-        {fmtUsd(row.committedCostUsd)}
+        {figures == null ? "—" : fmtUsd(figures.spentUsd)}
       </td>
       <td className="hidden px-4 py-3 text-xs text-gray-500 md:table-cell">{ranked.why}</td>
     </tr>
