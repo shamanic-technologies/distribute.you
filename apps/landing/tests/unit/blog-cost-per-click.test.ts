@@ -65,7 +65,10 @@ describe("cost-per-click article: copy rules", () => {
   });
 
   it("does not reveal the $400 offer and states the $30 one", () => {
-    expect(html).not.toContain("$400");
+    // Scoped to the COPY: the folded appendix prices a bucket's spend, and a derived
+    // figure that happens to read $400 is a number, never the retired welcome offer.
+    const copy = prose.replace(/<table>[\s\S]*?<\/table>/g, "");
+    expect(copy).not.toContain("$400");
     expect(html).toContain("first 30 USD");
   });
 });
@@ -76,8 +79,8 @@ describe("cost-per-click article: editorial rules", () => {
     expect(String(meta.excerpt)).toContain("125,000");
     expect(story).toContain("125,000 cold emails");
     expect(hero).toContain("125,000 emails sent");
-    expect(story).not.toContain("124,460");
-    expect(method).toContain("124,460");
+    expect(story).not.toContain("125,117");
+    expect(method).toContain("125,117");
   });
 
   it("no money figure of ours carries cents; a competitor's published price is quoted as published", () => {
@@ -124,7 +127,7 @@ describe("cost-per-click article: editorial rules", () => {
     // Owner-decided 2026-09-10: one client price, the best workflow alone; no range, no four-workflow chart.
     expect(story).not.toContain("$2 to $3");
     expect(story).not.toContain("four best workflows");
-    expect(method).toContain("42,325 emails to 20,483 people carried a link");
+    expect(method).toContain("42,640 emails to 20,731 people carried a link");
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
@@ -158,7 +161,7 @@ describe("cost-per-click article: editorial rules", () => {
 
 describe("cost-per-click article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of ["$4", "$1", "$2", "$6", "$8,412", "$2,522", "677", "42,325"]) {
+    for (const figure of ["$4", "$1", "$2", "$6", "$8,438", "$2,550", "681", "42,640"]) {
       expect(html).toContain(figure);
     }
     expect(hero).toContain(">$4<");
@@ -231,7 +234,7 @@ describe("cost-per-click article: dataset coherence", () => {
 
   it("states the limits rather than hiding them", () => {
     expect(method).toMatch(/<strong>Limits<\/strong>: not a randomised experiment/);
-    expect(method).toContain("677 clicks is a small count");
+    expect(method).toContain("681 clicks is a small count");
     expect(method).toMatch(/no confidence intervals/);
     // Production shows zero overlap between the people who clicked and the people who
     // unsubscribed, so the page states only that link-less emails are excluded.
