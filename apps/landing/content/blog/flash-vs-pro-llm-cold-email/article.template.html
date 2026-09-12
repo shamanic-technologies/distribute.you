@@ -20,7 +20,7 @@
 
 <h2 id="the-answer">The answer</h2>
 
-<p><strong>Our best Pro workflow buys a positive reply for {{usd best.reply.cpr}}.</strong> The Pro tier as a whole pays {{usd pro.total.cpr}}; Flash pays {{usd flash.total.cpr}}, on too few replies to be a solid read. <strong>Our best Flash workflow buys a website visit for {{usd best.visit.cpc}}.</strong> The Flash tier as a whole pays {{usd flashLinked.total.cpc}}, Pro {{usd proLinked.total.cpc}}. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
+<p><strong>Our best Pro workflow buys a positive reply for {{usd best.reply.cpr}}.</strong> The Pro tier as a whole pays {{usd pro.total.cpr}}; Flash pays {{usd flash.total.cpr}}, on a single reply. <strong>Our best Flash workflow buys a website visit for {{usd best.visit.cpc}}.</strong> The Flash tier as a whole pays {{usd flashLinked.total.cpc}}, Pro {{usd proLinked.total.cpc}}. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
 
 {{chart|best=visit|cut=linked.byTier|metric=cpc|title=Cost per website visit (USD, lower is better)|note=Measured on the emails whose body carried a link to the client's site.}}
 
@@ -106,7 +106,7 @@
 
 <h3>7. Industry</h3>
 
-<p>IT and services click for {{pick|cut=flashLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Flash and {{pick|cut=proLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Pro. Health and wellness practices do not click, they write back: {{pick|cut=pro.byIndustry|bucket=health, wellness & fitness|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000, Pro's best industry for the reply among those past a thousand emails.</p>
+<p>IT and services click for {{pick|cut=flashLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Flash and {{pick|cut=proLinked.byIndustry|bucket=information technology & services|field=cpc|fmt=usd}} on Pro. They barely write back at all, {{pick|cut=pro.byIndustry|bucket=information technology & services|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000. Health and wellness practices do the opposite, {{pick|cut=pro.byIndustry|bucket=health, wellness & fitness|field=repliesPerTenThousand|fmt=raw}} per 10,000, behind management consulting and financial services.</p>
 
 {{chart|cut=flashLinked.byIndustry|metric=cpc|min=1000|title=Cost per website visit by industry of the reader, Flash (USD, lower is better)}}
 
@@ -126,7 +126,7 @@
 
 <h3>9. Local time of delivery</h3>
 
-<p>Flash clicks cheapest late, {{pick|cut=flashLinked.byHour|bucket=20-23|field=cpc|fmt=usd}} between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at {{pick|cut=flashLinked.byHour|bucket=6-8|field=cpc|fmt=usd}}. Pro is cheapest in the small hours at {{pick|cut=proLinked.byHour|bucket=0-5|field=cpc|fmt=usd}}. The reply likes the morning: 6am to 8am is the only window Pro can read solidly, at {{pick|cut=pro.byHour|bucket=6-8|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000.</p>
+<p>Flash clicks cheapest late, {{pick|cut=flashLinked.byHour|bucket=20-23|field=cpc|fmt=usd}} between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at {{pick|cut=flashLinked.byHour|bucket=6-8|field=cpc|fmt=usd}}. Pro is cheapest in the small hours at {{pick|cut=proLinked.byHour|bucket=0-5|field=cpc|fmt=usd}}. The reply likes the morning: 6am to 8am and 9am to 11am are the two best windows of the day, both at {{pick|cut=pro.byHour|bucket=6-8|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000.</p>
 
 {{chart|cut=flashLinked.byHour|metric=cpc|min=1000|title=Cost per website visit by local time of delivery, Flash (USD, lower is better)}}
 
@@ -136,7 +136,7 @@
 
 <h3>10. Day of the week</h3>
 
-<p>Saturday and Sunday are the cheapest Flash visits at {{pick|cut=flashLinked.byWeekday|bucket=Saturday|field=cpc|fmt=usd}}; Monday is the dearest weekday on Flash and among the cheapest on Pro. Monday carries the reply, at {{pick|cut=pro.byWeekday|bucket=Monday|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000, the only weekday Pro can read solidly.</p>
+<p>Saturday and Sunday are the cheapest Flash visits at {{pick|cut=flashLinked.byWeekday|bucket=Saturday|field=cpc|fmt=usd}}; Monday is the dearest weekday on Flash and among the cheapest on Pro. Monday carries the working week, at {{pick|cut=pro.byWeekday|bucket=Monday|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000; the only day above it is Saturday, at {{pick|cut=pro.byWeekday|bucket=Saturday|field=repliesPerTenThousand|fmt=raw}}.</p>
 
 {{chart|cut=flashLinked.byWeekday|metric=cpc|title=Cost per website visit by day of the week, Flash (USD, lower is better)}}
 
@@ -221,7 +221,7 @@
 <li><strong>Website visit</strong>: the sending platform reported that the recipient clicked a link in the email, attributed to the email the platform named. Counted once per person, on the first click. Emails with no link in the body are excluded from every visit price, because a click needs a link to land on.</li>
 <li><strong>Link scanners</strong>: a corporate mail gateway fetches every URL in a message before the reader sees it, so a raw hit on a tracking link is not a person. On the emails we send ourselves, a hit is classified before it counts: a HEAD request, a known scanner user agent, a browser string carrying a full build number that no current browser reports, or the same reader fetching the unsubscribe link within a minute. There is no time threshold, because a person on a phone reads a message within seconds too. {{n scanner.demoted}} of {{n scanner.decided}} such hits were demoted. Clicks the sending provider reports on its own infrastructure are not affected, and they are most of this window: {{n volume.clicksBySource.provider}} of the {{n volume.clicks}} clicks counted here come from its tracking, {{n volume.clicksBySource.selfSend}} from our own redirect.</li>
 <li><strong>Positive reply</strong>: a recipient wrote back with interest (a question, a request for details, a meeting). Classified automatically, reviewed by a person on the account. Counted once per person, on the last email sent at or before the reply. Negative replies, out-of-office and unsubscribes do not count. Measured on every email, since a reply needs no link.</li>
-<li><strong>Cost per outcome</strong>: spend divided by outcomes. Every bucket with at least one outcome is drawn and priced, and its emails and outcomes are printed under the bar so a reader can weigh it. A cost per positive reply is stated from 10 replies, which only the best Pro workflow clears; a bucket under 1,000 emails or 20 clicks, or under 10 positive replies, is a thin read and is labelled (thin).</li>
+<li><strong>Cost per outcome</strong>: spend divided by outcomes. Every bucket with at least one outcome is drawn and priced, and its emails and outcomes are printed under the bar so a reader can weigh it. A bucket under {{n floors.minEmails}} emails, or with no outcome at all, is a thin read and is labelled (thin): the send volume is what makes a bucket unreadable, and a few hundred emails is a real send. Crowning a workflow is the stricter question, and keeps its own bar: {{n floors.bestWorkflow.minEmails}} emails and {{n floors.bestWorkflow.minReplies}} positive replies, which only the best Pro workflow clears.</li>
 <li><strong>Length, paragraphs, subject, links</strong>: measured on the generated text of the email that was sent, for each step of the sequence. A link is a URL or a bare domain in that text; the sending layer turns both into a tracked link.</li>
 <li><strong>Reader</strong>: country, seniority, company size and industry from the lead enrichment record. Local time from the reader's time zone where known.</li>
 <li><strong>Other studies</strong>: quoted as published, read on the date beside each. We compute nothing from them.</li>
