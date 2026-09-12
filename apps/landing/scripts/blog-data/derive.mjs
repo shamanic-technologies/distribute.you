@@ -128,6 +128,7 @@ eachRow("generations.csv", (g) => {
 });
 const leads = load("leads.csv");
 const spendRows = load("spend.csv");
+const scannerRows = load("scanner-hits.csv");
 
 const stepByKey = new Map();
 eachRow("sequence-steps.csv", (r) => {
@@ -260,6 +261,9 @@ for (const e of emails) {
     // an outcome lands on exactly one email: the one the provider named for a click,
     // the last email at or before the inbound message for a reply
     clicked: click ? Number(click.step) === Number(e.step) : false,
+    // which tracking recorded the visit: our own /c/ redirect, or the sending provider's.
+    // Only the self-send hits pass through the link-scanner classification.
+    clickSource: click ? click.source : null,
     replied: false,
     _replyAt: reply?.replied_at || null,
     _sentAt: sentAt,
@@ -414,6 +418,13 @@ const out = {
     workflows: new Set(facts.map((f) => f.workflow)).size,
     spend: round(facts.reduce((s, f) => s + f.cost, 0), 2),
     clicks: facts.filter((f) => f.clicked).length,
+    // The scanner correction reaches the self-send clicks only; the provider's own tracking
+    // is its own, and the articles say so rather than letting a reader assume otherwise.
+    clicksBySource: (() => {
+      const clicked = facts.filter((f) => f.clicked);
+      const selfSend = clicked.filter((f) => f.clickSource === "self_send").length;
+      return { selfSend, provider: clicked.length - selfSend };
+    })(),
     clickPeople,
     replies: facts.filter((f) => f.replied).length,
     linked: {
@@ -425,6 +436,20 @@ const out = {
     droppedForNoSpend: emails.length - facts.length,
     firstEmails: firstEmails.length,
   },
+  // The link-scanner verdict on our own /c/ hits, so the article states what the correction
+  // actually demoted rather than a figure typed once. A hit still awaiting its verdict is
+  // neither promoted nor demoted, so the page divides by the DECIDED ones.
+  scanner: (() => {
+    const r = scannerRows[0];
+    if (!r) throw new Error("scanner-hits.csv is empty: re-run extract.sh");
+    const human = Number(r.human);
+    const demoted = Number(r.demoted);
+    const undecided = Number(r.undecided);
+    if (!Number.isFinite(human) || !Number.isFinite(demoted) || !Number.isFinite(undecided)) {
+      throw new Error(`scanner-hits.csv is not numeric: ${JSON.stringify(r)}`);
+    }
+    return { decided: human + demoted, human, demoted, undecided, hits: Number(r.hits) };
+  })(),
   all: cutsFor(facts, "every email"),
   linked: cutsFor(linked, "emails with a link in the body"),
   flash: cutsFor(facts.filter((f) => f.tier === "Flash"), "Flash tier"),
