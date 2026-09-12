@@ -19,9 +19,26 @@ import { join } from "node:path";
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
 
-const MIN_EMAILS = 1000;
-const MIN_CLICKS = 20;
-const MIN_REPLIES = 10;
+// A bucket is THIN when a reader should weigh the counts printed beside it rather than take its
+// price as a rate. The bar is the SEND VOLUME first: ten emails says nothing, a few hundred
+// starts to, and a thousand is an ordinary week for one campaign. These were ten times stricter
+// and covered both pages in `(thin)` on buckets of seven hundred and a thousand emails, which
+// reads as a study with nothing solid in it. Owner-set 2026-09-12: "700 ou 1k CEST PAS THIN ...
+// ça serait thin si tu avais envoyé 10 emails ... 100+ ça commence à devenir sérieux".
+const MIN_EMAILS = 100;
+const MIN_CLICKS = 2;
+const MIN_REPLIES = 1;
+
+// Which workflow we PUT ON THE PAGE as our best is a different question from whether a bucket's
+// price is readable, so it keeps the strict floors: the contest is decided by the CHEAPEST price
+// among the workflows that clear them, and a workflow with two lucky replies prices far below one
+// that has earned its number over tens of thousands of emails. Loosening the bucket floors alone
+// moved every headline (the best reply workflow went from 11 replies over 13,985 emails to 2 over
+// 3,936, and its price with it), which is why these are their own constants rather than the same
+// three. A price we put in a title is a claim; a price beside a bar is a reading.
+const BEST_WORKFLOW_MIN_EMAILS = 1000;
+const BEST_WORKFLOW_MIN_CLICKS = 20;
+const BEST_WORKFLOW_MIN_REPLIES = 10;
 
 // ---------- csv ----------
 // Streaming, because generations.csv is ~80MB and holds every email we wrote.
@@ -300,7 +317,7 @@ function agg(rows) {
     cpc: clicks ? round(spend / clicks, 2) : null,
     cpcThin: !clicks || emails < MIN_EMAILS || clicks < MIN_CLICKS,
     cpr: replies ? round(spend / replies, 2) : null,
-    cprThin: !replies || replies < MIN_REPLIES,
+    cprThin: !replies || emails < MIN_EMAILS || replies < MIN_REPLIES,
   };
 }
 // An `order` makes the cut ORDINAL: its buckets are a sequence, a length band, an hour of the
@@ -372,7 +389,7 @@ function cutsFor(rows, label) {
 }
 
 // best workflow per outcome, reported by its tier and model, never by its codename
-function bestWorkflows(rows, minEmails = MIN_EMAILS) {
+function bestWorkflows(rows, minEmails = BEST_WORKFLOW_MIN_EMAILS) {
   const by = new Map();
   for (const r of rows) {
     if (!by.has(r.workflow)) by.set(r.workflow, []);
@@ -391,13 +408,13 @@ function bestWorkflows(rows, minEmails = MIN_EMAILS) {
       emails: a.emails, spend: a.spend, clicks: a.clicks, replies: a.replies,
       clicksPerThousand: a.clicksPerThousand, repliesPerTenThousand: a.repliesPerTenThousand,
       cpr: a.replies ? round(a.spend / a.replies, 2) : null,
-      cprThin: a.replies < MIN_REPLIES,
+      cprThin: !a.replies || a.emails < BEST_WORKFLOW_MIN_EMAILS || a.replies < BEST_WORKFLOW_MIN_REPLIES,
       linkedEmails: la.emails, linkedSpend: la.spend, linkedClicks: la.clicks,
       // the click rate on the emails that carried a link, which is the only honest
       // denominator for a workflow's cost per visit
       linkedClicksPerThousand: la.clicksPerThousand,
       cpc: la.clicks ? round(la.spend / la.clicks, 2) : null,
-      cpcThin: !la.clicks || la.emails < MIN_EMAILS || la.clicks < MIN_CLICKS,
+      cpcThin: !la.clicks || la.emails < BEST_WORKFLOW_MIN_EMAILS || la.clicks < BEST_WORKFLOW_MIN_CLICKS,
     });
   }
   return out.sort((a, b) => b.emails - a.emails);
@@ -410,7 +427,8 @@ const clickPeople = new Set(facts.filter((f) => f.clicked).map((f) => f.leadEmai
 
 const out = {
   generatedAt: new Date().toISOString(),
-  floors: { minEmails: MIN_EMAILS, minClicks: MIN_CLICKS, minReplies: MIN_REPLIES },
+  floors: { minEmails: MIN_EMAILS, minClicks: MIN_CLICKS, minReplies: MIN_REPLIES,
+    bestWorkflow: { minEmails: BEST_WORKFLOW_MIN_EMAILS, minClicks: BEST_WORKFLOW_MIN_CLICKS, minReplies: BEST_WORKFLOW_MIN_REPLIES } },
   volume: {
     emails: facts.length,
     people,

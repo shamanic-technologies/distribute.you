@@ -295,7 +295,11 @@ describe("flash-or-pro article: dataset coherence", () => {
       if (labels) expect(bars).toBe(labels);
     }
     expect(method).toContain("Every bucket with at least one outcome is drawn and priced");
-    expect(method).toContain("A cost per positive reply is stated from 10 replies, which only the best Pro workflow clears");
+    // The bucket floor and the bar a workflow must clear to be CROWNED are different questions,
+    // and the Method states both: a bucket is a reading, a crowned workflow is a claim.
+    expect(method).toContain("is a thin read and is labelled (thin)");
+    expect(method).toContain("Crowning a workflow is the stricter question");
+    expect(method).toContain("which only the best Pro workflow clears");
   });
 
   it("names the vendor model that ran and sources every list price", () => {
