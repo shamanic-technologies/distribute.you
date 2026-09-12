@@ -13,8 +13,8 @@ import {
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { PeriodCompoundChart, type PeriodCompoundPoint } from "@/components/period-compound-chart";
-import { CmgrStat } from "@/components/cmgr-stat";
+import type { PeriodCompoundPoint } from "@/components/period-compound-chart";
+import { PeriodCompoundCard } from "@/components/period-compound-card";
 import { compoundGrowthSeries, compoundGrowthSummary } from "@/lib/compound-growth";
 import { ActiveUsersTable } from "@/components/active-users-table";
 
@@ -161,38 +161,28 @@ export function ActiveUsersView() {
         </section>
       ) : (
         <section className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-gray-950">Monthly active users</h2>
-            <p className="mt-1 text-sm text-gray-500">Active users per month with compound monthly growth since inception.</p>
-            {!historyPending && (
-              <div className="mt-4">
-                <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
-              </div>
-            )}
-            <div className="mt-5">
-              {historyPending ? (
-                <Skeleton className="h-[280px] w-full rounded" />
-              ) : (
-                <PeriodCompoundChart data={monthlyPoints} valueLabel="active users" growthLabel="CMGR since inception" />
-              )}
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-gray-950">Weekly active users</h2>
-            <p className="mt-1 text-sm text-gray-500">Active users per week with compound weekly growth since inception.</p>
-            {!historyPending && (
-              <div className="mt-4">
-                <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
-              </div>
-            )}
-            <div className="mt-5">
-              {historyPending ? (
-                <Skeleton className="h-[280px] w-full rounded" />
-              ) : (
-                <PeriodCompoundChart data={weeklyPoints} valueLabel="active users" growthLabel="CWGR since inception" />
-              )}
-            </div>
-          </div>
+          <PeriodCompoundCard
+            title="Monthly active users"
+            subtitle="Active users per month with compound monthly growth since inception."
+            cmgrLabel="CMGR"
+            cmgrUnit="monthly"
+            summary={monthlyCmgr}
+            data={monthlyPoints}
+            valueLabel="active users"
+            growthLabel="CMGR since inception"
+            pending={historyPending}
+          />
+          <PeriodCompoundCard
+            title="Weekly active users"
+            subtitle="Active users per week with compound weekly growth since inception."
+            cmgrLabel="CWGR"
+            cmgrUnit="weekly"
+            summary={weeklyCmgr}
+            data={weeklyPoints}
+            valueLabel="active users"
+            growthLabel="CWGR since inception"
+            pending={historyPending}
+          />
         </section>
       )}
 

@@ -65,16 +65,26 @@ describe("CmgrStat — states the span beside the rate", () => {
     expect(cmgrStat).toContain("barsUsed !== null &&");
   });
 
-  it("is passed a span by every card that renders it", () => {
-    const sources = [
+  // Every /metrics tab now draws its charts through ONE shared card, and that card is
+  // the single place CmgrStat is rendered — so the span reaches it by construction
+  // rather than by each call site remembering to pass it. What the call sites owe is
+  // the whole summary (`latestPct` + `avgPct` + `barsUsed`), which is what the card
+  // spreads onto the headline.
+  it("renders the headline from exactly one place, and is handed a whole summary", () => {
+    const card = read("../src/components/period-compound-card.tsx");
+    expect(card.split("<CmgrStat").length - 1).toBe(1);
+    expect(card).toContain("barsUsed={summary.barsUsed}");
+
+    const callers = [
       read("../src/app/(authed)/(dashboard)/metrics/page.tsx"),
       read("../src/components/active-users-view.tsx"),
       read("../src/components/revenue-view.tsx"),
+      read("../src/components/overview-view.tsx"),
     ];
-    for (const src of sources) {
-      const stats = src.split("<CmgrStat").length - 1;
-      expect(stats).toBeGreaterThan(0);
-      expect(src.split("barsUsed={").length - 1).toBeGreaterThanOrEqual(stats);
+    for (const src of callers) {
+      const cards = src.split("<PeriodCompoundCard").length - 1;
+      expect(cards).toBeGreaterThan(0);
+      expect(src.split("summary={").length - 1).toBeGreaterThanOrEqual(cards);
     }
   });
 });

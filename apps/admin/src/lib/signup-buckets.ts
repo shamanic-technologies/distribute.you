@@ -184,6 +184,22 @@ export function weeklyCards(points: DailyFunnelPoint[]): SignupBucket[] {
   return aggregate(points, (date) => isoWeekKey(date), (p) => p.cardsAdded);
 }
 
+/**
+ * The paid-user conversion rate per period: paid users divided by signups, with the
+ * compound growth OF that rate. Mirrors the signup-rate pair one stage down the
+ * funnel, through the same `rateBuckets` join, so the two read identically.
+ *
+ * A period with ZERO signups is DROPPED rather than charted at 0%: there was nobody
+ * to convert, which is a different statement from "nobody converted".
+ */
+export function monthlyCardRates(points: DailyFunnelPoint[]): RateBucket[] {
+  return rateBuckets(monthlyCards(points), monthlySignups(points));
+}
+
+export function weeklyCardRates(points: DailyFunnelPoint[]): RateBucket[] {
+  return rateBuckets(weeklyCards(points), weeklySignups(points));
+}
+
 /** Monday (ISO week start) of the given date, as a YYYY-MM-DD key. */
 function mondayIso(date: Date): string {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));

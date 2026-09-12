@@ -10,8 +10,8 @@ import {
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { CmgrStat } from "@/components/cmgr-stat";
 import { PeriodCompoundChart } from "@/components/period-compound-chart";
+import { PeriodCompoundCard } from "@/components/period-compound-card";
 import { formatUsd } from "@/lib/format-number";
 import type { BillingStats, FirstSeenMonthRow } from "@/lib/public-stats";
 import { StatedAmountsCard } from "@/components/revenue/stated-amounts-card";
@@ -98,37 +98,23 @@ function PeriodCard({
   valueLabel: string;
   pending: boolean;
 }) {
+  // A thin money wrapper over the one shared card: it maps revenue buckets to points
+  // and pins the currency formatters, so the ten call sites below do not each repeat
+  // them. The card itself is the SAME one every other /metrics tab draws.
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
-      <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
-      <div className="mt-4">
-        {pending ? (
-          <Skeleton className="h-16 w-32 rounded" />
-        ) : (
-          <CmgrStat
-            latestPct={latestPct}
-            avgPct={avgPct}
-            barsUsed={barsUsed}
-            label={cmgrLabel}
-            unit={cmgrUnit}
-          />
-        )}
-      </div>
-      <div className="mt-5">
-        {pending ? (
-          <Skeleton className="h-[280px] w-full rounded" />
-        ) : (
-          <PeriodCompoundChart
-            data={toCompoundPoints(buckets)}
-            valueLabel={valueLabel}
-            growthLabel={growthLabel}
-            formatValue={usdFull}
-            formatAxis={usdCompact}
-          />
-        )}
-      </div>
-    </div>
+    <PeriodCompoundCard
+      title={title}
+      subtitle={subtitle}
+      cmgrLabel={cmgrLabel}
+      cmgrUnit={cmgrUnit}
+      summary={{ latestPct, avgPct, barsUsed }}
+      data={toCompoundPoints(buckets)}
+      valueLabel={valueLabel}
+      growthLabel={growthLabel}
+      formatValue={usdFull}
+      formatAxis={usdCompact}
+      pending={pending}
+    />
   );
 }
 

@@ -89,7 +89,11 @@ describe("cross-org build-in-public metrics page", () => {
   it("shows compound growth (CMGR/CWGR) on the monthly and weekly signup charts, no daily chart", () => {
     expect(metricsPage).toContain("CMGR since inception");
     expect(metricsPage).toContain("CWGR since inception");
-    expect(metricsPage).toContain("CmgrStat");
+    // The CMGR headline is drawn by the ONE shared card every /metrics tab uses, so
+    // this asserts the card is what the page reaches for rather than a hand-rolled
+    // CmgrStat + chart pair (which is how two tabs come to render one figure twice).
+    expect(metricsPage).toContain("PeriodCompoundCard");
+    expect(metricsPage).not.toContain("<CmgrStat");
     // The daily signup chart was removed (its bucket call + day-on-day line are gone).
     expect(metricsPage).not.toContain("dailySignups");
     expect(metricsPage).not.toContain("day-on-day");
