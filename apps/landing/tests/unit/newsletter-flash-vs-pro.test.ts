@@ -47,4 +47,36 @@ describe("newsletter: flash vs pro", () => {
   it("states the article's headline figures", () => {
     for (const figure of ["$139", "$1", "125,000", "36", "$198"]) expect(html).toContain(figure);
   });
+
+  /**
+   * The newsletter is hand-authored beside a GENERATED article, so a re-derivation
+   * moves the article's figures and leaves this page publishing the retired ones.
+   * These read the article rather than pinning a literal, so the drift fails here
+   * instead of reaching an inbox.
+   */
+  describe("stays coherent with the article it summarises", () => {
+    const article = readFileSync(
+      join(ROOT, "content", "blog", "flash-vs-pro-llm-cold-email", "article.html"),
+      "utf8",
+    );
+    const text = article.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+
+    it("names the client count the article names", () => {
+      const clients = text.match(/across (\d+) clients/)?.[1];
+      expect(clients).toBeTruthy();
+      expect(html).toContain(`${clients} clients`);
+    });
+
+    it("names the A/B-test count the article names", () => {
+      const tests = text.match(/(\d+) A\/B tests, one winner per outcome/)?.[1];
+      expect(tests).toBeTruthy();
+      expect(html).toContain("A/B tests");
+      expect(html).toContain(`>${tests}</div>`);
+    });
+
+    it("claims no all-of-them twist: replies come from linked emails too", () => {
+      expect(html).not.toMatch(/\d+ of \d+/);
+      expect(html).not.toMatch(/every reply came from/i);
+    });
+  });
 });
