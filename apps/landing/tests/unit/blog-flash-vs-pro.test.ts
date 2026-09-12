@@ -73,7 +73,10 @@ describe("flash-or-pro article: copy rules", () => {
   });
 
   it("does not reveal the $400 offer and states the $30 one", () => {
-    expect(html).not.toContain("$400");
+    // Scoped to the COPY: the folded appendix prices a bucket's spend, and a derived
+    // figure that happens to read $400 is a number, never the retired welcome offer.
+    const copy = prose.replace(/<table>[\s\S]*?<\/table>/g, "");
+    expect(copy).not.toContain("$400");
     expect(html).toContain("first 30 USD");
   });
 
@@ -152,8 +155,8 @@ describe("flash-or-pro article: editorial rules", () => {
 
   it("the volume is a round 125,000 in the title, story and hero; the exact count lives under Method only", () => {
     expect(story).toContain("125,000 cold emails");
-    expect(story).not.toContain("124,460");
-    expect(method).toContain("124,460 emails");
+    expect(story).not.toContain("125,117");
+    expect(method).toContain("125,117 emails");
   });
 
   it("cuts the data the same ten ways as the cost-per-click article, Flash against Pro", () => {
@@ -264,7 +267,7 @@ describe("flash-or-pro article: what others measured, and where we stand", () =>
 
 describe("flash-or-pro article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "35,080", "88,856", "$8,412"]) {
+    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "35,283", "89,310", "$8,438"]) {
       expect(html).toContain(figure);
     }
   });

@@ -8,6 +8,7 @@
 // re-running extract.sh + derive.mjs + this script reproduces both articles.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ROW, BAR_END, chartHeight, gutterFor } from "./chart-geometry.mjs";
 
 const [factsPath, contentDir] = process.argv.slice(2);
 if (!factsPath || !contentDir) throw new Error("usage: render-articles.mjs <facts.json> <content-dir>");
@@ -28,11 +29,16 @@ const commas = (n) => Number(n).toLocaleString("en-US");
 const usd = (n) => (Number(n) > 0 && Number(n) < 0.5 ? "under $1" : `$${commas(Math.round(Number(n)))}`);
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+
 // Buckets arrive under the producer's own words; the page reads in the customer's.
 const LABEL = {
   c_suite: "C-suite", director: "Director", entry: "Entry", founder: "Founder", head: "Head",
   manager: "Manager", owner: "Owner", vp: "VP", senior: "Senior", partner: "Partner", intern: "Intern",
   "link in the body": "A link in the body", "no link": "No link",
+  // The producer names an industry as its taxonomy does; two of them are longer than any
+  // gutter can carry without eating the bars, so the page reads them the short way.
+  "information technology & services": "IT and services",
+  "health, wellness & fitness": "Health and wellness",
 };
 // sentence case: a bucket reads as a phrase, not as a headline
 const label = (b) => LABEL[b] || b.charAt(0).toUpperCase() + b.slice(1);
@@ -47,9 +53,15 @@ function args(spec) {
   return out;
 }
 
-function rowsOf(cutPath, { metric, min, drop }) {
+function rowsOf(cutPath, { metric, min, drop, best }) {
   let rows = get(cutPath);
   if (!Array.isArray(rows)) throw new Error(`not a cut: ${cutPath}`);
+  if (best) {
+    // The tier rows say so in full, since the best-workflow rows now sit beside them, and
+    // the chart ranks on the value it draws rather than keeping the tier order.
+    rows = rows.map((r) => ({ ...r, bucket: `${r.bucket} tier, all workflows`, ordinal: false }));
+    rows = [...BEST_ROWS[best](get("best")), ...rows];
+  }
   if (drop) { const kill = drop.split(","); rows = rows.filter((r) => !kill.includes(r.bucket)); }
   // A row with no outcome cannot carry a cost bar, so it is left out rather than drawn empty.
   if (metric === "cpc") rows = rows.filter((r) => r.clicks > 0);
@@ -77,15 +89,42 @@ function rankRows(rows, metric) {
   });
 }
 
-const countLine = (r, metric) =>
-  metric === "cpr" || metric === "rate"
-    ? `${commas(r.replies)} positive ${r.replies === 1 ? "reply" : "replies"}, ${commas(r.emails)} emails`
-    : `${r.clicksPerThousand} clicks per 1,000 emails, ${commas(r.emails)} emails`;
+const countLine = (r, metric) => {
+  const counts =
+    metric === "cpr" || metric === "rate"
+      ? `${commas(r.replies)} positive ${r.replies === 1 ? "reply" : "replies"}, ${commas(r.emails)} emails`
+      : `${r.clicksPerThousand} clicks per 1,000 emails, ${commas(r.emails)} emails`;
+  // A best-workflow row is named by its tier and its model, never by its codename.
+  return r.model ? `${r.model}: ${counts}` : counts;
+};
+
+// The two answer charts state our best workflow beside the tier it beats: a client is
+// served the winner of the A/B test and never the tier's average, so a chart that draws
+// only the average contradicts the paragraph above it.
+function bestRow(best, which, metric) {
+  const w = best[which];
+  if (!w) throw new Error(`no best workflow for ${which}`);
+  const linked = metric === "cpc";
+  return {
+    bucket: `Best ${w.tier} workflow`,
+    model: w.model,
+    cpc: w.cpc, cpr: w.cpr, cpcThin: w.cpcThin, cprThin: w.cprThin,
+    repliesPerTenThousand: w.repliesPerTenThousand,
+    replies: w.replies,
+    clicks: linked ? w.linkedClicks : w.clicks,
+    clicksPerThousand: linked ? w.linkedClicksPerThousand : w.clicksPerThousand,
+    emails: linked ? w.linkedEmails : w.emails,
+  };
+}
+const BEST_ROWS = {
+  reply: (best) => [bestRow(best, "reply", "cpr")],
+  visit: (best) => [bestRow(best, "visit", "cpc"), bestRow(best, "bestPricedPro", "cpc")],
+};
 
 function barChart(spec) {
   const a = args(spec);
   const metric = a.metric || "cpc";
-  const rows = rowsOf(a.cut, { metric, min: a.min, drop: a.drop });
+  const rows = rowsOf(a.cut, { metric, min: a.min, drop: a.drop, best: a.best });
   if (!rows.length) throw new Error(`no rows to chart: ${a.cut}`);
   const field = metric === "rate" ? "repliesPerTenThousand" : metric;
   const thinField = metric === "rate" ? "cprThin" : `${metric}Thin`;
@@ -94,11 +133,13 @@ function barChart(spec) {
   const max = Math.max(...values);
   const solid = values.filter((v, i) => !rows[i][thinField]);
   const best = solid.length ? (higherIsBetter ? Math.max(...solid) : Math.min(...solid)) : null;
-  const LEFT = 150, W = 540, ROW = 52;
-  const height = 30 + rows.length * ROW + (a.note ? 32 : 6);
-  const parts = [];
   const show = (v) => (higherIsBetter ? String(v) : usd(v));
-  const spoken = rows.map((r) => `${label(r.bucket)}${r[thinField] ? " (thin)" : ""} ${show(r[field])}`).join(", ");
+  const names = rows.map((r) => `${label(r.bucket)}${r[thinField] ? " (thin)" : ""}`);
+  const LEFT = gutterFor(names);
+  const W = BAR_END - LEFT;
+  const height = chartHeight(rows.length, Boolean(a.note));
+  const parts = [];
+  const spoken = rows.map((r, i) => `${names[i]} ${show(r[field])}`).join(", ");
   parts.push(`<svg viewBox="0 0 800 ${height}" width="100%" role="img" aria-label="${esc(a.title)}: ${esc(spoken)}" font-family="Inter, system-ui, sans-serif">`);
   parts.push(`<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">${esc(a.title)}</text>`);
   rows.forEach((r, i) => {
@@ -106,7 +147,7 @@ function barChart(spec) {
     const v = Number(r[field]);
     const w = Math.max(6, Math.round((v / max) * W));
     const fill = r[thinField] ? THIN : v === best ? BLUE : PALE;
-    parts.push(`<text x="0" y="${y + 18}" font-size="14" fill="#475569">${esc(label(r.bucket))}${r[thinField] ? " (thin)" : ""}</text>`);
+    parts.push(`<text x="0" y="${y + 18}" font-size="14" fill="#475569">${esc(names[i])}</text>`);
     parts.push(`<rect x="${LEFT}" y="${y}" width="${w}" height="26" rx="5" fill="${fill}"/>`);
     parts.push(`<text x="${LEFT + w + 10}" y="${y + 19}" font-size="16" font-weight="700" fill="#0f172a">${show(v)}</text>`);
     parts.push(`<text x="${LEFT}" y="${y + 39}" font-size="11" fill="#94a3b8">${esc(countLine(r, metric))}</text>`);

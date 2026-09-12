@@ -22,9 +22,9 @@
 
 <p><strong>Our best Pro workflow buys a positive reply for {{usd best.reply.cpr}}.</strong> The Pro tier as a whole pays {{usd pro.total.cpr}}; Flash pays {{usd flash.total.cpr}}, on too few replies to be a solid read. <strong>Our best Flash workflow buys a website visit for {{usd best.visit.cpc}}.</strong> The Flash tier as a whole pays {{usd flashLinked.total.cpc}}, Pro {{usd proLinked.total.cpc}}. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
 
-{{chart|cut=linked.byTier|metric=cpc|title=Cost per website visit by tier (USD, lower is better)|note=Measured on the emails whose body carried a link to the client's site.}}
+{{chart|best=visit|cut=linked.byTier|metric=cpc|title=Cost per website visit (USD, lower is better)|note=Measured on the emails whose body carried a link to the client's site.}}
 
-{{chart|cut=all.byTier|metric=cpr|title=Cost per positive reply by tier (USD, lower is better)|note=Measured on every email, since a reply needs no link.}}
+{{chart|best=reply|cut=all.byTier|metric=cpr|title=Cost per positive reply (USD, lower is better)|note=Measured on every email, since a reply needs no link.}}
 
 <h2 id="the-spread">{{n best.workflowsPastFloor}} A/B tests, one winner per outcome</h2>
 
@@ -213,7 +213,7 @@
 
 <ul>
 <li><strong>Scope</strong>: sales cold email outreach only. Journalist outreach, PR pitches and every other channel we run are excluded.</li>
-<li><strong>Window</strong>: 15 April to 11 September 2026, every client account. Production data from the distribute.you platform, read on 11 September 2026.</li>
+<li><strong>Window</strong>: 15 April to 11 September 2026, every client account. Production data from the distribute.you platform, read on 12 September 2026.</li>
 <li><strong>Volume</strong>: {{n volume.emails}} emails to {{n volume.people}} people across {{n volume.orgs}} clients, {{usd volume.spend}} of platform spend, {{n volume.clicks}} website visits and {{n volume.replies}} positive replies. Of those emails, {{n volume.linked.emails}} carried a link to the client's site; they cost {{usd volume.linked.spend}} and {{n volume.linked.clicks}} people clicked. {{n volume.workflows}} workflows ran with tracked spend (a workflow is one prompt and one model), {{n best.workflowsPastFloor}} of them past 1,000 emails.</li>
 <li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini Flash, Claude Haiku, DeepSeek V4 Flash, GLM Flash, Kimi K2.6). Pro, the middle (Gemini Pro, Claude Opus, DeepSeek V4 Pro, GLM 5.3, Kimi K3). Frontier, the most expensive (Claude Fable, Astra), not yet run in production beyond a handful of emails. The model is read per email from the generation record.</li>
 <li><strong>Spend</strong>: everything the workflow cost before per-account discounts: lead sourcing, enrichment, sending and tokens. Not tokens alone. Each email carries its own workflow's cost per email, so a bucket's spend is the sum over the emails in it.</li>
