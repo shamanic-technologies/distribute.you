@@ -151,6 +151,12 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     );
   }
 
+  // 204 No Content is a valid empty success — a DELETE that removed the row and
+  // has nothing to say about it. Reading it as JSON throws "invalid JSON" on a
+  // request that worked, so the absence of a body is honoured here rather than
+  // worked around at each delete call site.
+  if (response.status === 204) return undefined as T;
+
   return await readJsonResponse(response, endpoint) as T;
 }
 
@@ -5733,6 +5739,62 @@ export interface CommittedMrr {
   weekly: CommittedMrrBucket[];
 }
 
+// ── MRR SPLIT: agency vs self-serve (features-service v0.163.0) ──────────────
+// The fleet's monthly run-rate in TWO disjoint halves, because the two are
+// earned on genuinely different bases and adding them under one word states
+// something true of neither.
+//
+//  SELF-SERVE pays THROUGH the product, so what it is worth per month IS its
+//  daily budget × 30 — the figure this service has recorded daily since
+//  2026-07-15.
+//  AGENCY does not: it hands over cash at its own discretion and a human then
+//  decides how that cash is split into daily budgets across its brands. There
+//  the budget is an ALLOCATION DECISION, so budget × 30 answers "how did we
+//  spread their money" and never "what is this customer worth". The only true
+//  figure is the one a human STATES.
+//
+// WHICH orgs are agency is DERIVED from the stated rows — an org carrying at
+// least one stated amount is agency — so no org id is hardcoded anywhere and a
+// second agency later needs no change.
+//
+// HISTORY IS REPLAYED, NOT RECORDED: no snapshot ever carried the split, and
+// none had to — billing keeps a per-(org, brand) daily-budget timeline whose
+// first row lands the SAME DAY as the first committed snapshot, so the agency
+// side's budget on any recorded day is readable. The series therefore reaches
+// as far back as the committed one it is split from.
+export interface MrrSplitBucket {
+  period: string; // "YYYY-MM" | "YYYY-Www"
+  periodStart: string; // UTC bucket start "YYYY-MM-DD"
+  referenceDate: string; // the day the point was read as of (last snapshot in the period, or today)
+  agencyMrrUsd: number; // Σ STATED amounts in force on referenceDate — never those brands' budget × 30
+  agencyArrUsd: number;
+  selfServeMrrUsd: number; // the period's committed run-rate MINUS the agency side's committed contribution
+  selfServeArrUsd: number;
+  totalMrrUsd: number; // agency + self-serve (disjoint by construction)
+  totalArrUsd: number;
+  // What the agency side's BUDGET × 30 came to — i.e. exactly how much left the
+  // self-serve half. Above agencyMrrUsd means some agency budget is in NEITHER
+  // half: an agency brand nobody has stated an amount for yet. Served so that
+  // gap is visible rather than silent.
+  agencyBudgetMrrUsd: number;
+  committedMrrUsd: number; // the fleet figure this period was split from
+  growthPct: number | null; // point-over-point on totalMrrUsd, null on the first bucket or a 0 base
+}
+
+export interface MrrSplit {
+  currentAgencyMrrUsd: number;
+  currentAgencyArrUsd: number;
+  currentSelfServeMrrUsd: number;
+  currentSelfServeArrUsd: number;
+  currentTotalMrrUsd: number;
+  currentTotalArrUsd: number;
+  currentAgencyBudgetMrrUsd: number;
+  agencyOrgIds: string[]; // derived from the stated rows, never hardcoded
+  agencyPairKeys: string[]; // every (org, brand) excluded from the self-serve half, as `orgId::brandId`
+  monthly: MrrSplitBucket[];
+  weekly: MrrSplitBucket[];
+}
+
 // NET REVENUE RETENTION, as features-service serves it (v0.120.0). One point per
 // period: of the money the customers who were spending LAST period are spending
 // NOW, what fraction remains — expansion, contraction and churn among them all
@@ -5767,6 +5829,10 @@ export interface FleetRevenue {
   daily: FleetRevenueBucket[]; // trailing UTC-day buckets (realized, windowed default 90d)
   sinceInceptionDaily: FleetRevenueBucket[]; // per-day realized line, first billed day → today
   committedMrr: CommittedMrr; // committed MRR/ARR run-rate over time (daily snapshots)
+  // The agency / self-serve split of that same run-rate. NULL is a real answer —
+  // the producer could not read the stated-amounts store — and must render as a
+  // stated reason, never as a zero agency. Optional so an older producer parses.
+  mrrSplit?: MrrSplit | null;
   // Optional so the admin renders against an env where features-service has not
   // yet reached v0.120.0 — absent reads as "not measured" rather than throwing.
   netRevenueRetention?: NetRevenueRetention;
@@ -5802,6 +5868,92 @@ export async function getFleetRevenue(token?: string): Promise<FleetRevenue> {
     `/features/audit/revenue?months=${REVENUE_MONTHS_MAX}&weeks=${REVENUE_WEEKS_MAX}`,
     { token },
   );
+}
+
+// ── Stated monthly amounts (staff-writable, features-service-owned) ──────────
+// What a HUMAN says a brand is worth per month, over a date range. This is the
+// ONE input that makes the agency half of the MRR split possible: an agency's
+// daily budget is an allocation decision, so nothing derivable from the product
+// can answer what it is worth — only a person can.
+//
+// BOTH bounds are optional and each has a meaning, not a default:
+//   startDate null = in force since that brand's FIRST DAY OF BILLED SPEND
+//   endDate   null = still running
+// Two ranges overlapping on one day for one (org, brand) are REFUSED by the
+// producer with a 409 whose reason is written for a person — surface that
+// reason verbatim, never a generic failure.
+//
+// Transparent proxy to features-service `/internal/stated-monthly-amounts`,
+// staff-gated at api-service (same auth path as getAuditAccounts).
+const STATED_AMOUNTS_PATH = "/features/stated-monthly-amounts";
+
+export interface StatedAmount {
+  id: string;
+  orgId: string;
+  brandId: string;
+  /** What a person says this brand is worth per month, USD. A stated 0 is a real answer. */
+  amountUsd: number;
+  startDate: string | null; // "YYYY-MM-DD" inclusive, or null = since the brand's first billed day
+  endDate: string | null; // "YYYY-MM-DD" inclusive, or null = still running
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StatedAmountInput {
+  orgId: string;
+  brandId: string;
+  amountUsd: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  note?: string | null;
+}
+
+/** Every stated amount, newest-relevant first as the producer orders them. */
+export async function listStatedAmounts(token?: string): Promise<StatedAmount[]> {
+  const res = await apiCall<{ statedAmounts: StatedAmount[] }>(STATED_AMOUNTS_PATH, { token });
+  return res.statedAmounts;
+}
+
+export async function createStatedAmount(input: StatedAmountInput, token?: string): Promise<StatedAmount> {
+  const res = await apiCall<{ statedAmount: StatedAmount }>(STATED_AMOUNTS_PATH, {
+    method: "POST",
+    // Spelled out rather than forwarded whole: each open bound travels as an
+    // explicit null, which is what says "since the first billed day" / "still
+    // running" instead of "I forgot to send this".
+    body: {
+      orgId: input.orgId,
+      brandId: input.brandId,
+      amountUsd: input.amountUsd,
+      startDate: input.startDate ?? null,
+      endDate: input.endDate ?? null,
+      note: input.note ?? null,
+    },
+    token,
+  });
+  return res.statedAmount;
+}
+
+/**
+ * Patch one stated amount. An OMITTED key keeps its stored value; an explicit
+ * `null` on a bound OPENS that end, which is a real edit — so a caller that
+ * means "make this open-ended" must SEND `endDate: null`, never omit it.
+ */
+export async function updateStatedAmount(
+  id: string,
+  patch: Partial<Pick<StatedAmount, "amountUsd" | "startDate" | "endDate" | "note">>,
+  token?: string,
+): Promise<StatedAmount> {
+  const res = await apiCall<{ statedAmount: StatedAmount }>(`${STATED_AMOUNTS_PATH}/${id}`, {
+    method: "PATCH",
+    body: { ...patch },
+    token,
+  });
+  return res.statedAmount;
+}
+
+export async function deleteStatedAmount(id: string, token?: string): Promise<void> {
+  await apiCall<void>(`${STATED_AMOUNTS_PATH}/${id}`, { method: "DELETE", token });
 }
 
 // ── Google CRM (staff console) ───────────────────────────────────────────────

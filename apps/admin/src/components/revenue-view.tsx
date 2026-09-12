@@ -14,10 +14,11 @@ import { CmgrStat } from "@/components/cmgr-stat";
 import { PeriodCompoundChart } from "@/components/period-compound-chart";
 import { formatUsd } from "@/lib/format-number";
 import type { BillingStats, FirstSeenMonthRow } from "@/lib/public-stats";
+import { StatedAmountsCard } from "@/components/revenue/stated-amounts-card";
 import {
   revenueBuckets,
   revenueCmgrSummary,
-  committedBuckets,
+  mrrSplitBuckets,
   retentionSeries,
   cashBuckets,
   centsStringToUsd,
@@ -323,13 +324,20 @@ export function RevenueView({
     const monthly = revenueBuckets(data.monthly, "month");
     const weekly = revenueBuckets(data.weekly, "week");
 
-    // MRR/ARR = COMMITTED run-rate (active daily budget × 30), snapshotted daily by
-    // features-service. Current-period point == the live Current MRR card.
-    const cm = data.committedMrr;
-    const monthlyMrr = committedBuckets(cm.monthly, "mrrUsd", "month");
-    const weeklyMrr = committedBuckets(cm.weekly, "mrrUsd", "week");
-    const monthlyArr = committedBuckets(cm.monthly, "arrUsd", "month");
-    const weeklyArr = committedBuckets(cm.weekly, "arrUsd", "week");
+    // The run-rate, in its TWO halves. features-service computes both and their
+    // total; nothing is added, subtracted or re-divided here. The current-period
+    // point of each is its live figure, so the charts reconcile with the cards.
+    //
+    // ARR is deliberately NOT charted: it is MRR × 12, so its curve and its growth
+    // are the MRR curve and the MRR growth with a multiplier on the axis. It is
+    // stated on the cards, where the number is the point.
+    const split = data.mrrSplit ?? null;
+    const monthlySelfServe = split ? mrrSplitBuckets(split.monthly, "selfServeMrrUsd", "month") : [];
+    const weeklySelfServe = split ? mrrSplitBuckets(split.weekly, "selfServeMrrUsd", "week") : [];
+    const monthlyAgency = split ? mrrSplitBuckets(split.monthly, "agencyMrrUsd", "month") : [];
+    const weeklyAgency = split ? mrrSplitBuckets(split.weekly, "agencyMrrUsd", "week") : [];
+    const monthlyTotal = split ? mrrSplitBuckets(split.monthly, "totalMrrUsd", "month") : [];
+    const weeklyTotal = split ? mrrSplitBuckets(split.weekly, "totalMrrUsd", "week") : [];
 
     // Each denominator is NEW ENTRANTS per month — one row per person, in the month
     // they first reached that stage — which `cumulativeAvgSeries` accumulates into
@@ -342,15 +350,21 @@ export function RevenueView({
     return {
       monthly,
       weekly,
-      monthlyMrr,
-      weeklyMrr,
-      monthlyArr,
-      weeklyArr,
+      split,
+      monthlySelfServe,
+      weeklySelfServe,
+      monthlyAgency,
+      weeklyAgency,
+      monthlyTotal,
+      weeklyTotal,
       monthlyCmgr: revenueCmgrSummary(monthly),
       weeklyCmgr: revenueCmgrSummary(weekly),
-      // ARR = MRR × 12 → same growth, so MRR & ARR share these.
-      monthlyMrrCmgr: revenueCmgrSummary(monthlyMrr),
-      weeklyMrrCmgr: revenueCmgrSummary(weeklyMrr),
+      monthlySelfServeCmgr: revenueCmgrSummary(monthlySelfServe),
+      weeklySelfServeCmgr: revenueCmgrSummary(weeklySelfServe),
+      monthlyAgencyCmgr: revenueCmgrSummary(monthlyAgency),
+      weeklyAgencyCmgr: revenueCmgrSummary(weeklyAgency),
+      monthlyTotalCmgr: revenueCmgrSummary(monthlyTotal),
+      weeklyTotalCmgr: revenueCmgrSummary(weeklyTotal),
       perVisitor: cumulativeAvgSeries(revenueByMonth, newVisitorsByMonth),
       perSignup: cumulativeAvgSeries(revenueByMonth, newSignupsByMonth),
       perPaidClient: cumulativeAvgSeries(revenueByMonth, newPaidClients),
@@ -386,8 +400,19 @@ export function RevenueView({
 
   const mc = derived?.monthlyCmgr;
   const wc = derived?.weeklyCmgr;
-  const mmc = derived?.monthlyMrrCmgr;
-  const wmc = derived?.weeklyMrrCmgr;
+  const split = derived?.split ?? null;
+  // The producer computes the split fail-soft and answers null when it could not
+  // read the stated amounts. That is "we could not measure this" — it is STATED
+  // below, never rendered as a zero agency and a self-serve half that silently
+  // equals the whole fleet.
+  const splitUnavailable = Boolean(data) && !isPending && split === null;
+  // Agency budget that left the self-serve half and landed in NEITHER: a brand
+  // under an agency org that nobody has stated an amount for yet. Served so the
+  // gap is visible instead of quietly shrinking the total.
+  const unstatedAgencyUsd =
+    split && split.currentAgencyBudgetMrrUsd > split.currentAgencyMrrUsd
+      ? split.currentAgencyBudgetMrrUsd - split.currentAgencyMrrUsd
+      : 0;
 
   return (
     <>
@@ -454,19 +479,17 @@ export function RevenueView({
         blurb="What customers actually burned in cold-email sending, after each org's usage discount. No payment is in this figure: a refund reverses a payment, it cannot un-send an email, so refunds move the cash above and not this."
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      {/* The committed run-rate used to sit here as a third card. It moved into
+          its own band below, because the fleet figure and the two halves it
+          splits into are three MRRs, and a page that states one of them beside
+          consumption and the others two screens down reads as contradicting
+          itself. There is ONE MRR band now. */}
+      <section className="grid gap-4 md:grid-cols-2">
         <StatCard
           label="Total revenue"
           value={data ? usdFull(data.totalRevenueUsd) : "—"}
           detail="Cold-email spend consumed since inception, net of usage discounts"
           accent="bg-brand-500"
-          pending={isPending}
-        />
-        <StatCard
-          label="Current MRR (committed)"
-          value={data ? usdFull(data.currentMrrUsd) : "—"}
-          detail="Active daily budgets × 30 — committed run-rate, live fleet"
-          accent="bg-emerald-500"
           pending={isPending}
         />
         <StatCard
@@ -528,68 +551,170 @@ export function RevenueView({
         />
       </section>
 
+      {/* ── MONTHLY RUN-RATE, IN ITS TWO HALVES ─────────────────────────────
+          One band, one vocabulary. It replaces both retired surfaces: the
+          undifferentiated run-rate band that used to sit here, and the live
+          fleet card that sat beside consumption — three MRRs on one page, on
+          two different bases, is the contradiction this removes. ARR is stated
+          on the cards and never
+          charted: it is MRR × 12, so its curve and its growth are the MRR ones
+          with a multiplier on the axis. */}
       <SectionHeading
-        title="Committed run-rate"
-        blurb="What the live fleet is contracted to bill: active daily budgets × 30. A point-in-time snapshot recorded daily going forward, so the series starts when recording started and does not reach back to inception — a growth rate only appears once there are two recorded periods to compare."
+        title="Monthly run-rate"
+        blurb="What the fleet is worth per month, in the two halves it is actually earned in. A SELF-SERVE customer pays through the product, so what they are worth IS their daily budget × 30. An AGENCY does not: it hands over cash at its own discretion and somebody then decides how that cash is spread into daily budgets across its brands, so there the budget says how the money was split and never what the customer is worth — only what a human states does. The two halves are disjoint, so they add up."
       />
 
-      <section className="grid gap-6 md:grid-cols-2">
-        <PeriodCard
-          title="Monthly MRR"
-          subtitle="Committed run-rate: active daily budgets × 30, recorded daily (current period = live MRR)."
-          cmgrLabel="CMGR"
-          cmgrUnit="monthly"
-          latestPct={mmc?.latestPct ?? null}
-          avgPct={mmc?.avgPct ?? null}
-          barsUsed={mmc?.barsUsed ?? null}
-          buckets={derived?.monthlyMrr ?? []}
-          growthLabel="CMGR since the first snapshot"
-          valueLabel="MRR"
-          pending={isPending || !derived}
-        />
-        <PeriodCard
-          title="Weekly MRR"
-          subtitle="Committed run-rate: active daily budgets × 30, recorded weekly (current period = live MRR)."
-          cmgrLabel="CWGR"
-          cmgrUnit="weekly"
-          latestPct={wmc?.latestPct ?? null}
-          avgPct={wmc?.avgPct ?? null}
-          barsUsed={wmc?.barsUsed ?? null}
-          buckets={derived?.weeklyMrr ?? []}
-          growthLabel="CWGR since the first snapshot"
-          valueLabel="MRR"
-          pending={isPending || !derived}
-        />
-      </section>
+      {splitUnavailable ? (
+        <section className="rounded-lg border border-amber-200 bg-white p-6">
+          <p className="text-sm font-medium text-amber-700">The run-rate could not be split.</p>
+          <p className="mt-1 text-sm text-amber-600">
+            features-service could not read the stated amounts, so it declined to answer rather than
+            report an agency worth nothing and a self-serve half quietly holding the whole fleet. The
+            fleet committed run-rate is still {data ? usdFull(data.currentMrrUsd) : "—"} per month.
+          </p>
+        </section>
+      ) : (
+        <>
+          <section className="grid gap-4 md:grid-cols-3">
+            <StatCard
+              label="Self-serve MRR"
+              value={split ? usdFull(split.currentSelfServeMrrUsd) : "—"}
+              detail={
+                split
+                  ? `${usdFull(split.currentSelfServeArrUsd)} a year — daily budgets × 30, every org that is not an agency`
+                  : "Daily budgets × 30, every org that is not an agency"
+              }
+              accent="bg-brand-500"
+              pending={isPending || !derived}
+            />
+            <StatCard
+              label="Agency MRR"
+              value={split ? usdFull(split.currentAgencyMrrUsd) : "—"}
+              detail={
+                split
+                  ? `${usdFull(split.currentAgencyArrUsd)} a year — what a human stated, never those brands' budget × 30`
+                  : "What a human stated, never those brands' budget × 30"
+              }
+              accent="bg-emerald-500"
+              pending={isPending || !derived}
+            />
+            <StatCard
+              label="Total MRR"
+              value={split ? usdFull(split.currentTotalMrrUsd) : "—"}
+              detail={
+                split
+                  ? `${usdFull(split.currentTotalArrUsd)} a year — the two halves, which never overlap`
+                  : "The two halves, which never overlap"
+              }
+              accent="bg-sky-500"
+              pending={isPending || !derived}
+            />
+          </section>
 
-      <section className="grid gap-6 md:grid-cols-2">
-        <PeriodCard
-          title="Monthly ARR"
-          subtitle="Committed annual run-rate: MRR × 12, recorded monthly."
-          cmgrLabel="CMGR"
-          cmgrUnit="monthly"
-          latestPct={mmc?.latestPct ?? null}
-          avgPct={mmc?.avgPct ?? null}
-          barsUsed={mmc?.barsUsed ?? null}
-          buckets={derived?.monthlyArr ?? []}
-          growthLabel="CMGR since the first snapshot"
-          valueLabel="ARR"
-          pending={isPending || !derived}
-        />
-        <PeriodCard
-          title="Weekly ARR"
-          subtitle="Committed annual run-rate: MRR × 12, recorded weekly."
-          cmgrLabel="CWGR"
-          cmgrUnit="weekly"
-          latestPct={wmc?.latestPct ?? null}
-          avgPct={wmc?.avgPct ?? null}
-          barsUsed={wmc?.barsUsed ?? null}
-          buckets={derived?.weeklyArr ?? []}
-          growthLabel="CWGR since the first snapshot"
-          valueLabel="ARR"
-          pending={isPending || !derived}
-        />
-      </section>
+          {/* Agency budget that left the self-serve half and landed in NEITHER —
+              a brand under an agency org nobody has stated an amount for yet.
+              Stated rather than absorbed: without it the total silently sits
+              below the fleet figure and nothing says why. */}
+          {unstatedAgencyUsd > 0 && (
+            <section className="rounded-lg border border-amber-200 bg-white p-4">
+              <p className="text-sm text-amber-700">
+                {usdFull(unstatedAgencyUsd)} a month of agency budget is in neither half — an agency brand
+                nobody has stated an amount for yet. Until it is stated, the total sits that much below the
+                fleet&apos;s committed run-rate.
+              </p>
+            </section>
+          )}
+
+          <section className="grid gap-6 md:grid-cols-2">
+            <PeriodCard
+              title="Monthly MRR"
+              subtitle="Self-serve plus agency, per month, with compound monthly growth."
+              cmgrLabel="CMGR"
+              cmgrUnit="monthly"
+              latestPct={derived?.monthlyTotalCmgr.latestPct ?? null}
+              avgPct={derived?.monthlyTotalCmgr.avgPct ?? null}
+              barsUsed={derived?.monthlyTotalCmgr.barsUsed ?? null}
+              buckets={derived?.monthlyTotal ?? []}
+              growthLabel="CMGR since the first recorded day"
+              valueLabel="MRR"
+              pending={isPending || !derived}
+            />
+            <PeriodCard
+              title="Weekly MRR"
+              subtitle="Self-serve plus agency, per week, with compound weekly growth."
+              cmgrLabel="CWGR"
+              cmgrUnit="weekly"
+              latestPct={derived?.weeklyTotalCmgr.latestPct ?? null}
+              avgPct={derived?.weeklyTotalCmgr.avgPct ?? null}
+              barsUsed={derived?.weeklyTotalCmgr.barsUsed ?? null}
+              buckets={derived?.weeklyTotal ?? []}
+              growthLabel="CWGR since the first recorded day"
+              valueLabel="MRR"
+              pending={isPending || !derived}
+            />
+          </section>
+
+          <section className="grid gap-6 md:grid-cols-2">
+            <PeriodCard
+              title="Monthly self-serve MRR"
+              subtitle="Daily budgets × 30 for every org that is not an agency, recorded daily."
+              cmgrLabel="CMGR"
+              cmgrUnit="monthly"
+              latestPct={derived?.monthlySelfServeCmgr.latestPct ?? null}
+              avgPct={derived?.monthlySelfServeCmgr.avgPct ?? null}
+              barsUsed={derived?.monthlySelfServeCmgr.barsUsed ?? null}
+              buckets={derived?.monthlySelfServe ?? []}
+              growthLabel="CMGR since the first recorded day"
+              valueLabel="self-serve MRR"
+              pending={isPending || !derived}
+            />
+            <PeriodCard
+              title="Weekly self-serve MRR"
+              subtitle="Daily budgets × 30 for every org that is not an agency, recorded weekly."
+              cmgrLabel="CWGR"
+              cmgrUnit="weekly"
+              latestPct={derived?.weeklySelfServeCmgr.latestPct ?? null}
+              avgPct={derived?.weeklySelfServeCmgr.avgPct ?? null}
+              barsUsed={derived?.weeklySelfServeCmgr.barsUsed ?? null}
+              buckets={derived?.weeklySelfServe ?? []}
+              growthLabel="CWGR since the first recorded day"
+              valueLabel="self-serve MRR"
+              pending={isPending || !derived}
+            />
+          </section>
+
+          <section className="grid gap-6 md:grid-cols-2">
+            <PeriodCard
+              title="Monthly agency MRR"
+              subtitle="What a human stated the agency's brands are worth, per month."
+              cmgrLabel="CMGR"
+              cmgrUnit="monthly"
+              latestPct={derived?.monthlyAgencyCmgr.latestPct ?? null}
+              avgPct={derived?.monthlyAgencyCmgr.avgPct ?? null}
+              barsUsed={derived?.monthlyAgencyCmgr.barsUsed ?? null}
+              buckets={derived?.monthlyAgency ?? []}
+              growthLabel="CMGR since the first recorded day"
+              valueLabel="agency MRR"
+              pending={isPending || !derived}
+            />
+            <PeriodCard
+              title="Weekly agency MRR"
+              subtitle="What a human stated the agency's brands are worth, per week."
+              cmgrLabel="CWGR"
+              cmgrUnit="weekly"
+              latestPct={derived?.weeklyAgencyCmgr.latestPct ?? null}
+              avgPct={derived?.weeklyAgencyCmgr.avgPct ?? null}
+              barsUsed={derived?.weeklyAgencyCmgr.barsUsed ?? null}
+              buckets={derived?.weeklyAgency ?? []}
+              growthLabel="CWGR since the first recorded day"
+              valueLabel="agency MRR"
+              pending={isPending || !derived}
+            />
+          </section>
+        </>
+      )}
+
+      <StatedAmountsCard />
 
       {historyError && (
         <section className="rounded-lg border border-amber-200 bg-white p-6">

@@ -1,4 +1,4 @@
-import type { CommittedMrrBucket, FleetRevenueBucket, RetentionBucket } from "@/lib/api";
+import type { CommittedMrrBucket, FleetRevenueBucket, MrrSplitBucket, RetentionBucket } from "@/lib/api";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 import { barsBehindLatest, type CompoundGrowthSummary } from "@/lib/compound-growth";
 
@@ -124,6 +124,23 @@ export function revenueCmgrSummary(buckets: RevenueBucket[]): CompoundGrowthSumm
 export function committedBuckets(
   buckets: CommittedMrrBucket[],
   field: "mrrUsd" | "arrUsd",
+  granularity: Granularity,
+): RevenueBucket[] {
+  return withDerived(
+    buckets.map((b) => ({ key: b.period, label: bucketLabel(b.periodStart, granularity), value: b[field] })),
+  );
+}
+
+// ── MRR split (agency vs self-serve) ─────────────────────────────────────────
+// features-service computes both halves and their total; this only picks which
+// served field a chart draws and derives the display growth annotation, exactly
+// as `committedBuckets` does for the undifferentiated run-rate. Nothing here
+// adds, subtracts or re-divides anything — the two halves already reconcile at
+// the producer, and re-deriving one of them in the browser is how a chart comes
+// to disagree with the card above it.
+export function mrrSplitBuckets(
+  buckets: MrrSplitBucket[],
+  field: "agencyMrrUsd" | "agencyArrUsd" | "selfServeMrrUsd" | "selfServeArrUsd" | "totalMrrUsd" | "totalArrUsd",
   granularity: Granularity,
 ): RevenueBucket[] {
   return withDerived(
