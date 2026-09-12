@@ -11,7 +11,7 @@ import {
   WEEKS_PER_MONTH,
   type ClientEconomicsRow,
 } from "../src/lib/funnel-overview";
-import { monthlyCardRates, weeklyCardRates } from "../src/lib/signup-buckets";
+import { monthlyPaidRates, weeklyPaidRates, payerPeriods } from "../src/lib/signup-buckets";
 import type { DailyFunnelPoint } from "../src/lib/public-stats";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
@@ -25,15 +25,13 @@ const funnelCards = read("../src/components/overview-funnel-cards.tsx");
 const activeUsersView = read("../src/components/active-users-view.tsx");
 const revenueView = read("../src/components/revenue-view.tsx");
 
-function day(iso: string, cards: number, visitors = 0, signups = 0): DailyFunnelPoint {
-  return {
-    date: iso,
-    landingVisitors: visitors,
-    signups,
-    cardsAdded: cards,
-    signupConversionPct: 0,
-    cardConversionPct: 0,
-  };
+function day(iso: string, visitors = 0, signups = 0): DailyFunnelPoint {
+  return { date: iso, landingVisitors: visitors, signups, signupConversionPct: 0 };
+}
+
+/** A producer growth row, in the shape the public billing stats publish it. */
+function period(iso: string, paying: number, firstTime: number) {
+  return { period: iso, paying_accounts: paying, first_time_paying_accounts: firstTime };
 }
 
 describe("funnelSteps", () => {
@@ -189,25 +187,35 @@ describe("clientEconomics", () => {
 });
 
 describe("paid-user rate buckets", () => {
-  const points = [
-    day("2026-07-05", 2, 0, 10),
-    day("2026-07-20", 3, 0, 10),
-    day("2026-08-05", 4, 0, 8),
-  ];
+  const points = [day("2026-07-05", 0, 10), day("2026-07-20", 0, 10), day("2026-08-05", 0, 8)];
+  const monthlyPeriods = payerPeriods([period("2026-07-01", 7, 5), period("2026-08-01", 9, 4)]);
 
-  it("divides paid users by signups per period", () => {
-    const monthly = monthlyCardRates(points);
+  it("divides first-time paying accounts by signups per period", () => {
+    const monthly = monthlyPaidRates(points, monthlyPeriods);
     expect(monthly.map((b) => b.ratePct)).toEqual([25, 50]);
   });
 
   // Nobody to convert is not nobody converting. A 0% bar says the second.
   it("drops a period with no signups rather than charting it at 0%", () => {
-    const monthly = monthlyCardRates([day("2026-07-05", 0, 0, 0), day("2026-08-05", 4, 0, 8)]);
+    const monthly = monthlyPaidRates(
+      [day("2026-07-05", 0, 0), day("2026-08-05", 0, 8)],
+      payerPeriods([period("2026-07-01", 0, 0), period("2026-08-01", 9, 4)]),
+    );
     expect(monthly.map((b) => b.key)).toEqual(["2026-08"]);
   });
 
-  it("buckets weekly on the same rule", () => {
-    const weekly = weeklyCardRates([day("2026-07-06", 1, 0, 4), day("2026-07-13", 2, 0, 4)]);
+  // The opposite case, and it is the one the old source got wrong: a period the
+  // producer never mentions had NO first-time payer, which is a measured zero.
+  it("charts a period the producer omits as a real 0%", () => {
+    const monthly = monthlyPaidRates(points, payerPeriods([period("2026-08-01", 9, 4)]));
+    expect(monthly.map((b) => [b.key, b.ratePct])).toEqual([["2026-07", 0], ["2026-08", 50]]);
+  });
+
+  it("buckets weekly on the producer's Monday-anchored periods", () => {
+    const weekly = weeklyPaidRates(
+      [day("2026-07-06", 0, 4), day("2026-07-13", 0, 4)],
+      payerPeriods([period("2026-07-06", 3, 1), period("2026-07-13", 4, 2)]),
+    );
     expect(weekly.map((b) => b.ratePct)).toEqual([25, 50]);
   });
 });
@@ -271,8 +279,11 @@ describe("wiring", () => {
     expect(publicStats).toContain("INTERVAL 30 DAY");
     expect(publicStats).toContain("INTERVAL 90 DAY");
     expect(publicStats).toContain('const includeWindows = view === "overview"');
-    // the Overview draws the paid-user charts, so it needs the same Stripe series the cards tab reads
-    expect(publicStats).toContain('view === "cards" || view === "overview"');
+    // Paid users are read off the billing stats every view already fetches. No tab
+    // pays a per-customer Stripe fan-out for them, and none derives them from cards.
+    expect(publicStats).not.toContain("fetchStripeCardsDaily");
+    expect(publicStats).not.toContain("payment_methods");
+    expect(publicStats).toContain("first_time_paying_accounts");
   });
 
   // One card, every tab. A second copy is how two surfaces come to render one figure
@@ -299,8 +310,8 @@ describe("wiring", () => {
   it("states the paid-user rate on both the Overview and the Paid users tab", () => {
     expect(metricsPage).toContain("Monthly paid user rate");
     expect(overview).toContain("Monthly paid user rate");
-    expect(metricsPage).toContain("monthlyCardRates");
-    expect(overview).toContain("monthlyCardRates");
+    expect(metricsPage).toContain("monthlyPaidRates");
+    expect(overview).toContain("monthlyPaidRates");
   });
 
   // Every figure here is one a producer already serves; the Overview joins and

@@ -54,11 +54,13 @@ describe("cross-org build-in-public metrics page", () => {
     expect(publicStats).toContain("/public/stats/billing");
     expect(publicStats).toContain("/public/stats/runs");
     expect(publicStats).toContain("POSTHOG_PERSONAL_API_KEY");
-    expect(publicStats).toContain("STRIPE_SECRET_KEY");
+    // NOT Stripe: who paid is money, and money is read off the billing stats that
+    // cover every acquirer. This app talks to no acquirer directly any more.
+    expect(publicStats).not.toContain("STRIPE_SECRET_KEY");
+    expect(publicStats).toContain("total_paying_accounts");
     expect(publicStats).toContain("FROM sessions");
     expect(publicStats).toContain("uniq(distinct_id) AS visitors");
     expect(publicStats).toContain("signup_completed");
-    expect(publicStats).toContain("/payment_methods");
     expect(metricsPage).toContain("fetchPublicStatsSummary");
     expect(metricsPage).toContain("Clerk /users/count total");
     expect(metricsPage).not.toContain("Pending");
@@ -66,9 +68,23 @@ describe("cross-org build-in-public metrics page", () => {
 
   it("renders the three requested public analytics sub-pages", () => {
     expect(metricsPage).toContain("Unique visitors over time");
-    expect(metricsPage).toContain("Paid users vs signups");
     expect(metricsPage).toContain("Visitor origins");
-    expect(metricsPage).toContain("Signup to paid conversion over time");
+  });
+
+  it("states the PAID rate per period, not the two daily funnel charts it replaced", () => {
+    expect(metricsPage).toContain("Monthly paid user rate");
+    expect(metricsPage).toContain("Weekly paid user rate");
+    expect(metricsPage).toContain("monthlyPaidRates");
+    // The two daily charts are gone, and with them the last reader of a paid-user
+    // series derived here from saved Stripe cards.
+    expect(metricsPage).not.toContain("Paid users vs signups");
+    expect(metricsPage).not.toContain("Signup to paid conversion over time");
+    expect(metricsPage).not.toContain("cardsAdded");
+    expect(metricsPage).not.toContain("cardConversionPct");
+    // Both populations are stated, each with its own scope, rather than one of
+    // them contradicting the other from a neighbouring card.
+    expect(metricsPage).toContain("Distinct accounts that have paid, every acquirer");
+    expect(metricsPage).toContain("Stripe-only saved payment methods, not a payment");
   });
 
   it("states the signup RATE per period, not the two daily funnel charts it replaced", () => {

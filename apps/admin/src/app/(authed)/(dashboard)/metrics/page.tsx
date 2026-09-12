@@ -9,11 +9,12 @@ import { OverviewView } from "@/components/overview-view";
 import { RevenueView } from "@/components/revenue-view";
 import {
   fetchPublicStatsSummary,
+  type BillingStats,
   type DailyFunnelPoint,
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, rateCmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlySignupRates, weeklySignupRates, monthlyCards, weeklyCards, monthlyCardRates, weeklyCardRates, weeklyTimeline } from "@/lib/signup-buckets";
+import { cmgrSummary, rateCmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlySignupRates, weeklySignupRates, monthlyPayers, weeklyPayers, monthlyPaidRates, weeklyPaidRates, payerPeriods } from "@/lib/signup-buckets";
 import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -302,23 +303,24 @@ function SignupView({
 }
 
 function CardsView({
-  cardsAdded,
+  billing,
   totalUsers,
   timeline,
 }: {
-  cardsAdded: number;
+  billing: BillingStats;
   totalUsers: number;
   timeline: DailyFunnelPoint[];
 }) {
-  const monthly = monthlyCards(timeline);
-  const weekly = weeklyCards(timeline);
-  const weeklyTl = weeklyTimeline(timeline);
+  const monthlyPeriods = payerPeriods(billing.monthly_growth);
+  const weeklyPeriods = payerPeriods(billing.weekly_growth);
+  const monthly = monthlyPayers(timeline, monthlyPeriods);
+  const weekly = weeklyPayers(timeline, weeklyPeriods);
   const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
   const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
   const monthlyCmgr = cmgrSummary(monthly);
   const weeklyCmgr = cmgrSummary(weekly);
-  const monthlyRate = monthlyCardRates(timeline);
-  const weeklyRate = weeklyCardRates(timeline);
+  const monthlyRate = monthlyPaidRates(timeline, monthlyPeriods);
+  const weeklyRate = weeklyPaidRates(timeline, weeklyPeriods);
   const monthlyRatePoints = monthlyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
   const weeklyRatePoints = weeklyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
   const monthlyRateCmgr = rateCmgrSummary(monthlyRate);
@@ -326,29 +328,35 @@ function CardsView({
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total paid users" value={formatCount(cardsAdded)} detail="Billing public accounts with payment method" accent="bg-emerald-500" />
-        <StatCard label="Signup to paid conversion" value={pct(cardsAdded, totalUsers)} detail="Paid users divided by total signups" accent="bg-brand-500" />
-        <StatCard label="Tracked paid days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
+        <StatCard label="Total paid users" value={formatCount(billing.total_paying_accounts)} detail="Distinct accounts that have paid, every acquirer" accent="bg-emerald-500" />
+        <StatCard label="Signup to paid conversion" value={pct(billing.total_paying_accounts, totalUsers)} detail="Paid users divided by total signups" accent="bg-brand-500" />
+        {/*
+          Stated beside the paying count on purpose, rather than left to contradict
+          it from another surface: these are two populations and neither contains
+          the other (33 paid, 31 carry a card, in production). The card figure is
+          the producer's own Stripe-only one and says so.
+        */}
+        <StatCard label="Accounts with a saved card" value={formatCount(billing.accounts_with_payment_method)} detail="Stripe-only saved payment methods, not a payment" accent="bg-sky-500" />
       </section>
       <section className="grid gap-6 md:grid-cols-2">
         <PeriodCompoundCard
-          title="Monthly paid users"
-          subtitle="Paid users per month with compound monthly growth since inception."
+          title="Monthly new paid users"
+          subtitle="Accounts paying us for the first time each month, with compound monthly growth since inception."
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
           summary={monthlyCmgr}
           data={monthlyPoints}
-          valueLabel="Paid users"
+          valueLabel="New paid users"
           growthLabel="CMGR since inception"
         />
         <PeriodCompoundCard
-          title="Weekly paid users"
-          subtitle="Paid users per week with compound weekly growth since inception."
+          title="Weekly new paid users"
+          subtitle="Accounts paying us for the first time each week, with compound weekly growth since inception."
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
           summary={weeklyCmgr}
           data={weeklyPoints}
-          valueLabel="Paid users"
+          valueLabel="New paid users"
           growthLabel="CWGR since inception"
         />
       </section>
@@ -384,28 +392,6 @@ function CardsView({
           growthLabel="Rate CWGR since inception"
           formatValue={formatRatePct}
         />
-      </section>
-      <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Paid users vs signups</h2>
-          <p className="mt-1 text-sm text-gray-500">Weekly paid users compared with weekly signups.</p>
-          <div className="mt-5">
-            <PublicAnalyticsChart
-              data={weeklyTl}
-              series={[
-                { metric: "signups", color: "#6366f1" },
-                { metric: "cardsAdded", color: "#10b981" },
-              ]}
-            />
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Signup to paid conversion over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Weekly paid users divided by weekly signup events.</p>
-          <div className="mt-5">
-            <PublicAnalyticsChart data={weeklyTl} metric="cardConversionPct" color="#f59e0b" />
-          </div>
-        </div>
       </section>
     </>
   );
@@ -467,7 +453,7 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           <OverviewView
             landingVisitors={stats.landingVisitors}
             totalUsers={stats.users.totalUsers}
-            cardsAdded={stats.cardsAdded}
+            billing={stats.billing}
             timeline={stats.timeline}
             windows={stats.windows}
           />
@@ -492,7 +478,7 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           />
         )}
         {view === "cards" && stats && (
-          <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
+          <CardsView billing={stats.billing} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}
 
         {stats && (

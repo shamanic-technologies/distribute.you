@@ -15,7 +15,7 @@ describe("Cross-org metrics page shows public global metrics", () => {
     // The daily conversion chart was replaced by the monthly/weekly signup-RATE
     // charts; the per-period rate is the conversion surface this view now has.
     expect(content).toContain("Monthly signup rate");
-    expect(content).toContain("Paid users vs signups");
+    expect(content).toContain("Monthly paid user rate");
     expect(content).toContain('href="/orgs"');
     expect(content).not.toContain("useOrganization");
     expect(content).not.toContain("router.replace");

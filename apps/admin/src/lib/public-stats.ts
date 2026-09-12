@@ -5,7 +5,6 @@ const POSTHOG_PROJECT_ID = process.env.POSTHOG_PROJECT_ID || "171095";
 const POSTHOG_API_HOST = normalizePostHogHost(
   process.env.POSTHOG_API_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.posthog.com",
 );
-const STRIPE_API_URL = "https://api.stripe.com/v1";
 const CLERK_API_URL = "https://api.clerk.com/v1";
 const CLERK_API_VERSION = "2025-11-10";
 
@@ -23,6 +22,12 @@ const billingGrowthRowSchema = z.object({
   period: z.string(),
   credited_cents: z.string(),
   revenue_cents: z.string(),
+  // How many distinct accounts PAID in this period, and how many were paying for
+  // the FIRST time — across every acquirer, not only the one stripe-service is
+  // named after. Required, matching the producer: a rollback that stops serving
+  // them must fail loud here rather than silently blank the paid-users charts.
+  paying_accounts: z.number(),
+  first_time_paying_accounts: z.number(),
 });
 
 // CASH COLLECTED, the money twin of the usage-consumed revenue the fleet stats
@@ -46,6 +51,13 @@ const billingStatsSchema = z.object({
   total_revenue_cents: z.string(),
   total_returned_cents: z.string(),
   total_local_credits_cents: z.string(),
+  /**
+   * Distinct accounts that have EVER paid, every acquirer. Distinct from
+   * `accounts_with_payment_method`, which the producer documents as Stripe-only
+   * and which counts a card on file rather than a payment: in production they
+   * read 33 and 31, and neither is a subset of the other.
+   */
+  total_paying_accounts: z.number(),
   monthly_growth: z.array(billingGrowthRowSchema),
   weekly_growth: z.array(billingGrowthRowSchema),
 });
@@ -90,13 +102,16 @@ export type PublicAnalyticsView =
   | "cards"
   | "revenue";
 
+/**
+ * One day of the public funnel. Carries NO paid-user leg: who paid is money,
+ * and money is answered by the billing stats (every acquirer, bucketed by the
+ * producer), never derived here from saved Stripe cards.
+ */
 export interface DailyFunnelPoint {
   date: string;
   landingVisitors: number;
   signups: number;
-  cardsAdded: number;
   signupConversionPct: number;
-  cardConversionPct: number;
 }
 
 export interface TrafficSource {
@@ -119,7 +134,6 @@ export interface PublicStats {
   runs: RunsStats;
   landingVisitors: number;
   signupEvents: number;
-  cardsAdded: number;
   timeline: DailyFunnelPoint[];
   trafficSources: TrafficSource[];
   /** Visitors by the month of their first-ever session on the landing. */
@@ -148,14 +162,6 @@ export interface FunnelWindowTotals {
 
 const posthogQueryResponseSchema = z.object({
   results: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
-});
-
-const stripeListSchema = z.object({
-  data: z.array(z.object({
-    id: z.string(),
-    created: z.number(),
-  }).passthrough()),
-  has_more: z.boolean(),
 });
 
 async function fetchPublicStats<T>(path: string, schema: z.ZodSchema<T>): Promise<T> {
@@ -395,126 +401,30 @@ async function fetchTrafficSources(totalVisitors: number): Promise<TrafficSource
   });
 }
 
-// The paid-users (cards) view builds a per-day timeline by fetching every Stripe
-// customer's payment_methods — one request per customer. Firing all of them at
-// once through an unbounded Promise.all bursts past Stripe's rate limit (100
-// read req/s live mode) → every request 429s → the whole /metrics?view=cards
-// render throws (digest 1380900901 in prod). So the fan-out runs through a
-// bounded worker pool, and each idempotent GET retries on a 429 / transient 5xx
-// with backoff (honoring Stripe's Retry-After) before failing loud.
-const STRIPE_READ_CONCURRENCY = 6;
-const STRIPE_READ_RETRIES = 4;
-const STRIPE_READ_BACKOFF_MS = [500, 1000, 2000, 4000];
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function isTransientStripeStatus(status: number): boolean {
-  return status === 429 || (status >= 500 && status < 600);
-}
-
-async function stripeList(path: string, params: URLSearchParams): Promise<z.infer<typeof stripeListSchema>> {
-  const secretKey = requireEnv("STRIPE_SECRET_KEY");
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt <= STRIPE_READ_RETRIES; attempt++) {
-    const res = await fetch(`${STRIPE_API_URL}${path}?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${secretKey}` },
-      next: { revalidate: 300 },
-    });
-
-    if (res.ok) {
-      const data: unknown = await res.json();
-      return stripeListSchema.parse(data);
-    }
-
-    lastError = new Error(`[public-stats] Stripe ${path} failed: ${res.status} ${res.statusText}`);
-    if (!isTransientStripeStatus(res.status) || attempt === STRIPE_READ_RETRIES) throw lastError;
-
-    // Prefer Stripe's Retry-After (seconds) when present; else exponential backoff.
-    const retryAfter = Number(res.headers.get("retry-after"));
-    const backoff = Number.isFinite(retryAfter) && retryAfter > 0
-      ? retryAfter * 1000
-      : STRIPE_READ_BACKOFF_MS[Math.min(attempt, STRIPE_READ_BACKOFF_MS.length - 1)];
-    await sleep(backoff);
-  }
-
-  throw lastError;
-}
-
-async function mapWithConcurrency<I, O>(items: I[], limit: number, fn: (item: I) => Promise<O>): Promise<O[]> {
-  const results: O[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const current = next++;
-      results[current] = await fn(items[current]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
-  return results;
-}
-
-async function fetchStripeCustomers(): Promise<Array<{ id: string }>> {
-  const customers: Array<{ id: string }> = [];
-  let startingAfter: string | null = null;
-
-  do {
-    const params = new URLSearchParams({ limit: "100" });
-    if (startingAfter) params.set("starting_after", startingAfter);
-    const page = await stripeList("/customers", params);
-    customers.push(...page.data.map((customer) => ({ id: customer.id })));
-    startingAfter = page.has_more ? page.data[page.data.length - 1]?.id ?? null : null;
-  } while (startingAfter);
-
-  return customers;
-}
-
-async function fetchStripeCardsDaily(): Promise<Map<string, number>> {
-  const customers = await fetchStripeCustomers();
-  const daily = new Map<string, number>();
-
-  await mapWithConcurrency(customers, STRIPE_READ_CONCURRENCY, async (customer) => {
-    const params = new URLSearchParams({ limit: "100", type: "card" });
-    const page = await stripeList(`/customers/${customer.id}/payment_methods`, params);
-    const firstCardCreated = page.data.map((paymentMethod) => paymentMethod.created).sort((a, b) => a - b)[0];
-    if (firstCardCreated === undefined) return;
-    const day = new Date(firstCardCreated * 1000).toISOString().slice(0, 10);
-    daily.set(day, (daily.get(day) ?? 0) + 1);
-  });
-
-  return daily;
-}
-
 function buildTimeline(
   landingDaily: Map<string, number>,
   signupDaily: Map<string, number>,
-  cardDaily: Map<string, number>,
 ): DailyFunnelPoint[] {
   const dates = new Set<string>([
     ...landingDaily.keys(),
     ...signupDaily.keys(),
-    ...cardDaily.keys(),
   ]);
 
   return [...dates].sort().map((date) => {
     const landingVisitors = landingDaily.get(date) ?? 0;
     const signups = signupDaily.get(date) ?? 0;
-    const cardsAdded = cardDaily.get(date) ?? 0;
     return {
       date,
       landingVisitors,
       signups,
-      cardsAdded,
       signupConversionPct: ratio(signups, landingVisitors),
-      cardConversionPct: ratio(cardsAdded, signups),
     };
   });
 }
 
 export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landing"): Promise<PublicStats> {
-  // The Overview states the paid-user charts, so it pays the same Stripe fan-out the
-  // Paid-users tab does — that call is the only source of a per-day first-card series.
-  const includeCardTimeline = view === "cards" || view === "overview";
+  // Paid users are read off the billing stats every view already fetches, so no tab
+  // pays a per-customer Stripe fan-out for them any more.
   // Only the Overview states a windowed funnel; two extra PostHog reads elsewhere
   // would buy nothing.
   const includeWindows = view === "overview";
@@ -529,7 +439,6 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     landingDaily,
     landingVisitors,
     signupDaily,
-    cardDaily,
     visitorFirstSeenMonths,
     signupFirstSeenMonths,
     windows,
@@ -541,7 +450,6 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     fetchLandingDaily(),
     fetchLandingUniqueVisitors(),
     fetchSignupDaily(),
-    includeCardTimeline ? fetchStripeCardsDaily() : Promise.resolve(new Map<string, number>()),
     includeFirstSeen ? fetchVisitorFirstSeenMonths() : Promise.resolve([] as FirstSeenMonthRow[]),
     includeFirstSeen ? fetchSignupFirstSeenMonths() : Promise.resolve([] as FirstSeenMonthRow[]),
     includeWindows ? fetchFunnelWindowTotals() : Promise.resolve(null),
@@ -556,8 +464,7 @@ export async function fetchPublicStatsSummary(view: PublicAnalyticsView = "landi
     runs,
     landingVisitors,
     signupEvents,
-    cardsAdded: billing.accounts_with_payment_method,
-    timeline: buildTimeline(landingDaily, signupDaily, cardDaily),
+    timeline: buildTimeline(landingDaily, signupDaily),
     trafficSources,
     visitorFirstSeenMonths,
     signupFirstSeenMonths,
