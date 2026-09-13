@@ -37,19 +37,13 @@ export type WorkflowGrain = "campaign" | "brand" | "crossOrg";
 
 export const WORKFLOW_GRAINS: readonly WorkflowGrain[] = ["campaign", "brand", "crossOrg"];
 
-export const WORKFLOW_GRAIN_LABEL: Record<WorkflowGrain, string> = {
-  campaign: "Campaign",
-  brand: "Brand",
-  crossOrg: "Global",
-};
-
-/** One line under the heading, so the figures below it are never read at the wrong scope. */
-export const WORKFLOW_GRAIN_NOTE: Record<WorkflowGrain, string> = {
-  campaign: "Every figure below is this campaign's own.",
-  brand: "Every figure below is this brand's own, across every campaign on this channel.",
-  crossOrg:
-    "Every figure below is across every client we run this channel for. It counts what each workflow costs to produce an outcome — including spend we later refunded — so it is a different question from what you were charged.",
-};
+// NOTE — `WORKFLOW_GRAIN_LABEL` and `WORKFLOW_GRAIN_NOTE` were DELETED with the three
+// grain tabs the campaign Workflows page used to carry. Those tabs swapped which
+// evidence three columns were read from while the rank stayed put, which answered a
+// question nobody was asking: the reader wanted to know why the ORDER was what it was,
+// and the tab could not say. The matrix shows every cell the rank is scored over
+// instead, so the campaign is a COLUMN rather than a tab and the other two grains are
+// read in the panel, which already lists all of them at once. Do not re-add a tab.
 
 /** What ONE grain states about the leg, exactly as served. */
 export interface WorkflowLegOutcome {
@@ -149,19 +143,33 @@ export function audienceRowsFor(
   });
 }
 
-/** The BRAND-level row of each dynasty — the one the table draws, and the one carrying
- *  the rank every row of that dynasty shares. FIRST wins, deterministically. */
-export function brandLevelRows(
+/**
+ * ONE SCOPE's rows — one per dynasty, in the order the producer sent them.
+ *
+ * `audienceId: null` is the CAMPAIGN column; a string is one audience's. FIRST wins,
+ * deterministically: the producer sends one row per (workflow, scope), so a duplicate
+ * would be a producer surprise rather than a choice to make here.
+ */
+export function scopeLadderRows(
   rows: readonly WorkflowLadderRowShape[],
+  audienceId: string | null,
 ): WorkflowLadderRowShape[] {
   const seen = new Set<string>();
   const out: WorkflowLadderRowShape[] = [];
   for (const r of rows) {
-    if (r.audienceId !== null) continue;
+    if (r.audienceId !== audienceId) continue;
     const slug = r.workflow.workflowDynastySlug;
     if (seen.has(slug)) continue;
     seen.add(slug);
     out.push(r);
   }
   return out;
+}
+
+/** The BRAND-level row of each dynasty — the one the table draws, and the one carrying
+ *  the rank every row of that dynasty shares. The campaign column, by another name. */
+export function brandLevelRows(
+  rows: readonly WorkflowLadderRowShape[],
+): WorkflowLadderRowShape[] {
+  return scopeLadderRows(rows, null);
 }

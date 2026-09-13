@@ -10,10 +10,9 @@ import path from "path";
 import { describe, it, expect } from "vitest";
 import {
   WORKFLOW_GRAINS,
-  WORKFLOW_GRAIN_LABEL,
-  WORKFLOW_GRAIN_NOTE,
   audienceRowsFor,
   brandLevelRows,
+  scopeLadderRows,
   grainFigures,
   grainsWithEvidence,
   type WorkflowGrainBlock,
@@ -58,17 +57,45 @@ describe("the module stays alias-free, so these are real unit tests", () => {
   });
 });
 
-describe("the three grains a reader compares", () => {
+describe("the cascade order, coarse last", () => {
   it("is campaign, brand, global — the audience is a ROW, never a column", () => {
     expect(WORKFLOW_GRAINS).toEqual(["campaign", "brand", "crossOrg"]);
-    expect(WORKFLOW_GRAIN_LABEL.crossOrg).toBe("Global");
   });
 
-  it("every grain states the scope its figures are read at", () => {
-    for (const g of WORKFLOW_GRAINS) expect(WORKFLOW_GRAIN_NOTE[g].length).toBeGreaterThan(20);
-    // The fleet note states its own basis: comped spend at full value is a different
-    // accounting question from what the customer was charged.
-    expect(WORKFLOW_GRAIN_NOTE.crossOrg).toContain("refunded");
+  it("the three TAB exports are gone with the tabs, and do not come back", () => {
+    // They swapped which evidence three columns were read from while the rank stayed
+    // put, so they could not answer why the order was what it was. The matrix shows
+    // every cell the rank is scored over instead.
+    const src = fs.readFileSync(path.join(__dirname, "../src/lib/workflow-grains.ts"), "utf-8");
+    expect(src).not.toContain("export const WORKFLOW_GRAIN_LABEL");
+    expect(src).not.toContain("export const WORKFLOW_GRAIN_NOTE");
+  });
+});
+
+describe("one SCOPE's rows — the campaign column, or one audience's", () => {
+  it("keeps only the named scope, one row per dynasty, first wins", () => {
+    const rows = [
+      row("a", "aud-1", {}, 2),
+      row("b", null, {}, 1),
+      row("a", "aud-1", {}, 2),
+      row("c", "aud-2", {}, 3),
+    ];
+    const out = scopeLadderRows(rows, "aud-1");
+    expect(out.map((r) => r.workflow.workflowDynastySlug)).toEqual(["a"]);
+    expect(scopeLadderRows(rows, null).map((r) => r.workflow.workflowDynastySlug)).toEqual(["b"]);
+  });
+
+  it("a scope nobody carries is EMPTY, never a borrowed column", () => {
+    expect(scopeLadderRows([row("a", null, {}, 1)], "aud-9")).toEqual([]);
+  });
+
+  it("does NOT order them — both positions are the producer's", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../src/lib/workflow-grains.ts"), "utf-8");
+    const body = src.slice(
+      src.indexOf("export function scopeLadderRows("),
+      src.indexOf("export function brandLevelRows("),
+    );
+    expect(body).not.toContain(".sort(");
   });
 });
 
@@ -167,5 +194,7 @@ describe("the table's own rows", () => {
     const body = src.slice(src.indexOf("export function brandLevelRows("));
     expect(body).not.toContain("rank");
     expect(body).not.toContain(".sort(");
+    // It is the campaign column by another name, so there is ONE implementation.
+    expect(body).toContain("scopeLadderRows(rows, null)");
   });
 });

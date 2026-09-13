@@ -6778,6 +6778,18 @@ const WorkflowRankRowSchema = z.object({
    *  `.nullish()` only because a funnel- or goal-keyed body carries none; this reader
    *  always names a leg, so in practice it is always there. */
   rank: z.number().nullish(),
+  /** THIS ROW'S POSITION WITHIN ITS OWN COLUMN (features-service v0.164.1).
+   *
+   *  `rank` and `scopeRank` DISAGREE on purpose and both are served: `rank` says what
+   *  we would put the campaign on next, `scopeRank` says what the column the reader is
+   *  looking at says. It orders on the row's OWN `resolved.costPerOutcomeUsd`, under
+   *  the same objective and the same tie-break, and it is a TOTAL order per scope
+   *  (1..N, no gaps, no ties, never-run workflows last) — verified across all 13 scopes
+   *  in prod, which is what lets a per-audience list ascend on the figure it displays.
+   *
+   *  `.nullish()` for the same reason as `rank`: a funnel- or goal-keyed body carries
+   *  none, and a row without one states no position rather than claiming last place. */
+  scopeRank: z.number().nullish(),
 });
 
 const WorkflowRankLadderSchema = z.object({

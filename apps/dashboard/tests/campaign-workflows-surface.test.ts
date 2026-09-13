@@ -115,13 +115,13 @@ describe("the RANKING is the producer's, asked at the campaign's own LEG", () =>
     expect(API).toContain("rows: z.preprocess(measuredProjectionRows,");
   });
 
-  it("draws one ROW per workflow while KEEPING every audience row for the panel", () => {
-    // The table cannot show a workflow several times, and the panel cannot explain a
-    // rank scored over audiences if the audiences were thrown away at the boundary.
-    const at = TABLE.indexOf("function ladderRows(");
+  it("draws one ROW per workflow PER SCOPE, and keeps every row the producer sent", () => {
+    // A list cannot show a workflow several times, and the matrix cannot explain a rank
+    // scored over audiences if the audiences were thrown away at the boundary.
+    const at = TABLE.indexOf("function ladderRowsForScope(");
     expect(at).toBeGreaterThan(-1);
     expect(TABLE.slice(at, TABLE.indexOf("\nfunction ladderAllRows", at))).toContain(
-      "brandLevelRows(",
+      "scopeLadderRows(",
     );
     expect(TABLE).toContain("function ladderAllRows(");
     expect(TABLE).toContain("audienceRowsFor(allLadderRows,");
@@ -158,15 +158,24 @@ describe("the RANKING is the producer's, asked at the campaign's own LEG", () =>
   });
 });
 
-describe("ONE table, THREE grains — the tab changes the SOURCE, never the order", () => {
-  it("offers the three grains a reader compares", () => {
-    expect(TABLE).toContain("WORKFLOW_GRAINS.map(");
-    expect(TABLE).toContain("setGrain(g)");
+describe("the three grain TABS are gone, and the matrix replaced them", () => {
+  it("offers no tab at all", () => {
+    // They swapped which evidence three columns were read from while the rank stayed
+    // put, so they could not answer why the order was what it was — which is the whole
+    // complaint. Campaign is a COLUMN now; Brand has no meaning on a campaign page;
+    // Global is read in the panel, which already lists every grain at once.
+    expect(TABLE).not.toContain("WORKFLOW_GRAINS.map(");
+    expect(TABLE).not.toContain("setGrain(");
+    expect(TABLE).not.toContain("WORKFLOW_GRAIN_LABEL");
+    expect(TABLE).not.toContain("WORKFLOW_GRAIN_NOTE");
     const grains = read("src/lib/workflow-grains.ts");
+    expect(grains).not.toContain("export const WORKFLOW_GRAIN_LABEL");
+    expect(grains).not.toContain("export const WORKFLOW_GRAIN_NOTE");
+    // The cascade ORDER survives — the panel still reads it.
     expect(grains).toContain('export const WORKFLOW_GRAINS: readonly WorkflowGrain[] = ["campaign", "brand", "crossOrg"];');
   });
 
-  it("every grain comes off the ONE ladder read — no second endpoint per tab", () => {
+  it("every cell comes off the ONE ladder read — no second endpoint per column", () => {
     // The grains used to be four separate reads stitched together, which is how two
     // tabs come to state different money for one workflow.
     for (const gone of [
@@ -177,53 +186,129 @@ describe("ONE table, THREE grains — the tab changes the SOURCE, never the orde
     ]) {
       expect(TABLE, gone).not.toContain(gone);
     }
-    expect(TABLE).toContain("grainFigures(ladderRow?.estimatesByGrain[grain])");
-  });
-
-  it("the RANK column is untouched by the tab", () => {
-    // `grain` drives the figure cells and nothing else — a tab that reordered the list
-    // would be this surface inventing a ranking the producer never made. The ranking
-    // module is not even TOLD which tab is open, which is the structural version of it.
-    const at = TABLE.indexOf("<WorkflowRow");
-    const call = TABLE.slice(at, TABLE.indexOf("audienceById=", at));
-    expect(call).toContain("grain={grain}");
-    expect(call).toContain("ranked={r}");
-    const rank = read("src/lib/workflow-rank-why.ts");
-    const input = rank.slice(
-      rank.indexOf("export interface RankWorkflowsInput<T> {"),
-      rank.indexOf("/**", rank.indexOf("export interface RankWorkflowsInput<T> {")),
-    );
-    expect(input.length).toBeGreaterThan(0);
-    expect(input).not.toContain("grain");
+    expect(TABLE).toContain("buildMatrixCellIndex(matrixRows)");
+    expect(TABLE).toContain("(ladderQ.data?.rows ?? []) as unknown as MatrixLadderRow[]");
   });
 
   it("carries no section split", () => {
     expect(TABLE).not.toContain("sectionCampaignWorkflowRows");
     expect(TABLE).not.toContain("Not measured yet");
   });
+});
+
+describe("THE MATRIX — rows are the served rank, columns the served audience order", () => {
+  it("orders the rows on the producer's rank and nothing else", () => {
+    expect(TABLE).toContain("matrixWorkflowOrder(matrixRows)");
+    const matrix = read("src/lib/workflow-matrix.ts");
+    const body = matrix.slice(
+      matrix.indexOf("export function matrixWorkflowOrder("),
+      matrix.indexOf("export function scopeRankedRows("),
+    );
+    expect(body).not.toContain("costPerOutcomeUsd");
+  });
+
+  it("orders the columns on `/audience-stats`, in the order served", () => {
+    // That read already ranks a campaign's audiences on their own pooled cost per
+    // outcome. Ranking them on their best LADDER cell instead ties most of them at one
+    // inherited floor and says nothing.
+    expect(TABLE).toContain("fetchFeatureAudienceStats(");
+    const at = TABLE.indexOf("const audienceColumns = useMemo(");
+    const body = TABLE.slice(at, TABLE.indexOf("const matrixOrder", at));
+    expect(body).toContain("audienceStatsQ.data?.audiences ?? []");
+    // Filtered to the scopes the ladder carries, never re-sorted.
+    expect(body).toContain("knownScopes.has(a.audienceId)");
+    expect(body).not.toContain(".sort(");
+  });
+
+  it("the audience-stats key is byte-equal to the campaign Overview's, so it dedupes", () => {
+    const overview = read("src/components/campaigns/campaign-overview-page.tsx");
+    expect(overview).toContain('"featureAudienceStats", featureSlug, brandId,');
+    expect(TABLE).toContain(
+      '["featureAudienceStats", featureSlug, brandId, funnelKey ?? "none", "campaign", campaignId]',
+    );
+  });
+
+  it("a cell is a SERVED figure, addressed by (workflow, column)", () => {
+    expect(TABLE).toContain("cells.get(matrixCellKey(r.dynastySlug, null))");
+    expect(TABLE).toContain("cells.get(matrixCellKey(r.dynastySlug, a.audienceId))");
+    expect(TABLE).toContain("fmtUsd(cell.costPerOutcomeUsd)");
+  });
+
+  it("a cell resting on its OWN evidence is distinct from an inherited floor", () => {
+    // 21 of 24 rows repeat one figure across every column, so the split is what makes
+    // the grid legible rather than confusing.
+    expect(TABLE).toContain("cellRestsOnOwnEvidence(cell)");
+    expect(TABLE).toContain('own ? "font-medium text-gray-900" : "text-gray-400"');
+  });
+
+  it("a cell the ladder does not carry states NOTHING, never a zero", () => {
+    expect(TABLE).toContain("!cell || cell.costPerOutcomeUsd == null");
+  });
+
+  it("marks the single best cell explicitly, because the corner is not the answer", () => {
+    // Row 1 wins on whichever audience it was cheapest for; column 1 is the audience
+    // with the best cost overall. In prod the two did not intersect.
+    expect(TABLE).toContain("bestMatrixCell(matrixRows)");
+    expect(TABLE).toContain("isBestCell(best, r.dynastySlug, null)");
+    expect(TABLE).toContain("isBestCell(best, r.dynastySlug, a.audienceId)");
+  });
+
+  it("highlights row 1 and the best column", () => {
+    expect(TABLE).toContain('r.rank === 1');
+    expect(TABLE).toContain('column && !best ? "bg-gray-50" : ""');
+  });
 
   it("the running row is pinned FIRST and keeps the producer's own rank", () => {
-    const rank = read("src/lib/workflow-rank-why.ts");
-    expect(rank).toContain("const runningIndex = ranked.findIndex((r) => r.row.running);");
-    expect(rank).toContain("return [pinned, ...ranked];");
+    const at = TABLE.indexOf("const matrixDisplayRows = useMemo(");
+    const body = TABLE.slice(at, TABLE.indexOf("const scopeLadder", at));
+    expect(body).toContain("ordered.findIndex((m) => m.row.running)");
+    expect(body).toContain("return [pinned, ...ordered];");
     // It is never renumbered: a `#1` badge on a row the producer ranks fourth would be
     // this surface stating something the ladder does not.
-    expect(rank).not.toContain("rank: 1,");
+    expect(body).not.toContain("rank: 1,");
+    expect(TABLE).toContain('{r.rank ?? "—"}');
   });
 
-  it("states the rank and the why on every row, and a missing rank as absent", () => {
-    // "we could not rank this" and "it ranks last" are different statements.
-    expect(TABLE).toContain('{ranked.rank ?? "—"}');
-    expect(TABLE).toContain("{ranked.why}");
+  it("the rows are the CATALOGUE's, so a retired lineage the ladder prices gets none", () => {
+    expect(TABLE).toContain("rowBySlug.get(m.dynastySlug) ?? null");
+    expect(TABLE).toContain("m.row !== null");
+  });
+});
+
+describe("THE PER-AUDIENCE LIST reads scopeRank, the position that ascends on its figure", () => {
+  it("orders on the producer's scopeRank, never on the merit rank", () => {
+    // Ordered on `rank`, a per-audience list would ascend on a number it is not
+    // showing — the exact bug the matrix replaced, one scope down.
+    expect(TABLE).toContain('orderBy: "scopeRank"');
+    const rank = read("src/lib/workflow-rank-why.ts");
+    expect(rank).toContain('orderBy === "scopeRank" ? l.scopeRank : l.rank');
   });
 
-  it("shows WHOSE evidence each figure is, as a mark", () => {
-    // A reader seeing `#1` beside a figure that is not the cheapest on the page needs
-    // to see that an audience is in the picture — otherwise the rank reads as a bug.
-    expect(TABLE).toContain("<GrainMark");
-    expect(TABLE).toContain("evidenceGrains.map(");
-    expect(TABLE).toContain("audiencesWithEvidence");
-    expect(TABLE).toContain("<AudienceAvatar");
+  it("states the scope position and puts Current best on its first row", () => {
+    expect(TABLE).toContain('{ranked.scopeRank ?? "—"}');
+    expect(TABLE).toContain("const bestHere = ranked.scopeRank === 1;");
+    expect(TABLE).toContain("Current best");
+  });
+
+  it("reads THIS scope's own figures, never a coarser grain wearing its name", () => {
+    const at = TABLE.indexOf("function scopeFigures(");
+    const body = TABLE.slice(at, TABLE.indexOf("export function CampaignWorkflowsPage", at));
+    expect(body).toContain("audienceId ? row.estimatesByGrain.audience : row.estimatesByGrain.campaign");
+  });
+
+  it("the ladder it ranks on is that scope's own column", () => {
+    expect(TABLE).toContain("ladderRowsForScope(ladderQ.data, scope)");
+  });
+
+  it("an unknown scope in the URL is NOT a scope", () => {
+    // An id somebody pasted must not paint an empty table that reads as "this audience
+    // produced nothing".
+    expect(TABLE).toContain("scopeParam && knownScopes.has(scopeParam) ? scopeParam : null");
+  });
+
+  it("the open scope lives in the query string, so a link still works", () => {
+    expect(TABLE).toContain('setParam("scope", id)');
+    expect(TABLE).toContain('searchParams.get("scope")');
   });
 
   it("keeps the sentence on a phone, where its own column folds away", () => {
@@ -237,6 +322,27 @@ describe("ONE table, THREE grains — the tab changes the SOURCE, never the orde
     // would make the cheapest row on the page the least proven one.
     expect(TABLE).toContain("ranked.measured ?");
     expect(TABLE).toContain("from {fmtUsd(ranked.estCostPerOutcomeUsd)}");
+  });
+
+  it("states the why on every row", () => {
+    expect(TABLE).toContain("{ranked.why}");
+  });
+});
+
+describe("THE SIDEBAR is the campaign then the producer's audience order", () => {
+  it("puts the campaign first and never re-sorts the audiences", () => {
+    const at = TABLE.indexOf("function ScopeSidebar(");
+    const body = TABLE.slice(at, TABLE.indexOf("function WorkflowMatrix(", at));
+    expect(body).toContain("Campaign");
+    expect(body).toContain("audiences.map((a, i)");
+    expect(body).not.toContain(".sort(");
+  });
+
+  it("gives every audience its face, and the first one Best", () => {
+    const at = TABLE.indexOf("function ScopeSidebar(");
+    const body = TABLE.slice(at, TABLE.indexOf("function WorkflowMatrix(", at));
+    expect(body).toContain("<AudienceAvatar");
+    expect(body).toContain("i === 0 &&");
   });
 });
 
@@ -267,8 +373,9 @@ describe("the panel opens from a row and from the URL", () => {
 
   it("the open workflow lives in the query string, so a link still works", () => {
     expect(TABLE).toContain('searchParams.get("workflow")');
-    expect(TABLE).toContain('next.set("workflow", slug)');
-    expect(TABLE).toContain('next.delete("workflow")');
+    expect(TABLE).toContain('setParam("workflow", slug)');
+    expect(TABLE).toContain("next.set(key, value)");
+    expect(TABLE).toContain("next.delete(key)");
   });
 
   it("opening a row navigates NOWHERE — the ranking stays on screen", () => {
@@ -360,7 +467,7 @@ describe("the panel opens from a row and from the URL", () => {
   it("the page HANDS it the rows rather than the panel fetching a second time", () => {
     const at = TABLE.indexOf("<WorkflowRankPanel");
     const call = TABLE.slice(at, TABLE.indexOf("onClose=", at));
-    expect(call).toContain("ladderRow={brandRowFor(allLadderRows,");
+    expect(call).toContain("ladderRow={campaignColumnRowFor(allLadderRows,");
     expect(call).toContain("audienceRows={audienceRowsFor(allLadderRows,");
     expect(call).toContain("audienceById={audienceById}");
   });
@@ -422,11 +529,12 @@ describe("nothing is computed in the browser", () => {
     expect(code).not.toMatch(/[a-zA-Z0-9_)\]]\s*\/\s*[a-zA-Z0-9_(]/);
   });
 
-  it("the cost cells read the grain's OWN served figures, verbatim", () => {
+  it("the cost cells read the scope's OWN served figures, verbatim", () => {
     // `legOutcome` is the producer's per-grain block for the leg the request named —
     // the cost, the count and the spend behind them. The page picks a block and renders
     // its fields; it computes none of them.
-    expect(TABLE).toContain("grainFigures(ladderRow?.estimatesByGrain[grain])");
+    expect(TABLE).toContain("scopeFigures(bySlug.get(r.row.workflowDynastySlug) ?? null, audienceId)");
+    expect(TABLE).toContain("grainFigures(");
     expect(TABLE).toContain("fmtUsd(figures.costPerOutcomeUsd)");
     expect(TABLE).toContain("fmtCount(figures.outcomeCount)");
     expect(TABLE).toContain("fmtUsd(figures.spentUsd)");
@@ -492,7 +600,7 @@ describe("the table survives a phone and the dark theme", () => {
   it("gates the min-width at the SAME breakpoint the folded columns return", () => {
     // An unconditional floor re-widens the row on a phone and pushes the columns that
     // DO render off to the right, which reads as the data being missing.
-    expect(TABLE).toContain("md:min-w-[1180px]");
+    expect(TABLE).toContain("md:min-w-[1100px]");
     expect(TABLE).not.toContain('className="w-full min-w-[');
     // Six of the nine columns fold below `md`: LLM, Template, the outcome count, the
     // outcome cost, $ Invested and Why. Each appears twice — its header and its cell.
@@ -512,9 +620,49 @@ describe("the table survives a phone and the dark theme", () => {
 
   it("every tint it uses carries a dark remap", () => {
     const globals = read("src/app/globals.css");
-    for (const cls of ["bg-brand-50", "border-brand-200", "text-brand-600", "bg-gray-100"]) {
+    for (const cls of [
+      "bg-brand-50",
+      // The best cell's own mark, and the only place the grid raises its voice.
+      "bg-brand-100",
+      "border-brand-200",
+      "border-brand-300",
+      "text-brand-600",
+      "text-brand-700",
+      "bg-gray-50",
+      "bg-gray-100",
+      // A muted floor and an absent cell.
+      "text-gray-400",
+      "text-gray-300",
+    ]) {
       expect(globals, cls).toContain(`html.dark .${cls} {`);
     }
+  });
+
+  it("uses no `/opacity` modifier, which escapes the remap entirely", () => {
+    // `bg-brand-50/40` compiles to a class the `html.dark .bg-brand-50` rule cannot
+    // match, so it paints a LIGHT block on the dark surface at 40% alpha.
+    expect(TABLE).not.toMatch(/(?:bg|text|border)-(?:brand|gray)-\d+\//);
+  });
+
+  it("the GRID scrolls rather than compressing, with its first column pinned", () => {
+    // Twelve audience columns do not fit a phone, and squeezing them would make every
+    // figure unreadable rather than one swipe away. The name stays put so a workflow is
+    // still identifiable halfway across.
+    const at = TABLE.indexOf("function WorkflowMatrix(");
+    const body = TABLE.slice(at, TABLE.indexOf("function ObliqueHeader(", at));
+    expect(body).toContain('<div className="overflow-x-auto">');
+    expect(body).toContain("sticky left-0 z-10 w-[240px] min-w-[240px] bg-white");
+    expect((body.match(/sticky left-0 z-10/g) ?? []).length).toBe(2);
+  });
+
+  it("the column heads are OBLIQUE, each with its own face", () => {
+    const at = TABLE.indexOf("function ObliqueHeader(");
+    const body = TABLE.slice(at, TABLE.indexOf("function MatrixCellTd(", at));
+    expect(body).toContain("origin-bottom-left -rotate-45");
+    expect(body).toContain("whitespace-nowrap");
+    // A fixed height, or the rotated label clips into the row above it.
+    expect(body).toContain("h-[140px]");
+    expect(TABLE).toContain("<AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} size={16} />");
   });
 });
 
@@ -663,14 +811,77 @@ describe("the outcome pair is the campaign's own LEG, never its funnel", () => {
   });
 });
 
+describe("NOTHING in these components orders anything — both positions are served", () => {
+  it("no `.sort(` at all in the workflows components", () => {
+    // A page that ranked the rows it DISPLAYS is what produced the second, disagreeing
+    // order: the recommended workflow sat 18th of 24 on a page whose heading said the
+    // list was ranked the way we pick. If the rank looks wrong it is the producer's
+    // answer that is wrong, and that is a far more useful thing to know.
+    for (const [name, src] of [
+      ["campaign-workflows-page", TABLE],
+      ["workflow-rank-panel", PANEL],
+      ["workflow-cells", CELLS],
+    ] as const) {
+      expect(src, name).not.toContain(".sort(");
+    }
+  });
+
+  it("no cost or rank comparison is written by hand either", () => {
+    for (const [name, src] of [
+      ["campaign-workflows-page", TABLE],
+      ["workflow-rank-panel", PANEL],
+    ] as const) {
+      // `a.cost - b.cost`, `x.rank - y.rank` and friends — the shape of a comparator.
+      expect(src, name).not.toMatch(/\.(?:costPerOutcomeUsd|rank|scopeRank)\s*-\s*[a-z]/i);
+    }
+  });
+
+  it("the two ordering modules sort on a SERVED position and never on a figure", () => {
+    const matrix = read("src/lib/workflow-matrix.ts");
+    const rank = read("src/lib/workflow-rank-why.ts");
+    // `bestMatrixCell` selects a minimum, which is a display selection over served
+    // values — it is a reduce, deliberately, so no cost is ever sorted on.
+    const best = matrix.slice(
+      matrix.indexOf("export function bestMatrixCell("),
+      matrix.indexOf("export function isBestCell("),
+    );
+    expect(best).not.toContain(".sort(");
+    const order = rank.slice(
+      rank.indexOf("const ordered = [...input.rows].sort("),
+      rank.indexOf("const ranked = ordered.map("),
+    );
+    expect(order).not.toContain("costPerOutcomeUsd");
+  });
+});
+
 describe("no em dash in anything a customer reads", () => {
-  it("the copy carries none", () => {
-    // The em dash is banned in user-facing copy. Both files use it freely in their own
-    // comments, so the check reads the STRINGS a reader sees: the tooltips and the
-    // sentences the ranking module writes.
+  /** Comments use the em dash freely and must not trip a guard about COPY, so they go
+   *  first — the same reason `pr-expert-public-report` ships its own stripper. */
+  const stripComments = (src: string) =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+      .replace(/\s\/\/[^\n"'`]*$/gm, "");
+
+  it("the sentences the ranking module writes carry none", () => {
     const rank = read("src/lib/workflow-rank-why.ts");
     const sentences = rank.slice(rank.indexOf("export function workflowRankWhy("));
     const literals = sentences.match(/`[^`]*`|"[^"]*"/g) ?? [];
     for (const lit of literals) expect(lit).not.toContain("—");
+  });
+
+  it("every tooltip and label on the grid carries none", () => {
+    // The ONE exception is the null placeholder itself, which is the repo's own
+    // spelling for "we have no figure" on every table it renders.
+    for (const [name, src] of [
+      ["campaign-workflows-page", TABLE],
+      ["workflow-rank-panel", PANEL],
+    ] as const) {
+      const literals = stripComments(src).match(/`[^`]*`|"[^"]*"/g) ?? [];
+      const offenders = literals.filter(
+        (lit) => lit.includes("—") && lit.replace(/[`"]/g, "") !== "—",
+      );
+      expect(offenders, name).toEqual([]);
+    }
   });
 });

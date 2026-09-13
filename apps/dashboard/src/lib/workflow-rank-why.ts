@@ -118,6 +118,11 @@ export interface WorkflowLadderRow {
   /** The producer's own position for this WORKFLOW. Read, never derived — see the
    *  ordering note on `rankWorkflowRows`. */
   rank?: number | null;
+  /** The producer's own position for this ROW WITHIN ITS OWN COLUMN (v0.164.1), ordered
+   *  on the row's own figure. It DISAGREES with `rank` on purpose: `rank` is what we
+   *  would put the campaign on next, `scopeRank` is what the column a reader is looking
+   *  at says. Read, never derived. */
+  scopeRank?: number | null;
 }
 
 /**
@@ -141,6 +146,10 @@ export interface RankedWorkflow<T> {
   /** The producer's own position, verbatim. NULL when the ladder carries no rank for
    *  this workflow — the row then states none rather than claiming last place. */
   rank: number | null;
+  /** The producer's own position of this row within its own COLUMN, verbatim. What a
+   *  per-audience list is ordered and numbered on, because it ascends on the figure
+   *  that list displays where `rank` does not. */
+  scopeRank: number | null;
   /** `resolved.costPerOutcomeUsd`, verbatim. Null = the ladder states none. */
   estCostPerOutcomeUsd: number | null;
   /** False for an explore row and for a row the ladder does not carry. */
@@ -272,13 +281,24 @@ export function workflowRankWhy(
 export interface RankWorkflowsInput<T> {
   /** The display rows, in any order. */
   rows: readonly T[];
-  /** The ladder, brand-level rows only. */
+  /** The ladder, ONE row per workflow — the campaign column's rows, or one audience's. */
   ladder: readonly WorkflowLadderRow[];
   /** `recommendedWorkflowDynastySlug`, verbatim. */
   recommended: string | null;
   outcomeStepKey: string | null;
   outcomeNoun: string;
   formatUsd: (usd: number) => string;
+  /**
+   * WHICH served position to order on. Both are the producer's; neither is derived.
+   *
+   * `rank` (the default) is the MERIT order — what we would put this campaign on next,
+   * scored over every cell a dynasty has. It is what the matrix's rows read.
+   *
+   * `scopeRank` is the order WITHIN one column, ascending on the figure that column
+   * displays. A per-audience list must read it: ordered on `rank`, that list would
+   * ascend on a number it is not showing, which is the exact bug the matrix replaced.
+   */
+  orderBy?: "rank" | "scopeRank";
 }
 
 /**
@@ -300,6 +320,11 @@ export interface RankWorkflowsInput<T> {
  * different statements. Ties (which the producer's total order does not produce) break
  * on the slug so the list is stable across polls.
  *
+ * `orderBy: "scopeRank"` reads the OTHER served position — a row's place within its own
+ * column, ascending on that column's own figure. It is the producer's answer too, so
+ * this is still a read: a per-audience list needs it because ordered on `rank` it would
+ * ascend on a number it does not display, which is the very bug the matrix replaced.
+ *
  * The row the campaign is RUNNING is then pinned to the top of the DISPLAY list while
  * KEEPING its rank, because a reader opening this page wants to see what is happening
  * first and still wants to know where it stands.
@@ -312,9 +337,16 @@ export function rankWorkflowRows<T extends { workflowDynastySlug: string; runnin
     if (!byDynasty.has(l.workflowDynastySlug)) byDynasty.set(l.workflowDynastySlug, l);
   }
 
+  const orderBy = input.orderBy ?? "rank";
+  const positionOf = (slug: string): number | null => {
+    const l = byDynasty.get(slug);
+    if (!l) return null;
+    return (orderBy === "scopeRank" ? l.scopeRank : l.rank) ?? null;
+  };
+
   const ordered = [...input.rows].sort((a, b) => {
-    const ra = byDynasty.get(a.workflowDynastySlug)?.rank ?? null;
-    const rb = byDynasty.get(b.workflowDynastySlug)?.rank ?? null;
+    const ra = positionOf(a.workflowDynastySlug);
+    const rb = positionOf(b.workflowDynastySlug);
     if (ra != null && rb != null && ra !== rb) return ra - rb;
     if (ra != null && rb == null) return -1;
     if (ra == null && rb != null) return 1;
@@ -328,6 +360,7 @@ export function rankWorkflowRows<T extends { workflowDynastySlug: string; runnin
     return {
       row,
       rank: ladder?.rank ?? null,
+      scopeRank: ladder?.scopeRank ?? null,
       estCostPerOutcomeUsd: ladder?.costPerOutcomeUsd ?? null,
       measured: ladder?.measured ?? false,
       recommended,

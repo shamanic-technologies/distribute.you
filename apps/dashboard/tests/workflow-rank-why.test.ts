@@ -160,6 +160,69 @@ describe("the order is the producer's `rank`, read and never derived", () => {
   });
 });
 
+describe("`orderBy: scopeRank` reads the OTHER served position", () => {
+  it("orders one column on the position that ascends on ITS figure", () => {
+    // A per-audience list ordered on the merit `rank` would ascend on a number it is
+    // not showing — the very bug the matrix replaced, one scope down.
+    const out = rankWorkflowRows({
+      rows: [row("dear"), row("cheap"), row("mid")],
+      ladder: [
+        ladder({ workflowDynastySlug: "dear", costPerOutcomeUsd: 300, rank: 1, scopeRank: 3 }),
+        ladder({ workflowDynastySlug: "cheap", costPerOutcomeUsd: 12, rank: 3, scopeRank: 1 }),
+        ladder({ workflowDynastySlug: "mid", costPerOutcomeUsd: 80, rank: 2, scopeRank: 2 }),
+      ],
+      recommended: "dear",
+      orderBy: "scopeRank",
+      ...OPTS,
+    });
+    expect(out.map((r) => r.row.workflowDynastySlug)).toEqual(["cheap", "mid", "dear"]);
+    expect(out.map((r) => r.scopeRank)).toEqual([1, 2, 3]);
+    // The MERIT rank rides along untouched — both are served, and they disagree on
+    // purpose.
+    expect(out.map((r) => r.rank)).toEqual([3, 2, 1]);
+  });
+
+  it("defaults to the merit rank when nothing asks for the other one", () => {
+    const input = {
+      rows: [row("a"), row("b")],
+      ladder: [
+        ladder({ workflowDynastySlug: "a", rank: 2, scopeRank: 1 }),
+        ladder({ workflowDynastySlug: "b", rank: 1, scopeRank: 2 }),
+      ],
+      recommended: null,
+      ...OPTS,
+    };
+    expect(rankWorkflowRows(input).map((r) => r.row.workflowDynastySlug)).toEqual(["b", "a"]);
+    expect(
+      rankWorkflowRows({ ...input, orderBy: "rank" as const }).map((r) => r.row.workflowDynastySlug),
+    ).toEqual(["b", "a"]);
+  });
+
+  it("a row carrying no scopeRank sorts last and states none", () => {
+    const out = rankWorkflowRows({
+      rows: [row("a"), row("b")],
+      ladder: [
+        ladder({ workflowDynastySlug: "a", rank: 1, scopeRank: null }),
+        ladder({ workflowDynastySlug: "b", rank: 9, scopeRank: 4 }),
+      ],
+      recommended: null,
+      orderBy: "scopeRank",
+      ...OPTS,
+    });
+    expect(out.map((r) => r.row.workflowDynastySlug)).toEqual(["b", "a"]);
+    expect(out.map((r) => r.scopeRank)).toEqual([4, null]);
+  });
+
+  it("BOTH positions are read off the ladder, never computed", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../src/lib/workflow-rank-why.ts"), "utf-8");
+    const body = src.slice(
+      src.indexOf("const orderBy = input.orderBy ?? \"rank\";"),
+      src.indexOf("const ranked = ordered.map("),
+    );
+    expect(body).not.toContain("costPerOutcomeUsd");
+  });
+});
+
 describe("the RUNNING row is pinned first and keeps the rank it was given", () => {
   it("pins it without renumbering it", () => {
     const out = rankWorkflowRows({
