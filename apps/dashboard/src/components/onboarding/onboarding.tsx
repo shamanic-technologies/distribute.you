@@ -101,6 +101,7 @@ import {
   parseListLeverInput,
 } from "./offer-levers";
 import { businessDomainFromEmail, extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
+import { NOT_A_WEBSITE, websiteInputProblem } from "@/lib/website-input";
 import {
   clearLandingUrlCookieString,
   normalizeLandingUrl,
@@ -1189,6 +1190,19 @@ export function Onboarding() {
   const salesInputsRef = useRef<FeatureInput[]>(restored?.salesInputs ?? []);
 
   const domain = extractDomain(url);
+  // Whether what is in the field can be a website at all. `extractDomain` is
+  // deliberately lax (it also reduces a stored brand URL on the post-Stripe
+  // replay path), so it happily returns `gmail.com` for `kevin@gmail.com` and
+  // the button was gated on that alone. `websiteInputProblem` is the rule; see
+  // `lib/website-input.ts` for what accepting an address cost a customer.
+  const websiteProblem = noWebsiteMode ? null : websiteInputProblem(url);
+  // The sentence to show under the field, or null while there is nothing to
+  // refuse. ONE derivation because the message and the standing "I have no
+  // website" button are mutually exclusive: two ways out stacked on top of each
+  // other read as the same control twice, and the refusal's own link is the one
+  // that belongs to the moment. `NOT_A_WEBSITE` is the defensive tail for an
+  // input the rule accepts and `extractDomain` still cannot reduce.
+  const websiteRefusal = !url.trim() || noWebsiteMode ? null : (websiteProblem ?? (domain ? null : NOT_A_WEBSITE));
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   // A no-website brand has no domain/hostname — the step headers + loading copy use
   // the typed brand name as the identity instead of an empty "Reading " line.
@@ -3157,7 +3171,7 @@ export function Onboarding() {
         Build my strategy <ArrowRightIcon className="h-4 w-4" />
       </button>
     ) : (
-      <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+      <button onClick={startAnalyze} disabled={!domain || websiteProblem !== null} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
         Analyze my product <ArrowRightIcon className="h-4 w-4" />
       </button>
     );
@@ -3196,13 +3210,21 @@ export function Onboarding() {
             {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             <input
               type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. https://acme.com/pricing" autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter" && domain) startAnalyze(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && domain && !websiteProblem) startAnalyze(); }}
               className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
-            {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
-            <button type="button" onClick={enterNoWebsiteMode} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700">
-              I have no website
-            </button>
+            {websiteRefusal ? (
+              <p className="mt-2 text-sm text-red-500">
+                {websiteRefusal}{" "}
+                <button type="button" onClick={enterNoWebsiteMode} className="font-medium underline transition hover:text-red-600">
+                  No website? Tell us about your business instead.
+                </button>
+              </p>
+            ) : (
+              <button type="button" onClick={enterNoWebsiteMode} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700">
+                I have no website
+              </button>
+            )}
           </>
         )}
       </StepShell>
