@@ -89,6 +89,62 @@ function GlyphTile({
 }
 
 /**
+ * THE SAME TWO FACTS ON ONE QUIET LINE, for a surface that has no columns to spare.
+ *
+ * The matrix names a workflow in a 320px sticky column and has nowhere to put a `LLM`
+ * and a `Template` column beside it — but "which model does this row write with" is the
+ * question that separates two rows of an otherwise identical channel, and the owner
+ * asked for it under every name: *"the logo of the LLM, the id of the LLM, followed by
+ * the logo of the AI template and the id of the template"*.
+ *
+ * So it is the IDs, never the labels: `deepseek-pro`, `cold-email-v41`. The label is a
+ * derivation (and for a template it deliberately drops the VERSION, which is the part
+ * that tells two apart); the id is what the workflow STORES and what a reader quotes
+ * back to us. Quiet grey and monospaced, because it is a token sitting under a name and
+ * must not compete with it.
+ *
+ * It WRAPS rather than truncates, for the reason the two-line cell already states: the
+ * longest pair (`deepseek-flash` + `blind-discovery-email-v26`) is wider than the column,
+ * and a truncation would eat the version.
+ *
+ * A workflow stating NEITHER renders nothing at all — never a row of dashes, which would
+ * read as two facts we looked up and failed to find. An alias the catalogue does not know
+ * keeps its own text and draws the neutral glyph rather than a guessed provider logo,
+ * exactly as {@link WorkflowModelCell} does.
+ */
+export function WorkflowStackLine({
+  contentModel,
+  contentPromptType,
+}: {
+  contentModel: string | null;
+  contentPromptType: string | null;
+}) {
+  const model = workflowModelMark(contentModel);
+  const template = workflowTemplateLabel(contentPromptType);
+  if (!model && !template) return null;
+  return (
+    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-tight text-gray-400">
+      {model && (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          {model.providerDomain ? (
+            <ProviderLogo domain={model.providerDomain} size={12} className="shrink-0 rounded-[2px]" />
+          ) : (
+            <CpuIcon size={12} weight="duotone" className="shrink-0" aria-hidden />
+          )}
+          <span className="font-mono break-all">{model.alias}</span>
+        </span>
+      )}
+      {template && (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <FileTextIcon size={12} weight="duotone" className="shrink-0" aria-hidden />
+          <span className="font-mono break-all">{template.id}</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
  * THE MODEL: whose it is, what it is called, and the alias verbatim.
  *
  * A workflow that states no model reads a neutral tile and a dash — never a default

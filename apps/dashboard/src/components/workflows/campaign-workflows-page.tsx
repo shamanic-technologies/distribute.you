@@ -71,10 +71,24 @@
  * sidebar read it in the order served. It is NOT ordered on each audience's best ladder
  * cell: that ties 10 of 12 audiences at one inherited floor and says nothing.
  *
- * ⚠️ Column 1 and row 1 do NOT intersect at the best cell, and that is real. The best
- * audience overall (`audiences[0]`) carried 0 replies on 92 contacted — the explore
- * floor one grain over — while the only genuinely measured audience sat second. So the
- * single best cell is marked EXPLICITLY rather than implied by the corner.
+ * ⚠️ The order is `cppr` ASCENDING, and for an audience with no outcome yet that figure
+ * IS its total spend — so the first column is routinely the audience that has spent the
+ * least rather than the one that works best. Measured in prod: `audiences[0]` carried 0
+ * replies on 92 contacted while the only genuinely measured audience (8 on 1,625) sat
+ * second. The owner read that and kept the order anyway; do not re-rank it here.
+ *
+ * ── ONE LIT CELL PER COLUMN, AND IT IS THE PRODUCER'S OWN ANSWER ─────────────────
+ *
+ * Each column highlights the cell it would PICK — the row at `scopeRank === 1`, served.
+ * A single global "best cell" used to be marked instead, and it answered a question
+ * nobody asked while the other twelve columns said nothing: "une case allumée par
+ * colonne ... comme ça on comprend quelque soit l'audience choisie quel workflow sera
+ * choisi". In prod `alioth` is lit in 11 columns of 13, `cerulean` in one and `lithium`
+ * in one — a near-vertical line with two exceptions, which is the whole reading.
+ *
+ * ⚠️ A lit cell is the COLUMN's answer, never the campaign's. The campaign-wide pick is
+ * `rank`, scored across every column at once, so the lit cells and the `#1` row disagree
+ * routinely and honestly.
  *
  * ── THE REST OF THE RULES, EACH ONE A MISTAKE ALREADY PAID FOR ───────────────────
  *
@@ -87,10 +101,14 @@
  *     counted and priced in WEBSITE VISITS.
  *  5. A RETIRED workflow gets NO row: the rows are the channel's catalogue, and a
  *     lineage nobody can be put on is not an option.
- *  6. OPENING A ROW OPENS A PANEL, not a page — the ranking stays on screen, and the
+ *  6. THE RUNNING ROW IS NOT PINNED. It sits at its served `rank` (7 of 24 in prod) and
+ *     keeps its tag: moving it to the top would be this page restating the producer's
+ *     order in its own words, on a table whose entire subject is that order.
+ *  7. OPENING A ROW OPENS A PANEL, not a page — the ranking stays on screen, and the
  *     open workflow rides `?workflow=<dynasty>` so a link still works. The open SCOPE
  *     rides `?scope=<audienceId>` for the same reason.
- *  7. A CELL IS NEVER FABRICATED. A row the ladder does not carry states nothing.
+ *  8. A CELL IS NEVER FABRICATED. A row the ladder does not carry states nothing, and a
+ *     column the producer placed no row in lights nothing.
  */
 
 import { useCallback, useMemo } from "react";
@@ -101,7 +119,11 @@ import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { LearningTag } from "@/components/learning-tag";
-import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
+import {
+  WorkflowModelCell,
+  WorkflowStackLine,
+  WorkflowTemplateCell,
+} from "@/components/workflows/workflow-cells";
 import { WorkflowRankPanel } from "@/components/workflows/workflow-rank-panel";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { isLearning } from "@/lib/learning-threshold";
@@ -132,8 +154,8 @@ import {
   buildMatrixCellIndex,
   matrixWorkflowOrder,
   matrixCellKey,
-  bestMatrixCell,
-  isBestCell,
+  columnBestCells,
+  isColumnBestCell,
   cellRestsOnOwnEvidence,
   type MatrixCell,
   type MatrixLadderRow,
@@ -200,7 +222,7 @@ const SCOPE_RANK_TIP =
   "The order for this audience, cheapest first on the figure beside it. It is a different question from the overall pick, which is scored across every audience at once.";
 
 const MATRIX_TIP =
-  "Every estimate the ranking is made of. A row is a workflow, a column is who it was priced for, and the number is what one outcome is expected to cost there.";
+  "Every estimate the ranking is made of. A row is a workflow, a column is who it was priced for, and the number is what one outcome is expected to cost there. The highlighted cell in each column is the workflow we would put that audience on.";
 
 const EST_TIP =
   "What we expect one outcome to cost through this workflow. We use the closest evidence we have (your own audience, then this brand, then every client we run the channel for), and the last column says which. A workflow that has never run for you is priced at one outreach so it can earn a first try.";
@@ -222,9 +244,6 @@ const PROJECTED_COUNT_TIP =
 
 const RUNNING_TIP =
   "The workflow your campaign is running right now. We pick it, and we change it when another one is producing outcomes more cheaply.";
-
-const BEST_CELL_TIP =
-  "The cheapest outcome anywhere on this grid. It is one workflow priced for one audience, which is why it does not have to sit in the first row or the first column.";
 
 const CURRENT_BEST_TIP =
   "Your cheapest audience on this campaign, on its own cost per outcome across every workflow it has run.";
@@ -477,7 +496,10 @@ export function CampaignWorkflowsPage() {
 
   const matrixOrder = useMemo(() => matrixWorkflowOrder(matrixRows), [matrixRows]);
   const cellIndex = useMemo(() => buildMatrixCellIndex(matrixRows), [matrixRows]);
-  const best = useMemo(() => bestMatrixCell(matrixRows), [matrixRows]);
+  // ONE LIT CELL PER COLUMN: the workflow each audience would be put on, read off the
+  // producer's own `scopeRank === 1`. A single global mark answered "where is the
+  // cheapest price on this grid" and left the other twelve columns saying nothing.
+  const columnBest = useMemo(() => columnBestCells(matrixRows), [matrixRows]);
 
   // The display rows, keyed by dynasty — the matrix draws the catalogue's rows in the
   // producer's rank order, so a retired lineage the ladder prices still gets none.
@@ -487,20 +509,20 @@ export function CampaignWorkflowsPage() {
     return m;
   }, [rows]);
 
-  const matrixDisplayRows = useMemo(() => {
-    const ordered = matrixOrder
-      .map((m) => ({ ...m, row: rowBySlug.get(m.dynastySlug) ?? null }))
-      .filter((m): m is { dynastySlug: string; rank: number | null; row: CampaignWorkflowRow } =>
-        m.row !== null,
-      );
-    // The RUNNING row is pinned first and KEEPS its rank — a reader opening this page
-    // wants to see what is happening, and a `#1` badge on a row the producer ranks
-    // fourth would be this surface stating something the ladder does not.
-    const i = ordered.findIndex((m) => m.row.running);
-    if (i <= 0) return ordered;
-    const [pinned] = ordered.splice(i, 1);
-    return [pinned, ...ordered];
-  }, [matrixOrder, rowBySlug]);
+  // EVERY row sits at its served `rank`, the running one included. It used to be pinned
+  // first, which put a row the producer ranks seventh at the top of a table whose whole
+  // subject is that order — the page restating the ranking in its own words. The row
+  // keeps its `Running` tag, so what is happening is still marked; it is marked where it
+  // belongs rather than moved. Owner: "ne rajoute pas / duplique pas la ligne en rang 1".
+  const matrixDisplayRows = useMemo(
+    () =>
+      matrixOrder
+        .map((m) => ({ ...m, row: rowBySlug.get(m.dynastySlug) ?? null }))
+        .filter((m): m is { dynastySlug: string; rank: number | null; row: CampaignWorkflowRow } =>
+          m.row !== null,
+        ),
+    [matrixOrder, rowBySlug],
+  );
 
   // THE PER-AUDIENCE LIST, ordered on the producer's `scopeRank` — the position that
   // ascends on the figure this list shows.
@@ -637,7 +659,7 @@ export function CampaignWorkflowsPage() {
                   rows={matrixDisplayRows}
                   audiences={audienceColumns}
                   cells={cellIndex}
-                  best={best}
+                  columnBest={columnBest}
                   onOpen={setOpen}
                   onSelectScope={setScope}
                 />
@@ -784,14 +806,14 @@ export function WorkflowMatrix({
   rows,
   audiences,
   cells,
-  best,
+  columnBest,
   onOpen,
   onSelectScope,
 }: {
   rows: readonly { dynastySlug: string; rank: number | null; row: CampaignWorkflowRow }[];
   audiences: readonly AudienceColumn[];
   cells: Map<string, MatrixCell>;
-  best: ReturnType<typeof bestMatrixCell>;
+  columnBest: Map<string, string>;
   onOpen: (slug: string) => void;
   onSelectScope: (id: string) => void;
 }) {
@@ -805,7 +827,7 @@ export function WorkflowMatrix({
         <table className="text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white px-4 pt-3 pb-2 text-left align-bottom text-xs font-medium text-gray-500">
+              <th className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white px-4 pt-3 pb-2 text-left align-bottom text-xs font-medium text-gray-500 md:w-[320px] md:min-w-[320px]">
                 Workflow <InfoTooltip tip={RANK_TIP} placement="top" />
               </th>
               <ObliqueHeader label="Campaign" tip={CAMPAIGN_SCOPE_TIP}>
@@ -853,10 +875,21 @@ export function WorkflowMatrix({
                   className={`cursor-pointer border-b border-gray-100 transition last:border-0 hover:bg-gray-50 ${rowTint}`}
                 >
                   <td
-                    className={`sticky left-0 z-10 w-[240px] min-w-[240px] px-4 py-2.5 ${
+                    // WIDER only from `md`: the second line wants ~290px to sit on one
+                    // row, but a 320px sticky column on a 412px phone leaves 31px of
+                    // grid — on a surface whose whole point is the columns. Below `md`
+                    // it keeps 240px and the line wraps, which costs a row of height and
+                    // buys back the grid.
+                    className={`sticky left-0 z-10 w-[240px] min-w-[240px] px-4 py-2.5 md:w-[320px] md:min-w-[320px] ${
                       rowTint === "" ? "bg-white" : rowTint
                     }`}
                   >
+                    {/* The content is BOUNDED, or the widths above buy nothing: this
+                        table is auto-layout, so a column grows to its widest cell's
+                        max-content and `truncate` / `flex-wrap` never fire. Measured at
+                        412px before the bound: 347px of sticky column, 31px of grid. The
+                        values are the column minus its own `px-4` on both sides. */}
+                    <div className="w-[208px] md:w-[288px]">
                     <div className="flex min-w-0 items-center gap-2">
                       <span
                         className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-medium tabular-nums ${
@@ -879,16 +912,25 @@ export function WorkflowMatrix({
                         </span>
                       )}
                     </div>
+                    {/* WHAT IT WRITES WITH, quietly, on the line below. Two rows of this
+                        channel routinely differ only in the model or the template, so the
+                        names alone leave a reader unable to tell them apart — and neither
+                        fact has a column to sit in here. */}
+                    <WorkflowStackLine
+                      contentModel={r.row.contentModel}
+                      contentPromptType={r.row.contentPromptType}
+                    />
+                    </div>
                   </td>
                   <MatrixCellTd
                     cell={cells.get(matrixCellKey(r.dynastySlug, null))}
-                    best={isBestCell(best, r.dynastySlug, null)}
+                    best={isColumnBestCell(columnBest, r.dynastySlug, null)}
                   />
                   {audiences.map((a, i) => (
                     <MatrixCellTd
                       key={a.audienceId}
                       cell={cells.get(matrixCellKey(r.dynastySlug, a.audienceId))}
-                      best={isBestCell(best, r.dynastySlug, a.audienceId)}
+                      best={isColumnBestCell(columnBest, r.dynastySlug, a.audienceId)}
                       column={i === 0}
                     />
                   ))}
@@ -900,7 +942,8 @@ export function WorkflowMatrix({
         </table>
       </div>
       <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500">
-        A figure in full colour is what that column actually produced. A faded one repeats
+        The highlighted cell in each column is the workflow we would put that audience on.
+        A figure in full colour is what that column actually produced; a faded one repeats
         a price from a wider pool, because nothing has been measured there yet.
       </p>
     </div>
@@ -976,10 +1019,14 @@ function ObliqueHeader({
 /**
  * ONE CELL.
  *
- * FULL when the figure rests on this column's own evidence, MUTED when it is a floor
- * inherited from a wider pool — which is the grid's whole visual language, and why 21
- * identical rows read as a fact rather than as a bug. A cell the ladder does not carry
- * states nothing: `—`, never a zero.
+ * TWO marks, answering two different questions. FULL vs MUTED says whose EVIDENCE the
+ * figure rests on — full when the column produced it, muted when it is a floor inherited
+ * from a wider pool, which is why 21 identical rows read as a fact rather than as a bug.
+ * HIGHLIGHTED says this is the cell its own column would PICK (`scopeRank === 1`), once
+ * per column. The two are independent and BOTH are drawn on a lit cell: a column's pick
+ * is routinely an inherited floor (11 of 13 in prod), which is the fact worth reading.
+ *
+ * A cell the ladder does not carry states nothing: `—`, never a zero.
  */
 function MatrixCellTd({
   cell,
@@ -1002,12 +1049,21 @@ function MatrixCellTd({
     );
   }
   if (best) {
+    // A LIT cell still says WHOSE EVIDENCE it rests on. Collapsing the two marks would
+    // put the footer's own sentence ("a faded one repeats a price from a wider pool") in
+    // front of thirteen cells showing no such thing — and in prod 11 of the 13 picks ARE
+    // inherited floors, which is precisely what makes the grid worth reading.
+    //
+    // NO tooltip here, for the reason the ordinary cells have none: the mark fires once
+    // per COLUMN, so a tip on it is the same sentence said thirteen times across one
+    // grid. The header and the footer carry it once.
     return (
-      <td className="w-[76px] min-w-[76px] border border-brand-300 bg-brand-100 px-2 py-2.5 text-center text-xs font-semibold text-brand-700 tabular-nums">
-        <span className="inline-flex items-center gap-1">
-          {fmtUsd(cell.costPerOutcomeUsd)}
-          <InfoTooltip tip={BEST_CELL_TIP} placement="top" />
-        </span>
+      <td
+        className={`w-[76px] min-w-[76px] border border-brand-300 bg-brand-100 px-2 py-2.5 text-center text-xs tabular-nums ${
+          own ? "font-semibold text-brand-700" : "font-normal text-brand-600"
+        }`}
+      >
+        {fmtUsd(cell.costPerOutcomeUsd)}
       </td>
     );
   }

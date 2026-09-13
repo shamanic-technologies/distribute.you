@@ -17,7 +17,9 @@
  * `rank` order, columns are the campaign then each audience, and a cell is that
  * (workflow x audience) row's own `resolved.costPerOutcomeUsd`. The argmin then runs
  * over exactly what a reader can see, so `#1` beside a figure that is not the cheapest
- * on its row reads as an audience being in the picture rather than as a bug.
+ * on its row reads as an audience being in the picture rather than as a bug. Every
+ * column then LIGHTS the cell it would pick (`columnBestCells`), so a reader sees which
+ * workflow wins whichever audience they end up on.
  *
  * ── WHAT A CELL'S APPEARANCE MEANS ───────────────────────────────────────────────
  *
@@ -31,10 +33,10 @@
  * ── NOTHING HERE ORDERS OR COMPUTES ──────────────────────────────────────────────
  *
  * Row order is the served `rank`. Column order is the served `/audience-stats` order.
- * A cell is a served field. `bestMatrixCell` SELECTS a minimum over served values,
- * which is a display selection of the same class as `audienceRowsFor`'s ordering — it
- * computes no cost and invents no rank. There is deliberately no `.sort(` on a cost
- * anywhere in this module.
+ * A cell is a served field, and the cell each column LIGHTS is the producer's own
+ * `scopeRank === 1` — a read, not a minimum taken here. There is deliberately no
+ * `.sort(` on a cost anywhere in this module, and no comparison of one cell's figure
+ * against another's.
  *
  * Alias-free (no `@/` import, no zod) so it carries REAL unit tests — vitest resolves
  * no `@` alias in this repo. Keep it that way.
@@ -74,12 +76,6 @@ export interface MatrixCell {
 export interface MatrixRow {
   dynastySlug: string;
   rank: number | null;
-}
-
-/** The address of one cell. `null` audience = the campaign column. */
-export interface MatrixCellAddress {
-  dynastySlug: string;
-  audienceId: string | null;
 }
 
 /** The index key for a cell. The campaign column has no id, so it takes a reserved one. */
@@ -166,65 +162,57 @@ export function scopeRankedRows(
 }
 
 /**
- * THE SINGLE BEST CELL of the whole grid, or null when nothing is priced.
+ * THE CELL EACH COLUMN WOULD PICK — one per column, read off the producer's own
+ * `scopeRank`.
  *
- * The minimum served figure among MEASURED rows. The measured gate is not decoration:
- * an unmeasured row's figure is an EXPLORE ALLOWANCE — the price of one outreach, set
- * so an unproven workflow can earn a first run — so it is the cheapest cell by
- * construction and marking it "best" would crown the least proven thing on the page.
- * It is the same gate `recommendedWorkflowDynastySlug` is chosen under.
+ * The grid used to mark ONE cell: the cheapest measured figure anywhere on it. That
+ * answers "where is the best price" and not the question a reader of this page has,
+ * which the owner stated outright: *"une case allumee par colonne ... comme ca on
+ * comprend quelque soit l'audience choisie quel workflow sera choisi"*. A single mark
+ * says nothing about the other twelve columns, and the other twelve columns are the
+ * whole reason the matrix exists.
  *
- * A REDUCE rather than a sort, deliberately: this selects one served value, it does not
- * order anything by cost.
+ * `scopeRank` (features-service v0.164.1) is a row's position WITHIN its own column,
+ * ascending on that row's own figure, under the same objective and the same groups as
+ * `rank`, with never-run workflows always last. So `scopeRank === 1` IS the column's
+ * answer to "which workflow would be picked here" — served, total per column, no ties
+ * and no gaps. Nothing is computed, compared or sorted below; this reads a field.
  *
- * ⚠️ The best cell and the top-left corner are routinely DIFFERENT cells, and that is
- * a real property of the data rather than an inconsistency to hide: rank 1 wins on
- * whichever audience it was cheapest for, while column 1 is the audience with the best
- * cost per outcome overall. In prod the two did not intersect.
+ * ⚠️ It is the COLUMN's answer, never the campaign's. The campaign-wide pick is `rank`
+ * (and `recommendedWorkflowDynastySlug`), which is scored across every column at once —
+ * so the lit cells and the `#1` row legitimately disagree, and in prod they do. A column
+ * whose lit cell sits on row 7 is telling you something true.
+ *
+ * Measured in prod on 2026-09-13 (brand `75d7e3e8` / campaign `f7b1b610`): `alioth` is
+ * lit in 11 of the 13 columns, `cerulean` in one and `lithium` in one. That near-vertical
+ * line with two exceptions is exactly the reading the marks exist to give.
  */
-export function bestMatrixCell(
+export function columnBestCells(
   rows: readonly MatrixLadderRow[],
-): MatrixCellAddress | null {
-  let best: MatrixLadderRow | null = null;
+): Map<string, string> {
+  const out = new Map<string, string>();
   for (const r of rows) {
-    if (!r.measured) continue;
-    const cost = r.resolved.costPerOutcomeUsd;
-    if (cost == null) continue;
-    if (best == null) {
-      best = r;
-      continue;
-    }
-    const bestCost = best.resolved.costPerOutcomeUsd as number;
-    if (cost < bestCost) {
-      best = r;
-      continue;
-    }
-    if (cost > bestCost) continue;
-    // Tie: a stable, stated order rather than whichever row the producer happened to
-    // send first, so the mark does not move between two identical figures on a poll.
-    const slugCmp = r.workflow.workflowDynastySlug.localeCompare(
-      best.workflow.workflowDynastySlug,
-    );
-    if (slugCmp < 0) {
-      best = r;
-      continue;
-    }
-    if (slugCmp > 0) continue;
-    if ((r.audienceId ?? "") < (best.audienceId ?? "")) best = r;
+    // A row the producer did not place in its column states nothing, so it lights
+    // nothing: a fabricated winner is worse than an unlit column.
+    if (r.scopeRank !== 1) continue;
+    const column = r.audienceId ?? CAMPAIGN_SCOPE;
+    const slug = r.workflow.workflowDynastySlug;
+    const held = out.get(column);
+    // The producer states a TOTAL order per column, so a second row at position 1 is a
+    // producer surprise rather than a choice to make here. Keeping the lowest slug makes
+    // it deterministic, so the mark cannot move between two polls of the same data.
+    if (held === undefined || slug.localeCompare(held) < 0) out.set(column, slug);
   }
-  return best == null
-    ? null
-    : { dynastySlug: best.workflow.workflowDynastySlug, audienceId: best.audienceId };
+  return out;
 }
 
-/** Is this cell the one address returned by `bestMatrixCell`? */
-export function isBestCell(
-  address: MatrixCellAddress | null,
+/** Is this cell the one its own column would pick? */
+export function isColumnBestCell(
+  columnBest: Map<string, string>,
   dynastySlug: string,
   audienceId: string | null,
 ): boolean {
-  if (address == null) return false;
-  return address.dynastySlug === dynastySlug && address.audienceId === audienceId;
+  return columnBest.get(audienceId ?? CAMPAIGN_SCOPE) === dynastySlug;
 }
 
 /**

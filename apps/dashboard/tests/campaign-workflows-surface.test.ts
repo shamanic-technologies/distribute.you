@@ -245,12 +245,33 @@ describe("THE MATRIX — rows are the served rank, columns the served audience o
     expect(TABLE).toContain("!cell || cell.costPerOutcomeUsd == null");
   });
 
-  it("marks the single best cell explicitly, because the corner is not the answer", () => {
-    // Row 1 wins on whichever audience it was cheapest for; column 1 is the audience
-    // with the best cost overall. In prod the two did not intersect.
-    expect(TABLE).toContain("bestMatrixCell(matrixRows)");
-    expect(TABLE).toContain("isBestCell(best, r.dynastySlug, null)");
-    expect(TABLE).toContain("isBestCell(best, r.dynastySlug, a.audienceId)");
+  it("lights ONE cell per column: the workflow that column would be put on", () => {
+    // A single global mark answered "where is the cheapest price" and left the other
+    // twelve columns saying nothing. Each column now states its own pick, served.
+    expect(TABLE).toContain("columnBestCells(matrixRows)");
+    expect(TABLE).toContain("isColumnBestCell(columnBest, r.dynastySlug, null)");
+    expect(TABLE).toContain("isColumnBestCell(columnBest, r.dynastySlug, a.audienceId)");
+    expect(TABLE).not.toContain("bestMatrixCell");
+    expect(TABLE).not.toContain("isBestCell");
+  });
+
+  it("a LIT cell still says whose EVIDENCE it rests on", () => {
+    // The two marks answer different questions and both ride the same cell. Collapsing
+    // them would put the footer's own sentence in front of thirteen cells showing no
+    // such thing — and in prod 11 of the 13 picks are inherited floors.
+    const at = TABLE.indexOf("function MatrixCellTd(");
+    const body = TABLE.slice(at, TABLE.indexOf("export function ScopeTable(", at));
+    expect(body).toContain('own ? "font-semibold text-brand-700" : "font-normal text-brand-600"');
+  });
+
+  it("says what the highlight MEANS once, not once per lit cell", () => {
+    // The mark now fires once per column, so a per-cell tooltip would be the same
+    // sentence thirteen times across one grid — which is why the ordinary cells never
+    // had one either. The header tip and the footer carry it.
+    expect(TABLE).toContain(
+      "The highlighted cell in each column is the workflow we would put that audience on.",
+    );
+    expect(TABLE).not.toContain("BEST_CELL_TIP");
   });
 
   it("highlights row 1 and the best column", () => {
@@ -258,15 +279,20 @@ describe("THE MATRIX — rows are the served rank, columns the served audience o
     expect(TABLE).toContain('column && !best ? "bg-gray-50" : ""');
   });
 
-  it("the running row is pinned FIRST and keeps the producer's own rank", () => {
+  it("the running row sits at its SERVED rank and is never moved to the top", () => {
+    // It used to be pinned first, which put a row the producer ranks seventh at the top
+    // of a table whose whole subject is the producer's order. It keeps its tag instead:
+    // what is happening is marked where it belongs rather than duplicated at rank 1.
     const at = TABLE.indexOf("const matrixDisplayRows = useMemo(");
     const body = TABLE.slice(at, TABLE.indexOf("const scopeLadder", at));
-    expect(body).toContain("ordered.findIndex((m) => m.row.running)");
-    expect(body).toContain("return [pinned, ...ordered];");
-    // It is never renumbered: a `#1` badge on a row the producer ranks fourth would be
-    // this surface stating something the ladder does not.
+    expect(body).not.toContain(".splice(");
+    expect(body).not.toContain("pinned");
+    expect(body).not.toContain("m.row.running");
+    // And it is never renumbered: a `#1` badge on a row the producer ranks seventh
+    // would be this surface stating something the ladder does not.
     expect(body).not.toContain("rank: 1,");
     expect(TABLE).toContain('{r.rank ?? "—"}');
+    expect(TABLE).toContain("Running");
   });
 
   it("the rows are the CATALOGUE's, so a retired lineage the ladder prices gets none", () => {
@@ -651,8 +677,43 @@ describe("the table survives a phone and the dark theme", () => {
     const at = TABLE.indexOf("function WorkflowMatrix(");
     const body = TABLE.slice(at, TABLE.indexOf("function ObliqueHeader(", at));
     expect(body).toContain('<div className="overflow-x-auto">');
+    // 240px on a phone, 320px from `md`: the second line wants ~290px to sit on one
+    // row, and a 320px sticky column on a 412px phone leaves 92px of grid.
     expect(body).toContain("sticky left-0 z-10 w-[240px] min-w-[240px] bg-white");
+    expect((body.match(/md:w-\[320px\] md:min-w-\[320px\]/g) ?? []).length).toBe(2);
     expect((body.match(/sticky left-0 z-10/g) ?? []).length).toBe(2);
+  });
+
+  it("names what each workflow WRITES WITH under its name, since there is no column for it", () => {
+    // Two rows of this channel routinely differ only in the model or the template, so
+    // the names alone leave a reader unable to tell them apart. The guard pins the CALL
+    // SITE: a component perfectly able to draw the line is the feature entirely absent
+    // if the matrix never mounts it.
+    const at = TABLE.indexOf("function WorkflowMatrix(");
+    const body = TABLE.slice(at, TABLE.indexOf("function ObliqueHeader(", at));
+    expect(body).toContain("<WorkflowStackLine");
+    expect(body).toContain("contentModel={r.row.contentModel}");
+    expect(body).toContain("contentPromptType={r.row.contentPromptType}");
+  });
+
+  it("that line states the IDS and wraps rather than truncating", () => {
+    // The id is what the workflow STORES and what a reader quotes back to us; the label
+    // is a derivation, and for a template it drops the VERSION that tells two apart. The
+    // longest pair is wider than the column, so it wraps.
+    const cells = read("src/components/workflows/workflow-cells.tsx");
+    const at = cells.indexOf("export function WorkflowStackLine(");
+    const body = cells.slice(at, cells.indexOf("export function WorkflowModelCell(", at));
+    expect(body).toContain("{model.alias}");
+    expect(body).toContain("{template.id}");
+    expect(body).not.toContain("model.label");
+    expect(body).not.toContain("template.label");
+    expect(body).toContain("flex-wrap");
+    expect(body).not.toContain("truncate");
+    // Neither stated means nothing is drawn — never a row of dashes, which would read
+    // as two facts we looked up and failed to find.
+    expect(body).toContain("if (!model && !template) return null;");
+    // An alias the catalogue does not know draws the neutral glyph, never a guessed logo.
+    expect(body).toContain("model.providerDomain ? (");
   });
 
   it("the column heads are OBLIQUE, each with its own face", () => {
@@ -839,13 +900,14 @@ describe("NOTHING in these components orders anything — both positions are ser
   it("the two ordering modules sort on a SERVED position and never on a figure", () => {
     const matrix = read("src/lib/workflow-matrix.ts");
     const rank = read("src/lib/workflow-rank-why.ts");
-    // `bestMatrixCell` selects a minimum, which is a display selection over served
-    // values — it is a reduce, deliberately, so no cost is ever sorted on.
+    // `columnBestCells` READS a served position — it never compares two figures, so no
+    // cost is sorted on, minimised or even mentioned in it.
     const best = matrix.slice(
-      matrix.indexOf("export function bestMatrixCell("),
-      matrix.indexOf("export function isBestCell("),
+      matrix.indexOf("export function columnBestCells("),
+      matrix.indexOf("export function isColumnBestCell("),
     );
     expect(best).not.toContain(".sort(");
+    expect(best).not.toContain("costPerOutcomeUsd");
     const order = rank.slice(
       rank.indexOf("const ordered = [...input.rows].sort("),
       rank.indexOf("const ranked = ordered.map("),
