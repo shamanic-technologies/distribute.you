@@ -176,6 +176,12 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `result.measured` off that very price list to decide whether the fleet has a
       // figure for a funnel nobody here sells yet.
       "lib/offer-funnel-catalogue.ts",
+      // The matrix that second reader draws. It BRANCHES on `measured` for exactly the
+      // same reason as the ordering module below: an explore row's figure is the price
+      // of one outreach, so it is the cheapest cell on the grid by construction and
+      // marking it "best" would crown the least proven thing on the page. Same gate
+      // `recommendedWorkflowDynastySlug` is chosen under.
+      "lib/workflow-matrix.ts",
       "lib/workflow-projection-measured.ts",
       // The ordering + "why" module for that second reader. It BRANCHES on `measured`
       // on purpose: an explore row is the cheapest by construction, so it can never be

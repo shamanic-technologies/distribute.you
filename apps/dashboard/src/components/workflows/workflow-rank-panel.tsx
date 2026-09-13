@@ -112,10 +112,10 @@ const GRAIN_ORDER: { key: WorkflowGrain; label: string; blurb: string }[] = [
 ];
 
 const AUDIENCES_TIP =
-  "What this workflow did for each of your audiences, cheapest first. The rank above is scored over these too — so when the top row of the table is not the cheapest figure on screen, this is where its position comes from.";
+  "What this workflow did for each of your audiences, cheapest first. The rank above is scored over these too, so when the top row of the table is not the cheapest figure on screen, this is where its position comes from.";
 
 const BASIS_TIP =
-  "Charged is money you paid. Incurred counts spend we later refunded at full value, because it answers what the workflow COSTS to produce an outcome rather than what you were billed — which is why the fleet block is read apart from the rest.";
+  "Charged is money you paid. Incurred counts spend we later refunded at full value, because it answers what the workflow COSTS to produce an outcome rather than what you were billed, which is why the fleet block is read apart from the rest.";
 
 const PROJECTED_TIP =
   "This count was walked through your funnel's own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
