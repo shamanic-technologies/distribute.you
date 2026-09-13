@@ -138,3 +138,32 @@ describe("the capture component and its consumer", () => {
     expect(onboarding).toContain("const domain = extractDomain(url);");
   });
 });
+
+describe("a non-website typed on the landing is not STORED as one", () => {
+  // The landing hero accepts whatever a visitor types on purpose. What must not
+  // happen is carrying a non-website into onboarding as though it were one: a
+  // customer typed her gmail address there, signed up with Google, and the URL
+  // step opened holding it, so the brand was created on gmail.com.
+  it("stores nothing for an email address", () => {
+    for (const raw of ["kevin@gmail.com", "https://kevin@gmail.com/", "kevin@acme.com"]) {
+      expect(normalizeLandingUrl(raw)).toBeNull();
+      expect(landingUrlCookieString(raw)).toBeNull();
+    }
+  });
+
+  it("stores nothing for a mailbox provider or a non-hostname", () => {
+    for (const raw of ["gmail.com", "mon entreprise", "localhost", "192.168.1.1"]) {
+      expect(normalizeLandingUrl(raw)).toBeNull();
+      expect(landingUrlCookieString(raw)).toBeNull();
+    }
+  });
+
+  it("re-normalizes on READ, so a hand-edited cookie cannot smuggle one in", () => {
+    const header = `${LANDING_URL_COOKIE}=${encodeURIComponent("https://kevin@gmail.com/")}`;
+    expect(readLandingUrlCookie(header)).toBeNull();
+  });
+
+  it("still stores a real website, path and query intact", () => {
+    expect(normalizeLandingUrl("voozaa.app/us/")).toBe("https://voozaa.app/us/");
+  });
+});

@@ -21,6 +21,8 @@
  * source-substring guards.
  */
 
+import { websiteInputProblem } from "./website-input";
+
 export const LANDING_URL_COOKIE = "distribute_landing_url";
 
 /** 30 days: long enough to survive an abandoned signup resumed the next day,
@@ -36,18 +38,27 @@ const MAX_URL_LENGTH = 512;
  * cannot be one. Adds a scheme to a bare host and keeps the path — the path is
  * the whole point (`voozaa.app/us/` is a different landing page from
  * `voozaa.app`), and it seeds the outreach click destination downstream.
+ *
+ * The landing field itself accepts whatever a visitor types, deliberately: a
+ * hero input that argues with somebody is a hero input that loses them. What is
+ * refused is STORING a non-website as one. An input this returns null for
+ * leaves no cookie at all, so onboarding behaves exactly as it does for a
+ * person who signed up through the plain button — which is the honest fallback,
+ * because we learned nothing about their website.
+ *
+ * `websiteInputProblem` is the one rule (see that module for what an accepted
+ * email address cost). It used to be a bare "the hostname contains a dot" check
+ * here, which is how `kevin@gmail.com` became `https://kevin@gmail.com/` and
+ * then a brand on Google's domain.
  */
 export function normalizeLandingUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
   if (!trimmed || trimmed.length > MAX_URL_LENGTH) return null;
+  if (websiteInputProblem(trimmed)) return null;
   try {
     const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     const parsed = new URL(withScheme);
-    // Only http(s): a `javascript:`/`data:` input parses fine and must never be
-    // stored, let alone rendered back into a field a person then submits.
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-    if (!parsed.hostname.includes(".")) return null;
     const href = parsed.href;
     return href.length > MAX_URL_LENGTH ? null : href;
   } catch {
