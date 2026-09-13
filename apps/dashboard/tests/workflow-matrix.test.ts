@@ -3,12 +3,12 @@
  *
  * What is pinned: the rows read the producer's `rank` and the per-scope lists read its
  * `scopeRank`, a cell is a served figure, the own-evidence/floor split is what makes the
- * grid legible, the best cell is a minimum over MEASURED rows only, and nothing here
- * sorts on a cost.
+ * grid legible, each column lights the row the producer placed FIRST in it, and nothing
+ * here sorts on a cost.
  *
  * The fixture is the shape prod actually serves (measured 2026-09-13 on brand `75d7e3e8`
  * / campaign `f7b1b610`): most cells repeat one inherited floor, a handful rest on an
- * audience's own evidence, and the winner's deciding cell is one of those.
+ * audience's own evidence, and one workflow wins nearly every column.
  */
 import fs from "fs";
 import path from "path";
@@ -19,8 +19,8 @@ import {
   buildMatrixCellIndex,
   matrixWorkflowOrder,
   scopeRankedRows,
-  bestMatrixCell,
-  isBestCell,
+  columnBestCells,
+  isColumnBestCell,
   cellRestsOnOwnEvidence,
   type MatrixGrain,
   type MatrixLadderRow,
@@ -244,57 +244,83 @@ describe("FULL vs MUTED — a cell on its own evidence against an inherited floo
   });
 });
 
-describe("the BEST cell is a minimum over MEASURED rows", () => {
-  it("finds the cheapest cell anywhere on the grid", () => {
-    expect(bestMatrixCell(GRID)).toEqual({ dynastySlug: "lithium", audienceId: "aud-best" });
+describe("each COLUMN lights the cell it would pick", () => {
+  it("reads the producer's scopeRank === 1, one winner per column", () => {
+    const best = columnBestCells(GRID);
+    expect(best.get(CAMPAIGN_SCOPE)).toBe("alioth");
+    expect(best.get("aud-best")).toBe("lithium");
+    expect(best.get("aud-quiet")).toBe("alioth");
   });
 
-  it("does NOT sit in the first row and the first column — the corner is not the answer", () => {
-    // Prod: the best audience overall carried 0 replies on 92 contacted, while the only
-    // measured audience sat second. So the mark is explicit rather than implied.
-    const best = bestMatrixCell(GRID);
-    const columnOne = scopeRankedRows(GRID, "aud-quiet");
-    expect(best?.audienceId).not.toBe(columnOne[0].audienceId);
+  it("lights a cell in the CAMPAIGN column too — it is a column like any other", () => {
+    // The owner kept it: *"laisse la colonne Campaign"*. It answers the campaign-wide
+    // question the audiences answer one grain down, so it takes the same mark.
+    expect(columnBestCells(GRID).has(CAMPAIGN_SCOPE)).toBe(true);
   });
 
-  it("SKIPS an unmeasured row, whose figure is an explore floor and cheapest by construction", () => {
-    const rows = [...GRID, cell("newcomer", null, 0.42, null, { measured: false })];
-    expect(bestMatrixCell(rows)).toEqual({ dynastySlug: "lithium", audienceId: "aud-best" });
+  it("does NOT have to agree with rank 1 — the column's answer is not the campaign's", () => {
+    // `lithium` is rank 1 campaign-wide and yet the campaign column picks `alioth`,
+    // because rank is scored across every column at once. Both are served and both true.
+    const best = columnBestCells(GRID);
+    expect(best.get(CAMPAIGN_SCOPE)).not.toBe("lithium");
+    expect(GRID.find((r) => r.workflow.workflowDynastySlug === "lithium")?.rank).toBe(1);
   });
 
-  it("SKIPS a row the producer could not price", () => {
-    const rows = [cell("a", null, null, "brand"), cell("b", null, 7, "brand")];
-    expect(bestMatrixCell(rows)).toEqual({ dynastySlug: "b", audienceId: null });
-  });
-
-  it("nothing priced means NO mark, never a fabricated winner", () => {
-    expect(bestMatrixCell([])).toBeNull();
-    expect(bestMatrixCell([cell("a", null, null, null, { measured: false })])).toBeNull();
-  });
-
-  it("breaks a tie on the slug then the column, so the mark does not move on a poll", () => {
+  it("leaves a column the producer never placed a row in UNLIT, never a fabricated winner", () => {
     const rows = [
-      cell("zeta", "b", 10, "audience"),
-      cell("alpha", "b", 10, "audience"),
-      cell("alpha", "a", 10, "audience"),
+      cell("a", "unranked", 10, "crossOrg", { scopeRank: null }),
+      cell("b", "unranked", 20, "crossOrg", { scopeRank: null }),
     ];
-    expect(bestMatrixCell(rows)).toEqual({ dynastySlug: "alpha", audienceId: "a" });
+    expect(columnBestCells(rows).size).toBe(0);
+    expect(columnBestCells([]).size).toBe(0);
   });
 
-  it("is a REDUCE, not a sort on a cost", () => {
+  it("lights a cell whose figure is an inherited FLOOR — most columns have measured nothing", () => {
+    // The two marks are independent: full-vs-muted is about evidence, the highlight is
+    // about the pick. In prod 11 of 13 columns pick a crossOrg-grain cell.
+    const best = columnBestCells(GRID);
+    const picked = GRID.find(
+      (r) => r.audienceId === "aud-quiet" && r.workflow.workflowDynastySlug === best.get("aud-quiet"),
+    );
+    expect(picked?.resolved.grain).toBe("crossOrg");
+  });
+
+  it("breaks a duplicate position on the slug, so the mark cannot move between polls", () => {
+    // The producer states a TOTAL order per column, so two rows at 1 is its surprise,
+    // not a choice to make here — it is resolved deterministically and moves on.
+    const rows = [
+      cell("zeta", "b", 10, "audience", { scopeRank: 1 }),
+      cell("alpha", "b", 10, "audience", { scopeRank: 1 }),
+    ];
+    expect(columnBestCells(rows).get("b")).toBe("alpha");
+  });
+
+  it("reads a field — it never sorts, compares or minimises a cost", () => {
     const src = fs.readFileSync(path.join(__dirname, "../src/lib/workflow-matrix.ts"), "utf-8");
     const body = src.slice(
-      src.indexOf("export function bestMatrixCell("),
-      src.indexOf("export function isBestCell("),
+      src.indexOf("export function columnBestCells("),
+      src.indexOf("export function isColumnBestCell("),
     );
     expect(body).not.toContain(".sort(");
+    expect(body).toContain("r.scopeRank !== 1");
+    expect(body).not.toContain("costPerOutcomeUsd");
   });
 
-  it("addresses exactly one cell", () => {
-    const best = bestMatrixCell(GRID);
-    expect(isBestCell(best, "lithium", "aud-best")).toBe(true);
-    expect(isBestCell(best, "lithium", null)).toBe(false);
-    expect(isBestCell(best, "alioth", "aud-best")).toBe(false);
-    expect(isBestCell(null, "lithium", "aud-best")).toBe(false);
+  it("addresses exactly the cells its own columns picked", () => {
+    const best = columnBestCells(GRID);
+    expect(isColumnBestCell(best, "lithium", "aud-best")).toBe(true);
+    expect(isColumnBestCell(best, "alioth", null)).toBe(true);
+    expect(isColumnBestCell(best, "lithium", null)).toBe(false);
+    expect(isColumnBestCell(best, "alioth", "aud-best")).toBe(false);
+    expect(isColumnBestCell(new Map(), "lithium", "aud-best")).toBe(false);
+  });
+
+  it("the single global best-cell mark is GONE, with its address type", () => {
+    // It answered "where is the cheapest price on this grid", which is not the question
+    // a reader has — and it left twelve columns saying nothing.
+    const src = fs.readFileSync(path.join(__dirname, "../src/lib/workflow-matrix.ts"), "utf-8");
+    expect(src).not.toContain("bestMatrixCell");
+    expect(src).not.toContain("isBestCell");
+    expect(src).not.toContain("MatrixCellAddress");
   });
 });
