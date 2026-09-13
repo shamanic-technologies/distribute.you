@@ -18,6 +18,9 @@ import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
 import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { funnelLegOperator, funnelLegOperatorLabel } from "@/lib/funnel-leg-operator";
 import { SALES_FUNNELS } from "@/lib/sales-funnels";
+import { MaturityBadge } from "@/components/maturity-badge";
+import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
+import type { LeadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import type { LeadCampaignAudience } from "@/components/audiences/lead-campaign-sections";
 
 /**
@@ -48,7 +51,19 @@ export function LeadScopeCards({
   funnelKey: string | null;
   /** The leg, channel and audience are facts about the PERSON only when they have one
    *  campaign. With several, each card in the list below states its own. */
-  sole: { featureSlug: string | null; legKey: string | null; audience: LeadCampaignAudience | null } | null;
+  sole: {
+    featureSlug: string | null;
+    legKey: string | null;
+    audience: LeadCampaignAudience | null;
+    /** The campaign this person's one card names — what the Workflow card links into. */
+    campaignId: string;
+    /**
+     * The workflow that SERVED this person, resolved from the slug their own row froze.
+     * Null when the row states none, when the reader is not on the beta, or while the
+     * two channel reads are in flight: a card is drawn only once there is one to draw.
+     */
+    workflow: LeadWorkflowIdentity | null;
+  } | null;
 }) {
   const params = useParams();
   const orgId = params.orgId as string;
@@ -151,6 +166,13 @@ export function LeadScopeCards({
         />
       )}
       {sole && (sole.audience ? <AudienceScopeCard audience={sole.audience} /> : null)}
+      {sole?.workflow && (
+        <WorkflowScopeCard
+          workflow={sole.workflow}
+          offerId={offer?.id ?? null}
+          campaignId={sole.campaignId}
+        />
+      )}
     </>
   );
 }
@@ -243,6 +265,105 @@ function AudienceScopeCard({ audience }: { audience: LeadCampaignAudience }) {
           className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
         >
           View audience details
+        </Link>
+      )}
+    </div>
+  );
+}
+
+/**
+ * THE WORKFLOW THAT SERVED THIS PERSON, and what it writes with.
+ *
+ * The lead's own `leads_campaigns` row froze a versioned workflow slug at serve time,
+ * so this names the workflow that actually processed THEM rather than whatever the
+ * campaign is pinned to today. It draws under Audience because it is the last link in
+ * the same story: the audience says who was picked, the workflow says what ran on them.
+ *
+ * BETA, and gated by the PAGE — the reads behind it fire only for a beta reader, so a
+ * card reaching here has already passed that gate. The badge rides the heading, which
+ * is the visible half of the rule: a gate with no badge is a surface whose own reader
+ * cannot tell it is beta.
+ *
+ * ⚠️ THE MODEL AND THE TEMPLATE ARE THE WORKFLOW'S, NOT THIS EMAIL'S, and the card says
+ * so in one line. workflow-service publishes them for each dynasty's CURRENT version
+ * only, so an earlier version that served this person may have named a different model
+ * or template and nothing on the wire could tell us. Printing them as "what wrote this
+ * email" would be a claim we cannot back; printing nothing would withhold a fact the
+ * reader came for.
+ *
+ * The cells are the SAME two the campaign Workflows table draws, so a workflow cannot
+ * read one way here and another way on the page this card links into.
+ */
+function WorkflowScopeCard({
+  workflow,
+  offerId,
+  campaignId,
+}: {
+  workflow: LeadWorkflowIdentity;
+  offerId: string | null;
+  campaignId: string;
+}) {
+  const params = useParams();
+  const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
+  // The Workflows page lives under the campaign, which lives under the OFFER it sells,
+  // so the link is built from the CARD's own offer and campaign rather than from
+  // whichever route the reader is on — a brand-scoped reader has no offer segment, and
+  // building it from the route is what sends them to a path that does not exist.
+  //
+  // No dynasty resolved ⟹ NO link: `?workflow=` opens the panel BY dynasty slug, so a
+  // link without one lands on the list with nothing open, which reads as a broken
+  // control rather than as an answer.
+  const detailHref =
+    offerId && workflow.dynastySlug
+      ? `${tenantBasePath(orgId, brandId, offerId)}/campaigns/${campaignId}/workflows?workflow=${encodeURIComponent(
+          workflow.dynastySlug,
+        )}`
+      : null;
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</h3>
+        <MaturityBadge level="beta" />
+      </div>
+      {/* A version nothing can name still names ITSELF: the frozen slug is what the row
+          holds, and stating it keeps the attribution while admitting the lookup missed. */}
+      <p className="truncate text-sm font-medium text-gray-800">
+        {workflow.dynastyName ?? workflow.workflowSlug}
+      </p>
+      {workflow.dynastySlug ? (
+        <>
+          <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+                LLM
+              </p>
+              <WorkflowModelCell contentModel={workflow.contentModel} />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+                AI template
+              </p>
+              <WorkflowTemplateCell contentPromptType={workflow.contentPromptType} />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-gray-500">
+            The model and the template are what this workflow runs today. An earlier
+            version of it may have written this email.
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-sm text-gray-600">
+          This version is not one the channel currently offers, so we cannot say what it
+          writes with.
+        </p>
+      )}
+      {detailHref && (
+        <Link
+          href={detailHref}
+          className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
+        >
+          View workflow details
         </Link>
       )}
     </div>

@@ -15,6 +15,7 @@ import {
   collapseWorkflowCatalogue,
   runningDynastyFor,
   resolveRunningWorkflow,
+  leadWorkflowIdentity,
   fleetComparison,
   type CampaignWorkflowRow,
   type FleetWorkflowCost,
@@ -512,5 +513,71 @@ describe("the model module stays alias-free", () => {
     );
     const runtimeAliasImport = /^import\s+(?!type\b)[^;]*from\s+"@\//m;
     expect(runtimeAliasImport.test(src)).toBe(false);
+  });
+});
+
+describe("the workflow that served ONE LEAD, and what it writes with", () => {
+  // The lead's own `leads_campaigns` row froze a VERSIONED slug at serve time, and the
+  // ordinary case is that the version is superseded by now — so the dynasty map is what
+  // answers, exactly as it is for a campaign's pin.
+  const cur = cat({
+    workflowSlug: "chan-legato-v9",
+    workflowDynastySlug: "chan-legato",
+    version: 9,
+    contentModel: "deepseek-pro",
+    contentPromptType: "blind-discovery-email-v26",
+  });
+  const map = [
+    {
+      workflowDynastySlug: "chan-legato",
+      workflowDynastyName: "Legato",
+      workflowSlugs: ["chan-legato-v2", "chan-legato-v9"],
+    },
+  ];
+
+  it("names the dynasty of a superseded version, and states the CURRENT version's model", () => {
+    expect(leadWorkflowIdentity("chan-legato-v2", [cur], map)).toEqual({
+      workflowSlug: "chan-legato-v2",
+      dynastySlug: "chan-legato",
+      dynastyName: "Legato",
+      // ⚠️ The dynasty's CURRENT version's, NOT v2's — workflow-service publishes
+      // neither per superseded version, so the surface states them as the workflow's
+      // and says which rather than claiming they wrote this person's email.
+      contentModel: "deepseek-pro",
+      contentPromptType: "blind-discovery-email-v26",
+    });
+  });
+
+  it("keeps the frozen slug when nothing in the fleet names the version", () => {
+    // The slug IS what the row holds, so naming it keeps a real attribution while
+    // admitting the lookup missed. Returning null would hide the fact entirely.
+    expect(leadWorkflowIdentity("chan-unknown-v3", [cur], map)).toEqual({
+      workflowSlug: "chan-unknown-v3",
+      dynastySlug: null,
+      dynastyName: null,
+      contentModel: null,
+      contentPromptType: null,
+    });
+  });
+
+  it("states nothing at all for a row that froze no slug", () => {
+    expect(leadWorkflowIdentity(null, [cur], map)).toBeNull();
+    expect(leadWorkflowIdentity("   ", [cur], map)).toBeNull();
+  });
+
+  it("draws no model when the workflow's own call names none", () => {
+    // Null is workflow-service's word for "the call names none" — half the live
+    // channel — and it must never become a guessed default tier.
+    const bare = cat({
+      workflowSlug: "chan-legato-v9",
+      workflowDynastySlug: "chan-legato",
+      version: 9,
+      contentModel: null,
+      contentPromptType: null,
+    });
+    const out = leadWorkflowIdentity("chan-legato-v9", [bare], map);
+    expect(out?.dynastySlug).toBe("chan-legato");
+    expect(out?.contentModel).toBeNull();
+    expect(out?.contentPromptType).toBeNull();
   });
 });

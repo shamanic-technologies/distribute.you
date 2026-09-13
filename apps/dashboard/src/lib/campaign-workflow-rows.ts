@@ -490,3 +490,67 @@ export function fleetComparison(
     priced.length % 2 === 1 ? priced[mid] : (priced[mid - 1] + priced[mid]) / 2;
   return { mine, median, best: priced[0] };
 }
+
+/**
+ * WHICH WORKFLOW SERVED ONE LEAD, and what that workflow writes with.
+ *
+ * lead-service freezes the versioned `workflowSlug` on the `leads_campaigns` row at
+ * serve time, so a person's own row names the workflow that actually processed them —
+ * a fact about THEM, never about what their campaign happens to run today. The lead
+ * panel states it; this resolves it.
+ *
+ * ⚠️ THE TWO HALVES ANSWER DIFFERENT QUESTIONS AND THE CALLER MUST SAY SO.
+ *
+ * `dynastySlug` / `dynastyName` are about the version the lead ran: the membership map
+ * names the dynasty a superseded version belongs to, so this half is exact.
+ *
+ * `contentModel` / `contentPromptType` are NOT. The catalogue carries each dynasty's
+ * CURRENT version only, so they are what that workflow writes with TODAY — the lead
+ * may well have been served by an earlier version naming a different model or a
+ * different template, and workflow-service publishes neither per superseded version.
+ * Stating them as "what wrote this person's email" would be a claim nothing on the
+ * wire supports, so the surface states them as the workflow's and says which.
+ *
+ * A slug nothing can name still answers: the versioned slug IS what the row froze, so
+ * the caller names it and draws no model, no template and no link — the same shape the
+ * Acquisition channel card takes for a feature slug the catalogue misses. Returning
+ * null there would hide a real attribution behind a lookup miss.
+ */
+export interface LeadWorkflowIdentity {
+  /** The versioned slug the lead's own row froze. Always present — it is what we know. */
+  workflowSlug: string;
+  /** Null when nothing in the fleet names the dynasty this version belongs to. */
+  dynastySlug: string | null;
+  /** The dynasty's name. Null = nothing named it; the caller falls back to the slug. */
+  dynastyName: string | null;
+  /** The DYNASTY'S CURRENT version's model alias. Null = it names none, or unresolved. */
+  contentModel: string | null;
+  /** Same, for the prompt template that call asks for. */
+  contentPromptType: string | null;
+}
+
+export function leadWorkflowIdentity(
+  leadWorkflowSlug: string | null | undefined,
+  catalogue: readonly WorkflowCatalogueRow[],
+  memberships: readonly WorkflowDynastyMembership[] = [],
+): LeadWorkflowIdentity | null {
+  const workflowSlug = leadWorkflowSlug?.trim();
+  // No slug on the row ⟹ nothing to state. lead-service serves it nullable, and a row
+  // that predates the column is not a row served by a workflow we can name.
+  if (!workflowSlug) return null;
+  // Reuses the campaign resolver rather than restating its precedence: a lead's frozen
+  // slug and a campaign's pinned slug are the same kind of token, and two ladders for
+  // one lookup is how one workflow comes to read two ways on one screen. No revenue
+  // groups — this surface holds none, and the membership map is what answers anyway.
+  const { dynastySlug, dynastyName } = resolveRunningWorkflow(workflowSlug, catalogue, [], memberships);
+  const current = dynastySlug
+    ? collapseWorkflowCatalogue(catalogue).find((c) => c.workflowDynastySlug === dynastySlug) ?? null
+    : null;
+  return {
+    workflowSlug,
+    dynastySlug,
+    dynastyName,
+    contentModel: current?.contentModel ?? null,
+    contentPromptType: current?.contentPromptType ?? null,
+  };
+}
