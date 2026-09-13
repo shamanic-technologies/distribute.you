@@ -34,6 +34,8 @@ import {
   keepLastGoodFeatureRevenue,
   getOfferSalesFunnels,
   listAudiences,
+  listChannelWorkflows,
+  listChannelWorkflowDynasties,
   type Lead,
   type LeadConsolidatedStatus,
   type LeadEmailGeneration,
@@ -96,6 +98,7 @@ import { campaignLegFor } from "@/lib/campaign-leg";
 import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
 import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
+import { leadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { LeadOutcome, RevenueOverview } from "@/lib/revenue-view";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -1710,6 +1713,47 @@ export function EngagedLeadsPage({
     [audiencesData, selectedLead],
   );
 
+  // ── WHICH WORKFLOW SERVED THIS PERSON (beta) ─────────────────────────────────
+  //
+  // lead-service freezes a versioned workflow slug on the `leads_campaigns` row at
+  // serve time, so the person's OWN row names the pipeline that processed them. It
+  // sits at row level rather than on the per-campaign cards, which is what bounds this
+  // to a person with ONE campaign: with several, the row's single slug belongs to one
+  // of them and nothing on the wire says which, so a card under any of them would be a
+  // guess. `panelScope.sole` is exactly that condition, and it is always true on a
+  // campaign-scoped page. Widening it is a lead-service ask — serve `workflowSlug` on
+  // each `campaigns[]` card — never a derivation here.
+  //
+  // The CHANNEL is the card's own (`sole.info.featureSlug`), never `featureSlug` above:
+  // that one falls back to the brand's sole channel off a campaign route, which would
+  // list a different channel's workflows for a person contacted through this one.
+  const panelWorkflowSlug = panelScope.sole ? selectedLead?.workflowSlug ?? null : null;
+  const panelChannelSlug = panelScope.sole?.info?.featureSlug ?? null;
+  // Both reads are per-CHANNEL and fire only for a beta reader with a slug to resolve,
+  // so a non-beta panel costs nothing. The catalogue names the dynasty's current
+  // version and what it writes with; the membership map is the only thing in the fleet
+  // that can name the dynasty a SUPERSEDED version belongs to, which is the ordinary
+  // case for a lead served weeks ago.
+  const panelWorkflowReady = isBetaUserForPanel && Boolean(panelChannelSlug && panelWorkflowSlug);
+  const { data: panelWorkflowCatalogue } = useAuthQuery(
+    ["workflows", panelChannelSlug ?? "none"],
+    () => listChannelWorkflows(panelChannelSlug as string),
+    { refetchInterval: POLL_INTERVAL, enabled: panelWorkflowReady },
+  );
+  const { data: panelWorkflowDynasties } = useAuthQuery(
+    ["workflowDynasties", panelChannelSlug ?? "none"],
+    () => listChannelWorkflowDynasties(panelChannelSlug as string),
+    { refetchInterval: POLL_INTERVAL, enabled: panelWorkflowReady },
+  );
+  // A read still in flight contributes nothing rather than resolving to a WRONG answer:
+  // without the membership map a superseded version is unnameable, and drawing the card
+  // then would state "not one the channel currently offers" about a workflow we simply
+  // have not finished looking up. Both settled, or no card.
+  const panelWorkflow = useMemo(() => {
+    if (!panelWorkflowReady || !panelWorkflowCatalogue || !panelWorkflowDynasties) return null;
+    return leadWorkflowIdentity(panelWorkflowSlug, panelWorkflowCatalogue, panelWorkflowDynasties);
+  }, [panelWorkflowReady, panelWorkflowCatalogue, panelWorkflowDynasties, panelWorkflowSlug]);
+
 
   // ── Funnel-stage statements for the open lead ────────────────────────────────
   // WHICH funnel this panel walks. Exactly two scopes STATE one, and neither guesses:
@@ -2435,6 +2479,8 @@ export function EngagedLeadsPage({
                       featureSlug: panelScope.sole.info?.featureSlug ?? null,
                       legKey: panelScope.sole.info?.legKey ?? null,
                       audience: audienceForCard(panelScope.sole.card),
+                      campaignId: panelScope.sole.campaignId,
+                      workflow: panelWorkflow,
                     }
                   : null
               }
