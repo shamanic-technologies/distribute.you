@@ -1,6 +1,10 @@
 import type { CommittedMrrBucket, FleetRevenueBucket, MrrSplitBucket, RetentionBucket } from "@/lib/api";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
-import { barsBehindLatest, type CompoundGrowthSummary } from "@/lib/compound-growth";
+import {
+  compoundGrowthSeries,
+  compoundGrowthSummary,
+  type CompoundGrowthSummary,
+} from "@/lib/compound-growth";
 
 /**
  * A charted period bucket for the Revenue view. `value` is a USD amount (realized
@@ -41,12 +45,18 @@ function monthLabelFromKey(key: string): string {
 /**
  * Attach period-over-period growth and compound-since-inception (CMGR/CWGR) to a
  * value series. Mirrors `signup-buckets.withDerived`, generalised over `value`.
- * The compound rate is anchored on the first bucket with value > 0.
+ *
+ * The compound rate comes from the SHARED `compoundGrowthSeries` rather than an
+ * inline copy of its arithmetic: the exponent counts CALENDAR periods from the
+ * anchor, which is what keeps a series with a hole in it (the weekly MRR split
+ * has no 2026-W32) from compounding a ten-week span over seven bars.
  */
 function withDerived(raw: Array<{ key: string; label: string; value: number }>): RevenueBucket[] {
   const sorted = [...raw].sort((a, b) => a.key.localeCompare(b.key));
-  const baseIndex = sorted.findIndex((bucket) => bucket.value > 0);
-  const base = baseIndex >= 0 ? sorted[baseIndex].value : 0;
+  const cmgr = compoundGrowthSeries(
+    sorted.map((bucket) => bucket.value),
+    sorted.map((bucket) => bucket.key),
+  );
 
   return sorted.map((bucket, index) => {
     const prev = sorted[index - 1];
@@ -55,13 +65,7 @@ function withDerived(raw: Array<{ key: string; label: string; value: number }>):
         ? Number((((bucket.value - prev.value) / prev.value) * 100).toFixed(1))
         : null;
 
-    const periods = baseIndex >= 0 ? index - baseIndex : -1;
-    const cmgrPct =
-      base > 0 && periods >= 1
-        ? Number(((Math.pow(bucket.value / base, 1 / periods) - 1) * 100).toFixed(1))
-        : null;
-
-    return { ...bucket, growthPct, cmgrPct };
+    return { ...bucket, growthPct, cmgrPct: cmgr[index] };
   });
 }
 
@@ -96,22 +100,15 @@ export function revenueBuckets(buckets: FleetRevenueBucket[], granularity: Granu
 /**
  * Headline for a bucket series, excluding the current (partial) period:
  * - `latestPct` — CMGR/CWGR up to the last CONCLUDED period.
- * - `avgPct` — mean of every plotted compound-rate point (concluded only).
- * - `barsUsed` — bars behind `latestPct`, anchor included.
- * Mirrors `signup-buckets.cmgrSummary`.
+ * - `periodsSpanned` — calendar periods behind `latestPct`, anchor included.
+ * Mirrors `signup-buckets.cmgrSummary` — same shared rule, so a revenue card and
+ * a signup card can never state the span two different ways.
  */
 export function revenueCmgrSummary(buckets: RevenueBucket[]): CompoundGrowthSummary {
-  if (buckets.length < 2) return { latestPct: null, avgPct: null, barsUsed: null };
-  const concluded = buckets.slice(0, -1);
-  const latestPct = concluded[concluded.length - 1]?.cmgrPct ?? null;
-  const points = concluded.map((b) => b.cmgrPct).filter((v): v is number => v !== null);
-  const avgPct =
-    points.length > 0 ? Number((points.reduce((sum, v) => sum + v, 0) / points.length).toFixed(1)) : null;
-  return {
-    latestPct,
-    avgPct,
-    barsUsed: barsBehindLatest(concluded.map((b) => b.cmgrPct), latestPct),
-  };
+  return compoundGrowthSummary(
+    buckets.map((b) => b.cmgrPct),
+    buckets.map((b) => b.key),
+  );
 }
 
 // ── MRR / ARR (committed run-rate) ───────────────────────────────────────────

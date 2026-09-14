@@ -75,7 +75,7 @@ describe("signup rate buckets", () => {
     ]);
     const summary = rateCmgrSummary(rates);
     expect(summary.latestPct).toBe(100);
-    expect(summary.barsUsed).toBe(2);
+    expect(summary.periodsSpanned).toBe(2);
   });
 
   it("buckets weeks on the ISO week the days fall in", () => {

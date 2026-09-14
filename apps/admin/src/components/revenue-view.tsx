@@ -89,8 +89,7 @@ function PeriodCard({
   cmgrLabel,
   cmgrUnit,
   latestPct,
-  avgPct,
-  barsUsed,
+  periodsSpanned,
   buckets,
   growthLabel,
   valueLabel,
@@ -101,8 +100,7 @@ function PeriodCard({
   cmgrLabel: string;
   cmgrUnit: "weekly" | "monthly";
   latestPct: number | null;
-  avgPct: number | null;
-  barsUsed: number | null;
+  periodsSpanned: number | null;
   buckets: RevenueBucket[];
   growthLabel: string;
   valueLabel: string;
@@ -117,7 +115,7 @@ function PeriodCard({
       subtitle={subtitle}
       cmgrLabel={cmgrLabel}
       cmgrUnit={cmgrUnit}
-      summary={{ latestPct, avgPct, barsUsed }}
+      summary={{ latestPct, periodsSpanned }}
       data={toCompoundPoints(buckets)}
       valueLabel={valueLabel}
       growthLabel={growthLabel}
@@ -581,8 +579,7 @@ export function RevenueView({
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
           latestPct={cash.monthlyCmgr.latestPct}
-          avgPct={cash.monthlyCmgr.avgPct}
-          barsUsed={cash.monthlyCmgr.barsUsed}
+          periodsSpanned={cash.monthlyCmgr.periodsSpanned}
           buckets={cash.monthly}
           growthLabel="CMGR since the first charge"
           valueLabel="net cash"
@@ -594,8 +591,7 @@ export function RevenueView({
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
           latestPct={cash.weeklyCmgr.latestPct}
-          avgPct={cash.weeklyCmgr.avgPct}
-          barsUsed={cash.weeklyCmgr.barsUsed}
+          periodsSpanned={cash.weeklyCmgr.periodsSpanned}
           buckets={cash.weekly}
           growthLabel="CWGR since the first charge"
           valueLabel="net cash"
@@ -637,8 +633,7 @@ export function RevenueView({
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
           latestPct={mc?.latestPct ?? null}
-          avgPct={mc?.avgPct ?? null}
-          barsUsed={mc?.barsUsed ?? null}
+          periodsSpanned={mc?.periodsSpanned ?? null}
           buckets={derived?.monthly ?? []}
           growthLabel="CMGR since inception"
           valueLabel="revenue"
@@ -650,8 +645,7 @@ export function RevenueView({
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
           latestPct={wc?.latestPct ?? null}
-          avgPct={wc?.avgPct ?? null}
-          barsUsed={wc?.barsUsed ?? null}
+          periodsSpanned={wc?.periodsSpanned ?? null}
           buckets={derived?.weekly ?? []}
           growthLabel="CWGR since inception"
           valueLabel="revenue"
@@ -816,8 +810,7 @@ export function RevenueView({
               cmgrLabel="CMGR"
               cmgrUnit="monthly"
               latestPct={derived?.monthlyTotalCmgr.latestPct ?? null}
-              avgPct={derived?.monthlyTotalCmgr.avgPct ?? null}
-              barsUsed={derived?.monthlyTotalCmgr.barsUsed ?? null}
+              periodsSpanned={derived?.monthlyTotalCmgr.periodsSpanned ?? null}
               buckets={derived?.monthlyTotal ?? []}
               growthLabel="CMGR since the first recorded day"
               valueLabel="MRR"
@@ -829,8 +822,7 @@ export function RevenueView({
               cmgrLabel="CWGR"
               cmgrUnit="weekly"
               latestPct={derived?.weeklyTotalCmgr.latestPct ?? null}
-              avgPct={derived?.weeklyTotalCmgr.avgPct ?? null}
-              barsUsed={derived?.weeklyTotalCmgr.barsUsed ?? null}
+              periodsSpanned={derived?.weeklyTotalCmgr.periodsSpanned ?? null}
               buckets={derived?.weeklyTotal ?? []}
               growthLabel="CWGR since the first recorded day"
               valueLabel="MRR"
@@ -845,8 +837,7 @@ export function RevenueView({
               cmgrLabel="CMGR"
               cmgrUnit="monthly"
               latestPct={derived?.monthlySelfServeCmgr.latestPct ?? null}
-              avgPct={derived?.monthlySelfServeCmgr.avgPct ?? null}
-              barsUsed={derived?.monthlySelfServeCmgr.barsUsed ?? null}
+              periodsSpanned={derived?.monthlySelfServeCmgr.periodsSpanned ?? null}
               buckets={derived?.monthlySelfServe ?? []}
               growthLabel="CMGR since the first recorded day"
               valueLabel="self-serve MRR"
@@ -858,8 +849,7 @@ export function RevenueView({
               cmgrLabel="CWGR"
               cmgrUnit="weekly"
               latestPct={derived?.weeklySelfServeCmgr.latestPct ?? null}
-              avgPct={derived?.weeklySelfServeCmgr.avgPct ?? null}
-              barsUsed={derived?.weeklySelfServeCmgr.barsUsed ?? null}
+              periodsSpanned={derived?.weeklySelfServeCmgr.periodsSpanned ?? null}
               buckets={derived?.weeklySelfServe ?? []}
               growthLabel="CWGR since the first recorded day"
               valueLabel="self-serve MRR"
@@ -874,8 +864,7 @@ export function RevenueView({
               cmgrLabel="CMGR"
               cmgrUnit="monthly"
               latestPct={derived?.monthlyAgencyCmgr.latestPct ?? null}
-              avgPct={derived?.monthlyAgencyCmgr.avgPct ?? null}
-              barsUsed={derived?.monthlyAgencyCmgr.barsUsed ?? null}
+              periodsSpanned={derived?.monthlyAgencyCmgr.periodsSpanned ?? null}
               buckets={derived?.monthlyAgency ?? []}
               growthLabel="CMGR since the first recorded day"
               valueLabel="agency MRR"
@@ -887,8 +876,7 @@ export function RevenueView({
               cmgrLabel="CWGR"
               cmgrUnit="weekly"
               latestPct={derived?.weeklyAgencyCmgr.latestPct ?? null}
-              avgPct={derived?.weeklyAgencyCmgr.avgPct ?? null}
-              barsUsed={derived?.weeklyAgencyCmgr.barsUsed ?? null}
+              periodsSpanned={derived?.weeklyAgencyCmgr.periodsSpanned ?? null}
               buckets={derived?.weeklyAgency ?? []}
               growthLabel="CWGR since the first recorded day"
               valueLabel="agency MRR"

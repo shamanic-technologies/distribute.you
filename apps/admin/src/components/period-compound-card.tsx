@@ -48,12 +48,11 @@ export function PeriodCompoundCard({
       <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
       <div className="mt-4">
         {pending ? (
-          <Skeleton className="h-16 w-32 rounded" />
+          <Skeleton className="h-8 w-32 rounded" />
         ) : (
           <CmgrStat
             latestPct={summary.latestPct}
-            avgPct={summary.avgPct}
-            barsUsed={summary.barsUsed}
+            periodsSpanned={summary.periodsSpanned}
             label={cmgrLabel}
             unit={cmgrUnit}
           />

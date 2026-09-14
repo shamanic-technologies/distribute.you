@@ -36,7 +36,10 @@ function bucketLabel(periodStart: string, granularity: "month" | "week"): string
  * signups view; no backend change).
  */
 function toCompoundPoints(buckets: ActiveUsersBucket[], granularity: "month" | "week"): PeriodCompoundPoint[] {
-  const cmgr = compoundGrowthSeries(buckets.map((b) => b.activeUsers));
+  const cmgr = compoundGrowthSeries(
+    buckets.map((b) => b.activeUsers),
+    buckets.map((b) => b.period),
+  );
   return buckets.map((b, i) => ({
     label: bucketLabel(b.periodStart, granularity),
     value: b.activeUsers,
@@ -107,10 +110,21 @@ export function ActiveUsersView() {
 
   const s = data?.stats;
 
-  const monthlyPoints = toCompoundPoints(history?.monthly ?? [], "month");
-  const weeklyPoints = toCompoundPoints(history?.weekly ?? [], "week");
-  const monthlyCmgr = compoundGrowthSummary(monthlyPoints.map((p) => p.cmgrPct));
-  const weeklyCmgr = compoundGrowthSummary(weeklyPoints.map((p) => p.cmgrPct));
+  const monthlyBuckets = history?.monthly ?? [];
+  const weeklyBuckets = history?.weekly ?? [];
+  const monthlyPoints = toCompoundPoints(monthlyBuckets, "month");
+  const weeklyPoints = toCompoundPoints(weeklyBuckets, "week");
+  // The span is counted over the buckets' own period KEYS, not over the charted
+  // points — a point carries only its axis label, and a label cannot say how many
+  // calendar periods separate two bars when one is missing.
+  const monthlyCmgr = compoundGrowthSummary(
+    monthlyPoints.map((p) => p.cmgrPct),
+    monthlyBuckets.map((b) => b.period),
+  );
+  const weeklyCmgr = compoundGrowthSummary(
+    weeklyPoints.map((p) => p.cmgrPct),
+    weeklyBuckets.map((b) => b.period),
+  );
 
   if (isError) {
     return (

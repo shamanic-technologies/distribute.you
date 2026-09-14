@@ -36,10 +36,20 @@ function usd(value: number | null | undefined): string {
   return `$${Math.round(value).toLocaleString("en-US")}`;
 }
 
-/** One compound weekly rate out of a value series, the same way the metrics page derives its own. */
-function weeklyFigure(label: string, values: number[], current: string | null): DeckGrowthFigure {
-  const summary = compoundGrowthSummary(compoundGrowthSeries(values));
-  return { label, pct: summary.latestPct, current, weeksUsed: summary.barsUsed };
+/**
+ * One compound weekly rate out of a value series, the same way the metrics page
+ * derives its own. `keys` are the buckets' own ISO-week keys: the exponent and the
+ * span count CALENDAR weeks, so a series missing a week does not compound over a
+ * shorter span than it claims.
+ */
+function weeklyFigure(
+  label: string,
+  values: number[],
+  keys: string[],
+  current: string | null,
+): DeckGrowthFigure {
+  const summary = compoundGrowthSummary(compoundGrowthSeries(values, keys), keys);
+  return { label, pct: summary.latestPct, current, weeksUsed: summary.periodsSpanned };
 }
 
 /* ── Slide chrome ─────────────────────────────────────────────────────────── */
@@ -108,20 +118,25 @@ export function InvestorDeckView({ timeline }: { timeline: DailyFunnelPoint[] })
     const rev = revenueQuery.data;
     const users = usersQuery.data;
 
+    const revenueWeeks = rev?.weekly ?? [];
     const revenue = weeklyFigure(
       "Revenue",
-      (rev?.weekly ?? []).map((b) => b.revenueUsd),
+      revenueWeeks.map((b) => b.revenueUsd),
+      revenueWeeks.map((b) => b.period),
       rev ? usd(rev.totalRevenueUsd) : null
     );
+    const userWeeks = users?.weekly ?? [];
     const activeUsers = weeklyFigure(
       "Active users",
-      (users?.weekly ?? []).map((b) => b.activeUsers),
+      userWeeks.map((b) => b.activeUsers),
+      userWeeks.map((b) => b.period),
       users ? formatCount(users.currentTotal) : null
     );
     const signupBuckets = weeklySignups(timeline);
     const signups = weeklyFigure(
       "Signups",
       signupBuckets.map((b) => b.signups),
+      signupBuckets.map((b) => b.key),
       formatCount(signupBuckets.reduce((sum, b) => sum + b.signups, 0))
     );
 

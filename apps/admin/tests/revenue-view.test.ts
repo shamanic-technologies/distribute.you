@@ -105,10 +105,10 @@ describe("Revenue bucket derivations", () => {
 
   it("cmgr summary drops the current partial period", () => {
     const buckets = revenueBuckets(monthly, "month");
-    const { latestPct, avgPct } = revenueCmgrSummary(buckets);
+    const { latestPct, periodsSpanned } = revenueCmgrSummary(buckets);
     // concluded = first two buckets; latest concluded cmgr is bucket 2's (+100%)
     expect(latestPct).toBe(100);
-    expect(avgPct).toBe(100);
+    expect(periodsSpanned).toBe(2);
   });
 
   it("committedBuckets render the backend committed MRR/ARR snapshot series with derived growth", () => {
