@@ -753,21 +753,70 @@ describe("every query root is persisted", () => {
   }
 });
 
-describe("the channel's version-to-dynasty map reaches the resolution call site", () => {
-  // The map is the only source that can name a SUPERSEDED version, which is what
-  // campaign-service routinely pins a campaign to. A page that reads it but never
-  // PASSES it is the feature entirely absent with the lib perfectly correct — so the
-  // guard pins the call site, not the reader.
-  it("the table reads the map", () => {
-    expect(TABLE).toContain("listChannelWorkflowDynasties");
-    expect(TABLE).toContain('["workflowDynasties", featureSlug ?? "none"]');
+describe("what is RUNNING is read from the ledger, not from the campaign row", () => {
+  // campaign-service's `workflowSlug` is the workflow the campaign was CONFIGURED with
+  // and is never rewritten when the selector switches. Prod 2026-09-14 on this very
+  // campaign: the row said `…-rudder-v3`, a deprecated version that had never served a
+  // lead there, while `…-lithium-v6` had served 2,439. The page badged Rudder.
+  //
+  // A page that reads the ledger block but never PASSES it is the feature entirely
+  // absent with the lib perfectly correct, so these pin the CALL SITE, not the module.
+  it("the running workflow comes off observedPicks", () => {
+    const at = TABLE.indexOf("const running = useMemo(");
+    expect(at).toBeGreaterThan(-1);
+    const body = TABLE.slice(at, at + 600);
+    expect(body).toContain("runningFromObservedPicks(ladderQ.data?.observedPicks)");
   });
 
-  it("hands it to resolveRunningWorkflow, and re-resolves when it arrives", () => {
-    const at = TABLE.indexOf("resolveRunningWorkflow(");
+  it("there is NO fallback to the configured workflow slug", () => {
+    // The whole bug. `campaign?.workflowSlug` may not feed the badge on any branch.
+    const at = TABLE.indexOf("const running = useMemo(");
+    expect(TABLE.slice(at, at + 600)).not.toContain("workflowSlug");
+    expect(TABLE).not.toContain("resolveRunningWorkflow");
+  });
+
+  it("the dynasty map is no longer read here, since nothing resolves a pinned slug", () => {
+    // Deleting the fallback made this read dead; a dead poll on a customer surface is
+    // a request nobody needs. The reader itself stays for the lead panel.
+    expect(TABLE).not.toContain("listChannelWorkflowDynasties");
+    expect(TABLE).not.toContain("dynastiesQ");
+  });
+
+  it("the audience mark is a SET over the window, never last.audienceId", () => {
+    // One run fans across six audiences in 26 minutes, so a single mark picks one of
+    // six arbitrarily. The columns with NO pick are what the mark distinguishes.
+    const at = TABLE.indexOf("const ranAudienceIds = useMemo(");
     expect(at).toBeGreaterThan(-1);
-    expect(TABLE.slice(at, at + 900)).toContain("dynastiesQ.data ?? []");
-    expect(TABLE.slice(at, at + 900)).toContain("dynastiesQ.data]");
+    expect(TABLE.slice(at, at + 400)).toContain(
+      "observedAudienceIds(ladderQ.data?.observedPicks)",
+    );
+    expect(TABLE).not.toContain("last.audienceId");
+  });
+
+  it("both surfaces that carry columns are handed the set", () => {
+    const sidebar = TABLE.slice(TABLE.indexOf("<ScopeSidebar"), TABLE.indexOf("<WorkflowMatrix"));
+    expect(sidebar).toContain("ranAudienceIds={ranAudienceIds}");
+    const matrix = TABLE.slice(TABLE.indexOf("<WorkflowMatrix"));
+    expect(matrix.slice(0, 500)).toContain("ranAudienceIds={ranAudienceIds}");
+  });
+
+  it("the column mark is drawn in both places", () => {
+    expect(TABLE).toContain("ran={ranAudienceIds.has(a.audienceId)}");
+    expect(TABLE).toContain("const ran = ranAudienceIds.has(a.audienceId);");
+  });
+
+  it("the cheapest-column pill no longer calls itself current", () => {
+    // "Current best" conflated the price with the fact; a real current mark exists now.
+    expect(TABLE).not.toContain("CURRENT_BEST_TIP");
+    expect(TABLE).toContain("const BEST_TIP =");
+  });
+
+  it("the reader declares the block, so zod cannot strip it", () => {
+    const body = sliceFn(API, "const WorkflowRankLadderSchema = z.object({");
+    expect(body).toContain("observedPicks: z");
+    // Nullish carries the producer's two absences; required would throw on a
+    // funnel-keyed body and non-nullable would throw on an unreadable ledger.
+    expect(body).toContain(".nullish()");
   });
 
   it("the reader asks for ONE feature, never the fleet", () => {

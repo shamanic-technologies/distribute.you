@@ -6792,6 +6792,21 @@ const WorkflowRankRowSchema = z.object({
   scopeRank: z.number().nullish(),
 });
 
+/**
+ * ONE PICK THE SELECTOR MADE — what actually ran, never what the campaign is configured
+ * with. Every field is required by the producer; `workflowDynastyName` and `audienceId`
+ * are nullable there and nullable here, and a null audience is a trigger older than the
+ * audience write-tag rather than a pick without one.
+ */
+const ObservedPickSchema = z.object({
+  campaignId: z.string(),
+  workflowSlug: z.string(),
+  workflowDynastySlug: z.string(),
+  workflowDynastyName: z.string().nullable(),
+  audienceId: z.string().nullable(),
+  startedAt: z.string(),
+});
+
 const WorkflowRankLadderSchema = z.object({
   featureSlug: z.string(),
   funnelKey: z.string().nullish(),
@@ -6821,6 +6836,24 @@ const WorkflowRankLadderSchema = z.object({
    *  names what is missing, and an empty ranking must never read as "no workflows". */
   measured: z.boolean().nullish(),
   unmeasuredReason: z.string().nullish(),
+  /** WHAT ACTUALLY RAN (features-service v0.165.2), read live from the runs ledger.
+   *
+   *  Present ⟺ the request named a `campaignId` — which this reader always does when it
+   *  names a leg — so in practice it is on every body this page gets. `.nullish()`
+   *  carries the producer's own two absences: the block is ABSENT on a funnel- or
+   *  goal-keyed answer, and NULL when the ledger could not be read. Neither is a licence
+   *  to fall back to the campaign's configured `workflowSlug`; that value is the bug
+   *  this block exists to replace. */
+  observedPicks: z
+    .object({
+      /** The most recent pick across the whole identity. Null ⟺ never triggered. */
+      last: ObservedPickSchema.nullable(),
+      /** The window, newest first. Same shape as `last`, merged across the identity. */
+      recent: z.array(ObservedPickSchema),
+      /** TRUE ⟺ the identity has more triggers than the window states. */
+      truncated: z.boolean(),
+    })
+    .nullish(),
 });
 
 export type WorkflowRankLadder = z.infer<typeof WorkflowRankLadderSchema>;
