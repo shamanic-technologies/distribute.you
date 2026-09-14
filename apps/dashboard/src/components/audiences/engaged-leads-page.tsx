@@ -107,6 +107,7 @@ import {
   boardColumnTotals,
   leadBucketCountsQuery,
   leadsColumnPageQuery,
+  leadsExportQuery,
   leadsPageQuery,
   leadsSearchParam,
   leadsSearchProblem,
@@ -2061,14 +2062,15 @@ export function EngagedLeadsPage({
             /* The export is FETCHED on press — lead-service streams the whole matching
                set, honouring the scope, the active tab and the search, so a download is
                what the page is showing. It used to be built here from the population in
-               memory, which is what forced the page to hold it. */
+               memory, which is what forced the page to hold it.
+
+               `leadsExportQuery`, never the PAGE's builder: that one always carries
+               `limit=50`, which lead-service honours on the CSV path too, so the download
+               was silently the first page rather than the list. */
             <CsvDownloadButton
               filename={`leads-${brandId}.csv`}
               csv={() =>
-                fetchLeadsCsv(
-                  scope,
-                  leadsPageQuery({ tab: activeTab, search: wireSearch, page: 0 }),
-                )
+                fetchLeadsCsv(scope, leadsExportQuery({ tab: activeTab, search: wireSearch }))
               }
               isEmpty={reachableCount === 0}
               label="Export leads"

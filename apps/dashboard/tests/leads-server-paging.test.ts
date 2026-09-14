@@ -97,6 +97,16 @@ describe("the Leads page pages instead of holding the population", () => {
     expect(API).toContain('responseType: "text"');
   });
 
+  it("asks the export for the WHOLE matching set, never the page's bounded query", () => {
+    // The button reused `leadsPageQuery({ ..., page: 0 })`, which always carries
+    // `limit=50` — and lead-service honours that on the CSV path exactly as on the JSON
+    // one, so the download was the first page. Measured in production on a brand whose
+    // Outreach tab reads 8,135 leads: 50 rows in the file, ~8,100 without the bound.
+    const call = PAGE.slice(PAGE.indexOf("<CsvDownloadButton"), PAGE.indexOf("label=\"Export leads\""));
+    expect(call).toContain("leadsExportQuery({ tab: activeTab, search: wireSearch })");
+    expect(call).not.toContain("leadsPageQuery(");
+  });
+
   it("parses the rows through the SAME reader every other leads read uses", () => {
     // A page and a full read disagreeing about a lead's shape is one bug in two places.
     expect(API).toContain('parseLeadsResponse(raw, "listLeadsPage")');

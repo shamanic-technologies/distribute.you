@@ -47,7 +47,9 @@ describe("EngagedLeadsPage — the header count matches what the tabs can reach"
   it("exports what the page is showing — the active tab, the active search", () => {
     const button = sliceFrom("<CsvDownloadButton", 500);
     expect(button).toContain("fetchLeadsCsv(");
-    expect(button).toContain("leadsPageQuery({ tab: activeTab, search: wireSearch");
+    // `leadsExportQuery`, not the PAGE's builder: that one always names `limit=50`, and
+    // lead-service honours it on the CSV path too, so the download was the first page.
+    expect(button).toContain("leadsExportQuery({ tab: activeTab, search: wireSearch })");
     expect(button).toContain("isEmpty={reachableCount === 0}");
   });
 
