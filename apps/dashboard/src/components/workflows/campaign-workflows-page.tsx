@@ -104,6 +104,11 @@
  *  6. THE RUNNING ROW IS NOT PINNED. It sits at its served `rank` (7 of 24 in prod) and
  *     keeps its tag: moving it to the top would be this page restating the producer's
  *     order in its own words, on a table whose entire subject is that order.
+ *  9. WHAT IS RUNNING IS READ FROM THE LEDGER (`observedPicks`), never from
+ *     campaign-service's `workflowSlug` — that column is the CONFIGURED workflow and is
+ *     not rewritten when the selector switches, so badging it states a setting where a
+ *     reader expects a fact. There is NO fallback to it. The audience mark is a SET over
+ *     the served window, because one run fans across several audiences in minutes.
  *  7. OPENING A ROW OPENS A PANEL, not a page — the ranking stays on screen, and the
  *     open workflow rides `?workflow=<dynasty>` so a link still works. The open SCOPE
  *     rides `?scope=<audienceId>` for the same reason.
@@ -133,7 +138,6 @@ import { useScopePaused } from "@/lib/use-scope-paused";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listChannelWorkflows,
-  listChannelWorkflowDynasties,
   getFeatureRevenueByWorkflow,
   getWorkflowRankLadder,
   listAudiences,
@@ -162,10 +166,14 @@ import {
 } from "@/lib/workflow-matrix";
 import {
   buildCampaignWorkflowRows,
-  resolveRunningWorkflow,
   type CampaignWorkflowRow,
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
+import {
+  runningFromObservedPicks,
+  observedAudienceIds,
+  lastPickAt,
+} from "@/lib/observed-picks";
 import {
   rankWorkflowRows,
   type RankedWorkflow,
@@ -243,9 +251,12 @@ const PROJECTED_COUNT_TIP =
   "This count was walked through your funnel's own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
 
 const RUNNING_TIP =
-  "The workflow your campaign is running right now. We pick it, and we change it when another one is producing outcomes more cheaply.";
+  "The workflow that actually ran last, read from the record of what we sent. We pick it, and we change it when another one is producing outcomes more cheaply.";
 
-const CURRENT_BEST_TIP =
+const RAN_TIP =
+  "We sent through this audience in the most recent runs. A campaign works several audiences at once, so more than one is marked.";
+
+const BEST_TIP =
   "Your cheapest audience on this campaign, on its own cost per outcome across every workflow it has run.";
 
 const CAMPAIGN_SCOPE_TIP =
@@ -342,14 +353,6 @@ export function CampaignWorkflowsPage() {
     { ...pollOptions, enabled: ready },
   );
 
-  // The channel's version-to-dynasty map — the only source that can name a SUPERSEDED
-  // version, which is what the campaign row is routinely pinned to.
-  const dynastiesQ = useAuthQuery(
-    ["workflowDynasties", featureSlug ?? "none"],
-    () => listChannelWorkflowDynasties(featureSlug as string),
-    { ...pollOptions, enabled: ready },
-  );
-
   // This CAMPAIGN's money per workflow — what builds the display rows. The campaign is in
   // the key as well as in the request: a brand-scoped entry answering a campaign-scoped
   // question is the wrong-scope bug wearing a cache key.
@@ -427,20 +430,40 @@ export function CampaignWorkflowsPage() {
   // waiting on a restart.
   const { paused } = useScopePaused(brandId, { campaignId, enabled: isBeta });
 
-  // WHICH workflow is running is a fact about the CAMPAIGN, resolved from every source
-  // the page holds. campaign-service states a VERSIONED slug and the catalogue carries
-  // only each dynasty's CURRENT version, so a campaign pinned to an older one is
-  // nameable only by a group's folded slugs or the membership map.
+  // WHICH WORKFLOW ACTUALLY RAN — read off the producer's ledger block, never off
+  // campaign-service's `workflowSlug`. That column is the workflow the campaign was
+  // CONFIGURED with and is not rewritten when the selector switches, so badging it
+  // states a setting where a reader expects a fact: prod 2026-09-14 on this very
+  // campaign, the row said `…-rudder-v3` (deprecated, never served a lead here) while
+  // `…-lithium-v6` had served 2,439, most recently that morning.
+  //
+  // NO FALLBACK to that slug, deliberately. An absent or null block is the producer
+  // saying it could not read the ledger, and a `last: null` is a campaign that has
+  // never triggered — both draw no tag, which is the honest answer.
+  // `{null, null}` is the row builder's own word for "no workflow is marked", which is
+  // exactly what an unreadable ledger or a never-triggered campaign means here. It is a
+  // translation into the lib's vocabulary, never a fallback onto the configured slug.
   const running = useMemo(
     () =>
-      resolveRunningWorkflow(
-        campaign?.workflowSlug ?? null,
-        catalogueQ.data ?? [],
-        [campaignRevQ.data ?? []],
-        dynastiesQ.data ?? [],
-      ),
-    [campaign?.workflowSlug, catalogueQ.data, campaignRevQ.data, dynastiesQ.data],
+      runningFromObservedPicks(ladderQ.data?.observedPicks) ?? {
+        dynastySlug: null,
+        dynastyName: null,
+      },
+    [ladderQ.data?.observedPicks],
   );
+
+  // EVERY AUDIENCE THE SERVED WINDOW SAW A PICK FOR — a SET, never the single id the
+  // most recent pick names.
+  // One run fans across the offer's audiences in minutes (prod: the 50-pick window is
+  // 26 minutes, one workflow, SIX audiences), so a single mark would pick one of six
+  // arbitrarily. The columns with no pick in the window are what the mark distinguishes.
+  const ranAudienceIds = useMemo(
+    () => observedAudienceIds(ladderQ.data?.observedPicks),
+    [ladderQ.data?.observedPicks],
+  );
+
+  // When that last pick ran, so the tag can say how fresh it is rather than implying now.
+  const ranAt = useMemo(() => lastPickAt(ladderQ.data?.observedPicks), [ladderQ.data?.observedPicks]);
 
   const rows = useMemo(
     () =>
@@ -648,6 +671,8 @@ export function CampaignWorkflowsPage() {
             <ScopeSidebar
               audiences={audienceColumns}
               scope={scope}
+              ranAudienceIds={ranAudienceIds}
+              ranAt={ranAt}
               brandDomain={brandQ.data?.brand.domain ?? null}
               brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
               onSelect={setScope}
@@ -660,6 +685,7 @@ export function CampaignWorkflowsPage() {
                   audiences={audienceColumns}
                   cells={cellIndex}
                   columnBest={columnBest}
+                  ranAudienceIds={ranAudienceIds}
                   onOpen={setOpen}
                   onSelectScope={setScope}
                 />
@@ -728,12 +754,18 @@ interface AudienceColumn {
 export function ScopeSidebar({
   audiences,
   scope,
+  ranAudienceIds,
+  ranAt,
   brandDomain,
   brandLogoUrl,
   onSelect,
 }: {
   audiences: readonly AudienceColumn[];
   scope: string | null;
+  /** Every audience the producer's served pick window saw a send for. */
+  ranAudienceIds: ReadonlySet<string>;
+  /** When the most recent pick ran, so the pill says how fresh it is. */
+  ranAt: string | null;
   brandDomain: string | null;
   brandLogoUrl: string | null;
   onSelect: (id: string | null) => void;
@@ -760,13 +792,15 @@ export function ScopeSidebar({
       </button>
 
       {audiences.length > 0 && (
-        <p className="mt-2 px-2 pb-1 text-[11px] font-medium tracking-wide text-gray-400 uppercase">
+        <p className="mt-2 flex items-center gap-1 px-2 pb-1 text-[11px] font-medium tracking-wide text-gray-400 uppercase">
           Audiences
+          <InfoTooltip tip={RAN_TIP} placement="top" />
         </p>
       )}
 
       {audiences.map((a, i) => {
         const active = scope === a.audienceId;
+        const ran = ranAudienceIds.has(a.audienceId);
         return (
           <button
             key={a.audienceId}
@@ -780,10 +814,21 @@ export function ScopeSidebar({
           >
             <AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} size={18} />
             <span className="min-w-0 flex-1 truncate">{a.name}</span>
+            {ran && (
+              <span
+                aria-label="Running"
+                title={
+                  ranAt
+                    ? `We sent through this audience in the most recent runs (last ${ranAt})`
+                    : "We sent through this audience in the most recent runs"
+                }
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"
+              />
+            )}
             {i === 0 && (
               <span className="inline-flex shrink-0 items-center rounded-full border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600">
                 Best
-                <InfoTooltip tip={CURRENT_BEST_TIP} placement="top" />
+                <InfoTooltip tip={BEST_TIP} placement="top" />
               </span>
             )}
           </button>
@@ -807,6 +852,7 @@ export function WorkflowMatrix({
   audiences,
   cells,
   columnBest,
+  ranAudienceIds,
   onOpen,
   onSelectScope,
 }: {
@@ -814,6 +860,8 @@ export function WorkflowMatrix({
   audiences: readonly AudienceColumn[];
   cells: Map<string, MatrixCell>;
   columnBest: Map<string, string>;
+  /** Every audience the producer's served pick window saw a send for. */
+  ranAudienceIds: ReadonlySet<string>;
   onOpen: (slug: string) => void;
   onSelectScope: (id: string) => void;
 }) {
@@ -838,6 +886,7 @@ export function WorkflowMatrix({
                   key={a.audienceId}
                   label={a.name}
                   best={i === 0}
+                  ran={ranAudienceIds.has(a.audienceId)}
                   onClick={() => onSelectScope(a.audienceId)}
                 >
                   <AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} size={16} />
@@ -944,7 +993,9 @@ export function WorkflowMatrix({
       <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500">
         The highlighted cell in each column is the workflow we would put that audience on.
         A figure in full colour is what that column actually produced; a faded one repeats
-        a price from a wider pool, because nothing has been measured there yet.
+        a price from a wider pool, because nothing has been measured there yet. A dot
+        beside a column name means we sent through that audience in the most recent runs;
+        a campaign works several at once, so several are marked.
       </p>
     </div>
   );
@@ -961,12 +1012,15 @@ function ObliqueHeader({
   label,
   tip,
   best,
+  ran,
   onClick,
   children,
 }: {
   label: string;
   tip?: string;
   best?: boolean;
+  /** A send went through this audience in the producer's served pick window. */
+  ran?: boolean;
   onClick?: () => void;
   children: React.ReactNode;
 }) {
@@ -982,6 +1036,16 @@ function ObliqueHeader({
       <span className={`max-w-[130px] truncate ${best ? "font-medium text-brand-700" : ""}`}>
         {label}
       </span>
+      {/* TRAILS the name. The header is rotated -45deg from its bottom-left, so a mark
+          placed FIRST lands at the far bottom of the axis and reads as a stray dot
+          rather than as this column's. Measured at 1280 before the move. */}
+      {ran && (
+        <span
+          aria-label="Running"
+          title="We sent through this audience in the most recent runs"
+          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"
+        />
+      )}
       {best && (
         <span className="inline-flex shrink-0 items-center rounded-full border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600">
           Best
