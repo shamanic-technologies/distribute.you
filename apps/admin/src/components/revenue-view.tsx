@@ -16,6 +16,14 @@ import { formatUsd } from "@/lib/format-number";
 import type { BillingStats, FirstSeenMonthRow } from "@/lib/public-stats";
 import { StatedAmountsCard } from "@/components/revenue/stated-amounts-card";
 import {
+  brandLabel,
+  breakdownReconciles,
+  exclusionReason,
+  fundedRows,
+  unfundedCount,
+  type SelfServeBreakdown,
+} from "@/lib/self-serve-breakdown";
+import {
   revenueBuckets,
   revenueCmgrSummary,
   mrrSplitBuckets,
@@ -282,6 +290,116 @@ function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
       <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
       <p className="mt-1 max-w-3xl text-sm text-gray-500">{blurb}</p>
     </div>
+  );
+}
+
+/** A condition's verdict. `null` = the producer never got to ask; an earlier one already failed. */
+function Verdict({ ok }: { ok: boolean | null }) {
+  if (ok === null) return <span className="text-gray-300">—</span>;
+  return ok ? (
+    <span className="text-emerald-600">Yes</span>
+  ) : (
+    <span className="text-gray-400">No</span>
+  );
+}
+
+/**
+ * THE SELF-SERVE RUN-RATE, BRAND BY BRAND — the addends behind the figure above.
+ *
+ * Every number here is SERVED. The table orders the rows and names the condition
+ * that excluded each one; it computes no money, and the total it prints is the
+ * producer's own `countedMrrUsd` rather than a sum of the rows. The rows are
+ * checked AGAINST that total (`breakdownReconciles`) and the disagreement is
+ * stated when it happens — a table that explains a figure has to reproduce it,
+ * and one that silently did not would be worse than no table.
+ */
+function SelfServeBrandTable({ breakdown }: { breakdown: SelfServeBreakdown }) {
+  const rows = fundedRows(breakdown);
+  const unfunded = unfundedCount(breakdown);
+  const reconciles = breakdownReconciles(breakdown);
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5">
+      <h3 className="text-base font-semibold text-gray-950">Self-serve MRR, brand by brand</h3>
+      <p className="mt-1 max-w-3xl text-sm text-gray-500">
+        A brand&apos;s budget counts only when all four hold on {breakdown.referenceDate}: it is paying,
+        a campaign is running, an amount is in force, and it still has people to contact. The retained
+        column is what each one contributes to the {usdFull(breakdown.countedMrrUsd)} above.
+      </p>
+
+      {!reconciles && (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+          These rows do not add up to the self-serve total served beside them. The total is the
+          producer&apos;s own figure and is the one to trust; the rows are what is wrong.
+        </p>
+      )}
+
+      {rows.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-400">No self-serve brand has a budget in force.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm md:min-w-[720px]">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-400">
+                <th className="pb-2 font-medium">Brand</th>
+                <th className="pb-2 text-right font-medium">Budget / day</th>
+                <th className="pb-2 text-center font-medium">Paying</th>
+                <th className="pb-2 text-center font-medium">Campaign</th>
+                <th className="pb-2 text-center font-medium">Audience</th>
+                <th className="pb-2 text-right font-medium">Retained MRR</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((r) => {
+                const reason = exclusionReason(r);
+                return (
+                  <tr key={`${r.orgId}:${r.brandId}`} className={reason ? "text-gray-400" : "text-gray-800"}>
+                    <td className="py-2 pr-3">
+                      <span className="font-medium">{brandLabel(r)}</span>
+                      {reason && <span className="ml-2 text-xs text-gray-400">{reason}</span>}
+                      {r.basis === "approximated" && (
+                        <span className="ml-2 text-xs text-amber-600">approximated</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">
+                      {r.configuredDailyBudgetUsd === null ? "—" : usdFull(r.configuredDailyBudgetUsd)}
+                    </td>
+                    <td className="py-2 text-center">
+                      <Verdict ok={r.paymentActive} />
+                    </td>
+                    <td className="py-2 text-center">
+                      <Verdict ok={r.campaignRunning} />
+                    </td>
+                    <td className="py-2 text-center">
+                      <Verdict ok={r.audienceAvailable} />
+                    </td>
+                    <td className="py-2 text-right font-medium tabular-nums text-gray-900">
+                      {usdFull(r.countedMrrUsd)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-gray-200 font-medium text-gray-950">
+                <td className="pt-2" colSpan={5}>
+                  Self-serve MRR
+                </td>
+                <td className="pt-2 text-right tabular-nums">{usdFull(breakdown.countedMrrUsd)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {unfunded > 0 && (
+        <p className="mt-3 text-xs text-gray-400">
+          {unfunded} other self-serve {unfunded === 1 ? "brand carries" : "brands carry"} no budget at
+          all, so {unfunded === 1 ? "it contributes" : "they contribute"} nothing whatever the rest of
+          the conditions say. Not listed.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -681,6 +799,14 @@ export function RevenueView({
                 the record starts, which fixes it from then on.
               </p>
             </section>
+          )}
+
+          {/* The terms behind the self-serve figure above. A sum is only readable
+              if you can see its addends, and this is the one surface where the
+              four conditions are visible per customer instead of collapsed into
+              one number. */}
+          {split?.selfServeBreakdown && (
+            <SelfServeBrandTable breakdown={split.selfServeBreakdown} />
           )}
 
           <section className="grid gap-6 md:grid-cols-2">

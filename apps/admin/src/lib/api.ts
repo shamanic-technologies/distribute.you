@@ -5768,6 +5768,11 @@ export interface CommittedMrr {
 /** How the producer learned a period's self-serve figure. See `selfServeBasis`. */
 export type MrrSplitBasis = "recorded" | "approximated";
 
+// The per-brand terms live in their own alias-free module so they carry real unit
+// tests; re-exported here so a consumer reads one shape, not two that can drift.
+export type { SelfServeBrandRow, SelfServeBreakdown } from "./self-serve-breakdown";
+import type { SelfServeBreakdown } from "./self-serve-breakdown";
+
 export interface MrrSplitBucket {
   period: string; // "YYYY-MM" | "YYYY-Www"
   periodStart: string; // UTC bucket start "YYYY-MM-DD"
@@ -5838,6 +5843,13 @@ export interface MrrSplit {
   earningRecordBeginsOn: string | null;
   agencyOrgIds: string[]; // derived from the stated rows, never hardcoded
   agencyPairKeys: string[]; // every (org, brand) excluded from the self-serve half, as `orgId::brandId`
+  // THE TERMS behind `currentSelfServeMrrUsd` — one row per self-serve brand with
+  // the state of each of the four conditions, so the figure can be read rather
+  // than taken on faith. The rows sum to `countedMrrUsd`, which IS the served
+  // self-serve total; the table checks that rather than deriving it.
+  // Declared `.optional()`-style (`?`) so a features-service that predates the
+  // breakdown still parses and the section simply does not render.
+  selfServeBreakdown?: SelfServeBreakdown | null;
   monthly: MrrSplitBucket[];
   weekly: MrrSplitBucket[];
 }
