@@ -34,8 +34,37 @@ describe("the old undifferentiated run-rate is gone", () => {
     expect(VIEW).not.toContain("committedBuckets");
   });
 
-  it("does not chart ARR — it is MRR × 12, so its curve and growth are the MRR ones", () => {
-    expect(VIEW).not.toContain('valueLabel="ARR"');
+  /**
+   * ARR used to be stated on the cards and charted nowhere, on the reasoning that
+   * it is MRR × 12 so its curve and its growth are the MRR ones with a multiplier
+   * on the axis. That reasoning is still true and is no longer a reason to withhold
+   * it: a reader who thinks in years should not have to multiply a chart in their
+   * head. Owner-decided 2026-09-14. What the guard holds instead is that the yearly
+   * pair is READ off the producer's own served field — the moment anything here
+   * multiplies an MRR bucket by twelve, the page carries two answers for one
+   * run-rate and they can drift.
+   */
+  it("charts the yearly run-rate off the producer's served field, never MRR × 12", () => {
+    expect(VIEW).toContain('label="Monthly ARR"');
+    expect(VIEW).toContain('label="Weekly ARR"');
+    expect(VIEW).toContain('"totalArrUsd", "month"');
+    expect(VIEW).toContain('"totalArrUsd", "week"');
+    expect(VIEW).not.toMatch(/\*\s*12\b/);
+  });
+
+  it("puts the yearly pair ABOVE the monthly pair", () => {
+    expect(VIEW.indexOf('label="Monthly ARR"')).toBeLessThan(VIEW.indexOf('label="Monthly MRR"'));
+    expect(VIEW.indexOf('label="Weekly ARR"')).toBeLessThan(VIEW.indexOf('label="Weekly MRR"'));
+  });
+
+  /**
+   * Only the TOTAL is charted per year. The two halves are read per month, where
+   * the split is the point — six yearly charts restating six monthly ones is the
+   * same curve twelve times, and the band's whole subject is the halves.
+   */
+  it("states the yearly figure for the total alone", () => {
+    expect(VIEW).not.toContain('"selfServeArrUsd", "month"');
+    expect(VIEW).not.toContain('"agencyArrUsd", "month"');
   });
 });
 

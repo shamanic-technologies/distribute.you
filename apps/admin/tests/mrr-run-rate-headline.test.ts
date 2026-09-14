@@ -27,7 +27,7 @@ import type { MrrSplitBucket } from "../src/lib/api";
 const ROOT = join(__dirname, "..");
 const VIEW = readFileSync(join(ROOT, "src/components/revenue-view.tsx"), "utf8");
 const CARD = readFileSync(join(ROOT, "src/components/period-compound-card.tsx"), "utf8");
-const STAT = readFileSync(join(ROOT, "src/components/run-rate-stat.tsx"), "utf8");
+const STAT = readFileSync(join(ROOT, "src/components/run-rate-line-card.tsx"), "utf8");
 
 /** Build the split rows for a month series; only the charted fields matter here. */
 function months(rows: Array<{ period: string; self: number | null; agency: number }>): MrrSplitBucket[] {
@@ -156,9 +156,13 @@ describe("the headline value is the series' own last bar", () => {
   });
 });
 
-describe("the six MRR cards draw the run-rate headline, and nothing else does", () => {
-  it("routes every MRR card through RunRatePeriodCard", () => {
-    for (const title of [
+describe("the eight run-rate cards draw the run-rate headline, and nothing else does", () => {
+  it("routes every run-rate card through RunRateLineCard", () => {
+    for (const label of [
+      // The yearly pair is the same stock in a second unit, so it takes the same
+      // card: the value leads, today included.
+      "Monthly ARR",
+      "Weekly ARR",
       "Monthly MRR",
       "Weekly MRR",
       "Monthly self-serve MRR",
@@ -166,17 +170,23 @@ describe("the six MRR cards draw the run-rate headline, and nothing else does", 
       "Monthly agency MRR",
       "Weekly agency MRR",
     ]) {
-      const at = VIEW.indexOf(`title="${title}"`);
-      expect(at, `${title} is rendered`).toBeGreaterThan(-1);
-      // The opening tag sits immediately above the title line.
+      const at = VIEW.indexOf(`label="${label}"`);
+      expect(at, `${label} is rendered`).toBeGreaterThan(-1);
+      // The opening tag sits immediately above the label line.
       const opener = VIEW.slice(0, at).lastIndexOf("<");
-      expect(VIEW.slice(opener, at), `${title} is a run-rate card`).toContain("RunRatePeriodCard");
+      expect(VIEW.slice(opener, at), `${label} is a run-rate card`).toContain("RunRateLineCard");
     }
-    expect(VIEW.split("<RunRatePeriodCard").length - 1).toBe(6);
+    expect(VIEW.split("<RunRateLineCard").length - 1).toBe(8);
+    // The bar-and-growth-line wrapper is DELETED, not merely unused: a run-rate
+    // drawn two ways is one band describing one kind of thing two ways.
+    expect(VIEW).not.toContain("RunRatePeriodCard");
+    expect(VIEW).not.toContain("RunRateStat");
   });
 
   it("hands them a run-rate summary, never a CMGR one", () => {
     for (const key of [
+      "monthlyTotalArrRunRate",
+      "weeklyTotalArrRunRate",
       "monthlyTotalRunRate",
       "weeklyTotalRunRate",
       "monthlySelfServeRunRate",
@@ -216,9 +226,9 @@ describe("the six MRR cards draw the run-rate headline, and nothing else does", 
 
   it("formats the value with the SAME money formatter the StatCard above uses", () => {
     // `usdFull` — so a card and the figure two inches above it can never round
-    // one number two ways.
-    const fn = VIEW.slice(VIEW.indexOf("function RunRatePeriodCard("), VIEW.indexOf("function AvgHeadline("));
-    expect(fn).toContain("formatValue={usdFull}");
+    // one number two ways. Every run-rate card is handed it explicitly now that
+    // the wrapper that pinned it is gone, so the count has to match the cards.
+    expect(VIEW.split("formatValue={usdFull}").length - 1).toBeGreaterThanOrEqual(8);
   });
 });
 
@@ -247,10 +257,58 @@ describe("the shared card admits exactly one headline shape", () => {
 });
 
 describe("the headline itself", () => {
-  it("puts the value on top and the rate underneath, with its span", () => {
-    expect(STAT).toContain("formatValue(valueUsd)");
-    expect(STAT).toContain("${PERIOD_NOUN[unit]} #${periodsSpanned}");
-    expect(STAT).toContain("since inception");
+  it("puts the value on top and the rate beside it, with its span", () => {
+    expect(STAT).toContain("formatValue(summary.latestUsd)");
+    expect(STAT).toContain("${PERIOD_NOUN[cmgrUnit]} #${summary.periodsSpanned}");
+    // The rate is LABELLED beside the value, because the line under it states the
+    // anchor's own figure — a bare percentage between two money values reads as
+    // the ratio between them, which a compound rate is not.
+    expect(STAT).toContain("{cmgrLabel}");
+  });
+
+  it("names the anchor period instead of promising 'since inception'", () => {
+    expect(STAT).toContain("`from ${formatValue(anchor.value)} in ${anchor.label}`");
+    expect(STAT).not.toContain("since inception");
+  });
+
+  /**
+   * A run-rate is a STOCK, so nothing on the card encodes area: no bars (a bar's
+   * length is a quantity earned in a period, and no period earns a run-rate) and
+   * no second series (the compound rate is a converging curve on a second axis in
+   * a second unit, and the headline already states it as a number). One line.
+   */
+  it("draws one line and nothing else — no bars, no growth series, no legend", () => {
+    expect(STAT).toContain("<LineChart");
+    expect(STAT).not.toContain("<Bar");
+    expect(STAT).not.toContain("ComposedChart");
+    expect(STAT).not.toContain("<Legend");
+    // Counted by what each series PLOTS rather than by the tag, which also matches
+    // <LineChart and <LineTooltip and would go red on a rename.
+    expect(STAT.split('dataKey="').length - 1).toBe(2); // the x labels + the one series
+    expect(STAT).toContain('dataKey="value"');
+    expect(STAT).not.toContain('dataKey="cmgr');
+  });
+
+  /**
+   * The gridlines are drawn from `currentColor` off a utility class, because an
+   * SVG `stroke` attribute is reached by no `html.dark` remap — a hardcoded hex
+   * is invisible on one of the two themes. `text-gray-200` is the faintest step
+   * and was the one step the remap was MISSING, so unremapped it kept its light
+   * value and rendered as the loudest thing on the dark surface. Verified by
+   * rendering both themes, not by reading the class.
+   */
+  it("draws its gridlines from a class the dark theme actually remaps", () => {
+    expect(STAT).toContain("text-gray-200");
+    expect(STAT).toContain('stroke="currentColor"');
+    const globals = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+    expect(globals).toContain("html.dark .text-gray-200");
+  });
+
+  it("brackets the axis instead of starting at zero, off the shared helper", () => {
+    // A line encodes SHAPE, not area, so a zero baseline spends the plot on a
+    // range the series never visits. The helper is alias-free and unit-tested.
+    expect(STAT).toContain("lineDomain(");
+    expect(STAT).toContain('from "@/lib/chart-domain"');
   });
 
   it("says there is no rate rather than printing a dash beside a growth label", () => {
@@ -264,7 +322,7 @@ describe("the headline itself", () => {
   });
 
   it("derives nothing — it formats what the summary already carries", () => {
-    for (const forbidden of ["Math.pow", "reduce(", ".value /"]) {
+    for (const forbidden of ["Math.pow", "reduce(", ".value /", "* 12"]) {
       expect(STAT, forbidden).not.toContain(forbidden);
     }
   });

@@ -109,6 +109,11 @@ html.dark .text-gray-600 { color: #cbd5e1; }
 html.dark .text-gray-500 { color: #cbd5e1; }
 html.dark .text-gray-400 { color: #94a3b8; }
 html.dark .text-gray-300 { color: #94a3b8; }
+/* The faintest step, and the one the remap was missing: unremapped it keeps its
+   light value (#e5e7eb) and renders as the LOUDEST thing on the dark surface —
+   which is what chart gridlines drawn from `currentColor` did. Matched to
+   `border-gray-200`'s dark value, since a gridline is a separator, not text. */
+html.dark .text-gray-200 { color: #334155; }
 
 /* Borders */
 html.dark .border-gray-200 { border-color: #334155; }

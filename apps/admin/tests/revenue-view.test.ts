@@ -447,9 +447,21 @@ describe("Revenue view — the two money notions are kept apart", () => {
     // The run-rate series begins at the first recorded snapshot (2026-07-15) and
     // the split is REPLAYED back to exactly that day — no further. Promising
     // "since inception" on it would date a curve to a day it does not reach.
-    expect(revenueView).toContain("CMGR since the first recorded day");
-    expect(revenueView).toContain("CWGR since the first recorded day");
+    //
+    // It used to say so in the chart's growth-line legend ("CMGR since the first
+    // recorded day"). That line is gone with the orange series, and the cards say
+    // it more precisely now: `RunRateLineCard` NAMES the anchor period and its
+    // value ("from $37,080 in Jul 2026"), so the reader is told which day the
+    // curve reaches rather than reassured that it is not inception.
     expect(revenueView).not.toContain("MRR since inception");
+    expect(revenueView).not.toContain("ARR since inception");
+    const card = fs.readFileSync(
+      path.join(__dirname, "../src/components/run-rate-line-card.tsx"),
+      "utf-8",
+    );
+    expect(card).toContain("buckets.find((b) => b.value > 0)");
+    expect(card).toContain("`from ${formatValue(anchor.value)} in ${anchor.label}`");
+    expect(card).not.toContain("since inception");
   });
 
   // Cash collected counts every acquirer stripe-service mirrors, not only the

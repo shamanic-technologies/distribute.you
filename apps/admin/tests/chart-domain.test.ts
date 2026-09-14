@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { chartDomain, niceCeiling, referenceTicks } from "../src/lib/chart-domain";
+import { chartDomain, lineDomain, niceCeiling, referenceTicks } from "../src/lib/chart-domain";
 
 describe("chartDomain", () => {
   it("scales to the tallest bar when nothing is excluded", () => {
@@ -161,5 +161,54 @@ describe("the NRR chart wiring", () => {
     // read "cmgrSolid".
     expect(chart).toContain('const showGrowth = growthLabel !== ""');
     expect(chart).toContain("{showGrowth ? (");
+  });
+});
+
+/**
+ * A run-rate LINE axis brackets its data instead of starting at zero.
+ *
+ * A bar's length IS the quantity, so a bar axis must reach zero or the lengths
+ * lie about the ratio between them. A line encodes only the SHAPE of a series,
+ * and a run-rate moving $37k → $47k renders as a flat stripe across the top of a
+ * zero-based plot. The cost is that a clipped baseline EXAGGERATES movement, so
+ * this is only correct beside a card that states the magnitude in words — which
+ * is exactly where it is used.
+ */
+describe("lineDomain", () => {
+  it("brackets the data with one step of headroom on each side", () => {
+    // Prod's monthly total ARR on 2026-09-14.
+    const d = lineDomain([37080, 19800, 47520]);
+    expect(d.min).toBeLessThan(19800);
+    expect(d.max).toBeGreaterThan(47520);
+    expect(d.ticks[0]).toBe(d.min);
+    expect(d.ticks[d.ticks.length - 1]).toBe(d.max);
+  });
+
+  it("never floors below zero — a run-rate cannot go there", () => {
+    // 150 → 1860 steps by 400, so one step of headroom below would land at -250.
+    expect(lineDomain([150, 1860]).min).toBe(0);
+    // The clamp only fires where it has to: a series far from zero keeps its
+    // headroom, which is the whole reason the axis is bracketed.
+    expect(lineDomain([37080, 47520]).min).toBeGreaterThan(0);
+  });
+
+  it("gives a flat series a band rather than a degenerate axis it sits on", () => {
+    const d = lineDomain([1500, 1500, 1500]);
+    expect(d.max).toBeGreaterThan(1500);
+    expect(d.min).toBeLessThan(1500);
+  });
+
+  it("steps on round numbers a reader recognises", () => {
+    const d = lineDomain([37080, 19800, 47520]);
+    const steps = d.ticks.slice(1).map((t, i) => t - d.ticks[i]);
+    // One step throughout, and it is a nice one.
+    expect(new Set(steps.map((s) => Math.round(s))).size).toBe(1);
+    expect(niceCeiling(steps[0])).toBe(steps[0]);
+  });
+
+  it("answers for an empty series instead of producing NaN ticks", () => {
+    const d = lineDomain([]);
+    expect(d.ticks.every((t) => Number.isFinite(t))).toBe(true);
+    expect(d.max).toBeGreaterThan(d.min);
   });
 });
