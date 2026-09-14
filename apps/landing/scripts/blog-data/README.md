@@ -27,6 +27,15 @@ node scripts/render-blog-hero.mjs flash-vs-pro-llm-cold-email
 node scripts/render-newsletter-charts.mjs flash-vs-pro-llm-cold-email 2,3,4,18,20,21,23,26,35
 ```
 
+Step 4's newsletter charts are RE-LAID before they are rastered (`blog-data/narrow-chart.mjs`).
+The article's chart is an 800-unit viewBox built for a page, and a mail client shows it at
+about 324 CSS px on a phone, which puts its row labels at 5.7px and its count lines at 4.5px
+beside 16px body copy. The re-lay reads the article's own emitted bytes, puts the label above
+its bar on a 420-unit box, and carries every figure, label, count line and the aria-label
+across verbatim, so the email and the page still state the same figures by construction. Run
+it after every article re-render; `tests/unit/newsletter-chart-legibility.test.ts` fails if a
+glyph runs past the box or lands under 9px on a phone.
+
 Then `pnpm --filter @distribute/landing test`, which pins the copy rules, the dataset's
 coherence and the editorial rules for both pages.
 
