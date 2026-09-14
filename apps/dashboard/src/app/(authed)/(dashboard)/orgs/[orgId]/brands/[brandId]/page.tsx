@@ -436,7 +436,7 @@ export default function BrandOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-      <ScopeLearningBand brandId={brandId} featureSlug={featureSlug} offerId={offerId} />
+      <ScopeLearningBand phase={data?.learningPhase ?? null} brandId={brandId} offerId={offerId} />
         {/* No section header on this branch to sit beside, so the line stands
             on its own here — everywhere else it rides the Outreach heading. */}
         {ControlsLine}
@@ -456,7 +456,7 @@ export default function BrandOverviewPage() {
        components and state nothing. */
     <LearningToneProvider tone="primary">
     <DashboardPage width="wide" className="space-y-4">
-      <ScopeLearningBand brandId={brandId} featureSlug={featureSlug} offerId={offerId} />
+      <ScopeLearningBand phase={data?.learningPhase ?? null} brandId={brandId} offerId={offerId} />
       {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
           charts the return instead. */}
       <RevenueOverviewSection

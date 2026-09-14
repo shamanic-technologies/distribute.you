@@ -602,13 +602,31 @@ describe("Campaigns page (GA)", () => {
       expect(page).toContain("FunnelLegColumnsBoard");
     });
 
-    it("hands the table no walk, and reads none for it", () => {
+    it("hands the table no walk", () => {
       // The brand and offer lists span several funnels and have no single walk, so the
       // prop is absent rather than passed `undefined` through a ternary that can only
-      // ever take one branch. The read that fed it is gone with it.
+      // ever take one branch.
       expect(page).not.toContain("funnelSteps={");
-      expect(page).not.toContain("getOfferFunnelRevenue");
-      expect(page).not.toContain('["offerFunnelRevenue"');
+    });
+
+    it("reads the funnel's body ONLY for the learning verdict, never to feed the table", () => {
+      // This guard used to ban the funnel read outright, because the only thing that had
+      // ever fetched it was the table's walk and that walk is gone. The read is back for
+      // a different reason and the ban would have hidden a real scope bug: arriving
+      // through a sales funnel narrows this list to that funnel's campaigns while the
+      // header deliberately keeps answering for the whole OFFER, so a band fed from the
+      // header's body would state the offer's countdown under a funnel's heading.
+      //
+      // What must stay true is the original intent: the funnel body feeds the VERDICT
+      // and nothing else, and the key is byte-equal to the one the funnel Overview
+      // already polls so walking down costs no request.
+      expect(page).toContain('["offerFunnelRevenue", brandId, offerId ?? "none", narrowedKey ?? "none"]');
+      expect(page).toContain("const learningPhase = funnelKey");
+      expect(page).toContain("phase={learningPhase}");
+      // Nothing else may read it: the table's columns and the header's money stay on
+      // the scope they answer for.
+      expect(page).not.toContain("funnelRevenueQ.data?.costEconomics");
+      expect(page).not.toContain("funnelRevenueQ.data?.totalPipelineUsd");
     });
   });
 

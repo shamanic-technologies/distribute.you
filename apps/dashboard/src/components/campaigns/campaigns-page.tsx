@@ -14,6 +14,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   getOfferRevenue,
   getBrandRevenue,
+  getOfferFunnelRevenue,
   keepLastGoodFeatureRevenue,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -154,6 +155,29 @@ export function CampaignsPage() {
     },
   );
 
+  // The learning verdict for the scope this ROUTE names, which is NOT always the scope
+  // the header's money answers for: arrive through a sales funnel and the list narrows
+  // to that funnel's campaigns, while the header deliberately keeps answering for the
+  // whole offer. So a band fed from the header's body would state the offer's countdown
+  // under a funnel's heading — a wider scope wearing a narrower name.
+  //
+  // The key is byte-equal to the one the funnel Overview polls, so walking down from it
+  // costs no request; `enabled` off the narrow, so an un-narrowed list never fires it.
+  const funnelRevenueQ = useAuthQuery(
+    ["offerFunnelRevenue", brandId, offerId ?? "none", narrowedKey ?? "none"],
+    () => getOfferFunnelRevenue(offerId!, funnelKey!, brandId),
+    {
+      enabled: revenueEnabled && Boolean(offerId) && Boolean(funnelKey),
+      refetchInterval: POLL_INTERVAL,
+      structuralSharing: (prev, next) =>
+        keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
+    },
+  );
+  // Narrowed ⟹ the funnel's verdict; otherwise the scope the header already reads.
+  const learningPhase = funnelKey
+    ? (funnelRevenueQ.data?.learningPhase ?? null)
+    : (brandRevenueQ.data?.learningPhase ?? null);
+
   // #1 acquisition channel = the channel of the best-ROI RUNNING campaign, named as the
   // brand Settings catalogue names it (display argmax over already-fetched rows, not a
   // hidden metric). It reads the SAME ordering the table is sorted by, so the tile names
@@ -183,15 +207,10 @@ export function CampaignsPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full p-4 md:p-8">
-        {/* The band speaks for the campaign that finishes SOONEST in this scope, which
-            is the same subject and the same date every other surface states — one
-            derivation, in `use-scope-learning-lead`. */}
-        <ScopeLearningBand
-          brandId={brandId}
-          featureSlug={featureSlug}
-          offerId={offerId}
-          funnelKey={narrowedKey}
-        />
+        {/* The band speaks for the campaign features-service leads this scope with, off
+            the same body the header's money rides — one payload, so the two cannot
+            disagree about the same scope. */}
+        <ScopeLearningBand phase={learningPhase} brandId={brandId} offerId={offerId} />
         {/* No create control here: a campaign is set up with us, not spun up from
             a table row, so the page reads this brand's campaigns and nothing more. */}
         <div className="flex items-center gap-2 mb-1">

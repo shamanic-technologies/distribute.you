@@ -1,49 +1,39 @@
 "use client";
 
 import { LearningProgressCallout } from "@/components/campaigns/learning-progress-callout";
-import { useScopeLearningLead } from "@/lib/use-scope-learning-lead";
+import type { LearningPhase } from "@/lib/revenue-view";
 
 /**
  * The learning band for whatever scope a page IS — brand, offer, funnel or campaign.
  *
- * The band itself states one campaign's countdown; this is what decides WHICH campaign
- * and hands it every figure, through the one derivation in `use-scope-learning-lead`.
- * A page renders this and nothing else: four call sites assembling the price, the spend,
- * the ceiling and the settling tail by hand is how one campaign came to state two
- * different dates two clicks apart.
+ * It takes the verdict as a PROP, off the page's OWN revenue read, rather than making a
+ * read of its own. That is the point rather than a convenience: the band and the figures
+ * beside it then come from ONE payload, so they cannot state different things about the
+ * same scope. The previous shape assembled the countdown in the browser from three
+ * services, and that is how one campaign came to read `13 days` on its own page and
+ * `27 days` one click up — same spend, same ceiling, same price, two call sites passing
+ * different inputs.
  *
- * It renders NOTHING when the scope is measured, when nothing in it is running, or when
- * any input is missing — a date nobody can stand behind is worse than no date, and the
- * `Learning` tags on the surfaces underneath already say the figures are being withheld.
+ * Which campaign the countdown speaks for is features-service's answer too
+ * (`learningPhase.campaignId`, the leading LIVE campaign), so nothing here ranks,
+ * filters or picks.
+ *
+ * Renders NOTHING when there is no verdict to state: a read that carries none (the
+ * lensed body, the lean groups, a cold payload), a scope that is priced, or one the
+ * producer says it cannot measure. The `Learning` tags on the surfaces underneath
+ * already say the figures are being withheld.
  */
 export function ScopeLearningBand({
+  phase,
   brandId,
-  featureSlug,
   offerId,
-  funnelKey,
-  campaignId,
 }: {
+  /** The scope's verdict, off this page's revenue body. Null = this read carries none. */
+  phase: LearningPhase | null | undefined;
   brandId: string;
-  featureSlug: string;
-  /** Narrow to one offer's campaigns. Absent at brand grain. */
+  /** Scope the budget modal to one offer. Absent at brand grain. */
   offerId?: string;
-  /** Narrow to one funnel's campaigns. Absent above the funnel. */
-  funnelKey?: string | null;
-  /** Narrow to ONE campaign — its own page, where the band speaks for it alone. */
-  campaignId?: string;
 }) {
-  const lead = useScopeLearningLead(brandId, featureSlug, { offerId, funnelKey, campaignId });
-  if (!lead) return null;
-  return (
-    <LearningProgressCallout
-      brandId={brandId}
-      offerId={offerId}
-      campaignId={lead.campaign.id}
-      outcomeUnitCostUsd={lead.outcomeUnitCostUsd}
-      spentUsd={lead.spentUsd}
-      dailyBudgetUsd={lead.dailyBudgetUsd}
-      settlingDays={lead.settlingDays}
-      settlingDaysElapsed={lead.settlingDaysElapsed}
-    />
-  );
+  if (!phase) return null;
+  return <LearningProgressCallout phase={phase} brandId={brandId} offerId={offerId} />;
 }

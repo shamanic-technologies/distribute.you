@@ -506,6 +506,95 @@ export interface RevenueOverview {
    * over the full array, before it is narrowed.
    */
   outcomeFieldsServed: LeadOutcomeField[];
+  /**
+   * WHEN THIS SCOPE'S FIGURES STOP BEING NOISE — served whole, divided by nobody
+   * (features-service v0.165.0).
+   *
+   * Null wherever the producer states it cannot answer for this read: the lensed
+   * `?lens=` body, the lean `?groupBy=` groups, the no-funnel short-circuit and the
+   * cold-start path — the same gate `spend` and `funnelSteps` already ride. Null is
+   * "this read carries no verdict", never "the scope is priced".
+   */
+  learningPhase?: LearningPhase | null;
+}
+
+/**
+ * Five verdicts, and the middle three are the ones the browser used to collapse into
+ * one — which is how a countdown reached zero while the outcomes had not arrived.
+ *
+ * `learning_limited` is NOT terminal: the spend target is reached and the outcomes are
+ * still landing, which is what {@link LearningPhase.outcomeLagDays} is for.
+ */
+export type LearningStatus =
+  | "priced"
+  | "learning"
+  | "learning_limited"
+  | "paused"
+  | "unmeasured";
+
+/**
+ * WHICH ingredient is missing, when the producer cannot say.
+ *
+ * Read as a plain string union rather than a `z.enum`, the same way the step and
+ * channel-family vocabularies are: the producer is free to name a new reason, and a
+ * reader that closes the set throws on the body the day it does. An unknown token
+ * renders as the generic sentence rather than blanking the band.
+ */
+export type LearningUnmeasuredReason =
+  | "no_campaigns"
+  | "campaigns_unreadable"
+  | "no_leg_stated"
+  | "no_outcome_evidence"
+  | "leg_unpriceable"
+  | "no_expected_price"
+  | "no_daily_ceiling"
+  | (string & {});
+
+/** What raising the ceiling to this figure would leave. Same unit as `daysRemaining`. */
+export interface LearningCeilingScenario {
+  dailyCeilingUsd: number;
+  daysRemaining: number;
+}
+
+/** ONE campaign of the scope, with its own count — so a reader can SEE why the verdict reads so. */
+export interface LearningPhaseCampaign {
+  campaignId: string;
+  campaignIds: string[];
+  campaignIdentityKey: string | null;
+  legKey: string | null;
+  outcomeStep: { key: string; label: string; description?: string } | null;
+  /** `null` is "we could not count this"; `0` is a measurement. */
+  outcomesObserved: number | null;
+  outcomeObserved: boolean;
+  live: boolean;
+}
+
+/** The whole answer, rendered verbatim — nothing here is divided, minimised or joined. */
+export interface LearningPhase {
+  status: LearningStatus;
+  /** Present ⟺ `status === "unmeasured"`. */
+  unmeasuredReason: LearningUnmeasuredReason | null;
+  /** The LEADING campaign — whose countdown this is. */
+  campaignId: string | null;
+  campaignIdentityKey: string | null;
+  legKey: string | null;
+  outcomeStep: { key: string; label: string; description?: string } | null;
+  outcomesObserved: number | null;
+  outcomesRequired: number;
+  progressPct: number | null;
+  outcomeObserved: boolean;
+  /** Pooled over the cells that OBSERVED an outcome. Null = every figure we hold is a floor. */
+  expectedCostPerOutcomeUsd: number | null;
+  spendTargetUsd: number | null;
+  committedSpentUsd: number | null;
+  spendRemainingUsd: number | null;
+  dailyCeilingUsd: number | null;
+  /** Whole days at the current ceiling. Null on every status but `learning`. */
+  daysRemaining: number | null;
+  ceilingScenarios: LearningCeilingScenario[];
+  /** Why reaching the spend target is not reaching the outcomes. */
+  outcomeLagDays: number;
+  campaigns: LearningPhaseCampaign[];
 }
 
 /**

@@ -2,306 +2,245 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import {
-  REPLY_SETTLING_DAYS,
-  channelSettlesLate,
-  learningProgress,
-  learningProgressIfDoubled,
-  learningThresholdUsd,
-  settlingDaysElapsed,
-} from "../src/lib/learning-progress";
+import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 
 const src = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
 
-describe("learningProgress", () => {
-  it("prices the tank at ten outcomes", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 0,
-      dailyBudgetUsd: 50,
-      settlingDays: 0,
-    });
-    expect(p?.thresholdUsd).toBe(720);
+/**
+ * WHEN THIS SCOPE'S FIGURES STOP BEING NOISE — served, not derived.
+ *
+ * The band used to assemble its countdown in the browser out of three services, and it
+ * picked its expected price by taking the CHEAPEST figure across every workflow. That
+ * selects, by construction, the workflow that spent the LEAST and observed NOTHING: a
+ * floor, not a price. Measured in prod on brand a179bbd9 / campaign 3922c8e1, the floor
+ * was $21.22 from a workflow with zero outcomes, so the spend target came out at $212 —
+ * a figure $409 of committed spend had passed weeks earlier. The band read
+ * `Learning: 0 days left` above a `Learning` tag still saying to wait.
+ *
+ * features-service v0.165.0 serves the whole verdict (`learningPhase`). The fixture
+ * below is that campaign's REAL prod body, so every case asserts the DIVERGENCE: a suite
+ * that only checked "a block came back" would pass on the implementation this replaces.
+ */
+const PROD_PHASE = {
+  status: "learning",
+  unmeasuredReason: null,
+  campaignId: "3922c8e1-3405-46af-8a56-1eef3f221b19",
+  campaignIdentityKey:
+    "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93|a179bbd9-8eed-4dba-9338-78125922b0c6|sales_meetings_from_conversation|cold_email",
+  legKey: "start_to_conversation",
+  outcomeStep: { key: "conversation", label: "Conversation" },
+  outcomesObserved: 4,
+  outcomesRequired: 10,
+  progressPct: 40,
+  outcomeObserved: true,
+  expectedCostPerOutcomeUsd: 79.44,
+  spendTargetUsd: 794.4,
+  committedSpentUsd: 409.26,
+  spendRemainingUsd: 385.14,
+  dailyCeilingUsd: 8,
+  daysRemaining: 49,
+  ceilingScenarios: [
+    { dailyCeilingUsd: 16, daysRemaining: 25 },
+    { dailyCeilingUsd: 24, daysRemaining: 17 },
+    { dailyCeilingUsd: 40, daysRemaining: 10 },
+  ],
+  outcomeLagDays: 14,
+  campaigns: [
+    {
+      campaignId: "3922c8e1-3405-46af-8a56-1eef3f221b19",
+      campaignIds: [
+        "3922c8e1-3405-46af-8a56-1eef3f221b19",
+        "53ff8069-c95b-44cf-8acc-38ae04a70113",
+      ],
+      campaignIdentityKey:
+        "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93|a179bbd9-8eed-4dba-9338-78125922b0c6|sales_meetings_from_conversation|cold_email",
+      legKey: "start_to_conversation",
+      outcomeStep: { key: "conversation", label: "Conversation" },
+      outcomesObserved: 4,
+      outcomeObserved: true,
+      live: true,
+    },
+  ],
+};
+
+/** The minimum a revenue body needs to parse, so a case can carry only what it is about. */
+const bodyWith = (learningPhase: unknown) => ({
+  spend: null,
+  headline: { totalPipelineUsd: 1440 },
+  costEconomics: {
+    committedCostUsd: 409.26,
+    costOfAcquisitionPct: 30.4,
+    roiMultiple: 3.28,
+    costPerAcquisitionUsd: 760.22,
+    expectedConversions: null,
+    costPerConversionUsd: null,
+  },
+  timeSeries: [],
+  organizations: [],
+  events: [],
+  attributedOutcomes: [],
+  leads: [],
+  learningPhase,
+});
+
+describe("the verdict is READ off the body, never rebuilt", () => {
+  it("carries every figure the band states, verbatim", () => {
+    const out = parseFeatureRevenue(bodyWith(PROD_PHASE), "test");
+    const phase = out.learningPhase!;
+    expect(phase.status).toBe("learning");
+    expect(phase.daysRemaining).toBe(49);
+    // The price is the pooled one from cells that OBSERVED an outcome — NOT the $21.22
+    // floor the browser used to pick, and not the whole-spend $109.50 figure either.
+    expect(phase.expectedCostPerOutcomeUsd).toBe(79.44);
+    expect(phase.spendTargetUsd).toBe(794.4);
+    expect(phase.spendRemainingUsd).toBeCloseTo(385.14, 2);
+    expect(phase.progressPct).toBe(40);
+    expect(phase.outcomesObserved).toBe(4);
+    expect(phase.outcomesRequired).toBe(10);
+    expect(phase.outcomeLagDays).toBe(14);
+    expect(phase.ceilingScenarios).toHaveLength(3);
   });
 
-  it("states the days the remaining spend takes at today's rate", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 310,
-      dailyBudgetUsd: 50,
-      settlingDays: 0,
-    });
-    // 720 - 310 = 410 left, at 50/day => 9 days.
-    expect(p?.spendDaysLeft).toBe(9);
-    expect(p?.daysLeft).toBe(9);
+  it("the target is ten outcomes at the SERVED price, and the spend has not reached it", () => {
+    // The whole bug in one assertion: the old target was $212.20 and $409.26 had passed
+    // it, which is why the countdown had expired. The served target is $794.40.
+    const phase = parseFeatureRevenue(bodyWith(PROD_PHASE), "test").learningPhase!;
+    expect(phase.spendTargetUsd).toBeGreaterThan(phase.committedSpentUsd!);
+    expect(phase.spendTargetUsd).toBeCloseTo(
+      phase.expectedCostPerOutcomeUsd! * phase.outcomesRequired,
+      2,
+    );
+    // And it is nowhere near the floor the browser priced on.
+    expect(phase.expectedCostPerOutcomeUsd!).toBeGreaterThan(21.22 * 3);
   });
 
-  it("adds the settling window on a channel whose replies land late", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 310,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-    });
-    expect(p?.settlingDaysLeft).toBe(14);
-    expect(p?.daysLeft).toBe(23);
+  it("carries each campaign of the scope with its own count", () => {
+    // So a reader can SEE why the verdict reads so, and so the identity's members are
+    // named rather than the representative row standing in for them.
+    const phase = parseFeatureRevenue(bodyWith(PROD_PHASE), "test").learningPhase!;
+    expect(phase.campaigns).toHaveLength(1);
+    expect(phase.campaigns[0].campaignIds).toHaveLength(2);
+    expect(phase.campaigns[0].live).toBe(true);
+    expect(phase.campaigns[0].outcomesObserved).toBe(4);
   });
 
-  it("counts the whole settling window as ahead while the spend is still going", () => {
-    // Elapsed days cannot have started running before the spend is in, so a caller that
-    // passes one anyway must not shorten the promise.
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 100,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-      settlingDaysElapsed: 9,
-    });
-    expect(p?.settlingDaysLeft).toBe(14);
+  it("reads NULL as a read that carries no verdict, never as a priced scope", () => {
+    // The producer means to send null on the lensed body, the lean groups, the
+    // no-funnel short-circuit and the cold path — the same gate `spend` rides.
+    expect(parseFeatureRevenue(bodyWith(null), "test").learningPhase).toBeNull();
   });
 
-  it("leaves only the settling days once the spend has passed the threshold", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 900,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-      settlingDaysElapsed: 6,
-    });
-    expect(p?.spendDaysLeft).toBe(0);
-    expect(p?.settlingDaysLeft).toBe(8);
-    expect(p?.daysLeft).toBe(8);
+  it("survives a body that predates the field", () => {
+    const body = bodyWith(null) as Record<string, unknown>;
+    delete body.learningPhase;
+    expect(parseFeatureRevenue(body, "test").learningPhase).toBeNull();
   });
 
-  it("reads an unknown elapsed settling as the whole window still ahead", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 900,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-      settlingDaysElapsed: null,
-    });
-    expect(p?.settlingDaysLeft).toBe(14);
+  it("does not close the status or reason vocabularies", () => {
+    // Both are the producer's and both are expected to grow. A reader that closed the
+    // set would throw on the WHOLE body the day it does, taking down a page whose every
+    // other figure is correct.
+    const grown = parseFeatureRevenue(
+      bodyWith({ ...PROD_PHASE, status: "a_sixth_verdict", unmeasuredReason: "a_new_reason" }),
+      "test",
+    ).learningPhase!;
+    expect(grown.status).toBe("a_sixth_verdict");
+    expect(grown.unmeasuredReason).toBe("a_new_reason");
   });
 
-  it("keeps the bar between 0 and 100", () => {
-    const fresh = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 0,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-    });
-    expect(fresh?.pct).toBe(0);
-    const done = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 5000,
-      dailyBudgetUsd: 50,
-      settlingDays: 0,
-    });
-    expect(done?.pct).toBe(100);
-  });
-
-  it("states nothing when the outcome has no expected price", () => {
-    expect(
-      learningProgress({
-        outcomeUnitCostUsd: null,
-        spentUsd: 310,
-        dailyBudgetUsd: 50,
-        settlingDays: 0,
-      }),
-    ).toBeNull();
-  });
-
-  it("states nothing when nothing is funding it", () => {
-    expect(
-      learningProgress({
-        outcomeUnitCostUsd: 72,
-        spentUsd: 310,
-        dailyBudgetUsd: 0,
-        settlingDays: 0,
-      }),
-    ).toBeNull();
-    expect(
-      learningProgress({
-        outcomeUnitCostUsd: 72,
-        spentUsd: 310,
-        dailyBudgetUsd: null,
-        settlingDays: 0,
-      }),
-    ).toBeNull();
-  });
-
-  it("reads an absent spend as nothing spent, never as a negative tank", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 10,
-      spentUsd: null,
-      dailyBudgetUsd: 20,
-      settlingDays: 0,
-    });
-    expect(p?.spentUsd).toBe(0);
-    expect(p?.spendDaysLeft).toBe(5);
+  it("still fails loud on real shape rot", () => {
+    // Tolerating an unknown TOKEN is not tolerating a missing FIGURE: a body whose
+    // verdict carries no `outcomesRequired` is rot, and rot must not be rendered.
+    const rotten = { ...PROD_PHASE } as Record<string, unknown>;
+    delete rotten.outcomesRequired;
+    expect(() => parseFeatureRevenue(bodyWith(rotten), "test")).toThrow();
   });
 });
 
-describe("learningProgressIfDoubled", () => {
-  it("halves the spending half and leaves the replies alone", () => {
-    const p = learningProgress({
-      outcomeUnitCostUsd: 72,
-      spentUsd: 310,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-    })!;
-    // 9 spending days become 5; the 14 settling days do not move.
-    expect(learningProgressIfDoubled(p)).toBe(19);
+describe("the band divides nothing", () => {
+  const band = src("components/campaigns/learning-progress-callout.tsx");
+  const scope = src("components/campaigns/scope-learning-band.tsx");
+
+  it("renders the served figures and computes no threshold, price or countdown", () => {
+    expect(band).toContain("phase.daysRemaining");
+    expect(band).toContain("phase.progressPct");
+    expect(band).toContain("phase.ceilingScenarios");
+    // The arithmetic that produced "0 days left" must not come back in any form.
+    expect(band).not.toContain("learningProgress");
+    expect(band).not.toContain("LEARNING_MIN_OUTCOMES");
+    expect(band).not.toContain("settlingDays");
+    expect(band).not.toMatch(/Math\.ceil\(/);
   });
 
-  it("offers nothing when doubling buys no day back", () => {
-    const oneDay = learningProgress({
-      outcomeUnitCostUsd: 10,
-      spentUsd: 60,
-      dailyBudgetUsd: 50,
-      settlingDays: 0,
-    })!;
-    expect(oneDay.spendDaysLeft).toBe(1);
-    expect(learningProgressIfDoubled(oneDay)).toBeNull();
-
-    const full = learningProgress({
-      outcomeUnitCostUsd: 10,
-      spentUsd: 500,
-      dailyBudgetUsd: 50,
-      settlingDays: REPLY_SETTLING_DAYS,
-    })!;
-    expect(learningProgressIfDoubled(full)).toBeNull();
-  });
-});
-
-describe("settlingDaysElapsed", () => {
-  const daily = [
-    { date: "2026-08-01", cumulativeSpendUsd: 100 },
-    { date: "2026-08-10", cumulativeSpendUsd: 720 },
-    { date: "2026-08-20", cumulativeSpendUsd: 1200 },
-  ];
-
-  it("dates the settling window from the day spend first passed the threshold", () => {
-    expect(settlingDaysElapsed(daily, 720, new Date("2026-08-16T09:00:00Z"))).toBe(6);
-  });
-
-  it("says nothing while the threshold is still ahead", () => {
-    expect(settlingDaysElapsed(daily, 5000, new Date("2026-08-16T09:00:00Z"))).toBeNull();
-  });
-
-  it("says nothing when there is no curve to read", () => {
-    expect(settlingDaysElapsed([], 720, new Date("2026-08-16T09:00:00Z"))).toBeNull();
-    expect(settlingDaysElapsed(null, 720, new Date("2026-08-16T09:00:00Z"))).toBeNull();
-    expect(settlingDaysElapsed(daily, null, new Date("2026-08-16T09:00:00Z"))).toBeNull();
-  });
-});
-
-describe("learningThresholdUsd", () => {
-  it("is ten outcomes at the expected price", () => {
-    expect(learningThresholdUsd(72)).toBe(720);
-    expect(learningThresholdUsd(null)).toBeNull();
-    expect(learningThresholdUsd(0)).toBeNull();
-  });
-});
-
-describe("channelSettlesLate", () => {
-  it("names the email channels and nothing else", () => {
-    expect(channelSettlesLate("sales-cold-email-outreach")).toBe(true);
-    expect(channelSettlesLate("feedback-request-cold-email-outreach")).toBe(true);
-    expect(channelSettlesLate("sales-crm-email-outreach")).toBe(true);
-    expect(channelSettlesLate("google-ads")).toBe(false);
-    expect(channelSettlesLate(null)).toBe(false);
-  });
-});
-
-describe("the band is mounted where campaigns are read", () => {
-  it("is ONE band on every campaign surface — brand, offer, funnel, list, campaign", () => {
-    // Four call sites used to assemble the price, the spend, the ceiling and the
-    // settling tail by hand, so one campaign read `13 days` on its own page and
-    // `27 days` one click up (prod, 2026-08-29: same $144.39 spent, same $24/day, same
-    // $44.97 per sales interest — only the inputs passed differed). A band is a promise
-    // about a date, so two of them for one campaign is the page contradicting itself.
-    for (const rel of [
-      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-      "components/funnels/funnel-overview-page.tsx",
-      "components/campaigns/campaigns-page.tsx",
-      "components/campaigns/campaign-overview-page.tsx",
-    ]) {
-      const page = src(rel);
-      expect(page, `${rel} does not render the band`).toContain("<ScopeLearningBand");
-      expect(page, `${rel} assembles the band's inputs itself`).not.toContain(
-        "<LearningProgressCallout",
-      );
+  it("the two modules it replaced are GONE, not merely unused", () => {
+    // A lib with no caller is a lib the next surface reaches for. Both are deleted, and
+    // nothing under src may name them again.
+    const all = [
+      "lib/use-scope-learning-lead.ts",
+      "lib/learning-progress.ts",
+    ];
+    for (const rel of all) {
+      expect(() => src(rel)).toThrow();
     }
-
-    // The band component itself renders the callout and decides nothing.
-    const band = src("components/campaigns/scope-learning-band.tsx");
-    expect(band).toContain("useScopeLearningLead");
-    expect(band).toContain("<LearningProgressCallout");
+    expect(scope).not.toContain("useScopeLearningLead");
+    // The cheapest-across-workflows pick is what chose the floor. It has no caller left.
+    const choice = src("lib/workflow-projection-choice.ts");
+    expect(choice).not.toContain("learningSignalUnitCostUsd");
+    expect(choice).not.toContain("workflowSignalUnitCost");
   });
 
-  it("narrows to the scope the page IS", () => {
-    // An offer answers for its campaigns, a funnel for the campaigns selling it, a
-    // campaign for itself. A band speaking for a campaign the page never lists counts
-    // days for something the reader cannot see.
-    expect(src("components/funnels/funnel-overview-page.tsx")).toContain(
-      "funnelKey={rawKey || null}",
-    );
-    expect(src("components/campaigns/campaigns-page.tsx")).toContain("funnelKey={narrowedKey}");
-    expect(src("components/campaigns/campaign-overview-page.tsx")).toContain(
-      "campaignId={campaignId}",
-    );
+  it("takes the verdict as a PROP, so the band and the figures beside it share one body", () => {
+    // A read of its own is how one campaign came to read 13 days on its own page and 27
+    // one click up: same spend, same ceiling, two call sites passing different inputs.
+    expect(scope).toContain("phase: LearningPhase | null | undefined");
+    expect(scope).not.toContain("useAuthQuery");
   });
 
-  it("speaks for the campaign that finishes SOONEST, not the one with the most outcomes", () => {
-    // Two campaigns at the same outcome count can be a week apart if one is funded at
-    // twice the other's ceiling or prices a different step, so a count ranks by a proxy
-    // for the answer rather than by the answer.
-    const hook = src("lib/use-scope-learning-lead.ts");
-    expect(hook).toContain("progress.daysLeft < best.progress.daysLeft");
-    expect(hook).not.toContain("(row.signal ?? 0) > (best.signal ?? 0)");
+  it("states the three verdicts that speak, and nothing for the two that do not", () => {
+    expect(band).toContain('case "learning"');
+    expect(band).toContain('case "learning_limited"');
+    expect(band).toContain('case "paused"');
+    // `priced` and `unmeasured` render nothing: the first has its figures, and the
+    // second is the producer saying it cannot answer.
+    expect(band).toContain("default:\n      return null;");
   });
 
-  it("is hidden once the scope has been measured, and never counts a paused campaign", () => {
-    // The scope's figures clear the moment ONE of its campaigns is measured, so a band
-    // beside a priced return promises a figure that is already stated. And a countdown
-    // is priced on a daily spend a stopped campaign is not making.
-    const hook = src("lib/use-scope-learning-lead.ts");
-    expect(hook).toContain("const scopedLearning = scopeIsLearning(scopedRows);");
-    expect(hook).toContain("isRunningStatus(row.campaign.status)");
+  it("offers the raise only while there is spend left to get through", () => {
+    // On `learning_limited` the money is already in and the wait is the provider's, so
+    // a lever promising to buy days back would be promising something it cannot.
+    expect(band).toContain("phase.daysRemaining != null");
+    expect(band).toContain("s.daysRemaining < phase.daysRemaining");
   });
 
-  it("prices the threshold on the step the gate COUNTS, and counts the settling tail", () => {
-    // The band multiplies the expected price by ten and the sentence under it counts ten
-    // sales interests, so pricing it on a booked MEETING made one box disagree with
-    // itself by the reply-to-meeting rate. The tail is what the campaign page dropped:
-    // 13 days is the spend half of a 27-day answer.
-    const hook = src("lib/use-scope-learning-lead.ts");
-    expect(hook).toContain("learningSignalUnitCostUsd(projection, stepKeys)");
-    expect(hook).toContain("channelSettlesLate(row.campaign.featureSlug) ? REPLY_SETTLING_DAYS : 0");
-    expect(hook).toContain("settlingDaysElapsed(");
+  it("names both figures and states what the raise buys, in days saved", () => {
+    // "about 42 days" makes a reader subtract to learn what they gain.
+    expect(band).toContain("save {saved}");
+    expect(band).not.toContain("/day instead → about");
   });
 
-  it("computes nothing of its own, the figures come from the lib", () => {
-    const band = src("components/campaigns/learning-progress-callout.tsx");
-    expect(band).toContain("learningProgressIfDoubled");
-    expect(band).not.toContain("LEARNING_MIN_OUTCOMES *");
+  it("opens the budget form on the figure the button just named", () => {
+    const modal = src("components/campaigns/campaign-controls-modal.tsx");
+    expect(band).toContain("prefillBudgetUsd={prefillUsd}");
+    expect(modal).toContain("draftFor(row, prefill)");
+    // A figure offered for ONE campaign has no row to land on at a wider grain.
+    expect(modal).toContain("const prefill = campaignId != null ? prefillBudgetUsd : undefined;");
+  });
+
+  it("carries no explanatory line under the bar", () => {
+    // Three clauses (the spend target, the daily rate, the settling window) on a band
+    // whose whole job is to be read at a glance.
+    expect(band).not.toContain("we need to price it");
+    expect(band).not.toContain("Replies keep landing for");
   });
 
   it("wears the charter's TERTIARY, rotated to the brand, on every layer it draws", () => {
     // One accent across a campaign's surfaces: the band and the `Learning` tag it
-    // belongs to must never read as two different states of one thing. `tone-tile` is
-    // the opt-in, and the band draws MORE layers than the tag (a 700-weight heading
-    // and both halves of a bar), so each needs its own rotation rule in globals.css or
-    // the band renders several hues at once.
-    const band = src("components/campaigns/learning-progress-callout.tsx");
+    // belongs to must never read as two different states of one thing.
     expect(band).toContain("tone-tile");
     for (const cls of [
       "border-orange-200",
       "bg-orange-50",
       "text-orange-700",
-      "text-orange-600",
       "bg-orange-200",
       "bg-orange-600",
     ]) {
@@ -310,24 +249,18 @@ describe("the band is mounted where campaigns are read", () => {
     expect(band).not.toMatch(/(bg|text|border)-purple-/);
 
     const css = src("app/globals.css");
-    // The two the band draws directly on its own root, so a compound selector.
     for (const sel of [".tone-tile.bg-orange-50", ".tone-tile.border-orange-200"]) {
       expect(css).toContain(`:root[data-brand-tint] ${sel}`);
       expect(css).toContain(`html.dark:root[data-brand-tint] ${sel}`);
     }
-    // The rest sit on descendants of it.
     for (const sel of [
       ".tone-tile .text-orange-700",
-      ".tone-tile .text-orange-600",
       ".tone-tile .bg-orange-200",
       ".tone-tile .bg-orange-600",
     ]) {
       expect(css).toContain(`:root[data-brand-tint] ${sel}`);
     }
-    // And the weights that carry text or a light track need a dark remap too, or the
-    // band paints near-black text and a track brighter than its own fill.
     for (const rule of [
-      "html.dark .text-orange-600",
       "html.dark .text-orange-700",
       "html.dark .border-orange-200",
       "html.dark .bg-orange-200",
@@ -339,40 +272,39 @@ describe("the band is mounted where campaigns are read", () => {
   it("ships no em-dash in anything a customer reads", () => {
     // Comments are exempt fleet-wide; the copy is not. Asserted against a
     // comment-stripped copy so an explanatory line cannot fail its own guard.
-    const band = src("components/campaigns/learning-progress-callout.tsx")
+    const stripped = band
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
-    expect(band).not.toContain("\u2014");
+    expect(stripped).not.toContain("—");
   });
 });
 
-describe("the band states one number and offers one lever", () => {
-  const band = src("components/campaigns/learning-progress-callout.tsx");
-  const modal = src("components/campaigns/campaign-controls-modal.tsx");
-
-  it("states the days flatly, with no hedge in front of them", () => {
-    expect(band).toContain("Learning: {progress.daysLeft} {dayWord} left");
-    expect(band).not.toContain("Learning: about");
+describe("every surface feeds the band from its OWN scope's body", () => {
+  // A band fed from a wider read states a wider scope's countdown under a narrower
+  // name. The Campaigns list is the one that can drift: arrive through a sales funnel
+  // and it narrows to that funnel's campaigns while its header keeps answering for the
+  // whole offer, so the band needs the funnel's own body there.
+  it("the funnel Overview reads its funnel's body", () => {
+    const page = src("components/funnels/funnel-overview-page.tsx");
+    expect(page).toContain("phase={data?.learningPhase ?? null}");
   });
 
-  it("carries no explanatory line under the bar", () => {
-    // Three clauses (the spend target, the daily rate, the settling window) on a band
-    // whose whole job is to be read at a glance. The arithmetic lives in the lib.
-    expect(band).not.toContain("we need to price it");
-    expect(band).not.toContain("Replies keep landing for");
+  it("the campaigns list narrows to the funnel when the route names one", () => {
+    const page = src("components/campaigns/campaigns-page.tsx");
+    expect(page).toContain('["offerFunnelRevenue", brandId, offerId ?? "none", narrowedKey ?? "none"]');
+    expect(page).toContain("const learningPhase = funnelKey");
+    expect(page).toContain("phase={learningPhase}");
   });
 
-  it("names both figures and states what the raise buys, in days saved", () => {
-    // "about 42 days" makes a reader subtract to learn what they gain.
-    expect(band).toContain("Invest {fmtWholeUsd(doubledBudgetUsd)}/day instead of");
-    expect(band).toContain("save {saved}");
-    expect(band).not.toContain("/day instead → about");
+  it("the brand and offer Overview reads its own body", () => {
+    const page = src("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+    expect(page).toContain("phase={data?.learningPhase ?? null}");
+    expect(page).not.toContain("featureSlug={featureSlug} offerId={offerId} />");
   });
 
-  it("opens the budget form on the figure the button just named", () => {
-    expect(band).toContain("prefillBudgetUsd={doubledBudgetUsd}");
-    expect(modal).toContain("draftFor(row, prefill)");
-    // A figure offered for ONE campaign has no row to land on at a wider grain.
-    expect(modal).toContain("const prefill = campaignId != null ? prefillBudgetUsd : undefined;");
+  it("the campaign Overview reads its own campaign's body", () => {
+    const page = src("components/campaigns/campaign-overview-page.tsx");
+    expect(page).toContain("phase={data?.learningPhase ?? null}");
+    expect(page).not.toContain("campaignId={campaignId}\n        />");
   });
 });

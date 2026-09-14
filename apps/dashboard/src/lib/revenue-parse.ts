@@ -276,6 +276,59 @@ const FunnelStepsSchema = z.object({
 });
 
 
+/** One step of a funnel as the producer names it, on the learning verdict. */
+const LearningOutcomeStepSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+});
+
+const LearningCeilingScenarioSchema = z.object({
+  dailyCeilingUsd: z.number(),
+  daysRemaining: z.number(),
+});
+
+const LearningPhaseCampaignSchema = z.object({
+  campaignId: z.string(),
+  campaignIds: z.array(z.string()),
+  campaignIdentityKey: z.string().nullable(),
+  legKey: z.string().nullable(),
+  outcomeStep: LearningOutcomeStepSchema.nullable(),
+  outcomesObserved: z.number().nullable(),
+  outcomeObserved: z.boolean(),
+  live: z.boolean(),
+});
+
+/**
+ * WHEN THIS SCOPE'S FIGURES STOP BEING NOISE (features-service v0.165.0).
+ *
+ * `status` and `unmeasuredReason` are plain STRINGS, never `z.enum`: the producer owns
+ * both vocabularies and both are expected to grow, and a reader that closes the set
+ * throws on the whole body the day it does — taking down a page whose every other
+ * figure is correct. The band renders an unknown token as its generic sentence.
+ */
+const LearningPhaseSchema = z.object({
+  status: z.string(),
+  unmeasuredReason: z.string().nullable(),
+  campaignId: z.string().nullable(),
+  campaignIdentityKey: z.string().nullable(),
+  legKey: z.string().nullable(),
+  outcomeStep: LearningOutcomeStepSchema.nullable(),
+  outcomesObserved: z.number().nullable(),
+  outcomesRequired: z.number(),
+  progressPct: z.number().nullable(),
+  outcomeObserved: z.boolean(),
+  expectedCostPerOutcomeUsd: z.number().nullable(),
+  spendTargetUsd: z.number().nullable(),
+  committedSpentUsd: z.number().nullable(),
+  spendRemainingUsd: z.number().nullable(),
+  dailyCeilingUsd: z.number().nullable(),
+  daysRemaining: z.number().nullable(),
+  ceilingScenarios: z.array(LearningCeilingScenarioSchema),
+  outcomeLagDays: z.number(),
+  campaigns: z.array(LearningPhaseCampaignSchema),
+});
+
 const FeatureRevenueResponseSchema = z.object({
   // OPTIONAL because this parser is shared by all THREE money grains, and only the
   // per-feature one names a channel. A feature IS an acquisition channel here, so the
@@ -313,6 +366,12 @@ const FeatureRevenueResponseSchema = z.object({
   // body EXCEPT the one the null was written for, so `.nullish()` — the same call the
   // required-and-nullable rule prescribes, and it also tolerates a cached pre-#854 body.
   funnelSteps: FunnelStepsSchema.nullish(),
+  // WHEN THIS SCOPE'S FIGURES STOP BEING NOISE. `.nullish()` for the same reason
+  // `funnelSteps` is: the producer means to send `null` on the reads that carry no
+  // verdict (the lensed body, the lean groups, the no-funnel short-circuit, the cold
+  // path), and `.optional()` would parse every body EXCEPT the one the null was
+  // written for. It also tolerates a cached pre-v0.165.0 body.
+  learningPhase: LearningPhaseSchema.nullish(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
   // Overview-only (null on `?lens=`, absent on grouped) and fail-soft server-side,
@@ -437,6 +496,9 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     },
     roiHistory: d.roiHistory ?? null,
     funnelSteps: d.funnelSteps ?? null,
+    // Passed through whole. The band renders these figures verbatim: the browser no
+    // longer picks a price, multiplies a threshold or divides a countdown.
+    learningPhase: (d.learningPhase ?? null) as RevenueOverview["learningPhase"],
     spend: d.spend,
     // Normalize the features-service#416 count-series renames at this single parser
     // boundary: prefer the new `recipients*` name, fall back to the legacy one, so
