@@ -5,10 +5,14 @@ function formatCmgr(value: number | null): string {
   return formatGrowthPct(value);
 }
 
-/** The period noun read off the unit, so the two can never name different periods. */
-const PERIOD_NOUN: Record<CmgrUnit, string> = { weekly: "Week", monthly: "Month" };
+export type CmgrUnit = "weekly" | "monthly";
 
-type CmgrUnit = "weekly" | "monthly";
+/**
+ * The period noun read off the unit, so the two can never name different periods.
+ * Exported because `RunRateStat` states the same span beside a different headline
+ * — two components, one vocabulary, rather than two maps that drift.
+ */
+export const PERIOD_NOUN: Record<CmgrUnit, string> = { weekly: "Week", monthly: "Month" };
 
 /**
  * Compound-growth headline shown above a period chart: ONE rate, the CMGR/CWGR

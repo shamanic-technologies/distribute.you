@@ -59,24 +59,29 @@ export function compoundGrowthSummary(
   if (cmgr.length < 2) return { latestPct: null, periodsSpanned: null };
   const concluded = cmgr.slice(0, -1); // drop the current partial period
   const latestPct = concluded[concluded.length - 1] ?? null;
-  return { latestPct, periodsSpanned: calendarSpan(concluded, keys, latestPct) };
+  return { latestPct, periodsSpanned: compoundGrowthSpan(concluded, keys, latestPct) };
 }
 
 /**
- * Calendar periods the headline rate spans. The anchor is the first index
- * carrying a compound point minus one (that point is already one period past the
- * anchor); the span is the calendar distance from there to the last concluded
- * bucket, plus one so it counts inclusively.
+ * Calendar periods the headline rate spans. The anchor is the first index carrying
+ * a compound point minus one (that point is already one period past the anchor);
+ * the span is the calendar distance from there to the LAST bucket of `series`,
+ * plus one so it counts inclusively.
+ *
+ * `series` is whatever slice the caller is headlining: a FLOW drops the current
+ * partial period before calling and a run-rate (a STOCK) passes the whole series,
+ * because its headline rate is the last bar's own. Passing the slice rather than a
+ * flag is what keeps this from having to know which kind it is looking at.
  */
-function calendarSpan(
-  concluded: Array<number | null>,
+export function compoundGrowthSpan(
+  series: Array<number | null>,
   keys: string[],
   latestPct: number | null,
 ): number | null {
   if (latestPct === null) return null;
-  const firstPoint = concluded.findIndex((v) => v !== null);
+  const firstPoint = series.findIndex((v) => v !== null);
   if (firstPoint < 1) return null;
-  const distance = periodsBetween(keys[firstPoint - 1], keys[concluded.length - 1]);
+  const distance = periodsBetween(keys[firstPoint - 1], keys[series.length - 1]);
   return distance === null ? null : distance + 1;
 }
 

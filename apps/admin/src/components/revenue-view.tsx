@@ -12,6 +12,7 @@ import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { PeriodCompoundChart } from "@/components/period-compound-chart";
 import { PeriodCompoundCard } from "@/components/period-compound-card";
+import { RunRateStat } from "@/components/run-rate-stat";
 import { formatUsd } from "@/lib/format-number";
 import type { BillingStats, FirstSeenMonthRow } from "@/lib/public-stats";
 import { StatedAmountsCard } from "@/components/revenue/stated-amounts-card";
@@ -26,6 +27,7 @@ import {
 import {
   revenueBuckets,
   revenueCmgrSummary,
+  revenueRunRateSummary,
   mrrSplitBuckets,
   approximatedSplitPeriods,
   unmeasurableSplitPeriods,
@@ -40,6 +42,7 @@ import {
   newPaidClientsByMonth,
   cumulativeAvgSeries,
   type RevenueBucket,
+  type RunRateSummary,
   type AvgSeries,
   type RetentionSeries,
 } from "@/lib/revenue-buckets";
@@ -116,6 +119,63 @@ function PeriodCard({
       cmgrLabel={cmgrLabel}
       cmgrUnit={cmgrUnit}
       summary={{ latestPct, periodsSpanned }}
+      data={toCompoundPoints(buckets)}
+      valueLabel={valueLabel}
+      growthLabel={growthLabel}
+      formatValue={usdFull}
+      formatAxis={usdCompact}
+      pending={pending}
+    />
+  );
+}
+
+/**
+ * A RUN-RATE card: leads with what the series is worth today, states its compound
+ * growth underneath.
+ *
+ * Deliberately a second wrapper rather than a flag on `PeriodCard`, because the two
+ * answer different questions and the split is the point. `PeriodCard` charts a FLOW
+ * (cash collected, revenue consumed): the last bar is a period still filling up, so
+ * it headlines a rate and excludes that bar from it. An MRR series is a STOCK: the
+ * last bar is what the fleet is worth per month right now, equal to the live figure
+ * the `StatCard` above the band already states, so it leads and today is included.
+ */
+function RunRatePeriodCard({
+  title,
+  subtitle,
+  cmgrLabel,
+  cmgrUnit,
+  summary,
+  buckets,
+  growthLabel,
+  valueLabel,
+  pending,
+}: {
+  title: string;
+  subtitle: string;
+  cmgrLabel: string;
+  cmgrUnit: "weekly" | "monthly";
+  summary: RunRateSummary;
+  buckets: RevenueBucket[];
+  growthLabel: string;
+  valueLabel: string;
+  pending: boolean;
+}) {
+  return (
+    <PeriodCompoundCard
+      title={title}
+      subtitle={subtitle}
+      headline={
+        <RunRateStat
+          valueUsd={summary.latestUsd}
+          valueLabel={valueLabel}
+          cmgrPct={summary.cmgrPct}
+          cmgrLabel={cmgrLabel}
+          unit={cmgrUnit}
+          periodsSpanned={summary.periodsSpanned}
+          formatValue={usdFull}
+        />
+      }
       data={toCompoundPoints(buckets)}
       valueLabel={valueLabel}
       growthLabel={growthLabel}
@@ -480,12 +540,16 @@ export function RevenueView({
       weeklyTotal,
       monthlyCmgr: revenueCmgrSummary(monthly),
       weeklyCmgr: revenueCmgrSummary(weekly),
-      monthlySelfServeCmgr: revenueCmgrSummary(monthlySelfServe),
-      weeklySelfServeCmgr: revenueCmgrSummary(weeklySelfServe),
-      monthlyAgencyCmgr: revenueCmgrSummary(monthlyAgency),
-      weeklyAgencyCmgr: revenueCmgrSummary(weeklyAgency),
-      monthlyTotalCmgr: revenueCmgrSummary(monthlyTotal),
-      weeklyTotalCmgr: revenueCmgrSummary(weeklyTotal),
+      // Run-rate summaries, NOT `revenueCmgrSummary`: these six series are stocks,
+      // so their headline is the last bar's value and the rate under it runs to
+      // that same bar. The two cash cards and the two consumed-revenue cards above
+      // keep the CMGR headline — they are flows, and their last bar is partial.
+      monthlySelfServeRunRate: revenueRunRateSummary(monthlySelfServe),
+      weeklySelfServeRunRate: revenueRunRateSummary(weeklySelfServe),
+      monthlyAgencyRunRate: revenueRunRateSummary(monthlyAgency),
+      weeklyAgencyRunRate: revenueRunRateSummary(weeklyAgency),
+      monthlyTotalRunRate: revenueRunRateSummary(monthlyTotal),
+      weeklyTotalRunRate: revenueRunRateSummary(weeklyTotal),
       perVisitor: cumulativeAvgSeries(revenueByMonth, newVisitorsByMonth),
       perSignup: cumulativeAvgSeries(revenueByMonth, newSignupsByMonth),
       perPaidClient: cumulativeAvgSeries(revenueByMonth, newPaidClients),
@@ -804,25 +868,27 @@ export function RevenueView({
           )}
 
           <section className="grid gap-6 md:grid-cols-2">
-            <PeriodCard
+            <RunRatePeriodCard
               title="Monthly MRR"
               subtitle="Self-serve plus agency, per month, with compound monthly growth."
               cmgrLabel="CMGR"
               cmgrUnit="monthly"
-              latestPct={derived?.monthlyTotalCmgr.latestPct ?? null}
-              periodsSpanned={derived?.monthlyTotalCmgr.periodsSpanned ?? null}
+              summary={
+                derived?.monthlyTotalRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
+              }
               buckets={derived?.monthlyTotal ?? []}
               growthLabel="CMGR since the first recorded day"
               valueLabel="MRR"
               pending={isPending || !derived}
             />
-            <PeriodCard
+            <RunRatePeriodCard
               title="Weekly MRR"
               subtitle="Self-serve plus agency, per week, with compound weekly growth."
               cmgrLabel="CWGR"
               cmgrUnit="weekly"
-              latestPct={derived?.weeklyTotalCmgr.latestPct ?? null}
-              periodsSpanned={derived?.weeklyTotalCmgr.periodsSpanned ?? null}
+              summary={
+                derived?.weeklyTotalRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
+              }
               buckets={derived?.weeklyTotal ?? []}
               growthLabel="CWGR since the first recorded day"
               valueLabel="MRR"
@@ -831,25 +897,27 @@ export function RevenueView({
           </section>
 
           <section className="grid gap-6 md:grid-cols-2">
-            <PeriodCard
+            <RunRatePeriodCard
               title="Monthly self-serve MRR"
               subtitle="Daily budgets × 30 for every org that is not an agency, recorded daily."
               cmgrLabel="CMGR"
               cmgrUnit="monthly"
-              latestPct={derived?.monthlySelfServeCmgr.latestPct ?? null}
-              periodsSpanned={derived?.monthlySelfServeCmgr.periodsSpanned ?? null}
+              summary={
+                derived?.monthlySelfServeRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
+              }
               buckets={derived?.monthlySelfServe ?? []}
               growthLabel="CMGR since the first recorded day"
               valueLabel="self-serve MRR"
               pending={isPending || !derived}
             />
-            <PeriodCard
+            <RunRatePeriodCard
               title="Weekly self-serve MRR"
               subtitle="Daily budgets × 30 for every org that is not an agency, recorded weekly."
               cmgrLabel="CWGR"
               cmgrUnit="weekly"
-              latestPct={derived?.weeklySelfServeCmgr.latestPct ?? null}
-              periodsSpanned={derived?.weeklySelfServeCmgr.periodsSpanned ?? null}
+              summary={
+                derived?.weeklySelfServeRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
+              }
               buckets={derived?.weeklySelfServe ?? []}
               growthLabel="CWGR since the first recorded day"
               valueLabel="self-serve MRR"
@@ -858,25 +926,27 @@ export function RevenueView({
           </section>
 
           <section className="grid gap-6 md:grid-cols-2">
-            <PeriodCard
+            <RunRatePeriodCard
               title="Monthly agency MRR"
               subtitle="What a human stated the agency's brands are worth, per month."
               cmgrLabel="CMGR"
               cmgrUnit="monthly"
-              latestPct={derived?.monthlyAgencyCmgr.latestPct ?? null}
-              periodsSpanned={derived?.monthlyAgencyCmgr.periodsSpanned ?? null}
+              summary={
+                derived?.monthlyAgencyRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
+              }
               buckets={derived?.monthlyAgency ?? []}
               growthLabel="CMGR since the first recorded day"
               valueLabel="agency MRR"
               pending={isPending || !derived}
             />
-            <PeriodCard
+            <RunRatePeriodCard
               title="Weekly agency MRR"
               subtitle="What a human stated the agency's brands are worth, per week."
               cmgrLabel="CWGR"
               cmgrUnit="weekly"
-              latestPct={derived?.weeklyAgencyCmgr.latestPct ?? null}
-              periodsSpanned={derived?.weeklyAgencyCmgr.periodsSpanned ?? null}
+              summary={
+                derived?.weeklyAgencyRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
+              }
               buckets={derived?.weeklyAgency ?? []}
               growthLabel="CWGR since the first recorded day"
               valueLabel="agency MRR"

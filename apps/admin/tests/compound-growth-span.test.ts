@@ -147,6 +147,7 @@ describe("CmgrStat — one rate, stating its anchor and its span", () => {
     for (const rel of [
       "../src/components/cmgr-stat.tsx",
       "../src/components/period-compound-card.tsx",
+      "../src/components/run-rate-stat.tsx",
       "../src/components/revenue-view.tsx",
       "../src/components/overview-view.tsx",
       "../src/lib/compound-growth.ts",
@@ -157,15 +158,16 @@ describe("CmgrStat — one rate, stating its anchor and its span", () => {
     }
   });
 
-  // Every /metrics tab now draws its charts through ONE shared card, and that card is
+  // Every /metrics tab draws its charts through ONE shared card, and that card is
   // the single place CmgrStat is rendered — so the span reaches it by construction
-  // rather than by each call site remembering to pass it. What the call sites owe is
-  // the whole summary (`latestPct` + `periodsSpanned`), which the card spreads onto
-  // the headline.
+  // rather than by each call site remembering to pass it. A CMGR call site owes the
+  // whole summary (`latestPct` + `periodsSpanned`), which the card spreads onto the
+  // headline; a run-rate card owes a ready `headline` instead and none of the CMGR
+  // props, which the card's props union enforces (see mrr-run-rate-headline.test.ts).
   it("renders the headline from exactly one place, and is handed a whole summary", () => {
     const card = read("../src/components/period-compound-card.tsx");
     expect(card.split("<CmgrStat").length - 1).toBe(1);
-    expect(card).toContain("periodsSpanned={summary.periodsSpanned}");
+    expect(card).toContain("periodsSpanned={props.summary.periodsSpanned}");
 
     const callers = [
       read("../src/app/(authed)/(dashboard)/metrics/page.tsx"),
@@ -174,9 +176,14 @@ describe("CmgrStat — one rate, stating its anchor and its span", () => {
       read("../src/components/overview-view.tsx"),
     ];
     for (const src of callers) {
+      // Every card carries a headline: a summary for the CMGR shape, or a ready
+      // `headline` for a run-rate. Counting them together is what keeps this from
+      // going red the day a fifth surface picks either one.
       const cards = src.split("<PeriodCompoundCard").length - 1;
       expect(cards).toBeGreaterThan(0);
-      expect(src.split("summary={").length - 1).toBeGreaterThanOrEqual(cards);
+      const summaries = src.split("summary={").length - 1;
+      const headlines = src.split("headline={").length - 1;
+      expect(summaries + headlines).toBeGreaterThanOrEqual(cards);
     }
   });
 });

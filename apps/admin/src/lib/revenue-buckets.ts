@@ -2,6 +2,7 @@ import type { CommittedMrrBucket, FleetRevenueBucket, MrrSplitBucket, RetentionB
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 import {
   compoundGrowthSeries,
+  compoundGrowthSpan,
   compoundGrowthSummary,
   type CompoundGrowthSummary,
 } from "@/lib/compound-growth";
@@ -109,6 +110,55 @@ export function revenueCmgrSummary(buckets: RevenueBucket[]): CompoundGrowthSumm
     buckets.map((b) => b.cmgrPct),
     buckets.map((b) => b.key),
   );
+}
+
+/**
+ * Headline for a RUN-RATE series (MRR), which is a STOCK and not a flow.
+ *
+ * `revenueCmgrSummary` above headlines a compound rate and drops the current
+ * period, which is right for cash and for consumed revenue: those are FLOWS, so
+ * the last bar is a month that is not over and leading with it would state a
+ * figure that keeps growing until midnight. A run-rate is the opposite — the
+ * last bar is a point-in-time snapshot of what the fleet is worth per month
+ * RIGHT NOW, equal to the live scalar the card above the chart already states.
+ * So the value leads, today included, and the compound rate goes underneath.
+ *
+ * Both numbers come off the SAME series the chart draws:
+ *   - `latestUsd`  — the last bar's own value. Nothing is summed or divided.
+ *   - `cmgrPct`    — that bar's compound point, i.e. the rate from the FIRST bar
+ *                    to the LAST bar inclusive. `withDerived` already anchors it
+ *                    on the first bar carrying money.
+ *   - `periodsSpanned` — the span that rate compounds over, anchor included and
+ *                    counted in CALENDAR periods, so the exponent behind it is
+ *                    `1/(periodsSpanned - 1)` even across a gap in the series.
+ *
+ * Dropping the current period here was the bug this replaces: on a three-month
+ * series it headlined the July→August step (a trough) and called it the growth
+ * rate, so the self-serve card read -90.6% while its own bars went 1590 → 1860.
+ */
+export interface RunRateSummary {
+  /** The last bar's value — what the run-rate is today. Null when there is no bar. */
+  latestUsd: number | null;
+  /** Compound growth from the first bar carrying money to the last bar, inclusive. */
+  cmgrPct: number | null;
+  /** Calendar periods `cmgrPct` compounds over, anchor included. Null when there is no rate. */
+  periodsSpanned: number | null;
+}
+
+export function revenueRunRateSummary(buckets: RevenueBucket[]): RunRateSummary {
+  const latest = buckets[buckets.length - 1] ?? null;
+  const cmgrPct = latest?.cmgrPct ?? null;
+  return {
+    latestUsd: latest ? latest.value : null,
+    cmgrPct,
+    // The whole series, not the concluded slice: the rate being headlined is the
+    // LAST bar's, so the span has to reach that bar too.
+    periodsSpanned: compoundGrowthSpan(
+      buckets.map((b) => b.cmgrPct),
+      buckets.map((b) => b.key),
+      cmgrPct,
+    ),
+  };
 }
 
 // ── MRR / ARR (committed run-rate) ───────────────────────────────────────────
