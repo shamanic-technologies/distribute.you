@@ -179,6 +179,11 @@ import {
   type RankedWorkflow,
   type WorkflowLadderRow,
 } from "@/lib/workflow-rank-why";
+import {
+  hiddenWorkflowSlugs,
+  hiddenWorkflowNote,
+  type EligibilityLadderRow,
+} from "@/lib/workflow-eligibility";
 import { useCampaignOutcomePair } from "@/lib/use-campaign-outcome-pair";
 
 /**
@@ -465,6 +470,23 @@ export function CampaignWorkflowsPage() {
   // When that last pick ran, so the tag can say how fresh it is rather than implying now.
   const ranAt = useMemo(() => lastPickAt(ladderQ.data?.observedPicks), [ladderQ.data?.observedPicks]);
 
+  // THE WORKFLOWS THIS PAGE DOES NOT OFFER — the ones whose model tier this leg's rule
+  // excludes, which campaign-service can therefore never select. Kept when the workflow
+  // has produced something or the ledger recorded a pick for it: an excluded workflow
+  // that already RAN is exactly the one a "what burned money here" question is about,
+  // and dropping it would delete the campaign's own history from the page that shows it.
+  // Computed off the ladder because the verdict is the ladder's; everything below reads
+  // it, so the grid, the columns, the per-audience list and the panel agree by
+  // construction rather than by four filters staying in step.
+  const hiddenSlugs = useMemo(
+    () =>
+      hiddenWorkflowSlugs({
+        rows: (ladderQ.data?.rows ?? []) as unknown as EligibilityLadderRow[],
+        observedPicks: ladderQ.data?.observedPicks,
+      }),
+    [ladderQ.data],
+  );
+
   const rows = useMemo(
     () =>
       buildCampaignWorkflowRows({
@@ -473,8 +495,8 @@ export function CampaignWorkflowsPage() {
         running,
         pair,
         isLearning,
-      }),
-    [catalogueQ.data, campaignRevQ.data, running, pair],
+      }).filter((r) => !hiddenSlugs.has(r.workflowDynastySlug)),
+    [catalogueQ.data, campaignRevQ.data, running, pair, hiddenSlugs],
   );
 
   // The outcome noun the ranked estimate is about. The producer states it on a
@@ -483,11 +505,27 @@ export function CampaignWorkflowsPage() {
   const outcomeNoun = ladderQ.data?.leg?.toStep.label ?? columns.noun;
   const outcomeStepKey = ladderQ.data?.leg?.toStep.key ?? OUTCOME_STEP_KEY[pair];
 
+  // Declared BELOW `outcomeNoun` on purpose: a memo that reads a `const` declared after it
+  // is a TDZ ReferenceError at render, which `tsc` and the suite both pass over.
+  const hiddenNote = useMemo(
+    () => hiddenWorkflowNote(hiddenSlugs.size, ladderQ.data?.leg?.toStep.label ?? null),
+    [hiddenSlugs, ladderQ.data],
+  );
+
   // Every row the producer sent, audiences included — the matrix's and the panel's source.
-  const allLadderRows = useMemo(() => ladderAllRows(ladderQ.data), [ladderQ.data]);
+  const allLadderRows = useMemo(
+    () =>
+      ladderAllRows(ladderQ.data).filter(
+        (r) => !hiddenSlugs.has(r.workflow.workflowDynastySlug),
+      ),
+    [ladderQ.data, hiddenSlugs],
+  );
   const matrixRows = useMemo(
-    () => (ladderQ.data?.rows ?? []) as unknown as MatrixLadderRow[],
-    [ladderQ.data],
+    () =>
+      ((ladderQ.data?.rows ?? []) as unknown as MatrixLadderRow[]).filter(
+        (r) => !hiddenSlugs.has(r.workflow.workflowDynastySlug),
+      ),
+    [ladderQ.data, hiddenSlugs],
   );
 
   // THE SCOPE a reader is on. `null` = the matrix. It lives in the URL so a link to one
@@ -686,6 +724,7 @@ export function CampaignWorkflowsPage() {
                   cells={cellIndex}
                   columnBest={columnBest}
                   ranAudienceIds={ranAudienceIds}
+                  hiddenNote={hiddenNote}
                   onOpen={setOpen}
                   onSelectScope={setScope}
                 />
@@ -853,6 +892,7 @@ export function WorkflowMatrix({
   cells,
   columnBest,
   ranAudienceIds,
+  hiddenNote,
   onOpen,
   onSelectScope,
 }: {
@@ -862,6 +902,9 @@ export function WorkflowMatrix({
   columnBest: Map<string, string>;
   /** Every audience the producer's served pick window saw a send for. */
   ranAudienceIds: ReadonlySet<string>;
+  /** Why rows are missing and the `#` column skips numbers — null when nothing is
+   *  hidden, because a line stating zero is noise and there is no gap to explain. */
+  hiddenNote: string | null;
   onOpen: (slug: string) => void;
   onSelectScope: (id: string) => void;
 }) {
@@ -996,6 +1039,7 @@ export function WorkflowMatrix({
         a price from a wider pool, because nothing has been measured there yet. A dot
         beside a column name means we sent through that audience in the most recent runs;
         a campaign works several at once, so several are marked.
+        {hiddenNote ? ` ${hiddenNote}` : ""}
       </p>
     </div>
   );
