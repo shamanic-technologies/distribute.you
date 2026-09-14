@@ -125,14 +125,14 @@ export function FunnelOverviewPage() {
   return (
     <LearningToneProvider tone="primary">
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
-      {/* How long before this funnel's figures can be priced. The subject is the campaign
-          selling THIS funnel that finishes soonest: the funnel clears the moment one of
-          them is measured, so the soonest finisher is the honest date. */}
+      {/* How long before this funnel's figures can be priced — served on the SAME body
+          the figures below ride, so the band and the cards can never state different
+          things about this funnel. The subject is features-service's own: the leading
+          live campaign selling this funnel. */}
       <ScopeLearningBand
+        phase={data?.learningPhase ?? null}
         brandId={brandId}
-        featureSlug={featureSlug}
         offerId={offerId}
-        funnelKey={rawKey || null}
       />
       <RevenueOverviewSection
         // What is running here and what it may spend in a day, read-only, and the way

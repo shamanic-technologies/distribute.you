@@ -574,10 +574,9 @@ export function CampaignOverviewPage() {
     return (
       <DashboardPage width="wide" className="space-y-4">
       <ScopeLearningBand
+          phase={data?.learningPhase ?? null}
           brandId={brandId}
-          featureSlug={featureSlug ?? ""}
           offerId={offerId}
-          campaignId={campaignId}
         />
         {/* No section header on this branch to sit beside, so the line stands
             on its own here — everywhere else it rides the Outreach heading. */}
@@ -590,10 +589,9 @@ export function CampaignOverviewPage() {
   return (
     <DashboardPage width="wide" className="space-y-4">
       <ScopeLearningBand
+          phase={data?.learningPhase ?? null}
           brandId={brandId}
-          featureSlug={featureSlug ?? ""}
           offerId={offerId}
-          campaignId={campaignId}
         />
       <RevenueOverviewSection
         headerAction={CampaignStatusLine}
