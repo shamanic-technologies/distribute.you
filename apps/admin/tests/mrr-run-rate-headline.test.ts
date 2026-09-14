@@ -157,30 +157,47 @@ describe("the headline value is the series' own last bar", () => {
 });
 
 describe("the eight run-rate cards draw the run-rate headline, and nothing else does", () => {
+  /**
+   * Anchored on the SERIES each card draws, never on its label. The total pair
+   * reads "ARR" and the pair under it "MRR" — two cards to a label, because the
+   * period is in the span beside the figure and on the axis rather than in the
+   * heading — so a label is no longer a key, and `indexOf` on one would silently
+   * pick whichever of the two comes first.
+   */
   it("routes every run-rate card through RunRateLineCard", () => {
-    for (const label of [
+    for (const series of [
       // The yearly pair is the same stock in a second unit, so it takes the same
       // card: the value leads, today included.
-      "Monthly ARR",
-      "Weekly ARR",
-      "Monthly MRR",
-      "Weekly MRR",
-      "Monthly self-serve MRR",
-      "Weekly self-serve MRR",
-      "Monthly agency MRR",
-      "Weekly agency MRR",
+      "monthlyTotalArr",
+      "weeklyTotalArr",
+      "monthlyTotal",
+      "weeklyTotal",
+      "monthlySelfServe",
+      "weeklySelfServe",
+      "monthlyAgency",
+      "weeklyAgency",
     ]) {
-      const at = VIEW.indexOf(`label="${label}"`);
-      expect(at, `${label} is rendered`).toBeGreaterThan(-1);
-      // The opening tag sits immediately above the label line.
+      const at = VIEW.indexOf(`buckets={derived?.${series} ?? []}`);
+      expect(at, `${series} is charted`).toBeGreaterThan(-1);
       const opener = VIEW.slice(0, at).lastIndexOf("<");
-      expect(VIEW.slice(opener, at), `${label} is a run-rate card`).toContain("RunRateLineCard");
+      expect(VIEW.slice(opener, at), `${series} is a run-rate card`).toContain("RunRateLineCard");
     }
     expect(VIEW.split("<RunRateLineCard").length - 1).toBe(8);
     // The bar-and-growth-line wrapper is DELETED, not merely unused: a run-rate
     // drawn two ways is one band describing one kind of thing two ways.
     expect(VIEW).not.toContain("RunRatePeriodCard");
     expect(VIEW).not.toContain("RunRateStat");
+  });
+
+  /**
+   * The period a card covers leaves the label, so it has to survive somewhere a
+   * reader can see: the span beside the figure ("Month #3" / "Week #10"), and the
+   * axis's own end labels. Both come off `cmgrUnit`, which every card still states.
+   */
+  it("keeps the period readable once the label stops carrying it", () => {
+    expect(VIEW.split('cmgrUnit="monthly"').length - 1).toBeGreaterThanOrEqual(4);
+    expect(VIEW.split('cmgrUnit="weekly"').length - 1).toBeGreaterThanOrEqual(4);
+    expect(STAT).toContain("${PERIOD_NOUN[cmgrUnit]} #${summary.periodsSpanned}");
   });
 
   it("hands them a run-rate summary, never a CMGR one", () => {

@@ -45,16 +45,25 @@ describe("the old undifferentiated run-rate is gone", () => {
    * run-rate and they can drift.
    */
   it("charts the yearly run-rate off the producer's served field, never MRR × 12", () => {
-    expect(VIEW).toContain('label="Monthly ARR"');
-    expect(VIEW).toContain('label="Weekly ARR"');
+    expect(VIEW).toContain('label="ARR"');
     expect(VIEW).toContain('"totalArrUsd", "month"');
     expect(VIEW).toContain('"totalArrUsd", "week"');
     expect(VIEW).not.toMatch(/\*\s*12\b/);
   });
 
+  /**
+   * Anchored on the SERIES each card draws, not on its label: a card reads "ARR"
+   * or "MRR" alone now, so two cards share a label and `indexOf` on one would be
+   * a coin flip between the monthly and the weekly. The bucket key is unique.
+   */
   it("puts the yearly pair ABOVE the monthly pair", () => {
-    expect(VIEW.indexOf('label="Monthly ARR"')).toBeLessThan(VIEW.indexOf('label="Monthly MRR"'));
-    expect(VIEW.indexOf('label="Weekly ARR"')).toBeLessThan(VIEW.indexOf('label="Weekly MRR"'));
+    // The `buckets={...}` prop, which exists only at a RENDER site — the summary
+    // names also appear in the derived memo, where the order is alphabetical-ish
+    // and says nothing about what the page draws first.
+    const at = (series: string) => VIEW.indexOf(`buckets={derived?.${series} ?? []}`);
+    expect(at("monthlyTotalArr")).toBeGreaterThan(-1);
+    expect(at("monthlyTotalArr")).toBeLessThan(at("monthlyTotal"));
+    expect(at("weeklyTotalArr")).toBeLessThan(at("weeklyTotal"));
   });
 
   /**
