@@ -827,7 +827,7 @@ export function RevenueView({
               the monthly pair carries the split below it. */}
           <section className="grid gap-6 md:grid-cols-2">
             <RunRateLineCard
-              label="Monthly ARR"
+              label="ARR"
               subtitle="Self-serve plus agency, stated per year, read on each month's run-rate."
               summary={
                 derived?.monthlyTotalArrRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
@@ -840,7 +840,7 @@ export function RevenueView({
               pending={isPending || !derived}
             />
             <RunRateLineCard
-              label="Weekly ARR"
+              label="ARR"
               subtitle="Self-serve plus agency, stated per year, read on each week's run-rate."
               summary={
                 derived?.weeklyTotalArrRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
@@ -856,7 +856,7 @@ export function RevenueView({
 
           <section className="grid gap-6 md:grid-cols-2">
             <RunRateLineCard
-              label="Monthly MRR"
+              label="MRR"
               subtitle="Self-serve plus agency, per month."
               summary={
                 derived?.monthlyTotalRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
@@ -869,7 +869,7 @@ export function RevenueView({
               pending={isPending || !derived}
             />
             <RunRateLineCard
-              label="Weekly MRR"
+              label="MRR"
               subtitle="Self-serve plus agency, per week."
               summary={
                 derived?.weeklyTotalRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }

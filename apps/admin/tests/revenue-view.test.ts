@@ -66,8 +66,11 @@ describe("Revenue metrics view — wiring", () => {
     // mrr-split-section.test.ts, which owns that band. What this file pins is
     // that the OLD undifferentiated surfaces are gone, so the page can never
     // carry a fleet MRR beside the split it is supposed to have replaced.
-    expect(revenueView).toContain("Monthly MRR");
-    expect(revenueView).toContain("Weekly MRR");
+    // The two cards read "MRR" alone (the reference card style); the period they
+    // cover is in the span beside the figure and on the axis, so what pins them
+    // here is the SERIES each draws rather than a label two cards now share.
+    expect(revenueView).toContain("monthlyTotalRunRate");
+    expect(revenueView).toContain("weeklyTotalRunRate");
     expect(revenueView).not.toContain("Current MRR (committed)");
     expect(revenueView).not.toContain("committedBuckets");
     expect(revenueView).not.toContain("Committed run-rate");
