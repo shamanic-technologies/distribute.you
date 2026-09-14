@@ -5757,50 +5757,85 @@ export interface CommittedMrr {
 // least one stated amount is agency — so no org id is hardcoded anywhere and a
 // second agency later needs no change.
 //
-// HISTORY IS REPLAYED, NOT RECORDED: no snapshot ever carried the split, and
-// none had to — billing keeps a per-(org, brand) daily-budget timeline whose
-// first row lands the SAME DAY as the first committed snapshot, so the agency
-// side's budget on any recorded day is readable. The series therefore reaches
-// as far back as the committed one it is split from.
+// BOTH HALVES ARE SUMS, so neither can come out negative. The agency half is Σ
+// of what a human stated; the self-serve half is Σ, over the pairs that were
+// genuinely EARNING on the period's reference date, of their recorded daily
+// budget × 30. HISTORY IS REPLAYED, NOT RECORDED: no snapshot ever carried the
+// split, and none had to — billing and campaign-service each keep the facts the
+// four conditions rest on, so the series reaches as far back as the committed
+// one it is split from, with every period saying on the wire whether its figure
+// is recorded or approximated.
+/** How the producer learned a period's self-serve figure. See `selfServeBasis`. */
+export type MrrSplitBasis = "recorded" | "approximated";
+
 export interface MrrSplitBucket {
   period: string; // "YYYY-MM" | "YYYY-Www"
   periodStart: string; // UTC bucket start "YYYY-MM-DD"
   referenceDate: string; // the day the point was read as of (last snapshot in the period, or today)
   agencyMrrUsd: number; // Σ STATED amounts in force on referenceDate — never those brands' budget × 30
   agencyArrUsd: number;
-  // The period's committed run-rate MINUS the agency side's committed contribution.
+  // Σ, over the SELF-SERVE (org, brand) pairs that were EARNING on referenceDate,
+  // of that pair's recorded daily budget × 30. A SUM, so it can never come out
+  // negative — which the earlier "fleet snapshot MINUS the agency's replayed
+  // budget" could and did (August 2026 read −$720/month and had to be published
+  // as unmeasurable). A pair counts only when all four of these held that day:
+  // its org's payment had not stopped, a campaign was running, an amount was in
+  // force, and its audience was not exhausted.
   //
-  // NULL is "we could not measure this", never a 0 and never a clamp. The fleet
-  // snapshot records the RUNNING daily budget while billing's timeline records
-  // the CONFIGURED one, so the replayed agency contribution is an UPPER BOUND on
-  // what those brands really held. When it EXCEEDS the figure it is subtracted
-  // from, the difference comes out negative — and a negative monthly run-rate is
-  // an incoherent output, not a slightly-low one. The producer declines instead,
-  // and names why in `selfServeUnmeasurableReason`.
+  // NULL is still "we could not measure this", never a 0 and never a clamp — but
+  // the only remaining case is a reference date on which no producer held a
+  // single fact about any pair (`no_records_for_period`).
   selfServeMrrUsd: number | null;
   selfServeArrUsd: number | null;
   totalMrrUsd: number | null; // agency + self-serve (disjoint by construction); null whenever self-serve is
   totalArrUsd: number | null;
+  // WHICH ERA THE FIGURE COMES FROM, and this view must LABEL an approximated
+  // period rather than present it as measured. `recorded` = every pair's
+  // qualification came from a producer's record. `approximated` = at least one
+  // rested on that pair's own billed cold-email activity, because
+  // campaign-service's status/audience record does not reach that day (see
+  // `earningRecordBeginsOn`). null whenever the self-serve half is unmeasurable.
+  selfServeBasis: MrrSplitBasis | null;
+  selfServePairCount: number; // self-serve pairs that contributed a positive amount
+  selfServeApproximatedPairCount: number; // of those, how many rested on activity evidence
+  // Self-serve pairs that looked ACTIVE while billing held NO amount for them, so
+  // they contributed nothing. The AMOUNT is never approximated — inventing it
+  // would put a number on the wire no service recorded — so the gap is counted
+  // and the figure is an under-statement of exactly that many customers.
+  selfServeUnrecordedBudgetPairCount: number;
   // Why the self-serve half could not be measured, or null when it was. Reading
   // this as a number anywhere is the crash it exists to prevent.
-  selfServeUnmeasurableReason: "agency_contribution_exceeds_recorded_total" | null;
-  // What the agency side's BUDGET × 30 came to — i.e. exactly how much left the
-  // self-serve half. Above agencyMrrUsd means some agency budget is in NEITHER
-  // half: an agency brand nobody has stated an amount for yet. Served so that
-  // gap is visible rather than silent.
+  selfServeUnmeasurableReason: "no_records_for_period" | null;
+  // The agency side's qualifying BUDGET × 30 on referenceDate, on the SAME four
+  // conditions. Above agencyMrrUsd means some agency budget is in NEITHER half:
+  // an agency brand nobody has stated an amount for yet.
   agencyBudgetMrrUsd: number;
-  committedMrrUsd: number; // the fleet figure this period was split from
+  agencyBudgetBasis: MrrSplitBasis | null;
+  // The fleet run-rate features-service RECORDED for this period, served for
+  // comparison. NOT the sum of the two halves and not claimed to be: it counts
+  // RUNNING money for active pairs on a daily snapshot, while the halves replay
+  // each producer's record of the CONFIGURED amount gated on all four conditions.
+  committedMrrUsd: number;
   growthPct: number | null; // point-over-point on totalMrrUsd, null on the first bucket or a 0 base
 }
 
 export interface MrrSplit {
   currentAgencyMrrUsd: number;
   currentAgencyArrUsd: number;
-  currentSelfServeMrrUsd: number;
-  currentSelfServeArrUsd: number;
-  currentTotalMrrUsd: number;
-  currentTotalArrUsd: number;
+  // The SAME number as the current monthly bucket's selfServeMrrUsd, computed by
+  // the same evaluator, so this card and that chart can never state two answers.
+  // It therefore does NOT cancel against currentMrrUsd, which counts running
+  // money for active pairs and has never known about audience exhaustion.
+  currentSelfServeMrrUsd: number | null;
+  currentSelfServeArrUsd: number | null;
+  currentTotalMrrUsd: number | null;
+  currentTotalArrUsd: number | null;
+  currentSelfServeBasis: MrrSplitBasis | null;
   currentAgencyBudgetMrrUsd: number;
+  // THE ERA BOUNDARY, measured rather than declared: the earliest UTC day
+  // campaign-service holds ANY recorded answer about a campaign running or its
+  // audience. Every bucket before it is necessarily approximated.
+  earningRecordBeginsOn: string | null;
   agencyOrgIds: string[]; // derived from the stated rows, never hardcoded
   agencyPairKeys: string[]; // every (org, brand) excluded from the self-serve half, as `orgId::brandId`
   monthly: MrrSplitBucket[];

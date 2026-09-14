@@ -80,6 +80,29 @@ describe("the split band", () => {
     expect(VIEW).toContain("in neither half");
   });
 
+  it("LABELS an approximated period instead of presenting it as measured", () => {
+    // features-service only began recording whether a campaign was running, and
+    // whether it still had people to contact, on the day it shipped those
+    // records. Every earlier period is qualified from the customer's own billed
+    // sending and says so on the wire; rendering it identically to a measured
+    // month is the one thing the marking exists to prevent.
+    expect(VIEW).toContain("approximatedMonths");
+    expect(VIEW).toContain("approximated (");
+    expect(VIEW).toContain("earningRecordBeginsOn");
+  });
+
+  it("states the size of the under-statement rather than filling the amount in", () => {
+    // A customer we hold no recorded budget for contributes nothing, however
+    // plainly they were working. That under-states, so it is counted and said.
+    expect(VIEW).toContain("unrecordedBudgetCustomers");
+    expect(VIEW).toContain("no recorded daily budget");
+  });
+
+  it("guards the live cards against a null figure before it reaches the formatter", () => {
+    expect(VIEW).toContain("split.currentSelfServeMrrUsd !== null");
+    expect(VIEW).toContain("split.currentTotalMrrUsd !== null");
+  });
+
   it("mounts the editor — a band nobody can write to states an agency of zero forever", () => {
     expect(VIEW).toContain("<StatedAmountsCard />");
   });
@@ -155,6 +178,12 @@ describe("the wire contract", () => {
       "currentSelfServeMrrUsd",
       "currentTotalMrrUsd",
       "currentAgencyBudgetMrrUsd",
+      "currentSelfServeBasis",
+      "earningRecordBeginsOn",
+      "selfServeBasis",
+      "selfServeApproximatedPairCount",
+      "selfServeUnrecordedBudgetPairCount",
+      "agencyBudgetBasis",
       "agencyOrgIds",
       "agencyPairKeys",
     ]) {
