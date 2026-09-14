@@ -64,8 +64,7 @@ export function PeriodCompoundCard(props: PeriodCompoundCardProps) {
     props.summary !== undefined ? (
       <CmgrStat
         latestPct={props.summary.latestPct}
-        avgPct={props.summary.avgPct}
-        barsUsed={props.summary.barsUsed}
+        periodsSpanned={props.summary.periodsSpanned}
         label={props.cmgrLabel}
         unit={props.cmgrUnit}
       />

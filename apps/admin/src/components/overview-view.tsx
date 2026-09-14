@@ -50,7 +50,7 @@ import {
 } from "@/lib/signup-buckets";
 import { revenueBuckets, revenueCmgrSummary, mrrSplitBuckets, toCompoundPoints } from "@/lib/revenue-buckets";
 
-const EMPTY_SUMMARY: CompoundGrowthSummary = { latestPct: null, avgPct: null, barsUsed: null };
+const EMPTY_SUMMARY: CompoundGrowthSummary = { latestPct: null, periodsSpanned: null };
 
 function usdFull(n: number): string {
   return formatUsd(n, Math.abs(n) < 10 ? 2 : 0);
@@ -78,7 +78,10 @@ function bucketLabel(periodStart: string, granularity: "month" | "week"): string
   });
 }
 function activePoints(buckets: ActiveUsersBucket[], granularity: "month" | "week"): PeriodCompoundPoint[] {
-  const cmgr = compoundGrowthSeries(buckets.map((b) => b.activeUsers));
+  const cmgr = compoundGrowthSeries(
+    buckets.map((b) => b.activeUsers),
+    buckets.map((b) => b.period),
+  );
   return buckets.map((b, i) => ({
     label: bucketLabel(b.periodStart, granularity),
     value: b.activeUsers,
@@ -202,11 +205,27 @@ export function OverviewView({
   }, [timeline, billing]);
 
   const active = useMemo(() => {
-    const monthly = activePoints(history?.monthly ?? [], "month");
-    const weekly = activePoints(history?.weekly ?? [], "week");
+    const monthlyBuckets = history?.monthly ?? [];
+    const weeklyBuckets = history?.weekly ?? [];
+    const monthly = activePoints(monthlyBuckets, "month");
+    const weekly = activePoints(weeklyBuckets, "week");
+    // Keys, not charted points: the span is a calendar distance and a point only
+    // carries its axis label.
     return {
-      monthly: { points: monthly, summary: compoundGrowthSummary(monthly.map((p) => p.cmgrPct)) },
-      weekly: { points: weekly, summary: compoundGrowthSummary(weekly.map((p) => p.cmgrPct)) },
+      monthly: {
+        points: monthly,
+        summary: compoundGrowthSummary(
+          monthly.map((p) => p.cmgrPct),
+          monthlyBuckets.map((b) => b.period),
+        ),
+      },
+      weekly: {
+        points: weekly,
+        summary: compoundGrowthSummary(
+          weekly.map((p) => p.cmgrPct),
+          weeklyBuckets.map((b) => b.period),
+        ),
+      },
     };
   }, [history]);
 

@@ -24,7 +24,7 @@ export function RunRateStat({
   cmgrPct,
   cmgrLabel,
   unit,
-  barsUsed,
+  periodsSpanned,
   formatValue,
 }: {
   valueUsd: number | null;
@@ -32,7 +32,7 @@ export function RunRateStat({
   cmgrPct: number | null;
   cmgrLabel: string;
   unit: CmgrUnit;
-  barsUsed: number | null;
+  periodsSpanned: number | null;
   formatValue: (n: number) => string;
 }) {
   return (
@@ -52,7 +52,7 @@ export function RunRateStat({
         ) : (
           <>
             {formatGrowthPct(cmgrPct)} {cmgrLabel}
-            {barsUsed !== null && ` (${PERIOD_NOUN[unit]} #${barsUsed})`} since inception
+            {periodsSpanned !== null && ` (${PERIOD_NOUN[unit]} #${periodsSpanned})`} since inception
           </>
         )}
       </p>

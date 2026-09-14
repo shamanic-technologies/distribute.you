@@ -67,10 +67,10 @@ describe("the run-rate summary is not the CMGR summary", () => {
     const total = mrrSplitBuckets(PROD, "totalMrrUsd", "month");
 
     // What shipped: the July→August step, called the growth rate, twice.
-    expect(revenueCmgrSummary(total)).toEqual({ latestPct: -46.6, avgPct: -46.6, barsUsed: 2 });
+    expect(revenueCmgrSummary(total)).toEqual({ latestPct: -46.6, periodsSpanned: 2 });
 
     // What it reads now: today's run-rate, and one rate that reaches today.
-    expect(revenueRunRateSummary(total)).toEqual({ latestUsd: 3960, cmgrPct: 13.2, barsUsed: 3 });
+    expect(revenueRunRateSummary(total)).toEqual({ latestUsd: 3960, cmgrPct: 13.2, periodsSpanned: 3 });
   });
 
   it("no longer reads a negative rate on a self-serve series that rises", () => {
@@ -89,7 +89,7 @@ describe("the run-rate summary is not the CMGR summary", () => {
     const agency = mrrSplitBuckets(PROD, "agencyMrrUsd", "month");
     // The old headline was 0%: the July→August step on 1500 → 1500.
     expect(revenueCmgrSummary(agency).latestPct).toBe(0);
-    expect(revenueRunRateSummary(agency)).toEqual({ latestUsd: 2100, cmgrPct: 18.3, barsUsed: 3 });
+    expect(revenueRunRateSummary(agency)).toEqual({ latestUsd: 2100, cmgrPct: 18.3, periodsSpanned: 3 });
   });
 });
 
@@ -106,8 +106,8 @@ describe("the headline value is the series' own last bar", () => {
 
   it("states the span the rate compounds over, anchor included", () => {
     // Three bars, so the exponent behind 13.2% is 1/2 — (3960/3090)^(1/2).
-    const { cmgrPct, barsUsed } = revenueRunRateSummary(mrrSplitBuckets(PROD, "totalMrrUsd", "month"));
-    expect(barsUsed).toBe(3);
+    const { cmgrPct, periodsSpanned } = revenueRunRateSummary(mrrSplitBuckets(PROD, "totalMrrUsd", "month"));
+    expect(periodsSpanned).toBe(3);
     expect(cmgrPct).toBe(Number(((Math.pow(3960 / 3090, 1 / (3 - 1)) - 1) * 100).toFixed(1)));
   });
 
@@ -121,7 +121,7 @@ describe("the headline value is the series' own last bar", () => {
     const summary = revenueRunRateSummary(mrrSplitBuckets(withZeros, "selfServeMrrUsd", "month"));
     expect(summary.latestUsd).toBe(400);
     // Anchor bar + the one after it = 2 bars, exponent 1/1 → 300%.
-    expect(summary.barsUsed).toBe(2);
+    expect(summary.periodsSpanned).toBe(2);
     expect(summary.cmgrPct).toBe(300);
   });
 
@@ -130,7 +130,7 @@ describe("the headline value is the series' own last bar", () => {
     expect(revenueRunRateSummary(mrrSplitBuckets(one, "totalMrrUsd", "month"))).toEqual({
       latestUsd: 3960,
       cmgrPct: null,
-      barsUsed: null,
+      periodsSpanned: null,
     });
   });
 
@@ -141,7 +141,7 @@ describe("the headline value is the series' own last bar", () => {
       { period: "2026-08", self: null, agency: 1500 },
     ]);
     expect(mrrSplitBuckets(none, "selfServeMrrUsd", "month")).toEqual([]);
-    expect(revenueRunRateSummary([])).toEqual({ latestUsd: null, cmgrPct: null, barsUsed: null });
+    expect(revenueRunRateSummary([])).toEqual({ latestUsd: null, cmgrPct: null, periodsSpanned: null });
   });
 
   it("keeps dropping a period the producer marked unmeasurable, never charting it as 0", () => {
@@ -249,7 +249,7 @@ describe("the shared card admits exactly one headline shape", () => {
 describe("the headline itself", () => {
   it("puts the value on top and the rate underneath, with its span", () => {
     expect(STAT).toContain("formatValue(valueUsd)");
-    expect(STAT).toContain("${PERIOD_NOUN[unit]} #${barsUsed}");
+    expect(STAT).toContain("${PERIOD_NOUN[unit]} #${periodsSpanned}");
     expect(STAT).toContain("since inception");
   });
 

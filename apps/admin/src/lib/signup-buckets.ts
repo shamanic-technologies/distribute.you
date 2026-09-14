@@ -51,7 +51,10 @@ function dayLabel(date: Date): string {
 
 function withDerived(buckets: Array<{ key: string; label: string; signups: number }>): SignupBucket[] {
   const sorted = [...buckets].sort((a, b) => a.key.localeCompare(b.key));
-  const cmgr = compoundGrowthSeries(sorted.map((bucket) => bucket.signups));
+  const cmgr = compoundGrowthSeries(
+    sorted.map((bucket) => bucket.signups),
+    sorted.map((bucket) => bucket.key),
+  );
 
   return sorted.map((bucket, index) => {
     const prev = sorted[index - 1];
@@ -64,14 +67,16 @@ function withDerived(buckets: Array<{ key: string; label: string; signups: numbe
 }
 
 /**
- * Headline + average compound growth rate for a bucket series, excluding the
- * current (still-in-progress, partial) period.
+ * The compound growth rate for a bucket series, excluding the current
+ * (still-in-progress, partial) period.
  * - `latestPct` — CMGR/CWGR up to the last CONCLUDED period (second-to-last bucket).
- * - `avgPct` — mean of every plotted CMGR/CWGR point, excluding the current period.
- * - `barsUsed` — bars behind `latestPct`, anchor included.
+ * - `periodsSpanned` — calendar periods behind `latestPct`, anchor included.
  */
 export function cmgrSummary(buckets: SignupBucket[]): CompoundGrowthSummary {
-  return compoundGrowthSummary(buckets.map((b) => b.cmgrPct));
+  return compoundGrowthSummary(
+    buckets.map((b) => b.cmgrPct),
+    buckets.map((b) => b.key),
+  );
 }
 
 /** Selects the per-day metric to bucket (signups by default, cards for the paid-users view). */
@@ -162,7 +167,10 @@ function rateBuckets(numerators: SignupBucket[], denominators: SignupBucket[]): 
       },
     ];
   });
-  const cmgr = compoundGrowthSeries(measured.map((bucket) => bucket.ratePct));
+  const cmgr = compoundGrowthSeries(
+    measured.map((bucket) => bucket.ratePct),
+    measured.map((bucket) => bucket.key),
+  );
   return measured.map((bucket, index) => ({ ...bucket, cmgrPct: cmgr[index] }));
 }
 
@@ -174,9 +182,12 @@ export function weeklySignupRates(points: DailyFunnelPoint[]): RateBucket[] {
   return rateBuckets(weeklySignups(points), weeklyVisitors(points));
 }
 
-/** Same headline/average as `cmgrSummary`, over the growth of a RATE series. */
+/** Same headline as `cmgrSummary`, over the growth of a RATE series. */
 export function rateCmgrSummary(buckets: RateBucket[]): CompoundGrowthSummary {
-  return compoundGrowthSummary(buckets.map((bucket) => bucket.cmgrPct));
+  return compoundGrowthSummary(
+    buckets.map((bucket) => bucket.cmgrPct),
+    buckets.map((bucket) => bucket.key),
+  );
 }
 
 /**
