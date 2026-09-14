@@ -6790,6 +6790,35 @@ const WorkflowRankRowSchema = z.object({
    *  `.nullish()` for the same reason as `rank`: a funnel- or goal-keyed body carries
    *  none, and a row without one states no position rather than claiming last place. */
   scopeRank: z.number().nullish(),
+  /** WHETHER THE MODEL WRITING THIS WORKFLOW'S EMAILS IS RIGHT FOR THIS LEG
+   *  (features-service v0.166.0).
+   *
+   *  Measured fleet-wide: the capability TIER of the model decides the outcome, and the
+   *  direction depends on what the leg sells — the cheap tier badly underperforms on a
+   *  leg selling a conversation, the strong and frontier tiers are wasted on one selling
+   *  a website visit. The producer STATES the verdict and does not act on it, so
+   *  campaign-service can filter its selection while this page can tell "this workflow is
+   *  excluded" apart from "this workflow does not exist" — including for one that is
+   *  excluded and has ALREADY RUN, whose money is this campaign's own history.
+   *
+   *  `.optional()` for the same reason as `rank`: a funnel- or goal-keyed body carries
+   *  none, and this reader always names a leg. An ABSENT block states no verdict and
+   *  excludes nothing — never read as an exclusion. */
+  modelEligibility: z
+    .object({
+      /** The chat-service alias the DAG names. Null ⟺ it names none — never a guess. */
+      modelAlias: z.string().nullable(),
+      /** The tier chat-service RECORDS, never derived from the alias string: `flash-pro`
+       *  resolves to a Flash model and is CHEAP despite containing "pro". Null ⟺
+       *  unknowable on this request. */
+      modelTier: z.enum(["cheap", "strong", "frontier"]).nullable(),
+      /** FALSE ⟺ the tier is KNOWN and this leg's rule excludes it. An unknowable tier is
+       *  always TRUE: a gap in our own reading never excludes a workflow. */
+      eligible: z.boolean(),
+      ineligibleReason: z.string().nullable(),
+      unknownTierReason: z.string().nullable(),
+    })
+    .optional(),
 });
 
 /**

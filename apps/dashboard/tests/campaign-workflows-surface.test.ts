@@ -981,6 +981,57 @@ describe("no em dash in anything a customer reads", () => {
     for (const lit of literals) expect(lit).not.toContain("—");
   });
 
+  it("READS the producer's eligibility verdict rather than deriving one", () => {
+    // The tier rule is features-service's statement. A second copy here is a second
+    // thing to drift, and the alias cannot be read as a tier: `flash-pro` resolves to a
+    // Flash model and is CHEAP despite containing "pro".
+    expect(API).toContain("modelEligibility: z");
+    expect(API).toContain('z.enum(["cheap", "strong", "frontier"])');
+    const lib = read("src/lib/workflow-eligibility.ts");
+    expect(lib).not.toMatch(/includes\(\s*["'`]pro["'`]\s*\)/);
+    expect(lib).not.toContain("website_visit");
+    expect(lib).not.toContain("conversation\"");
+  });
+
+  it('"it ran here" is the RESOLVED GRAIN, never `measured`', () => {
+    // `measured` says the row rests on real spend, and the cascade falls back to the
+    // FLEET — so it is true for nearly every row and a rule keyed on it hides nothing.
+    // Measured in prod on campaign f7b1b610: all 9 excluded dynasties read measured,
+    // 8 of them at `crossOrg`, having never run there. Keyed on `measured` this feature
+    // would ship completely inert, with tsc and the whole suite green.
+    const lib = read("src/lib/workflow-eligibility.ts");
+    expect(lib).toContain('new Set(["campaign", "audience"])');
+    expect(lib).not.toMatch(/if\s*\(r\.measured\)/);
+  });
+
+  it("HIDES an excluded workflow at the page, on every list the grid derives", () => {
+    // The verdict rides the ladder, so the filter is applied ONCE to the ladder's rows
+    // and the grid, the columns, the per-audience list and the panel inherit it. Four
+    // separate filters is how they come to disagree about one catalogue.
+    expect(TABLE).toContain("hiddenWorkflowSlugs({");
+    expect(TABLE).toContain("!hiddenSlugs.has(r.workflowDynastySlug)");
+    expect(TABLE).toContain("!hiddenSlugs.has(r.workflow.workflowDynastySlug)");
+  });
+
+  it("STATES how many it hid, at the call site and not only in the component", () => {
+    // Rows sit at the producer's own `rank`, which this page never re-derives, so hiding
+    // leaves gaps in the numbers on screen. An unexplained gap reads as a broken table.
+    expect(TABLE).toContain("hiddenNote: string | null;");
+    expect(TABLE).toContain("hiddenNote={hiddenNote}");
+    expect(TABLE).toContain("hiddenWorkflowNote(hiddenSlugs.size");
+  });
+
+  it("declares the note memo BELOW the value it reads", () => {
+    // A memo reading a `const` declared after it is a TDZ ReferenceError at RENDER,
+    // which tsc and the suite both pass over and the customer sees as a blank page.
+    expect(TABLE.indexOf("const outcomeStepKey =")).toBeLessThan(
+      TABLE.indexOf("const hiddenNote = useMemo("),
+    );
+    expect(TABLE.indexOf("const hiddenSlugs = useMemo(")).toBeLessThan(
+      TABLE.indexOf("const hiddenNote = useMemo("),
+    );
+  });
+
   it("every tooltip and label on the grid carries none", () => {
     // The ONE exception is the null placeholder itself, which is the repo's own
     // spelling for "we have no figure" on every table it renders.
