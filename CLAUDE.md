@@ -214,6 +214,49 @@ Gated: `ROI` / `$ CAC` / `% CAC` on the stat row (`economicsLearning`), the **Re
 - Guards: `tests/email-body-links.test.ts` (real unit tests) + `tests/lead-history-email-links.test.ts`, which pins the CALL SITE — a component perfectly able to render a link is the feature entirely absent if the timeline never asks it for segments.
 
 
+## A producer flag that rides a CASCADE is TRUE AT THE WIDEST GRAIN, so reading it as "this scope produced" makes a feature ship INERT
+
+`measured` on a `/workflow-projection` row says the row rests on REAL SPEND — and the
+producer resolves each row to the NARROWEST grain that has any, falling back
+`audience → campaign → brand → crossOrg`. So a workflow this campaign has never touched
+still reads `measured: true` off the FLEET's spend. Any rule keyed on it as "this
+workflow ran here" is therefore true for nearly every row and does nothing at all.
+
+The failure is the expensive kind because every gate passes: `tsc` is clean, the suite is
+green (the fixture sets the flag by hand, so it asserts the arithmetic and not the
+population), the page renders, and the feature is simply absent. It reads as shipped.
+
+**`resolved.grain` is the signal, not the flag.** `campaign` and `audience` are this
+campaign's own money; `brand` and `crossOrg` are a wider pool standing in precisely
+because this scope produced nothing. Same shape for any cascading producer field — a
+floor that is `max(own, parent)`, an estimate that falls back to a benchmark, a rate
+borrowed from a wider population: the VALUE is always present, and what tells you whose
+it is sits in the grain beside it, never in a boolean.
+
+Cost 2026-09-14 (distribute.you #4147, hiding wrong-tier workflows): the first cut kept a
+row when `measured` was true, meaning "it already ran here, so its history stays". Probed
+prod on campaign `f7b1b610…` before shipping: **all 9 excluded dynasties read
+`measured: true`**, so it hid ZERO of them — exactly one (`cerulean`) resolved at a
+campaign grain and the other eight sat at `crossOrg`, having never run there. Caught only
+by the pre-ship probe; nothing in 4,139 tests could see it.
+
+## A capability TIER is a recorded decision per alias — never counted from alias NAMES, not even in a plan or an acceptance criterion
+
+`flash-pro` resolves to Gemini 3.8 Flash and is CHEAP despite containing "pro"; the repo
+already records that trap for a `.includes()` in code. The half worth stating separately
+is that it fires just as hard on a HUMAN reading the list to size a change — and there it
+produces a wrong number in a plan, a spawn prompt and an AC, where no test can catch it.
+
+**`deepseek-pro` is also CHEAP**: chat-service repointed that alias to V4.1 Flash when
+DeepSeek sunset V4 Pro, so the alias name outlived the model it named. Reading the
+catalogue by eye therefore undercounts the cheap tier by every alias whose name has gone
+stale, and an alias name goes stale on the vendor's schedule, not ours.
+
+Read `capabilityTier` (chat-service `src/lib/anthropic.ts`, served at `GET /internal/models`)
+or probe the producer. Cost 2026-09-14: a plan and two spawn ACs said "6 cheap-tier
+workflows" off the alias names; prod said **9**. The spawned executor probed and corrected
+it, which is the only reason it did not ship as a wrong verification target.
+
 ## A SCOPING probe run against a SINGLE-MEMBER entity is a tautology — pick a subject where the two scopes MUST differ
 
 Before building on "this endpoint honours `?campaignId`" (or `?offerId`, or any narrowing parameter), you probe it. The reflex is to grab the first live entity that comes to hand, call the endpoint with and without the parameter, and compare. On a brand with ONE campaign running ONE workflow the two answers are identical **by construction**, whether the producer narrows or ignores the parameter — so the probe comes back green and says nothing at all, and you ship a page that prints a brand-grain figure under a campaign's name.
