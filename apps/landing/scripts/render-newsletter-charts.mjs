@@ -3,9 +3,14 @@
 /**
  * Renders a chosen subset of a blog article's inline SVG charts to PNG, for a
  * newsletter. Mail clients (Gmail above all) strip inline SVG, so a chart a
- * newsletter carries has to be a raster hosted on our own domain. The SVGs are
- * the same ones the article renders, so the newsletter and the page state the
- * same figures by construction.
+ * newsletter carries has to be a raster hosted on our own domain.
+ *
+ * Each chart is RE-LAID onto the newsletter's narrow box first (scripts/blog-data/
+ * narrow-chart.mjs). The article's chart is an 800-unit viewBox built for a page, and a
+ * phone shows it at about 324 CSS px, which puts its row labels at 5.7px and its count
+ * lines at 4.5px beside 16px body copy. The re-lay reads the article's own emitted bytes
+ * and carries every figure, label and the aria-label across verbatim, so the newsletter
+ * and the page still state the same figures by construction.
  *
  * Rendered through Chromium (like render-blog-hero.mjs) at 2x so the text stays
  * crisp on a retina phone; Inter is loaded from Google Fonts for the render only.
@@ -20,6 +25,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { chromium } from "@playwright/test";
+import { narrowChartFrom } from "./blog-data/narrow-chart.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -41,8 +47,9 @@ async function main() {
   try {
     for (const raw of list.split(",")) {
       const index = Number(raw);
-      const svg = svgs[index - 1];
-      if (!svg) throw new Error(`[landing/newsletter] no svg #${index} in ${slug} (article has ${svgs.length})`);
+      const articleSvg = svgs[index - 1];
+      if (!articleSvg) throw new Error(`[landing/newsletter] no svg #${index} in ${slug} (article has ${svgs.length})`);
+      const svg = narrowChartFrom(articleSvg);
       const vb = svg.match(/viewBox="0 0 (\d+) (\d+)"/);
       if (!vb) throw new Error(`[landing/newsletter] svg #${index} has no viewBox`);
       const height = Math.round((WIDTH * Number(vb[2])) / Number(vb[1]));
