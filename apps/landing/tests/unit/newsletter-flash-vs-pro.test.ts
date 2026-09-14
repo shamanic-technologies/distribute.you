@@ -90,17 +90,39 @@ describe("newsletter: flash vs pro", () => {
     );
     const text = article.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
-    it("names the client count the article names", () => {
-      const clients = text.match(/across (\d+) clients/)?.[1];
-      expect(clients).toBeTruthy();
-      expect(html).toContain(`${clients} clients`);
+    /**
+     * The eyebrow used to state a client count. The owner cut it: how many
+     * clients the study drew on says nothing a reader can act on, while the
+     * number of A/B tests is what the whole page is about. So the count is
+     * stated nowhere and the eyebrow carries the test count instead.
+     */
+    it("states no client count", () => {
+      expect(html).not.toMatch(/\d+ clients/);
+      expect(text).toMatch(/across \d+ clients/); // the article still states it, under Method
     });
 
-    it("names the A/B-test count the article names", () => {
+    it("names the A/B-test count the article names, in the eyebrow and the stat band", () => {
       const tests = text.match(/(\d+) A\/B tests, one winner per outcome/)?.[1];
       expect(tests).toBeTruthy();
-      expect(html).toContain("A/B tests");
+      expect(html).toContain(`${tests} A/B tests`);
       expect(html).toContain(`>${tests}</div>`);
+    });
+
+    /**
+     * Saturday is the best day of the week for a reply and Monday only the best
+     * WEEKDAY, so a heading naming Monday as the top of the week contradicts the
+     * chart under it. The article states both; the newsletter's heading stated
+     * only Monday.
+     */
+    it("names the weekday leader the chart names", () => {
+      const chart = article.match(
+        /aria-label="Positive replies per 10,000 emails by day of the week[^"]*"/,
+      )?.[0];
+      expect(chart).toBeTruthy();
+      const days = [...chart!.matchAll(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) ([\d.]+)/g)];
+      expect(days.length).toBe(7);
+      const best = days.reduce((a, b) => (Number(b[2]) > Number(a[2]) ? b : a));
+      expect(html).toContain(`${best[1]} tops the week at ${best[2]}`);
     });
 
     it("claims no all-of-them twist: replies come from linked emails too", () => {
