@@ -147,7 +147,7 @@ describe("CmgrStat — one rate, stating its anchor and its span", () => {
     for (const rel of [
       "../src/components/cmgr-stat.tsx",
       "../src/components/period-compound-card.tsx",
-      "../src/components/run-rate-stat.tsx",
+      "../src/components/run-rate-line-card.tsx",
       "../src/components/revenue-view.tsx",
       "../src/components/overview-view.tsx",
       "../src/lib/compound-growth.ts",
