@@ -33,6 +33,12 @@ const RESEND_COOLDOWN_SECONDS = 30;
 // same behaviour as before the gate.
 const MIN_PASSWORD_LENGTH = 8;
 
+// How long a bot-protection challenge has to stay on screen before we tell the
+// person to answer it. Long enough that a widget clearing itself never flashes
+// the prompt, short enough that somebody genuinely stuck is not left reading
+// "Creating account..." for the whole wait.
+const CAPTCHA_PROMPT_DELAY_MS = 1500;
+
 // Shape check only: whether the address exists is Clerk's answer, not ours. This
 // exists to stop the submit looking available on an empty or half-filled form.
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -63,6 +69,16 @@ export default function SignUpPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
 
+  // Clerk's bot protection is a MANAGED Turnstile widget (`captcha_widget_type:
+  // "smart"`), so on a client Cloudflare finds suspicious it renders a real
+  // "Verify you are human" checkbox and `signUp.create` does not resolve until
+  // it is ticked. The button read "Creating account..." for that whole wait,
+  // which says work is in progress rather than that the control is waiting on
+  // the person, so the box goes unticked and the signup is abandoned at a step
+  // nothing reports.
+  const captchaBoxRef = useRef<HTMLDivElement>(null);
+  const [captchaWaiting, setCaptchaWaiting] = useState(false);
+
   useEffect(() => {
     if (isSignedIn) {
       router.replace("/orgs");
@@ -75,6 +91,43 @@ export default function SignUpPage() {
     const timer = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
     return () => clearTimeout(timer);
   }, [resendCooldown]);
+
+  // A rendered challenge occupies real space; an invisible one does not, so the
+  // height of Clerk's own container is what tells the two apart. Polled as well
+  // as observed: the widget lives in a cross-origin iframe that resizes without
+  // mutating anything we are allowed to watch.
+  //
+  // The delay is what keeps this honest for the majority who are never
+  // challenged: a widget that clears on its own still occupies space for a
+  // moment, so a bare height check would flash "check the box" at people who
+  // have no box to check. Only a challenge that is still standing after
+  // CAPTCHA_PROMPT_DELAY_MS is one a person has to answer.
+  useEffect(() => {
+    if (!submitting) {
+      setCaptchaWaiting(false);
+      return;
+    }
+    const box = captchaBoxRef.current;
+    if (!box) return;
+    let shownSince: number | null = null;
+    const read = () => {
+      if (box.getBoundingClientRect().height <= 0) {
+        shownSince = null;
+        setCaptchaWaiting(false);
+        return;
+      }
+      if (shownSince === null) shownSince = Date.now();
+      setCaptchaWaiting(Date.now() - shownSince >= CAPTCHA_PROMPT_DELAY_MS);
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(box, { childList: true, subtree: true, attributes: true });
+    const timer = setInterval(read, 400);
+    return () => {
+      observer.disconnect();
+      clearInterval(timer);
+    };
+  }, [submitting]);
 
   // Seed email + password from the sign-in "unknown email → sign up" handoff, so
   // the user does not re-type what they just entered. Consume-once: cleared
@@ -588,7 +641,20 @@ export default function SignUpPage() {
                     {`At least ${MIN_PASSWORD_LENGTH} characters`}
                   </p>
                   {/* Clerk renders a bot-protection challenge here when enabled */}
-                  <div id="clerk-captcha" />
+                  <div id="clerk-captcha" ref={captchaBoxRef} />
+                  {captchaWaiting && (
+                    <p
+                      role="status"
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: "0.8125rem",
+                        color: "oklch(48% 0.006 264)",
+                        marginTop: "-0.25rem",
+                      }}
+                    >
+                      {"Check the box above to finish creating your account."}
+                    </p>
+                  )}
                   {error && (
                     <p
                       role="alert"
@@ -622,7 +688,11 @@ export default function SignUpPage() {
                     {/* The landing's own CTA word, so the button a visitor
                         pressed on `/` and the one that finishes the job read the
                         same. The busy label stays literal about what is running. */}
-                    {submitting ? "Creating account..." : "Start free"}
+                    {submitting
+                      ? captchaWaiting
+                        ? "Waiting for verification"
+                        : "Creating account..."
+                      : "Start free"}
                   </button>
                 </form>
 
