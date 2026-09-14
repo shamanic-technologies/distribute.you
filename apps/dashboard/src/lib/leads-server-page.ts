@@ -135,18 +135,42 @@ export interface LeadsPageRequest {
  * plus the bound — which is what keeps the producer's "absent means unchanged" promise
  * meaningful on this caller.
  */
-export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
+function leadsScopeQuery(tab: AnyLeadTab, search: string): Record<string, string> {
   const query: Record<string, string> = {
     view: "basic",
-    bucket: bucketForTab(req.tab),
+    bucket: bucketForTab(tab),
     sort: "activity",
+  };
+  const q = leadsSearchParam(search);
+  if (q) query.q = q;
+  return query;
+}
+
+export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
+  const query: Record<string, string> = {
+    ...leadsScopeQuery(req.tab, req.search),
     limit: String(LEADS_PAGE_SIZE),
   };
   const offset = Math.max(0, Math.trunc(req.page)) * LEADS_PAGE_SIZE;
   if (offset > 0) query.offset = String(offset);
-  const q = leadsSearchParam(req.search);
-  if (q) query.q = q;
   return query;
+}
+
+/**
+ * The EXPORT's query — the same scope as the table, and deliberately NO bound.
+ *
+ * The export reused `leadsPageQuery({ ..., page: 0 })` for a while, which always carries
+ * `limit=50`. lead-service honours that on the CSV path exactly as it does on the JSON
+ * one (`planLeadPage` windows the plan before hydrating it), so a customer pressing
+ * Export on a tab whose header read `8,135 leads` downloaded 50 of them — a valid file,
+ * right columns, right headings, right scope, silently truncated to the first page.
+ *
+ * Absent `limit` is the producer's own word for "the whole matching set", which is what
+ * an export means. The tab and the search still travel, so the file is what the page is
+ * showing rather than everything the brand has.
+ */
+export function leadsExportQuery(req: Omit<LeadsPageRequest, "page">): Record<string, string> {
+  return leadsScopeQuery(req.tab, req.search);
 }
 
 /** The counts query — same scope and same search as the list, no bucket and no bound. */
