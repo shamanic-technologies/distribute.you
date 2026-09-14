@@ -145,10 +145,11 @@ export function mrrSplitBuckets(
 ): RevenueBucket[] {
   // A period the producer could NOT measure is DROPPED, never charted as 0 — the
   // same rule `retentionSeries` follows below, and for the same reason: a zero
-  // bar says the self-serve business went to nothing, while the truth is that
-  // the two sides of the subtraction were recorded on different bases and the
-  // difference is not a quantity. The self-serve and total fields are the only
-  // nullable ones; the agency ones are a sum of stated amounts and always real.
+  // bar says the self-serve business went to nothing, while the truth is that no
+  // producer held a single fact about that day. The self-serve and total fields
+  // are the only nullable ones; the agency ones are a sum of stated amounts and
+  // always real. An APPROXIMATED period is NOT dropped — it is a real figure —
+  // but it is listed by `approximatedSplitPeriods` so the view can label it.
   return withDerived(
     buckets
       .filter((b) => b[field] !== null)
@@ -159,6 +160,26 @@ export function mrrSplitBuckets(
 /** The periods the producer declined to split, oldest→newest. Empty when it could measure them all. */
 export function unmeasurableSplitPeriods(buckets: MrrSplitBucket[]): string[] {
   return buckets.filter((b) => b.selfServeUnmeasurableReason !== null).map((b) => b.period);
+}
+
+/**
+ * The periods whose self-serve figure rests on ACTIVITY evidence rather than on
+ * campaign-service's own record, oldest→newest. These carry a real number and are
+ * charted — but the view must SAY so, which is the condition the approximation was
+ * accepted on. Empty once the record covers every displayed period.
+ */
+export function approximatedSplitPeriods(buckets: MrrSplitBucket[]): string[] {
+  return buckets.filter((b) => b.selfServeBasis === "approximated").map((b) => b.period);
+}
+
+/**
+ * Self-serve customers that looked ACTIVE on a period's reference date while
+ * billing held NO amount for them, so they contributed nothing. The largest such
+ * count across the displayed periods — the size of the under-statement, which the
+ * producer counts rather than filling in with a number nobody recorded.
+ */
+export function unrecordedBudgetPairs(buckets: MrrSplitBucket[]): number {
+  return buckets.reduce((max, b) => Math.max(max, b.selfServeUnrecordedBudgetPairCount), 0);
 }
 
 /** Distinct weeks tracked since the first billed day (7-day blocks). */

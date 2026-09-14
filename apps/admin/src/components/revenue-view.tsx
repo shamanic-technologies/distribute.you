@@ -19,7 +19,9 @@ import {
   revenueBuckets,
   revenueCmgrSummary,
   mrrSplitBuckets,
+  approximatedSplitPeriods,
   unmeasurableSplitPeriods,
+  unrecordedBudgetPairs,
   retentionSeries,
   cashBuckets,
   centsStringToUsd,
@@ -343,6 +345,17 @@ export function RevenueView({
       // goes missing from the curve with nothing on the page saying why.
       unmeasurableMonths: split ? unmeasurableSplitPeriods(split.monthly) : [],
       unmeasurableWeeks: split ? unmeasurableSplitPeriods(split.weekly) : [],
+      // Periods that DO carry a figure, built from activity evidence because
+      // campaign-service's own record does not reach them. Charted like any
+      // other, and named here — presenting an approximated month as measured is
+      // the one thing the marking exists to prevent.
+      approximatedMonths: split ? approximatedSplitPeriods(split.monthly) : [],
+      // Self-serve customers that were demonstrably working while billing held no
+      // amount for them. They contribute nothing, so the figure is an
+      // under-statement of exactly this many customers.
+      unrecordedBudgetCustomers: split
+        ? Math.max(unrecordedBudgetPairs(split.monthly), unrecordedBudgetPairs(split.weekly))
+        : 0,
       monthlySelfServe,
       weeklySelfServe,
       monthlyAgency,
@@ -405,12 +418,12 @@ export function RevenueView({
     split && split.currentAgencyBudgetMrrUsd > split.currentAgencyMrrUsd
       ? split.currentAgencyBudgetMrrUsd - split.currentAgencyMrrUsd
       : 0;
-  // Named rather than silently missing from the curve. The two sides of the
-  // subtraction were recorded on different bases — the fleet snapshot holds the
-  // RUNNING daily budget, billing's timeline the CONFIGURED one — so on a period
-  // where the agency's replayed budget exceeds the recorded total the difference
-  // comes out negative, and the producer declines to state it.
+  // Named rather than silently missing from the curve. Both halves are SUMS now,
+  // so a period can only go unmeasured when no producer held a single fact about
+  // its reference date — not because one figure came out larger than another.
   const unmeasurable = [...(derived?.unmeasurableMonths ?? []), ...(derived?.unmeasurableWeeks ?? [])];
+  const approximatedMonths = derived?.approximatedMonths ?? [];
+  const unrecordedBudgetCustomers = derived?.unrecordedBudgetCustomers ?? 0;
 
   return (
     <>
@@ -559,7 +572,7 @@ export function RevenueView({
           with a multiplier on the axis. */}
       <SectionHeading
         title="Monthly run-rate"
-        blurb="What the fleet is worth per month, in the two halves it is actually earned in. A SELF-SERVE customer pays through the product, so what they are worth IS their daily budget × 30. An AGENCY does not: it hands over cash at its own discretion and somebody then decides how that cash is spread into daily budgets across its brands, so there the budget says how the money was split and never what the customer is worth — only what a human states does. The two halves are disjoint, so they add up."
+        blurb="What the fleet is worth per month, in the two halves it is actually earned in. A SELF-SERVE customer pays through the product, so what they are worth IS their daily budget × 30, counted on a day only when they were paying, their campaign was running, a budget was in force, and they still had people to contact. An AGENCY does not pay that way: it hands over cash at its own discretion and somebody then decides how that cash is spread into daily budgets across its brands, so there the budget says how the money was split and never what the customer is worth. Only what a human states does. Both halves are sums over customers who never overlap, so they add up."
       />
 
       {splitUnavailable ? (
@@ -576,11 +589,11 @@ export function RevenueView({
           <section className="grid gap-4 md:grid-cols-3">
             <StatCard
               label="Self-serve MRR"
-              value={split ? usdFull(split.currentSelfServeMrrUsd) : "—"}
+              value={split && split.currentSelfServeMrrUsd !== null ? usdFull(split.currentSelfServeMrrUsd) : "—"}
               detail={
-                split
-                  ? `${usdFull(split.currentSelfServeArrUsd)} a year — daily budgets × 30, every org that is not an agency`
-                  : "Daily budgets × 30, every org that is not an agency"
+                split && split.currentSelfServeArrUsd !== null
+                  ? `${usdFull(split.currentSelfServeArrUsd)} a year. Daily budgets × 30, summed over every non-agency customer that was earning today`
+                  : "Daily budgets × 30, summed over every non-agency customer that was earning today"
               }
               accent="bg-brand-500"
               pending={isPending || !derived}
@@ -598,9 +611,9 @@ export function RevenueView({
             />
             <StatCard
               label="Total MRR"
-              value={split ? usdFull(split.currentTotalMrrUsd) : "—"}
+              value={split && split.currentTotalMrrUsd !== null ? usdFull(split.currentTotalMrrUsd) : "—"}
               detail={
-                split
+                split && split.currentTotalArrUsd !== null
                   ? `${usdFull(split.currentTotalArrUsd)} a year — the two halves, which never overlap`
                   : "The two halves, which never overlap"
               }
@@ -618,11 +631,9 @@ export function RevenueView({
               <p className="text-sm text-amber-700">
                 The self-serve half could not be measured for {unmeasurable.length}{" "}
                 {unmeasurable.length === 1 ? "period" : "periods"} ({unmeasurable.join(", ")}), so they are
-                not on the charts. On those the agency&apos;s replayed daily budget came out larger than
-                the run-rate it is subtracted from — the fleet snapshot records the budget that was
-                RUNNING while the replay reads the budget that was CONFIGURED, and where those disagree
-                the difference is not a quantity. The agency half is unaffected: it is a sum of what you
-                stated, not a subtraction.
+                not on the charts. On those, no service held a single record about any customer on the day
+                the period is read as of. It is not a zero: a zero would say the SaaS business was worth
+                nothing that month.
               </p>
             </section>
           )}
@@ -633,6 +644,41 @@ export function RevenueView({
                 {usdFull(unstatedAgencyUsd)} a month of agency budget is in neither half — an agency brand
                 nobody has stated an amount for yet. Until it is stated, the total sits that much below the
                 fleet&apos;s committed run-rate.
+              </p>
+            </section>
+          )}
+
+          {/* An approximated month is a real figure and is charted like any other.
+              Saying so is the condition it was accepted on: campaign-service only
+              began recording whether a campaign was running, and whether it still
+              had anybody to contact, on the day it shipped those records. Before
+              that the customer is counted when their own billed sending shows they
+              were working that week. */}
+          {approximatedMonths.length > 0 && (
+            <section className="rounded-lg border border-amber-200 bg-white p-4">
+              <p className="text-sm text-amber-700">
+                {approximatedMonths.length === 1 ? "One month is" : `${approximatedMonths.length} months are`}{" "}
+                approximated ({approximatedMonths.join(", ")}). We only began recording whether a campaign was
+                running, and whether it still had people to contact,
+                {split?.earningRecordBeginsOn ? ` on ${split.earningRecordBeginsOn}` : " recently"}. Before that
+                a customer is counted when their own billed sending shows they were working that week, so read
+                those months as close rather than exact. Everything after is measured.
+              </p>
+            </section>
+          )}
+
+          {/* The amount itself is never approximated: a customer we hold no
+              recorded budget for contributes nothing, however plainly they were
+              working. That under-states, so the size of it is stated here rather
+              than filled in with a number nobody recorded. */}
+          {unrecordedBudgetCustomers > 0 && (
+            <section className="rounded-lg border border-amber-200 bg-white p-4">
+              <p className="text-sm text-amber-700">
+                Up to {unrecordedBudgetCustomers}{" "}
+                {unrecordedBudgetCustomers === 1 ? "customer was" : "customers were"} working in a period with
+                no recorded daily budget behind them, so they are worth nothing in the figures above. That
+                under-states the self-serve half by whatever they were paying. Set a budget on them once and
+                the record starts, which fixes it from then on.
               </p>
             </section>
           )}
