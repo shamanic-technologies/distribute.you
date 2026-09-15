@@ -178,7 +178,7 @@ function reseedProofCard(
     }
   );
 
-  // The card names ONE rung in its own words ("Cost per meeting booked") and carries
+  // The card names ONE rung in its own words ("Cost per sales interest") and carries
   // that rung's key beside it, so the price is joined by key like every count above.
   // The producer prices every rung on one formula, base included, which is what lets
   // one card ask for a booked meeting and its neighbour for a website visit with no

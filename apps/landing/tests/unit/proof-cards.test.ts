@@ -24,7 +24,7 @@ function card(
   return (
     `<article class="proof-card rv" data-proof-brand="${domain}"${funnelAttr}>` +
     `<div class="proof-roi"><span class="big" data-count="${roi}" data-decimals="1">0<small>x</small></span></div>` +
-    `<div class="proof-line" data-proof-cost-step="${costStep}"><span>Cost per meeting booked</span><b>${cost}</b></div>` +
+    `<div class="proof-line" data-proof-cost-step="${costStep}"><span>Cost per sales interest</span><b>${cost}</b></div>` +
     `<div class="proof-funnel">${funnel}</div>` +
     `</article>`
   );
