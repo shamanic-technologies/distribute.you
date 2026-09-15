@@ -138,6 +138,31 @@ export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
   // holds an active workflow for it, and campaign-service provisions its funded
   // pairs — which is why it is here and that one is not.
   "ai-meeting-booking",
+  // The first EARNED channel: a journalist asks a question on Featured, the brand's
+  // expert answers it, and the placement carries a link back — so its one leg puts a
+  // lead onto a visit-led funnel from nothing, exactly as a paid click does. It is
+  // here on the same evidence as the four above and nothing weaker: prod holds EIGHT
+  // active workflow dynasties for it, and campaign-service reads it as a channel whose
+  // ceiling is billing's (v0.72.2) — so a campaign on it is gated, paced and held by
+  // the money rather than by the per-campaign budget columns nothing enforces. Note the
+  // SUPERSEDED spelling `pr-expert-quote-opportunities` is deliberately absent —
+  // features-service states it is superseded by this one, so offering both would sell
+  // one channel twice.
+  //
+  // ⚠️ MONEY STARTS NOTHING, and that is true of every slug in this set rather than of
+  // this one. campaign-service deleted auto-provisioning on 2026-09-06 (the customer
+  // owns a campaign's status), so funding a pair here does NOT bring a campaign into
+  // being: it states the ceiling the campaign will be paced on once a person creates
+  // it. The only creators are onboarding's terminal launch and the staff console.
+  //
+  // ⚠️ Being FUNDABLE is not being able to PRODUCE today: the vendor's programmatic
+  // feed (Featured's premium questions, the only one carrying a submittable question
+  // id) answers `403 Business subscription required` while that plan is lapsed, so a
+  // funded campaign provisions, schedules and finds nothing to pitch. That is a
+  // commercial gate nobody here can read, and it is deliberately NOT modelled as a
+  // slug removal: the channel is sold, its workflows exist, and the subscription is
+  // renewed outside this repo.
+  "pr-expert-quote-outreach",
 ]);
 
 /**

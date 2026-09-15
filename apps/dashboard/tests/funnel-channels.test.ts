@@ -84,6 +84,7 @@ describe("what a customer may FUND", () => {
     expect([...PROVISIONABLE_CHANNEL_SLUGS].sort()).toEqual([
       "ai-meeting-booking",
       "feedback-request-cold-email-outreach",
+      "pr-expert-quote-outreach",
       "sales-cold-email-outreach",
       "sales-crm-email-outreach",
     ]);
@@ -91,6 +92,14 @@ describe("what a customer may FUND", () => {
     // three above are: campaign-service provisions its funded pairs and prod holds
     // an active workflow for it.
     expect(PROVISIONABLE_CHANNEL_SLUGS.has("ai-meeting-booking")).toBe(true);
+    // The first EARNED channel, here on that same evidence: prod holds eight active
+    // workflow dynasties for it and campaign-service provisions its funded pairs.
+    expect(PROVISIONABLE_CHANNEL_SLUGS.has("pr-expert-quote-outreach")).toBe(true);
+    // Its SUPERSEDED spelling, which features-service marks as replaced by the one
+    // above. Offering both would sell one channel twice.
+    expect(PROVISIONABLE_CHANNEL_SLUGS.has("pr-expert-quote-opportunities")).toBe(
+      false,
+    );
     // Provisioning a campaign is not RUNNING one. Every service a Google Ads
     // campaign needs is in prod; the workflow that would execute it is not, so
     // funding it would produce a campaign that is scheduled and does nothing.
