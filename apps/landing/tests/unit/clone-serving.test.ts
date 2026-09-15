@@ -361,11 +361,11 @@ describe("the serving surface", () => {
     // This file runs on EVERY request the landing serves. The host check is the first
     // statement of the function and nothing may be added above it.
     const body = proxy.slice(proxy.indexOf("export default function proxy("));
-    const firstStatement = body.indexOf("const slug = cloneSlugForHost(");
-    const earlyReturn = body.indexOf("if (slug === null) return offCloneHost(request);");
+    const firstStatement = body.indexOf("const clone = cloneSlugForHost(");
+    const earlyReturn = body.indexOf("return offLabHost(request);");
     expect(firstStatement).toBeGreaterThan(-1);
     expect(earlyReturn).toBeGreaterThan(firstStatement);
-    expect(body.slice(0, firstStatement)).not.toMatch(/await|readFile|fetch\(/);
+    expect(body.slice(0, earlyReturn)).not.toMatch(/await|readFile|fetch\(/);
   });
 
   it("tells crawlers to stay away before it asks for the password", () => {
@@ -394,8 +394,8 @@ describe("the serving surface", () => {
     // (`_clone` was the first attempt and is a PRIVATE app-router folder: excluded from
     // routing, so every rewrite onto it fell through to the 404 page.)
     expect(CLONE_ROUTE_PREFIX.startsWith("/_")).toBe(false);
-    expect(proxy).toContain("function offCloneHost(");
-    const guard = proxy.slice(proxy.indexOf("function offCloneHost("));
+    expect(proxy).toContain("function offLabHost(");
+    const guard = proxy.slice(proxy.indexOf("function offLabHost("));
     expect(guard).toContain("startsWith(CLONE_ROUTE_PREFIX)");
     expect(guard).toContain("status: 404");
   });

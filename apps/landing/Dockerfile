@@ -56,11 +56,14 @@ COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/.next/static ./apps/landing/.next/static
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/public ./apps/landing/public
 
-# The competitor clones (apps/landing/clones/) are read from disk at request time by
-# src/app/_clone/[slug]/[[...path]]/route.ts. Nothing imports them, so Next's file
-# tracing never sees them and the standalone output does not carry them — without this
-# line every clone host 404s on every path while the container is otherwise healthy.
+# The competitor clones (apps/landing/clones/) and our own archived landings
+# (apps/landing/archives/) are read from disk at request time by
+# src/app/internal-clone/[slug]/[[...path]]/route.ts and its internal-archive sibling.
+# Nothing imports either, so Next's file tracing never sees them and the standalone
+# output does not carry them — without these lines every lab host 404s on every path
+# while the container is otherwise healthy.
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/clones ./apps/landing/clones
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/archives ./apps/landing/archives
 
 # Every SEO page is ISR, so the server rewrites its own cache as pages revalidate. The
 # standalone output ships no cache directory and the process does not run as root, so
