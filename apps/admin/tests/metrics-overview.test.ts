@@ -3,6 +3,9 @@ import fs from "fs";
 import path from "path";
 import {
   activeOrgsSince,
+  columnHeightPct,
+  firstPaymentsSince,
+  newlyActiveOrgsSince,
   clientEconomics,
   funnelSteps,
   funnelWindows,
@@ -129,6 +132,128 @@ describe("activeOrgsSince", () => {
   });
 });
 
+describe("newlyActiveOrgsSince", () => {
+  const users = [
+    { orgId: "a", activeDays: ["2026-05-01", "2026-09-01"] },
+    { orgId: "b", activeDays: ["2026-09-02"] },
+    { orgId: "c", activeDays: [] },
+  ];
+
+  // `a` is ACTIVE in the window and did not ENTER in it — its first day is in May. That
+  // difference is the whole point: a funnel counts who reached the stage, and counting
+  // presence here puts this stage above the one that feeds it.
+  it("counts only the orgs whose FIRST active day is in the window", () => {
+    expect(newlyActiveOrgsSince(users, "2026-08-01")).toBe(1);
+    expect(activeOrgsSince(users, "2026-08-01")).toBe(2);
+  });
+
+  // The inception column must not move: every org that has ever been active entered at
+  // some point, so with no window the two readings are the same count.
+  it("equals the presence count when there is no window", () => {
+    expect(newlyActiveOrgsSince(users, null)).toBe(activeOrgsSince(users, null));
+    expect(newlyActiveOrgsSince(users, null)).toBe(2);
+  });
+
+  // The producer's rows are per USER. Two users of one org must not make it enter twice,
+  // and the org's first day is the earliest across all of them — `b`'s May row is what
+  // keeps it out of an August window even though its other row only ran in September.
+  it("takes an org's earliest day across all of its users", () => {
+    const twoUsers = [
+      { orgId: "b", activeDays: ["2026-09-02"] },
+      { orgId: "b", activeDays: ["2026-05-02"] },
+    ];
+    expect(newlyActiveOrgsSince(twoUsers, "2026-08-01")).toBe(0);
+    expect(newlyActiveOrgsSince(twoUsers, null)).toBe(1);
+  });
+
+  it("counts nothing when nobody has ever been active", () => {
+    expect(newlyActiveOrgsSince([{ orgId: "c", activeDays: [] }], null)).toBe(0);
+  });
+});
+
+describe("firstPaymentsSince", () => {
+  // Unix SECONDS, ascending, one per account that has ever paid — the producer's shape.
+  const now = new Date("2026-09-15T08:00:00.000Z");
+  const sec = (iso: string) => Math.floor(new Date(iso).getTime() / 1000);
+  const times = [
+    sec("2026-03-12T10:00:00.000Z"),
+    sec("2026-06-20T10:00:00.000Z"),
+    sec("2026-09-01T10:00:00.000Z"),
+    sec("2026-09-10T10:00:00.000Z"),
+  ];
+
+  it("counts the accounts that first paid inside the window", () => {
+    const [, d90, d30] = funnelWindows(now);
+    expect(firstPaymentsSince(times, d30.sinceMs)).toBe(2);
+    expect(firstPaymentsSince(times, d90.sinceMs)).toBe(3);
+  });
+
+  // With no window this is every entry, which the producer guarantees equals the
+  // platform total published beside them — so the inception column reads one source.
+  it("counts every account when there is no window", () => {
+    expect(firstPaymentsSince(times, null)).toBe(times.length);
+    expect(firstPaymentsSince([], null)).toBe(0);
+  });
+
+  // The whole reason the producer publishes INSTANTS: the edge of a rolling window is a
+  // second, not a midnight. A payment made earlier on the window's first day is OUTSIDE
+  // it, and truncating the edge to that date would pull it back in.
+  it("cuts on the instant, not on the day the window starts", () => {
+    const window = funnelWindows(now)[2];
+    const edgeMs = window.sinceMs as number;
+    expect(firstPaymentsSince([Math.floor(edgeMs / 1000) - 60], edgeMs)).toBe(0);
+    expect(firstPaymentsSince([Math.floor(edgeMs / 1000)], edgeMs)).toBe(1);
+    // ...and the same instant read against the DAY would have counted it
+    expect(window.sinceIso).toBe(new Date(edgeMs).toISOString().slice(0, 10));
+  });
+});
+
+describe("columnHeightPct", () => {
+  // The whole reason the scale is logarithmic: the cascade must still DESCEND when the
+  // counts do, or it is a bar chart of unrelated ratios rather than a funnel.
+  it("falls away monotonically as the counts do", () => {
+    const base = 2215;
+    const heights = [2215, 10, 3, 2].map((v) => columnHeightPct(v, base));
+    expect(heights[0]).toBe(100);
+    for (let i = 1; i < heights.length; i += 1) {
+      expect(heights[i]).toBeLessThan(heights[i - 1]);
+    }
+  });
+
+  // A linear index put all three later stages under 1% — one tall column and three
+  // identical stubs. Log keeps them apart inside one 128px track.
+  it("keeps three orders of magnitude distinguishable", () => {
+    const heights = [2215, 10, 3, 2].map((v) => columnHeightPct(v, 2215));
+    const rounded = heights.map((h) => Math.round(h));
+    expect(new Set(rounded).size).toBe(4);
+    expect(rounded).toEqual([100, 31, 18, 14]);
+  });
+
+  // A measured stage must never be invisible — that is the misreading the whole fix is
+  // about. A stage measured at exactly ZERO is a different statement and draws nothing.
+  it("floors a measured stage above zero, and floors nothing at zero", () => {
+    expect(columnHeightPct(1, 10_000_000)).toBeGreaterThanOrEqual(3);
+    expect(columnHeightPct(0, 2215)).toBe(0);
+  });
+
+  // `log10(1)` is 0 and `log10(0)` is -Infinity; the `+ 1` on both sides keeps a single
+  // person and an empty funnel off both without bending the order.
+  it("never returns a non-finite or out-of-range height", () => {
+    for (const [value, base] of [[1, 1], [0, 0], [1, 0], [5, 5], [9, 3]] as const) {
+      const h = columnHeightPct(value, base);
+      expect(Number.isFinite(h)).toBe(true);
+      expect(h).toBeGreaterThanOrEqual(0);
+      expect(h).toBeLessThanOrEqual(100);
+    }
+  });
+
+  // A stage CAN exceed the one before it (the stages are not a cohort), and the column
+  // is clamped at the track — the mark on its top and the printed percentage say so.
+  it("clamps a stage larger than the top of the funnel at a full column", () => {
+    expect(columnHeightPct(9000, 2215)).toBe(100);
+  });
+});
+
 describe("clientEconomics", () => {
   const rows: ClientEconomicsRow[] = [
     { ltrUsd: 100, runningDailyBudgetUsd: 10, retentionWeeks: 8, activeDays: ["2026-09-01"] },
@@ -222,16 +347,41 @@ describe("paid-user rate buckets", () => {
 });
 
 describe("the drop chart", () => {
-  // Caught by RENDERING it: a real funnel is 12,400 visitors against 71 signups, so
-  // every stage after the first sits at an index under 1. Drawing the bar at the index
-  // makes all three a sliver and the drops — the only thing this row exists to show —
-  // invisible. The bar therefore carries the step conversion and the number the index.
-  it("sizes the bar on the step conversion, never on the base-100 index", () => {
-    expect(funnelCards).toContain("const survived = i === 0");
-    expect(funnelCards).toContain("step.pctOfPrevious");
-    expect(funnelCards).not.toContain("width: `${Math.min(step.index, 100)}%`");
-    // and it says which figure is which, or the two read as one contradicting itself
-    expect(funnelCards).toContain("Bar is what survived from the stage above");
+  // Caught by RENDERING it: a real funnel is 2,215 visitors against 10 signups, so
+  // every stage after the first sits at an index under 1. Drawing the column at the
+  // index makes all three a sliver and the drops — the only thing this exists to show —
+  // invisible. The column therefore carries the step conversion and the number the index.
+  it("sizes the column on how many reached the stage, through the tested scale", () => {
+    expect(funnelCards).toContain("columnHeightPct(step.value, base)");
+    // the base is the top of the funnel, never the neighbour — a per-neighbour scale is
+    // the step conversion again, which does not descend
+    expect(funnelCards).toContain("const base = steps[0].value");
+    expect(funnelCards).not.toContain("columnHeightPct(step.index");
+    // and the card says the scale is logarithmic, or the shape overstates what it shows
+    expect(funnelCards).toContain("Log scale of how many reached each stage");
+  });
+
+  // The ask was a vertical cascade, and the orientation is the whole of it: a row of
+  // left-filling bars reads as a bar chart, not as a funnel draining stage by stage.
+  it("draws columns in a row, filling from the bottom", () => {
+    expect(funnelCards).toContain("flex items-stretch gap-2");
+    expect(funnelCards).toContain("flex min-w-0 flex-1 flex-col");
+    expect(funnelCards).toContain("flex flex-col justify-end");
+    expect(funnelCards).toContain("height: COLUMN_TRACK_PX");
+    // one fixed track, so the three windows are read against one scale
+    expect(funnelCards).toContain("const COLUMN_TRACK_PX");
+    // and the old horizontal bar is gone, not merely unused
+    expect(funnelCards).not.toContain("h-2 overflow-hidden rounded-full");
+  });
+
+  // The stages are not a cohort — an org that signed up in June can first pay in
+  // September — so a stage CAN exceed the one before it. Clamping the column in silence
+  // would report that as a full stage and say nothing; it is marked, and the percentage
+  // beside it states the true figure.
+  it("marks a stage that exceeds the one before it rather than clamping it silently", () => {
+    expect(funnelCards).toContain("const exceedsPrevious = survived !== null && survived > 100");
+    expect(funnelCards).toContain("border-t-4 border-gray-900");
+    expect(funnelCards).toContain("exceedsPrevious ?");
   });
 
   // A stage whose parent is unmeasured has no answerable conversion, but its index
@@ -246,6 +396,28 @@ describe("the drop chart", () => {
   it("gives each stage its own accent so the top row reads as a funnel", () => {
     expect(funnelCards).toContain("STEP_ACCENT[step.key]");
     expect(funnelCards).not.toContain('rounded-full bg-brand-500" />');
+  });
+
+  // Every stage above Active users is an ENTRY — a signup happens once, a first payment
+  // happens once — so counting who is merely PRESENT here puts this stage above the one
+  // that feeds it. Measured in production 2026-09-15: 8 active in the last 30 days
+  // against 3 who first paid in them, which renders as "266% of prev." on a funnel.
+  it("counts the orgs that ENTERED the active stage, not the ones standing in it", () => {
+    expect(overview).toContain("newlyActiveOrgsSince(users, window.sinceIso)");
+    expect(overview).not.toContain("activeOrgsSince(users, window.sinceIso)");
+  });
+
+  // The stage rendered a dash for both rolling windows, and a dash reads as nobody
+  // having paid — in production 3 orgs first paid in the last 30 days and 23 in the
+  // last 90. It is counted off the producer's instants now, at every window including
+  // inception, so the three columns cannot read two different sources.
+  it("counts paid users off the producer instants, at every window", () => {
+    expect(overview).toContain("firstPaymentsSince(billing.first_payment_times, window.sinceMs)");
+    expect(overview).not.toContain("inception ? billing.total_paying_accounts : null");
+    // required in the reader, matching the producer: a rollback must fail loud here
+    // rather than silently put the funnel back on a dash
+    expect(publicStats).toContain("first_payment_times: z.array(z.number())");
+    expect(publicStats).not.toContain("first_payment_times: z.array(z.number()).optional()");
   });
 });
 

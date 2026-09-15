@@ -25,7 +25,8 @@ import {
   FunnelStatCard,
 } from "@/components/overview-funnel-cards";
 import {
-  activeOrgsSince,
+  firstPaymentsSince,
+  newlyActiveOrgsSince,
   clientEconomics,
   economicsRows,
   funnelSteps,
@@ -162,15 +163,22 @@ export function OverviewView({
               : window.key === "d30"
                 ? windows.signups30d
                 : windows.signups90d,
-          // Inception is the producer's own count of accounts that have ever paid,
-          // every acquirer. The 30/90-day windows are UNMEASURED: the producer
-          // buckets payers by week and by month, and neither aligns to a rolling
-          // window, so there is no honest sum to state. It used to sum a per-day
+          // Counted off the instants the producer publishes, one per account that has
+          // ever paid, so every window is answerable EXACTLY and all three read one
+          // source. The rolling windows used to state a dash — the producer bucketed
+          // payers by week and by month, neither aligns to a rolling window, and
+          // summing whole weeks over 90 days measured 17 against a true 23 — and a
+          // dash reads as nobody having paid. Before that it summed a per-day
           // first-saved-CARD series, which missed every wallet payer and every payer
           // on the second acquirer, and dated a September payment to whenever that
-          // customer's card was attached — 12 against 33 who had actually paid.
-          paidUsers: inception ? billing.total_paying_accounts : null,
-          activeUsers: users === null ? null : activeOrgsSince(users, window.sinceIso),
+          // customer's card was attached: 12 against 33 who had actually paid.
+          paidUsers: firstPaymentsSince(billing.first_payment_times, window.sinceMs),
+          // The org that ENTERED this stage in the window, not the ones standing in it —
+          // every stage above is an entry (a signup happens once, a first payment happens
+          // once), so a presence count here sits above the stage that feeds it. See
+          // `newlyActiveOrgsSince`. Inception is unchanged: every org that has ever been
+          // active entered at some point.
+          activeUsers: users === null ? null : newlyActiveOrgsSince(users, window.sinceIso),
         }),
         economics: clientEconomics(economicsRows(board?.customers ?? []), window.sinceIso),
       };
@@ -260,7 +268,7 @@ export function OverviewView({
 
       <SectionHeading
         title="Where people drop out"
-        blurb="The same four stages indexed on unique visitors at 100, over three windows. A stage nobody could measure draws no bar and says so — an empty bar would read as nobody reaching it."
+        blurb="The same four stages as a cascade, one column per stage, over three windows. Every stage counts who ENTERED it in the window, so each column's height is what survived from the stage to its left. A stage nobody could measure draws no column and says so — an empty one would read as nobody reaching it."
       />
       <section className="grid gap-6 lg:grid-cols-3">
         {funnel.map((entry) => (

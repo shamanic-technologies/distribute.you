@@ -105,9 +105,10 @@ export function windowStartIso(now: Date, days: number): string {
  * `sinceIso` is null.
  *
  * Safe to SUM only because each row of the series counts an event that happens ONCE
- * per person — a first saved card. Summing a series of per-day DISTINCT counts would
+ * per person — a first payment. Summing a series of per-day DISTINCT counts would
  * count the same returning person once per day they came back, which is why the
- * windowed visitor and signup totals are read distinct over the window instead.
+ * windowed visitor and signup totals are read distinct over the window instead, and
+ * why the producer's per-period count of WHO PAID is deliberately not read here.
  */
 export function sumSince(
   points: Array<{ date: string; value: number }>,
@@ -134,6 +135,85 @@ export function activeOrgsSince(
     if (user.activeDays.some((day) => sinceIso === null || day >= sinceIso)) orgs.add(user.orgId);
   }
   return orgs.size;
+}
+
+/**
+ * Distinct orgs whose FIRST active day falls in the window — the ones that ENTERED the
+ * stage here, not the ones standing in it.
+ *
+ * This is the funnel's reading, and it differs from `activeOrgsSince` on purpose. A
+ * funnel states how many people REACHED each stage in the window, and every stage above
+ * this one is an entry: a signup happens once, and a first payment happens once. An org
+ * that signed up in March and is still running is active today and did not reach
+ * anything this month, so counting it here puts a stage ABOVE the one that feeds it —
+ * measured in production on 2026-09-15, 8 orgs were active in the last 30 days against 3
+ * that first paid in them, which renders as "266% of paid users" on a funnel. Entry
+ * against entry gives 2 against 3.
+ *
+ * Grouped by ORG before the minimum is taken: the producer's rows are per USER, so two
+ * users of one org would otherwise each contribute their own first day and an org could
+ * be counted as entering twice, or as entering later than it did.
+ *
+ * At `sinceIso === null` every org that has ever been active entered at some point, so
+ * this equals `activeOrgsSince(users, null)` and the inception column is unchanged.
+ */
+export function newlyActiveOrgsSince(
+  users: Array<{ orgId: string; activeDays: string[] }>,
+  sinceIso: string | null,
+): number {
+  const firstDayByOrg = new Map<string, string>();
+  for (const user of users) {
+    for (const day of user.activeDays) {
+      const known = firstDayByOrg.get(user.orgId);
+      if (known === undefined || day < known) firstDayByOrg.set(user.orgId, day);
+    }
+  }
+  let entered = 0;
+  for (const firstDay of firstDayByOrg.values()) {
+    if (sinceIso === null || firstDay >= sinceIso) entered += 1;
+  }
+  return entered;
+}
+
+/**
+ * The shortest a column may be drawn while still standing for somebody.
+ *
+ * A measured stage drawing no column is precisely the misreading this funnel refuses
+ * to make, so a measured, non-zero stage is never drawn shorter than this. A stage
+ * measured at exactly ZERO is NOT floored: nobody reached it, and an empty column is
+ * the truth there.
+ */
+const MIN_VISIBLE_COLUMN_PCT = 3;
+
+/**
+ * How tall to draw a stage of `value` people against a funnel whose top held `base`.
+ *
+ * LOGARITHMIC, and it took two renders to get here. Both obvious scales fail, in
+ * opposite ways, and neither failure is visible to a type check or a source guard:
+ *
+ *  - Height as the STEP CONVERSION does not taper. A step conversion has no reason to
+ *    descend, and on production figures it drew tall, sliver, medium, tall (100%, 0.5%,
+ *    30%, 67%) — a bar chart of four unrelated ratios, not a funnel.
+ *  - Height as the LINEAR INDEX tapers by construction and then collapses. This funnel
+ *    drops 2,215 visitors to 10 signups, so all three later stages sit under an index
+ *    of 1: one tall column and three identical stubs on the floor, carrying no
+ *    information about each other at all.
+ *
+ * A log scale is monotone, so the cascade still descends whenever the counts do, and it
+ * keeps three orders of magnitude legible in one 128px track: the same 30-day funnel
+ * draws 100 / 31 / 18 / 14. It is compressing a real difference, which is why the card
+ * says the scale is logarithmic and why the exact count and step conversion are printed
+ * under every column — the shape is for reading at a glance, the figures are the truth.
+ *
+ * `+ 1` on both sides rather than a guard: it keeps a single person off `log10(1) = 0`
+ * and an empty stage off `log10(0) = -Infinity`, without bending the order.
+ */
+export function columnHeightPct(value: number, base: number): number {
+  if (value <= 0 || base <= 0) return 0;
+  const span = Math.log10(base + 1);
+  if (span <= 0) return 100;
+  const pct = (Math.log10(value + 1) / span) * 100;
+  return Math.min(Math.max(pct, MIN_VISIBLE_COLUMN_PCT), 100);
 }
 
 /** The per-customer figures the economics row averages. A structural subset of `CustomerRow`. */
@@ -207,13 +287,54 @@ export interface FunnelWindow {
   label: string;
   /** Inclusive start of the window, `YYYY-MM-DD`, or null for since inception. */
   sinceIso: string | null;
+  /**
+   * The same start as an INSTANT, epoch milliseconds, or null for since inception.
+   *
+   * Carried beside the date because a rolling window is anchored on a moment, not on a
+   * midnight, and one of the stages is measured that way. The two are the same window
+   * read at the resolution each source can answer: PostHog and the active-day lists are
+   * dated to the day, while the payer instants are exact to the second — and the
+   * producer publishes them at that resolution precisely because the edge of a 90-day
+   * window is a second. Truncating them to `sinceIso` would put every payment made
+   * earlier in the day back inside the window.
+   */
+  sinceMs: number | null;
 }
 
 /** The three windows every funnel and economics row on the Overview is stated over. */
 export function funnelWindows(now: Date): FunnelWindow[] {
+  const startMs = (days: number) => now.getTime() - days * 86_400_000;
   return [
-    { key: "inception", label: "Since inception", sinceIso: null },
-    { key: "d90", label: "Last 90 days", sinceIso: windowStartIso(now, 90) },
-    { key: "d30", label: "Last 30 days", sinceIso: windowStartIso(now, 30) },
+    { key: "inception", label: "Since inception", sinceIso: null, sinceMs: null },
+    { key: "d90", label: "Last 90 days", sinceIso: windowStartIso(now, 90), sinceMs: startMs(90) },
+    { key: "d30", label: "Last 30 days", sinceIso: windowStartIso(now, 30), sinceMs: startMs(30) },
   ];
+}
+
+/**
+ * How many accounts first paid inside the window, from the instants the producer
+ * publishes — one per account that has ever paid, in unix SECONDS.
+ *
+ * This is the only stage of the funnel answerable EXACTLY at any window, and that is
+ * the whole reason the producer publishes instants rather than a finer bucket. The
+ * counts it buckets by calendar week and month cannot be summed over a rolling window:
+ * the bucket straddling the edge holds payments on both sides of it, and summing whole
+ * weeks over 90 days was measured at 17 against a true 23. A daily grain would not have
+ * fixed it either — the edge of the window is a second, not a midnight.
+ *
+ * With no window this is every entry, which the producer guarantees equals the platform
+ * total it publishes beside them: both come from one query over one set of payments, and
+ * it throws rather than serve two arms that disagree.
+ *
+ * A first payment happens ONCE per account, so counting entries can never double-count
+ * an account that keeps paying — the property that makes this answerable at all, and the
+ * same one `sumSince` rests on.
+ */
+export function firstPaymentsSince(
+  firstPaymentTimesSec: number[],
+  sinceMs: number | null,
+): number {
+  if (sinceMs === null) return firstPaymentTimesSec.length;
+  const sinceSec = sinceMs / 1000;
+  return firstPaymentTimesSec.reduce((total, at) => (at >= sinceSec ? total + 1 : total), 0);
 }

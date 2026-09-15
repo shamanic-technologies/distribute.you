@@ -11,7 +11,7 @@
 
 import { Skeleton } from "@/components/skeleton";
 import { formatCount, formatUsd } from "@/lib/format-number";
-import type { ClientEconomics, FunnelStep } from "@/lib/funnel-overview";
+import { columnHeightPct, type ClientEconomics, type FunnelStep } from "@/lib/funnel-overview";
 
 function usdFull(n: number): string {
   return formatUsd(n, Math.abs(n) < 10 ? 2 : 0);
@@ -46,59 +46,83 @@ export function FunnelStatCard({ step }: { step: FunnelStep }) {
   );
 }
 
+/** How tall a full column is. Fixed, so the three windows read against one scale. */
+const COLUMN_TRACK_PX = 128;
+
 /**
- * Where people drop out: the NUMBER is the stage indexed on unique visitors at 100,
- * the BAR is what survived from the stage directly above it.
+ * Where people drop out, as a CASCADE: one column per stage, left to right in funnel
+ * order, each column's HEIGHT falling away from the stage before it.
  *
- * The two are deliberately different quantities, and the card says which is which.
- * Drawing the bar at the index instead is the obvious thing and it is unreadable on a
- * real funnel: 12,400 visitors against 71 signups puts every stage after the first at
- * an index under 1, so all three render as a sliver and the drops — the only thing
- * this row exists to show — are invisible. Every analytics tool resolves that the
- * same way, by making the step conversion the readable shape and leaving the absolute
- * figure as text. So the bar answers "what share of the stage above got here" and the
- * number answers "how far from the top are we", and both are labelled.
+ * The height is HOW MANY REACHED the stage, log-scaled against the top of the funnel —
+ * see `columnHeightPct` for why both obvious alternatives were built, rendered and
+ * rejected. Short version: a step conversion does not descend, so it draws a bar chart
+ * rather than a cascade; a linear index descends and then collapses, because this
+ * funnel drops 2,215 visitors to 10 signups and puts every later stage on the floor.
  *
- * A stage we could not measure draws NO bar and says so — a zero-width bar reads as
- * nobody reaching that stage, which is the one thing this must not say by accident.
+ * A stage we could not measure draws NO column and says so. A zero-height column reads
+ * as nobody reaching that stage, which is the one thing this must not say by accident —
+ * it is the exact misreading that made a dash on Paid users report a month with three
+ * new paying customers as a month with none.
+ *
+ * A stage can legitimately EXCEED the one before it: the stages are not a cohort, so an
+ * org that signed up in June and first paid in September is in this month's payers and
+ * in no earlier stage of this window. That is rare and it is real, so its column MARKS
+ * ITS TOP rather than passing unremarked, and the percentage under it states the true
+ * figure.
  */
 export function FunnelIndexChart({ title, steps }: { title: string; steps: FunnelStep[] }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
       <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
       <p className="mt-1 text-sm text-gray-500">
-        Bar is what survived from the stage above. The number is the stage indexed on unique
-        visitors at 100.
+        Log scale of how many reached each stage, so a 200x drop still reads. The number above
+        each column is that stage indexed on unique visitors at 100.
       </p>
-      <div className="mt-5 space-y-4">
+      <div className="mt-5 flex items-stretch gap-2">
+        {/* The first stage is the top of the funnel and the base every column is drawn against. */}
         {steps.map((step, i) => {
-          // The first stage has nothing above it, so it IS the whole bar — it is the
-          // base every number to its right is measured against.
           const survived = i === 0 ? (step.value === null ? null : 100) : step.pctOfPrevious;
+          const exceedsPrevious = survived !== null && survived > 100;
+          const base = steps[0].value;
           return (
-            <div key={step.key}>
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="truncate text-sm font-medium text-gray-900">{step.label}</p>
-                <p className="shrink-0 text-sm font-semibold text-gray-950">
-                  {step.index === null ? "—" : step.index}
-                </p>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-                {survived !== null && (
+            <div key={step.key} className="flex min-w-0 flex-1 flex-col">
+              <p className="text-center text-sm font-semibold text-gray-950">
+                {step.index === null ? "—" : step.index}
+              </p>
+              <div
+                className="mt-2 flex flex-col justify-end overflow-hidden rounded-md bg-gray-100"
+                style={{ height: COLUMN_TRACK_PX }}
+              >
+                {step.value !== null && base !== null && (
                   <div
-                    className="h-full rounded-full bg-brand-500"
-                    style={{ width: `${Math.min(survived, 100)}%` }}
+                    className={`w-full rounded-md ${STEP_ACCENT[step.key]} ${
+                      exceedsPrevious ? "border-t-4 border-gray-900" : ""
+                    }`}
+                    style={{ height: `${columnHeightPct(step.value, base)}%` }}
                   />
                 )}
               </div>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-2 h-8 text-center text-[11px] font-medium leading-tight text-gray-900">
+                {step.label}
+              </p>
+              <p className="text-center text-xs font-semibold text-gray-800">
+                {countOrDash(step.value)}
+              </p>
+              <p
+                className="text-center text-[11px] leading-tight text-gray-400"
+                title={
+                  step.previousLabel === null
+                    ? "The base every other stage is measured against"
+                    : `Of ${step.previousLabel.toLowerCase()}`
+                }
+              >
                 {step.value === null
                   ? "Not measured"
-                  : `${formatCount(step.value)} reached${
-                      step.pctOfPrevious === null || step.previousLabel === null
-                        ? ""
-                        : ` · ${step.pctOfPrevious}% of ${step.previousLabel.toLowerCase()}`
-                    }`}
+                  : survived === null
+                    ? "—"
+                    : i === 0
+                      ? "Top of the funnel"
+                      : `${survived}% of prev.`}
               </p>
             </div>
           );
