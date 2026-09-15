@@ -58,6 +58,21 @@ const billingStatsSchema = z.object({
    * read 33 and 31, and neither is a subset of the other.
    */
   total_paying_accounts: z.number(),
+  /**
+   * One instant per account that has ever paid — its FIRST settled payment, in unix
+   * SECONDS, ascending. Every acquirer, same identity as `total_paying_accounts`.
+   *
+   * This is what makes the funnel's Paid users stage answerable over a rolling window.
+   * The growth buckets beside it are calendar weeks and months, and a rolling window
+   * aligns to neither: the bucket straddling its edge holds payments on both sides, so
+   * summing whole weeks over 90 days measured 17 against a true 23. The stage rendered
+   * a dash for both rolling windows rather than state that, and a dash reads as nobody
+   * having paid.
+   *
+   * REQUIRED, matching the producer: a rollback that stops serving it must fail loud
+   * here rather than silently put the funnel back on a dash.
+   */
+  first_payment_times: z.array(z.number()),
   monthly_growth: z.array(billingGrowthRowSchema),
   weekly_growth: z.array(billingGrowthRowSchema),
 });
