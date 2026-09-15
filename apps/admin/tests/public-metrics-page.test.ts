@@ -18,6 +18,17 @@ const sidebar = fs.readFileSync(
   path.join(__dirname, "../src/components/context-sidebar.tsx"),
   "utf-8",
 );
+// The Signups and Paid-users tabs are CLIENT components: they hand the shared
+// card a `formatValue` function, and a function cannot cross the server/client
+// boundary. Their copy therefore lives in their own files, not in the server page.
+const signupView = fs.readFileSync(
+  path.join(__dirname, "../src/components/signup-view.tsx"),
+  "utf-8",
+);
+const cardsView = fs.readFileSync(
+  path.join(__dirname, "../src/components/cards-view.tsx"),
+  "utf-8",
+);
 const header = fs.readFileSync(
   path.join(__dirname, "../src/components/header.tsx"),
   "utf-8",
@@ -62,7 +73,7 @@ describe("cross-org build-in-public metrics page", () => {
     expect(publicStats).toContain("uniq(distinct_id) AS visitors");
     expect(publicStats).toContain("signup_completed");
     expect(metricsPage).toContain("fetchPublicStatsSummary");
-    expect(metricsPage).toContain("Clerk /users/count total");
+    expect(signupView).toContain("Clerk /users/count total");
     expect(metricsPage).not.toContain("Pending");
   });
 
@@ -72,34 +83,34 @@ describe("cross-org build-in-public metrics page", () => {
   });
 
   it("states the PAID rate per period, not the two daily funnel charts it replaced", () => {
-    expect(metricsPage).toContain("Monthly paid user rate");
-    expect(metricsPage).toContain("Weekly paid user rate");
-    expect(metricsPage).toContain("monthlyPaidRates");
+    expect(cardsView).toContain("Monthly paid user rate");
+    expect(cardsView).toContain("Weekly paid user rate");
+    expect(cardsView).toContain("monthlyPaidRates");
     // The two daily charts are gone, and with them the last reader of a paid-user
     // series derived here from saved Stripe cards.
-    expect(metricsPage).not.toContain("Paid users vs signups");
-    expect(metricsPage).not.toContain("Signup to paid conversion over time");
-    expect(metricsPage).not.toContain("cardsAdded");
-    expect(metricsPage).not.toContain("cardConversionPct");
+    expect(cardsView).not.toContain("Paid users vs signups");
+    expect(cardsView).not.toContain("Signup to paid conversion over time");
+    expect(cardsView).not.toContain("cardsAdded");
+    expect(cardsView).not.toContain("cardConversionPct");
     // Both populations are stated, each with its own scope, rather than one of
     // them contradicting the other from a neighbouring card.
-    expect(metricsPage).toContain("Distinct accounts that have paid, every acquirer");
-    expect(metricsPage).toContain("Stripe-only saved payment methods, not a payment");
+    expect(cardsView).toContain("Distinct accounts that have paid, every acquirer");
+    expect(cardsView).toContain("Stripe-only saved payment methods, not a payment");
   });
 
   it("states the signup RATE per period, not the two daily funnel charts it replaced", () => {
-    expect(metricsPage).toContain("Monthly signup rate");
-    expect(metricsPage).toContain("Weekly signup rate");
-    expect(metricsPage).toContain("monthlySignupRates");
-    expect(metricsPage).toContain("weeklySignupRates");
+    expect(signupView).toContain("Monthly signup rate");
+    expect(signupView).toContain("Weekly signup rate");
+    expect(signupView).toContain("monthlySignupRates");
+    expect(signupView).toContain("weeklySignupRates");
     // The rate's growth is labelled apart from the signup-COUNT CMGR one row up:
     // the same acronym over two bases on one screen reads as a contradiction.
-    expect(metricsPage).toContain("Rate CMGR since inception");
-    expect(metricsPage).toContain("Rate CWGR since inception");
+    expect(signupView).toContain("Rate CMGR since inception");
+    expect(signupView).toContain("Rate CWGR since inception");
     // The two daily charts these replaced are gone, and with them the only
     // reader of the per-day conversion metric on this view.
-    expect(metricsPage).not.toContain("Signups vs unique visitors");
-    expect(metricsPage).not.toContain("signupConversionPct");
+    expect(signupView).not.toContain("Signups vs unique visitors");
+    expect(signupView).not.toContain("signupConversionPct");
   });
 
   it("shows compound growth (CMGR/CWGR) on the monthly and weekly signup charts, no daily chart", () => {
@@ -111,7 +122,7 @@ describe("cross-org build-in-public metrics page", () => {
     expect(metricsPage).toContain("PeriodCompoundCard");
     expect(metricsPage).not.toContain("<CmgrStat");
     // The daily signup chart was removed (its bucket call + day-on-day line are gone).
-    expect(metricsPage).not.toContain("dailySignups");
+    expect(signupView).not.toContain("dailySignups");
     expect(metricsPage).not.toContain("day-on-day");
     expect(metricsPage).not.toContain("DoD growth");
   });

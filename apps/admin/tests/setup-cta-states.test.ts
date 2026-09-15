@@ -14,8 +14,17 @@ describe("Cross-org metrics page shows public global metrics", () => {
     expect(content).toContain("Unique visitors over time");
     // The daily conversion chart was replaced by the monthly/weekly signup-RATE
     // charts; the per-period rate is the conversion surface this view now has.
-    expect(content).toContain("Monthly signup rate");
-    expect(content).toContain("Monthly paid user rate");
+    // Both rate surfaces are CLIENT components now (they pass the shared card a
+    // `formatValue` function, which cannot cross the server/client boundary), so
+    // the page mounts them and their copy lives in their own files.
+    expect(content).toContain("<SignupView");
+    expect(content).toContain("<CardsView");
+    expect(
+      fs.readFileSync(path.join(__dirname, "../src/components/signup-view.tsx"), "utf-8"),
+    ).toContain("Monthly signup rate");
+    expect(
+      fs.readFileSync(path.join(__dirname, "../src/components/cards-view.tsx"), "utf-8"),
+    ).toContain("Monthly paid user rate");
     expect(content).toContain('href="/orgs"');
     expect(content).not.toContain("useOrganization");
     expect(content).not.toContain("router.replace");

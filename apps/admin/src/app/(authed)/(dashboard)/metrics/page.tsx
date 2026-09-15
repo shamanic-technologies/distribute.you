@@ -7,6 +7,8 @@ import { PeriodCompoundCard } from "@/components/period-compound-card";
 import { ActiveUsersView } from "@/components/active-users-view";
 import { OverviewView } from "@/components/overview-view";
 import { RevenueView } from "@/components/revenue-view";
+import { SignupView } from "@/components/signup-view";
+import { CardsView } from "@/components/cards-view";
 import {
   fetchPublicStatsSummary,
   type BillingStats,
@@ -14,8 +16,9 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, rateCmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlySignupRates, weeklySignupRates, monthlyPayers, weeklyPayers, monthlyPaidRates, weeklyPaidRates, payerPeriods } from "@/lib/signup-buckets";
+import { cmgrSummary, monthlyVisitors, weeklyVisitors } from "@/lib/signup-buckets";
 import { formatCount, formatPctAdaptive } from "@/lib/format-number";
+import { StatCard } from "@/components/stat-card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -31,23 +34,6 @@ const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  detail: string;
-  accent: string;
-}
-
-function pct(numerator: number, denominator: number): string {
-  if (denominator === 0) return "0%";
-  return formatPctAdaptive((numerator / denominator) * 100);
-}
-
-/** A rate bar's own value, already a percentage. One decimal: 0.4% and 0.9% are different answers about a funnel and both round to 0%. */
-function formatRatePct(value: number): string {
-  return `${value.toFixed(1)}%`;
 }
 
 // The footer names where the numbers ABOVE it come from, so it cannot be one
@@ -100,17 +86,6 @@ function latestDate(points: DailyFunnelPoint[]): string {
     year: "numeric",
     timeZone: "UTC",
   });
-}
-
-function StatCard({ label, value, detail, accent }: StatCardProps) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <div className={`mb-4 h-1 w-10 rounded-full ${accent}`} />
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-gray-950">{value}</p>
-      <p className="mt-1 text-sm text-gray-500">{detail}</p>
-    </div>
-  );
 }
 
 function ViewTabs({ active }: { active: PublicAnalyticsView }) {
@@ -208,190 +183,6 @@ function LandingView({
           </div>
         </div>
         <SourcesTable sources={sources} />
-      </section>
-    </>
-  );
-}
-
-function SignupView({
-  totalUsers,
-  totalVisitors,
-  signupEvents,
-  timeline,
-}: {
-  totalUsers: number;
-  totalVisitors: number;
-  signupEvents: number;
-  timeline: DailyFunnelPoint[];
-}) {
-  const monthly = monthlySignups(timeline);
-  const weekly = weeklySignups(timeline);
-  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
-  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
-  const monthlyCmgr = cmgrSummary(monthly);
-  const weeklyCmgr = cmgrSummary(weekly);
-  const monthlyRate = monthlySignupRates(timeline);
-  const weeklyRate = weeklySignupRates(timeline);
-  const monthlyRatePoints = monthlyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
-  const weeklyRatePoints = weeklyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
-  const monthlyRateCmgr = rateCmgrSummary(monthlyRate);
-  const weeklyRateCmgr = rateCmgrSummary(weeklyRate);
-  return (
-    <>
-      <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk /users/count total" accent="bg-brand-500" />
-        <StatCard label="Tracked signup events" value={formatCount(signupEvents)} detail="PostHog signup_completed events" accent="bg-sky-500" />
-        <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by unique visitors" accent="bg-emerald-500" />
-      </section>
-      <section className="grid gap-6 md:grid-cols-2">
-        <PeriodCompoundCard
-          title="Monthly signups"
-          subtitle="Signups per month with compound monthly growth since inception."
-          cmgrLabel="CMGR"
-          cmgrUnit="monthly"
-          summary={monthlyCmgr}
-          data={monthlyPoints}
-          valueLabel="Signups"
-          growthLabel="CMGR since inception"
-        />
-        <PeriodCompoundCard
-          title="Weekly signups"
-          subtitle="Signups per week with compound weekly growth since inception."
-          cmgrLabel="CWGR"
-          cmgrUnit="weekly"
-          summary={weeklyCmgr}
-          data={weeklyPoints}
-          valueLabel="Signups"
-          growthLabel="CWGR since inception"
-        />
-      </section>
-      {/*
-        Rate charts, in the same shape as the count charts above: bars are the
-        period's conversion rate, the line is the compound growth OF that rate.
-        The growth label says "Rate CMGR" rather than "CMGR" because the row
-        above already states a CMGR over signup COUNTS, and one acronym over two
-        bases on one screen is a surface contradicting itself.
-        A period with no tracked visitors is dropped rather than drawn at 0%, so
-        these two legitimately start later than the two above them.
-      */}
-      <section className="grid gap-6 md:grid-cols-2">
-        <PeriodCompoundCard
-          title="Monthly signup rate"
-          subtitle="Signups divided by unique visitors, per month, with compound monthly growth of that rate."
-          cmgrLabel="Rate CMGR"
-          cmgrUnit="monthly"
-          summary={monthlyRateCmgr}
-          data={monthlyRatePoints}
-          valueLabel="conversion"
-          growthLabel="Rate CMGR since inception"
-          formatValue={formatRatePct}
-        />
-        <PeriodCompoundCard
-          title="Weekly signup rate"
-          subtitle="Signups divided by unique visitors, per week, with compound weekly growth of that rate."
-          cmgrLabel="Rate CWGR"
-          cmgrUnit="weekly"
-          summary={weeklyRateCmgr}
-          data={weeklyRatePoints}
-          valueLabel="conversion"
-          growthLabel="Rate CWGR since inception"
-          formatValue={formatRatePct}
-        />
-      </section>
-    </>
-  );
-}
-
-function CardsView({
-  billing,
-  totalUsers,
-  timeline,
-}: {
-  billing: BillingStats;
-  totalUsers: number;
-  timeline: DailyFunnelPoint[];
-}) {
-  const monthlyPeriods = payerPeriods(billing.monthly_growth);
-  const weeklyPeriods = payerPeriods(billing.weekly_growth);
-  const monthly = monthlyPayers(timeline, monthlyPeriods);
-  const weekly = weeklyPayers(timeline, weeklyPeriods);
-  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
-  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
-  const monthlyCmgr = cmgrSummary(monthly);
-  const weeklyCmgr = cmgrSummary(weekly);
-  const monthlyRate = monthlyPaidRates(timeline, monthlyPeriods);
-  const weeklyRate = weeklyPaidRates(timeline, weeklyPeriods);
-  const monthlyRatePoints = monthlyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
-  const weeklyRatePoints = weeklyRate.map((b) => ({ label: b.label, value: b.ratePct, cmgrPct: b.cmgrPct }));
-  const monthlyRateCmgr = rateCmgrSummary(monthlyRate);
-  const weeklyRateCmgr = rateCmgrSummary(weeklyRate);
-  return (
-    <>
-      <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total paid users" value={formatCount(billing.total_paying_accounts)} detail="Distinct accounts that have paid, every acquirer" accent="bg-emerald-500" />
-        <StatCard label="Signup to paid conversion" value={pct(billing.total_paying_accounts, totalUsers)} detail="Paid users divided by total signups" accent="bg-brand-500" />
-        {/*
-          Stated beside the paying count on purpose, rather than left to contradict
-          it from another surface: these are two populations and neither contains
-          the other (33 paid, 31 carry a card, in production). The card figure is
-          the producer's own Stripe-only one and says so.
-        */}
-        <StatCard label="Accounts with a saved card" value={formatCount(billing.accounts_with_payment_method)} detail="Stripe-only saved payment methods, not a payment" accent="bg-sky-500" />
-      </section>
-      <section className="grid gap-6 md:grid-cols-2">
-        <PeriodCompoundCard
-          title="Monthly new paid users"
-          subtitle="Accounts paying us for the first time each month, with compound monthly growth since inception."
-          cmgrLabel="CMGR"
-          cmgrUnit="monthly"
-          summary={monthlyCmgr}
-          data={monthlyPoints}
-          valueLabel="New paid users"
-          growthLabel="CMGR since inception"
-        />
-        <PeriodCompoundCard
-          title="Weekly new paid users"
-          subtitle="Accounts paying us for the first time each week, with compound weekly growth since inception."
-          cmgrLabel="CWGR"
-          cmgrUnit="weekly"
-          summary={weeklyCmgr}
-          data={weeklyPoints}
-          valueLabel="New paid users"
-          growthLabel="CWGR since inception"
-        />
-      </section>
-      {/*
-        The paid-user RATE, in the same shape as the signup rate one stage up: bars are
-        the period's conversion of signups into paid users, the line is the compound
-        growth OF that rate. The Overview states this pair too, from the same buckets —
-        a chart the Overview drew and this tab did not would be two pages disagreeing
-        about what exists.
-        A period with no signups is dropped rather than charted at 0%: there was nobody
-        to convert, which is a different statement from nobody converting.
-      */}
-      <section className="grid gap-6 md:grid-cols-2">
-        <PeriodCompoundCard
-          title="Monthly paid user rate"
-          subtitle="Paid users divided by signups, per month, with compound monthly growth of that rate."
-          cmgrLabel="Rate CMGR"
-          cmgrUnit="monthly"
-          summary={monthlyRateCmgr}
-          data={monthlyRatePoints}
-          valueLabel="conversion"
-          growthLabel="Rate CMGR since inception"
-          formatValue={formatRatePct}
-        />
-        <PeriodCompoundCard
-          title="Weekly paid user rate"
-          subtitle="Paid users divided by signups, per week, with compound weekly growth of that rate."
-          cmgrLabel="Rate CWGR"
-          cmgrUnit="weekly"
-          summary={weeklyRateCmgr}
-          data={weeklyRatePoints}
-          valueLabel="conversion"
-          growthLabel="Rate CWGR since inception"
-          formatValue={formatRatePct}
-        />
       </section>
     </>
   );

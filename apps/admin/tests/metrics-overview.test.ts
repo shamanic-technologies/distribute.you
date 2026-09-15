@@ -24,6 +24,7 @@ const sharedCard = read("../src/components/period-compound-card.tsx");
 const funnelCards = read("../src/components/overview-funnel-cards.tsx");
 const activeUsersView = read("../src/components/active-users-view.tsx");
 const revenueView = read("../src/components/revenue-view.tsx");
+const cardsView = read("../src/components/cards-view.tsx");
 
 function day(iso: string, visitors = 0, signups = 0): DailyFunnelPoint {
   return { date: iso, landingVisitors: visitors, signups, signupConversionPct: 0 };
@@ -308,9 +309,9 @@ describe("wiring", () => {
   // The paid-user rate exists on the Overview AND on the tab it replicates, or the
   // two pages disagree about which charts exist.
   it("states the paid-user rate on both the Overview and the Paid users tab", () => {
-    expect(metricsPage).toContain("Monthly paid user rate");
+    expect(cardsView).toContain("Monthly paid user rate");
     expect(overview).toContain("Monthly paid user rate");
-    expect(metricsPage).toContain("monthlyPaidRates");
+    expect(cardsView).toContain("monthlyPaidRates");
     expect(overview).toContain("monthlyPaidRates");
   });
 
