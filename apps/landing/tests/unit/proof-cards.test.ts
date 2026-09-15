@@ -281,7 +281,7 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
   it("keys every cost line by the ONE rung its own words name", () => {
     const priced = [...PROOF.matchAll(/data-proof-cost-step="([a-z_]+)"/g)].map((m) => m[1]);
     expect(priced).toEqual([
-      "conversation_to_meeting_booked",
+      "start_to_conversation",
       "start_to_website_visit",
       "start_to_conversation",
     ]);
