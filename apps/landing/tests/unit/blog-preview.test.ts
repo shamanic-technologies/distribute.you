@@ -31,7 +31,7 @@ describe("a preview article is behind the lab password and listed nowhere", () =
 
   it("the proxy gates it after the host check, never caches it and never indexes it", () => {
     const proxy = read("src/proxy.ts");
-    const offHost = proxy.slice(proxy.indexOf("function offCloneHost("));
+    const offHost = proxy.slice(proxy.indexOf("function offLabHost("));
     expect(offHost).toContain("previewArticleSlugFor(pathname)");
     expect(offHost).toContain("basicAuthOk(request.headers.get(\"authorization\"), process.env.CLONE_BASIC_AUTH)");
     expect(offHost).toContain("status: 401");
