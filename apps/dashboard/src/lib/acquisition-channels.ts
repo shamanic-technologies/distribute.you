@@ -30,7 +30,8 @@ export type OwnChannelGlyph =
   | "envelope"
   | "chat-circle"
   | "chat-teardrop"
-  | "calendar-plus";
+  | "calendar-plus"
+  | "quotes";
 
 /**
  * How the channel is marked.
@@ -163,6 +164,16 @@ export const CHANNEL_MARKS: Record<string, AcquisitionChannelMark> = {
   "cold-sms-outreach": {
     kind: "own",
     glyph: "chat-teardrop",
+    tone: OWN_CHANNEL_TONE,
+  },
+  // Earned media: a journalist asks a question and the brand's expert answers it,
+  // so the placement carries a link back and the channel's one leg lands on a
+  // website visit. A quote mark rather than an envelope, although the answer
+  // travels by API: the row it draws on states what the channel PRODUCES, and an
+  // envelope there would read as one more outbound cold-email channel.
+  "pr-expert-quote-outreach": {
+    kind: "own",
+    glyph: "quotes",
     tone: OWN_CHANNEL_TONE,
   },
   "cold-whatsapp-outreach": { kind: "vendor", domain: "whatsapp.com" },

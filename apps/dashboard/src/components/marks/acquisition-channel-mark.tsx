@@ -4,6 +4,7 @@ import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimpl
 import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/csr/ChatCircleText";
 import { ChatTeardropTextIcon } from "@phosphor-icons/react/dist/csr/ChatTeardropText";
 import { CalendarPlusIcon } from "@phosphor-icons/react/dist/csr/CalendarPlus";
+import { QuotesIcon } from "@phosphor-icons/react/dist/csr/Quotes";
 import type { Icon } from "@phosphor-icons/react";
 import type { AcquisitionChannelMark as ChannelMark, OwnChannelGlyph } from "@/lib/acquisition-channels";
 import { BrandLogo } from "@/components/brand-logo";
@@ -25,6 +26,7 @@ const OWN_CHANNEL_ICONS: Record<OwnChannelGlyph, Icon> = {
   "chat-circle": ChatCircleTextIcon,
   "chat-teardrop": ChatTeardropTextIcon,
   "calendar-plus": CalendarPlusIcon,
+  "quotes": QuotesIcon,
 };
 
 type MarkSize = "xs" | "sm" | "md";

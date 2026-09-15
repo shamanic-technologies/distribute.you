@@ -138,6 +138,23 @@ export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
   // holds an active workflow for it, and campaign-service provisions its funded
   // pairs — which is why it is here and that one is not.
   "ai-meeting-booking",
+  // The first EARNED channel: a journalist asks a question on Featured, the brand's
+  // expert answers it, and the placement carries a link back — so its one leg puts a
+  // lead onto a visit-led funnel from nothing, exactly as a paid click does. It is
+  // here on the same evidence as the four above and nothing weaker: prod holds EIGHT
+  // active workflow dynasties for it, and campaign-service provisions its funded
+  // pairs. Note the SUPERSEDED spelling `pr-expert-quote-opportunities` is
+  // deliberately absent — features-service states it is superseded by this one, so
+  // offering both would sell one channel twice.
+  //
+  // ⚠️ Being FUNDABLE is not being able to PRODUCE today: the vendor's programmatic
+  // feed (Featured's premium questions, the only one carrying a submittable question
+  // id) answers `403 Business subscription required` while that plan is lapsed, so a
+  // funded campaign provisions, schedules and finds nothing to pitch. That is a
+  // commercial gate nobody here can read, and it is deliberately NOT modelled as a
+  // slug removal: the channel is sold, its workflows exist, and the subscription is
+  // renewed outside this repo.
+  "pr-expert-quote-outreach",
 ]);
 
 /**
