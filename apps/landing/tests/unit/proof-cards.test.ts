@@ -15,7 +15,7 @@ function card(
   roi = "2.2",
   cost = "$1,159",
   funnelKey: string | null = "sales_meetings_from_conversation",
-  costStep = "conversation_to_meeting_booked"
+  costStep = "start_to_conversation"
 ): string {
   const funnel = cells
     .map(([step, figure, label]) => `<span data-proof-step="${step}"><b>${figure}</b>${label}</span>`)
@@ -162,22 +162,26 @@ describe("reseedProofCards", () => {
   });
 
   it("prices the ONE rung the card names, joined by that rung's own key", () => {
+    // Doc Dinners' card names the SALES-INTEREST rung: it shipped pointing at the
+    // meeting-booked key once (#4180 renamed the label without moving the key) and
+    // stated $1,501 where the sales interest had cost $225. This test mirrors the
+    // shipped shape, so the fixture must carry the same key the page carries.
     const html = card("docdinners.com", [], "2.2", "$1,159");
     const out = reseedProofCards(
       html,
       payload(
         "docdinners.com",
         [
-          ["start_to_conversation", 20, 183.543],
           ["conversation_to_meeting_booked", 3, 1223.62],
+          ["start_to_conversation", 20, 183.543],
         ],
         true,
         2.1
       )
     );
-    expect(out).toContain("<b>$1,224</b>");
+    expect(out).toContain("<b>$184</b>");
     // the sibling rung's price is served and must NOT land on this line
-    expect(out).not.toContain("$184");
+    expect(out).not.toContain("$1,224");
   });
 
   it("keeps a decimal on a price under $10, exactly as the page shipped it", () => {
@@ -219,16 +223,18 @@ describe("reseedProofCards", () => {
     // A brand may sell through several; the card names one outcome, so taking
     // funnels[0] is right today by accident and wrong the day one adds a second.
     const html = card("docdinners.com", [], "2.2", "$1,159");
-    const data = payload("docdinners.com", [["conversation_to_meeting_booked", 3, 1223.62]], true, 2.1);
+    const data = payload("docdinners.com", [["start_to_conversation", 20, 183.543]], true, 2.1);
     data.brands[0].funnels.unshift({
       funnelKey: "form_magnet",
       funnelName: "Form magnet",
       returnPerDollar: 99,
-      steps: [{ key: "conversation_to_meeting_booked", label: "x", peopleReached: 1, costPerReachUsd: 7 }],
+      steps: [{ key: "start_to_conversation", label: "x", peopleReached: 1, costPerReachUsd: 7 }],
     });
     const out = reseedProofCards(html, data);
     expect(out).toContain('data-count="2.1"');
-    expect(out).toContain("<b>$1,224</b>");
+    expect(out).toContain("<b>$184</b>");
+    // the decoy funnel prices the SAME key at $7 and must NOT win
+    expect(out).not.toContain("<b>$7</b>");
   });
 
   it("leaves the money alone when the card names a funnel the brand does not sell", () => {
@@ -280,8 +286,11 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
 
   it("keys every cost line by the ONE rung its own words name", () => {
     const priced = [...PROOF.matchAll(/data-proof-cost-step="([a-z_]+)"/g)].map((m) => m[1]);
+    // Both cards labelled "Cost per sales interest" must key the rung their words
+    // name. Doc Dinners shipped pointing at the meeting-booked rung once and stated
+    // $1,501 where the sales interest had cost $225.
     expect(priced).toEqual([
-      "conversation_to_meeting_booked",
+      "start_to_conversation",
       "start_to_website_visit",
       "start_to_conversation",
     ]);
