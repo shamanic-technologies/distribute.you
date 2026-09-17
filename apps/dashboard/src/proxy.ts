@@ -11,6 +11,12 @@ import {
   onboardingBrandCookieName,
   onboardingResumeHref,
 } from "@/lib/onboarding-brand-cookie";
+import {
+  START_SELECTION_COOKIE,
+  decodeStartSelection,
+  selectionIsPayable,
+  selectionIsPaid,
+} from "@/lib/start-selection-cookie";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
@@ -60,7 +66,25 @@ export default clerkMiddleware(
       const inProgressBrand = orgId
         ? req.cookies.get(onboardingBrandCookieName(orgId))?.value
         : undefined;
-      return inProgressBrand ? onboardingResumeHref(inProgressBrand) : "/onboarding";
+      if (inProgressBrand) return onboardingResumeHref(inProgressBrand);
+
+      // Somebody who came through the sell-first screens has already chosen what
+      // to buy, so the first thing they should see after signup is the price of
+      // it, not a wizard asking the same questions again. The picks ride a
+      // cookie because Clerk's signup is a redirect a query param does not
+      // survive; they are read HERE rather than on the page so the very first
+      // frame lands on the right screen.
+      //
+      // `paid` decides which half: money already taken means the brand-building
+      // screens, and nothing taken yet means the payment screens. Reading this
+      // only ever REDIRECTS -- no selection means the ordinary wizard, exactly
+      // as before.
+      const picks = decodeStartSelection(
+        req.cookies.get(START_SELECTION_COOKIE)?.value,
+      );
+      if (selectionIsPaid(picks)) return "/onboarding/build";
+      if (selectionIsPayable(picks)) return "/onboarding/pay";
+      return "/onboarding";
     };
     const isExplicitDashboardRoot =
       pathname === "/" && hasExplicitHierarchyIntent(req.nextUrl.searchParams);

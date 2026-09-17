@@ -5,6 +5,7 @@ import {
   encodeStartSelection,
   decodeStartSelection,
   selectionIsPayable,
+  selectionIsPaid,
   startSelectionCookieAssignment,
   clearStartSelectionCookieAssignment,
 } from "../src/lib/start-selection-cookie";
@@ -13,6 +14,7 @@ const SELECTION = {
   outcomes: ["website_visit", "conversation"],
   channels: ["google-ads", "sales-cold-email-outreach"],
   funnels: ["sales_meetings_from_website"],
+  paid: [],
 };
 
 describe("start selection cookie", () => {
@@ -54,6 +56,20 @@ describe("start selection cookie", () => {
 
   it("refuses an oversized value outright", () => {
     expect(decodeStartSelection("x".repeat(4096))).toEqual(EMPTY_SELECTION);
+  });
+
+  it("carries what was already PAID, and reads its absence as nothing paid", () => {
+    const withPaid = { ...SELECTION, paid: ["sales_meetings_from_website"] };
+    expect(decodeStartSelection(encodeStartSelection(withPaid)).paid).toEqual([
+      "sales_meetings_from_website",
+    ]);
+    // A cookie written before the field existed: "nothing paid yet", which is
+    // right for a visitor who never reached a payment screen. Additive, so it
+    // must NOT strand them behind a version bump.
+    const older = encodeURIComponent(JSON.stringify({ v: 1, o: [], c: ["google-ads"], f: ["x"] }));
+    expect(decodeStartSelection(older).paid).toEqual([]);
+    expect(selectionIsPaid(decodeStartSelection(older))).toBe(false);
+    expect(selectionIsPaid(withPaid)).toBe(true);
   });
 
   it("is payable only with both a funnel and a channel to run it through", () => {

@@ -7529,6 +7529,37 @@ export async function createCheckoutSession(
 }
 
 /**
+ * Charge a STATED amount against the org's already-saved card, with no redirect.
+ *
+ * This is how funnels 2..N of the rebuilt onboarding settle: the first one goes
+ * through checkout, which saves the card, and every one after it is a CTA press
+ * that charges inline. billing-service credits the balance exactly as a topup
+ * does, so the accounting is the existing one.
+ *
+ * `suppressPaymentRequired` is LOAD-BEARING. A 402 here is "your bank refused
+ * the charge", and `apiCall` otherwise reads every 402 as an insufficient-credit
+ * failure and opens the add-credit modal — which would answer a declined card by
+ * asking the customer to buy credit with the same declined card. The caller
+ * branches on the refusal's own `code` instead.
+ *
+ * The idempotency key is the caller's, and it must be stable per (org, funnel):
+ * billing passes it to Stripe, so a double press or a retried connection is one
+ * charge rather than two.
+ */
+export async function chargeSavedCard(
+  amountCents: number,
+  idempotencyKey: string,
+  token?: string,
+): Promise<{ ok: boolean; charged: boolean; amountCents: number; reference?: string }> {
+  return apiCall("/billing/accounts/charge", {
+    token,
+    method: "POST",
+    body: { amountCents, idempotencyKey },
+    suppressPaymentRequired: true,
+  });
+}
+
+/**
  * Create an EMBEDDED Stripe Checkout session — card is captured in an in-app modal
  * (iframe), no redirect to a hosted Stripe page. Returns a `client_secret` the
  * front-end mounts via @stripe/react-stripe-js <EmbeddedCheckout>. The card is saved

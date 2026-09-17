@@ -94,7 +94,12 @@ export function StartFlow() {
   }, []);
 
   useEffect(() => {
-    remember({ outcomes, channels, funnels });
+    // `paid: []` on purpose, never carried over. These screens are where a
+    // selection is MADE, so anything bought under a previous one belongs to that
+    // one; inheriting it would mark funnels paid that this selection never
+    // charged for, and send somebody past the payment step for free. A completed
+    // flow clears the cookie anyway, so there is normally nothing to inherit.
+    remember({ outcomes, channels, funnels, paid: [] });
   }, [outcomes, channels, funnels, remember]);
 
   const allOutcomes = useMemo(

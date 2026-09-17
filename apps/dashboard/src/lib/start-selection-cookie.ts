@@ -43,9 +43,26 @@ export interface StartSelection {
   channels: string[];
   /** Revenue funnel keys they want us to run. */
   funnels: string[];
+  /**
+   * Funnel keys already PAID for.
+   *
+   * Payment happens before there is a brand to attach a budget to -- the domain
+   * is asked for afterwards -- so between the charge and the brand's creation
+   * this is the only record that the money was taken. It is additive on purpose
+   * and read tolerantly: a cookie written before this field existed reads as
+   * "nothing paid yet", which is exactly right for a visitor who never reached
+   * a payment screen, and does NOT warrant a version bump that would strand
+   * somebody mid-flow.
+   */
+  paid: string[];
 }
 
-export const EMPTY_SELECTION: StartSelection = { outcomes: [], channels: [], funnels: [] };
+export const EMPTY_SELECTION: StartSelection = {
+  outcomes: [],
+  channels: [],
+  funnels: [],
+  paid: [],
+};
 
 /** A slug or key we are willing to store. Deliberately narrow: this value comes
  *  from a cookie a visitor can edit, and every one of these strings is later
@@ -73,6 +90,7 @@ export function encodeStartSelection(selection: StartSelection): string {
     o: cleanList(selection.outcomes),
     c: cleanList(selection.channels),
     f: cleanList(selection.funnels),
+    p: cleanList(selection.paid),
   };
   return encodeURIComponent(JSON.stringify(payload));
 }
@@ -95,6 +113,7 @@ export function decodeStartSelection(raw: string | undefined | null): StartSelec
       outcomes: cleanList(parsed.o),
       channels: cleanList(parsed.c),
       funnels: cleanList(parsed.f),
+      paid: cleanList(parsed.p),
     };
   } catch {
     return EMPTY_SELECTION;
@@ -105,6 +124,14 @@ export function decodeStartSelection(raw: string | undefined | null): StartSelec
  *  funnel buys nothing, so the payment screens must never open on one. */
 export function selectionIsPayable(selection: StartSelection): boolean {
   return selection.funnels.length > 0 && selection.channels.length > 0;
+}
+
+/** True once money has actually been taken. The brand-building screens open on
+ *  THIS, never on `selectionIsPayable`: a visitor who picked funnels and paid
+ *  for none of them has bought nothing, and sending them past the payment step
+ *  would hand them a brand nothing runs against. */
+export function selectionIsPaid(selection: StartSelection): boolean {
+  return selection.paid.length > 0;
 }
 
 /** The `document.cookie` assignment the signed-out screens write. Built here
