@@ -10,7 +10,6 @@ import {
   getBillingPayments,
   createCheckoutSession,
   createPortalSession,
-  portalRefusalMessage,
   listBrands,
   getBrandDailyBudget,
   type BillingAccount,
@@ -412,8 +411,8 @@ export default function BillingPage() {
         },
       });
     } catch (err) {
-      console.error("[billing] card page refused", err);
-      setError(portalRefusalMessage(err));
+      console.error("[billing] card page failed to open", err);
+      setError("Failed to open the card page. Please try again.");
       setPortalLoadingSource(null);
     }
   }
@@ -675,15 +674,18 @@ export default function BillingPage() {
             )}
           </div>
 
-          {/* Settle-first notice (Google Ads pattern): a customer running on credit
-              settles what they owe on the CURRENT card before the card page opens,
-              so a card change can never leave an outstanding balance with nothing
-              to collect it on. billing-service does the charge; this only says so
-              before the click. The card page itself lets a customer REPLACE a
-              card, never remove one (stripe-service owns that). */}
+          {/* Settle notice (Google Ads pattern): a customer running on credit is
+              charged what they owe on the CURRENT card when the card page opens.
+              The SECOND sentence is load-bearing. The charge used to gate the
+              page, which locked out the one customer who needed it (their card
+              declines, which is why they came to replace it), so the page now
+              opens whatever the charge does and the copy has to say so before
+              the click. billing-service does the charge; this only states it.
+              The card page itself lets a customer REPLACE a card, never remove
+              one (stripe-service owns that). */}
           {account?.has_payment_method && availableCents < 0 && (
             <p className="mt-2 text-xs text-gray-500">
-              Changing your card first settles your {formatBillingCents(Math.abs(availableCents))} balance on the card on file.
+              Opening this charges your {formatBillingCents(Math.abs(availableCents))} balance to the card on file. You can change your card whether or not it goes through.
             </p>
           )}
 

@@ -7588,31 +7588,13 @@ export type CardSetup =
     };
 
 /**
- * Billing's stable code on the ONE refusal of a card-change a customer can act
- * on: their balance is negative, and settling it on the card on file failed
- * (declined, or in charge backoff). Anything else on that route is 400/404/502
- * and gets the generic line.
+ * Opening the card page is never refused, whatever happens to the money we try
+ * to collect at that moment. billing-service still charges an outstanding
+ * balance to the card on file on this call, and hands the session over whether
+ * that charge lands or declines: a customer whose card is dead is exactly the
+ * one who came here to replace it, so refusing them the page is the one thing
+ * that makes the debt uncollectable. Collection stays with the sweeps.
  */
-export const PORTAL_REFUSAL_UNSETTLED_CODE = "outstanding_balance_unsettled";
-
-/**
- * The sentence the billing page shows when a card-change is refused. The owed
- * amount comes off billing's body (`owed_cents`, a cents string); never
- * `err.message`, which is the whole downstream body verbatim.
- */
-export function portalRefusalMessage(err: unknown): string {
-  if (
-    err instanceof ApiError &&
-    err.status === 402 &&
-    err.body.code === PORTAL_REFUSAL_UNSETTLED_CODE
-  ) {
-    const owed = Number(err.body.owed_cents);
-    const amount = Number.isFinite(owed) ? ` of $${(owed / 100).toFixed(2)}` : "";
-    return `We could not settle your outstanding balance${amount} on the card on file, so the card page stays closed. Add credits below, or contact support to change the card.`;
-  }
-  return "Failed to open the card page. Please try again.";
-}
-
 export async function createPortalSession(
   returnUrl: string,
   token?: string
@@ -7621,12 +7603,6 @@ export async function createPortalSession(
     token,
     method: "POST",
     body: { return_url: returnUrl },
-    // billing-service answers 402 `outstanding_balance_unsettled` when a customer
-    // running on credit tries to change their card and the settle charge on the
-    // current card fails. That is not "insufficient credits to run" (the modal
-    // apiCall would otherwise open); the billing page states the owed amount
-    // beside the button instead. See `portalRefusalMessage`.
-    suppressPaymentRequired: true,
   });
 }
 
