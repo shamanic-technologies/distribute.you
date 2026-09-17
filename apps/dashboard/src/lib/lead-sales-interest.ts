@@ -17,6 +17,15 @@ export interface SalesInterestEvidence {
   replyClassification?: "positive" | "negative" | "neutral" | null;
   /** When they first came to the site. A website visit IS the interest. */
   firstClickedAt?: string | null;
+  /**
+   * That they came to the site at all, whether or not we hold the instant.
+   *
+   * The two are one fact under two shapes: a lead row states the boolean as REQUIRED
+   * and the instant as optional, so reading the instant alone would answer "no visit"
+   * for a lead that visited and whose timestamp the payload happened not to carry —
+   * withholding, in the one direction that costs a customer something they earned.
+   */
+  clicked?: boolean | null;
 }
 
 export function hasSalesInterest(evidence: SalesInterestEvidence | null | undefined): boolean {
@@ -24,6 +33,7 @@ export function hasSalesInterest(evidence: SalesInterestEvidence | null | undefi
   // A NEGATIVE or NEUTRAL reply is not an interest, and an absent classification is
   // "we could not tell" rather than a yes — neither unlocks anything.
   if (evidence.replyClassification === "positive") return true;
+  if (evidence.clicked === true) return true;
   // An empty string is the wire's way of saying no instant, not a visit.
   return typeof evidence.firstClickedAt === "string" && evidence.firstClickedAt.length > 0;
 }

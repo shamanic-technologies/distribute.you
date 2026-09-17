@@ -19,6 +19,7 @@ import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { hasSalesInterest } from "@/lib/lead-sales-interest";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listCampaignsByBrand,
@@ -1673,11 +1674,17 @@ export function EngagedLeadsPage({
   // card is the only one read for, exactly as its thread was: a panel listing eleven
   // campaigns must not fire eleven of these.
   const isBetaUserForPanel = useIsBetaUser();
-  // Whether the copy we GENERATED but never sent may be read. A real message is always
-  // readable — it is the customer's own conversation — while an unsent draft is our
-  // writing and stays behind the beta gate, unless this scope has already produced the
-  // thing it was bought for, in which case the customer is owed the words that did it.
-  const canReadDraftCopy = isBetaUserForPanel || Boolean(selectedLead?.clicked || selectedLead?.replyClassification === "positive");
+  // A SALES INTEREST is what earns the words — a website visit, or a reply the
+  // classifier read as positive. Until this person has produced one, the timeline
+  // states what happened to them and withholds every body: the draft we wrote, the
+  // message as it went out, and their own reply alike. One flag over all three,
+  // because a message we sent is our copy exactly as the draft is, and splitting them
+  // is what left a GA row announcing an email nobody could open.
+  const salesInterest = hasSalesInterest(selectedLead);
+  const canReadEmailCopy = isBetaUserForPanel || salesInterest;
+  // Visible BECAUSE of the beta list rather than because this lead converted — the
+  // only case the badge belongs on, since copy a sales interest earned is GA.
+  const betaOnlyCopy = isBetaUserForPanel && !salesInterest;
   const openHistoryRowId = panelScope.sole?.rowId ?? openCampaignRowId;
   const { data: openHistory, isError: openHistoryError } = useAuthQuery(
     ["leadHistory", openHistoryRowId ?? "none", brandId, "campaign"],
@@ -2495,7 +2502,8 @@ export function EngagedLeadsPage({
                 <LeadHistoryTimeline
                   history={openHistory}
                   heading="Activity"
-                  canReadDraftCopy={canReadDraftCopy}
+                  canReadEmailCopy={canReadEmailCopy}
+                  betaOnlyCopy={betaOnlyCopy}
                   showNextFollowup
                 />
               ) : (
@@ -2529,7 +2537,8 @@ export function EngagedLeadsPage({
                   <LeadHistoryTimeline
                     history={openHistory}
                     heading="Activity"
-                    canReadDraftCopy={canReadDraftCopy}
+                    canReadEmailCopy={canReadEmailCopy}
+                    betaOnlyCopy={betaOnlyCopy}
                     bare
                     showNextFollowup
                   />
@@ -2557,7 +2566,8 @@ export function EngagedLeadsPage({
               <LeadHistoryTimeline
                 history={brandHistory}
                 heading="Everything this brand did"
-                canReadDraftCopy={canReadDraftCopy}
+                canReadEmailCopy={canReadEmailCopy}
+                betaOnlyCopy={betaOnlyCopy}
               />
             )}
           </div>
