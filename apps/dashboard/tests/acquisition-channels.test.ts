@@ -108,12 +108,15 @@ describe("marks", () => {
   // A channel published upstream that this app has not drawn is still a channel:
   // it keeps its name, its funnels and its money, and simply draws no tile.
   it("answers null for a channel it has not drawn, without dropping it", () => {
-    expect(channelMarkForSlug("cold-call-outreach")).toBeNull();
-    const call = acquisitionChannelsFromFeatures(FEATURES).find(
-      (c) => c.featureSlug === "cold-call-outreach",
-    );
-    expect(call).toBeDefined();
-    expect(call?.mark).toBeNull();
+    // A slug the producer could publish tomorrow; every slug it publishes TODAY
+    // carries a mark (pinned in start-flow-surface.test.ts).
+    const UNDRAWN = "carrier-pigeon-outreach";
+    expect(channelMarkForSlug(UNDRAWN)).toBeNull();
+    const pigeon = acquisitionChannelsFromFeatures([
+      { ...FEATURES[1], slug: UNDRAWN, name: "Carrier Pigeon Outreach" },
+    ]).find((c) => c.featureSlug === UNDRAWN);
+    expect(pigeon).toBeDefined();
+    expect(pigeon?.mark).toBeNull();
   });
 
   it("renders nothing rather than an invented tile", () => {

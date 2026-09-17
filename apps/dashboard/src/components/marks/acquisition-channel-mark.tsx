@@ -5,6 +5,20 @@ import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/csr/ChatCircleTex
 import { ChatTeardropTextIcon } from "@phosphor-icons/react/dist/csr/ChatTeardropText";
 import { CalendarPlusIcon } from "@phosphor-icons/react/dist/csr/CalendarPlus";
 import { QuotesIcon } from "@phosphor-icons/react/dist/csr/Quotes";
+import { MegaphoneIcon } from "@phosphor-icons/react/dist/csr/Megaphone";
+import { PhoneIcon } from "@phosphor-icons/react/dist/csr/Phone";
+import { MicrophoneIcon } from "@phosphor-icons/react/dist/csr/Microphone";
+import { NewspaperIcon } from "@phosphor-icons/react/dist/csr/Newspaper";
+import { HandshakeIcon } from "@phosphor-icons/react/dist/csr/Handshake";
+import { UserCheckIcon } from "@phosphor-icons/react/dist/csr/UserCheck";
+import { ListBulletsIcon } from "@phosphor-icons/react/dist/csr/ListBullets";
+import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
+import { ShareNetworkIcon } from "@phosphor-icons/react/dist/csr/ShareNetwork";
+import { UsersIcon } from "@phosphor-icons/react/dist/csr/Users";
+import { BellIcon } from "@phosphor-icons/react/dist/csr/Bell";
+import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
+import { CalendarCheckIcon } from "@phosphor-icons/react/dist/csr/CalendarCheck";
+import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
 import type { Icon } from "@phosphor-icons/react";
 import type { AcquisitionChannelMark as ChannelMark, OwnChannelGlyph } from "@/lib/acquisition-channels";
 import { BrandLogo } from "@/components/brand-logo";
@@ -27,6 +41,20 @@ const OWN_CHANNEL_ICONS: Record<OwnChannelGlyph, Icon> = {
   "chat-teardrop": ChatTeardropTextIcon,
   "calendar-plus": CalendarPlusIcon,
   "quotes": QuotesIcon,
+  "megaphone": MegaphoneIcon,
+  "phone": PhoneIcon,
+  "microphone": MicrophoneIcon,
+  "newspaper": NewspaperIcon,
+  "handshake": HandshakeIcon,
+  "user-check": UserCheckIcon,
+  "list": ListBulletsIcon,
+  "file-text": FileTextIcon,
+  "share-network": ShareNetworkIcon,
+  "users": UsersIcon,
+  "bell": BellIcon,
+  "broadcast": BroadcastIcon,
+  "calendar-check": CalendarCheckIcon,
+  "video-camera": VideoCameraIcon,
 };
 
 type MarkSize = "xs" | "sm" | "md";

@@ -69,6 +69,30 @@
   }
 }
 
+/* ── Signed-out onboarding (/start, /onboarding/pay, /onboarding/build) ──
+ * The landing's `enter` recipe (explee: rise 10px + fade, staggered per card)
+ * and its `lp-delta-flash` pop on a value that just changed. Delay rides a CSS
+ * variable set per card so a list of thirty reveals as a wave, not a blink.
+ * Both stop under reduced motion. */
+@keyframes start-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes start-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.start-enter {
+  animation: start-enter 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+.start-pop { animation: start-pop 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .start-enter { animation: none; opacity: 1; transform: none; }
+  .start-pop { animation: none; }
+}
+
 /* ── Base ─────────────────────────────────────────────────────────── */
 :root {
   /* Light = the landing's default theme (served HTML forces data-theme=light).

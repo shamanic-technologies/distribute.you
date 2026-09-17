@@ -78,7 +78,7 @@ export function BuildFlow() {
     const kept = channelsForOutcomes(channels, selection.outcomes).filter((c) =>
       selection.channels.includes(c.slug),
     );
-    const byFunnel = funnelsForChannels(kept).map((f) => ({
+    const byFunnel = funnelsForChannels(kept, selection.outcomes).map((f) => ({
       key: f.key,
       channels: f.channelSlugs.map((slug) => {
         const c = kept.find((x) => x.slug === slug);
@@ -159,7 +159,7 @@ export function BuildFlow() {
       step={1}
       stepCount={1}
       title="Where do we send the buyers?"
-      subtitle="Your website. We read it to work out what you sell and who to go after, so you do not have to type any of it."
+      subtitle="Your website. We read it to work out what you sell and who to go after, so you type none of it."
       footer={
         <StartButton onClick={build} busy={busy} disabled={url.trim().length === 0}>
           {busy ? "Setting things up..." : "Start running"}
@@ -190,7 +190,7 @@ export function BuildFlow() {
             <span className="font-medium text-gray-900">
               {selection.paid.length === 1 ? "1 funnel" : `${selection.paid.length} funnels`}
             </span>
-            . Once this is set up they run at {dollars(totalDailyCents(writes))}/day, charged as
+            . Once this is set up they run from {dollars(totalDailyCents(writes))} per day, charged as
             it is spent, and you can stop any of them whenever you want.
           </p>
         </div>

@@ -1,10 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { StartShell, StartButton, StartOption } from "./start-shell";
+import { RocketIcon } from "@phosphor-icons/react/dist/csr/Rocket";
+import { WalletIcon } from "@phosphor-icons/react/dist/csr/Wallet";
+import { ChartLineUpIcon } from "@phosphor-icons/react/dist/csr/ChartLineUp";
+import {
+  StartShell,
+  StartButton,
+  StartOption,
+  StartGrid,
+  StartGroupLabel,
+  CountUp,
+  fromPerDay,
+  useLandingBrand,
+} from "./start-shell";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
+import { channelMarkForSlug } from "@/lib/acquisition-channels";
+import { SALES_FUNNELS, normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import {
   startOutcomes,
   channelsForOutcomes,
+  channelGroups,
   funnelsForChannels,
   type CatalogueChannel,
 } from "@/lib/start-catalogue";
@@ -23,13 +41,14 @@ import {
 /**
  * THE SIGNED-OUT HALF OF ONBOARDING: sell first, sign up after.
  *
- * Four narrowing questions and a proof screen, all before anyone has an account.
+ * Three narrowing questions and a proof screen, all before anyone has an account.
  * Nothing here writes to any service — the visitor has no org, no brand and no
  * session — so the whole answer rides a cookie to the far side of the Clerk
  * redirect, where the payment screens read it back.
  *
  * Every option on every screen is READ off the channel catalogue
- * features-service publishes. The one thing this file decides is wording.
+ * features-service publishes. What this file decides is wording and the mark
+ * beside each option.
  */
 
 type Screen = "welcome" | "outcome" | "channels" | "funnels" | "returns";
@@ -39,21 +58,25 @@ const ORDER: Screen[] = ["welcome", "outcome", "channels", "funnels", "returns"]
 interface Catalogue {
   channels: CatalogueChannel[];
   pairs: PairReturn[];
+  founders: number | null;
 }
-
-/** Whole dollars. A day rate is a commercial term we set, so cents read as noise
- *  the same way they do on a daily budget anywhere else in the product. */
-const dailyUsd = (cents: number): string => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
 /** One decimal under 10x, a whole number above it — the product's one spelling
  *  of a return. Above ten the decimal changes no decision and reads as false
  *  precision on a figure that moves. */
 const formatReturn = (x: number): string => (x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
 
+/** The funnel's own tile, resolved from this app's catalogue by wire key. */
+function funnelMark(wireKey: string) {
+  const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(wireKey as SalesFunnelKeyWire));
+  return def ? <SalesFunnelMark def={def} size="sm" /> : null;
+}
+
 export function StartFlow() {
   const [screen, setScreen] = useState<Screen>("welcome");
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [catalogueError, setCatalogueError] = useState(false);
+  const brand = useLandingBrand();
 
   const [outcomes, setOutcomes] = useState<string[]>([]);
   const [channels, setChannels] = useState<string[]>([]);
@@ -75,7 +98,8 @@ export function StartFlow() {
         if (!live) return;
         const chans = body?.channels?.channels ?? body?.channels ?? [];
         const pairs = body?.returns?.pairs ?? [];
-        setCatalogue({ channels: chans, pairs });
+        const founders = typeof body?.founders === "number" ? body.founders : null;
+        setCatalogue({ channels: chans, pairs, founders });
       })
       .catch((err) => {
         console.error("[start] catalogue read failed:", err);
@@ -110,11 +134,17 @@ export function StartFlow() {
     () => (catalogue ? channelsForOutcomes(catalogue.channels, outcomes) : []),
     [catalogue, outcomes],
   );
+  const groups = useMemo(() => channelGroups(offeredChannels), [offeredChannels]);
   const keptChannels = useMemo(
     () => offeredChannels.filter((c) => channels.includes(c.slug)),
     [offeredChannels, channels],
   );
-  const offeredFunnels = useMemo(() => funnelsForChannels(keptChannels), [keptChannels]);
+  // Filtered by the OUTCOMES as well as the channels: a channel sells every
+  // funnel that starts on any step it produces, and the visitor asked for one.
+  const offeredFunnels = useMemo(
+    () => funnelsForChannels(keptChannels, outcomes),
+    [keptChannels, outcomes],
+  );
 
   // Dropping a channel can drop the only seller of a funnel the visitor had
   // already picked. Keeping that funnel would carry an unbuyable pick into the
@@ -162,6 +192,8 @@ export function StartFlow() {
     if (at > 0) setScreen(ORDER[at - 1]);
   };
 
+  const founders = catalogue?.founders ?? null;
+
   const BackLink = () =>
     screen === "welcome" ? null : (
       <button
@@ -173,12 +205,18 @@ export function StartFlow() {
       </button>
     );
 
-  const footer = (primary: React.ReactNode) => (
+  const footer = (primary: React.ReactNode, note?: React.ReactNode) => (
     <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <BackLink />
+      <div className="flex items-center gap-4">
+        <BackLink />
+        {note && <span className="hidden text-sm text-gray-500 sm:inline">{note}</span>}
+      </div>
       <div className="sm:ml-auto">{primary}</div>
     </div>
   );
+
+  const picked = (n: number, noun: string) =>
+    n === 0 ? null : `${n} ${noun}${n === 1 ? "" : "s"} picked`;
 
   if (catalogueError) {
     return (
@@ -197,19 +235,57 @@ export function StartFlow() {
   }
 
   if (screen === "welcome") {
+    const pillars = [
+      {
+        icon: RocketIcon,
+        title: "We run it for you",
+        body: "Our own sending infrastructure, our own team, on your behalf. Nothing to set up on your side.",
+      },
+      {
+        icon: WalletIcon,
+        title: "You set the daily budget",
+        body: "You are charged what the campaign spent and nothing else. Stop it whenever you want.",
+      },
+      {
+        icon: ChartLineUpIcon,
+        title: "You see the real cost",
+        body: "Every meeting, signup or sale shows what it actually cost. Measured, never quoted.",
+      },
+    ];
     return (
       <StartShell
         step={1}
         stepCount={1}
-        title="Get revenue in 24h. From $1/day."
-        subtitle="Pick what you want to buy, the channels you want us to try, and the revenue funnels you want us to run. You only make an account once you have seen what it costs."
+        founders={founders}
+        title={
+          <>
+            Get <span className="text-brand-600">revenue in 24h</span>.
+            <br />
+            From $1 per day.
+          </>
+        }
+        subtitle={
+          brand
+            ? `Three quick questions and you see what our clients got back. Then we set it up for ${brand.host}.`
+            : "Three quick questions and you see what our clients got back. You only make an account once you have seen the price."
+        }
         footer={footer(<StartButton onClick={() => go("outcome")}>Start</StartButton>)}
       >
-        <ul className="space-y-3 text-sm text-gray-600">
-          <li>We run the campaigns on our own sending infrastructure, on your behalf.</li>
-          <li>You set a daily budget and are charged what the campaign spent, nothing else.</li>
-          <li>You see what every outcome actually cost, measured, not quoted.</li>
-        </ul>
+        <StartGrid>
+          {pillars.map((p, i) => (
+            <div
+              key={p.title}
+              className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-5"
+              style={{ "--enter-delay": `${(i + 1) * 90}ms` } as React.CSSProperties}
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
+                <p.icon size={26} weight="duotone" className="text-brand-600" />
+              </span>
+              <h2 className="mt-4 font-display text-lg font-medium leading-tight text-gray-900">{p.title}</h2>
+              <p className="mt-2 text-sm leading-snug text-gray-500">{p.body}</p>
+            </div>
+          ))}
+        </StartGrid>
       </StartShell>
     );
   }
@@ -219,63 +295,77 @@ export function StartFlow() {
       <StartShell
         step={1}
         stepCount={4}
-        title="What do you want us to buy you?"
-        subtitle="Pick everything that is worth your money. Each one opens a different set of channels."
+        founders={founders}
+        title="What should we get you?"
+        subtitle="Pick everything worth paying for. Each one unlocks a different set of channels."
         footer={footer(
           <StartButton onClick={() => go("channels")} disabled={outcomes.length === 0}>
             Continue
           </StartButton>,
+          picked(outcomes.length, "outcome"),
         )}
       >
-        <div className="space-y-3">
+        <StartGrid>
           {allOutcomes.length === 0 && <Loading />}
-          {allOutcomes.map((o) => (
+          {allOutcomes.map((o, i) => (
             <StartOption
               key={o.key}
+              index={i}
               selected={outcomes.includes(o.key)}
               onToggle={() => setOutcomes((prev) => toggle(prev, o.key))}
               title={o.label}
               description={o.description}
+              mark={<FunnelLegMark fromKey={null} toKey={o.key} size="sm" />}
               meta={`${o.channelSlugs.length} channels`}
             />
           ))}
-        </div>
+        </StartGrid>
       </StartShell>
     );
   }
 
   if (screen === "channels") {
+    let index = 0;
     return (
       <StartShell
         step={2}
         stepCount={4}
-        title="Which channels do you want to try with us?"
-        subtitle="Every one of these can deliver what you picked. Keep as many as you want to test."
+        founders={founders}
+        title="Which channels should we run?"
+        subtitle="Every one of these delivers what you picked. Keep the ones you want us to test. Prices are what a day costs to run, before results."
         footer={footer(
           <StartButton onClick={() => go("funnels")} disabled={channels.length === 0}>
             Continue
           </StartButton>,
+          picked(channels.length, "channel"),
         )}
       >
-        <div className="space-y-3">
-          {offeredChannels.map((c) => (
-            <StartOption
-              key={c.slug}
-              selected={channels.includes(c.slug)}
-              onToggle={() => setChannels((prev) => toggle(prev, c.slug))}
-              title={c.name}
-              description={c.description}
-              meta={
-                // A customer-operated channel puts nobody of ours on it, which
-                // is what makes its zero day rate a statement rather than a
-                // blank. Read the operator, never infer it from the price.
-                c.operatedBy === "customer"
-                  ? "You run it"
-                  : `${dailyUsd(c.terms.dailyOperatingCostCents)}/day`
-              }
-            />
-          ))}
-        </div>
+        {groups.map((g) => (
+          <section key={g.family}>
+            <StartGroupLabel count={g.channels.length}>{g.label}</StartGroupLabel>
+            <StartGrid>
+              {g.channels.map((c) => (
+                <StartOption
+                  key={c.slug}
+                  index={index++}
+                  selected={channels.includes(c.slug)}
+                  onToggle={() => setChannels((prev) => toggle(prev, c.slug))}
+                  title={c.name}
+                  description={c.description}
+                  mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="sm" />}
+                  meta={
+                    // A customer-operated channel puts nobody of ours on it, which
+                    // is what makes its zero day rate a statement rather than a
+                    // blank. Read the operator, never infer it from the price.
+                    c.operatedBy === "customer"
+                      ? "You run it"
+                      : fromPerDay(c.terms.dailyOperatingCostCents)
+                  }
+                />
+              ))}
+            </StartGrid>
+          </section>
+        ))}
       </StartShell>
     );
   }
@@ -285,31 +375,49 @@ export function StartFlow() {
       <StartShell
         step={3}
         stepCount={4}
-        title="Which revenue funnels do you want us to run?"
-        subtitle="Each one ends at a paying client. You pay for them one at a time, and you can drop any of them at the payment step."
+        founders={founders}
+        title="How should it turn into revenue?"
+        subtitle="Each path ends with a paying client. You pay per path, one day at a time, and you can stop any of them."
         footer={footer(
           <StartButton onClick={() => go("returns")} disabled={funnels.length === 0}>
             Continue
           </StartButton>,
+          picked(funnels.length, "path"),
         )}
       >
-        <div className="space-y-3">
-          {offeredFunnels.map((f) => (
-            <StartOption
-              key={f.key}
-              selected={funnels.includes(f.key)}
-              onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
-              title={f.name}
-              description={f.steps.join(" > ")}
-              meta={`${dailyUsd(f.dailyOperatingCostCents)}/day`}
-            >
-              <p className="mt-2 text-xs text-gray-500">
-                {f.channelSlugs.length} of your channels sell this. Give it{" "}
-                {f.effectiveMinimumCommitmentDays} days before judging it.
-              </p>
-            </StartOption>
-          ))}
-        </div>
+        {offeredFunnels.length === 0 ? (
+          <p className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
+            None of our revenue paths starts where the channels you kept land. Go back and keep a
+            channel that gets you a website visit or a conversation.
+          </p>
+        ) : (
+          <StartGrid>
+            {offeredFunnels.map((f, i) => (
+              <StartOption
+                key={f.key}
+                index={i}
+                selected={funnels.includes(f.key)}
+                onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
+                title={f.name}
+                description={
+                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                    {f.steps.map((s, j) => (
+                      <span key={s} className="flex items-center gap-1.5">
+                        {j > 0 && <span className="text-gray-300">→</span>}
+                        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">{s}</span>
+                      </span>
+                    ))}
+                  </span>
+                }
+                mark={funnelMark(f.key)}
+                meta={fromPerDay(f.dailyOperatingCostCents)}
+              >
+                {f.channelSlugs.length} of your channels. Judge it after{" "}
+                {f.effectiveMinimumCommitmentDays} days.
+              </StartOption>
+            ))}
+          </StartGrid>
+        )}
       </StartShell>
     );
   }
@@ -331,8 +439,9 @@ export function StartFlow() {
     <StartShell
       step={4}
       stepCount={4}
-      title="What a dollar came back as"
-      subtitle="Our own clients, measured. Where we have not measured a pairing yet, we say so rather than quote you an average."
+      founders={founders}
+      title="What our clients got back"
+      subtitle="Measured on real clients, per dollar spent. Where we have not measured a pairing yet, we say so instead of quoting an average."
       footer={footer(
         <StartButton
           onClick={() => {
@@ -341,57 +450,69 @@ export function StartFlow() {
             window.location.href = "/sign-up";
           }}
         >
-          Create an account to continue
+          Create my account
         </StartButton>,
+        "No charge until you confirm each path.",
       )}
     >
       <div className="space-y-6">
-        {funnelRows.map(({ funnel, rows }) => (
-          <section key={funnel.key}>
-            <h2 className="text-sm font-semibold text-gray-900">{funnel.name}</h2>
+        {funnelRows.map(({ funnel, rows }, fi) => (
+          <section
+            key={funnel.key}
+            className="start-enter"
+            style={{ "--enter-delay": `${fi * 120}ms` } as React.CSSProperties}
+          >
+            <div className="flex items-center gap-3">
+              {funnelMark(funnel.key)}
+              <h2 className="font-display text-lg font-medium text-gray-900">{funnel.name}</h2>
+            </div>
             {!funnelHasMeasuredReturn(rows) && (
-              <p className="mt-1 text-sm text-gray-500">
-                We have not measured this one across enough clients to state a figure yet.
+              <p className="mt-2 text-sm text-gray-500">
+                Not enough clients have run this one yet for us to state a figure.
               </p>
             )}
-            <ul className="mt-3 space-y-2">
-              {rows.map((r) => (
-                <li
+            <StartGrid>
+              {rows.map((r, i) => (
+                <div
                   key={r.channelSlug}
-                  className="rounded-xl border border-gray-200 bg-white p-4"
+                  className="start-enter mt-3 flex flex-col rounded-2xl border border-gray-200 bg-white p-4"
+                  style={{ "--enter-delay": `${fi * 120 + (i + 1) * 60}ms` } as React.CSSProperties}
                 >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium text-gray-900">{r.channelName}</span>
-                    {r.median != null ? (
-                      <span className="text-sm font-semibold text-gray-900">
-                        {formatReturn(r.median)} median
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-500">Not measured yet</span>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <AcquisitionChannelMark def={{ mark: channelMarkForSlug(r.channelSlug) }} size="sm" />
+                    <span className="min-w-0 truncate text-sm font-medium text-gray-900">{r.channelName}</span>
                   </div>
                   {r.median != null ? (
-                    <p className="mt-1 text-xs text-gray-500">
-                      {r.p25 != null && r.p75 != null && (
-                        <>
-                          {formatReturn(r.p25)} to {formatReturn(r.p75)} across the middle half.{" "}
-                        </>
-                      )}
-                      {/* The scope is never dropped: a channel-wide median must
-                          not be read as describing the one funnel picked. */}
-                      {r.scope === "pair"
-                        ? `Over ${r.brandCount} clients running this exact pairing.`
-                        : `Over ${r.brandCount} clients running this channel, across every funnel they sell through it.`}
-                      {r.costPerPaidClientUsd != null && (
-                        <> Median cost per paying client ${Math.round(r.costPerPaidClientUsd).toLocaleString("en-US")}.</>
-                      )}
-                    </p>
+                    <>
+                      <p className="mt-3 font-display text-3xl leading-none tracking-tight text-gray-900">
+                        <CountUp value={r.median} format={formatReturn} />
+                        <span className="ml-1.5 text-sm font-normal text-gray-500">back per dollar</span>
+                      </p>
+                      <p className="mt-2 text-xs leading-snug text-gray-500">
+                        {r.p25 != null && r.p75 != null && (
+                          <>
+                            {formatReturn(r.p25)} to {formatReturn(r.p75)} for the middle half.{" "}
+                          </>
+                        )}
+                        {/* The scope is never dropped: a channel-wide median must
+                            not be read as describing the one funnel picked. */}
+                        {r.scope === "pair"
+                          ? `${r.brandCount} clients on this exact pairing.`
+                          : `${r.brandCount} clients on this channel, every path included.`}
+                        {r.costPerPaidClientUsd != null && (
+                          <> A paying client cost them ${Math.round(r.costPerPaidClientUsd).toLocaleString("en-US")}.</>
+                        )}
+                      </p>
+                    </>
                   ) : (
-                    <p className="mt-1 text-xs text-gray-500">{returnReasonLabel(r.reason)}</p>
+                    <>
+                      <p className="mt-3 font-display text-lg text-gray-400">Not measured yet</p>
+                      <p className="mt-1 text-xs leading-snug text-gray-500">{returnReasonLabel(r.reason)}</p>
+                    </>
                   )}
-                </li>
+                </div>
               ))}
-            </ul>
+            </StartGrid>
           </section>
         ))}
       </div>
@@ -401,10 +522,10 @@ export function StartFlow() {
 
 function Loading() {
   return (
-    <div className="space-y-3">
+    <>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-100" />
+        <div key={i} className="h-28 animate-pulse rounded-2xl bg-gray-100" />
       ))}
-    </div>
+    </>
   );
 }

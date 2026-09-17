@@ -31,7 +31,21 @@ export type OwnChannelGlyph =
   | "chat-circle"
   | "chat-teardrop"
   | "calendar-plus"
-  | "quotes";
+  | "quotes"
+  | "megaphone"
+  | "phone"
+  | "microphone"
+  | "newspaper"
+  | "handshake"
+  | "user-check"
+  | "list"
+  | "file-text"
+  | "share-network"
+  | "users"
+  | "bell"
+  | "broadcast"
+  | "calendar-check"
+  | "video-camera";
 
 /**
  * How the channel is marked.
@@ -190,6 +204,34 @@ export const CHANNEL_MARKS: Record<string, AcquisitionChannelMark> = {
   "reddit-ads": { kind: "vendor", domain: "reddit.com" },
   "bing-ads": { kind: "vendor", domain: "bing.com" },
   "quora-ads": { kind: "vendor", domain: "quora.com" },
+  // The rest of the published catalogue. Glyphs follow the `icon` token the
+  // producer states on each channel (`megaphone`, `phone`, `mic`, `newspaper`,
+  // `handshake`, `user-check`, ...), mapped onto Phosphor duotone, so a mark is
+  // never invented: the producer already says what the channel looks like and
+  // this only picks the face. The organic-publishing channels wear the platform
+  // they publish on, since that is what a reader recognises.
+  "pr-cold-email-outreach": { kind: "own", glyph: "megaphone", tone: OWN_CHANNEL_TONE },
+  "cold-call-outreach": { kind: "own", glyph: "phone", tone: OWN_CHANNEL_TONE },
+  "newsletter-sponsorships": { kind: "own", glyph: "envelope", tone: OWN_CHANNEL_TONE },
+  "podcast-sponsorships": { kind: "own", glyph: "microphone", tone: OWN_CHANNEL_TONE },
+  "creator-sponsorships": { kind: "own", glyph: "users", tone: OWN_CHANNEL_TONE },
+  "paid-directory-listings": { kind: "own", glyph: "list", tone: OWN_CHANNEL_TONE },
+  "seo-content": { kind: "own", glyph: "file-text", tone: OWN_CHANNEL_TONE },
+  "press-placements": { kind: "own", glyph: "newspaper", tone: OWN_CHANNEL_TONE },
+  "podcast-guesting": { kind: "own", glyph: "broadcast", tone: OWN_CHANNEL_TONE },
+  "affiliate-programme": { kind: "own", glyph: "share-network", tone: OWN_CHANNEL_TONE },
+  "organic-linkedin-publishing": { kind: "vendor", domain: "linkedin.com" },
+  "organic-x-publishing": { kind: "vendor", domain: "x.com" },
+  "organic-reddit-publishing": { kind: "vendor", domain: "reddit.com" },
+  "organic-youtube-publishing": { kind: "vendor", domain: "youtube.com" },
+  "agency-meeting-booking": { kind: "own", glyph: "calendar-plus", tone: OWN_CHANNEL_TONE },
+  "your-team-meeting-booking": { kind: "own", glyph: "calendar-plus", tone: OWN_CHANNEL_TONE },
+  "agency-meeting-attendance": { kind: "own", glyph: "bell", tone: OWN_CHANNEL_TONE },
+  "your-team-meeting-attendance": { kind: "own", glyph: "bell", tone: OWN_CHANNEL_TONE },
+  "agency-closing-calls": { kind: "own", glyph: "handshake", tone: OWN_CHANNEL_TONE },
+  "your-team-closing-calls": { kind: "own", glyph: "handshake", tone: OWN_CHANNEL_TONE },
+  "agency-signup-conversion": { kind: "own", glyph: "user-check", tone: OWN_CHANNEL_TONE },
+  "your-team-signup-conversion": { kind: "own", glyph: "user-check", tone: OWN_CHANNEL_TONE },
 };
 
 /** The tile for one slug, or null for a channel this app has not drawn. */

@@ -14,6 +14,8 @@
 // Only value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias).
 
+import { SALES_FUNNELS, normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnels";
+
 /** A step a channel can put a buyer on, in the producer's own words. */
 export interface CatalogueStep {
   key: string;
@@ -175,16 +177,68 @@ export interface StartFunnelOption {
 }
 
 /**
- * The revenue funnels to offer, given the channels picked.
+ * Where an in-ad outcome LANDS on a funnel.
+ *
+ * The two in-ad entry steps start no published funnel: a form filled inside the
+ * ad is the funnel's "Form filled" rung reached without the website visit before
+ * it, and a meeting booked from the ad is the "Meeting booked" rung reached the
+ * same way. So a visitor who wants those is offered the funnels that CONTAIN the
+ * rung they land on. Keyed on the producer's own step tokens; a step absent from
+ * here is an entry step in its own right and matches only a funnel that starts
+ * on it.
+ */
+const IN_AD_LANDS_ON: Record<string, string> = {
+  in_ad_form_submission: "form_filled",
+  in_ad_booked_meeting: "meeting_booked",
+};
+
+/**
+ * Whether a funnel is one the picked outcomes lead INTO.
+ *
+ * THE FILTER THE FUNNEL SCREEN IS FOR. A channel sells several funnels, and most
+ * sell every funnel that starts on any step it produces: cold email produces a
+ * conversation AND a website visit, so it sells the reply funnel and the three
+ * website funnels alike. Offering a channel's whole list therefore ignores the
+ * outcome the visitor just picked — pick "a conversation", keep cold email, and
+ * the screen offered "Website Purchase", a funnel that starts on a step they
+ * never asked for. A funnel is offered only when a picked outcome is the step it
+ * starts on (or, for an in-ad outcome, a rung it contains).
+ *
+ * The funnel's rungs come from this app's own catalogue rather than the wire:
+ * the producer states a funnel's steps as LABELS, and its label for the reply
+ * funnel's first rung ("Positive reply") is not its label for the step a channel
+ * produces ("Conversation"), so a label join finds nothing. A wire key this
+ * app's catalogue cannot name is a vocabulary drift and THROWS, per
+ * `normalizeSalesFunnelKey`.
+ */
+export function funnelReachesOutcome(funnelKey: string, outcomeKeys: string[]): boolean {
+  const local = normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire);
+  const def = SALES_FUNNELS.find((f) => f.key === local);
+  if (!def) throw new Error(`[start-catalogue] no local funnel for ${funnelKey}`);
+  const rungs: readonly string[] = def.stepKeys;
+  return outcomeKeys.some((k) => {
+    const landsOn = IN_AD_LANDS_ON[k];
+    return landsOn ? rungs.includes(landsOn) : rungs[0] === k;
+  });
+}
+
+/**
+ * The revenue funnels to offer, given the channels picked AND the outcomes those
+ * channels were picked for.
  *
  * Every funnel here ends at a paid client — that is what makes it a REVENUE
  * funnel rather than a step — and it is offered only when a picked channel can
- * actually sell it, so nothing on the screen is unbuyable.
+ * actually sell it AND a picked outcome leads into it, so nothing on the screen
+ * is unbuyable and nothing on it starts somewhere the visitor did not ask for.
  */
-export function funnelsForChannels(channels: CatalogueChannel[]): StartFunnelOption[] {
+export function funnelsForChannels(
+  channels: CatalogueChannel[],
+  outcomeKeys: string[],
+): StartFunnelOption[] {
   const byFunnel = new Map<string, { funnel: CatalogueFunnel; channels: CatalogueChannel[] }>();
   for (const c of channels) {
     for (const f of c.salesFunnels) {
+      if (!funnelReachesOutcome(f.key, outcomeKeys)) continue;
       const entry = byFunnel.get(f.key);
       if (entry) entry.channels.push(c);
       else byFunnel.set(f.key, { funnel: f, channels: [c] });
@@ -219,4 +273,52 @@ export function funnelsForChannels(channels: CatalogueChannel[]): StartFunnelOpt
       };
     })
     .sort((a, b) => b.channelSlugs.length - a.channelSlugs.length || a.key.localeCompare(b.key));
+}
+
+/** A family of channels, in the producer's own token, with the words a visitor
+ *  reads for it. */
+export interface ChannelGroup {
+  family: string;
+  label: string;
+  channels: CatalogueChannel[];
+}
+
+/**
+ * What a visitor reads for each family the producer publishes. An unknown
+ * family is not an error: it is grouped under its own token, titlecased, so a
+ * family added upstream still renders rather than vanishing from the screen.
+ */
+const FAMILY_LABEL: Record<string, string> = {
+  outbound_one_to_one: "Direct outreach",
+  paid_reach: "Ads and sponsorships",
+  earned: "Content and press",
+  conversion: "Closing the sale",
+};
+
+const FAMILY_ORDER = ["outbound_one_to_one", "paid_reach", "earned", "conversion"];
+
+/**
+ * The channels grouped by family, in a fixed order, so thirty cards read as
+ * four short lists rather than one long one. Order within a group is the
+ * producer's own display order, untouched.
+ */
+export function channelGroups(channels: CatalogueChannel[]): ChannelGroup[] {
+  const byFamily = new Map<string, CatalogueChannel[]>();
+  for (const c of channels) {
+    const list = byFamily.get(c.family);
+    if (list) list.push(c);
+    else byFamily.set(c.family, [c]);
+  }
+  const families = [...byFamily.keys()].sort((a, b) => {
+    const ia = FAMILY_ORDER.indexOf(a);
+    const ib = FAMILY_ORDER.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+  });
+  return families.map((family) => ({
+    family,
+    label:
+      FAMILY_LABEL[family] ??
+      family.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+    channels: byFamily.get(family)!,
+  }));
 }
