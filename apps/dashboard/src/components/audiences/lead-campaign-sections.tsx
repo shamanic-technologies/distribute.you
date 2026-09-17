@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { tenantBasePath } from "@/lib/offer-path";
+import { audienceDetailHref } from "@/lib/audience-detail-href";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useOfferImages } from "@/lib/use-offer-images";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
@@ -300,21 +300,27 @@ function AudienceRow({ audience }: { audience: LeadCampaignAudience }) {
   const brandId = params.brandId as string;
   // Present on the offer and campaign routes, absent on the brand one.
   const routeOfferId = params.offerId as string | undefined;
-  // An audience's page lives under the OFFER it was assembled for, so the link is
-  // built from the AUDIENCE's own `offerId` — not from whichever route the reader
-  // happens to be on. Building it from the route sent every brand-level reader to
-  // `/brands/:id/audiences`, a path that does not exist (audiences moved down to
-  // the offer), so the card's one affordance was a 404 on the brand Leads page.
-  // The route id stays as the fallback for the case the lookup misses (an audience
-  // archived out of the list): inside an offer, that offer's page is the right one.
-  const audienceOfferId = audience.offerId ?? routeOfferId ?? null;
-  // No offer resolvable ⟹ NO link. Some audiences predate the offer level and are
-  // filed under none, so there is no page to open; a link to a 404 is worse than a
-  // row that simply states the audience. Same render while the lookup is in flight —
-  // we do not claim either way before we know.
-  const detailHref = audienceOfferId
-    ? `${tenantBasePath(orgId, brandId, audienceOfferId)}/audiences?audienceId=${audience.id}`
-    : null;
+  // `id` names a campaign and `funnelKey` a funnel, each present only on their route.
+  const campaignId = params.id as string | undefined;
+  const funnelKey = params.funnelKey as string | undefined;
+  // The audience opens at the grain the reader is standing on, and the rule lives in
+  // ONE place both panel surfaces read: the audience's own offer decides WHICH offer
+  // (a link to an entity is built from where that entity lives, never from the route
+  // — building it from the route sent every brand-level reader to a 404), and the
+  // route's own campaign/funnel decides how DEEP, so a reader is not dropped back to
+  // the offer. No offer resolvable ⟹ NO link: some audiences predate the offer level
+  // and have no page to open, and a link to a 404 is worse than a row that simply
+  // states the audience. Same render while the lookup is in flight — we do not claim
+  // either way before we know.
+  const detailHref = audienceDetailHref({
+    orgId,
+    brandId,
+    audienceId: audience.id,
+    audienceOfferId: audience.offerId,
+    routeOfferId,
+    campaignId,
+    funnelKey,
+  });
   return (
     <div className="mt-3 border-t border-gray-200 pt-3">
       <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">Audience</p>
