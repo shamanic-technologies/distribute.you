@@ -49,6 +49,24 @@ export interface RememberedOrg {
   i?: string;
 }
 
+/**
+ * The brand's RESOLVED accent tint — three numbers, not its colour palette.
+ *
+ * The palette deliberately does NOT ride this cookie (it is an arbitrary-length
+ * array of hex strings on a blob that travels with every request to the origin).
+ * What CSS actually needs is the OUTPUT of `resolveBrandTint`: a hue, a chroma
+ * scale and a rotation, ~30 bytes. That is small enough to carry, and it is the
+ * only form that can be applied before a single line of React has run.
+ */
+export interface RememberedBrandTint {
+  /** hue — OKLCH angle, degrees. */
+  h: number;
+  /** chromaScale — multiplier on every step of the charter ramp. */
+  c: number;
+  /** rotation — signed hueDelta from the charter, for the categorical tiles. */
+  r: number;
+}
+
 export interface RememberedBrand {
   /** name */
   n: string | null;
@@ -64,6 +82,16 @@ export interface RememberedBrand {
    * adding it needs no version bump (an older blob parses unchanged).
    */
   l?: string;
+  /**
+   * tint — see `RememberedBrandTint`.
+   *
+   * Optional, so an older blob parses unchanged and no version bump is needed
+   * (same reasoning as `l`). Absent means "we have never read this brand's
+   * colours", which is NOT the same as "this brand has no accent" — the first
+   * keeps whatever is already painted, the second clears it. Only the live
+   * query can tell them apart, so the cookie never asserts the second.
+   */
+  t?: RememberedBrandTint;
 }
 
 export interface TenantIdentitySnapshot {
@@ -92,6 +120,18 @@ function readOrgs(raw: unknown): Record<string, RememberedOrg> {
   return out;
 }
 
+/**
+ * A tint is all three numbers or none of it. A partial one would paint a hue at
+ * the charter's chroma (or rotate the categorical tiles without moving the ramp),
+ * which reads as a rendering bug rather than as a brand.
+ */
+function readBrandTint(raw: unknown): RememberedBrandTint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const { h, c, r } = raw;
+  if (!Number.isFinite(h) || !Number.isFinite(c) || !Number.isFinite(r)) return undefined;
+  return { h: h as number, c: c as number, r: r as number };
+}
+
 function readBrands(raw: unknown): Record<string, RememberedBrand> {
   if (!isRecord(raw)) return {};
   const out: Record<string, RememberedBrand> = {};
@@ -103,7 +143,13 @@ function readBrands(raw: unknown): Record<string, RememberedBrand> {
     // placeholder one layer down.
     if (name === null && domain === null) continue;
     const logoUrl = typeof value.l === "string" && value.l ? value.l : undefined;
-    out[id] = logoUrl ? { n: name, d: domain, l: logoUrl } : { n: name, d: domain };
+    const tint = readBrandTint(value.t);
+    out[id] = {
+      n: name,
+      d: domain,
+      ...(logoUrl ? { l: logoUrl } : {}),
+      ...(tint ? { t: tint } : {}),
+    };
   }
   return out;
 }
@@ -148,6 +194,12 @@ function capTail<T>(entries: Record<string, T>, max: number): Record<string, T> 
   return Object.fromEntries(all.slice(all.length - max));
 }
 
+/** Field-by-field, because the tint is a fresh object on every resolve. */
+function sameTint(a: RememberedBrandTint | undefined, b: RememberedBrandTint | undefined): boolean {
+  if (!a || !b) return a === b;
+  return a.h === b.h && a.c === b.c && a.r === b.r;
+}
+
 export interface TenantIdentityUpdate {
   orgId?: string | null;
   org?: RememberedOrg | null;
@@ -175,7 +227,8 @@ export function mergeTenantIdentity(
     !!brand &&
     (base.brands[brandId]?.n !== brand.n ||
       base.brands[brandId]?.d !== brand.d ||
-      base.brands[brandId]?.l !== brand.l);
+      base.brands[brandId]?.l !== brand.l ||
+      !sameTint(base.brands[brandId]?.t, brand.t));
 
   if (!orgChanged && !brandChanged) return base;
 

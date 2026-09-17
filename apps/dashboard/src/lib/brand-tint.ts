@@ -21,6 +21,17 @@
  * they keep the blue charter, which is what every brand looks like today.
  */
 
+/**
+ * The three custom properties the charter ramp reads, and the attribute that
+ * switches it on. Exported so the pre-paint script and the React component set
+ * the SAME names — two spellings of one variable is how the first frame and the
+ * hydrated frame come to paint different colours.
+ */
+export const TINT_ATTR = "data-brand-tint";
+export const HUE_VAR = "--brand-hue";
+export const CHROMA_VAR = "--brand-chroma-scale";
+export const DELTA_VAR = "--brand-hue-delta";
+
 /** Chroma of `--color-brand-600`, the anchor step of the charter ramp. */
 const REFERENCE_CHROMA = 0.16;
 

@@ -12,6 +12,8 @@ import { useState, useCallback, useEffect } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listBrands, listBrandOffers, getBrandOffer, type Offer } from "@/lib/api";
+import { resolveBrandTint } from "@/lib/brand-tint";
+import { brandIdFromPathname } from "@/lib/brand-tint-preload";
 import { useTenantIdentity } from "@/components/tenant-identity-provider";
 import { withTimeout, isTimeoutError } from "@/lib/with-timeout";
 import { orgSwitchErrorMessage } from "@/lib/org-switch-error";
@@ -44,8 +46,10 @@ export interface TenantBrand {
   // `BrandTint` reads the SAME brand the tab mark and the switcher label do —
   // three surfaces resolving the open brand independently is how they come to
   // disagree mid-switch. Absent on the cookie-seeded path by design: the seed
-  // exists to paint the first frame and rides every request to the origin, so
-  // it holds labels only. The tint arrives with the query, a moment later.
+  // rides every request to the origin, so it carries the RESOLVED tint (three
+  // numbers, written back below) rather than this arbitrary-length palette. The
+  // palette is what corrects that tint once the query answers; the first frame
+  // is painted from the cookie by the pre-paint script.
   colors?: (string | { hex?: unknown })[] | null;
 }
 
@@ -162,7 +166,9 @@ export function useTenantSwitcher() {
   // The product ships ONE feature → no `/features/[featureSlug]` segment.
   const pathParts = pathname.split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
-  const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
+  // ONE rule, shared with the pre-paint tint script — two parsers would
+  // eventually disagree about which brand is open.
+  const brandId = brandIdFromPathname(pathname);
   const offerId =
     brandId && pathParts[4] === "offers" && pathParts[5] ? pathParts[5] : null;
   const section = offerId ? pathParts[6] ?? null : brandId ? pathParts[4] ?? null : null;
@@ -459,6 +465,15 @@ export function useTenantSwitcher() {
   // Only a REAL stored logo is remembered. A brand with none omits the key, so the
   // seed never asserts "nobody chose one" on a brand we simply have not read yet.
   const rememberedBrandLogo = displayBrand?.logoUrl || undefined;
+  // The RESOLVED tint, so the next load paints the accent in the first frame
+  // instead of a second after it. `colors` is absent on the cookie-seeded path,
+  // so this is `undefined` until the query answers — and `undefined` means "not
+  // read yet", never "this brand has no accent": writing a cleared tint from an
+  // unresolved brand would make the seed assert something we do not know.
+  const resolvedTint = displayBrand?.colors ? resolveBrandTint(displayBrand.colors) : null;
+  const rememberedBrandTintHue = resolvedTint?.hue;
+  const rememberedBrandTintChroma = resolvedTint?.chromaScale;
+  const rememberedBrandTintDelta = resolvedTint?.hueDelta;
   useEffect(() => {
     if (!orgId && !brandId) return;
     rememberIdentity({
@@ -475,6 +490,17 @@ export function useTenantSwitcher() {
               n: rememberedBrandName,
               d: rememberedBrandDomain,
               ...(rememberedBrandLogo ? { l: rememberedBrandLogo } : {}),
+              ...(rememberedBrandTintHue !== undefined &&
+              rememberedBrandTintChroma !== undefined &&
+              rememberedBrandTintDelta !== undefined
+                ? {
+                    t: {
+                      h: rememberedBrandTintHue,
+                      c: rememberedBrandTintChroma,
+                      r: rememberedBrandTintDelta,
+                    },
+                  }
+                : {}),
             }
           : null,
     });
@@ -486,6 +512,9 @@ export function useTenantSwitcher() {
     rememberedBrandName,
     rememberedBrandDomain,
     rememberedBrandLogo,
+    rememberedBrandTintHue,
+    rememberedBrandTintChroma,
+    rememberedBrandTintDelta,
     rememberIdentity,
   ]);
 
