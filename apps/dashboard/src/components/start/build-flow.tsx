@@ -7,6 +7,7 @@ import { upsertBrand, saveBrandFunnelBudget } from "@/lib/api";
 import { channelsForOutcomes, funnelsForChannels, type CatalogueChannel } from "@/lib/start-catalogue";
 import { budgetWrites, totalDailyCents, planIsRunnable } from "@/lib/build-plan";
 import { websiteInputProblem } from "@/lib/website-input";
+import { readLandingUrlCookie } from "@/lib/landing-url-cookie";
 import {
   decodeStartSelection,
   clearStartSelectionCookieAssignment,
@@ -48,6 +49,15 @@ export function BuildFlow() {
       .find((c) => c.startsWith(`${START_SELECTION_COOKIE}=`))
       ?.slice(START_SELECTION_COOKIE.length + 1);
     setSelection(decodeStartSelection(raw));
+
+    // The hero on the landing has a website field, and somebody who typed into
+    // it has already told us their site -- asking again on the last screen of a
+    // flow they have just paid for reads as us not having listened. The value
+    // rides the same cookie `?url=` has always used, because a query param does
+    // not survive the Clerk redirect. Absent is the ordinary case (most CTAs are
+    // a plain link), and then the field simply starts empty.
+    const fromLanding = readLandingUrlCookie(document.cookie);
+    if (fromLanding) setUrl(fromLanding);
   }, []);
 
   useEffect(() => {

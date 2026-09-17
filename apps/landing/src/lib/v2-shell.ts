@@ -11,7 +11,15 @@
 import { COMPETITORS } from "./competitors";
 
 export const SITE = "https://distribute.you";
-export const SIGN_UP = "https://dashboard.distribute.you/sign-up";
+/** Where every CTA on the site goes.
+ *
+ *  The picker, not the signup form: the product sells before it asks anybody to
+ *  make an account, so a CTA opens the four narrowing screens and hands the
+ *  visitor to Clerk once they have seen what it costs. The name is kept because
+ *  it is what a CTA still MEANS to a reader, and because every page renders it
+ *  through this one constant -- a second spelling is how one page comes to send
+ *  people somewhere else. */
+export const SIGN_UP = "https://dashboard.distribute.you/start";
 export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
 
 /**

@@ -384,10 +384,10 @@ describe("colour rhythm", () => {
 describe("step 01 is a real form, not a mock (#step-one-real-input)", () => {
   const step = html.slice(html.indexOf('id="s1"'), html.indexOf('id="s2"'));
 
-  it("carries a real input posting the url to sign-up, like the hero", () => {
+  it("carries a real input posting the url to the picker, like the hero", () => {
     expect(step).not.toContain('class="fake-field"');
     expect(step).toContain('<form class="launch launch-mini"');
-    expect(step).toContain('action="https://dashboard.distribute.you/sign-up"');
+    expect(step).toContain('action="https://dashboard.distribute.you/start"');
     expect(step).toContain('method="get"');
     expect(step).toContain('name="url"');
     expect(step).toContain('placeholder="https://acme.com"');
