@@ -20,7 +20,17 @@ import { NextResponse } from "next/server";
  * an error they can retry.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
+/**
+ * The gateway host, resolved EXACTLY as the rest of the app resolves it.
+ *
+ * `NEXT_PUBLIC_DISTRIBUTE_API_URL` with this literal fallback is what
+ * `lib/api.ts` and the `/api/v1` proxy already use, and the fallback is what
+ * actually answers: the variable is set in neither the build env nor the
+ * runtime env on the box, so a handler reading any other name resolves to
+ * nothing and 500s on every request. An invented name looks right in review and
+ * is unset everywhere.
+ */
+const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 /** Long enough for a cold gateway, short enough that a hung upstream does not
  *  hold the visitor's first screen open indefinitely. */
@@ -38,48 +48,4 @@ async function readPublic(path: string): Promise<Response> {
 }
 
 export async function GET() {
-  if (!API_URL) {
-    console.error("[start-catalogue] NEXT_PUBLIC_API_URL is not set");
-    return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 500 });
-  }
-
-  try {
-    const [channelsRes, returnsRes] = await Promise.all([
-      readPublic("channels"),
-      // Median return on spend per (channel x funnel), with quartiles, over
-      // brands past the producer's own spend floor. The visitor sees it on the
-      // screen before signup, which is the whole argument for signing up.
-      readPublic("features/funnel-return-on-spend"),
-    ]);
-
-    if (!channelsRes.ok) {
-      const body = await channelsRes.text();
-      console.error(
-        `[start-catalogue] channels read failed: ${channelsRes.status} ${body.slice(0, 200)}`,
-      );
-      return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });
-    }
-
-    const channels = await channelsRes.json();
-
-    // The returns are the one HALF that may legitimately be missing: the
-    // producer states a figure only for a pair enough brands have spent on, and
-    // a visitor with no numbers beside a channel is a weaker screen, not a
-    // broken one. So a failed read here degrades to "we have not measured this"
-    // rather than taking the whole catalogue down with it — but it is logged,
-    // never swallowed.
-    let returns: unknown = null;
-    if (returnsRes.ok) {
-      returns = await returnsRes.json();
-    } else {
-      console.error(
-        `[start-catalogue] funnel-return-on-spend read failed: ${returnsRes.status}`,
-      );
-    }
-
-    return NextResponse.json({ channels, returns });
-  } catch (err) {
-    console.error("[start-catalogue] catalogue read errored:", err);
-    return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });
-  }
 }
