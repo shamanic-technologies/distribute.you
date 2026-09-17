@@ -439,6 +439,29 @@ export default function BillingPage() {
     void openCardPage(source);
   }
 
+  /**
+   * Re-read after the provider has saved a card.
+   *
+   * The account is what carries `has_payment_method`, the credit-line floor and
+   * the auto-topup state; payments are read alongside it because saving a card
+   * can carry a charge. The spinner on the button is what says this is running,
+   * so it is cleared only once the fresh answer has landed — clearing it first
+   * hands the customer a settled-looking page still claiming they have no card.
+   */
+  async function refreshAfterCardSaved() {
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["billingAccount"] }),
+      queryClient.refetchQueries({ queryKey: ["billingPayments"] }),
+    ]).catch((err) => {
+      // The card IS saved; only our re-read failed. The next poll corrects the
+      // page, so the customer is told nothing — but never swallow it silently.
+      console.error("[billing] post-card-save refetch failed:", err);
+    });
+
+    setPortalLoadingSource(null);
+    setConfirmSource(null);
+  }
+
   async function openCardPage(source: "manage" | "invoices") {
     setPortalLoadingSource(source);
     setError(null);
@@ -465,8 +488,14 @@ export default function BillingPage() {
         onSuccess: () => {
           // The card only exists at the provider once this fires, so re-read
           // rather than assuming — otherwise the page would claim a card is on
-          // file before one is.
-          window.location.reload();
+          // file before one is. Re-read, NEVER reload: the cache is local-first,
+          // so a reload paints the previous visit's snapshot first and tells a
+          // customer who has just saved a card that they have no payment method,
+          // for as long as the cold billing read takes. Same bug the removal had
+          // (#4252), pointed the other way. The widget has taken itself down by
+          // the time this runs, so the page underneath is what they are looking
+          // at while it settles.
+          void refreshAfterCardSaved();
         },
         onCancel: () => {
           setPortalLoadingSource(null);

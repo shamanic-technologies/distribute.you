@@ -71,10 +71,17 @@ describe("the page renders the mechanism rather than choosing one", () => {
   it("re-reads rather than assuming the card landed", () => {
     // The card only exists at the provider once the widget's success fires, and
     // the provider has already accepted this request once while doing nothing.
+    //
+    // This pinned `window.location.reload()` until #4255. The re-read is right
+    // and the reload was the wrong instrument for it: the cache is local-first,
+    // so a reload paints the previous visit's snapshot first and tells a
+    // customer who has just saved a card that they have no payment method. What
+    // it re-reads is pinned in `billing-card-save-refresh.test.ts`.
     const at = billing.indexOf("openCardWidget({");
     const call = billing.slice(at, billing.indexOf("} catch", at));
     expect(call).toContain("onSuccess");
-    expect(call).toContain("window.location.reload()");
+    expect(call).toContain("refreshAfterCardSaved()");
+    expect(call).not.toContain("location.reload");
   });
 
   it("surfaces the provider's own reason for a refusal", () => {
