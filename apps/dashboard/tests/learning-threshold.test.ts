@@ -396,8 +396,11 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     expect(page).toContain(
       "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
     );
-    // The stat row, the section (which owns the return chart's tag) and the Top-3 card.
-    expect((page.match(/paused=\{campaignPaused\}/g) ?? []).length).toBe(3);
+    // The stat row, the section (which owns the return chart's tag), the Top-3 card,
+    // and the hold band on each of the page's two return branches. The band takes it
+    // for the opposite reason to the others: a paused campaign must NOT be told it is
+    // held, because the status pill beside the heading already says it is not running.
+    expect((page.match(/paused=\{campaignPaused\}/g) ?? []).length).toBe(5);
   });
 
   it("the campaign Audiences table reads the campaign it already polls", () => {

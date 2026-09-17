@@ -219,6 +219,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "campaign",
   "campaigns",
   "campaignLeads",
+  // Why a live campaign is not running right now. Small (one page of hold events,
+  // filtered by slug at the gateway), and it is the first thing a customer reads when
+  // they open a campaign that has produced nothing, so it paints from disk.
+  "campaignHold",
 ]);
 
 export interface PersistableQuery {

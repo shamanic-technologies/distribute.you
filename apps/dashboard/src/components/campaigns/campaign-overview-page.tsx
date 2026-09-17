@@ -49,6 +49,7 @@ import { isRunningStatus } from "@/lib/campaign-controls";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
+import { CampaignHoldBand } from "@/components/campaigns/campaign-hold-band";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -573,6 +574,18 @@ export function CampaignOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
+      {/* Why a campaign that reads `ongoing` is producing nothing, before anything
+          else on the page. It renders on the SAME two branches as the learning band
+          because both are statements about a campaign that is not delivering yet, and
+          a customer who reaches the empty state needs the reason most of all. */}
+      {campaign ? (
+        <CampaignHoldBand
+          campaignId={campaign.id}
+          orgId={orgId}
+          campaignBasePath={`${campaignsPath}/${campaign.id}`}
+          paused={campaignPaused}
+        />
+      ) : null}
       <ScopeLearningBand
           phase={data?.learningPhase ?? null}
           brandId={brandId}
@@ -588,6 +601,18 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
+      {/* Why a campaign that reads `ongoing` is producing nothing, before anything
+          else on the page. It renders on the SAME two branches as the learning band
+          because both are statements about a campaign that is not delivering yet, and
+          a customer who reaches the empty state needs the reason most of all. */}
+      {campaign ? (
+        <CampaignHoldBand
+          campaignId={campaign.id}
+          orgId={orgId}
+          campaignBasePath={`${campaignsPath}/${campaign.id}`}
+          paused={campaignPaused}
+        />
+      ) : null}
       <ScopeLearningBand
           phase={data?.learningPhase ?? null}
           brandId={brandId}
