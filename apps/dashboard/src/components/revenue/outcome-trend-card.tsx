@@ -199,7 +199,11 @@ export function OutcomeTrendCard({
   const total = series?.total ?? lastActual ?? 0;
 
   return (
-    <div className="lg:col-span-2 flex flex-col bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    // NO `lg:col-span-2`: this card sat in the 3-column top band and spanned two of
+    // it; it now sits in a 2-column band, where the same class made it span the WHOLE
+    // row and wrap the bars beside it onto a second line. Its two other call sites are
+    // plain stacks, where the class was inert.
+    <div className="flex flex-col bg-white rounded-xl border border-gray-200 p-4 md:p-6">
       <div className="flex items-baseline justify-between mb-4">
         <div>
           <h3 className="font-medium text-gray-800">Outcome</h3>

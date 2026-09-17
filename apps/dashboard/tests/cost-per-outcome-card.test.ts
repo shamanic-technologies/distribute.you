@@ -13,6 +13,12 @@ const SECTION = readFileSync(
   join(SRC, "components/revenue/revenue-overview-section.tsx"),
   "utf8",
 );
+/** The CALLER that composes the last band — the section hosts the layout and owns none
+ *  of its wiring, so the cards in it are pinned where they are actually rendered. */
+const PAGE = readFileSync(
+  join(SRC, "components/campaigns/campaign-overview-page.tsx"),
+  "utf8",
+);
 
 /**
  * The card's own doc comment NAMES the outcome words as examples of what the producer
@@ -147,19 +153,76 @@ describe("the band is two cards on desktop and one column below it", () => {
     expect(SECTION).toContain('className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2"');
   });
 
-  it("rides the campaign gate, so neither card reaches a brand or an offer", () => {
-    // `showActivityChart` is false on both of those pages; the cost card is inside the
-    // same block rather than behind a second gate that could drift from it.
+  it("holds the per-day bars beside the cumulative count of the SAME signal", () => {
+    // The two are one signal at two grains. The cost card used to sit here and was
+    // swapped up into the top band (owner-asked): the price reads beside the cost
+    // summary it divides, the volume beside the volume.
     const block = SECTION.slice(
       SECTION.indexOf("{showActivityChart && optimizationGoal && ("),
-      SECTION.indexOf("</div>\n  );\n}"),
+      SECTION.indexOf("{showActivityChart && chartsRow}"),
     );
-    expect(block).toContain("<CostPerOutcomeCard");
     expect(block).toContain("<PipelineActivityChart");
+    expect(block).toContain("<OutcomeTrendCard");
+    expect(block).not.toContain("<CostPerOutcomeCard");
+  });
+
+  it("puts the cost card in the top band, where it stretches beside the cost summary", () => {
+    const band = SECTION.slice(
+      SECTION.indexOf('className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch"'),
+      SECTION.indexOf("{showActivityChart && optimizationGoal && ("),
+    );
+    expect(band).toContain("<CostPerOutcomeCard");
+    expect(band).toContain("<RevenueCostSummary");
+    // Its plot STRETCHES here — a fixed height in an `items-stretch` cell leaves a gap
+    // under the curve whenever the summary beside it is taller.
+    expect(CARD).toContain('className="flex-1 min-h-[180px]"');
+    expect(CARD).not.toContain("h-[300px]");
+  });
+
+  it("the WIDE slot spans two of the three columns; the narrow one is the summary", () => {
+    // Measured, not reasoned: without this the band renders an empty third column, which
+    // is what the swap produced on its first pass. The class travels WITH whichever card
+    // takes the slot — `RoiTrendCard` keeps it for the brand and offer.
+    const ROI = readFileSync(join(SRC, "components/revenue/roi-trend-card.tsx"), "utf8");
+    expect(CARD).toContain("lg:col-span-2");
+    expect(ROI).toContain("lg:col-span-2");
+    // And it must NOT stay on the card that moved down into a TWO-column band, where the
+    // same class made it span the whole row and wrap the bars onto a second line.
+    const OUTCOME = readFileSync(join(SRC, "components/revenue/outcome-trend-card.tsx"), "utf8");
+    const rootAt = OUTCOME.indexOf('<div className="');
+    expect(OUTCOME.slice(rootAt, rootAt + 120)).not.toContain("col-span");
   });
 
   it("draws nothing when the producer names no outcome", () => {
-    expect(SECTION).toContain("{costOutcomeLabel && (");
+    // A campaign's outcome is whichever step its leg lands on; a noun picked here would
+    // name a different thing from the stat row above.
+    expect(SECTION).toContain("costOutcomeLabel ? (");
+  });
+
+  it("is CAMPAIGN-ONLY by construction — the brand and offer band charts the return", () => {
+    // `showRoiTrend` is true on both of those pages, so the cost card's branch is
+    // unreachable there without a second flag that could drift from this one.
+    expect(SECTION).toContain("showRoiTrend ? (");
+  });
+});
+
+describe("the last band is three cards, composed by the caller", () => {
+  it("rides the SAME campaign gate as the activity band", () => {
+    // A flag of its own would be a second way to say "campaign only", and the two
+    // would drift.
+    expect(SECTION).toContain("{showActivityChart && chartsRow}");
+  });
+
+  it("splits into thirds at lg and stacks under it", () => {
+    expect(PAGE).toContain('className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3"');
+  });
+
+  it("holds the audiences card, which no longer sits inside the cost summary", () => {
+    // Two copies of one card on one screen is the surface stating one thing twice.
+    const row = PAGE.slice(PAGE.indexOf("chartsRow={"), PAGE.indexOf("topRow={"));
+    expect(row).toContain("<TopAudiencesCard");
+    expect(row).toContain("<TopModelsCard");
+    expect(PAGE).not.toContain("costBottomCard={");
   });
 });
 

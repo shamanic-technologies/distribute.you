@@ -167,6 +167,46 @@ const CostPerOutcomeHistorySchema = z.object({
   undatedOutcomes: z.coerce.number(),
 });
 
+/**
+ * HOW OFTEN THIS SCOPE CONVERTS, PER DAY (features-service#992).
+ *
+ * ⚠️ `conversionRatePct` nulls on a day with NO DENOMINATOR (nobody reached yet) and is
+ * a MEASURED `0` on a day where people were reached and nobody converted. That is the
+ * OPPOSITE of `costPerOutcomeHistory.costPerOutcomeUsd`, which nulls at zero OUTCOMES
+ * because a cost per nothing cannot be divided at all. The two sit side by side on one
+ * screen and look inconsistent; they are not, and the producer states the rule outright.
+ *
+ * `cumulativeOutcomes` is FRACTIONAL on a deeper leg, exactly as the sibling curve's is —
+ * `outcomeObserved` is what tells a raw observation apart from a walked projection.
+ *
+ * `outcomeStep.description` is `.optional()` because the producer states it on some steps
+ * and not others; everything else is required, so a rollback that stops serving the block
+ * fails the parse loudly rather than blanking the card in silence.
+ */
+const ConversionRateHistorySchema = z.object({
+  outcomeStep: z.object({
+    key: z.string(),
+    label: z.string(),
+    description: z.string().optional(),
+  }),
+  legKey: z.string(),
+  outcomeObserved: z.boolean(),
+  daily: z.array(
+    z.object({
+      date: z.string(),
+      cumulativeContacted: z.coerce.number(),
+      cumulativeOutcomes: z.coerce.number(),
+      conversionRatePct: z.coerce.number().nullable(),
+    }),
+  ),
+  datedContacted: z.coerce.number(),
+  undatedContacted: z.coerce.number(),
+  datedOutcomes: z.coerce.number(),
+  undatedOutcomes: z.coerce.number(),
+  /** The WHOLE scope's rate, served so no browser divides two of the producer's fields. */
+  scopeConversionRatePct: z.coerce.number().nullable(),
+});
+
 const RoiHistorySchema = z.object({
   daily: z.array(
     z.object({
@@ -411,6 +451,8 @@ const FeatureRevenueResponseSchema = z.object({
   // Overview-only and null wherever the producer cannot build a curve, exactly like
   // `roiHistory` above — so the reader tolerates both absent and null for the same reason.
   costPerOutcomeHistory: CostPerOutcomeHistorySchema.nullish(),
+  // Same gate, same two absences, same reason as the two curves above it.
+  conversionRateHistory: ConversionRateHistorySchema.nullish(),
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
@@ -533,6 +575,11 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // thing it must never do is divide a spend by a count itself, which is what this block
     // exists to make unnecessary.
     costPerOutcomeHistory: d.costPerOutcomeHistory ?? null,
+    // Whole, verbatim, for the same reason: the card plots the served points and
+    // prints the served scope rate. A browser-side rate would divide two
+    // differently-sized populations — the undated legs sit in the totals and on no
+    // day — and stop agreeing with the figure printed inches above it.
+    conversionRateHistory: d.conversionRateHistory ?? null,
     funnelSteps: d.funnelSteps ?? null,
     // Passed through whole. The band renders these figures verbatim: the browser no
     // longer picks a price, multiplies a threshold or divides a countdown.
