@@ -119,3 +119,61 @@ describe("GET /api/public/channel-returns", () => {
     expect(body.returns[0].featureSlug).toBe("good");
   });
 });
+
+/**
+ * THE FOUNDER COUNT IS ON A DIFFERENT PREFIX, and reading it under the wrong one
+ * is invisible: the handler's own comment says the read "may legitimately be
+ * missing", so a 404 logs one line and `founders` stays null forever. The strip
+ * then renders its shipped seed -- a real sentence, a real number, frozen --
+ * while the landing, which reads the same endpoint at the RIGHT path, states the
+ * live figure. Two surfaces, one fleet, two counts.
+ *
+ * The gateway names its own paths and does NOT uniformly keep the downstream
+ * prefix (`/v1/public/channels` is proxied, `/public/stats/users` is not), so
+ * the prefix is a fact to read off the deployed contract rather than a rule to
+ * infer. Measured 2026-09-17: `/v1/public/stats/users` -> 404 `{"error":"Not
+ * found"}`, `/public/stats/users` -> 200 `{"totalUsers":82,...}`.
+ */
+describe("GET /api/public/catalogue -- the founder count", () => {
+  const urls = (spy: ReturnType<typeof vi.fn>) => spy.mock.calls.map((c) => String(c[0]));
+
+  it("reads the user count off the gateway's UNVERSIONED public path", async () => {
+    const spy = vi.fn(async (input: any) =>
+      String(input).includes("stats/users")
+        ? json({ totalUsers: 82 })
+        : json({ channels: [] }),
+    );
+    globalThis.fetch = spy as any;
+
+    const { GET } = await import("../src/app/api/public/catalogue/route");
+    const res = await GET();
+
+    const usersUrl = urls(spy).find((u) => u.includes("stats/users"));
+    expect(usersUrl).toBeDefined();
+    expect(usersUrl).toContain("/public/stats/users");
+    expect(usersUrl).not.toContain("/v1/public/stats/users");
+    expect((await res.json()).founders).toBe(82);
+  });
+
+  it("keeps the two /v1 reads on /v1 -- only the user count moved", async () => {
+    const spy = vi.fn(async (_input: any) => json({ channels: [] }));
+    globalThis.fetch = spy as any;
+    const { GET } = await import("../src/app/api/public/catalogue/route");
+    await GET();
+
+    expect(urls(spy).some((u) => u.endsWith("/v1/public/channels"))).toBe(true);
+    expect(urls(spy).some((u) => u.endsWith("/v1/public/features/funnel-return-on-spend"))).toBe(
+      true,
+    );
+  });
+
+  it("serves founders null, not a fabricated count, when that read fails", async () => {
+    globalThis.fetch = vi.fn(async (input: any) =>
+      String(input).includes("stats/users") ? json({}, 500) : json({ channels: [] }),
+    ) as any;
+    const { GET } = await import("../src/app/api/public/catalogue/route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect((await res.json()).founders).toBeNull();
+  });
+});
