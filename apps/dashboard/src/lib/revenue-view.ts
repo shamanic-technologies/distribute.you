@@ -525,6 +525,14 @@ export interface RevenueOverview {
    * read carries no curve", never "the outcome was free".
    */
   costPerOutcomeHistory?: CostPerOutcomeHistory | null;
+  /**
+   * HOW OFTEN THIS SCOPE CONVERTS, DAY BY DAY — served whole, divided by nobody
+   * (features-service#992).
+   *
+   * Same gate and the same two absences as the curve above it. Null is "this read carries
+   * no curve", never "it converts nothing" — the MEASURED zero lives on a point.
+   */
+  conversionRateHistory?: ConversionRateHistory | null;
 }
 
 /** One UTC day of the curve. BOTH legs are cumulative since the scope's first day. */
@@ -563,6 +571,51 @@ export interface CostPerOutcomeHistory {
    *  on no day. Reported rather than dropped: dated + undated is the whole count — and it
    *  is exactly why a browser could never have divided this curve out for itself. */
   undatedOutcomes: number;
+}
+
+/** One day of the conversion curve. Cumulative from the scope's first reach. */
+export interface ConversionRatePoint {
+  date: string;
+  cumulativeContacted: number;
+  /** Fractional on a deeper leg — see {@link ConversionRateHistory.outcomeObserved}. */
+  cumulativeOutcomes: number;
+  /**
+   * `100 * cumulativeOutcomes / cumulativeContacted`.
+   *
+   * NULL means NO DENOMINATOR — nobody had been reached yet, so there is no rate to
+   * state. `0` is a MEASURED zero: people were reached and none of them converted.
+   *
+   * ⚠️ The opposite polarity to `CostPerOutcomePoint.costPerOutcomeUsd`, which nulls at
+   * zero OUTCOMES. Both are the producer's own rule and both are right; they only look
+   * inconsistent because the two cards sit side by side.
+   */
+  conversionRatePct: number | null;
+}
+
+/** The whole answer, rendered verbatim — nothing here is divided or re-based. */
+export interface ConversionRateHistory {
+  /** The step the rate converts TO. The producer's word, never one picked here. */
+  outcomeStep: { key: string; label: string; description?: string };
+  /** The leg that step closes, canonical. */
+  legKey: string;
+  /** TRUE ⟺ the outcome counts are raw OBSERVATIONS; FALSE means the curve is a
+   *  PROJECTION walked forward through the funnel's rates, which the card states. */
+  outcomeObserved: boolean;
+  /** Ascending, one entry per day the scope reached someone or converted one. */
+  daily: ConversionRatePoint[];
+  /** The population the CURVE covers — people and outcomes carrying a timestamp. */
+  datedContacted: number;
+  datedOutcomes: number;
+  /**
+   * Counted in the scope's totals and sitting on NO day, so the curve's last point
+   * legitimately differs from {@link scopeConversionRatePct} whenever either is non-zero.
+   * Stated rather than hidden, and neither leg is floored onto the other.
+   */
+  undatedContacted: number;
+  undatedOutcomes: number;
+  /** The WHOLE scope's rate — the headline. Served precisely so no browser divides two
+   *  of the producer's fields to obtain it. Null when there is no denominator at all. */
+  scopeConversionRatePct: number | null;
 }
 
 /**

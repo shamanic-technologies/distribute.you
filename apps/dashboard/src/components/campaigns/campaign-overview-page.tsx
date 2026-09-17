@@ -48,6 +48,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { TopModelsCard } from "@/components/revenue/top-models-card";
+import { ConversionRateCard } from "@/components/revenue/conversion-rate-card";
 import { topModels } from "@/lib/top-models";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { isRunningStatus } from "@/lib/campaign-controls";
@@ -768,6 +769,10 @@ export function CampaignOverviewPage() {
               // cost curve titles itself with, so the two cannot name different things.
               outcomeLabel={data?.learningPhase?.outcomeStep?.label ?? null}
               pending={floorLadderQ.isPending && !floorLadderQ.isError}
+            />
+            <ConversionRateCard
+              history={revenueRevealed ? data?.conversionRateHistory : undefined}
+              pending={!revenueRevealed}
             />
           </div>
         }
