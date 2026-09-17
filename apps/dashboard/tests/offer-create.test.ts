@@ -131,3 +131,45 @@ describe("renaming an offer", () => {
     expect(card).toContain('setQueryData(["brandOffer", brandId, offerId]');
   });
 });
+
+/**
+ * The tenant switcher offers the create too, and the whole point is that it does
+ * so through the ONE modal on the Offers page.
+ *
+ * The menu carried "New organization" and "New brand" and no third row, behind a
+ * comment saying a new offer "is not a chrome action yet" — which stopped being
+ * true the day the Offers page grew its create control and nobody came back. That
+ * is the capability-behind-a-gate shape: the write existed, the modal existed, and
+ * the surface a customer reaches for offered two of three siblings.
+ */
+describe("the switcher's entry point", () => {
+  const switcher = read("components/tenant-switcher.tsx");
+  const page = read("components/offers/offers-page.tsx");
+
+  it("carries a New offer row beside its two siblings", () => {
+    expect(switcher).toContain("<span>New offer</span>");
+    expect(switcher).toContain("<span>New brand</span>");
+    expect(switcher).toContain("<span>New organization</span>");
+  });
+
+  it("NAVIGATES with the marker instead of owning a modal of its own", () => {
+    // `TenantMenu` is unmounted the moment the menu closes, so a modal it owned
+    // would die with its own trigger. A second copy of the form is also how the
+    // two surfaces come to ask for different things.
+    expect(switcher).toContain("/offers?new=1`");
+    expect(switcher).not.toContain("NewOfferModal");
+    expect(switcher).not.toContain("createBrandOffer");
+  });
+
+  it("opens the form on FIRST paint and then consumes the marker", () => {
+    // Seeded in the initializer, not an effect: the form is on screen in the first
+    // frame rather than appearing a moment after the page.
+    expect(page).toContain('searchParams.get("new") === "1"');
+    expect(page).toContain("useState(openedFromLink)");
+    // Left in the URL, `?new=1` re-opens a form the reader already cancelled on any
+    // refresh or Back. Through history, never `router.replace`, which would refetch
+    // the segment to change nothing AND reseed `creating` from the removed param.
+    expect(page).toContain("window.history.replaceState");
+    expect(page).not.toContain("router.replace");
+  });
+});

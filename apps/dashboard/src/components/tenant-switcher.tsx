@@ -415,9 +415,28 @@ function TenantMenu({
                   ))
                 )}
               </div>
-              {/* No "New offer" entry: creating a second proposition is not a
-                  chrome action yet, and an entry that opens nothing is worse than
-                  none. */}
+              {/* The third "create" entry, beside its two siblings. This comment
+                  used to say a new offer "is not a chrome action yet, and an entry
+                  that opens nothing is worse than none" — which stopped being true
+                  the day the Offers page grew a create control (#3991) and nobody
+                  came back here. So the capability existed and was simply
+                  unreachable from the menu that already offers the other two.
+
+                  It NAVIGATES rather than opening the modal from here, for the same
+                  reason the org and brand rows navigate: `TenantMenu` is unmounted
+                  the moment the menu closes, so a modal owned by it would die with
+                  its own trigger. `?new=1` opens the ONE create modal on the Offers
+                  page — never a second copy — and the reader lands on the list the
+                  new offer appears in. */}
+              <button
+                onClick={() =>
+                  go(() => t.router.push(`/orgs/${t.orgId}/brands/${t.brandId}/offers?new=1`))
+                }
+                className="mt-1 flex w-full items-center gap-2 rounded-md border-t border-gray-100 px-4 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50 md:px-3"
+              >
+                <PlusTile sizeClass="w-5 h-5" />
+                <span>New offer</span>
+              </button>
             </Submenu>
           )}
         </div>
