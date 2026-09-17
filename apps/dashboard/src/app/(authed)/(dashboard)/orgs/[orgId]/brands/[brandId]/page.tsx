@@ -269,14 +269,21 @@ export default function BrandOverviewPage() {
   // server-defaulted column — plus the two conversion rates the Outreach-activity
   // chart labels its bars with, and this level renders neither.
 
-  // What this brand may spend TODAY — its RUNNING campaigns' ceilings, joined
-  // from the two keys the page's controls trigger already polls. billing's own
+  // What this scope may spend TODAY — its RUNNING campaigns' ceilings. billing's own
   // `GET /brands/:id/daily-budget` used to answer this and it is status-BLIND:
   // billing keys ceilings on (funnel x channel x offer) and stores no status, so
   // a brand running one campaign at $50 beside one paused at $10 answered $60,
-  // and both the cost card's denominator and the monthly projection below
-  // inherited the overstatement.
-  const { cents: runningDailyBudgetCents } = useRunningDailyBudgetCents(brandId, { enabled });
+  // and the cost card's denominator inherited the overstatement.
+  //
+  // NARROWED BY `offerId`, which is what makes the figure this page's own: the offer
+  // IS part of billing's key, so the producer already totals a per-offer running
+  // figure and reading it is a selection, never a share we invent. Everything else
+  // on an offer Overview carries `offerId`, so a brand-wide ceiling here would have
+  // been the one figure on the page answering at a wider scope than its neighbours.
+  const { cents: runningDailyBudgetCents } = useRunningDailyBudgetCents(brandId, {
+    offerId,
+    enabled,
+  });
 
   // Conversion-tracker liveness (lead-service pixel). Shares the outreach-stat-cards
   // + settings-card query key → one cache entry, no extra network. The Outreach-
@@ -291,17 +298,6 @@ export default function BrandOverviewPage() {
   const trackerSetUp =
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
-  // The Top-3-audiences card's cost column — the SAME choice the Audiences table leads
-  // with, so the two pages cannot state different economics for one brand at one moment.
-  //
-  // It is a month of what may be spent TODAY, so it rides the running-only total
-  // rather than billing's status-blind one: projecting a month from a figure that
-  // counts paused campaigns promises outcomes the money will not buy.
-  const monthlyBudgetUsd =
-    runningDailyBudgetCents != null && runningDailyBudgetCents > 0
-      ? (runningDailyBudgetCents / 100) * 30
-      : null;
-
   // NO workflow-projection here any more. It resolved a WORKFLOW for the brand's goal,
   // and it fed exactly two things: the Outcome line's forward projection, which the
   // Return-on-spend chart replaced, and a spend cap that priced the reassurance banner's
@@ -471,18 +467,13 @@ export default function BrandOverviewPage() {
         activityPending={!activityRevealed}
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
-        // NULL at offer scope, deliberately. The daily budget is funded per BRAND,
-        // so there is no per-offer ceiling; printing the brand's beside this
-        // offer's spend would state a denominator of a wider scope than the
-        // numerator, and dividing it across the offers would invent a share
-        // nobody configured. The card then states what was spent and claims no
-        // ceiling, and the tip below says why.
-        dailyBudgetCents={offerId ? null : runningDailyBudgetCents}
-        budgetNote={
-          offerId
-            ? "There is no daily budget for a single offer: the budget is funded for the whole brand, so this figure is what this offer spent today, with no ceiling of its own to compare it against."
-            : undefined
-        }
+        // Stated at BOTH grains, from one narrowed read. It used to be NULL at offer
+        // scope on the premise that a budget is funded per brand and an offer has no
+        // ceiling of its own — which stopped being true when billing put the offer in
+        // its key: an offer's ceiling is a served figure, and the funnel page one level
+        // down has been stating its own since. A bare numerator with no denominator
+        // reads as a total beside a card whose neighbour really is one.
+        dailyBudgetCents={runningDailyBudgetCents}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}

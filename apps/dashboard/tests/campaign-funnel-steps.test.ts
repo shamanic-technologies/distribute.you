@@ -251,8 +251,9 @@ describe("the brand-level Pause control is gone, everywhere", () => {
     }
 
     // The brand Overview still reads the running money — it is what the cost card's
-    // denominator and the monthly forecast are priced on.
+    // denominator is priced on, narrowed by `offerId` so the offer grain this same
+    // component serves states its own ceiling rather than the whole brand's.
     const brand = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
-    expect(brand).toContain("useRunningDailyBudgetCents(brandId, { enabled })");
+    expect(brand).toContain("useRunningDailyBudgetCents(brandId, {");
   });
 });
