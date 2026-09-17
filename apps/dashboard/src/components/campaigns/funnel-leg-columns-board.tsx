@@ -124,8 +124,13 @@ export function FunnelLegColumnsBoard({
    * offers at brand grain, is running when ANY of its rows is — the same roll-up the
    * modal's own pill states, so the two can never disagree.
    */
-  const runningBySlug = useMemo<Record<string, boolean> | undefined>(() => {
-    if (campaignsQ.isPending && !campaignsQ.isError) return undefined;
+  const { runningBySlug, hasCampaignBySlug } = useMemo<{
+    runningBySlug: Record<string, boolean> | undefined;
+    hasCampaignBySlug: Record<string, boolean> | undefined;
+  }>(() => {
+    if (campaignsQ.isPending && !campaignsQ.isError) {
+      return { runningBySlug: undefined, hasCampaignBySlug: undefined };
+    }
     const rows = buildControlRows(
       campaignsQ.data?.campaigns ?? [],
       budgetsQ.data,
@@ -133,13 +138,17 @@ export function FunnelLegColumnsBoard({
       { offerId, funnelKey: funnel.key },
       offerable,
     );
-    const out: Record<string, boolean> = {};
+    const running: Record<string, boolean> = {};
+    const hasCampaign: Record<string, boolean> = {};
     for (const row of rows) {
       const slug = row.scope?.featureSlug;
       if (!slug) continue;
-      out[slug] = (out[slug] ?? false) || row.running;
+      running[slug] = (running[slug] ?? false) || row.running;
+      // Whether anything can be STARTED, which money no longer answers: a channel
+      // with a ceiling and no campaign is unstarted, not paused and not running.
+      hasCampaign[slug] = (hasCampaign[slug] ?? false) || row.campaignId !== null;
     }
-    return out;
+    return { runningBySlug: running, hasCampaignBySlug: hasCampaign };
   }, [
     campaignsQ.data,
     campaignsQ.isPending,
@@ -158,8 +167,9 @@ export function FunnelLegColumnsBoard({
         channels: funnelChannels,
         savedCentsBySlug,
         runningBySlug,
+        hasCampaignBySlug,
       }),
-    [legs, funnelChannels, savedCentsBySlug, runningBySlug],
+    [legs, funnelChannels, savedCentsBySlug, runningBySlug, hasCampaignBySlug],
   );
 
   /**
@@ -265,6 +275,10 @@ export function FunnelLegColumnsBoard({
 const STATE_LABEL: Record<LegChannelState, string> = {
   running: "Running",
   paused: "Paused",
+  // Funded and never launched. Its own word rather than "Paused", which sends a
+  // customer looking for a switch that was never flipped, and rather than the
+  // "Running" the ceiling used to buy it.
+  not_started: "Not started",
   not_funded: "Not funded",
   unknown: "",
 };

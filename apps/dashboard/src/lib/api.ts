@@ -5037,6 +5037,72 @@ export async function setCampaignStatus(
   });
 }
 
+/**
+ * POST /campaigns — START an acquisition channel of a funnel for one offer.
+ *
+ * The other half of `setCampaignStatus` above, and the one a customer had no way to
+ * reach. A status write addresses a campaign that EXISTS; this is what a channel with
+ * no campaign needs, and since 2026-09-06 that is every channel funded after the
+ * onboarding launch. campaign-service deleted provisioning-from-a-funded-ceiling that
+ * day ("money starts nothing", after reading a ceiling as intent resurrected campaigns
+ * customers had deliberately stopped), so a brand could declare a funnel, fund every
+ * channel of it, press Update and watch nothing happen forever. Its own doc states the
+ * consequence: the honest answer to "why isn't it running" is "nobody launched it".
+ *
+ * ⚠️ This CREATES-OR-RESTARTS and hands the row back STARTED. campaign-service matches
+ * the incumbent of the identity (offer x funnel x channel) whatever its status, live
+ * first then the most recent stopped one, "because this route is only ever a person's
+ * explicit act". So it is never a read-only probe, and the surface offering it says
+ * that it spends immediately rather than at the next daily tick.
+ *
+ * `workflowDynastySlug` is features-service's OWN pick, resolved by the caller off the
+ * workflow-projection ladder and never invented here: which workflow serves a campaign
+ * is the producer's answer, and campaign-service's selector re-picks the (workflow,
+ * audience) cell on every trigger anyway, so this is the lineage seed rather than a
+ * decision about what runs.
+ *
+ * There is deliberately NO maxBudget* field. A sales campaign's money is billing's,
+ * keyed per (funnel, channel, offer), and campaign-service 400s a sales-family campaign
+ * that states a per-campaign ceiling.
+ */
+export async function startFunnelChannelCampaign(
+  params: {
+    name: string;
+    brandId: string;
+    featureSlug: string;
+    featureInputs: Record<string, string>;
+    /** The sales funnel this campaign sells. campaign-service 400s one that states none. */
+    funnelKey: SalesFunnelKeyWire;
+    /** features-service's own recommendation for this (channel, funnel). */
+    workflowDynastySlug: string;
+    /** The proposition it sells, which is what narrows its ceiling in billing. */
+    offerId: string;
+    /** The single arrow it is bought for, when the catalogue could place one. */
+    legKey?: string | null;
+  },
+  token?: string,
+): Promise<{ campaign: RawCampaign }> {
+  return apiCall<{ campaign: RawCampaign }>("/campaigns", {
+    token,
+    method: "POST",
+    body: {
+      name: params.name,
+      brandIds: [params.brandId],
+      featureSlug: params.featureSlug,
+      featureInputs: params.featureInputs,
+      workflowDynastySlug: params.workflowDynastySlug,
+      funnelKey: canonicalSalesFunnelKey(params.funnelKey),
+      offerId: params.offerId,
+      ...(params.legKey ? { legKey: params.legKey } : {}),
+    },
+    headers: {
+      "x-run-id": globalThis.crypto.randomUUID(),
+      "x-brand-id": params.brandId,
+      "x-feature-slug": params.featureSlug,
+    },
+  });
+}
+
 // Campaign sub-resources
 
 /** Snapshot of the lead's CURRENT employer organization (lead-service OrganizationView). */

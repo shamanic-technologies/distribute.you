@@ -1028,6 +1028,22 @@ describe("the Sales Funnels card funds each funnel", () => {
     return haystack.slice(at, at + length);
   };
 
+  /**
+   * Slice from an anchor to the NEXT declaration, so the bound moves with the file.
+   *
+   * For a `toContain`-only guard a slice that runs long cannot hurt, and a measured
+   * number expires on the next comment anybody adds. Only the guards that also carry a
+   * `not.toContain` keep a measured length, where running past the function into its
+   * neighbour IS the failure mode.
+   */
+  const sliceBetween = (haystack: string, anchor: string, until: string) => {
+    const at = haystack.indexOf(anchor);
+    expect(at, `anchor not found: ${anchor}`).toBeGreaterThan(-1);
+    const end = haystack.indexOf(until, at + anchor.length);
+    expect(end, `bound not found: ${until}`).toBeGreaterThan(at);
+    return haystack.slice(at, end);
+  };
+
   it("reads the ceilings from billing, not from the funnel declaration", () => {
     // Two services own two halves of one funnel: brand-service says how it
     // sells, billing says how much it is funded. The card composes both.
@@ -1068,8 +1084,10 @@ describe("the Sales Funnels card funds each funnel", () => {
   it("keeps the ceiling OUT of the funnel patch", () => {
     // `draft` is exactly what brand-service's partial patch reads. Putting money
     // in it would send billing's field to a service that has no column for it.
-    // Measured: the block is 1640 chars, its last field at 1616. Give it room.
-    const state = sliceFrom(src, "type FunnelState = {", 1720);
+    // Bounded by the next declaration rather than a measured length: this guard is
+    // `toContain` only, so a long slice cannot hurt, and every comment added to the
+    // block used to push its last field out of a fixed window.
+    const state = sliceBetween(src, "type FunnelState = {", "function emptyDraft(");
     // The money is PER CHANNEL: the same funnel is worked through several offers
     // at once, each its own campaign, so one figure could not say how it splits.
     expect(state).toContain("budgetUsdByChannel: Record<string, string>");
@@ -1111,13 +1129,21 @@ describe("the Sales Funnels card funds each funnel", () => {
 
   it("writes the ceiling only when it moved, and before the nothing-changed exit", () => {
     // A budget edit alone is a real change even when the economics are
-    // untouched — so the early return for an empty patch must not swallow it.
-    // Measured: the write sits at +3455 from the anchor and the exit at +3521.
-    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 3800);
+    // untouched — so the early return for an empty patch must not swallow it. The same
+    // holds for a STATUS flip: a switch moved on an otherwise untouched funnel is a real
+    // change, so it is ordered before the exit too.
+    const confirm = sliceBetween(
+      src,
+      "function confirm(def: SalesFunnelDef) {",
+      "function removeFunnel(",
+    );
     const write = confirm.indexOf("budgetMutation.mutate");
+    const status = confirm.indexOf("statusMutation.mutate");
     const exit = confirm.indexOf("isEmptyFunnelPatch(body)");
     expect(write).toBeGreaterThan(-1);
+    expect(status).toBeGreaterThan(-1);
     expect(exit).toBeGreaterThan(write);
+    expect(exit).toBeGreaterThan(status);
     // Only the channels that MOVED are written, so funding one offer never
     // re-states its sibling's ceiling.
     expect(confirm).toContain("state.savedCentsByChannel[m.featureSlug]");
@@ -1130,7 +1156,10 @@ describe("the Sales Funnels card funds each funnel", () => {
     // the whole clears. The stored figure is part of the question too: a pair
     // carried under its floor keeps it, so the gate cannot decide on the typed
     // value alone, and without that editing a rate on such a funnel was impossible.
-    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 3400);
+    // Keeps a MEASURED length because of the `not.toContain` below: a slice running
+    // past this function into its neighbour is this guard's own failure mode. The
+    // floor check sits at +3053 from the anchor and the function body ends at +5344.
+    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 5344);
     expect(confirm).toContain("channelMinimumCents(minimums, slug)");
     expect(confirm).toContain("channelBudgetBelowMinimum(minimumCents, projected, pair)");
     expect(confirm).toContain("channelBudgetFloorMessage(channel.name, minimumCents, pair)");

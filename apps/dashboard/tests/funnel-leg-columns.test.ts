@@ -115,7 +115,7 @@ describe("channelsForLeg", () => {
 
 describe("buildLegColumns", () => {
   it("gives every arrow a column, in the funnel's own order", () => {
-    const cols = buildLegColumns({ legs: LEGS, channels: ALL, savedCentsBySlug: {}, runningBySlug: {} });
+    const cols = buildLegColumns({ legs: LEGS, channels: ALL, savedCentsBySlug: {}, runningBySlug: {}, hasCampaignBySlug: {} });
     expect(cols).toHaveLength(4);
     expect(cols.map((c) => c.leg.toKey)).toEqual([
       "conversation",
@@ -128,7 +128,7 @@ describe("buildLegColumns", () => {
   // A column with nothing to offer is the honest answer for a leg we do not sell yet.
   // Omitting it would tell a customer their funnel is shorter than it is.
   it("keeps a column that has no fundable channel at all", () => {
-    const cols = buildLegColumns({ legs: LEGS, channels: [COLD], savedCentsBySlug: {}, runningBySlug: {} });
+    const cols = buildLegColumns({ legs: LEGS, channels: [COLD], savedCentsBySlug: {}, runningBySlug: {}, hasCampaignBySlug: {} });
     expect(cols).toHaveLength(4);
     expect(cols[0].cards).toHaveLength(1);
     expect(cols[1].cards).toEqual([]);
@@ -143,7 +143,7 @@ describe("buildLegColumns", () => {
       legs: LEGS,
       channels: ALL,
       savedCentsBySlug: { "ai-meeting-booking": 500, "sales-cold-email-outreach": 2400 },
-      runningBySlug: {},
+      runningBySlug: {}, hasCampaignBySlug: {},
     });
     const ai = cols[1].cards.find((c) => c.channel.featureSlug === "ai-meeting-booking")!;
     expect(ai.savedCents).toBe(500);
@@ -160,7 +160,7 @@ describe("buildLegColumns", () => {
       legs: LEGS,
       channels: ALL,
       savedCentsBySlug: { "ai-meeting-booking": 0 },
-      runningBySlug: {},
+      runningBySlug: {}, hasCampaignBySlug: {},
     });
     const ai = cols[1].cards.find((c) => c.channel.featureSlug === "ai-meeting-booking")!;
     expect(ai.funded).toBe(false);
@@ -174,31 +174,53 @@ describe("buildLegColumns", () => {
 describe("legChannelState", () => {
   it("reads Paused for a funded channel whose campaign is stopped", () => {
     // The reported case: a $10/day ceiling billing still holds, campaign stopped.
-    expect(legChannelState({ savedCents: 1000, running: false })).toBe("paused");
+    expect(legChannelState({ savedCents: 1000, running: false, hasCampaign: true })).toBe("paused");
   });
 
   it("reads Running when the resolver says a campaign is running", () => {
-    expect(legChannelState({ savedCents: 1000, running: true })).toBe("running");
+    expect(legChannelState({ savedCents: 1000, running: true, hasCampaign: true })).toBe("running");
   });
 
-  // Funded IS running when there is no campaign to ask — `buildControlRows` already
-  // resolves that, so a channel with a ceiling and nothing provisioned yet arrives here
-  // with `running: true` and must not be second-guessed.
-  it("trusts the resolver over the ceiling in both directions", () => {
-    expect(legChannelState({ savedCents: 0, running: true })).toBe("running");
-    expect(legChannelState({ savedCents: 999_999, running: false })).toBe("paused");
+  // THE regression. This block used to assert the opposite, on the premise that
+  // "funded IS running when there is no campaign to ask, because campaign-service
+  // provisions one on its next tick". campaign-service deleted that on 2026-09-06
+  // ("money starts nothing"), so a funded channel with no campaign runs NOTHING and
+  // never will until a person starts it. Production carried one reading `Running` here
+  // at the same moment Offer Settings read `Paused` for the same offer, the same funnel
+  // and the same channel, with neither true.
+  it("reads NOT STARTED for a funded channel that has no campaign at all", () => {
+    expect(legChannelState({ savedCents: 50_000, running: false, hasCampaign: false })).toBe(
+      "not_started",
+    );
+  });
+
+  it("never lets the ceiling decide that something runs", () => {
+    expect(legChannelState({ savedCents: 999_999, running: false, hasCampaign: true })).toBe(
+      "paused",
+    );
+    expect(legChannelState({ savedCents: 0, running: true, hasCampaign: true })).toBe("running");
   });
 
   // A channel nobody has bought is not "paused" — telling a customer it is invites them
-  // to look for a switch that was never flipped.
+  // to look for a switch that was never flipped. It is not "not started" either: there
+  // is nothing to start until it is funded.
   it("keeps Not funded as its own state", () => {
-    expect(legChannelState({ savedCents: 0, running: false })).toBe("not_funded");
+    expect(legChannelState({ savedCents: 0, running: false, hasCampaign: false })).toBe(
+      "not_funded",
+    );
   });
 
   // No silent guess: a card must not state a verdict it does not have yet.
-  it("reads unknown while the campaigns read is unsettled", () => {
-    expect(legChannelState({ savedCents: 1000, running: undefined })).toBe("unknown");
-    expect(legChannelState({ savedCents: 0, running: undefined })).toBe("unknown");
+  it("reads unknown while either read is unsettled", () => {
+    expect(legChannelState({ savedCents: 1000, running: undefined, hasCampaign: true })).toBe(
+      "unknown",
+    );
+    expect(legChannelState({ savedCents: 1000, running: false, hasCampaign: undefined })).toBe(
+      "unknown",
+    );
+    expect(legChannelState({ savedCents: 0, running: undefined, hasCampaign: undefined })).toBe(
+      "unknown",
+    );
   });
 });
 
@@ -209,30 +231,32 @@ describe("buildLegColumns state", () => {
       channels: ALL,
       savedCentsBySlug: { "ai-meeting-booking": 1000, "your-team-meeting-booking": 500 },
       runningBySlug: { "ai-meeting-booking": false, "your-team-meeting-booking": true },
+      hasCampaignBySlug: { "ai-meeting-booking": true, "your-team-meeting-booking": true },
     });
     const byslug = Object.fromEntries(cols[1].cards.map((c) => [c.channel.featureSlug, c.state]));
     expect(byslug["ai-meeting-booking"]).toBe("paused");
     expect(byslug["your-team-meeting-booking"]).toBe("running");
   });
 
-  // A slug absent from a SETTLED map is a channel no row covers — not running, never
-  // running. Absent from an UNSETTLED map is a question we cannot answer yet.
+  // A slug absent from a SETTLED map is a channel no row covers: not running, and with
+  // no campaign either, so a funded one reads NOT STARTED. Absent from an UNSETTLED map
+  // is a question we cannot answer yet.
   it("separates an absent slug from an unsettled read", () => {
     const settled = buildLegColumns({
       legs: LEGS,
       channels: ALL,
       savedCentsBySlug: { "ai-meeting-booking": 1000 },
-      runningBySlug: {},
+      runningBySlug: {}, hasCampaignBySlug: {},
     });
     expect(settled[1].cards.find((c) => c.channel.featureSlug === "ai-meeting-booking")!.state).toBe(
-      "paused",
+      "not_started",
     );
 
     const unsettled = buildLegColumns({
       legs: LEGS,
       channels: ALL,
       savedCentsBySlug: { "ai-meeting-booking": 1000 },
-      runningBySlug: undefined,
+      runningBySlug: undefined, hasCampaignBySlug: undefined,
     });
     expect(
       unsettled[1].cards.find((c) => c.channel.featureSlug === "ai-meeting-booking")!.state,

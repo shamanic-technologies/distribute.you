@@ -142,8 +142,12 @@ describe("buildControlRows — a channel with no campaign yet", () => {
     );
     const offered = rows.find((r) => r.campaignId === null)!;
     expect(offered.savedCents).toBe(700);
-    // Funded is what "running" means for a row with no campaign to ask.
-    expect(offered.running).toBe(true);
+    // NOT running, whatever it is funded at. This line asserted the opposite until
+    // campaign-service deleted provisioning-from-a-funded-ceiling (2026-09-06, "money
+    // starts nothing"): a channel with no campaign runs nothing and never will until a
+    // person starts one, so reading the ceiling as a verdict put `Running` on the funnel
+    // board at the same moment Offer Settings read `Paused` for the same channel.
+    expect(offered.running).toBe(false);
   });
 
   it("emits a budget write and NEVER a status write when it is turned on", () => {

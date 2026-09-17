@@ -8,14 +8,37 @@ import {
   declareOfferSalesFunnel,
   getBrand,
   getBrandSalesEconomics,
+  getFeature,
   getOfferSalesFunnels,
   getBrandFunnelBudgets,
   getBrandSpendableBudget,
+  getPublicChannels,
+  getWorkflowProjectionLadder,
+  listCampaignsByBrand,
+  prefillFeatureInputs,
+  prefillToStringMap,
   saveBrandFunnelBudget,
+  setCampaignStatus,
+  startFunnelChannelCampaign,
   undeclareOfferSalesFunnel,
   type BrandSalesFunnelSet,
   type DeclaredSalesFunnel,
 } from "@/lib/api";
+import { buildControlRows, type OfferableChannel } from "@/lib/campaign-controls";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { launchLegKey } from "@/lib/stated-campaign-leg";
+import {
+  CHANNEL_RUN_STATE_LABEL,
+  ChannelStartRefusal,
+  channelRunState,
+  channelStartBlocker,
+  channelStatusSummary,
+  channelWriteErrorMessage,
+  startableWorkflowDynastySlug,
+  type ChannelRunState,
+  type ChannelStatusMove,
+} from "@/lib/channel-start";
+import { Skeleton } from "@/components/skeleton";
 import { useFeatures } from "@/lib/features-context";
 import {
   channelsForFunnel,
@@ -118,6 +141,25 @@ type FunnelState = {
    * a slug-less write on a split funnel for exactly that reason.
    */
   budgetUsdByChannel: Record<string, string>;
+  /**
+   * Whether each channel should be RUNNING once Save lands, as the switch reads it,
+   * keyed on the channel's feature slug. Kept out of `draft` for the same reason the
+   * money is: `draft` is exactly what brand-service's patch reads, and this is
+   * campaign-service's. Three services, three writes, one form.
+   *
+   * A key is present only once the reads have settled, so a channel whose state we do
+   * not know yet has no draft to compare against and cannot be saved by accident.
+   */
+  runningByChannel: Record<string, boolean>;
+  /** What campaign-service reports right now, the baseline the switch diffs against. */
+  savedRunningByChannel: Record<string, boolean>;
+  /**
+   * The campaign a status write ADDRESSES per channel, or null for one that has none.
+   * Null is what makes the switch a CREATE rather than a status flip: since
+   * campaign-service stopped provisioning from a funded ceiling, a channel funded
+   * after onboarding has no campaign and nothing can address it until one is made.
+   */
+  campaignIdByChannel: Record<string, string | null>;
   /** What billing has stored per channel, in cents. Zero = not funded. */
   savedCentsByChannel: Record<string, number>;
   /**
@@ -148,6 +190,9 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
       touched: false,
       draft: emptyDraft(def),
       budgetUsdByChannel: {},
+      runningByChannel: {},
+      savedRunningByChannel: {},
+      campaignIdByChannel: {},
       savedCentsByChannel: {},
       savedBudgetCents: 0,
       error: null,
@@ -213,10 +258,23 @@ export function BrandSalesFunnelsCard({
     { enabled: Boolean(brandId) },
   );
 
+  // Whether each channel is RUNNING, which is campaign-service's own word and the one
+  // thing money cannot answer. Since 2026-09-06 a funded ceiling provisions nothing, so
+  // a channel funded here after onboarding has no campaign at all until a person starts
+  // it — and that is the state this card had no way to show or change.
+  //
+  // `["campaigns", brandId]` is the key the funnels table and the controls trigger
+  // already poll, so this costs no request, and every write below re-reads it through
+  // `invalidateCampaignMoney`.
+  const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
+
   // Which channels each funnel may be sold through is features-service's own
   // statement, carried on the feature list the app already fetches — so this
   // dedupes on the shared `["features"]` key rather than adding a read.
   const { features } = useFeatures();
+  // The same catalogue in the shape `buildControlRows` reads. It dedupes on
+  // `["features"]` too, so it is the same one payload.
+  const catalogue = useAcquisitionChannels();
 
   // What a day of each channel costs to run — the floor a funded ceiling clears.
   // features-service publishes it on the channel's own terms, and this reads it
@@ -249,6 +307,8 @@ export function BrandSalesFunnelsCard({
     funnels: undefined,
     budgets: undefined,
   });
+  /** The campaigns payload the SWITCHES were last seeded from. Same rule, own read. */
+  const seededStatusFrom = useRef<unknown>(undefined);
 
   // Seed every funnel from the server: a DECLARED funnel from its own stored
   // values, an undeclared one from the brand's blended economics as a guess to
@@ -353,6 +413,65 @@ export function BrandSalesFunnelsCard({
     openKey,
   ]);
 
+  // Seed every funnel's per-channel SWITCH from campaign-service, on its own effect
+  // and its own ref.
+  //
+  // Separate from the field hydration above because the two settle independently: the
+  // campaigns read must never hold the rates and the money hostage, and a field edit
+  // must never be re-seeded because a campaign poll landed. Same identity-compare rule
+  // though, for the same reason: the local-first cache resolves the disk snapshot
+  // first, so a boolean latch would seed from the previous visit and ignore the server
+  // answer that lands a moment later.
+  //
+  // The rows come from `buildControlRows`, the ONE resolver every campaign surface
+  // writes through, scoped to this offer and this funnel. `offerable` is what makes a
+  // channel with no campaign appear at all: without it a channel nobody has launched is
+  // invisible to a campaign-derived list by construction, which is precisely the
+  // channel someone opens this card to turn on.
+  useEffect(() => {
+    if (campaignsQ.data === undefined && !campaignsQ.isError) return;
+    if (seededStatusFrom.current === campaignsQ.data) return;
+    seededStatusFrom.current = campaignsQ.data;
+    setStates((prev) => {
+      const next = { ...prev };
+      for (const def of SALES_FUNNELS) {
+        const channels = channelsForFunnel(def.key, features);
+        const offerable: OfferableChannel[] = channels.map((channel) => ({
+          funnelKey: def.key,
+          featureSlug: channel.featureSlug,
+          channelName: channel.name,
+          offerId,
+        }));
+        const rows = buildControlRows(
+          campaignsQ.data?.campaigns ?? [],
+          budgetData,
+          catalogue,
+          { offerId, funnelKey: def.key },
+          offerable,
+        );
+        const savedRunningByChannel: Record<string, boolean> = {};
+        const campaignIdByChannel: Record<string, string | null> = {};
+        for (const row of rows) {
+          const slug = row.scope?.featureSlug;
+          if (!slug) continue;
+          savedRunningByChannel[slug] = (savedRunningByChannel[slug] ?? false) || row.running;
+          campaignIdByChannel[slug] = campaignIdByChannel[slug] ?? row.campaignId;
+        }
+        // A switch the user has already flipped outranks the server, and so does the
+        // card they have open: a form that rewrites itself mid-edit is worse than a
+        // stale one. Same rule the fields follow.
+        const keepDraft = next[def.key].touched || openKey === def.key;
+        next[def.key] = {
+          ...next[def.key],
+          savedRunningByChannel,
+          campaignIdByChannel,
+          runningByChannel: keepDraft ? next[def.key].runningByChannel : savedRunningByChannel,
+        };
+      }
+      return next;
+    });
+  }, [campaignsQ.data, campaignsQ.isError, budgetData, catalogue, features, offerId, openKey]);
+
   /** Write the funnel we just declared into the cached set, in catalogue order. */
   function cacheDeclared(funnel: DeclaredSalesFunnel) {
     queryClient.setQueryData(
@@ -449,6 +568,102 @@ export function BrandSalesFunnelsCard({
     },
   });
 
+  /**
+   * campaign-service's write, the third of the three this one button commits.
+   *
+   * Two shapes behind one switch, and which one fires is decided by whether a campaign
+   * EXISTS for the (offer, funnel, channel):
+   *   - it does  -> `PATCH /campaigns/:id` with activate | stop, the status flip.
+   *   - it does not -> `POST /campaigns`, which creates it and hands it back started.
+   *
+   * The second is the whole point of this card growing a switch. Since campaign-service
+   * deleted provisioning from a funded ceiling (2026-09-06, "money starts nothing"), a
+   * channel funded after the onboarding launch has no campaign and never will until a
+   * person makes one, and no surface in the customer dashboard could.
+   *
+   * The workflow is resolved LAZILY, inside the mutation rather than on a poll: it is
+   * needed once per start, so fetching it per channel on every render of this card would
+   * be one extra read per channel per visit for a value almost nobody uses. It is
+   * features-service's own recommendation for THIS funnel (`funnel`, never `goal`: the
+   * two meeting funnels both echo `meetingBooked`, so a goal-keyed request prices and
+   * ranks across both at once).
+   *
+   * The starts run in SEQUENCE, like the budget writes: each one creates a campaign and
+   * fires its workflow, and two concurrent creates on one identity is the shape that
+   * produced duplicate live campaigns in production.
+   */
+  const statusMutation = useMutation({
+    mutationFn: async (vars: {
+      def: SalesFunnelDef;
+      moves: { featureSlug: string; channelName: string; next: boolean; campaignId: string | null }[];
+    }) => {
+      for (const move of vars.moves) {
+        if (move.campaignId) {
+          await setCampaignStatus(move.campaignId, move.next ? "activate" : "stop", {
+            brandId,
+            featureSlug: move.featureSlug,
+          });
+          continue;
+        }
+        // No campaign to address, so turning it OFF is already true and turning it ON
+        // means creating one. A pause on a channel with no campaign is a no-op rather
+        // than an error: there is nothing running to stop.
+        if (!move.next) continue;
+        const ladder = await getWorkflowProjectionLadder({
+          featureSlug: move.featureSlug,
+          brandId,
+          funnel: vars.def.key,
+        });
+        const workflowDynastySlug = startableWorkflowDynastySlug(
+          ladder.recommendedWorkflowDynastySlug,
+        );
+        if (!workflowDynastySlug) {
+          // features-service names no workflow for this (channel, funnel), so there is
+          // nothing to run. Picking one here would be a second opinion over the producer
+          // that owns the answer, and it would create a campaign that does nothing.
+          throw new ChannelStartRefusal(
+            `${move.channelName} has no workflow ready for this funnel yet, so there is nothing to start.`,
+          );
+        }
+        const [inputs, channels] = await Promise.all([
+          buildFeatureInputs(move.featureSlug),
+          // Best-effort, exactly as the onboarding launch treats it: a campaign that
+          // states no leg is read as every campaign created before the column existed,
+          // and inventing one would file it under an arrow nobody bought.
+          getPublicChannels().catch((err) => {
+            console.error("[dashboard] could not read the channel catalogue for the leg", err);
+            return null;
+          }),
+        ]);
+        await startFunnelChannelCampaign({
+          name: `${brand?.name ?? brandDomain ?? "Brand"} — ${vars.def.name}`,
+          brandId,
+          featureSlug: move.featureSlug,
+          featureInputs: inputs,
+          funnelKey: vars.def.key,
+          workflowDynastySlug,
+          offerId,
+          legKey: launchLegKey(channels, move.featureSlug, vars.def),
+        });
+      }
+    },
+    onSuccess: (_res, vars) => {
+      // Whether a channel runs moves the running total, the campaign rows and every
+      // figure derived from them, so they are re-read at once rather than waiting for
+      // their own next poll. `["campaigns", brandId]` is in that set, which is what
+      // re-seeds the switches from campaign-service's own answer.
+      invalidateCampaignMoney(queryClient);
+      seededStatusFrom.current = null;
+      patch(vars.def.key, { error: null });
+    },
+    onError: (err, vars) => {
+      console.error("[dashboard] channel status write failed", err);
+      patch(vars.def.key, {
+        error: channelWriteErrorMessage(err, vars.moves.some((m) => m.next) ? "start" : "pause"),
+      });
+    },
+  });
+
   const undeclareMutation = useMutation({
     mutationFn: (vars: { def: SalesFunnelDef }) =>
       undeclareOfferSalesFunnel(brandId, offerId, vars.def.key),
@@ -482,6 +697,52 @@ export function BrandSalesFunnelsCard({
     },
     onSettled: () => setPendingKey(null),
   });
+
+  /**
+   * The feature inputs a new campaign is created with, resolved the SAME way the
+   * onboarding launch resolves them: the channel's own declared input keys, filled
+   * from features-service's prefill for this brand.
+   *
+   * Cached per channel for the life of the card, because a customer starting two
+   * channels of one funnel in one Save would otherwise prefill twice for the same
+   * brand. Only keys the prefill actually answered are sent: an empty string is not an
+   * answer, and api-service validates by key-presence.
+   */
+  const featureInputsRef = useRef<Record<string, Record<string, string>>>({});
+  async function buildFeatureInputs(featureSlug: string): Promise<Record<string, string>> {
+    const cached = featureInputsRef.current[featureSlug];
+    if (cached) return cached;
+    const [{ feature }, prefill] = await Promise.all([
+      getFeature(featureSlug),
+      prefillFeatureInputs(featureSlug, [brandId]),
+    ]);
+    const prefilled = prefillToStringMap(prefill.prefilled);
+    const out: Record<string, string> = {};
+    for (const input of feature.inputs ?? []) {
+      const value = prefilled[input.key]?.trim();
+      if (value) out[input.key] = value;
+    }
+    featureInputsRef.current[featureSlug] = out;
+    return out;
+  }
+
+  /** Flip one channel's switch in the DRAFT. Nothing is written until Save. */
+  function toggleChannel(key: SalesFunnelKey, featureSlug: string) {
+    setStates((prev) => {
+      const state = prev[key];
+      const saved = state.savedRunningByChannel[featureSlug] ?? false;
+      const current = state.runningByChannel[featureSlug] ?? saved;
+      return {
+        ...prev,
+        [key]: {
+          ...state,
+          touched: true,
+          error: null,
+          runningByChannel: { ...state.runningByChannel, [featureSlug]: !current },
+        },
+      };
+    });
+  }
 
   function patch(key: SalesFunnelKey, update: Partial<FunnelState>) {
     setStates((prev) => ({ ...prev, [key]: { ...prev[key], ...update } }));
@@ -560,6 +821,60 @@ export function BrandSalesFunnelsCard({
     return out;
   }
 
+  /** Has the campaigns read answered? Settled = resolved OR errored, never "succeeded". */
+  const campaignsSettled = campaignsQ.data !== undefined || campaignsQ.isError;
+
+  /**
+   * What each channel of this funnel is DOING right now, keyed on the feature slug.
+   *
+   * campaign-service's own word plus whether a campaign exists at all, through the ONE
+   * shared resolver both this card and the funnel board read: a channel cannot say
+   * "Running" on one screen and "Paused" on the other for the same offer and funnel,
+   * which is exactly what it did while a funded ceiling stood in for the verdict.
+   */
+  function runStateOf(key: SalesFunnelKey, featureSlug: string): ChannelRunState {
+    return channelRunState({
+      settled: campaignsSettled,
+      campaignId: states[key].campaignIdByChannel[featureSlug] ?? null,
+      running: states[key].savedRunningByChannel[featureSlug] ?? false,
+    });
+  }
+
+  /**
+   * The switches that MOVED, as a live compare against what campaign-service reports,
+   * never a sticky flag: flipping a switch and flipping it back has to disarm Save.
+   *
+   * `kind` separates a CREATE from a status flip, which is what the sentence above the
+   * button needs to say and what the mutation branches on. Nothing moves while the
+   * campaigns read is unsettled: a draft built against a baseline we do not have would
+   * write a status nobody chose.
+   */
+  function statusMovesFor(
+    def: SalesFunnelDef,
+  ): { featureSlug: string; channelName: string; next: boolean; kind: ChannelStatusMove["kind"] }[] {
+    if (!campaignsSettled) return [];
+    const state = states[def.key];
+    const out: {
+      featureSlug: string;
+      channelName: string;
+      next: boolean;
+      kind: ChannelStatusMove["kind"];
+    }[] = [];
+    for (const channel of channelsForFunnel(def.key, features)) {
+      const slug = channel.featureSlug;
+      const saved = state.savedRunningByChannel[slug] ?? false;
+      const next = state.runningByChannel[slug] ?? saved;
+      if (next === saved) continue;
+      out.push({
+        featureSlug: slug,
+        channelName: channel.name,
+        next,
+        kind: !next ? "pause" : state.campaignIdByChannel[slug] ? "restart" : "start",
+      });
+    }
+    return out;
+  }
+
   function confirm(def: SalesFunnelDef) {
     const state = states[def.key];
     // The patch is diffed against what is stored, so a set we could not read is
@@ -591,6 +906,21 @@ export function BrandSalesFunnelsCard({
     // impossible. billing holds the same rule against the same published figure and
     // its 400 is what decides — a floor we could not read refuses nothing here.
     const usdByChannel = typedUsdByChannel(def.key);
+    // A channel cannot be turned ON with no ceiling: campaign-service holds such a
+    // campaign on the funding gate every tick, so the create would produce a campaign
+    // that exists and never sends. Refused HERE rather than sent, and the customer is
+    // told to fund it rather than left with a switch that silently achieved nothing.
+    for (const move of statusMovesFor(def)) {
+      if (!move.next) continue;
+      const blocker = channelStartBlocker({
+        state: runStateOf(def.key, move.featureSlug),
+        typedCents: (usdByChannel[move.featureSlug] ?? 0) * 100,
+      });
+      if (blocker) {
+        patch(def.key, { error: `${move.channelName}: ${blocker}` });
+        return;
+      }
+    }
     const pairCents = pairCentsFor(def.key);
     for (const channel of channelsForFunnel(def.key, features)) {
       const slug = channel.featureSlug;
@@ -621,6 +951,26 @@ export function BrandSalesFunnelsCard({
       .map(([featureSlug, usd]) => ({ featureSlug, cents: usd * 100 }))
       .filter((m) => m.cents !== (state.savedCentsByChannel[m.featureSlug] ?? 0));
     if (moves.length > 0) budgetMutation.mutate({ def, moves });
+
+    // The STATUS, campaign-service's own. Only the switches that MOVED travel, so
+    // editing a conversion rate never touches whether anything runs, which is the whole
+    // separation this card was missing: Update used to write fields and money and say
+    // nothing about the one fact a customer was actually waiting on.
+    //
+    // Ordered BEFORE the nothing-changed exit for the same reason the budget is: a
+    // switch flipped on an otherwise untouched funnel is a real change.
+    const statusMoves = statusMovesFor(def);
+    if (statusMoves.length > 0) {
+      statusMutation.mutate({
+        def,
+        moves: statusMoves.map((m) => ({
+          featureSlug: m.featureSlug,
+          channelName: m.channelName,
+          next: m.next,
+          campaignId: state.campaignIdByChannel[m.featureSlug] ?? null,
+        })),
+      });
+    }
 
     if (state.declared && isEmptyFunnelPatch(body)) {
       patch(def.key, { touched: false, error: null });
@@ -664,6 +1014,12 @@ export function BrandSalesFunnelsCard({
     // whether a ceiling EXISTS, never what is being spent: billing stores no
     // status, so this counts a paused channel exactly like a running one.
     const offerFundedCents = offerFunnelTotalCents(state.savedCentsByChannel);
+    // Whether campaign-service holds a campaign for ANY channel of this funnel, which
+    // is what separates "stopped" from "never launched" on the closed card.
+    const funnelHasAnyCampaign = Object.values(state.campaignIdByChannel).some((id) => id !== null);
+    const statusSummary = channelStatusSummary(
+      statusMovesFor(def).map((m) => ({ channelName: m.channelName, kind: m.kind })),
+    );
     // What billing funds each channel of this funnel at ACROSS EVERY OFFER — the
     // grain the channel's floor binds, so it is what each row's own hint states.
     const channelPairCents = pairCentsFor(def.key);
@@ -770,13 +1126,19 @@ export function BrandSalesFunnelsCard({
               ${Math.round(runningCents / 100).toLocaleString("en-US")}/day
             </span>
           ) : offerFundedCents > 0 ? (
-            // Funded and stopped is its own answer, and it is the one the old tag
+            // Funded and not running is its own answer, and it is the one the old tag
             // got wrong in both directions: it summed the paused ceiling into the
             // green figure, and a funnel whose every channel was paused read "Not
             // funded" although the customer's amounts are all still there. Restart
             // it and it spends that money again — nothing to re-enter.
+            //
+            // Which of the two words depends on whether a campaign EXISTS, never on
+            // the money: a funnel funded after the onboarding launch has none at all
+            // (campaign-service stopped provisioning from a ceiling on 2026-09-06), and
+            // calling that "Paused" sends the customer looking for a switch that was
+            // never flipped. Open the card and the switch is there.
             <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
-              Paused
+              {funnelHasAnyCampaign ? "Paused" : "Not started"}
             </span>
           ) : (
             <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
@@ -923,19 +1285,28 @@ export function BrandSalesFunnelsCard({
                 the funnel sells: every number above stays as it is, and the
                 funnel's other channels keep running.
 
-                Funding a channel IS choosing it, which is why there is no toggle
-                beside these fields: a switch would be a second way to say what
-                the amount already says.
+                Funding a channel is NOT starting it, which is why each row
+                carries a switch beside its amount. It used to: campaign-service
+                provisioned a campaign for any funded pair on its own tick, so the
+                amount really did say everything. That was deleted on 2026-09-06
+                ("money starts nothing") after reading a ceiling as intent brought
+                back campaigns customers had deliberately stopped — so a channel
+                funded here now has no campaign at all until a person starts one,
+                and this card was the surface with no way to say so or to act.
+
+                The two are committed by ONE Save and diffed separately, so editing
+                a rate never touches what runs and flipping a switch never restates
+                a rate.
 
                 It sits BELOW the funnel's own inputs, full width, one row per
-                channel — a channel is a thing the brand funds, not a field, and
-                squeezed into a quarter of the input grid the mark, the name and
-                the amount had no room to read as one line. */}
+                channel — a channel is a thing the brand funds and runs, not a
+                field, and squeezed into a quarter of the input grid the mark, the
+                name, the amount and the switch had no room to read as one line. */}
             <div className="mt-5 border-t border-gray-100 pt-4">
               <label className="mb-2 flex items-center gap-1 text-xs text-gray-500">
-                Daily budget per channel
+                Channels, and what each may spend a day
                 <InfoTooltip
-                  tip="The most this funnel may spend in a day, one ceiling per channel it sells through. Leave a channel empty to stop funding it, and nothing else about it is lost."
+                  tip="One ceiling per channel this funnel sells through, and a switch for whether it runs. Funding a channel does not start it: the switch does. Leave an amount empty to stop funding a channel, and nothing else about it is lost."
                   placement="top"
                 />
               </label>
@@ -950,18 +1321,30 @@ export function BrandSalesFunnelsCard({
                     channelMinimumCents(minimums, channel.featureSlug),
                     channelPairCents[channel.featureSlug] ?? 0,
                   );
+                  const runState = runStateOf(def.key, channel.featureSlug);
+                  const savedRunning = state.savedRunningByChannel[channel.featureSlug] ?? false;
+                  const nextRunning = state.runningByChannel[channel.featureSlug] ?? savedRunning;
                   return (
+                  // Two lines on a phone, one from `sm:` up. The row carries four
+                  // things now and they do not fit a phone side by side: measured at
+                  // 412px the name had 33px left and every channel read "Sales ...",
+                  // "AI ...", "Yo..." — the identity of the row destroyed to make room
+                  // for the controls that act on it. Stacked, the name gets the full
+                  // width and the amount and the switch share the line below it.
                   <li
                     key={channel.featureSlug}
-                    className="flex items-center gap-3 px-3 py-2.5"
+                    className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3"
                   >
-                    <AcquisitionChannelMark def={channel} size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-gray-700">{channel.name}</span>
-                      {hint && (
-                        <span className="block truncate text-xs text-gray-400">{hint}</span>
-                      )}
-                    </span>
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <AcquisitionChannelMark def={channel} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-gray-700">{channel.name}</span>
+                        {hint && (
+                          <span className="block truncate text-xs text-gray-400">{hint}</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
                     <div className="relative w-32 shrink-0">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
                         $
@@ -988,11 +1371,56 @@ export function BrandSalesFunnelsCard({
                         /day
                       </span>
                     </div>
+                    {/* Whether it RUNS, which the amount beside it does not say.
+                        A skeleton while campaign-service has not answered: a
+                        switch is a claim about what is happening, and drawing one
+                        in either position before we know is a guess dressed as a
+                        state. */}
+                    {runState === "unknown" ? (
+                      <Skeleton className="h-6 w-24 shrink-0 rounded-full" />
+                    ) : (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={nextRunning}
+                        aria-label={`${nextRunning ? "Stop" : "Start"} ${channel.name}`}
+                        onClick={() => toggleChannel(def.key, channel.featureSlug)}
+                        disabled={saving}
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
+                          nextRunning
+                            ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                            : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100"
+                        }`}
+                      >
+                        <span
+                          aria-hidden
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            nextRunning ? "bg-green-600" : "bg-gray-400"
+                          }`}
+                        />
+                        {/* What it will BE once Save lands when the switch has
+                            moved, and what it IS when it has not. A switch that
+                            reads the saved word while sitting in the drafted
+                            position is one control saying two things. */}
+                        {nextRunning === savedRunning
+                          ? CHANNEL_RUN_STATE_LABEL[runState]
+                          : nextRunning
+                            ? "Start"
+                            : "Pause"}
+                      </button>
+                    )}
+                    </div>
                   </li>
                   );
                 })}
               </ul>
             </div>
+
+            {/* What Save is about to do to what RUNS, said before it does it.
+                Starting fires the workflow immediately rather than at the next
+                daily tick, so a customer who thought they were scheduling
+                something for tomorrow reads it here and not in their billing. */}
+            {statusSummary && <p className="mt-4 text-sm text-gray-600">{statusSummary}</p>}
 
             {state.error && <p className="mt-4 text-sm text-red-600">{state.error}</p>}
 
