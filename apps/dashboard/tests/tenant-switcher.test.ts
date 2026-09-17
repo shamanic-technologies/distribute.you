@@ -77,9 +77,13 @@ describe("Tenant switcher", () => {
     expect(chip).toContain("overflow-y-auto");
   });
 
-  it("the panel carries org, brand and org-scoped settings", () => {
+  it("the panel carries org, brand, offer and org-scoped settings", () => {
     expect(switcher).toContain("New organization");
     expect(switcher).toContain("New brand");
+    // All three tiers offer their own create. The offer row is the one that was
+    // missing for as long as the Offers page had had a create control — see
+    // `offer-create.test.ts`, which owns the rest of that story.
+    expect(switcher).toContain("New offer");
     // The entry names the whole org group it opens (Billing AND API Key), not
     // just Billing — a label narrower than its destination reads as a gap.
     expect(switcher).toContain("<span>Organization Settings</span>");

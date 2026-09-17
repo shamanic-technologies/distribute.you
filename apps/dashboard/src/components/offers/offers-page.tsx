@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { DashboardPage } from "@/components/dashboard-page";
 import { NewOfferModal } from "@/components/offers/new-offer-modal";
 import { OffersTable } from "@/components/offers/offers-table";
@@ -28,7 +28,25 @@ export function OffersPage() {
   const brandId = String(params.brandId);
   const featureSlug = useSoleFeatureSlug();
   const brandPath = `/orgs/${orgId}/brands/${brandId}`;
-  const [creating, setCreating] = useState(false);
+
+  // Deep-link seed: the tenant switcher's "New offer" row has no modal of its own
+  // (the menu unmounts on click, taking any modal it owned with it), so it sends
+  // the reader here with `?new=1` and the ONE create modal opens on first paint.
+  // Seeded in the initializer rather than an effect, so the form is on screen in
+  // the first frame instead of appearing a moment after the page.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const openedFromLink = searchParams.get("new") === "1";
+  const [creating, setCreating] = useState(openedFromLink);
+
+  // Consume the marker once, on arrival. Left in the URL it would re-open the form
+  // on a refresh or a Back — a create form the reader already cancelled. Through
+  // history rather than the ROUTER: a router-level replace refetches the segment to
+  // change nothing, and the re-render it causes reseeds `creating` from a param we
+  // have just removed, closing the modal we opened a frame earlier.
+  useEffect(() => {
+    if (openedFromLink) window.history.replaceState(null, "", pathname);
+  }, [openedFromLink, pathname]);
 
   return (
     <DashboardPage width="wide">
