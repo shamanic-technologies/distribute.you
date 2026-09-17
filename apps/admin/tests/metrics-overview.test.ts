@@ -5,11 +5,13 @@ import {
   activeOrgsSince,
   columnHeightPct,
   firstPaymentsSince,
+  firstPaymentTimesUnix,
   newlyActiveOrgsSince,
   clientEconomics,
   funnelSteps,
   funnelWindows,
   sumSince,
+  windowEdgeLabel,
   windowStartIso,
   WEEKS_PER_MONTH,
   type ClientEconomicsRow,
@@ -205,6 +207,83 @@ describe("firstPaymentsSince", () => {
     expect(firstPaymentsSince([Math.floor(edgeMs / 1000)], edgeMs)).toBe(1);
     // ...and the same instant read against the DAY would have counted it
     expect(window.sinceIso).toBe(new Date(edgeMs).toISOString().slice(0, 10));
+  });
+
+  // The two answers a future edit must never collapse. NULL is the producer saying it
+  // could not measure — it serves that instead of throwing, which used to 5xx every
+  // money figure on the payload — and EMPTY is nobody having ever paid. A null counted
+  // as 0 would put a zero paid-users stage on the page for an upstream hiccup.
+  it("answers null when the instants are unavailable, at every window", () => {
+    const [inception, d90, d30] = funnelWindows(now);
+    expect(firstPaymentsSince(null, inception.sinceMs)).toBeNull();
+    expect(firstPaymentsSince(null, d90.sinceMs)).toBeNull();
+    expect(firstPaymentsSince(null, d30.sinceMs)).toBeNull();
+  });
+
+  it("answers 0 when the instants are an empty list, at every window", () => {
+    const [inception, d90, d30] = funnelWindows(now);
+    expect(firstPaymentsSince([], inception.sinceMs)).toBe(0);
+    expect(firstPaymentsSince([], d90.sinceMs)).toBe(0);
+    expect(firstPaymentsSince([], d30.sinceMs)).toBe(0);
+  });
+
+  it("keeps the unavailable and the empty answers apart", () => {
+    expect(firstPaymentsSince(null, null)).not.toBe(firstPaymentsSince([], null));
+  });
+});
+
+describe("firstPaymentTimesUnix", () => {
+  // The values are unix SECONDS while Date.now() is MILLISECONDS, so the name carries
+  // the unit now. Both names are published for one release, byte-identical.
+  it("prefers the unit-carrying name", () => {
+    expect(firstPaymentTimesUnix({ first_payment_times_unix: [2], first_payment_times: [1] }))
+      .toEqual([2]);
+  });
+
+  it("falls back to the deprecated name while that is all a producer serves", () => {
+    expect(firstPaymentTimesUnix({ first_payment_times: [1, 2] })).toEqual([1, 2]);
+  });
+
+  it("reads an empty list under either name as an empty list, never as unavailable", () => {
+    expect(firstPaymentTimesUnix({ first_payment_times_unix: [] })).toEqual([]);
+    expect(firstPaymentTimesUnix({ first_payment_times: [] })).toEqual([]);
+  });
+
+  // Absent is which name the deployed producer happens to serve; null is the producer
+  // stating it could not measure. Neither is an empty array, so neither may read as 0.
+  it("answers null when neither name carries a list", () => {
+    expect(firstPaymentTimesUnix({})).toBeNull();
+    expect(firstPaymentTimesUnix({ first_payment_times_unix: null })).toBeNull();
+    expect(firstPaymentTimesUnix({ first_payment_times: null })).toBeNull();
+    expect(firstPaymentTimesUnix({ first_payment_times_unix: null, first_payment_times: null }))
+      .toBeNull();
+  });
+
+  // A null under the NEW name with the deprecated one still present is the producer
+  // saying it could not measure, not a reason to fall through to the old field.
+  it("does not fall back past a null on the unit-carrying name", () => {
+    expect(firstPaymentTimesUnix({ first_payment_times_unix: null, first_payment_times: [1] }))
+      .toEqual([1]);
+  });
+});
+
+describe("windowEdgeLabel", () => {
+  // A rolling window moves under the reader: the 90-day stage read 23 on 2026-09-15 and
+  // 20 two days later, with no churn behind it. Naming the edge is what makes that
+  // legible as the clock rather than as a collapse.
+  it("states a rolling window's edge and nothing for since inception", () => {
+    const [inception, d90, d30] = funnelWindows(new Date("2026-09-17T11:00:00.000Z"));
+    expect(inception.edgeLabel).toBeNull();
+    expect(d90.edgeLabel).toBe("Jun 19, 2026");
+    expect(d30.edgeLabel).toBe("Aug 18, 2026");
+  });
+
+  // Read in UTC, matching the count: re-parsing the ISO into a local Date would state an
+  // edge one day off the one the window is actually cut on.
+  it("reads the date in UTC, whatever the reader's zone", () => {
+    expect(windowEdgeLabel("2026-01-01")).toBe("Jan 1, 2026");
+    expect(windowEdgeLabel("2026-12-31")).toBe("Dec 31, 2026");
+    expect(windowEdgeLabel(null)).toBeNull();
   });
 });
 
@@ -412,12 +491,35 @@ describe("the drop chart", () => {
   // last 90. It is counted off the producer's instants now, at every window including
   // inception, so the three columns cannot read two different sources.
   it("counts paid users off the producer instants, at every window", () => {
-    expect(overview).toContain("firstPaymentsSince(billing.first_payment_times, window.sinceMs)");
+    expect(overview).toContain("firstPaymentsSince(firstPaymentTimesUnix(billing), window.sinceMs)");
     expect(overview).not.toContain("inception ? billing.total_paying_accounts : null");
-    // required in the reader, matching the producer: a rollback must fail loud here
-    // rather than silently put the funnel back on a dash
-    expect(publicStats).toContain("first_payment_times: z.array(z.number())");
-    expect(publicStats).not.toContain("first_payment_times: z.array(z.number()).optional()");
+    // never off a field name at the call site: ONE reader decides which of the two
+    // published names to take, so a caller cannot pick the deprecated one by habit
+    expect(overview).not.toContain("billing.first_payment_times,");
+  });
+
+  // The producer used to THROW when it could not get the instants, which 5xx'd every
+  // money figure on this payload. It serves null there now, so the reader must tolerate
+  // it (and the absence of either name) rather than move that failure one hop down.
+  it("declares both published names nullable and optional", () => {
+    expect(publicStats).toContain("first_payment_times_unix: z.array(z.number()).nullable().optional()");
+    expect(publicStats).toContain("first_payment_times: z.array(z.number()).nullable().optional()");
+    expect(publicStats).not.toContain("first_payment_times: z.array(z.number()),");
+  });
+
+  // A window that moves under the reader must say where its edge is, or a count falling
+  // with the clock reads as a collapse: 23 on 2026-09-15, 20 two days later, zero churn.
+  it("states each rolling window's edge beside its name", () => {
+    expect(overview).toContain("edgeLabel={entry.window.edgeLabel}");
+    expect(funnelCards).toContain("function WindowEdge(");
+    expect(funnelCards).toContain("since {edgeLabel}");
+  });
+
+  // A null stage used to fall into the caption for a null share, so an unavailable
+  // Paid users read as the head of the funnel with a dash under it.
+  it("says an unmeasured stage is not a zero, on the card and on the column", () => {
+    expect(funnelCards).toContain('"Not measured, not zero"');
+    expect(funnelCards).toContain('step.value === null ? "text-amber-600" : "text-gray-500"');
   });
 });
 

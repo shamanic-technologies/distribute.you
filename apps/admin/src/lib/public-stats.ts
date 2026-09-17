@@ -69,10 +69,26 @@ const billingStatsSchema = z.object({
    * a dash for both rolling windows rather than state that, and a dash reads as nobody
    * having paid.
    *
-   * REQUIRED, matching the producer: a rollback that stops serving it must fail loud
-   * here rather than silently put the funnel back on a dash.
+   * THE NAME CARRIES THE UNIT, and that is the point of it. The values are unix
+   * SECONDS while `Date.now()` is MILLISECONDS, so a cutoff built the obvious way is
+   * three orders of magnitude out, counts zero, and renders the dash this field exists
+   * to remove. Every money field on this payload says `_cents`; this one said nothing,
+   * so the producer now publishes `first_payment_times_unix` and keeps the old name for
+   * one release, byte-identical.
+   *
+   * BOTH ARE OPTIONAL AND NULLABLE, and the two states differ:
+   *  - ABSENT is which name the deployed producer happens to serve. Read the unit-
+   *    carrying one, fall back to the deprecated one; `firstPaymentTimesUnix` is the
+   *    single place that decides.
+   *  - NULL is the producer saying it could not get the instants at all. It used to
+   *    THROW there, which 5xx'd every money figure on this payload and the public
+   *    investor page with it, for the sake of an array only this console reads. A null
+   *    must therefore render as UNAVAILABLE and never as a zero: "nobody has ever paid"
+   *    is a different statement, and it is the one that would be a lie.
    */
-  first_payment_times: z.array(z.number()),
+  first_payment_times_unix: z.array(z.number()).nullable().optional(),
+  /** @deprecated Superseded by `first_payment_times_unix`. Same values, no unit in the name. */
+  first_payment_times: z.array(z.number()).nullable().optional(),
   monthly_growth: z.array(billingGrowthRowSchema),
   weekly_growth: z.array(billingGrowthRowSchema),
 });
