@@ -562,9 +562,13 @@ describe("billing page — change card settles first (T4 of the card-removal gua
   });
 
   it("a customer running on credit is told the balance is charged on the current card when the page opens", () => {
-    expect(paymentMethod).toContain("availableCents < 0 && (");
+    // Keyed on the shared settle rule rather than on the raw balance: billing
+    // skips the charge for a card that cannot be charged off_session and for a
+    // deficit under the acquirer minimum, and this line used to promise one in
+    // both cases. See lib/card-change-settle.
+    expect(paymentMethod).toContain("settleCents !== null && (");
     expect(paymentMethod).toContain("Opening this charges your");
-    expect(paymentMethod).toContain("formatBillingCents(Math.abs(availableCents))");
+    expect(paymentMethod).toContain("formatBillingCents(settleCents)");
   });
 
   it("states that the card can be changed whatever the charge does, which is the whole point of the notice", () => {
@@ -577,12 +581,16 @@ describe("billing page — opening the card page is never refused", () => {
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf8"
   );
+  // `openCardPage` is the half that actually opens it; `handleManagePayment`
+  // above it is the confirmation gate and performs no request.
   const handler = page.slice(
-    page.indexOf("async function handleManagePayment("),
+    page.indexOf("async function openCardPage("),
     page.indexOf("async function handleTopup(")
   );
 
   it("shows its own generic line on a failure, never the downstream body", () => {
+    // An empty slice passes every `not.toContain` below it vacuously.
+    expect(handler.length).toBeGreaterThan(0);
     expect(handler).toContain('setError("Failed to open the card page. Please try again.")');
     expect(handler).not.toContain("err.message");
   });
