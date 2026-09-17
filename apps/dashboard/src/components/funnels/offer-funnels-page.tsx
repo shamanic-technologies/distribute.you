@@ -30,6 +30,8 @@ import {
   unpricedFunnelReasonLabel,
 } from "@/lib/offer-funnels";
 import { OfferFunnelCatalogue } from "@/components/funnels/offer-funnel-catalogue";
+import { useBrandRewardTasks } from "@/lib/use-reward-tasks";
+import { rewardTaskFor } from "@/lib/reward-tasks";
 
 const COLUMN_COUNT = 8;
 
@@ -126,6 +128,20 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
   // built from the SAME rows the pill there is built from. A funnel with NO campaign at
   // all is unmeasured rather than stopped and reads exactly as it did before.
   const { pausedByFunnelKey, settled: pausedSettled } = usePausedByFunnel(brandId, offerId);
+
+  // Which of this offer's funnels owe a refresh. The rollup one level up answers
+  // "how many", and a row answers "this one" — a count and a way in, never the
+  // child's task restated here. Same brand-wide key the band and the top-bar badge
+  // read, so this costs no request.
+  const { data: rewardData } = useBrandRewardTasks(brandId);
+  const rewardDueFor = (funnelKey: string) =>
+    rewardTaskFor(
+      rewardData?.tasks ?? [],
+      offerId,
+      funnelKey,
+      (k) => normalizeSalesFunnelKey(k as SalesFunnelKeyWire),
+    )?.due === true;
+
   const funnelPausedFor = (key: string) =>
     scopePausedFor(
       pausedByFunnelKey,
@@ -270,8 +286,17 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                         <SalesFunnelMark def={funnelDefFor(row.funnelKey)!} size="sm" />
                       )}
                       <span className="flex h-8 min-w-0 flex-col justify-center">
-                        <span className="truncate leading-[14px] text-gray-800">
-                          {row.name}
+                        <span className="flex min-w-0 items-center gap-1.5 leading-[14px]">
+                          <span className="truncate text-gray-800">{row.name}</span>
+                          {rewardDueFor(row.funnelKey) && (
+                            <span
+                              title="This funnel's numbers are due for a refresh. Updating them earns credit."
+                              aria-label="Reward task due"
+                              className="shrink-0 rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700"
+                            >
+                              1 due
+                            </span>
+                          )}
                         </span>
                         <span className="truncate text-xs leading-[18px] text-gray-500">
                           {row.steps.join("  \u2192  ")}
