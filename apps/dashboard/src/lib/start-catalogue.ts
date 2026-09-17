@@ -14,8 +14,6 @@
 // Only value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias).
 
-import { SALES_FUNNELS, normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnels";
-
 /** A step a channel can put a buyer on, in the producer's own words. */
 export interface CatalogueStep {
   key: string;
@@ -43,6 +41,24 @@ export interface CatalogueFunnel {
   funnelMinimumCommitmentDays: number | null;
   effectiveMinimumCommitmentDays: number;
   governedBy: string;
+}
+
+/**
+ * A funnel as the PRODUCER describes it, from the catalogue's own top-level
+ * `funnels` list — the entry step included, keyed.
+ *
+ * This is what makes the funnel screen wire-driven. A funnel's rungs are
+ * published as LABELS (`"Positive reply"`), and its label for the step a channel
+ * produces is not the step catalogue's label for the same key, so a label join
+ * finds nothing; `entryStep.key` is the producer's own answer to "what does this
+ * funnel start on" and needs no join at all.
+ */
+export interface CatalogueFunnelDef {
+  key: string;
+  name: string;
+  steps: readonly string[];
+  entryStep: CatalogueStep;
+  entryLegKey: string;
 }
 
 export interface CatalogueChannel {
@@ -177,22 +193,6 @@ export interface StartFunnelOption {
 }
 
 /**
- * Where an in-ad outcome LANDS on a funnel.
- *
- * The two in-ad entry steps start no published funnel: a form filled inside the
- * ad is the funnel's "Form filled" rung reached without the website visit before
- * it, and a meeting booked from the ad is the "Meeting booked" rung reached the
- * same way. So a visitor who wants those is offered the funnels that CONTAIN the
- * rung they land on. Keyed on the producer's own step tokens; a step absent from
- * here is an entry step in its own right and matches only a funnel that starts
- * on it.
- */
-const IN_AD_LANDS_ON: Record<string, string> = {
-  in_ad_form_submission: "form_filled",
-  in_ad_booked_meeting: "meeting_booked",
-};
-
-/**
  * Whether a funnel is one the picked outcomes lead INTO.
  *
  * THE FILTER THE FUNNEL SCREEN IS FOR. A channel sells several funnels, and most
@@ -202,24 +202,29 @@ const IN_AD_LANDS_ON: Record<string, string> = {
  * outcome the visitor just picked — pick "a conversation", keep cold email, and
  * the screen offered "Website Purchase", a funnel that starts on a step they
  * never asked for. A funnel is offered only when a picked outcome is the step it
- * starts on (or, for an in-ad outcome, a rung it contains).
+ * STARTS on, which the producer states per funnel as `entryStep.key`.
  *
- * The funnel's rungs come from this app's own catalogue rather than the wire:
- * the producer states a funnel's steps as LABELS, and its label for the reply
- * funnel's first rung ("Positive reply") is not its label for the step a channel
- * produces ("Conversation"), so a label join finds nothing. A wire key this
- * app's catalogue cannot name is a vocabulary drift and THROWS, per
- * `normalizeSalesFunnelKey`.
+ * READ OFF THE WIRE, never joined against this app's own funnel catalogue. That
+ * join is what took the screen down: the local catalogue names four funnels and
+ * its key normalizer THROWS on anything else — correctly, it guards a
+ * CHECK-constrained column — so the day features-service published eight, 37 of
+ * 42 channels sold a key this app could not name and the visitor's first channel
+ * click threw inside a `useMemo` with no boundary under `app/start`. The screen
+ * has no business naming a funnel at all: it offers what the catalogue publishes
+ * and carries the key through signup untouched.
+ *
+ * A key the producer's OWN funnel list does not describe still throws. That is a
+ * genuine drift — a channel selling a funnel its own catalogue omits — and the
+ * screen must not guess a funnel the visitor would then be charged for.
  */
-export function funnelReachesOutcome(funnelKey: string, outcomeKeys: string[]): boolean {
-  const local = normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire);
-  const def = SALES_FUNNELS.find((f) => f.key === local);
-  if (!def) throw new Error(`[start-catalogue] no local funnel for ${funnelKey}`);
-  const rungs: readonly string[] = def.stepKeys;
-  return outcomeKeys.some((k) => {
-    const landsOn = IN_AD_LANDS_ON[k];
-    return landsOn ? rungs.includes(landsOn) : rungs[0] === k;
-  });
+export function funnelReachesOutcome(
+  funnelKey: string,
+  outcomeKeys: string[],
+  funnels: CatalogueFunnelDef[],
+): boolean {
+  const def = funnels.find((f) => f.key === funnelKey);
+  if (!def) throw new Error(`[start-catalogue] catalogue describes no funnel ${funnelKey}`);
+  return outcomeKeys.includes(def.entryStep.key);
 }
 
 /**
@@ -234,11 +239,12 @@ export function funnelReachesOutcome(funnelKey: string, outcomeKeys: string[]): 
 export function funnelsForChannels(
   channels: CatalogueChannel[],
   outcomeKeys: string[],
+  funnels: CatalogueFunnelDef[],
 ): StartFunnelOption[] {
   const byFunnel = new Map<string, { funnel: CatalogueFunnel; channels: CatalogueChannel[] }>();
   for (const c of channels) {
     for (const f of c.salesFunnels) {
-      if (!funnelReachesOutcome(f.key, outcomeKeys)) continue;
+      if (!funnelReachesOutcome(f.key, outcomeKeys, funnels)) continue;
       const entry = byFunnel.get(f.key);
       if (entry) entry.channels.push(c);
       else byFunnel.set(f.key, { funnel: f, channels: [c] });

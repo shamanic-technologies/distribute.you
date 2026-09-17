@@ -57,9 +57,9 @@ describe("the signed-out onboarding wears the landing's charter", () => {
   });
 
   it("the funnel screen is filtered by the picked OUTCOMES, on every reader of the selection", () => {
-    expect(FLOW).toContain("funnelsForChannels(keptChannels, outcomes)");
-    expect(PAY).toContain("funnelsForChannels(kept, selection.outcomes)");
-    expect(BUILD).toContain("funnelsForChannels(kept, selection.outcomes)");
+    expect(FLOW).toContain("funnelsForChannels(keptChannels, outcomes,");
+    expect(PAY).toContain("funnelsForChannels(kept, selection.outcomes,");
+    expect(BUILD).toContain("funnelsForChannels(kept, selection.outcomes,");
   });
 
   it("options sit in a three-across grid on desktop, grouped by family on the channel screen", () => {

@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StartShell, StartButton } from "./start-shell";
 import { upsertBrand, saveBrandFunnelBudget } from "@/lib/api";
-import { channelsForOutcomes, funnelsForChannels, type CatalogueChannel } from "@/lib/start-catalogue";
+import {
+  channelsForOutcomes,
+  funnelsForChannels,
+  type CatalogueChannel,
+  type CatalogueFunnelDef,
+} from "@/lib/start-catalogue";
 import { budgetWrites, totalDailyCents, planIsRunnable } from "@/lib/build-plan";
 import { websiteInputProblem } from "@/lib/website-input";
 import { readLandingUrlCookie } from "@/lib/landing-url-cookie";
@@ -38,6 +43,8 @@ export function BuildFlow() {
   const router = useRouter();
   const [selection, setSelection] = useState<StartSelection | null>(null);
   const [channels, setChannels] = useState<CatalogueChannel[] | null>(null);
+  // The producer's own funnel list; the funnel filter reads its entry steps.
+  const [wireFunnels, setWireFunnels] = useState<CatalogueFunnelDef[]>([]);
   const [url, setUrl] = useState("");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,7 +72,9 @@ export function BuildFlow() {
     fetch("/api/public/catalogue")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body) => {
-        if (live) setChannels(body?.channels?.channels ?? body?.channels ?? []);
+        if (!live) return;
+        setChannels(body?.channels?.channels ?? body?.channels ?? []);
+        setWireFunnels(body?.channels?.funnels ?? []);
       })
       .catch((err) => console.error("[build] catalogue read failed:", err));
     return () => {
@@ -78,7 +87,7 @@ export function BuildFlow() {
     const kept = channelsForOutcomes(channels, selection.outcomes).filter((c) =>
       selection.channels.includes(c.slug),
     );
-    const byFunnel = funnelsForChannels(kept, selection.outcomes).map((f) => ({
+    const byFunnel = funnelsForChannels(kept, selection.outcomes, wireFunnels).map((f) => ({
       key: f.key,
       channels: f.channelSlugs.map((slug) => {
         const c = kept.find((x) => x.slug === slug);
@@ -86,7 +95,7 @@ export function BuildFlow() {
       }),
     }));
     return budgetWrites(byFunnel, selection.paid);
-  }, [channels, selection]);
+  }, [channels, selection, wireFunnels]);
 
   // Somebody who reached this URL without paying has bought nothing, so there is
   // no brand to build. Send them to the payment step rather than creating a

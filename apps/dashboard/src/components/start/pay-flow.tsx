@@ -7,7 +7,7 @@ import { StartShell, StartButton, fromPerDay } from "./start-shell";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { channelMarkForSlug } from "@/lib/acquisition-channels";
-import { SALES_FUNNELS, normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { salesFunnelDefForWireKeyOrNull } from "@/lib/sales-funnels";
 import { getStripe } from "@/lib/stripe";
 import {
   ApiError,
@@ -15,7 +15,12 @@ import {
   createEmbeddedCheckoutSession,
   getBillingAccount,
 } from "@/lib/api";
-import { channelsForOutcomes, funnelsForChannels, type CatalogueChannel } from "@/lib/start-catalogue";
+import {
+  channelsForOutcomes,
+  funnelsForChannels,
+  type CatalogueChannel,
+  type CatalogueFunnelDef,
+} from "@/lib/start-catalogue";
 import {
   dayOneCharge,
   payStep,
@@ -55,9 +60,11 @@ import {
 const dollars = (cents: number): string =>
   `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
-/** The funnel's own tile, resolved from this app's catalogue by wire key. */
+/** The funnel's own tile, or nothing for a funnel this app draws no mark for.
+ *  Tolerant by design — see `start-flow`: the producer publishes more funnels
+ *  than this app holds marks for, and the name comes off the wire. */
 function funnelMark(wireKey: string) {
-  const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(wireKey as SalesFunnelKeyWire));
+  const def = salesFunnelDefForWireKeyOrNull(wireKey);
   return def ? <SalesFunnelMark def={def} size="md" /> : null;
 }
 
@@ -69,6 +76,9 @@ export function PayFlow() {
   const router = useRouter();
   const [selection, setSelection] = useState<StartSelection | null>(null);
   const [channels, setChannels] = useState<CatalogueChannel[] | null>(null);
+  // The producer's own funnel list. The funnel filter reads each funnel's entry
+  // step off it rather than joining against this app's four-funnel catalogue.
+  const [wireFunnels, setWireFunnels] = useState<CatalogueFunnelDef[]>([]);
   const [catalogueError, setCatalogueError] = useState(false);
 
   const [busy, setBusy] = useState(false);
@@ -88,7 +98,9 @@ export function PayFlow() {
     fetch("/api/public/catalogue")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body) => {
-        if (live) setChannels(body?.channels?.channels ?? body?.channels ?? []);
+        if (!live) return;
+        setChannels(body?.channels?.channels ?? body?.channels ?? []);
+        setWireFunnels(body?.channels?.funnels ?? []);
       })
       .catch((err) => {
         console.error("[pay] catalogue read failed:", err);
@@ -109,8 +121,8 @@ export function PayFlow() {
     const kept = channelsForOutcomes(channels, selection.outcomes).filter((c) =>
       selection.channels.includes(c.slug),
     );
-    return funnelsForChannels(kept, selection.outcomes);
-  }, [channels, selection]);
+    return funnelsForChannels(kept, selection.outcomes, wireFunnels);
+  }, [channels, selection, wireFunnels]);
 
   const step = useMemo(
     () => payStep(payable, selection?.funnels ?? [], selection?.paid ?? []),
