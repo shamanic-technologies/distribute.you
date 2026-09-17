@@ -264,6 +264,13 @@ html.dark .text-gray-600 { color: var(--dy-sub); }
 html.dark .text-gray-500 { color: var(--dy-sub); }
 html.dark .text-gray-400 { color: var(--dy-muted); }
 html.dark .text-gray-300 { color: var(--dy-muted); }
+/* gray-200 is a SEPARATOR rather than text — a chart axis line or gridline taking its
+   colour from `currentColor`, which is the only way an SVG stroke can follow the theme
+   at all (a stroke attribute is reached by none of the remaps above, and a hardcoded hex
+   is wrong on one of the two themes by construction). Left unmapped it painted the
+   brightest thing on the dark surface, so it takes the border tier rather than a text
+   one. */
+html.dark .text-gray-200 { color: var(--dy-border-hi); }
 
 /* Borders — hairline white-alpha, exactly like the landing surfaces. */
 html.dark .border-gray-200 { border-color: var(--dy-border-hi); }
