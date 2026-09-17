@@ -24,10 +24,12 @@ import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { latestPaymentFailure } from "@/lib/payment-failure";
 import { availableCreditCents } from "@/lib/credit-runway";
+import { cardChangeSettleCents } from "@/lib/card-change-settle";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
+import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
@@ -267,6 +269,10 @@ export default function BillingPage() {
   // shows the spinner (both buttons open the same Stripe portal session).
   const [portalLoadingSource, setPortalLoadingSource] = useState<"manage" | "invoices" | null>(null);
 
+  // Which button is waiting on the settle confirmation. Non-null = the modal is
+  // up; the source is held so Confirm opens the page the customer asked for.
+  const [confirmSource, setConfirmSource] = useState<"manage" | "invoices" | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   // Inline validation error (shown on blur) for the one-off custom amount
@@ -330,6 +336,14 @@ export default function BillingPage() {
   // (label) with the absolute amount in green, and align the tooltip to that meaning — the
   // "what you can spend right now" copy is wrong once the balance is negative. Both the big
   // number and the breakdown footer read from these so they never drift apart.
+  // What opening the card page will CHARGE, or null when it will charge nothing.
+  // ONE derivation: the notice under the button and the confirmation modal both
+  // read it, so they cannot state different amounts for the same click. It is
+  // stricter than `availableCents < 0` on purpose — billing skips the settle for
+  // a card that cannot be charged off_session and for a deficit under the
+  // acquirer minimum, and the notice used to promise a charge in both cases.
+  const settleCents = cardChangeSettleCents(account);
+
   const isNegativeBalance = availableCents < 0;
   const balanceLabel = isNegativeBalance ? "Balance" : "Available";
   const balanceTip = isNegativeBalance
@@ -375,7 +389,35 @@ export default function BillingPage() {
     setCustomAmount("");
   }
 
-  async function handleManagePayment(source: "manage" | "invoices") {
+  /**
+   * Open the card page, charging first when something is owed.
+   *
+   * The gate is the whole point. billing-service settles an outstanding balance
+   * on this call and hands the session over whatever the charge does, so the
+   * click has always been able to move real money — and the only thing that said
+   * so was a grey line under the button, on a page where the settle takes
+   * SECONDS. Nothing asked, and a customer who gave up during the wait had
+   * already been charged.
+   *
+   * BOTH buttons go through it: "View invoices" hits the same endpoint and
+   * therefore settles identically, and nothing about its label suggests money
+   * moves. Gating only "Change card" would leave the same surprise charge on the
+   * other one.
+   *
+   * Nothing owed (or a charge billing would skip anyway) opens the page
+   * directly, exactly as before — that is the common case and it must not grow a
+   * confirmation about a charge of nothing.
+   */
+  function handleManagePayment(source: "manage" | "invoices") {
+    if (settleCents !== null) {
+      setError(null);
+      setConfirmSource(source);
+      return;
+    }
+    void openCardPage(source);
+  }
+
+  async function openCardPage(source: "manage" | "invoices") {
     setPortalLoadingSource(source);
     setError(null);
     try {
@@ -404,16 +446,25 @@ export default function BillingPage() {
           // file before one is.
           window.location.reload();
         },
-        onCancel: () => setPortalLoadingSource(null),
+        onCancel: () => {
+          setPortalLoadingSource(null);
+          setConfirmSource(null);
+        },
         onError: (message) => {
           setError(message);
           setPortalLoadingSource(null);
+          setConfirmSource(null);
         },
       });
+      // The widget is mounted, so the confirmation has done its job. The hosted
+      // branch above returns before this and navigates away instead.
+      setConfirmSource(null);
     } catch (err) {
       console.error("[billing] card page failed to open", err);
       setError("Failed to open the card page. Please try again.");
       setPortalLoadingSource(null);
+      // Drop the modal so the error under the button is readable.
+      setConfirmSource(null);
     }
   }
 
@@ -480,6 +531,16 @@ export default function BillingPage() {
 
   return (
     <DashboardPage width="standard">
+      {/* Nothing owed means no modal at all: `settleCents` is null and the
+          buttons open the card page directly, which is the common case. */}
+      {confirmSource !== null && settleCents !== null && (
+        <CardChangeConfirmModal
+          settleCents={settleCents}
+          pending={portalLoadingSource !== null}
+          onConfirm={() => void openCardPage(confirmSource)}
+          onCancel={() => setConfirmSource(null)}
+        />
+      )}
       <div className="mb-6 flex max-w-2xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
@@ -683,9 +744,9 @@ export default function BillingPage() {
               the click. billing-service does the charge; this only states it.
               The card page itself lets a customer REPLACE a card, never remove
               one (stripe-service owns that). */}
-          {account?.has_payment_method && availableCents < 0 && (
+          {settleCents !== null && (
             <p className="mt-2 text-xs text-gray-500">
-              Opening this charges your {formatBillingCents(Math.abs(availableCents))} balance to the card on file. You can change your card whether or not it goes through.
+              Opening this charges your {formatBillingCents(settleCents)} balance to the card on file. We ask before we take it, and you can change your card whether or not it goes through.
             </p>
           )}
 
