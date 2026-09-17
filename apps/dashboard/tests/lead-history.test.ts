@@ -162,10 +162,20 @@ describe("the panel derives nothing of its own", () => {
 
   // Ordering, de-duplication and which fact outranks which are the producer's. Doing
   // any of them here rebuilds the bug one layer up.
-  it("neither sorts nor de-duplicates nor filters the events", () => {
+  it("neither sorts nor de-duplicates the events", () => {
     expect(timeline).not.toContain(".sort(");
-    expect(timeline).not.toContain(".filter(");
-    expect(timeline).toContain("events.map(");
+    expect(timeline).toContain(".map((e, i) =>");
+  });
+
+  // The ONE filter permitted is the copy gate, and it is pinned by its exact predicate
+  // so a second one cannot appear under the same allowance. It is not the thing this
+  // block forbids: withholding a body a reader has not earned decides nothing about
+  // what happened or what outranks what — the producer still orders and merges, and
+  // every row it sent is still drawn. See `lead-email-copy-gate.test.ts`.
+  it("filters only to withhold copy, never to re-decide the history", () => {
+    const filters = timeline.match(/\.filter\(/g) ?? [];
+    expect(filters).toHaveLength(1);
+    expect(timeline).toContain('(e) => canReadEmailCopy || e.type !== "generated_email",');
   });
 
   // A type this build does not know renders nothing rather than a guess at the nearest

@@ -20,6 +20,19 @@ describe("hasSalesInterest", () => {
     expect(hasSalesInterest({})).toBe(false);
   });
 
+  it("reads the visit BOOLEAN too, since a lead row states it as required", () => {
+    // `clicked` is required on a lead row while `firstClickedAt` is optional, so
+    // reading the instant alone would answer "no visit" for a lead that visited and
+    // whose timestamp the payload happened not to carry.
+    expect(hasSalesInterest({ clicked: true })).toBe(true);
+    expect(hasSalesInterest({ clicked: true, firstClickedAt: null })).toBe(true);
+  });
+
+  it("does not read a false or absent visit boolean as one", () => {
+    expect(hasSalesInterest({ clicked: false })).toBe(false);
+    expect(hasSalesInterest({ clicked: null })).toBe(false);
+  });
+
   it("does not read an empty instant as a visit", () => {
     // The wire spells "no instant" as an empty string in several places; reading it
     // as a visit would unlock every lead.
