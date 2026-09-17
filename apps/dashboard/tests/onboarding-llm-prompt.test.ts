@@ -265,12 +265,13 @@ describe("the copy handler is wired to the same string as the button", () => {
     }
   });
 
-  it("puts the handler on four step shells and on the model step's own card", () => {
+  it("puts it on four step shells and on the model step's own card", () => {
     // The model step deliberately does NOT pass copyText: its body also carries the
     // projection numbers, and a reader copying one of those means that number. Its
-    // handler is scoped to the "Your numbers" card instead.
+    // block is wrapped instead.
     expect((ONBOARDING.match(/copyText=\{/g) ?? []).length).toBe(4);
-    expect(ONBOARDING).toContain("onCopy={stepCopyHandler(economicsPrompt)}");
+    expect(ONBOARDING).toContain("<CopyableBlock");
+    expect(ONBOARDING).toContain("text={economicsPrompt}");
     const model = ONBOARDING.slice(
       ONBOARDING.indexOf('if (step === "model") {'),
       ONBOARDING.indexOf('if (step === "offer") {'),
@@ -286,6 +287,62 @@ describe("the copy handler is wired to the same string as the button", () => {
     const foot = shell.indexOf("{footer && <div");
     expect(body).toBeGreaterThan(-1);
     expect(foot).toBeGreaterThan(body);
-    expect(shell.slice(body, foot)).toContain("onCopy={copyText ?");
+    expect(shell.slice(body, foot)).toContain("{...stepCopy}");
+  });
+});
+
+describe("the step SHOWS that the field is part of the copy", () => {
+  it("drives the highlight and the clipboard from ONE predicate", () => {
+    // Two predicates is how the lit thing and the copied thing come to disagree,
+    // which is the exact surface-that-lies this closes. `useStepCopy` owns both and
+    // both read copyStepIntent.
+    const hook = ONBOARDING.slice(
+      ONBOARDING.indexOf("function useStepCopy("),
+      ONBOARDING.indexOf("function CopyableBlock("),
+    );
+    expect((hook.match(/copyStepIntent\(/g) ?? []).length).toBe(2);
+    expect(hook).toContain('document.addEventListener("selectionchange"');
+    expect(hook).toContain('document.removeEventListener("selectionchange"');
+    // `selectionchange` is a DOCUMENT event, so a selection elsewhere on the page
+    // fires it too: without this the fields light up for a selection that has
+    // nothing to do with this step.
+    expect(hook).toContain("intersectsNode(el)");
+    expect(hook).toContain('"data-copy-included": included || undefined');
+  });
+
+  it("paints the field in the SELECTION colour, from the brand ramp", () => {
+    // Measured: the field's resolved background is byte-identical to ::selection's,
+    // so the question and the field read as one continuous selection rather than as
+    // a highlight beside a differently-coloured box.
+    expect(GLOBALS).toContain("[data-copy-included] :is(input, textarea)");
+    expect(GLOBALS).toContain("[data-copy-included] [data-copy-value]");
+    expect(GLOBALS).toContain(".dark [data-copy-included] :is(input, textarea)");
+    const at = GLOBALS.indexOf("[data-copy-included] :is(input, textarea)");
+    const block = GLOBALS.slice(at, GLOBALS.indexOf("}", at));
+    expect(block).toContain("var(--color-brand-200)");
+  });
+
+  it("declares the highlight UNLAYERED so it beats a utility class", () => {
+    // Measured: inside `@layer base` the services chips kept their `bg-blue-50` and
+    // were the one value on that step that did not light up. Unlayered beats a
+    // layered utility whatever its specificity, which is why the html.dark remaps
+    // below it are unlayered too.
+    const at = GLOBALS.indexOf("[data-copy-included] :is(input, textarea)");
+    const before = GLOBALS.slice(0, at);
+    const lastLayer = before.lastIndexOf("@layer base {");
+    const lastClose = before.lastIndexOf("\n}");
+    expect(lastClose).toBeGreaterThan(lastLayer);
+  });
+
+  it("marks the services chips, whose text IS that step's answer", () => {
+    // A chip is a <span>, not a form control, so the input/textarea selector cannot
+    // reach it.
+    expect(ONBOARDING).toContain("data-copy-value");
+  });
+
+  it("keeps `key` before data-copy-value on the chip", () => {
+    // onboarding-flow.test.ts bans /Copy.*key/i over this file (no API-key copy UI),
+    // and `data-copy-value key={s}` matched it. React convention anyway.
+    expect(ONBOARDING).toContain("<span key={s} data-copy-value");
   });
 });
