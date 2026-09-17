@@ -18,6 +18,11 @@ const isPublicRoute = createRouteMatcher([
   "/forgot-password(.*)",
   "/sso-callback(.*)",
   "/claim(.*)",
+  // The sell-first half of onboarding. It runs BEFORE signup by design: a
+  // visitor picks what they want to buy, through which channels, and which
+  // revenue funnels, and only then makes an account. Behind the auth gate it
+  // would be a screen nobody in the market can reach.
+  "/start(.*)",
   "/api/public(.*)",
   "/api/cron(.*)",
 ]);

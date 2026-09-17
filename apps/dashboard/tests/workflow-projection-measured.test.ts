@@ -176,6 +176,12 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `result.measured` off that very price list to decide whether the fleet has a
       // figure for a funnel nobody here sells yet.
       "lib/offer-funnel-catalogue.ts",
+      // A THIRD producer's field under the same name: features-service's public
+      // return-on-spend reads mark a (channel, funnel) pair and a whole channel
+      // `measured`, meaning enough brands past the spend floor to state a median.
+      // The pre-signup proof screen branches on it to decide whether it may state
+      // a figure at all, which is the opposite question from a projection row's.
+      "lib/start-returns.ts",
       // The matrix that second reader draws. It BRANCHES on `measured` for exactly the
       // same reason as the ordering module below: an explore row's figure is the price
       // of one outreach, so it is the cheapest cell on the grid by construction and
