@@ -61,12 +61,18 @@ function filledMeetingDraft(key: "reply_meeting" | "visit_meeting"): FunnelDraft
 }
 
 describe("SALES_FUNNELS definitions", () => {
-  it("declares the four funnels, each with its own key", () => {
+  it("declares the eight funnels, each with its own key", () => {
     expect(SALES_FUNNELS.map((f) => f.key)).toEqual([
       "reply_meeting",
       "visit_meeting",
       "visit_signup",
       "visit_form",
+      // Added by brand-service on 2026-09-17. No legacy spelling, so the local key
+      // IS the wire key for these four.
+      "sales_from_conversation",
+      "sales_meetings_from_ads",
+      "lead_forms_from_ads",
+      "sales_from_website",
     ]);
   });
 
@@ -74,10 +80,17 @@ describe("SALES_FUNNELS definitions", () => {
   // titled by its own funnel has nothing left to say on its second line.
   it("names every funnel, distinctly, and never with its own steps", () => {
     expect(SALES_FUNNELS.map((f) => f.name)).toEqual([
-      "Sales Meeting from Conversation",
+      "Sales Meeting from Positive Reply",
       "Sales Meeting from Website",
-      "Website Purchase",
+      // `website_purchases` keeps its frozen wire key and reads "Signups": its middle
+      // rung is a signup, and "Website Purchase" belongs to the funnel that really
+      // does go visit -> purchase. brand-service states the same pair.
+      "Signups",
       "Form Magnet",
+      "Sale from Positive Reply",
+      "Sales Meeting from Ads",
+      "Lead Form from Ads",
+      "Website Purchase",
     ]);
     expect(new Set(SALES_FUNNELS.map((f) => f.name)).size).toBe(SALES_FUNNELS.length);
     for (const funnel of SALES_FUNNELS) {
@@ -110,7 +123,7 @@ describe("SALES_FUNNELS definitions", () => {
 
   it("routes a lead through Meeting booked before the meeting is attended", () => {
     expect(salesFunnelByKey("reply_meeting").steps).toEqual([
-      "Sales interest",
+      "Positive reply",
       "Meeting booked",
       "Meeting attended",
       "Paid client",
@@ -125,21 +138,30 @@ describe("SALES_FUNNELS definitions", () => {
 
   // brand-service stores every leg on the funnel. Only the show-up rate has
   // nothing to seed from, because no other table in the fleet measures it.
-  it("marks the show-up rate as the one rate nothing can seed", () => {
-    expect(isSeedableRateKey("meetingBookedToAttendedPct")).toBe(false);
+  // Three rates have nothing to seed FROM: brand-service stores the show-up rate on
+  // the funnel and nowhere else, and it is explicit that neither rate the 2026-09-17
+  // funnels price has a counterpart on the brand-wide economics record. All three
+  // start blank rather than borrowing a number that means something else.
+  it("marks the three rates nothing can seed", () => {
+    const seedless = ["meetingBookedToAttendedPct", "replyToPaidClientPct", "leadFormToPaidClientPct"];
+    for (const key of seedless) expect(isSeedableRateKey(key as never)).toBe(false);
     for (const funnel of SALES_FUNNELS) {
       for (const leg of funnel.legs) {
-        if (leg === "meetingBookedToAttendedPct") continue;
+        if (seedless.includes(leg)) continue;
         expect(isSeedableRateKey(leg)).toBe(true);
       }
     }
   });
 
-  it("gives every funnel a distinct colour so the icons read apart", () => {
-    const backgrounds = SALES_FUNNELS.map((f) => f.tone.iconBg);
-    const foregrounds = SALES_FUNNELS.map((f) => f.tone.iconText);
-    expect(new Set(backgrounds).size).toBe(SALES_FUNNELS.length);
-    expect(new Set(foregrounds).size).toBe(SALES_FUNNELS.length);
+  it("pairs each funnel's tint with its own text tone, never a mismatched pair", () => {
+    // Distinctness is NOT asserted, and that is a decision rather than an omission:
+    // the MARK wears the brand ramp on every surface (see `sales-funnel-mark.tsx`), so
+    // the GLYPH is what tells two funnels apart — pinned below. The tone is read by
+    // the onboarding step rows alone, where two funnels sharing a tint costs nothing.
+    for (const funnel of SALES_FUNNELS) {
+      const hue = funnel.tone.iconBg.replace("bg-", "").replace("-50", "");
+      expect(funnel.tone.iconText).toBe(`text-${hue}-600`);
+    }
   });
 
   // The dashboard reskins from one place: an accent tint only survives dark mode
@@ -698,7 +720,9 @@ describe("partitionFunnelsBySelection", () => {
     const chosen = new Set<SalesFunnelKey>(["visit_form", "reply_meeting"]);
     const { selected, unselected } = partitionFunnelsBySelection((key) => chosen.has(key));
     expect(selected.map((f) => f.key)).toEqual(["reply_meeting", "visit_form"]);
-    expect(unselected.map((f) => f.key)).toEqual(["visit_meeting", "visit_signup"]);
+    expect(unselected.map((f) => f.key)).toEqual(
+      SALES_FUNNELS.filter((f) => !chosen.has(f.key)).map((f) => f.key),
+    );
   });
 
   it("leaves every funnel unselected when the brand has chosen none", () => {
@@ -918,6 +942,10 @@ describe("Sales Funnels card", () => {
       "CalendarCheckIcon",
       "ShoppingCartSimpleIcon",
       "MagnetIcon",
+      "CoinsIcon",
+      "MegaphoneIcon",
+      "ListChecksIcon",
+      "BasketIcon",
     ];
     for (const icon of icons) expect(mark).toContain(`${icon},`);
     expect(new Set(icons).size).toBe(SALES_FUNNELS.length);

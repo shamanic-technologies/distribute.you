@@ -430,7 +430,7 @@ describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
     expect(workflowOutcomePairFor("visit")).toBe("visit");
   });
 
-  it("keeps the REPLY pair for a leg that lands on a sales interest", () => {
+  it("keeps the REPLY pair for a leg that lands on a positive reply", () => {
     expect(workflowOutcomePairFor("reply")).toBe("reply");
   });
 

@@ -31,11 +31,16 @@ export type LegColumnPair = "reply" | "visit" | "signup" | "formSubmission" | "s
 
 const PAIR_BY_STEP_KEY: Readonly<Record<string, LegColumnPair>> = {
   // The producer calls the reply funnel's first step `conversation`; the customer reads
-  // "Sales interest". Matching is by TOKEN for that reason — the words differ.
+  // "Positive reply". Matching is by TOKEN for that reason — a key is not a sentence.
   conversation: "reply",
   website_visit: "visit",
   signup: "signup",
   form_filled: "formSubmission",
+  // Same pair as `form_filled`, for the same reason the producer gives them one
+  // lead field: a form is a form, and the rung differs only in whether a visit
+  // preceded it. Pricing it under its own column would ask features-service for
+  // a per-audience count it does not serve.
+  lead_form_submitted: "formSubmission",
   paid_client: "sale",
   // meeting_booked / meeting_attended: features-service serves no per-audience meeting
   // count or cost, so there is no pair to render. Deliberately absent, not forgotten.

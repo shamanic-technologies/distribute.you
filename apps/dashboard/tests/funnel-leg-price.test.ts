@@ -158,8 +158,8 @@ describe("legPriceLabel", () => {
   });
 
   it("names the step in THIS app's words, not the producer's", () => {
-    expect(legPriceLabel({ kind: "priced", usd: 228 }, "Sales interest", fmt)).toBe(
-      "$228 / Sales interest",
+    expect(legPriceLabel({ kind: "priced", usd: 228 }, "Positive reply", fmt)).toBe(
+      "$228 / Positive reply",
     );
     expect(legPriceLabel({ kind: "priced", usd: 710 }, "Meeting booked", fmt)).toBe(
       "$710 / Meeting booked",
@@ -192,7 +192,7 @@ describe("the card states the price", () => {
 
   it("joins by the arrow's own index and names the step from the funnel", () => {
     // Never by the producer's words: it calls the reply funnel's first step "Positive
-    // reply" where this app reads "Sales interest".
+    // reply" where this app reads "Positive reply".
     expect(board).toContain("stepIndex: toIndex");
     expect(board).toContain("expectedStepCount: funnel.steps.length");
     expect(board).toContain("stepLabel={funnel.steps[col.leg.toIndex]");

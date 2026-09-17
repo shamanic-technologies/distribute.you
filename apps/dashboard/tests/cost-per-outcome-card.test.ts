@@ -93,7 +93,7 @@ describe("the card divides nothing and invents nothing", () => {
     expect(SECTION).toContain("data?.learningPhase?.outcomeStep?.label");
     // A hardcoded noun would name a different thing from the stat row, which reads the
     // campaign's own leg.
-    expect(stripComments(CARD)).not.toMatch(/"(Website visit|Sales interest|Signup|Meeting)"/);
+    expect(stripComments(CARD)).not.toMatch(/"(Website visit|Positive reply|Signup|Meeting)"/);
   });
 });
 

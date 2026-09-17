@@ -62,10 +62,10 @@ describe("audience prompt", () => {
 
 describe("funnel economics prompt", () => {
   const base = {
-    funnelTitle: "Sales Meeting from Conversation",
-    steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
+    funnelTitle: "Sales Meeting from Positive Reply",
+    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
     rates: [
-      { label: "Sales interest to meeting booked", value: "40" },
+      { label: "Positive reply to meeting booked", value: "40" },
       { label: "Meeting attended to paid client", value: "" },
     ],
     lifetimeRevenue: "2500",
@@ -78,7 +78,7 @@ describe("funnel economics prompt", () => {
 
   it("labels every value the reader has to transcribe back", () => {
     const out = buildFunnelStatsLLMPrompt(base);
-    expect(out).toContain("- Sales interest to meeting booked: 40");
+    expect(out).toContain("- Positive reply to meeting booked: 40");
     expect(out).toContain("- Meeting attended to paid client: (nothing yet)");
     expect(out).toContain("- Lifetime revenue per paid client (USD): 2500");
     expect(out).toContain("- Booking link (optional): https://cal.com/acme");
@@ -93,7 +93,7 @@ describe("funnel economics prompt", () => {
   it("names the path so the model prices the right one", () => {
     const out = buildFunnelStatsLLMPrompt(base);
     expect(out).toContain(
-      "Sales Meeting from Conversation (Sales interest -> Meeting booked -> Meeting attended -> Paid client)",
+      "Sales Meeting from Positive Reply (Positive reply -> Meeting booked -> Meeting attended -> Paid client)",
     );
   });
 
@@ -107,7 +107,7 @@ describe("funnel economics prompt", () => {
 
   it("falls back to the title when a path states no steps", () => {
     const out = buildFunnelStatsLLMPrompt({ ...base, steps: [] });
-    expect(out).toContain("The path: Sales Meeting from Conversation (Sales Meeting from Conversation)");
+    expect(out).toContain("The path: Sales Meeting from Positive Reply (Sales Meeting from Positive Reply)");
   });
 });
 

@@ -210,7 +210,7 @@ export function OutreachStatCardsAuto({
       paused={withheldPaused}
       outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
       contactedOverride={contactedOverride}
-      // The share of contacted that showed sales interest, through the one helper the
+      // The share of contacted that showed positive reply, through the one helper the
       // campaign Overview reads too, so the two surfaces cannot state it two ways.
       signalSharePct={salesInterestSharePct(revenueData?.funnelSteps)}
       clickSharePct={websiteVisitSharePct(revenueData?.funnelSteps)}

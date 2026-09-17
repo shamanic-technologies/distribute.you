@@ -39,7 +39,7 @@ function row(over: Partial<OfferFunnelRow> & { funnelKey: string; name: string }
 
 describe("funnelViews", () => {
   it("carries every served figure through without deriving one", () => {
-    const [view] = funnelViews([row({ funnelKey: "sales_meetings_from_conversation", name: "Sales Meeting from Conversation" })]);
+    const [view] = funnelViews([row({ funnelKey: "sales_meetings_from_conversation", name: "Sales Meeting from Positive Reply" })]);
     expect(view.roiMultiple).toBe(2.62);
     expect(view.pipelineUsd).toBe(7000);
     expect(view.investedUsd).toBe(2670);

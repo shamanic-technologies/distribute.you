@@ -33,7 +33,7 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
       toIndex: 0,
       fromKey: null,
       toKey: "conversation",
-      label: "Sales interest",
+      label: "Positive reply",
     });
   });
 
@@ -62,7 +62,7 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
       "Form filled → Paid client",
     );
     expect(campaignLegFor(reply, IN_HOUSE_MEETING_BOOKING)?.label).toBe(
-      "Sales interest → Meeting booked",
+      "Positive reply → Meeting booked",
     );
     expect(campaignLegFor(visitMeeting, IN_HOUSE_MEETING_BOOKING)?.label).toBe(
       "Website visit → Meeting booked",
@@ -94,7 +94,7 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
       { from: "meeting_attended", to: "paid_client" },
       { from: null, to: "conversation" },
     ];
-    expect(campaignLegFor(reply, both)?.label).toBe("Sales interest");
+    expect(campaignLegFor(reply, both)?.label).toBe("Positive reply");
   });
 
   it("answers null for an absent funnel or an empty leg list", () => {
@@ -113,8 +113,8 @@ describe("campaignLegLabel — what to call the campaign", () => {
   it("falls back to the funnel's name rather than a dash", () => {
     // A channel whose feature row predates the legs field is still a campaign selling
     // this funnel — the sentence the surface read before legs existed.
-    expect(campaignLegLabel(reply, [])).toBe("Sales Meeting from Conversation");
-    expect(campaignLegLabel(reply, null)).toBe("Sales Meeting from Conversation");
+    expect(campaignLegLabel(reply, [])).toBe("Sales Meeting from Positive Reply");
+    expect(campaignLegLabel(reply, null)).toBe("Sales Meeting from Positive Reply");
     expect(campaignLegLabel(visitForm, [{ from: null, to: "conversation" }])).toBe("Form Magnet");
   });
 

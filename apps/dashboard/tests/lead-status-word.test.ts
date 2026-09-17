@@ -27,7 +27,7 @@ describe("one status word, read by the table, the CSV and the board card", () =>
   });
 
   it("calls a click a WEBSITE VISIT, which is what the board's Sales-interest card reads", () => {
-    // The whole point of the tag change: a card in Sales interest states the evidence
+    // The whole point of the tag change: a card in Positive reply states the evidence
     // that put it there, not the column's own name repeated back.
     expect(leadStatusLabel("clicked")).toBe("Website visit");
   });

@@ -20,12 +20,18 @@ const campaignDetail = read(
 const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf-8");
 
 describe("the sales funnel catalogue", () => {
-  it("carries the four funnels in the canonical spelling", () => {
+  it("carries every funnel in the canonical spelling", () => {
     expect([...SALES_FUNNEL_KEYS]).toEqual([
       "sales_meetings_from_conversation",
       "sales_meetings_from_website",
       "website_purchases",
       "form_magnet",
+      // Added by brand-service on 2026-09-17: the ad-delivered funnels and the
+      // one-step ones, which start on the step the channel DELIVERS.
+      "sales_from_conversation",
+      "sales_meetings_from_ads",
+      "lead_forms_from_ads",
+      "sales_from_website",
     ]);
   });
 

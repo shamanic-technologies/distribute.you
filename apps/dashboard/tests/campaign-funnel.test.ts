@@ -5,7 +5,7 @@ import { CANONICAL_GOALS, optimizationGoalForRuntimeGoal } from "../src/lib/api"
 
 /**
  * A brand with ONE declared funnel (Form Magnet) read as two campaigns on the
- * Campaigns table, the second naming "Sales Meeting from Conversation" — a funnel
+ * Campaigns table, the second naming "Sales Meeting from Positive Reply" — a funnel
  * it had never picked. Two separate causes, both pinned here.
  *
  * 1. The campaign goal was read through a three-token union that ended in a bare

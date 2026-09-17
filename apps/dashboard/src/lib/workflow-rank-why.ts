@@ -203,6 +203,8 @@ export interface WorkflowWhyOptions {
   outcomeStepKey: string | null;
   /** That step's label, in the customer's words (`Website visit`). */
   outcomeNoun: string;
+  /** The same outcome in the plural, stated by the caller. */
+  outcomeNounPlural: string;
   /** The producer's own pick. */
   recommended: boolean;
   /** The campaign states it is running this one. */
@@ -237,6 +239,9 @@ export function workflowRankWhy(
   }
 
   const noun = opts.outcomeNoun.toLowerCase();
+  // Plural stated, never derived: an English pluraliser is a rule we would be inventing,
+  // and it produced "positive replys" the first time the noun was not a regular one.
+  const plural = opts.outcomeNounPlural.toLowerCase();
   const priced =
     ladder.costPerOutcomeUsd == null ? null : opts.formatUsd(ladder.costPerOutcomeUsd);
 
@@ -248,7 +253,7 @@ export function workflowRankWhy(
     ladder.grain === "brand" ||
     // `campaign` arrived with features-service v0.164.0 and is a provenance label like
     // the other two. Leaving it out sent every campaign-labelled row to the FLOORED
-    // sentence below — "produced no sales interest yet" printed on a workflow with 13 of
+    // sentence below — "produced no positive reply yet" printed on a workflow with 13 of
     // them, which is the one sentence on the row a reader would act on.
     ladder.grain === "campaign"
   ) {
@@ -260,7 +265,9 @@ export function workflowRankWhy(
           ? "This campaign's own results"
           : "Your own results on this brand";
     const count =
-      observed == null ? "" : ` ${observed.toLocaleString("en-US")} ${noun}${observed === 1 ? "" : "s"},`;
+      observed == null
+        ? ""
+        : ` ${observed.toLocaleString("en-US")} ${observed === 1 ? noun : plural},`;
     return `${lead}${whose}:${count}${priced ? ` ${priced} each.` : " no price stated."}`.trim();
   }
 
@@ -287,6 +294,8 @@ export interface RankWorkflowsInput<T> {
   recommended: string | null;
   outcomeStepKey: string | null;
   outcomeNoun: string;
+  /** The same outcome in the plural, stated by the caller. */
+  outcomeNounPlural: string;
   formatUsd: (usd: number) => string;
   /**
    * WHICH served position to order on. Both are the producer's; neither is derived.
@@ -367,6 +376,7 @@ export function rankWorkflowRows<T extends { workflowDynastySlug: string; runnin
       why: workflowRankWhy(ladder, {
         outcomeStepKey: input.outcomeStepKey,
         outcomeNoun: input.outcomeNoun,
+        outcomeNounPlural: input.outcomeNounPlural,
         recommended,
         running: row.running,
         formatUsd: input.formatUsd,

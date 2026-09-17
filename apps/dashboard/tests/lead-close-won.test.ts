@@ -30,10 +30,11 @@ describe("closeWonFunnelKey", () => {
   });
 
   it("answers null rather than throwing on a funnel the catalogue does not carry", () => {
-    // lead-service's funnel vocabulary is legitimately wider than this app's catalogue —
-    // it serves ads-led funnels that have no entry here. A throw inside a table cell
-    // would take the whole table down for every row of a campaign selling one.
-    for (const wider of ["sales_from_conversation", "sales_meetings_from_ads", "lead_forms_from_ads"]) {
+    // lead-service's funnel vocabulary can legitimately run ahead of this app's
+    // catalogue — it did until 2026-09-17, when the four ads-led and one-step funnels
+    // landed here. A throw inside a table cell would take the whole table down for
+    // every row of a campaign selling whatever lands next.
+    for (const wider of ["subscription_upsell", "retail_footfall", "partner_referral"]) {
       expect(closeWonFunnelKey(lead({ standing: { funnelKey: wider } }))).toBeNull();
     }
   });
@@ -109,7 +110,7 @@ describe("leadCloseWonState", () => {
 
   it("is UNAVAILABLE when the funnel cannot be placed, whatever the deal says", () => {
     expect(leadCloseWonState(lead({ standing: { funnelKey: null } }))).toBe("unavailable");
-    expect(leadCloseWonState(lead({ standing: { funnelKey: "sales_meetings_from_ads" } }))).toBe(
+    expect(leadCloseWonState(lead({ standing: { funnelKey: "retail_footfall" } }))).toBe(
       "unavailable",
     );
     expect(leadCloseWonState(lead({ standing: null }))).toBe("unavailable");

@@ -225,7 +225,7 @@ function toBoardCard(
     column,
     replyKind,
     // The card states what we last OBSERVED about this person, not the column it is
-    // already sitting in — a tag reading "Sales interest" under a heading reading "Sales
+    // already sitting in — a tag reading "Positive reply" under a heading reading "Positive
     // interest" spends the card's one tag saying nothing. The status is the shared
     // `getLeadConsolidatedStatus`, so the card and the table's own badge cannot name one
     // lead two ways, and the date below is `leadDateForStatus` of that same status: one
@@ -241,7 +241,7 @@ function toBoardCard(
 }
 
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
-  "positive-replies": "Sales interests",
+  "positive-replies": "Positive replies",
   clicks: "Website Visits",
   outreach: "Contacted",
   signups: "Signups",
@@ -1149,7 +1149,7 @@ export function EngagedLeadsPage({
 
   // Open, once (after leads + the sales-economics query have settled), the leftmost
   // on-path tab that has leads, in the OUTCOME-FIRST order (goal-steps single
-  // source: sales_meetings → Sales interests first, visit goals → Website Visits
+  // source: sales_meetings → Positive replies first, visit goals → Website Visits
   // first, Outreach last). Fall through to the next non-empty tab so the user never
   // lands on an empty tab; default to the last (Outreach) when all empty. User manual
   // switches latch the ref and are never overridden by a later poll.
@@ -1529,7 +1529,7 @@ export function EngagedLeadsPage({
   // the page held every lead and became a lie the moment that read gained a bound: the
   // board fetched a bounded page of the population, so the row printed that bound as
   // if it were the population. Measured on one production campaign: `Leads 200`
-  // and `Sales Interests 19 (9.5%)` directly under a heading correctly reading
+  // and `Positive replies 19 (9.5%)` directly under a heading correctly reading
   // `2,052 leads`, beside a served website-visit figure of 85 — three populations on one
   // screen, every number real, none of them agreeing.
   //
@@ -1539,7 +1539,7 @@ export function EngagedLeadsPage({
   // one `salesInterestSharePct` the campaign Overview reads, so those two surfaces
   // cannot state it two ways either.
   //
-  // Consequence to hold: the row's sales interests count REPLY SIGNALS while the board's
+  // Consequence to hold: the row's positive replies count REPLY SIGNALS while the board's
   // own column renders lead-service's funnel-aware standing, and on a funnel entered by
   // a website visit those legitimately differ. The board states its own bound above
   // itself; closing that gap needs standing counts from lead-service, which is a
@@ -1683,7 +1683,7 @@ export function EngagedLeadsPage({
   const salesInterest = hasSalesInterest(selectedLead);
   const canReadEmailCopy = isBetaUserForPanel || salesInterest;
   // Visible BECAUSE of the beta list rather than because this lead converted — the
-  // only case the badge belongs on, since copy a sales interest earned is GA.
+  // only case the badge belongs on, since copy a positive reply earned is GA.
   const betaOnlyCopy = isBetaUserForPanel && !salesInterest;
   const openHistoryRowId = panelScope.sole?.rowId ?? openCampaignRowId;
   const { data: openHistory, isError: openHistoryError } = useAuthQuery(

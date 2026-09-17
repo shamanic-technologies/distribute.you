@@ -4,6 +4,10 @@ import { ChatsCircleIcon } from "@phosphor-icons/react/dist/csr/ChatsCircle";
 import { CalendarCheckIcon } from "@phosphor-icons/react/dist/csr/CalendarCheck";
 import { ShoppingCartSimpleIcon } from "@phosphor-icons/react/dist/csr/ShoppingCartSimple";
 import { MagnetIcon } from "@phosphor-icons/react/dist/csr/Magnet";
+import { CoinsIcon } from "@phosphor-icons/react/dist/csr/Coins";
+import { MegaphoneIcon } from "@phosphor-icons/react/dist/csr/Megaphone";
+import { ListChecksIcon } from "@phosphor-icons/react/dist/csr/ListChecks";
+import { BasketIcon } from "@phosphor-icons/react/dist/csr/Basket";
 import type { Icon } from "@phosphor-icons/react";
 import type { SalesFunnelDef, SalesFunnelKey } from "@/lib/sales-funnels";
 
@@ -17,6 +21,13 @@ const FUNNEL_ICONS: Record<SalesFunnelKey, Icon> = {
   visit_meeting: CalendarCheckIcon,
   visit_signup: ShoppingCartSimpleIcon,
   visit_form: MagnetIcon,
+  // The four added on 2026-09-17. The tone is the brand's ramp for every funnel,
+  // so the GLYPH is the only thing telling two funnels apart — eight distinct
+  // ones, which is why this map is exhaustive over the key rather than defaulted.
+  sales_from_conversation: CoinsIcon,
+  sales_meetings_from_ads: MegaphoneIcon,
+  lead_forms_from_ads: ListChecksIcon,
+  sales_from_website: BasketIcon,
 };
 
 type MarkSize = "xs" | "sm" | "md";

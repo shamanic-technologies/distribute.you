@@ -154,17 +154,21 @@ export interface LeadFunnelStage {
  */
 const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
   // `label` overrides what THIS panel calls the step, and exactly one step needs it.
-  // The catalogue names the first leg "Sales interest" because a funnel is priced leg
-  // by leg and that leg is the one where a lead shows real buying interest; on a lead
-  // panel the row already carries the reply's own KIND beside it (Interested, Wants to
-  // book, Not interested), so "Sales interest" states as a heading the very thing the
-  // control next to it is there to answer. "Replied" is the fact; the picker says what kind.
-  "Sales interest": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
+  // The catalogue prices the leg on the buyer's answer; on a lead panel the row
+  // already carries that answer's own KIND beside it (Interested, Wants to book,
+  // Not interested), so a heading naming the interest states the very thing the
+  // control next to it is there to answer. "Replied" is the fact; the picker says
+  // what kind.
+  "Positive reply": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
   "Website visit": { key: "website_visit", wontLabel: "Won't visit" },
   "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
   "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
   Signup: { key: "signup", wontLabel: "Won't sign up" },
   "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
+  // lead-service records that a form was filled; WHICH funnel it belongs to is the
+  // campaign's, so an ad-platform form shares the stage its website sibling uses
+  // rather than inventing a stage lead-service would refuse.
+  "Lead form submitted": { key: "form_submission", wontLabel: "Won't fill it" },
   "Paid client": { key: "sale", wontLabel: "Won't buy" },
 };
 
@@ -263,7 +267,9 @@ export function leadFunnelLegStages(
  * test and by any consumer that needs to enumerate the space rather than one funnel's
  * slice of it.
  */
-export const LEAD_STAGE_KEYS: readonly LeadStageKey[] = Object.values(STAGE_FOR_STEP).map((s) => s.key);
+export const LEAD_STAGE_KEYS: readonly LeadStageKey[] = [
+  ...new Set(Object.values(STAGE_FOR_STEP).map((s) => s.key)),
+];
 
 /**
  * What we ALREADY measured about a lead, by whatever automatic means.

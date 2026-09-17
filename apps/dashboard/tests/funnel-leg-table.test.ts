@@ -52,7 +52,7 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
   });
 
   // `Done by you` was one sentence for TWO different parties, and it was wrong on the
-  // arrows we work ourselves: a customer reading it on `Sales interest -> Meeting booked`
+  // arrows we work ourselves: a customer reading it on `Positive reply -> Meeting booked`
   // concludes nobody is answering the replies their budget just bought.
   it("names WHO works an arrow nobody sells us, in the channel's own shape", () => {
     expect(table).toContain("statesOperator");
@@ -162,7 +162,7 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
   it("gives a row its OWN outcomes, never the arrow's total under one campaign's name", () => {
     // The rung is funnel-scoped. With two campaigns feeding one step, printing it on
     // both rows lends one campaign the other's evidence: measured in prod, cold email
-    // had 18 sales interests and a feedback-request campaign 0, and both read 18.
+    // had 18 positive replies and a feedback-request campaign 0, and both read 18.
     expect(legTable).toContain("campaignStepOutcomes(campaign.revenue, leg.toKey)");
     // An arrow no campaign of ours performs has only the rung, which IS its count.
     expect(legTable).toContain("step?.recipientsReached");

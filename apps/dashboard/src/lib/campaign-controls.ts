@@ -329,7 +329,7 @@ export function buildControlRows(
 /**
  * The same rows, filed under the SALES FUNNEL each campaign sells.
  *
- * A campaign is named for the LEG it performs (`Sales interest`), which is an
+ * A campaign is named for the LEG it performs (`Positive reply`), which is an
  * arrow of a funnel and not the funnel itself — so a flat list of campaigns
  * states what each one buys and never what it buys it FOR. On a scope selling
  * several funnels that reads as several unrelated lines: the modal named an

@@ -144,7 +144,7 @@ export function FunnelLegPage() {
   // brand it was built against — to fill a board that has never drawn more than
   // LEG_BOARD_COLUMN_CAP cards a column. The population it actually needs is tiny: a
   // column is the people at ONE funnel step, and measured in production on that same
-  // brand those buckets hold 21 (sales interest) and 66 (website visit). The cap was
+  // brand those buckets hold 21 (positive reply) and 66 (website visit). The cap was
   // already right; the READ was what had no bound.
   //
   // Each column asks for its own step's bucket, which is a question lead-service answers

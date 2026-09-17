@@ -92,7 +92,16 @@ describe("the reply vocabulary no longer offers deal progress", () => {
 
   it("keeps admin's funnels equal to the funnel catalogue's names", () => {
     expect(Object.keys(FUNNEL_STEPS).sort()).toEqual(
-      ["reply_meeting", "visit_form", "visit_meeting", "visit_signup"],
+      [
+        "lead_forms_from_ads",
+        "reply_meeting",
+        "sales_from_conversation",
+        "sales_from_website",
+        "sales_meetings_from_ads",
+        "visit_form",
+        "visit_meeting",
+        "visit_signup",
+      ],
     );
   });
 });

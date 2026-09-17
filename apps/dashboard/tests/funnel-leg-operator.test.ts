@@ -13,13 +13,13 @@ const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf
  * WHO works an arrow no campaign performs.
  *
  * The table said `Done by you` on every unclaimed arrow, including the two OUR team
- * works: a customer reading that on `Sales interest -> Meeting booked` concludes nobody
+ * works: a customer reading that on `Positive reply -> Meeting booked` concludes nobody
  * is answering the replies their budget just bought. The split is by arrow, and these
  * pin which arrows are whose.
  */
 describe("an unclaimed arrow states who works it", () => {
   it("gives our team the two arrows we work by hand today", () => {
-    // Replying to a sales interest until a meeting is on the calendar, then chasing the
+    // Replying to a positive reply until a meeting is on the calendar, then chasing the
     // show-up. Both are conversation work on a lead our own outreach produced.
     expect(funnelLegOperator("conversation", "meeting_booked")).toBe("platform");
     expect(funnelLegOperator("meeting_booked", "meeting_attended")).toBe("platform");

@@ -5,7 +5,7 @@
 // board is a PARTITION: every lead appears once. That is a different statement about
 // the same data, and it is the one a person working a list actually reads.
 //
-// It used to be the FUNNEL laid out as columns (Contacted -> Sales interest -> Meeting
+// It used to be the FUNNEL laid out as columns (Contacted -> Positive reply -> Meeting
 // booked -> Meeting attended -> Paid client). It is a TRIAGE now, and the difference is
 // the question it answers: not "how far down the funnel is this lead" but "is this one
 // still in play, and if not, why not". A funnel rung is stated on the lead's own panel,
@@ -134,16 +134,16 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   },
   {
     key: "sales_interest",
-    label: "Sales interest",
-    blurb: "Leads who have shown or expressed sales interest.",
+    label: "Positive reply",
+    blurb: "Leads who have shown or expressed positive reply.",
     writable: true,
     hideWhenEmpty: false,
   },
   {
     // The deal closed. It is the producer's `customer` standing, which used to fold into
-    // Sales interest — right while the board was four buckets of "still in play or not",
+    // Positive reply — right while the board was four buckets of "still in play or not",
     // and wrong the moment somebody wants to see what they actually WON. A won deal is
-    // not a strong sales interest, it is the outcome the funnel exists to produce, and
+    // not a strong positive reply, it is the outcome the funnel exists to produce, and
     // burying it in the column above states one fact under another's name.
     key: "won",
     label: "Close won",
@@ -190,7 +190,7 @@ export function columnBlurb(column: LeadBoardColumn, scopeNoun?: string | null):
 }
 
 /**
- * The kinds a person may state to put a card in Sales interest.
+ * The kinds a person may state to put a card in Positive reply.
  *
  * ⚠️ This is the WRITE picker, NOT how a card is placed. Placement is the producer's
  * (`leadBoardColumnFor`), and the producer decides where the card lands AFTER the
@@ -269,7 +269,7 @@ export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
  * render of that word rather than a rule of ours over the deciding evidence — which is
  * what it used to be, and which quietly misfiled every opt-out into "Not placed" the
  * moment the producer split the state. `customer` has its OWN column (`won`): it used
- * to fold into Sales interest, which read a closed deal as a warm one.
+ * to fold into Positive reply, which read a closed deal as a warm one.
  *
  * `not_contacted` lands nowhere (`null`) and the lead is left off the board entirely:
  * there is nothing to show about what happened to it, and inventing a column would make
@@ -299,7 +299,7 @@ export function leadBoardColumnFor(
       return "sales_interest";
     case "customer":
       // The funnel's last step is reached — the deal closed. Its own column since the
-      // board grew one: folding it into Sales interest made a won deal read as a warm
+      // board grew one: folding it into Positive reply made a won deal read as a warm
       // one, which is the fact a person triaging a list most wants told apart.
       return "won";
     case "opted_out":

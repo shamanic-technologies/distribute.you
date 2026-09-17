@@ -4,6 +4,9 @@ import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { UserPlusIcon } from "@phosphor-icons/react/dist/csr/UserPlus";
 import { NotePencilIcon } from "@phosphor-icons/react/dist/csr/NotePencil";
 import { CursorClickIcon } from "@phosphor-icons/react/dist/csr/CursorClick";
+import { ChatTextIcon } from "@phosphor-icons/react/dist/csr/ChatText";
+import { StorefrontIcon } from "@phosphor-icons/react/dist/csr/Storefront";
+import { SealCheckIcon } from "@phosphor-icons/react/dist/csr/SealCheck";
 import { ClipboardTextIcon } from "@phosphor-icons/react/dist/csr/ClipboardText";
 import { CalendarPlusIcon } from "@phosphor-icons/react/dist/csr/CalendarPlus";
 import { CalendarStarIcon } from "@phosphor-icons/react/dist/csr/CalendarStar";
@@ -38,6 +41,9 @@ const LEG_ICONS: Record<FunnelLegGlyph, Icon> = {
   handshake: HandshakeIcon,
   "credit-card": CreditCardIcon,
   receipt: ReceiptIcon,
+  "chat-text": ChatTextIcon,
+  storefront: StorefrontIcon,
+  "seal-check": SealCheckIcon,
 };
 
 type MarkSize = "xs" | "sm" | "md";

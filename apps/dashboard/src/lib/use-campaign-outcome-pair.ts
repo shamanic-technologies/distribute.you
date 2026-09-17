@@ -6,7 +6,7 @@
  *
  * A campaign is (offer x funnel x channel) and it performs ONE arrow of that funnel, so
  * the outcome each workflow produced FOR IT is that arrow's own. The Workflows table
- * hardcoded the reply pair, so a visit-led campaign read `0 sales interests` on every
+ * hardcoded the reply pair, so a visit-led campaign read `0 positive replies` on every
  * row while it was measurably buying website visits — the same trap #3880 closed on the
  * Audiences table, one surface over.
  *

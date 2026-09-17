@@ -17,16 +17,29 @@ export const SALES_FUNNEL_KEYS = [
   "sales_meetings_from_website",
   "website_purchases",
   "form_magnet",
+  // Added by brand-service on 2026-09-17. The three ad-delivered and one-step funnels
+  // start on the step the channel DELIVERS — a booked meeting, a filled lead form, or
+  // the sale itself — with no rung before it.
+  "sales_from_conversation",
+  "sales_meetings_from_ads",
+  "lead_forms_from_ads",
+  "sales_from_website",
 ] as const;
 
 export type SalesFunnelKey = (typeof SALES_FUNNEL_KEYS)[number];
 
 /** What each funnel is called, and the steps it runs. */
 const SALES_FUNNEL_LABELS: Record<SalesFunnelKey, string> = {
-  sales_meetings_from_conversation: "Sales Meeting from Conversation",
+  sales_meetings_from_conversation: "Sales Meeting from Positive Reply",
   sales_meetings_from_website: "Sales Meeting from Website",
-  website_purchases: "Website Purchase",
+  // KEY/NAME MISMATCH ON PURPOSE: the key is a frozen wire token and this funnel's
+  // middle rung is a SIGNUP. "Website Purchase" belongs to `sales_from_website`.
+  website_purchases: "Signups",
   form_magnet: "Form Magnet",
+  sales_from_conversation: "Sale from Positive Reply",
+  sales_meetings_from_ads: "Sales Meeting from Ads",
+  lead_forms_from_ads: "Lead Form from Ads",
+  sales_from_website: "Website Purchase",
 };
 
 /** The name a person reads for a funnel key, or the raw key when it names none of ours. */
@@ -34,7 +47,7 @@ export function salesFunnelLabel(key: string): string {
   return SALES_FUNNEL_LABELS[key as SalesFunnelKey] ?? key;
 }
 
-/** True when a value names one of the four funnels. */
+/** True when a value names one of the catalogue funnels. */
 export function isSalesFunnelKey(value: string | null | undefined): value is SalesFunnelKey {
   return !!value && (SALES_FUNNEL_KEYS as readonly string[]).includes(value);
 }

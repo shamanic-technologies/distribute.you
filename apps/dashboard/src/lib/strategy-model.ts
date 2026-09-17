@@ -117,7 +117,7 @@ export function audienceRankMetric(
 
 /** Column header. Byte-equal to the Audiences table's own `SortHeader` labels. */
 export const AUDIENCE_RANK_METRIC_LABEL: Record<AudienceRankMetric, string> = {
-  cppr: "Cost per sales interest",
+  cppr: "Cost per positive reply",
   cps: "Cost per signup",
   cpfs: "Cost per form submission",
   cpsale: "Cost per sale",
@@ -126,7 +126,7 @@ export const AUDIENCE_RANK_METRIC_LABEL: Record<AudienceRankMetric, string> = {
 
 /** Tooltip copy. Byte-equal to the Audiences table's own `info` strings. */
 export const AUDIENCE_RANK_METRIC_INFO: Record<AudienceRankMetric, string> = {
-  cppr: "Cost per sales interest — audience-scoped spend divided by sales interests. Lower is better.",
+  cppr: "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.",
   cps: "Cost per signup — audience-scoped spend divided by signups. Lower is better.",
   cpfs: "Cost per form submission — audience-scoped spend divided by form submissions. Lower is better.",
   cpsale: "Cost per sale — audience-scoped spend divided by sales (paying clients won). Lower is better.",
@@ -135,7 +135,7 @@ export const AUDIENCE_RANK_METRIC_INFO: Record<AudienceRankMetric, string> = {
 
 /** Plural noun for the outcome the metric divides by ("3 replies", "0 sales"). */
 export const AUDIENCE_RANK_METRIC_OUTCOME_NOUN: Record<AudienceRankMetric, string> = {
-  cppr: "sales interests",
+  cppr: "positive replies",
   cps: "signups",
   cpfs: "form submissions",
   cpsale: "sales",
@@ -150,7 +150,7 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
     case "website_visits":
       return "website visit";
     case "positive_replies":
-      return "sales interest";
+      return "positive reply";
     case "form_submissions":
       return "form submission";
     case "website_purchase":
@@ -173,7 +173,7 @@ export function outcomeNounPlural(goal: BrandOptimizationGoal): string {
     // Not "replies": a plain reply includes the negative ones, which are not the
     // outcome the brand is optimizing for.
     case "positive_replies":
-      return "sales interests";
+      return "positive replies";
     case "form_submissions":
       return "form submissions";
     case "website_purchase":

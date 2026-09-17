@@ -52,25 +52,25 @@ function pair(
 describe("undeclaredFunnels", () => {
   it("subtracts what the offer already stated, in catalogue order", () => {
     const out = undeclaredFunnels(["reply_meeting"]);
-    expect(out.map((f) => f.key)).toEqual(["visit_meeting", "visit_signup", "visit_form"]);
+    expect(out.map((f) => f.key)).toEqual(
+      SALES_FUNNELS.filter((f) => f.key !== "reply_meeting").map((f) => f.key),
+    );
   });
 
   it("reads BOTH wire spellings of a key, so a rename never re-offers a declared funnel", () => {
     expect(undeclaredFunnels(["sales_meetings_from_conversation"]).map((f) => f.key)).toEqual(
-      ["visit_meeting", "visit_signup", "visit_form"],
+      SALES_FUNNELS.filter((f) => f.key !== "reply_meeting").map((f) => f.key),
     );
-    expect(undeclaredFunnels(["form_magnet"]).map((f) => f.key)).toEqual([
-      "reply_meeting",
-      "visit_meeting",
-      "visit_signup",
-    ]);
+    expect(undeclaredFunnels(["form_magnet"]).map((f) => f.key)).toEqual(
+      SALES_FUNNELS.filter((f) => f.key !== "visit_form").map((f) => f.key),
+    );
   });
 
   it("offers everything when the offer has stated nothing", () => {
     expect(undeclaredFunnels([])).toHaveLength(SALES_FUNNELS.length);
   });
 
-  it("offers NOTHING once all four are declared, so the section disappears", () => {
+  it("offers NOTHING once every funnel is declared, so the section disappears", () => {
     expect(undeclaredFunnels(SALES_FUNNELS.map((f) => f.key))).toEqual([]);
   });
 
@@ -237,7 +237,7 @@ describe("the shape features-service actually serves", () => {
     channelSlug: "sales-cold-email-outreach",
     channelName: "Sales Cold Email Outreach",
     funnelKey: "sales_meetings_from_conversation",
-    funnelName: "Sales Meeting from Conversation",
+    funnelName: "Sales Meeting from Positive Reply",
     funnelSteps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
     computedAt: null,
     measured: false,

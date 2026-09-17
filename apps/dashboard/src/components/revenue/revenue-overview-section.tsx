@@ -216,7 +216,7 @@ export function RevenueOverviewSection({
   const outcomeSeries = isVisitDriven
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
-  const outcomeLabel = isVisitDriven ? "Website visits" : "Sales interests";
+  const outcomeLabel = isVisitDriven ? "Website visits" : "Positive replies";
 
   // Forward projection for the Outcome line — the expected daily increments past
   // today (today + forecast horizon). Signups read the per-day clicks forecast;
@@ -295,7 +295,7 @@ export function RevenueOverviewSection({
 
       {/* What we DID and what it BOUGHT, side by side on desktop.
           Left: per-day BARS — outreach / the goal engagement (clicks for signups,
-          sales interests for meetings) across the past (actuals) + today + forecast,
+          positive replies for meetings) across the past (actuals) + today + forecast,
           with the 7/30/90-day window toggle. Right: what one outcome has cost over
           the same life.
           One row rather than two full-width bands because the two answer halves of one

@@ -27,7 +27,7 @@ const FOUNDER_LED_CLOSING: ChannelLeg[] = [{ from: "meeting_attended", to: "paid
 
 /** A rung as features-service serves it. */
 const step = (over: Partial<FunnelStepRow> & { leadField: string }): FunnelStepRow => ({
-  step: "Sales interest",
+  step: "Positive reply",
   recipientsReached: 40,
   costPerReachCents: 12_345,
   fromStep: "Contacted",
@@ -41,8 +41,8 @@ const legOf = (channel: ChannelLeg[]) => campaignLegFor(reply, channel)?.toIndex
 describe("funnelLegs — every arrow of the funnel, run by us or not", () => {
   it("states one leg per step, entry first", () => {
     expect(funnelLegs(reply).map((l) => l.label)).toEqual([
-      "Sales interest",
-      "Sales interest → Meeting booked",
+      "Positive reply",
+      "Positive reply → Meeting booked",
       "Meeting booked → Meeting attended",
       "Meeting attended → Paid client",
     ]);
@@ -70,12 +70,12 @@ describe("funnelLegs — every arrow of the funnel, run by us or not", () => {
 
 describe("buildFunnelLegRows — the funnel walked, with who performs each arrow", () => {
   const steps: FunnelStepRow[] = [
-    step({ leadField: "repliedPositive", step: "Sales interest", recipientsReached: 41 }),
+    step({ leadField: "repliedPositive", step: "Positive reply", recipientsReached: 41 }),
     step({
       leadField: "meetingBooked",
       step: "Meeting booked",
       recipientsReached: 12,
-      fromStep: "Sales interest",
+      fromStep: "Positive reply",
       fromRecipientsReached: 41,
       conversionFromPreviousPct: 29.3,
     }),
@@ -104,8 +104,8 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
       campaigns: [{ toIndex: legOf(COLD_EMAIL), campaign: "cold-email" }],
     });
     expect(rows.map((r) => r.leg.label)).toEqual([
-      "Sales interest",
-      "Sales interest → Meeting booked",
+      "Positive reply",
+      "Positive reply → Meeting booked",
       "Meeting booked → Meeting attended",
       "Meeting attended → Paid client",
     ]);
@@ -245,7 +245,7 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
 
 describe("campaignStepOutcomes — a campaign's OWN count for a step", () => {
   // Measured in prod on the brand that reported this: two campaigns feed the reply
-  // funnel's first step, cold email with 18 sales interests and a feedback-request
+  // funnel's first step, cold email with 18 positive replies and a feedback-request
   // campaign with 0. The funnel's rung says 18 for the step, so a row reading the rung
   // lends one campaign the other's evidence.
   const coldEmail = { positiveReplies: 18, websiteClicks: 53 };
@@ -276,7 +276,7 @@ describe("campaignStepOutcomes — a campaign's OWN count for a step", () => {
 describe("campaignStepCostCents — a campaign's OWN price for one outcome at a step", () => {
   // Measured in prod on the brand that reported this: the funnel's rung divided the
   // WHOLE funnel's committed spend ($2,949.84, a feedback-request campaign included)
-  // by the 18 sales interests cold email produced, and printed $164 on a row whose own
+  // by the 18 positive replies cold email produced, and printed $164 on a row whose own
   // `$ Invested` read $2,889. 2889/18 is 160, which is what that campaign's own page
   // says, so the row disagreed with itself and with the page one click away.
   const coldEmail = { cpprCents: 16048.611111111111, cpcCents: 5349.537037037037 };

@@ -132,7 +132,7 @@ describe("the form asks the two things a move into or out of Opt-out needs", () 
 
   it("asks the leaving question BEFORE the target's own", () => {
     // Whatever column the card was dropped on, the write is the same withdrawal — so
-    // a card dragged from Opt-out to Sales interest must not be asked for a reply
+    // a card dragged from Opt-out to Positive reply must not be asked for a reply
     // kind it is not about to write.
     const confirmAt = board.indexOf("pendingConfirmation && pending.card.email");
     const optOutAt = board.indexOf("pendingOptOut && pending.card.email");

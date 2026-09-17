@@ -56,7 +56,7 @@ describe("campaignTitleParts", () => {
     const parts = campaignTitleParts(row(), CHANNELS);
     expect(parts.funnel?.key).toBe("reply_meeting");
     expect(parts.channel?.featureSlug).toBe("sales-cold-email-outreach");
-    expect(parts.label).toBe("Sales Meeting from Conversation · Sales Cold Email Outreach");
+    expect(parts.label).toBe("Sales Meeting from Positive Reply · Sales Cold Email Outreach");
   });
 
   it("reads the funnel catalogue's own words, both spellings of the key", () => {
@@ -69,7 +69,7 @@ describe("campaignTitleParts", () => {
   it("never reads the stored name while either half resolves", () => {
     // Funnel only: a campaign stating no channel still says what it buys.
     expect(campaignTitleParts(row({ featureSlug: null }), CHANNELS).label).toBe(
-      "Sales Meeting from Conversation",
+      "Sales Meeting from Positive Reply",
     );
     // Channel only: a pre-funnel campaign with no goal in hand still says how.
     expect(campaignTitleParts(row({ funnelKey: null }), CHANNELS).label).toBe(
@@ -101,7 +101,7 @@ describe("campaignTitleParts", () => {
     const parts = campaignTitleParts(row({ featureSlug: "some-future-channel" }), CHANNELS);
     expect(parts.channel).toBeNull();
     expect(parts.channelLabel).toBe("Some Future Channel");
-    expect(parts.label).toBe("Sales Meeting from Conversation · Some Future Channel");
+    expect(parts.label).toBe("Sales Meeting from Positive Reply · Some Future Channel");
   });
 
   it("channelSlugLabel says nothing for a campaign stating no channel", () => {

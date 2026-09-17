@@ -5,7 +5,7 @@ import type { LeadHistory } from "./lead-history";
  * What we owe this person NEXT, read off the history lead-service already assembles.
  *
  * The follow-up debt is a property of the (person, campaign) pair: once a prospect shows
- * a sales interest we owe them an answer now, and then, if they go quiet, further answers
+ * a positive reply we owe them an answer now, and then, if they go quiet, further answers
  * at widening intervals until they book, opt out, or answer again. lead-service owns that
  * schedule and reports it inside the lead's history as a `followup` event carrying its
  * state, its due date and how many follow-ups have already gone out.
