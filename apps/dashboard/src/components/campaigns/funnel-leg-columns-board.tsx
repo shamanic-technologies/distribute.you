@@ -41,8 +41,10 @@ import { Skeleton } from "@/components/skeleton";
  * answers the other question — what ELSE could work this arrow — which is the only way a
  * customer reaches a channel they have not bought yet.
  *
- * Every card opens the SAME `CampaignControlsModal` the Overview opens. Several windows
- * onto one number are fine; a second way of WRITING it is not.
+ * Every card opens the SAME `CampaignControlsModal` the Overview opens, SCOPED to the
+ * channel that was clicked. Several windows onto one number are fine; a second way of
+ * WRITING it is not, and neither is a window that opens onto every other channel of the
+ * funnel when a reader pressed one card.
  */
 export function FunnelLegColumnsBoard({
   brandId,
@@ -259,10 +261,20 @@ export function FunnelLegColumnsBoard({
       </div>
 
       {openSlug && (
+        // Scoped to the card that was CLICKED, not to the funnel. `openSlug` was held
+        // all along and read as a boolean, so the modal listed a budget field and a
+        // toggle for every channel of the funnel — the reader clicked one card and was
+        // handed the siblings' controls too.
+        //
+        // The funnel stays on the call: a channel can sell several funnels, so the slug
+        // alone would match a sibling funnel's row for the same channel. `offerable`
+        // stays too — the card may have no campaign at all, and that list is the only
+        // thing that gives it a row.
         <CampaignControlsModal
           brandId={brandId}
           offerId={offerId}
           funnelKey={funnel.key}
+          featureSlug={openSlug}
           offerable={offerable}
           onClose={() => setOpenSlug(null)}
         />

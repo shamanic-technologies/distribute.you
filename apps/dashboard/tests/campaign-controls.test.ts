@@ -199,6 +199,89 @@ describe("buildControlRows — a channel with no campaign yet", () => {
   });
 });
 
+/**
+ * The funnel board opens this modal from ONE card, and a card is one channel under one
+ * arrow. Without a channel filter the reader pressed one card and was handed a budget
+ * field and a toggle for every sibling channel of the funnel.
+ *
+ * It is deliberately NOT `campaignId`: the board's whole job is to offer channels that
+ * have no campaign at all, so the row most in need of scoping has no id to scope on.
+ */
+describe("buildControlRows — scoped to one acquisition channel", () => {
+  const OFFERABLE = [
+    {
+      funnelKey: "reply_meeting" as const,
+      featureSlug: "feedback-request-cold-email-outreach",
+      channelName: "Feedback Request Cold Email Outreach",
+      offerId: OFFER_A,
+    },
+  ];
+
+  it("keeps only the clicked channel's campaign", () => {
+    const rows = buildControlRows(
+      [
+        campaign({ id: "a" }),
+        campaign({ id: "b", featureSlug: "feedback-request-cold-email-outreach" }),
+      ],
+      undefined,
+      CHANNELS,
+      { featureSlug: COLD_EMAIL },
+    );
+    expect(rows.map((r) => r.campaignId)).toEqual(["a"]);
+  });
+
+  // The case `campaignId` cannot express: a card the brand has never funded.
+  it("keeps an offerable channel that has no campaign, and drops its siblings", () => {
+    const rows = buildControlRows(
+      [campaign({ id: "a" })],
+      undefined,
+      CHANNELS,
+      { featureSlug: "feedback-request-cold-email-outreach" },
+      OFFERABLE,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].campaignId).toBeNull();
+    expect(rows[0].scope?.featureSlug).toBe("feedback-request-cold-email-outreach");
+  });
+
+  // A channel can sell several funnels, so the slug alone would match a sibling
+  // funnel's row for the same channel. The board pairs the two.
+  it("still narrows by funnel, so one channel's two funnels stay apart", () => {
+    const rows = buildControlRows(
+      [
+        campaign({ id: "a", funnelKey: "reply_meeting" }),
+        campaign({ id: "b", funnelKey: "visit_signup" }),
+      ],
+      undefined,
+      CHANNELS,
+      { featureSlug: COLD_EMAIL, funnelKey: "reply_meeting" },
+    );
+    expect(rows.map((r) => r.campaignId)).toEqual(["a"]);
+  });
+
+  it("changes nothing for a caller that states no channel", () => {
+    const campaigns = [
+      campaign({ id: "a" }),
+      campaign({ id: "b", featureSlug: "feedback-request-cold-email-outreach" }),
+    ];
+    const scoped = buildControlRows(campaigns, undefined, CHANNELS, { featureSlug: undefined });
+    const unscoped = buildControlRows(campaigns, undefined, CHANNELS, {});
+    expect(scoped.map((r) => r.rowId)).toEqual(unscoped.map((r) => r.rowId));
+  });
+
+  // A slug nothing publishes narrows to nothing rather than falling back to the list.
+  it("narrows to nothing for a channel that is not there", () => {
+    const rows = buildControlRows(
+      [campaign({ id: "a" })],
+      undefined,
+      CHANNELS,
+      { featureSlug: "google-ads" },
+      OFFERABLE,
+    );
+    expect(rows).toEqual([]);
+  });
+});
+
 describe("buildControlRows — which campaigns a grain controls", () => {
   it("brand grain lists every acquisition-channel campaign, running or not", () => {
     const rows = buildControlRows(

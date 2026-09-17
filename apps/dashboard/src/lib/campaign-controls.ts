@@ -194,7 +194,21 @@ export function buildControlRows(
   campaigns: ControlCampaign[],
   budgets: BrandFunnelBudgetSet | undefined,
   channels: AcquisitionChannelDef[],
-  filter: { offerId?: string; campaignId?: string; funnelKey?: string | null } = {},
+  filter: {
+    offerId?: string;
+    campaignId?: string;
+    funnelKey?: string | null;
+    /**
+     * Scope to ONE acquisition channel.
+     *
+     * Distinct from `campaignId`, and not a convenience for it: the funnel board
+     * offers channels that have NO campaign at all, so the row a customer clicked
+     * routinely has no id to filter on. Its identity is the triple billing keys a
+     * ceiling on — (funnel x channel x offer) — and the channel is the only part of
+     * it the other two filters do not already carry.
+     */
+    featureSlug?: string | null;
+  } = {},
   /**
    * Channels a customer may fund that have NO campaign yet.
    *
@@ -220,6 +234,7 @@ export function buildControlRows(
   const scoped = campaigns.filter((c) => {
     if (filter.campaignId) return c.id === filter.campaignId;
     if (acquisitionChannelForFeatureSlug(c.featureSlug, channels) === null) return false;
+    if (filter.featureSlug && c.featureSlug !== filter.featureSlug) return false;
     if (filter.offerId && c.offerId !== filter.offerId) return false;
     if (wantedFunnel) {
       // A campaign that predates the funnels names none, so it belongs to no
@@ -247,6 +262,7 @@ export function buildControlRows(
   const offeredRows: ControlRow[] = [];
   for (const o of offerable) {
     if (filter.campaignId) break;
+    if (filter.featureSlug && o.featureSlug !== filter.featureSlug) continue;
     if (filter.offerId && o.offerId !== filter.offerId) continue;
     let key: SalesFunnelKey;
     try {
