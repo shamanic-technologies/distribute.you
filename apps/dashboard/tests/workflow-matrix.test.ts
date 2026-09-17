@@ -20,6 +20,7 @@ import {
   matrixWorkflowOrder,
   scopeRankedRows,
   columnBestCells,
+  lowestScopePosition,
   isColumnBestCell,
   cellRestsOnOwnEvidence,
   type MatrixGrain,
@@ -302,8 +303,48 @@ describe("each COLUMN lights the cell it would pick", () => {
       src.indexOf("export function isColumnBestCell("),
     );
     expect(body).not.toContain(".sort(");
-    expect(body).toContain("r.scopeRank !== 1");
+    // The position comes from ONE shared rule, so the grid and the per-audience list
+    // cannot disagree about which workflow a column would pick.
+    expect(body).toContain("lowestScopePosition(");
     expect(body).not.toContain("costPerOutcomeUsd");
+  });
+
+  it("lights the lowest position PRESENT when the producer's #1 is not drawn", () => {
+    // `hiddenWorkflowSlugs` removes the workflows whose model tier this leg's rule
+    // excludes — which campaign-service also refuses to select — so the row the producer
+    // put at position 1 is routinely absent from the grid. Requiring `=== 1` then lights
+    // NOTHING (prod 2026-09-17: 14 of 16 columns), which reads as "no best workflow here".
+    const rows = [
+      cell("kept-second", "aud", 79, "crossOrg", { scopeRank: 2 }),
+      cell("kept-fifth", "aud", 100, "crossOrg", { scopeRank: 5 }),
+    ];
+    expect(columnBestCells(rows).get("aud")).toBe("kept-second");
+  });
+
+  it("takes the lowest position, not the first row in array order", () => {
+    const rows = [
+      cell("later", "aud", 50, "crossOrg", { scopeRank: 7 }),
+      cell("earlier", "aud", 90, "crossOrg", { scopeRank: 3 }),
+    ];
+    expect(columnBestCells(rows).get("aud")).toBe("earlier");
+  });
+
+  it("breaks a tie at the lowest position on the slug, whatever that position is", () => {
+    const rows = [
+      cell("zeta", "aud", 10, "audience", { scopeRank: 4 }),
+      cell("alpha", "aud", 10, "audience", { scopeRank: 4 }),
+    ];
+    expect(columnBestCells(rows).get("aud")).toBe("alpha");
+  });
+
+  it("decides each column independently — one hidden #1 does not unlight its neighbours", () => {
+    const rows = [
+      cell("a", "left", 10, "audience", { scopeRank: 1 }),
+      cell("b", "right", 20, "crossOrg", { scopeRank: 6 }),
+    ];
+    const best = columnBestCells(rows);
+    expect(best.get("left")).toBe("a");
+    expect(best.get("right")).toBe("b");
   });
 
   it("addresses exactly the cells its own columns picked", () => {
@@ -322,5 +363,24 @@ describe("each COLUMN lights the cell it would pick", () => {
     expect(src).not.toContain("bestMatrixCell");
     expect(src).not.toContain("isBestCell");
     expect(src).not.toContain("MatrixCellAddress");
+  });
+});
+
+describe("lowestScopePosition — the ONE rule both surfaces read", () => {
+  it("returns the lowest position present", () => {
+    expect(lowestScopePosition([5, 2, 9])).toBe(2);
+  });
+
+  it("is NOT pinned to 1 — the rows the page draws may not include position 1", () => {
+    expect(lowestScopePosition([4, 7])).toBe(4);
+  });
+
+  it("skips rows the producer placed nowhere, rather than treating them as best", () => {
+    expect(lowestScopePosition([null, 3, undefined])).toBe(3);
+  });
+
+  it("answers null when nothing carries a position — never a fabricated winner", () => {
+    expect(lowestScopePosition([null, undefined])).toBeNull();
+    expect(lowestScopePosition([])).toBeNull();
   });
 });
