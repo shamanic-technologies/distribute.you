@@ -22,6 +22,17 @@ function sliceFrom(anchor: string, length: number): string {
   return flow.slice(at, at + length);
 }
 
+// Bounded by the NEXT declaration rather than a measured length. A `toContain`
+// guard cannot be hurt by a slice that runs long, and a number expires the next
+// time anybody adds a line inside the block.
+function sliceBetween(anchor: string, endAnchor: string): string {
+  const at = flow.indexOf(anchor);
+  expect(at, `anchor not found: ${anchor}`).toBeGreaterThan(-1);
+  const end = flow.indexOf(endAnchor, at);
+  expect(end, `end anchor not found: ${endAnchor}`).toBeGreaterThan(at);
+  return flow.slice(at, end);
+}
+
 describe("onboarding — one flow, no gate", () => {
   it("serves the funnels flow to every signup", () => {
     // It ran behind the beta allowlist while brand-service had nowhere to put the
@@ -206,7 +217,7 @@ describe("onboarding — copy", () => {
   });
 
   it("keeps the model vocabulary off the projection step", () => {
-    const model = sliceFrom('if (step === "model")', 3000);
+    const model = sliceBetween('if (step === "model")', 'if (step === "offer") {');
     expect(model).toContain("Your most profitable path with us.");
     expect(flow).not.toContain("Your best model.");
   });

@@ -5,6 +5,7 @@ import {
   buildAudienceLLMPrompt,
   buildFunnelStatsLLMPrompt,
   buildServicesLLMPrompt,
+  copyStepIntent,
 } from "../src/components/onboarding/llm-prompt";
 
 // `llm-prompt.ts` is alias-free on purpose, so these are REAL unit tests rather
@@ -183,5 +184,108 @@ describe("selection highlight", () => {
     const block = GLOBALS.slice(at, GLOBALS.indexOf("}", at));
     expect(block).toContain("var(--color-brand-200)");
     expect(block).not.toMatch(/#[0-9a-fA-F]{6}\s*;[\s\S]*background/);
+  });
+});
+
+describe("Ctrl+C on a step", () => {
+  // Measured in Chromium before this shipped, on a page carrying prose and a real
+  // <textarea>: a drag from the question into the field selects the question ONLY,
+  // and Ctrl+C copies the question ONLY. Same under a slow drag, a reverse drag,
+  // and with a `contenteditable` in place of the textarea. A `user-select: all`
+  // wrapper selected nothing at all. The `copy` event is what works: with a handler
+  // on the surrounding block the clipboard carried the question AND the field.
+  const selectedProse = {
+    activeElementIsField: false,
+    fieldSelectionIsRange: false,
+    selectionText: "Dream outcome",
+  };
+
+  it("rewrites when the reader selected prose and pressed Ctrl+C", () => {
+    // The whole point: this is the gesture people were making and failing at.
+    expect(copyStepIntent(selectedProse)).toBe("rewrite");
+  });
+
+  it("rewrites when the selection spans the whole block", () => {
+    expect(
+      copyStepIntent({ ...selectedProse, selectionText: "Dream outcome\nWhy it matters" }),
+    ).toBe("rewrite");
+  });
+
+  it("passes through a copy made INSIDE the field", () => {
+    // The reader lifting a phrase of their own draft, or a URL out of a destination
+    // box, to paste somewhere else. Measured: an unguarded handler hands them the
+    // whole prompt instead of the five characters they selected, which is worse than
+    // having no handler at all.
+    expect(
+      copyStepIntent({
+        activeElementIsField: true,
+        fieldSelectionIsRange: true,
+        selectionText: "",
+      }),
+    ).toBe("passthrough");
+  });
+
+  it("passes through when the field merely has focus with no selection", () => {
+    // A caret is not a selection, so this is not a copy the reader aimed at their
+    // own draft; but there is also nothing selected anywhere, so there is no
+    // intention to read either.
+    expect(
+      copyStepIntent({
+        activeElementIsField: true,
+        fieldSelectionIsRange: false,
+        selectionText: "",
+      }),
+    ).toBe("passthrough");
+  });
+
+  it("passes through an empty selection", () => {
+    expect(copyStepIntent({ ...selectedProse, selectionText: "   " })).toBe("passthrough");
+  });
+
+  it("still rewrites when a field holds a stale caret but the SELECTION is prose", () => {
+    // Clicking into the box, then selecting the question with the mouse: the field
+    // keeps focus while the real selection lives in the page. Reading focus alone
+    // would wrongly pass this through and reproduce the original bug.
+    expect(
+      copyStepIntent({
+        activeElementIsField: true,
+        fieldSelectionIsRange: false,
+        selectionText: "Dream outcome",
+      }),
+    ).toBe("rewrite");
+  });
+});
+
+describe("the copy handler is wired to the same string as the button", () => {
+  it("hands every step ONE prompt const, never a second call", () => {
+    // Two spellings of one answer is how the button and Ctrl+C come to disagree, so
+    // each step builds its prompt once and both paths read that const.
+    for (const name of ["leverPrompt", "servicesPrompt", "audienceLlmPrompt", "funnelPrompt", "economicsPrompt"]) {
+      expect(ONBOARDING).toContain(`<CopyForLLMButton text={${name}} />`);
+    }
+  });
+
+  it("puts the handler on four step shells and on the model step's own card", () => {
+    // The model step deliberately does NOT pass copyText: its body also carries the
+    // projection numbers, and a reader copying one of those means that number. Its
+    // handler is scoped to the "Your numbers" card instead.
+    expect((ONBOARDING.match(/copyText=\{/g) ?? []).length).toBe(4);
+    expect(ONBOARDING).toContain("onCopy={stepCopyHandler(economicsPrompt)}");
+    const model = ONBOARDING.slice(
+      ONBOARDING.indexOf('if (step === "model") {'),
+      ONBOARDING.indexOf('if (step === "offer") {'),
+    );
+    expect(model).not.toContain("copyText=");
+  });
+
+  it("never speaks for the footer, where the CTA lives", () => {
+    // The handler rides the scrolling BODY. On the footer it would answer for a
+    // reader copying the button's own label.
+    const shell = ONBOARDING.slice(ONBOARDING.indexOf("function StepShell("));
+    const body = shell.indexOf('className="min-h-0 flex-1 overflow-y-auto"');
+    const foot = shell.indexOf("{footer && <div");
+    expect(body).toBeGreaterThan(-1);
+    expect(foot).toBeGreaterThan(body);
+    expect(shell.slice(body, foot)).toContain("onCopy={copyText ?");
   });
 });

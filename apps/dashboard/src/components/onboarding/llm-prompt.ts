@@ -2,13 +2,23 @@
 // something. A reader who wants help hands the whole question to their own LLM
 // (ChatGPT, Claude, ...), gets a tighter answer, and pastes it back.
 //
-// WHY A BUTTON AND NOT BETTER SELECTION: a drag-selection cannot span page prose
-// AND the value of an `<input>`/`<textarea>` in one gesture — a form field is a
-// separate editing context in every browser. So "highlight the question and the
-// prefilled answer, then Ctrl+C" is impossible, not merely hard, which is exactly
-// why people were failing at it. This module is the only thing that hands over
-// both halves at once. (`globals.css` makes the highlight VISIBLE, which helps
-// prose; it cannot make a textarea selectable alongside it.)
+// TWO WAYS TO GET THE SAME TEXT, and the second one is the one people already try.
+//
+// A drag-selection genuinely cannot span page prose AND the value of an
+// `<input>`/`<textarea>`: a form field is a separate editing context, so the
+// highlight stops at its edge (measured in Chromium, and the same holds for a
+// `contenteditable` under a real mouse drag). What does NOT follow, and what an
+// earlier version of this comment wrongly claimed, is that Ctrl+C is therefore
+// beyond saving. The `copy` EVENT fires on the surrounding block whatever the
+// selection covers, and its handler owns the clipboard: `copyStepIntent` below
+// decides when to rewrite it, so selecting the question and pressing Ctrl+C
+// hands over the question AND the field, which is precisely the gesture people
+// were reaching for and failing at.
+//
+// So the button is the discoverable path and the copy handler rescues the
+// intuitive one. Both put the SAME string on the clipboard, from the builders
+// here, because two spellings of one answer is how the two paths come to
+// disagree.
 //
 // Alias-free ON PURPOSE so it carries real unit tests — vitest does not resolve
 // the `@` alias in this repo. Keep it that way: a runtime `@/…` import here turns
@@ -126,4 +136,43 @@ export function buildFunnelStatsLLMPrompt(input: {
     "Return only the same labelled lines with the corrected values, nothing else.",
   );
   return joinPrompt(lines);
+}
+
+
+// ── Ctrl+C on a step ────────────────────────────────────────────────────────
+
+/** What the `copy` handler sees at the moment the event fires. Passed in rather
+ *  than read here so the decision is pure and unit-testable. */
+export type CopyContext = {
+  /** Is the focused element the step's own `<input>`/`<textarea>`? */
+  activeElementIsField: boolean;
+  /** Does that field hold a real (non-collapsed) selection of its own? */
+  fieldSelectionIsRange: boolean;
+  /** `window.getSelection().toString()` — empty when the selection lives inside
+   *  a form field, which is exactly the case the flag above disambiguates. */
+  selectionText: string;
+};
+
+/**
+ * Whether a `copy` on a step should be REWRITTEN to the full question-and-answer
+ * prompt, or left alone.
+ *
+ * Two passthroughs, and both are the point — a handler that always rewrites is
+ * worse than none, because it silently steals a copy the reader meant for
+ * something else:
+ *
+ *  - A copy that ORIGINATED INSIDE the field is the reader lifting a fragment of
+ *    their own draft (a phrase, a URL from a destination box) to paste
+ *    elsewhere. Measured: an unguarded handler hands them the whole prompt
+ *    instead of the five characters they selected.
+ *  - An EMPTY selection means there is nothing to act on, so there is no
+ *    intention to read.
+ *
+ * Everything else is somebody selecting the question, or the hint, or the whole
+ * block, and pressing Ctrl+C. That is the gesture this exists to answer.
+ */
+export function copyStepIntent(ctx: CopyContext): "rewrite" | "passthrough" {
+  if (ctx.activeElementIsField && ctx.fieldSelectionIsRange) return "passthrough";
+  if (!ctx.selectionText.trim()) return "passthrough";
+  return "rewrite";
 }

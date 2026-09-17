@@ -101,14 +101,15 @@ describe("BestModelStats renders the funnel's own steps", () => {
 
 describe("a single path states no rank", () => {
   it("hides the Primary tag on the funnel detail step when there is one path", () => {
-    // 1631 chars from the step's own guard to the gate.
-    const step = sliceFrom(onboarding, 'if (step === "funnelStats") {', 1800);
+    // Bounded by the step that follows, not by a length. Measured numbers here
+    // expire on the next line anybody adds inside the block, and this one did.
+    const step = sliceBetween(onboarding, 'if (step === "funnelStats") {', 'if (step === "model") {');
     expect(step).toContain("detailFunnels.length > 1 && funnel.key === primaryFunnelKey");
   });
 
   it("drops the superlative headline and the rank numeral on the model step", () => {
-    // The mark sits 3880 chars in.
-    const step = sliceFrom(onboarding, 'if (step === "model") {', 4300);
+    // Bounded by the step that follows, for the same reason as above.
+    const step = sliceBetween(onboarding, 'if (step === "model") {', 'if (step === "offer") {');
     expect(step).toContain('selectedFunnels.length > 1 ? "Your most profitable path with us."');
     expect(step).toContain("What your path should return.");
     // The numeral is a rank; it only means something beside a second path.

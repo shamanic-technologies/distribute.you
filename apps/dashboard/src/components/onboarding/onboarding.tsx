@@ -104,6 +104,7 @@ import {
   buildAudienceLLMPrompt,
   buildFunnelStatsLLMPrompt,
   buildServicesLLMPrompt,
+  copyStepIntent,
 } from "./llm-prompt";
 import { businessDomainFromEmail, extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { NOT_A_WEBSITE, websiteInputProblem } from "@/lib/website-input";
@@ -3277,10 +3278,16 @@ export function Onboarding() {
     // Nothing to show and nothing left running: the read is over and it produced
     // nothing. Say that, and give the reader a way to ask again.
     const servicesUnread = !servicesDrafted && !servicesPending && servicesExtractFailed;
+    // One string, two paths: the button writes it and Ctrl+C rewrites to it.
+    const servicesPrompt = buildServicesLLMPrompt(
+      [...services, serviceDraft.trim()].filter(Boolean),
+      hostname || domain || "my business",
+    );
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => { addService(serviceDraft); setStep("funnels"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        copyText={servicesPrompt}
       >
         {/* Same placement as the offer levers': the button acts on the QUESTION,
             not on what has been typed, so it reads as another way to answer rather
@@ -3289,12 +3296,7 @@ export function Onboarding() {
         <div className="flex items-start justify-between gap-3">
           <h2 className="min-w-0 font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
           <div className="shrink-0">
-            <CopyForLLMButton
-              text={buildServicesLLMPrompt(
-                [...services, serviceDraft.trim()].filter(Boolean),
-                hostname || domain || "my business",
-              )}
-            />
+            <CopyForLLMButton text={servicesPrompt} />
           </div>
         </div>
         {/* The "we drafted these" line is a claim about a successful extraction. With
@@ -3588,6 +3590,20 @@ export function Onboarding() {
     }
     const draft = funnelDraft(funnel);
     const isLast = funnelIndex === detailFunnels.length - 1;
+    // One string, two paths: the button writes it and Ctrl+C rewrites to it.
+    const funnelPrompt = buildFunnelStatsLLMPrompt({
+      funnelTitle: funnel.title,
+      steps: funnel.steps,
+      rates: funnel.rates.map((rate) => ({ label: rate.label, value: draft.rates[rate.key] ?? "" })),
+      lifetimeRevenue: draft.ltr,
+      destinations: funnel.destinations.map((dest) => ({
+        label: dest.label,
+        value: draft.destinations[dest.kind] ?? "",
+        optional: Boolean(dest.optional),
+      })),
+      services,
+      domain: hostname || domain || "my business",
+    });
     return (
       <StepShell
         maxWidth="sm:max-w-2xl"
@@ -3599,6 +3615,7 @@ export function Onboarding() {
             label={isLast ? "Continue" : "Next path"}
           />
         }
+        copyText={funnelPrompt}
       >
         <BackButton
           onClick={() => (funnelIndex > 0 ? setFunnelIndex((i) => i - 1) : setStep("phone"))}
@@ -3622,24 +3639,7 @@ export function Onboarding() {
             )}
           </div>
           <div className="shrink-0">
-            <CopyForLLMButton
-              text={buildFunnelStatsLLMPrompt({
-                funnelTitle: funnel.title,
-                steps: funnel.steps,
-                rates: funnel.rates.map((rate) => ({
-                  label: rate.label,
-                  value: draft.rates[rate.key] ?? "",
-                })),
-                lifetimeRevenue: draft.ltr,
-                destinations: funnel.destinations.map((dest) => ({
-                  label: dest.label,
-                  value: draft.destinations[dest.kind] ?? "",
-                  optional: Boolean(dest.optional),
-                })),
-                services,
-                domain: hostname || domain || "my business",
-              })}
-            />
+<CopyForLLMButton text={funnelPrompt} />
           </div>
         </div>
         <FunnelStepRow steps={funnel.steps} tone={funnel.tone} />
@@ -3739,6 +3739,19 @@ export function Onboarding() {
       modelEconomicsBaseline !== null &&
       economicsSnapshot !== modelEconomicsBaseline;
     const roiUnderOne = resolved?.roiMultiple != null && resolved.roiMultiple < 1;
+    // One string, two paths: the button writes it and Ctrl+C rewrites to it.
+    const economicsPrompt = buildFunnelStatsLLMPrompt({
+      funnelTitle: primaryFunnel?.title ?? "my sales path",
+      steps: primaryFunnel?.steps ?? [],
+      rates: economicsRates.map((rate) => ({
+        label: rate.label,
+        value: economicsDraft?.rates[rate.key] ?? "",
+      })),
+      lifetimeRevenue: economicsDraft?.lifetimeRevenueUsd ?? "",
+      destinations: [],
+      services,
+      domain: hostname || domain || "my business",
+    });
     return (
       <StepShell
         maxWidth="sm:max-w-2xl"
@@ -3804,6 +3817,7 @@ export function Onboarding() {
             lifetime revenue being small. Editable, because the fix is to correct them. */}
         <div
           className={`mb-5 rounded-xl border p-4 ${roiUnderOne ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"}`}
+          onCopy={stepCopyHandler(economicsPrompt)}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="text-sm font-semibold text-gray-900">Your numbers</div>
@@ -3811,20 +3825,7 @@ export function Onboarding() {
                 builds it. No destinations here: this block edits the economics
                 alone. */}
             <div className="shrink-0">
-              <CopyForLLMButton
-                text={buildFunnelStatsLLMPrompt({
-                  funnelTitle: primaryFunnel?.title ?? "my sales path",
-                  steps: primaryFunnel?.steps ?? [],
-                  rates: economicsRates.map((rate) => ({
-                    label: rate.label,
-                    value: economicsDraft?.rates[rate.key] ?? "",
-                  })),
-                  lifetimeRevenue: economicsDraft?.lifetimeRevenueUsd ?? "",
-                  destinations: [],
-                  services,
-                  domain: hostname || domain || "my business",
-                })}
-              />
+<CopyForLLMButton text={economicsPrompt} />
             </div>
           </div>
           <p className="mt-1 text-xs leading-5 text-gray-600">
@@ -3923,10 +3924,13 @@ export function Onboarding() {
     const isList = isListLever(lever.key);
     const current = isList ? formatListLeverValue(raw) : coerceTextField(raw);
     const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
+    // One string, two paths: the button writes it and Ctrl+C rewrites to it.
+    const leverPrompt = buildLeverLLMPrompt(lever, current, hostname || domain || "my business");
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
+        copyText={leverPrompt}
       >
         <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("model"))} />
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
@@ -3947,7 +3951,7 @@ export function Onboarding() {
             )}
           </div>
           <div className="shrink-0">
-            <CopyForLLMButton text={buildLeverLLMPrompt(lever, current, hostname || domain || "my business")} />
+            <CopyForLLMButton text={leverPrompt} />
           </div>
         </div>
         <p className="mt-2 mb-5 text-sm leading-6 text-gray-500">{lever.why}</p>
@@ -4247,6 +4251,12 @@ function OnboardingAudiences({
   onContinue: () => void;
   onEdit?: () => void;
 }) {
+  // One string, two paths: the button writes it and Ctrl+C rewrites to it.
+  const audienceLlmPrompt = buildAudienceLLMPrompt(
+    prompt,
+    services,
+    hostname || brandDomain || "my business",
+  );
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
@@ -4439,15 +4449,14 @@ function OnboardingAudiences({
       maxWidth={audienceMaxWidth}
       header={<BrandStepHeader domain={brandDomain} hostname={hostname} name={brandName} onEdit={onEdit} />}
       footer={<NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} label="Continue" />}
+      copyText={audienceLlmPrompt}
     >
       <div>
         <BackButton onClick={onBack} />
         <div className="flex items-start justify-between gap-3">
           <h2 className="min-w-0 font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
           <div className="shrink-0">
-            <CopyForLLMButton
-              text={buildAudienceLLMPrompt(prompt, services, hostname || brandDomain || "my business")}
-            />
+            <CopyForLLMButton text={audienceLlmPrompt} />
           </div>
         </div>
         <p className="mt-2 text-gray-500">
@@ -4686,12 +4695,18 @@ function StepShell({
   footer,
   maxWidth = "sm:max-w-xl",
   pad = "p-5 sm:p-8 md:p-12",
+  copyText,
   children,
 }: {
   header?: ReactNode;
   footer?: ReactNode;
   maxWidth?: string;
   pad?: string;
+  /** Present on a step that asks for a written answer: Ctrl+C anywhere in the
+   *  body then yields the whole question-and-answer prompt instead of whatever
+   *  fragment of prose the selection could reach. Absent everywhere else, so a
+   *  step with nothing to copy behaves exactly as it always has. */
+  copyText?: string;
   children: ReactNode;
 }) {
   // The first-run account widget rides the step's OWN header row on mobile
@@ -4742,7 +4757,12 @@ function StepShell({
             the overflow and the footer below stays pinned to the card's bottom
             edge. A short step is unaffected: `sm:flex-none` keeps the card at its
             natural height and there is nothing to scroll. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          onCopy={copyText ? stepCopyHandler(copyText) : undefined}
+        >
+          {children}
+        </div>
         {footer && <div className="shrink-0">{footer}</div>}
       </div>
     </div>
@@ -4777,6 +4797,37 @@ function CopyForLLMButton({ text }: { text: string }) {
       {copied ? "Copied!" : "Copy content for LLM"}
     </button>
   );
+}
+
+// Ctrl+C on a step hands over the SAME text the button does.
+//
+// A drag-selection stops at the edge of an `<input>`/`<textarea>`, because a form
+// field is its own editing context: somebody selecting the question and the
+// prefilled answer together gets only the question. That was the gesture people
+// were actually making, and it was silently producing half an answer. The `copy`
+// EVENT has no such limit. It fires on the surrounding element whatever the
+// selection covers, and its handler owns what lands on the clipboard.
+//
+// So the button is the discoverable path and this rescues the intuitive one, off
+// the SAME builder: two spellings of one answer is how the two come to disagree.
+//
+// ⚠️ It must NOT steal a copy the reader meant for something else, which is what
+// `copyStepIntent` decides: a selection made INSIDE the field is them lifting a
+// phrase of their own draft, and is passed through untouched.
+function stepCopyHandler(text: string) {
+  return (e: React.ClipboardEvent<HTMLElement>) => {
+    const active = document.activeElement;
+    const isField =
+      active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+    const intent = copyStepIntent({
+      activeElementIsField: isField && e.currentTarget.contains(active),
+      fieldSelectionIsRange: isField && active.selectionStart !== active.selectionEnd,
+      selectionText: window.getSelection()?.toString() ?? "",
+    });
+    if (intent === "passthrough") return;
+    e.clipboardData.setData("text/plain", text);
+    e.preventDefault();
+  };
 }
 
 function NextButton({ onClick, disabled = false, busy = false, label = "Continue" }: { onClick: () => void; disabled?: boolean; busy?: boolean; label?: string }) {
