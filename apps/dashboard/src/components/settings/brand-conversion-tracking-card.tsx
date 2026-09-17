@@ -14,7 +14,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 // The script is shown ONCE (not duplicated per event): a single server-side curl
 // and a single browser pixel, each carrying a comment that enumerates the "event"
 // enum with its use case, so the user swaps in whichever one fires on their site.
-// The "Copy for LLM" button copies a plain-language brief a user can paste into
+// The "Copy content for LLM" button copies a plain-language brief a user can paste into
 // Claude/Cursor to have it wired into their own site.
 
 // Enum of conversion events + when each fires. A sale also carries "valueCents"
@@ -234,7 +234,7 @@ export function BrandConversionTrackingCard({ brandId }: { brandId: string }) {
           onClick={() => copyLlm(llmBrief(ingestUrl, token))}
           className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
         >
-          {llmCopied ? "Copied!" : "Copy for LLM"}
+          {llmCopied ? "Copied!" : "Copy content for LLM"}
         </button>
       </div>
       <p className="mb-5 text-xs text-gray-400">
