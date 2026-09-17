@@ -34,6 +34,11 @@ export const LEAD_FIELD_BY_STEP_KEY: Record<string, string> = {
   meeting_attended: "meetingAttended",
   signup: "signup",
   form_filled: "formSubmission",
+  // A form filled on the AD PLATFORM. The producer's lead-field vocabulary has
+  // exactly seven members and `formSubmission` is the one for any form — what
+  // differs between this rung and `form_filled` is whether a website visit came
+  // first, which is the FUNNEL, not the field.
+  lead_form_submitted: "formSubmission",
   paid_client: "purchased",
 };
 
@@ -43,7 +48,7 @@ export const LEAD_FIELD_BY_STEP_KEY: Record<string, string> = {
  * The rung on `funnelSteps` is FUNNEL-scoped — every lead that reached that step through
  * any channel — so printing it on a campaign's row states the arrow's total under one
  * campaign's name. With two channels feeding one step that is visibly wrong: measured in
- * prod, cold email had 18 sales interests and a feedback-request campaign had 0, and both
+ * prod, cold email had 18 positive replies and a feedback-request campaign had 0, and both
  * rows read 18.
  *
  * features-service answers per campaign for the two steps a channel can produce from

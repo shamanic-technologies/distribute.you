@@ -173,7 +173,7 @@ describe("a TRIAGE move states a reply KIND, and it asks which", () => {
   });
 
   it("never writes straight from a drop", () => {
-    // "Sales interest" is three different things a prospect can have said; recording
+    // "Positive reply" is three different things a prospect can have said; recording
     // the wrong one is worse than recording nothing.
     const drop = sliceFrom(board, "onDrop: (card, columnKey)", 260);
     expect(drop).toContain("startMove(card, to)");
@@ -344,8 +344,8 @@ describe("the card says what it is in two lines and one tag", () => {
   });
 
   it("states what we last OBSERVED, never the column's own word repeated", () => {
-    // A card reading "Sales interest" under a heading reading "Sales interest" spends
-    // its one tag saying nothing a reader did not already have. So Sales interest
+    // A card reading "Positive reply" under a heading reading "Positive reply" spends
+    // its one tag saying nothing a reader did not already have. So Positive reply
     // reads "Website visit" and Leads reads "Delivered" / "Sent" / "Bounced".
     const body = sliceFrom(board, "function CardBody(", 3600);
     expect(body).toContain("replyKindOption(card.replyKind)");
@@ -403,7 +403,7 @@ describe("the board explains the two splits a reader would not guess", () => {
     // Each column states what lands in it, in its own blurb.
     for (const blurb of [
       "Individuals we have identified as potential clients.",
-      "Leads who have shown or expressed sales interest.",
+      "Leads who have shown or expressed positive reply.",
       // The scope is filled in at render — see the blurb suite below.
       "Individuals disqualified as leads for this {scope}.",
     ]) {
@@ -516,7 +516,7 @@ describe("the column blurbs name who is in them", () => {
   it("keeps the four sentences the owner wrote", () => {
     for (const blurb of [
       "Individuals we have identified as potential clients.",
-      "Leads who have shown or expressed sales interest.",
+      "Leads who have shown or expressed positive reply.",
       "Individuals disqualified as leads for this {scope}.",
       "Leads who requested to be unsubscribed.",
     ]) {

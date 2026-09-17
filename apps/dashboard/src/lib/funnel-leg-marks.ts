@@ -19,8 +19,8 @@
 // / calendar-check / shopping-cart / magnet). Both exclusions are load-bearing and were
 // found the hard way: a row draws its leg tile beside the channel's, and the SAME leg
 // tile stands in for the funnel wherever a leg cannot be placed — so a shared glyph reads
-// as one thing said twice, or as the funnel where an arrow was meant. `Sales interest`
-// wore the reply funnel's own chats-circle, and `Sales interest -> Meeting booked` wore
+// as one thing said twice, or as the funnel where an arrow was meant. `Positive reply`
+// wore the reply funnel's own chats-circle, and `Positive reply -> Meeting booked` wore
 // the website-meeting funnel's calendar-check.
 //
 // Only value imports that carry no "@" alias live here, so this module stays directly
@@ -44,7 +44,10 @@ export type FunnelLegGlyph =
   | "video-camera"
   | "handshake"
   | "credit-card"
-  | "receipt";
+  | "receipt"
+  | "chat-text"
+  | "storefront"
+  | "seal-check";
 
 /**
  * The ONE tone every leg wears: the charter's SECONDARY, which is where purple sits
@@ -85,9 +88,9 @@ export function funnelLegMarkKey(from: string | null | undefined, to: string): s
 /**
  * Every leg the fleet can show, one mark each.
  *
- * The published set, read off features-service's own `stepTransitions` across all 41
- * channels (four entry legs and six internal conversions), plus the two arrows of a
- * funnel we sell that no channel performs. A leg absent from here draws no tile rather
+ * The published set, read off features-service's own `legs` across all 42 channels
+ * (four entry legs and nine internal conversions), plus the two arrows of a funnel we
+ * sell that no channel performs. A leg absent from here draws no tile rather
  * than borrowing another leg's — the same rule the channel catalogue holds, and for the
  * same reason: a mark we would have to invent is worse than none.
  */
@@ -101,11 +104,16 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
     glyph: "cursor-click",
     tone: FUNNEL_LEG_TONE,
   },
-  [funnelLegMarkKey(null, "in_ad_form_submission")]: {
+  // Both of these were `in_ad_form_submission` / `in_ad_booked_meeting` until
+  // 2026-09-17, when features-service collapsed the two in-ad steps into the plain
+  // steps they always were. What the ad delivers is a filled form and a booked
+  // meeting; what differs is that nothing of ours happened first, which is the LEG
+  // (`from: null`) and not a step of its own.
+  [funnelLegMarkKey(null, "lead_form_submitted")]: {
     glyph: "clipboard",
     tone: FUNNEL_LEG_TONE,
   },
-  [funnelLegMarkKey(null, "in_ad_booked_meeting")]: {
+  [funnelLegMarkKey(null, "meeting_booked")]: {
     glyph: "calendar-plus",
     tone: FUNNEL_LEG_TONE,
   },
@@ -145,6 +153,21 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
   },
   [funnelLegMarkKey("form_filled", "paid_client")]: {
     glyph: "receipt",
+    tone: FUNNEL_LEG_TONE,
+  },
+  // The three arrows the funnels born on 2026-09-17 walk. Each SKIPS a rung its
+  // longer sibling inserts, which is the whole reason it is a separate arrow: a sale
+  // closed inside the conversation, a sale off the ad's own form, a sale on landing.
+  [funnelLegMarkKey("conversation", "paid_client")]: {
+    glyph: "chat-text",
+    tone: FUNNEL_LEG_TONE,
+  },
+  [funnelLegMarkKey("lead_form_submitted", "paid_client")]: {
+    glyph: "seal-check",
+    tone: FUNNEL_LEG_TONE,
+  },
+  [funnelLegMarkKey("website_visit", "paid_client")]: {
+    glyph: "storefront",
     tone: FUNNEL_LEG_TONE,
   },
 };

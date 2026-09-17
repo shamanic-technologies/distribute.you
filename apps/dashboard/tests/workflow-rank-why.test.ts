@@ -60,6 +60,7 @@ function row(slug: string, running = false) {
 const OPTS = {
   outcomeStepKey: "website_visit",
   outcomeNoun: "Website visit",
+  outcomeNounPlural: "Website visits",
   formatUsd: usd,
 };
 
@@ -425,14 +426,15 @@ describe("the sentence rests on served evidence and nothing else", () => {
       estimatesByGrain: { brand: grain({ evidence: { spentUsd: 100, observedContacted: 500, observedClicks: 20, observedPositiveReplies: 4 } }) },
     });
     expect(
-      workflowRankWhy(l, { ...base, outcomeStepKey: "conversation", outcomeNoun: "Sales interest" }),
-    ).toContain("4 sales interests");
+      workflowRankWhy(l, { ...base, outcomeStepKey: "conversation", outcomeNoun: "Positive reply", outcomeNounPlural: "Positive replies" }),
+    ).toContain("4 positive replies");
     // A leg landing on a signup / a booked meeting / a sale has NO observed count at a
     // grain, so the sentence states the price and invents no number.
     const meeting = workflowRankWhy(l, {
       ...base,
       outcomeStepKey: "meeting_booked",
       outcomeNoun: "Meeting booked",
+      outcomeNounPlural: "Meetings booked",
     });
     expect(meeting).toBe("Your own results on this brand: $25.00 each.");
   });

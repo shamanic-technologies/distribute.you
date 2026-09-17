@@ -36,6 +36,14 @@ export const FUNNEL_BLURB: Record<SalesFunnelKey, string> = {
     "Someone lands on your site and buys there. No call, no slot to hold.",
   visit_form:
     "Someone lands on your site and leaves their details. Your team takes it from there.",
+  sales_from_conversation:
+    "Someone answers a cold email and buys in that conversation. No slot to hold, no call to run.",
+  sales_meetings_from_ads:
+    "Someone books a slot straight from your ad, shows up and buys. They never see your website.",
+  lead_forms_from_ads:
+    "Someone fills a form inside your ad and leaves their details. They never see your website.",
+  sales_from_website:
+    "Someone lands on your site and pays there. Nothing sits between the visit and the sale.",
 };
 
 /**

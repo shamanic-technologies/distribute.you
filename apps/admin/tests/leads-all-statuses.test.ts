@@ -58,7 +58,7 @@ describe('Admin leads reads ask for every lifecycle status', () => {
     const dashboardApi = read('../../dashboard/src/lib/api.ts');
     const leadsReads = dashboardApi
       .split('\n')
-      .filter((line) => line.includes('apiCall<unknown>(`/leads?'));
+      .filter((line) => line.includes('`/leads?'));
     expect(leadsReads.length).toBeGreaterThan(0);
     for (const line of leadsReads) {
       expect(line).not.toContain('status=');

@@ -74,7 +74,7 @@ describe("channelsForLeg", () => {
     ]);
   });
 
-  it("offers the booking channels on the leg out of a sales interest, and no entry channel", () => {
+  it("offers the booking channels on the leg out of a positive reply, and no entry channel", () => {
     const booking = LEGS[1];
     const slugs = channelsForLeg(booking, ALL).map((c) => c.featureSlug);
     expect(slugs).toEqual(["ai-meeting-booking", "your-team-meeting-booking"]);

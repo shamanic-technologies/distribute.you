@@ -24,8 +24,8 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "u
 const PUBLISHED_LEGS: [string | null, string][] = [
   [null, "conversation"],
   [null, "website_visit"],
-  [null, "in_ad_form_submission"],
-  [null, "in_ad_booked_meeting"],
+  [null, "lead_form_submitted"],
+  [null, "meeting_booked"],
   ["conversation", "meeting_booked"],
   ["website_visit", "meeting_booked"],
   ["meeting_booked", "meeting_attended"],
@@ -98,7 +98,7 @@ describe("funnel leg marks — one tile per leg, unique fleet-wide", () => {
   });
 
   it("answers null for a leg it has not drawn rather than borrowing another's tile", () => {
-    expect(funnelLegMarkFor("conversation", "paid_client")).toBeNull();
+    expect(funnelLegMarkFor("signup", "meeting_booked")).toBeNull();
     expect(funnelLegMarkFor(null, "something_new")).toBeNull();
     expect(funnelLegMarkFor(null, null)).toBeNull();
   });

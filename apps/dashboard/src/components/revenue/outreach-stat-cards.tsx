@@ -95,7 +95,7 @@ function Cell({ children }: { children: ReactNode }) {
  * submissions/CPFS, Sales/CP Sale) is deliberately NOT here. It depended on the
  * brand's conversion tracker, so for a brand that never set one up it rendered a
  * "set this up" CTA in place of both values — a pair of cards stating nothing but
- * a chore. The reply-terminal funnel keeps its Sales Interests pair, which is
+ * a chore. The reply-terminal funnel keeps its Positive replies pair, which is
  * inbox-sourced and always has a real value.
  *
  * The COUNTS derive from already-fetched featureStats; the COST metrics (CPC /
@@ -263,7 +263,7 @@ export function OutreachStatCards({
   const outcomeStep = outcomeStepFor(goal, funnelKey);
   // A reply that is the TERMINAL step (the `positive_replies` goal: reply → paid). Clicks /
   // website visits aren't in that funnel, and there is no downstream outcome step, so the
-  // outcome pair becomes Sales Interests + Cost per sales interest — the ONLY outcome pair
+  // outcome pair becomes Positive replies + Cost per positive reply — the ONLY outcome pair
   // this row still states, because it is inbox-sourced and never needs a conversion tracker.
   const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;
   const outreach =
@@ -297,7 +297,7 @@ export function OutreachStatCards({
   const showReplyPair = hasStep("positive_replies") && !isPositiveReplies;
 
   // The ONE outcome pair this row states. positive_replies is a 1-step goal (its outcome
-  // step is null) but the reply IS the outcome — Sales Interests + Cost per sales interest,
+  // step is null) but the reply IS the outcome — Positive replies + Cost per positive reply,
   // attributed from the inbox, so it always carries a real value.
   //
   // A goal whose terminal outcome is TRACKER-sourced (Sales Meetings, Signups, Form
@@ -315,7 +315,7 @@ export function OutreachStatCards({
     costLearning: boolean;
   } | null = isPositiveReplies
     ? {
-        label: "Sales Interests",
+        label: "Positive replies",
         countValue:
           spend?.positiveRepliesCount != null
             ? formatCount(spend.positiveRepliesCount)
@@ -324,15 +324,15 @@ export function OutreachStatCards({
           signalSharePct != null
             ? `${formatSharePct(signalSharePct)} of leads contacted`
             : undefined,
-        costLabel: "Cost per sales interest",
-        costTooltip: `Cost per sales interest: committed spend divided by the real sales interests attributed to your outreach. ${EXPECTED_COST_NOTE}`,
+        costLabel: "Cost per positive reply",
+        costTooltip: `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`,
         // features-service owns the zero-reply case: it floors the aggregate to
         // max(committed net spend, the expected cost from the brand's best model), the same
         // cascade it applies per audience, so this card and the Strategy page print ONE
         // price instead of restating "Total spent" under a second label.
         //
         // Rendered VERBATIM, with no client fallback to spend. That fallback (the old
-        // `costSoFarFloorCents` call) is what produced "Cost per sales interest $29"
+        // `costSoFarFloorCents` call) is what produced "Cost per positive reply $29"
         // directly above "Total spent $29". features-service's projection read is
         // deliberately fail-soft: on a blip it returns null, meaning "we could not
         // estimate this" — and the honest render for that is "—", not the nearest real
@@ -471,7 +471,7 @@ export function OutreachStatCards({
         <>
           <Cell>
             <ScoreCard
-              label="Sales Interests"
+              label="Positive replies"
               value={
                 spend?.positiveRepliesCount != null
                   ? formatCount(spend.positiveRepliesCount)
@@ -487,11 +487,11 @@ export function OutreachStatCards({
           </Cell>
           <Cell>
             <ScoreCard
-              label="Cost per sales interest"
+              label="Cost per positive reply"
               tooltip={
                 isLearning(spend?.positiveRepliesCount)
                   ? LEARNING_NOTE
-                  : `Cost per sales interest: committed spend divided by the real sales interests attributed to your outreach. ${EXPECTED_COST_NOTE}`
+                  : `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`
               }
               value={formatCostCents(spend?.cpprCents)}
               action={

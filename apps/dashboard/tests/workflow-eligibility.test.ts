@@ -165,14 +165,14 @@ describe("hiddenWorkflowSlugs", () => {
 
 describe("hiddenWorkflowNote", () => {
   it("says nothing when nothing is hidden", () => {
-    expect(hiddenWorkflowNote(0, "Sales interest")).toBeNull();
-    expect(hiddenWorkflowNote(-1, "Sales interest")).toBeNull();
+    expect(hiddenWorkflowNote(0, "Positive reply")).toBeNull();
+    expect(hiddenWorkflowNote(-1, "Positive reply")).toBeNull();
   });
 
   it("names the outcome the leg sells, in the producer's own word", () => {
-    const note = hiddenWorkflowNote(6, "Sales interest");
+    const note = hiddenWorkflowNote(6, "Positive reply");
     expect(note).toContain("6 workflows are hidden");
-    expect(note).toContain("sales interest");
+    expect(note).toContain("positive reply");
     expect(note).toContain("wrong tier");
   });
 

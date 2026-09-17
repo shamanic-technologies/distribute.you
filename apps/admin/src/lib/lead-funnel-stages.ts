@@ -19,15 +19,31 @@
  * guards. Keep it that way.
  */
 
-/** The four funnel keys, in this app's short spelling. */
-export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" | "visit_form";
+/**
+ * The eight funnel keys. The first four keep this app's short spelling; the four
+ * brand-service added on 2026-09-17 were born canonical and have no short form, so
+ * their key IS their wire key.
+ */
+export type SalesFunnelKey =
+  | "reply_meeting"
+  | "visit_meeting"
+  | "visit_signup"
+  | "visit_form"
+  | "sales_from_conversation"
+  | "sales_meetings_from_ads"
+  | "lead_forms_from_ads"
+  | "sales_from_website";
 
 /** The canonical spellings the wire uses. */
 export type CanonicalSalesFunnelKey =
   | "sales_meetings_from_conversation"
   | "sales_meetings_from_website"
   | "website_purchases"
-  | "form_magnet";
+  | "form_magnet"
+  | "sales_from_conversation"
+  | "sales_meetings_from_ads"
+  | "lead_forms_from_ads"
+  | "sales_from_website";
 
 export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
 
@@ -37,20 +53,39 @@ export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
  */
 export const FUNNEL_STEPS: Record<SalesFunnelKey, { name: string; steps: string[] }> = {
   reply_meeting: {
-    name: "Sales Meeting from Conversation",
-    steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
+    name: "Sales Meeting from Positive Reply",
+    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
   },
   visit_meeting: {
     name: "Sales Meeting from Website",
     steps: ["Website visit", "Meeting booked", "Meeting attended", "Paid client"],
   },
+  // KEY/NAME MISMATCH ON PURPOSE, matching brand-service and the dashboard: the key is
+  // a frozen wire token, and this funnel's middle rung is a SIGNUP. The name "Website
+  // Purchase" belongs to `sales_from_website`.
   visit_signup: {
-    name: "Website Purchase",
+    name: "Signups",
     steps: ["Website visit", "Signup", "Paid client"],
   },
   visit_form: {
     name: "Form Magnet",
     steps: ["Website visit", "Form filled", "Paid client"],
+  },
+  sales_from_conversation: {
+    name: "Sale from Positive Reply",
+    steps: ["Positive reply", "Paid client"],
+  },
+  sales_meetings_from_ads: {
+    name: "Sales Meeting from Ads",
+    steps: ["Meeting booked", "Meeting attended", "Paid client"],
+  },
+  lead_forms_from_ads: {
+    name: "Lead Form from Ads",
+    steps: ["Lead form submitted", "Paid client"],
+  },
+  sales_from_website: {
+    name: "Website Purchase",
+    steps: ["Website visit", "Paid client"],
   },
 };
 
@@ -75,6 +110,11 @@ export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey
     case "visit_form":
     case "form_magnet":
       return "visit_form";
+    case "sales_from_conversation":
+    case "sales_meetings_from_ads":
+    case "lead_forms_from_ads":
+    case "sales_from_website":
+      return key;
   }
   throw new Error(`Unmapped sales funnel key: ${key as string}`);
 }
@@ -156,17 +196,19 @@ export interface LeadFunnelStage {
 
 const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
   // `label` overrides what THIS panel calls the step, and exactly one step needs it.
-  // The catalogue names the first leg "Sales interest" because a funnel is priced leg
-  // by leg and that leg is the positive one; on a lead panel the row already carries
-  // the reply's own KIND beside it (Interested, Wants to book, Not interested), so
-  // "Sales interest" states as a heading the very thing the control next to it is
-  // there to answer. "Replied" is the fact; the picker says what kind.
-  "Sales interest": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
+  // The catalogue prices the leg on the buyer's answer; on a lead panel the row
+  // already carries that answer's own KIND beside it, so a heading naming the
+  // interest states the very thing the control next to it is there to answer.
+  "Positive reply": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
   "Website visit": { key: "website_visit", wontLabel: "Won't visit" },
   "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
   "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
   Signup: { key: "signup", wontLabel: "Won't sign up" },
   "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
+  // A form on the AD PLATFORM. lead-service records that a form was filled; which
+  // funnel it belongs to is the campaign's, so it shares the stage rather than
+  // inventing one lead-service would refuse.
+  "Lead form submitted": { key: "form_submission", wontLabel: "Won't fill it" },
   "Paid client": { key: "sale", wontLabel: "Won't buy" },
 };
 

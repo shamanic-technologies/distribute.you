@@ -67,15 +67,15 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
   });
 
   describe("outcome noun", () => {
-    it("names what the budget buys for sales interests", () => {
+    it("names what the budget buys for positive replies", () => {
       const outcomes = sliceFrom("const OUTCOMES:", 1800);
       expect(outcomes).toContain('key: "positive_replies"');
-      expect(outcomes).toContain('unit: "sales interests"');
+      expect(outcomes).toContain('unit: "positive replies"');
       expect(outcomes).not.toContain('unit: "contacts"');
     });
 
     it("agrees with the sibling noun map", () => {
-      expect(outcomeNounPlural("positive_replies")).toBe("sales interests");
+      expect(outcomeNounPlural("positive_replies")).toBe("positive replies");
     });
   });
 

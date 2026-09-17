@@ -204,7 +204,7 @@ export function CampaignOverviewPage() {
   // its first rung converts from, so the card and the share below it agree by
   // construction), and `outreachTotal` above is the undeduped volume that tracks spend.
   const leadsContacted = data?.funnelSteps?.contactedRecipients ?? null;
-  // What share of the contacted leads showed sales interest — SERVED, through the one
+  // What share of the contacted leads showed positive reply — SERVED, through the one
   // helper both this page and the Leads page read, so they cannot state the same
   // percentage two ways.
   const salesInterestShare = salesInterestSharePct(data?.funnelSteps);

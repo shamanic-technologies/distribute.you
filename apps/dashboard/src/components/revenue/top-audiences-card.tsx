@@ -178,7 +178,7 @@ export function TopAudiencesCard({
   // printed "CPPR / 0 replies" on a goal whose funnel has no reply step, next to an
   // Audiences page that hides the reply columns for that same brand.
   //
-  // A cost per outcome (cost per sales interest, cost per visit) names ONE funnel's step,
+  // A cost per outcome (cost per positive reply, cost per visit) names ONE funnel's step,
   // and a brand runs several funnels at once — so on a BRAND surface it labels a sum with
   // one member's vocabulary. At brand level the card therefore states the return and
   // nothing else, even when the projection is missing (that row prints "-"). The campaign

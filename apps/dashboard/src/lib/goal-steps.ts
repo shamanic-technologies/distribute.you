@@ -13,7 +13,7 @@ import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnel
  * A step is ordered base→outcome (Outreach first, the goal's outcome last). Each step
  * declares how it maps onto each surface:
  *  - `signal` / `tab` / `chartKey` — the per-lead engagement signal (Outreach = contacted,
- *    Website Visits = clicked, Sales interests = repliedPositive). These have per-lead
+ *    Website Visits = clicked, Positive replies = repliedPositive). These have per-lead
  *    booleans (Leads tabs + table) AND a daily series (activity graph) TODAY.
  *  - `outcome` — a downstream tracker outcome (Signups / Sales Meetings / Form submissions
  *    / Sales). Available as a brand-level aggregate COUNT + COST on the features-service
@@ -120,7 +120,7 @@ const VISITS_STEP: GoalStep = {
 };
 const REPLIES_STEP: GoalStep = {
   key: "positive_replies",
-  label: "Sales interests",
+  label: "Positive replies",
   color: "#dc2626",
   signal: "repliedPositive",
   tab: "positive-replies",
@@ -244,7 +244,7 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
  *
  * Each funnel maps onto exactly the step constants above, so a funnel-keyed surface and
  * a goal-keyed one cannot drift into two labels for one number:
- *  - `reply_meeting`  Outreach → Sales interests → Sales Meetings
+ *  - `reply_meeting`  Outreach → Positive replies → Sales Meetings
  *  - `visit_meeting`  Outreach → Website Visits  → Sales Meetings
  *  - `visit_signup`   Outreach → Website Visits  → Signups
  *  - `visit_form`     Outreach → Website Visits  → Form submissions
@@ -262,6 +262,24 @@ export function funnelSteps(funnelKey: SalesFunnelKeyWire): GoalStep[] {
       return [OUTREACH_STEP, VISITS_STEP, SIGNUPS_OUTCOME];
     case "visit_form":
       return [OUTREACH_STEP, VISITS_STEP, FORM_OUTCOME];
+    // The four added on 2026-09-17. Each is the SHORTEST path to its own terminal
+    // outcome, so each drops the rung its longer sibling inserts — which is the
+    // whole reason they exist as separate funnels rather than as one.
+    case "sales_from_conversation":
+      // The sale closes inside the conversation: no meeting is ever booked, so the
+      // reply is the last thing before the sale.
+      return [OUTREACH_STEP, REPLIES_STEP, SALE_OUTCOME];
+    case "sales_meetings_from_ads":
+      // The ad DELIVERS the booked meeting, so nothing of ours sits between the
+      // outreach and it — no visit, no reply. That absence is the funnel.
+      return [OUTREACH_STEP, MEETINGS_OUTCOME];
+    case "lead_forms_from_ads":
+      // Same shape one outcome over: the form is filled on the ad platform, so no
+      // website visit happens at all. `visit_form` is the version that has one.
+      return [OUTREACH_STEP, FORM_OUTCOME];
+    case "sales_from_website":
+      // The buyer lands and pays. Every other website funnel inserts a rung here.
+      return [OUTREACH_STEP, VISITS_STEP, PURCHASE_OUTCOME];
   }
 }
 

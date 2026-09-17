@@ -47,9 +47,9 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain('costLabel: "Cost per website visit"');
   });
 
-  it("hides the click cards and shows the Sales Interests outcome for positive_replies", () => {
+  it("hides the click cards and shows the Positive replies outcome for positive_replies", () => {
     // Single-step reply→paid goal: Website Visits + CPC cards are hidden, and the unified
-    // outcome card becomes Sales Interests + Cost per sales interest (GA, no beta badge,
+    // outcome card becomes Positive replies + Cost per positive reply (GA, no beta badge,
     // no conversion-tracker CTA — reply attribution is inbox-sourced).
     // Decided from the STEPS, not a goal test: the reply is terminal only when the funnel
     // carries no downstream outcome. See campaign-funnel-steps.test.ts for the funnel case,
@@ -58,8 +58,8 @@ describe("OutreachStatCards copy", () => {
       'const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;',
     );
     expect(cards).toContain("{showFunnelMetrics && showVisitPair && (");
-    expect(cards).toContain('label: "Sales Interests"');
-    expect(cards).toContain('costLabel: "Cost per sales interest"');
+    expect(cards).toContain('label: "Positive replies"');
+    expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
     // The zero-reply floor now lives in features-service (max(committed net spend, the
     // expected cost from the brand's best model), the same cascade it applies per audience),
@@ -91,7 +91,7 @@ describe("OutreachStatCards copy", () => {
     // features-service's projection read is deliberately fail-soft: on a blip it returns
     // null, which means "we could not estimate this". The honest render for that is "—".
     // Falling back to the brand's committed spend (the old `costSoFarFloorCents(...)` call
-    // here) is what printed "Cost per sales interest $29" directly above "Total spent $29",
+    // here) is what printed "Cost per positive reply $29" directly above "Total spent $29",
     // so re-adding it would reintroduce the bug on the one branch no fixture covers.
     expect(cards).not.toContain("costSoFarFloorCents(");
     expect(cards).not.toContain("totalSpentCents");
@@ -214,9 +214,9 @@ describe("OutreachStatCards copy", () => {
     expect(auto).not.toContain("leadsOverride");
     expect(auto).not.toContain("salesInterestOverride");
     // The people/actions pair is what the Leads page states again, and the funnel pair
-    // below it states the sales interests from features-service.
+    // below it states the positive replies from features-service.
     expect(cards).toContain('label="Leads contacted"');
-    expect(cards).toContain('label="Sales Interests"');
+    expect(cards).toContain('label="Positive replies"');
   });
 
   // The prop is only real if the PAGE passes it.

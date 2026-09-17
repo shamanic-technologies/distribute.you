@@ -29,7 +29,7 @@ import { timeAgo } from "@/lib/friendly-datetime";
  *
  * Four things are load-bearing and none of them is the layout:
  *
- *   - **A move states a REPLY KIND, so it asks WHICH.** "Sales interest" is three
+ *   - **A move states a REPLY KIND, so it asks WHICH.** "Positive reply" is three
  *     different things a prospect can have said, and recording the wrong one is worse
  *     than recording nothing — so a drop opens a picker of that column's own kinds
  *     rather than writing a guess. The kinds are the catalogue's, the same words the
@@ -182,9 +182,9 @@ function PersonMark({ photoUrl, name }: { photoUrl: string | null; name: string 
 function CardBody({ card }: { card: LeadBoardCard }) {
   const stated = replyKindOption(card.replyKind);
   // The tag states what we last OBSERVED about this person, never the column it is
-  // already sitting in: a card reading "Sales interest" under a heading reading
-  // "Sales interest" spends its one tag saying nothing a reader did not have. So a
-  // lead in Sales interest reads "Website visit", and one in Leads reads "Delivered"
+  // already sitting in: a card reading "Positive reply" under a heading reading
+  // "Positive reply" spends its one tag saying nothing a reader did not have. So a
+  // lead in Positive reply reads "Website visit", and one in Leads reads "Delivered"
   // or "Sent" or "Bounced" — the thing that actually distinguishes it from the card
   // above it. A kind somebody STATED still wins, because it is the more specific
   // answer and a person wrote it.

@@ -39,7 +39,7 @@
  *
  * ── NOTHING HERE DIVIDES ─────────────────────────────────────────────────────────
  *
- * Every figure on a row is a SERVED field read verbatim. The cost per sales interest
+ * Every figure on a row is a SERVED field read verbatim. The cost per positive reply
  * is features-service's own `cpprCents` for that workflow, not spend over replies
  * computed here — a browser-side ratio drifts from the producer the moment either
  * side changes scope, and it is the compute-a-stat-in-the-browser bug this repo
@@ -154,7 +154,7 @@ export interface CampaignWorkflowRow {
  * A campaign performs ONE leg of its funnel, so the outcome a workflow produced for it
  * is that leg's own: cold email onto a visit-led funnel buys a WEBSITE VISIT and
  * nothing else, while the same channel onto the reply-led funnel buys a SALES INTEREST.
- * The table hardcoded the reply pair, so a visit-led campaign read `0 sales interests`
+ * The table hardcoded the reply pair, so a visit-led campaign read `0 positive replies`
  * on every row while it was measurably buying visits — the same mistake #3880 closed on
  * the Audiences table, one surface over: a campaign-scoped surface keyed on the funnel
  * instead of the leg.
@@ -348,7 +348,7 @@ export function buildCampaignWorkflowRows({
   /**
    * The outcome the campaign's own LEG buys. Required rather than defaulted, so a new
    * caller answers the question instead of silently inheriting the reply pair — which
-   * is how a visit-led campaign came to read zero sales interests on every row.
+   * is how a visit-led campaign came to read zero positive replies on every row.
    */
   pair: WorkflowOutcomePair;
   isLearning: (count: number | null | undefined) => boolean;

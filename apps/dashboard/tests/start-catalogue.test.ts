@@ -39,7 +39,7 @@ const LEAD_FORM: CatalogueStep = { key: "lead_form_submitted", label: "Lead form
 // The four funnels production publishes, verbatim.
 const F_CONVO = {
   key: "sales_meetings_from_conversation",
-  name: "Sales Meeting from Conversation",
+  name: "Sales Meeting from Positive Reply",
   steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"] as const,
   funnelMinimumCommitmentDays: null,
   effectiveMinimumCommitmentDays: 30,

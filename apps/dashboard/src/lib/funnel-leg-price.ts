@@ -32,8 +32,9 @@ export interface ChannelFunnelEconomicsPair {
   /**
    * The funnel's steps in the PRODUCER's own words, index-parallel to
    * `result.economics.steps`. Carried only to check the two lists line up — the words
-   * themselves are never rendered, because the customer reads this funnel's first step
-   * as "Sales interest" while the producer calls it "Positive reply".
+   * themselves are never rendered: the list is checked for LENGTH and ORDER, and the
+   * words a customer reads come from the funnel's own `steps`. The two happen to agree
+   * on every step today; the check is about alignment, not about wording.
    */
   funnelSteps: string[];
   result: {
@@ -166,8 +167,8 @@ export function legChannelPrice({
  * the tag rather than of the words.
  *
  * The step is named in THIS app's vocabulary (the funnel's own `steps`), never the
- * producer's — the reply funnel's first step reads "Sales interest" here and "Positive
- * reply" upstream, and a card must say what the rest of the dashboard says.
+ * producer's. They agree on every step today, and that is a fact about today: a card
+ * must say what the rest of the dashboard says, whatever the wire calls it.
  */
 export function legPriceLabel(
   price: { kind: "free" } | { kind: "priced"; usd: number },

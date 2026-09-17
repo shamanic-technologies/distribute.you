@@ -12,7 +12,7 @@ const FUNNEL = "sales_meetings_from_conversation";
 const pair = (over: Partial<PairReturn> & { channelSlug: string }): PairReturn => ({
   channelName: over.channelSlug,
   funnelKey: FUNNEL,
-  funnelName: "Sales Meeting from Conversation",
+  funnelName: "Sales Meeting from Positive Reply",
   measured: false,
   reason: "not_enough_brands",
   brandCount: 1,

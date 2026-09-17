@@ -1,4 +1,4 @@
-// What share of the leads we contacted showed sales interest.
+// What share of the leads we contacted showed positive reply.
 //
 // SERVED, never divided here: features-service walks the funnel rung by rung on the
 // same deduped leads and the same committed cents as the money beside it, so a rate

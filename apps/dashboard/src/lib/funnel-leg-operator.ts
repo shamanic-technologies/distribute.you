@@ -4,14 +4,14 @@
 // acquisition channel; the rest are worked by hand — and "by hand" is two different
 // parties, which the table read as one. It said `Done by you` on every unclaimed
 // arrow, including the two we do ourselves: a customer who reads that on
-// `Sales interest -> Meeting booked` concludes nobody is answering the replies their
+// `Positive reply -> Meeting booked` concludes nobody is answering the replies their
 // budget just bought, when in fact we answer them.
 //
 // So an unclaimed arrow states its operator the same way a claimed one states its
 // channel: `Via <mark> <name> team`.
 //
 // The split is by ARROW, not by funnel. Two arrows are ours today because a person on
-// our side does them — replying to a sales interest until a meeting is on the calendar,
+// our side does them — replying to a positive reply until a meeting is on the calendar,
 // then chasing the show-up. Everything else belongs to the brand: closing a deal, and
 // the two arrows a lead walks on the brand's own site (a visit into a signup or a
 // filled form), where the page is theirs and no one on our side touches it.
@@ -39,7 +39,7 @@ function key(from: string | null | undefined, to: string): string {
  * The arrows OUR team works by hand today.
  *
  * Both are conversation work on a lead our own outreach produced: someone here replies
- * to the sales interest until a meeting is booked, then makes sure it is attended. A
+ * to the positive reply until a meeting is booked, then makes sure it is attended. A
  * brand that bought a reply-led funnel is not expected to do either.
  */
 const PLATFORM_LEGS: ReadonlySet<string> = new Set([

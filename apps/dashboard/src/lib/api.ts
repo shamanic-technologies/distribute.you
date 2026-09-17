@@ -1734,7 +1734,7 @@ export async function attachBrandWebsite(
   return { domain: parsed.data.domain ?? null, url: parsed.data.url ?? null };
 }
 
-// ── Sales-rep phone (the number rung when a sales interest lands) ──
+// ── Sales-rep phone (the number rung when a positive reply lands) ──
 // Per brand, one number. When a prospect replies to a campaign saying they are
 // interested, instantly-service rings this number within a minute or two, and —
 // when Apollo revealed the prospect's own number in time — offers to bridge the

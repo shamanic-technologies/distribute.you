@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * The lead panel states WHAT HAPPENED to a person in GA and withholds the WORDS until
- * that person has produced a sales interest.
+ * that person has produced a positive reply.
  *
  * The rule used to cover the unsent draft alone: a message we had really sent, and the
  * prospect's own reply, rendered open to everyone on the reasoning that a real message
@@ -58,7 +58,7 @@ describe("the timeline gates every body behind one flag", () => {
 
   it("badges the copy a BETA reader sees, never an empty row", () => {
     // The badge used to stand IN PLACE of a withheld body. It rides readable copy now,
-    // and only on the beta-only branch: copy a sales interest earned is GA, so badging
+    // and only on the beta-only branch: copy a positive reply earned is GA, so badging
     // it beta would name the wrong reason.
     expect(TIMELINE).toContain("{betaOnlyCopy && hasReadableBody(e) && (");
     expect(TIMELINE).not.toContain("!canReadEmailCopy && (\n                  <span");

@@ -79,7 +79,7 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
     expect(at("not_contacted", "not_served")).toBeNull();
   });
 
-  it("reads a MEASURED VISIT as sales interest, which a reply signal never could", () => {
+  it("reads a MEASURED VISIT as positive reply, which a reply signal never could", () => {
     // The whole reason placement moved: on a campaign selling `form_magnet` the step
     // being sold is a website visit, so somebody who clicked through has reached it.
     // Deriving interest from a reply here showed that column empty on a campaign with
@@ -87,11 +87,11 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
     expect(at("sales_interest", "measured_visit")).toBe("sales_interest");
   });
 
-  it("folds a CUSTOMER into Sales interest rather than inventing a verdict for it", () => {
+  it("folds a CUSTOMER into Positive reply rather than inventing a verdict for it", () => {
     // They reached the step this campaign sells and then some. Four triage buckets
     // have no room for a fifth verdict, and the column's blurb says so.
     // Its own column since the board grew one: a closed deal is the outcome the funnel
-    // exists to produce, and folding it into Sales interest read it as a warm one.
+    // exists to produce, and folding it into Positive reply read it as a warm one.
     expect(at("customer", "stated_outcome")).toBe("won");
   });
 

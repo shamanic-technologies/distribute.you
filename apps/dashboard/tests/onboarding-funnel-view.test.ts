@@ -15,7 +15,7 @@ import {
 // where nothing in the fleet measures that leg), and two destination flags.
 const REPLY_MEETING: FunnelCatalogueEntry = {
   key: "reply_meeting",
-  name: "Sales Meeting from Conversation",
+  name: "Sales Meeting from Positive Reply",
   steps: ["Positive reply", "Meeting booked", "Sales meeting", "Paid client"],
   legs: ["replyToMeetingPct", null, "meetingToClosePct"],
   goal: "sales_meetings",
@@ -70,7 +70,7 @@ describe("funnelStepLabels", () => {
 
 describe("funnelTitle", () => {
   it("prefers the catalogue's own name", () => {
-    expect(funnelTitle(REPLY_MEETING)).toBe("Sales Meeting from Conversation");
+    expect(funnelTitle(REPLY_MEETING)).toBe("Sales Meeting from Positive Reply");
   });
 
   it("falls back to the funnel for an entry from before the names existed", () => {

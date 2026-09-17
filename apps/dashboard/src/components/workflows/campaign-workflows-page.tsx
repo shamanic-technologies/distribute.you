@@ -194,22 +194,22 @@ import { useCampaignOutcomePair } from "@/lib/use-campaign-outcome-pair";
  * THE OUTCOME COLUMN PAIR, in the words every other surface already uses.
  *
  * A campaign performs ONE leg of its funnel, so the pair is that leg's own: a
- * visit-led campaign buys website visits and reading `0 sales interests` on every row
+ * visit-led campaign buys website visits and reading `0 positive replies` on every row
  * describes an arrow it never runs. Byte-equal to the stat cards' and the Audiences
- * table's — a website visit is never called a sales interest.
+ * table's — a website visit is never called a positive reply.
  */
 const OUTCOME_COLUMNS: Record<
   WorkflowOutcomePair,
   { count: string; cost: string; countTip: string; costTip: string; noun: string }
 > = {
   reply: {
-    count: "Sales interests",
-    cost: "Cost per sales interest",
-    noun: "Sales interest",
+    count: "Positive replies",
+    cost: "Cost per positive reply",
+    noun: "positive reply",
     countTip:
-      "Sales interests this workflow produced for this audience: people who replied wanting to talk. Counted per person, so somebody who replied twice is one.",
+      "Positive replies this workflow produced for this audience: people who replied wanting to talk. Counted per person, so somebody who replied twice is one.",
     costTip:
-      "What one sales interest cost through this workflow for this audience. It is what we charged divided by the interests it produced.",
+      "What one positive reply cost through this workflow for this audience. It is what we charged divided by the interests it produced.",
   },
   visit: {
     count: "Website visits",
@@ -347,7 +347,7 @@ export function CampaignWorkflowsPage() {
 
   const { campaign, featureSlug, settled: slugSettled } = useScopedFeatureSlug(campaignId);
   // WHICH OUTCOME these rows are counted and priced by — the campaign's own LEG, never
-  // its funnel. A visit-led campaign read `0 sales interests` on every row before this,
+  // its funnel. A visit-led campaign read `0 positive replies` on every row before this,
   // for an arrow it does not run.
   const pair = useCampaignOutcomePair(campaign, featureSlug);
   const columns = OUTCOME_COLUMNS[pair];
@@ -507,6 +507,10 @@ export function CampaignWorkflowsPage() {
   // leg-keyed body (`leg.toStep.label`), so it is READ rather than spelled here; the
   // column's own word is the fallback for a funnel- or goal-keyed answer.
   const outcomeNoun = ladderQ.data?.leg?.toStep.label ?? columns.noun;
+  // The column header IS the plural, so the sentence is handed both forms rather than
+  // deriving one: a `+ "s"` rule produced "positive replys" the first time the noun was
+  // not a regular plural.
+  const outcomeNounPlural = columns.count;
   const outcomeStepKey = ladderQ.data?.leg?.toStep.key ?? OUTCOME_STEP_KEY[pair];
 
   // Declared BELOW `outcomeNoun` on purpose: a memo that reads a `const` declared after it
@@ -605,10 +609,11 @@ export function CampaignWorkflowsPage() {
         recommended: ladderQ.data?.recommendedWorkflowDynastySlug ?? null,
         outcomeStepKey,
         outcomeNoun,
+        outcomeNounPlural,
         formatUsd: formatUsdAdaptive,
         orderBy: "scopeRank",
       }),
-    [rows, scopeLadder, ladderQ.data, outcomeStepKey, outcomeNoun],
+    [rows, scopeLadder, ladderQ.data, outcomeStepKey, outcomeNoun, outcomeNounPlural],
   );
 
   // Reveal on SETTLE (resolved OR errored). A failing read paints the surface, never an
@@ -630,6 +635,7 @@ export function CampaignWorkflowsPage() {
       recommended: ladderQ.data?.recommendedWorkflowDynastySlug ?? null,
       outcomeStepKey,
       outcomeNoun,
+      outcomeNounPlural,
       formatUsd: formatUsdAdaptive,
     });
     return only ?? null;

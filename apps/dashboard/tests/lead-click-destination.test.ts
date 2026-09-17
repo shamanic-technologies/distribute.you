@@ -130,7 +130,7 @@ describe("the timeline renders it", () => {
 
   it("states the destination outside the copy gate", () => {
     // GA: the page is the customer's OWN, not the words we wrote, so reading it is
-    // not what a sales interest earns.
+    // not what a positive reply earns.
     const at = TIMELINE.indexOf("{destination && (");
     const block = TIMELINE.slice(at, TIMELINE.indexOf("{/* THE WORDS"));
     expect(block).not.toContain("canReadEmailCopy");

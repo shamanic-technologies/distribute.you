@@ -197,7 +197,7 @@ export function FunnelLegColumnsBoard({
    *
    * The step is indexed by the arrow's own `toIndex` and NAMED from this funnel's own
    * `steps`: the producer calls the reply funnel's first step "Positive reply" while
-   * this app reads "Sales interest", so the words come from here and only the position
+   * this app reads "Positive reply", so the words come from here and only the position
    * crosses the boundary.
    */
   const priceFor = useCallback(

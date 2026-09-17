@@ -10,7 +10,7 @@ import { formatRoi } from "@/lib/format-roi";
 
 type Grain = WorkflowProjectionResolved["grain"];
 
-/** Cost per sales interest at a row's server-resolved grain — read VERBATIM from the
+/** Cost per positive reply at a row's server-resolved grain — read VERBATIM from the
  *  floor-filled unit-costs block (never null when the block exists), mirroring the
  *  ladder→item adapter in api.ts. `null` when the row / grain block is absent. No
  *  client-side math — same feature-service field the audiences page renders. */
@@ -201,9 +201,9 @@ export function BestModelStats({
         )}
         {showReplyStat && (
           <Stat
-            label="Cost / sales interest"
+            label="Cost / positive reply"
             value={formatUsdFloor(cppr, floored)}
-            tooltip="Cost per sales interest - what we pay on average for one prospect to reply with genuine buying interest."
+            tooltip="Cost per positive reply - what we pay on average for one prospect to reply with genuine buying interest."
             hint={grainHint(brandGrain)}
           />
         )}

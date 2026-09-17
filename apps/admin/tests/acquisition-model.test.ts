@@ -19,7 +19,7 @@ const STEP_PAID_CLIENT = { key: "paid_client", label: "Paid client", description
 
 const REPLY_MEETING = {
   key: "sales_meetings_from_conversation",
-  name: "Sales Meeting from Conversation",
+  name: "Sales Meeting from Positive Reply",
   steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
 };
 const FORM_MAGNET = {

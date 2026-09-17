@@ -17,7 +17,19 @@ import type { BrandOptimizationGoal, BrandSalesEconomics, SalesFunnelPatch } fro
 import { formatLocaleInteger, formatLocaleNumberInputValue, parseLocaleNumberInput } from "./format-number";
 import { bareHost, validateDestination } from "./click-destination-validation";
 
-export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" | "visit_form";
+export type SalesFunnelKey =
+  | "reply_meeting"
+  | "visit_meeting"
+  | "visit_signup"
+  | "visit_form"
+  // The four brand-service added on 2026-09-17. They have NO legacy spelling —
+  // they were born canonical — so their local key IS their wire key and the
+  // canonical map is the identity for them. Inventing a short alias would be a
+  // second word for a funnel that only ever had one.
+  | "sales_from_conversation"
+  | "sales_meetings_from_ads"
+  | "lead_forms_from_ads"
+  | "sales_from_website";
 
 /**
  * Every spelling this app may receive for a funnel key: the four brand-service
@@ -37,7 +49,11 @@ export type CanonicalSalesFunnelKey =
   | "sales_meetings_from_conversation"
   | "sales_meetings_from_website"
   | "website_purchases"
-  | "form_magnet";
+  | "form_magnet"
+  | "sales_from_conversation"
+  | "sales_meetings_from_ads"
+  | "lead_forms_from_ads"
+  | "sales_from_website";
 
 export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
 
@@ -55,6 +71,11 @@ const CANONICAL_FUNNEL_KEY: Record<SalesFunnelKey, CanonicalSalesFunnelKey> = {
   visit_meeting: "sales_meetings_from_website",
   visit_signup: "website_purchases",
   visit_form: "form_magnet",
+  // Born canonical, so the map is the identity rather than a rename.
+  sales_from_conversation: "sales_from_conversation",
+  sales_meetings_from_ads: "sales_meetings_from_ads",
+  lead_forms_from_ads: "lead_forms_from_ads",
+  sales_from_website: "sales_from_website",
 };
 
 /**
@@ -106,6 +127,11 @@ export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey
     case "visit_form":
     case "form_magnet":
       return "visit_form";
+    case "sales_from_conversation":
+    case "sales_meetings_from_ads":
+    case "lead_forms_from_ads":
+    case "sales_from_website":
+      return key;
   }
   throw new Error(`Unmapped sales funnel key: ${key as string}`);
 }
@@ -122,7 +148,11 @@ export type SeedableFunnelRateKey =
   | "visitToSignupPct"
   | "signupToPaidClientPct"
   | "visitToFormSubmissionPct"
-  | "formSubmissionToPaidClientPct";
+  | "formSubmissionToPaidClientPct"
+  // Website visit -> Paid client in one step. It shares its name with the
+  // brand-wide column, like the seven above, so it seeds from the blended
+  // economics exactly as they do.
+  | "visitToClosePct";
 
 /**
  * The meeting show-up rate. brand-service stores it ON THE FUNNEL and nowhere
@@ -130,13 +160,27 @@ export type SeedableFunnelRateKey =
  * from — it starts blank on every brand rather than borrowing a number that
  * means something else.
  */
-export type SeedlessFunnelRateKey = "meetingBookedToAttendedPct";
+export type SeedlessFunnelRateKey =
+  | "meetingBookedToAttendedPct"
+  // The two rates the funnels born on 2026-09-17 price. brand-service is explicit
+  // that NEITHER has a counterpart on the brand-wide economics record — that
+  // record predates them — so they are stated on the funnel or not at all, and a
+  // draft has nothing to seed them from. Same posture as the show-up rate: blank
+  // beats a number that means something else.
+  | "replyToPaidClientPct"
+  | "leadFormToPaidClientPct";
 
 export type FunnelRateKey = SeedableFunnelRateKey | SeedlessFunnelRateKey;
 
 /** True when the brand's blended economics carry this rate, so a draft can seed it. */
+const SEEDLESS_RATE_KEYS: SeedlessFunnelRateKey[] = [
+  "meetingBookedToAttendedPct",
+  "replyToPaidClientPct",
+  "leadFormToPaidClientPct",
+];
+
 export function isSeedableRateKey(key: FunnelRateKey): key is SeedableFunnelRateKey {
-  return key !== "meetingBookedToAttendedPct";
+  return !(SEEDLESS_RATE_KEYS as string[]).includes(key);
 }
 
 export type FunnelRateField = { key: FunnelRateKey; label: string; tip: string };
@@ -148,8 +192,8 @@ export type FunnelRateField = { key: FunnelRateKey; label: string; tip: string }
  */
 const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
   replyToMeetingPct: {
-    label: "Sales interest → meeting booked",
-    tip: "Of leads who show sales interest, the share who book a slot.",
+    label: "Positive reply → meeting booked",
+    tip: "Of leads who reply wanting to talk, the share who book a slot.",
   },
   visitToMeetingPct: {
     label: "Website visit → meeting booked",
@@ -179,6 +223,18 @@ const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
     label: "Form filled → paid client",
     tip: "Of leads who submit a form, the share that become paying customers.",
   },
+  replyToPaidClientPct: {
+    label: "Positive reply → paid client",
+    tip: "Of leads who reply wanting to talk, the share that become paying customers without a meeting ever being booked.",
+  },
+  leadFormToPaidClientPct: {
+    label: "Lead form submitted → paid client",
+    tip: "Of leads who fill a form inside the ad, the share that become paying customers.",
+  },
+  visitToClosePct: {
+    label: "Website visit → paid client",
+    tip: "Of leads who visit your website, the share that pay without any step in between.",
+  },
 };
 
 export type SalesFunnelDef = {
@@ -193,8 +249,9 @@ export type SalesFunnelDef = {
    *
    * Purely a JOIN key, never rendered: a channel states the legs it performs as bare
    * step tokens on its feature row, and the words a customer reads for those steps are
-   * the ones already in `steps` — "Sales interest" here is the producer's
-   * `conversation`, which is exactly why the two lists cannot be one. Anything that
+   * the ones already in `steps` — "Positive reply" here is the producer's
+   * `conversation`, which is exactly why the two lists cannot be one: a key is a wire
+   * token and a step is a sentence, and neither can be the other. Anything that
    * needs to say a leg out loud reads `steps`, so this file keeps ONE vocabulary and
    * gains no second one.
    */
@@ -223,8 +280,8 @@ export type SalesFunnelDef = {
 export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     key: "reply_meeting",
-    name: "Sales Meeting from Conversation",
-    steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
+    name: "Sales Meeting from Positive Reply",
+    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
     stepKeys: ["conversation", "meeting_booked", "meeting_attended", "paid_client"],
     legs: ["replyToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"],
     goal: "sales_meetings",
@@ -247,7 +304,12 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   },
   {
     key: "visit_signup",
-    name: "Website Purchase",
+    // KEY/NAME MISMATCH ON PURPOSE, and brand-service states the same one. The key
+    // is a wire token 125 live declarations reference, so it is frozen; the name
+    // is what a customer reads, and this funnel's middle rung is a SIGNUP, so
+    // "Website Purchase" named the wrong thing. That name now belongs to
+    // `sales_from_website`, the funnel that really does go visit -> purchase.
+    name: "Signups",
     steps: ["Website visit", "Signup", "Paid client"],
     stepKeys: ["website_visit", "signup", "paid_client"],
     legs: ["visitToSignupPct", "signupToPaidClientPct"],
@@ -268,6 +330,71 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     pageDestination: true,
     bookingLink: false,
     tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
+  },
+  {
+    // The sale closes INSIDE the conversation — no meeting is ever booked. The
+    // common shape under roughly two thousand dollars, and the default in markets
+    // where business runs on WhatsApp.
+    key: "sales_from_conversation",
+    name: "Sale from Positive Reply",
+    steps: ["Positive reply", "Paid client"],
+    stepKeys: ["conversation", "paid_client"],
+    legs: ["replyToPaidClientPct"],
+    goal: "sales",
+    requiresWebsite: false,
+    pageDestination: false,
+    bookingLink: false,
+    tone: { iconBg: "bg-purple-50", iconText: "text-purple-600" },
+  },
+  {
+    // A meeting booked DIRECTLY from an ad — Meta "Book Now", Google Local
+    // Services — without the buyer ever visiting the brand's site. What the
+    // channel DELIVERS is the booked meeting, so that IS the first step: the
+    // click that produced it is not a rung anybody buys.
+    key: "sales_meetings_from_ads",
+    name: "Sales Meeting from Ads",
+    steps: ["Meeting booked", "Meeting attended", "Paid client"],
+    stepKeys: ["meeting_booked", "meeting_attended", "paid_client"],
+    legs: ["meetingBookedToAttendedPct", "meetingToClosePct"],
+    goal: "sales_meetings",
+    requiresWebsite: false,
+    pageDestination: false,
+    bookingLink: true,
+    tone: { iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
+  },
+  {
+    // A form hosted BY THE ADVERTISING PLATFORM — Meta Lead Ads, LinkedIn Lead
+    // Gen Forms — filled without the buyer ever touching the brand's site.
+    // Deliberately GENERAL: the same funnel prices a webinar signup, a guide
+    // download and a quote request, so naming it after one would exclude the
+    // others. It is why `lead_form_submitted` is its OWN step and not the site's
+    // `form_filled`: what differs is whether a visit happened first.
+    key: "lead_forms_from_ads",
+    name: "Lead Form from Ads",
+    steps: ["Lead form submitted", "Paid client"],
+    stepKeys: ["lead_form_submitted", "paid_client"],
+    legs: ["leadFormToPaidClientPct"],
+    goal: "form_submissions",
+    requiresWebsite: false,
+    pageDestination: false,
+    bookingLink: false,
+    tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
+  },
+  {
+    // The buyer lands and PAYS. Nothing between the visit and the sale — every
+    // ecommerce brand, and everyone selling straight off their own site. Every
+    // other website funnel inserts a rung, so until this existed such a brand had
+    // nothing it could declare while already stating the rate that prices it.
+    key: "sales_from_website",
+    name: "Website Purchase",
+    steps: ["Website visit", "Paid client"],
+    stepKeys: ["website_visit", "paid_client"],
+    legs: ["visitToClosePct"],
+    goal: "website_purchase",
+    requiresWebsite: true,
+    pageDestination: true,
+    bookingLink: false,
+    tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
   },
 ];
 
@@ -563,7 +690,7 @@ export function funnelWriteErrorMessage(err: unknown): string {
  * A goal the brand configured that the catalogue carries no funnel of its own
  * for, and the funnel whose steps end on the same thing.
  *
- * These goals price ONE end-to-end step (`Sales interest -> Paid client`,
+ * These goals price ONE end-to-end step (`Positive reply -> Paid client`,
  * `Website visit -> Paid client`) where the funnel spells the same journey out
  * over several legs. The brand's number is still true of the whole funnel, so it
  * seeds the LAST leg (the one landing on `Paid client`) and every leg above it
@@ -797,6 +924,13 @@ export function goalForFunnelKey(key: SalesFunnelKeyWire): BrandOptimizationGoal
     case "visit_signup":
       return "signups";
     case "visit_form":
+    case "lead_forms_from_ads":
       return "form_submissions";
+    case "sales_from_conversation":
+      return "sales";
+    case "sales_meetings_from_ads":
+      return "sales_meetings";
+    case "sales_from_website":
+      return "website_purchase";
   }
 }

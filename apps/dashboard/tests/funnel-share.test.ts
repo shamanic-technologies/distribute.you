@@ -15,7 +15,7 @@ const rung = (over: Partial<FunnelStepRow> = {}): FunnelStepRow => ({
 
 const breakdown = (steps: FunnelStepRow[]): FunnelStepBreakdown => ({
   funnelKey: "sales_meetings_from_conversation",
-  name: "Sales Meeting from Conversation",
+  name: "Sales Meeting from Positive Reply",
   committedSpentCents: 288000,
   contactedRecipients: 12925,
   steps,

@@ -37,7 +37,7 @@ describe("legColumnPair — the columns a campaign's OWN arrow earns", () => {
     expect(legRankMetric(leg)).toBe("cpc");
   });
 
-  it("prices cold email on the reply funnel by the sales interest", () => {
+  it("prices cold email on the reply funnel by the positive reply", () => {
     const leg = campaignLegFor(reply, COLD_EMAIL);
     expect(legColumnPair(leg)).toBe<LegColumnPair>("reply");
     expect(legRankMetric(leg)).toBe("cppr");
@@ -89,6 +89,9 @@ describe("legColumnPair — the columns a campaign's OWN arrow earns", () => {
       meeting_attended: null,
       signup: "signup",
       form_filled: "formSubmission",
+      // Same pair as `form_filled`: the producer gives every form ONE lead field, and
+      // what differs between the two rungs is whether a website visit came first.
+      lead_form_submitted: "formSubmission",
       paid_client: "sale",
     });
   });
