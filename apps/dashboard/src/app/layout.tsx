@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PartneroViaCapture } from "@/components/partnero-via-capture";
 import { InviteCapture } from "@/components/invite/invite-capture";
 import { LandingUrlCapture } from "@/components/landing-url-capture";
+import { BRAND_TINT_PRELOAD_SCRIPT } from "@/lib/brand-tint-preload";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.distribute.you";
@@ -94,6 +95,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/*
+          Paints the open brand's accent before the first frame. Blocking and
+          first in the head on purpose: a tint applied after paint is the ~1s
+          default-blue flash this exists to remove. See `lib/brand-tint-preload`
+          for why this cannot be a server render.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: BRAND_TINT_PRELOAD_SCRIPT }} />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{

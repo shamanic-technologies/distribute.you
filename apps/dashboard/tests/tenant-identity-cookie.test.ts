@@ -146,6 +146,81 @@ describe("tenant identity cookie", () => {
     expect(assignment.toLowerCase()).not.toContain("httponly");
   });
 
+  it("round-trips a brand's resolved tint", () => {
+    // Three numbers, not the palette: this is what CSS needs and the only form
+    // small enough to sit on a blob that rides every request to the origin.
+    const snapshot = mergeTenantIdentity(null, {
+      brandId: "b1",
+      brand: { n: "Acme", d: "acme.com", t: { h: 12.4, c: 0.9, r: -245.6 } },
+    });
+    const parsed = parseTenantIdentityCookie(serializeTenantIdentityCookie(snapshot));
+    expect(parsed?.brands.b1.t).toEqual({ h: 12.4, c: 0.9, r: -245.6 });
+  });
+
+  it("parses a brand written before tints existed, unchanged", () => {
+    // `t` is optional precisely so an older blob needs no version bump — a bump
+    // drops every remembered tenant and re-introduces the placeholder it exists
+    // to prevent.
+    const raw = encodeURIComponent(
+      JSON.stringify({
+        v: TENANT_IDENTITY_VERSION,
+        orgs: {},
+        brands: { b1: { n: "Acme", d: "acme.com" } },
+      }),
+    );
+    const parsed = parseTenantIdentityCookie(raw);
+    expect(parsed?.brands.b1).toEqual({ n: "Acme", d: "acme.com" });
+    expect(parsed?.brands.b1.t).toBeUndefined();
+  });
+
+  it("drops a partial tint but keeps the brand", () => {
+    // Half a tint paints a hue at the charter's chroma, which reads as a
+    // rendering bug rather than as a brand. The labels are still good.
+    const raw = encodeURIComponent(
+      JSON.stringify({
+        v: TENANT_IDENTITY_VERSION,
+        orgs: {},
+        brands: {
+          b1: { n: "Acme", d: "acme.com", t: { h: 12.4, c: 0.9 } },
+          b2: { n: "Beta", d: "beta.com", t: { h: 12.4, c: "0.9", r: 1 } },
+          b3: { n: "Gamma", d: "gamma.com", t: "nope" },
+        },
+      }),
+    );
+    const parsed = parseTenantIdentityCookie(raw);
+    expect(parsed?.brands.b1).toEqual({ n: "Acme", d: "acme.com" });
+    expect(parsed?.brands.b2.t).toBeUndefined();
+    expect(parsed?.brands.b3.t).toBeUndefined();
+  });
+
+  it("re-writes when only the tint moved, and no-ops when it did not", () => {
+    // A brand that re-brands must repaint; a poll re-resolving the same colours
+    // must not re-write the cookie on every tick.
+    const base = mergeTenantIdentity(null, {
+      brandId: "b1",
+      brand: { n: "Acme", d: "acme.com", t: { h: 12.4, c: 0.9, r: -245.6 } },
+    });
+    const same = mergeTenantIdentity(base, {
+      brandId: "b1",
+      brand: { n: "Acme", d: "acme.com", t: { h: 12.4, c: 0.9, r: -245.6 } },
+    });
+    expect(same).toBe(base);
+
+    const moved = mergeTenantIdentity(base, {
+      brandId: "b1",
+      brand: { n: "Acme", d: "acme.com", t: { h: 200, c: 0.9, r: -58 } },
+    });
+    expect(moved).not.toBe(base);
+    expect(moved.brands.b1.t).toEqual({ h: 200, c: 0.9, r: -58 });
+
+    // Gaining a tint is a change; so is losing one.
+    const gained = mergeTenantIdentity(
+      mergeTenantIdentity(null, { brandId: "b1", brand: { n: "Acme", d: "acme.com" } }),
+      { brandId: "b1", brand: { n: "Acme", d: "acme.com", t: { h: 1, c: 1, r: 1 } } },
+    );
+    expect(gained.brands.b1.t).toEqual({ h: 1, c: 1, r: 1 });
+  });
+
   it("stays small enough to ride every request", () => {
     let snapshot = EMPTY_TENANT_IDENTITY;
     for (let i = 0; i < MAX_REMEMBERED_ORGS; i++) {
@@ -157,7 +232,12 @@ describe("tenant identity cookie", () => {
     for (let i = 0; i < MAX_REMEMBERED_BRANDS; i++) {
       snapshot = mergeTenantIdentity(snapshot, {
         brandId: `10000000-0000-4000-8000-00000000000${i}`,
-        brand: { n: "A fairly long brand name goes here", d: "averylongbranddomainname.com" },
+        brand: {
+          n: "A fairly long brand name goes here",
+          d: "averylongbranddomainname.com",
+          l: "https://cdn.example.com/a/fairly/long/stored/logo/path.png",
+          t: { h: 302.4, c: 0.938, r: 44.4 },
+        },
       });
     }
     // Browsers cap a cookie at ~4KB and this one is sent with every /api/v1 call.
