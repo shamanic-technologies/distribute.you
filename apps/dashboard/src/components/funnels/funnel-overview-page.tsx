@@ -9,6 +9,9 @@ import { pollOptions } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { RewardTaskBand } from "@/components/rewards/reward-task-band";
+import { useBrandRewardTasks } from "@/lib/use-reward-tasks";
+import { rewardTaskFor } from "@/lib/reward-tasks";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { LearningToneProvider } from "@/components/learning-tag";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
@@ -118,6 +121,24 @@ export function FunnelOverviewPage() {
   const activityPending = activity.isPending && !activity.isError;
   const data = revenue.data;
 
+  // The reward task this funnel owes, selected out of the BRAND's ledger. One read
+  // per brand serves the band here, the per-offer due count one level up and the
+  // badge in the top bar, so the three can never state different counts and drilling
+  // in costs no request. Everything about the task — whether it is due, since when,
+  // what it pays — is client-service's answer; `rewardTaskFor` only selects.
+  //
+  // The funnel key is normalised on BOTH sides through the one map that owns the two
+  // wire spellings, rather than compared raw.
+  const rewardTasks = useBrandRewardTasks(brandId);
+  const rewardTask = rawKey
+    ? rewardTaskFor(
+        rewardTasks.data?.tasks ?? [],
+        offerId,
+        rawKey,
+        (k) => normalizeSalesFunnelKey(k as SalesFunnelKeyWire),
+      )
+    : null;
+
   // A funnel's page reads in the brand's PRIMARY: it states the funnel the offer sells,
   // not one campaign's surface, so the accent the campaign pages own would name the wrong
   // scope. The Campaigns table below pins itself back to the tertiary — it states
@@ -129,6 +150,17 @@ export function FunnelOverviewPage() {
           the figures below ride, so the band and the cards can never state different
           things about this funnel. The subject is features-service's own: the leading
           live campaign selling this funnel. */}
+      {/* The ONE thing to do on this funnel, and what doing it pays. It renders only
+          while the refresh is actually owed, so it is gone 29 days out of 30 — the same
+          shape as the two bands below it, and the reason a permanent box would fail: a
+          reader stops looking at a box that usually says nothing.
+
+          It sits ABOVE the learning band because it is the actionable one. The learning
+          band says wait; this one says do. */}
+      <RewardTaskBand
+        task={rewardTask}
+        settingsHref={`${basePath}/funnels/${encodeURIComponent(rawKey ?? "")}/settings`}
+      />
       <ScopeLearningBand
         phase={data?.learningPhase ?? null}
         brandId={brandId}

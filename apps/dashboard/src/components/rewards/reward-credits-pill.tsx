@@ -8,6 +8,7 @@ import { getCreditGrants, type CreditGrant } from "@/lib/api";
 import { formatGrantedTotal, totalGrantedCents } from "@/lib/reward-credits";
 import { COUNT_UP_MS, countUpValue, shouldAnimate } from "@/lib/count-up";
 import { burstConfetti } from "@/lib/confetti";
+import { useBrandRewardTasks } from "@/lib/use-reward-tasks";
 
 /**
  * The free credit this org has earned, in the top bar.
@@ -50,6 +51,14 @@ import { burstConfetti } from "@/lib/confetti";
  */
 export function RewardCreditsPill() {
   const pathname = usePathname();
+
+  // The badge counts what is DUE on the brand in view, and nothing else. A count
+  // of tasks the reader cannot act on from where they are is a nag rather than a
+  // signal, so off a brand route there is no badge at all. This is the SAME key
+  // the funnel band polls, so the badge costs no request of its own.
+  const brandId = pathname.split("/")[4] === "brands" ? (pathname.split("/")[5] ?? null) : null;
+  const { data: rewardTasks } = useBrandRewardTasks(brandId);
+  const dueCount = rewardTasks?.rollup?.brand?.dueCount ?? 0;
 
   // The same key the Billing page polls → one request, and an instant first
   // paint from the persisted cache (`creditGrants` is an allowlisted root).
@@ -118,6 +127,14 @@ export function RewardCreditsPill() {
     >
       <GiftIcon />
       <span className="tabular-nums">{formatGrantedTotal(shown)}</span>
+      {dueCount > 0 && (
+        <span
+          className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white tabular-nums"
+          title={`${dueCount} reward ${dueCount === 1 ? "task" : "tasks"} to do on this brand`}
+        >
+          {dueCount}
+        </span>
+      )}
     </Link>
   );
 }

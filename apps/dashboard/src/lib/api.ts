@@ -7232,6 +7232,116 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
   return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
+// ── Reward tasks ──
+//
+// The reward-task ledger, owned by client-service and reached through the
+// gateway's passthrough at `GET /v1/brands/:brandId/reward-tasks` (api-service
+// #940, verified against its deployed openapi). One read per BRAND answers every
+// active sales funnel of every offer plus a per-offer roll-up, so a funnel page
+// filtering it to its own row is a display lookup rather than a second request.
+//
+// NOTHING here is derived. Whether a task is due, since when, what it pays and
+// how it knows when the numbers last changed are all client-service's answers —
+// which is the whole reason it owns the ledger. `lib/reward-tasks.ts` only
+// SELECTS out of what was served.
+//
+// ⚠️ `status` and `contentChangedProvenance` are read as plain STRINGS, never
+// `z.enum`. Both are producer vocabularies that can grow, and a reader that
+// closes the set throws the whole page the day it widens. Consumers branch on
+// the value they know (`status === "ok"`, `provenance === "observed"`) and treat
+// anything else as "not that", which degrades honestly.
+//
+// ⚠️ The org is NOT a parameter. api-service takes it from the authenticated
+// session, and client-service 400s `ORG_REQUIRED` when several orgs claim one
+// brand rather than guessing whose ledger to read — verified in prod against a
+// brand ten orgs claim.
+export interface RewardTaskScopeWire {
+  type: string;
+  brandId: string;
+  offerId: string;
+  funnelKey: string;
+}
+
+export interface RewardTaskWire {
+  taskKey: string;
+  scope: RewardTaskScopeWire;
+  rewardCents: number;
+  due: boolean;
+  dueAt: string;
+  lastCompletedAt: string | null;
+  completedCount: number;
+  contentChangedAt: string;
+  contentChangedProvenance: string;
+}
+
+export interface BrandRewardTasks {
+  brandId: string;
+  /** Null only when no org claims the brand: there is then nobody to reward. */
+  orgId: string | null;
+  /** `ok`, or `no_org_claims_brand` — a determinate answer, not a failure. */
+  status: string;
+  rewardCentsPerTask: number;
+  tasks: RewardTaskWire[];
+  rollup: {
+    brand: { dueCount: number; taskCount: number };
+    offers: { offerId: string; dueCount: number; taskCount: number }[];
+  };
+}
+
+const RewardTaskWireSchema = z.object({
+  taskKey: z.string(),
+  scope: z.object({
+    type: z.string(),
+    brandId: z.string(),
+    offerId: z.string(),
+    funnelKey: z.string(),
+  }),
+  rewardCents: z.number(),
+  due: z.boolean(),
+  dueAt: z.string(),
+  // Required AND nullable on the wire: null means never completed, which is a
+  // real answer. `.optional()` would refuse exactly the body the null is for.
+  lastCompletedAt: z.string().nullable(),
+  completedCount: z.number(),
+  contentChangedAt: z.string(),
+  contentChangedProvenance: z.string(),
+});
+
+const RewardRollupEntrySchema = z.object({
+  offerId: z.string(),
+  dueCount: z.number(),
+  taskCount: z.number(),
+});
+
+const BrandRewardTasksResponseSchema = z.object({
+  brandId: z.string(),
+  orgId: z.string().nullable(),
+  status: z.string(),
+  rewardCentsPerTask: z.number(),
+  tasks: z.array(RewardTaskWireSchema),
+  rollup: z.object({
+    brand: z.object({ dueCount: z.number(), taskCount: z.number() }),
+    offers: z.array(RewardRollupEntrySchema),
+  }),
+});
+
+/** GET /brands/:brandId/reward-tasks — this brand's reward tasks and due counts. */
+export async function getBrandRewardTasks(
+  brandId: string,
+  token?: string,
+): Promise<BrandRewardTasks> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/reward-tasks`, { token });
+  const parsed = BrandRewardTasksResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandRewardTasks: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandRewardTasks: invalid response shape");
+  }
+  return parsed.data as BrandRewardTasks;
+}
+
 // --- Referral invites ---------------------------------------------------------
 //
 // The invite code is the org's slug, owned by client-service and reached through

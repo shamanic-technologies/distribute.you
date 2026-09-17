@@ -106,6 +106,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Billing — the account, its credit grants and its payment history.
   "billingAccount",
   "creditGrants",
+  // The reward-task ledger: what a funnel owes and how many children of a
+  // superior scope have something due. Unlisted, the band and the badge
+  // cold-fetch on every visit.
+  "rewardTasks",
   "billingPayments",
   // The org's own referral code, behind the sidebar's invite link. Tiny, and it
   // never changes, so an unlisted root would cold-fetch on every single load.
