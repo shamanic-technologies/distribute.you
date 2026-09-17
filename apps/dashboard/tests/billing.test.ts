@@ -561,14 +561,18 @@ describe("billing page — change card settles first (T4 of the card-removal gua
     expect(paymentMethod).not.toContain('"Manage"');
   });
 
-  it("a customer running on credit is told the balance settles on the current card before the card page opens", () => {
+  it("a customer running on credit is told the balance is charged on the current card when the page opens", () => {
     expect(paymentMethod).toContain("availableCents < 0 && (");
-    expect(paymentMethod).toContain("Changing your card first settles your");
+    expect(paymentMethod).toContain("Opening this charges your");
     expect(paymentMethod).toContain("formatBillingCents(Math.abs(availableCents))");
+  });
+
+  it("states that the card can be changed whatever the charge does, which is the whole point of the notice", () => {
+    expect(paymentMethod).toContain("whether or not it goes through");
   });
 });
 
-describe("billing page — a refused card change states the owed amount, never err.message", () => {
+describe("billing page — opening the card page is never refused", () => {
   const page = fs.readFileSync(
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf8"
@@ -578,17 +582,25 @@ describe("billing page — a refused card change states the owed amount, never e
     page.indexOf("async function handleTopup(")
   );
 
-  it("keys the refusal on billing's stable code through the one helper", () => {
-    expect(handler).toContain("setError(portalRefusalMessage(err))");
+  it("shows its own generic line on a failure, never the downstream body", () => {
+    expect(handler).toContain('setError("Failed to open the card page. Please try again.")');
     expect(handler).not.toContain("err.message");
   });
 
-  it("the portal call suppresses the credits modal (a refused settle is not insufficient credits)", () => {
+  it("reads no refusal code: billing cannot answer this route with an unsettled-balance error any more", () => {
+    const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf8");
+    expect(api).not.toContain("portalRefusalMessage");
+    expect(api).not.toContain("PORTAL_REFUSAL_UNSETTLED_CODE");
+    expect(api).not.toContain("outstanding_balance" + "_unsettled");
+    expect(page).not.toContain("portalRefusalMessage");
+  });
+
+  it("does not suppress the credits modal on the portal call: that flag guarded a 402 nothing emits", () => {
     const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf8");
     const call = api.slice(
       api.indexOf("export async function createPortalSession("),
       api.indexOf("// Press Kits")
     );
-    expect(call).toContain("suppressPaymentRequired: true");
+    expect(call).not.toContain("suppressPaymentRequired");
   });
 });
