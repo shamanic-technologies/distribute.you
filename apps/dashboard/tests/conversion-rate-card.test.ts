@@ -12,32 +12,51 @@ const PAGE = readFileSync(
 );
 
 /**
- * The block as features-service#992 documents it, on the campaign this card was built
- * against (brand `6e21bb6c…` / campaign `9e28ba26…`, leg `start_to_website_visit`):
- * 143 visits on 2,808 reached = 5.0925925925925926%.
+ * THE BLOCK PRODUCTION ACTUALLY SENDS, captured verbatim — brand `6e21bb6c…` /
+ * campaign `9e28ba26…`, leg `start_to_website_visit`, 2026-09-17.
+ *
+ * Trimmed to the days that carry a DISTINCT case (the opening measured zeros, the first
+ * non-zero, the last) with every scalar and every key byte-equal to the wire. A fixture
+ * written from the producer's PR body would pass against a reader that had drifted from
+ * what it serves; this one cannot.
+ *
+ * `description` is present here because the producer states it on this step — the reader
+ * declares it `.optional()` because it does not on every step.
  */
 const HISTORY = {
-  outcomeStep: { key: "website_visit", label: "Website visit" },
-  legKey: "start_to_website_visit",
-  outcomeObserved: true,
   daily: [
-    // Nobody reached yet: NO denominator, so the producer states null — not a zero.
-    { date: "2026-07-08", cumulativeContacted: 0, cumulativeOutcomes: 0, conversionRatePct: null },
     // Reached, nobody converted: a MEASURED zero, which IS a reading and is drawn.
-    { date: "2026-07-09", cumulativeContacted: 32, cumulativeOutcomes: 0, conversionRatePct: 0 },
+    { date: "2026-07-09", conversionRatePct: 0, cumulativeOutcomes: 0, cumulativeContacted: 32 },
+    { date: "2026-07-14", conversionRatePct: 0, cumulativeOutcomes: 0, cumulativeContacted: 132 },
+    {
+      date: "2026-07-15",
+      conversionRatePct: 0.6060606060606061,
+      cumulativeOutcomes: 1,
+      cumulativeContacted: 165,
+    },
     {
       date: "2026-09-17",
+      conversionRatePct: 5.128205128205128,
+      cumulativeOutcomes: 144,
       cumulativeContacted: 2808,
-      cumulativeOutcomes: 143,
-      conversionRatePct: 5.0925925925925926,
     },
   ],
+  legKey: "start_to_website_visit",
+  outcomeStep: {
+    key: "website_visit",
+    label: "Website visit",
+    description: "A buyer lands on the brand's own website.",
+  },
+  datedOutcomes: 144,
   datedContacted: 2808,
-  undatedContacted: 0,
-  datedOutcomes: 143,
+  outcomeObserved: true,
   undatedOutcomes: 0,
-  scopeConversionRatePct: 5.0925925925925926,
+  undatedContacted: 0,
+  scopeConversionRatePct: 5.128205128205128,
 };
+
+/** The SAME leg's rung on the same body, served independently by the producer. */
+const PROD_RUNG_PCT = 5.128205128205128;
 
 /**
  * The rest of the body, byte-equal to the sibling curve's own fixture — this test is
@@ -90,11 +109,27 @@ describe("a null point and a zero point are different statements", () => {
     // Charting the null at 0 would say nobody converted on a day nobody was reached.
     // Dropping the zero would hide the one reading a reader most wants early on.
     const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }));
-    const plottable = (parsed.conversionRateHistory?.daily ?? []).filter(
+    const withNoDenominator = {
+      ...HISTORY,
+      // The producer's own null day: nobody reached yet, so there is no rate to state.
+      daily: [
+        {
+          date: "2026-07-08",
+          conversionRatePct: null,
+          cumulativeOutcomes: 0,
+          cumulativeContacted: 0,
+        },
+        ...HISTORY.daily,
+      ],
+    };
+    const parsedNull = parseFeatureRevenue(body({ conversionRateHistory: withNoDenominator }));
+    const plottable = (parsedNull.conversionRateHistory?.daily ?? []).filter(
       (d) => d.conversionRatePct != null,
     );
-    expect(plottable.map((d) => d.date)).toEqual(["2026-07-09", "2026-09-17"]);
+    expect(plottable.map((d) => d.date)).not.toContain("2026-07-08");
+    expect(plottable[0].date).toBe("2026-07-09");
     expect(plottable[0].conversionRatePct).toBe(0);
+    void parsed;
   });
 
   it("the card's own filter is the same one — null out, zero in", () => {
@@ -105,6 +140,19 @@ describe("a null point and a zero point are different statements", () => {
 
   it("states the OPPOSITE polarity to the cost curve, so nobody 'fixes' it later", () => {
     expect(CARD).toContain("OPPOSITE");
+  });
+});
+
+describe("the headline reconciles with the rung the same body serves", () => {
+  it("scopeConversionRatePct IS the leg's own rung — no residual, measured in prod", () => {
+    // The curve's last point covers the DATED population; with nothing undated on this
+    // campaign it equals the scope figure exactly, and the scope figure equals the
+    // `funnelSteps` rung for the same leg. Three ways round, one number.
+    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }));
+    const h = parsed.conversionRateHistory!;
+    expect(h.scopeConversionRatePct).toBe(PROD_RUNG_PCT);
+    expect(h.daily[h.daily.length - 1].conversionRatePct).toBe(PROD_RUNG_PCT);
+    expect(h.undatedContacted + h.undatedOutcomes).toBe(0);
   });
 });
 
@@ -135,7 +183,7 @@ describe("formatConversionPct keeps the decimal where it changes an answer", () 
     // 0.1% and 0.9% are different answers about a campaign and both round to 0%.
     expect(formatConversionPct(0.1)).toBe("0.1%");
     expect(formatConversionPct(0.9)).toBe("0.9%");
-    expect(formatConversionPct(5.0925925925925926)).toBe("5.1%");
+    expect(formatConversionPct(PROD_RUNG_PCT)).toBe("5.1%");
   });
 
   it("none at or above 10%, where it is false precision", () => {
