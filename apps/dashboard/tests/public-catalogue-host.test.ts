@@ -36,6 +36,26 @@ describe("the public onboarding reads resolve the gateway like the rest of the a
     }
   });
 
+  it("RETURNS a response on every branch, and actually performs its reads", () => {
+    // A handler whose body was gutted still typechecks: an async function with
+    // no return infers Promise<void>, so tsc, the suite and the build are all
+    // silent while Next answers 500 on every request with
+    // "No response is returned from route handler". That shipped, twice, from a
+    // scripted edit whose regex over-matched. Assert the body does the work.
+    for (const r of ROUTES) {
+      const src = read(r);
+      const body = src.slice(src.indexOf("export async function GET"));
+      expect(body).toContain("return NextResponse.json");
+      expect(body.split("return NextResponse.json").length - 1).toBeGreaterThanOrEqual(2);
+      // It must actually go upstream: directly, or through this file's own
+      // reader helper, which is where the host lives for the catalogue.
+      expect(/readPublic\(|fetch\(/.test(body)).toBe(true);
+      // No path out of the handler that falls off the end.
+      expect(body.replace(/\s/g, "")).not.toContain("GET(){}");
+      expect(body.replace(/\s/g, "")).not.toContain("GET(request:Request){}");
+    }
+  });
+
   it("matches what lib/api.ts resolves, so the two cannot drift", () => {
     const api = read("src/lib/api.ts");
     expect(api).toContain(

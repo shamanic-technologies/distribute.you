@@ -48,4 +48,42 @@ async function readPublic(path: string): Promise<Response> {
 }
 
 export async function GET() {
+  try {
+    const [channelsRes, returnsRes] = await Promise.all([
+      readPublic("channels"),
+      // Median return on spend per (channel x funnel), with quartiles, over
+      // brands past the producer's own spend floor. The visitor sees it on the
+      // screen before signup, which is the whole argument for signing up.
+      readPublic("features/funnel-return-on-spend"),
+    ]);
+
+    if (!channelsRes.ok) {
+      const body = await channelsRes.text();
+      console.error(
+        `[start-catalogue] channels read failed: ${channelsRes.status} ${body.slice(0, 200)}`,
+      );
+      return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });
+    }
+
+    const channels = await channelsRes.json();
+
+    // The returns are the one HALF that may legitimately be missing: the producer
+    // states a figure only for a pair enough brands have spent on, and a visitor
+    // with no numbers beside a channel is a weaker screen, not a broken one. So a
+    // failed read here degrades to "we have not measured this" rather than taking
+    // the whole catalogue down with it -- but it is logged, never swallowed.
+    let returns: unknown = null;
+    if (returnsRes.ok) {
+      returns = await returnsRes.json();
+    } else {
+      console.error(
+        `[start-catalogue] funnel-return-on-spend read failed: ${returnsRes.status}`,
+      );
+    }
+
+    return NextResponse.json({ channels, returns });
+  } catch (err) {
+    console.error("[start-catalogue] catalogue read errored:", err);
+    return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });
+  }
 }
