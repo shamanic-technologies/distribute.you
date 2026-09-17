@@ -38,16 +38,23 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     // features-service /revenue `spend` block — no client cost-breakdown fetch.
     expect(overview).not.toContain("getBrandCostBreakdown");
     expect(overview).not.toContain("costBreakdown={costData?.costs ?? []}");
-    // NULL at offer scope: a budget is funded per BRAND, so an offer has no ceiling
-    // of its own. Borrowing the brand's would put a denominator of a wider scope
-    // than the numerator beside it, and splitting it across the offers would invent
-    // a share nobody configured.
-    // ...and at brand scope it is what may be spent TODAY — the RUNNING campaigns'
+    // Stated at BOTH grains: what may be spent TODAY — the RUNNING campaigns'
     // ceilings — never billing's served brand total, which is status-blind and
     // therefore counted a paused campaign's money in the denominator.
-    expect(overview).toContain("dailyBudgetCents={offerId ? null : runningDailyBudgetCents}");
+    //
+    // It was NULL at offer scope on the premise that a budget is funded per brand.
+    // billing puts the OFFER in its key, so an offer's running ceiling is a served
+    // figure and the narrowing is a selection rather than a share we invent — and a
+    // bare numerator read as a total beside a card whose neighbour really is one.
+    expect(overview).toContain("dailyBudgetCents={runningDailyBudgetCents}");
     expect(overview).not.toContain("budgetData?.dailyBudgetCents");
-    expect(overview).toContain("budgetNote={");
+    // The offer is load-bearing: without it this page states the whole brand's
+    // ceiling beside an offer's own spend.
+    const at = overview.indexOf("useRunningDailyBudgetCents(brandId, {");
+    expect(at).toBeGreaterThan(-1);
+    expect(overview.slice(at, at + 200)).toContain("offerId,");
+    // No note explaining an absent denominator, because there is no longer one absent.
+    expect(overview).not.toContain("budgetNote={");
     const section = read("components/revenue/revenue-overview-section.tsx");
     // The cost summary lives in the right-of-chart column, replacing the old
     // org/lead/event counters, fed by the revenue payload's spend block.
