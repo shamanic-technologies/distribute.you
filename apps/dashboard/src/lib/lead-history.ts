@@ -104,6 +104,36 @@ const EventSchema = z
     links: z
       .array(z.object({ text: z.string(), href: z.string().nullable() }))
       .optional(),
+    // On a `delivery` event whose milestone is `clicked`: WHERE that click went.
+    //
+    // `state` is `known` (we can say), `ambiguous` (the copy pointed at several
+    // places, so there is nowhere honest to point) or `unknown` (nothing resolvable
+    // at all). The last two are different facts and the producer keeps them apart;
+    // this reader keeps them apart too and decides nothing about which is which.
+    //
+    // `href` is the URL WE wrote, tracking parameters included — never a guess
+    // between candidates, and never the outreach provider's click-tracking redirect,
+    // which following from a dashboard would register a click the prospect never
+    // made. Non-null only when `state` is `known`.
+    //
+    // `resolution` says whether that destination was `observed` (a record of the
+    // destination itself) or `deduced` (worked out from the copy we wrote, because
+    // the delivery layer measures THAT a click happened and never where it went).
+    // Declared rather than rendered: every destination the producer serves today is
+    // deduced, so a badge on every row would state a distinction that never varies.
+    // A surface that wants to tell the two apart reads it here rather than widening
+    // the schema later, which is how a field the producer sends gets stripped.
+    //
+    // Read as plain STRINGS for the same reason `type` / `evidence` / `milestone`
+    // are: lead-service owns these vocabularies and widens them, and a `z.enum` here
+    // throws the whole panel the day it gains a word.
+    destination: z
+      .object({
+        state: z.string(),
+        href: z.string().nullable(),
+        resolution: z.string().nullable(),
+      })
+      .optional(),
     // `ok` these are the words · `empty` it genuinely says nothing · `unavailable` we
     // hold the message and could not read it. The last two are NOT the same answer.
     bodyStatus: z.string().optional(),
@@ -211,6 +241,31 @@ export function hasReadableBody(event: LeadHistoryEvent): boolean {
 }
 
 /**
+ * Where a click went, when the producer could say so — otherwise null.
+ *
+ * A SELECTION over a served field, not a derivation: the panel cannot work this out
+ * for itself (joining a click to the messages around it is the merge this read owns),
+ * and it must not try. So this reads `state` and nothing else — it does not decide
+ * WHICH events may carry a destination, because the producer already decided that.
+ *
+ * `ambiguous` and `unknown` both answer null here, which is deliberate: the row then
+ * renders exactly as it did before. Naming several candidate pages, or saying we do
+ * not know which, is a hedge a reader cannot act on — and the email body sits inches
+ * below on the same panel with every link in it, which is the honest place to look.
+ *
+ * ⚠️ `http`/`https` ONLY. This value lands in an `<a href>`, and `javascript:` in an
+ * anchor is script execution on click — the same rule the body linkifier states, for
+ * the same reason. A destination in any other scheme renders nothing.
+ */
+export function clickDestination(event: LeadHistoryEvent): string | null {
+  const destination = event.destination;
+  if (!destination || destination.state !== "known") return null;
+  const href = typeof destination.href === "string" ? destination.href.trim() : "";
+  if (!href) return null;
+  return /^https?:\/\//i.test(href) ? href : null;
+}
+
+/**
  * True when the sequence is over and no further email will go out.
  *
  * Read off the producer's own follow-up state rather than re-derived from a reply: it
@@ -218,6 +273,7 @@ export function hasReadableBody(event: LeadHistoryEvent): boolean {
  * inbound message is what promised two more follow-ups to a prospect who had already
  * answered.
  */
+
 export function sequenceStopped(history: LeadHistory | null | undefined): boolean {
   return (history?.events ?? []).some((e) => e.type === "followup" && e.state === "stopped");
 }

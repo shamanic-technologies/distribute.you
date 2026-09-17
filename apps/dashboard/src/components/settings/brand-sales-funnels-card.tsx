@@ -25,6 +25,7 @@ import {
   type DeclaredSalesFunnel,
 } from "@/lib/api";
 import { buildControlRows, type OfferableChannel } from "@/lib/campaign-controls";
+import { runningAfterBudget } from "@/lib/campaign-budget";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { launchLegKey } from "@/lib/stated-campaign-leg";
 import {
@@ -816,6 +817,27 @@ export function BrandSalesFunnelsCard({
   }
 
   /**
+   * Whether ONE channel's switch reads ON, once its typed budget is taken into
+   * account.
+   *
+   * A channel funded at NOTHING does not send: campaign-service holds its campaign
+   * on the funding gate every tick and never hands it a turn. So taking the amount
+   * to zero pauses it, and the same Save writes both. The switch and the write read
+   * this one expression, or the row shows a channel as running while the Save
+   * pauses it. The inverse does not hold — funding a paused channel does not start
+   * it; `channelStartBlocker` already refuses to start one at zero.
+   */
+  function channelRunningAfterBudget(key: SalesFunnelKey, featureSlug: string): boolean {
+    const state = states[key];
+    const saved = state.savedRunningByChannel[featureSlug] ?? false;
+    return runningAfterBudget({
+      running: state.runningByChannel[featureSlug] ?? saved,
+      nextCents: channelUsdOf(key, featureSlug) * 100,
+      savedCents: state.savedCentsByChannel[featureSlug] ?? 0,
+    });
+  }
+
+  /**
    * What billing funds each of this funnel's channels at ACROSS EVERY OFFER —
    * the grain the channel's floor binds, so it is what a typed figure is checked
    * against. The per-channel figures the form EDITS are this offer's own share.
@@ -880,7 +902,7 @@ export function BrandSalesFunnelsCard({
     for (const channel of channelsForFunnel(def.key, features)) {
       const slug = channel.featureSlug;
       const saved = state.savedRunningByChannel[slug] ?? false;
-      const next = state.runningByChannel[slug] ?? saved;
+      const next = channelRunningAfterBudget(def.key, slug);
       if (next === saved) continue;
       out.push({
         featureSlug: slug,
@@ -1340,7 +1362,12 @@ export function BrandSalesFunnelsCard({
                   );
                   const runState = runStateOf(def.key, channel.featureSlug);
                   const savedRunning = state.savedRunningByChannel[channel.featureSlug] ?? false;
-                  const nextRunning = state.runningByChannel[channel.featureSlug] ?? savedRunning;
+                  const nextRunning = channelRunningAfterBudget(def.key, channel.featureSlug);
+                  // Forced OFF by a zero amount rather than by the switch: the
+                  // control is disabled and the field beside it is what turns it
+                  // back on, so a customer is never handed a switch that cannot move.
+                  const zeroedOff =
+                    (state.runningByChannel[channel.featureSlug] ?? savedRunning) && !nextRunning;
                   return (
                   // Two lines on a phone, one from `sm:` up. The row carries four
                   // things now and they do not fit a phone side by side: measured at
@@ -1356,8 +1383,14 @@ export function BrandSalesFunnelsCard({
                       <AcquisitionChannelMark def={channel} size="sm" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-gray-700">{channel.name}</span>
-                        {hint && (
-                          <span className="block truncate text-xs text-gray-400">{hint}</span>
+                        {zeroedOff ? (
+                          <span className="block truncate text-xs text-gray-500">
+                            $0 a day pauses it. Give it an amount to run it.
+                          </span>
+                        ) : (
+                          hint && (
+                            <span className="block truncate text-xs text-gray-400">{hint}</span>
+                          )
                         )}
                       </span>
                     </div>
@@ -1402,7 +1435,7 @@ export function BrandSalesFunnelsCard({
                         aria-checked={nextRunning}
                         aria-label={`${nextRunning ? "Stop" : "Start"} ${channel.name}`}
                         onClick={() => toggleChannel(def.key, channel.featureSlug)}
-                        disabled={saving}
+                        disabled={saving || zeroedOff}
                         className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
                           nextRunning
                             ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"

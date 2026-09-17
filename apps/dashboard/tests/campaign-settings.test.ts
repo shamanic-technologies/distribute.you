@@ -82,15 +82,36 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
   });
 
   it("stops a campaign by PAUSING it, and says why zero is not the same thing", () => {
-    // A status flag costs nothing to reverse and leaves the ceiling untouched;
-    // zeroing throws the amount away, and billing's floor only lets a funnel
-    // funded under its minimum be kept or raised — so a grandfathered campaign
-    // stopped that way could never be restarted at the figure it was running.
+    // Zero PAUSES it too — a campaign funded at nothing is held on the funding gate
+    // every tick and never sends, so leaving the status at `ongoing` claims something
+    // that is not happening. What still differs is the AMOUNT: a pause keeps it,
+    // while zero throws it away, and billing's floor only lets a funnel funded under
+    // its minimum be kept or raised — so a grandfathered campaign stopped that way
+    // could never be restarted at the figure it was running. The copy says both.
     expect(card).toContain('if (trimmed === "") return 0;');
-    expect(card).toContain("pause it above rather than setting this to zero");
+    expect(card).toContain("Setting it");
+    expect(card).toContain("to zero pauses the campaign");
+    expect(card).toContain("prefer the switch above");
     expect(card).toContain("pausing keeps the");
-    expect(card).toContain("not funded right now, so it is not sending");
     expect(card).not.toContain("Set it to zero to stop it");
+  });
+
+  it("derives whether it runs through the ONE zero-pauses rule, and writes that", () => {
+    // The heading, the switch and the Save read one expression. Two copies is how
+    // the card comes to show a campaign as running while the Save pauses it.
+    expect(card).toContain('runningAfterBudget,');
+    expect(card).toContain("const effectiveRunning = runningAfterBudget({");
+    expect(card).toContain("const zeroed = running && !effectiveRunning;");
+    expect(card).toContain("const statusDirty = effectiveRunning !== savedRunning;");
+    expect(card).toContain("nextRunning: statusDirty ? effectiveRunning : null,");
+    expect(card).toContain('aria-checked={effectiveRunning}');
+  });
+
+  it("no longer FOOTNOTES the gap it now closes", () => {
+    // The card used to say "not sending whatever its status says" under a funded-at-
+    // zero campaign, which is a documented limitation standing in for a fix. It says
+    // Paused now.
+    expect(card).not.toContain("not sending whatever its status says");
   });
 
   it("flips campaign-service's own status, through the SAME running-word set", () => {
@@ -101,8 +122,9 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
     expect(card).toContain('from "@/lib/campaign-controls"');
     expect(card).toContain('role="switch"');
     // campaign-service validates the workflow's tracking headers before it flips
-    // the row, so a campaign naming no channel cannot be restarted from here.
-    expect(card).toContain("disabled={!campaign.featureSlug}");
+    // the row, so a campaign naming no channel cannot be restarted from here — and
+    // neither can one the form has just taken to zero, which is what `zeroed` adds.
+    expect(card).toContain("disabled={!campaign.featureSlug || zeroed}");
   });
 
   it("commits BOTH answers with one Save, and states what it is about to do", () => {

@@ -3,9 +3,10 @@
 import { EmailSignature } from "@/components/email-signature";
 import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { emailBodySegments } from "@/lib/email-body-links";
+import { emailBodySegments, linkDisplayText } from "@/lib/email-body-links";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import {
+  clickDestination,
   hasReadableBody,
   incompleteNote,
   type LeadHistory,
@@ -108,6 +109,7 @@ export function LeadHistoryTimeline({
         {visible.map((e, i) => {
           const shape = eventShape(e);
           if (!shape) return null;
+          const destination = clickDestination(e);
           const isFuture = e.at != null && new Date(e.at).getTime() > nowMs;
           const prev = i > 0 ? visible[i - 1] : null;
           return (
@@ -146,6 +148,35 @@ export function LeadHistoryTimeline({
                 )}
                 {shape.who && <p className="text-xs text-gray-500">{shape.who}</p>}
                 {shape.detail && <p className="mt-1 text-xs text-gray-600">{shape.detail}</p>}
+                {/* WHERE they went, on the row that says they went somewhere.
+                    The page a prospect opened is the moment a cold contact became
+                    interested, and naming it is what makes the row credible rather
+                    than a claim — so it is a real link a reader can follow and check.
+
+                    Deliberately OUTSIDE the copy gate: this is the customer's OWN
+                    page, not the words we wrote, so it is not what a sales interest
+                    earns. (On a lead that clicked the gate is open anyway, a website
+                    visit BEING a sales interest, which is exactly why gating it here
+                    would state a rule nobody could ever observe.)
+
+                    The label drops the query and the href keeps it, the same split
+                    the sender applies when it composes the message and the same one
+                    the body below renders with, so the panel states a destination
+                    ONE way. `title` carries the whole URL for the tail the label
+                    drops — a full string behind a truncation, not an info tip. */}
+                {destination && (
+                  <p className="mt-1 text-xs">
+                    <a
+                      href={destination}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={destination}
+                      className="break-all text-brand-600 underline-offset-2 hover:underline"
+                    >
+                      {linkDisplayText(destination)}
+                    </a>
+                  </p>
+                )}
                 {/* THE WORDS, behind ONE gate whatever the message is. Reading them is
                     the whole reason to open this panel, and it is what a sales interest
                     earns; the rows above say what happened to everyone else. */}
