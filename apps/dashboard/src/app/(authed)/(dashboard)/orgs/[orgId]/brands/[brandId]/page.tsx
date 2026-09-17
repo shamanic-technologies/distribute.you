@@ -38,6 +38,7 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { DashboardPageSkeleton } from "@/components/dashboard-page-skeleton";
 import { useLandingDrilldown } from "@/lib/use-landing-drilldown";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { browserTimezone } from "@/lib/browser-timezone";
 
 function countByDay(series: RevenueOverview["outreachContacted"]): Map<string, number> | null {
   if (!series) return null;
@@ -128,13 +129,7 @@ export default function BrandOverviewPage() {
     featureSlug,
     offerId,
   );
-  const timezone = useMemo(() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    } catch {
-      return "UTC";
-    }
-  }, []);
+  const timezone = useMemo(() => browserTimezone(), []);
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
   // not found" during the org-settle window.
