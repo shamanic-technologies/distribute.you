@@ -516,6 +516,27 @@ export interface RevenueOverview {
    * "this read carries no verdict", never "the scope is priced".
    */
   learningPhase?: LearningPhase | null;
+  /**
+   * WHAT ONE OUTCOME HAS COST, DAY BY DAY — the campaign Overview's cost curve.
+   *
+   * Absent until features-service answers it (shipping in parallel); the card then states
+   * that it cannot chart one rather than drawing anything. `null` is the producer saying
+   * it cannot measure a curve for this scope, which the card renders the same way.
+   *
+   * This is the CONSUMER's render shape, mapped in the parser from whatever the producer
+   * named its own fields — never a contract this repo authored. A point whose cost is
+   * `null` had no outcome yet, so there was no denominator: the card drops it rather than
+   * plotting a zero, which would say the outcome was free.
+   */
+  costPerOutcomeHistory?: CostPerOutcomePoint[] | null;
+}
+
+/** One day of {@link RevenueOverview.costPerOutcomeHistory}. */
+export interface CostPerOutcomePoint {
+  /** UTC calendar day, `YYYY-MM-DD`. */
+  date: string;
+  /** Cumulative cost of one outcome by the end of that day; `null` = not measurable. */
+  costPerOutcomeUsd: number | null;
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-chart";
+import { CostPerOutcomeCard } from "@/components/revenue/cost-per-outcome-card";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
@@ -157,6 +158,23 @@ export function RevenueOverviewSection({
   // no retry affordance — the #2650 bug one component down.
   const revenueLoading = revenuePending;
   const activityLoading = activityPending;
+  // WHAT one outcome is, and whether its price can be stated yet — both read straight off
+  // features-service's own verdict on this same payload, never re-decided here. The
+  // learning band at the top of the page renders off that identical field, so the two
+  // cannot say different things about one campaign.
+  //
+  // Every status but `priced` draws the shape rather than a price: `learning` and
+  // `learning_limited` have too few outcomes to divide by, `paused` has stopped
+  // producing them. `unmeasured` is the producer saying it cannot answer at all — the
+  // card then falls through to its own "we cannot chart this" line, which is the honest
+  // reading of a scope nobody can price.
+  const learningStatus = data?.learningPhase?.status ?? null;
+  const costOutcomeLabel = data?.learningPhase?.outcomeStep?.label ?? null;
+  const outcomeLearning =
+    learningStatus === "learning" ||
+    learningStatus === "learning_limited" ||
+    learningStatus === "paused";
+  const costPerOutcomeHistory = data?.costPerOutcomeHistory;
   // The chart reads `data.days` and cannot take an absent payload, so once the gate
   // has settled an absent one gets its own honest line rather than a skeleton:
   // "still loading" and "we could not load this" are different statements. The
@@ -244,30 +262,51 @@ export function RevenueOverviewSection({
         />
       </div>
 
-      {/* Outreach activity — full-width per-day BARS: outreach / the goal
-          engagement (clicks for signups, sales interests for meetings) across the
-          past (actuals) + today + forecast, with the 7/30/90-day window toggle.
-          Channel-scoped, so it renders on the campaign Overview and not on the
-          brand one (see `showActivityChart`). */}
+      {/* What we DID and what it BOUGHT, side by side on desktop.
+          Left: per-day BARS — outreach / the goal engagement (clicks for signups,
+          sales interests for meetings) across the past (actuals) + today + forecast,
+          with the 7/30/90-day window toggle. Right: what one outcome has cost over
+          the same life.
+          One row rather than two full-width bands because the two answer halves of one
+          question, and a customer reading a volume wants the price beside it rather
+          than a scroll away. They stack below `lg`, where a half-width chart is not a
+          chart. The bars keep their own horizontal scroll (their inner min-width is
+          unchanged), so narrowing the column scrolls them instead of crushing them.
+          Both are CHANNEL-scoped, so both render on the campaign Overview and on
+          neither the brand nor the offer one (see `showActivityChart`). */}
       {showActivityChart && optimizationGoal && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-          <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
-          {activityLoading ? (
-            <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
-          ) : !pipelineActivity ? (
-            <p className="flex h-[300px] items-center justify-center text-sm text-gray-500 lg:h-[200px]">
-              We could not load your outreach activity right now. It will reappear on
-              its own.
-            </p>
-          ) : (
-            <PipelineActivityChart
-              data={pipelineActivity}
-              pipelineActualSeries={pipelineActualSeries}
-              optimizationGoal={optimizationGoal}
-              funnelKey={funnelKey}
-              trackerSetUp={trackerSetUp}
-              visitToMeetingPct={visitToMeetingPct}
-              visitToSignupPct={visitToSignupPct}
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          <div className="flex flex-col bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+            <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
+            {activityLoading ? (
+              <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
+            ) : !pipelineActivity ? (
+              <p className="flex h-[300px] items-center justify-center text-sm text-gray-500 lg:h-[200px]">
+                We could not load your outreach activity right now. It will reappear on
+                its own.
+              </p>
+            ) : (
+              <PipelineActivityChart
+                data={pipelineActivity}
+                pipelineActualSeries={pipelineActualSeries}
+                optimizationGoal={optimizationGoal}
+                funnelKey={funnelKey}
+                trackerSetUp={trackerSetUp}
+                visitToMeetingPct={visitToMeetingPct}
+                visitToSignupPct={visitToSignupPct}
+              />
+            )}
+          </div>
+          {/* Nothing is drawn without the producer's own word for the outcome: a
+              campaign's outcome is whichever step its leg lands on, and inventing a
+              noun here would name a different thing from the stat row above. */}
+          {costOutcomeLabel && (
+            <CostPerOutcomeCard
+              history={costPerOutcomeHistory}
+              outcomeLabel={costOutcomeLabel}
+              learning={outcomeLearning}
+              paused={paused}
+              pending={revenueLoading}
             />
           )}
         </div>
