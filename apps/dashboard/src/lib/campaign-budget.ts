@@ -155,3 +155,50 @@ export function campaignPairCents(
     )?.dailyBudgetCents ?? 0
   );
 }
+
+/**
+ * Whether a campaign is still running once this form's budget lands.
+ *
+ * A campaign funded at NOTHING does not send. campaign-service says so itself —
+ * `fundingFromBudgets` is the platform's one definition of "is this campaign
+ * funded", and a ceiling of zero fails it, so the scheduler holds the campaign on
+ * the funding gate every tick and never hands it a turn. Its stored STATUS,
+ * meanwhile, stayed `ongoing`, so the pill said `Active` and every surface that
+ * reads that word inherited the claim. Measured in production on 2026-09-17: 9 of
+ * 21 ongoing campaigns were funded at zero (or had no ceiling at all) and all 9
+ * read `Active` to their customer.
+ *
+ * So setting the budget to zero PAUSES, and the same Save that writes the ceiling
+ * writes the status. Fixing it at WRITE time rather than deriving it at read time
+ * is deliberate: the status is what the pill, the scope rollups, the Leads tabs,
+ * the staff console and features-service all read, so one honest write corrects
+ * every reader at once — where a derivation would have to be threaded through
+ * eight surfaces and would still leave the staff console and a direct API write
+ * saying `Active`.
+ *
+ * ⚠️ Only the customer's OWN move to zero pauses. A row billing ALREADY stores at
+ * zero is left alone (`savedCents === 0` → unchanged), because the modal edits
+ * several rows at once and stopping a campaign nobody touched is a write nobody
+ * asked for.
+ *
+ * ⚠️ The inverse does NOT hold: funding a paused campaign does not start it.
+ * campaign-service deleted provisioning-from-a-funded-ceiling on 2026-09-06
+ * ("money starts nothing") because reading money as an intent to run had
+ * resurrected campaigns customers had deliberately stopped. The switch sits
+ * beside the field on every surface that edits one, so both travel in one Save.
+ */
+export function runningAfterBudget(input: {
+  /** What the form's switch holds right now. */
+  running: boolean;
+  /** The ceiling this form would write, in cents. Null = not a whole number of dollars. */
+  nextCents: number | null;
+  /** What billing stores for this campaign today, in cents. */
+  savedCents: number;
+}): boolean {
+  if (!input.running) return false;
+  // Unparseable: every form blocks its own Save on this, so it states no opinion
+  // rather than pausing a campaign on a half-typed figure.
+  if (input.nextCents === null) return true;
+  if (input.nextCents === 0 && input.savedCents > 0) return false;
+  return true;
+}

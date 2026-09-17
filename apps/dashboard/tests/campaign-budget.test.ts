@@ -5,6 +5,7 @@ import {
   campaignSavedCents,
   campaignPairCents,
   fmtDailyBudgetUsd,
+  runningAfterBudget,
   type BrandFunnelBudgetSet,
 } from "../src/lib/campaign-budget";
 import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
@@ -232,5 +233,33 @@ describe("the (funnel, channel) PAIR a ceiling belongs to", () => {
   it("reads a pair billing has no row for as unfunded, never unknown", () => {
     expect(campaignPairCents(scope, { funnels: [], channels: [] })).toBe(0);
     expect(campaignPairCents(scope, undefined)).toBe(0);
+  });
+});
+
+describe("runningAfterBudget — a campaign funded at nothing is paused", () => {
+  it("keeps a funded campaign running", () => {
+    expect(runningAfterBudget({ running: true, nextCents: 1000, savedCents: 1000 })).toBe(true);
+  });
+
+  it("PAUSES a running campaign the customer just took to zero", () => {
+    // campaign-service holds an unfunded campaign on the funding gate every tick,
+    // so leaving the status at `ongoing` claims something that is not happening.
+    expect(runningAfterBudget({ running: true, nextCents: 0, savedCents: 1000 })).toBe(false);
+  });
+
+  it("leaves a row billing ALREADY stores at zero alone", () => {
+    // The controls modal edits several rows at once. Stopping a campaign nobody
+    // touched would be a write nobody asked for.
+    expect(runningAfterBudget({ running: true, nextCents: 0, savedCents: 0 })).toBe(true);
+  });
+
+  it("does NOT start a paused campaign that is being funded — money starts nothing", () => {
+    expect(runningAfterBudget({ running: false, nextCents: 5000, savedCents: 0 })).toBe(false);
+  });
+
+  it("states no opinion on a half-typed figure", () => {
+    // Every form blocks its own Save on an unparseable budget; pausing a campaign
+    // mid-keystroke would be a verdict on a value nobody has finished writing.
+    expect(runningAfterBudget({ running: true, nextCents: null, savedCents: 1000 })).toBe(true);
   });
 });
