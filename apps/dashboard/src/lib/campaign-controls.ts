@@ -119,10 +119,17 @@ export interface ControlRow {
    * The campaign-service row a RESTART targets — the live one when there is one,
    * else the most recent, which is the campaign as it last ran.
    *
-   * NULL for a channel the brand has never funded: there is no campaign yet, so no
-   * status write can address it. Funding it IS turning it on, and campaign-service
-   * provisions the campaign on its own tick. That row is the only way a customer can
-   * reach a channel they have not bought, which is the whole reason it exists.
+   * NULL for a channel that has no campaign at all, whether or not the brand funds
+   * it. No status write can address such a channel, because a status is a fact about
+   * a campaign and there is none: it has to be CREATED first (`POST /campaigns`),
+   * which is what Offer Settings' per-channel switch does.
+   *
+   * This used to read "funding it IS turning it on, campaign-service provisions the
+   * campaign on its own tick". That was true until 2026-09-06, when campaign-service
+   * deleted provisioning outright ("money starts nothing") because reading a funded
+   * ceiling as an intent to run had resurrected campaigns customers had deliberately
+   * stopped. Its own doc now states the consequence: a brand that funds a channel and
+   * has no campaign for it simply has no campaign for it.
    */
   campaignId: string | null;
   /**
@@ -262,9 +269,14 @@ export function buildControlRows(
       rowId,
       campaignId: null,
       runningCampaignIds: [],
-      // With no campaign to ask, funded IS running: a ceiling above zero is what makes
-      // campaign-service provision one on its next tick.
-      running: savedCents > 0,
+      // A channel with NO campaign is not running, whatever it is funded at. Money
+      // has started nothing since campaign-service deleted provisioning on
+      // 2026-09-06, so reading the ceiling as a verdict states the opposite of the
+      // truth for every funded-but-never-launched channel: production carried one
+      // reading "Running" on the funnel board at the same moment Offer Settings read
+      // "Paused" for the same offer, the same funnel and the same channel, with
+      // neither true and nothing ever going to run.
+      running: false,
       scope,
       savedCents,
       offerId: o.offerId,

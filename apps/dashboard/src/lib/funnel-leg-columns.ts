@@ -16,6 +16,7 @@
 import type { CampaignLeg } from "./campaign-leg";
 import type { AcquisitionChannelDef } from "./acquisition-channels";
 import { channelIsFundable } from "./funnel-channels";
+import { channelRunState } from "./channel-start";
 
 /**
  * The channels that perform THIS arrow and that funding actually turns on.
@@ -73,38 +74,61 @@ export interface LegChannelCard {
  * opens shows that channel's toggle OFF. Two facts that cannot both be true of one
  * channel on one screen is a bug, not a wording preference.
  *
- * `not_funded` is a real third state and must survive: a channel nobody has bought is
+ * `not_funded` is a real state and must survive: a channel nobody has bought is
  * not "paused", and telling a customer it is invites them to look for a switch that
  * was never flipped.
+ *
+ * `not_started` is the SAME argument one step along, and it is the state money used
+ * to hide. A channel the brand funds and nobody has launched is neither running nor
+ * paused: campaign-service has stopped provisioning a campaign for a funded pair
+ * (2026-09-06, "money starts nothing"), so it has no campaign and never will until a
+ * person starts it on Offer Settings. It read `running` here for as long as the
+ * ceiling stood in for the verdict.
  *
  * `unknown` is the honest reading while the campaigns read is still in flight. Falling
  * back to `running` there would be a guess dressed as a verdict.
  */
-export type LegChannelState = "running" | "paused" | "not_funded" | "unknown";
+export type LegChannelState = "running" | "paused" | "not_started" | "not_funded" | "unknown";
 
 /**
  * The card's verdict, from the SAME running answer the controls modal writes through.
  *
- * `running` is `buildControlRows`' own word, not a second copy of the rule — it already
- * resolves, per (funnel, channel, offer): at least one member campaign reporting a
- * running status, and, for a channel with NO campaign at all, funded IS running (a
- * ceiling above zero is what makes campaign-service provision one on its next tick).
- * Re-deriving any of that here is how the two surfaces drift again within a release.
+ * `running` and `hasCampaign` are both `buildControlRows`' own words, not a second copy
+ * of the rule — it already resolves, per (funnel, channel, offer): at least one member
+ * campaign reporting a running status, and whether the channel has a campaign at all.
+ * Re-deriving either here is how the two surfaces drift again within a release, which
+ * is exactly what happened while this file read the CEILING as the verdict.
  *
- * The ceiling is read only to separate "stopped" from "never bought"; it never decides
- * whether something runs.
+ * `channelRunState` is shared with Offer Settings' own per-channel switch, so a channel
+ * cannot read one word on the board and another on the card that starts it.
+ *
+ * The ceiling is read for ONE thing: separating a channel nobody has bought from one
+ * that is bought and unstarted. It never decides whether something runs.
  */
 export function legChannelState({
   savedCents,
   running,
+  hasCampaign,
 }: {
   savedCents: number;
   /** The resolver's verdict, or undefined while the campaigns read is unsettled. */
   running: boolean | undefined;
+  /**
+   * Whether campaign-service holds a campaign for this (funnel, channel, offer) at
+   * all — `buildControlRows`' `campaignId !== null`. Undefined while unsettled.
+   */
+  hasCampaign: boolean | undefined;
 }): LegChannelState {
-  if (running === undefined) return "unknown";
-  if (running) return "running";
-  return savedCents > 0 ? "paused" : "not_funded";
+  if (running === undefined || hasCampaign === undefined) return "unknown";
+  const state = channelRunState({
+    settled: true,
+    campaignId: hasCampaign ? "present" : null,
+    running,
+  });
+  // A channel nobody has bought reads as such rather than as one waiting to be
+  // started: there is nothing to start until it is funded.
+  if (state === "not_started" && savedCents <= 0) return "not_funded";
+  return state;
 }
 
 /** One arrow of the funnel, and everything that can work it. */
@@ -126,6 +150,7 @@ export function buildLegColumns({
   channels,
   savedCentsBySlug,
   runningBySlug,
+  hasCampaignBySlug,
 }: {
   legs: readonly CampaignLeg[];
   channels: readonly AcquisitionChannelDef[];
@@ -139,17 +164,30 @@ export function buildLegColumns({
    * no row covers, which is `not running`, never `running`.
    */
   runningBySlug: Record<string, boolean> | undefined;
+  /**
+   * Which channels campaign-service holds a campaign for at all, from the SAME
+   * `buildControlRows` pass as `runningBySlug`.
+   *
+   * Separate from "is it running" because the two answer different questions and the
+   * difference is the whole point: a funded channel with no campaign is NOT running
+   * and is not paused either. Undefined while the read is in flight; a slug absent
+   * from a settled map has no campaign.
+   */
+  hasCampaignBySlug: Record<string, boolean> | undefined;
 }): LegColumn[] {
   return legs.map((leg) => ({
     leg,
     cards: channelsForLeg(leg, channels).map((channel) => {
       const savedCents = savedCentsBySlug[channel.featureSlug] ?? 0;
       const running = runningBySlug ? (runningBySlug[channel.featureSlug] ?? false) : undefined;
+      const hasCampaign = hasCampaignBySlug
+        ? (hasCampaignBySlug[channel.featureSlug] ?? false)
+        : undefined;
       return {
         channel,
         savedCents,
         funded: savedCents > 0,
-        state: legChannelState({ savedCents, running }),
+        state: legChannelState({ savedCents, running, hasCampaign }),
       };
     }),
   }));
