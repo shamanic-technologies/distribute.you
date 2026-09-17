@@ -585,7 +585,7 @@ describe("billing page — opening the card page is never refused", () => {
   // above it is the confirmation gate and performs no request.
   const handler = page.slice(
     page.indexOf("async function openCardPage("),
-    page.indexOf("async function handleTopup(")
+    page.indexOf("async function handleRemoveCard(")
   );
 
   it("shows its own generic line on a failure, never the downstream body", () => {

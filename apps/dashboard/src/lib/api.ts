@@ -7186,6 +7186,53 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
 }
 
+/**
+ * What billing-service answers when the card is gone.
+ *
+ * Conformed to the DEPLOYED contract rather than a shape guessed up front:
+ * billing-service designed it (v0.80.3) and api-service proxies it field-for-field
+ * (#942), so this reads what is actually served. `settled_cents` is what the
+ * collection took on the way out, and `settle_skip_reason` is present exactly
+ * when it took nothing — the two together are the only honest account of a
+ * charge that never gates the removal.
+ */
+export interface SavedPaymentMethodRemoved {
+  object: "saved_payment_method_removed";
+  org_id: string;
+  removed: number;
+  already_removed: number;
+  auto_topup_disarmed: boolean;
+  settled_cents: number;
+  settle_skip_reason?: string;
+}
+
+/**
+ * Remove the card on file.
+ *
+ * billing-service orchestrates the two halves in the one order only it can put
+ * them in: the outstanding balance is collected first, on the card that is about
+ * to go, and then the card goes whatever that collection did. It refuses this for
+ * nobody — no balance, no debt state, no failed charge blocks it — because a gate
+ * here would trap the one customer it exists to protect us from, which is the
+ * dead end #4195 removed from the card-change button.
+ *
+ * Nothing is forgiven: what is owed stays owed and stays owned by the existing
+ * sweeps, and the org lands in the state billing already models for a lost card
+ * (credit-line floor at 0, the customer told, staff notified, listed among the
+ * uncollectable debts).
+ *
+ * A 502 means we could not tell whether the card is gone, which the caller must
+ * surface rather than read as success.
+ */
+export async function removePaymentMethod(
+  token?: string
+): Promise<SavedPaymentMethodRemoved> {
+  return apiCall<SavedPaymentMethodRemoved>("/billing/accounts/saved_payment_method", {
+    token,
+    method: "DELETE",
+  });
+}
+
 // ── Credit grants ("gifts received") ──
 // The org's own credit-grants ledger: welcome gift, staff bonuses, referral
 // credits, promo redemptions. Source: billing-service
