@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BoardSlot } from "@/components/boards/board-slot";
 import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
+import { FunnelStepMark } from "@/components/marks/funnel-step-mark";
 import { StageStatementForm } from "@/components/leads/lead-funnel-stage-section";
 import { REPLY_TONE_PILL } from "@/lib/reply-kind";
 import type { LegBoardCard, LegBoardColumn } from "@/lib/funnel-leg-board";
@@ -196,8 +197,10 @@ export function FunnelLegBoard({
               }`}
             >
               <header className="mb-2 flex items-center gap-2">
-                {/* No mark here: the page header above already draws the arrow's, and a
-                    second tile per column would say the same thing three times. */}
+                {/* The STEP's tile, not the arrow's: the page header draws the arrow, each
+                    column is one of its two ends, and a step wears one mark product-wide.
+                    The base column ("Contacted") names no step and draws none. */}
+                <FunnelStepMark stageKey={column.stage} size="xs" />
                 <h3 className="text-sm font-medium text-gray-800">{column.label}</h3>
                 <span className="text-xs text-gray-500">{total.toLocaleString("en-US")}</span>
               </header>

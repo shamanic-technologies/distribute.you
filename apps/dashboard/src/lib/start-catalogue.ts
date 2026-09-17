@@ -265,6 +265,15 @@ export function funnelRungKeys(funnelKey: string, catalogue: StartCatalogue): st
   return rungs.length > 0 ? rungs : [def.entryStep.key];
 }
 
+/** The rungs of a funnel as STEPS (key + the producer's words), in order. */
+export function funnelRungs(funnelKey: string, catalogue: StartCatalogue): CatalogueStep[] {
+  const byKey = new Map(catalogue.steps.map((s) => [s.key, s]));
+  return funnelRungKeys(funnelKey, catalogue).flatMap((key) => {
+    const step = byKey.get(key);
+    return step ? [step] : [];
+  });
+}
+
 /**
  * Whether the picked outcomes BUY this funnel.
  *
@@ -394,6 +403,47 @@ export function missingRungsForNearestFunnel(
     }
   }
   return best ?? [];
+}
+
+/** A funnel the picks BUY that no kept channel SELLS, with who would. */
+export interface UnsoldFunnel {
+  funnelKey: string;
+  funnelName: string;
+  /** Every channel in the catalogue that sells it, in display order. */
+  sellerNames: string[];
+}
+
+/**
+ * The funnels the picked outcomes buy (every rung ticked) that none of the KEPT
+ * channels sells.
+ *
+ * This is the case the funnel screen used to keep silent about: a visitor ticks a
+ * positive reply and an ad-platform form, keeps cold email, and the form funnel simply
+ * never appears. Nothing is wrong under the rule, but the screen owes the sentence:
+ * which funnel went missing and which channel would have carried it.
+ */
+export function unsoldBoughtFunnels(
+  catalogue: StartCatalogue,
+  outcomeKeys: string[],
+  keptChannels: CatalogueChannel[],
+): UnsoldFunnel[] {
+  if (outcomeKeys.length === 0) return [];
+  const soldByKept = new Set(keptChannels.flatMap((c) => c.salesFunnels.map((f) => f.key)));
+  const sorted = [...catalogue.channels].sort(
+    (a, b) => a.displayOrder - b.displayOrder || a.slug.localeCompare(b.slug),
+  );
+  const out: UnsoldFunnel[] = [];
+  for (const f of catalogue.funnels) {
+    if (soldByKept.has(f.key)) continue;
+    if (!funnelReachesOutcome(f.key, outcomeKeys, catalogue)) continue;
+    const sellerNames = sorted
+      .filter((c) => c.salesFunnels.some((sf) => sf.key === f.key))
+      .map((c) => c.name);
+    // A funnel nobody sells is not a gap a visitor can close; it is left out.
+    if (sellerNames.length === 0) continue;
+    out.push({ funnelKey: f.key, funnelName: f.name, sellerNames });
+  }
+  return out;
 }
 
 /** The pairs of one funnel, under that funnel's own name and rungs. */

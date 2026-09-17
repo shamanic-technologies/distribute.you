@@ -8,6 +8,7 @@ import {
   StartShell,
   StartButton,
   StartOption,
+  StartPathOption,
   StartGrid,
   StartGroupLabel,
   CountUp,
@@ -16,7 +17,7 @@ import {
 } from "./start-shell";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
+import { FunnelStepMark } from "@/components/marks/funnel-step-mark";
 import { channelMarkForSlug } from "@/lib/acquisition-channels";
 import { salesFunnelDefForWireKeyOrNull } from "@/lib/sales-funnels";
 import {
@@ -25,7 +26,9 @@ import {
   channelGroups,
   funnelsForChannels,
   funnelGroups,
+  funnelRungs,
   missingRungsForNearestFunnel,
+  unsoldBoughtFunnels,
   type CatalogueChannel,
   type StartCatalogue,
 } from "@/lib/start-catalogue";
@@ -176,6 +179,13 @@ export function StartFlow() {
         ? missingRungsForNearestFunnel(keptChannels, outcomes, catalogue.wire)
         : [],
     [catalogue, offeredFunnels, keptChannels, outcomes],
+  );
+
+  // The funnels the picks BUY that no kept channel SELLS: the gap the screen owes a
+  // sentence for, instead of a path that silently never appears.
+  const unsoldFunnels = useMemo(
+    () => (catalogue ? unsoldBoughtFunnels(catalogue.wire, outcomes, keptChannels) : []),
+    [catalogue, outcomes, keptChannels],
   );
 
   // Dropping a channel can drop the only seller of a funnel the visitor had
@@ -347,7 +357,7 @@ export function StartFlow() {
               onToggle={() => setOutcomes((prev) => toggle(prev, o.key))}
               title={o.label}
               description={o.description}
-              mark={<FunnelLegMark fromKey={null} toKey={o.key} size="sm" />}
+              mark={<FunnelStepMark stepKey={o.key} size="sm" />}
               meta={`${o.channelSlugs.length} channels`}
             />
           ))}
@@ -437,53 +447,73 @@ export function StartFlow() {
         ) : (
           (() => {
             let index = 0;
-            return funnelGroups(offeredFunnels).map((g) => (
-              <div key={g.funnelKey} className="mb-8 last:mb-0">
-                {/* The funnel's name and its rungs, stated ONCE above its channels.
-                    A row is still one pair — that is the purchase — but repeating the
-                    path on 31 cards is the same sentence 31 times. */}
-                <StartGroupLabel count={g.pairs.length}>
-                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                    <span>{g.funnelName}</span>
-                    {g.steps.map((step, j) => (
-                      <span key={step} className="flex items-center gap-1.5">
-                        <span className="text-gray-300">{j === 0 ? "·" : "→"}</span>
-                        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-normal text-gray-700">
-                          {step}
-                        </span>
-                      </span>
+            return funnelGroups(offeredFunnels).map((g) => {
+              // The path, once per funnel, as STEPS: a tile and the producer's words for
+              // each rung. Drawn in full on every row below, because the row is what is
+              // bought and a buyer reads the whole path on the thing they are buying.
+              const rungs = catalogue
+                ? funnelRungs(g.funnelKey, catalogue.wire).map((step) => ({
+                    key: step.key,
+                    label: step.label,
+                    mark: <FunnelStepMark stepKey={step.key} size="sm" />,
+                  }))
+                : [];
+              return (
+                <div key={g.funnelKey} className="mb-8 last:mb-0">
+                  <StartGroupLabel count={g.pairs.length}>
+                    <span className="flex items-center gap-2">
+                      {funnelMark(g.funnelKey)}
+                      <span>{g.funnelName}</span>
+                    </span>
+                  </StartGroupLabel>
+                  <div className="flex flex-col gap-3">
+                    {g.pairs.map((f) => (
+                      <StartPathOption
+                        key={f.key}
+                        index={index++}
+                        selected={funnels.includes(f.key)}
+                        onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
+                        title={f.channelName}
+                        mark={
+                          <AcquisitionChannelMark
+                            def={{ mark: channelMarkForSlug(f.channelSlug) }}
+                            size="sm"
+                          />
+                        }
+                        meta={
+                          f.operatedBy === "customer"
+                            ? "You run it"
+                            : fromPerDay(f.dailyOperatingCostCents)
+                        }
+                        rungs={rungs}
+                      >
+                        {f.operatedBy === "customer"
+                          ? "Your own team works this one."
+                          : `Judge it after ${f.effectiveMinimumCommitmentDays} days.`}
+                      </StartPathOption>
                     ))}
-                  </span>
-                </StartGroupLabel>
-                <StartGrid>
-                  {g.pairs.map((f) => (
-                    <StartOption
-                      key={f.key}
-                      index={index++}
-                      selected={funnels.includes(f.key)}
-                      onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
-                      title={f.channelName}
-                      mark={
-                        <AcquisitionChannelMark
-                          def={{ mark: channelMarkForSlug(f.channelSlug) }}
-                          size="sm"
-                        />
-                      }
-                      meta={
-                        f.operatedBy === "customer"
-                          ? "You run it"
-                          : fromPerDay(f.dailyOperatingCostCents)
-                      }
-                    >
-                      {f.operatedBy === "customer"
-                        ? "Your own team works this one."
-                        : `Judge it after ${f.effectiveMinimumCommitmentDays} days.`}
-                    </StartOption>
-                  ))}
-                </StartGrid>
-              </div>
-            ));
+                  </div>
+                </div>
+              );
+            });
           })()
+        )}
+        {/* A path the picks buy that none of the kept channels runs: named, with the
+            channels that would run it, rather than left to vanish in silence. */}
+        {unsoldFunnels.length > 0 && (
+          <div className="mt-6 space-y-2">
+            {unsoldFunnels.map((u) => (
+              <p
+                key={u.funnelKey}
+                className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600"
+              >
+                <span className="font-medium text-gray-900">{u.funnelName}</span> is a path your
+                picks buy, but none of the channels you kept runs it. Go back and keep{" "}
+                <span className="font-medium text-gray-900">{u.sellerNames.join(", ")}</span> to
+                get it.
+              </p>
+            ))}
+          </div>
         )}
       </StartShell>
     );

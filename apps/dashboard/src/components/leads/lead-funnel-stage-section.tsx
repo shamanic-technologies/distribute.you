@@ -16,6 +16,7 @@ import { useState, type ReactNode } from "react";
 
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { ReplyKindControl } from "@/components/leads/reply-kind-control";
+import { FunnelStepMark } from "@/components/marks/funnel-step-mark";
 import type { ReplyKind } from "@/lib/reply-kind";
 import {
   isWritableStage,
@@ -427,7 +428,8 @@ export function LeadFunnelStageSection({
             busyHere && (pending?.next === target || (pending?.next === "withdraw" && state === target));
           return (
             <li key={stage.key} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-              <span className="text-sm text-gray-800 min-w-0 flex items-center gap-1.5">
+              <span className="text-sm text-gray-800 min-w-0 flex items-center gap-2">
+                <FunnelStepMark stageKey={stage.key} size="xs" />
                 <span className="truncate">{stage.label}</span>
                 {isTracked && <InfoTooltip tip={TRACKED_TIP} />}
               </span>
