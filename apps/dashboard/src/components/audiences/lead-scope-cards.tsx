@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { tenantBasePath } from "@/lib/offer-path";
+import { audienceDetailHref } from "@/lib/audience-detail-href";
 import { BrandLogo } from "@/components/brand-logo";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useOfferImages } from "@/lib/use-offer-images";
@@ -229,15 +230,24 @@ function AudienceScopeCard({ audience }: { audience: LeadCampaignAudience }) {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
+  // The route's own scope. `offerId` is absent on the brand Leads page; `id` names a
+  // campaign and `funnelKey` a funnel, each present only on their own route.
   const routeOfferId = params.offerId as string | undefined;
-  // An audience's page lives under the OFFER it was assembled for, so the link is built
-  // from the AUDIENCE's own `offerId`, never from whichever route the reader is on —
-  // building it from the route sent every brand-level reader to a path that does not
-  // exist. No offer resolvable ⟹ no link: some audiences predate the offer level.
-  const audienceOfferId = audience.offerId ?? routeOfferId ?? null;
-  const detailHref = audienceOfferId
-    ? `${tenantBasePath(orgId, brandId, audienceOfferId)}/audiences?audienceId=${audience.id}`
-    : null;
+  const campaignId = params.id as string | undefined;
+  const funnelKey = params.funnelKey as string | undefined;
+  // The audience opens at the grain the reader is standing on — a campaign's Leads page
+  // opens it on that campaign's Audiences page rather than dropping them back to the
+  // offer. `audienceDetailHref` owns the rule (including "no offer resolvable ⟹ no
+  // link"), so this card and the campaign row below cannot state two different links.
+  const detailHref = audienceDetailHref({
+    orgId,
+    brandId,
+    audienceId: audience.id,
+    audienceOfferId: audience.offerId,
+    routeOfferId,
+    campaignId,
+    funnelKey,
+  });
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Audience</h3>
