@@ -36,14 +36,43 @@ const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distr
  *  hold the visitor's first screen open indefinitely. */
 const UPSTREAM_TIMEOUT_MS = 12_000;
 
+// The catalogue changes when somebody edits the channel list, not per request.
+// A minute keeps a burst of signups off the gateway without letting a newly
+// published channel sit invisible for long.
+const READ_OPTIONS = {
+  headers: { accept: "application/json" },
+  next: { revalidate: 60 },
+} as const;
+
+/** A downstream route the gateway proxies under its own `/v1` namespace. */
 async function readPublic(path: string): Promise<Response> {
   return fetch(`${API_URL}/v1/public/${path}`, {
-    headers: { accept: "application/json" },
+    ...READ_OPTIONS,
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    // The catalogue changes when somebody edits the channel list, not per
-    // request. A minute keeps a burst of signups off the gateway without
-    // letting a newly published channel sit invisible for long.
-    next: { revalidate: 60 },
+  });
+}
+
+/**
+ * A route the gateway serves on its OWN unversioned public namespace.
+ *
+ * THE GATEWAY NAMES ITS OWN PATHS, and it does not uniformly keep the
+ * downstream prefix: `/v1/public/channels` is a proxy of features-service's
+ * `/public/channels`, while the platform user count answers at a bare
+ * `/public/stats/users` and 404s under `/v1`. So the prefix is a fact to read
+ * off the deployed contract, never one to infer from a sibling.
+ *
+ * Reading it under the wrong prefix is silent by construction: the count is the
+ * one half of this handler that may legitimately be missing, so a 404 logs one
+ * line and `founders` stays null forever while the strip renders its shipped
+ * seed. Measured 2026-09-17 -- `/v1/public/stats/users` answered 404
+ * `{"error":"Not found"}` and `/public/stats/users` answered 200 with
+ * `totalUsers: 82`, so the signed-out flow read `70+` for as long as it had
+ * existed while the landing, which reads the right path, read `80+`.
+ */
+async function readGatewayPublic(path: string): Promise<Response> {
+  return fetch(`${API_URL}/public/${path}`, {
+    ...READ_OPTIONS,
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
 }
 
@@ -56,8 +85,9 @@ export async function GET() {
       // screen before signup, which is the whole argument for signing up.
       readPublic("features/funnel-return-on-spend"),
       // The platform's own user count, the same public read the landing floors
-      // into its trust strip. Third half that may legitimately be missing.
-      readPublic("stats/users"),
+      // into its trust strip. Third half that may legitimately be missing --
+      // and the ONE read here that is not under `/v1`, see `readGatewayPublic`.
+      readGatewayPublic("stats/users"),
     ]);
 
     if (!channelsRes.ok) {

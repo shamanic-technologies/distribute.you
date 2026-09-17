@@ -102,9 +102,16 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     }
   });
 
-  it("the catalogue route serves the founder count beside the channels", () => {
+  /**
+   * This guard used to pin `readPublic("stats/users")` -- the call was SPELLED
+   * correctly and pointed at a path the gateway 404s, so the count was null on
+   * every request and the strip rendered its shipped seed. A spelling is not a
+   * connection: pin the PREFIX, which is the half that was wrong.
+   */
+  it("reads the founder count off the gateway's unversioned public path", () => {
     const route = read("app/api/public/catalogue/route.ts");
-    expect(route).toContain('readPublic("stats/users")');
+    expect(route).toContain('readGatewayPublic("stats/users")');
+    expect(route).not.toContain('readPublic("stats/users")');
     expect(route).toContain("founders");
   });
 });
