@@ -7186,6 +7186,26 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
 }
 
+/**
+ * Remove the card on file.
+ *
+ * billing-service orchestrates: it attempts to collect an outstanding balance on
+ * the card first and then detaches EVERY payment method whatever that collection
+ * did. Both halves are deliberate. Detaching only the default would leave a
+ * second method attached for a customer who asked us to stop holding their card,
+ * and a method that survives without being the default reads downstream as "no
+ * card" while still sitting on file. Gating the removal on the charge would hold
+ * the customer hostage to the card that is failing, which is the dead end #4195
+ * removed from the card-change button.
+ *
+ * Nothing is forgiven: what is owed stays owed, and the org lands in the state
+ * billing already models for a lost card (credit-line floor at 0, the customer
+ * told, staff notified, listed among the uncollectable debts).
+ */
+export async function removePaymentMethod(token?: string): Promise<BillingAccount> {
+  return apiCall<BillingAccount>("/billing/accounts/payment_method", { token, method: "DELETE" });
+}
+
 // ── Credit grants ("gifts received") ──
 // The org's own credit-grants ledger: welcome gift, staff bonuses, referral
 // credits, promo redemptions. Source: billing-service

@@ -25,11 +25,13 @@ import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { latestPaymentFailure } from "@/lib/payment-failure";
 import { availableCreditCents } from "@/lib/credit-runway";
 import { cardChangeSettleCents } from "@/lib/card-change-settle";
+import { cardRemoveConsequence } from "@/lib/card-remove";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
+import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
@@ -273,6 +275,11 @@ export default function BillingPage() {
   // up; the source is held so Confirm opens the page the customer asked for.
   const [confirmSource, setConfirmSource] = useState<"manage" | "invoices" | null>(null);
 
+  // Removing the card is its own confirmation and its own in-flight state: it
+  // shares neither with the portal buttons, because it opens no portal.
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removePending, setRemovePending] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   // Inline validation error (shown on blur) for the one-off custom amount
@@ -343,6 +350,21 @@ export default function BillingPage() {
   // a card that cannot be charged off_session and for a deficit under the
   // acquirer minimum, and the notice used to promise a charge in both cases.
   const settleCents = cardChangeSettleCents(account);
+
+  // What REMOVING the card stops, and when. Derived per account rather than
+  // stated as a constant: an org sitting on credit keeps running until it is
+  // spent, so "your campaigns stop" would be false in the common case. The
+  // AMOUNT we would collect first is `settleCents` above, deliberately not
+  // re-derived here, so both card controls state the same money.
+  const removeConsequence = cardRemoveConsequence(account);
+
+  // The card in the customer's own words, so the confirmation names the thing
+  // they are looking at. Null when we hold no display fields for it (older
+  // billing deploy), and the modal then asks about "your card".
+  const cardLabel =
+    account?.card_brand && account?.card_last4
+      ? `${cardBrandLabel(account.card_brand)} ${account.card_last4}`
+      : null;
 
   const isNegativeBalance = availableCents < 0;
   const balanceLabel = isNegativeBalance ? "Balance" : "Available";
@@ -468,6 +490,26 @@ export default function BillingPage() {
     }
   }
 
+  async function handleRemoveCard() {
+    setRemovePending(true);
+    setError(null);
+    try {
+      const { removePaymentMethod } = await import("@/lib/api");
+      await removePaymentMethod();
+      // Re-read rather than patching the account in place: the removal changes
+      // the credit-line floor and the auto-topup state as well as the card, and
+      // billing is the only thing that knows what it settled on the way out.
+      window.location.reload();
+    } catch (err) {
+      // The thrown error carries the whole downstream body verbatim, so it is
+      // logged and never rendered: that is how a JSON blob reaches a customer.
+      console.error("[billing] remove card failed:", err);
+      setError("Could not remove your card. Nothing was changed.");
+      setRemovePending(false);
+      setRemoveConfirmOpen(false);
+    }
+  }
+
   async function handleTopup() {
     const amountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : topupSelected;
     if (!amountCents || amountCents <= 0) return;
@@ -539,6 +581,16 @@ export default function BillingPage() {
           pending={portalLoadingSource !== null}
           onConfirm={() => void openCardPage(confirmSource)}
           onCancel={() => setConfirmSource(null)}
+        />
+      )}
+      {removeConfirmOpen && (
+        <CardRemoveConfirmModal
+          settleCents={settleCents}
+          consequence={removeConsequence}
+          cardLabel={cardLabel}
+          pending={removePending}
+          onConfirm={() => void handleRemoveCard()}
+          onCancel={() => setRemoveConfirmOpen(false)}
         />
       )}
       <div className="mb-6 flex max-w-2xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -725,13 +777,27 @@ export default function BillingPage() {
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-gray-900">Payment method</p>
             {account?.has_payment_method && (
-              <button
-                onClick={() => handleManagePayment("manage")}
-                disabled={portalLoadingSource !== null}
-                className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50 flex-shrink-0"
-              >
-                {portalLoadingSource === "manage" ? "Opening..." : "Change card"}
-              </button>
+              // Stacked, the removal under the replacement and quieter than it:
+              // replacing is the ordinary thing to do here and removing is the
+              // rare one, so the weight says which is which. Deliberately NOT
+              // `disabled` at rest: a greyed control with no reason beside it
+              // reads as broken rather than as secondary.
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <button
+                  onClick={() => handleManagePayment("manage")}
+                  disabled={portalLoadingSource !== null}
+                  className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
+                >
+                  {portalLoadingSource === "manage" ? "Opening..." : "Change card"}
+                </button>
+                <button
+                  onClick={() => setRemoveConfirmOpen(true)}
+                  disabled={portalLoadingSource !== null || removePending}
+                  className="text-sm text-gray-500 transition hover:text-gray-700 disabled:opacity-50"
+                >
+                  Remove card
+                </button>
+              </div>
             )}
           </div>
 
