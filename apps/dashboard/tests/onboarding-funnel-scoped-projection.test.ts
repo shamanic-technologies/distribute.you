@@ -19,6 +19,18 @@ function sliceFrom(src: string, marker: string, length: number): string {
   return src.slice(at, at + length);
 }
 
+// Bounded by the NEXT declaration rather than a measured length. A `toContain`
+// guard cannot be hurt by a slice that runs long, and a number expires on the
+// next comment anybody adds inside the block: this one had already been widened
+// once (4958 to 5400) and went red again when the step grew a button.
+function sliceBetween(src: string, marker: string, endMarker: string): string {
+  const at = src.indexOf(marker);
+  expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
+  const end = src.indexOf(endMarker, at);
+  expect(end, `end marker not found: ${endMarker}`).toBeGreaterThan(at);
+  return src.slice(at, end);
+}
+
 describe("the projection is priced on the FUNNEL, never on a goal", () => {
   // A goal cannot separate a meeting bought with a positive reply from one bought with a
   // click onto the site: `reply_meeting` and `visit_meeting` both echo `meetingBooked`, so
@@ -123,8 +135,9 @@ describe("the funnel detail step prefills what we already know", () => {
   });
 
   it("marks an optional destination beside its label, and says it once", () => {
-    // 4958 chars in: the destinations list is the last block of the step.
-    const step = sliceFrom(onboarding, 'if (step === "funnelStats") {', 5400);
+    // The destinations list is the last block of the step, so the slice runs to
+    // the step that follows rather than to a length that expires.
+    const step = sliceBetween(onboarding, 'if (step === "funnelStats") {', 'if (step === "model") {');
     expect(step).toContain("{dest.optional && (");
     expect(step).toContain("Optional");
     // The hint under the input no longer repeats it.

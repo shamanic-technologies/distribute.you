@@ -147,6 +147,36 @@ html.dark body::before {
   }
 }
 
+/* A VISIBLE selection highlight, because the browser default is a pale blue that
+ * on a white card reads as nothing at all and on the dark surface reads as less.
+ * People copying a question out of the onboarding flow were selecting text and
+ * not believing the selection had taken.
+ *
+ * It rides the `--color-brand-*` ramp rather than a literal hex, so it rotates
+ * with `:root[data-brand-tint]` like every other accent surface; a hardcoded
+ * charter blue would be the one highlight that stays ours on a tinted dashboard.
+ *
+ * ⚠️ This helps PROSE only, and that limit is the whole reason the copy-for-LLM
+ * buttons exist: a drag-selection CANNOT span page text and the value of an
+ * `<input>`/`<textarea>` in one gesture — a form field is a separate editing
+ * context in every browser — so "highlight the question and the prefilled answer,
+ * then Ctrl+C" is impossible, not merely hard. The button is the only affordance
+ * that hands over both halves at once.
+ *
+ * Layered so a component that states its own `::selection` still wins. */
+@layer base {
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-gray-900, #111827);
+  }
+  /* The dark surface needs its own pair: `::selection` is a pseudo-element, so
+   * the `html.dark` utility remap below never reaches it. */
+  .dark ::selection {
+    background-color: var(--color-brand-700);
+    color: #ffffff;
+  }
+}
+
 @utility text-balance {
   text-wrap: balance;
 }

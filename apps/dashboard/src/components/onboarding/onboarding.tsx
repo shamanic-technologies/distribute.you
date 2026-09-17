@@ -100,6 +100,11 @@ import {
   isListLeverKey,
   parseListLeverInput,
 } from "./offer-levers";
+import {
+  buildAudienceLLMPrompt,
+  buildFunnelStatsLLMPrompt,
+  buildServicesLLMPrompt,
+} from "./llm-prompt";
 import { businessDomainFromEmail, extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { NOT_A_WEBSITE, websiteInputProblem } from "@/lib/website-input";
 import {
@@ -3277,7 +3282,21 @@ export function Onboarding() {
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => { addService(serviceDraft); setStep("funnels"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
       >
-        <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
+        {/* Same placement as the offer levers': the button acts on the QUESTION,
+            not on what has been typed, so it reads as another way to answer rather
+            than as a step after the fact. The typed-but-unadded chip rides along
+            because it is on screen, so what is copied is what the reader sees. */}
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="min-w-0 font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
+          <div className="shrink-0">
+            <CopyForLLMButton
+              text={buildServicesLLMPrompt(
+                [...services, serviceDraft.trim()].filter(Boolean),
+                hostname || domain || "my business",
+              )}
+            />
+          </div>
+        </div>
         {/* The "we drafted these" line is a claim about a successful extraction. With
             nothing extracted it described an empty box, which reads as "your site
             sells nothing" — so it is gated on there being a draft to talk about. */}
@@ -3591,15 +3610,37 @@ export function Onboarding() {
             ? "Your path"
             : `Your paths · ${funnelIndex + 1} of ${detailFunnels.length}`}
         </div>
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
-          {/* A tag ranking one item against nothing: with a single path there is no
-              second one for it to be primary OVER, so it only invites the question. */}
-          {detailFunnels.length > 1 && funnel.key === primaryFunnelKey && (
-            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
-              Primary
-            </span>
-          )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
+            {/* A tag ranking one item against nothing: with a single path there is no
+                second one for it to be primary OVER, so it only invites the question. */}
+            {detailFunnels.length > 1 && funnel.key === primaryFunnelKey && (
+              <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+                Primary
+              </span>
+            )}
+          </div>
+          <div className="shrink-0">
+            <CopyForLLMButton
+              text={buildFunnelStatsLLMPrompt({
+                funnelTitle: funnel.title,
+                steps: funnel.steps,
+                rates: funnel.rates.map((rate) => ({
+                  label: rate.label,
+                  value: draft.rates[rate.key] ?? "",
+                })),
+                lifetimeRevenue: draft.ltr,
+                destinations: funnel.destinations.map((dest) => ({
+                  label: dest.label,
+                  value: draft.destinations[dest.kind] ?? "",
+                  optional: Boolean(dest.optional),
+                })),
+                services,
+                domain: hostname || domain || "my business",
+              })}
+            />
+          </div>
         </div>
         <FunnelStepRow steps={funnel.steps} tone={funnel.tone} />
         <p className="mt-4 mb-5 text-sm leading-6 text-gray-500">
@@ -3764,7 +3805,28 @@ export function Onboarding() {
         <div
           className={`mb-5 rounded-xl border p-4 ${roiUnderOne ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"}`}
         >
-          <div className="text-sm font-semibold text-gray-900">Your numbers</div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-sm font-semibold text-gray-900">Your numbers</div>
+            {/* Same fields the funnel's own screen collected, so the same prompt
+                builds it. No destinations here: this block edits the economics
+                alone. */}
+            <div className="shrink-0">
+              <CopyForLLMButton
+                text={buildFunnelStatsLLMPrompt({
+                  funnelTitle: primaryFunnel?.title ?? "my sales path",
+                  steps: primaryFunnel?.steps ?? [],
+                  rates: economicsRates.map((rate) => ({
+                    label: rate.label,
+                    value: economicsDraft?.rates[rate.key] ?? "",
+                  })),
+                  lifetimeRevenue: economicsDraft?.lifetimeRevenueUsd ?? "",
+                  destinations: [],
+                  services,
+                  domain: hostname || domain || "my business",
+                })}
+              />
+            </div>
+          </div>
           <p className="mt-1 text-xs leading-5 text-gray-600">
             {roiUnderOne
               ? "The return below is under 1x because these do not yet cover what one outcome costs. Correct them and we will recompute."
@@ -4380,7 +4442,14 @@ function OnboardingAudiences({
     >
       <div>
         <BackButton onClick={onBack} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="min-w-0 font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+          <div className="shrink-0">
+            <CopyForLLMButton
+              text={buildAudienceLLMPrompt(prompt, services, hostname || brandDomain || "my business")}
+            />
+          </div>
+        </div>
         <p className="mt-2 text-gray-500">
           Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
         </p>
@@ -4705,7 +4774,7 @@ function CopyForLLMButton({ text }: { text: string }) {
       }}
       className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
     >
-      {copied ? "Copied!" : "Copy for LLM"}
+      {copied ? "Copied!" : "Copy content for LLM"}
     </button>
   );
 }
