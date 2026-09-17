@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/skeleton";
 import { LearningTag } from "@/components/learning-tag";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { placeholderCostCurve } from "@/lib/cost-per-outcome-placeholder";
-import type { CostPerOutcomePoint } from "@/lib/revenue-view";
+import type { CostPerOutcomeHistory } from "@/lib/revenue-view";
 
 /**
  * "Cost per <outcome>" — what one outcome has cost, day by day, beside the per-day
@@ -51,6 +51,15 @@ interface PlotPoint {
   value: number;
 }
 
+/**
+ * An outcome count is FRACTIONAL below an entry leg (the driver signal walked through the
+ * funnel's rates), so it rounds for display rather than printing `2.4 outcomes` — while
+ * never rounding a non-zero share down to `0`, which would state that nothing is missing.
+ */
+function formatOutcomeCount(n: number): string {
+  return n > 0 && n < 1 ? "Some" : Math.round(n).toLocaleString("en-US");
+}
+
 function dateObject(date: string): Date {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -69,11 +78,9 @@ function formatDate(date: string): string {
  * outcome had landed, so there was no denominator, and zero would read as "this was
  * free". Same treatment the return curve gives a day it cannot divide.
  */
-function buildPoints(history: CostPerOutcomePoint[] | null | undefined): PlotPoint[] {
-  return (history ?? [])
-    .filter((d): d is CostPerOutcomePoint & { costPerOutcomeUsd: number } =>
-      d.costPerOutcomeUsd != null,
-    )
+function buildPoints(history: CostPerOutcomeHistory | null | undefined): PlotPoint[] {
+  return (history?.daily ?? [])
+    .filter((d): d is (typeof d) & { costPerOutcomeUsd: number } => d.costPerOutcomeUsd != null)
     .map((d) => ({
       date: d.date,
       label: formatDate(d.date),
@@ -112,14 +119,17 @@ export function CostPerOutcomeCard({
   pending = false,
 }: {
   /**
-   * The served per-day curve. `undefined` while features-service does not yet answer it
-   * for this scope; `null` when it answered that it cannot measure one.
+   * The served curve, whole. `undefined` while the producer does not answer it for this
+   * scope; `null` when it answered that it cannot build one.
    */
-  history?: CostPerOutcomePoint[] | null;
+  history?: CostPerOutcomeHistory | null;
   /**
-   * What ONE outcome is, in the producer's own words (`learningPhase.outcomeStep.label`
-   * — "Website visit", "Sales interest"). Never a word this card picks: the campaign's
-   * outcome is whichever step its leg lands on, and that is features-service's answer.
+   * What ONE outcome is, in the producer's own words. The CURVE's own step wins when
+   * there is a curve (`history.outcomeStep.label`) — that is the step the points were
+   * actually computed over, so if it ever disagreed with the scope's verdict the title
+   * would name a different thing from the line. This fallback is the verdict's step
+   * (`learningPhase.outcomeStep.label`), which is all a learning scope has. Never a word
+   * this card picks: a campaign's outcome is whichever step its leg lands on.
    */
   outcomeLabel: string;
   /**
@@ -139,8 +149,10 @@ export function CostPerOutcomeCard({
     () => placeholderCostCurve().map((d) => ({ date: null, label: String(d.x), value: d.value })),
     [],
   );
+  const undated = history?.undatedOutcomes ?? 0;
   const latest = data.length > 0 ? data[data.length - 1] : null;
-  const title = `Cost per ${outcomeLabel.toLowerCase()}`;
+  const step = history?.outcomeStep?.label ?? outcomeLabel;
+  const title = `Cost per ${step.toLowerCase()}`;
 
   // What the plot area shows, decided once so the headline and the chart cannot disagree
   // about which of the three states this card is in.
@@ -260,6 +272,28 @@ export function CostPerOutcomeCard({
             </AreaChart>
           </ResponsiveContainer>
         </div>
+      )}
+
+      {/* An outcome whose signal carries no timestamp sits on no day, so it counts in the
+          price on the stat row and cannot be in this line. Where there is any, the two
+          legitimately differ — say so rather than let a reader find it. This is also the
+          exact reason the curve had to be served: a browser summing the dated days would
+          have under-counted the denominator by precisely this much. */}
+      {mode === "curve" && undated > 0 && (
+        <p className="mt-3 text-[11px] text-gray-400">
+          {formatOutcomeCount(undated)} {undated === 1 ? "outcome has" : "outcomes have"} no
+          date yet, so {undated === 1 ? "it counts" : "they count"} in your price above but
+          not in this line.
+        </p>
+      )}
+
+      {/* A count walked forward through the funnel's rates is a PROJECTION, and this app
+          does not let a projected figure and a measured one share a label unremarked. An
+          entry leg is a raw observation and says nothing. */}
+      {mode === "curve" && history != null && !history.outcomeObserved && (
+        <p className="mt-2 text-[11px] text-gray-400">
+          Estimated from the step we can observe, at your own conversion rates.
+        </p>
       )}
     </div>
   );

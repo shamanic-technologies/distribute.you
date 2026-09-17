@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 import {
   PLACEHOLDER_POINT_COUNT,
   placeholderCostCurve,
@@ -161,5 +162,130 @@ describe("the separator tier a chart axis draws from is remapped for dark", () =
     // every future gridline or axis line drawn from `currentColor` inherits it.
     const globals = readFileSync(join(SRC, "app/globals.css"), "utf8");
     expect(globals).toMatch(/html\.dark \.text-gray-200 \{ color: var\(--dy-border-hi\); \}/);
+  });
+});
+
+/**
+ * The block EXACTLY as production served it, captured from the campaign the feature was
+ * built against (brand `9546c4b2`, campaign `31df7683`, 2026-09-17 10:27 UTC).
+ *
+ * Pinned verbatim rather than hand-written, because the whole point of the field is that
+ * the consumer stopped guessing at a shape: a fixture written from the producer's docs
+ * would pass against a reader that had drifted from what the wire actually sends.
+ */
+const PROD_BLOCK = {
+  legKey: "start_to_website_visit",
+  outcomeStep: {
+    key: "website_visit",
+    label: "Website visit",
+    description: "A buyer lands on the brand's own website.",
+  },
+  outcomeObserved: true,
+  datedOutcomes: 31,
+  undatedOutcomes: 0,
+  daily: [
+    { date: "2026-09-11", costPerOutcomeUsd: 12.2636956433595, cumulativeOutcomes: 4, cumulativeSpendUsd: 49.054782573438 },
+    { date: "2026-09-12", costPerOutcomeUsd: 24.559849268659498, cumulativeOutcomes: 4, cumulativeSpendUsd: 98.23939707463799 },
+    { date: "2026-09-13", costPerOutcomeUsd: 36.8235323144595, cumulativeOutcomes: 4, cumulativeSpendUsd: 147.294129257838 },
+    { date: "2026-09-14", costPerOutcomeUsd: 19.651185808903797, cumulativeOutcomes: 10, cumulativeSpendUsd: 196.511858089038 },
+    { date: "2026-09-15", costPerOutcomeUsd: 12.929427629928316, cumulativeOutcomes: 19, cumulativeSpendUsd: 245.659124968638 },
+    { date: "2026-09-16", costPerOutcomeUsd: 8.828325891737071, cumulativeOutcomes: 28, cumulativeSpendUsd: 247.193124968638 },
+    { date: "2026-09-17", costPerOutcomeUsd: 7.97397177318187, cumulativeOutcomes: 31, cumulativeSpendUsd: 247.193124968638 },
+  ],
+};
+
+/** What the same production body reported on the stat row, in cents. */
+const PROD_SERVED_COST_CENTS = 797.3548387096774;
+
+function revenueBody(extra: Record<string, unknown> = {}) {
+  return {
+    attributedOutcomes: [],
+    featureSlug: "sales-cold-email-outreach",
+    headline: { totalPipelineUsd: 2916.99 },
+    costEconomics: {
+      committedCostUsd: 247.19,
+      costOfAcquisitionPct: 8.5,
+      roiMultiple: 11.8,
+      costPerAcquisitionUsd: 247.19,
+    },
+    timeSeries: [],
+    organizations: [],
+    events: [],
+    leads: [],
+    ...extra,
+  };
+}
+
+describe("the parser conforms to the body production actually sends", () => {
+  it("parses the captured block whole", () => {
+    const parsed = parseFeatureRevenue(
+      revenueBody({ costPerOutcomeHistory: PROD_BLOCK }),
+      "test",
+    );
+    expect(parsed.costPerOutcomeHistory).toEqual(PROD_BLOCK);
+  });
+
+  it("the curve's last point IS the price the stat row prints, as a reader sees it", () => {
+    // The producer's own invariant, and the reason this could not be divided in a
+    // browser. A reader sees both figures on one screen; they cannot disagree.
+    //
+    // They agree to the CENT and diverge in the fifth decimal — measured on the captured
+    // body, $7.97397 against $7.97355. That is not drift: the stat row divides a spend
+    // already rounded to whole cents (`outcomes.committedSpentCents`, 24718) while the
+    // curve divides the exact figure (247.193124968638). Both print $7.97, which is the
+    // only thing anyone reads — so the assertion is pinned at display precision. Do NOT
+    // "fix" either side into the other: rounding the curve would make it disagree with
+    // the spend the return curve beside it rides.
+    const parsed = parseFeatureRevenue(
+      revenueBody({ costPerOutcomeHistory: PROD_BLOCK }),
+      "test",
+    );
+    const last = parsed.costPerOutcomeHistory?.daily.at(-1)?.costPerOutcomeUsd ?? 0;
+    expect(last.toFixed(2)).toBe((PROD_SERVED_COST_CENTS / 100).toFixed(2));
+    expect(last).toBeCloseTo(PROD_SERVED_COST_CENTS / 100, 2);
+  });
+
+  it("an absent or null block parses, so a rollback does not take the page down", () => {
+    expect(parseFeatureRevenue(revenueBody(), "test").costPerOutcomeHistory).toBeNull();
+    expect(
+      parseFeatureRevenue(revenueBody({ costPerOutcomeHistory: null }), "test")
+        .costPerOutcomeHistory,
+    ).toBeNull();
+  });
+
+  it("a rotten block throws rather than rendering half a curve", () => {
+    // Fail loud: a point missing its denominator is a shape change, not a null day.
+    expect(() =>
+      parseFeatureRevenue(
+        revenueBody({
+          costPerOutcomeHistory: {
+            ...PROD_BLOCK,
+            daily: [{ date: "2026-09-11", costPerOutcomeUsd: 12.26 }],
+          },
+        }),
+        "test",
+      ),
+    ).toThrow();
+  });
+});
+
+describe("the card states what the producer alone can tell it", () => {
+  it("names the step off the CURVE, falling back to the scope's verdict", () => {
+    // The curve's step is the one the points were computed over; a disagreement would
+    // have the heading name a different thing from the line under it.
+    const body = sliceToNextFunction(CARD, "export function CostPerOutcomeCard(");
+    expect(body).toContain("history?.outcomeStep?.label ?? outcomeLabel");
+  });
+
+  it("surfaces the undated outcomes rather than letting a reader find the gap", () => {
+    const body = sliceToNextFunction(CARD, "export function CostPerOutcomeCard(");
+    expect(body).toContain("history?.undatedOutcomes ?? 0");
+    expect(body).toContain("not in this line.");
+  });
+
+  it("says so when the counts were WALKED rather than observed", () => {
+    // A projected figure and a measured one do not share a label unremarked.
+    const body = sliceToNextFunction(CARD, "export function CostPerOutcomeCard(");
+    expect(body).toContain("!history.outcomeObserved");
   });
 });

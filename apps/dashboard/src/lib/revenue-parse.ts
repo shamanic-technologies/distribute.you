@@ -136,6 +136,37 @@ const CostEconomicsSchema = z.object({
 // Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
 // spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
 // The last point's `roiMultiple` IS `costEconomics.roiMultiple`, by construction.
+/**
+ * WHAT ONE OUTCOME HAS COST, PER DAY (features-service#980).
+ *
+ * `cumulativeOutcomes` is FRACTIONAL on a deeper leg — the observable driver signal
+ * walked forward through the funnel's rates — which is what `outcomeObserved` tells a
+ * consumer apart. `costPerOutcomeUsd` is null, never 0, on a day with no denominator.
+ *
+ * `outcomeStep.description` is `.optional()` because the producer states it on some steps
+ * and not others; everything else is required, so a rollback that stops serving the block
+ * fails the parse loudly rather than blanking the card in silence.
+ */
+const CostPerOutcomeHistorySchema = z.object({
+  outcomeStep: z.object({
+    key: z.string(),
+    label: z.string(),
+    description: z.string().optional(),
+  }),
+  legKey: z.string(),
+  outcomeObserved: z.boolean(),
+  daily: z.array(
+    z.object({
+      date: z.string(),
+      cumulativeSpendUsd: z.coerce.number(),
+      cumulativeOutcomes: z.coerce.number(),
+      costPerOutcomeUsd: z.coerce.number().nullable(),
+    }),
+  ),
+  datedOutcomes: z.coerce.number(),
+  undatedOutcomes: z.coerce.number(),
+});
+
 const RoiHistorySchema = z.object({
   daily: z.array(
     z.object({
@@ -377,6 +408,9 @@ const FeatureRevenueResponseSchema = z.object({
   // Overview-only (null on `?lens=`, absent on grouped) and fail-soft server-side,
   // so the reader must tolerate both absent and null.
   roiHistory: RoiHistorySchema.nullish(),
+  // Overview-only and null wherever the producer cannot build a curve, exactly like
+  // `roiHistory` above — so the reader tolerates both absent and null for the same reason.
+  costPerOutcomeHistory: CostPerOutcomeHistorySchema.nullish(),
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
@@ -495,6 +529,10 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
     },
     roiHistory: d.roiHistory ?? null,
+    // Whole, verbatim. The card renders the served points and the served counts; the one
+    // thing it must never do is divide a spend by a count itself, which is what this block
+    // exists to make unnecessary.
+    costPerOutcomeHistory: d.costPerOutcomeHistory ?? null,
     funnelSteps: d.funnelSteps ?? null,
     // Passed through whole. The band renders these figures verbatim: the browser no
     // longer picks a price, multiplies a threshold or divides a countdown.
