@@ -18,6 +18,7 @@ import {
   fetchFeatureAudienceStats,
   listAudiences,
   getWorkflowProjection,
+  getWorkflowRankLadder,
   optimizationGoalForRuntimeGoal,
   type BrandOptimizationGoal,
   salesObjectiveForOptimizationGoal,
@@ -41,6 +42,8 @@ import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
 import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
+import { bestWorkflowFloor } from "@/lib/cost-per-outcome-asymptote";
+import { hiddenWorkflowSlugs } from "@/lib/workflow-eligibility";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
@@ -322,6 +325,61 @@ export function CampaignOverviewPage() {
     const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
     return campaignLegFor(campaignFunnel, channel?.legs);
   }, [campaignFunnel, featureSlug, channels, campaign?.legKey, legIndex]);
+  /**
+   * WHERE THE COST CURVE IS HEADING — the recommended workflow's own campaign-grain price.
+   *
+   * The ladder is the SAME read, on the SAME query key, that the campaign's Workflows page
+   * makes, so arriving from one to the other costs no request and the floor drawn here is
+   * the figure that page prints in its Campaign column. Nothing is ranked or compared
+   * here: `recommendedWorkflowDynastySlug` is the producer's own pick and the price is its
+   * row's, both taken verbatim.
+   *
+   * NO POLL, deliberately. A fleet-and-campaign projection moves on the order of days
+   * while this page polls every few seconds, and the read is the most expensive one the
+   * app makes (measured in prod: 710ms, 146KB, 66 rows). It is persisted, so a return
+   * visit paints it from disk and spends nothing; `refetchOnWindowFocus` carries the
+   * freshness the interval would have. Same treatment the projection unit costs already
+   * get, and for the same reason.
+   *
+   * `retry: false` — the producer legitimately 404s a leg the brand never declared, and a
+   * missing floor draws no tail rather than blocking anything.
+   */
+  const floorLadderQ = useAuthQuery(
+    [
+      "workflowRankLadder",
+      brandId,
+      campaign?.legKey ?? "none",
+      campaign?.legKey ? "none" : (campaignFunnelKey ?? "none"),
+      campaign?.legKey ? campaignId : "none",
+    ],
+    () =>
+      getWorkflowRankLadder({
+        featureSlug: featureSlug as string,
+        brandId,
+        leg: campaign?.legKey ?? null,
+        funnel: campaign?.legKey ? null : campaignFunnelKey,
+        campaignId,
+      }),
+    { enabled: Boolean(featureSlug && brandId && campaignId), retry: false },
+  );
+
+  const costFloor = useMemo(() => {
+    const ladder = floorLadderQ.data;
+    if (!ladder) return null;
+    // The page's OWN eligibility verdict, not a second one: the producer's #1 can be a
+    // workflow this leg's model-tier rule excludes, which campaign-service can never
+    // select — so a floor taken from it would be a price nothing can reach.
+    const hidden = hiddenWorkflowSlugs({
+      rows: ladder.rows as never,
+      observedPicks: ladder.observedPicks,
+    });
+    return bestWorkflowFloor({
+      rows: ladder.rows,
+      recommendedWorkflowDynastySlug: ladder.recommendedWorkflowDynastySlug,
+      hiddenSlugs: hidden,
+    });
+  }, [floorLadderQ.data]);
+
   // Same cost column the Audiences table leads with — never features-service's
   // sortMetric, and keyed on the leg exactly as that table is, so the card and the table
   // one click away cannot lead with two different prices for one campaign. Null (an
@@ -619,6 +677,7 @@ export function CampaignOverviewPage() {
           offerId={offerId}
         />
       <RevenueOverviewSection
+        costFloor={costFloor}
         headerAction={CampaignStatusLine}
         paused={campaignPaused}
         data={revenueRevealed ? data : undefined}

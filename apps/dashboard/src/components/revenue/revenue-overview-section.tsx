@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-chart";
 import { CostPerOutcomeCard } from "@/components/revenue/cost-per-outcome-card";
+import type { BestWorkflowFloor } from "@/lib/cost-per-outcome-asymptote";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
@@ -47,6 +48,7 @@ export function RevenueOverviewSection({
   trackerSetUp = false,
   showActivityChart = true,
   showRoiTrend = false,
+  costFloor,
   economicsLearning = false,
   paused = false,
 }: {
@@ -142,6 +144,15 @@ export function RevenueOverviewSection({
    * where several campaigns sit under one heading.
    */
   paused?: boolean;
+  /**
+   * The floor the cost curve is heading for — the recommended workflow's own
+   * campaign-grain price, read verbatim off the ranking ladder.
+   *
+   * CAMPAIGN-ONLY by construction rather than by a flag: the ladder is keyed on the
+   * campaign's own leg, so only that page can resolve one and the brand and offer
+   * Overviews pass nothing and never make the read.
+   */
+  costFloor?: BestWorkflowFloor | null;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -304,6 +315,7 @@ export function RevenueOverviewSection({
             <CostPerOutcomeCard
               history={costPerOutcomeHistory}
               outcomeLabel={costOutcomeLabel}
+              floor={costFloor}
               learning={outcomeLearning}
               paused={paused}
               pending={revenueLoading}

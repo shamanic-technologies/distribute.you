@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import {
   Area,
   AreaChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,6 +14,11 @@ import { Skeleton } from "@/components/skeleton";
 import { LearningTag } from "@/components/learning-tag";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { placeholderCostCurve } from "@/lib/cost-per-outcome-placeholder";
+import {
+  asymptoteTail,
+  asymptoteTailPoints,
+  type BestWorkflowFloor,
+} from "@/lib/cost-per-outcome-asymptote";
 import type { CostPerOutcomeHistory } from "@/lib/revenue-view";
 
 /**
@@ -48,7 +54,13 @@ import type { CostPerOutcomeHistory } from "@/lib/revenue-view";
 interface PlotPoint {
   date: string | null;
   label: string;
-  value: number;
+  /** The SOLID line — what an outcome has cost. Null past today, so the line stops there. */
+  value: number | null;
+  /**
+   * The DOTTED line — where the floor would take it. Null on every real day but the LAST,
+   * where both are set so the two lines meet rather than leaving a gap at the join.
+   */
+  tail?: number | null;
 }
 
 /**
@@ -99,7 +111,9 @@ function CostTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
-  if (point.date == null) return null;
+  // A point with no date is a PROJECTED step, not a day — it has no reading to give, and
+  // this is the same guard that keeps the dotted tail out of a card built to name a day.
+  if (point.date == null || point.value == null) return null;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
       <p className="mb-1 font-medium text-gray-800">{formatDate(point.date)}</p>
@@ -114,6 +128,7 @@ function CostTooltip({
 export function CostPerOutcomeCard({
   history,
   outcomeLabel,
+  floor,
   learning = false,
   paused = false,
   pending = false,
@@ -137,6 +152,12 @@ export function CostPerOutcomeCard({
    * no values on either axis rather than a measurement — see the placeholder module.
    */
   learning?: boolean;
+  /**
+   * The floor the best workflow can put this price on — the recommended workflow's own
+   * campaign-grain figure, read verbatim off the ranking ladder. Absent when the producer
+   * recommends nothing, or when the floor is not below where the curve already sits.
+   */
+  floor?: BestWorkflowFloor | null;
   /** The campaign is stopped, so the tag reads `Paused`. The shape is drawn either way:
    *  the reason the price cannot be read is unchanged, only the reason it will stay so. */
   paused?: boolean;
@@ -149,6 +170,48 @@ export function CostPerOutcomeCard({
     () => placeholderCostCurve().map((d) => ({ date: null, label: String(d.x), value: d.value })),
     [],
   );
+  /**
+   * The dotted continuation, and the join that makes it one line rather than two.
+   *
+   * Both series are carried on ONE array because recharts takes one: the real days hold
+   * `value` and no `tail`, the projected steps hold `tail` and no `value`, and the LAST
+   * real day holds both so the solid line hands over to the dotted one with no gap.
+   */
+  const tail = useMemo(() => {
+    const last = history?.daily?.filter((d) => d.costPerOutcomeUsd != null).at(-1);
+    if (!last || floor == null) return [];
+    return asymptoteTail({
+      cumulativeSpendUsd: last.cumulativeSpendUsd,
+      cumulativeOutcomes: last.cumulativeOutcomes,
+      floorUsd: floor.costPerOutcomeUsd,
+      // Sized against the history so the real curve keeps most of the width — the tail is
+      // a hint about where this goes, not the subject of the picture.
+      points: asymptoteTailPoints(data.length),
+    });
+  }, [history, floor]);
+
+  const plotted = useMemo<PlotPoint[]>(() => {
+    if (tail.length === 0 || data.length === 0) return data;
+    const joined = data.map((d, i) =>
+      i === data.length - 1 ? { ...d, tail: d.value } : { ...d, tail: null },
+    );
+    return [
+      ...joined,
+      // No date and no label: these steps are not days. The axis prints nothing for them,
+      // so nobody can read a WHEN off a curve that only states a WHERE.
+      // A figure space per step: unique, so recharts keeps them as distinct categories
+      // rather than collapsing them into one, and blank, so no tick can print a WHEN for
+      // a point that is not a day. The axis is pinned to the real labels below anyway;
+      // this is the second belt.
+      ...tail.map((t) => ({
+        date: null,
+        label: "\u2007".repeat(t.step),
+        value: null,
+        tail: t.value,
+      })),
+    ];
+  }, [data, tail]);
+
   const undated = history?.undatedOutcomes ?? 0;
   const latest = data.length > 0 ? data[data.length - 1] : null;
   const step = history?.outcomeStep?.label ?? outcomeLabel;
@@ -178,7 +241,7 @@ export function CostPerOutcomeCard({
             <LearningTag paused={paused} />
           ) : (
             <p className="text-2xl font-bold leading-none text-gray-900">
-              {latest ? formatUsdAdaptive(latest.value) : "—"}
+              {latest?.value != null ? formatUsdAdaptive(latest.value) : "—"}
             </p>
           )}
           <p className="mt-1 text-[11px] text-gray-400">today</p>
@@ -198,7 +261,7 @@ export function CostPerOutcomeCard({
         <div className="h-[300px] lg:h-[200px]">
           <ResponsiveContainer width="100%" height="100%" minHeight={180}>
             <AreaChart
-              data={mode === "placeholder" ? placeholder : data}
+              data={mode === "placeholder" ? placeholder : plotted}
               margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
             >
               <defs>
@@ -230,9 +293,13 @@ export function CostPerOutcomeCard({
                   an SVG stroke attribute is not reached by the `html.dark` remap. The
                   measured chart keeps its line and takes it from `currentColor` for the
                   same reason. */}
+              {/* The ticks are PINNED to the real days when a tail is drawn. Left to
+                  itself recharts spends slots on the projected steps — which have no day
+                  to print — and the dates the reader came for vanish. */}
               <XAxis
                 dataKey="label"
                 tick={mode === "placeholder" ? false : { fontSize: 11, fill: "#94a3b8" }}
+                ticks={tail.length > 0 ? data.map((d) => d.label) : undefined}
                 minTickGap={28}
                 tickLine={false}
                 className="text-gray-200"
@@ -255,6 +322,49 @@ export function CostPerOutcomeCard({
                 <Tooltip
                   content={<CostTooltip outcomeLabel={title} />}
                   cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }}
+                />
+              )}
+              {/* The floor itself, dashed, named. Same grammar the return chart uses for
+                  break even: the one horizontal worth drawing is the one that MEANS
+                  something, and it is coloured from `currentColor` off a class because an
+                  SVG stroke attribute is reached by no `html.dark` remap and a hardcoded
+                  hex is wrong on one of the two themes by construction. */}
+              {mode === "curve" && floor != null && tail.length > 0 && (
+                <ReferenceLine
+                  y={floor.costPerOutcomeUsd}
+                  stroke="currentColor"
+                  strokeDasharray="4 4"
+                  className="text-gray-400"
+                  // The PRICE only, above the line. The workflow's name goes in the line
+                  // under the chart: inside the plot it runs into the tail that has
+                  // flattened onto the very line it labels, and on a phone the two were
+                  // printed on top of each other.
+                  label={{
+                    value: formatUsdAdaptive(floor.costPerOutcomeUsd),
+                    position: "insideTopRight",
+                    fontSize: 10,
+                    fill: "#94a3b8",
+                  }}
+                />
+              )}
+              {/* The continuation. Dotted and unmarked for the reason the placeholder is:
+                  it states a DESTINATION, not a set of readings, so it carries no dot and
+                  no hovered point — the tooltip above already declines to answer for it
+                  (`point.date == null`), which is the same guard that keeps a projected
+                  step out of a card built to name a day. */}
+              {mode === "curve" && tail.length > 0 && (
+                <Area
+                  type="monotone"
+                  dataKey="tail"
+                  stroke="currentColor"
+                  className="text-brand-400"
+                  strokeWidth={1.5}
+                  strokeDasharray="2 4"
+                  fill="none"
+                  dot={false}
+                  activeDot={false}
+                  connectNulls
+                  isAnimationActive={false}
                 />
               )}
               <Area
@@ -284,6 +394,16 @@ export function CostPerOutcomeCard({
           {formatOutcomeCount(undated)} {undated === 1 ? "outcome has" : "outcomes have"} no
           date yet, so {undated === 1 ? "it counts" : "they count"} in your price above but
           not in this line.
+        </p>
+      )}
+
+      {/* What the dotted line IS, stated in the producer's own words for the workflow.
+          Outside the plot because the name needs room the chart does not have. */}
+      {mode === "curve" && floor != null && tail.length > 0 && (
+        <p className="mt-3 text-[11px] text-gray-400">
+          Dotted: where this lands at {formatUsdAdaptive(floor.costPerOutcomeUsd)}
+          {floor.workflowName ? `, what ${floor.workflowName} costs` : ""} — your best
+          workflow.
         </p>
       )}
 
