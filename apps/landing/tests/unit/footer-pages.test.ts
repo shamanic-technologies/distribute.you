@@ -40,7 +40,9 @@ describe("every rendered document page wears the homepage chrome", () => {
     it(`${name}: the pill nav, the footer columns and the homepage stylesheet`, () => {
       expect(html).toContain('<div class="nav-pill">');
       expect(html).toContain('href="https://dashboard.distribute.you/sign-in">Log in');
-      expect(html).toContain('href="https://dashboard.distribute.you/sign-up">Start free');
+      // The homepage sells BEFORE signup now: every CTA opens the picker, which
+      // writes what the visitor chose and hands them to Clerk afterwards.
+      expect(html).toContain('href="https://dashboard.distribute.you/start">Start free');
       expect(html).toContain(`href="/landing/v2/styles.css?v=${V2_STYLES_VERSION}"`);
       for (const col of ["<h4>Product</h4>", "<h4>Compare</h4>", "<h4>Company</h4>", "<h4>Legal</h4>"]) {
         expect(html).toContain(col);
