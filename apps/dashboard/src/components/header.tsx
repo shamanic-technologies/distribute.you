@@ -10,6 +10,7 @@ import { useMobileSidebar } from "./mobile-sidebar-context";
 import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "./maturity-badge";
+import { RewardCreditsPill } from "./rewards/reward-credits-pill";
 
 export function Header() {
   const { signOut } = useClerk();
@@ -64,8 +65,15 @@ export function Header() {
           <HeaderPageContext />
         </div>
 
-        {/* Right: User menu */}
-        <div className="flex items-center gap-3">
+        {/* Right: rewards + user menu.
+
+            The pill is the ONE exception to "the bar carries only universal
+            actions": a running total of free credit earned is universal STATE,
+            true on every page and belonging to no scope, which is the same
+            class of thing as a balance. It is a number, not a path — it does
+            not reopen the breadcrumb question the sidebar switcher settled. */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <RewardCreditsPill />
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
