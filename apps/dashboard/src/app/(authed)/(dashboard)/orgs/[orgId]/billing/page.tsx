@@ -496,10 +496,6 @@ export default function BillingPage() {
     try {
       const { removePaymentMethod } = await import("@/lib/api");
       await removePaymentMethod();
-      // Re-read rather than patching the account in place: the removal changes
-      // the credit-line floor and the auto-topup state as well as the card, and
-      // billing is the only thing that knows what it settled on the way out.
-      window.location.reload();
     } catch (err) {
       // The thrown error carries the whole downstream body verbatim, so it is
       // logged and never rendered: that is how a JSON blob reaches a customer.
@@ -507,7 +503,35 @@ export default function BillingPage() {
       setError("Could not remove your card. Nothing was changed.");
       setRemovePending(false);
       setRemoveConfirmOpen(false);
+      return;
     }
+
+    // The card is GONE from here on, which is why the catch above is its own —
+    // "Nothing was changed" would be a lie for anything that fails past this
+    // point.
+    //
+    // Re-read rather than patching the account in place: the removal changes the
+    // credit-line floor and the auto-topup state as well as the card, and billing
+    // is the only thing that knows what it settled on the way out. But NEVER by
+    // reloading the page. The cache is local-first, so a reload paints the
+    // PREVIOUS visit's snapshot first — the removed card, still there — and only
+    // swaps it out when the cold billing read lands seconds later. That reads as
+    // the click having done nothing. Awaiting the refetch keeps "Removing..." on
+    // screen for the same wait and then repaints in one frame, correct.
+    //
+    // Payments are re-read too: billing collects the outstanding balance on the
+    // way out, so a charge may have landed in the list.
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["billingAccount"] }),
+      queryClient.refetchQueries({ queryKey: ["billingPayments"] }),
+    ]).catch((err) => {
+      // The removal succeeded; only our re-read did not. Say nothing to the
+      // customer — the next poll corrects the page — but never swallow silently.
+      console.error("[billing] post-removal refetch failed:", err);
+    });
+
+    setRemovePending(false);
+    setRemoveConfirmOpen(false);
   }
 
   async function handleTopup() {

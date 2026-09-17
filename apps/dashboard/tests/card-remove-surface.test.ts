@@ -42,7 +42,46 @@ describe("the billing page offers a way to remove the card", () => {
     const at = PAGE.indexOf("async function handleRemoveCard(");
     const body = PAGE.slice(at, PAGE.indexOf("async function handleTopup(", at));
     expect(body).toContain("removePaymentMethod()");
-    expect(body).toContain("window.location.reload()");
+    // Re-read, because the removal moves the credit-line floor and the
+    // auto-topup state as well as the card.
+    expect(body).toContain('refetchQueries({ queryKey: ["billingAccount"] })');
+    // The settle on the way out can put a charge in the list.
+    expect(body).toContain('refetchQueries({ queryKey: ["billingPayments"] })');
+  });
+
+  // The cache is local-first, so a reload hands the first frame to the PREVIOUS
+  // visit's snapshot — the removed card, still on screen until the cold billing
+  // read lands seconds later. It reads as the click having done nothing.
+  it("never reloads the page to re-read", () => {
+    const at = PAGE.indexOf("async function handleRemoveCard(");
+    const body = PAGE.slice(at, PAGE.indexOf("async function handleTopup(", at));
+    expect(body).not.toContain("location.reload");
+  });
+
+  // The card is gone the moment the DELETE returns, so "Nothing was changed" may
+  // only be reachable from the removal's own failure — a re-read that fails past
+  // that point must not claim it.
+  it("scopes the nothing-was-changed message to the removal itself", () => {
+    const at = PAGE.indexOf("async function handleRemoveCard(");
+    const body = PAGE.slice(at, PAGE.indexOf("async function handleTopup(", at));
+    const message = body.indexOf("Nothing was changed.");
+    expect(message).toBeGreaterThan(-1);
+    // The early return is what keeps the success path out of that branch.
+    expect(body.slice(message, message + 200)).toContain("return;");
+    // And the re-read is sequenced AFTER it, never inside the same try.
+    expect(body.indexOf("refetchQueries")).toBeGreaterThan(message);
+  });
+
+  // The modal is the only thing on screen saying the removal is running, so it
+  // stays up until the fresh account has landed — closing it first puts the old
+  // card back under the customer's eyes for the length of the read.
+  it("keeps the confirmation open until the re-read settles", () => {
+    const at = PAGE.indexOf("async function handleRemoveCard(");
+    const body = PAGE.slice(at, PAGE.indexOf("async function handleTopup(", at));
+    const refetch = body.lastIndexOf("refetchQueries");
+    const close = body.lastIndexOf("setRemoveConfirmOpen(false)");
+    expect(refetch).toBeGreaterThan(-1);
+    expect(close).toBeGreaterThan(refetch);
   });
 
   // apiCall sets `message` to the whole downstream body verbatim, so rendering
