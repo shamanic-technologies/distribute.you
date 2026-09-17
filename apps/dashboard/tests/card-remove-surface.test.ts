@@ -11,6 +11,7 @@ const MODAL = readFileSync(
   join(root, "src/components/billing/card-remove-confirm-modal.tsx"),
   "utf8",
 );
+const API = readFileSync(join(root, "src/lib/api.ts"), "utf8");
 
 /**
  * The component being able to do a thing is not the feature: a page that never
@@ -65,6 +66,23 @@ describe("the billing page offers a way to remove the card", () => {
     const button = PAGE.slice(at, at + 260);
     expect(button).toContain("text-gray-500");
     expect(button).toContain("disabled={portalLoadingSource !== null || removePending}");
+  });
+});
+
+describe("the reader conforms to the deployed contract", () => {
+  // Conformed to what api-service actually serves (#942), not to a shape guessed
+  // before the producer designed one. A rename upstream must fail here rather
+  // than 404 silently on a control nobody clicks until a customer does.
+  it("calls the gateway path that exists", () => {
+    const at = API.indexOf("export async function removePaymentMethod(");
+    const body = API.slice(at, at + 400);
+    expect(body).toContain('"/billing/accounts/saved_payment_method"');
+    expect(body).toContain('method: "DELETE"');
+  });
+
+  it("reads billing's own response, not a borrowed account shape", () => {
+    expect(API).toContain('object: "saved_payment_method_removed"');
+    expect(API).toContain("Promise<SavedPaymentMethodRemoved>");
   });
 });
 

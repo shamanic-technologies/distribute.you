@@ -7187,23 +7187,50 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 /**
+ * What billing-service answers when the card is gone.
+ *
+ * Conformed to the DEPLOYED contract rather than a shape guessed up front:
+ * billing-service designed it (v0.80.3) and api-service proxies it field-for-field
+ * (#942), so this reads what is actually served. `settled_cents` is what the
+ * collection took on the way out, and `settle_skip_reason` is present exactly
+ * when it took nothing — the two together are the only honest account of a
+ * charge that never gates the removal.
+ */
+export interface SavedPaymentMethodRemoved {
+  object: "saved_payment_method_removed";
+  org_id: string;
+  removed: number;
+  already_removed: number;
+  auto_topup_disarmed: boolean;
+  settled_cents: number;
+  settle_skip_reason?: string;
+}
+
+/**
  * Remove the card on file.
  *
- * billing-service orchestrates: it attempts to collect an outstanding balance on
- * the card first and then detaches EVERY payment method whatever that collection
- * did. Both halves are deliberate. Detaching only the default would leave a
- * second method attached for a customer who asked us to stop holding their card,
- * and a method that survives without being the default reads downstream as "no
- * card" while still sitting on file. Gating the removal on the charge would hold
- * the customer hostage to the card that is failing, which is the dead end #4195
- * removed from the card-change button.
+ * billing-service orchestrates the two halves in the one order only it can put
+ * them in: the outstanding balance is collected first, on the card that is about
+ * to go, and then the card goes whatever that collection did. It refuses this for
+ * nobody — no balance, no debt state, no failed charge blocks it — because a gate
+ * here would trap the one customer it exists to protect us from, which is the
+ * dead end #4195 removed from the card-change button.
  *
- * Nothing is forgiven: what is owed stays owed, and the org lands in the state
- * billing already models for a lost card (credit-line floor at 0, the customer
- * told, staff notified, listed among the uncollectable debts).
+ * Nothing is forgiven: what is owed stays owed and stays owned by the existing
+ * sweeps, and the org lands in the state billing already models for a lost card
+ * (credit-line floor at 0, the customer told, staff notified, listed among the
+ * uncollectable debts).
+ *
+ * A 502 means we could not tell whether the card is gone, which the caller must
+ * surface rather than read as success.
  */
-export async function removePaymentMethod(token?: string): Promise<BillingAccount> {
-  return apiCall<BillingAccount>("/billing/accounts/payment_method", { token, method: "DELETE" });
+export async function removePaymentMethod(
+  token?: string
+): Promise<SavedPaymentMethodRemoved> {
+  return apiCall<SavedPaymentMethodRemoved>("/billing/accounts/saved_payment_method", {
+    token,
+    method: "DELETE",
+  });
 }
 
 // ── Credit grants ("gifts received") ──
