@@ -49,12 +49,15 @@ async function readPublic(path: string): Promise<Response> {
 
 export async function GET() {
   try {
-    const [channelsRes, returnsRes] = await Promise.all([
+    const [channelsRes, returnsRes, foundersRes] = await Promise.all([
       readPublic("channels"),
       // Median return on spend per (channel x funnel), with quartiles, over
       // brands past the producer's own spend floor. The visitor sees it on the
       // screen before signup, which is the whole argument for signing up.
       readPublic("features/funnel-return-on-spend"),
+      // The platform's own user count, the same public read the landing floors
+      // into its trust strip. Third half that may legitimately be missing.
+      readPublic("stats/users"),
     ]);
 
     if (!channelsRes.ok) {
@@ -81,7 +84,15 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ channels, returns });
+    let founders: number | null = null;
+    if (foundersRes.ok) {
+      const data = (await foundersRes.json()) as { totalUsers?: number | null };
+      founders = typeof data.totalUsers === "number" ? data.totalUsers : null;
+    } else {
+      console.error(`[start-catalogue] stats/users read failed: ${foundersRes.status}`);
+    }
+
+    return NextResponse.json({ channels, returns, founders });
   } catch (err) {
     console.error("[start-catalogue] catalogue read errored:", err);
     return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });

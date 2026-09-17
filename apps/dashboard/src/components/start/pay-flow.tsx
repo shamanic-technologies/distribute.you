@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
-import { StartShell, StartButton } from "./start-shell";
+import { StartShell, StartButton, fromPerDay } from "./start-shell";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
+import { channelMarkForSlug } from "@/lib/acquisition-channels";
+import { SALES_FUNNELS, normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { getStripe } from "@/lib/stripe";
 import {
   ApiError,
@@ -50,6 +54,12 @@ import {
 
 const dollars = (cents: number): string =>
   `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+
+/** The funnel's own tile, resolved from this app's catalogue by wire key. */
+function funnelMark(wireKey: string) {
+  const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(wireKey as SalesFunnelKeyWire));
+  return def ? <SalesFunnelMark def={def} size="md" /> : null;
+}
 
 /** Exact, for the one number a card is actually charged. */
 const exactDollars = (cents: number): string =>
@@ -99,7 +109,7 @@ export function PayFlow() {
     const kept = channelsForOutcomes(channels, selection.outcomes).filter((c) =>
       selection.channels.includes(c.slug),
     );
-    return funnelsForChannels(kept);
+    return funnelsForChannels(kept, selection.outcomes);
   }, [channels, selection]);
 
   const step = useMemo(
@@ -245,8 +255,13 @@ export function PayFlow() {
     <StartShell
       step={step.position}
       stepCount={step.total}
-      title={funnel.name}
-      subtitle={funnel.steps.join(" > ")}
+      title={
+        <span className="flex items-center gap-3">
+          {funnelMark(funnel.key)}
+          {funnel.name}
+        </span>
+      }
+      subtitle={funnel.steps.join(" → ")}
       footer={
         <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           {step.canSkip ? (
@@ -271,13 +286,13 @@ export function PayFlow() {
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-sm text-gray-600">What it costs to run</span>
-            <span className="text-lg font-semibold text-gray-900">
-              {dollars(funnel.dailyOperatingCostCents)}/day
+            <span className="font-display text-2xl font-medium text-gray-900">
+              {fromPerDay(funnel.dailyOperatingCostCents)}
             </span>
           </div>
           <p className="mt-2 text-sm text-gray-600">
-            You are charged for one day now. Every day after that is charged as it is spent,
-            and you can stop it whenever you want.
+            One day is charged now. After that you pay only what is spent, and you can stop
+            whenever you want.
           </p>
           {charge.flooredByStripeMinimum && (
             <p className="mt-2 text-xs text-gray-500">
@@ -290,20 +305,28 @@ export function PayFlow() {
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-sm text-gray-600">
-            We run this through{" "}
+            Runs through the{" "}
             <span className="font-medium text-gray-900">
               {funnel.channelSlugs.length === 1
-                ? "1 channel"
+                ? "channel"
                 : `${funnel.channelSlugs.length} channels`}
             </span>{" "}
             you picked. Give it {funnel.effectiveMinimumCommitmentDays} days before judging it.
-            That is how long the result takes to show, not a commitment: nothing here locks you in.
+            That is how long a result takes to show, not a commitment.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {funnel.channelSlugs.map((slug) => (
+              <span key={slug} className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-1 pl-1 pr-2.5 text-xs text-gray-700">
+                <AcquisitionChannelMark def={{ mark: channelMarkForSlug(slug) }} size="xs" />
+                {channels.find((c) => c.slug === slug)?.name ?? slug}
+              </span>
+            ))}
+          </div>
         </div>
 
         {committed > 0 && (
           <p className="text-sm text-gray-500">
-            So far you have committed {dollars(committed)}/day across{" "}
+            So far you have committed {dollars(committed)} per day across{" "}
             {selection.paid.length === 1 ? "1 funnel" : `${selection.paid.length} funnels`}.
           </p>
         )}
