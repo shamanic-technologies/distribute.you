@@ -177,6 +177,45 @@ html.dark body::before {
   }
 }
 
+/* A step whose Ctrl+C would hand over the question AND the field SAYS SO while
+ * the selection is live, by painting its fields in the selection colour.
+ *
+ * Without this the surface lies: a drag-selection stops at the edge of a form
+ * field, so the reader sees only the question lit, presses Ctrl+C, and silently
+ * gets more than was on screen. A copy that hands over more than it showed is
+ * worse than one that hands over too little, because nothing tells the reader it
+ * happened. Owner, on the version that had the clipboard half without this half:
+ * "il faut qu'on voie VISUELLEMENT que ca selectionne aussi l'input, sinon c'est
+ * trompeur et pire".
+ *
+ * The attribute is set by `useStepCopy` off the SAME `copyStepIntent` that
+ * decides whether to rewrite the clipboard, so what is lit is exactly what gets
+ * copied. One predicate, so the two cannot drift.
+ *
+ * `[data-copy-value]` is for a value that is not a form control (the services
+ * step's chips, whose text IS the answer). Colours come from the `--color-brand-*`
+ * ramp, so this rotates with `:root[data-brand-tint]` exactly like `::selection`
+ * above; the dark pair mirrors it for the same reason.
+ *
+ * ⚠️ Measured before settling on a tint: `setSelectionRange` on an UNFOCUSED
+ * textarea paints nothing at all, and focusing it to make it paint would collapse
+ * the page selection it is meant to extend. */
+/* ⚠️ UNLAYERED on purpose, like the `html.dark` remaps below. A `@layer base`
+ * rule loses to any utility class, so the services step's chips kept their
+ * `bg-blue-50` and were the one value on that step that did NOT light up
+ * (measured: the textarea painted, the chips did not). Unlayered beats a layered
+ * utility whatever its specificity. */
+[data-copy-included] :is(input, textarea),
+[data-copy-included] [data-copy-value] {
+  background-color: var(--color-brand-200);
+  color: var(--color-gray-900, #111827);
+}
+.dark [data-copy-included] :is(input, textarea),
+.dark [data-copy-included] [data-copy-value] {
+  background-color: var(--color-brand-700);
+  color: #ffffff;
+}
+
 @utility text-balance {
   text-wrap: balance;
 }

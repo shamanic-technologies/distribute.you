@@ -3308,8 +3308,11 @@ export function Onboarding() {
           <p className="mt-2 mb-6 text-gray-500">Tell us what you sell. Add one per line.</p>
         )}
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-3 sm:p-4">
+          {/* The chips ARE this step's answer, so they light up with the selection
+              like a field would. `data-copy-value` is what the highlight targets:
+              a chip is a <span>, not a form control. */}
           {services.map((s, i) => (
-            <span key={s} className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
+            <span key={s} data-copy-value className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
               <span className="min-w-0 break-words">{s}</span>
               <button type="button" onClick={() => removeService(s)} aria-label={`Remove ${s}`} className="opacity-60 transition hover:opacity-100">
                 <XMarkIcon className="h-3 w-3" />
@@ -3815,9 +3818,9 @@ export function Onboarding() {
         {/* The numbers the projection below is computed from. Without them on screen a
             return under 1x reads as the model being bad, when it is almost always the
             lifetime revenue being small. Editable, because the fix is to correct them. */}
-        <div
+        <CopyableBlock
+          text={economicsPrompt}
           className={`mb-5 rounded-xl border p-4 ${roiUnderOne ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"}`}
-          onCopy={stepCopyHandler(economicsPrompt)}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="text-sm font-semibold text-gray-900">Your numbers</div>
@@ -3880,7 +3883,7 @@ export function Onboarding() {
               "Update projection"
             )}
           </button>
-        </div>
+        </CopyableBlock>
         {pending ? (
           <div className="space-y-4">
             <Skeleton className="h-14 w-full" />
@@ -4717,6 +4720,7 @@ function StepShell({
   // surface answering twice.
   const escapeChrome = useOnboardingEscapeChrome();
   const showWidget = !escapeChrome;
+  const stepCopy = useStepCopy(copyText);
   return (
     <div className={`flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-3 ${maxWidth}`}>
       {(header || showWidget) && (
@@ -4757,10 +4761,7 @@ function StepShell({
             the overflow and the footer below stays pinned to the card's bottom
             edge. A short step is unaffected: `sm:flex-none` keeps the card at its
             natural height and there is nothing to scroll. */}
-        <div
-          className="min-h-0 flex-1 overflow-y-auto"
-          onCopy={copyText ? stepCopyHandler(copyText) : undefined}
-        >
+        <div className="min-h-0 flex-1 overflow-y-auto" {...stepCopy}>
           {children}
         </div>
         {footer && <div className="shrink-0">{footer}</div>}
@@ -4799,23 +4800,70 @@ function CopyForLLMButton({ text }: { text: string }) {
   );
 }
 
-// Ctrl+C on a step hands over the SAME text the button does.
+// Ctrl+C on a step hands over the SAME text the button does, AND the step SHOWS
+// that it will before the reader presses anything.
 //
 // A drag-selection stops at the edge of an `<input>`/`<textarea>`, because a form
-// field is its own editing context: somebody selecting the question and the
-// prefilled answer together gets only the question. That was the gesture people
-// were actually making, and it was silently producing half an answer. The `copy`
-// EVENT has no such limit. It fires on the surrounding element whatever the
-// selection covers, and its handler owns what lands on the clipboard.
+// field is its own editing context. The `copy` EVENT has no such limit, so the
+// clipboard can carry the question and the field together. That alone is a
+// surface that LIES: the reader sees the question highlighted, presses Ctrl+C,
+// and silently gets more than was on screen. A copy that hands over more than it
+// showed is worse than one that hands over too little, because nothing tells the
+// reader it happened.
 //
-// So the button is the discoverable path and this rescues the intuitive one, off
-// the SAME builder: two spellings of one answer is how the two come to disagree.
+// So the highlight and the clipboard are driven by ONE predicate. While a
+// selection would be rewritten, the step's fields render in the selection colour
+// (`data-copy-included`, styled in `globals.css` off the same `::selection`
+// ramp), so what is lit is exactly what Ctrl+C delivers. They cannot disagree,
+// because a disagreement would require two predicates and there is one.
 //
-// ⚠️ It must NOT steal a copy the reader meant for something else, which is what
-// `copyStepIntent` decides: a selection made INSIDE the field is them lifting a
-// phrase of their own draft, and is passed through untouched.
-function stepCopyHandler(text: string) {
-  return (e: React.ClipboardEvent<HTMLElement>) => {
+// ⚠️ Measured alternatives, so nobody re-derives them: `setSelectionRange` on an
+// UNFOCUSED textarea paints nothing at all (zero pixels change), and focusing it
+// to make it paint would collapse the page selection it is meant to extend. A
+// read-only `<div>` value DOES take a real native selection, and is the honest
+// shape if a field is ever rewritten as click-to-edit; it was not taken here
+// because it means recabling every editable control on four steps.
+function useStepCopy(text: string | undefined) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [included, setIncluded] = useState(false);
+
+  useEffect(() => {
+    if (!text) {
+      setIncluded(false);
+      return;
+    }
+    const onSelectionChange = () => {
+      const el = ref.current;
+      const selection = window.getSelection();
+      if (!el || !selection || selection.rangeCount === 0) {
+        setIncluded(false);
+        return;
+      }
+      // `selectionchange` is a DOCUMENT event, so a selection anywhere else on the
+      // page fires it too. Without this the fields would light up for a selection
+      // that has nothing to do with this step.
+      const range = selection.getRangeAt(0);
+      if (!range.intersectsNode(el)) {
+        setIncluded(false);
+        return;
+      }
+      const active = document.activeElement;
+      const isField =
+        active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+      setIncluded(
+        copyStepIntent({
+          activeElementIsField: isField && el.contains(active),
+          fieldSelectionIsRange: isField && active.selectionStart !== active.selectionEnd,
+          selectionText: selection.toString(),
+        }) === "rewrite",
+      );
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [text]);
+
+  const onCopy = (e: React.ClipboardEvent<HTMLElement>) => {
+    if (!text) return;
     const active = document.activeElement;
     const isField =
       active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
@@ -4828,6 +4876,35 @@ function stepCopyHandler(text: string) {
     e.clipboardData.setData("text/plain", text);
     e.preventDefault();
   };
+
+  return {
+    ref,
+    // Absent rather than `false`, so the attribute is simply not in the DOM when
+    // the step is not part of a selection.
+    "data-copy-included": included || undefined,
+    onCopy: text ? onCopy : undefined,
+  };
+}
+
+// A copyable block that is not a whole step: same hook, same predicate, same
+// highlight. The `model` step needs this because its BODY also carries the
+// projection numbers, and a reader copying one of those means that number, not
+// the prompt.
+function CopyableBlock({
+  text,
+  className,
+  children,
+}: {
+  text: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const stepCopy = useStepCopy(text);
+  return (
+    <div className={className} {...stepCopy}>
+      {children}
+    </div>
+  );
 }
 
 function NextButton({ onClick, disabled = false, busy = false, label = "Continue" }: { onClick: () => void; disabled?: boolean; busy?: boolean; label?: string }) {
