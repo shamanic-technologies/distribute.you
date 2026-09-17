@@ -79,7 +79,10 @@
  *
  * ── ONE LIT CELL PER COLUMN, AND IT IS THE PRODUCER'S OWN ANSWER ─────────────────
  *
- * Each column highlights the cell it would PICK — the row at `scopeRank === 1`, served.
+ * Each column highlights the cell it would PICK — the lowest `scopeRank` among the
+ * workflows this page OFFERS, served. Not `=== 1`: the tier rule hides the workflows
+ * campaign-service refuses to select, and the producer ranks on price, so position 1 is
+ * routinely a hidden cheap-tier workflow (prod: 14 of 16 columns lit nothing).
  * A single global "best cell" used to be marked instead, and it answered a question
  * nobody asked while the other twelve columns said nothing: "une case allumée par
  * colonne ... comme ça on comprend quelque soit l'audience choisie quel workflow sera
@@ -159,6 +162,7 @@ import {
   matrixWorkflowOrder,
   matrixCellKey,
   columnBestCells,
+  lowestScopePosition,
   isColumnBestCell,
   cellRestsOnOwnEvidence,
   type MatrixCell,
@@ -558,8 +562,10 @@ export function CampaignWorkflowsPage() {
   const matrixOrder = useMemo(() => matrixWorkflowOrder(matrixRows), [matrixRows]);
   const cellIndex = useMemo(() => buildMatrixCellIndex(matrixRows), [matrixRows]);
   // ONE LIT CELL PER COLUMN: the workflow each audience would be put on, read off the
-  // producer's own `scopeRank === 1`. A single global mark answered "where is the
-  // cheapest price on this grid" and left the other twelve columns saying nothing.
+  // lowest `scopeRank` among the rows this page draws. A single global mark answered
+  // "where is the cheapest price on this grid" and left the other twelve columns saying
+  // nothing; requiring position 1 then lit a workflow the tier rule hides and that
+  // campaign-service would never select.
   const columnBest = useMemo(() => columnBestCells(matrixRows), [matrixRows]);
 
   // The display rows, keyed by dynasty — the matrix draws the catalogue's rows in the
@@ -1130,7 +1136,8 @@ function ObliqueHeader({
  * TWO marks, answering two different questions. FULL vs MUTED says whose EVIDENCE the
  * figure rests on — full when the column produced it, muted when it is a floor inherited
  * from a wider pool, which is why 21 identical rows read as a fact rather than as a bug.
- * HIGHLIGHTED says this is the cell its own column would PICK (`scopeRank === 1`), once
+ * HIGHLIGHTED says this is the cell its own column would PICK (the lowest `scopeRank`
+ * among the workflows this page offers), once
  * per column. The two are independent and BOTH are drawn on a lit cell: a column's pick
  * is routinely an inherited floor (11 of 13 in prod), which is the fact worth reading.
  *
@@ -1219,6 +1226,15 @@ export function ScopeTable({
   openSlug: string | null;
   onOpen: (slug: string) => void;
 }) {
+  // The position the `Current best` tag sits at — the lowest the LISTED rows carry,
+  // read off the producer's own `scopeRank`. Declared above the JSX that reads it: a
+  // const a memo/render consumes before its declaration is a TDZ throw at render, which
+  // `tsc` and the suite both pass over.
+  const bestPosition = useMemo(
+    () => lowestScopePosition(ranked.map((r) => r.scopeRank)),
+    [ranked],
+  );
+
   const bySlug = useMemo(() => {
     const m = new Map<string, WorkflowLadderRowShape>();
     for (const r of scopeLadderRows(ladderRows, audienceId)) {
@@ -1272,6 +1288,7 @@ export function ScopeTable({
               <ScopeRow
                 key={r.row.workflowDynastySlug}
                 ranked={r}
+                bestPosition={bestPosition}
                 figures={scopeFigures(bySlug.get(r.row.workflowDynastySlug) ?? null, audienceId)}
                 audienceName={audienceName}
                 audienceAvatarUrl={audienceAvatarUrl}
@@ -1290,6 +1307,7 @@ export function ScopeTable({
 /** One row of an audience's own list. */
 function ScopeRow({
   ranked,
+  bestPosition,
   figures,
   audienceName,
   audienceAvatarUrl,
@@ -1298,6 +1316,8 @@ function ScopeRow({
   onOpen,
 }: {
   ranked: RankedWorkflow<CampaignWorkflowRow>;
+  /** The lowest `scopeRank` the LISTED rows carry — see `lowestScopePosition`. */
+  bestPosition: number | null;
   figures: WorkflowLegOutcome | null;
   audienceName: string;
   audienceAvatarUrl: string | null;
@@ -1306,7 +1326,10 @@ function ScopeRow({
   onOpen: () => void;
 }) {
   const row = ranked.row;
-  const bestHere = ranked.scopeRank === 1;
+  // The row this audience would be put on, among the workflows this page OFFERS —
+  // NOT `scopeRank === 1`, which is routinely a tier-excluded workflow the page does
+  // not draw and campaign-service would never select, leaving the list untagged.
+  const bestHere = ranked.scopeRank !== null && ranked.scopeRank === bestPosition;
   return (
     <tr
       onClick={onOpen}
