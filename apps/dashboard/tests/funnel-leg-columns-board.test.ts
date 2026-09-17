@@ -39,6 +39,19 @@ describe("the funnel board's call site", () => {
     expect(BOARD.slice(at, BOARD.indexOf("/>", at))).toContain("offerable={offerable}");
   });
 
+  // The clicked slug was held all along and read as a boolean, so one card opened the
+  // budget field and the toggle of every channel of the funnel. A modal that can scope
+  // to one channel is the feature entirely absent if the board never names one, so the
+  // guard pins the CALL SITE.
+  it("scopes the modal to the card that was clicked, not to the whole funnel", () => {
+    const at = BOARD.indexOf("<CampaignControlsModal");
+    const call = BOARD.slice(at, BOARD.indexOf("/>", at));
+    expect(call).toContain("featureSlug={openSlug}");
+    // A channel can sell several funnels, so the slug alone would match a sibling
+    // funnel's row for the same channel.
+    expect(call).toContain("funnelKey={funnel.key}");
+  });
+
   // A card and the modal it opens must never state opposite things about one channel,
   // so the verdict comes from the SAME resolver the modal writes through — never a
   // second copy of the rule, and never the ceiling standing in for a status.

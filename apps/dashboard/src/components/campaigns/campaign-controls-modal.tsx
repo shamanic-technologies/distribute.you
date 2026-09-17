@@ -79,6 +79,7 @@ export function CampaignControlsModal({
   brandId,
   offerId,
   funnelKey,
+  featureSlug,
   campaignId,
   prefillBudgetUsd,
   offerable = EMPTY_OFFERABLE,
@@ -93,6 +94,19 @@ export function CampaignControlsModal({
    * selling it and would list a sibling offer's campaigns under this one's name.
    */
   funnelKey?: string | null;
+  /**
+   * Scope to ONE acquisition channel of that funnel.
+   *
+   * The funnel board opens this from a card, and a card is one channel under one
+   * arrow — so listing every channel of the funnel answers a question the reader did
+   * not ask and offers a budget field and a toggle per sibling they never clicked.
+   *
+   * NOT `campaignId`: the board's whole job is to offer channels that have no
+   * campaign yet, and those have no id to scope on. Paired with `offerId` and
+   * `funnelKey` it names the triple billing keys a ceiling on, which is exactly one
+   * row.
+   */
+  featureSlug?: string | null;
   /** Scope to exactly one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
   /**
@@ -137,10 +151,19 @@ export function CampaignControlsModal({
         campaignsQ.data?.campaigns ?? [],
         budgetsQ.data,
         channels,
-        { offerId, funnelKey, campaignId },
+        { offerId, funnelKey, featureSlug, campaignId },
         offerable,
       ),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId, offerable],
+    [
+      campaignsQ.data,
+      budgetsQ.data,
+      channels,
+      offerId,
+      funnelKey,
+      featureSlug,
+      campaignId,
+      offerable,
+    ],
   );
 
   /**
@@ -461,6 +484,10 @@ export function CampaignControlsModal({
 
   const rollup = rollupStatus(rows);
   const scopeWord = campaignId ? "campaign" : funnelKey ? "funnel" : offerId ? "offer" : "brand";
+  // One channel of one funnel is one campaign as a customer knows it, so it reads the
+  // singular — "Campaigns of this funnel" over a single row states a list that is not
+  // there and invites a reader to look for the siblings it is deliberately not showing.
+  const singleCampaign = campaignId != null || featureSlug != null;
 
   return (
     <div
@@ -476,7 +503,7 @@ export function CampaignControlsModal({
       >
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
           <h2 id="campaign-controls-title" className="text-sm font-semibold text-gray-800">
-            {campaignId ? "Campaign" : `Campaigns of this ${scopeWord}`}
+            {singleCampaign ? "Campaign" : `Campaigns of this ${scopeWord}`}
           </h2>
           <button
             type="button"
