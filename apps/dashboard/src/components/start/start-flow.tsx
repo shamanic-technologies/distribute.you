@@ -18,13 +18,14 @@ import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-m
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
 import { channelMarkForSlug } from "@/lib/acquisition-channels";
-import { SALES_FUNNELS, normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { salesFunnelDefForWireKeyOrNull } from "@/lib/sales-funnels";
 import {
   startOutcomes,
   channelsForOutcomes,
   channelGroups,
   funnelsForChannels,
   type CatalogueChannel,
+  type CatalogueFunnelDef,
 } from "@/lib/start-catalogue";
 import {
   returnRowsForFunnel,
@@ -57,6 +58,10 @@ const ORDER: Screen[] = ["welcome", "outcome", "channels", "funnels", "returns"]
 
 interface Catalogue {
   channels: CatalogueChannel[];
+  /** The producer's own funnel list, which states each funnel's entry step. The
+   *  funnel screen filters on it; joining against this app's four-funnel
+   *  catalogue instead is what threw on every channel selling one of the eight. */
+  funnels: CatalogueFunnelDef[];
   pairs: PairReturn[];
   founders: number | null;
 }
@@ -66,9 +71,16 @@ interface Catalogue {
  *  precision on a figure that moves. */
 const formatReturn = (x: number): string => (x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
 
-/** The funnel's own tile, resolved from this app's catalogue by wire key. */
+/**
+ * The funnel's own tile, or nothing for a funnel this app draws no mark for.
+ *
+ * TOLERANT BY DESIGN. The producer publishes more funnels than this app holds
+ * marks for, and the name beside the tile comes off the wire, so an unmarked
+ * funnel still reads correctly. Resolving through the THROWING normalizer here
+ * is what made the screen die on its own decoration.
+ */
 function funnelMark(wireKey: string) {
-  const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(wireKey as SalesFunnelKeyWire));
+  const def = salesFunnelDefForWireKeyOrNull(wireKey);
   return def ? <SalesFunnelMark def={def} size="sm" /> : null;
 }
 
@@ -97,9 +109,10 @@ export function StartFlow() {
       .then((body) => {
         if (!live) return;
         const chans = body?.channels?.channels ?? body?.channels ?? [];
+        const wireFunnels = body?.channels?.funnels ?? [];
         const pairs = body?.returns?.pairs ?? [];
         const founders = typeof body?.founders === "number" ? body.founders : null;
-        setCatalogue({ channels: chans, pairs, founders });
+        setCatalogue({ channels: chans, funnels: wireFunnels, pairs, founders });
       })
       .catch((err) => {
         console.error("[start] catalogue read failed:", err);
@@ -142,8 +155,8 @@ export function StartFlow() {
   // Filtered by the OUTCOMES as well as the channels: a channel sells every
   // funnel that starts on any step it produces, and the visitor asked for one.
   const offeredFunnels = useMemo(
-    () => funnelsForChannels(keptChannels, outcomes),
-    [keptChannels, outcomes],
+    () => funnelsForChannels(keptChannels, outcomes, catalogue?.funnels ?? []),
+    [keptChannels, outcomes, catalogue],
   );
 
   // Dropping a channel can drop the only seller of a funnel the visitor had

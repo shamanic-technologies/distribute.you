@@ -57,6 +57,28 @@ const CANONICAL_FUNNEL_KEY: Record<SalesFunnelKey, CanonicalSalesFunnelKey> = {
   visit_form: "form_magnet",
 };
 
+/**
+ * The local definition for a wire key, or NULL for one this catalogue cannot name.
+ *
+ * The tolerant sibling of `normalizeSalesFunnelKey`, and it exists for ONE thing:
+ * DISPLAY. The normalizer throws by design — it guards a CHECK-constrained column
+ * and must never guess a funnel a brand would be funded on — but a surface that
+ * merely wants a funnel's TILE has no such stake, and the producer publishes more
+ * funnels than this catalogue draws marks for. A key we hold no mark for renders
+ * no mark, exactly as `AcquisitionChannelMark` does for a channel slug it cannot
+ * draw: the funnel keeps its name, which comes off the wire, and a mark we would
+ * have to invent is worse than none.
+ *
+ * NEVER reach for this to decide what a brand SELLS, is FUNDED on, or is CHARGED
+ * for. Those all go through the normalizer and its throw.
+ */
+export function salesFunnelDefForWireKeyOrNull(key: string): SalesFunnelDef | null {
+  const local = (Object.entries(CANONICAL_FUNNEL_KEY) as [SalesFunnelKey, CanonicalSalesFunnelKey][])
+    .find(([localKey, canonical]) => localKey === key || canonical === key)?.[0];
+  if (!local) return null;
+  return SALES_FUNNELS.find((f) => f.key === local) ?? null;
+}
+
 /** The canonical spelling of a funnel key, for anything written to the wire. */
 export function canonicalSalesFunnelKey(key: SalesFunnelKeyWire): CanonicalSalesFunnelKey {
   return CANONICAL_FUNNEL_KEY[normalizeSalesFunnelKey(key)];
