@@ -3329,15 +3329,29 @@ export interface PrefillFullResponse {
   prefilled: Record<string, PrefillFullFieldResult>;
 }
 
-/** POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings */
+/**
+ * POST /features/:slug/prefill?format=text — get pre-filled input values as plain strings
+ *
+ * `offerId` names WHICH proposition the values must describe. The keys this fills are
+ * the offer's own words — the ask, the value proposition, the proof — and a brand
+ * selling two things has two right answers, so brand-service refuses a brand-scoped
+ * extraction for such a brand (409 SEVERAL_OFFERS) rather than guessing. Omitting it is
+ * the pre-existing behaviour and stays byte-identical for a brand selling one thing:
+ * the key is left OFF the body rather than sent null.
+ *
+ * It travels in the BODY, which is features-service's own choice — the api-service
+ * gateway forwards this route's body verbatim while whitelisting only `format` on the
+ * query string, so a body contract needed no gateway change (features-service #989).
+ */
 export async function prefillFeatureInputs(
   featureSlug: string,
   brandIds: string[],
+  offerId?: string | null,
   token?: string,
 ): Promise<PrefillResponse> {
   return apiCall<PrefillResponse>(
     `/features/${featureSlug}/prefill?format=text`,
-    { token, method: "POST", body: { brandIds } },
+    { token, method: "POST", body: { brandIds, ...(offerId ? { offerId } : {}) } },
   );
 }
 

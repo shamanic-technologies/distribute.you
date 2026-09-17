@@ -636,7 +636,14 @@ export function BrandSalesFunnelsCard({
           }),
         ]);
         await startFunnelChannelCampaign({
-          name: `${brand?.name ?? brandDomain ?? "Brand"} — ${vars.def.name}`,
+          // The CHANNEL is in the name, because campaign-service refuses a name the org
+          // already holds and a funnel is routinely sold through more than one channel.
+          // Named for the funnel alone, starting a second channel of a funnel answers
+          // `409 A campaign with this name already exists` — so the funnel this page
+          // exists to fund could be started once and never completed. It is also what a
+          // campaign IS: offer x funnel x channel, and the name now says two of the
+          // three rather than one.
+          name: `${brand?.name ?? brandDomain ?? "Brand"} — ${vars.def.name} (${move.channelName})`,
           brandId,
           featureSlug: move.featureSlug,
           featureInputs: inputs,
@@ -707,14 +714,24 @@ export function BrandSalesFunnelsCard({
    * channels of one funnel in one Save would otherwise prefill twice for the same
    * brand. Only keys the prefill actually answered are sent: an empty string is not an
    * answer, and api-service validates by key-presence.
+   *
+   * It names THIS OFFER, and that is what makes a Start work at all for a brand selling
+   * more than one thing. The keys this fills are the offer's own words — the ask, the
+   * value proposition, the proof — so brand-service refuses a brand-scoped extraction
+   * for such a brand (409 SEVERAL_OFFERS) rather than serving another proposition's
+   * copy. Unnamed, that 409 surfaced as a 502 and the campaign was never created: 21 of
+   * 144 brands could not start a channel from this page at all. The cache is keyed on
+   * the pair for the same reason — one channel's inputs are a different answer per
+   * offer.
    */
   const featureInputsRef = useRef<Record<string, Record<string, string>>>({});
   async function buildFeatureInputs(featureSlug: string): Promise<Record<string, string>> {
-    const cached = featureInputsRef.current[featureSlug];
+    const cacheKey = `${featureSlug}|${offerId}`;
+    const cached = featureInputsRef.current[cacheKey];
     if (cached) return cached;
     const [{ feature }, prefill] = await Promise.all([
       getFeature(featureSlug),
-      prefillFeatureInputs(featureSlug, [brandId]),
+      prefillFeatureInputs(featureSlug, [brandId], offerId),
     ]);
     const prefilled = prefillToStringMap(prefill.prefilled);
     const out: Record<string, string> = {};
@@ -722,7 +739,7 @@ export function BrandSalesFunnelsCard({
       const value = prefilled[input.key]?.trim();
       if (value) out[input.key] = value;
     }
-    featureInputsRef.current[featureSlug] = out;
+    featureInputsRef.current[cacheKey] = out;
     return out;
   }
 
