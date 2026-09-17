@@ -299,15 +299,53 @@ export interface FunnelWindow {
    * earlier in the day back inside the window.
    */
   sinceMs: number | null;
+  /**
+   * WHERE THIS WINDOW'S EDGE IS, in words, or null for since inception (which has no
+   * edge to state).
+   *
+   * A rolling window moves under the reader, so its count moves with no churn behind
+   * it: the 90-day stage read 23 on 2026-09-15 and 20 two days later, because a dense
+   * cluster of June first-payments rolled out of the window. Every figure was correct
+   * and it reads as a 13% collapse to whoever opens the page. Naming the edge is what
+   * makes the drop legible as the clock rather than as the business.
+   *
+   * Carried ON the window rather than derived at the render site, for the same reason
+   * `previousLabel` is carried on a funnel step: a caller rebuilding it from the label
+   * is one rename away from stating the wrong date.
+   */
+  edgeLabel: string | null;
+}
+
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/**
+ * A window's inclusive start as a short human date, or null when there is none.
+ *
+ * The `YYYY-MM-DD` is split by hand rather than parsed into a `Date`: `windowStartIso`
+ * produces it in UTC, and re-parsing it would render it in the reader's zone, so a
+ * European morning would state an edge one day earlier than the one the count uses.
+ */
+export function windowEdgeLabel(sinceIso: string | null): string | null {
+  if (sinceIso === null) return null;
+  const [year, month, day] = sinceIso.split("-").map(Number);
+  if (!year || !month || !day || month < 1 || month > 12) return null;
+  return `${MONTH_ABBR[month - 1]} ${day}, ${year}`;
 }
 
 /** The three windows every funnel and economics row on the Overview is stated over. */
 export function funnelWindows(now: Date): FunnelWindow[] {
   const startMs = (days: number) => now.getTime() - days * 86_400_000;
+  const rolling = (key: "d90" | "d30", label: string, days: number): FunnelWindow => {
+    const sinceIso = windowStartIso(now, days);
+    return { key, label, sinceIso, sinceMs: startMs(days), edgeLabel: windowEdgeLabel(sinceIso) };
+  };
   return [
-    { key: "inception", label: "Since inception", sinceIso: null, sinceMs: null },
-    { key: "d90", label: "Last 90 days", sinceIso: windowStartIso(now, 90), sinceMs: startMs(90) },
-    { key: "d30", label: "Last 30 days", sinceIso: windowStartIso(now, 30), sinceMs: startMs(30) },
+    { key: "inception", label: "Since inception", sinceIso: null, sinceMs: null, edgeLabel: null },
+    rolling("d90", "Last 90 days", 90),
+    rolling("d30", "Last 30 days", 30),
   ];
 }
 
@@ -331,10 +369,43 @@ export function funnelWindows(now: Date): FunnelWindow[] {
  * same one `sumSince` rests on.
  */
 export function firstPaymentsSince(
-  firstPaymentTimesSec: number[],
+  firstPaymentTimesSec: number[] | null,
   sinceMs: number | null,
-): number {
+): number | null {
+  // NULL IN, NULL OUT. The producer serves null when it could not get the instants at
+  // all, and "we could not find out" is not "nobody has ever paid": rendering it as 0
+  // would put a zero paid-users stage on the founder's page for an upstream hiccup,
+  // which is the same lie the dash this stage replaced used to tell. An EMPTY array is
+  // the other statement and it legitimately reads 0.
+  if (firstPaymentTimesSec === null) return null;
   if (sinceMs === null) return firstPaymentTimesSec.length;
   const sinceSec = sinceMs / 1000;
   return firstPaymentTimesSec.reduce((total, at) => (at >= sinceSec ? total + 1 : total), 0);
+}
+
+/**
+ * The shape this reads off the billing payload. Structural on purpose, so this module
+ * keeps importing nothing and keeps carrying real unit tests.
+ */
+export interface FirstPaymentTimesSource {
+  first_payment_times_unix?: number[] | null;
+  /** @deprecated Superseded by `first_payment_times_unix`. */
+  first_payment_times?: number[] | null;
+}
+
+/**
+ * The first-payment instants, in unix SECONDS, or null when the producer could not
+ * measure them.
+ *
+ * ONE place decides which name to read, so no caller has to know there are two. The
+ * unit-carrying name wins; the deprecated one is the fallback for exactly as long as a
+ * deployed producer still serves only that (today, it is what production serves). An
+ * ABSENT field is that deploy state; a NULL field is the producer stating it could not
+ * measure. Both answer null here — neither is an empty array — so a stage rendered off
+ * this can never claim nobody has paid on either.
+ */
+export function firstPaymentTimesUnix(billing: FirstPaymentTimesSource): number[] | null {
+  if (Array.isArray(billing.first_payment_times_unix)) return billing.first_payment_times_unix;
+  if (Array.isArray(billing.first_payment_times)) return billing.first_payment_times;
+  return null;
 }

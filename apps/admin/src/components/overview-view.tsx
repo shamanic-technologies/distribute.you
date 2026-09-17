@@ -26,6 +26,7 @@ import {
 } from "@/components/overview-funnel-cards";
 import {
   firstPaymentsSince,
+  firstPaymentTimesUnix,
   newlyActiveOrgsSince,
   clientEconomics,
   economicsRows,
@@ -172,7 +173,12 @@ export function OverviewView({
           // first-saved-CARD series, which missed every wallet payer and every payer
           // on the second acquirer, and dated a September payment to whenever that
           // customer's card was attached: 12 against 33 who had actually paid.
-          paidUsers: firstPaymentsSince(billing.first_payment_times, window.sinceMs),
+          // Read through `firstPaymentTimesUnix`, never off a field name: the producer
+          // publishes the unit-carrying `first_payment_times_unix` and keeps the old
+          // name for one release, and it serves NULL when it could not measure them at
+          // all (it used to throw, 5xx'ing every money figure here). Null flows through
+          // to the renderer as "not measured" and never as a 0.
+          paidUsers: firstPaymentsSince(firstPaymentTimesUnix(billing), window.sinceMs),
           // The org that ENTERED this stage in the window, not the ones standing in it —
           // every stage above is an entry (a signup happens once, a first payment happens
           // once), so a presence count here sits above the stage that feeds it. See
@@ -272,7 +278,12 @@ export function OverviewView({
       />
       <section className="grid gap-6 lg:grid-cols-3">
         {funnel.map((entry) => (
-          <FunnelIndexChart key={entry.window.key} title={entry.window.label} steps={entry.steps} />
+          <FunnelIndexChart
+            key={entry.window.key}
+            title={entry.window.label}
+            edgeLabel={entry.window.edgeLabel}
+            steps={entry.steps}
+          />
         ))}
       </section>
 
@@ -285,6 +296,7 @@ export function OverviewView({
           <EconomicsCard
             key={entry.window.key}
             title={entry.window.label}
+            edgeLabel={entry.window.edgeLabel}
             economics={entry.economics}
             pending={boardPending}
           />

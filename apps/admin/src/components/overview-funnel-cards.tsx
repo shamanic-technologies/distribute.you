@@ -17,6 +17,25 @@ function usdFull(n: number): string {
   return formatUsd(n, Math.abs(n) < 10 ? 2 : 0);
 }
 
+/**
+ * Where a rolling window's edge sits, beside the window's own name.
+ *
+ * A rolling window MOVES under the reader, so its counts fall with no churn behind
+ * them: the 90-day paid-users stage read 23 on 2026-09-15 and 20 two days later,
+ * purely because a dense cluster of June first-payments rolled out of the window.
+ * Every figure in that drop was correct and it reads as a collapse. Naming the edge is
+ * what makes it legible as the clock.
+ *
+ * Quiet and inline on purpose: this is a clarification of the title beside it, not a
+ * figure of its own. A window with no edge (since inception) renders nothing at all.
+ */
+function WindowEdge({ edgeLabel }: { edgeLabel?: string | null }) {
+  if (!edgeLabel) return null;
+  return (
+    <span className="ml-2 text-xs font-normal text-gray-400">since {edgeLabel}</span>
+  );
+}
+
 /** A figure we could not measure states a dash, never a zero. */
 function countOrDash(value: number | null): string {
   return value === null ? "—" : formatCount(value);
@@ -37,10 +56,18 @@ export function FunnelStatCard({ step }: { step: FunnelStep }) {
       <div className={`mb-4 h-1 w-10 rounded-full ${STEP_ACCENT[step.key]}`} />
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{step.label}</p>
       <p className="mt-2 text-2xl font-semibold text-gray-950">{countOrDash(step.value)}</p>
-      <p className="mt-1 text-sm text-gray-500">
-        {step.pctOfPrevious === null || step.previousLabel === null
-          ? "Top of the funnel"
-          : `${step.pctOfPrevious}% of ${step.previousLabel.toLowerCase()}`}
+      {/*
+        A stage we could not measure SAYS SO. Without this branch a null value fell to
+        "Top of the funnel" (the caption for a null `pctOfPrevious`), so an unavailable
+        Paid users stage read as the head of the funnel with a dash under it, which is
+        the same misreading as a zero wearing a different hat.
+      */}
+      <p className={`mt-1 text-sm ${step.value === null ? "text-amber-600" : "text-gray-500"}`}>
+        {step.value === null
+          ? "Not measured, not zero"
+          : step.pctOfPrevious === null || step.previousLabel === null
+            ? "Top of the funnel"
+            : `${step.pctOfPrevious}% of ${step.previousLabel.toLowerCase()}`}
       </p>
     </div>
   );
@@ -70,10 +97,22 @@ const COLUMN_TRACK_PX = 128;
  * ITS TOP rather than passing unremarked, and the percentage under it states the true
  * figure.
  */
-export function FunnelIndexChart({ title, steps }: { title: string; steps: FunnelStep[] }) {
+export function FunnelIndexChart({
+  title,
+  edgeLabel,
+  steps,
+}: {
+  title: string;
+  /** Where the window's edge sits, or null for a window that has none. See `WindowEdge`. */
+  edgeLabel?: string | null;
+  steps: FunnelStep[];
+}) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <h2 className="text-lg font-semibold text-gray-950">
+        {title}
+        <WindowEdge edgeLabel={edgeLabel} />
+      </h2>
       <p className="mt-1 text-sm text-gray-500">
         Log scale of how many reached each stage, so a 200x drop still reads. The number above
         each column is that stage indexed on unique visitors at 100.
@@ -117,7 +156,7 @@ export function FunnelIndexChart({ title, steps }: { title: string; steps: Funne
                 }
               >
                 {step.value === null
-                  ? "Not measured"
+                  ? "Not measured, not zero"
                   : survived === null
                     ? "—"
                     : i === 0
@@ -140,10 +179,13 @@ export function FunnelIndexChart({ title, steps }: { title: string; steps: Funne
  */
 export function EconomicsCard({
   title,
+  edgeLabel,
   economics,
   pending,
 }: {
   title: string;
+  /** Where the window's edge sits, or null for a window that has none. See `WindowEdge`. */
+  edgeLabel?: string | null;
   economics: ClientEconomics;
   pending: boolean;
 }) {
@@ -170,7 +212,10 @@ export function EconomicsCard({
   ];
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <h2 className="text-lg font-semibold text-gray-950">
+        {title}
+        <WindowEdge edgeLabel={edgeLabel} />
+      </h2>
       <p className="mt-1 text-sm text-gray-500">
         {pending ? "Reading the customer board…" : `${formatCount(economics.customers)} customers active in this window.`}
       </p>
