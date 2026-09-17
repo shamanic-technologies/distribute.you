@@ -66,13 +66,21 @@ describe("the placeholder curve states a SHAPE and no value", () => {
 });
 
 describe("the card divides nothing and invents nothing", () => {
-  it("never derives a cost from a spend and a count", () => {
+  it("never divides a spend by a count, and delegates the one projection it draws", () => {
     // The repo-wide rule, and it bites exactly here: an outcome with no timestamp sits on
     // no day, so a browser-side cumulative sum understates the denominator and this
     // curve's last point stops matching the price on the stat row above it.
+    //
+    // The card READS `cumulativeSpendUsd` and `cumulativeOutcomes` now — it hands them to
+    // the asymptote module, which is alias-free and carries real unit tests. So the
+    // invariant is no longer "never names them" (that would ban the delegation itself)
+    // but "never does the arithmetic here".
     const code = stripComments(CARD);
-    expect(code).not.toMatch(/committedCostUsd|cumulativeSpendUsd|reduce\(/);
-    expect(code).not.toMatch(/\/\s*(count|outcomes|recipients)/i);
+    expect(code).not.toMatch(/reduce\(/);
+    expect(code).not.toMatch(/committedCostUsd/);
+    // No division anywhere in the file, on anything.
+    expect(code).not.toMatch(/\/\s*\(?\s*(cumulativeOutcomes|outcomes|count|recipients)/i);
+    expect(code).toContain("asymptoteTail({");
   });
 
   it("takes the outcome's name from the producer, never a word of its own", () => {
