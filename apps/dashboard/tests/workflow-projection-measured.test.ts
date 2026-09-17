@@ -182,6 +182,13 @@ describe("the filter runs at the ONE reader boundary", () => {
       // The pre-signup proof screen branches on it to decide whether it may state
       // a figure at all, which is the opposite question from a projection row's.
       "lib/start-returns.ts",
+      // The campaign Overview's Top-3-LLMs list, off the SAME ladder the second reader
+      // above uses. It BRANCHES on `measured` for exactly the reason the two modules
+      // below do: an explore row's figure is the price of one outreach, cheapest by
+      // construction, so an unmeasured row would take the top of a list ranking models
+      // by what they cost — on no evidence at all. Reads the declared field, never
+      // probes for it.
+      "lib/top-models.ts",
       // The matrix that second reader draws. It BRANCHES on `measured` for exactly the
       // same reason as the ordering module below: an explore row's figure is the price
       // of one outreach, so it is the cheapest cell on the grid by construction and

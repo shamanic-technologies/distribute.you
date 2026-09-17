@@ -47,6 +47,8 @@ import { hiddenWorkflowSlugs } from "@/lib/workflow-eligibility";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
+import { TopModelsCard } from "@/components/revenue/top-models-card";
+import { topModels } from "@/lib/top-models";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { isRunningStatus } from "@/lib/campaign-controls";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
@@ -378,6 +380,27 @@ export function CampaignOverviewPage() {
       recommendedWorkflowDynastySlug: ladder.recommendedWorkflowDynastySlug,
       hiddenSlugs: hidden,
     });
+  }, [floorLadderQ.data]);
+
+  /**
+   * The three models this campaign's workflows write with for the least money.
+   *
+   * Off the SAME ladder read the floor above takes, so the card costs no request: the
+   * key is the one the campaign's Workflows page already polls. Through the SAME
+   * eligibility filter too — a model whose every workflow this leg's rule excludes is a
+   * model campaign-service can never select, so offering it as a top pick would state a
+   * price nothing reaches.
+   *
+   * `topModels` reads the producer's own positions and prices; nothing is ranked here.
+   */
+  const topModelRows = useMemo(() => {
+    const ladder = floorLadderQ.data;
+    if (!ladder) return undefined;
+    const hidden = hiddenWorkflowSlugs({
+      rows: ladder.rows as never,
+      observedPicks: ladder.observedPicks,
+    });
+    return topModels({ rows: ladder.rows, hiddenSlugs: hidden });
   }, [floorLadderQ.data]);
 
   // Same cost column the Audiences table leads with — never features-service's
@@ -716,18 +739,37 @@ export function CampaignOverviewPage() {
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
-        costBottomCard={
-          <TopAudiencesCard
-            data={audienceStatsRevealed ? audienceStatsData : undefined}
-            audiences={audienceStatsRevealed ? displayAudiences : undefined}
-            pending={!audienceStatsRevealed}
-            metric={audienceStatsMetric}
-            // One campaign sells one funnel, so its own step IS what it buys —
-            // the per-outcome cost stays here and is dropped at brand level.
-            campaignScoped
-            campaignId={campaignId}
-            paused={campaignPaused}
-          />
+        /* THE LAST BAND: three answers to "what is this campaign's money buying",
+           each cut a different way — by WHO we wrote to, by WHAT wrote it, and by how
+           well the writing is converting over time.
+
+           The audiences card USED to sit inside the cost summary above
+           (`costBottomCard`). It moved here rather than being duplicated: two copies of
+           one card on one screen is the surface stating one thing twice, and the summary
+           it sat under answers a different question (what has been spent) from the three
+           that answer what the spend produced. Brand and offer keep it in the summary —
+           they have no band here, so nothing moved for them. */
+        chartsRow={
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+            <TopAudiencesCard
+              data={audienceStatsRevealed ? audienceStatsData : undefined}
+              audiences={audienceStatsRevealed ? displayAudiences : undefined}
+              pending={!audienceStatsRevealed}
+              metric={audienceStatsMetric}
+              // One campaign sells one funnel, so its own step IS what it buys —
+              // the per-outcome cost stays here and is dropped at brand level.
+              campaignScoped
+              campaignId={campaignId}
+              paused={campaignPaused}
+            />
+            <TopModelsCard
+              models={topModelRows}
+              // The producer's own word for this campaign's outcome — the same one the
+              // cost curve titles itself with, so the two cannot name different things.
+              outcomeLabel={data?.learningPhase?.outcomeStep?.label ?? null}
+              pending={floorLadderQ.isPending && !floorLadderQ.isError}
+            />
+          </div>
         }
         topRow={
           <OutreachStatCards

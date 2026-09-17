@@ -32,6 +32,7 @@ export function RevenueOverviewSection({
   basePath,
   headerAction,
   topRow,
+  chartsRow,
   pipelineActivity,
   pipelineActualSeries,
   optimizationGoal,
@@ -94,6 +95,17 @@ export function RevenueOverviewSection({
   headerAction?: ReactNode;
   /** Optional row rendered under the header, above the Pipeline-revenue hero. */
   topRow?: ReactNode;
+  /**
+   * Optional LAST band, under the activity charts — the caller composes its own grid.
+   *
+   * Rendered on the SAME gate as the activity band (`showActivityChart`), so it is
+   * campaign-only by construction: a brand and an offer run several channels and several
+   * funnels at once, and every card this band was built for (the campaign's audiences,
+   * the models its workflows write with, its conversion rate) states one campaign's
+   * answer. A separate flag would be a second way to say the same thing, and the two
+   * would drift.
+   */
+  chartsRow?: ReactNode;
   /** Optional bottom card rendered under the cost-efficiency stat cards. */
   costBottomCard?: ReactNode;
   /** features-service `/revenue` reveal — headline and conversions. */
@@ -239,23 +251,31 @@ export function RevenueOverviewSection({
       {topRow}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-        {/* Outcome — ONE cumulative line of the goal signal since launch. Height
-            stretches to match the cost summary on its right (items-stretch). */}
-        {/* Gated on REVENUE, not activity: the cumulative line is `pipelineActualSeries`,
-            which rides the `/revenue` payload. Sharing the activity gate meant an
-            outage on an endpoint this card does not read blanked it anyway; its
-            forward projection is the only part sourced from pipeline-activity and
-            degrades to no dashed segment. */}
+        {/* WHAT ONE OUTCOME HAS COST, over the campaign's life — beside the cost summary
+            it divides. The Outcome line used to sit here and the two were swapped
+            deliberately (owner-asked): the price is what a reader of this band is
+            already looking at on the right, and the per-day volume reads better beside
+            the per-day bars one band down.
+
+            Height stretches to match the cost summary on its right (items-stretch),
+            which is why that card's plot is `flex-1` rather than the fixed height it
+            carried while it sat next to the activity bars.
+
+            Gated on REVENUE, not activity: both curves ride the `/revenue` payload.
+            Sharing the activity gate meant an outage on an endpoint these cards do not
+            read blanked them anyway. */}
         {showRoiTrend ? (
           <RoiTrendCard history={data?.roiHistory} pending={revenueLoading} learning={economicsLearning} paused={paused} />
-        ) : (
-          <OutcomeTrendCard
-            series={outcomeSeries}
-            future={outcomeFuture}
-            label={outcomeLabel}
+        ) : costOutcomeLabel ? (
+          <CostPerOutcomeCard
+            history={costPerOutcomeHistory}
+            outcomeLabel={costOutcomeLabel}
+            floor={costFloor}
+            learning={outcomeLearning}
+            paused={paused}
             pending={revenueLoading}
           />
-        )}
+        ) : null}
 
         {/* Cost summary — server-computed spend block (Total spent / today / top
             sources), rendered verbatim from features-service `/revenue`.
@@ -308,21 +328,25 @@ export function RevenueOverviewSection({
               />
             )}
           </div>
-          {/* Nothing is drawn without the producer's own word for the outcome: a
-              campaign's outcome is whichever step its leg lands on, and inventing a
-              noun here would name a different thing from the stat row above. */}
-          {costOutcomeLabel && (
-            <CostPerOutcomeCard
-              history={costPerOutcomeHistory}
-              outcomeLabel={costOutcomeLabel}
-              floor={costFloor}
-              learning={outcomeLearning}
-              paused={paused}
-              pending={revenueLoading}
-            />
-          )}
+          {/* Outcome — ONE cumulative line of the goal signal since launch, beside the
+              per-day bars of the same signal. The two are the same thing at two grains
+              (what happened each day, and what it adds up to), so they read together;
+              the price they bought moved up to the band above. */}
+          <OutcomeTrendCard
+            series={outcomeSeries}
+            future={outcomeFuture}
+            label={outcomeLabel}
+            pending={revenueLoading}
+          />
         </div>
       )}
+
+      {/* A third band of three, composed by the CALLER exactly like `topRow` and
+          `costBottomCard` — the section hosts the layout and owns none of the wiring,
+          because the cards in it read sources (the audience stats, the workflow ranking)
+          this section has never fetched. Rendered on the same gate as the activity band,
+          so it is CAMPAIGN-ONLY by construction rather than by a flag of its own. */}
+      {showActivityChart && chartsRow}
     </div>
   );
 }

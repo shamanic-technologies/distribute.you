@@ -226,7 +226,11 @@ export function CostPerOutcomeCard({
       : "unavailable";
 
   return (
-    <div className="flex flex-col bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+    // `lg:col-span-2`: this card took the WIDE slot of the 3-column top band when it
+    // and the Outcome line were swapped. Without it the band leaves an empty third
+    // column — the chart is the subject there and the cost summary is the narrow one.
+    // Same class `RoiTrendCard` carries for the same slot on the brand and offer.
+    <div className="lg:col-span-2 flex flex-col bg-white rounded-xl border border-gray-200 p-4 md:p-6">
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate font-medium text-gray-800">{title}</h3>
@@ -249,16 +253,22 @@ export function CostPerOutcomeCard({
       </div>
 
       {pending ? (
-        <Skeleton className="h-[300px] w-full rounded lg:h-[200px]" />
+        <Skeleton className="w-full flex-1 min-h-[180px] rounded" />
       ) : mode === "unavailable" ? (
         // A priced campaign whose curve we do not hold yet. It says so rather than
         // borrowing the placeholder: that shape means "still learning", and stating it
         // on a campaign that is already priced would be a different claim entirely.
-        <div className="flex h-[300px] items-center justify-center px-6 text-center text-sm text-gray-500 lg:h-[200px]">
+        <div className="flex flex-1 min-h-[180px] items-center justify-center px-6 text-center text-sm text-gray-500">
           We cannot chart this yet. Your price today is on the row above.
         </div>
       ) : (
-        <div className="h-[300px] lg:h-[200px]">
+        // STRETCHES rather than a fixed height: this card sits in the top band, beside
+        // the cost summary, in an `items-stretch` grid — a fixed plot there leaves a gap
+        // under the curve whenever the summary is taller. It carried a fixed height
+        // while it sat next to the activity bars, whose own plot is fixed. The floor is
+        // this wrapper's `min-h-[180px]`, the same one the two sibling trend cards in
+        // this band use.
+        <div className="flex-1 min-h-[180px]">
           <ResponsiveContainer width="100%" height="100%" minHeight={180}>
             <AreaChart
               data={mode === "placeholder" ? placeholder : plotted}
