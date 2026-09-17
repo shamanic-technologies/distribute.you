@@ -18,8 +18,9 @@ import {
 import {
   channelsForOutcomes,
   funnelsForChannels,
+  pairKeysFromSelection,
   type CatalogueChannel,
-  type CatalogueFunnelDef,
+  type StartCatalogue,
 } from "@/lib/start-catalogue";
 import {
   dayOneCharge,
@@ -75,10 +76,10 @@ const exactDollars = (cents: number): string =>
 export function PayFlow() {
   const router = useRouter();
   const [selection, setSelection] = useState<StartSelection | null>(null);
-  const [channels, setChannels] = useState<CatalogueChannel[] | null>(null);
-  // The producer's own funnel list. The funnel filter reads each funnel's entry
-  // step off it rather than joining against this app's four-funnel catalogue.
-  const [wireFunnels, setWireFunnels] = useState<CatalogueFunnelDef[]>([]);
+  // The producer's catalogue whole. Every screen of the signed-out flow is derived
+  // from it, so the three of them cannot disagree about what is on sale.
+  const [wire, setWire] = useState<StartCatalogue | null>(null);
+  const channels = wire?.channels ?? null;
   const [catalogueError, setCatalogueError] = useState(false);
 
   const [busy, setBusy] = useState(false);
@@ -99,8 +100,13 @@ export function PayFlow() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body) => {
         if (!live) return;
-        setChannels(body?.channels?.channels ?? body?.channels ?? []);
-        setWireFunnels(body?.channels?.funnels ?? []);
+        const cat = body?.channels;
+        setWire({
+          channels: cat?.channels ?? cat ?? [],
+          funnels: cat?.funnels ?? [],
+          legs: cat?.legs ?? [],
+          steps: cat?.steps ?? [],
+        });
       })
       .catch((err) => {
         console.error("[pay] catalogue read failed:", err);
@@ -117,15 +123,23 @@ export function PayFlow() {
   }, []);
 
   const payable: PayableFunnel[] = useMemo(() => {
-    if (!channels || !selection) return [];
-    const kept = channelsForOutcomes(channels, selection.outcomes).filter((c) =>
+    if (!wire || !selection) return [];
+    const kept = channelsForOutcomes(wire, selection.outcomes).filter((c) =>
       selection.channels.includes(c.slug),
     );
-    return funnelsForChannels(kept, selection.outcomes, wireFunnels);
-  }, [channels, selection, wireFunnels]);
+    return funnelsForChannels(kept, selection.outcomes, wire);
+  }, [wire, selection]);
 
+  // A row is one (funnel x channel) pair, and so is a payment. The stored selection is
+  // read tolerantly: a cookie written when it named funnels still resolves, because
+  // `paid` is the only record that money was taken before the brand exists.
   const step = useMemo(
-    () => payStep(payable, selection?.funnels ?? [], selection?.paid ?? []),
+    () =>
+      payStep(
+        payable,
+        pairKeysFromSelection(selection?.funnels ?? [], payable),
+        pairKeysFromSelection(selection?.paid ?? [], payable),
+      ),
     [payable, selection],
   );
 
@@ -317,20 +331,16 @@ export function PayFlow() {
 
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-sm text-gray-600">
-            Runs through the{" "}
-            <span className="font-medium text-gray-900">
-              {funnel.channelSlugs.length === 1
-                ? "channel"
-                : `${funnel.channelSlugs.length} channels`}
-            </span>{" "}
-            you picked. Give it {funnel.effectiveMinimumCommitmentDays} days before judging it.
-            That is how long a result takes to show, not a commitment.
+            Runs through <span className="font-medium text-gray-900">one channel</span>,
+            the one this row buys it through. Give it{" "}
+            {funnel.effectiveMinimumCommitmentDays} days before judging it. That is how
+            long a result takes to show, not a commitment.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {funnel.channelSlugs.map((slug) => (
+            {[funnel.channelSlug].map((slug) => (
               <span key={slug} className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-1 pl-1 pr-2.5 text-xs text-gray-700">
                 <AcquisitionChannelMark def={{ mark: channelMarkForSlug(slug) }} size="xs" />
-                {channels.find((c) => c.slug === slug)?.name ?? slug}
+                {channels?.find((c) => c.slug === slug)?.name ?? slug}
               </span>
             ))}
           </div>

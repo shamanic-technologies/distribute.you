@@ -7,8 +7,9 @@ import { upsertBrand, saveBrandFunnelBudget } from "@/lib/api";
 import {
   channelsForOutcomes,
   funnelsForChannels,
-  type CatalogueChannel,
-  type CatalogueFunnelDef,
+  pairKeysFromSelection,
+  startPairKey,
+  type StartCatalogue,
 } from "@/lib/start-catalogue";
 import { budgetWrites, totalDailyCents, planIsRunnable } from "@/lib/build-plan";
 import { websiteInputProblem } from "@/lib/website-input";
@@ -42,9 +43,9 @@ const dollars = (cents: number): string =>
 export function BuildFlow() {
   const router = useRouter();
   const [selection, setSelection] = useState<StartSelection | null>(null);
-  const [channels, setChannels] = useState<CatalogueChannel[] | null>(null);
-  // The producer's own funnel list; the funnel filter reads its entry steps.
-  const [wireFunnels, setWireFunnels] = useState<CatalogueFunnelDef[]>([]);
+  // The producer's catalogue whole, so this screen resolves the same pairs the pay
+  // screen charged for rather than a set of its own.
+  const [wire, setWire] = useState<StartCatalogue | null>(null);
   const [url, setUrl] = useState("");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -73,8 +74,13 @@ export function BuildFlow() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body) => {
         if (!live) return;
-        setChannels(body?.channels?.channels ?? body?.channels ?? []);
-        setWireFunnels(body?.channels?.funnels ?? []);
+        const cat = body?.channels;
+        setWire({
+          channels: cat?.channels ?? cat ?? [],
+          funnels: cat?.funnels ?? [],
+          legs: cat?.legs ?? [],
+          steps: cat?.steps ?? [],
+        });
       })
       .catch((err) => console.error("[build] catalogue read failed:", err));
     return () => {
@@ -83,19 +89,21 @@ export function BuildFlow() {
   }, []);
 
   const writes = useMemo(() => {
-    if (!channels || !selection) return [];
-    const kept = channelsForOutcomes(channels, selection.outcomes).filter((c) =>
+    if (!wire || !selection) return [];
+    const kept = channelsForOutcomes(wire, selection.outcomes).filter((c) =>
       selection.channels.includes(c.slug),
     );
-    const byFunnel = funnelsForChannels(kept, selection.outcomes, wireFunnels).map((f) => ({
-      key: f.key,
-      channels: f.channelSlugs.map((slug) => {
-        const c = kept.find((x) => x.slug === slug);
-        return { slug, dailyOperatingCostCents: c?.terms.dailyOperatingCostCents ?? 0 };
-      }),
+    const pairs = funnelsForChannels(kept, selection.outcomes, wire);
+    // One write per PAIR, because that is what was paid for and what billing keys its
+    // ceiling on. `budgetWrites` takes them funnel-shaped, so each pair is a group of
+    // exactly one channel rather than a funnel's channels folded together.
+    const byPair = pairs.map((p) => ({
+      key: startPairKey(p.funnelKey, p.channelSlug),
+      funnelKey: p.funnelKey,
+      channels: [{ slug: p.channelSlug, dailyOperatingCostCents: p.dailyOperatingCostCents }],
     }));
-    return budgetWrites(byFunnel, selection.paid);
-  }, [channels, selection, wireFunnels]);
+    return budgetWrites(byPair, pairKeysFromSelection(selection.paid, pairs));
+  }, [wire, selection]);
 
   // Somebody who reached this URL without paying has bought nothing, so there is
   // no brand to build. Send them to the payment step rather than creating a
@@ -137,7 +145,7 @@ export function BuildFlow() {
     }
   }
 
-  if (!selection || !channels) {
+  if (!selection || !wire) {
     return (
       <StartShell step={1} stepCount={1} title="Setting up" footer={<span />}>
         <div className="h-24 animate-pulse rounded-xl bg-gray-100" />
