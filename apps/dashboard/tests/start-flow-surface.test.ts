@@ -38,13 +38,35 @@ describe("the signed-out onboarding wears the landing's charter", () => {
   });
 
   it("every option on every screen carries a mark at the call site", () => {
-    // Outcomes wear the entry-leg glyph, channels their own mark, funnels theirs.
-    expect(FLOW).toContain("mark={<FunnelLegMark fromKey={null} toKey={o.key}");
+    // Outcomes wear the STEP's tile (one per step, product-wide), channels their own
+    // mark, funnels theirs; every rung of a path row wears its step tile too.
+    expect(FLOW).toContain("mark={<FunnelStepMark stepKey={o.key}");
+    expect(FLOW).toContain("mark: <FunnelStepMark stepKey={step.key}");
+    expect(FLOW).not.toContain("FunnelLegMark");
     expect(FLOW).toContain("mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }}");
     expect(FLOW).toContain("{funnelMark(funnel.funnelKey)}");
     expect(FLOW).toContain("funnelGroups(offeredFunnels)");
     expect(FLOW).toContain("def={{ mark: channelMarkForSlug(f.channelSlug) }}");
     expect(PAY).toContain("{funnelMark(funnel.key)}");
+  });
+
+  it("a path is a full-width row with its whole path drawn, and an unsold path is named", () => {
+    // One row per (funnel x channel), never a grid card that folds the path into pills.
+    expect(FLOW).toContain("<StartPathOption");
+    expect(FLOW).toContain("rungs={rungs}");
+    expect(FLOW).toContain("funnelRungs(g.funnelKey, catalogue.wire)");
+    expect(SHELL).toContain('aria-label="Path"');
+    // Every rung a tile plus the producer's words, an arrow between.
+    expect(SHELL).toContain("{r.mark}");
+    expect(SHELL).toContain("<ArrowRightIcon");
+    // A funnel the picks buy that no kept channel sells is stated with who would sell it.
+    expect(FLOW).toContain("unsoldBoughtFunnels(catalogue.wire, outcomes, keptChannels)");
+    expect(FLOW).toContain("{u.sellerNames.join(\", \")}");
+  });
+
+  it("bleeds the scroll box so a selected card's ring is not clipped at the edge", () => {
+    // ring-2 sits OUTSIDE the border; an overflow box with no padding cuts it off.
+    expect(SHELL).toContain('className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1"');
   });
 
   it("a price reads 'From $X per day', never '$X/day'", () => {

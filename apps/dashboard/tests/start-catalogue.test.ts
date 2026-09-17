@@ -6,6 +6,8 @@ import {
   funnelsForChannels,
   funnelReachesOutcome,
   funnelRungKeys,
+  funnelRungs,
+  unsoldBoughtFunnels,
   entryStepsFor,
   pairKeysFromSelection,
   channelGroups,
@@ -350,6 +352,45 @@ describe("funnelsForChannels", () => {
 
   it("offers nothing when no picked channel sells a funnel the picks buy", () => {
     expect(pairsFor([GOOGLE_ADS], ["conversation"])).toEqual([]);
+  });
+});
+
+describe("unsoldBoughtFunnels", () => {
+  // The screen this exists for: a reply plus an ad-platform form, cold email kept, and
+  // the form funnel never appears. Now it is named, with the channels that would run it.
+  it("names a funnel the picks buy that no kept channel sells, with its sellers", () => {
+    const coldEmail = channel({
+      slug: "sales-cold-email-outreach",
+      name: "Cold email",
+      producibleSteps: [CONVO],
+      salesFunnels: [F_CONVO, F_SALE_CONVO],
+    });
+    const cat = { ...FLEET_CAT, channels: [coldEmail, META_LEAD_ADS] };
+    const gaps = unsoldBoughtFunnels(cat, ["conversation", "lead_form_submitted"], [coldEmail]);
+    expect(gaps.map((g) => g.funnelKey)).toEqual(["lead_forms_from_ads"]);
+    expect(gaps[0].sellerNames).toEqual([META_LEAD_ADS.name]);
+  });
+
+  it("is empty when every bought funnel is sold, or nothing is picked", () => {
+    expect(unsoldBoughtFunnels(FLEET_CAT, ["lead_form_submitted"], [META_LEAD_ADS])).toEqual([]);
+    expect(unsoldBoughtFunnels(FLEET_CAT, [], [])).toEqual([]);
+  });
+
+  it("does not name a funnel whose rungs were not all picked", () => {
+    const gaps = unsoldBoughtFunnels(FLEET_CAT, ["conversation", "meeting_booked"], []);
+    expect(gaps.map((g) => g.funnelKey)).not.toContain("sales_meetings_from_conversation");
+  });
+});
+
+describe("funnelRungs", () => {
+  it("returns each rung as a step with the producer's words, in order", () => {
+    expect(funnelRungs("sales_meetings_from_conversation", FLEET_CAT).map((s) => s.key)).toEqual(
+      funnelRungKeys("sales_meetings_from_conversation", FLEET_CAT),
+    );
+    expect(funnelRungs("lead_forms_from_ads", FLEET_CAT).map((s) => s.label)).toEqual([
+      "Lead form submitted",
+      "Paid client",
+    ]);
   });
 });
 

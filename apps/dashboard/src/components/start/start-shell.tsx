@@ -157,7 +157,10 @@ export function StartShell({
             outcome and funnel screens fit without scrolling; the channel screen
             (production publishes 31 behind one outcome) is the one that overflows,
             and it scrolls inside the card so the footer stays on screen. */}
-        <div className="mt-6 min-h-0 flex-1 overflow-y-auto">{children}</div>
+        {/* Bled 4px on every side (`-m-1 p-1`): a selected card wears a 2px ring OUTSIDE
+            its border and a hovered one lifts 2px, and an overflow box clips both at its
+            edge. Without the bleed the outline on every edge card was cut off. */}
+        <div className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
 
         <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
       </div>
@@ -322,6 +325,107 @@ export function StartOption({
           )}
         </div>
       )}
+    </button>
+  );
+}
+
+/**
+ * A FULL-WIDTH option: one revenue path, its whole path drawn across the row.
+ *
+ * The grid card above states a title and a line; a path is a sequence, and a sequence
+ * folded into a card reads as a row of pills nobody parses. Here every rung gets its
+ * own tile and its own words, the arrows sit between them, and the channel that runs
+ * it plus its price close the row. Same selected/hover recipe as the card, so a pick
+ * reads the same on every screen.
+ */
+export function StartPathOption({
+  selected,
+  onToggle,
+  title,
+  meta,
+  mark,
+  rungs,
+  index = 0,
+  children,
+}: {
+  selected: boolean;
+  onToggle: () => void;
+  /** The channel that runs the path. */
+  title: ReactNode;
+  /** The price, or the operator. */
+  meta?: ReactNode;
+  /** The channel's own mark. */
+  mark?: ReactNode;
+  /** One entry per rung: its tile and its words, in the producer's order. */
+  rungs: { key: string; label: string; mark: ReactNode }[];
+  index?: number;
+  children?: ReactNode;
+}) {
+  const [popKey, setPopKey] = useState(0);
+  const wasSelected = useRef(selected);
+  useEffect(() => {
+    if (selected && !wasSelected.current) setPopKey((k) => k + 1);
+    wasSelected.current = selected;
+  }, [selected]);
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      style={{ "--enter-delay": `${Math.min(index, 24) * 40}ms` } as CSSProperties}
+      className={`start-enter group relative flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all ${
+        selected
+          ? "border-brand-600 bg-brand-50 shadow-md ring-2 ring-brand-200"
+          : "border-gray-200 bg-white hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
+      }`}
+    >
+      <span
+        key={popKey}
+        aria-hidden="true"
+        className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
+          selected
+            ? "start-pop border-brand-600 bg-brand-600 text-white"
+            : "border-gray-300 bg-white text-transparent group-hover:border-brand-300"
+        }`}
+      >
+        <CheckIcon size={14} weight="bold" />
+      </span>
+
+      <div className="flex items-center gap-3 pr-8">
+        {mark && <span className="shrink-0">{mark}</span>}
+        <span className="min-w-0 truncate font-display text-base font-medium leading-tight text-gray-900">
+          {title}
+        </span>
+        {meta && (
+          <span
+            className={`ml-auto shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+              selected ? "bg-white text-brand-700" : "bg-gray-100 text-gray-700"
+            }`}
+          >
+            {meta}
+          </span>
+        )}
+      </div>
+
+      {/* The path, full length: every rung a tile plus its words, an arrow between. It
+          wraps on a phone rather than truncating; a path missing its last rung is not
+          the path. */}
+      <ol className="flex flex-wrap items-center gap-x-3 gap-y-2" aria-label="Path">
+        {rungs.map((r, i) => (
+          <li key={r.key} className="flex items-center gap-3">
+            {i > 0 && (
+              <ArrowRightIcon size={18} weight="bold" className="shrink-0 text-gray-300" aria-hidden="true" />
+            )}
+            <span className="flex items-center gap-2">
+              {r.mark}
+              <span className="text-sm font-medium text-gray-800">{r.label}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      {children && <div className="text-xs text-gray-500">{children}</div>}
     </button>
   );
 }
