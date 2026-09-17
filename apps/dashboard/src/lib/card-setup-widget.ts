@@ -61,7 +61,29 @@ export async function openCardWidget(options: CardWidgetOptions): Promise<void> 
     savePaymentMethodFor: options.savePaymentMethodFor,
     ...(options.name ? { name: options.name } : {}),
     ...(options.email ? { email: options.email } : {}),
-    onSuccess: options.onSuccess,
+    // The popup does NOT take itself down when the card saves, and the caller
+    // must not have to know that. Read out of the DEPLOYED bundles, the same
+    // instrument the `savePaymentMethodFor` question above was settled with —
+    // the npm package is a loader, so its types describe a remote build and can
+    // settle nothing: in `embed.js`, `payWithPopup` binds teardown to the
+    // popup's `close` message ONLY (`a.close.subscribe(() => y())`), while
+    // `a.success.subscribe` unsubscribes cancel and calls `onSuccess` and
+    // nothing else. `card-popup.js` publishes `success` and `close` from two
+    // separate callbacks, so one does not imply the other.
+    //
+    // `destroy()` is the documented handle for it ("Manually destroy popup or
+    // card field if needed") and resolves to that same `y` — it flushes the
+    // collector `payWithPopup` put it in, removing the iframe and releasing the
+    // one-popup-at-a-time lock. Safe to call even if the popup DID close first:
+    // the collector's flush pops until empty, so a second flush is a no-op, and
+    // `Node.remove()` on a detached node does nothing.
+    //
+    // Deliberately NOT done on error — there the customer is meant to fix the
+    // card and try again, which is why the SDK leaves the popup up too.
+    onSuccess: () => {
+      instance.destroy();
+      options.onSuccess();
+    },
     onCancel: options.onCancel,
     // Surface what the provider actually said. A generic "could not save the
     // card" tells nobody anything, and this path has already failed twice in
