@@ -517,26 +517,52 @@ export interface RevenueOverview {
    */
   learningPhase?: LearningPhase | null;
   /**
-   * WHAT ONE OUTCOME HAS COST, DAY BY DAY — the campaign Overview's cost curve.
+   * WHAT ONE OUTCOME HAS COST, DAY BY DAY — served whole, divided by nobody
+   * (features-service#980).
    *
-   * Absent until features-service answers it (shipping in parallel); the card then states
-   * that it cannot chart one rather than drawing anything. `null` is the producer saying
-   * it cannot measure a curve for this scope, which the card renders the same way.
-   *
-   * This is the CONSUMER's render shape, mapped in the parser from whatever the producer
-   * named its own fields — never a contract this repo authored. A point whose cost is
-   * `null` had no outcome yet, so there was no denominator: the card drops it rather than
-   * plotting a zero, which would say the outcome was free.
+   * `null` wherever the producer states it cannot build one: the lensed and grouped
+   * bodies, a scope with no placeable leg, one whose leg carries no rate. Null is "this
+   * read carries no curve", never "the outcome was free".
    */
-  costPerOutcomeHistory?: CostPerOutcomePoint[] | null;
+  costPerOutcomeHistory?: CostPerOutcomeHistory | null;
 }
 
-/** One day of {@link RevenueOverview.costPerOutcomeHistory}. */
+/** One UTC day of the curve. BOTH legs are cumulative since the scope's first day. */
 export interface CostPerOutcomePoint {
   /** UTC calendar day, `YYYY-MM-DD`. */
   date: string;
-  /** Cumulative cost of one outcome by the end of that day; `null` = not measurable. */
+  /** Every dollar of COMMITTED spend up to and including that day — the basis the return
+   *  curve rides, so the two describe the same money. */
+  cumulativeSpendUsd: number;
+  /** Every outcome of this leg's step DATED up to that day. FRACTIONAL on a deeper leg,
+   *  where it is the driver signal walked forward through the funnel's own rates. */
+  cumulativeOutcomes: number;
+  /** `cumulativeSpendUsd / cumulativeOutcomes`. NULL — never 0 — while either is still 0:
+   *  "could not be measured" and "cost nothing" are different statements. */
   costPerOutcomeUsd: number | null;
+}
+
+/** The whole answer, rendered verbatim — nothing here is divided or re-based. */
+export interface CostPerOutcomeHistory {
+  /** The step every count is denominated in. The producer's word, never one picked here. */
+  outcomeStep: { key: string; label: string; description?: string };
+  /** The leg that step closes, canonical. */
+  legKey: string;
+  /**
+   * TRUE ⟺ the counts are raw OBSERVATIONS. FALSE means they were walked forward through
+   * the funnel's rates from the signal we can observe, so the whole curve is a PROJECTION
+   * — a different statement from a measured price, and this app does not let those two
+   * share a label unremarked.
+   */
+  outcomeObserved: boolean;
+  /** Ascending, one entry per day with spend or a dated outcome. Empty = neither yet. */
+  daily: CostPerOutcomePoint[];
+  /** The curve's final cumulative count — the part of the scope's count it describes. */
+  datedOutcomes: number;
+  /** Outcomes counted in the scope's total whose signal carries no timestamp, so they sit
+   *  on no day. Reported rather than dropped: dated + undated is the whole count — and it
+   *  is exactly why a browser could never have divided this curve out for itself. */
+  undatedOutcomes: number;
 }
 
 /**
