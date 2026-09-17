@@ -11,10 +11,11 @@ import {
 } from "../src/lib/pay-plan";
 
 const funnel = (key: string, cents: number): PayableFunnel => ({
-  key,
-  name: key,
+  key: `${key}::google-ads`,
+  name: `${key} via Google Ads`,
   steps: ["Website visit", "Paid client"],
-  channelSlugs: ["google-ads"],
+  funnelKey: key,
+  channelSlug: "google-ads",
   dailyOperatingCostCents: cents,
   effectiveMinimumCommitmentDays: 30,
 });
@@ -22,6 +23,11 @@ const funnel = (key: string, cents: number): PayableFunnel => ({
 const CHEAP = funnel("form_magnet", 100);
 const MID = funnel("website_purchases", 800);
 const SUB_FLOOR = funnel("tiny", 25);
+
+// The selection names PAIRS, because a row is one (funnel x channel).
+const K_CHEAP = CHEAP.key;
+const K_MID = MID.key;
+const K_TINY = SUB_FLOOR.key;
 
 describe("dayOneCharge", () => {
   it("charges the funnel's own day rate", () => {
@@ -49,48 +55,48 @@ describe("payStep", () => {
   const ALL = [CHEAP, MID, SUB_FLOOR];
 
   it("walks the visitor's own pick order, not a ranking of ours", () => {
-    const step = payStep(ALL, ["tiny", "form_magnet"], []);
-    expect(step.current?.key).toBe("tiny");
+    const step = payStep(ALL, [K_TINY, K_CHEAP], []);
+    expect(step.current?.key).toBe(K_TINY);
     expect(step.position).toBe(1);
     expect(step.total).toBe(2);
   });
 
   it("advances past what is already paid", () => {
-    const step = payStep(ALL, ["form_magnet", "website_purchases"], ["form_magnet"]);
-    expect(step.current?.key).toBe("website_purchases");
+    const step = payStep(ALL, [K_CHEAP, K_MID], [K_CHEAP]);
+    expect(step.current?.key).toBe(K_MID);
     expect(step.position).toBe(2);
   });
 
   it("ends when everything picked has been paid", () => {
-    const step = payStep(ALL, ["form_magnet"], ["form_magnet"]);
+    const step = payStep(ALL, [K_CHEAP], [K_CHEAP]);
     expect(step.current).toBeNull();
   });
 
   it("REFUSES a skip on the last unpaid funnel when nothing has been bought", () => {
     // A flow that ends with nothing paid has sold nothing, and the visitor would
     // land on a dashboard with no campaign behind it.
-    expect(payStep(ALL, ["form_magnet"], []).canSkip).toBe(false);
+    expect(payStep(ALL, [K_CHEAP], []).canSkip).toBe(false);
   });
 
   it("allows a skip on the last funnel once something else was paid", () => {
-    expect(payStep(ALL, ["form_magnet", "website_purchases"], ["form_magnet"]).canSkip).toBe(true);
+    expect(payStep(ALL, [K_CHEAP, K_MID], [K_CHEAP]).canSkip).toBe(true);
   });
 
   it("allows a skip while other funnels are still owed", () => {
-    expect(payStep(ALL, ["form_magnet", "website_purchases"], []).canSkip).toBe(true);
+    expect(payStep(ALL, [K_CHEAP, K_MID], []).canSkip).toBe(true);
   });
 
   it("ignores a selected key the catalogue no longer offers", () => {
-    const step = payStep(ALL, ["retired_funnel", "form_magnet"], []);
-    expect(step.current?.key).toBe("form_magnet");
+    const step = payStep(ALL, ["retired_funnel", K_CHEAP], []);
+    expect(step.current?.key).toBe(K_CHEAP);
     expect(step.total).toBe(1);
   });
 });
 
 describe("committedDailyCents", () => {
   it("sums only what was paid for", () => {
-    expect(committedDailyCents([CHEAP, MID], ["form_magnet"])).toBe(100);
-    expect(committedDailyCents([CHEAP, MID], ["form_magnet", "website_purchases"])).toBe(900);
+    expect(committedDailyCents([CHEAP, MID], [K_CHEAP])).toBe(100);
+    expect(committedDailyCents([CHEAP, MID], [K_CHEAP, K_MID])).toBe(900);
     expect(committedDailyCents([CHEAP, MID], [])).toBe(0);
   });
 });

@@ -41,7 +41,9 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     // Outcomes wear the entry-leg glyph, channels their own mark, funnels theirs.
     expect(FLOW).toContain("mark={<FunnelLegMark fromKey={null} toKey={o.key}");
     expect(FLOW).toContain("mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }}");
-    expect(FLOW).toContain("mark={funnelMark(f.key)}");
+    expect(FLOW).toContain("{funnelMark(funnel.funnelKey)}");
+    expect(FLOW).toContain("funnelGroups(offeredFunnels)");
+    expect(FLOW).toContain("def={{ mark: channelMarkForSlug(f.channelSlug) }}");
     expect(PAY).toContain("{funnelMark(funnel.key)}");
   });
 

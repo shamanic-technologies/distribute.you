@@ -5,10 +5,15 @@ import {
   channelsForOutcomes,
   funnelsForChannels,
   funnelReachesOutcome,
+  funnelRungKeys,
+  entryStepsFor,
+  pairKeysFromSelection,
   channelGroups,
   type CatalogueChannel,
   type CatalogueStep,
   type CatalogueFunnelDef,
+  type CatalogueLegDef,
+  type StartCatalogue,
 } from "../src/lib/start-catalogue";
 
 // The four entry steps production publishes today, in the producer's own words.
@@ -22,19 +27,17 @@ const CONVO: CatalogueStep = {
   label: "Conversation",
   description: "A buyer answers and a conversation opens.",
 };
-const AD_FORM: CatalogueStep = {
-  key: "in_ad_form_submission",
-  label: "Form filled in the ad",
-  description: "A buyer fills a form inside the ad itself.",
-};
-const AD_MEETING: CatalogueStep = {
-  key: "in_ad_booked_meeting",
-  label: "Meeting booked from an ad",
-  description: "A buyer books a meeting straight from the ad.",
-};
+// What the ad DELIVERS is a filled form and a booked meeting; nothing of ours happened
+// first, which is the LEG (`from: null`) rather than a step of its own.
+const AD_FORM = { key: "lead_form_submitted", label: "Lead form submitted", description: "" };
+const AD_MEETING = { key: "meeting_booked", label: "Meeting booked", description: "" };
 const REPLY: CatalogueStep = { key: "conversation", label: "Positive reply", description: "" };
 const MEETING: CatalogueStep = { key: "meeting_booked", label: "Meeting booked", description: "" };
 const LEAD_FORM: CatalogueStep = { key: "lead_form_submitted", label: "Lead form submitted", description: "" };
+const ATTENDED: CatalogueStep = { key: "meeting_attended", label: "Meeting attended", description: "" };
+const SIGNUP: CatalogueStep = { key: "signup", label: "Signup", description: "" };
+const FORM: CatalogueStep = { key: "form_filled", label: "Form filled", description: "" };
+const PAID: CatalogueStep = { key: "paid_client", label: "Paid client", description: "" };
 
 // The four funnels production publishes, verbatim.
 const F_CONVO = {
@@ -49,6 +52,38 @@ const F_WEB_MEETING = {
   key: "sales_meetings_from_website",
   name: "Sales Meeting from Website",
   steps: ["Website visit", "Meeting booked", "Meeting attended", "Paid client"] as const,
+  funnelMinimumCommitmentDays: null,
+  effectiveMinimumCommitmentDays: 30,
+  governedBy: "channel",
+};
+const F_LEAD_FORM_ADS = {
+  key: "lead_forms_from_ads",
+  name: "Lead Form from Ads",
+  steps: ["Lead form submitted", "Paid client"] as const,
+  funnelMinimumCommitmentDays: null,
+  effectiveMinimumCommitmentDays: 30,
+  governedBy: "channel",
+};
+const F_MEETING_ADS = {
+  key: "sales_meetings_from_ads",
+  name: "Sales Meeting from Ads",
+  steps: ["Meeting booked", "Meeting attended", "Paid client"] as const,
+  funnelMinimumCommitmentDays: null,
+  effectiveMinimumCommitmentDays: 30,
+  governedBy: "channel",
+};
+const F_SALE_CONVO = {
+  key: "sales_from_conversation",
+  name: "Sale from Positive Reply",
+  steps: ["Positive reply", "Paid client"] as const,
+  funnelMinimumCommitmentDays: null,
+  effectiveMinimumCommitmentDays: 30,
+  governedBy: "channel",
+};
+const F_SALE_WEB = {
+  key: "sales_from_website",
+  name: "Website Purchase",
+  steps: ["Website visit", "Paid client"] as const,
   funnelMinimumCommitmentDays: null,
   effectiveMinimumCommitmentDays: 30,
   governedBy: "channel",
@@ -109,21 +144,21 @@ const GOOGLE_ADS = channel({
   terms: { dailyOperatingCostCents: 500, minimumCommitmentDays: 30, maxDaysToFirstProduction: 1 },
   producibleSteps: [VISIT],
   stepTransitions: [{ legKey: "to_visit", from: null, to: VISIT }],
-  salesFunnels: [F_WEB_MEETING, F_PURCHASE],
+  salesFunnels: [F_WEB_MEETING, F_PURCHASE, F_SALE_WEB],
 });
 const META_LEAD_ADS = channel({
   slug: "meta-lead-ads",
   displayOrder: 3,
   producibleSteps: [AD_FORM],
   stepTransitions: [{ legKey: "to_ad_form", from: null, to: AD_FORM }],
-  salesFunnels: [],
+  salesFunnels: [F_LEAD_FORM_ADS],
 });
 const AD_BOOKER = channel({
   slug: "meta-meeting-ads",
   displayOrder: 4,
   producibleSteps: [AD_MEETING],
   stepTransitions: [{ legKey: "to_ad_meeting", from: null, to: AD_MEETING }],
-  salesFunnels: [],
+  salesFunnels: [F_MEETING_ADS],
 });
 const CLOSER = channel({
   slug: "founder-led-closing",
@@ -137,159 +172,231 @@ const CLOSER = channel({
 
 const FLEET = [COLD_EMAIL, GOOGLE_ADS, META_LEAD_ADS, AD_BOOKER, CLOSER];
 
+/**
+ * The producer's LEGS, verbatim in shape: each names the step it leaves, the step it
+ * reaches, and the funnels it belongs to. The outcome screen is derived from this —
+ * which steps exist, and what can lead to each of them.
+ */
+const WIRE_LEGS: CatalogueLegDef[] = [
+  { legKey: "start_to_conversation", fromStep: null, toStep: CONVO, funnelKeys: ["sales_meetings_from_conversation", "sales_from_conversation"] },
+  { legKey: "conversation_to_meeting_booked", fromStep: CONVO, toStep: MEETING, funnelKeys: ["sales_meetings_from_conversation"] },
+  { legKey: "meeting_booked_to_meeting_attended", fromStep: MEETING, toStep: ATTENDED, funnelKeys: ["sales_meetings_from_conversation", "sales_meetings_from_website", "sales_meetings_from_ads"] },
+  { legKey: "meeting_attended_to_paid_client", fromStep: ATTENDED, toStep: PAID, funnelKeys: ["sales_meetings_from_conversation", "sales_meetings_from_website", "sales_meetings_from_ads"] },
+  { legKey: "start_to_website_visit", fromStep: null, toStep: VISIT, funnelKeys: ["sales_meetings_from_website", "website_purchases", "form_magnet", "sales_from_website"] },
+  { legKey: "website_visit_to_meeting_booked", fromStep: VISIT, toStep: MEETING, funnelKeys: ["sales_meetings_from_website"] },
+  { legKey: "website_visit_to_signup", fromStep: VISIT, toStep: SIGNUP, funnelKeys: ["website_purchases"] },
+  { legKey: "signup_to_paid_client", fromStep: SIGNUP, toStep: PAID, funnelKeys: ["website_purchases"] },
+  { legKey: "website_visit_to_form_filled", fromStep: VISIT, toStep: FORM, funnelKeys: ["form_magnet"] },
+  { legKey: "form_filled_to_paid_client", fromStep: FORM, toStep: PAID, funnelKeys: ["form_magnet"] },
+  { legKey: "conversation_to_paid_client", fromStep: CONVO, toStep: PAID, funnelKeys: ["sales_from_conversation"] },
+  { legKey: "start_to_meeting_booked", fromStep: null, toStep: MEETING, funnelKeys: ["sales_meetings_from_ads"] },
+  { legKey: "start_to_lead_form_submitted", fromStep: null, toStep: LEAD_FORM, funnelKeys: ["lead_forms_from_ads"] },
+  { legKey: "lead_form_submitted_to_paid_client", fromStep: LEAD_FORM, toStep: PAID, funnelKeys: ["lead_forms_from_ads"] },
+  { legKey: "website_visit_to_paid_client", fromStep: VISIT, toStep: PAID, funnelKeys: ["sales_from_website"] },
+];
+
+/** The eight root steps the producer publishes, in its own order. */
+const WIRE_STEPS: CatalogueStep[] = [CONVO, VISIT, MEETING, ATTENDED, SIGNUP, FORM, LEAD_FORM, PAID];
+
+const cat = (channels: CatalogueChannel[] = FLEET): StartCatalogue => ({
+  channels,
+  funnels: WIRE_FUNNELS,
+  legs: WIRE_LEGS,
+  steps: WIRE_STEPS,
+});
+const FLEET_CAT = cat();
+
 describe("startOutcomes", () => {
-  it("offers every entry step the producer publishes, not a remembered three", () => {
-    const keys = startOutcomes(FLEET).map((o) => o.key);
-    expect(keys).toContain("website_visit");
+  it("offers every rung a funnel we sell contains, not only the entry steps", () => {
+    const keys = startOutcomes(FLEET_CAT).map((o) => o.key);
+    expect(keys).toEqual([
+      "conversation",
+      "website_visit",
+      "meeting_booked",
+      "meeting_attended",
+      "signup",
+      "form_filled",
+      "lead_form_submitted",
+      "paid_client",
+    ]);
+  });
+
+  // The producer's own step order reads as a journey; sorting by how many channels
+  // reach each one scatters that journey across the screen.
+  it("keeps the producer's step order rather than ranking by reach", () => {
+    const keys = startOutcomes(FLEET_CAT).map((o) => o.key);
+    expect(keys).toEqual(WIRE_STEPS.map((s) => s.key));
+  });
+
+  it("offers nothing for a step no channel can lead to", () => {
+    // A catalogue whose only channel produces a conversation cannot lead anybody to a
+    // signup, so the signup is not offered rather than offered and then followed by an
+    // empty channel screen.
+    const keys = startOutcomes(cat([COLD_EMAIL])).map((o) => o.key);
+    expect(keys).not.toContain("signup");
     expect(keys).toContain("conversation");
-    // The one a hardcoded WV/SI/MB list would have made unreachable.
-    expect(keys).toContain("in_ad_form_submission");
-    expect(keys).toContain("in_ad_booked_meeting");
+    expect(keys).toContain("paid_client");
   });
+});
 
-  it("offers ONLY what a channel produces from nothing, so no two options are the same screen", () => {
-    const outcomes = startOutcomes(FLEET);
-    // A funnel rung nothing produces directly is not an entry step, so it is not
-    // an outcome. Offering those is what made six options resolve to one screen
-    // against the real catalogue.
-    expect(outcomes.map((o) => o.key)).not.toContain("meeting_booked");
-    expect(outcomes.map((o) => o.key)).not.toContain("paid_client");
-
-    // And every option that IS offered narrows to a distinct set.
-    const sets = outcomes.map((o) => [...o.channelSlugs].sort().join(","));
-    expect(new Set(sets).size).toBe(sets.length);
-  });
-
-  it("drops an outcome nothing can serve rather than offering a dead option", () => {
-    expect(startOutcomes([]).length).toBe(0);
-    expect(startOutcomes(FLEET).every((o) => o.channelSlugs.length > 0)).toBe(true);
-  });
-
-  it("orders widest first so the least narrowing choice reads first", () => {
-    const counts = startOutcomes(FLEET).map((o) => o.channelSlugs.length);
-    expect([...counts].sort((a, b) => b - a)).toEqual(counts);
+describe("entryStepsFor", () => {
+  // The owner's own table, and it is DERIVED rather than maintained: the entry rung of
+  // every funnel that contains the step. A funnel published upstream updates it with
+  // nothing to remember here.
+  it("derives what can lead to each outcome, funnel by funnel", () => {
+    const at = (k: string) => entryStepsFor(k, FLEET_CAT).sort();
+    expect(at("website_visit")).toEqual(["website_visit"]);
+    expect(at("signup")).toEqual(["website_visit"]);
+    expect(at("form_filled")).toEqual(["website_visit"]);
+    expect(at("conversation")).toEqual(["conversation"]);
+    expect(at("lead_form_submitted")).toEqual(["lead_form_submitted"]);
+    // A meeting is reached through a visit or a reply — AND delivered straight from an
+    // ad, which is what makes it its own entry step too. No special case needed for it:
+    // a step is among its own entry steps whenever a funnel STARTS on it.
+    expect(at("meeting_booked")).toEqual(["conversation", "meeting_booked", "website_visit"]);
+    expect(at("meeting_attended")).toEqual(["conversation", "meeting_booked", "website_visit"]);
+    expect(at("paid_client")).toEqual([
+      "conversation",
+      "lead_form_submitted",
+      "meeting_booked",
+      "website_visit",
+    ]);
   });
 });
 
 describe("channelsForOutcomes", () => {
-  it("unions the picks, so a visit plus a conversation is not an empty screen", () => {
-    const slugs = channelsForOutcomes(FLEET, ["website_visit", "conversation"]).map((c) => c.slug);
+  it("offers the channels that LEAD to a picked outcome, not only those producing it", () => {
+    // Nothing produces a signup from nothing, so matching the outcome against what a
+    // channel produces would empty this screen.
+    const slugs = channelsForOutcomes(FLEET_CAT, ["signup"]).map((c) => c.slug);
+    expect(slugs).toEqual(["google-ads"]);
+  });
+
+  it("excludes a channel that cannot lead there", () => {
+    // Cold email produces a conversation; no funnel containing a signup starts on one.
+    expect(channelsForOutcomes(FLEET_CAT, ["signup"]).map((c) => c.slug)).not.toContain(
+      "sales-cold-email-outreach",
+    );
+  });
+
+  it("unions across picks, because either outcome is worth the money", () => {
+    const slugs = channelsForOutcomes(FLEET_CAT, ["signup", "conversation"]).map((c) => c.slug);
     expect(slugs).toContain("google-ads");
     expect(slugs).toContain("sales-cold-email-outreach");
   });
 
-  it("offers nothing before an outcome is picked", () => {
-    expect(channelsForOutcomes(FLEET, [])).toEqual([]);
-  });
-
-  it("ignores an outcome key the catalogue does not carry", () => {
-    expect(channelsForOutcomes(FLEET, ["nonsense_step"])).toEqual([]);
-    // A funnel rung is not an entry step, so asking for one selects nothing
-    // rather than quietly widening onto every visit-producing channel.
-    expect(channelsForOutcomes(FLEET, ["meeting_booked"])).toEqual([]);
-  });
-
-  it("orders by the producer's own display order", () => {
-    const order = channelsForOutcomes(FLEET, ["website_visit", "conversation", "in_ad_form_submission"]).map(
-      (c) => c.displayOrder,
-    );
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  it("offers nothing when nothing is picked", () => {
+    expect(channelsForOutcomes(FLEET_CAT, [])).toEqual([]);
   });
 });
-
-const VISIT_PICK = ["website_visit"];
-const CONVO_PICK = ["conversation"];
 
 describe("funnelsForChannels", () => {
-  it("offers only funnels a picked channel can actually sell", () => {
-    const keys = funnelsForChannels([COLD_EMAIL], CONVO_PICK, WIRE_FUNNELS).map((f) => f.key);
-    expect(keys).toEqual(["sales_meetings_from_conversation"]);
-  });
+  const pairsFor = (channels: CatalogueChannel[], picks: string[]) =>
+    funnelsForChannels(channels, picks, FLEET_CAT).map((p) => p.key);
 
-  it("offers nothing when no picked channel sells a funnel", () => {
-    expect(funnelsForChannels([META_LEAD_ADS], ["in_ad_form_submission"], WIRE_FUNNELS)).toEqual([]);
-  });
-
-  // THE BUG THIS FILTER EXISTS FOR. Production's cold email produces a conversation
-  // AND a website visit, so it sells the reply funnel and the three website funnels
-  // alike; a visitor who picked "a conversation" was offered Website Purchase.
-  it("offers only the funnels that START on a picked outcome, not every funnel a channel sells", () => {
-    const coldEmailProd = channel({
+  // THE OWNER'S RULE. A funnel is bought only when every one of its rungs was picked,
+  // the sale implicit — asking a visitor to tick "paid client" is asking them to
+  // confirm they would like to be paid.
+  it("offers a funnel only when EVERY rung was picked", () => {
+    const coldEmail = channel({
       slug: "sales-cold-email-outreach",
-      producibleSteps: [CONVO, VISIT],
-      salesFunnels: [F_CONVO, F_WEB_MEETING, F_PURCHASE],
+      producibleSteps: [CONVO],
+      salesFunnels: [F_CONVO, F_SALE_CONVO],
     });
-    expect(funnelsForChannels([coldEmailProd], CONVO_PICK, WIRE_FUNNELS).map((f) => f.key)).toEqual([
-      "sales_meetings_from_conversation",
+    // A reply alone buys the funnel that goes straight from it to the sale.
+    expect(pairsFor([coldEmail], ["conversation"])).toEqual([
+      "sales_from_conversation::sales-cold-email-outreach",
     ]);
-    expect(funnelsForChannels([coldEmailProd], VISIT_PICK, WIRE_FUNNELS).map((f) => f.key).sort()).toEqual([
-      "sales_meetings_from_website",
-      "website_purchases",
+    // The meeting funnel needs its own two middle rungs as well.
+    expect(pairsFor([coldEmail], ["conversation", "meeting_booked"])).toEqual([
+      "sales_from_conversation::sales-cold-email-outreach",
     ]);
-    expect(funnelsForChannels([coldEmailProd], [...CONVO_PICK, ...VISIT_PICK], WIRE_FUNNELS)).toHaveLength(3);
+    expect(
+      pairsFor([coldEmail], ["conversation", "meeting_booked", "meeting_attended"]).sort(),
+    ).toEqual([
+      "sales_from_conversation::sales-cold-email-outreach",
+      "sales_meetings_from_conversation::sales-cold-email-outreach",
+    ]);
   });
 
-  it("offers nothing on an outcome no funnel starts on, rather than a funnel that starts elsewhere", () => {
-    expect(funnelsForChannels([GOOGLE_ADS], CONVO_PICK, WIRE_FUNNELS)).toEqual([]);
+  // The pick the whole rule was written for: until `sales_from_website` existed, a lone
+  // website visit bought NOTHING, because every website funnel inserted a rung.
+  it("buys the direct funnel on a lone website visit, and only that one", () => {
+    expect(pairsFor([GOOGLE_ADS], ["website_visit"])).toEqual([
+      "sales_from_website::google-ads",
+    ]);
+    expect(pairsFor([GOOGLE_ADS], ["website_visit", "signup"]).sort()).toEqual([
+      "sales_from_website::google-ads",
+      "website_purchases::google-ads",
+    ]);
   });
 
-  it("takes the LONGEST run length across the channels selling it", () => {
-    // Google Ads sells the purchase funnel at 60 and the meeting funnel at 30.
-    const purchase = funnelsForChannels([GOOGLE_ADS], VISIT_PICK, WIRE_FUNNELS).find((f) => f.key === "website_purchases");
-    expect(purchase!.effectiveMinimumCommitmentDays).toBe(60);
+  it("states ONE ROW PER PAIR, never one per funnel with its channels folded in", () => {
+    // Two channels selling one funnel is two rows, each with its OWN day rate: a row is
+    // what billing keys a ceiling on, and a summed rate funds channels nobody chose.
+    const rows = funnelsForChannels([GOOGLE_ADS, CLOSER], ["website_visit", "meeting_booked", "meeting_attended"], FLEET_CAT)
+      .filter((p) => p.funnelKey === "sales_meetings_from_website");
+    expect(rows.map((r) => r.channelSlug)).toEqual(["founder-led-closing", "google-ads"]);
+    expect(rows.map((r) => r.dailyOperatingCostCents)).toEqual([0, 500]);
+    expect(rows[0].name).toBe("Sales Meeting from Website via founder-led-closing");
   });
 
-  it("sums the day rate, because funding a funnel funds every channel picked for it", () => {
-    const meeting = funnelsForChannels([GOOGLE_ADS, CLOSER], VISIT_PICK, WIRE_FUNNELS).find(
-      (f) => f.key === "sales_meetings_from_website",
+  it("orders by funnel, then cheapest day rate", () => {
+    const rows = funnelsForChannels([GOOGLE_ADS, CLOSER], ["website_visit", "meeting_booked", "meeting_attended"], FLEET_CAT);
+    expect(rows[0].dailyOperatingCostCents).toBeLessThanOrEqual(
+      rows[rows.length - 1].dailyOperatingCostCents,
     );
-    // 500 for the ads plus a stated zero for the leg their own team works.
-    expect(meeting!.dailyOperatingCostCents).toBe(500);
-    expect(meeting!.channelSlugs).toEqual(["founder-led-closing", "google-ads"]);
   });
 
-  it("lists the cheapest day rate first", () => {
-    const f = funnelsForChannels([GOOGLE_ADS, CLOSER], VISIT_PICK, WIRE_FUNNELS).find((x) => x.key === "sales_meetings_from_website");
-    expect(f!.channelSlugs[0]).toBe("founder-led-closing");
+  it("offers nothing when no picked channel sells a funnel the picks buy", () => {
+    expect(pairsFor([GOOGLE_ADS], ["conversation"])).toEqual([]);
   });
 });
 
-describe("funnelReachesOutcome", () => {
-  it("matches a funnel on the step the PRODUCER says it starts on", () => {
-    expect(funnelReachesOutcome("sales_meetings_from_conversation", CONVO_PICK, WIRE_FUNNELS)).toBe(true);
-    expect(funnelReachesOutcome("sales_meetings_from_conversation", VISIT_PICK, WIRE_FUNNELS)).toBe(false);
-    expect(funnelReachesOutcome("form_magnet", VISIT_PICK, WIRE_FUNNELS)).toBe(true);
+describe("funnelRungKeys", () => {
+  it("walks a funnel's rungs in order, off the producer's legs", () => {
+    expect(funnelRungKeys("form_magnet", FLEET_CAT)).toEqual([
+      "website_visit",
+      "form_filled",
+      "paid_client",
+    ]);
+    expect(funnelRungKeys("sales_meetings_from_ads", FLEET_CAT)).toEqual([
+      "meeting_booked",
+      "meeting_attended",
+      "paid_client",
+    ]);
   });
 
-  // THE BREAK. features-service went from four published funnels to eight at
-  // 17:40 UTC on 2026-09-17; 37 of the 42 channels sell one of the four added.
-  // Resolving a funnel through this app's own catalogue threw on every one of
-  // them, inside a useMemo with no error boundary under `app/start`, so the
-  // visitor's FIRST channel click blanked the page.
-  it("resolves a funnel this app's own catalogue cannot name", () => {
-    for (const key of ["sales_from_conversation", "sales_meetings_from_ads", "lead_forms_from_ads", "sales_from_website"]) {
-      expect(() => funnelReachesOutcome(key, VISIT_PICK, WIRE_FUNNELS)).not.toThrow();
-    }
-    expect(funnelReachesOutcome("sales_from_website", VISIT_PICK, WIRE_FUNNELS)).toBe(true);
-    expect(funnelReachesOutcome("sales_from_conversation", CONVO_PICK, WIRE_FUNNELS)).toBe(true);
-    expect(funnelReachesOutcome("sales_from_conversation", VISIT_PICK, WIRE_FUNNELS)).toBe(false);
-    expect(funnelReachesOutcome("sales_meetings_from_ads", ["meeting_booked"], WIRE_FUNNELS)).toBe(true);
-    expect(funnelReachesOutcome("lead_forms_from_ads", ["lead_form_submitted"], WIRE_FUNNELS)).toBe(true);
-  });
-
-  it("still reads the pre-rename spelling, because the producer publishes it", () => {
-    const legacy: CatalogueFunnelDef[] = [
-      { key: "reply_meeting", name: "Sales Meeting from Positive Reply", steps: [], entryStep: CONVO, entryLegKey: "start_to_conversation" },
-    ];
-    expect(funnelReachesOutcome("reply_meeting", CONVO_PICK, legacy)).toBe(true);
-  });
-
-  // A channel selling a funnel the producer's own funnel list omits is a genuine
-  // drift, and the screen must not guess a funnel the visitor would be charged
-  // for. Distinct from the case above: there the key is UNKNOWN TO US and known
-  // to the producer; here it is known to NOBODY.
   it("throws on a funnel the catalogue itself does not describe", () => {
-    expect(() => funnelReachesOutcome("brand_new_funnel", VISIT_PICK, WIRE_FUNNELS)).toThrow();
+    expect(() => funnelRungKeys("brand_new_funnel", FLEET_CAT)).toThrow();
+  });
+});
+
+describe("pairKeysFromSelection", () => {
+  const pairs = [
+    { funnelKey: "form_magnet", channelSlug: "google-ads" },
+    { funnelKey: "form_magnet", channelSlug: "meta-lead-ads" },
+    { funnelKey: "website_purchases", channelSlug: "google-ads" },
+  ];
+
+  it("passes a pair key through untouched", () => {
+    expect(pairKeysFromSelection(["form_magnet::google-ads"], pairs)).toEqual([
+      "form_magnet::google-ads",
+    ]);
+  });
+
+  // The cookie is NOT version-bumped for the pair reshape: a bump drops every stored
+  // selection, and one field it carries is `paid` — the only record that money was taken
+  // between the charge and the brand's creation. Dropping it asks somebody to pay twice.
+  it("reads a FUNNEL-keyed selection as every pair of that funnel", () => {
+    expect(pairKeysFromSelection(["form_magnet"], pairs).sort()).toEqual([
+      "form_magnet::google-ads",
+      "form_magnet::meta-lead-ads",
+    ]);
+  });
+
+  it("drops a funnel key nothing offers rather than inventing a pair", () => {
+    expect(pairKeysFromSelection(["nonesuch"], pairs)).toEqual([]);
   });
 });
 

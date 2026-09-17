@@ -22,10 +22,12 @@ export interface PayableFunnel {
   name: string;
   /** The rungs, in the producer's own words, for the screen to state. */
   steps: readonly string[];
-  /** Channel slugs the visitor kept that sell this funnel. */
-  channelSlugs: string[];
-  /** Summed day rate across those channels: funding a funnel funds every channel
-   *  picked for it. */
+  /** The funnel half of the pair, for anything that needs the funnel itself. */
+  funnelKey: string;
+  /** The ONE channel this row buys the funnel through. */
+  channelSlug: string;
+  /** This pair's own day rate — never summed across a funnel's channels, because a
+   *  row IS one pair and billing keys its ceiling on that triple. */
   dailyOperatingCostCents: number;
   /** How long before the result is judgeable. Stated, never enforced. */
   effectiveMinimumCommitmentDays: number;

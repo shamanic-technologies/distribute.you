@@ -24,8 +24,10 @@ import {
   channelsForOutcomes,
   channelGroups,
   funnelsForChannels,
+  funnelGroups,
+  missingRungsForNearestFunnel,
   type CatalogueChannel,
-  type CatalogueFunnelDef,
+  type StartCatalogue,
 } from "@/lib/start-catalogue";
 import {
   returnRowsForFunnel,
@@ -57,11 +59,10 @@ type Screen = "welcome" | "outcome" | "channels" | "funnels" | "returns";
 const ORDER: Screen[] = ["welcome", "outcome", "channels", "funnels", "returns"];
 
 interface Catalogue {
-  channels: CatalogueChannel[];
-  /** The producer's own funnel list, which states each funnel's entry step. The
-   *  funnel screen filters on it; joining against this app's four-funnel
-   *  catalogue instead is what threw on every channel selling one of the eight. */
-  funnels: CatalogueFunnelDef[];
+  /** The producer's catalogue whole: its channels, its funnels, its legs and its root
+   *  step vocabulary. All three screens are DERIVED from it — which outcomes exist,
+   *  which channels lead to them, and which (funnel x channel) pairs they buy. */
+  wire: StartCatalogue;
   pairs: PairReturn[];
   founders: number | null;
 }
@@ -108,11 +109,16 @@ export function StartFlow() {
       })
       .then((body) => {
         if (!live) return;
-        const chans = body?.channels?.channels ?? body?.channels ?? [];
-        const wireFunnels = body?.channels?.funnels ?? [];
+        const cat = body?.channels;
+        const wire: StartCatalogue = {
+          channels: cat?.channels ?? cat ?? [],
+          funnels: cat?.funnels ?? [],
+          legs: cat?.legs ?? [],
+          steps: cat?.steps ?? [],
+        };
         const pairs = body?.returns?.pairs ?? [];
         const founders = typeof body?.founders === "number" ? body.founders : null;
-        setCatalogue({ channels: chans, funnels: wireFunnels, pairs, founders });
+        setCatalogue({ wire, pairs, founders });
       })
       .catch((err) => {
         console.error("[start] catalogue read failed:", err);
@@ -140,11 +146,11 @@ export function StartFlow() {
   }, [outcomes, channels, funnels, remember]);
 
   const allOutcomes = useMemo(
-    () => (catalogue ? startOutcomes(catalogue.channels) : []),
+    () => (catalogue ? startOutcomes(catalogue.wire) : []),
     [catalogue],
   );
   const offeredChannels = useMemo(
-    () => (catalogue ? channelsForOutcomes(catalogue.channels, outcomes) : []),
+    () => (catalogue ? channelsForOutcomes(catalogue.wire, outcomes) : []),
     [catalogue, outcomes],
   );
   const groups = useMemo(() => channelGroups(offeredChannels), [offeredChannels]);
@@ -154,9 +160,22 @@ export function StartFlow() {
   );
   // Filtered by the OUTCOMES as well as the channels: a channel sells every
   // funnel that starts on any step it produces, and the visitor asked for one.
+  // One row per (funnel x channel) — the thing a visitor actually buys, and the key
+  // billing puts its ceiling on.
   const offeredFunnels = useMemo(
-    () => funnelsForChannels(keptChannels, outcomes, catalogue?.funnels ?? []),
+    () =>
+      catalogue ? funnelsForChannels(keptChannels, outcomes, catalogue.wire) : [],
     [keptChannels, outcomes, catalogue],
+  );
+  // What an empty screen is SHORT OF. A path is bought only when every one of its rungs
+  // is ticked, so the ordinary empty case is a path one tick away rather than no path
+  // at all — and those are two different sentences.
+  const missingRungs = useMemo(
+    () =>
+      catalogue && offeredFunnels.length === 0
+        ? missingRungsForNearestFunnel(keptChannels, outcomes, catalogue.wire)
+        : [],
+    [catalogue, offeredFunnels, keptChannels, outcomes],
   );
 
   // Dropping a channel can drop the only seller of a funnel the visitor had
@@ -400,36 +419,71 @@ export function StartFlow() {
       >
         {offeredFunnels.length === 0 ? (
           <p className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-            None of our revenue paths starts where the channels you kept land. Go back and keep a
-            channel that gets you a website visit or a conversation.
+            {missingRungs.length > 0 ? (
+              <>
+                You are one step short of a path. Go back and add{" "}
+                <span className="font-medium text-gray-900">
+                  {missingRungs.map((s) => s.label).join(" and ")}
+                </span>{" "}
+                to what you want, and we can sell you the whole way to a paying client.
+              </>
+            ) : (
+              <>
+                None of our revenue paths starts where the channels you kept land. Go back and keep
+                a channel that gets you a website visit or a conversation.
+              </>
+            )}
           </p>
         ) : (
-          <StartGrid>
-            {offeredFunnels.map((f, i) => (
-              <StartOption
-                key={f.key}
-                index={i}
-                selected={funnels.includes(f.key)}
-                onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
-                title={f.name}
-                description={
+          (() => {
+            let index = 0;
+            return funnelGroups(offeredFunnels).map((g) => (
+              <div key={g.funnelKey} className="mb-8 last:mb-0">
+                {/* The funnel's name and its rungs, stated ONCE above its channels.
+                    A row is still one pair — that is the purchase — but repeating the
+                    path on 31 cards is the same sentence 31 times. */}
+                <StartGroupLabel count={g.pairs.length}>
                   <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                    {f.steps.map((s, j) => (
-                      <span key={s} className="flex items-center gap-1.5">
-                        {j > 0 && <span className="text-gray-300">→</span>}
-                        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">{s}</span>
+                    <span>{g.funnelName}</span>
+                    {g.steps.map((step, j) => (
+                      <span key={step} className="flex items-center gap-1.5">
+                        <span className="text-gray-300">{j === 0 ? "·" : "→"}</span>
+                        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-normal text-gray-700">
+                          {step}
+                        </span>
                       </span>
                     ))}
                   </span>
-                }
-                mark={funnelMark(f.key)}
-                meta={fromPerDay(f.dailyOperatingCostCents)}
-              >
-                {f.channelSlugs.length} of your channels. Judge it after{" "}
-                {f.effectiveMinimumCommitmentDays} days.
-              </StartOption>
-            ))}
-          </StartGrid>
+                </StartGroupLabel>
+                <StartGrid>
+                  {g.pairs.map((f) => (
+                    <StartOption
+                      key={f.key}
+                      index={index++}
+                      selected={funnels.includes(f.key)}
+                      onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
+                      title={f.channelName}
+                      mark={
+                        <AcquisitionChannelMark
+                          def={{ mark: channelMarkForSlug(f.channelSlug) }}
+                          size="sm"
+                        />
+                      }
+                      meta={
+                        f.operatedBy === "customer"
+                          ? "You run it"
+                          : fromPerDay(f.dailyOperatingCostCents)
+                      }
+                    >
+                      {f.operatedBy === "customer"
+                        ? "Your own team works this one."
+                        : `Judge it after ${f.effectiveMinimumCommitmentDays} days.`}
+                    </StartOption>
+                  ))}
+                </StartGrid>
+              </div>
+            ));
+          })()
         )}
       </StartShell>
     );
@@ -441,8 +495,8 @@ export function StartFlow() {
     .map((f) => ({
       funnel: f,
       rows: returnRowsForFunnel(
-        f.key,
-        f.channelSlugs,
+        f.funnelKey,
+        [f.channelSlug],
         catalogue?.pairs ?? [],
         channelReturns,
       ),
@@ -476,7 +530,7 @@ export function StartFlow() {
             style={{ "--enter-delay": `${fi * 120}ms` } as React.CSSProperties}
           >
             <div className="flex items-center gap-3">
-              {funnelMark(funnel.key)}
+              {funnelMark(funnel.funnelKey)}
               <h2 className="font-display text-lg font-medium text-gray-900">{funnel.name}</h2>
             </div>
             {!funnelHasMeasuredReturn(rows) && (

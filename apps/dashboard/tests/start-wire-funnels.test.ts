@@ -26,8 +26,14 @@ const src = (name: string): string =>
 
 describe("every /start flow hands the funnel filter the producer's own funnels", () => {
   for (const flow of FLOWS) {
-    it(`${flow} reads the wire's funnel list`, () => {
-      expect(src(flow)).toContain("body?.channels?.funnels ?? []");
+    it(`${flow} reads the producer's catalogue WHOLE, not just its channels`, () => {
+      // All three screens are derived from it — which outcomes exist, which channels
+      // lead to them, which (funnel x channel) pairs they buy — so a flow holding only
+      // the channel array resolves a different set from the one beside it.
+      const s = src(flow);
+      expect(s).toContain("funnels: cat?.funnels ?? []");
+      expect(s).toContain("legs: cat?.legs ?? []");
+      expect(s).toContain("steps: cat?.steps ?? []");
     });
 
     it(`${flow} passes it to funnelsForChannels`, () => {
@@ -37,6 +43,13 @@ describe("every /start flow hands the funnel filter the producer's own funnels",
       // Bounded to the call itself: the third argument is the whole fix.
       const call = s.slice(at, s.indexOf(")", at) + 1);
       expect(call).toMatch(/funnelsForChannels\([^)]*,[^)]*,[^)]*\)/);
+    });
+
+    it(`${flow} resolves its channels from that catalogue too`, () => {
+      // `channelsForOutcomes` derives "can LEAD to this outcome" from the legs, so a
+      // flow handing it a bare channel array would offer nothing for five of the eight
+      // outcomes — nothing delivers a signup, a filled form or a paid client directly.
+      expect(src(flow)).toMatch(/channelsForOutcomes\((catalogue\.)?wire[,)]/);
     });
 
     // A mark is decoration and its resolution must not be able to take the
