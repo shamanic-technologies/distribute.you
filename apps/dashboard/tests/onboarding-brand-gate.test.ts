@@ -46,7 +46,13 @@ describe("DIS-111 edge gate lives in proxy.ts", () => {
     // when the org has one (see onboarding-brand-cookie.test.ts) and falls back to
     // the bare flow otherwise. Both gate branches go through it.
     expect(proxy).toContain("new URL(onboardingHref(), req.url)");
-    expect(proxy).toContain(': "/onboarding";');
+    // The fallback, asserted as the RETURN rather than as the ternary it used to
+    // be written as: the helper grew two branches above it (a paid selection goes
+    // to the brand-building screens, an unpaid one to the payment screens), and a
+    // guard pinned to the punctuation goes red on a refactor that changes no
+    // behaviour. What must stay true is that a first run with nothing else to go
+    // on still lands on the bare flow.
+    expect(proxy).toContain('return "/onboarding";');
   });
 
   it("exempts the onboarding flow, API routes, and the autoCreate hop (no loop)", () => {

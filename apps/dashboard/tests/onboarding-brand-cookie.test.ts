@@ -80,7 +80,13 @@ describe("onboarding in-progress brand cookie (wiring)", () => {
   });
 
   it("the gate still sends a brand-less first run to the bare flow", () => {
-    expect(proxySrc).toContain(': "/onboarding";');
+    // The fallback, asserted as the RETURN rather than as the ternary it used to
+    // be written as: the helper grew two branches above it (a paid selection goes
+    // to the brand-building screens, an unpaid one to the payment screens), and a
+    // guard pinned to the punctuation goes red on a refactor that changes no
+    // behaviour. What must stay true is that a first run with nothing else to go
+    // on still lands on the bare flow.
+    expect(proxySrc).toContain('return "/onboarding";');
   });
 
   it("remembers the brand at BOTH creation sites (website and no-website)", () => {
