@@ -18,7 +18,17 @@ import { NextResponse } from "next/server";
  * upstream requests.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
+/**
+ * The gateway host, resolved EXACTLY as the rest of the app resolves it.
+ *
+ * `NEXT_PUBLIC_DISTRIBUTE_API_URL` with this literal fallback is what
+ * `lib/api.ts` and the `/api/v1` proxy already use, and the fallback is what
+ * actually answers: the variable is set in neither the build env nor the
+ * runtime env on the box, so a handler reading any other name resolves to
+ * nothing and 500s on every request. An invented name looks right in review and
+ * is unset everywhere.
+ */
+const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
 /** The floor the producer takes each median over. Stated rather than defaulted:
  *  it selects the POPULATION, so a stripped parameter would publish a figure
@@ -36,11 +46,6 @@ const UPSTREAM_TIMEOUT_MS = 12_000;
 const SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 export async function GET(request: Request) {
-  if (!API_URL) {
-    console.error("[start-returns] NEXT_PUBLIC_API_URL is not set");
-    return NextResponse.json({ error: "Returns are unavailable" }, { status: 500 });
-  }
-
   const slugs = (new URL(request.url).searchParams.get("slugs") ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -49,10 +54,10 @@ export async function GET(request: Request) {
 
   if (slugs.length === 0) return NextResponse.json({ returns: [] });
 
-  // One read per channel, in parallel and bounded. A channel whose read fails
-  // is OMITTED rather than faked: its row then falls through to whatever its
-  // pair says, and if that is unmeasured too the screen says so. Logged loud —
-  // a silently missing figure is a weaker screen, never a wrong one.
+  // One read per channel, in parallel and bounded. A channel whose read fails is
+  // OMITTED rather than faked: its row then falls through to whatever its pair
+  // says, and if that is unmeasured too the screen says so. Logged loud -- a
+  // silently missing figure is a weaker screen, never a wrong one.
   const settled = await Promise.allSettled(
     slugs.map(async (slug) => {
       const res = await fetch(
