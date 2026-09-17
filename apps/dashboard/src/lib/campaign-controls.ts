@@ -31,6 +31,7 @@ import {
 import {
   campaignBudgetScope,
   campaignSavedCents,
+  runningAfterBudget,
   type BrandFunnelBudgetSet,
   type CampaignBudgetRow,
   type CampaignBudgetScope,
@@ -552,6 +553,23 @@ export interface ControlsDiff {
  * A row with no scope produces no budget write whatever is typed; the modal
  * disables its field, and writing one would address a row billing would refuse.
  */
+/**
+ * Whether ONE row's switch reads ON, once its typed budget is taken into account.
+ *
+ * The toggle a customer sees and the `stop` the Confirm sends must come from the
+ * same expression, or the modal shows a campaign as running while the write pauses
+ * it. `controlsDiff` reads this too — see `runningAfterBudget` for why zero pauses.
+ */
+export function draftRunning(row: ControlRow, draft: ControlDraft): boolean {
+  if (!row.scope) return draft.running;
+  const typed = parseDailyBudgetUsd(draft.budget);
+  return runningAfterBudget({
+    running: draft.running,
+    nextCents: typed === null ? null : typed * 100,
+    savedCents: row.savedCents,
+  });
+}
+
 export function controlsDiff(
   rows: ControlRow[],
   drafts: Record<string, ControlDraft>,
@@ -564,11 +582,18 @@ export function controlsDiff(
     const draft = drafts[row.rowId];
     if (!draft) continue;
 
+    // The MONEY is read first, because it decides the status: a campaign the
+    // customer just took to zero is paused whatever its switch says. A row with no
+    // ceiling to point at states no opinion and keeps whatever the switch holds.
+    const typed = row.scope ? parseDailyBudgetUsd(draft.budget) : null;
+    if (row.scope && typed === null) invalidRows.push(row.rowId);
+    const nextRunning = draftRunning(row, draft);
+
     // A row with no campaign has no status to set. Its toggle is the ceiling: ON is
     // whatever was typed, OFF is zero, and the budget branch below writes it. Sending a
     // status write here would name a campaign that does not exist.
-    if (draft.running !== row.running && row.campaignId !== null) {
-      if (draft.running) {
+    if (nextRunning !== row.running && row.campaignId !== null) {
+      if (nextRunning) {
         // One write: the row a restart addresses is the campaign as it last ran.
         statusWrites.push({ rowId: row.rowId, campaignId: row.campaignId!, activate: true });
       } else {
@@ -579,12 +604,7 @@ export function controlsDiff(
       }
     }
 
-    if (!row.scope) continue;
-    const typed = parseDailyBudgetUsd(draft.budget);
-    if (typed === null) {
-      invalidRows.push(row.rowId);
-      continue;
-    }
+    if (!row.scope || typed === null) continue;
     // Turned OFF with no campaign to stop: defunding is what stops it.
     const cents = row.campaignId === null && !draft.running ? 0 : typed * 100;
     if (cents !== row.savedCents) {

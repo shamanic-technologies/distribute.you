@@ -17,6 +17,7 @@ import {
   campaignBudgetScope,
   campaignPairCents,
   campaignSavedCents,
+  runningAfterBudget,
 } from "@/lib/campaign-budget";
 import { useChannelMinimums } from "@/lib/use-channel-minimums";
 import {
@@ -268,10 +269,21 @@ export function CampaignSettingsCard({
   // typing a value and undoing it, or flipping a toggle back, has to disarm the
   // button.
   const budgetDirty = scope !== null && value.trim() !== baseline;
-  const statusDirty = running !== savedRunning;
-  const dirty = budgetDirty || statusDirty;
 
   const typed = parseDailyBudgetUsd(value);
+  // A campaign funded at NOTHING does not send — campaign-service holds it on the
+  // funding gate every tick — so taking the budget to zero pauses it, and this one
+  // Save writes both. The switch below reads the same expression, or the card would
+  // show a campaign as running while the Save pauses it.
+  const effectiveRunning = runningAfterBudget({
+    running,
+    nextCents: typed === null ? null : typed * 100,
+    savedCents,
+  });
+  const zeroed = running && !effectiveRunning;
+  const statusDirty = effectiveRunning !== savedRunning;
+  const dirty = budgetDirty || statusDirty;
+
   const blocker =
     scope === null
       ? null
@@ -285,14 +297,16 @@ export function CampaignSettingsCard({
     ? null
     : [
         statusDirty
-          ? running
+          ? effectiveRunning
             ? "Restarting this campaign now — it starts sending immediately, not at the next daily tick."
-            : "Pausing this campaign. Its daily budget is kept, so restarting it is one click."
+            : zeroed
+              ? "Pausing this campaign, because a budget of $0 never sends."
+              : "Pausing this campaign. Its daily budget is kept, so restarting it is one click."
           : null,
         budgetDirty && typed !== null
           ? typed > 0
             ? `Setting its daily budget to $${typed}.`
-            : "Defunding it, which is not the same as pausing: the amount is not kept."
+            : "Giving up its amount: unlike pausing, the figure is not kept."
           : null,
       ]
         .filter(Boolean)
@@ -304,34 +318,36 @@ export function CampaignSettingsCard({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="mb-1 text-sm font-semibold text-gray-900">
-              {running ? "Running" : "Paused"}
+              {effectiveRunning ? "Running" : "Paused"}
             </h3>
             <p className="text-sm text-gray-500">
-              {campaign.featureSlug
-                ? running
-                  ? "This campaign is reaching people. Pause it to stop, and its daily budget is kept for when you restart it."
-                  : "This campaign is not reaching anyone. Restarting it starts sending immediately, not at the next daily tick."
-                : "This campaign names no acquisition channel, so it cannot be restarted from here."}
+              {zeroed
+                ? "A daily budget of $0 never sends, so this campaign is paused. Give it an amount to run it again."
+                : campaign.featureSlug
+                  ? effectiveRunning
+                    ? "This campaign is reaching people. Pause it to stop, and its daily budget is kept for when you restart it."
+                    : "This campaign is not reaching anyone. Restarting it starts sending immediately, not at the next daily tick."
+                  : "This campaign names no acquisition channel, so it cannot be restarted from here."}
             </p>
           </div>
           <button
             type="button"
             role="switch"
-            aria-checked={running}
-            aria-label={running ? "Pause this campaign" : "Restart this campaign"}
-            disabled={!campaign.featureSlug}
+            aria-checked={effectiveRunning}
+            aria-label={effectiveRunning ? "Pause this campaign" : "Restart this campaign"}
+            disabled={!campaign.featureSlug || zeroed}
             onClick={() => {
               setStatusTouched(true);
               setSaved(false);
               setRunning((prev) => !prev);
             }}
             className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition disabled:opacity-40 ${
-              running ? "bg-green-500" : "bg-gray-300"
+              effectiveRunning ? "bg-green-500" : "bg-gray-300"
             }`}
           >
             <span
               className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-                running ? "left-[22px]" : "left-0.5"
+                effectiveRunning ? "left-[22px]" : "left-0.5"
               }`}
             />
           </button>
@@ -355,9 +371,9 @@ export function CampaignSettingsCard({
             {/* The floor is the channel's own published operating cost. A channel
                 whose terms we could not read states none rather than a figure
                 nobody chose for it — billing still holds one either way. */}
-            {minimumCents !== null && ` From ${fmtDailyFloorUsd(minimumCents)} a day.`} To stop it
-            for a while, pause it above rather than setting this to zero: pausing keeps the
-            amount, and zero gives it up.
+            {minimumCents !== null && ` From ${fmtDailyFloorUsd(minimumCents)} a day.`} Setting it
+            to zero pauses the campaign — but to stop it for a while, prefer the switch above:
+            pausing keeps the amount, and zero gives it up.
           </p>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">$</span>
@@ -382,11 +398,6 @@ export function CampaignSettingsCard({
               {budgetClampMessage(clamped.from, clamped.to)}
             </p>
           )}
-          {savedCents === 0 && !budgetDirty && (
-            <p className="mt-2 text-xs text-gray-500">
-              This campaign is not funded right now, so it is not sending whatever its status says.
-            </p>
-          )}
         </section>
       )}
 
@@ -408,7 +419,7 @@ export function CampaignSettingsCard({
           const cents = nextTyped === null ? null : nextTyped * 100;
           mutate({
             cents: scope !== null && cents !== null && cents !== savedCents ? cents : null,
-            nextRunning: statusDirty ? running : null,
+            nextRunning: statusDirty ? effectiveRunning : null,
           });
         }}
       />

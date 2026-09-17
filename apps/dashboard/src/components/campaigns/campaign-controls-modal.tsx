@@ -23,6 +23,7 @@ import {
   hasChanges,
   pairKey,
   projectedPairTotalsUsd,
+  draftRunning,
   rollupStatus,
   type ControlDraft,
   type ControlRow,
@@ -392,6 +393,12 @@ export function CampaignControlsModal({
   /** One campaign's line, the same at every grain and under every funnel heading. */
   function renderRow(row: ControlRow) {
     const draft = drafts[row.rowId] ?? draftFor(row);
+    // What the switch reads once the typed budget is taken into account: a campaign
+    // the customer just took to zero is paused, and the Confirm sends the `stop` to
+    // match. ONE expression drives both, or the row shows a campaign as running
+    // while the write pauses it.
+    const running = draftRunning(row, draft);
+    const zeroed = draft.running && !running;
     const key = row.scope ? pairKey(row.scope.def.key, row.scope.featureSlug) : null;
     const minimumCents = channelMinimumCents(minimums, row.scope?.featureSlug);
     const floorHit = belowFloor.includes(row.rowId);
@@ -413,24 +420,25 @@ export function CampaignControlsModal({
             <button
               type="button"
               role="switch"
-              aria-checked={draft.running}
+              aria-checked={running}
+              disabled={zeroed}
               aria-label={
                 row.campaignId === null
-                  ? draft.running
+                  ? running
                     ? "Stop funding this channel"
                     : "Fund this channel"
-                  : draft.running
+                  : running
                     ? "Pause this campaign"
                     : "Restart this campaign"
               }
               onClick={() => edit(row.rowId, { running: !draft.running })}
               className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                draft.running ? "bg-green-500" : "bg-gray-300"
-              }`}
+                running ? "bg-green-500" : "bg-gray-300"
+              } ${zeroed ? "opacity-60" : ""}`}
             >
               <span
                 className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-                  draft.running ? "left-[22px]" : "left-0.5"
+                  running ? "left-[22px]" : "left-0.5"
                 }`}
               />
             </button>
@@ -455,7 +463,13 @@ export function CampaignControlsModal({
             can still be paused and restarted.
           </p>
         )}
-        {row.campaignId === null && !draft.running && (
+        {zeroed && (
+          <p className="mt-1.5 text-xs text-gray-500">
+            A daily budget of $0 pauses this campaign: it is held on the funding gate
+            and never sends. Give it an amount to run it again.
+          </p>
+        )}
+        {row.campaignId === null && !running && (
           <p className="mt-1.5 text-xs text-gray-500">
             Nothing runs on this channel yet. Funding it is what starts it, and the
             campaign appears within a few minutes.
