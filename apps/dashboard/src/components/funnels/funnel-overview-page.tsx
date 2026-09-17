@@ -20,6 +20,7 @@ import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-fu
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { useScopePaused } from "@/lib/use-scope-paused";
+import { browserTimezone } from "@/lib/browser-timezone";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
@@ -75,9 +76,14 @@ export function FunnelOverviewPage() {
     { enabled, ...pollOptions },
   );
 
+  // features-service REQUIRES the zone this per-day series is cut in and 400s without
+  // it, so the timezone is part of the request rather than a nicety — and it rides the
+  // query key, like the two sibling Overviews, or a reader who crosses a zone keeps the
+  // previous zone's days. Sent with the same 7-day window they ask for.
+  const timezone = useMemo(() => browserTimezone(), []);
   const activity = useAuthQuery(
-    ["offerFunnelPipelineActivity", brandId, offerId, wanted ?? "none"],
-    () => getOfferFunnelPipelineActivity(offerId, rawKey, { brandId }),
+    ["offerFunnelPipelineActivity", brandId, offerId, wanted ?? "none", timezone],
+    () => getOfferFunnelPipelineActivity(offerId, rawKey, { brandId, days: 7, timezone }),
     { enabled, ...pollOptions },
   );
 

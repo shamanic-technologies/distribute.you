@@ -59,6 +59,7 @@ import { CampaignHoldBand } from "@/components/campaigns/campaign-hold-band";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { browserTimezone } from "@/lib/browser-timezone";
 
 // Campaign-level Overview (v2, staff/god-mode PREVIEW while the campaign concept
 // is progressively re-introduced — #2762). It MIRRORS the brand Overview
@@ -105,13 +106,7 @@ export function CampaignOverviewPage() {
   // the offer, never to the brand two levels up.
   const offerId = params.offerId as string | undefined;
   const campaignId = params.id as string;
-  const timezone = useMemo(() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    } catch {
-      return "UTC";
-    }
-  }, []);
+  const timezone = useMemo(() => browserTimezone(), []);
 
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
