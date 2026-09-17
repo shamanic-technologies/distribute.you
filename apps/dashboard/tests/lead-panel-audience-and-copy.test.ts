@@ -14,12 +14,14 @@ import * as path from "path";
  *    the targeting filters, the thing a reader actually wants. The link carries
  *    `?audienceId=`, the deep-link seed CustomerAudiencesPage reads on first paint.
  *
- *    Its destination is built from the AUDIENCE's own `offerId`, never from the route
- *    the reader is on. Audiences live under the offer, so a route-built link had no
- *    offer segment to insert on the brand Leads page and pointed at
- *    `/brands/:id/audiences`, which is not a route — the card's one affordance was a
- *    404 there. An audience filed under no offer (rows predating the offer level) has
- *    no page at all, so it renders NO link rather than one that 404s.
+ *    Its destination goes through `audienceDetailHref`: the AUDIENCE's own `offerId`
+ *    decides WHICH offer (never the route's — audiences live under the offer, so a
+ *    route-built link had no segment to insert on the brand Leads page and pointed at
+ *    `/brands/:id/audiences`, which is not a route), and the ROUTE's own campaign /
+ *    funnel decides how DEEP, so opening an audience from a campaign's Leads page no
+ *    longer drops the reader back to the offer. An audience filed under no offer (rows
+ *    predating the offer level) has no page at all, so it renders NO link rather than
+ *    one that 404s. The rule itself is unit-tested in `audience-detail-href.test.ts`.
  *
  * 2. The email value is copy-to-clipboard, NOT a link. It shipped styled as one
  *    (`text-brand-600` + `hover:underline`), which promises a `mailto:` and then does
@@ -65,17 +67,23 @@ describe("Leads right panel — audience row and email copy", () => {
     const body = sliceTo(sections, "function AudienceRow(", "\n}\n");
     expect(body).not.toContain("Size:");
     expect(body).not.toContain("Remaining:");
-    expect(body).toContain("/audiences?audienceId=${audience.id}");
+    expect(body).toContain("audienceDetailHref");
     expect(body).toContain("View audience details");
   });
 
-  it("audience link is built from the audience's own offer, and is absent when it has none", () => {
+  it("audience link goes through the shared resolver, carrying the route's own grain", () => {
     const body = sliceTo(sections, "function AudienceRow(", "\n}\n");
-    // The audience states its offer; the route's is only the fallback for a lookup miss.
-    expect(body).toContain("const audienceOfferId = audience.offerId ?? routeOfferId ?? null;");
-    expect(body).toContain("tenantBasePath(orgId, brandId, audienceOfferId)");
-    // Never the route's offer alone — that is what 404'd on the brand Leads page.
-    expect(body).not.toContain("tenantBasePath(orgId, brandId, offerId)");
+    // ONE rule for both panel surfaces — a second copy of the expression is how this
+    // row and the sole-campaign card came to differ about one audience.
+    expect(body).toContain("audienceDetailHref({");
+    expect(body).toContain("audienceOfferId: audience.offerId,");
+    // The route's deeper segments are what make the link match the page's grain.
+    expect(body).toContain("const campaignId = params.id as string | undefined;");
+    expect(body).toContain("const funnelKey = params.funnelKey as string | undefined;");
+    expect(body).toContain("campaignId,");
+    expect(body).toContain("funnelKey,");
+    // Never reassembled here — the resolver owns the offer choice and the path.
+    expect(body).not.toContain("tenantBasePath(");
     // No offer resolvable ⟹ no link at all, rather than one pointing at a 404.
     expect(body).toContain("{detailHref && (");
     expect(body).toContain("href={detailHref}");

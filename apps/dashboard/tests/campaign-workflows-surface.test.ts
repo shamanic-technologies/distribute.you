@@ -310,10 +310,29 @@ describe("THE PER-AUDIENCE LIST reads scopeRank, the position that ascends on it
     expect(rank).toContain('orderBy === "scopeRank" ? l.scopeRank : l.rank');
   });
 
-  it("states the scope position and puts Current best on its first row", () => {
+  it("states the scope position and puts Current best on the best row it DRAWS", () => {
     expect(TABLE).toContain('{ranked.scopeRank ?? "—"}');
-    expect(TABLE).toContain("const bestHere = ranked.scopeRank === 1;");
     expect(TABLE).toContain("Current best");
+    // NOT `=== 1`: the tier rule removes the workflows campaign-service refuses to
+    // select, and the producer ranks on price, so position 1 is routinely a hidden
+    // cheap-tier workflow and the list ended up with no tagged row at all.
+    expect(TABLE).not.toContain("ranked.scopeRank === 1");
+    expect(TABLE).toContain(
+      "const bestHere = ranked.scopeRank !== null && ranked.scopeRank === bestPosition;",
+    );
+    // The grid and this list read ONE rule, or they light different workflows for one
+    // audience on one screen.
+    expect(TABLE).toContain("lowestScopePosition(ranked.map((r) => r.scopeRank))");
+    // A component that can honour the prop is the feature entirely absent if the table
+    // never passes it.
+    expect(TABLE).toContain("bestPosition={bestPosition}");
+  });
+
+  it("declares bestPosition ABOVE the JSX that reads it — a TDZ throw is invisible to tsc", () => {
+    expect(TABLE.indexOf("const bestPosition = useMemo(")).toBeGreaterThan(-1);
+    expect(TABLE.indexOf("const bestPosition = useMemo(")).toBeLessThan(
+      TABLE.indexOf("bestPosition={bestPosition}"),
+    );
   });
 
   it("reads THIS scope's own figures, never a coarser grain wearing its name", () => {

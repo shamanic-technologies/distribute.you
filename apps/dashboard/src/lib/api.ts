@@ -4901,6 +4901,38 @@ const RunEventSchema = z
 
 const ListEventsResponseSchema = z.object({ events: z.array(RunEventSchema) });
 
+/**
+ * GET /events — run events for one campaign, through the runs-service proxy.
+ *
+ * `orgId` is injected from the auth context at the gateway and never trusted from the
+ * query, so this only ever answers for the caller's own org.
+ *
+ * `event` takes a comma-separated list of slugs. Asking for the hold events by name is
+ * what keeps this cheap on a campaign with tens of thousands of gate checks: without it
+ * the newest page is all `Gate check PASSED` and the one line that matters is never on it.
+ */
+export async function listCampaignEvents(
+  campaignId: string,
+  options?: { event?: string; level?: EventLevel; limit?: number; offset?: number; token?: string },
+): Promise<{ events: RunEvent[] }> {
+  const params = new URLSearchParams();
+  params.set("campaignId", campaignId);
+  if (options?.event) params.set("event", options.event);
+  if (options?.level) params.set("level", options.level);
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.offset != null) params.set("offset", String(options.offset));
+  const raw = await apiCall<unknown>(`/events?${params.toString()}`, { token: options?.token });
+  const parsed = ListEventsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listCampaignEvents: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] listCampaignEvents: invalid response shape");
+  }
+  return parsed.data as unknown as { events: RunEvent[] };
+}
+
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
