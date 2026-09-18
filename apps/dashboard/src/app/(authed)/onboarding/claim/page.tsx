@@ -40,10 +40,19 @@ export default function ClaimPage() {
           setFailed(true);
           return;
         }
-        // Whether there was anything to claim or not, the next thing is paying
-        // for what they picked — an ordinary signup has nothing to claim and
-        // takes exactly the same path.
-        router.replace("/onboarding/pay");
+        // Back into the wizard, at the money.
+        //
+        // The brand id rides along so a return in a tab with no snapshot still
+        // resolves the brand from brand-service rather than starting over; with
+        // a snapshot the `claimed` flag lands them on the budget step directly.
+        // An ordinary signup has nothing to claim and takes the same path.
+        const body = (await res.json().catch(() => null)) as { brandId?: unknown } | null;
+        const brandId = typeof body?.brandId === "string" ? body.brandId : "";
+        router.replace(
+          brandId
+            ? `/onboarding?claimed=1&brandId=${encodeURIComponent(brandId)}`
+            : "/onboarding?claimed=1",
+        );
       } catch (err) {
         console.error("[claim] errored:", err);
         setFailed(true);

@@ -947,7 +947,14 @@ export function Onboarding() {
         // resolves to its snapshot step (pricing).
         searchParams.get("launch_checkout") === "success"
         ? "celebrate"
-        : resolveResumeStep(restored.step, restored.brandId)
+        : // A CLAIMED return: they built the whole thing signed out, just made
+          // an account, and the org they built is now theirs. The only thing
+          // left is the money, so land on the budget step rather than resuming
+          // at `built` — which is where the snapshot legitimately says they
+          // were, and which would ask them to create an account they now have.
+          searchParams.get("claimed") === "1"
+          ? "pricing"
+          : resolveResumeStep(restored.step, restored.brandId)
       : resumeBrandIdParam && searchParams.get("launch_checkout") === null
         ? // Cross-session brand resume: show the loading screen immediately (no URL
           // flash) while the param-resume effect re-hydrates the brand, then it lands

@@ -38,15 +38,7 @@ const isPublicRoute = createRouteMatcher([
   // EXACT, not a prefix: `/onboarding/pay` and `/onboarding/build` are the two
   // steps that genuinely need the account to exist, and they stay behind the
   // gate. A `(.*)` here would open them.
-  //
-  // ⚠️ DELIBERATELY COMMENTED OUT until the tail of the reorder lands. The
-  // wizard's signed-out branch, the session, the allowlist and the claim are all
-  // in place and tested, but what happens AFTER the claim — the budgets, the
-  // charge, the launch — is still the order it was. Opening this line makes the
-  // new path reachable by URL with a tail that does not finish, and half a
-  // reorder on the signup funnel is worse than none. One line, flipped with the
-  // /start CTA in the same change.
-  // "/onboarding",
+  "/onboarding",
   "/api/public(.*)",
   "/api/anon(.*)",
   "/api/cron(.*)",
