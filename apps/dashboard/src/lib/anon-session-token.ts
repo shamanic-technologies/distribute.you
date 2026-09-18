@@ -177,7 +177,20 @@ export function readAnonSession(
       if (typeof v !== "number" || !Number.isFinite(v)) {
         return { session: null, refusal: "malformed" };
       }
-    } else if (typeof v !== "string" || v.length === 0) {
+      continue;
+    }
+    if (typeof v !== "string") return { session: null, refusal: "malformed" };
+    // ⚠️ EMPTY IS LEGAL for `brandId` and `domain`, and requiring otherwise is
+    // what broke this in production: a session's FIRST act is `POST /brands`,
+    // which names no brand, so it is minted with `brandId: ""` — and a
+    // non-empty check here rejected the app's own freshly-signed token as
+    // malformed. The proxy then answered 401 "No session" on the very next
+    // call, one request after the session route had returned 200.
+    //
+    // The unit fixture always carried a brand, so nothing caught it. The two
+    // ids that MUST be present are the org's, because they are what the session
+    // spends and is claimed as.
+    if ((k === "anonOrgId" || k === "orgId") && v.length === 0) {
       return { session: null, refusal: "malformed" };
     }
   }
