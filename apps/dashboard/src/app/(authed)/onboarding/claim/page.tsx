@@ -40,6 +40,7 @@ export default function ClaimPage() {
           setFailed(true);
           return;
         }
+<<<<<<< HEAD
         // Back into the wizard, at the money.
         //
         // The brand id rides along so a return in a tab with no snapshot still
@@ -53,6 +54,12 @@ export default function ClaimPage() {
             ? `/onboarding?claimed=1&brandId=${encodeURIComponent(brandId)}`
             : "/onboarding?claimed=1",
         );
+=======
+        // Whether there was anything to claim or not, the next thing is paying
+        // for what they picked — an ordinary signup has nothing to claim and
+        // takes exactly the same path.
+        router.replace("/onboarding/pay");
+>>>>>>> origin/main
       } catch (err) {
         console.error("[claim] errored:", err);
         setFailed(true);
