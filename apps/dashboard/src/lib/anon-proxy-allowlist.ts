@@ -73,7 +73,16 @@ export interface AllowInput {
   /** The endpoint as the api client spells it: a leading slash, no `/v1`, query
    *  string still attached (it is ignored here and forwarded verbatim). */
   endpoint: string;
-  /** The brand this session owns. Every `:brand` segment must equal it. */
+  /**
+   * The brand this session owns. Every `:brand` segment must equal it.
+   *
+   * EMPTY until the wizard has created one, which is a real state rather than a
+   * broken one: a session's first act is `POST /brands`, and that call names no
+   * brand. So an empty id refuses every rule that mentions `:brand` — matching
+   * nothing is the correct answer for a session that owns nothing — while the
+   * brand-less rules stay reachable. Refusing the whole allowlist on an empty
+   * id would mean a session could never create the brand that fills it.
+   */
   brandId: string;
 }
 
@@ -98,7 +107,7 @@ export function anonCallAllowed({ method, endpoint, brandId }: AllowInput): Allo
   const deny = (refusal: AnonRefusal): AllowResult => ({ allowed: false, refusal });
 
   if (typeof endpoint !== "string" || !endpoint.startsWith("/")) return deny("not-allowlisted");
-  if (typeof brandId !== "string" || brandId.length === 0) return deny("wrong-brand");
+  const ownedBrand = typeof brandId === "string" ? brandId : "";
 
   const path = endpoint.split("?")[0];
   const given = path.split("/").filter((s) => s.length > 0);
@@ -122,8 +131,11 @@ export function anonCallAllowed({ method, endpoint, brandId }: AllowInput): Allo
       if (want === ":brand") {
         // A shape match with the WRONG brand is reported as such rather than as
         // "no such route": it is the one refusal that means somebody reached for
-        // a brand that is not theirs, and that deserves its own log line.
-        if (decodeURIComponent(got) !== brandId) brandMismatch = true;
+        // a brand that is not theirs, and that deserves its own log line. A
+        // session with no brand yet matches no brand, which lands here too.
+        if (ownedBrand.length === 0 || decodeURIComponent(got) !== ownedBrand) {
+          brandMismatch = true;
+        }
         continue;
       }
       if (want === ":seg") continue;

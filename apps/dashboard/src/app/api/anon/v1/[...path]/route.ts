@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { anonCallAllowed } from "@/lib/anon-proxy-allowlist";
 import {
+  anonSessionCookie,
   anonTokenFromCookieHeader,
   clearAnonSessionCookie,
 } from "@/lib/anon-session-cookie";
-import { ANON_PRINCIPAL, readAnonSession } from "@/lib/anon-session-token";
+import { ANON_PRINCIPAL, readAnonSession, signAnonSession } from "@/lib/anon-session-token";
 
 /**
  * The gateway, for a visitor who has not signed up yet.
@@ -107,6 +108,49 @@ async function proxyRequest(
 
     const res = await fetch(url.toString(), { method: req.method, headers, body });
     const contentType = res.headers.get("Content-Type") || "application/json";
+
+    // ONE SESSION, ONE BRAND — and this is where the session learns which.
+    //
+    // A session starts owning no brand: its first act is `POST /brands`, which
+    // names none, and the allowlist refuses every brand-scoped route until it
+    // does. So the brand id is written into the signature the moment the brand
+    // exists, from the RESPONSE rather than from anything the browser said.
+    //
+    // Done here rather than in a route of its own because the alternative is a
+    // second round trip on the one call that must not fail, and because this is
+    // the only place that sees both the request and its answer. It is bounded
+    // hard: only a successful create, only while the session owns no brand, so
+    // it can neither re-point an existing session nor fire twice.
+    if (
+      session.brandId.length === 0 &&
+      req.method === "POST" &&
+      endpoint === "/brands" &&
+      res.ok
+    ) {
+      const raw = await res.text();
+      let brandId = "";
+      try {
+        const parsed = JSON.parse(raw) as { brandId?: unknown };
+        if (typeof parsed.brandId === "string") brandId = parsed.brandId;
+      } catch {
+        // Not our shape. The answer still goes back verbatim; the session simply
+        // keeps no brand, which is honest and refuses the brand-scoped routes.
+        console.error("[anon-proxy] brand create: could not read brandId");
+      }
+
+      const out = new NextResponse(raw, {
+        status: res.status,
+        headers: { "Content-Type": contentType },
+      });
+      if (brandId.length > 0) {
+        // `issuedAt` is CARRIED, not refreshed: re-minting must not extend the
+        // session's life, or a browser could hold one indefinitely by creating
+        // brands.
+        const token = signAnonSession({ ...session, brandId }, API_KEY);
+        out.headers.set("Set-Cookie", anonSessionCookie(token, { secure: isSecure(req) }));
+      }
+      return out;
+    }
 
     // Streamed through rather than buffered, for the reason the authed proxy
     // records: reading the body into a string holds the payload twice and has

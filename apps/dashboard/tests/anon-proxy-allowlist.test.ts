@@ -110,11 +110,20 @@ describe("what it may NOT call", () => {
     }
   });
 
-  it("refuses when the session names no brand at all", () => {
+  it("refuses every brand-scoped route when the session owns no brand yet", () => {
     expect(allow("GET", `/brands/${BRAND}`, "")).toEqual({
       allowed: false,
       refusal: "wrong-brand",
     });
+    expect(allow("PUT", `/brands/${BRAND}/sales-funnels`, "").allowed).toBe(false);
+  });
+
+  it("but STILL lets it create one — its first act names no brand", () => {
+    // Refusing the whole allowlist on an empty id would mean a session could
+    // never create the brand that fills it.
+    expect(allow("POST", "/brands", "").allowed).toBe(true);
+    expect(allow("POST", "/brands/extract-fields", "").allowed).toBe(true);
+    expect(allow("GET", "/features/sales-cold-email-outreach", "").allowed).toBe(true);
   });
 
   it("does not let a longer path ride a shorter rule", () => {
