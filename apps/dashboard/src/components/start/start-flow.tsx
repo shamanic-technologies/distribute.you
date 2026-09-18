@@ -498,9 +498,13 @@ export function StartFlow() {
       footer={footer(
         <StartButton
           onClick={() => {
-            // The picks are already in the cookie; signup carries nothing in its
-            // query string, which is the whole reason the cookie exists.
-            window.location.href = "/sign-up";
+            // THE WIZARD, NOT SIGNUP. The whole build half runs before anyone
+            // has an account: they walk their services, funnels, audiences,
+            // rates and offer, and see what we assembled, and only then are
+            // asked for an account and a card. The picks are already in the
+            // cookie; nothing is carried in the query string, which is the
+            // whole reason the cookie exists.
+            window.location.href = "/onboarding";
           }}
         >
           Excellent, create my account
