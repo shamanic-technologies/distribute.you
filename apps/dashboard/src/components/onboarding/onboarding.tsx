@@ -955,6 +955,22 @@ export function Onboarding() {
       typeof document === "undefined" ? null : startContinuation(document.cookie);
   }
   const continuation = continuationRef.current;
+  // WHETHER THIS MOUNT OPENED ON THE LOADING SCREEN BECAUSE OF THE CONTINUATION,
+  // decided on render 1 and never again. The start effect below used to re-ask
+  // `!restored` on every render, and `restored` is NOT stable: `restoreRef`
+  // treats null as both "not read yet" and "read, nothing there", so it re-reads
+  // sessionStorage each render — and this component's own persist effect writes
+  // a snapshot (`step: "loading"`) right after render 1. On render 2 `restored`
+  // was that snapshot, the gate closed, and the setup never started: a loading
+  // screen that loaded nothing, forever, verified in prod. The initial-step
+  // initializer only reads `restored` on render 1, which is why nothing else
+  // had ever noticed the flip.
+  const continuationOpensLoadingRef = useRef<boolean | undefined>(undefined);
+  if (continuationOpensLoadingRef.current === undefined) {
+    continuationOpensLoadingRef.current =
+      !restored && !resumeBrandIdParam && !fromAdd && continuation?.website != null;
+  }
+  const continuationOpensLoading = continuationOpensLoadingRef.current;
 
   const [step, setStep] = useState<Step>(() =>
     restored
@@ -1520,8 +1536,7 @@ export function Onboarding() {
   const continuationStartedRef = useRef(false);
   useEffect(() => {
     if (continuationStartedRef.current) return;
-    if (!continuation?.website || step !== "loading") return;
-    if (restored || resumeBrandIdParam || fromAdd) return;
+    if (!continuationOpensLoading || step !== "loading") return;
     if (!url.trim()) return;
     continuationStartedRef.current = true;
     if (!domain || websiteProblem !== null) {
@@ -1530,7 +1545,7 @@ export function Onboarding() {
     }
     void startAnalyze();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [continuation, step, url, domain, websiteProblem]);
+  }, [continuationOpensLoading, step, url, domain, websiteProblem]);
 
   // CONTINUING FROM /start, half two: the paths they picked are the funnels
   // the wizard asks about, so they arrive pre-selected instead of being asked
