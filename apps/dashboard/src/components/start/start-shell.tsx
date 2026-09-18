@@ -85,8 +85,8 @@ export function StartShell({
 
   // The scroll box is ONE element across screens (the shell sits at the same
   // position in the tree whichever screen renders it), so its scrollTop
-  // survives a screen change: a visitor who scrolled the 31-channel list to its
-  // end arrived on the next screen already at the bottom, headline off-screen.
+  // survives a screen change: a visitor who scrolled a long list to its end
+  // arrived on the next screen already at the bottom, headline off-screen.
   const bodyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: 0 });
@@ -166,10 +166,9 @@ export function StartShell({
           {subtitle && <div className="mt-3 max-w-2xl text-base text-gray-500">{subtitle}</div>}
         </div>
 
-        {/* Scrolls only when it must. The desktop card is wide enough that the
-            outcome and funnel screens fit without scrolling; the channel screen
-            (production publishes 31 behind one outcome) is the one that overflows,
-            and it scrolls inside the card so the footer stays on screen. */}
+        {/* Scrolls only when it must. The desktop card is wide enough that both
+            question screens fit without scrolling; anything longer scrolls inside
+            the card so the footer stays on screen. */}
         {/* Bled 4px on every side (`-m-1 p-1`): a selected card wears a 2px ring OUTSIDE
             its border and a hovered one lifts 2px, and an overflow box clips both at its
             edge. Without the bleed the outline on every edge card was cut off. */}
@@ -407,7 +406,10 @@ export function StartPathOption({
 
       <div className="flex items-center gap-3 pr-8">
         {mark && <span className="shrink-0">{mark}</span>}
-        <span className="min-w-0 truncate font-display text-base font-medium leading-tight text-gray-900">
+        {/* WRAPS, never truncates. The title is the path's own name and it is what
+            the row is called; "Sales Meeting from Po..." on a phone cuts off the
+            half that tells two paths apart. Same reasoning as the rungs below. */}
+        <span className="min-w-0 font-display text-base font-medium leading-tight text-gray-900">
           {title}
         </span>
         {meta && (
@@ -440,18 +442,6 @@ export function StartPathOption({
 
       {children && <div className="text-xs text-gray-500">{children}</div>}
     </button>
-  );
-}
-
-/** The heading above one family of channels. */
-export function StartGroupLabel({ children, count }: { children: ReactNode; count: number }) {
-  return (
-    <h2 className="mb-3 mt-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400 first:mt-0">
-      {children}
-      <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">
-        {count}
-      </span>
-    </h2>
   );
 }
 

@@ -11,9 +11,12 @@ import {
 } from "../src/lib/start-selection-cookie";
 
 const SELECTION = {
-  outcomes: ["website_visit", "conversation"],
-  channels: ["google-ads", "sales-cold-email-outreach"],
-  funnels: ["sales_meetings_from_website"],
+  outcomes: ["meeting_booked", "signup"],
+  // STATED rather than picked: we run one channel, and what is bought is a
+  // (funnel x channel) pair. A selection stored while the channel screen
+  // existed can name others, which the readers narrow rather than refusing.
+  channels: ["sales-cold-email-outreach"],
+  funnels: ["sales_meetings_from_website::sales-cold-email-outreach"],
   paid: [],
 };
 
@@ -38,6 +41,30 @@ describe("start selection cookie", () => {
       JSON.stringify({ v: 1, o: ["ok_key", "../../etc", "<script>", 42, "UPPER"], c: [], f: [] }),
     );
     expect(decodeStartSelection(hostile).outcomes).toEqual(["ok_key"]);
+  });
+
+  // WHAT IS BOUGHT IS A PAIR, so the shape has to carry one. It did not: the
+  // pattern admitted a bare slug only, so every `<funnel>::<channel>` key was
+  // dropped on the way in. The payment screen carried on from memory and the
+  // handoff broke -- `/onboarding/build` reads the cookie fresh, saw nothing
+  // paid, and sent somebody who had just been charged back to the picks.
+  it("carries a (funnel x channel) pair key, which is the identity that is bought", () => {
+    const paired = {
+      ...EMPTY_SELECTION,
+      funnels: ["form_magnet::sales-cold-email-outreach"],
+      paid: ["form_magnet::sales-cold-email-outreach"],
+    };
+    const back = decodeStartSelection(encodeStartSelection(paired));
+    expect(back.funnels).toEqual(["form_magnet::sales-cold-email-outreach"]);
+    expect(back.paid).toEqual(["form_magnet::sales-cold-email-outreach"]);
+    expect(selectionIsPaid(back)).toBe(true);
+  });
+
+  it("admits the pair shape and nothing looser", () => {
+    const raw = encodeURIComponent(
+      JSON.stringify({ v: 1, o: ["a::b::c", "::x", "x::", "a::b"], c: [], f: [] }),
+    );
+    expect(decodeStartSelection(raw).outcomes).toEqual(["a::b"]);
   });
 
   it("de-duplicates rather than letting a repeat inflate the header", () => {

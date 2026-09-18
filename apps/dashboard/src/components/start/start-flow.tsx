@@ -10,7 +10,6 @@ import {
   StartOption,
   StartPathOption,
   StartGrid,
-  StartGroupLabel,
   StartReturnRow,
   fromPerDay,
   useLandingBrand,
@@ -23,13 +22,9 @@ import { salesFunnelDefForWireKeyOrNull } from "@/lib/sales-funnels";
 import {
   startOutcomes,
   channelsForOutcomes,
-  channelGroups,
   funnelsForChannels,
-  funnelGroups,
   funnelRungs,
-  missingRungsForNearestFunnel,
-  unsoldBoughtFunnels,
-  type CatalogueChannel,
+  DEFAULT_CHANNEL_SLUG,
   type StartCatalogue,
 } from "@/lib/start-catalogue";
 import {
@@ -46,19 +41,28 @@ import {
 /**
  * THE SIGNED-OUT HALF OF ONBOARDING: sell first, sign up after.
  *
- * Three narrowing questions and a proof screen, all before anyone has an account.
+ * TWO narrowing questions and a proof screen, all before anyone has an account.
  * Nothing here writes to any service — the visitor has no org, no brand and no
  * session — so the whole answer rides a cookie to the far side of the Clerk
  * redirect, where the payment screens read it back.
+ *
+ * THE CHANNEL IS NOT A QUESTION. We run cold email, so the screen that asked
+ * which channels to run offered one real answer and cost a step of the funnel to
+ * collect it. The selection still CARRIES the channel (`DEFAULT_CHANNEL_SLUG`),
+ * because what is bought is a (funnel x channel) pair and that is what billing
+ * keys its ceiling on; what went is the asking.
  *
  * Every option on every screen is READ off the channel catalogue
  * features-service publishes. What this file decides is wording and the mark
  * beside each option.
  */
 
-type Screen = "welcome" | "outcome" | "channels" | "funnels" | "returns";
+type Screen = "welcome" | "outcome" | "funnels" | "returns";
 
-const ORDER: Screen[] = ["welcome", "outcome", "channels", "funnels", "returns"];
+const ORDER: Screen[] = ["welcome", "outcome", "funnels", "returns"];
+
+/** The two questions, after the welcome. The dots and the "Step N of M" line. */
+const STEP_COUNT = 3;
 
 interface Catalogue {
   /** The producer's catalogue whole: its channels, its funnels, its legs and its root
@@ -94,7 +98,6 @@ export function StartFlow() {
   const brand = useLandingBrand();
 
   const [outcomes, setOutcomes] = useState<string[]>([]);
-  const [channels, setChannels] = useState<string[]>([]);
   const [funnels, setFunnels] = useState<string[]>([]);
 
   const [channelReturns, setChannelReturns] = useState<ChannelReturn[]>([]);
@@ -144,52 +147,36 @@ export function StartFlow() {
     // one; inheriting it would mark funnels paid that this selection never
     // charged for, and send somebody past the payment step for free. A completed
     // flow clears the cookie anyway, so there is normally nothing to inherit.
-    remember({ outcomes, channels, funnels, paid: [] });
-  }, [outcomes, channels, funnels, remember]);
+    // The channel is not picked, so it is STATED: the payment and brand screens
+    // resolve (funnel x channel) pairs out of this cookie, and a selection naming
+    // no channel buys nothing.
+    remember({ outcomes, channels: [DEFAULT_CHANNEL_SLUG], funnels, paid: [] });
+  }, [outcomes, funnels, remember]);
 
   const allOutcomes = useMemo(
     () => (catalogue ? startOutcomes(catalogue.wire) : []),
     [catalogue],
   );
-  const offeredChannels = useMemo(
+  // The one channel we run, read off the catalogue rather than assumed present:
+  // a catalogue that does not publish it has nothing for this flow to sell, and
+  // the funnel screen says so rather than rendering an empty list.
+  const keptChannels = useMemo(
     () => (catalogue ? channelsForOutcomes(catalogue.wire, outcomes) : []),
     [catalogue, outcomes],
   );
-  const groups = useMemo(() => channelGroups(offeredChannels), [offeredChannels]);
-  const keptChannels = useMemo(
-    () => offeredChannels.filter((c) => channels.includes(c.slug)),
-    [offeredChannels, channels],
-  );
-  // Filtered by the OUTCOMES as well as the channels: a channel sells every
-  // funnel that starts on any step it produces, and the visitor asked for one.
-  // One row per (funnel x channel) — the thing a visitor actually buys, and the key
-  // billing puts its ceiling on.
+  // Filtered by the OUTCOMES: the channel sells every funnel that starts on any
+  // step it produces, and the visitor asked for one thing. One row per
+  // (funnel x channel) — the thing a visitor actually buys, and the key billing
+  // puts its ceiling on.
   const offeredFunnels = useMemo(
     () =>
       catalogue ? funnelsForChannels(keptChannels, outcomes, catalogue.wire) : [],
     [keptChannels, outcomes, catalogue],
   );
-  // What an empty screen is SHORT OF. A path is bought only when every one of its rungs
-  // is ticked, so the ordinary empty case is a path one tick away rather than no path
-  // at all — and those are two different sentences.
-  const missingRungs = useMemo(
-    () =>
-      catalogue && offeredFunnels.length === 0
-        ? missingRungsForNearestFunnel(keptChannels, outcomes, catalogue.wire)
-        : [],
-    [catalogue, offeredFunnels, keptChannels, outcomes],
-  );
 
-  // The funnels the picks BUY that no kept channel SELLS: the gap the screen owes a
-  // sentence for, instead of a path that silently never appears.
-  const unsoldFunnels = useMemo(
-    () => (catalogue ? unsoldBoughtFunnels(catalogue.wire, outcomes, keptChannels) : []),
-    [catalogue, outcomes, keptChannels],
-  );
-
-  // Dropping a channel can drop the only seller of a funnel the visitor had
-  // already picked. Keeping that funnel would carry an unbuyable pick into the
-  // payment screens, so the selection is narrowed to what is still offered.
+  // Changing the outcome can drop a path the visitor had already picked. Keeping
+  // it would carry an unbuyable pick into the payment screens, so the selection
+  // is narrowed to what is still offered.
   useEffect(() => {
     const offered = new Set(offeredFunnels.map((f) => f.key));
     setFunnels((prev) => {
@@ -197,14 +184,6 @@ export function StartFlow() {
       return next.length === prev.length ? prev : next;
     });
   }, [offeredFunnels]);
-
-  useEffect(() => {
-    const offered = new Set(offeredChannels.map((c) => c.slug));
-    setChannels((prev) => {
-      const next = prev.filter((s) => offered.has(s));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [offeredChannels]);
 
   // The per-channel returns are only needed by the proof screen, and only for
   // the channels actually kept, so they are read on arrival rather than up
@@ -336,13 +315,13 @@ export function StartFlow() {
     return (
       <StartShell
         step={1}
-        stepCount={4}
+        stepCount={STEP_COUNT}
         founders={founders}
       scrollKey={screen}
         title="What should we get you?"
-        subtitle="Pick everything worth paying for. Each one unlocks a different set of channels."
+        subtitle="Pick everything worth paying for. Each one opens a different way of turning it into revenue."
         footer={footer(
-          <StartButton onClick={() => go("channels")} disabled={outcomes.length === 0}>
+          <StartButton onClick={() => go("funnels")} disabled={outcomes.length === 0}>
             Continue
           </StartButton>,
           picked(outcomes.length, "outcome"),
@@ -359,7 +338,6 @@ export function StartFlow() {
               title={o.label}
               description={o.description}
               mark={<FunnelStepMark stepKey={o.key} size="sm" />}
-              meta={`${o.channelSlugs.length} channels`}
             />
           ))}
         </StartGrid>
@@ -367,60 +345,13 @@ export function StartFlow() {
     );
   }
 
-  if (screen === "channels") {
-    let index = 0;
-    return (
-      <StartShell
-        step={2}
-        stepCount={4}
-        founders={founders}
-      scrollKey={screen}
-        title="Which channels should we run?"
-        subtitle="Every one of these delivers what you picked. Keep the ones you want us to test. Prices are what a day costs to run, before results."
-        footer={footer(
-          <StartButton onClick={() => go("funnels")} disabled={channels.length === 0}>
-            Continue
-          </StartButton>,
-          picked(channels.length, "channel"),
-        )}
-      >
-        {groups.map((g) => (
-          <section key={g.family}>
-            <StartGroupLabel count={g.channels.length}>{g.label}</StartGroupLabel>
-            <StartGrid>
-              {g.channels.map((c) => (
-                <StartOption
-                  key={c.slug}
-                  index={index++}
-                  selected={channels.includes(c.slug)}
-                  onToggle={() => setChannels((prev) => toggle(prev, c.slug))}
-                  title={c.name}
-                  description={c.description}
-                  mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="sm" />}
-                  meta={
-                    // A customer-operated channel puts nobody of ours on it, which
-                    // is what makes its zero day rate a statement rather than a
-                    // blank. Read the operator, never infer it from the price.
-                    c.operatedBy === "customer"
-                      ? "You run it"
-                      : fromPerDay(c.terms.dailyOperatingCostCents)
-                  }
-                />
-              ))}
-            </StartGrid>
-          </section>
-        ))}
-      </StartShell>
-    );
-  }
-
   if (screen === "funnels") {
     return (
       <StartShell
-        step={3}
-        stepCount={4}
+        step={2}
+        stepCount={STEP_COUNT}
         founders={founders}
-      scrollKey={screen}
+        scrollKey={screen}
         title="How should it turn into revenue?"
         subtitle="Each path ends with a paying client. You pay per path, one day at a time, and you can stop any of them."
         footer={footer(
@@ -432,90 +363,52 @@ export function StartFlow() {
       >
         {offeredFunnels.length === 0 ? (
           <p className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-            {missingRungs.length > 0 ? (
+            {keptChannels.length === 0 ? (
               <>
-                You are one step short of a path. Go back and add{" "}
-                <span className="font-medium text-gray-900">
-                  {missingRungs.map((s) => s.label).join(" and ")}
-                </span>{" "}
-                to what you want, and we can sell you the whole way to a paying client.
+                We could not load what we run this through. Reload the page and it should come
+                back.
               </>
             ) : (
               <>
-                None of our revenue paths starts where the channels you kept land. Go back and keep
-                a channel that gets you a website visit or a conversation.
+                None of our revenue paths turns what you picked into a paying client yet. Go back
+                and pick something else.
               </>
             )}
           </p>
         ) : (
-          (() => {
-            let index = 0;
-            return funnelGroups(offeredFunnels).map((g) => {
-              // The path, once per funnel, as STEPS: a tile and the producer's words for
-              // each rung. Drawn in full on every row below, because the row is what is
-              // bought and a buyer reads the whole path on the thing they are buying.
+          <div className="flex flex-col gap-3">
+            {/* ONE ROW PER FUNNEL. The channel is the same on every row, so naming it
+                on each one states the only answer there is over and over; the row is
+                the path, and the path is what the visitor is choosing between. */}
+            {offeredFunnels.map((f, i) => {
               const rungs = catalogue
-                ? funnelRungs(g.funnelKey, catalogue.wire).map((step) => ({
+                ? funnelRungs(f.funnelKey, catalogue.wire).map((step) => ({
                     key: step.key,
                     label: step.label,
                     mark: <FunnelStepMark stepKey={step.key} size="sm" />,
                   }))
                 : [];
               return (
-                <div key={g.funnelKey} className="mb-8 last:mb-0">
-                  <StartGroupLabel count={g.pairs.length}>
-                    <span className="flex items-center gap-2">
-                      {funnelMark(g.funnelKey)}
-                      <span>{g.funnelName}</span>
-                    </span>
-                  </StartGroupLabel>
-                  <div className="flex flex-col gap-3">
-                    {g.pairs.map((f) => (
-                      <StartPathOption
-                        key={f.key}
-                        index={index++}
-                        selected={funnels.includes(f.key)}
-                        onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
-                        title={f.channelName}
-                        mark={
-                          <AcquisitionChannelMark
-                            def={{ mark: channelMarkForSlug(f.channelSlug) }}
-                            size="sm"
-                          />
-                        }
-                        meta={
-                          f.operatedBy === "customer"
-                            ? "You run it"
-                            : fromPerDay(f.dailyOperatingCostCents)
-                        }
-                        rungs={rungs}
-                      >
-                        {f.operatedBy === "customer"
-                          ? "Your own team works this one."
-                          : `Judge it after ${f.effectiveMinimumCommitmentDays} days.`}
-                      </StartPathOption>
-                    ))}
-                  </div>
-                </div>
+                <StartPathOption
+                  key={f.key}
+                  index={i}
+                  selected={funnels.includes(f.key)}
+                  onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
+                  title={f.funnelName}
+                  mark={funnelMark(f.funnelKey)}
+                  meta={
+                    f.operatedBy === "customer"
+                      ? "You run it"
+                      : fromPerDay(f.dailyOperatingCostCents)
+                  }
+                  rungs={rungs}
+                >
+                  {f.operatedBy === "customer"
+                    ? "Your own team works this one."
+                    : `Judge it after ${f.effectiveMinimumCommitmentDays} days.`}
+                </StartPathOption>
               );
-            });
-          })()
-        )}
-        {/* A path the picks buy that none of the kept channels runs: named, with the
-            channels that would run it, rather than left to vanish in silence. */}
-        {unsoldFunnels.length > 0 && (
-          <div className="mt-6 space-y-2">
-            {unsoldFunnels.map((u) => (
-              <p
-                key={u.funnelKey}
-                className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600"
-              >
-                <span className="font-medium text-gray-900">{u.funnelName}</span> is a path your
-                picks buy, but none of the channels you kept runs it. Go back and keep{" "}
-                <span className="font-medium text-gray-900">{u.sellerNames.join(", ")}</span> to
-                get it.
-              </p>
-            ))}
+            })}
           </div>
         )}
       </StartShell>
@@ -539,8 +432,8 @@ export function StartFlow() {
 
   return (
     <StartShell
-      step={4}
-      stepCount={4}
+      step={3}
+      stepCount={STEP_COUNT}
       founders={founders}
       scrollKey={screen}
       title="What our clients got back"

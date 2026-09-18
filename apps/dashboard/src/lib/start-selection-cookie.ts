@@ -1,7 +1,7 @@
 // WHAT THE VISITOR PICKED BEFORE THEY HAD AN ACCOUNT, carried across signup.
 //
-// The first three screens run signed out, so nothing they answer is in any
-// database yet. Clerk's signup is a REDIRECT, and a query param does not
+// The signed-out screens run before there is an account, so nothing they
+// answer is in any database yet. Clerk's signup is a REDIRECT, and a query param does not
 // survive it — `?url=` learned that the expensive way and needed a cookie of its
 // own (`landing-url-cookie.ts`) for exactly this reason. A client store is no
 // better: the picks have to be readable by the server render of the first
@@ -37,9 +37,18 @@ const MAX_ITEMS = 40;
 const MAX_VALUE_BYTES = 2048;
 
 export interface StartSelection {
-  /** Entry-step keys the visitor wants to buy. */
+  /** Step keys the visitor wants to buy. */
   outcomes: string[];
-  /** Channel slugs they kept. */
+  /**
+   * Channel slugs the funnels run through.
+   *
+   * STATED rather than picked: we run one channel, so the screen that asked
+   * which ones to keep offered a single real answer. The field survives because
+   * what is bought is a (funnel x channel) pair -- the identity billing keys its
+   * ceiling on -- and the payment and brand screens resolve those pairs out of
+   * this cookie. A selection stored while the question existed can name other
+   * channels; the readers narrow rather than refusing it.
+   */
   channels: string[];
   /** Revenue funnel keys they want us to run. */
   funnels: string[];
@@ -67,8 +76,19 @@ export const EMPTY_SELECTION: StartSelection = {
 /** A slug or key we are willing to store. Deliberately narrow: this value comes
  *  from a cookie a visitor can edit, and every one of these strings is later
  *  compared against the catalogue anyway, so anything outside the shape our own
- *  producers use is dropped rather than carried. */
-const TOKEN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+ *  producers use is dropped rather than carried.
+ *
+ *  TWO SHAPES, because what is bought is a PAIR. A funnel and a channel joined by
+ *  `::` is the identity billing keys its ceiling on (`startPairKey`), and it is
+ *  what `funnels` and `paid` have named since the flow moved to pairs -- while
+ *  this pattern still only admitted a bare slug, so EVERY pair key was silently
+ *  dropped on the way to the cookie. In memory the payment screen carried on
+ *  (`remember` sets state as well as the cookie), so the break only showed at the
+ *  handoff: `/onboarding/build` reads the cookie fresh, found nothing paid, and
+ *  sent somebody who had just been charged back to "pick what you want us to run".
+ *  A widening needs no version bump -- every cookie that read before still reads. */
+const SLUG = "[a-z0-9][a-z0-9_-]{0,63}";
+const TOKEN = new RegExp(`^${SLUG}(::${SLUG})?$`);
 
 function cleanList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];

@@ -27,7 +27,8 @@ export type FunnelStepGlyph =
   | "identification-badge"
   | "textbox"
   | "clipboard"
-  | "currency-dollar";
+  | "currency-dollar"
+  | "shopping-bag-open";
 
 export interface FunnelStepMark {
   glyph: FunnelStepGlyph;
@@ -49,6 +50,13 @@ export const FUNNEL_STEP_MARKS: Record<string, FunnelStepMark> = {
   signup: { glyph: "identification-badge", tone: FUNNEL_STEP_TONE },
   form_submitted: { glyph: "clipboard", tone: FUNNEL_STEP_TONE },
   paid_client: { glyph: "currency-dollar", tone: FUNNEL_STEP_TONE },
+  // A BUYER PAYING ON THE WEBSITE, drawn AHEAD of the wire. The producer is
+  // publishing `purchase` as the middle rung of the website-purchase funnel; the
+  // signed-out flow offers it as an outcome today, and an outcome a visitor can
+  // press has to wear a tile. A step the producer never ships simply draws a mark
+  // nothing asks for, which costs nothing; a step it ships without one is a blank
+  // square on the first screen of the funnel.
+  purchase: { glyph: "shopping-bag-open", tone: FUNNEL_STEP_TONE },
 };
 
 /**
