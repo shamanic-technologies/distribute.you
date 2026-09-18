@@ -23,6 +23,8 @@ import {
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { startAnonSession } from "@/lib/anon-session-client";
+import { BuiltSummaryPanel } from "@/components/onboarding/built-summary-panel";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
@@ -224,6 +226,10 @@ type Step =
   // for first.
   | "funnels"
   | "primary"
+  // What we assembled, stated back — the last screen before anyone is asked for
+  // an account. Appended to ALL_STEPS rather than inserted, so a snapshot
+  // written before it existed still parses and no version bump is needed.
+  | "built"
   | "consent"
   | "pricing"
   | "bonus"
@@ -785,6 +791,10 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
 // stays put (a bump strands an in-flight checkout).
 const ALL_STEPS: Step[] = [
   "welcome", "url", "loading", "services", "destination", "objective", "rates", "funnels", "primary", "audiences", "consent", "pricing", "bonus", "launching",
+  // APPENDED, never inserted: this list is what a persisted snapshot parses
+  // against, so the order is not meaningful and growing it at the end keeps
+  // every older snapshot valid. A bump would strand a session mid-checkout.
+  "built",
 ];
 
 function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
@@ -1668,8 +1678,33 @@ export function Onboarding() {
     const workspaceStartedAt = performance.now();
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
     const reuseOrg = (isResume || !forceNew) && !!reuseOrgId;
-    let targetOrgId: string;
-    if (reuseOrg) {
+    // Null on the signed-out path: there is no Clerk org yet, and the calls
+    // below that take one are skipped rather than handed a placeholder.
+    let targetOrgId: string | null = null;
+
+    // SIGNED OUT: the whole build half runs before anyone has an account.
+    //
+    // There is no Clerk org to create and none is created — the session IS an
+    // org, one with no identity provider attached yet, and at signup that same
+    // org is re-pointed at the Clerk org the visitor makes. So nothing here
+    // moves later: the brand, the funnels, the audiences and the spend are
+    // already on the org that becomes theirs.
+    //
+    // A REFUSAL IS NOT AN ERROR. It means this visitor gets the flow we shipped
+    // before this existed, where the card comes first — so it is stated in the
+    // server's own words and they continue to signup rather than being stopped.
+    if (!user) {
+      const outcome = await startAnonSession(brandUrl);
+      if (!outcome.started) {
+        setError(outcome.message);
+        setBusy(false);
+        setStep("url");
+        // Not a dead end: signup still works, and everything after it is the
+        // flow that existed before this change.
+        window.location.href = "/sign-up";
+        return;
+      }
+    } else if (reuseOrg) {
       targetOrgId = reuseOrgId!;
       maybeRenameFreshSignupOrg(targetOrgId, domain ?? hostname);
     } else {
@@ -1732,8 +1767,18 @@ export function Onboarding() {
     // sessionStorage, so closing the tab loses it, and `onboardingComplete` is
     // only written at the terminal launch — so the gate bounces the user back here
     // and needs to be told which brand to resume. Cleared at launch.
-    document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
-    posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
+    //
+    // Signed out there is no org to scope it to, and none is needed: the edge
+    // gate that reads this cookie only ever fires for a signed-in user, and an
+    // anonymous session already carries its own brand inside its signed token.
+    if (targetOrgId) {
+      document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
+    }
+    posthog.capture("onboarding_brand_created", {
+      flow: "beta",
+      org_id: targetOrgId ?? "anonymous",
+      brand_id: newBrandId,
+    });
     const serviceValue = serviceFields?.fields.services?.value;
     if (serviceValue != null) {
       const nextServices = normalizeServices(serviceValue);
@@ -1814,7 +1859,7 @@ export function Onboarding() {
     const workspaceStartedAt = performance.now();
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
     const reuseOrg = !forceNew && !!reuseOrgId;
-    let targetOrgId: string;
+    let targetOrgId: string | null = null;
     if (reuseOrg) {
       targetOrgId = reuseOrgId!;
       maybeRenameFreshSignupOrg(targetOrgId, name);
@@ -2793,6 +2838,15 @@ export function Onboarding() {
   function continueOffer() {
     if (offerIndex < POST_PAYMENT_OFFER_LEVERS.length - 1) {
       setOfferIndex((i) => i + 1);
+      return;
+    }
+    // SIGNED OUT, the offer is the last thing we BUILD. Everything after it is
+    // the account and the card, so the next screen states what we assembled and
+    // the launch happens once there is money behind it. Signed in — an existing
+    // org adding a brand, or a session that has already paid — this is still the
+    // terminal step it has always been.
+    if (!user) {
+      setStep("built");
       return;
     }
     void finalizePostPaymentAndLaunch();
@@ -3971,6 +4025,77 @@ export function Onboarding() {
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"
         />
         <p className="mt-3 text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
+      </StepShell>
+    );
+  }
+
+  // WHAT WE BUILT FOR YOU — the last screen before anyone is asked for an
+  // account, and the reason the wall moved here at all. Everything on it was
+  // assembled in the last ten minutes against an org the visitor has no account
+  // for; the button below is the first time we ask for one.
+  //
+  // The MODEL decides what is on it (`built-summary.ts`, real unit tests): a
+  // section with nothing in it is dropped rather than rendered empty, because
+  // this is the evidence somebody decides to pay us on.
+  if (step === "built") {
+    const summaryInput = {
+      services,
+      funnels: selectedFunnelKeys.map((key) => {
+        const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(key as never));
+        return {
+          key,
+          name: def?.name ?? "",
+          steps: def?.steps ?? [],
+          isPrimary: key === primaryFunnelKey,
+        };
+      }),
+      audiences: (audienceCandidates ?? [])
+        .filter((c) => selectedAudienceIds.includes(c.audienceId))
+        // No avatar on a candidate: human-service draws one when the audience is
+        // ACTIVATED, which happens at the terminal launch. The panel falls back
+        // to its initial rather than showing a broken image.
+        .map((c) => ({ id: c.audienceId, name: c.name, avatarUrl: null })),
+      levers: POST_PAYMENT_OFFER_LEVERS.map((l) => ({
+        key: l.key,
+        // The lever's own step title, so it reads here exactly as it did on the
+        // screen that asked for it.
+        label: l.title,
+        value: isListLever(l.key)
+          ? formatListLeverValue(profile[l.key])
+          : coerceTextField(profile[l.key]),
+      })),
+    };
+    // Resolved HERE and handed over, because the catalogue's own lookup throws
+    // on a key it does not carry and a throw on this screen loses the summary.
+    const funnelMarks: Record<string, ReactNode> = {};
+    for (const f of summaryInput.funnels) {
+      const def = SALES_FUNNELS.find((d) => d.key === normalizeSalesFunnelKey(f.key as never));
+      if (def) funnelMarks[f.key] = <SalesFunnelMark def={def} size="sm" />;
+    }
+
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
+        footer={
+          <NextButton
+            onClick={() => {
+              // The account is the next thing, and the claim is what happens on
+              // the way back: `/onboarding/claim` re-points the org they have
+              // been building at the Clerk org they are about to create.
+              window.location.href = "/sign-up";
+            }}
+            label="Create my account"
+          />
+        }
+      >
+        <BackButton onClick={() => setStep("offer")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">
+          Here&apos;s what we built for you.
+        </h2>
+        <p className="mt-2 mb-5 text-gray-500">
+          Create your account to launch it. Nothing goes out until you do.
+        </p>
+        <BuiltSummaryPanel input={summaryInput} funnelMarks={funnelMarks} />
       </StepShell>
     );
   }

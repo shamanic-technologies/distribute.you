@@ -1,0 +1,95 @@
+/**
+ * May this visitor build anonymously, and what do they see if not?
+ *
+ * The signed-out half of onboarding spends real money for somebody with no
+ * account, so it does not start for everyone. This is the one place that
+ * decides, and it is pure: the caller gathers the facts, this reads them.
+ *
+ * THE REFUSALS ARE NOT SYMMETRIC, and that is the design. A refused visitor is
+ * not turned away — they get the flow we shipped before this existed, where the
+ * card comes first. So every refusal here costs us a better first experience
+ * and costs the visitor nothing, which is what makes failing closed cheap
+ * enough to do on every uncertain case.
+ *
+ * Alias-free apart from the website rule it shares with every other field that
+ * takes a URL, which is itself alias-free. Keep both that way: these are real
+ * unit tests, and the refusals are the half worth testing.
+ */
+
+import { websiteInputProblem } from "./website-input";
+
+/** What the caller knows about the domain, from the service that owns the answer. */
+export type DomainClaim =
+  /** No organisation claims it. The ordinary case for a new visitor. */
+  | "unclaimed"
+  /** Somebody already owns this brand. */
+  | "claimed"
+  /** We could not ask. Treated exactly like `claimed` — see `refusal`. */
+  | "unknown";
+
+export interface StartInput {
+  /** Whatever the visitor typed. Not normalised; that is this module's job. */
+  website: string;
+  claim: DomainClaim;
+}
+
+/** Why an anonymous session did not start. Shown to the visitor verbatim. */
+export interface StartRefusal {
+  reason: "bad-website" | "claimed" | "cannot-verify";
+  /** One sentence, in the visitor's words, stating what happens next. */
+  message: string;
+}
+
+export type StartDecision =
+  | { start: true; website: string; refusal: null }
+  | { start: false; website: null; refusal: StartRefusal };
+
+/**
+ * Said to a visitor whose domain somebody already owns.
+ *
+ * States what happens (the flow continues, with the card first) and NOTHING
+ * about the other organisation — not that it exists, not who it is. A stranger
+ * learning that a domain is "already taken" learns something about one of our
+ * customers, and the honest phrasing costs nothing: from their side it is
+ * simply which flow they get.
+ */
+export const CLAIMED_MESSAGE =
+  "We already have this website set up. Sign in, or continue and we'll get you started.";
+
+/**
+ * Said when the claim question could not be answered.
+ *
+ * Deliberately the SAME outcome as a claimed domain, because the alternative is
+ * to start spending on a domain that might belong to a paying customer — and
+ * the thing that would be leaked is their scraped site and their extracted
+ * offer. A worse first experience is the cheaper mistake, every time.
+ */
+export const CANNOT_VERIFY_MESSAGE =
+  "We couldn't check this website just now. Continue and we'll get you started.";
+
+/**
+ * The decision.
+ *
+ * `bad-website` is the visitor's own typo and carries the website rule's own
+ * sentence, so the field says the same thing here as it does everywhere else a
+ * URL is typed. The other two are ours, and neither blames the visitor.
+ */
+export function anonSessionStart({ website, claim }: StartInput): StartDecision {
+  const badWebsite = websiteInputProblem(website);
+  if (badWebsite) {
+    return { start: false, website: null, refusal: { reason: "bad-website", message: badWebsite } };
+  }
+
+  if (claim === "claimed") {
+    return { start: false, website: null, refusal: { reason: "claimed", message: CLAIMED_MESSAGE } };
+  }
+  if (claim !== "unclaimed") {
+    return {
+      start: false,
+      website: null,
+      refusal: { reason: "cannot-verify", message: CANNOT_VERIFY_MESSAGE },
+    };
+  }
+
+  return { start: true, website: website.trim(), refusal: null };
+}

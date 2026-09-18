@@ -1,5 +1,6 @@
 "use client";
 
+import { browserHasAnonSession } from "@/lib/anon-session-cookie";
 import Image from "next/image";
 import Link from "next/link";
 import { useSignUp } from "@clerk/nextjs/legacy";
@@ -168,9 +169,13 @@ export default function SignUpPage() {
         // landing there directly (vs the default /orgs -> bare /onboarding bounce
         // that drops the query) preserves the param through the OAuth round-trip.
         const prefillUrl = (searchParams.get("url") || "").trim();
-        const redirectUrlComplete = prefillUrl
-          ? `/onboarding?url=${encodeURIComponent(prefillUrl)}`
-          : "/orgs";
+        // Same hinge as the email path: an anonymous session is claimed before
+        // anything else reads, or the org they built looks lost.
+        const redirectUrlComplete = browserHasAnonSession(document.cookie)
+          ? "/onboarding/claim"
+          : prefillUrl
+            ? `/onboarding?url=${encodeURIComponent(prefillUrl)}`
+            : "/orgs";
         await signUp.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -205,6 +210,13 @@ export default function SignUpPage() {
   // The email/password verified session lands on the same destination as the
   // Google path: prefilled onboarding when a landing ?url= is carried, else /orgs.
   const redirectAfterSignUp = () => {
+    // An anonymous session means this person has ALREADY built their setup, on
+    // an org with no identity provider. It has to be re-pointed at the org they
+    // just created before anything else reads, so signup lands on the claim.
+    if (browserHasAnonSession(document.cookie)) {
+      router.push("/onboarding/claim");
+      return;
+    }
     const prefillUrl = (searchParams.get("url") || "").trim();
     router.push(
       prefillUrl ? `/onboarding?url=${encodeURIComponent(prefillUrl)}` : "/orgs"

@@ -29,7 +29,26 @@ const isPublicRoute = createRouteMatcher([
   // revenue funnels, and only then makes an account. Behind the auth gate it
   // would be a screen nobody in the market can reach.
   "/start(.*)",
+  // The BUILD half, which now runs before signup too: a visitor walks their own
+  // services, funnels, audiences, rates and offer, and sees what we assembled,
+  // before being asked for an account or a card. It spends against an anonymous
+  // org through `/api/anon/*`, which carries its own signed session and its own
+  // allowlist — this entry only decides that the SCREEN is reachable.
+  //
+  // EXACT, not a prefix: `/onboarding/pay` and `/onboarding/build` are the two
+  // steps that genuinely need the account to exist, and they stay behind the
+  // gate. A `(.*)` here would open them.
+  //
+  // ⚠️ DELIBERATELY COMMENTED OUT until the tail of the reorder lands. The
+  // wizard's signed-out branch, the session, the allowlist and the claim are all
+  // in place and tested, but what happens AFTER the claim — the budgets, the
+  // charge, the launch — is still the order it was. Opening this line makes the
+  // new path reachable by URL with a tail that does not finish, and half a
+  // reorder on the signup funnel is worse than none. One line, flipped with the
+  // /start CTA in the same change.
+  // "/onboarding",
   "/api/public(.*)",
+  "/api/anon(.*)",
   "/api/cron(.*)",
 ]);
 
