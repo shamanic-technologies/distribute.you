@@ -7855,3 +7855,84 @@ export async function setLeadStepStatement(
     body,
   });
 }
+
+// --- Paced mailing-list releases ---
+//
+// A release sends one written update to a mailing list over several days at a
+// stated daily pace. transactional-email-service owns it end to end: the
+// ledger, the pacing, the per-slice suppression reconcile and the self-halt on
+// bad delivery outcomes. This console watches one and steers it; it decides
+// nothing and computes nothing.
+//
+// The shape is re-exported from `mailing-list-release.ts` rather than declared
+// twice — that module is alias-free so it can carry real unit tests, and a
+// second copy of the type here is how the two would drift.
+
+export type {
+  ReleaseStatus,
+  MailingListRelease,
+} from "./mailing-list-release";
+
+import type { MailingListRelease as MailingListReleaseShape } from "./mailing-list-release";
+
+export interface MailingListReleasesResponse {
+  slug: string;
+  /** How many releases this list has, as the service counts them. */
+  count: number;
+  releases: MailingListReleaseShape[];
+}
+
+/** Every release created for this list, newest first. */
+export async function listMailingListReleases(
+  slug: string,
+  token?: string
+): Promise<MailingListReleasesResponse> {
+  return apiCall<MailingListReleasesResponse>(`/mailing-lists/${slug}/releases`, { token });
+}
+
+/** One release's progress, counted from the ledger. */
+export async function getMailingListRelease(
+  releaseId: string,
+  token?: string
+): Promise<MailingListReleaseShape> {
+  return apiCall<MailingListReleaseShape>(`/mailing-lists/releases/${releaseId}`, { token });
+}
+
+/**
+ * Pause, resume or cancel.
+ *
+ * Cancel is the one that does not come back: it settles every waiting address
+ * so the ledger says what happened to all of them, and the release never
+ * resumes. A move that is not a move is refused by the service with its own
+ * reason, which the caller renders — this never pre-judges which moves are
+ * legal beyond hiding a control the status does not permit.
+ */
+export async function setMailingListReleaseState(
+  releaseId: string,
+  action: "pause" | "resume" | "cancel",
+  token?: string
+): Promise<MailingListReleaseShape> {
+  return apiCall<MailingListReleaseShape>(`/mailing-lists/releases/${releaseId}/${action}`, {
+    method: "POST",
+    token,
+  });
+}
+
+/**
+ * Change a running release's daily pace, from this point on.
+ *
+ * Nothing already sent is disturbed and nobody waiting is dropped. The service
+ * refuses a pace its own worker cannot deliver, and refuses one on a release
+ * that has finished or stopped itself — its refusal is the answer.
+ */
+export async function setMailingListReleasePace(
+  releaseId: string,
+  dailyLimit: number,
+  token?: string
+): Promise<MailingListReleaseShape> {
+  return apiCall<MailingListReleaseShape>(`/mailing-lists/releases/${releaseId}/pace`, {
+    method: "PATCH",
+    token,
+    body: { dailyLimit },
+  });
+}

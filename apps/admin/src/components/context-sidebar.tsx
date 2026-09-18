@@ -541,6 +541,19 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           isActive={pathname.startsWith("/investors/deck")}
         />
       </div>
+
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Newsletter</h4>
+        <SidebarLink
+          item={{
+            id: "newsletter-release",
+            label: "Release",
+            href: "/newsletter",
+            icon: <InvestorUpdateIcon />,
+          }}
+          isActive={pathname.startsWith("/newsletter")}
+        />
+      </div>
     </SidebarSection>
   );
 }

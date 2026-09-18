@@ -135,6 +135,12 @@ html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
 html.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.15); }
+/* Green's text and border weights, which the fill above never had. A tinted
+   chip needs all three remapped in the same commit: an unremapped text weight
+   renders near-black on the dark surface and is invisible in the light default,
+   so it ships unnoticed. Mirrors the red trio below. */
+html.dark .text-green-700 { color: #86efac; }
+html.dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3); }
 html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.15); }
 html.dark .text-red-700 { color: #fca5a5; }
 html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
