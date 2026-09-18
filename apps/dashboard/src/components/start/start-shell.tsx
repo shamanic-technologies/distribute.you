@@ -636,39 +636,42 @@ export function StartProofCard({
 }) {
   return (
     <article
-      className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-4"
+      // Dense on purpose: three cards stack beside the rows and all three have
+      // to sit above the fold at 1440x900 (the third clipped under the CTA at
+      // p-4 / text-3xl, measured on the live page).
+      className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-3"
       // Each card sits a little further right than the one above, the way the
       // landing scatters its proof: a stagger, never a random position.
       style={
         {
           "--enter-delay": `${200 + index * 90}ms`,
-          marginLeft: `${index * 12}px`,
+          marginLeft: `${index * 8}px`,
         } as CSSProperties
       }
       data-proof-card
     >
       <div className="flex items-center gap-3">
-        <img src={portrait} alt="" width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
+        <img src={portrait} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-gray-900">{name}</p>
           <p className="truncate text-xs text-gray-500">{role}</p>
         </div>
       </div>
-      <p className="mt-3 font-display text-3xl leading-none tracking-tight text-gray-900">
+      <p className="mt-2 font-display text-2xl leading-none tracking-tight text-gray-900">
         {formatReturn(returnPerDollar)}
         <span className="ml-2 text-xs font-normal leading-tight text-gray-500">
           return on paid budget
         </span>
       </p>
       {firstStep && firstStep.costPerReachUsd != null && (
-        <p className="mt-2 flex justify-between text-xs text-gray-500">
+        <p className="mt-1 flex justify-between text-xs text-gray-500">
           <span>Cost per {firstStep.label.toLowerCase()}</span>
           <b className="font-medium text-gray-900">
             ${Math.round(firstStep.costPerReachUsd).toLocaleString("en-US")}
           </b>
         </p>
       )}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
         {counts.map((c) => (
           <span key={c.label}>
             <b className="font-medium text-gray-900">{c.peopleReached.toLocaleString("en-US")}</b>{" "}
@@ -676,7 +679,7 @@ export function StartProofCard({
           </span>
         ))}
       </div>
-      <p className="mt-2 flex justify-between text-xs text-gray-500">
+      <p className="mt-1 flex justify-between text-xs text-gray-500">
         <span>Channel</span>
         <b className="font-medium text-gray-900">Cold email</b>
       </p>

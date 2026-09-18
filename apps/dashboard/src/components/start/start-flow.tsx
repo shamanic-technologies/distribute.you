@@ -528,7 +528,7 @@ export function StartFlow() {
           })}
         </div>
         {proofCards.length > 0 && (
-          <div className="flex flex-col gap-3" data-proof-cards>
+          <div className="flex flex-col gap-2" data-proof-cards>
             {proofCards.map((c, i) => (
               <StartProofCard
                 key={`${c.domain}:${c.funnelKey}`}
