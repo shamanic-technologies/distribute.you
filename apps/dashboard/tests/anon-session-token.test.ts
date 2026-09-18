@@ -79,6 +79,23 @@ describe("signAnonSession / readAnonSession", () => {
     }
   });
 
+  it("ROUND-TRIPS a session that owns no brand yet — its first act creates one", () => {
+    // Production bug: the validator required every string field to be non-empty,
+    // so the app's own freshly-signed token (brandId "") read back as malformed
+    // and the proxy 401'd one request after the session route returned 200.
+    const fresh = { ...session, brandId: "", domain: "" };
+    const read = readAnonSession(signAnonSession(fresh, SECRET), SECRET, NOW);
+    expect(read.refusal).toBeNull();
+    expect(read.session).toEqual(fresh);
+  });
+
+  it("still refuses a token naming no ORG — that is what it spends as", () => {
+    for (const k of ["anonOrgId", "orgId"] as const) {
+      const bad = { ...session, [k]: "" };
+      expect(readAnonSession(signAnonSession(bad, SECRET), SECRET, NOW).refusal).toBe("malformed");
+    }
+  });
+
   it("refuses a payload missing a field rather than reading it half-way", () => {
     const partial = { anonOrgId: session.anonOrgId, issuedAt: NOW };
     const body = Buffer.from(JSON.stringify(partial), "utf8").toString("base64url");
