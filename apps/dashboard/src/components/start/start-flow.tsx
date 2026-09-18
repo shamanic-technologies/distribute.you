@@ -37,13 +37,10 @@ import {
   type StartSelection,
 } from "@/lib/start-selection-cookie";
 import {
-  commitmentTag,
-  firstStepLine,
-  firstStepObjective,
+  NO_COMMITMENT_TAG,
   proofCardsFor,
   reassuranceFor,
   type FleetProof,
-  type FirstStepObjective,
   type ShowcaseBrand,
 } from "@/lib/start-proof";
 
@@ -84,7 +81,6 @@ interface Catalogue {
   founders: number | null;
   /** The fleet's proof, each half nullable on its own. */
   proof: FleetProof & {
-    bestCostUsd: Record<FirstStepObjective, number | null>;
     showcase: ShowcaseBrand[];
   };
 }
@@ -147,10 +143,6 @@ export function StartFlow() {
           proof: {
             hotLeads: p.hotLeads ?? null,
             medianReturnPerDollar: p.medianReturnPerDollar ?? null,
-            bestCostUsd: {
-              positiveReply: p.bestCostUsd?.positiveReply ?? null,
-              websiteVisit: p.bestCostUsd?.websiteVisit ?? null,
-            },
             showcase: Array.isArray(p.showcase) ? p.showcase : [],
           },
         });
@@ -237,6 +229,17 @@ export function StartFlow() {
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
   const go = (next: Screen) => setScreen(next);
+  // The path screen arrives with its FIRST offered path already picked
+  // (owner-asked, 2026-09-18): a visitor who takes the default reaches the
+  // last screen in one click, and one who wants another path is one toggle away.
+  // Only on ARRIVAL with nothing picked, never on a deselect: a visitor who
+  // empties the list on purpose must not see the first one snap back.
+  const goToFunnels = () => {
+    if (funnels.length === 0 && offeredFunnels.length > 0) {
+      setFunnels([offeredFunnels[0].key]);
+    }
+    setScreen("funnels");
+  };
   const back = () => {
     const at = ORDER.indexOf(screen);
     if (at > 0) setScreen(ORDER[at - 1]);
@@ -323,7 +326,10 @@ export function StartFlow() {
         }
         footer={footer(<StartButton onClick={() => go("outcome")}>Start</StartButton>)}
       >
-        <StartGrid>
+        {/* THREE pillars in THREE columns, not `StartGrid`: that grid goes to four
+            columns at xl, so three cards took three quarters of the width and left
+            an empty fourth (reported: "the 3 cards don't take all the width"). */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4" data-welcome-pillars>
           {pillars.map((p, i) => (
             <div
               key={p.title}
@@ -337,7 +343,7 @@ export function StartFlow() {
               <p className="mt-2 text-sm leading-snug text-gray-500">{p.body}</p>
             </div>
           ))}
-        </StartGrid>
+        </div>
       </StartShell>
     );
   }
@@ -354,7 +360,7 @@ export function StartFlow() {
         title="What should we get you?"
         subtitle="Pick everything worth paying for. Each one opens a different way of turning it into revenue."
         footer={footer(
-          <StartButton onClick={() => go("funnels")} disabled={outcomes.length === 0}>
+          <StartButton onClick={goToFunnels} disabled={outcomes.length === 0}>
             Continue
           </StartButton>,
           picked(outcomes.length, "outcome"),
@@ -438,13 +444,14 @@ export function StartFlow() {
                   }
                   rungs={rungs}
                 >
-                  {/* The commitment is a TAG, a fact about the channel's terms,
-                      never a sentence telling the visitor when to judge it. */}
+                  {/* No path carries a commitment; the tag says so and reads NO
+                      producer field (the channel's "minimum days" is how long a
+                      result takes to show, not a term). */}
                   {f.operatedBy === "customer" ? (
                     "Your own team works this one."
                   ) : (
                     <span className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
-                      {commitmentTag(f.effectiveMinimumCommitmentDays)}
+                      {NO_COMMITMENT_TAG}
                     </span>
                   )}
                 </StartPathOption>
@@ -471,13 +478,12 @@ export function StartFlow() {
       ).map((r) => ({ funnel: f, row: r })),
     );
 
-  // The named clients who ran one of the picked paths, best return first. The
-  // three consenting clients are the whole population, so a selection none of
-  // them ran draws no card and the column is not there.
-  const proofCards = proofCardsFor(
-    proof?.showcase ?? [],
-    returnRows.map(({ funnel }) => funnel.funnelKey),
-  );
+  // The top three named clients by return, whatever path they ran, floored at
+  // the fleet median the strip under the card states: a card can never read
+  // lower than the figure beside it. They sit OUTSIDE the white card.
+  const proofCards = proofCardsFor(proof?.showcase ?? [], {
+    minReturnPerDollar: proof?.medianReturnPerDollar ?? null,
+  });
 
   return (
     <StartShell
@@ -500,34 +506,8 @@ export function StartFlow() {
           Excellent, create my account
         </StartButton>,
       )}
-    >
-      <div className={proofCards.length > 0 ? "grid gap-4 lg:grid-cols-[1fr_300px]" : ""}>
-        <div className="flex flex-col gap-2">
-          {returnRows.map(({ funnel, row }, i) => {
-            // The path's first step decides which price the line states: the best
-            // workflow's cost per positive reply on a reply-led path, per website
-            // visit on a visit-led one. Read off the producer's own rung order.
-            const objective = catalogue
-              ? firstStepObjective(funnelRungs(funnel.funnelKey, catalogue.wire).map((r) => r.key))
-              : null;
-            const bestUsd = objective ? proof?.bestCostUsd[objective] ?? null : null;
-            return (
-              <StartReturnRow
-                key={funnel.key}
-                index={i}
-                funnelMark={funnelMark(funnel.funnelKey)}
-                funnelName={funnel.funnelName}
-                median={row.median}
-                p25={row.p25}
-                p75={row.p75}
-                firstStepLine={objective && bestUsd != null ? firstStepLine(objective, bestUsd) : null}
-                reasonLabel={returnReasonLabel(row.reason)}
-                formatReturn={formatReturn}
-              />
-            );
-          })}
-        </div>
-        {proofCards.length > 0 && (
+      aside={
+        proofCards.length > 0 ? (
           <div className="flex flex-col gap-2" data-proof-cards>
             {proofCards.map((c, i) => (
               <StartProofCard
@@ -536,6 +516,7 @@ export function StartFlow() {
                 portrait={c.person.portrait}
                 name={c.person.name}
                 role={c.person.role}
+                funnelName={c.funnelName}
                 returnPerDollar={c.returnPerDollar}
                 firstStep={c.firstStep}
                 counts={c.counts}
@@ -543,7 +524,23 @@ export function StartFlow() {
               />
             ))}
           </div>
-        )}
+        ) : null
+      }
+    >
+      <div className="flex flex-col gap-2">
+        {returnRows.map(({ funnel, row }, i) => (
+          <StartReturnRow
+            key={funnel.key}
+            index={i}
+            funnelMark={funnelMark(funnel.funnelKey)}
+            funnelName={funnel.funnelName}
+            median={row.median}
+            p25={row.p25}
+            p75={row.p75}
+            reasonLabel={returnReasonLabel(row.reason)}
+            formatReturn={formatReturn}
+          />
+        ))}
       </div>
     </StartShell>
   );

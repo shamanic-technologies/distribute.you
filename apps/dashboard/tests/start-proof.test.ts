@@ -1,48 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  bestWorkflowCostUsd,
-  commitmentTag,
-  firstStepLine,
-  firstStepObjective,
   hotLeadStats,
+  NO_COMMITMENT_TAG,
   proofCardsFor,
   reassuranceFor,
   SHOWCASE_PEOPLE,
   type ShowcaseBrand,
-  type WorkflowCostRow,
 } from "../src/lib/start-proof";
 
 // Fixtures are copied off the SERVED prod bodies (features-service v0.170.2,
-// 2026-09-18): the array key on `workflow-cost-per-outcome` is `workflows`
-// (read in the route), a showcase funnel's first rung is `contacted`, and the
-// cheapest priced positive reply was $103.01 on a dynasty with 4 of them.
-
-const wf = (slug: string, cost: number | null, replies: number, clicks: number): WorkflowCostRow => ({
-  workflowDynastySlug: slug,
-  costPerOutcomeUsd: cost,
-  observedPositiveReplies: replies,
-  observedClicks: clicks,
-});
-
-describe("bestWorkflowCostUsd: the cheapest row with at least one observed outcome", () => {
-  const rows = [
-    wf("rampart", 2.84, 0, 259), // the cheapest per visit, and it produced no reply
-    wf("ballad", 103.01, 4, 12),
-    wf("lithium", 155.26, 19, 101),
-    wf("husk", 0.5, 0, 0), // an explore floor, nothing observed
-    wf("broken", null, 3, 3),
-  ];
-  it("prices a reply only on a workflow that produced one", () => {
-    expect(bestWorkflowCostUsd(rows, "positiveReply")).toBe(103.01);
-  });
-  it("prices a visit on the click-cheapest workflow, whatever its reply count", () => {
-    expect(bestWorkflowCostUsd(rows, "websiteVisit")).toBe(2.84);
-  });
-  it("is null when nothing observed the outcome, never the floor", () => {
-    expect(bestWorkflowCostUsd([wf("husk", 0.5, 0, 0)], "positiveReply")).toBeNull();
-    expect(bestWorkflowCostUsd([], "websiteVisit")).toBeNull();
-  });
-});
+// 2026-09-18): a showcase funnel's first rung is `contacted`, and the three
+// consenting clients read 1.62x, 51.06x and 3.06x.
 
 describe("hotLeadStats: the homepage hero's derivation over the ranked brands", () => {
   const brand = (replies: number, clicks: number, cents: number) => ({
@@ -62,25 +30,9 @@ describe("hotLeadStats: the homepage hero's derivation over the ranked brands", 
   });
 });
 
-describe("firstStepObjective + firstStepLine", () => {
-  it("prices a reply-led path per reply and a visit-led one per visit", () => {
-    expect(firstStepObjective(["conversation", "meeting_booked", "paid_client"])).toBe("positiveReply");
-    expect(firstStepObjective(["website_visit", "signup", "paid_client"])).toBe("websiteVisit");
-    expect(firstStepObjective(["meeting_attended", "paid_client"])).toBeNull();
-    expect(firstStepObjective([])).toBeNull();
-  });
-  it("states whole dollars in the owner's words", () => {
-    expect(firstStepLine("positiveReply", 103.01)).toBe("$103 per positive reply on average");
-    expect(firstStepLine("websiteVisit", 2.84)).toBe("$3 per website visit on average");
-    expect(firstStepLine("positiveReply", 1591.4)).toBe("$1,591 per positive reply on average");
-  });
-});
-
-describe("commitmentTag", () => {
-  it("names the days, or the absence of a commitment", () => {
-    expect(commitmentTag(30)).toBe("30-day commitment");
-    expect(commitmentTag(0)).toBe("No commitment");
-    expect(commitmentTag(Number.NaN)).toBe("No commitment");
+describe("the commitment tag", () => {
+  it("is a constant: no path we sell carries a commitment, whatever the channel's 'minimum days' says", () => {
+    expect(NO_COMMITMENT_TAG).toBe("No commitment");
   });
 });
 
@@ -144,26 +96,31 @@ const SHOWCASE: ShowcaseBrand[] = [
   },
 ];
 
-describe("proofCardsFor: the named clients on the picked paths, best return first", () => {
-  it("joins on the funnel key and orders by return", () => {
-    const cards = proofCardsFor(SHOWCASE, ["sales_meetings_from_conversation", "form_magnet"]);
-    expect(cards.map((c) => [c.domain, c.returnPerDollar])).toEqual([
-      ["opsfolio.com", 51.06],
-      ["shockwavecenters.com", 3.0555],
-      ["docdinners.com", 1.6237],
+describe("proofCardsFor: the top three named clients by return, floored at the fleet median", () => {
+  it("orders by return across EVERY path, not the picked ones, and names the path", () => {
+    const cards = proofCardsFor(SHOWCASE, { minReturnPerDollar: null });
+    expect(cards.map((c) => [c.domain, c.returnPerDollar, c.funnelName])).toEqual([
+      ["opsfolio.com", 51.06, "Form Magnet"],
+      ["shockwavecenters.com", 3.0555, "Sales Meeting from Positive Reply"],
+      ["docdinners.com", 1.6237, "Sales Meeting from Positive Reply"],
     ]);
     // the person is the map's, never the wire's brand name
     expect(cards[0].person).toBe(SHOWCASE_PEOPLE["opsfolio.com"]);
   });
-  it("draws no card for a brand the people map does not name, whatever its return", () => {
-    const cards = proofCardsFor(SHOWCASE, ["form_magnet"]);
-    expect(cards.map((c) => c.domain)).toEqual(["opsfolio.com"]);
+  it("drops a card under the floor rather than re-ranking it: a 1.6x beside a '5.2x median' strip is the contradiction the floor exists to stop", () => {
+    // prod 2026-09-18: fleet median 5.22x, so only Opsfolio clears it
+    expect(proofCardsFor(SHOWCASE, { minReturnPerDollar: 5.22 }).map((c) => c.domain)).toEqual(["opsfolio.com"]);
+    // a floor exactly at a card's return keeps it
+    expect(proofCardsFor(SHOWCASE, { minReturnPerDollar: 3.0555 }).map((c) => c.domain)).toEqual([
+      "opsfolio.com",
+      "shockwavecenters.com",
+    ]);
   });
-  it("draws nothing for a selection none of the named clients ran", () => {
-    expect(proofCardsFor(SHOWCASE, ["signups_from_website"])).toEqual([]);
+  it("draws no card for a brand the people map does not name, whatever its return", () => {
+    expect(proofCardsFor(SHOWCASE, { minReturnPerDollar: null }).map((c) => c.domain)).not.toContain("unnamed.example");
   });
   it("leads with the first rung after contact and drops rungs nobody reached", () => {
-    const [doc] = proofCardsFor(SHOWCASE, ["sales_meetings_from_conversation"]).filter((c) => c.domain === "docdinners.com");
+    const [doc] = proofCardsFor(SHOWCASE, { minReturnPerDollar: null }).filter((c) => c.domain === "docdinners.com");
     expect(doc.firstStep).toEqual({ label: "Positive reply", costPerReachUsd: 238.65 });
     expect(doc.counts).toEqual([
       { label: "Contacted", peopleReached: 15595 },
@@ -176,7 +133,7 @@ describe("proofCardsFor: the named clients on the picked paths, best return firs
       { ...SHOWCASE[0], measured: false },
       { ...SHOWCASE[2], funnels: [{ ...SHOWCASE[2].funnels[0], returnPerDollar: null }] },
     ];
-    expect(proofCardsFor(unmeasured, ["sales_meetings_from_conversation"])).toEqual([]);
+    expect(proofCardsFor(unmeasured, { minReturnPerDollar: null })).toEqual([]);
   });
 });
 

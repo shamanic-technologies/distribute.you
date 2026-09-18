@@ -58,59 +58,6 @@ export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// The best workflow's price for a first step, cross-org.
-//
-// features-service prices every workflow dynasty on ONE objective per read. A
-// workflow that produced NONE of the objective carries a price that is a floor,
-// not a result, so only a row with at least one observed outcome may win. The
-// pick is the cheapest of those: what our best model charges for a positive
-// reply (or a website visit) is what a visitor is told a first step costs.
-
-export interface WorkflowCostRow {
-  workflowDynastySlug: string;
-  observedClicks: number | null;
-  observedPositiveReplies: number | null;
-  costPerOutcomeUsd: number | null;
-}
-
-export type FirstStepObjective = "positiveReply" | "websiteVisit";
-
-export function bestWorkflowCostUsd(
-  rows: WorkflowCostRow[],
-  objective: FirstStepObjective,
-): number | null {
-  const observed = (r: WorkflowCostRow) =>
-    objective === "positiveReply" ? r.observedPositiveReplies ?? 0 : r.observedClicks ?? 0;
-  let best: number | null = null;
-  for (const r of rows) {
-    const cost = r.costPerOutcomeUsd;
-    if (observed(r) < 1 || typeof cost !== "number" || !Number.isFinite(cost) || cost <= 0) continue;
-    if (best === null || cost < best) best = cost;
-  }
-  return best;
-}
-
-/**
- * Which first step a funnel is entered on, read off the producer's own rung
- * order: the FIRST rung after the entry. A funnel whose first rung is a positive
- * reply is priced per reply; one entered on a website visit per visit. Any other
- * entry (a funnel this flow does not sell today) states no price.
- */
-export function firstStepObjective(
-  stepKeys: readonly string[],
-): FirstStepObjective | null {
-  const first = stepKeys[0];
-  if (first === "conversation") return "positiveReply";
-  if (first === "website_visit") return "websiteVisit";
-  return null;
-}
-
-export function firstStepLine(objective: FirstStepObjective, usd: number): string {
-  const noun = objective === "positiveReply" ? "positive reply" : "website visit";
-  return `$${Math.round(usd).toLocaleString("en-US")} per ${noun} on average`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
 // The named clients: the homepage's three proof cards, off the same read.
 //
 // features-service publishes the funnel counts and the realized return of the
@@ -166,11 +113,14 @@ export const SHOWCASE_PEOPLE: Record<string, ShowcasePerson> = {
   },
 };
 
-/** One proof card: a person, their return, the first step's price, the counts. */
+/** One proof card: a person, their return, the path it was on, the counts. */
 export interface ProofCard {
   domain: string;
   person: ShowcasePerson;
   funnelKey: string;
+  /** The producer's own name for the path, stated on the card because the
+   *  cards are no longer filtered to the paths the visitor picked. */
+  funnelName: string;
   returnPerDollar: number;
   /** The first rung after contact: what it cost and what it is called. */
   firstStep: { label: string; costPerReachUsd: number | null } | null;
@@ -181,34 +131,45 @@ export interface ProofCard {
 export const MAX_PROOF_CARDS = 3;
 
 /**
- * The cards for a selection: every named client whose funnel is among the
- * picked ones, best return first, at most three.
+ * The TOP THREE named clients by return, whatever path they ran.
  *
- * The join is on the FUNNEL KEY, the producer's own, so a card is only offered
- * for a path the visitor is actually looking at. A brand with no measured
- * return has nothing to lead with and draws no card; a rung nobody reached is
- * dropped from the counts rather than printed as a zero beside a real one.
+ * Owner-decided (2026-09-18): the cards are the best returns we can name, not
+ * the clients who happened to run the paths the visitor picked; each card names
+ * its own path instead. Only three consenting clients exist on the read, so
+ * "top three" is every one of them the floor lets through.
+ *
+ * The FLOOR is what stops a card contradicting the figure beside it: the screen
+ * states the fleet's median return in its strip, and a named client under that
+ * median reads as "so it does not work for everyone" one inch from a headline
+ * saying it does. A card below the floor is dropped, never re-ranked. A null
+ * floor (the fleet figure is not held) drops nothing, because then no figure on
+ * the screen is there to be contradicted.
+ *
+ * A brand with no measured return has nothing to lead with and draws no card;
+ * a rung nobody reached is dropped from the counts rather than printed as a
+ * zero beside a real one.
  */
 export function proofCardsFor(
   brands: ShowcaseBrand[],
-  pickedFunnelKeys: readonly string[],
+  opts: { minReturnPerDollar: number | null },
   people: Record<string, ShowcasePerson> = SHOWCASE_PEOPLE,
 ): ProofCard[] {
-  const picked = new Set(pickedFunnelKeys);
+  const floor = opts.minReturnPerDollar;
   const cards: ProofCard[] = [];
   for (const b of brands) {
     const person = people[b.brand?.domain];
     if (!person || !b.measured) continue;
     for (const f of b.funnels ?? []) {
-      if (!picked.has(f.funnelKey)) continue;
       const ret = f.returnPerDollar;
       if (typeof ret !== "number" || !Number.isFinite(ret) || ret <= 0) continue;
+      if (typeof floor === "number" && Number.isFinite(floor) && ret < floor) continue;
       const steps = f.steps ?? [];
       const first = steps[1] ?? null;
       cards.push({
         domain: b.brand.domain,
         person,
         funnelKey: f.funnelKey,
+        funnelName: f.funnelName,
         returnPerDollar: ret,
         firstStep: first
           ? {
@@ -230,11 +191,16 @@ export function proofCardsFor(
 // ─────────────────────────────────────────────────────────────────────────
 // Wording.
 
-/** The commitment a path carries, as a tag: a fact about the channel's terms. */
-export function commitmentTag(days: number): string {
-  if (!Number.isFinite(days) || days <= 0) return "No commitment";
-  return `${Math.round(days)}-day commitment`;
-}
+/**
+ * The tag a platform-operated path wears. There is NO commitment on any path we
+ * sell: a customer pays one day at a time and stops any day. features-service
+ * publishes `minimumCommitmentDays: 30` on the cold-email channel, but that
+ * figure is how long a result takes to SHOW (the pay screen says so), and
+ * #4268 rendered it as "30-day commitment", a claim the owner corrected
+ * (2026-09-18: "none of them have"). So the tag is a constant, and nothing on
+ * the path screen reads that field.
+ */
+export const NO_COMMITMENT_TAG = "No commitment";
 
 export interface FleetProof {
   hotLeads: HotLeadStats | null;

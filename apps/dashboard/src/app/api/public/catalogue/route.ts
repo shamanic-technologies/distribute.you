@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  bestWorkflowCostUsd,
-  hotLeadStats,
-  type FirstStepObjective,
-  type ShowcaseBrand,
-} from "@/lib/start-proof";
+import { hotLeadStats, type ShowcaseBrand } from "@/lib/start-proof";
 
 /**
  * The catalogue the SIGNED-OUT half of onboarding is built from.
@@ -107,34 +102,20 @@ async function readSoft<T>(label: string, path: string): Promise<T | null> {
   }
 }
 
-/** What a workflow charges for one objective, cross-org, cheapest measured row. */
-async function readBestCost(objective: FirstStepObjective): Promise<number | null> {
-  // The producer's array is `workflows` (verified on the served body, 2026-09-18),
-  // NOT `results` like the ranked read beside it: one dynasty per row.
-  const body = await readSoft<{ workflows?: unknown[] }>(
-    `workflow-cost-per-outcome ${objective}`,
-    `features/workflow-cost-per-outcome?featureSlug=${CHANNEL_SLUG}&objective=${objective}`,
-  );
-  if (!body || !Array.isArray(body.workflows)) return null;
-  return bestWorkflowCostUsd(body.workflows as never[], objective);
-}
-
 export interface StartProofPayload {
   hotLeads: { hotLeads: number; companies: number; medianCostUsd: number } | null;
   medianReturnPerDollar: number | null;
-  /** What the best workflow charges for a first step, per objective. */
-  bestCostUsd: Record<FirstStepObjective, number | null>;
   /** The named clients' funnels, exactly as features-service publishes them. */
   showcase: ShowcaseBrand[];
 }
 
 /**
  * The fleet's proof: hot leads (the SAME derivation as the homepage hero, over
- * the per-brand ranked read), the fleet's median return, the best workflow's
- * price per first step, and the named clients' funnels.
+ * the per-brand ranked read), the fleet's median return, and the named clients'
+ * funnels.
  */
 async function readProof(): Promise<StartProofPayload> {
-  const [ranked, fleetReturn, showcase, positiveReply, websiteVisit] = await Promise.all([
+  const [ranked, fleetReturn, showcase] = await Promise.all([
     readSoft<{ results?: { stats: Record<string, number | null> }[] }>(
       "ranked brands",
       `features/ranked?featureSlug=${CHANNEL_SLUG}&objective=emailsSent&groupBy=brand&limit=200`,
@@ -144,8 +125,6 @@ async function readProof(): Promise<StartProofPayload> {
       `features/return-on-spend?featureSlug=${CHANNEL_SLUG}&minSpendUsd=${MIN_SPEND_USD}`,
     ),
     readSoft<{ brands?: ShowcaseBrand[] }>("showcase-funnels", "features/showcase-funnels"),
-    readBestCost("positiveReply"),
-    readBestCost("websiteVisit"),
   ]);
 
   const median = fleetReturn?.measured ? fleetReturn.medianReturnPerDollar : null;
@@ -153,7 +132,6 @@ async function readProof(): Promise<StartProofPayload> {
     hotLeads: ranked ? hotLeadStats(ranked.results ?? []) : null,
     medianReturnPerDollar:
       typeof median === "number" && Number.isFinite(median) && median > 0 ? median : null,
-    bestCostUsd: { positiveReply, websiteVisit },
     showcase: Array.isArray(showcase?.brands) ? showcase.brands : [],
   };
 }
