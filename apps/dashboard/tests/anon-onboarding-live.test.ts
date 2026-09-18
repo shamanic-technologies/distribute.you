@@ -69,3 +69,34 @@ describe("what must NOT come back", () => {
     expect(src).toMatch(/if \(!user\) \{\s*setStep\("built"\);/);
   });
 });
+
+describe("both cookies actually reach the browser", () => {
+  const strip2 = (s: string) =>
+    s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("the session and claim routes use cookies.set, NEVER two Set-Cookie appends", () => {
+    // Two `headers.append("Set-Cookie", ...)` on one response are joined into a
+    // SINGLE header by a comma and the browser keeps only one — in practice the
+    // last, so the readable flag survives and the signed token is dropped. The
+    // route still answers 200, the api client still routes to the anonymous
+    // proxy, and the very next call is a 401 with no session to read.
+    //
+    // Found in production on the first browser pass, not by any test.
+    for (const f of [
+      "src/app/api/anon/session/route.ts",
+      "src/app/api/anon/claim/route.ts",
+    ]) {
+      const src = strip2(read(f));
+      expect(src, f).not.toMatch(/headers\.append\(\s*"Set-Cookie"/);
+      expect(src, f).toContain("res.cookies.set(");
+    }
+  });
+
+  it("the token is httpOnly and the flag is not", () => {
+    const src = strip2(read("src/app/api/anon/session/route.ts"));
+    expect(src).toMatch(/ANON_SESSION_COOKIE[\s\S]{0,80}httpOnly: true/);
+    // The flag must stay readable: the api client reads it off document.cookie
+    // to decide which proxy carries the call.
+    expect(src).toMatch(/ANON_FLAG_COOKIE, "1", opts\)/);
+  });
+});

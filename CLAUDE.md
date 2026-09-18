@@ -520,6 +520,18 @@ Light gamification: a short list of tasks at the granularity the task belongs to
 - **A count-up, a pop and a confetti burst fire ONLY on an INCREASE from a value this surface has already seen.** Never a first paint (that is the page loading, not an event), never a decrease (on an append-only ledger that is a correction or another org). An animation that fires when nothing happened is a signal the reader learns to ignore, which costs the one moment it exists for. `lib/count-up.ts` holds the rule as a pure function.
 - **`lib/confetti.ts` is 40 particles in ~60 lines with no dependency**, coloured from the brand ramp resolved at burst time so the celebration is the customer's hue. It paints at `z-index: 60` (the header is `sticky z-50`, so a burst behind it celebrates nothing), removes its host node, and renders NOTHING under `prefers-reduced-motion` — not a smaller burst.
 
+## TWO `Set-Cookie` appends on ONE response become ONE header — the browser keeps one, and the one it drops is silent
+
+`res.headers.append("Set-Cookie", a)` followed by `res.headers.append("Set-Cookie", b)` does NOT emit two headers. The `Headers` object joins them with a comma into a single value, and the browser keeps one of the two — in practice the LAST. Nothing errors, nothing is logged, and the response is a normal 200.
+
+The failure is therefore invisible everywhere it could be caught. The route's own tests pass (they assert the strings it built). `tsc` passes. A server-side probe of the handler passes, because the handler really did produce both values. Only a REAL BROWSER shows that one of them never landed — and it shows up one request LATER, as a 401 on a call whose session was created successfully a moment earlier.
+
+**Use `res.cookies.set(name, value, opts)`**, which emits one header per cookie. Keep any string builders for `document.cookie` writes, which take exactly one cookie at a time and are unaffected.
+
+⚠️ It bites hardest on a PAIR where one cookie is the credential and the other is a readable hint, because the surviving one makes the feature look armed: the client reads the flag, routes correctly, and fails on the credential it cannot see. Guard it by BANNING the append in the route rather than by asserting the cookie strings.
+
+Cost 2026-09-18 (anonymous onboarding, #4277 → #4278): `POST /api/anon/session` answered 200 and set the readable `distribute_anon` flag; the signed `distribute_anon_session` token was dropped, so the next call was `401 No session` and the screen read "No session" on a session that had just been created. Every server-side check — the full client/brand/billing chain probed in prod, 4765 tests, `tsc` — was green. Found on the first browser pass.
+
 ## A REFUSED charge is on the wire already, and two independent gates made it invisible
 
 `lib/payment-failure.ts` (alias-free, real unit tests) answers one question off the payments list the Billing page already polls: has a charge been refused since the last one that went through. `PaymentFailedBanner` renders it at the top of `/billing` with Stripe's own reason and a retry.

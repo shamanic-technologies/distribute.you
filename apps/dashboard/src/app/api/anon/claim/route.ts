@@ -1,9 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import {
+  ANON_COOKIE_OPTIONS,
+  ANON_FLAG_COOKIE,
+  ANON_SESSION_COOKIE,
   anonTokenFromCookieHeader,
-  clearAnonFlagCookie,
-  clearAnonSessionCookie,
 } from "@/lib/anon-session-cookie";
 import { readAnonSession } from "@/lib/anon-session-token";
 import { settleWelcomeOnSignup } from "@/lib/billing-service";
@@ -34,9 +35,9 @@ const isSecure = (req: NextRequest): boolean => new URL(req.url).protocol === "h
  *  gets one 401 from the proxy, which clears both — but the claim is the
  *  moment the token genuinely stops being needed, so it goes here first. */
 function cleared(req: NextRequest, res: NextResponse): NextResponse {
-  const secure = isSecure(req);
-  res.headers.append("Set-Cookie", clearAnonSessionCookie({ secure }));
-  res.headers.append("Set-Cookie", clearAnonFlagCookie({ secure }));
+  const opts = { ...ANON_COOKIE_OPTIONS(isSecure(req)), maxAge: 0 };
+  res.cookies.set(ANON_SESSION_COOKIE, "", { ...opts, httpOnly: true });
+  res.cookies.set(ANON_FLAG_COOKIE, "", opts);
   return res;
 }
 

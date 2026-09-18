@@ -35,8 +35,13 @@ describe("the one request that matters most in the flow", () => {
   });
 
   it("clears BOTH cookies once the org is genuinely theirs", () => {
-    expect(CODE).toContain("clearAnonSessionCookie");
-    expect(CODE).toContain("clearAnonFlagCookie");
+    // Spelling changed with the cookie-append bug: `cookies.set(..., maxAge: 0)`
+    // rather than two `Set-Cookie` header appends, which the browser collapses
+    // into one. The rule is unchanged — both cookies go.
+    expect(CODE).toContain("ANON_SESSION_COOKIE");
+    expect(CODE).toContain("ANON_FLAG_COOKIE");
+    expect(CODE).toMatch(/maxAge: 0/);
+    expect((CODE.match(/res\.cookies\.set\(/g) ?? []).length).toBe(2);
   });
 
   it("treats a replayed claim as success, not an error", () => {

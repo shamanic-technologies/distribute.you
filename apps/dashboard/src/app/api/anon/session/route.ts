@@ -2,10 +2,9 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { anonSessionStart } from "@/lib/anon-session-start";
 import {
-  anonFlagCookie,
-  anonSessionCookie,
-  clearAnonFlagCookie,
-  clearAnonSessionCookie,
+  ANON_COOKIE_OPTIONS,
+  ANON_FLAG_COOKIE,
+  ANON_SESSION_COOKIE,
 } from "@/lib/anon-session-cookie";
 import {
   ANON_ORG_PREFIX,
@@ -50,11 +49,12 @@ const isSecure = (req: NextRequest): boolean => new URL(req.url).protocol === "h
  *  visitor's side nothing went wrong, they simply get the other flow. */
 function refuse(req: NextRequest, message: string, reason: string): NextResponse {
   const res = NextResponse.json({ started: false, reason, message });
-  const secure = isSecure(req);
+  const opts = { ...ANON_COOKIE_OPTIONS(isSecure(req)), maxAge: 0 };
   // Clear any stale session rather than leaving a browser holding one it is
-  // about to stop using.
-  res.headers.append("Set-Cookie", clearAnonSessionCookie({ secure }));
-  res.headers.append("Set-Cookie", clearAnonFlagCookie({ secure }));
+  // about to stop using. `cookies.set`, never two header appends — see the note
+  // on ANON_COOKIE_OPTIONS.
+  res.cookies.set(ANON_SESSION_COOKIE, "", { ...opts, httpOnly: true });
+  res.cookies.set(ANON_FLAG_COOKIE, "", opts);
   return res;
 }
 
@@ -112,9 +112,9 @@ export async function POST(req: NextRequest) {
     );
 
     const res = NextResponse.json({ started: true, website: decision.website, domain });
-    const secure = isSecure(req);
-    res.headers.append("Set-Cookie", anonSessionCookie(token, { secure }));
-    res.headers.append("Set-Cookie", anonFlagCookie({ secure }));
+    const opts = ANON_COOKIE_OPTIONS(isSecure(req));
+    res.cookies.set(ANON_SESSION_COOKIE, token, { ...opts, httpOnly: true });
+    res.cookies.set(ANON_FLAG_COOKIE, "1", opts);
     return res;
   } catch (err) {
     // Logged as the real failure it is, then degraded to the pay-first flow.
