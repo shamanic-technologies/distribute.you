@@ -122,3 +122,25 @@ export function anonTokenFromCookieHeader(header: string | null | undefined): st
   }
   return null;
 }
+
+/**
+ * The same two cookies as OPTIONS rather than as strings.
+ *
+ * ⚠️ A route handler MUST set these with `res.cookies.set(...)`, never with two
+ * `res.headers.append("Set-Cookie", ...)` calls. Appending twice puts both into
+ * ONE header value joined by a comma, and the browser keeps only one of them —
+ * in practice the LAST, so the readable flag survives and the signed token is
+ * silently dropped. Everything then looks like it worked: the session route
+ * answers 200, the flag is present, the api client routes to the anonymous
+ * proxy, and the very next call is a 401 with no session to read.
+ *
+ * Caught in production on the first browser pass. The string builders above
+ * stay for `document.cookie` writes, which take exactly one cookie at a time.
+ */
+export const ANON_COOKIE_OPTIONS = (secure: boolean) =>
+  ({
+    path: "/",
+    maxAge: ANON_SESSION_MAX_AGE_SECONDS,
+    sameSite: "lax" as const,
+    secure,
+  });
