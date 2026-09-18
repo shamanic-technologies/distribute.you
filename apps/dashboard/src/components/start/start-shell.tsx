@@ -64,6 +64,7 @@ export function StartShell({
   subtitle,
   footer,
   founders,
+  scrollKey,
   children,
 }: {
   /** 1-based. The dots render only when there is more than one, because "1 of 1"
@@ -75,9 +76,21 @@ export function StartShell({
   footer: ReactNode;
   /** The platform's raw user count, floored here. Absent keeps the seed line. */
   founders?: number | null;
+  /** Names the screen when several share one step number, so a change of screen
+   *  resets the scroll even when the step does not move. */
+  scrollKey?: string;
   children: ReactNode;
 }) {
   const brand = useLandingBrand();
+
+  // The scroll box is ONE element across screens (the shell sits at the same
+  // position in the tree whichever screen renders it), so its scrollTop
+  // survives a screen change: a visitor who scrolled the 31-channel list to its
+  // end arrived on the next screen already at the bottom, headline off-screen.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [step, scrollKey]);
   const floored = foundersFloor(founders);
   const foundersText = floored === null ? FOUNDERS_SEED : foundersLine(floored);
 
@@ -160,7 +173,7 @@ export function StartShell({
         {/* Bled 4px on every side (`-m-1 p-1`): a selected card wears a 2px ring OUTSIDE
             its border and a hovered one lifts 2px, and an overflow box clips both at its
             edge. Without the bleed the outline on every edge card was cut off. */}
-        <div className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
+        <div ref={bodyRef} className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
 
         <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
       </div>
@@ -487,4 +500,102 @@ export function CountUp({
     return () => cancelAnimationFrame(raf);
   }, [value, durationMs]);
   return <span data-count-up={value}>{format(shown)}</span>;
+}
+
+/**
+ * One measured pairing on the returns screen: the path (funnel via channel),
+ * what our clients got back per dollar, and what a paying client cost them.
+ *
+ * A ROW rather than a card, because the returns screen is the last one before
+ * signup and the owner wants every figure on it visible without scrolling: a
+ * card per pairing (mark, headline figure, two lines of prose) ran past the
+ * fold at 1440x900 with three pairings picked. A row states the same four
+ * facts in 56px.
+ *
+ * Every figure is rendered verbatim off the producer's read; nothing here
+ * divides. An unmeasured pairing says so ON its row, with the producer's own
+ * reason, and the scope of a channel-wide figure is never dropped: a median
+ * over every path on a channel must not be read as describing the one picked.
+ */
+export function StartReturnRow({
+  index = 0,
+  funnelMark,
+  channelMark,
+  funnelName,
+  channelName,
+  median,
+  p25,
+  p75,
+  brandCount,
+  scope,
+  costPerPaidClientUsd,
+  reasonLabel,
+  formatReturn,
+}: {
+  index?: number;
+  funnelMark: ReactNode;
+  channelMark: ReactNode;
+  funnelName: string;
+  channelName: string;
+  median: number | null;
+  p25: number | null;
+  p75: number | null;
+  brandCount: number;
+  scope: "pair" | "channel" | null;
+  costPerPaidClientUsd: number | null;
+  reasonLabel: string;
+  formatReturn: (x: number) => string;
+}) {
+  const measured = median != null;
+  return (
+    <div
+      // On a phone the figure wraps under the name (indented past the two marks)
+      // rather than squeezing the name to an ellipsis; from `sm` it sits on the row.
+      className="start-enter flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-gray-200 bg-white px-4 py-3"
+      style={{ "--enter-delay": `${index * 60}ms` } as CSSProperties}
+    >
+      <div className="flex shrink-0 items-center gap-1.5">
+        {funnelMark}
+        {channelMark}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900">
+          {funnelName} <span className="font-normal text-gray-400">via</span> {channelName}
+        </p>
+        <p className="mt-0.5 text-xs text-gray-500 sm:truncate">
+          {measured ? (
+            <>
+              {p25 != null && p75 != null && (
+                <>
+                  {formatReturn(p25)} to {formatReturn(p75)} for the middle half.{" "}
+                </>
+              )}
+              {scope === "pair"
+                ? `${brandCount} clients on this exact pairing.`
+                : `${brandCount} clients on this channel, every path included.`}
+            </>
+          ) : (
+            reasonLabel
+          )}
+        </p>
+      </div>
+      <div className="basis-full shrink-0 pl-[78px] sm:basis-auto sm:pl-0 sm:text-right">
+        {measured ? (
+          <>
+            <p className="font-display text-2xl leading-none tracking-tight text-gray-900">
+              <CountUp value={median} format={formatReturn} />
+              <span className="ml-1 text-xs font-normal text-gray-500">back per dollar</span>
+            </p>
+            {costPerPaidClientUsd != null && (
+              <p className="mt-1 text-xs text-gray-500">
+                ${Math.round(costPerPaidClientUsd).toLocaleString("en-US")} per paying client
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="font-display text-base text-gray-400">Not measured yet</p>
+        )}
+      </div>
+    </div>
+  );
 }
