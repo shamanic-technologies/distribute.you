@@ -1,0 +1,110 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+import { builtSubtitle, builtSummary, type BuiltInput } from "../src/lib/built-summary";
+
+/** Real unit tests: the module is alias-free and names nothing of its own. */
+
+const full: BuiltInput = {
+  services: ["Fractional CFO", "Bookkeeping"],
+  funnels: [
+    {
+      key: "reply_meeting",
+      name: "Sales Meeting from Conversation",
+      steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
+      isPrimary: true,
+    },
+  ],
+  audiences: [{ id: "a1", name: "US clinic owners", avatarUrl: null }],
+  levers: [{ key: "dreamOutcome", label: "Dream outcome", value: "Books closed by the 5th" }],
+};
+
+describe("what the summary states", () => {
+  it("reads in the order the visitor built it", () => {
+    expect(builtSummary(full).sections.map((s) => s.kind)).toEqual([
+      "services",
+      "funnels",
+      "audiences",
+      "offer",
+    ]);
+  });
+
+  it("DROPS a section with nothing in it rather than rendering it empty", () => {
+    const s = builtSummary({ ...full, audiences: [], levers: [] });
+    expect(s.sections.map((x) => x.kind)).toEqual(["services", "funnels"]);
+    expect(s.isEmpty).toBe(false);
+  });
+
+  it("says so when it has nothing at all, instead of a blank card", () => {
+    const s = builtSummary({ services: [], funnels: [], audiences: [], levers: [] });
+    expect(s.sections).toEqual([]);
+    expect(s.isEmpty).toBe(true);
+  });
+
+  it("drops a lever nobody answered — an empty lever is not one we drafted", () => {
+    const s = builtSummary({
+      ...full,
+      levers: [
+        { key: "a", label: "A", value: "  " },
+        { key: "b", label: "B", value: "real" },
+      ],
+    });
+    const offer = s.sections.find((x) => x.kind === "offer");
+    expect(offer && offer.items).toHaveLength(1);
+  });
+
+  it("drops a blank service and an unnamed audience", () => {
+    const s = builtSummary({
+      ...full,
+      services: ["Real", "   ", ""],
+      audiences: [{ id: "a", name: "" }, { id: "b", name: "Named" }],
+    });
+    const services = s.sections.find((x) => x.kind === "services");
+    const audiences = s.sections.find((x) => x.kind === "audiences");
+    expect(services && services.items).toEqual(["Real"]);
+    expect(audiences && audiences.items).toHaveLength(1);
+  });
+
+  it("survives a missing input rather than throwing on the payoff screen", () => {
+    expect(() => builtSummary({} as BuiltInput)).not.toThrow();
+    expect(builtSummary({} as BuiltInput).isEmpty).toBe(true);
+  });
+});
+
+describe("the line under the heading", () => {
+  it("states counts the visitor can check against the sections", () => {
+    expect(builtSubtitle(builtSummary(full))).toBe("2 services, 1 sales funnel and 1 audience");
+  });
+
+  it("is singular when there is one of something", () => {
+    const one = builtSummary({ ...full, services: ["Only one"] });
+    expect(builtSubtitle(one)).toContain("1 service,");
+  });
+
+  it("counts only what is shown", () => {
+    const s = builtSummary({ ...full, audiences: [] });
+    expect(builtSubtitle(s)).toBe("2 services and 1 sales funnel");
+  });
+
+  it("is null with nothing to count, so no sentence of zeroes is printed", () => {
+    expect(builtSubtitle(builtSummary({ services: [], funnels: [], audiences: [], levers: [] }))).toBeNull();
+  });
+
+  it("never counts the OFFER — its levers are prose, not a quantity", () => {
+    expect(builtSubtitle(builtSummary(full))).not.toContain("lever");
+  });
+});
+
+describe("the file itself", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../src/lib/built-summary.ts"), "utf8");
+
+  it("stays alias-free so these are real unit tests", () => {
+    expect(src).not.toMatch(/from\s+"@\//);
+  });
+
+  it("carries no em-dash in the strings it renders", () => {
+    const rendered = src.match(/parts\.push\(`[^`]*`\)/g) ?? [];
+    for (const r of rendered) expect(r).not.toContain("—");
+  });
+});
