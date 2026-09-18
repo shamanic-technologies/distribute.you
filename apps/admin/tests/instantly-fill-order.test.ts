@@ -2,9 +2,16 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+/**
+ * The Instantly sending-accounts table moved to `/audit/cold-email/accounts`
+ * (the estate is a SECTION now, one page per object) and is fed by the
+ * `/instantly/ops/addresses` superset instead of `account-health`. Same fields,
+ * same values, same invariants — so these guards follow the table rather than
+ * the path it used to live at.
+ */
 const PAGE = join(
   __dirname,
-  "../src/app/(authed)/(dashboard)/audit/instantly/page.tsx",
+  "../src/app/(authed)/(dashboard)/audit/cold-email/accounts/page.tsx",
 );
 const API = join(__dirname, "../src/lib/api.ts");
 
@@ -33,7 +40,7 @@ describe("Instantly audit — fill order", () => {
       page.indexOf("const COLUMNS = ["),
       page.indexOf("] as const;"),
     );
-    expect(columns).toContain('{ key: "fillRank", label: "#", numeric: true, align: "right" }');
+    expect(columns).toContain('{ key: "fillRank", label: "#", align: "right" }');
     // First entry of the array — the fill order is what the table is read in.
     expect(columns.indexOf("fillRank")).toBeLessThan(columns.indexOf('"email"'));
   });

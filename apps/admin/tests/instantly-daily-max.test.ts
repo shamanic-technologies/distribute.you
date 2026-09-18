@@ -2,9 +2,16 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+/**
+ * The Instantly sending-accounts table moved to `/audit/cold-email/accounts`
+ * (the estate is a SECTION now, one page per object) and is fed by the
+ * `/instantly/ops/addresses` superset instead of `account-health`. Same fields,
+ * same values, same invariants — so these guards follow the table rather than
+ * the path it used to live at.
+ */
 const PAGE = join(
   __dirname,
-  "../src/app/(authed)/(dashboard)/audit/instantly/page.tsx",
+  "../src/app/(authed)/(dashboard)/audit/cold-email/accounts/page.tsx",
 );
 const API = join(__dirname, "../src/lib/api.ts");
 
@@ -34,7 +41,7 @@ describe("Instantly audit — daily max send", () => {
     // and a ramping one states both.
     expect(page).toContain("const dailyMax = dailyMaxFor(r);");
     expect(page).toContain("{dailyMax === null ? \"—\" : num(dailyMax)}");
-    expect(page).toContain("ramping up from {num(r.dailyLimit as number)}");
+    expect(page).toContain("ramping up from {num(r.dailyLimit)}");
   });
 
   it("colours Queued today against the same ceiling it renders", () => {
@@ -54,7 +61,7 @@ describe("Instantly audit — daily max send", () => {
 
   it("states the cap in the row detail panel too", () => {
     expect(page).toContain(
-      '<Row label="Daily max send">{num(dailyMaxFor(row))}</Row>',
+      '<PanelRow label="Daily max send">{num(dailyMaxFor(row))}</PanelRow>',
     );
   });
 

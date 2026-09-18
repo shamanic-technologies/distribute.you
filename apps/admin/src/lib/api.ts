@@ -4954,34 +4954,13 @@ export async function triggerFeatureRun(
 }
 
 // ---------------------------------------------------------------------------
-// Audit — Instantly sending forecast (staff-only, platform-scoped, no org).
-// Every field is computed server-side by instantly-service (proxied via the
-// gateway staff route); the dashboard renders only, never derives a metric.
+// (REMOVED) `getInstantlySendingForecast` — the legacy `/instantly/audit/
+// sending-forecast` summary. Every field it carried is served by
+// `/instantly/ops/infra` (`fleet.dailyCapacity`, `healthyAccountCount`,
+// `totalAccountCount`, `blockedDomainCount`) and the cold-email Overview reads
+// it there, so keeping a second reader for the same answer is a second place
+// for the two to disagree. The BACKEND route is untouched and still live.
 // ---------------------------------------------------------------------------
-export interface InstantlyForecastDay {
-  date: string; // YYYY-MM-DD
-  scheduledCount: number;
-}
-
-export interface InstantlySendingForecast {
-  asOf: string; // ISO8601
-  dailyCapacity: number; // emails/day the healthy fleet can send
-  healthyAccountCount: number; // accounts passing filterHealthyAccounts
-  totalAccountCount: number; // all accounts before filtering
-  blockedDomainCount: number; // accounts excluded via BLOCKED_DOMAINS
-  days: InstantlyForecastDay[]; // from today forward, chronological
-}
-
-/**
- * Fleet-wide cold-email sending forecast: per-day future scheduled volume vs
- * the current available daily capacity (only healthy, non-blacklisted, warmed
- * accounts). Staff-only platform view — no org context.
- */
-export async function getInstantlySendingForecast(
-  token?: string,
-): Promise<InstantlySendingForecast> {
-  return apiCall<InstantlySendingForecast>("/instantly/audit/sending-forecast", { token });
-}
 
 // ---------------------------------------------------------------------------
 // Instantly reconciliation — our LOCAL count vs INSTANTLY's count per fact,
@@ -5330,6 +5309,448 @@ export async function getInstantlyCapacityHistory(
     throw new Error("[admin] getInstantlyCapacityHistory: invalid response shape");
   }
   return parsed.data;
+}
+
+// ---------------------------------------------------------------------------
+// The unified cold-email OPS model (staff-only, platform-scoped, no org).
+//
+// instantly-service serves ONE read per object — the lifecycle rules as data,
+// domains, real mailboxes, sending addresses, the infra rollup, and the
+// thread / message inbox. Every figure is computed there; this app parses and
+// renders, and never derives a metric (CLAUDE.md: a displayed stat is
+// producer-owned).
+//
+// The gateway forwards the query string VERBATIM off `req.originalUrl`, so any
+// filter instantly-service accepts reaches it without a proxy change.
+//
+// ⚠️ `paidToDate` is a LABELLED ESTIMATE everywhere it appears (the producer
+// says so in its own `source: "estimate"` field). Every surface that renders it
+// must say so — it is never presented as a charge.
+// ---------------------------------------------------------------------------
+
+/**
+ * One safeParse boundary for every ops read: wire-rot becomes a caught fetch
+ * error (which the reveal-on-settle gates render as a stated failure) instead of
+ * a render crash, and the console keeps the issue list plus the raw body.
+ */
+function parseOps<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[admin] ${name}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[admin] ${name}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** Shared volume rollup: counts by typology plus the bounce rate the producer computed. */
+const OpsVolumeSchema = z.object({
+  outreach: z.number(),
+  warmup: z.number(),
+  seed: z.number(),
+  repliesIn: z.number(),
+  bouncesIn: z.number(),
+  // null = no denominator (nothing sent in the window), never a zero rate.
+  bounceRatePerMille: z.number().nullable(),
+});
+export type OpsVolume = z.infer<typeof OpsVolumeSchema>;
+
+/** Pooled delivery evidence (seed-test placement) for a domain / mailbox / address. */
+const OpsDeliverySchema = z.object({
+  inboxCount: z.number(),
+  seedTotal: z.number(),
+  // null = never tested. A dash, never a 0%.
+  inboxPct: z.number().nullable(),
+  testedAt: z.string().nullable(),
+  measuredAccounts: z.number(),
+});
+export type OpsDelivery = z.infer<typeof OpsDeliverySchema>;
+
+/**
+ * What we have paid so far, and the producer's own word for how it knows.
+ * `source` is `"estimate"` today: it is a monthly rate multiplied by elapsed
+ * months, NOT a ledger of charges. Rendered with that word attached.
+ */
+const OpsPaidToDateSchema = z.object({
+  cents: z.number(),
+  currency: z.string(),
+  source: z.string(),
+  since: z.string().nullable(),
+  months: z.number(),
+});
+export type OpsPaidToDate = z.infer<typeof OpsPaidToDateSchema>;
+
+const OpsRampPointSchema = z.object({ date: z.string(), cap: z.number() });
+export type OpsRampPoint = z.infer<typeof OpsRampPointSchema>;
+
+// --- Lifecycle rules --------------------------------------------------------
+
+const OpsLifecycleRulesSchema = z.object({
+  order: z.array(
+    z.object({
+      rule: z.string(),
+      leadsTo: z.string(),
+      appliesTo: z.string(),
+    }),
+  ),
+  states: z.array(
+    z.object({
+      status: z.string(),
+      meaning: z.string(),
+      newSends: z.boolean(),
+      campaignDailyLimit: z.number().nullable(),
+      warmupDaily: z.number().nullable(),
+    }),
+  ),
+  bars: z.object({
+    healthEntryBar: z.number(),
+    deliveryPctBar: z.number(),
+    deliveryEvidenceMaxAgeDays: z.number(),
+  }),
+  ramp: z.object({
+    floorPerDay: z.number(),
+    growthFactor: z.number(),
+    volumeWindowDays: z.number(),
+    ceiling: z.number(),
+    matureAgeDays: z.number(),
+    statistic: z.string(),
+  }),
+  placement: z.object({
+    testableMinAgeDays: z.number(),
+    seedTestIntervalDays: z.number(),
+    seedEvidenceUrgentAgeDays: z.number(),
+  }),
+  warmup: z.object({
+    partnersPerDay: z.number(),
+    maxPerDay: z.number(),
+    maxShareOfCap: z.number(),
+  }),
+});
+export type OpsLifecycleRules = z.infer<typeof OpsLifecycleRulesSchema>;
+
+/** The lifecycle constants and the rule ORDER, as data. No hand-written numbers. */
+export async function getOpsLifecycleRules(token?: string): Promise<OpsLifecycleRules> {
+  return parseOps(
+    "getOpsLifecycleRules",
+    OpsLifecycleRulesSchema,
+    await apiCall<unknown>("/instantly/ops/lifecycle-rules", { token }),
+  );
+}
+
+// --- Infra rollup -----------------------------------------------------------
+
+const OpsPoolSchema = z.object({
+  pool: z.string(),
+  mailboxes: z.number(),
+  addresses: z.number(),
+  byLifecycle: z.record(z.string(), z.number()),
+  dailyCapacity: z.number(),
+  inProduction: z.number(),
+  queuedSteps: z.number(),
+  volume7d: OpsVolumeSchema,
+  // null = nothing measured in this pool, never a 0%.
+  inboxPctMean: z.number().nullable(),
+});
+export type OpsPool = z.infer<typeof OpsPoolSchema>;
+
+const OpsInfraSchema = z.object({
+  asOf: z.string(),
+  fleet: z.object({
+    dailyCapacity: z.number(),
+    healthyAccountCount: z.number(),
+    totalAccountCount: z.number(),
+    blockedDomainCount: z.number(),
+    queuedSteps: z.number(),
+    byLifecycle: z.record(z.string(), z.number()),
+  }),
+  pools: z.array(OpsPoolSchema),
+  exclusions: z.object({
+    domainPolicy: z.array(
+      z.object({
+        domain: z.string(),
+        reason: z.string(),
+        note: z.string().nullable(),
+      }),
+    ),
+    featureReservations: z.array(
+      z.object({ accountEmail: z.string(), featureSlug: z.string() }),
+    ),
+  }),
+});
+export type OpsInfra = z.infer<typeof OpsInfraSchema>;
+
+/** Fleet totals + one rollup per sending pool, plus who is held out of the pool and why. */
+export async function getOpsInfra(token?: string): Promise<OpsInfra> {
+  return parseOps("getOpsInfra", OpsInfraSchema, await apiCall<unknown>("/instantly/ops/infra", { token }));
+}
+
+// --- Domains ----------------------------------------------------------------
+
+const OpsDnsSchema = z.object({
+  spf: z.object({
+    present: z.boolean(),
+    allQualifier: z.string().nullable(),
+    includes: z.array(z.string()),
+    raw: z.string().nullable(),
+  }),
+  dmarc: z.object({
+    present: z.boolean(),
+    policy: z.string().nullable(),
+    subdomainPolicy: z.string().nullable(),
+    pct: z.number().nullable(),
+    rua: z.array(z.string()),
+    raw: z.string().nullable(),
+  }),
+  dkimSelectors: z.array(z.string()),
+  mx: z.array(z.string()),
+  // Per-record probe errors, keyed by record name. `{}` = every probe answered.
+  errors: z.record(z.string(), z.unknown()),
+});
+export type OpsDns = z.infer<typeof OpsDnsSchema>;
+
+const OpsDomainSchema = z.object({
+  domain: z.string(),
+  provider: z.string().nullable(),
+  role: z.string().nullable(),
+  status: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  autorenew: z.boolean().nullable(),
+  deletionScheduled: z.boolean().nullable(),
+  cancelledAt: z.string().nullable(),
+  absentSince: z.string().nullable(),
+  purchasedAt: z.string().nullable(),
+  vendorMailboxes: z.number(),
+  mailboxes: z.number(),
+  addresses: z.object({
+    total: z.number(),
+    byLifecycle: z.record(z.string(), z.number()),
+  }),
+  sentLast30d: z.number(),
+  volume30d: OpsVolumeSchema,
+  delivery: OpsDeliverySchema,
+  dns: OpsDnsSchema,
+  cost: z.object({
+    monthlyCents: z.number().nullable(),
+    currency: z.string().nullable(),
+    source: z.string().nullable(),
+    perEmailCents: z.number().nullable(),
+    // Stops billing the moment you cancel.
+    recurringMonthlyCents: z.number().nullable(),
+    // Already paid until `renewalAt`; only avoided THEN. Two different answers.
+    renewalCents: z.number().nullable(),
+    renewalAt: z.string().nullable(),
+    paidToDate: OpsPaidToDateSchema.nullable(),
+  }),
+});
+export type OpsDomainRow = z.infer<typeof OpsDomainSchema>;
+
+const OpsDomainsSchema = z.object({ asOf: z.string(), domains: z.array(OpsDomainSchema) });
+export type OpsDomains = z.infer<typeof OpsDomainsSchema>;
+
+/** One row per (provider, domain): vendor, renewal, DNS, delivery, addresses, cost. */
+export async function getOpsDomains(token?: string): Promise<OpsDomains> {
+  return parseOps("getOpsDomains", OpsDomainsSchema, await apiCall<unknown>("/instantly/ops/domains", { token }));
+}
+
+// --- Mailboxes --------------------------------------------------------------
+
+const OpsMailboxAddressSchema = z.object({
+  email: z.string(),
+  lifecycleStatus: z.string().nullable(),
+  lifecycleReason: z.string().nullable(),
+  sendTransport: z.string().nullable(),
+  dailyLimit: z.number().nullable(),
+  absentSince: z.string().nullable(),
+});
+export type OpsMailboxAddress = z.infer<typeof OpsMailboxAddressSchema>;
+
+const OpsMailboxSchema = z.object({
+  login: z.string(),
+  domain: z.string(),
+  provider: z.string().nullable(),
+  poolType: z.string().nullable(),
+  subscription: z.string().nullable(),
+  credentialSource: z.string(),
+  vendorCreatedAt: z.string().nullable(),
+  vendorPrewarmedAt: z.string().nullable(),
+  importedAt: z.string().nullable(),
+  absentSince: z.string().nullable(),
+  syncedAt: z.string().nullable(),
+  // A Gandi relay mailbox carries several aliases: ONE row, several addresses.
+  addresses: z.array(OpsMailboxAddressSchema),
+  addressesByLifecycle: z.record(z.string(), z.number()),
+  sustainedDaily: z.number(),
+  effectiveDailyCap: z.number().nullable(),
+  rampProjection: z.array(OpsRampPointSchema),
+  warmupBudgetToday: z.number().nullable(),
+  delivery: OpsDeliverySchema,
+  evidenceExpiresAt: z.string().nullable(),
+  volume7d: OpsVolumeSchema,
+  volume30d: OpsVolumeSchema,
+  cost: z
+    .object({
+      monthlyCents: z.number().nullable(),
+      currency: z.string().nullable(),
+      source: z.string().nullable(),
+      paidToDate: OpsPaidToDateSchema.nullable(),
+    })
+    .nullable(),
+});
+export type OpsMailboxRow = z.infer<typeof OpsMailboxSchema>;
+
+const OpsMailboxesSchema = z.object({ asOf: z.string(), mailboxes: z.array(OpsMailboxSchema) });
+export type OpsMailboxes = z.infer<typeof OpsMailboxesSchema>;
+
+/** One row per REAL mailbox (login), with its addresses nested — never one row per alias. */
+export async function getOpsMailboxes(token?: string): Promise<OpsMailboxes> {
+  return parseOps("getOpsMailboxes", OpsMailboxesSchema, await apiCall<unknown>("/instantly/ops/mailboxes", { token }));
+}
+
+// --- Addresses --------------------------------------------------------------
+//
+// A strict SUPERSET of the legacy `/instantly/audit/account-health` rows: the
+// same field names carrying the same values, plus mailbox, transport, evidence
+// expiry, the next seed test, the ramp projection, 7-day volume and the last
+// lifecycle transitions. The Accounts page therefore renders the same figures it
+// always did, from one read instead of two.
+
+const OpsNextSeedTestSchema = z.object({
+  due: z.boolean(),
+  reason: z.string().nullable(),
+  ageDays: z.number().nullable(),
+  expectedAt: z.string().nullable(),
+});
+export type OpsNextSeedTest = z.infer<typeof OpsNextSeedTestSchema>;
+
+const OpsLifecycleTransitionSchema = z.object({
+  fromStatus: z.string().nullable(),
+  toStatus: z.string().nullable(),
+  reason: z.string().nullable(),
+  healthScore: z.number().nullable(),
+  deliveryPct: z.number().nullable(),
+  at: z.string(),
+});
+export type OpsLifecycleTransition = z.infer<typeof OpsLifecycleTransitionSchema>;
+
+const OpsAddressSchema = InstantlyAccountHealthRowSchema.extend({
+  mailboxLogin: z.string().nullable(),
+  sendTransport: z.string().nullable(),
+  evidenceExpiresAt: z.string().nullable(),
+  nextSeedTest: OpsNextSeedTestSchema.nullable(),
+  rampProjection: z.array(OpsRampPointSchema),
+  volume7d: OpsVolumeSchema,
+  lifecycleHistory: z.array(OpsLifecycleTransitionSchema),
+});
+export type OpsAddressRow = z.infer<typeof OpsAddressSchema>;
+
+const OpsAddressesSchema = z.object({ asOf: z.string(), accounts: z.array(OpsAddressSchema) });
+export type OpsAddresses = z.infer<typeof OpsAddressesSchema>;
+
+/**
+ * One row per sending address. The list is a live Instantly read under the hood
+ * (~9s cold, cached 60s server-side), so it polls on the slow cadence like the
+ * account-health table it replaces.
+ */
+export async function getOpsAddresses(token?: string): Promise<OpsAddresses> {
+  return parseOps("getOpsAddresses", OpsAddressesSchema, await apiCall<unknown>("/instantly/ops/addresses", { token }));
+}
+
+// --- Threads & messages -----------------------------------------------------
+//
+// ⚠️ `limit` is REQUIRED downstream (1-500) and the unfiltered set is ~70k rows
+// server-side. Never ask for "all" — page with `nextCursor`.
+
+const OpsThreadSchema = z.object({
+  threadId: z.string(),
+  kind: z.string(),
+  subject: z.string().nullable(),
+  accountEmail: z.string().nullable(),
+  mailboxLogin: z.string().nullable(),
+  counterparty: z.string().nullable(),
+  transport: z.string().nullable(),
+  instantlyCampaignId: z.string().nullable(),
+  orgId: z.string().nullable(),
+  campaignId: z.string().nullable(),
+  leadEmail: z.string().nullable(),
+  brandIds: z.array(z.string()),
+  deliveryStatus: z.string().nullable(),
+  replyClassification: z.string().nullable(),
+  replyKind: z.string().nullable(),
+  placement: z.string().nullable(),
+  messageCount: z.number(),
+  inboundCount: z.number(),
+  outboundCount: z.number(),
+  firstAt: z.string().nullable(),
+  lastAt: z.string().nullable(),
+});
+export type OpsThread = z.infer<typeof OpsThreadSchema>;
+
+const OpsThreadsSchema = z.object({
+  threads: z.array(OpsThreadSchema),
+  // null = no further page. Never treated as "start again".
+  nextCursor: z.string().nullable(),
+});
+export type OpsThreads = z.infer<typeof OpsThreadsSchema>;
+
+const OpsMessageSchema = z.object({
+  id: z.string(),
+  sourceTable: z.string().nullable(),
+  sourceRowId: z.string().nullable(),
+  messageId: z.string().nullable(),
+  direction: z.string(),
+  kind: z.string(),
+  transport: z.string().nullable(),
+  accountEmail: z.string().nullable(),
+  mailboxLogin: z.string().nullable(),
+  counterparty: z.string().nullable(),
+  subject: z.string().nullable(),
+  instantlyCampaignId: z.string().nullable(),
+  step: z.number().nullable(),
+  threadId: z.string().nullable(),
+  // Seed-test id, warmup day, … whatever the message's own context is.
+  contextRef: z.string().nullable(),
+  orgId: z.string().nullable(),
+  campaignId: z.string().nullable(),
+  outcome: z.string().nullable(),
+  placement: z.string().nullable(),
+  spfPass: z.boolean().nullable(),
+  dkimPass: z.boolean().nullable(),
+  dmarcPass: z.boolean().nullable(),
+  occurredAt: z.string(),
+});
+export type OpsMessage = z.infer<typeof OpsMessageSchema>;
+
+const OpsMessagesSchema = z.object({
+  messages: z.array(OpsMessageSchema),
+  nextCursor: z.string().nullable(),
+});
+export type OpsMessages = z.infer<typeof OpsMessagesSchema>;
+
+const OpsMessageBodySchema = z.object({
+  text: z.string().nullable(),
+  html: z.string().nullable(),
+  // The bronze table the body was read from. Warmup and seed bodies are NOT
+  // stored, so both halves come back null and this names why.
+  source: z.string(),
+});
+export type OpsMessageBody = z.infer<typeof OpsMessageBodySchema>;
+
+/** The inbox list. `query` is already-encoded and carries its own required `limit`. */
+export async function getOpsThreads(query: string, token?: string): Promise<OpsThreads> {
+  return parseOps("getOpsThreads", OpsThreadsSchema, await apiCall<unknown>(`/instantly/ops/threads?${query}`, { token }));
+}
+
+/** Every email of every typology. `query` is already-encoded and carries its own required `limit`. */
+export async function getOpsMessages(query: string, token?: string): Promise<OpsMessages> {
+  return parseOps("getOpsMessages", OpsMessagesSchema, await apiCall<unknown>(`/instantly/ops/messages?${query}`, { token }));
+}
+
+/** The body of ONE message, read from the bronze row it came from. */
+export async function getOpsMessageBody(id: string, token?: string): Promise<OpsMessageBody> {
+  return parseOps(
+    "getOpsMessageBody",
+    OpsMessageBodySchema,
+    await apiCall<unknown>(`/instantly/ops/messages/${encodeURIComponent(id)}/body`, { token }),
+  );
 }
 
 // ---------------------------------------------------------------------------
