@@ -47,15 +47,13 @@ export const FUNNEL_STEP_MARKS: Record<string, FunnelStepMark> = {
   meeting_booked: { glyph: "calendar-plus", tone: FUNNEL_STEP_TONE },
   meeting_attended: { glyph: "users-three", tone: FUNNEL_STEP_TONE },
   signup: { glyph: "identification-badge", tone: FUNNEL_STEP_TONE },
-  form_filled: { glyph: "textbox", tone: FUNNEL_STEP_TONE },
-  lead_form_submitted: { glyph: "clipboard", tone: FUNNEL_STEP_TONE },
+  form_submitted: { glyph: "clipboard", tone: FUNNEL_STEP_TONE },
   paid_client: { glyph: "currency-dollar", tone: FUNNEL_STEP_TONE },
 };
 
 /**
  * The lead panel's stage keys (`lead-funnel-stages.ts`) in the producer's step vocabulary.
- * Three differ in spelling; `form_submission` covers BOTH forms because lead-service
- * records one fact for either, so it draws the on-site form's tile.
+ * Three differ in spelling; `form_submission` is the producer's one form step.
  */
 export const STEP_KEY_FOR_LEAD_STAGE: Record<string, string> = {
   positive_reply: "conversation",
@@ -63,14 +61,29 @@ export const STEP_KEY_FOR_LEAD_STAGE: Record<string, string> = {
   meeting_booked: "meeting_booked",
   meeting_attended: "meeting_attended",
   signup: "signup",
-  form_submission: "form_filled",
+  form_submission: "form_submitted",
   sale: "paid_client",
 };
 
 /** The tile for a step, or null for one this app has not drawn. */
 export function funnelStepMarkFor(stepKey: string | null | undefined): FunnelStepMark | null {
   if (!stepKey) return null;
-  return FUNNEL_STEP_MARKS[stepKey] ?? null;
+  return FUNNEL_STEP_MARKS[canonicalFunnelStepKey(stepKey)] ?? null;
+}
+
+/**
+ * The two form steps that existed until 2026-09-18 (`form_filled` on the brand's own
+ * site, `lead_form_submitted` on the ad platform) are ONE step now, `form_submitted`.
+ * features-service reads both old spellings as the new one; so does this app, so a
+ * body written before the merge still draws the tile.
+ */
+export const RETIRED_FORM_STEP_KEYS: Readonly<Record<string, string>> = {
+  form_filled: "form_submitted",
+  lead_form_submitted: "form_submitted",
+};
+
+export function canonicalFunnelStepKey(stepKey: string): string {
+  return RETIRED_FORM_STEP_KEYS[stepKey] ?? stepKey;
 }
 
 /** The tile for a lead-panel stage, through the vocabulary map above. */

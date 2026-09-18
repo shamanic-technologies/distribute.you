@@ -109,7 +109,7 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
   // steps they always were. What the ad delivers is a filled form and a booked
   // meeting; what differs is that nothing of ours happened first, which is the LEG
   // (`from: null`) and not a step of its own.
-  [funnelLegMarkKey(null, "lead_form_submitted")]: {
+  [funnelLegMarkKey(null, "form_submitted")]: {
     glyph: "clipboard",
     tone: FUNNEL_LEG_TONE,
   },
@@ -127,7 +127,7 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
     glyph: "user-plus",
     tone: FUNNEL_LEG_TONE,
   },
-  [funnelLegMarkKey("website_visit", "form_filled")]: {
+  [funnelLegMarkKey("website_visit", "form_submitted")]: {
     glyph: "note-pencil",
     tone: FUNNEL_LEG_TONE,
   },
@@ -151,19 +151,15 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
     glyph: "credit-card",
     tone: FUNNEL_LEG_TONE,
   },
-  [funnelLegMarkKey("form_filled", "paid_client")]: {
+  [funnelLegMarkKey("form_submitted", "paid_client")]: {
     glyph: "receipt",
     tone: FUNNEL_LEG_TONE,
   },
-  // The three arrows the funnels born on 2026-09-17 walk. Each SKIPS a rung its
+  // The two arrows the funnels born on 2026-09-17 walk (the ad-form sale shares `form_submitted -> paid_client` since 2026-09-18). Each SKIPS a rung its
   // longer sibling inserts, which is the whole reason it is a separate arrow: a sale
-  // closed inside the conversation, a sale off the ad's own form, a sale on landing.
+  // closed inside the conversation, a sale on landing.
   [funnelLegMarkKey("conversation", "paid_client")]: {
     glyph: "chat-text",
-    tone: FUNNEL_LEG_TONE,
-  },
-  [funnelLegMarkKey("lead_form_submitted", "paid_client")]: {
-    glyph: "seal-check",
     tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("website_visit", "paid_client")]: {

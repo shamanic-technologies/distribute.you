@@ -69,7 +69,7 @@ export const FUNNEL_STEPS: Record<SalesFunnelKey, { name: string; steps: string[
   },
   visit_form: {
     name: "Form Magnet",
-    steps: ["Website visit", "Form filled", "Paid client"],
+    steps: ["Website visit", "Form submitted", "Paid client"],
   },
   sales_from_conversation: {
     name: "Sale from Positive Reply",
@@ -81,7 +81,7 @@ export const FUNNEL_STEPS: Record<SalesFunnelKey, { name: string; steps: string[
   },
   lead_forms_from_ads: {
     name: "Lead Form from Ads",
-    steps: ["Lead form submitted", "Paid client"],
+    steps: ["Form submitted", "Paid client"],
   },
   sales_from_website: {
     name: "Website Purchase",
@@ -204,6 +204,8 @@ const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; lab
   "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
   "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
   Signup: { key: "signup", wontLabel: "Won't sign up" },
+  "Form submitted": { key: "form_submission", wontLabel: "Won't fill it" },
+  // The two pre-2026-09-18 spellings, read as the one form step.
   "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
   // A form on the AD PLATFORM. lead-service records that a form was filled; which
   // funnel it belongs to is the campaign's, so it shares the stage rather than

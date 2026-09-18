@@ -16,6 +16,7 @@
 // type-only and erase at build), so this module stays directly unit-testable.
 
 import type { CampaignLeg } from "./campaign-leg";
+import { canonicalFunnelStepKey } from "./funnel-step-marks";
 import type { FunnelStepRow } from "./revenue-view";
 
 /**
@@ -33,12 +34,9 @@ export const LEAD_FIELD_BY_STEP_KEY: Record<string, string> = {
   meeting_booked: "meetingBooked",
   meeting_attended: "meetingAttended",
   signup: "signup",
-  form_filled: "formSubmission",
-  // A form filled on the AD PLATFORM. The producer's lead-field vocabulary has
-  // exactly seven members and `formSubmission` is the one for any form — what
-  // differs between this rung and `form_filled` is whether a website visit came
-  // first, which is the FUNNEL, not the field.
-  lead_form_submitted: "formSubmission",
+  // ONE form step since 2026-09-18, on the brand's site or the ad platform alike;
+  // the two old spellings are read as it through `canonicalFunnelStepKey`.
+  form_submitted: "formSubmission",
   paid_client: "purchased",
 };
 
@@ -189,7 +187,7 @@ export function buildFunnelLegRows<C>({
   const rows: FunnelLegRow<C>[] = [];
 
   for (const leg of legs) {
-    const wanted = LEAD_FIELD_BY_STEP_KEY[leg.toKey];
+    const wanted = LEAD_FIELD_BY_STEP_KEY[canonicalFunnelStepKey(leg.toKey)];
     const step = steps?.find((s) => s.leadField === wanted) ?? null;
     const onThisLeg = campaigns.filter((c) => c.toIndex === leg.toIndex);
     if (onThisLeg.length === 0) {
