@@ -11,7 +11,7 @@ import {
   StartPathOption,
   StartGrid,
   StartGroupLabel,
-  CountUp,
+  StartReturnRow,
   fromPerDay,
   useLandingBrand,
 } from "./start-shell";
@@ -34,7 +34,6 @@ import {
 } from "@/lib/start-catalogue";
 import {
   returnRowsForFunnel,
-  funnelHasMeasuredReturn,
   returnReasonLabel,
   type PairReturn,
   type ChannelReturn,
@@ -299,6 +298,7 @@ export function StartFlow() {
         step={1}
         stepCount={1}
         founders={founders}
+      scrollKey={screen}
         title={
           <>
             Get <span className="text-brand-600">revenue in 24h</span>.
@@ -338,6 +338,7 @@ export function StartFlow() {
         step={1}
         stepCount={4}
         founders={founders}
+      scrollKey={screen}
         title="What should we get you?"
         subtitle="Pick everything worth paying for. Each one unlocks a different set of channels."
         footer={footer(
@@ -373,6 +374,7 @@ export function StartFlow() {
         step={2}
         stepCount={4}
         founders={founders}
+      scrollKey={screen}
         title="Which channels should we run?"
         subtitle="Every one of these delivers what you picked. Keep the ones you want us to test. Prices are what a day costs to run, before results."
         footer={footer(
@@ -418,6 +420,7 @@ export function StartFlow() {
         step={3}
         stepCount={4}
         founders={founders}
+      scrollKey={screen}
         title="How should it turn into revenue?"
         subtitle="Each path ends with a paying client. You pay per path, one day at a time, and you can stop any of them."
         footer={footer(
@@ -520,25 +523,28 @@ export function StartFlow() {
   }
 
   // returns
-  const funnelRows = offeredFunnels
+  // One row per (funnel x channel) pair the visitor kept, in the order they were
+  // offered, so the whole screen fits without scrolling: what they picked, what
+  // our clients got back on it, what a paying client cost them.
+  const returnRows = offeredFunnels
     .filter((f) => funnels.includes(f.key))
-    .map((f) => ({
-      funnel: f,
-      rows: returnRowsForFunnel(
+    .flatMap((f) =>
+      returnRowsForFunnel(
         f.funnelKey,
         [f.channelSlug],
         catalogue?.pairs ?? [],
         channelReturns,
-      ),
-    }));
+      ).map((r) => ({ funnel: f, row: r })),
+    );
 
   return (
     <StartShell
       step={4}
       stepCount={4}
       founders={founders}
+      scrollKey={screen}
       title="What our clients got back"
-      subtitle="Measured on real clients, per dollar spent. Where we have not measured a pairing yet, we say so instead of quoting an average."
+      subtitle="Measured on real clients, per dollar spent. Where we have not measured a pairing yet, we say so."
       footer={footer(
         <StartButton
           onClick={() => {
@@ -547,70 +553,31 @@ export function StartFlow() {
             window.location.href = "/sign-up";
           }}
         >
-          Create my account
+          Excellent, create my account
         </StartButton>,
         "No charge until you confirm each path.",
       )}
     >
-      <div className="space-y-6">
-        {funnelRows.map(({ funnel, rows }, fi) => (
-          <section
+      <div className="flex flex-col gap-2">
+        {returnRows.map(({ funnel, row }, i) => (
+          <StartReturnRow
             key={funnel.key}
-            className="start-enter"
-            style={{ "--enter-delay": `${fi * 120}ms` } as React.CSSProperties}
-          >
-            <div className="flex items-center gap-3">
-              {funnelMark(funnel.funnelKey)}
-              <h2 className="font-display text-lg font-medium text-gray-900">{funnel.name}</h2>
-            </div>
-            {!funnelHasMeasuredReturn(rows) && (
-              <p className="mt-2 text-sm text-gray-500">
-                Not enough clients have run this one yet for us to state a figure.
-              </p>
-            )}
-            <StartGrid>
-              {rows.map((r, i) => (
-                <div
-                  key={r.channelSlug}
-                  className="start-enter mt-3 flex flex-col rounded-2xl border border-gray-200 bg-white p-4"
-                  style={{ "--enter-delay": `${fi * 120 + (i + 1) * 60}ms` } as React.CSSProperties}
-                >
-                  <div className="flex items-center gap-3">
-                    <AcquisitionChannelMark def={{ mark: channelMarkForSlug(r.channelSlug) }} size="sm" />
-                    <span className="min-w-0 truncate text-sm font-medium text-gray-900">{r.channelName}</span>
-                  </div>
-                  {r.median != null ? (
-                    <>
-                      <p className="mt-3 font-display text-3xl leading-none tracking-tight text-gray-900">
-                        <CountUp value={r.median} format={formatReturn} />
-                        <span className="ml-1.5 text-sm font-normal text-gray-500">back per dollar</span>
-                      </p>
-                      <p className="mt-2 text-xs leading-snug text-gray-500">
-                        {r.p25 != null && r.p75 != null && (
-                          <>
-                            {formatReturn(r.p25)} to {formatReturn(r.p75)} for the middle half.{" "}
-                          </>
-                        )}
-                        {/* The scope is never dropped: a channel-wide median must
-                            not be read as describing the one funnel picked. */}
-                        {r.scope === "pair"
-                          ? `${r.brandCount} clients on this exact pairing.`
-                          : `${r.brandCount} clients on this channel, every path included.`}
-                        {r.costPerPaidClientUsd != null && (
-                          <> A paying client cost them ${Math.round(r.costPerPaidClientUsd).toLocaleString("en-US")}.</>
-                        )}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="mt-3 font-display text-lg text-gray-400">Not measured yet</p>
-                      <p className="mt-1 text-xs leading-snug text-gray-500">{returnReasonLabel(r.reason)}</p>
-                    </>
-                  )}
-                </div>
-              ))}
-            </StartGrid>
-          </section>
+            index={i}
+            funnelMark={funnelMark(funnel.funnelKey)}
+            channelMark={
+              <AcquisitionChannelMark def={{ mark: channelMarkForSlug(row.channelSlug) }} size="sm" />
+            }
+            funnelName={funnel.name}
+            channelName={row.channelName}
+            median={row.median}
+            p25={row.p25}
+            p75={row.p75}
+            brandCount={row.brandCount}
+            scope={row.scope}
+            costPerPaidClientUsd={row.costPerPaidClientUsd}
+            reasonLabel={returnReasonLabel(row.reason)}
+            formatReturn={formatReturn}
+          />
         ))}
       </div>
     </StartShell>
