@@ -23,7 +23,7 @@ export interface BuiltFunnel {
   key: string;
   /** The funnel's own name, from the catalogue. */
   name: string;
-  /** Its chain, in order, in the customer's words. */
+  /** Its steps, in order, in the customer's words. */
   steps: string[];
   /** The one we start on. Exactly one is expected; zero is tolerated. */
   isPrimary: boolean;

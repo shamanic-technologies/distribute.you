@@ -26,6 +26,7 @@ const NOW = 1_700_000_000;
 
 const session: AnonSession = {
   anonOrgId: "anon_0f7c1a2e-0000-4000-8000-000000000001",
+  orgId: "0f7c1a2e-0000-4000-8000-000000000009",
   brandId: "0f7c1a2e-0000-4000-8000-000000000003",
   domain: "acme.com",
   issuedAt: NOW,
@@ -86,7 +87,19 @@ describe("signAnonSession / readAnonSession", () => {
 });
 
 describe("the anonymous org's identity", () => {
-  it("is recognisable by its prefix, which is what the claim re-points", () => {
+  it("carries the internal uuid the claim addresses, inside the signature", () => {
+    const read = readAnonSession(signAnonSession(session, SECRET), SECRET, NOW);
+    expect(read.session?.orgId).toBe(session.orgId);
+    // Editing it is the same forgery as editing the org: it does not verify.
+    const body = Buffer.from(
+      JSON.stringify({ ...session, orgId: "0f7c1a2e-0000-4000-8000-00000000beef" }),
+      "utf8",
+    ).toString("base64url");
+    const sig = signAnonSession(session, SECRET).split(".")[1];
+    expect(readAnonSession(`${body}.${sig}`, SECRET, NOW).refusal).toBe("bad-signature");
+  });
+
+  it("is recognisable by its prefix, which is a LABEL and never the proof", () => {
     expect(isAnonOrgId(session.anonOrgId)).toBe(true);
     expect(isAnonOrgId("org_2abcDEF")).toBe(false);
     expect(session.anonOrgId.startsWith(ANON_ORG_PREFIX)).toBe(true);

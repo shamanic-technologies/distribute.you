@@ -47,6 +47,18 @@ export interface AnonSession {
    * the ledger afterwards and what the claim re-points to the real Clerk org.
    */
   anonOrgId: string;
+  /**
+   * The same org's INTERNAL uuid, carried because the claim needs it.
+   *
+   * client-service addresses the claim by internal uuid — the id every brand,
+   * funnel, audience, run and cost was written against — and nothing hands that
+   * back at signup time. Reading it once, when the org is created, is cheaper
+   * and more certain than resolving it again at the one moment a failure loses
+   * everything the visitor built.
+   *
+   * It is INSIDE the signature, so the browser holds it and cannot change it.
+   */
+  orgId: string;
   /** The brand this session is building. One session, one brand. */
   brandId: string;
   /** The domain the visitor typed, carried so a screen can state it without a read. */
@@ -55,10 +67,21 @@ export interface AnonSession {
   issuedAt: number;
 }
 
-const FIELD_ORDER = ["anonOrgId", "brandId", "domain", "issuedAt"] as const;
+const FIELD_ORDER = ["anonOrgId", "orgId", "brandId", "domain", "issuedAt"] as const;
 
 /** The prefix every anonymous org's external id carries. */
 export const ANON_ORG_PREFIX = "anon_";
+
+/**
+ * ⚠️ The prefix is a LABEL, never the proof.
+ *
+ * client-service RECORDS that an org came into being without an identity
+ * provider, at creation, and refuses to claim one that carries no such record —
+ * explicitly so that nothing is inferred from what an external id looks like.
+ * So minting an id with this prefix does NOT make an org claimable: the create
+ * must declare it. This exists to make an anonymous org recognisable in a
+ * ledger afterwards, and for nothing else.
+ */
 
 /**
  * The ONE principal every anonymous session acts as.
