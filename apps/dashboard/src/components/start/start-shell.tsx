@@ -67,6 +67,7 @@ export function StartShell({
   scrollKey,
   stepLabels,
   reassurance,
+  aside,
   children,
 }: {
   /** 1-based. The dots render only when there is more than one, because "1 of 1"
@@ -87,6 +88,11 @@ export function StartShell({
   /** A fleet figure for the strip under the card, in place of the founders line.
    *  The welcome keeps the founders; each question after it gets one figure. */
   reassurance?: { figure: string; label: string } | null;
+  /** A column OUTSIDE the white card, to its right on a wide screen and under it
+   *  on a narrow one. The returns screen puts the named clients here: inside
+   *  the card they read as part of the question; beside it they read as the
+   *  world vouching for the answer. */
+  aside?: ReactNode;
   children: ReactNode;
 }) {
   const brand = useLandingBrand();
@@ -182,12 +188,39 @@ export function StartShell({
         )}
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10">
+      {/* The card, and beside it whatever the screen puts OUTSIDE it. One grid
+          column when there is nothing beside it, so every other screen is
+          byte-identical to before. */}
+      <div
+        className={`relative z-10 flex min-h-0 flex-1 flex-col ${
+          aside ? "gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start" : ""
+        }`}
+      >
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10">
         <div className="shrink-0 start-enter">
           {stepCount > 1 && (
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400 sm:hidden">
               Step {step} of {stepCount}
               {stepLabels?.[step - 1] ? ` · ${stepLabels[step - 1]}` : ""}
+            </p>
+          )}
+          {brand && (
+            /* The website the visitor typed on the landing, at the head of every
+               screen: their own logo and host, so the form reads as theirs and
+               not as a generic one. The host only: no brand NAME exists before
+               brand-service resolves it at signup, and a guessed one is worse
+               than none. */
+            <p
+              className="mb-3 flex items-center gap-2.5 text-sm text-gray-500"
+              data-landing-brand-eyebrow={brand.host}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
+                <BrandLogo domain={brand.host} size={24} className="rounded-md" fallbackClassName="text-gray-300" />
+              </span>
+              <span className="min-w-0 truncate">
+                Setting this up for{" "}
+                <span className="font-medium text-gray-900">{brand.host}</span>
+              </span>
             </p>
           )}
           <h1 className="mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
@@ -205,6 +238,12 @@ export function StartShell({
         <div ref={bodyRef} className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
 
         <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
+      </div>
+      {aside && (
+        <div className="relative z-10 min-w-0" data-start-aside>
+          {aside}
+        </div>
+      )}
       </div>
 
       {/* The landing's trust strip, under the card rather than in the hero, so it
@@ -544,8 +583,9 @@ export function CountUp({
  * the only answer there is over and over (it was also named twice on one row).
  * Every figure is rendered verbatim off the producer's read; nothing here
  * divides. The headline is the middle half of what clients got back (the
- * quartiles), the median sits under it, and the line states what the best
- * workflow charges for the path's first step. An unmeasured path says so.
+ * quartiles) and the median sits under it. An unmeasured path says so. The
+ * line that stated the best workflow's first-step price is gone: owner-cut
+ * 2026-09-18, it read as a bad number on the one screen meant to sell.
  */
 export function StartReturnRow({
   index = 0,
@@ -554,7 +594,6 @@ export function StartReturnRow({
   median,
   p25,
   p75,
-  firstStepLine,
   reasonLabel,
   formatReturn,
 }: {
@@ -564,8 +603,6 @@ export function StartReturnRow({
   median: number | null;
   p25: number | null;
   p75: number | null;
-  /** "$N per positive reply on average", or null when no workflow prices it. */
-  firstStepLine: string | null;
   reasonLabel: string;
   formatReturn: (x: number) => string;
 }) {
@@ -579,9 +616,7 @@ export function StartReturnRow({
       <div className="flex shrink-0 items-center">{funnelMark}</div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-gray-900">{funnelName}</p>
-        <p className="mt-0.5 text-xs text-gray-500 sm:truncate">
-          {measured ? (firstStepLine ?? "") : reasonLabel}
-        </p>
+        {!measured && <p className="mt-0.5 text-xs text-gray-500 sm:truncate">{reasonLabel}</p>}
       </div>
       <div className="basis-full shrink-0 pl-[44px] sm:basis-auto sm:pl-0 sm:text-right">
         {measured ? (
@@ -612,14 +647,17 @@ export function StartReturnRow({
 
 /**
  * A named client's card beside the returns: the person, what they got back on
- * the budget they paid, the first step's price, the counts. The homepage's proof
- * card, in the same order, so a visitor who came from it reads the same people.
+ * the budget they paid, the path it ran on, the first step's price, the counts.
+ * The homepage's proof card, in the same order, so a visitor who came from it
+ * reads the same people. The path is NAMED because the cards are the top three
+ * returns whatever path they ran, not the paths the visitor picked.
  */
 export function StartProofCard({
   index = 0,
   portrait,
   name,
   role,
+  funnelName,
   returnPerDollar,
   firstStep,
   counts,
@@ -629,6 +667,7 @@ export function StartProofCard({
   portrait: string;
   name: string;
   role: string;
+  funnelName: string;
   returnPerDollar: number;
   firstStep: { label: string; costPerReachUsd: number | null } | null;
   counts: { label: string; peopleReached: number }[];
@@ -640,12 +679,9 @@ export function StartProofCard({
       // to sit above the fold at 1440x900 (the third clipped under the CTA at
       // p-4 / text-3xl, measured on the live page).
       className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-3"
-      // Each card sits a little further right than the one above, the way the
-      // landing scatters its proof: a stagger, never a random position.
       style={
         {
           "--enter-delay": `${200 + index * 90}ms`,
-          marginLeft: `${index * 8}px`,
         } as CSSProperties
       }
       data-proof-card
@@ -679,6 +715,10 @@ export function StartProofCard({
           </span>
         ))}
       </div>
+      <p className="mt-1 flex justify-between gap-2 text-xs text-gray-500">
+        <span>Path</span>
+        <b className="min-w-0 truncate text-right font-medium text-gray-900">{funnelName}</b>
+      </p>
       <p className="mt-1 flex justify-between text-xs text-gray-500">
         <span>Channel</span>
         <b className="font-medium text-gray-900">Cold email</b>
