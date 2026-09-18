@@ -2094,6 +2094,39 @@ export async function getPublicChannels(token?: string): Promise<PublicChannelWi
 }
 
 /**
+ * The same channels, read through the route that answers WITHOUT a session.
+ *
+ * `getPublicChannels` goes through `/api/v1/*`, which lives inside `(authed)`
+ * and attaches a Clerk bearer — so signed out it is answered with the sign-in
+ * PAGE, and the reader throws on HTML it was told was JSON. The onboarding
+ * wizard runs signed out now, so it reads the catalogue the way the three
+ * screens before it already do: `/api/public/catalogue`, which is in the public
+ * matcher and proxies the same features-service route server-side.
+ *
+ * ONE schema, two transports. The payload's `channels` key is the upstream body
+ * verbatim, so it parses through `PublicChannelsSchema` unchanged — a second
+ * shape here is how the two surfaces would come to disagree about a channel.
+ *
+ * Correct signed IN as well, so nothing branches on whether a session exists:
+ * the route is public, not anonymous-only.
+ */
+export async function getPublicChannelsSignedOut(): Promise<PublicChannelWire[]> {
+  const res = await fetch("/api/public/catalogue");
+  if (!res.ok) {
+    throw new Error(`[dashboard] getPublicChannelsSignedOut: catalogue ${res.status}`);
+  }
+  const body = (await res.json()) as { channels?: unknown };
+  const parsed = PublicChannelsSchema.safeParse(body.channels);
+  if (!parsed.success) {
+    console.error("[dashboard] getPublicChannelsSignedOut: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getPublicChannelsSignedOut: invalid response shape");
+  }
+  return parsed.data.channels;
+}
+
+/**
  * What each (channel x sales funnel) pair costs, per step, across the whole fleet.
  *
  * `GET /public/channel-funnel-economics` is features-service's own price list: it
