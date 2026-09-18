@@ -1,3 +1,4 @@
+import { browserHasAnonSession } from "./anon-session-cookie";
 import { z } from "zod";
 import {
   LeadBucketCountsSchema,
@@ -200,6 +201,25 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     if (token) {
       url = `${API_URL}/v1${endpoint}`;
       headers["X-API-Key"] = token;
+    } else if (typeof document !== "undefined" && browserHasAnonSession(document.cookie)) {
+      // THIRD BRANCH: the visitor has no account yet.
+      //
+      // The build half of onboarding now runs before signup, against an org
+      // whose external id is `anon_<uuid>` instead of a Clerk org id. That org
+      // is an ordinary org everywhere downstream, so every helper in this file
+      // works unchanged — the only difference is which proxy carries the call,
+      // and that is decided here rather than at ~40 call sites.
+      //
+      // No Authorization header: there is no Clerk session to mint one from.
+      // The anonymous proxy reads a SIGNED httpOnly cookie the browser cannot
+      // forge, checks the call against a closed allowlist, and forwards under
+      // the session's own org. This flag cookie is a routing hint and carries
+      // no authority of its own.
+      //
+      // The flag is checked BEFORE the Clerk branch on purpose: `getTabSessionToken`
+      // returns null while signed out, and the authed proxy answers 401 — so a
+      // visitor mid-flow would see every read fail rather than run anonymously.
+      url = `/api/anon/v1${endpoint}`;
     } else {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();
