@@ -69,6 +69,40 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(SHELL).toContain('className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1"');
   });
 
+  it("every screen change starts at the top of the scroll box, never where the last one left it", () => {
+    // The scroll box is ONE element across screens (same position in the tree),
+    // so its scrollTop survives a screen change; a visitor who scrolled the
+    // channel list to the bottom arrived on the next screen already at the bottom.
+    expect(SHELL).toContain("const bodyRef = useRef<HTMLDivElement>(null);");
+    expect(SHELL).toContain("bodyRef.current?.scrollTo({ top: 0 });");
+    expect(SHELL).toContain("}, [step, scrollKey]);");
+    expect(SHELL).toContain("ref={bodyRef}");
+    // Every screen of the start flow names itself, so a same-step re-render
+    // (the funnel screen re-picked) cannot be told apart from a new screen.
+    expect(FLOW).toContain("scrollKey={screen}");
+  });
+
+  it("the returns screen is one compact row per path, made to fit without scrolling", () => {
+    const at = FLOW.indexOf("// returns");
+    const returns = FLOW.slice(at);
+    // One row per (funnel x channel), a figure on the row, the cost on the right:
+    // no per-funnel section, no card grid (the cards were what pushed it past the fold).
+    expect(returns).toContain("<StartReturnRow");
+    expect(returns).not.toContain("<StartGrid>");
+    expect(returns).not.toContain("<h2");
+    expect(SHELL).toContain("export function StartReturnRow(");
+    expect(SHELL).toContain("back per dollar");
+    expect(SHELL).toContain("per paying client");
+    // An unmeasured pairing says so on its row; the scope is never dropped.
+    expect(SHELL).toContain("Not measured yet");
+    expect(SHELL).toContain("every path included");
+  });
+
+  it("the last CTA reads as a reward, in the owner's words", () => {
+    expect(FLOW).toContain("Excellent, create my account");
+    expect(FLOW).not.toMatch(/>\s*Create my account\s*</);
+  });
+
   it("a price reads 'From $X per day', never '$X/day'", () => {
     for (const src of ALL) {
       expect(src).not.toMatch(/\}\/day/);
