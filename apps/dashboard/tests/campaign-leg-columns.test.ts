@@ -70,9 +70,13 @@ describe("legColumnPair — the columns a campaign's OWN arrow earns", () => {
     expect(legColumnPair(signupLeg)).toBe<LegColumnPair>("signup");
     expect(legRankMetric(signupLeg)).toBe("cps");
 
-    const formLeg = funnelLegs(visitForm).find((l) => l.toKey === "form_filled");
+    const formLeg = funnelLegs(visitForm).find((l) => l.toKey === "form_submitted");
     expect(legColumnPair(formLeg)).toBe<LegColumnPair>("formSubmission");
     expect(legRankMetric(formLeg)).toBe("cpfs");
+    // A leg read off a body written before the two form steps merged still prices.
+    for (const toKey of ["form_filled", "lead_form_submitted"]) {
+      expect(legColumnPair({ ...formLeg!, toKey })).toBe<LegColumnPair>("formSubmission");
+    }
   });
 
   it("covers every arrow of every funnel — a step gains a pair or is deliberately absent", () => {
@@ -88,10 +92,8 @@ describe("legColumnPair — the columns a campaign's OWN arrow earns", () => {
       meeting_booked: null,
       meeting_attended: null,
       signup: "signup",
-      form_filled: "formSubmission",
-      // Same pair as `form_filled`: the producer gives every form ONE lead field, and
-      // what differs between the two rungs is whether a website visit came first.
-      lead_form_submitted: "formSubmission",
+      // ONE form step (2026-09-18): the site's form and the ad's form are one rung.
+      form_submitted: "formSubmission",
       paid_client: "sale",
     });
   });

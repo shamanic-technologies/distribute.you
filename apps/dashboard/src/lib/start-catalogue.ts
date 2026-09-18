@@ -119,8 +119,7 @@ export interface CatalogueChannel {
  *   Website visit        -> a visit
  *   Signup               -> a visit
  *   Positive reply       -> a reply
- *   Form filled          -> a visit
- *   Lead form submitted  -> a lead form in the ad
+ *   Form submitted       -> a visit, or a lead form in the ad
  *   Meeting booked       -> a visit, a reply, or a meeting booked in the ad
  *   Meeting attended     -> a visit, a reply, or a meeting booked in the ad
  *   Paid client          -> all four

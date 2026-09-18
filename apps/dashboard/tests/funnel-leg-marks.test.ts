@@ -24,14 +24,14 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "u
 const PUBLISHED_LEGS: [string | null, string][] = [
   [null, "conversation"],
   [null, "website_visit"],
-  [null, "lead_form_submitted"],
+  [null, "form_submitted"],
   [null, "meeting_booked"],
   ["conversation", "meeting_booked"],
   ["website_visit", "meeting_booked"],
   ["meeting_booked", "meeting_attended"],
   ["meeting_attended", "paid_client"],
   ["signup", "paid_client"],
-  ["form_filled", "paid_client"],
+  ["form_submitted", "paid_client"],
 ];
 
 describe("funnel leg marks — one tile per leg, unique fleet-wide", () => {

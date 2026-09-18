@@ -35,11 +35,12 @@ const PAIR_BY_STEP_KEY: Readonly<Record<string, LegColumnPair>> = {
   conversation: "reply",
   website_visit: "visit",
   signup: "signup",
+  // ONE form step since 2026-09-18 (a form is a form, on the site or in the ad).
+  // The two spellings it replaced are read as it, so a leg off a body written
+  // before the merge still prices; this module imports nothing at runtime, so
+  // the alias is inlined rather than read off `funnel-step-marks`.
+  form_submitted: "formSubmission",
   form_filled: "formSubmission",
-  // Same pair as `form_filled`, for the same reason the producer gives them one
-  // lead field: a form is a form, and the rung differs only in whether a visit
-  // preceded it. Pricing it under its own column would ask features-service for
-  // a per-audience count it does not serve.
   lead_form_submitted: "formSubmission",
   paid_client: "sale",
   // meeting_booked / meeting_attended: features-service serves no per-audience meeting
