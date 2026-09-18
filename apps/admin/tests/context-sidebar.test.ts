@@ -207,6 +207,7 @@ describe("every top-level page commits navigation instantly", () => {
     "feature-stats",
     "audit/accounts",
     "audit/instantly",
+    "audit/cold-email",
   ];
 
   it.each(TOP_LEVEL_PAGES)("%s has a loading boundary", (seg) => {
