@@ -65,6 +65,8 @@ export function StartShell({
   footer,
   founders,
   scrollKey,
+  stepLabels,
+  reassurance,
   children,
 }: {
   /** 1-based. The dots render only when there is more than one, because "1 of 1"
@@ -79,6 +81,12 @@ export function StartShell({
   /** Names the screen when several share one step number, so a change of screen
    *  resets the scroll even when the step does not move. */
   scrollKey?: string;
+  /** One word per step, shown beside its number. Without them the bar draws
+   *  numbers alone. */
+  stepLabels?: readonly string[];
+  /** A fleet figure for the strip under the card, in place of the founders line.
+   *  The welcome keeps the founders; each question after it gets one figure. */
+  reassurance?: { figure: string; label: string } | null;
   children: ReactNode;
 }) {
   const brand = useLandingBrand();
@@ -116,20 +124,41 @@ export function StartShell({
         </a>
 
         {stepCount > 1 && (
-          <ol className="hidden items-center gap-1.5 sm:flex" aria-label={`Step ${step} of ${stepCount}`}>
-            {Array.from({ length: stepCount }, (_, i) => (
-              <li
-                key={i}
-                aria-current={i + 1 === step ? "step" : undefined}
-                className={`h-1.5 rounded-full transition-all ${
-                  i + 1 < step
-                    ? "w-4 bg-brand-600"
-                    : i + 1 === step
-                      ? "w-8 bg-brand-600"
-                      : "w-4 bg-gray-200"
-                }`}
-              />
-            ))}
+          /* NUMBERED steps, one word each, the current one filled: a row of dots of
+             two widths was reported as a shape nobody could read as a position. */
+          <ol className="hidden items-center gap-1 sm:flex" aria-label={`Step ${step} of ${stepCount}`}>
+            {Array.from({ length: stepCount }, (_, i) => {
+              const n = i + 1;
+              const state = n < step ? "done" : n === step ? "current" : "todo";
+              return (
+                <li key={n} className="flex items-center gap-1">
+                  {i > 0 && <span aria-hidden="true" className="mx-1 h-px w-4 bg-gray-200" />}
+                  <span
+                    aria-current={state === "current" ? "step" : undefined}
+                    className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                      state === "current"
+                        ? "bg-brand-600 text-white"
+                        : state === "done"
+                          ? "text-brand-700"
+                          : "text-gray-400"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+                        state === "current"
+                          ? "bg-white/20"
+                          : state === "done"
+                            ? "bg-brand-600 text-white"
+                            : "border border-gray-300"
+                      }`}
+                    >
+                      {state === "done" ? <CheckIcon size={10} weight="bold" /> : n}
+                    </span>
+                    {stepLabels?.[i]}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         )}
 
@@ -158,6 +187,7 @@ export function StartShell({
           {stepCount > 1 && (
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400 sm:hidden">
               Step {step} of {stepCount}
+              {stepLabels?.[step - 1] ? ` · ${stepLabels[step - 1]}` : ""}
             </p>
           )}
           <h1 className="mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
@@ -180,6 +210,15 @@ export function StartShell({
       {/* The landing's trust strip, under the card rather than in the hero, so it
           reads as reassurance and not as a claim the screen is making. */}
       <div className="relative z-10 hidden items-center justify-center gap-3 py-1 sm:flex">
+        {reassurance ? (
+          <p className="flex items-baseline gap-2 text-sm text-gray-500" data-reassurance>
+            <span className="font-display text-xl font-medium tracking-tight text-gray-900">
+              {reassurance.figure}
+            </span>
+            {reassurance.label}
+          </p>
+        ) : (
+          <>
         <div className="flex">
           {FACES.map((f, i) => (
             <img
@@ -198,6 +237,8 @@ export function StartShell({
           </span>
           <span data-founder-count>{foundersText}</span>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -318,7 +359,7 @@ export function StartOption({
         <div className="min-w-0">
           <div className="font-display text-base font-medium leading-tight text-gray-900">{title}</div>
           {description && (
-            <div className="mt-1 line-clamp-3 text-sm leading-snug text-gray-500">{description}</div>
+            <div className="mt-1 text-sm leading-snug text-gray-500">{description}</div>
           )}
         </div>
       </div>
@@ -493,93 +534,72 @@ export function CountUp({
 }
 
 /**
- * One measured pairing on the returns screen: the path (funnel via channel),
- * what our clients got back per dollar, and what a paying client cost them.
+ * One path on the returns screen: what our clients got back on it per dollar,
+ * and what a first step costs.
  *
  * A ROW rather than a card, because the returns screen is the last one before
- * signup and the owner wants every figure on it visible without scrolling: a
- * card per pairing (mark, headline figure, two lines of prose) ran past the
- * fold at 1440x900 with three pairings picked. A row states the same four
- * facts in 56px.
+ * signup and the owner wants every figure on it visible without scrolling.
  *
+ * The channel is NOT named: there is one, so naming it beside every path states
+ * the only answer there is over and over (it was also named twice on one row).
  * Every figure is rendered verbatim off the producer's read; nothing here
- * divides. An unmeasured pairing says so ON its row, with the producer's own
- * reason, and the scope of a channel-wide figure is never dropped: a median
- * over every path on a channel must not be read as describing the one picked.
+ * divides. The headline is the middle half of what clients got back (the
+ * quartiles), the median sits under it, and the line states what the best
+ * workflow charges for the path's first step. An unmeasured path says so.
  */
 export function StartReturnRow({
   index = 0,
   funnelMark,
-  channelMark,
   funnelName,
-  channelName,
   median,
   p25,
   p75,
-  brandCount,
-  scope,
-  costPerPaidClientUsd,
+  firstStepLine,
   reasonLabel,
   formatReturn,
 }: {
   index?: number;
   funnelMark: ReactNode;
-  channelMark: ReactNode;
   funnelName: string;
-  channelName: string;
   median: number | null;
   p25: number | null;
   p75: number | null;
-  brandCount: number;
-  scope: "pair" | "channel" | null;
-  costPerPaidClientUsd: number | null;
+  /** "$N per positive reply on average", or null when no workflow prices it. */
+  firstStepLine: string | null;
   reasonLabel: string;
   formatReturn: (x: number) => string;
 }) {
   const measured = median != null;
+  const range = p25 != null && p75 != null;
   return (
     <div
-      // On a phone the figure wraps under the name (indented past the two marks)
-      // rather than squeezing the name to an ellipsis; from `sm` it sits on the row.
       className="start-enter flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-gray-200 bg-white px-4 py-3"
       style={{ "--enter-delay": `${index * 60}ms` } as CSSProperties}
     >
-      <div className="flex shrink-0 items-center gap-1.5">
-        {funnelMark}
-        {channelMark}
-      </div>
+      <div className="flex shrink-0 items-center">{funnelMark}</div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">
-          {funnelName} <span className="font-normal text-gray-400">via</span> {channelName}
-        </p>
+        <p className="truncate text-sm font-medium text-gray-900">{funnelName}</p>
         <p className="mt-0.5 text-xs text-gray-500 sm:truncate">
-          {measured ? (
-            <>
-              {p25 != null && p75 != null && (
-                <>
-                  {formatReturn(p25)} to {formatReturn(p75)} for the middle half.{" "}
-                </>
-              )}
-              {scope === "pair"
-                ? `${brandCount} clients on this exact pairing.`
-                : `${brandCount} clients on this channel, every path included.`}
-            </>
-          ) : (
-            reasonLabel
-          )}
+          {measured ? (firstStepLine ?? "") : reasonLabel}
         </p>
       </div>
-      <div className="basis-full shrink-0 pl-[78px] sm:basis-auto sm:pl-0 sm:text-right">
+      <div className="basis-full shrink-0 pl-[44px] sm:basis-auto sm:pl-0 sm:text-right">
         {measured ? (
           <>
             <p className="font-display text-2xl leading-none tracking-tight text-gray-900">
-              <CountUp value={median} format={formatReturn} />
+              {range ? (
+                <>
+                  <CountUp value={p25} format={formatReturn} />
+                  <span className="mx-1 text-base text-gray-400">to</span>
+                  <CountUp value={p75} format={formatReturn} />
+                </>
+              ) : (
+                <CountUp value={median} format={formatReturn} />
+              )}
               <span className="ml-1 text-xs font-normal text-gray-500">back per dollar</span>
             </p>
-            {costPerPaidClientUsd != null && (
-              <p className="mt-1 text-xs text-gray-500">
-                ${Math.round(costPerPaidClientUsd).toLocaleString("en-US")} per paying client
-              </p>
+            {range && (
+              <p className="mt-1 text-xs text-gray-500">{formatReturn(median)} median ROI</p>
             )}
           </>
         ) : (
@@ -587,5 +607,79 @@ export function StartReturnRow({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A named client's card beside the returns: the person, what they got back on
+ * the budget they paid, the first step's price, the counts. The homepage's proof
+ * card, in the same order, so a visitor who came from it reads the same people.
+ */
+export function StartProofCard({
+  index = 0,
+  portrait,
+  name,
+  role,
+  returnPerDollar,
+  firstStep,
+  counts,
+  formatReturn,
+}: {
+  index?: number;
+  portrait: string;
+  name: string;
+  role: string;
+  returnPerDollar: number;
+  firstStep: { label: string; costPerReachUsd: number | null } | null;
+  counts: { label: string; peopleReached: number }[];
+  formatReturn: (x: number) => string;
+}) {
+  return (
+    <article
+      className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-4"
+      // Each card sits a little further right than the one above, the way the
+      // landing scatters its proof: a stagger, never a random position.
+      style={
+        {
+          "--enter-delay": `${200 + index * 90}ms`,
+          marginLeft: `${index * 12}px`,
+        } as CSSProperties
+      }
+      data-proof-card
+    >
+      <div className="flex items-center gap-3">
+        <img src={portrait} alt="" width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-gray-900">{name}</p>
+          <p className="truncate text-xs text-gray-500">{role}</p>
+        </div>
+      </div>
+      <p className="mt-3 font-display text-3xl leading-none tracking-tight text-gray-900">
+        {formatReturn(returnPerDollar)}
+        <span className="ml-2 text-xs font-normal leading-tight text-gray-500">
+          return on paid budget
+        </span>
+      </p>
+      {firstStep && firstStep.costPerReachUsd != null && (
+        <p className="mt-2 flex justify-between text-xs text-gray-500">
+          <span>Cost per {firstStep.label.toLowerCase()}</span>
+          <b className="font-medium text-gray-900">
+            ${Math.round(firstStep.costPerReachUsd).toLocaleString("en-US")}
+          </b>
+        </p>
+      )}
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+        {counts.map((c) => (
+          <span key={c.label}>
+            <b className="font-medium text-gray-900">{c.peopleReached.toLocaleString("en-US")}</b>{" "}
+            {c.label.toLowerCase()}
+          </span>
+        ))}
+      </div>
+      <p className="mt-2 flex justify-between text-xs text-gray-500">
+        <span>Channel</span>
+        <b className="font-medium text-gray-900">Cold email</b>
+      </p>
+    </article>
   );
 }

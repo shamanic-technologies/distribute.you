@@ -156,6 +156,10 @@ describe("the filter runs at the ONE reader boundary", () => {
     };
     walk(dir);
     expect(hits.map((h) => path.relative(dir, h)).sort()).toEqual([
+      // A THIRD producer's field under the same name (see `lib/start-returns.ts`
+      // below): the pre-signup catalogue route branches on `return-on-spend`'s
+      // `measured` for the fleet median. Not a projection row.
+      "app/api/public/catalogue/route.ts",
       // The SECOND reader of the same endpoint, and the one surface that legitimately
       // needs the unmeasured rows: the campaign Workflows table ranks on the producer's
       // own ladder, and "this exists and you have not tried it" is an answer a customer
@@ -181,6 +185,9 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `measured`, meaning enough brands past the spend floor to state a median.
       // The pre-signup proof screen branches on it to decide whether it may state
       // a figure at all, which is the opposite question from a projection row's.
+      // Same third producer: the proof module reads `showcase-funnels`' per-brand
+      // `measured` (the fleet holds a realized return for that named client).
+      "lib/start-proof.ts",
       "lib/start-returns.ts",
       // The campaign Overview's Top-3-LLMs list, off the SAME ladder the second reader
       // above uses. It BRANCHES on `measured` for exactly the reason the two modules

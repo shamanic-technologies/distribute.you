@@ -163,7 +163,7 @@ describe("startOutcomes", () => {
   // Once it publishes one, the wire's own words win with nothing to change.
   it("names the purchase itself until the producer publishes the step, then reads the wire", () => {
     const local = startOutcomes(FLEET_CAT).find((o) => o.key === PURCHASE_STEP_KEY);
-    expect(local?.label).toBe("Purchase");
+    expect(local?.label).toBe("Direct purchase");
     const PURCHASE: CatalogueStep = { key: "purchase", label: "Purchase made", description: "From the wire." };
     const published = startOutcomes(cat(undefined, [...WIRE_STEPS, PURCHASE]));
     const fromWire = published.find((o) => o.key === PURCHASE_STEP_KEY);

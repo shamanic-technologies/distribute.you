@@ -122,10 +122,27 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(returns).not.toContain("<h2");
     expect(SHELL).toContain("export function StartReturnRow(");
     expect(SHELL).toContain("back per dollar");
-    expect(SHELL).toContain("per paying client");
-    // An unmeasured pairing says so on its row; the scope is never dropped.
+    // The headline is the middle half (p25 to p75), the median sits under it as
+    // "median ROI", and the line states the best workflow's first-step price.
+    // The cost per paying client and the client count are gone: owner-cut.
+    expect(SHELL).toContain("median ROI");
+    expect(SHELL).not.toContain("per paying client");
+    expect(SHELL).not.toContain("for the middle half");
+    expect(SHELL).not.toContain("clients on this");
+    expect(SHELL).toContain("firstStepLine");
+    // The channel is not named on a row: there is one, so "via X" is a non-choice.
+    expect(SHELL).not.toContain("channelMark");
+    expect(returns).not.toContain("channelName");
+    expect(returns).not.toContain("No charge until");
+    // An unmeasured path says so on its row.
     expect(SHELL).toContain("Not measured yet");
-    expect(SHELL).toContain("every path included");
+    // The commitment is a tag off the channel's terms, never a "judge it after" line.
+    expect(FLOW).toContain("commitmentTag(f.effectiveMinimumCommitmentDays)");
+    expect(FLOW).not.toContain("Judge it after");
+    // The named clients ride beside the rows, from the SAME producer read as the homepage.
+    expect(returns).toContain("proofCardsFor(");
+    expect(returns).toContain("<StartProofCard");
+    expect(SHELL).toContain("export function StartProofCard(");
   });
 
   it("the last CTA reads as a reward, in the owner's words", () => {
