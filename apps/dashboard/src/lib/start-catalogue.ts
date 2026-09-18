@@ -132,8 +132,11 @@ export const PURCHASE_STEP_KEY = "purchase";
 
 const PURCHASE_FALLBACK: StartOutcome = {
   key: PURCHASE_STEP_KEY,
-  label: "Purchase",
-  description: "A buyer pays for what you sell, on your own website.",
+  // "Direct" is what tells it from a signup: money changes hands at checkout,
+  // no account first. Byte-equal with the producer's own words (features-service
+  // v0.170.3), so the screen reads the same before and after the wire carries it.
+  label: "Direct purchase",
+  description: "A buyer pays at checkout on the brand's site, no account needed.",
 };
 
 /**

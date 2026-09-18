@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  bestWorkflowCostUsd,
+  hotLeadStats,
+  type FirstStepObjective,
+  type ShowcaseBrand,
+} from "@/lib/start-proof";
 
 /**
  * The catalogue the SIGNED-OUT half of onboarding is built from.
@@ -76,9 +82,85 @@ async function readGatewayPublic(path: string): Promise<Response> {
   });
 }
 
+/** The one channel this flow sells, and the feature every fleet figure is read for. */
+const CHANNEL_SLUG = "sales-cold-email-outreach";
+
+/** The floor the producer takes the fleet median over. Stated, never defaulted:
+ *  it selects the POPULATION. Matches what the homepage asks for. */
+const MIN_SPEND_USD = 100;
+
+/**
+ * A read whose absence is a weaker screen, never a broken one: logged loud,
+ * degraded to null, and NEVER filled with a figure of our own.
+ */
+async function readSoft<T>(label: string, path: string): Promise<T | null> {
+  try {
+    const res = await readPublic(path);
+    if (!res.ok) {
+      console.error(`[start-catalogue] ${label} read failed: ${res.status}`);
+      return null;
+    }
+    return (await res.json()) as T;
+  } catch (err) {
+    console.error(`[start-catalogue] ${label} read errored:`, err);
+    return null;
+  }
+}
+
+/** What a workflow charges for one objective, cross-org, cheapest measured row. */
+async function readBestCost(objective: FirstStepObjective): Promise<number | null> {
+  // The producer's array is `workflows` (verified on the served body, 2026-09-18),
+  // NOT `results` like the ranked read beside it: one dynasty per row.
+  const body = await readSoft<{ workflows?: unknown[] }>(
+    `workflow-cost-per-outcome ${objective}`,
+    `features/workflow-cost-per-outcome?featureSlug=${CHANNEL_SLUG}&objective=${objective}`,
+  );
+  if (!body || !Array.isArray(body.workflows)) return null;
+  return bestWorkflowCostUsd(body.workflows as never[], objective);
+}
+
+export interface StartProofPayload {
+  hotLeads: { hotLeads: number; companies: number; medianCostUsd: number } | null;
+  medianReturnPerDollar: number | null;
+  /** What the best workflow charges for a first step, per objective. */
+  bestCostUsd: Record<FirstStepObjective, number | null>;
+  /** The named clients' funnels, exactly as features-service publishes them. */
+  showcase: ShowcaseBrand[];
+}
+
+/**
+ * The fleet's proof: hot leads (the SAME derivation as the homepage hero, over
+ * the per-brand ranked read), the fleet's median return, the best workflow's
+ * price per first step, and the named clients' funnels.
+ */
+async function readProof(): Promise<StartProofPayload> {
+  const [ranked, fleetReturn, showcase, positiveReply, websiteVisit] = await Promise.all([
+    readSoft<{ results?: { stats: Record<string, number | null> }[] }>(
+      "ranked brands",
+      `features/ranked?featureSlug=${CHANNEL_SLUG}&objective=emailsSent&groupBy=brand&limit=200`,
+    ),
+    readSoft<{ measured?: boolean; medianReturnPerDollar?: number | null }>(
+      "return-on-spend",
+      `features/return-on-spend?featureSlug=${CHANNEL_SLUG}&minSpendUsd=${MIN_SPEND_USD}`,
+    ),
+    readSoft<{ brands?: ShowcaseBrand[] }>("showcase-funnels", "features/showcase-funnels"),
+    readBestCost("positiveReply"),
+    readBestCost("websiteVisit"),
+  ]);
+
+  const median = fleetReturn?.measured ? fleetReturn.medianReturnPerDollar : null;
+  return {
+    hotLeads: ranked ? hotLeadStats(ranked.results ?? []) : null,
+    medianReturnPerDollar:
+      typeof median === "number" && Number.isFinite(median) && median > 0 ? median : null,
+    bestCostUsd: { positiveReply, websiteVisit },
+    showcase: Array.isArray(showcase?.brands) ? showcase.brands : [],
+  };
+}
+
 export async function GET() {
   try {
-    const [channelsRes, returnsRes, foundersRes] = await Promise.all([
+    const [channelsRes, returnsRes, foundersRes, proof] = await Promise.all([
       readPublic("channels"),
       // Median return on spend per (channel x funnel), with quartiles, over
       // brands past the producer's own spend floor. The visitor sees it on the
@@ -88,6 +170,9 @@ export async function GET() {
       // into its trust strip. Third half that may legitimately be missing --
       // and the ONE read here that is not under `/v1`, see `readGatewayPublic`.
       readGatewayPublic("stats/users"),
+      // The proof the screens state beside their questions. Every half of it
+      // may legitimately be missing and each one degrades ALONE to null.
+      readProof(),
     ]);
 
     if (!channelsRes.ok) {
@@ -122,7 +207,7 @@ export async function GET() {
       console.error(`[start-catalogue] stats/users read failed: ${foundersRes.status}`);
     }
 
-    return NextResponse.json({ channels, returns, founders });
+    return NextResponse.json({ channels, returns, founders, proof });
   } catch (err) {
     console.error("[start-catalogue] catalogue read errored:", err);
     return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });

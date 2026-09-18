@@ -11,13 +11,12 @@ import {
   StartPathOption,
   StartGrid,
   StartReturnRow,
+  StartProofCard,
   fromPerDay,
   useLandingBrand,
 } from "./start-shell";
-import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { FunnelStepMark } from "@/components/marks/funnel-step-mark";
-import { channelMarkForSlug } from "@/lib/acquisition-channels";
 import { salesFunnelDefForWireKeyOrNull } from "@/lib/sales-funnels";
 import {
   startOutcomes,
@@ -37,6 +36,16 @@ import {
   startSelectionCookieAssignment,
   type StartSelection,
 } from "@/lib/start-selection-cookie";
+import {
+  commitmentTag,
+  firstStepLine,
+  firstStepObjective,
+  proofCardsFor,
+  reassuranceFor,
+  type FleetProof,
+  type FirstStepObjective,
+  type ShowcaseBrand,
+} from "@/lib/start-proof";
 
 /**
  * THE SIGNED-OUT HALF OF ONBOARDING: sell first, sign up after.
@@ -61,8 +70,10 @@ type Screen = "welcome" | "outcome" | "funnels" | "returns";
 
 const ORDER: Screen[] = ["welcome", "outcome", "funnels", "returns"];
 
-/** The two questions, after the welcome. The dots and the "Step N of M" line. */
+/** The two questions and the proof, after the welcome. */
 const STEP_COUNT = 3;
+/** One word per step, beside its number in the bar. */
+const STEP_LABELS = ["Goal", "Path", "Results"] as const;
 
 interface Catalogue {
   /** The producer's catalogue whole: its channels, its funnels, its legs and its root
@@ -71,6 +82,11 @@ interface Catalogue {
   wire: StartCatalogue;
   pairs: PairReturn[];
   founders: number | null;
+  /** The fleet's proof, each half nullable on its own. */
+  proof: FleetProof & {
+    bestCostUsd: Record<FirstStepObjective, number | null>;
+    showcase: ShowcaseBrand[];
+  };
 }
 
 /** One decimal under 10x, a whole number above it — the product's one spelling
@@ -123,7 +139,21 @@ export function StartFlow() {
         };
         const pairs = body?.returns?.pairs ?? [];
         const founders = typeof body?.founders === "number" ? body.founders : null;
-        setCatalogue({ wire, pairs, founders });
+        const p = body?.proof ?? {};
+        setCatalogue({
+          wire,
+          pairs,
+          founders,
+          proof: {
+            hotLeads: p.hotLeads ?? null,
+            medianReturnPerDollar: p.medianReturnPerDollar ?? null,
+            bestCostUsd: {
+              positiveReply: p.bestCostUsd?.positiveReply ?? null,
+              websiteVisit: p.bestCostUsd?.websiteVisit ?? null,
+            },
+            showcase: Array.isArray(p.showcase) ? p.showcase : [],
+          },
+        });
       })
       .catch((err) => {
         console.error("[start] catalogue read failed:", err);
@@ -213,6 +243,7 @@ export function StartFlow() {
   };
 
   const founders = catalogue?.founders ?? null;
+  const proof = catalogue?.proof ?? null;
 
   const BackLink = () =>
     screen === "welcome" ? null : (
@@ -316,8 +347,10 @@ export function StartFlow() {
       <StartShell
         step={1}
         stepCount={STEP_COUNT}
+        stepLabels={STEP_LABELS}
         founders={founders}
-      scrollKey={screen}
+        reassurance={reassuranceFor("outcome", proof, formatReturn)}
+        scrollKey={screen}
         title="What should we get you?"
         subtitle="Pick everything worth paying for. Each one opens a different way of turning it into revenue."
         footer={footer(
@@ -350,7 +383,9 @@ export function StartFlow() {
       <StartShell
         step={2}
         stepCount={STEP_COUNT}
+        stepLabels={STEP_LABELS}
         founders={founders}
+        reassurance={reassuranceFor("funnels", proof, formatReturn)}
         scrollKey={screen}
         title="How should it turn into revenue?"
         subtitle="Each path ends with a paying client. You pay per path, one day at a time, and you can stop any of them."
@@ -403,9 +438,15 @@ export function StartFlow() {
                   }
                   rungs={rungs}
                 >
-                  {f.operatedBy === "customer"
-                    ? "Your own team works this one."
-                    : `Judge it after ${f.effectiveMinimumCommitmentDays} days.`}
+                  {/* The commitment is a TAG, a fact about the channel's terms,
+                      never a sentence telling the visitor when to judge it. */}
+                  {f.operatedBy === "customer" ? (
+                    "Your own team works this one."
+                  ) : (
+                    <span className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
+                      {commitmentTag(f.effectiveMinimumCommitmentDays)}
+                    </span>
+                  )}
                 </StartPathOption>
               );
             })}
@@ -430,14 +471,24 @@ export function StartFlow() {
       ).map((r) => ({ funnel: f, row: r })),
     );
 
+  // The named clients who ran one of the picked paths, best return first. The
+  // three consenting clients are the whole population, so a selection none of
+  // them ran draws no card and the column is not there.
+  const proofCards = proofCardsFor(
+    proof?.showcase ?? [],
+    returnRows.map(({ funnel }) => funnel.funnelKey),
+  );
+
   return (
     <StartShell
       step={3}
       stepCount={STEP_COUNT}
+      stepLabels={STEP_LABELS}
       founders={founders}
+      reassurance={reassuranceFor("returns", proof, formatReturn)}
       scrollKey={screen}
       title="What our clients got back"
-      subtitle="Measured on real clients, per dollar spent. Where we have not measured a pairing yet, we say so."
+      subtitle="Measured on real clients, per dollar spent. Where we have not measured a path yet, we say so."
       footer={footer(
         <StartButton
           onClick={() => {
@@ -448,30 +499,51 @@ export function StartFlow() {
         >
           Excellent, create my account
         </StartButton>,
-        "No charge until you confirm each path.",
       )}
     >
-      <div className="flex flex-col gap-2">
-        {returnRows.map(({ funnel, row }, i) => (
-          <StartReturnRow
-            key={funnel.key}
-            index={i}
-            funnelMark={funnelMark(funnel.funnelKey)}
-            channelMark={
-              <AcquisitionChannelMark def={{ mark: channelMarkForSlug(row.channelSlug) }} size="sm" />
-            }
-            funnelName={funnel.name}
-            channelName={row.channelName}
-            median={row.median}
-            p25={row.p25}
-            p75={row.p75}
-            brandCount={row.brandCount}
-            scope={row.scope}
-            costPerPaidClientUsd={row.costPerPaidClientUsd}
-            reasonLabel={returnReasonLabel(row.reason)}
-            formatReturn={formatReturn}
-          />
-        ))}
+      <div className={proofCards.length > 0 ? "grid gap-4 lg:grid-cols-[1fr_300px]" : ""}>
+        <div className="flex flex-col gap-2">
+          {returnRows.map(({ funnel, row }, i) => {
+            // The path's first step decides which price the line states: the best
+            // workflow's cost per positive reply on a reply-led path, per website
+            // visit on a visit-led one. Read off the producer's own rung order.
+            const objective = catalogue
+              ? firstStepObjective(funnelRungs(funnel.funnelKey, catalogue.wire).map((r) => r.key))
+              : null;
+            const bestUsd = objective ? proof?.bestCostUsd[objective] ?? null : null;
+            return (
+              <StartReturnRow
+                key={funnel.key}
+                index={i}
+                funnelMark={funnelMark(funnel.funnelKey)}
+                funnelName={funnel.funnelName}
+                median={row.median}
+                p25={row.p25}
+                p75={row.p75}
+                firstStepLine={objective && bestUsd != null ? firstStepLine(objective, bestUsd) : null}
+                reasonLabel={returnReasonLabel(row.reason)}
+                formatReturn={formatReturn}
+              />
+            );
+          })}
+        </div>
+        {proofCards.length > 0 && (
+          <div className="flex flex-col gap-3" data-proof-cards>
+            {proofCards.map((c, i) => (
+              <StartProofCard
+                key={`${c.domain}:${c.funnelKey}`}
+                index={i}
+                portrait={c.person.portrait}
+                name={c.person.name}
+                role={c.person.role}
+                returnPerDollar={c.returnPerDollar}
+                firstStep={c.firstStep}
+                counts={c.counts}
+                formatReturn={formatReturn}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </StartShell>
   );
