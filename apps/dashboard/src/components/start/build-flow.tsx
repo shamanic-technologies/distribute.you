@@ -90,9 +90,9 @@ export function BuildFlow() {
 
   const writes = useMemo(() => {
     if (!wire || !selection) return [];
-    const kept = channelsForOutcomes(wire, selection.outcomes).filter((c) =>
-      selection.channels.includes(c.slug),
-    );
+    // Same narrowing the payment screen makes: the channel is ours, not a pick,
+    // so a selection stored under the old channel screen still resolves.
+    const kept = channelsForOutcomes(wire, selection.outcomes);
     const pairs = funnelsForChannels(kept, selection.outcomes, wire);
     // One write per PAIR, because that is what was paid for and what billing keys its
     // ceiling on. `budgetWrites` takes them funnel-shaped, so each pair is a group of

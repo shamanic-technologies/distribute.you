@@ -8,6 +8,7 @@ import { IdentificationBadgeIcon } from "@phosphor-icons/react/dist/csr/Identifi
 import { TextboxIcon } from "@phosphor-icons/react/dist/csr/Textbox";
 import { ClipboardTextIcon } from "@phosphor-icons/react/dist/csr/ClipboardText";
 import { CurrencyDollarIcon } from "@phosphor-icons/react/dist/csr/CurrencyDollar";
+import { ShoppingBagOpenIcon } from "@phosphor-icons/react/dist/csr/ShoppingBagOpen";
 import type { Icon } from "@phosphor-icons/react";
 import {
   funnelStepMarkFor,
@@ -29,6 +30,7 @@ const STEP_ICONS: Record<FunnelStepGlyph, Icon> = {
   textbox: TextboxIcon,
   clipboard: ClipboardTextIcon,
   "currency-dollar": CurrencyDollarIcon,
+  "shopping-bag-open": ShoppingBagOpenIcon,
 };
 
 type MarkSize = "xs" | "sm" | "md";

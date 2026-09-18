@@ -24,10 +24,19 @@ const PROD_STEPS = [
   "paid_client",
 ];
 
+/** Steps DRAWN ahead of the wire, with why. A step the producer never ships draws a
+ *  mark nothing asks for, which costs nothing; a step offered on a screen with no mark
+ *  is a blank square. `purchase` is an outcome `/start` offers today and the producer
+ *  is publishing as the middle rung of the website-purchase funnel. */
+const AHEAD_OF_WIRE = ["purchase"];
+
 describe("funnel step marks — one tile per step, the same product-wide", () => {
   it("draws every step the producer publishes", () => {
     for (const key of PROD_STEPS) expect(funnelStepMarkFor(key), key).not.toBeNull();
-    expect(Object.keys(FUNNEL_STEP_MARKS).sort()).toEqual([...PROD_STEPS].sort());
+    expect(Object.keys(FUNNEL_STEP_MARKS).sort()).toEqual(
+      [...PROD_STEPS, ...AHEAD_OF_WIRE].sort(),
+    );
+    for (const key of AHEAD_OF_WIRE) expect(funnelStepMarkFor(key), key).not.toBeNull();
   });
 
   it("reads the two retired form spellings as the one form step", () => {
@@ -51,7 +60,7 @@ describe("funnel step marks — one tile per step, the same product-wide", () =>
   });
 
   it("keeps the entry leg's glyph for a step that has one, so the outcome screen is unchanged", () => {
-    for (const key of PROD_STEPS) {
+    for (const key of [...PROD_STEPS, ...AHEAD_OF_WIRE]) {
       const entry = FUNNEL_LEG_MARKS[funnelLegMarkKey(null, key)];
       if (entry) expect(FUNNEL_STEP_MARKS[key].glyph).toBe(entry.glyph);
     }

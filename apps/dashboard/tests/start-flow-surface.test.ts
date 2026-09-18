@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CHANNEL_MARKS } from "../src/lib/acquisition-channels";
+import { DEFAULT_CHANNEL_SLUG } from "../src/lib/start-catalogue";
 
 const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
@@ -12,10 +13,11 @@ const PAY = read("components/start/pay-flow.tsx");
 const BUILD = read("components/start/build-flow.tsx");
 const ALL = [SHELL, FLOW, PAY, BUILD];
 
-/** Every channel slug production publishes on 2026-09-17, read off
- *  `GET /public/channels` inside the features-service container. A slug added
- *  upstream renders markless (which the mark component tolerates); a slug HERE
- *  without a mark is a card on the channel screen with an empty tile. */
+/** Every channel slug production publishes on 2026-09-18, read off
+ *  `GET /public/channels` inside the features-service container. Nothing on this
+ *  flow lists them any more (we run one channel and the screen that asked is
+ *  gone), but the marks are still what every OTHER surface draws, so a slug
+ *  published upstream without one is a blank tile somewhere. */
 const PROD_SLUGS = [
   "sales-cold-email-outreach", "pr-cold-email-outreach", "pr-expert-quote-outreach",
   "sales-crm-email-outreach", "feedback-request-cold-email-outreach", "cold-call-outreach",
@@ -38,30 +40,58 @@ describe("the signed-out onboarding wears the landing's charter", () => {
   });
 
   it("every option on every screen carries a mark at the call site", () => {
-    // Outcomes wear the STEP's tile (one per step, product-wide), channels their own
-    // mark, funnels theirs; every rung of a path row wears its step tile too.
+    // Outcomes wear the STEP's tile (one per step, product-wide), a path its
+    // FUNNEL's; every rung of a path row wears its step tile too.
     expect(FLOW).toContain("mark={<FunnelStepMark stepKey={o.key}");
     expect(FLOW).toContain("mark: <FunnelStepMark stepKey={step.key}");
     expect(FLOW).not.toContain("FunnelLegMark");
-    expect(FLOW).toContain("mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }}");
+    expect(FLOW).toContain("mark={funnelMark(f.funnelKey)}");
     expect(FLOW).toContain("{funnelMark(funnel.funnelKey)}");
-    expect(FLOW).toContain("funnelGroups(offeredFunnels)");
-    expect(FLOW).toContain("def={{ mark: channelMarkForSlug(f.channelSlug) }}");
     expect(PAY).toContain("{funnelMark(funnel.key)}");
   });
 
-  it("a path is a full-width row with its whole path drawn, and an unsold path is named", () => {
-    // One row per (funnel x channel), never a grid card that folds the path into pills.
+  it("a path is a full-width row per FUNNEL, its whole path drawn, no channel on it", () => {
+    // One row per funnel: the channel is the same on every row, so naming it on
+    // each one states the only answer there is over and over.
     expect(FLOW).toContain("<StartPathOption");
     expect(FLOW).toContain("rungs={rungs}");
-    expect(FLOW).toContain("funnelRungs(g.funnelKey, catalogue.wire)");
+    expect(FLOW).toContain("title={f.funnelName}");
+    expect(FLOW).toContain("funnelRungs(f.funnelKey, catalogue.wire)");
+    expect(FLOW).not.toContain("funnelGroups");
     expect(SHELL).toContain('aria-label="Path"');
     // Every rung a tile plus the producer's words, an arrow between.
     expect(SHELL).toContain("{r.mark}");
     expect(SHELL).toContain("<ArrowRightIcon");
-    // A funnel the picks buy that no kept channel sells is stated with who would sell it.
-    expect(FLOW).toContain("unsoldBoughtFunnels(catalogue.wire, outcomes, keptChannels)");
-    expect(FLOW).toContain("{u.sellerNames.join(\", \")}");
+    // The title is the path's own name now, and a name cut in half is not the
+    // name: measured on a Pixel 7, "Sales Meeting from Positive Reply" lost the
+    // half that tells it from "Sales Meeting from Website".
+    expect(SHELL).toContain(
+      '<span className="min-w-0 font-display text-base font-medium leading-tight text-gray-900">',
+    );
+  });
+
+  it("asks TWO questions and never a channel, but still carries the channel it runs", () => {
+    // The channel screen offered one real answer, so it cost a step of the funnel
+    // to collect nothing. What is bought is still a (funnel x channel) pair.
+    expect(FLOW).not.toContain('"channels"');
+    expect(FLOW).not.toContain("channelGroups");
+    expect(FLOW).toContain('const ORDER: Screen[] = ["welcome", "outcome", "funnels", "returns"];');
+    expect(FLOW).toContain("const STEP_COUNT = 3;");
+    expect(FLOW).toContain("channels: [DEFAULT_CHANNEL_SLUG]");
+    expect(DEFAULT_CHANNEL_SLUG).toBe("sales-cold-email-outreach");
+    // Each question states its own position out of the two.
+    expect(FLOW).toContain("step={1}\n        stepCount={STEP_COUNT}");
+    expect(FLOW).toContain("step={2}\n        stepCount={STEP_COUNT}");
+    expect(FLOW).toContain("step={3}\n      stepCount={STEP_COUNT}");
+  });
+
+  it("reads the stored channel list on NEITHER payment screen, so an older cookie resolves", () => {
+    // A selection stored while the channel screen existed can name channels we
+    // never ran. Narrowing beats refusing: `paid` is the only record money was taken.
+    expect(PAY).not.toContain("selection.channels.includes");
+    expect(BUILD).not.toContain("selection.channels.includes");
+    expect(PAY).toContain("channelsForOutcomes(wire, selection.outcomes)");
+    expect(BUILD).toContain("channelsForOutcomes(wire, selection.outcomes)");
   });
 
   it("bleeds the scroll box so a selected card's ring is not clipped at the edge", () => {
@@ -109,7 +139,6 @@ describe("the signed-out onboarding wears the landing's charter", () => {
       expect(src).not.toMatch(/\$\{[^}]*\}\/day/);
     }
     expect(SHELL).toContain("return `From $${Math.round(cents / 100).toLocaleString(\"en-US\")} per day`;");
-    expect(FLOW).toContain("fromPerDay(c.terms.dailyOperatingCostCents)");
     expect(FLOW).toContain("fromPerDay(f.dailyOperatingCostCents)");
     expect(PAY).toContain("fromPerDay(funnel.dailyOperatingCostCents)");
   });
@@ -120,10 +149,10 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(BUILD).toContain("funnelsForChannels(kept, selection.outcomes,");
   });
 
-  it("options sit in a three-across grid on desktop, grouped by family on the channel screen", () => {
+  it("options sit in a three-across grid on desktop", () => {
     expect(SHELL).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4");
-    expect(FLOW).toContain("channelGroups(offeredChannels)");
-    expect(FLOW).toContain("<StartGroupLabel");
+    // The group label existed for the channel screen's families and went with it.
+    expect(SHELL).not.toContain("export function StartGroupLabel");
   });
 
   it("the shell shows the brand the landing named, and only then", () => {
