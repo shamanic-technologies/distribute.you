@@ -133,8 +133,17 @@ describe("the wizard continues from /start", () => {
     const at = wizard.indexOf("const continuationStartedRef = useRef(false);");
     expect(at).toBeGreaterThan(-1);
     const effect = wizard.slice(at, wizard.indexOf("const continuationFunnelsSeededRef"));
-    expect(effect).toContain('if (!continuation?.website || step !== "loading") return;');
-    expect(effect).toContain("if (restored || resumeBrandIdParam || fromAdd) return;");
+    // The gate is a render-1 LATCH, never a live read of `restored`: that ref
+    // re-reads sessionStorage every render and the persist effect fills it
+    // after render 1, so a live read closed the gate before the setup ran.
+    expect(effect).toContain('if (!continuationOpensLoading || step !== "loading") return;');
+    expect(effect).not.toContain("if (restored ||");
+    const latch = wizard.slice(
+      wizard.indexOf("const continuationOpensLoadingRef = useRef<boolean | undefined>(undefined);"),
+      wizard.indexOf("const continuationOpensLoading = continuationOpensLoadingRef.current;"),
+    );
+    expect(latch).toContain("!restored && !resumeBrandIdParam && !fromAdd && continuation?.website != null");
+    expect(wizard.indexOf("const continuationOpensLoading = ")).toBeLessThan(at);
     expect(effect).toContain("continuationStartedRef.current = true;");
     expect(effect).toContain("if (!domain || websiteProblem !== null) {\n      setStep(\"url\");");
     expect(effect).toContain("void startAnalyze();");
