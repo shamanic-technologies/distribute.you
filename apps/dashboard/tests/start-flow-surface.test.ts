@@ -11,6 +11,7 @@ const SHELL = read("components/start/start-shell.tsx");
 const FLOW = read("components/start/start-flow.tsx");
 const PAY = read("components/start/pay-flow.tsx");
 const BUILD = read("components/start/build-flow.tsx");
+const ROUTE = read("app/api/public/catalogue/route.ts");
 const ALL = [SHELL, FLOW, PAY, BUILD];
 
 /** Every channel slug production publishes on 2026-09-18, read off
@@ -123,26 +124,49 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(SHELL).toContain("export function StartReturnRow(");
     expect(SHELL).toContain("back per dollar");
     // The headline is the middle half (p25 to p75), the median sits under it as
-    // "median ROI", and the line states the best workflow's first-step price.
-    // The cost per paying client and the client count are gone: owner-cut.
+    // "median ROI". The cost per paying client, the client count AND the best
+    // workflow's first-step price ("$103 per positive reply on average") are
+    // gone: all owner-cut. Nothing on the flow reads the best-cost figure.
     expect(SHELL).toContain("median ROI");
     expect(SHELL).not.toContain("per paying client");
     expect(SHELL).not.toContain("for the middle half");
     expect(SHELL).not.toContain("clients on this");
-    expect(SHELL).toContain("firstStepLine");
+    expect(SHELL).not.toContain("firstStepLine");
+    expect(SHELL).not.toContain("on average");
+    expect(FLOW).not.toContain("bestCostUsd");
+    expect(ROUTE).not.toContain("workflow-cost-per-outcome");
     // The channel is not named on a row: there is one, so "via X" is a non-choice.
     expect(SHELL).not.toContain("channelMark");
     expect(returns).not.toContain("channelName");
     expect(returns).not.toContain("No charge until");
     // An unmeasured path says so on its row.
     expect(SHELL).toContain("Not measured yet");
-    // The commitment is a tag off the channel's terms, never a "judge it after" line.
-    expect(FLOW).toContain("commitmentTag(f.effectiveMinimumCommitmentDays)");
+    // No path carries a commitment: the tag is a constant, and the path screen
+    // reads NO producer "minimum days" field (that is how long a result takes to
+    // show, and #4268 had rendered it as "30-day commitment").
+    expect(FLOW).toContain("{NO_COMMITMENT_TAG}");
+    expect(FLOW).not.toContain("commitmentTag(");
+    expect(FLOW).not.toContain("effectiveMinimumCommitmentDays");
     expect(FLOW).not.toContain("Judge it after");
-    // The named clients ride beside the rows, from the SAME producer read as the homepage.
-    expect(returns).toContain("proofCardsFor(");
+    // The named clients are the TOP THREE by return whatever path they ran,
+    // floored at the fleet median the strip states, and they sit OUTSIDE the
+    // white card: the shell's `aside` slot, never inside the scroll box.
+    expect(returns).toContain("proofCardsFor(proof?.showcase ?? [], {");
+    expect(returns).toContain("minReturnPerDollar: proof?.medianReturnPerDollar ?? null,");
+    expect(returns).toContain("aside={");
     expect(returns).toContain("<StartProofCard");
+    expect(returns).toContain("funnelName={c.funnelName}");
     expect(SHELL).toContain("export function StartProofCard(");
+    expect(SHELL).toContain("data-start-aside");
+    // The aside renders AFTER the card's footer, i.e. as a sibling of the white card.
+    const cardFooter = SHELL.indexOf("{footer}</div>");
+    const asideAt = SHELL.indexOf("data-start-aside");
+    expect(cardFooter).toBeGreaterThan(0);
+    expect(asideAt).toBeGreaterThan(cardFooter);
+    // The path screen arrives with its first path picked; a deselect never snaps it back.
+    expect(FLOW).toContain("const goToFunnels = () => {");
+    expect(FLOW).toContain("if (funnels.length === 0 && offeredFunnels.length > 0) {");
+    expect(FLOW).toContain("onClick={goToFunnels}");
   });
 
   it("the last CTA reads as a reward, in the owner's words", () => {
@@ -168,6 +192,11 @@ describe("the signed-out onboarding wears the landing's charter", () => {
 
   it("options sit in a three-across grid on desktop", () => {
     expect(SHELL).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4");
+    // The welcome's three pillars fill the width in three columns, never the
+    // four-column option grid (which left an empty fourth column at xl).
+    const welcome = FLOW.slice(FLOW.indexOf('if (screen === "welcome")'), FLOW.indexOf('if (screen === "outcome")'));
+    expect(welcome).not.toContain("<StartGrid>");
+    expect(welcome).toContain("grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4");
     // The group label existed for the channel screen's families and went with it.
     expect(SHELL).not.toContain("export function StartGroupLabel");
   });
@@ -176,6 +205,10 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(SHELL).toContain("landingBrandFromCookie(document.cookie)");
     expect(SHELL).toContain("data-landing-brand={brand.host}");
     expect(SHELL).toContain("<BrandLogo domain={brand.host}");
+    // And at the head of every screen's card: their logo and host, host only
+    // (no brand name exists before signup).
+    expect(SHELL).toContain("data-landing-brand-eyebrow={brand.host}");
+    expect(SHELL).toContain("Setting this up for");
     // Absent brand: the offer pill, never a guessed host.
     expect(SHELL).toContain("First $30 free");
   });
