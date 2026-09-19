@@ -170,3 +170,25 @@ export function startSelectionCookieAssignment(selection: StartSelection): strin
 export function clearStartSelectionCookieAssignment(): string {
   return `${START_SELECTION_COOKIE}=; path=/; max-age=0; samesite=lax`;
 }
+
+/**
+ * The funnel half of each entry a selection carries, deduped, order kept.
+ *
+ * A selection names (funnel x channel) PAIRS (`<funnelKey>::<channelSlug>`)
+ * because the pair is what is bought, and tolerates the older funnel-only
+ * shape. The wizard's funnel step asks about FUNNELS, so the funnel half is
+ * what pre-selects it. Nothing is mapped onto this app's own catalogue here:
+ * which funnels are offered is the wizard's question.
+ */
+export function funnelKeysFromSelection(stored: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of stored) {
+    const sep = entry.indexOf("::");
+    const key = sep === -1 ? entry : entry.slice(0, sep);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}

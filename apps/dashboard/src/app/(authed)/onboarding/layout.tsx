@@ -58,7 +58,7 @@ export default function OnboardingLayout({
           {/* Mobile: full-bleed, stretch — each step (StepShell) fills the area
               edge-to-edge with no card chrome. sm+: the centered floating-card frame. */}
           <div className="flex min-h-0 flex-1 items-stretch justify-center sm:items-center sm:px-4 sm:py-6">
-            <div className="flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:max-h-full sm:flex-none">
+            <div className="flex w-full min-w-0 max-w-6xl flex-1 flex-col sm:max-h-full sm:flex-none">
               <OnboardingCreditGate>{children}</OnboardingCreditGate>
             </div>
           </div>

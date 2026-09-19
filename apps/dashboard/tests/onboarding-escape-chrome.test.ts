@@ -70,6 +70,6 @@ describe("Onboarding escape chrome", () => {
     // The centered content shell (and its responsive classes asserted by
     // onboarding-responsive.test.ts) must stay in the layout, not move into chrome.
     expect(layout).toContain("min-h-[100svh]");
-    expect(layout).toContain("flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:max-h-full sm:flex-none");
+    expect(layout).toContain("flex w-full min-w-0 max-w-6xl flex-1 flex-col sm:max-h-full sm:flex-none");
   });
 });

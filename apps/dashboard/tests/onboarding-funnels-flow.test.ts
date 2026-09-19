@@ -60,8 +60,11 @@ describe("onboarding — step order", () => {
   // ICP + audience suggest prewarm takes ~35 s at p50 in prod, and two more
   // screens of the user's own typing cover it. It also puts the step after the
   // brand's first offer exists, which is what lets a future suggest name it.
-  it("sends services straight to the funnels", () => {
-    expect(flow).toContain('onClick={() => { addService(serviceDraft); setStep("funnels"); }}');
+  it("sends services to the funnels, or past them when the sell-first picks already answered", () => {
+    // Asking "how do you sell?" two screens after "how should it turn into
+    // revenue?" is one question twice; the picks pre-select the funnel step and
+    // the same write runs without the screen.
+    expect(flow).toContain('onClick={() => { addService(serviceDraft); if (funnelsStepSkipped) void saveFunnelsAndContinue(); else setStep("funnels"); }}');
   });
 
   it("routes the funnels back to services", () => {
@@ -70,7 +73,7 @@ describe("onboarding — step order", () => {
   });
 
   it("puts the audiences AFTER the primary pick, and consent after the audiences", () => {
-    expect(flow).toContain('onBack={() => setStep(skipPrimaryStep ? "funnels" : "primary")}');
+    expect(flow).toContain('onBack={() => setStep(skipPrimaryStep ? (funnelsStepSkipped ? "services" : "funnels") : "primary")}');
     expect(flow).toContain('onContinue={() => setStep("consent")}');
     expect(flow).not.toContain('onContinue={() => setStep("funnels")}');
   });
@@ -207,11 +210,11 @@ describe("onboarding — copy", () => {
     // Verbatim from the SERVED landing hero (index-v2.html), so the screen after
     // signup cannot state a promise two generations older than the one that
     // converted the visitor.
-    expect(flow).toContain("Get revenue in 24h. From $1/day.");
-    expect(flow).toContain(
-      "We run multiple acquisition channels for you and you keep the one working the best."
-    );
-    expect(flow).toContain("First $30 free, no commitment.");
+    // The welcome is the sell-first screens' own (`start-picks.tsx`), the
+    // wizard's first step; its headline is the served landing's.
+    const picks = fs.readFileSync(path.resolve(__dirname, "../src/components/start/start-picks.tsx"), "utf8");
+    expect(picks).toContain("revenue in 24h");
+    expect(picks).toContain("From $1 per day.");
     expect(flow).not.toContain("Sell like crazy, autonomously.");
     expect(flow).not.toContain("Pay per outcome, like Google Ads.");
   });

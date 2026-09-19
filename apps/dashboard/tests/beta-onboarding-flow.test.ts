@@ -31,13 +31,16 @@ describe("Beta onboarding guided flow", () => {
   it("welcome step answers the objections between it and the URL field", () => {
     // Not a feature tour (NN/g: "skip onboarding when possible"), and not a price
     // card — the visitor already converted on the landing.
+    // The welcome is the sell-first screens' own now (`start-picks.tsx`),
+    // rendered by the wizard as its first step.
+    const picks = fs.readFileSync(path.resolve(__dirname, "../src/components/start/start-picks.tsx"), "utf8");
     for (const copy of [
-      "Get revenue in 24h. From $1/day.",
-      "We send, not you",
-      "You set the ceiling",
-      "Pause anytime",
+      "revenue in 24h",
+      "We run it for you",
+      "You set the daily budget",
+      "You see the real cost",
     ]) {
-      expect(src).toContain(copy);
+      expect(picks).toContain(copy);
     }
     expect(src).not.toContain('v: "~$15"');
     expect(src).not.toContain('v: "~$90"');

@@ -282,12 +282,12 @@ describe("the copy handler is wired to the same string as the button", () => {
   it("never speaks for the footer, where the CTA lives", () => {
     // The handler rides the scrolling BODY. On the footer it would answer for a
     // reader copying the button's own label.
-    const shell = ONBOARDING.slice(ONBOARDING.indexOf("function StepShell("));
-    const body = shell.indexOf('className="min-h-0 flex-1 overflow-y-auto"');
-    const foot = shell.indexOf("{footer && <div");
-    expect(body).toBeGreaterThan(-1);
-    expect(foot).toBeGreaterThan(body);
-    expect(shell.slice(body, foot)).toContain("{...stepCopy}");
+    // StepShell hands the footer to StartShell as a PROP and spreads the copy
+    // handler on the body wrapper alone, so the handler never contains the CTA.
+    const shell = ONBOARDING.slice(ONBOARDING.indexOf("function StepShell("), ONBOARDING.indexOf("function BackButton("));
+    expect(shell).toContain("footer={footer}");
+    expect(shell).toContain("<div {...stepCopy}>{children}</div>");
+    expect(shell).not.toContain("{...stepCopy}>{footer");
   });
 });
 

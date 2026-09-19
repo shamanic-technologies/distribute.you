@@ -14,12 +14,12 @@ import { readFileSync } from "node:fs";
  *
  * These pin the CALL SITES, not the library. A filter perfectly able to read the
  * wire is the bug entirely intact if a flow never hands it the list, and the
- * three flows read the same catalogue for the same selection: `start-flow` picks,
+ * three flows read the same catalogue for the same selection: `start-picks` picks,
  * `pay-flow` charges for the picks, `build-flow` writes their budgets. A flow
  * left behind would resolve a different set of funnels from the one the visitor
  * was shown — and `pay-flow` would resolve it while taking money.
  */
-const FLOWS = ["start-flow", "pay-flow", "build-flow"] as const;
+const FLOWS = ["start-picks", "pay-flow", "build-flow"] as const;
 
 const src = (name: string): string =>
   readFileSync(new URL(`../src/components/start/${name}.tsx`, import.meta.url), "utf8");

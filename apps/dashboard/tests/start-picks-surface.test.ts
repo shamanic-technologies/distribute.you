@@ -8,7 +8,7 @@ const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
 const SHELL = read("components/start/start-shell.tsx");
-const FLOW = read("components/start/start-flow.tsx");
+const FLOW = read("components/start/start-picks.tsx");
 const PAY = read("components/start/pay-flow.tsx");
 const BUILD = read("components/start/build-flow.tsx");
 const ROUTE = read("app/api/public/catalogue/route.ts");
@@ -76,14 +76,16 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     // to collect nothing. What is bought is still a (funnel x channel) pair.
     expect(FLOW).not.toContain('"channels"');
     expect(FLOW).not.toContain("channelGroups");
-    expect(FLOW).toContain('const ORDER: Screen[] = ["welcome", "outcome", "funnels", "returns"];');
-    expect(FLOW).toContain("const STEP_COUNT = 3;");
+    expect(FLOW).toContain('export const START_SCREEN_ORDER: StartScreen[] = ["welcome", "outcome", "path", "returns"];');
+    // ONE stepper for the whole flow, from the landing to the account: the
+    // three sell-first screens, the build, the review.
+    expect(FLOW).toContain('export const START_STEP_LABELS = ["Goal", "Path", "Results", "Your setup", "Review"] as const;');
     expect(FLOW).toContain("channels: [DEFAULT_CHANNEL_SLUG]");
     expect(DEFAULT_CHANNEL_SLUG).toBe("sales-cold-email-outreach");
-    // Each question states its own position out of the two.
-    expect(FLOW).toContain("step={1}\n        stepCount={STEP_COUNT}");
-    expect(FLOW).toContain("step={2}\n        stepCount={STEP_COUNT}");
-    expect(FLOW).toContain("step={3}\n      stepCount={STEP_COUNT}");
+    // Each question states its own position out of the whole.
+    expect(FLOW).toContain("step={1}\n        stepCount={START_STEP_COUNT}");
+    expect(FLOW).toContain("step={2}\n        stepCount={START_STEP_COUNT}");
+    expect(FLOW).toContain("step={3}\n      stepCount={START_STEP_COUNT}");
   });
 
   it("reads the stored channel list on NEITHER payment screen, so an older cookie resolves", () => {
@@ -97,7 +99,7 @@ describe("the signed-out onboarding wears the landing's charter", () => {
 
   it("bleeds the scroll box so a selected card's ring is not clipped at the edge", () => {
     // ring-2 sits OUTSIDE the border; an overflow box with no padding cuts it off.
-    expect(SHELL).toContain('className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1"');
+    expect(SHELL).toContain("-m-1 min-h-0 flex-1 overflow-y-auto p-1");
   });
 
   it("every screen change starts at the top of the scroll box, never where the last one left it", () => {
