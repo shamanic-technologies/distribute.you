@@ -7,6 +7,7 @@ import { useOrganizationList, useUser } from "@clerk/nextjs";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
+import { hasCompletedOrg } from "@/lib/org-onboarding-complete";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
@@ -65,16 +66,14 @@ export function useOnboardingEscapeChrome(): boolean {
     userMemberships: { infinite: true },
   });
   const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
-  const hasCompletedOrg = !!userMemberships?.data?.some(
-    (m) =>
-      (m.organization.publicMetadata as { onboardingComplete?: boolean } | undefined)
-        ?.onboardingComplete === true,
+  const completedOrg = hasCompletedOrg(
+    userMemberships?.data?.map((m) => m.organization),
   );
   return (
     params.get("from") === "add" ||
     params.get("new") === "1" ||
     isStaff ||
-    hasCompletedOrg
+    completedOrg
   );
 }
 

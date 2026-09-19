@@ -20,6 +20,7 @@ import {
   SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { orgOnboardingComplete } from "@/lib/org-onboarding-complete";
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import {
@@ -1752,9 +1753,20 @@ export function Onboarding() {
   // clobbered and the "new"-org create path already names its own org) rename the
   // reused active org to the brand identity. Best-effort + fail-loud: a cosmetic
   // breadcrumb rename must never block the paid launch, but a failure is logged.
+  //
+  // ⚠️ `flowKey === "signup"` means "no ?from=add and no ?new=1", which is NOT the
+  // same statement as "this person is signing up". `/start` is a 308 onto a BARE
+  // `/onboarding`, and the landing sends every visitor there — a signed-in
+  // customer included. So the URL shape alone licensed renaming a live customer's
+  // org to whatever domain they happened to type on the landing: measured
+  // 2026-09-19, an agency org running 15 brands was renamed to `lefigaro.fr`, and
+  // nothing anywhere said so. The authoritative signal for "this org has already
+  // been set up" is the one the edge gate itself reads, so read that instead of
+  // inferring a first run from the address bar.
   function maybeRenameFreshSignupOrg(orgId: string, orgName: string) {
     if (flowKey !== "signup") return;
     if (!organization || organization.id !== orgId || !orgName) return;
+    if (orgOnboardingComplete(organization)) return;
     void organization.update({ name: orgName }).catch((e) => {
       console.error("[dashboard] onboarding fresh-signup org rename failed:", e);
     });
