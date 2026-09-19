@@ -32,37 +32,65 @@ function sliceFrom(marker: string, len: number): string {
   return SRC.slice(at, at + len);
 }
 
-describe("services extraction is visible while it runs and when it fails", () => {
-  it("tracks the extract failure and the hydrate window as state", () => {
+describe("the services are read on the loading screen, and the services step never waits", () => {
+  function fn(name: string): string {
+    const at = SRC.indexOf(`async function ${name}(`);
+    expect(at, `function not found: ${name}`).toBeGreaterThan(-1);
+    const next = SRC.indexOf("\n  async function ", at + 1);
+    const nextSync = SRC.indexOf("\n  function ", at + 1);
+    const stop = [next, nextSync].filter((i) => i > -1).sort((a, b) => a - b)[0] ?? SRC.length;
+    return SRC.slice(at, stop);
+  }
+
+  it("tracks the extract failure as state, and has no hydrating state to wait on", () => {
     expect(SRC).toContain("const [servicesExtractFailed, setServicesExtractFailed] = useState(false)");
-    expect(SRC).toContain("const [servicesHydrating, setServicesHydrating] = useState(false)");
+    expect(SRC).not.toContain("servicesHydrating");
+    expect(SRC).not.toContain("servicesPending");
   });
 
-  it("records the loading-screen extract outcome instead of only logging it", () => {
-    // The `.catch(() => null)` stays (a failed extract must not strand a paid
-    // signup on the loading screen) but the outcome now reaches the UI.
-    expect(SRC).toContain("setServicesExtractFailed(!serviceFields)");
+  it("walks the whole site when the landing page yields no services, before the loading screen ends", () => {
+    const create = fn("createBrandAndFetchServices");
+    const landing = create.indexOf('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing", mode: "suggest" })');
+    const mapped = create.indexOf('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "url_map", mode: "suggest" })');
+    const done = create.indexOf("fetchDoneRef.current = true;");
+    expect(landing).toBeGreaterThan(-1);
+    expect(mapped).toBeGreaterThan(landing);
+    expect(done).toBeGreaterThan(mapped);
+    // The second read is gated on the first producing NOTHING, and both are awaited.
+    expect(create).toContain("if (extractedServices.length === 0) {");
+    expect(create).toContain("const mappedFields = await extractBrandFields");
   });
 
-  it("marks the hydrate window so the step can render a pending state", () => {
-    expect(SRC).toContain("setServicesHydrating(true)");
-    expect(SRC).toContain("setServicesHydrating(false)");
+  it("records the outcome off the LIST, not off the response object", () => {
+    // A 200 carrying no services is a failure to read the site, the same as a throw.
+    const create = fn("createBrandAndFetchServices");
+    expect(create).toContain("setServicesExtractFailed(extractedServices.length === 0)");
+    expect(create).not.toContain("setServicesExtractFailed(!serviceFields)");
+    const noSite = fn("createBrandNoWebsiteAndFetchServices");
+    expect(noSite).toContain("setServicesExtractFailed(extractedServices.length === 0)");
   });
 
-  it("never lets a late hydrate replace a list that already has entries", () => {
-    // Both writers go through the same functional guard: `servicesEditedRef` covers
-    // a list the user curated, `prev.length` covers one already filled by the
-    // sibling writer — a hydrate landing after the loading-screen extract already
-    // succeeded must not swap the list out from under the step.
-    const hydrateWrite = sliceFrom("if (!servicesEditedRef.current && nextServices.length > 0) setServices(", 140);
-    expect(hydrateWrite).toContain("prev.length ? prev : nextServices");
+  it("the background hydrate never writes the services list", () => {
+    const hydrate = fn("hydrateOnboardingInBackground");
+    expect(hydrate).not.toContain("setServices(");
+    expect(hydrate).not.toContain("applyExtractedServices(");
   });
 
-  it("states the pending and failed cases on the services step", () => {
+  it("every extraction writes the list through the one guarded applier", () => {
+    expect(fn("createBrandAndFetchServices")).toContain("applyExtractedServices(extractedServices)");
+    expect(fn("createBrandNoWebsiteAndFetchServices")).toContain("applyExtractedServices(extractedServices)");
+    expect(fn("retryServicesExtract")).toContain("applyExtractedServices(next)");
+    const apply = SRC.slice(SRC.indexOf("function applyExtractedServices("), SRC.indexOf("async function hydrateOnboardingInBackground("));
+    expect(apply).toContain("prev.length ? prev : nextServices");
+    expect(apply).toContain("servicesEditedRef.current");
+  });
+
+  it("states only the failed case on the services step, with a retry", () => {
+    expect(SRC).not.toContain("Still reading");
     // JSX entity form — the apostrophe in the rendered copy is `&apos;` in source.
-    expect(SRC).toContain("Still reading");
     expect(SRC).toContain("We couldn&apos;t read your site");
     expect(SRC).toContain("retryServicesExtract");
+    expect(SRC).toContain("const servicesUnread = !servicesDrafted && servicesExtractFailed;");
   });
 
   it("does not claim it drafted a list it failed to fetch", () => {

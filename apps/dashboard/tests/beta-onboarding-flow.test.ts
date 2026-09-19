@@ -190,7 +190,8 @@ describe("Beta onboarding guided flow", () => {
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {
     expect(src).toContain("audience prewarm (ICP draft)");
     expect(src).toContain("hydrateOnboardingInBackground");
-    expect(src).toContain("extractBrandFields failed");
+    expect(src).toContain("extractBrandFields (landing) failed");
+    expect(src).toContain("extractBrandFields (url_map) failed");
     expect(src).toContain("displaySetupError");
     // A failed/empty service extraction shows NO error banner — the user just fills
     // the services in by hand and assumes it is normal (reassurance, not debug).

@@ -1195,13 +1195,13 @@ export function Onboarding() {
   // (removing a field is a version bump, which strands an in-flight checkout) and
   // are written EMPTY.
   const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
-  // Whether the loading-screen service extraction FAILED, and whether the heavier
-  // background hydrate that can still deliver the list is in flight. The services
-  // step renders one of three honest states off these — a list, "still reading", or
-  // a stated failure with a retry — instead of its "we drafted these" copy over an
-  // empty box, which is what a swallowed extract failure used to look like.
+  // Whether the loading-screen service extraction FAILED. The services step
+  // renders one of two honest states off this — a list, or a stated failure with
+  // a retry — instead of its "we drafted these" copy over an empty box, which is
+  // what a swallowed extract failure used to look like. There is no third
+  // "still reading" state: the loading screen does not end until the services
+  // have been read (or have failed to be), so nothing can still be in flight.
   const [servicesExtractFailed, setServicesExtractFailed] = useState(false);
-  const [servicesHydrating, setServicesHydrating] = useState(false);
   const [servicesRetrying, setServicesRetrying] = useState(false);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
@@ -1608,6 +1608,19 @@ export function Onboarding() {
     console.info("[dashboard] onboarding setup milestone", props);
   }
 
+  // The ONE writer of the services list from an extraction. Never clobbers a list
+  // the user edited on the services step: a same-brand re-analyze (edit-brand →
+  // url → analyze) keeps servicesEditedRef true (the brand-switch reset only fires
+  // when the brandId actually changes), so the user's edits win over a re-read.
+  function applyExtractedServices(nextServices: string[]) {
+    if (nextServices.length === 0) return;
+    setProfile((prev) => ({
+      ...prev,
+      services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
+    }));
+    if (!servicesEditedRef.current) setServices((prev) => (prev.length ? prev : nextServices));
+  }
+
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
     // Pre-warm the audience step FIRST: draft the ICP prompt in the background,
     // before the lever extraction below is awaited. The
@@ -1682,11 +1695,11 @@ export function Onboarding() {
         ...seeded,
         services: servicesEditedRef.current || nextServices.length === 0 ? prev.services ?? nextServices : nextServices,
       }));
-      // Two guards, two different situations. `servicesEditedRef` protects a list the
-      // user curated. `prev.length` protects one the loading-screen extract already
-      // filled: this hydrate resolves tens of seconds later, so a bare `setServices`
-      // here swaps the list out from under whoever is reading the step.
-      if (!servicesEditedRef.current && nextServices.length > 0) setServices((prev) => (prev.length ? prev : nextServices));
+      // The services CHIPS are deliberately not written here. This hydrate resolves
+      // tens of seconds after the loading screen settled that list, and a list
+      // swapping in under whoever is reading the step is the bug the loading
+      // screen exists to prevent. Only the profile bag above takes the value, and
+      // only when the loading screen produced none.
       setFieldProvenance((prev) => {
         const next = { ...prev };
         for (const key of USER_FIELD_KEYS) {
@@ -1838,17 +1851,30 @@ export function Onboarding() {
     // Extract only the service list before moving forward. The heavier profile,
     // persona, economics and projection work continues after the services step is usable.
     const servicesStartedAt = performance.now();
-    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing", mode: "suggest" }).catch((e) => {
-      console.error("[dashboard] extractBrandFields failed:", e);
-      captureSetupMilestone("services_extract_failed", servicesStartedAt);
+    // The services are READ HERE, on the loading screen, and nowhere later. The
+    // landing page is the fast path (one scrape); when it yields nothing (an
+    // unscrapable landing, a site whose offer lives on a sub-page) the whole-site
+    // map is walked before this screen is allowed to end. The next step used to
+    // open on an empty box with a "still reading" spinner, waiting for the
+    // background hydrate to fill it in tens of seconds later; a list appearing
+    // under the cursor is not a draft, and the loading screen is where waiting
+    // belongs. Both attempts are `.catch`ed: a failed read must not strand
+    // someone here, so the failure is RECORDED and the services step states it
+    // with a retry, rather than claiming a list it never received.
+    const landingFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing", mode: "suggest" }).catch((e) => {
+      console.error("[dashboard] extractBrandFields (landing) failed:", e);
       return null;
     });
-    if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
-    // The `.catch` above must stay — a failed extraction cannot strand someone on
-    // the loading screen — but swallowing it into `null` and walking on is what left
-    // the next step claiming it had drafted a list it never received. Record the
-    // outcome so that step can state which of the three things happened.
-    setServicesExtractFailed(!serviceFields);
+    let extractedServices = normalizeServices(landingFields?.fields.services?.value);
+    if (extractedServices.length === 0) {
+      const mappedFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "url_map", mode: "suggest" }).catch((e) => {
+        console.error("[dashboard] extractBrandFields (url_map) failed:", e);
+        return null;
+      });
+      extractedServices = normalizeServices(mappedFields?.fields.services?.value);
+    }
+    captureSetupMilestone(extractedServices.length > 0 ? "services_extracted" : "services_extract_failed", servicesStartedAt);
+    setServicesExtractFailed(extractedServices.length === 0);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -1869,32 +1895,15 @@ export function Onboarding() {
       org_id: targetOrgId ?? "anonymous",
       brand_id: newBrandId,
     });
-    const serviceValue = serviceFields?.fields.services?.value;
-    if (serviceValue != null) {
-      const nextServices = normalizeServices(serviceValue);
-      if (nextServices.length > 0) {
-        // Never clobber services the user edited on the services step. A same-brand
-        // re-analyze (edit-brand → url → analyze) keeps servicesEditedRef true here
-        // (the brand-switch reset above only fires when the brandId actually changes),
-        // so mirror hydrateOnboardingInBackground's guard and keep the user's edits.
-        setProfile((prev) => ({
-          ...prev,
-          services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
-        }));
-        if (!servicesEditedRef.current) setServices((prev) => (prev.length ? prev : nextServices));
-      }
-    }
+    applyExtractedServices(extractedServices);
     fetchDoneRef.current = true;
     setLoadStep(LOADING_STEPS.length);
-    // The hydrate is the only thing that can still deliver a list once the fast
-    // extraction has failed, so the services step needs to know it is running —
-    // otherwise its empty state reads as a verdict rather than as a wait.
-    setServicesHydrating(true);
-    const hydration = hydrateOnboardingInBackground(newBrandId)
-      .catch((e) => {
-        console.error("[dashboard] onboarding background hydrate failed:", e);
-      })
-      .finally(() => setServicesHydrating(false));
+    // The hydrate warms the offer levers, the economics and the projection for
+    // the steps AFTER services. It never writes the services list: that list was
+    // settled above, before this screen ended.
+    const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
+      console.error("[dashboard] onboarding background hydrate failed:", e);
+    });
     hydrationPromiseRef.current = hydration;
   }
 
@@ -1989,38 +1998,28 @@ export function Onboarding() {
     captureSetupMilestone("brand_upserted", brandStartedAt);
     setLoadStep(2);
     const servicesStartedAt = performance.now();
-    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { mode: "suggest" }).catch((e) => {
+    // One read, awaited: there is no site to walk, the pasted context is all
+    // there is. Same rule as the website path — the list is settled before this
+    // screen ends, or its absence is recorded for the services step to state.
+    const contextFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { mode: "suggest" }).catch((e) => {
       console.error("[dashboard] extractBrandFields (no-website) failed:", e);
-      captureSetupMilestone("services_extract_failed", servicesStartedAt);
       return null;
     });
-    if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
-    setServicesExtractFailed(!serviceFields);
+    const extractedServices = normalizeServices(contextFields?.fields.services?.value);
+    captureSetupMilestone(extractedServices.length > 0 ? "services_extracted" : "services_extract_failed", servicesStartedAt);
+    setServicesExtractFailed(extractedServices.length === 0);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
     // Same resume cookie as the website path — see the note there.
     document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId, no_website: true });
-    const serviceValue = serviceFields?.fields.services?.value;
-    if (serviceValue != null) {
-      const nextServices = normalizeServices(serviceValue);
-      if (nextServices.length > 0) {
-        setProfile((prev) => ({
-          ...prev,
-          services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
-        }));
-        if (!servicesEditedRef.current) setServices((prev) => (prev.length ? prev : nextServices));
-      }
-    }
+    applyExtractedServices(extractedServices);
     fetchDoneRef.current = true;
     setLoadStep(LOADING_STEPS.length);
-    setServicesHydrating(true);
-    const hydration = hydrateOnboardingInBackground(newBrandId)
-      .catch((e) => {
-        console.error("[dashboard] onboarding background hydrate (no-website) failed:", e);
-      })
-      .finally(() => setServicesHydrating(false));
+    const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
+      console.error("[dashboard] onboarding background hydrate (no-website) failed:", e);
+    });
     hydrationPromiseRef.current = hydration;
   }
 
@@ -3210,10 +3209,11 @@ export function Onboarding() {
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
-  // Re-run the service extraction from the services step. Same call the loading
-  // screen makes, so it succeeds under exactly the conditions that one does — the
-  // point is that a failure is now recoverable in place instead of leaving the step
-  // permanently empty with nothing to press.
+  // Re-run the service extraction from the services step. The loading screen
+  // already tried the landing page and then the whole site, so the retry walks
+  // the whole site again (the wider of the two) — the point is that a failure is
+  // recoverable in place instead of leaving the step permanently empty with
+  // nothing to press.
   async function retryServicesExtract() {
     const id = brandIdRef.current;
     if (!id || servicesRetrying) return;
@@ -3221,16 +3221,13 @@ export function Onboarding() {
     const startedAt = performance.now();
     try {
       const fields = await extractBrandFields([id], SERVICES_PROFILE_FIELDS, {
-        urlStrategy: noWebsiteMode ? undefined : "landing",
+        urlStrategy: noWebsiteMode ? undefined : "url_map",
         mode: "suggest",
       });
-      captureSetupMilestone("services_extracted", startedAt);
       const next = normalizeServices(fields.fields.services?.value);
+      captureSetupMilestone(next.length > 0 ? "services_extracted" : "services_extract_failed", startedAt);
       setServicesExtractFailed(next.length === 0);
-      if (next.length > 0) {
-        setProfile((prev) => ({ ...prev, services: next }));
-        setServices((prev) => (prev.length ? prev : next));
-      }
+      applyExtractedServices(next);
     } catch (e) {
       console.error("[dashboard] retryServicesExtract failed:", e);
       captureSetupMilestone("services_extract_failed", startedAt);
@@ -3400,12 +3397,11 @@ export function Onboarding() {
     // A list on screen came from somewhere: either the extraction produced it or the
     // user typed it. Either way there is a draft to talk about.
     const servicesDrafted = services.length > 0;
-    // Nothing to show AND something still running that could deliver it. A retry is
-    // pointless here — the hydrate is already the retry.
-    const servicesPending = !servicesDrafted && (servicesHydrating || servicesRetrying);
-    // Nothing to show and nothing left running: the read is over and it produced
-    // nothing. Say that, and give the reader a way to ask again.
-    const servicesUnread = !servicesDrafted && !servicesPending && servicesExtractFailed;
+    // Nothing to show: the loading screen's read is over and it produced nothing.
+    // Say that, and give the reader a way to ask again. There is no waiting state
+    // here — nothing that could still deliver a list is running once this step
+    // renders.
+    const servicesUnread = !servicesDrafted && servicesExtractFailed;
     // One string, two paths: the button writes it and Ctrl+C rewrites to it.
     const servicesPrompt = buildServicesLLMPrompt(
       [...services, serviceDraft.trim()].filter(Boolean),
@@ -3460,15 +3456,9 @@ export function Onboarding() {
             className="min-w-0 flex-1 basis-full bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none sm:min-w-[8rem] sm:basis-auto"
           />
         </div>
-        {/* Three honest states, in order of what the reader most needs to know. A
-            still-running read is a wait, a settled empty read is a verdict, and the
-            two must never look the same — that ambiguity is the whole bug. */}
-        {servicesPending ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-            <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Still reading <span className="font-medium text-gray-700">{hostname}</span>. You can start typing.
-          </p>
-        ) : servicesUnread ? (
+        {/* A settled empty read is a verdict, stated as one. The read itself
+            happened on the loading screen, so a spinner here would be a lie. */}
+        {servicesUnread ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-amber-800">
             <span>We couldn&apos;t read your site. Add what you sell, or try again.</span>
             <button
