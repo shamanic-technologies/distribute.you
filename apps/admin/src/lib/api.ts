@@ -5527,7 +5527,11 @@ const OpsDomainSchema = z.object({
   sentLast30d: z.number(),
   volume30d: OpsVolumeSchema,
   delivery: OpsDeliverySchema,
-  dns: OpsDnsSchema,
+  // NULL = the domain has never been DNS-probed (the sweep covers domains we own
+  // or send from, and a registrar-only row parked at a vendor is neither). That
+  // is a different fact from "the records are absent", so it is NOT graded — see
+  // `dnsBadges`, which grades an `OpsDns` and refuses to invent one.
+  dns: OpsDnsSchema.nullable(),
   cost: z.object({
     monthlyCents: z.number().nullable(),
     currency: z.string().nullable(),
