@@ -21,7 +21,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { startAnonSession } from "@/lib/anon-session-client";
-import { claimedSignUpHref } from "@/lib/claimed-signup";
+import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import {
   StartPicks,
   useStartCatalogue,
@@ -1023,6 +1023,9 @@ export function Onboarding() {
   const [resolvedBrandName, setResolvedBrandName] = useState<string | null>(null);
   const [brandContext, setBrandContext] = useState(() => restored?.brandContext ?? "");
   const [error, setError] = useState<string | null>(null);
+  // The exits offered under a refused signed-out setup, on the URL step itself.
+  // Cleared the moment the website is edited: the links carried the old one.
+  const [refusal, setRefusal] = useState<RefusalExits | null>(null);
   // Whether this signup arrived through someone's referral link, and who sent them.
   //
   // A referred signup is owed BOTH offers: the $30 welcome, given outright at
@@ -1778,17 +1781,19 @@ export function Onboarding() {
       if (!outcome.started) {
         setError(outcome.message);
         setBusy(false);
+        // The visitor STAYS on the URL step, website still in the field, so a
+        // held or mistyped website can be changed right here. The two exits
+        // (sign in when it is theirs, create an account anyway) are links under
+        // the error, never a redirect: the redirect this replaced left a person
+        // on the sign-up wall with no way back to the field (#4296).
+        setRefusal(
+          refusalExits({
+            reason: outcome.reason,
+            domain: domain ?? hostname,
+            brandUrl,
+          }),
+        );
         setStep("url");
-        // Not a dead end: signup still works, and everything after it is the
-        // flow that existed before this change. A website somebody already
-        // holds is the one refusal the sign-up page can explain, so it is told
-        // which website; the other refusals are ours and it stays generic. The
-        // website rides along either way so signing up lands back on it.
-        window.location.href = claimedSignUpHref({
-          reason: outcome.reason,
-          domain: domain ?? hostname,
-          brandUrl,
-        });
         return;
       }
     } else if (reuseOrg) {
@@ -3314,9 +3319,32 @@ export function Onboarding() {
           <>
             <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">What are we promoting?</h2>
             <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
-            {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" data-url-refusal>
+                <p>{error}</p>
+                {refusal && (
+                  <p className="mt-2">
+                    {refusal.signIn ? (
+                      <>
+                        {refusal.signIn.lead}{" "}
+                        <a href={refusal.signIn.href} className="font-medium underline transition hover:text-red-800">
+                          {refusal.signIn.label}
+                        </a>
+                        {" "}to pick it up. Otherwise change the website above, or{" "}
+                      </>
+                    ) : (
+                      <>Change the website above, or </>
+                    )}
+                    <a href={refusal.signUp.href} className="font-medium underline transition hover:text-red-800">
+                      {refusal.signUp.label}
+                    </a>
+                    {" "}and we start right after.
+                  </p>
+                )}
+              </div>
+            )}
             <input
-              type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. https://acme.com/pricing" autoFocus
+              type="url" value={url} onChange={(e) => { setUrl(e.target.value); if (refusal) { setRefusal(null); setError(null); } }} placeholder="e.g. https://acme.com/pricing" autoFocus
               onKeyDown={(e) => { if (e.key === "Enter" && domain && !websiteProblem) startAnalyze(); }}
               className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
             />

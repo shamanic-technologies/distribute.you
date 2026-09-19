@@ -33,6 +33,39 @@ export function claimedSignUpHref(input: {
   return query ? `/sign-up?${query}` : "/sign-up";
 }
 
+/**
+ * What the URL step offers under a refusal, INLINE, instead of sending the
+ * visitor away. The redirect shipped for one day (#4296) and stranded a
+ * visitor whose website was already held: the sign-up wall had no way back to
+ * the field, so they could not change the website (owner 2026-09-19: "I arrive
+ * here directly and I am stuck because I want to change the brand. It should
+ * instead bring me back to the step about input the URL"). The step keeps the
+ * typed website editable and states the two exits as links; nobody is sent.
+ *
+ * `signIn` exists only for a website somebody holds: signing in is the answer
+ * when it is theirs. Every refusal offers `signUp`, carrying the website so the
+ * account lands back on it.
+ */
+export interface RefusalExits {
+  signIn: { href: string; label: string; lead: string } | null;
+  signUp: { href: string; label: string };
+}
+
+export function refusalExits(input: {
+  reason: string;
+  domain: string | null | undefined;
+  brandUrl: string;
+}): RefusalExits {
+  const domain = input.domain?.trim();
+  return {
+    signIn:
+      input.reason === "claimed" && domain
+        ? { href: "/sign-in", label: "sign in", lead: `If ${domain} is yours,` }
+        : null,
+    signUp: { href: claimedSignUpHref(input), label: "Create an account anyway" },
+  };
+}
+
 export interface ClaimedSignUpCopy {
   heading: string;
   /** Sentence before the sign-in link. */
