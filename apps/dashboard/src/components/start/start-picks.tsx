@@ -45,12 +45,19 @@ import {
 } from "@/lib/start-proof";
 
 /**
- * THE SIGNED-OUT HALF OF ONBOARDING: sell first, sign up after.
+ * THE FIRST SCREENS OF ONBOARDING: sell first, build second, sign up last.
  *
- * TWO narrowing questions and a proof screen, all before anyone has an account.
- * Nothing here writes to any service — the visitor has no org, no brand and no
- * session — so the whole answer rides a cookie to the far side of the Clerk
- * redirect, where the payment screens read it back.
+ * A welcome, TWO narrowing questions and a proof screen, rendered by the wizard
+ * (`components/onboarding/onboarding.tsx`) as its own first steps — one flow,
+ * one shell, one stepper, no reload between the pitch and the setup. They used
+ * to be a separate route (`/start`) that handed off to the wizard through a
+ * cookie and a full navigation, and the seam read as two products.
+ *
+ * CONTROLLED. The picks live in the wizard's state (so they persist with the rest
+ * of the snapshot and pre-select the funnel step); this component only draws the
+ * screens and reports each toggle. It still writes the `distribute-start` cookie
+ * on every pick, because the proxy and the payment screens read it back on the
+ * far side of the Clerk redirect.
  *
  * THE CHANNEL IS NOT A QUESTION. We run cold email, so the screen that asked
  * which channels to run offered one real answer and cost a step of the funnel to
@@ -63,16 +70,20 @@ import {
  * beside each option.
  */
 
-type Screen = "welcome" | "outcome" | "funnels" | "returns";
+export type StartScreen = "welcome" | "outcome" | "path" | "returns";
 
-const ORDER: Screen[] = ["welcome", "outcome", "funnels", "returns"];
+export const START_SCREEN_ORDER: StartScreen[] = ["welcome", "outcome", "path", "returns"];
 
-/** The two questions and the proof, after the welcome. */
-const STEP_COUNT = 3;
-/** One word per step, beside its number in the bar. */
-const STEP_LABELS = ["Goal", "Path", "Results"] as const;
+/**
+ * THE WHOLE FLOW's stepper, stated once. The three pick screens are steps 1-3;
+ * the build half of the wizard (website, services, funnels, audiences, the
+ * summary) is one step, and the account + money is the last. A visitor reads
+ * one bar from the landing to the dashboard.
+ */
+export const START_STEP_LABELS = ["Goal", "Path", "Results", "Your setup", "Review"] as const;
+export const START_STEP_COUNT = START_STEP_LABELS.length;
 
-interface Catalogue {
+export interface StartCatalogueState {
   /** The producer's catalogue whole: its channels, its funnels, its legs and its root
    *  step vocabulary. All three screens are DERIVED from it — which outcomes exist,
    *  which channels lead to them, and which (funnel x channel) pairs they buy. */
@@ -88,7 +99,7 @@ interface Catalogue {
 /** One decimal under 10x, a whole number above it — the product's one spelling
  *  of a return. Above ten the decimal changes no decision and reads as false
  *  precision on a figure that moves. */
-const formatReturn = (x: number): string => (x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
+export const formatReturn = (x: number): string => (x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
 
 /**
  * The funnel's own tile, or nothing for a funnel this app draws no mark for.
@@ -103,16 +114,14 @@ function funnelMark(wireKey: string) {
   return def ? <SalesFunnelMark def={def} size="sm" /> : null;
 }
 
-export function StartFlow() {
-  const [screen, setScreen] = useState<Screen>("welcome");
-  const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
+/**
+ * The catalogue the four screens draw from, read once by the wizard that hosts
+ * them and handed down — the wizard also reads `founders` off it for the trust
+ * strip under every later step.
+ */
+export function useStartCatalogue(): { catalogue: StartCatalogueState | null; catalogueError: boolean } {
+  const [catalogue, setCatalogue] = useState<StartCatalogueState | null>(null);
   const [catalogueError, setCatalogueError] = useState(false);
-  const brand = useLandingBrand();
-
-  const [outcomes, setOutcomes] = useState<string[]>([]);
-  const [funnels, setFunnels] = useState<string[]>([]);
-
-  const [channelReturns, setChannelReturns] = useState<ChannelReturn[]>([]);
 
   // The catalogue is the whole screen's content, so a failed read is STATED
   // rather than rendered as an empty list: a visitor shown "no channels" reads
@@ -155,6 +164,41 @@ export function StartFlow() {
       live = false;
     };
   }, []);
+  return { catalogue, catalogueError };
+}
+
+export function StartPicks({
+  screen,
+  catalogue,
+  catalogueError,
+  outcomes,
+  funnels,
+  onOutcomesChange,
+  onFunnelsChange,
+  onScreenChange,
+  onContinue,
+  brandHost,
+}: {
+  screen: StartScreen;
+  catalogue: StartCatalogueState | null;
+  catalogueError: boolean;
+  outcomes: string[];
+  funnels: string[];
+  onOutcomesChange: (next: string[]) => void;
+  onFunnelsChange: (next: string[]) => void;
+  /** Moves between the four screens, both ways. */
+  onScreenChange: (next: StartScreen) => void;
+  /** The last screen's CTA: the wizard takes over (website, then the build). */
+  onContinue: () => void;
+  /** The website the wizard already holds, so the bar keeps naming it after
+   *  the landing cookie has been consumed. */
+  brandHost: string | null;
+}) {
+  const landingBrand = useLandingBrand();
+  const brand = brandHost ? { url: `https://${brandHost}`, host: brandHost } : landingBrand;
+  const [channelReturns, setChannelReturns] = useState<ChannelReturn[]>([]);
+  const setOutcomes = (update: (prev: string[]) => string[]) => onOutcomesChange(update(outcomes));
+  const setFunnels = (update: (prev: string[]) => string[]) => onFunnelsChange(update(funnels));
 
   // Every pick is written through immediately, so a visitor who signs up from a
   // second tab, or who is bounced through an OAuth round, arrives with what they
@@ -201,10 +245,9 @@ export function StartFlow() {
   // is narrowed to what is still offered.
   useEffect(() => {
     const offered = new Set(offeredFunnels.map((f) => f.key));
-    setFunnels((prev) => {
-      const next = prev.filter((k) => offered.has(k));
-      return next.length === prev.length ? prev : next;
-    });
+    const next = funnels.filter((k) => offered.has(k));
+    if (next.length !== funnels.length) onFunnelsChange(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offeredFunnels]);
 
   // The per-channel returns are only needed by the proof screen, and only for
@@ -228,7 +271,7 @@ export function StartFlow() {
   const toggle = (list: string[], value: string): string[] =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
-  const go = (next: Screen) => setScreen(next);
+  const go = (next: StartScreen) => onScreenChange(next);
   // The path screen arrives with its FIRST offered path already picked
   // (owner-asked, 2026-09-18): a visitor who takes the default reaches the
   // last screen in one click, and one who wants another path is one toggle away.
@@ -236,13 +279,13 @@ export function StartFlow() {
   // empties the list on purpose must not see the first one snap back.
   const goToFunnels = () => {
     if (funnels.length === 0 && offeredFunnels.length > 0) {
-      setFunnels([offeredFunnels[0].key]);
+      onFunnelsChange([offeredFunnels[0].key]);
     }
-    setScreen("funnels");
+    onScreenChange("path");
   };
   const back = () => {
-    const at = ORDER.indexOf(screen);
-    if (at > 0) setScreen(ORDER[at - 1]);
+    const at = START_SCREEN_ORDER.indexOf(screen);
+    if (at > 0) onScreenChange(START_SCREEN_ORDER[at - 1]);
   };
 
   const founders = catalogue?.founders ?? null;
@@ -310,8 +353,9 @@ export function StartFlow() {
       <StartShell
         step={1}
         stepCount={1}
+        brand={brand}
         founders={founders}
-      scrollKey={screen}
+        scrollKey={screen}
         title={
           <>
             Get <span className="text-brand-600">revenue in 24h</span>.
@@ -352,8 +396,9 @@ export function StartFlow() {
     return (
       <StartShell
         step={1}
-        stepCount={STEP_COUNT}
-        stepLabels={STEP_LABELS}
+        stepCount={START_STEP_COUNT}
+        stepLabels={START_STEP_LABELS}
+        brand={brand}
         founders={founders}
         reassurance={reassuranceFor("outcome", proof, formatReturn)}
         scrollKey={screen}
@@ -384,12 +429,13 @@ export function StartFlow() {
     );
   }
 
-  if (screen === "funnels") {
+  if (screen === "path") {
     return (
       <StartShell
         step={2}
-        stepCount={STEP_COUNT}
-        stepLabels={STEP_LABELS}
+        stepCount={START_STEP_COUNT}
+        stepLabels={START_STEP_LABELS}
+        brand={brand}
         founders={founders}
         reassurance={reassuranceFor("funnels", proof, formatReturn)}
         scrollKey={screen}
@@ -488,28 +534,16 @@ export function StartFlow() {
   return (
     <StartShell
       step={3}
-      stepCount={STEP_COUNT}
-      stepLabels={STEP_LABELS}
+      stepCount={START_STEP_COUNT}
+      stepLabels={START_STEP_LABELS}
+      brand={brand}
       founders={founders}
       reassurance={reassuranceFor("returns", proof, formatReturn)}
       scrollKey={screen}
       title="What our clients got back"
       subtitle="Measured on real clients, per dollar spent. Where we have not measured a path yet, we say so."
       footer={footer(
-        <StartButton
-          onClick={() => {
-            // THE WIZARD, NOT SIGNUP, and the label says so. The whole build
-            // half runs before anyone has an account: they walk their services,
-            // funnels, audiences, rates and offer, and see what we assembled, and
-            // only then are asked for an account and a card. The picks are
-            // already in the cookie and the wizard reads them (it CONTINUES:
-            // no welcome pitch, no second ask for the website); nothing is
-            // carried in the query string, which is the whole reason the cookie
-            // exists. The button promised an account for one release and the
-            // owner read the flow as not shipped.
-            window.location.href = "/onboarding";
-          }}
-        >
+        <StartButton onClick={onContinue}>
           See what we&apos;d build for you
         </StartButton>,
       )}

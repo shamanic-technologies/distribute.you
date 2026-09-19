@@ -68,15 +68,22 @@ export function StartShell({
   stepLabels,
   reassurance,
   aside,
+  brand: brandOverride,
+  cardMaxWidth,
+  showEyebrow = true,
   children,
 }: {
   /** 1-based. The dots render only when there is more than one, because "1 of 1"
    *  states a position in a sequence the visitor cannot be anywhere else in. */
   step: number;
   stepCount: number;
-  title: ReactNode;
+  /** The screen's headline. Absent on a wizard step that draws its own heading
+   *  inside the body; the card then opens straight on the body. */
+  title?: ReactNode;
   subtitle?: ReactNode;
-  footer: ReactNode;
+  /** The CTA row. A step with nothing to press (a loader) passes none, and the
+   *  card then ends on its body rather than on an empty bordered row. */
+  footer?: ReactNode;
   /** The platform's raw user count, floored here. Absent keeps the seed line. */
   founders?: number | null;
   /** Names the screen when several share one step number, so a change of screen
@@ -93,9 +100,20 @@ export function StartShell({
    *  the card they read as part of the question; beside it they read as the
    *  world vouching for the answer. */
   aside?: ReactNode;
+  /** The website this flow is setting up, once the wizard holds it in state
+   *  (the landing cookie is consumed the moment it lands in the field, so the
+   *  cookie read alone would blank the bar after the first screen). */
+  brand?: LandingBrand | null;
+  /** Narrows the CARD, never the bar: a form step reads better at `sm:max-w-xl`
+   *  while the pill bar and the stepper keep the flow's one width. */
+  cardMaxWidth?: string;
+  /** The in-card "Setting this up for <host>" line. Off on a step whose own
+   *  header already names the brand, so the card does not say it twice. */
+  showEyebrow?: boolean;
   children: ReactNode;
 }) {
-  const brand = useLandingBrand();
+  const landingBrand = useLandingBrand();
+  const brand = brandOverride === undefined ? landingBrand : brandOverride;
 
   // The scroll box is ONE element across screens (the shell sits at the same
   // position in the tree whichever screen renders it), so its scrollTop
@@ -196,7 +214,7 @@ export function StartShell({
           aside ? "gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start" : ""
         }`}
       >
-      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10">
+      <div className={`relative z-10 flex min-h-0 min-w-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10 ${cardMaxWidth ? `w-full sm:mx-auto ${cardMaxWidth}` : ""}`}>
         <div className="shrink-0 start-enter">
           {stepCount > 1 && (
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400 sm:hidden">
@@ -204,7 +222,7 @@ export function StartShell({
               {stepLabels?.[step - 1] ? ` · ${stepLabels[step - 1]}` : ""}
             </p>
           )}
-          {brand && (
+          {brand && showEyebrow && (
             /* The website the visitor typed on the landing, at the head of every
                screen: their own logo and host, so the form reads as theirs and
                not as a generic one. The host only: no brand NAME exists before
@@ -223,9 +241,11 @@ export function StartShell({
               </span>
             </p>
           )}
-          <h1 className="mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
-            {title}
-          </h1>
+          {title !== undefined && (
+            <h1 className="mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
+              {title}
+            </h1>
+          )}
           {subtitle && <div className="mt-3 max-w-2xl text-base text-gray-500">{subtitle}</div>}
         </div>
 
@@ -235,9 +255,11 @@ export function StartShell({
         {/* Bled 4px on every side (`-m-1 p-1`): a selected card wears a 2px ring OUTSIDE
             its border and a hovered one lifts 2px, and an overflow box clips both at its
             edge. Without the bleed the outline on every edge card was cut off. */}
-        <div ref={bodyRef} className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
+        <div ref={bodyRef} className={`-m-1 min-h-0 flex-1 overflow-y-auto p-1 ${title !== undefined || (brand && showEyebrow) || stepCount > 1 ? "mt-5" : ""}`}>{children}</div>
 
-        <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
+        {footer != null && footer !== false && (
+          <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
+        )}
       </div>
       {aside && (
         <div className="relative z-10 min-w-0" data-start-aside>

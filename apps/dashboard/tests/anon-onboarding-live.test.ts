@@ -16,10 +16,19 @@ const strip = (s: string) =>
  */
 
 describe("the signed-out build half is reachable", () => {
-  it("/start sends a visitor to the wizard, not to signup", () => {
-    const src = strip(read("src/components/start/start-flow.tsx"));
-    expect(src).toContain('window.location.href = "/onboarding"');
-    expect(src).not.toContain('window.location.href = "/sign-up"');
+  it("the sell-first screens continue the wizard in place, never to signup", () => {
+    // They ARE the wizard's first steps now: the last CTA hands over to the
+    // wizard's own handler, no navigation, no cookie join, no reload.
+    const src = strip(read("src/components/start/start-picks.tsx"));
+    expect(src).toContain("<StartButton onClick={onContinue}>");
+    expect(src).not.toContain("window.location.href");
+    const wizard = strip(read("src/components/onboarding/onboarding.tsx"));
+    const at = wizard.indexOf("function continueAfterPicks()");
+    expect(at).toBeGreaterThan(-1);
+    const handler = wizard.slice(at, at + 400);
+    expect(handler).toContain('setStep("url")');
+    expect(handler).toContain("void startAnalyze()");
+    expect(handler).not.toContain("sign-up");
   });
 
   it("the wizard is public — EXACTLY, so pay and build stay behind the gate", () => {

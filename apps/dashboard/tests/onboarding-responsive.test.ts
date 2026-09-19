@@ -23,7 +23,7 @@ describe("Onboarding mobile responsiveness", () => {
     expect(layout).toContain("sm:px-4 sm:py-6");
     // `sm:max-h-full` is what lets the step's card take the overflow at desktop
     // width instead of the page scrolling and burying the CTA.
-    expect(layout).toContain("flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:max-h-full sm:flex-none");
+    expect(layout).toContain("flex w-full min-w-0 max-w-6xl flex-1 flex-col sm:max-h-full sm:flex-none");
     // The old top-aligned, side-padded mobile shell is gone.
     expect(layout).not.toContain("items-start");
     expect(layout).not.toContain("px-3 py-4");
@@ -35,17 +35,21 @@ describe("Onboarding mobile responsiveness", () => {
     // Mobile: flex-1 under the layout's 100svh column, header pinned top, CTA
     // pinned bottom, only the middle content scrolls (overflow-y-auto). sm+: card.
     expect(onboardingFlow).toContain("function StepShell");
-    expect(onboardingFlow).toContain("flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-3");
-    // The desktop cap is a VIEWPORT-unit max-height on the card, not a percentage
-    // one: `max-h-full` resolves against an indefinite parent height here and
-    // applies to nothing (measured: the card overflowed the column and its header
-    // sat at -179px). Keeping it definite is what lets the scroller take over.
-    expect(onboardingFlow).toContain("sm:max-h-[calc(100svh-8rem)] sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm");
+    // ONE shell for the whole flow: every wizard step renders through the
+    // sell-first screens' StartShell, which carries the mobile column and the
+    // viewport-unit desktop cap (a percentage max-height resolves against an
+    // indefinite parent here and applies to nothing).
+    const shell = onboardingFlow.slice(onboardingFlow.indexOf("function StepShell("), onboardingFlow.indexOf("function BackButton("));
+    expect(shell).toContain("<StartShell");
+    expect(shell).toContain("stepLabels={START_STEP_LABELS}");
+    const startShell = fs.readFileSync(path.resolve(__dirname, "../src/components/start/start-shell.tsx"), "utf8");
+    expect(startShell).toContain("flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-4 sm:max-w-6xl sm:px-4");
+    expect(startShell).toContain("sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200");
     // The scroller runs at EVERY width now — at sm+ it used to be released
     // (`sm:overflow-visible`), which is what let a tall step push its CTA below
     // the fold on desktop. The card is capped at the viewport, so this region
     // takes the overflow and the footer stays pinned to the card's bottom edge.
-    expect(onboardingFlow).toContain("min-h-0 flex-1 overflow-y-auto");
+    expect(startShell).toContain("min-h-0 flex-1 overflow-y-auto");
     expect(onboardingFlow).not.toContain("sm:flex-none sm:overflow-visible");
     // No 100dvh anywhere in the shell (svh via the layout column).
     expect(onboardingFlow).not.toContain("min-h-[100dvh]");
@@ -57,14 +61,15 @@ describe("Onboarding mobile responsiveness", () => {
     // added or removed; what it is actually asserting is that no step renders its
     // own card wrapper. Re-count it, do not delete it.
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
-    expect(shellUses.length).toBe(17);
+    // 16 since the welcome moved to the sell-first screens (StartPicks draws its own shell).
+    expect(shellUses.length).toBe(16);
     // The first-run account widget rides the step's own header row on mobile
     // instead of a bar of its own above the Brand card, so a step with a header
     // spends one row where it used to spend two. Gated on the escape chrome not
     // already showing one.
     expect(onboardingFlow).toContain("useOnboardingEscapeChrome");
     expect(onboardingFlow).toContain("const showWidget = !escapeChrome;");
-    expect(onboardingFlow).toContain("flex shrink-0 items-center gap-2 px-3 pt-3 sm:px-0 sm:pt-0");
+    expect(onboardingFlow).toContain("mb-4 flex shrink-0 items-center gap-2");
     expect(onboardingFlow).toContain("<OnboardingAccountWidget />");
     // The removed per-step card constants must not return.
     expect(onboardingFlow).not.toContain("className={card}");
@@ -94,10 +99,11 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain("flex w-full items-start gap-3 rounded-xl border-2");
   });
 
-  it("routes the services step through StepShell (only welcome uses the wide shell)", () => {
+  it("routes the services step through StepShell (no step widens the card to the bar)", () => {
     expect(onboardingFlow).toContain('What services do you want to promote with us?');
-    // welcome is the only sm:max-w-5xl step shell.
+    // The welcome moved to the sell-first screens, which draw their own shell;
+    // no wizard step asks for the bar-wide card any more.
     const wideShell = onboardingFlow.match(/maxWidth="sm:max-w-5xl"/g) ?? [];
-    expect(wideShell.length).toBe(1);
+    expect(wideShell.length).toBe(0);
   });
 });

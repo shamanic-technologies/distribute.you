@@ -20,11 +20,19 @@ import {
   PencilSquareIcon,
   ShieldCheckIcon,
   SparklesIcon,
-  TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { startAnonSession } from "@/lib/anon-session-client";
-import { startContinuation, type StartContinuation } from "@/lib/start-continuation";
+import {
+  StartPicks,
+  useStartCatalogue,
+  START_STEP_LABELS,
+  START_STEP_COUNT,
+  type StartScreen,
+} from "@/components/start/start-picks";
+import { StartShell } from "@/components/start/start-shell";
+import { funnelKeysFromSelection, startSelectionCookieAssignment } from "@/lib/start-selection-cookie";
+import { DEFAULT_CHANNEL_SLUG } from "@/lib/start-catalogue";
 import { BuiltSummaryPanel } from "@/components/onboarding/built-summary-panel";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -212,6 +220,14 @@ type FunnelDraftState = {
 
 type Step =
   | "welcome"
+  // THE SELL-FIRST SCREENS, the wizard's own first steps: what the visitor
+  // wants, through which path, and what our clients got back. They were a
+  // separate route (`/start`) handing off through a cookie and a full
+  // navigation; the seam read as two products, so they are steps now.
+  // Appended to ALL_STEPS rather than inserted, so an older snapshot parses.
+  | "outcome"
+  | "path"
+  | "returns"
   | "url"
   | "loading"
   | "services"
@@ -518,6 +534,12 @@ type PersistedOnboardingState = {
   orgId: string | null;
   servicesEdited: boolean;
   ratesEdited: boolean;
+  // The sell-first picks (outcome keys, and (funnel x channel) pair keys), so a
+  // refresh on any step keeps them and the funnel step stays pre-selected.
+  // OPTIONAL: a snapshot written before the picks became steps has none, and
+  // requiring them would strand it (a version bump strands an in-flight checkout).
+  startOutcomes?: string[];
+  startFunnels?: string[];
 };
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -798,6 +820,7 @@ const ALL_STEPS: Step[] = [
   // against, so the order is not meaningful and growing it at the end keeps
   // every older snapshot valid. A bump would strand a session mid-checkout.
   "built",
+  "outcome", "path", "returns",
 ];
 
 function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
@@ -824,7 +847,9 @@ function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
     !(p.launchFeatureInputs === null || isStringRecord(p.launchFeatureInputs)) ||
     !(p.brandId === null || typeof p.brandId === "string") ||
     !(p.orgId === null || typeof p.orgId === "string") ||
-    typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean"
+    typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean" ||
+    !(p.startOutcomes === undefined || isStringList(p.startOutcomes)) ||
+    !(p.startFunnels === undefined || isStringList(p.startFunnels))
   ) {
     return null;
   }
@@ -940,37 +965,13 @@ export function Onboarding() {
   }
   const restored = restoreRef.current;
 
-  // DID THEY COME FROM /start? Read once, on the first render, for the same
-  // reason the snapshot above is: the answer decides which step the FIRST PAINT
-  // shows, and an effect would flash the welcome pitch before correcting itself.
-  //
-  // A visitor arriving from /start has answered what they want, through which
-  // path, and has seen what our clients got back. Opening on `welcome` re-pitches
-  // somebody who is already sold, and opening on `url` re-asks a website the
-  // landing already carried — both read as being sent back to the beginning,
-  // which is how it was reported. So the wizard CONTINUES instead.
-  const continuationRef = useRef<StartContinuation | null | undefined>(undefined);
-  if (continuationRef.current === undefined) {
-    continuationRef.current =
-      typeof document === "undefined" ? null : startContinuation(document.cookie);
-  }
-  const continuation = continuationRef.current;
-  // WHETHER THIS MOUNT OPENED ON THE LOADING SCREEN BECAUSE OF THE CONTINUATION,
-  // decided on render 1 and never again. The start effect below used to re-ask
-  // `!restored` on every render, and `restored` is NOT stable: `restoreRef`
-  // treats null as both "not read yet" and "read, nothing there", so it re-reads
-  // sessionStorage each render — and this component's own persist effect writes
-  // a snapshot (`step: "loading"`) right after render 1. On render 2 `restored`
-  // was that snapshot, the gate closed, and the setup never started: a loading
-  // screen that loaded nothing, forever, verified in prod. The initial-step
-  // initializer only reads `restored` on render 1, which is why nothing else
-  // had ever noticed the flip.
-  const continuationOpensLoadingRef = useRef<boolean | undefined>(undefined);
-  if (continuationOpensLoadingRef.current === undefined) {
-    continuationOpensLoadingRef.current =
-      !restored && !resumeBrandIdParam && !fromAdd && continuation?.website != null;
-  }
-  const continuationOpensLoading = continuationOpensLoadingRef.current;
+  // THE SELL-FIRST PICKS, the wizard's own first three steps. They live here so
+  // they persist with the rest of the snapshot, pre-select the funnel step, and
+  // still reach the `distribute-start` cookie the proxy and the payment screens
+  // read on the far side of the Clerk redirect.
+  const [startOutcomes, setStartOutcomes] = useState<string[]>(() => restored?.startOutcomes ?? []);
+  const [startFunnels, setStartFunnels] = useState<string[]>(() => restored?.startFunnels ?? []);
+  const { catalogue: startCatalogue, catalogueError: startCatalogueError } = useStartCatalogue();
 
   const [step, setStep] = useState<Step>(() =>
     restored
@@ -997,16 +998,10 @@ export function Onboarding() {
           "loading"
         : fromAdd
           ? "url"
-          : // CONTINUING FROM /start. With the website already carried by the
-            // landing there is nothing left to ask before the work can begin, so
-            // the loading screen opens and the setup effect below starts it;
-            // without one they still skip the pitch and state the website. The
-            // welcome screen is for a visitor who arrived with no context at all.
-            continuation
-            ? continuation.website
-              ? "loading"
-              : "url"
-            : "welcome",
+          : // A fresh visitor: the welcome, then the three sell-first screens,
+            // then the website (only if the landing did not carry one), then the
+            // build. One flow, whatever the landing handed over.
+            "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   // No-website path (beta): the user has no site, so instead of a URL they enter a
@@ -1060,6 +1055,40 @@ export function Onboarding() {
   );
   const offeredFunnels = selectableFunnels(funnelViews, !noWebsiteMode);
   const [selectedFunnelKeys, setSelectedFunnelKeys] = useState<string[]>([]);
+  // THE PATHS PICKED ON THE SELL-FIRST SCREENS ARE THE FUNNEL STEP'S ANSWER.
+  // The picks name (funnel x channel) pairs in the producer's spelling; this
+  // app's catalogue names funnels in its own. Each key goes through the
+  // tolerant collapse and anything it cannot name — a funnel the catalogue no
+  // longer offers, a hand-edited snapshot — is dropped rather than guessed.
+  // When the picks cover the question, the funnel step is SKIPPED: asking
+  // "how do you sell?" two screens after "how should it turn into revenue?"
+  // is the same question twice, and the summary at the end states the answer.
+  const pickedFunnelKeys = funnelKeysFromSelection(startFunnels)
+    .map((key) => salesFunnelKeyOrNull(key))
+    .filter((key): key is NonNullable<typeof key> => key !== null && offeredFunnels.some((f) => f.key === key));
+  const funnelsStepSkipped = pickedFunnelKeys.length > 0;
+  const pickedFunnelKeysJoined = pickedFunnelKeys.join(",");
+  useEffect(() => {
+    if (pickedFunnelKeys.length === 0) return;
+    setSelectedFunnelKeys((current) => (current.length > 0 ? current : pickedFunnelKeys));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedFunnelKeysJoined]);
+  // Every pick is written through immediately, so a visitor who signs up from a
+  // second tab, or who is bounced through an OAuth round, arrives with what they
+  // chose. `paid: []` on purpose: these steps are where a selection is MADE, and
+  // anything bought under a previous one belongs to that one. The channel is not
+  // picked, so it is STATED — billing keys its ceiling on the (funnel x channel)
+  // pair. Only the signup flow: an existing customer adding a brand never sees
+  // the picks, and a blank write here would erase a selection in flight.
+  useEffect(() => {
+    if (flowKey !== "signup") return;
+    document.cookie = startSelectionCookieAssignment({
+      outcomes: startOutcomes,
+      channels: [DEFAULT_CHANNEL_SLUG],
+      funnels: startFunnels,
+      paid: [],
+    });
+  }, [flowKey, startOutcomes, startFunnels]);
   const [primaryFunnelKey, setPrimaryFunnelKey] = useState<string | null>(null);
   // Per-funnel draft answers for the post-payment detail screens, keyed by funnel.
   // Each holds that funnel's rate fields plus its own lifetime revenue and
@@ -1266,6 +1295,9 @@ export function Onboarding() {
   // the button was gated on that alone. `websiteInputProblem` is the rule; see
   // `lib/website-input.ts` for what accepting an address cost a customer.
   const websiteProblem = noWebsiteMode ? null : websiteInputProblem(url);
+  // What every step's shell needs beyond its own body: where the flow is (the
+  // stepper), the trust strip's count, and the website the bar names.
+  const chrome: StepChrome = { step, founders: startCatalogue?.founders ?? null, brandHost: domain };
   // The sentence to show under the field, or null while there is nothing to
   // refuse. ONE derivation because the message and the standing "I have no
   // website" button are mutually exclusive: two ways out stacked on top of each
@@ -1396,6 +1428,8 @@ export function Onboarding() {
       orgId: orgIdRef.current,
       servicesEdited: servicesEditedRef.current,
       ratesEdited: ratesEditedRef.current,
+      startOutcomes,
+      startFunnels,
     };
   }
 
@@ -1405,7 +1439,7 @@ export function Onboarding() {
   useEffect(() => {
     if (searchParams.get("launch_checkout") === "success") return;
     writeOnboardingState(buildOnboardingState());
-  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion]);
+  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, startFunnels]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -1520,54 +1554,6 @@ export function Onboarding() {
     // a later "add another brand" flow with the FIRST brand's website.
     if (consumedCookie) document.cookie = clearLandingUrlCookieString();
   }, [noWebsiteMode]);
-
-  // CONTINUING FROM /start, half one: the website was already carried, so the
-  // wizard opened on the loading screen and nobody is going to press "Analyze my
-  // product". This starts the setup the moment the effect above has put the
-  // website in the field. It fires ONCE: `startAnalyze` itself sets the step and
-  // owns every failure path (a refused website lands back on `url` with the
-  // reason, out of credit reopens on the credit modal), so nothing here has to.
-  //
-  // Gated on `domain` rather than on `url`: the field is seeded by an effect, so
-  // on the first pass it is still empty and the domain null. The next render
-  // carries it. A seeded website the website rule refuses never fires the setup
-  // and lands on `url` instead, where the refusal is stated — a loading screen
-  // that never loads would be the worst of the three.
-  const continuationStartedRef = useRef(false);
-  useEffect(() => {
-    if (continuationStartedRef.current) return;
-    if (!continuationOpensLoading || step !== "loading") return;
-    if (!url.trim()) return;
-    continuationStartedRef.current = true;
-    if (!domain || websiteProblem !== null) {
-      setStep("url");
-      return;
-    }
-    void startAnalyze();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [continuationOpensLoading, step, url, domain, websiteProblem]);
-
-  // CONTINUING FROM /start, half two: the paths they picked are the funnels
-  // the wizard asks about, so they arrive pre-selected instead of being asked
-  // again. The selection names the producer's spelling and this app's catalogue
-  // its own, so each key goes through the tolerant collapse and anything it
-  // cannot name — a hand-edited cookie, a funnel the catalogue no longer offers
-  // — is dropped rather than guessed. The step still renders, so a pick is
-  // confirmed, not skipped: what a visitor chose on a summary screen is worth
-  // one look beside the funnel's own description before it is stated.
-  const continuationFunnelsSeededRef = useRef(false);
-  useEffect(() => {
-    if (continuationFunnelsSeededRef.current) return;
-    if (!continuation) return;
-    continuationFunnelsSeededRef.current = true;
-    const offered = new Set(offeredFunnels.map((f) => f.key));
-    const picked = continuation.funnelKeys
-      .map((key) => salesFunnelKeyOrNull(key))
-      .filter((key): key is NonNullable<typeof key> => key !== null && offered.has(key));
-    if (picked.length === 0) return;
-    setSelectedFunnelKeys((current) => (current.length > 0 ? current : picked));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [continuation]);
 
   // A business signup email names the domain of the product being promoted
   // (kevin@acme.com -> acme.com), so the URL step opens prefilled and one click
@@ -1908,6 +1894,18 @@ export function Onboarding() {
       })
       .finally(() => setServicesHydrating(false));
     hydrationPromiseRef.current = hydration;
+  }
+
+  // The last sell-first screen's CTA. The website is already in the field when
+  // the landing carried one (the seeding effect above), so the setup starts at
+  // once and the visitor watches work happen; without one, or with one the
+  // website rule refuses, the URL step asks — never the welcome pitch again.
+  function continueAfterPicks() {
+    if (!url.trim() || !domain || websiteProblem !== null) {
+      setStep("url");
+      return;
+    }
+    void startAnalyze();
   }
 
   async function startAnalyze() {
@@ -3264,66 +3262,20 @@ export function Onboarding() {
   }
 
   // ── Step renders ─────────────────────────────────────────────────
-  if (step === "welcome") {
+  if (step === "welcome" || step === "outcome" || step === "path" || step === "returns") {
     return (
-      <StepShell
-        maxWidth="sm:max-w-5xl"
-        footer={
-          <button onClick={() => setStep("url")} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700 sm:mt-8">
-            Get started <ArrowRightIcon className="h-4 w-4" />
-          </button>
-        }
-      >
-        {/* Continues the landing: the visitor clicked "Start free" on a page
-            headlined "Get revenue in 24h. From $1/day", so the first screen after
-            signup repeats THAT promise verbatim rather than re-pitching a converted
-            user with a different one. The headline and the line under it are the
-            served landing's own strings (apps/landing/public/landing/index-v2.html),
-            so they cannot drift from what the visitor just read. The three cards are
-            not a feature tour (which NN/g's "skip onboarding when possible" says to
-            cut). They answer the objections that actually stand between this
-            screen and the URL field. */}
-        {/* Every size below steps down on mobile. The three cards alone were
-            528px of a 926px column on a 667px screen, which is what pushed the
-            CTA off. */}
-        <h1 className="font-display text-3xl font-bold leading-tight text-gray-950 sm:text-4xl">
-          Get revenue in 24h. From $1/day.
-        </h1>
-        <p className="mt-2.5 text-sm leading-6 text-gray-500 sm:mt-3 sm:text-base sm:leading-7">
-          Drop your website. We run multiple acquisition channels for you and you keep the one working the best. First $30 free, no commitment.
-        </p>
-        <div className="mt-5 grid gap-2.5 sm:mt-7 sm:gap-4 sm:grid-cols-3">
-          {[
-            {
-              title: "We send, not you",
-              desc: "Outreach goes out from our own domains. Yours is never touched.",
-              Icon: ShieldCheckIcon,
-            },
-            {
-              title: "You set the ceiling",
-              desc: "You authorize a daily budget and pay that, nothing else. No seat, no retainer.",
-              Icon: CreditCardIcon,
-            },
-            {
-              title: "Pause anytime",
-              desc: "One click stops the spend. You keep every conversation it started.",
-              Icon: TrophyIcon,
-            },
-          ].map((f) => (
-            // Icon beside the text on mobile (the stacked form spends a whole
-            // 40px row on a decorative tile), back to stacked from sm.
-            <div key={f.title} className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:block sm:p-6">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600 sm:h-10 sm:w-10">
-                <f.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-950 sm:mt-4 sm:text-base">{f.title}</div>
-                <div className="mt-1 text-sm leading-5 text-gray-500 sm:mt-1.5 sm:leading-6">{f.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </StepShell>
+      <StartPicks
+        screen={step}
+        catalogue={startCatalogue}
+        catalogueError={startCatalogueError}
+        outcomes={startOutcomes}
+        funnels={startFunnels}
+        onOutcomesChange={setStartOutcomes}
+        onFunnelsChange={setStartFunnels}
+        onScreenChange={(next: StartScreen) => setStep(next)}
+        onContinue={continueAfterPicks}
+        brandHost={domain}
+      />
     );
   }
 
@@ -3338,14 +3290,13 @@ export function Onboarding() {
       </button>
     );
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-md"
-        pad="p-5 sm:p-6 md:p-8"
         footer={urlFooter}
       >
         {noWebsiteMode ? (
           <>
-            <h2 className="font-display text-2xl font-bold text-gray-900">Tell us about your business</h2>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Tell us about your business</h2>
             <p className="mt-2 mb-6 text-gray-500">No website? No problem. Give us your brand name and everything about what you sell, and we build the outreach from it.</p>
             {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             <label htmlFor="ob-brand-name" className="block text-sm font-medium text-gray-700">Brand name</label>
@@ -3367,7 +3318,7 @@ export function Onboarding() {
           </>
         ) : (
           <>
-            <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">What are we promoting?</h2>
             <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
             {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             <input
@@ -3396,9 +3347,8 @@ export function Onboarding() {
   if (step === "loading") {
     const loadingComplete = fetchDoneRef.current || loadStep >= LOADING_STEPS.length;
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-md"
-        pad="p-5 sm:p-6 md:p-8"
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
       >
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
@@ -3440,9 +3390,9 @@ export function Onboarding() {
       hostname || domain || "my business",
     );
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => { addService(serviceDraft); setStep("funnels"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); if (funnelsStepSkipped) void saveFunnelsAndContinue(); else setStep("funnels"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
         copyText={servicesPrompt}
       >
         {/* Same placement as the offer levers': the button acts on the QUESTION,
@@ -3450,7 +3400,7 @@ export function Onboarding() {
             than as a step after the fact. The typed-but-unadded chip rides along
             because it is on screen, so what is copied is what the reader sees. */}
         <div className="flex items-start justify-between gap-3">
-          <h2 className="min-w-0 font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
+          <h2 className="min-w-0 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">What services do you want to promote with us?</h2>
           <div className="shrink-0">
             <CopyForLLMButton text={servicesPrompt} />
           </div>
@@ -3527,6 +3477,7 @@ export function Onboarding() {
   if (step === "audiences") {
     return (
       <OnboardingAudiences
+        chrome={chrome}
         brandId={brandId}
         brandDomain={headerDomain}
         brandName={headerName}
@@ -3539,7 +3490,7 @@ export function Onboarding() {
         onCandidatesChange={setAudienceCandidates}
         selectedAudienceIds={selectedAudienceIds}
         onSelectedAudienceIdsChange={setSelectedAudienceIds}
-        onBack={() => setStep(skipPrimaryStep ? "funnels" : "primary")}
+        onBack={() => setStep(skipPrimaryStep ? (funnelsStepSkipped ? "services" : "funnels") : "primary")}
         onContinue={() => setStep("consent")}
         onEdit={() => setStep("url")}
       />
@@ -3551,7 +3502,7 @@ export function Onboarding() {
   // stays a single question ("which funnels do you sell through?") instead of a form.
   if (step === "funnels") {
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-2xl"
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={
@@ -3564,7 +3515,7 @@ export function Onboarding() {
         }
       >
         <BackButton onClick={() => setStep("services")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">How do you sell?</h2>
+        <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">How do you sell?</h2>
         <p className="mt-2 mb-6 text-gray-500">
           Pick every path a prospect can take to become a paying customer. You can pick more than one — we ask for the numbers behind each one once you are set up.
         </p>
@@ -3612,7 +3563,7 @@ export function Onboarding() {
 
   if (step === "primary") {
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-2xl"
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={
@@ -3624,8 +3575,8 @@ export function Onboarding() {
           />
         }
       >
-        <BackButton onClick={() => setStep("funnels")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">
+        <BackButton onClick={() => setStep(funnelsStepSkipped ? "services" : "funnels")} />
+        <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
           What&apos;s your primary sales funnel goal with us today?
         </h2>
         {/* States ONLY what this answer is used for. It used to say we put the budget
@@ -3652,14 +3603,14 @@ export function Onboarding() {
 
   if (step === "consent") {
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
       >
           <BackButton onClick={() => setStep("audiences")} />
           <div className="mb-4 flex items-start gap-2">
             <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
-            <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">We reach out on your behalf.</h2>
           </div>
           <p className="mb-4 text-sm leading-6 text-gray-500">distribute.you is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong>, never from yours, like a PR firm pitching from its own contacts.</p>
           <ul className="mb-6 space-y-1.5">
@@ -3674,7 +3625,7 @@ export function Onboarding() {
 
   if (step === "celebrate") {
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-2xl"
         footer={<NextButton onClick={() => setStep("phone")} label="Let's optimize" />}
       >
@@ -3694,7 +3645,7 @@ export function Onboarding() {
 
   if (step === "phone") {
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={
           <NextButton
@@ -3707,7 +3658,7 @@ export function Onboarding() {
       >
         <div className="mb-4 flex items-start gap-2">
           <PaperAirplaneIcon className="h-5 w-5 text-brand-600" />
-          <h2 className="font-display text-2xl font-bold text-gray-900">Your phone number.</h2>
+          <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Your phone number.</h2>
         </div>
         <p className="mb-6 text-sm leading-6 text-gray-500">Optional. We only use it to reach you quickly about your own campaign, never for outreach. Add it or skip it.</p>
         <PhoneInput
@@ -3764,7 +3715,7 @@ export function Onboarding() {
       domain: hostname || domain || "my business",
     });
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-2xl"
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={
@@ -3788,7 +3739,7 @@ export function Onboarding() {
         </div>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">{funnel.title}</h2>
             {/* A tag ranking one item against nothing: with a single path there is no
                 second one for it to be primary OVER, so it only invites the question. */}
             {detailFunnels.length > 1 && funnel.key === primaryFunnelKey && (
@@ -3912,7 +3863,7 @@ export function Onboarding() {
       domain: hostname || domain || "my business",
     });
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         maxWidth="sm:max-w-2xl"
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
@@ -3931,7 +3882,7 @@ export function Onboarding() {
             and "your primary goal" both promise a comparison the page cannot show when
             the brand sells through a single funnel, so with one path it simply states
             what that path returns. */}
-        <h2 className="font-display text-2xl font-bold text-gray-900">
+        <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
           {selectedFunnels.length > 1 ? "Your most profitable path with us." : "What your path should return."}
         </h2>
         <p className="mt-2 mb-6 text-gray-500">
@@ -4086,7 +4037,7 @@ export function Onboarding() {
     // One string, two paths: the button writes it and Ctrl+C rewrites to it.
     const leverPrompt = buildLeverLLMPrompt(lever, current, hostname || domain || "my business");
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
         copyText={leverPrompt}
@@ -4100,7 +4051,7 @@ export function Onboarding() {
             reads as an alternative way to answer instead of a step after the fact. */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">{lever.title}</h2>
             {/* Only the confirmed state is badged. A prefilled lever is obviously
                 a draft, so labelling it adds nothing. */}
             {fieldProvenance[lever.key] === "confirmed" && (
@@ -4176,7 +4127,7 @@ export function Onboarding() {
     }
 
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={
           <NextButton
@@ -4191,7 +4142,7 @@ export function Onboarding() {
         }
       >
         <BackButton onClick={() => setStep("offer")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">
+        <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
           Here&apos;s what we built for you.
         </h2>
         <p className="mt-2 mb-5 text-gray-500">
@@ -4205,7 +4156,7 @@ export function Onboarding() {
   if (step === "launching") {
     const brand = launchingBrand ?? { domain, hostname };
     return (
-      <StepShell header={<BrandStepHeader domain={brand.domain} hostname={brand.hostname} />}>
+      <StepShell chrome={chrome} header={<BrandStepHeader domain={brand.domain} hostname={brand.hostname} />}>
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
           <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
           {launchError && (
@@ -4251,7 +4202,7 @@ export function Onboarding() {
     const chargeUsd = amount == null ? null : firstChargePlan.chargeCents / 100;
     const giftCoversBudget = amount != null && !firstChargePlan.charges;
     return (
-      <StepShell
+      <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={
           <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
@@ -4278,7 +4229,7 @@ export function Onboarding() {
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
-            <h2 className="font-display text-2xl font-bold text-gray-900">{welcomeHeadline(referredSignup)}</h2>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">{welcomeHeadline(referredSignup)}</h2>
             {/* The gift is GIVEN, not earned: $30 lands when the account is created,
                 with no payments threshold and no second instalment. It used to be a
                 match ($5 up front, the rest once payments reached $400), which is why
@@ -4320,7 +4271,7 @@ export function Onboarding() {
   // one funded path, so inviting the user to leave the only path at 0 promises a step
   // it then refuses). The plural copy is byte-identical for a real multi-path pick.
   return (
-    <StepShell
+    <StepShell chrome={chrome}
       header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
       footer={
         <button onClick={continueFromPricing} disabled={displayBudget == null || underfunded.length > 0 || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
@@ -4336,7 +4287,7 @@ export function Onboarding() {
       }
     >
       <BackButton onClick={() => setStep("consent")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">
+      <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
         {onePath ? "Set your daily budget." : "Fund each path."}
       </h2>
       <p className="mt-2 mb-5 text-gray-500">
@@ -4446,6 +4397,7 @@ export function Onboarding() {
 // picks one or more, which are ACTIVATED via `setAudienceStatus(audienceId,
 // "active")`. This is the audience concept that replaces the persona step.
 function OnboardingAudiences({
+  chrome,
   brandId,
   brandDomain,
   brandName,
@@ -4462,6 +4414,7 @@ function OnboardingAudiences({
   onContinue,
   onEdit,
 }: {
+  chrome: StepChrome;
   brandId: string | null;
   brandDomain: string | null;
   // Threaded so this step's header reads the same company name as every sibling
@@ -4675,7 +4628,7 @@ function OnboardingAudiences({
   }
 
   return (
-    <StepShell
+    <StepShell chrome={chrome}
       maxWidth={audienceMaxWidth}
       header={<BrandStepHeader domain={brandDomain} hostname={hostname} name={brandName} onEdit={onEdit} />}
       footer={<NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} label="Continue" />}
@@ -4684,7 +4637,7 @@ function OnboardingAudiences({
       <div>
         <BackButton onClick={onBack} />
         <div className="flex items-start justify-between gap-3">
-          <h2 className="min-w-0 font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+          <h2 className="min-w-0 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Who do you want to reach?</h2>
           <div className="shrink-0">
             <CopyForLLMButton text={audienceLlmPrompt} />
           </div>
@@ -4920,18 +4873,56 @@ function ConfettiBurst() {
   return null;
 }
 
+type StepChrome = { step: Step; founders: number | null; brandHost: string | null };
+
+/**
+ * Where a wizard step sits on the ONE stepper the flow wears from the landing
+ * to the dashboard. The three sell-first screens are steps 1-3 (they draw
+ * their own shell); the build half is step 4; the summary and the money are
+ * step 5. The post-payment screens run after the account exists and the bar
+ * would state a position in a sequence that is over, so they draw none.
+ */
+function stepperFor(step: Step): { step: number; count: number } {
+  switch (step) {
+    case "url":
+    case "loading":
+    case "services":
+    case "destination":
+    case "objective":
+    case "rates":
+    case "funnels":
+    case "primary":
+    case "audiences":
+      return { step: 4, count: START_STEP_COUNT };
+    case "built":
+    case "consent":
+    case "pricing":
+    case "bonus":
+      return { step: 5, count: START_STEP_COUNT };
+    default:
+      return { step: 1, count: 1 };
+  }
+}
+
+/**
+ * ONE SHELL FOR THE WHOLE FLOW. Every wizard step renders through `StartShell`,
+ * the same pill bar, stepper, glow and trust strip the sell-first screens wear,
+ * so the pitch, the questions and the build read as one product. It used to be
+ * its own card (a different width, no stepper, no bar) and the join between the
+ * two read as a second product with a reload between them.
+ */
 function StepShell({
+  chrome,
   header,
   footer,
   maxWidth = "sm:max-w-xl",
-  pad = "p-5 sm:p-8 md:p-12",
   copyText,
   children,
 }: {
+  chrome: StepChrome;
   header?: ReactNode;
   footer?: ReactNode;
   maxWidth?: string;
-  pad?: string;
   /** Present on a step that asks for a written answer: Ctrl+C anywhere in the
    *  body then yields the whole question-and-answer prompt instead of whatever
    *  fragment of prose the selection could reach. Absent everywhere else, so a
@@ -4948,16 +4939,24 @@ function StepShell({
   const escapeChrome = useOnboardingEscapeChrome();
   const showWidget = !escapeChrome;
   const stepCopy = useStepCopy(copyText);
+  const pos = stepperFor(chrome.step);
   return (
-    <div className={`flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-3 ${maxWidth}`}>
+    <StartShell
+      step={pos.step}
+      stepCount={pos.count}
+      stepLabels={START_STEP_LABELS}
+      founders={chrome.founders}
+      brand={chrome.brandHost ? { url: `https://${chrome.brandHost}`, host: chrome.brandHost } : null}
+      cardMaxWidth={maxWidth}
+      showEyebrow={!header}
+      scrollKey={chrome.step}
+      footer={footer}
+    >
       {(header || showWidget) && (
         // One row: the header takes the width, the widget sits at its right edge.
-        // With no header the row is the widget alone, which is what the welcome
-        // and url steps had anyway — and it is `sm:hidden` there so the `sm:gap-3`
-        // above never opens a gap for an empty row at desktop width.
-        <div
-          className={`flex shrink-0 items-center gap-2 px-3 pt-3 sm:px-0 sm:pt-0 ${header ? "" : "justify-end sm:hidden"}`}
-        >
+        // With no header the row is the widget alone, `sm:hidden` so the desktop
+        // card never opens a gap for an empty row.
+        <div className={`mb-4 flex shrink-0 items-center gap-2 ${header ? "" : "justify-end sm:hidden"}`}>
           {header && <div className="min-w-0 flex-1">{header}</div>}
           {showWidget && (
             <div className="shrink-0 sm:hidden">
@@ -4966,34 +4965,8 @@ function StepShell({
           )}
         </div>
       )}
-      {/* The desktop cap is stated in VIEWPORT units, not `max-h-full`. A
-          percentage max-height resolves against a parent whose own height is
-          indefinite here (`flex-none` inside an `items-center` row), so it applies
-          to nothing: measured at 1280x800 the card ran to its natural height,
-          overflowed the capped column in BOTH directions and its own header sat at
-          -179px, clipped. `100svh` minus the shell's chrome (the layout's
-          `sm:py-6`, the widget bar, the header row and its gap) is a definite
-          height, so the scroller below takes the overflow. Measured on a 14-row
-          step: CTA bottom 757 on an 800px viewport and 857 on a 900px one, against
-          1265 before, with no page scroll at either. A short step is untouched —
-          `sm:flex-none` keeps its natural height (310px measured) and centres it. */}
-      <div
-        className={`flex min-h-0 flex-1 flex-col bg-white ${pad} sm:max-h-[calc(100svh-8rem)] sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm`}
-      >
-        {/* Scrolls at EVERY width, not just mobile. At sm+ the card used to run to
-            its natural height and let the page scroll, so a tall step (audiences,
-            the funnel screens, the offer levers) pushed its Continue button below
-            the fold — the CTA is the one control a step exists to reach. The card
-            is capped at the viewport by `sm:max-h-full` above, so this region takes
-            the overflow and the footer below stays pinned to the card's bottom
-            edge. A short step is unaffected: `sm:flex-none` keeps the card at its
-            natural height and there is nothing to scroll. */}
-        <div className="min-h-0 flex-1 overflow-y-auto" {...stepCopy}>
-          {children}
-        </div>
-        {footer && <div className="shrink-0">{footer}</div>}
-      </div>
-    </div>
+      <div {...stepCopy}>{children}</div>
+    </StartShell>
   );
 }
 
