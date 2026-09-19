@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { claimedSignUpCopy, claimedSignUpHref } from "../src/lib/claimed-signup";
+import { claimedSignUpCopy, claimedSignUpHref, refusalExits } from "../src/lib/claimed-signup";
 
 /**
  * A signed-out setup refused because somebody already holds the website sends
@@ -32,6 +32,27 @@ describe("claimedSignUpHref", () => {
   });
 });
 
+describe("refusalExits: the links the URL step offers under a refusal", () => {
+  it("a held website offers sign-in AND sign-up carrying the website", () => {
+    const exits = refusalExits({ reason: "claimed", domain: "lefigaro.fr", brandUrl: "https://lefigaro.fr/" });
+    expect(exits.signIn).toEqual({ href: "/sign-in", label: "sign in", lead: "If lefigaro.fr is yours," });
+    expect(exits.signUp.href).toBe("/sign-up?claimed=lefigaro.fr&url=https%3A%2F%2Flefigaro.fr%2F");
+    expect(exits.signUp.label).toBe("Create an account anyway");
+  });
+  it("our own refusals offer sign-up only, still carrying the website", () => {
+    for (const reason of ["bad-website", "cannot-verify", "unreachable"]) {
+      const exits = refusalExits({ reason, domain: "acme.com", brandUrl: "https://acme.com" });
+      expect(exits.signIn).toBeNull();
+      expect(exits.signUp.href).toBe("/sign-up?url=https%3A%2F%2Facme.com");
+    }
+  });
+  it("carries no em-dash and no internal vocabulary", () => {
+    const all = JSON.stringify(refusalExits({ reason: "claimed", domain: "acme.com", brandUrl: "https://acme.com" }));
+    expect(all).not.toContain("\u2014");
+    expect(all).not.toMatch(/anonymous|session/i);
+  });
+});
+
 describe("claimedSignUpCopy", () => {
   it("is null when nothing is claimed, so the page is unchanged", () => {
     expect(claimedSignUpCopy(null)).toBeNull();
@@ -56,13 +77,24 @@ describe("the reason crosses the wire and the redirect reads it", () => {
     expect(CLIENT).toContain("typeof body.reason === \"string\"");
   });
 
-  it("the onboarding refusal branch builds the href from the reason", () => {
+  it("a refusal STAYS on the URL step and offers its exits inline, never a redirect", () => {
+    // The redirect to /sign-up stranded a visitor whose website was held: no way
+    // back to the field to change it (owner 2026-09-19).
     const at = ONBOARDING.indexOf("const outcome = await startAnonSession(brandUrl);");
     expect(at).toBeGreaterThan(0);
     const branch = ONBOARDING.slice(at, ONBOARDING.indexOf("} else if (reuseOrg) {", at));
-    expect(branch).toContain("claimedSignUpHref({");
+    expect(branch).toContain("refusalExits({");
     expect(branch).toContain("reason: outcome.reason");
-    expect(branch).not.toContain('window.location.href = "/sign-up"');
+    expect(branch).toContain('setStep("url");');
+    expect(branch).not.toContain("window.location.href");
+    expect(branch).not.toContain("claimedSignUpHref(");
+    // the URL step renders both exits under the error; editing the website clears them
+    const urlAt = ONBOARDING.indexOf('if (step === "url") {');
+    const urlStep = ONBOARDING.slice(urlAt, ONBOARDING.indexOf("\n  if (step === ", urlAt + 10));
+    expect(urlStep).toContain("data-url-refusal");
+    expect(urlStep).toContain("refusal.signIn.href");
+    expect(urlStep).toContain("refusal.signUp.href");
+    expect(urlStep).toContain("if (refusal) { setRefusal(null); setError(null); }");
   });
 
   it("the sign-up page reads ?claimed= and renders the copy with a sign-in link", () => {
