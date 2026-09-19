@@ -24,6 +24,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { startAnonSession } from "@/lib/anon-session-client";
+import { startContinuation, type StartContinuation } from "@/lib/start-continuation";
 import { BuiltSummaryPanel } from "@/components/onboarding/built-summary-panel";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -67,6 +68,7 @@ import {
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   getPublicChannels,
+  getPublicChannelsSignedOut,
   saveBrandDailyBudget,
   stateBrandFunnelBudgets,
   salesObjectiveForOptimizationGoal,
@@ -133,6 +135,7 @@ import {
   funnelDraftFromBrand,
   salesFunnelByKey,
   normalizeSalesFunnelKey,
+  salesFunnelKeyOrNull,
   buildFunnelPatch,
   isEmptyFunnelPatch,
   validateFunnelDraft,
@@ -937,6 +940,38 @@ export function Onboarding() {
   }
   const restored = restoreRef.current;
 
+  // DID THEY COME FROM /start? Read once, on the first render, for the same
+  // reason the snapshot above is: the answer decides which step the FIRST PAINT
+  // shows, and an effect would flash the welcome pitch before correcting itself.
+  //
+  // A visitor arriving from /start has answered what they want, through which
+  // path, and has seen what our clients got back. Opening on `welcome` re-pitches
+  // somebody who is already sold, and opening on `url` re-asks a website the
+  // landing already carried — both read as being sent back to the beginning,
+  // which is how it was reported. So the wizard CONTINUES instead.
+  const continuationRef = useRef<StartContinuation | null | undefined>(undefined);
+  if (continuationRef.current === undefined) {
+    continuationRef.current =
+      typeof document === "undefined" ? null : startContinuation(document.cookie);
+  }
+  const continuation = continuationRef.current;
+  // WHETHER THIS MOUNT OPENED ON THE LOADING SCREEN BECAUSE OF THE CONTINUATION,
+  // decided on render 1 and never again. The start effect below used to re-ask
+  // `!restored` on every render, and `restored` is NOT stable: `restoreRef`
+  // treats null as both "not read yet" and "read, nothing there", so it re-reads
+  // sessionStorage each render — and this component's own persist effect writes
+  // a snapshot (`step: "loading"`) right after render 1. On render 2 `restored`
+  // was that snapshot, the gate closed, and the setup never started: a loading
+  // screen that loaded nothing, forever, verified in prod. The initial-step
+  // initializer only reads `restored` on render 1, which is why nothing else
+  // had ever noticed the flip.
+  const continuationOpensLoadingRef = useRef<boolean | undefined>(undefined);
+  if (continuationOpensLoadingRef.current === undefined) {
+    continuationOpensLoadingRef.current =
+      !restored && !resumeBrandIdParam && !fromAdd && continuation?.website != null;
+  }
+  const continuationOpensLoading = continuationOpensLoadingRef.current;
+
   const [step, setStep] = useState<Step>(() =>
     restored
       ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
@@ -962,7 +997,16 @@ export function Onboarding() {
           "loading"
         : fromAdd
           ? "url"
-          : "welcome",
+          : // CONTINUING FROM /start. With the website already carried by the
+            // landing there is nothing left to ask before the work can begin, so
+            // the loading screen opens and the setup effect below starts it;
+            // without one they still skip the pitch and state the website. The
+            // welcome screen is for a visitor who arrived with no context at all.
+            continuation
+            ? continuation.website
+              ? "loading"
+              : "url"
+            : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   // No-website path (beta): the user has no site, so instead of a URL they enter a
@@ -1090,13 +1134,16 @@ export function Onboarding() {
   //
   // Fetched imperatively because this flow holds no react-query provider of its
   // own — it can create the org it runs in, so it opts out of the org-keyed one.
+  // Through the PUBLIC route, because this wizard runs signed out: `/api/v1/*`
+  // lives inside `(authed)` and answers a session-less read with the sign-in
+  // page, so the authed reader threw on HTML on every signed-out visit.
   // NO floor is the honest reading while it settles or if it fails: billing holds
   // the same rule against the same figure and its 400 is what decides, so nothing
   // here refuses money billing would accept.
   const [channelMinimums, setChannelMinimums] = useState<ChannelMinimums>(NO_CHANNEL_MINIMUMS);
   useEffect(() => {
     let live = true;
-    getPublicChannels()
+    getPublicChannelsSignedOut()
       .then((channels) => {
         if (live) setChannelMinimums(channelMinimumsFromWire(channels));
       })
@@ -1473,6 +1520,54 @@ export function Onboarding() {
     // a later "add another brand" flow with the FIRST brand's website.
     if (consumedCookie) document.cookie = clearLandingUrlCookieString();
   }, [noWebsiteMode]);
+
+  // CONTINUING FROM /start, half one: the website was already carried, so the
+  // wizard opened on the loading screen and nobody is going to press "Analyze my
+  // product". This starts the setup the moment the effect above has put the
+  // website in the field. It fires ONCE: `startAnalyze` itself sets the step and
+  // owns every failure path (a refused website lands back on `url` with the
+  // reason, out of credit reopens on the credit modal), so nothing here has to.
+  //
+  // Gated on `domain` rather than on `url`: the field is seeded by an effect, so
+  // on the first pass it is still empty and the domain null. The next render
+  // carries it. A seeded website the website rule refuses never fires the setup
+  // and lands on `url` instead, where the refusal is stated — a loading screen
+  // that never loads would be the worst of the three.
+  const continuationStartedRef = useRef(false);
+  useEffect(() => {
+    if (continuationStartedRef.current) return;
+    if (!continuationOpensLoading || step !== "loading") return;
+    if (!url.trim()) return;
+    continuationStartedRef.current = true;
+    if (!domain || websiteProblem !== null) {
+      setStep("url");
+      return;
+    }
+    void startAnalyze();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [continuationOpensLoading, step, url, domain, websiteProblem]);
+
+  // CONTINUING FROM /start, half two: the paths they picked are the funnels
+  // the wizard asks about, so they arrive pre-selected instead of being asked
+  // again. The selection names the producer's spelling and this app's catalogue
+  // its own, so each key goes through the tolerant collapse and anything it
+  // cannot name — a hand-edited cookie, a funnel the catalogue no longer offers
+  // — is dropped rather than guessed. The step still renders, so a pick is
+  // confirmed, not skipped: what a visitor chose on a summary screen is worth
+  // one look beside the funnel's own description before it is stated.
+  const continuationFunnelsSeededRef = useRef(false);
+  useEffect(() => {
+    if (continuationFunnelsSeededRef.current) return;
+    if (!continuation) return;
+    continuationFunnelsSeededRef.current = true;
+    const offered = new Set(offeredFunnels.map((f) => f.key));
+    const picked = continuation.funnelKeys
+      .map((key) => salesFunnelKeyOrNull(key))
+      .filter((key): key is NonNullable<typeof key> => key !== null && offered.has(key));
+    if (picked.length === 0) return;
+    setSelectedFunnelKeys((current) => (current.length > 0 ? current : picked));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [continuation]);
 
   // A business signup email names the domain of the product being promoted
   // (kevin@acme.com -> acme.com), so the URL step opens prefilled and one click

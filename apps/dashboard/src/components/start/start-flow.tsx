@@ -498,16 +498,19 @@ export function StartFlow() {
       footer={footer(
         <StartButton
           onClick={() => {
-            // THE WIZARD, NOT SIGNUP. The whole build half runs before anyone
-            // has an account: they walk their services, funnels, audiences,
-            // rates and offer, and see what we assembled, and only then are
-            // asked for an account and a card. The picks are already in the
-            // cookie; nothing is carried in the query string, which is the
-            // whole reason the cookie exists.
+            // THE WIZARD, NOT SIGNUP, and the label says so. The whole build
+            // half runs before anyone has an account: they walk their services,
+            // funnels, audiences, rates and offer, and see what we assembled, and
+            // only then are asked for an account and a card. The picks are
+            // already in the cookie and the wizard reads them (it CONTINUES:
+            // no welcome pitch, no second ask for the website); nothing is
+            // carried in the query string, which is the whole reason the cookie
+            // exists. The button promised an account for one release and the
+            // owner read the flow as not shipped.
             window.location.href = "/onboarding";
           }}
         >
-          Excellent, create my account
+          See what we&apos;d build for you
         </StartButton>,
       )}
       aside={

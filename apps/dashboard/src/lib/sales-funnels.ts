@@ -137,6 +137,25 @@ export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey
 }
 
 /**
+ * The same collapse, for a key that came from OUTSIDE the wire contract.
+ *
+ * `normalizeSalesFunnelKey` throws on purpose: everywhere it is called the key
+ * arrived from a service whose column is CHECK-constrained, so an unknown value
+ * is a drift we want to see. A key read out of a COOKIE is a different thing —
+ * it is untrusted input a visitor can hand-edit and a week-old selection can
+ * carry after the catalogue has moved — and refusing it is the whole of the
+ * correct behaviour, exactly as `decodeStartSelection` refuses a payload it
+ * cannot read. Null means "not a funnel this app offers", never an error.
+ */
+export function salesFunnelKeyOrNull(key: string): SalesFunnelKey | null {
+  try {
+    return normalizeSalesFunnelKey(key as SalesFunnelKeyWire);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Rate fields, named exactly as brand-service stores them. Every one of these
  * also exists on the brand's BLENDED sales economics, so an undeclared funnel
  * can seed a first guess from what the brand already saved.

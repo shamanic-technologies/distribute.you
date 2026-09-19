@@ -169,8 +169,11 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(FLOW).toContain("onClick={goToFunnels}");
   });
 
-  it("the last CTA reads as a reward, in the owner's words", () => {
-    expect(FLOW).toContain("Excellent, create my account");
+  it("the last CTA says what it does: continue into the wizard, no account yet", () => {
+    // It promised an account for one release while going to the wizard, and
+    // the owner read the whole flow as unshipped.
+    expect(FLOW).toContain("See what we&apos;d build for you");
+    expect(FLOW).not.toContain("create my account");
     expect(FLOW).not.toMatch(/>\s*Create my account\s*</);
   });
 
