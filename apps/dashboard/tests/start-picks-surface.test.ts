@@ -150,11 +150,14 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(FLOW).not.toContain("commitmentTag(");
     expect(FLOW).not.toContain("effectiveMinimumCommitmentDays");
     expect(FLOW).not.toContain("Judge it after");
-    // The named clients are the TOP THREE by return whatever path they ran,
-    // floored at the fleet median the strip states, and they sit OUTSIDE the
-    // white card: the shell's `aside` slot, never inside the scroll box.
-    expect(returns).toContain("proofCardsFor(proof?.showcase ?? [], {");
-    expect(returns).toContain("minReturnPerDollar: proof?.medianReturnPerDollar ?? null,");
+    // The named clients are the TOP THREE by return whatever path they ran, with
+    // NO floor (owner 2026-09-19: always three, top three by ROI), drawn in a
+    // random order stable for the visit, and they sit OUTSIDE the white card:
+    // the shell's `aside` slot, never inside the scroll box.
+    expect(returns).toContain("proofCardsFor(proof?.showcase ?? [])");
+    expect(FLOW).not.toContain("minReturnPerDollar");
+    expect(FLOW).toContain("shuffleWithSeed(");
+    expect(FLOW).toContain("useState(() => Math.random())");
     expect(returns).toContain("aside={");
     expect(returns).toContain("<StartProofCard");
     expect(returns).toContain("funnelName={c.funnelName}");
@@ -169,6 +172,12 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(FLOW).toContain("const goToFunnels = () => {");
     expect(FLOW).toContain("if (funnels.length === 0 && offeredFunnels.length > 0) {");
     expect(FLOW).toContain("onClick={goToFunnels}");
+    // A path step with ONE option is no question: it is skipped both ways
+    // (owner 2026-09-19: "s'il n'y a qu'une option sur cette step alors skip-la").
+    expect(FLOW).toContain("const solePath = offeredFunnels.length === 1;");
+    expect(FLOW).toContain('onScreenChange(solePath ? "returns" : "path");');
+    expect(FLOW).toContain('if (screen === "returns" && solePath) {');
+    expect(FLOW).toContain('onScreenChange("outcome");');
   });
 
   it("the last CTA says what it does: continue into the wizard, no account yet", () => {
