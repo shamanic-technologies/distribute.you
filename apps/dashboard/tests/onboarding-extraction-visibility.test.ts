@@ -80,27 +80,21 @@ describe("audience seed reads live state, not a mount-time closure", () => {
   it("mirrors the prompt into a ref so the guard tests the current value", () => {
     expect(SRC).toContain("const promptRef = useRef(prompt)");
     expect(SRC).toContain("promptRef.current = prompt");
-    expect(SRC).toContain("const fallbackPromptRef = useRef(fallbackPrompt)");
-    expect(SRC).toContain("fallbackPromptRef.current = fallbackPrompt");
   });
 
   it("no longer guards the seed on the captured prompt", () => {
     // The stale form. `prompt.trim() ? prompt : …` inside the effect reads the
     // render the effect was created in, so it clobbers a live edit.
     expect(SRC).not.toContain("onPromptChange(prompt.trim() ? prompt");
+    expect(SRC).toContain("if (!promptRef.current.trim() && drafted) onPromptChange(drafted);");
   });
 
-  it("auto-fires the suggest when the prewarm produced no candidates", () => {
-    // A dead prewarm used to leave the step looking like it merely wanted a
-    // click. The non-prefetch branch already self-fired; both do now — measured
-    // at 1198 chars from the anchor to the fire, so 1600 carries it with room for
-    // the explanatory comments without reaching the `if (!brandId)` branch below.
-    const adopt = sliceFrom("prefetch.promise", 1600);
-    expect(adopt).toContain("void runSuggest(seeded)");
-    // `loading` is handed to runSuggest rather than cleared under it: a shared
-    // `finally` would drop the button to its idle label for the whole call it
-    // just started, leaving it clickable and re-firable.
-    expect(adopt).not.toContain("setIcpLoading(false);\n          setLoading(false);");
+  it("adopts the prewarm's ICP draft and fires no suggest", () => {
+    // The audience step is one target-audience box now; the audiences are built
+    // by hand after payment, so nothing is searched from here.
+    const adopt = SRC.slice(SRC.indexOf("prefetch.promise"), SRC.indexOf("if (!brandId) {", SRC.indexOf("prefetch.promise")));
+    expect(adopt).toContain("adopt(p, icpFailed)");
+    expect(adopt).not.toContain("runSuggest");
   });
 
   it("labels a fallback prompt as a fallback rather than a drafted ICP", () => {

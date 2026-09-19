@@ -13,9 +13,7 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   CreditCardIcon,
-  ExclamationTriangleIcon,
   GiftIcon,
-  MagnifyingGlassIcon,
   PaperAirplaneIcon,
   PencilSquareIcon,
   ShieldCheckIcon,
@@ -48,6 +46,7 @@ import {
   USER_PROFILE_FIELDS,
   getBrandUserFields,
   saveBrandUserFields,
+  saveBrandTargetAudience,
   USER_FIELD_KEYS,
   type FieldProvenance,
   type UserFieldKey,
@@ -59,9 +58,6 @@ import {
   declareBrandSalesFunnel,
   type DeclaredSalesFunnel,
   savePhoneNumber,
-  suggestAudiences,
-  setAudienceStatus,
-  listAudiences,
   listBrandOffers,
   suggestBrandIcp,
   type AudienceCandidate,
@@ -113,8 +109,8 @@ import {
   parseListLeverInput,
 } from "./offer-levers";
 import {
-  buildAudienceLLMPrompt,
   buildFunnelStatsLLMPrompt,
+  buildAudienceLLMPrompt,
   buildServicesLLMPrompt,
   copyStepIntent,
 } from "./llm-prompt";
@@ -167,7 +163,6 @@ import {
   type FunnelCatalogueEntry,
   type FunnelView,
 } from "@/lib/onboarding-funnel-view";
-import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { validateInvite } from "@/lib/api";
 import { inviteCodeFromCookie } from "@/lib/invite-link";
 import { onboardingBrandCookieAssignment } from "@/lib/onboarding-brand-cookie";
@@ -436,7 +431,7 @@ const fmtCount = (n: number) => formatLocaleInteger(n);
 // who assumes it was drafted edits it as if we had read their site. So the step is
 // told WHY it is holding a locally-built sentence and says so.
 type AudiencePrefetch = {
-  promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }>;
+  promise: Promise<{ prompt: string; icpFailed: boolean }>;
 };
 
 /**
@@ -919,7 +914,12 @@ function legacyStepFor(step: Step): Step {
       return "audiences";
     case "objective":
     case "rates":
-      return "funnels";
+    // The funnel set is stated on the sell-first Path screen; the wizard's own
+    // how-do-you-sell step and the primary pick were removed (one question
+    // twice), so a snapshot naming either lands on the picks.
+    case "funnels":
+    case "primary":
+      return "outcome";
     // The single lifetime-revenue screen: each funnel now carries its own, so the
     // per-funnel screens ask it. Never reached from a resume (the post-payment
     // steps are not persisted); the render fail-safe is what uses this arm.
@@ -997,7 +997,10 @@ export function Onboarding() {
           // on the goal step.
           "loading"
         : fromAdd
-          ? "url"
+          ? // Adding a brand: the pitch is not repeated, the three sell-first
+            // screens are. They are the ONLY place the funnel set is stated now
+            // that the how-do-you-sell step is gone.
+            "outcome"
           : // A fresh visitor: the welcome, then the three sell-first screens,
             // then the website (only if the landing did not carry one), then the
             // build. One flow, whatever the landing handed over.
@@ -1060,13 +1063,13 @@ export function Onboarding() {
   // app's catalogue names funnels in its own. Each key goes through the
   // tolerant collapse and anything it cannot name — a funnel the catalogue no
   // longer offers, a hand-edited snapshot — is dropped rather than guessed.
-  // When the picks cover the question, the funnel step is SKIPPED: asking
-  // "how do you sell?" two screens after "how should it turn into revenue?"
-  // is the same question twice, and the summary at the end states the answer.
+  // The picks ARE the answer: the wizard's own how-do-you-sell step and the
+  // primary pick were removed, since asking either two screens after "how should
+  // it turn into revenue?" is the same question twice. A flow that reaches the
+  // services step with no pick is sent back to the Path screen.
   const pickedFunnelKeys = funnelKeysFromSelection(startFunnels)
     .map((key) => salesFunnelKeyOrNull(key))
     .filter((key): key is NonNullable<typeof key> => key !== null && offeredFunnels.some((f) => f.key === key));
-  const funnelsStepSkipped = pickedFunnelKeys.length > 0;
   const pickedFunnelKeysJoined = pickedFunnelKeys.join(",");
   useEffect(() => {
     if (pickedFunnelKeys.length === 0) return;
@@ -1100,17 +1103,8 @@ export function Onboarding() {
   const detailFunnels = orderedForDetail(selectedFunnels, primaryFunnelKey);
   const primaryFunnel = selectedFunnels.find((f) => f.key === primaryFunnelKey) ?? null;
   // A brand that picked ONE path. Read by the budget step (which drops every "each
-  // path" sentence and its total) and by the primary-funnel skip below — one name
-  // for one fact, so the two screens cannot disagree about whether there is a set.
+  // path" sentence and its total).
   const onePath = selectedFunnels.length === 1;
-  // The primary-funnel step is a radio over the funnels the brand just picked, so a
-  // brand that picked exactly one is being asked a question with one possible
-  // answer. It is skipped — but ONLY when that funnel's goal actually resolves to
-  // an outcome, because the outcome is what the pick exists to set (it prices the
-  // budget step and names the funnel the projection resolves against). A goal the
-  // catalogue does not price falls through to the step, which states the problem.
-  const soleFunnelOutcome = outcomeForFunnelGoal(onePath ? selectedFunnels[0].goal : null);
-  const skipPrimaryStep = onePath && soleFunnelOutcome !== null;
   // What the brand's economics actually say, for the funnel screens to prefill from.
   // Deliberately NOT in the persisted snapshot: adding a field there forces an
   // ONBOARDING_STATE_VERSION bump, which strands an in-flight checkout — and this is
@@ -1188,12 +1182,14 @@ export function Onboarding() {
   const launchFloorUsd = launchFloorCents === null ? null : Math.ceil(launchFloorCents / 100);
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
   const [audiencePrompt, setAudiencePrompt] = useState(() => restored?.audiencePrompt ?? "");
-  const [audienceCandidates, setAudienceCandidates] = useState<AudienceCandidate[] | null>(() => restored?.audienceCandidates ?? null);
-  const [selectedAudienceIds, setSelectedAudienceIds] = useState<string[]>(() => restored?.selectedAudienceIds ?? []);
-  // Pre-warmed audience step. During the loading screen we draft the ICP prompt
-  // AND fire the audience suggest in the background, so the audience step opens
-  // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
+  // Pre-warmed audience step: during the loading screen we draft the ICP prompt
+  // in the background, so the target-audience box opens already filled. Stashed in
   // state (not a ref) so a late-resolving prewarm still flows into the step as a prop.
+  // NO audience is searched, suggested or created here: the customer states who
+  // they sell to in one box, and the audiences are built by hand once they have
+  // paid. `audienceCandidates` / `selectedAudienceIds` stay on the persisted shape
+  // (removing a field is a version bump, which strands an in-flight checkout) and
+  // are written EMPTY.
   const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
   // Whether the loading-screen service extraction FAILED, and whether the heavier
   // background hydrate that can still deliver the list is in flight. The services
@@ -1419,8 +1415,8 @@ export function Onboarding() {
       customBudget,
       checkoutBudgetUsd: opts?.checkoutBudgetUsd ?? checkoutBudgetUsd,
       audiencePrompt,
-      audienceCandidates,
-      selectedAudienceIds,
+      audienceCandidates: null,
+      selectedAudienceIds: [],
       workflowProjection: projectionRef.current,
       salesInputs: salesInputsRef.current,
       launchFeatureInputs: launchFeatureInputsRef.current,
@@ -1439,7 +1435,7 @@ export function Onboarding() {
   useEffect(() => {
     if (searchParams.get("launch_checkout") === "success") return;
     writeOnboardingState(buildOnboardingState());
-  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, startFunnels]);
+  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, startFunnels]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -1504,8 +1500,9 @@ export function Onboarding() {
         setBrandId(resumeBrandIdParam);
         brandIdRef.current = resumeBrandIdParam;
         if (organization?.id) orgIdRef.current = organization.id;
-        // v2 has no single-goal step; its equivalent landing point is the funnels.
-        await runResume("funnels", seededUrl);
+        // The funnel set is stated on the sell-first screens, so a resumed brand
+        // starts there; `continueAfterPicks` then skips the analyze it already ran.
+        await runResume("outcome", seededUrl);
       } catch (err) {
         console.error("[dashboard] onboarding brand-param resume failed:", err);
         setStep("url");
@@ -1608,8 +1605,8 @@ export function Onboarding() {
   }
 
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
-    // Pre-warm the audience step FIRST: draft the ICP prompt and fire the audience
-    // suggest in the background, before the lever extraction below is awaited. The
+    // Pre-warm the audience step FIRST: draft the ICP prompt in the background,
+    // before the lever extraction below is awaited. The
     // ICP seeds from the services (extracted and awaited by the caller) and
     // deliberately EXCLUDES the offer levers (brand-service curateIcpProfileFields),
     // so it does not need that extraction — and awaiting it first (p90 35 s) left
@@ -1619,26 +1616,20 @@ export function Onboarding() {
     // services → funnels → primary, candidates are ready. Fail-soft — a failed
     // ICP/suggest resolves candidates:null and the step falls back to its own draft
     // + manual "Suggest audiences".
-    const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }> => {
-      // Fetch the real ICP first and HOLD it independently of the audience-suggest
-      // step. suggestAudiences is flaky (fails often); if it throws AFTER the ICP
-      // already resolved, we must still return that ICP — otherwise the real
-      // brand-service ICP is discarded and the step shows the generic fallback
-      // "Find the ideal customers for <brand>" line. candidates stay null so the
-      // step renders the real ICP + a manual "Find my perfect audiences" retry.
-      let prompt = "";
+    const audiencePrewarm = (async (): Promise<{ prompt: string; icpFailed: boolean }> => {
+      // The ICP draft ONLY. No audience suggest runs during onboarding any more:
+      // the customer states who they sell to and the audiences are built by hand
+      // after payment, so a suggest here would be LLM spend on a result nobody
+      // reads. An ICP that came back empty is the same situation as one that
+      // threw: nothing brand-service drafted, so the step must not present its
+      // own sentence as one.
       try {
         const { icp } = await suggestBrandIcp(id);
-        prompt = icp.trim();
-        // An ICP that came back empty is the same situation as one that threw: we
-        // have nothing brand-service drafted, so the step must not present its own
-        // sentence as one.
-        if (!prompt) return { prompt: "", candidates: null, icpFailed: true };
-        const { candidates } = await suggestAudiences(id, prompt);
-        return { prompt, candidates, icpFailed: false };
+        const prompt = icp.trim();
+        return { prompt, icpFailed: !prompt };
       } catch (e) {
-        console.error("[dashboard] audience prewarm (ICP + suggest) failed:", e);
-        return { prompt, candidates: null, icpFailed: !prompt };
+        console.error("[dashboard] audience prewarm (ICP draft) failed:", e);
+        return { prompt: "", icpFailed: true };
       }
     })();
     setAudiencePrefetch({ promise: audiencePrewarm });
@@ -1817,13 +1808,11 @@ export function Onboarding() {
     // prefill in state is now stale (ICP prompt, suggested audiences, rate defaults).
     // Drop them + clear the "user edited" guards so the fresh hydration reseeds the
     // new brand cleanly. Without this the audience step's seed effect sees the OLD
-    // prompt/candidates ("already filled") and keeps the previous brand's ICP +
-    // audiences; rates stay stale because ratesEditedRef is still set. A same-brand
+    // prompt ("already filled") and keeps the previous brand's ICP; rates stay
+    // stale because ratesEditedRef is still set. A same-brand
     // RESUME has equal ids → no reset → user edits preserved.
     if (previousBrandId && previousBrandId !== newBrandId) {
       setAudiencePrompt("");
-      setAudienceCandidates(null);
-      setSelectedAudienceIds([]);
       servicesEditedRef.current = false;
       ratesEditedRef.current = false;
     }
@@ -1901,6 +1890,12 @@ export function Onboarding() {
   // once and the visitor watches work happen; without one, or with one the
   // website rule refuses, the URL step asks — never the welcome pitch again.
   function continueAfterPicks() {
+    // A resumed brand (`?brandId=`, or a refresh after the build) was already
+    // analyzed: re-running the setup would bill the extraction twice.
+    if (brandIdRef.current && services.length > 0) {
+      setStep("services");
+      return;
+    }
     if (!url.trim() || !domain || websiteProblem !== null) {
       setStep("url");
       return;
@@ -2115,28 +2110,9 @@ export function Onboarding() {
       await saveBrandUserFields(pending.brandId, buildUserFieldsPayload(pending.profile, pending.services));
     }
     // Activation happens ONLY here, at the TERMINAL launch commit — never at the
-    // audience step (a re-roll / Back-then-re-pick there used to activate each
-    // intermediate set additively, leaving stale `active` rows the audiences page
-    // then showed → "I picked 2 but see 5"). The picked set is made the brand's
-    // EXACT active set: any audience currently `active` for the brand that is NOT in
-    // the final picks is sent back to `suggested` (recoverable, hidden from the page),
-    // so re-doing onboarding OVERRIDES the prior selection instead of stacking on it.
-    // A launched campaign with zero active audiences is a hard dead end (the
-    // dashboard's "No active audience yet" blocker — outreach can't run), so we
-    // fail loud on an empty pick. Done BEFORE avatar generation so the server-side
-    // on-activate avatar gen covers the freshly-active rows.
-    const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];
-    if (launchAudienceIds.length === 0) {
-      throw new Error("No audience was selected — go back and pick at least one audience before launching.");
-    }
-    const pickedSet = new Set(launchAudienceIds);
-    const { audiences: currentlyActive } = await listAudiences(pending.brandId, { status: "active" });
-    for (const a of currentlyActive) {
-      if (!pickedSet.has(a.id)) await setAudienceStatus(a.id, "suggested");
-    }
-    for (const audienceId of launchAudienceIds) {
-      await setAudienceStatus(audienceId, "active");
-    }
+    // NO audience is activated here. Onboarding collects the customer's own words
+    // for who they sell to (saved on the brand as `targetAudience`); the audiences
+    // themselves are built by hand after payment, so there is nothing to commit.
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
     // The OFFER everything this launch creates is about. A campaign is
@@ -2345,19 +2321,14 @@ export function Onboarding() {
     if (!id || !orgId || budget == null || (!brandUrl && !noWebsiteMode) || !launchHostname) {
       throw new Error("Checkout state is missing. Go back to pricing and try again.");
     }
-    // Block launch when no audience is picked — outreach can't run without one, so
-    // a campaign launched audience-less is a paid-for dead end. Live selection wins,
-    // falling back to the resumed snapshot (same precedence as budget above).
-    const launchAudienceIds = selectedAudienceIds.length
-      ? selectedAudienceIds
-      : storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds ?? [];
-    if (launchAudienceIds.length === 0) {
-      throw new Error("Pick at least one audience before launching — go back to the audience step.");
-    }
-    // Same live-selection-wins precedence as the audiences above, so a re-checkout after
-    // a cancel carries whatever the user has picked NOW. Unlike audiences this is NOT a
-    // launch gate: the per-funnel screens are a preview, so an empty selection must never
-    // block a paid launch — it just means those screens have nothing to ask.
+    // No audience gate: nothing is picked during onboarding any more (the
+    // audiences are built by hand after payment), so the blob carries an empty
+    // list under the field older readers still expect.
+    const launchAudienceIds: string[] = [];
+    // Live selection wins, the stored blob is the fallback, so a re-checkout after
+    // a cancel carries whatever the user has picked NOW. This is NOT a launch gate:
+    // the per-funnel screens are a preview, so an empty selection must never block
+    // a paid launch — it just means those screens have nothing to ask.
     const launchFunnelKeys = selectedFunnelKeys.length
       ? selectedFunnelKeys
       : storedPending?.selectedFunnelKeys ?? [];
@@ -2676,14 +2647,50 @@ export function Onboarding() {
   // It carries no economics: those are asked once per funnel after payment. A
   // funnel already in the set keeps what it was priced with, so re-stating the
   // set on a resume never wipes a value the brand confirmed.
+  // The one thing the audience step collects: who the customer sells to, in
+  // their own words. Saved on the brand as the `targetAudience` user-field (the
+  // same store the brand profile reads), where the person building the
+  // audiences after payment finds it. Fail loud on a refusal: a blank field here
+  // is a blank brief for that person.
+  async function saveTargetAudienceAndContinue() {
+    const text = audiencePrompt.trim();
+    if (!text) {
+      setError("Tell us who you sell to first.");
+      return;
+    }
+    const id = brandIdRef.current;
+    if (!id) {
+      setError("Your setup is still running. Give it a moment and try again.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      await saveBrandTargetAudience(id, text);
+      setStep("consent");
+    } catch (err) {
+      if (isInsufficientCredit(err)) {
+        creditRetryRef.current = () => saveTargetAudienceAndContinue();
+        return;
+      }
+      console.error("[dashboard] saveBrandTargetAudience failed:", err);
+      setError("We could not save that. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveFunnelsAndContinue() {
-    setPrimaryFunnelKey((current) => resolvePrimaryKey(selectedFunnelKeys, current));
-    // One funnel picked: it IS the primary, so set what the primary step would have
-    // set (the outcome that prices the budget step) and go straight past it. The
-    // outcome is written from the DERIVED funnel here rather than from
-    // `primaryFunnelKey`, whose setter above has not applied yet on this render.
-    const nextStep: Step = skipPrimaryStep ? "audiences" : "primary";
-    if (skipPrimaryStep && soleFunnelOutcome) setOutcome(soleFunnelOutcome);
+    // The primary is the first picked funnel (or the one already held). There is
+    // no screen asking for it any more: the Path screen already ordered the picks,
+    // and asking "which one first?" after it was one question twice. The outcome
+    // it buys prices the budget step, so it is written from the DERIVED funnel
+    // here rather than from `primaryFunnelKey`, whose setter has not applied yet.
+    const primaryKey = resolvePrimaryKey(selectedFunnelKeys, primaryFunnelKey);
+    setPrimaryFunnelKey(primaryKey);
+    const nextOutcome = outcomeForFunnelGoal(offeredFunnels.find((f) => f.key === primaryKey)?.goal);
+    if (nextOutcome) setOutcome(nextOutcome);
+    const nextStep: Step = "audiences";
     const id = brandIdRef.current;
     if (!id) {
       // No brand yet (fast click-through): the per-funnel writes after payment
@@ -2710,29 +2717,6 @@ export function Onboarding() {
     } finally {
       setBusy(false);
     }
-  }
-
-  function savePrimaryFunnelAndContinue() {
-    const nextOutcome = outcomeForFunnelGoal(primaryFunnel?.goal);
-    if (!nextOutcome) {
-      setError("Pick the path you want us on first.");
-      return;
-    }
-    // Picking the primary path WRITES NOTHING. It used to persist the brand-level
-    // goal — the retired vocabulary, which features-service no longer reads at all,
-    // and which could not tell the two meeting funnels apart anyway.
-    // What the brand sells through is the funnel SET, already stated one step back
-    // by `saveFunnelsAndContinue`; what each funnel is worth is stated per funnel on
-    // the `funnelStats` screens. A write here would restate six brand-level metrics
-    // nobody reads and, worse, would have to source them from somewhere — which is
-    // exactly how a placeholder once overwrote rates a customer had confirmed.
-    //
-    // The pick still rides in local state: it orders the funnel detail screens,
-    // picks the outcome the budget step prices, and names the funnel the projection
-    // resolves against.
-    setOutcome(nextOutcome);
-    setError(null);
-    setStep("audiences");
   }
 
   // v2 — the draft shown for one funnel's detail screen. Falls back in CASCADE so
@@ -3013,8 +2997,6 @@ export function Onboarding() {
     setCustomBudget(state.customBudget);
     setCheckoutBudgetUsd(state.checkoutBudgetUsd);
     setAudiencePrompt(state.audiencePrompt);
-    setAudienceCandidates(state.audienceCandidates);
-    setSelectedAudienceIds(state.selectedAudienceIds);
     setBrandId(state.brandId);
     brandIdRef.current = state.brandId;
     orgIdRef.current = state.orgId;
@@ -3392,7 +3374,7 @@ export function Onboarding() {
     return (
       <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => { addService(serviceDraft); if (funnelsStepSkipped) void saveFunnelsAndContinue(); else setStep("funnels"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); if (selectedFunnelKeys.length === 0) setStep("path"); else void saveFunnelsAndContinue(); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
         copyText={servicesPrompt}
       >
         {/* Same placement as the offer levers': the button acts on the QUESTION,
@@ -3486,119 +3468,22 @@ export function Onboarding() {
         prefetch={audiencePrefetch}
         prompt={audiencePrompt}
         onPromptChange={setAudiencePrompt}
-        candidates={audienceCandidates}
-        onCandidatesChange={setAudienceCandidates}
-        selectedAudienceIds={selectedAudienceIds}
-        onSelectedAudienceIdsChange={setSelectedAudienceIds}
-        onBack={() => setStep(skipPrimaryStep ? (funnelsStepSkipped ? "services" : "funnels") : "primary")}
-        onContinue={() => setStep("consent")}
+        busy={busy}
+        error={error}
+        onBack={() => setStep("services")}
+        onContinue={() => void saveTargetAudienceAndContinue()}
         onEdit={() => setStep("url")}
       />
     );
   }
 
-  // Every way the brand sells. Selection only: no rates, no lifetime revenue, no
-  // destination URL. Those are asked once per funnel after payment, so this step
-  // stays a single question ("which funnels do you sell through?") instead of a form.
-  if (step === "funnels") {
-    return (
-      <StepShell chrome={chrome}
-        maxWidth="sm:max-w-2xl"
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={
-          <NextButton
-            onClick={saveFunnelsAndContinue}
-            disabled={selectedFunnelKeys.length === 0 || busy}
-            busy={busy}
-            label="Continue"
-          />
-        }
-      >
-        <BackButton onClick={() => setStep("services")} />
-        <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">How do you sell?</h2>
-        <p className="mt-2 mb-6 text-gray-500">
-          Pick every path a prospect can take to become a paying customer. You can pick more than one — we ask for the numbers behind each one once you are set up.
-        </p>
-        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="space-y-3">
-          {offeredFunnels.map((f) => (
-            <FunnelSelectCard
-              key={f.key}
-              funnel={f}
-              selected={selectedFunnelKeys.includes(f.key)}
-              onToggle={() =>
-                setSelectedFunnelKeys((prev) => {
-                  const next = prev.includes(f.key) ? prev.filter((k) => k !== f.key) : [...prev, f.key];
-                  // A primary that just got deselected hands the role to another
-                  // selected funnel — a selection with no primary has no goal for
-                  // the budget step to price.
-                  setPrimaryFunnelKey((current) => resolvePrimaryKey(next, current));
-                  return next;
-                })
-              }
-            />
-          ))}
-        </div>
-        {noWebsiteMode && (
-          <p className="mt-4 text-xs leading-5 text-gray-400">
-            Paths that start with a click onto your website are hidden because this brand has no site.
-          </p>
-        )}
-      </StepShell>
-    );
-  }
-
-  // Which of the picked funnels we optimize for first. This is the brand's
-  // optimization goal, and the budget step right after prices the outcome this
-  // funnel buys.
-  // A single-funnel brand never routes here from `saveFunnelsAndContinue`, but a
-  // RESUMED session can: a persisted snapshot or an in-flight checkout blob written
-  // before this skip shipped still names `primary`. Same fail-safe shape as the
-  // retired-step branch above — advance rather than render a one-option radio.
-  if (step === "primary" && skipPrimaryStep) {
-    if (soleFunnelOutcome) setOutcome(soleFunnelOutcome);
-    setStep("audiences");
+  // The funnel step and the primary pick no longer render: the sell-first Path
+  // screen is where the set is stated. A resume can still point here (a snapshot
+  // or an in-flight checkout blob written before they went), so land on the
+  // picks — the same fail-safe shape as the retired-step branch above.
+  if (step === "funnels" || step === "primary") {
+    setStep(legacyStepFor(step));
     return null;
-  }
-
-  if (step === "primary") {
-    return (
-      <StepShell chrome={chrome}
-        maxWidth="sm:max-w-2xl"
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={
-          <NextButton
-            onClick={savePrimaryFunnelAndContinue}
-            disabled={!primaryFunnel || busy}
-            busy={busy}
-            label="Continue"
-          />
-        }
-      >
-        <BackButton onClick={() => setStep(funnelsStepSkipped ? "services" : "funnels")} />
-        <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
-          What&apos;s your primary sales funnel goal with us today?
-        </h2>
-        {/* States ONLY what this answer is used for. It used to say we put the budget
-            behind that path first and that the others could be switched at any time —
-            a claim about what the orchestrator does, which we do not control and
-            cannot promise. The one true consequence is the pricing calibration. */}
-        <p className="mt-2 mb-6 text-gray-500">
-          We use it to calibrate your pricing on the next step.
-        </p>
-        <div className="space-y-3">
-          {selectedFunnels.map((f) => (
-            <FunnelSelectCard
-              key={f.key}
-              funnel={f}
-              selected={primaryFunnelKey === f.key}
-              radio
-              onToggle={() => setPrimaryFunnelKey(f.key)}
-            />
-          ))}
-        </div>
-      </StepShell>
-    );
   }
 
   if (step === "consent") {
@@ -4102,12 +3987,9 @@ export function Onboarding() {
           isPrimary: key === primaryFunnelKey,
         };
       }),
-      audiences: (audienceCandidates ?? [])
-        .filter((c) => selectedAudienceIds.includes(c.audienceId))
-        // No avatar on a candidate: human-service draws one when the audience is
-        // ACTIVATED, which happens at the terminal launch. The panel falls back
-        // to its initial rather than showing a broken image.
-        .map((c) => ({ id: c.audienceId, name: c.name, avatarUrl: null })),
+      // The customer's own words for who they sell to. Not an audience list: the
+      // audiences are built by hand after payment, from exactly this text.
+      targetAudience: audiencePrompt,
       levers: POST_PAYMENT_OFFER_LEVERS.map((l) => ({
         key: l.key,
         // The lever's own step title, so it reads here exactly as it did on the
@@ -4391,11 +4273,10 @@ export function Onboarding() {
   );
 }
 
-// Natural-language → audiences. The user describes the people they want to
-// reach; human-service `/suggest` returns ONE candidate per audience (the winning
-// provider, live-counted), each already persisted at status "suggested". The user
-// picks one or more, which are ACTIVATED via `setAudienceStatus(audienceId,
-// "active")`. This is the audience concept that replaces the persona step.
+// The target audience, in the customer's own words. Nothing is searched or
+// created: the text is saved on the brand (`targetAudience`) and the audiences
+// are built by hand after payment. The audience suggest + pick that stood here
+// was a ~35 s billed run whose result nobody read before paying.
 function OnboardingAudiences({
   chrome,
   brandId,
@@ -4406,10 +4287,8 @@ function OnboardingAudiences({
   prefetch,
   prompt,
   onPromptChange,
-  candidates,
-  onCandidatesChange,
-  selectedAudienceIds,
-  onSelectedAudienceIdsChange,
+  busy,
+  error,
   onBack,
   onContinue,
   onEdit,
@@ -4426,130 +4305,70 @@ function OnboardingAudiences({
   prefetch: AudiencePrefetch | null;
   prompt: string;
   onPromptChange: (value: string) => void;
-  candidates: AudienceCandidate[] | null;
-  onCandidatesChange: (value: AudienceCandidate[] | null) => void;
-  selectedAudienceIds: string[];
-  onSelectedAudienceIdsChange: (value: string[]) => void;
+  busy: boolean;
+  error: string | null;
   onBack: () => void;
   onContinue: () => void;
   onEdit?: () => void;
 }) {
   // One string, two paths: the button writes it and Ctrl+C rewrites to it.
-  const audienceLlmPrompt = buildAudienceLLMPrompt(
-    prompt,
-    services,
-    hostname || brandDomain || "my business",
-  );
-  const fallbackPrompt = services.length
-    ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
-    : "";
+  const audienceLlmPrompt = buildAudienceLLMPrompt(prompt, services, hostname || brandDomain || "my business");
+  // ONE box. The customer says who they sell to and nothing is searched: the
+  // audiences are built by hand after payment, from this text. The old step ran
+  // an audience suggest (LLM + a people search, ~35 s, billed) and asked the
+  // customer to pick cards; it is gone with the picks and the activation.
   const [icpLoading, setIcpLoading] = useState(true);
-  // True when the sentence in the box was assembled HERE from the picked services
-  // rather than drafted by brand-service. The two are indistinguishable on screen,
-  // and a reader who assumes the second edits it as if we had read their site.
+  // True when the box is EMPTY because brand-service could not draft an ICP, so
+  // the step says so instead of presenting a blank as a prompt to fill.
   const [icpFallback, setIcpFallback] = useState(false);
   const icpFetchedRef = useRef(false);
-  // Mirrors of the two values the seed below has to compare against. It runs inside
-  // a promise callback created at MOUNT, so reading `prompt` / `fallbackPrompt`
-  // directly there reads the mount render: the "never clobber an edited prompt"
-  // guard tested a stale empty string and overwrote live text whenever the prewarm
-  // settled late — which a failing ICP call guarantees it does.
+  // Mirror of the prompt for the seed below, which runs inside a promise callback
+  // created at MOUNT: reading `prompt` there reads the mount render, so the
+  // "never clobber an edited prompt" guard would test a stale empty string.
   const promptRef = useRef(prompt);
   promptRef.current = prompt;
-  const fallbackPromptRef = useRef(fallbackPrompt);
-  fallbackPromptRef.current = fallbackPrompt;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  // A successful suggest APPENDS below the already-picked cards, so with a full
-  // selection above the fold the user sees nothing move and reads the click as a
-  // no-op. `notice` reports what the run actually produced, next to the button.
-  const [notice, setNotice] = useState<string | null>(null);
-  const selectedAudienceIdSet = new Set(selectedAudienceIds);
-  const candidateCount = candidates?.length ?? 0;
-  const audienceMaxWidth =
-    candidateCount >= 3 ? "sm:max-w-5xl" : candidateCount === 2 ? "sm:max-w-3xl" : "sm:max-w-xl";
-  // Columns follow the CARD COUNT, not the breakpoint — so a single card spans the
-  // full shell (grid-cols-1) instead of getting a 1/3-wide column at desktop width.
-  const audienceGridCols =
-    candidateCount >= 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : candidateCount === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1";
 
-  // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
-  // the background during the loading screen) when present — zero wait, zero click.
-  // No pre-warm (fast click-through / no brandId yet) → draft the ICP here and
-  // AUTO-FIRE the suggest, so the step still needs no click. Runs once; never
-  // clobbers a prompt the user already edited.
+  // Seed the box from the parent's pre-warm (the ICP drafted during the loading
+  // screen) when present; without one, draft it here. Runs once; never clobbers
+  // a prompt the user already edited.
   useEffect(() => {
     if (icpFetchedRef.current) return;
     icpFetchedRef.current = true;
-    if (prompt.trim() || candidates) {
+    if (prompt.trim()) {
       setIcpLoading(false);
       return;
     }
-
+    const adopt = (drafted: string, failed: boolean) => {
+      if (!promptRef.current.trim() && drafted) onPromptChange(drafted);
+      if (failed) setIcpFallback(true);
+    };
     if (prefetch) {
-      // Pre-warm in flight or already resolved — show drafting/generating until ready.
       setIcpLoading(true);
-      setLoading(true);
       prefetch.promise
-        .then(({ prompt: p, candidates: c, icpFailed }) => {
-          const seeded = promptRef.current.trim() ? promptRef.current : p || fallbackPromptRef.current;
-          onPromptChange(seeded);
-          if (icpFailed) setIcpFallback(true);
-          if (c) {
-            onCandidatesChange(c);
-            if (c.length === 0) setErr("No audiences matched that description. Try rephrasing.");
-            setLoading(false);
-            return;
-          }
-          // The prewarm bails the moment the ICP throws, so `suggestAudiences` never
-          // ran. Leaving it there made a dead prewarm look like a step that merely
-          // wanted a click. The no-prefetch branch below already self-fires; so does
-          // this one now, off whatever sentence we ended up with.
-          //
-          // `loading` is HANDED OVER rather than cleared: runSuggest raises it again
-          // itself, so clearing it here (or in a shared `finally`) would drop the
-          // button back to its idle label for the whole call it just started — and
-          // leave it clickable, so a second suggest could be fired over the first.
-          if (seeded && brandId) {
-            void runSuggest(seeded);
-            return;
-          }
-          setLoading(false);
-        })
+        .then(({ prompt: p, icpFailed }) => adopt(p, icpFailed))
         .catch((e) => {
           console.error("[dashboard] audience prefetch adopt failed:", e);
           setIcpFallback(true);
-          onPromptChange(promptRef.current.trim() ? promptRef.current : fallbackPromptRef.current);
-          setLoading(false);
         })
-        .finally(() => {
-          setIcpLoading(false);
-        });
+        .finally(() => setIcpLoading(false));
       return;
     }
-
     if (!brandId) {
       setIcpFallback(true);
-      onPromptChange(promptRef.current.trim() ? promptRef.current : fallbackPromptRef.current);
       setIcpLoading(false);
       return;
     }
     (async () => {
-      let nl = fallbackPromptRef.current;
       try {
         const { icp } = await suggestBrandIcp(brandId);
-        nl = icp.trim() || fallbackPromptRef.current;
-        if (!icp.trim()) setIcpFallback(true);
+        adopt(icp.trim(), !icp.trim());
       } catch (e) {
         console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
         setIcpFallback(true);
       } finally {
         setIcpLoading(false);
       }
-      const seeded = promptRef.current.trim() ? promptRef.current : nl;
-      onPromptChange(seeded);
-      if (seeded) void runSuggest(seeded);
     })();
   }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4562,88 +4381,23 @@ function OnboardingAudiences({
     el.style.height = `${el.scrollHeight}px`;
   }, [prompt]);
 
-  async function runSuggest(nlArg?: string) {
-    const nl = (nlArg ?? prompt).trim();
-    if (!brandId || !nl) {
-      setErr("Describe who you want to reach first.");
-      return;
-    }
-    setErr(null);
-    setNotice(null);
-    setLoading(true);
-    // Preserve already-selected candidates across a re-fetch — keep them selected,
-    // visible during load, and merged ahead of the new results. Editing the prompt
-    // and re-fetching ADDS to the prior picks, it does not wipe them.
-    const keep = (candidates ?? []).filter((c) => selectedAudienceIdSet.has(c.audienceId));
-    onCandidatesChange(keep.length ? keep : null);
-    try {
-      const res = await suggestAudiences(brandId, nl);
-      const keepIds = new Set(keep.map((c) => c.audienceId));
-      const merged = [...keep, ...res.candidates.filter((c) => !keepIds.has(c.audienceId))];
-      onCandidatesChange(merged);
-      const added = merged.length - keep.length;
-      if (added > 0) {
-        setNotice(`${added} new ${added === 1 ? "audience" : "audiences"} generated`);
-      } else if (keep.length > 0) {
-        // Every candidate came back as one we already hold. This branch used to be
-        // SILENT: no cards moved, no message, so the run was indistinguishable from a
-        // dead button and one user re-clicked five times before giving up.
-        setErr("No new audiences this time. Try rephrasing your description.");
-      } else if (res.candidates.length === 0) {
-        setErr("No audiences matched that description. Try rephrasing.");
-      }
-    } catch (e) {
-      console.error("[dashboard] suggestAudiences failed:", e);
-      setNotice(null);
-      setErr("We couldn't generate audiences right now. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function toggle(candidate: AudienceCandidate) {
-    const next = new Set(selectedAudienceIds);
-    if (next.has(candidate.audienceId)) next.delete(candidate.audienceId);
-    else next.add(candidate.audienceId);
-    onSelectedAudienceIdsChange([...next]);
-  }
-
-  async function saveAndContinue() {
-    if (!brandId || !candidates) {
-      onContinue();
-      return;
-    }
-    const picks = candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId));
-    if (picks.length === 0) {
-      setErr("Select at least one audience.");
-      return;
-    }
-    setErr(null);
-    // NO activation here — the picks are carried forward in `selectedAudienceIds` and
-    // committed once at the post-payment terminal step (completeLaunchAfterCheckout),
-    // which makes them the brand's EXACT active set. Activating at this step made a
-    // re-roll / Back-then-re-pick stack stale `active` rows (the "picked 2, page shows
-    // 5" bug). Each candidate stays "suggested" until the launch commits.
-    onContinue();
-  }
-
   return (
     <StepShell chrome={chrome}
-      maxWidth={audienceMaxWidth}
+      maxWidth="sm:max-w-xl"
       header={<BrandStepHeader domain={brandDomain} hostname={hostname} name={brandName} onEdit={onEdit} />}
-      footer={<NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} label="Continue" />}
+      footer={<NextButton onClick={onContinue} disabled={icpLoading || busy || !prompt.trim()} busy={busy} label="Continue" />}
       copyText={audienceLlmPrompt}
     >
       <div>
         <BackButton onClick={onBack} />
         <div className="flex items-start justify-between gap-3">
-          <h2 className="min-w-0 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Who do you want to reach?</h2>
+          <h2 className="min-w-0 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Who do you sell to?</h2>
           <div className="shrink-0">
             <CopyForLLMButton text={audienceLlmPrompt} />
           </div>
         </div>
         <p className="mt-2 text-gray-500">
-          Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
+          Describe your ideal customers in plain words. We build your audiences from this once you are set up.
         </p>
 
         <div className="relative mt-5">
@@ -4652,7 +4406,7 @@ function OnboardingAudiences({
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             disabled={icpLoading}
-            placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+            placeholder="e.g. Heads of marketing at Series A to B B2B SaaS companies in the US, 50 to 500 employees."
             style={{ minHeight: "80px", overflow: "hidden" }}
             className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
           />
@@ -4663,135 +4417,18 @@ function OnboardingAudiences({
             </div>
           )}
         </div>
-        {/* A sentence we assembled from the picked services looks exactly like one
-            drafted off the site, so the reader is told which they are holding. Say it
-            only once there is something in the box to describe. */}
-        {icpFallback && !icpLoading && prompt.trim() && (
+        {/* An empty box because brand-service could not draft an ICP looks like a
+            box nobody has drafted yet, so the reader is told which they are holding. */}
+        {icpFallback && !icpLoading && !prompt.trim() && (
           <p className="mt-2 text-xs text-gray-500">
-            We couldn&apos;t read enough from <span className="font-medium text-gray-700">{hostname}</span> to draft this, so we started it from your services. Edit it to match who you actually sell to.
+            We couldn&apos;t read enough from <span className="font-medium text-gray-700">{hostname}</span> to draft this. Tell us in your own words.
           </p>
         )}
-        {/* The outcome of the run sits BESIDE the button: the new cards render below the
-            already-picked ones, which on a full selection is off-screen. */}
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => runSuggest()}
-            disabled={loading || icpLoading || !prompt.trim()}
-            className="flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
-              </>
-            ) : (
-              <>
-                <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
-              </>
-            )}
-          </button>
-          {notice && (
-            <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-              <CheckIcon className="h-4 w-4" /> {notice}
-            </span>
-          )}
-        </div>
-
-        {err && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
+        {error && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</div>
         )}
       </div>
-
-      {candidates && candidates.length > 0 && (
-        <>
-          <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-            {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
-          </div>
-          <div className={`grid gap-3 ${audienceGridCols}`}>
-            {candidates.map((c, i) => (
-              <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
-            ))}
-          </div>
-        </>
-      )}
     </StepShell>
-  );
-}
-
-function AudienceCandidateCard({
-  candidate,
-  selected,
-  onToggle,
-}: {
-  candidate: AudienceCandidate;
-  selected: boolean;
-  onToggle: () => void;
-}) {
-  const groups = audienceFilterGroups(candidate.filters);
-  const invalid = Boolean(candidate.validationError) || candidate.count === 0;
-  // human-service (via apollo-service) says outright that its refine loop was not
-  // satisfied with this filter set and returned its best attempt anyway. Rendered
-  // verbatim from the flag: nothing here infers it from the count or the filters,
-  // and it gates NOTHING. A degraded audience stays fully selectable, because a
-  // degraded audience beats no audience and the customer is the one who judges it.
-  const degraded = candidate.degraded === true;
-  return (
-    <button
-      onClick={onToggle}
-      className={`flex w-full items-start gap-3 rounded-xl border-2 p-5 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
-    >
-      <span
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
-      >
-        {selected && <CheckIcon className="h-3 w-3" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">{candidate.name}</span>
-          {!invalid && (
-            <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
-          )}
-          {degraded && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
-              <ExclamationTriangleIcon className="h-3 w-3 shrink-0" />
-              Check this one
-            </span>
-          )}
-        </span>
-        <span className="mt-1 block text-xs leading-5 text-gray-500">{candidate.rationale}</span>
-        {degraded && (
-          <span className="mt-2 flex items-start gap-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2 text-[11px] leading-4 text-orange-700">
-            <ExclamationTriangleIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            <span className="min-w-0">
-              This may not match what you asked for. Read the filters before you pick it.
-            </span>
-          </span>
-        )}
-        {groups.length > 0 && (
-          <span className="mt-3 flex flex-col gap-2">
-            {groups.map((g) => (
-              <span key={g.label} className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                  {g.label}
-                </span>
-                {g.values.map((v, j) => (
-                  <span
-                    key={j}
-                    className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
-                  >
-                    <span className="min-w-0 truncate">{v}</span>
-                  </span>
-                ))}
-              </span>
-            ))}
-          </span>
-        )}
-        {invalid && (
-          <span className="mt-2 block text-[11px] text-amber-600">
-            {candidate.validationError ? "Couldn't validate these filters." : "No live matches for these filters."}
-          </span>
-        )}
-      </span>
-    </button>
   );
 }
 
@@ -4890,8 +4527,6 @@ function stepperFor(step: Step): { step: number; count: number } {
     case "destination":
     case "objective":
     case "rates":
-    case "funnels":
-    case "primary":
     case "audiences":
       return { step: 4, count: START_STEP_COUNT };
     case "built":

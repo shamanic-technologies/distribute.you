@@ -34,38 +34,6 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
     return src.slice(at, at + length);
   };
 
-  describe("audience suggest reports what the run produced", () => {
-    it("counts the candidates that are actually new, not the whole merged list", () => {
-      const body = sliceFrom("async function runSuggest(");
-      expect(body).toContain("const added = merged.length - keep.length;");
-      expect(body).toContain('setNotice(`${added} new ${added === 1 ? "audience" : "audiences"} generated`)');
-    });
-
-    it("surfaces the zero-new run that used to be silent", () => {
-      const body = sliceFrom("async function runSuggest(");
-      expect(body).toContain("No new audiences this time.");
-      // The pre-existing empty-result message survives for the no-keeps case.
-      expect(body).toContain("No audiences matched that description.");
-    });
-
-    it("clears the notice on every run and on failure", () => {
-      const body = sliceFrom("async function runSuggest(");
-      const start = body.indexOf("setNotice(null)");
-      expect(start).toBeGreaterThan(-1);
-      // A second clear lives in the catch, so a failed retry cannot leave the previous
-      // run's success line sitting next to an error.
-      expect(body.indexOf("setNotice(null)", start + 1)).toBeGreaterThan(start);
-      expect(body).toContain("We couldn't generate audiences right now.");
-    });
-
-    it("renders the notice beside the button, not below the fold", () => {
-      const row = sliceFrom('<div className="mt-3 flex flex-wrap items-center gap-3">', 1400);
-      expect(row).toContain("onClick={() => runSuggest()}");
-      expect(row).toContain("{notice && (");
-      expect(row).toContain("text-emerald-700");
-    });
-  });
-
   describe("outcome noun", () => {
     it("names what the budget buys for positive replies", () => {
       const outcomes = sliceFrom("const OUTCOMES:", 1800);

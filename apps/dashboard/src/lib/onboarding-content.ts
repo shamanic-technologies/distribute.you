@@ -75,11 +75,6 @@ export const REMINDER_COPY = {
     body: "Your credits ran out, so outreach has paused. Auto top-up isn't available for your card's country, so add credits to start it again.",
     cta: "Add credits",
   },
-  audience: {
-    title: "Add an audience to start",
-    body: "We need at least one active audience to know who to contact. Add one and we start finding leads for you right away.",
-    cta: "Add an audience",
-  },
   // Every active audience has been fully contacted (0% of the pool left).
   audienceExhausted: {
     title: "Your audiences are all contacted",
@@ -95,9 +90,14 @@ export const REMINDER_COPY = {
   },
 } as const;
 
+// Shown while a brand has no active audience yet. The audiences are built by
+// hand after payment, from what the customer told us in onboarding, so the
+// customer has nothing to do: the banner states that and carries NO call to
+// action (a link to build one would contradict the onboarding step that said we
+// would).
 export const NO_AUDIENCE_BANNER_COPY = {
-  message: "No active audience yet. Outreach cannot run until you add one.",
-  cta: "Add an audience",
+  message: "We are building your audiences from what you told us. Outreach starts as soon as they are ready.",
+  cta: null,
 } as const;
 
 // Shown when every active audience is fully contacted (0% of the pool left).

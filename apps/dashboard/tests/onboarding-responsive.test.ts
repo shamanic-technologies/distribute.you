@@ -61,8 +61,10 @@ describe("Onboarding mobile responsiveness", () => {
     // added or removed; what it is actually asserting is that no step renders its
     // own card wrapper. Re-count it, do not delete it.
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
-    // 16 since the welcome moved to the sell-first screens (StartPicks draws its own shell).
-    expect(shellUses.length).toBe(16);
+    // 16 since the welcome moved to the sell-first screens (StartPicks draws its
+    // own shell); 14 since the funnel step and the primary pick went (the Path
+    // screen states the set).
+    expect(shellUses.length).toBe(14);
     // The first-run account widget rides the step's own header row on mobile
     // instead of a bar of its own above the Brand card, so a step with a header
     // spends one row where it used to spend two. Gated on the escape chrome not
@@ -88,15 +90,13 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain("flex shrink-0 items-baseline gap-1 rounded-lg");
   });
 
-  it("gives generated audience cards equal-width rows up to three columns", () => {
-    // Audience shell width caps at sm+ only (mobile stays full-bleed via StepShell).
-    expect(onboardingFlow).toContain('>= 3 ? "sm:max-w-5xl"');
-    expect(onboardingFlow).toContain('=== 2 ? "sm:max-w-3xl" : "sm:max-w-xl"');
-    // Column count follows the card count, so a single card spans the full shell
-    // (grid-cols-1) instead of a 1/3-wide column at desktop width.
-    expect(onboardingFlow).toContain('candidateCount >= 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : candidateCount === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"');
-    expect(onboardingFlow).toContain("grid gap-3 ${audienceGridCols}");
-    expect(onboardingFlow).toContain("flex w-full items-start gap-3 rounded-xl border-2");
+  it("keeps the audience step on the narrow shell: one box, no card grid", () => {
+    // The audience step is a single target-audience textarea (the audiences are
+    // built by hand after payment), so there is no card grid to widen for.
+    const step = onboardingFlow.slice(onboardingFlow.indexOf("function OnboardingAudiences("), onboardingFlow.indexOf("function BrandStepHeader("));
+    expect(step).toContain('maxWidth="sm:max-w-xl"');
+    expect(step).not.toContain("audienceGridCols");
+    expect(step).not.toContain("sm:max-w-5xl");
   });
 
   it("routes the services step through StepShell (no step widens the card to the bar)", () => {

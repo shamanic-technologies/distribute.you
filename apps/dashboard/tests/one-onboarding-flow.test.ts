@@ -107,21 +107,21 @@ describe("the sell-first screens are wizard steps", () => {
     expect(effect).toContain("paid: [],");
   });
 
-  it("pre-selects the funnel step from the picks and skips it when they answer it", () => {
+  it("the picks ARE the funnel selection: there is no funnel step left to skip", () => {
     const at = wizard.indexOf("const pickedFunnelKeys = funnelKeysFromSelection(startFunnels)");
     expect(at).toBeGreaterThan(-1);
     const block = wizard.slice(at, at + 900);
     expect(block).toContain(".map((key) => salesFunnelKeyOrNull(key))");
     expect(block).toContain("offeredFunnels.some((f) => f.key === key)");
-    expect(block).toContain("const funnelsStepSkipped = pickedFunnelKeys.length > 0;");
     expect(block).toContain("setSelectedFunnelKeys((current) => (current.length > 0 ? current : pickedFunnelKeys));");
     expect(block).not.toContain("normalizeSalesFunnelKey(");
+    expect(wizard).not.toContain("funnelsStepSkipped");
   });
 
   it("after the results, asks the website only when the landing did not carry one", () => {
     const at = wizard.indexOf("function continueAfterPicks()");
     expect(at).toBeGreaterThan(-1);
-    const fn = wizard.slice(at, at + 300);
+    const fn = wizard.slice(at, at + 600);
     expect(fn).toContain("if (!url.trim() || !domain || websiteProblem !== null) {");
     expect(fn).toContain('setStep("url")');
     expect(fn).toContain("void startAnalyze();");

@@ -41,7 +41,10 @@ function audienceReminderCopy(nudge: AudienceNudge): {
       ),
     };
   }
-  return REMINDER_COPY.audience;
+  // `nextReminder` never returns "audience" for `none` or `zero-active` (the
+  // latter is our work in progress, not the customer's), so reaching here is a
+  // gating bug worth seeing rather than a copy to invent.
+  throw new Error(`[dashboard] audience reminder has no copy for tier ${nudge.tier}`);
 }
 
 /**

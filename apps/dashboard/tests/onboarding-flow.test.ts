@@ -107,8 +107,6 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).toContain("readCheckoutOnboardingSnapshot()");
     expect(content).toContain("hydratePricingForRestoredCheckout");
     expect(content).toContain("setAudiencePrompt");
-    expect(content).toContain("setAudienceCandidates");
-    expect(content).toContain("setSelectedAudienceIds");
     expect(content).toContain("storedPending?.workflowSlug");
     expect(content).toContain("storedPending?.brandUrl");
     expect(content).toContain("setBusy(false);");

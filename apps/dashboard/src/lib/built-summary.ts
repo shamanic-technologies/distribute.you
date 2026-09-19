@@ -3,13 +3,13 @@
  *
  * This is the screen the whole reorder exists for: a visitor typed a website
  * ten minutes ago and has since watched us read their site, name their
- * services, pick the funnels they sell through, assemble their audiences and
+ * services, pick the funnels they sell through, say who they sell to and
  * draft their offer. Asking for a card before showing them any of it is what
  * this replaces.
  *
  * So the one rule here is that it states what is TRUE. A section with nothing
  * in it is DROPPED, never rendered empty and never filled with a placeholder:
- * an audience list reading "0 audiences" or a services row showing a spinner
+ * an empty target-audience block or a services row showing a spinner
  * that never resolves is worse than a shorter summary, because the visitor is
  * about to decide whether we are worth paying on exactly this evidence.
  *
@@ -29,11 +29,6 @@ export interface BuiltFunnel {
   isPrimary: boolean;
 }
 
-export interface BuiltAudience {
-  id: string;
-  name: string;
-  avatarUrl?: string | null;
-}
 
 export interface BuiltLever {
   key: string;
@@ -45,14 +40,18 @@ export interface BuiltLever {
 export interface BuiltInput {
   services: string[];
   funnels: BuiltFunnel[];
-  audiences: BuiltAudience[];
+  /**
+   * Who the customer sells to, in their own words. NOT a list of audiences:
+   * those are built by hand after payment, from exactly this text.
+   */
+  targetAudience?: string | null;
   levers: BuiltLever[];
 }
 
 export type BuiltSection =
   | { kind: "services"; items: string[] }
   | { kind: "funnels"; items: BuiltFunnel[] }
-  | { kind: "audiences"; items: BuiltAudience[] }
+  | { kind: "targetAudience"; text: string }
   | { kind: "offer"; items: BuiltLever[] };
 
 /**
@@ -75,13 +74,13 @@ const clean = (s: string): boolean => typeof s === "string" && s.trim().length >
 export function builtSummary(input: BuiltInput): BuiltSummary {
   const services = (input.services ?? []).filter(clean);
   const funnels = (input.funnels ?? []).filter((f) => f && clean(f.name));
-  const audiences = (input.audiences ?? []).filter((a) => a && clean(a.name));
+  const targetAudience = typeof input.targetAudience === "string" ? input.targetAudience.trim() : "";
   const levers = (input.levers ?? []).filter((l) => l && filled(l));
 
   const sections: BuiltSection[] = [];
   if (services.length > 0) sections.push({ kind: "services", items: services });
   if (funnels.length > 0) sections.push({ kind: "funnels", items: funnels });
-  if (audiences.length > 0) sections.push({ kind: "audiences", items: audiences });
+  if (targetAudience) sections.push({ kind: "targetAudience", text: targetAudience });
   if (levers.length > 0) sections.push({ kind: "offer", items: levers });
 
   return { sections, isEmpty: sections.length === 0 };
@@ -98,10 +97,11 @@ export function builtSummary(input: BuiltInput): BuiltSummary {
 export function builtSubtitle(summary: BuiltSummary): string | null {
   const parts: string[] = [];
   for (const s of summary.sections) {
+    // The target audience is prose, not a quantity: nothing to count.
+    if (s.kind === "targetAudience") continue;
     const n = s.items.length;
     if (s.kind === "services") parts.push(`${n} ${n === 1 ? "service" : "services"}`);
     if (s.kind === "funnels") parts.push(`${n} ${n === 1 ? "sales funnel" : "sales funnels"}`);
-    if (s.kind === "audiences") parts.push(`${n} ${n === 1 ? "audience" : "audiences"}`);
   }
   if (parts.length === 0) return null;
   if (parts.length === 1) return parts[0];

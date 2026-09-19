@@ -61,7 +61,9 @@ describe("Onboarding — no-website path (beta)", () => {
     // A funnel that starts with a click onto the site cannot run without a site,
     // and brand-service 400s on declaring one — so it is never offered.
     expect(src).toContain("selectableFunnels(funnelViews, !noWebsiteMode)");
-    expect(src).toContain("Paths that start with a click onto your website are hidden");
+    // The funnel set comes from the sell-first picks; a website-led pick on a
+    // no-website brand is dropped against the same offered set.
+    expect(src).toContain("offeredFunnels.some((f) => f.key === key)");
   });
 
   it("locks the optimization goal to positive_replies in no-website mode", () => {

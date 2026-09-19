@@ -42,16 +42,15 @@ describe("Onboarding sales-economics writes", () => {
     expect(src).not.toContain("optimizationGoal:");
   });
 
-  it("picking the primary path persists nothing", () => {
-    // 1199 chars = the whole body, measured to its closing brace.
-    const body = sliceFrom("function savePrimaryFunnelAndContinue()", 1199);
-    expect(body).toContain('setStep("audiences")');
-    // The pick still drives local state — the detail-screen order, the outcome the
-    // budget step prices, the funnel the projection resolves against.
+  it("there is no primary-funnel step to write from: the first pick is the primary", () => {
+    // The step that asked "which one first?" is gone with the "How do you sell?"
+    // step (both were the Path screen's question twice). The primary is derived in
+    // `saveFunnelsAndContinue`, and it still writes no brand-level economics.
+    expect(src).not.toContain("savePrimaryFunnelAndContinue");
+    const body = sliceFrom("async function saveFunnelsAndContinue()", 900);
+    expect(body).toContain("resolvePrimaryKey(selectedFunnelKeys, primaryFunnelKey)");
     expect(body).toContain("setOutcome(nextOutcome)");
-    // ...and writes nothing at all.
-    expect(body).not.toContain("await save");
-    expect(body).not.toContain("setBusy(true)");
+    expect(body).not.toContain("buildEconomicsPayload");
   });
 
   it("prices the PRIMARY FUNNEL through the shared per-funnel patch path", () => {

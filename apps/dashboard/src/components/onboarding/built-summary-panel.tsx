@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckIcon } from "@heroicons/react/24/outline";
-import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import {
   builtSubtitle,
   builtSummary,
@@ -114,17 +113,10 @@ export function BuiltSummaryPanel({
           );
         }
 
-        if (section.kind === "audiences") {
+        if (section.kind === "targetAudience") {
           return (
-            <Block key="audiences" title="Who we'll reach out to">
-              <ul className="space-y-2">
-                {section.items.map((a) => (
-                  <li key={a.id} className="flex items-center gap-2.5">
-                    <AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} size={24} />
-                    <span className="min-w-0 truncate text-sm text-gray-700">{a.name}</span>
-                  </li>
-                ))}
-              </ul>
+            <Block key="targetAudience" title="Who we'll reach out to">
+              <p className="whitespace-pre-line text-sm leading-6 text-gray-700">{section.text}</p>
             </Block>
           );
         }
