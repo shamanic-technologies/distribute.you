@@ -1,3 +1,4 @@
+import { browserHasAnonSession } from "./anon-session-cookie";
 import { z } from "zod";
 import {
   LeadBucketCountsSchema,
@@ -200,6 +201,25 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     if (token) {
       url = `${API_URL}/v1${endpoint}`;
       headers["X-API-Key"] = token;
+    } else if (typeof document !== "undefined" && browserHasAnonSession(document.cookie)) {
+      // THIRD BRANCH: the visitor has no account yet.
+      //
+      // The build half of onboarding now runs before signup, against an org
+      // whose external id is `anon_<uuid>` instead of a Clerk org id. That org
+      // is an ordinary org everywhere downstream, so every helper in this file
+      // works unchanged — the only difference is which proxy carries the call,
+      // and that is decided here rather than at ~40 call sites.
+      //
+      // No Authorization header: there is no Clerk session to mint one from.
+      // The anonymous proxy reads a SIGNED httpOnly cookie the browser cannot
+      // forge, checks the call against a closed allowlist, and forwards under
+      // the session's own org. This flag cookie is a routing hint and carries
+      // no authority of its own.
+      //
+      // The flag is checked BEFORE the Clerk branch on purpose: `getTabSessionToken`
+      // returns null while signed out, and the authed proxy answers 401 — so a
+      // visitor mid-flow would see every read fail rather than run anonymously.
+      url = `/api/anon/v1${endpoint}`;
     } else {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();
@@ -2069,6 +2089,39 @@ export async function getPublicChannels(token?: string): Promise<PublicChannelWi
       raw,
     });
     throw new Error("[dashboard] getPublicChannels: invalid response shape");
+  }
+  return parsed.data.channels;
+}
+
+/**
+ * The same channels, read through the route that answers WITHOUT a session.
+ *
+ * `getPublicChannels` goes through `/api/v1/*`, which lives inside `(authed)`
+ * and attaches a Clerk bearer — so signed out it is answered with the sign-in
+ * PAGE, and the reader throws on HTML it was told was JSON. The onboarding
+ * wizard runs signed out now, so it reads the catalogue the way the three
+ * screens before it already do: `/api/public/catalogue`, which is in the public
+ * matcher and proxies the same features-service route server-side.
+ *
+ * ONE schema, two transports. The payload's `channels` key is the upstream body
+ * verbatim, so it parses through `PublicChannelsSchema` unchanged — a second
+ * shape here is how the two surfaces would come to disagree about a channel.
+ *
+ * Correct signed IN as well, so nothing branches on whether a session exists:
+ * the route is public, not anonymous-only.
+ */
+export async function getPublicChannelsSignedOut(): Promise<PublicChannelWire[]> {
+  const res = await fetch("/api/public/catalogue");
+  if (!res.ok) {
+    throw new Error(`[dashboard] getPublicChannelsSignedOut: catalogue ${res.status}`);
+  }
+  const body = (await res.json()) as { channels?: unknown };
+  const parsed = PublicChannelsSchema.safeParse(body.channels);
+  if (!parsed.success) {
+    console.error("[dashboard] getPublicChannelsSignedOut: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getPublicChannelsSignedOut: invalid response shape");
   }
   return parsed.data.channels;
 }

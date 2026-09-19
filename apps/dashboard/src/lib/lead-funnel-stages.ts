@@ -164,6 +164,8 @@ const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; lab
   "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
   "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
   Signup: { key: "signup", wontLabel: "Won't sign up" },
+  "Form submitted": { key: "form_submission", wontLabel: "Won't fill it" },
+  // The two pre-2026-09-18 spellings, read as the one form step.
   "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
   // lead-service records that a form was filled; WHICH funnel it belongs to is the
   // campaign's, so an ad-platform form shares the stage its website sibling uses

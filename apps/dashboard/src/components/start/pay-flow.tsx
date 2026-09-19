@@ -124,9 +124,10 @@ export function PayFlow() {
 
   const payable: PayableFunnel[] = useMemo(() => {
     if (!wire || !selection) return [];
-    const kept = channelsForOutcomes(wire, selection.outcomes).filter((c) =>
-      selection.channels.includes(c.slug),
-    );
+    // The stored channel list is deliberately NOT read: the channel is not a
+    // pick any more, so `channelsForOutcomes` answers with the one we run and a
+    // cookie written while the channel screen existed still resolves.
+    const kept = channelsForOutcomes(wire, selection.outcomes);
     return funnelsForChannels(kept, selection.outcomes, wire);
   }, [wire, selection]);
 

@@ -2,9 +2,16 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+/**
+ * The Instantly sending-accounts table moved to `/audit/cold-email/accounts`
+ * (the estate is a SECTION now, one page per object) and is fed by the
+ * `/instantly/ops/addresses` superset instead of `account-health`. Same fields,
+ * same values, same invariants — so these guards follow the table rather than
+ * the path it used to live at.
+ */
 const PAGE = join(
   __dirname,
-  "../src/app/(authed)/(dashboard)/audit/instantly/page.tsx",
+  "../src/app/(authed)/(dashboard)/audit/cold-email/accounts/page.tsx",
 );
 const API = join(__dirname, "../src/lib/api.ts");
 
@@ -54,10 +61,10 @@ describe("Instantly audit — queued today", () => {
   });
 
   it("keeps the step total, labelled as steps and apart from due-today", () => {
-    expect(page).toContain('<Group title="Due today">');
-    expect(page).toContain('<Group title="Queue (all remaining steps)">');
+    expect(page).toContain('<PanelGroup title="Due today">');
+    expect(page).toContain('<PanelGroup title="Queue (all remaining steps)">');
     expect(page).toContain(
-      '<Row label="— First-unsent steps">{num(row.queuedFirstUnsent)}</Row>',
+      '<PanelRow label="— First-unsent steps">{num(row.queuedFirstUnsent)}</PanelRow>',
     );
   });
 });
@@ -81,7 +88,7 @@ describe("Instantly audit — overdue backlog", () => {
 
   it("gives the backlog its own sortable column", () => {
     expect(page).toContain(
-      '{ key: "queuedOverdue", label: "Overdue", numeric: true, align: "right" },',
+      '{ key: "queuedOverdue", label: "Overdue", align: "right" },',
     );
     // And a header tooltip that states the subset relationship, so nobody adds
     // it to Queued today while reading the table.
@@ -94,7 +101,7 @@ describe("Instantly audit — overdue backlog", () => {
     expect(page).toContain("{num(r.queuedOverdue)}");
     expect(page).toContain("r.queuedOverdue === undefined ? (");
     expect(page).toContain(
-      '<Row label="— of which overdue (owed before today)">',
+      '<PanelRow label="— of which overdue (owed before today)">',
     );
   });
 

@@ -23,6 +23,9 @@ import {
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { startAnonSession } from "@/lib/anon-session-client";
+import { startContinuation, type StartContinuation } from "@/lib/start-continuation";
+import { BuiltSummaryPanel } from "@/components/onboarding/built-summary-panel";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
@@ -65,6 +68,7 @@ import {
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   getPublicChannels,
+  getPublicChannelsSignedOut,
   saveBrandDailyBudget,
   stateBrandFunnelBudgets,
   salesObjectiveForOptimizationGoal,
@@ -131,6 +135,7 @@ import {
   funnelDraftFromBrand,
   salesFunnelByKey,
   normalizeSalesFunnelKey,
+  salesFunnelKeyOrNull,
   buildFunnelPatch,
   isEmptyFunnelPatch,
   validateFunnelDraft,
@@ -224,6 +229,10 @@ type Step =
   // for first.
   | "funnels"
   | "primary"
+  // What we assembled, stated back — the last screen before anyone is asked for
+  // an account. Appended to ALL_STEPS rather than inserted, so a snapshot
+  // written before it existed still parses and no version bump is needed.
+  | "built"
   | "consent"
   | "pricing"
   | "bonus"
@@ -785,6 +794,10 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
 // stays put (a bump strands an in-flight checkout).
 const ALL_STEPS: Step[] = [
   "welcome", "url", "loading", "services", "destination", "objective", "rates", "funnels", "primary", "audiences", "consent", "pricing", "bonus", "launching",
+  // APPENDED, never inserted: this list is what a persisted snapshot parses
+  // against, so the order is not meaningful and growing it at the end keeps
+  // every older snapshot valid. A bump would strand a session mid-checkout.
+  "built",
 ];
 
 function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
@@ -927,6 +940,38 @@ export function Onboarding() {
   }
   const restored = restoreRef.current;
 
+  // DID THEY COME FROM /start? Read once, on the first render, for the same
+  // reason the snapshot above is: the answer decides which step the FIRST PAINT
+  // shows, and an effect would flash the welcome pitch before correcting itself.
+  //
+  // A visitor arriving from /start has answered what they want, through which
+  // path, and has seen what our clients got back. Opening on `welcome` re-pitches
+  // somebody who is already sold, and opening on `url` re-asks a website the
+  // landing already carried — both read as being sent back to the beginning,
+  // which is how it was reported. So the wizard CONTINUES instead.
+  const continuationRef = useRef<StartContinuation | null | undefined>(undefined);
+  if (continuationRef.current === undefined) {
+    continuationRef.current =
+      typeof document === "undefined" ? null : startContinuation(document.cookie);
+  }
+  const continuation = continuationRef.current;
+  // WHETHER THIS MOUNT OPENED ON THE LOADING SCREEN BECAUSE OF THE CONTINUATION,
+  // decided on render 1 and never again. The start effect below used to re-ask
+  // `!restored` on every render, and `restored` is NOT stable: `restoreRef`
+  // treats null as both "not read yet" and "read, nothing there", so it re-reads
+  // sessionStorage each render — and this component's own persist effect writes
+  // a snapshot (`step: "loading"`) right after render 1. On render 2 `restored`
+  // was that snapshot, the gate closed, and the setup never started: a loading
+  // screen that loaded nothing, forever, verified in prod. The initial-step
+  // initializer only reads `restored` on render 1, which is why nothing else
+  // had ever noticed the flip.
+  const continuationOpensLoadingRef = useRef<boolean | undefined>(undefined);
+  if (continuationOpensLoadingRef.current === undefined) {
+    continuationOpensLoadingRef.current =
+      !restored && !resumeBrandIdParam && !fromAdd && continuation?.website != null;
+  }
+  const continuationOpensLoading = continuationOpensLoadingRef.current;
+
   const [step, setStep] = useState<Step>(() =>
     restored
       ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
@@ -937,7 +982,14 @@ export function Onboarding() {
         // resolves to its snapshot step (pricing).
         searchParams.get("launch_checkout") === "success"
         ? "celebrate"
-        : resolveResumeStep(restored.step, restored.brandId)
+        : // A CLAIMED return: they built the whole thing signed out, just made
+          // an account, and the org they built is now theirs. The only thing
+          // left is the money, so land on the budget step rather than resuming
+          // at `built` — which is where the snapshot legitimately says they
+          // were, and which would ask them to create an account they now have.
+          searchParams.get("claimed") === "1"
+          ? "pricing"
+          : resolveResumeStep(restored.step, restored.brandId)
       : resumeBrandIdParam && searchParams.get("launch_checkout") === null
         ? // Cross-session brand resume: show the loading screen immediately (no URL
           // flash) while the param-resume effect re-hydrates the brand, then it lands
@@ -945,7 +997,16 @@ export function Onboarding() {
           "loading"
         : fromAdd
           ? "url"
-          : "welcome",
+          : // CONTINUING FROM /start. With the website already carried by the
+            // landing there is nothing left to ask before the work can begin, so
+            // the loading screen opens and the setup effect below starts it;
+            // without one they still skip the pitch and state the website. The
+            // welcome screen is for a visitor who arrived with no context at all.
+            continuation
+            ? continuation.website
+              ? "loading"
+              : "url"
+            : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   // No-website path (beta): the user has no site, so instead of a URL they enter a
@@ -1073,13 +1134,16 @@ export function Onboarding() {
   //
   // Fetched imperatively because this flow holds no react-query provider of its
   // own — it can create the org it runs in, so it opts out of the org-keyed one.
+  // Through the PUBLIC route, because this wizard runs signed out: `/api/v1/*`
+  // lives inside `(authed)` and answers a session-less read with the sign-in
+  // page, so the authed reader threw on HTML on every signed-out visit.
   // NO floor is the honest reading while it settles or if it fails: billing holds
   // the same rule against the same figure and its 400 is what decides, so nothing
   // here refuses money billing would accept.
   const [channelMinimums, setChannelMinimums] = useState<ChannelMinimums>(NO_CHANNEL_MINIMUMS);
   useEffect(() => {
     let live = true;
-    getPublicChannels()
+    getPublicChannelsSignedOut()
       .then((channels) => {
         if (live) setChannelMinimums(channelMinimumsFromWire(channels));
       })
@@ -1457,6 +1521,54 @@ export function Onboarding() {
     if (consumedCookie) document.cookie = clearLandingUrlCookieString();
   }, [noWebsiteMode]);
 
+  // CONTINUING FROM /start, half one: the website was already carried, so the
+  // wizard opened on the loading screen and nobody is going to press "Analyze my
+  // product". This starts the setup the moment the effect above has put the
+  // website in the field. It fires ONCE: `startAnalyze` itself sets the step and
+  // owns every failure path (a refused website lands back on `url` with the
+  // reason, out of credit reopens on the credit modal), so nothing here has to.
+  //
+  // Gated on `domain` rather than on `url`: the field is seeded by an effect, so
+  // on the first pass it is still empty and the domain null. The next render
+  // carries it. A seeded website the website rule refuses never fires the setup
+  // and lands on `url` instead, where the refusal is stated — a loading screen
+  // that never loads would be the worst of the three.
+  const continuationStartedRef = useRef(false);
+  useEffect(() => {
+    if (continuationStartedRef.current) return;
+    if (!continuationOpensLoading || step !== "loading") return;
+    if (!url.trim()) return;
+    continuationStartedRef.current = true;
+    if (!domain || websiteProblem !== null) {
+      setStep("url");
+      return;
+    }
+    void startAnalyze();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [continuationOpensLoading, step, url, domain, websiteProblem]);
+
+  // CONTINUING FROM /start, half two: the paths they picked are the funnels
+  // the wizard asks about, so they arrive pre-selected instead of being asked
+  // again. The selection names the producer's spelling and this app's catalogue
+  // its own, so each key goes through the tolerant collapse and anything it
+  // cannot name — a hand-edited cookie, a funnel the catalogue no longer offers
+  // — is dropped rather than guessed. The step still renders, so a pick is
+  // confirmed, not skipped: what a visitor chose on a summary screen is worth
+  // one look beside the funnel's own description before it is stated.
+  const continuationFunnelsSeededRef = useRef(false);
+  useEffect(() => {
+    if (continuationFunnelsSeededRef.current) return;
+    if (!continuation) return;
+    continuationFunnelsSeededRef.current = true;
+    const offered = new Set(offeredFunnels.map((f) => f.key));
+    const picked = continuation.funnelKeys
+      .map((key) => salesFunnelKeyOrNull(key))
+      .filter((key): key is NonNullable<typeof key> => key !== null && offered.has(key));
+    if (picked.length === 0) return;
+    setSelectedFunnelKeys((current) => (current.length > 0 ? current : picked));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [continuation]);
+
   // A business signup email names the domain of the product being promoted
   // (kevin@acme.com -> acme.com), so the URL step opens prefilled and one click
   // from "Analyze my product". Google signup is covered by the same path: Clerk
@@ -1668,8 +1780,33 @@ export function Onboarding() {
     const workspaceStartedAt = performance.now();
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
     const reuseOrg = (isResume || !forceNew) && !!reuseOrgId;
-    let targetOrgId: string;
-    if (reuseOrg) {
+    // Null on the signed-out path: there is no Clerk org yet, and the calls
+    // below that take one are skipped rather than handed a placeholder.
+    let targetOrgId: string | null = null;
+
+    // SIGNED OUT: the whole build half runs before anyone has an account.
+    //
+    // There is no Clerk org to create and none is created — the session IS an
+    // org, one with no identity provider attached yet, and at signup that same
+    // org is re-pointed at the Clerk org the visitor makes. So nothing here
+    // moves later: the brand, the funnels, the audiences and the spend are
+    // already on the org that becomes theirs.
+    //
+    // A REFUSAL IS NOT AN ERROR. It means this visitor gets the flow we shipped
+    // before this existed, where the card comes first — so it is stated in the
+    // server's own words and they continue to signup rather than being stopped.
+    if (!user) {
+      const outcome = await startAnonSession(brandUrl);
+      if (!outcome.started) {
+        setError(outcome.message);
+        setBusy(false);
+        setStep("url");
+        // Not a dead end: signup still works, and everything after it is the
+        // flow that existed before this change.
+        window.location.href = "/sign-up";
+        return;
+      }
+    } else if (reuseOrg) {
       targetOrgId = reuseOrgId!;
       maybeRenameFreshSignupOrg(targetOrgId, domain ?? hostname);
     } else {
@@ -1732,8 +1869,18 @@ export function Onboarding() {
     // sessionStorage, so closing the tab loses it, and `onboardingComplete` is
     // only written at the terminal launch — so the gate bounces the user back here
     // and needs to be told which brand to resume. Cleared at launch.
-    document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
-    posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
+    //
+    // Signed out there is no org to scope it to, and none is needed: the edge
+    // gate that reads this cookie only ever fires for a signed-in user, and an
+    // anonymous session already carries its own brand inside its signed token.
+    if (targetOrgId) {
+      document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
+    }
+    posthog.capture("onboarding_brand_created", {
+      flow: "beta",
+      org_id: targetOrgId ?? "anonymous",
+      brand_id: newBrandId,
+    });
     const serviceValue = serviceFields?.fields.services?.value;
     if (serviceValue != null) {
       const nextServices = normalizeServices(serviceValue);
@@ -1814,7 +1961,7 @@ export function Onboarding() {
     const workspaceStartedAt = performance.now();
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
     const reuseOrg = !forceNew && !!reuseOrgId;
-    let targetOrgId: string;
+    let targetOrgId: string | null = null;
     if (reuseOrg) {
       targetOrgId = reuseOrgId!;
       maybeRenameFreshSignupOrg(targetOrgId, name);
@@ -2793,6 +2940,15 @@ export function Onboarding() {
   function continueOffer() {
     if (offerIndex < POST_PAYMENT_OFFER_LEVERS.length - 1) {
       setOfferIndex((i) => i + 1);
+      return;
+    }
+    // SIGNED OUT, the offer is the last thing we BUILD. Everything after it is
+    // the account and the card, so the next screen states what we assembled and
+    // the launch happens once there is money behind it. Signed in — an existing
+    // org adding a brand, or a session that has already paid — this is still the
+    // terminal step it has always been.
+    if (!user) {
+      setStep("built");
       return;
     }
     void finalizePostPaymentAndLaunch();
@@ -3971,6 +4127,77 @@ export function Onboarding() {
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"
         />
         <p className="mt-3 text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
+      </StepShell>
+    );
+  }
+
+  // WHAT WE BUILT FOR YOU — the last screen before anyone is asked for an
+  // account, and the reason the wall moved here at all. Everything on it was
+  // assembled in the last ten minutes against an org the visitor has no account
+  // for; the button below is the first time we ask for one.
+  //
+  // The MODEL decides what is on it (`built-summary.ts`, real unit tests): a
+  // section with nothing in it is dropped rather than rendered empty, because
+  // this is the evidence somebody decides to pay us on.
+  if (step === "built") {
+    const summaryInput = {
+      services,
+      funnels: selectedFunnelKeys.map((key) => {
+        const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(key as never));
+        return {
+          key,
+          name: def?.name ?? "",
+          steps: def?.steps ?? [],
+          isPrimary: key === primaryFunnelKey,
+        };
+      }),
+      audiences: (audienceCandidates ?? [])
+        .filter((c) => selectedAudienceIds.includes(c.audienceId))
+        // No avatar on a candidate: human-service draws one when the audience is
+        // ACTIVATED, which happens at the terminal launch. The panel falls back
+        // to its initial rather than showing a broken image.
+        .map((c) => ({ id: c.audienceId, name: c.name, avatarUrl: null })),
+      levers: POST_PAYMENT_OFFER_LEVERS.map((l) => ({
+        key: l.key,
+        // The lever's own step title, so it reads here exactly as it did on the
+        // screen that asked for it.
+        label: l.title,
+        value: isListLever(l.key)
+          ? formatListLeverValue(profile[l.key])
+          : coerceTextField(profile[l.key]),
+      })),
+    };
+    // Resolved HERE and handed over, because the catalogue's own lookup throws
+    // on a key it does not carry and a throw on this screen loses the summary.
+    const funnelMarks: Record<string, ReactNode> = {};
+    for (const f of summaryInput.funnels) {
+      const def = SALES_FUNNELS.find((d) => d.key === normalizeSalesFunnelKey(f.key as never));
+      if (def) funnelMarks[f.key] = <SalesFunnelMark def={def} size="sm" />;
+    }
+
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
+        footer={
+          <NextButton
+            onClick={() => {
+              // The account is the next thing, and the claim is what happens on
+              // the way back: `/onboarding/claim` re-points the org they have
+              // been building at the Clerk org they are about to create.
+              window.location.href = "/sign-up";
+            }}
+            label="Create my account"
+          />
+        }
+      >
+        <BackButton onClick={() => setStep("offer")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">
+          Here&apos;s what we built for you.
+        </h2>
+        <p className="mt-2 mb-5 text-gray-500">
+          Create your account to launch it. Nothing goes out until you do.
+        </p>
+        <BuiltSummaryPanel input={summaryInput} funnelMarks={funnelMarks} />
       </StepShell>
     );
   }

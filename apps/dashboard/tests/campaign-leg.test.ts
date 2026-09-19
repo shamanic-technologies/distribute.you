@@ -18,7 +18,7 @@ const COLD_EMAIL: ChannelLeg[] = [
 const FOUNDER_LED_CLOSING: ChannelLeg[] = [{ from: "meeting_attended", to: "paid_client" }];
 const IN_HOUSE_SIGNUP_CONVERSION: ChannelLeg[] = [
   { from: "signup", to: "paid_client" },
-  { from: "form_filled", to: "paid_client" },
+  { from: "form_submitted", to: "paid_client" },
 ];
 const IN_HOUSE_MEETING_BOOKING: ChannelLeg[] = [
   { from: "conversation", to: "meeting_booked" },
@@ -59,7 +59,7 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
       "Signup → Paid client",
     );
     expect(campaignLegFor(visitForm, IN_HOUSE_SIGNUP_CONVERSION)?.label).toBe(
-      "Form filled → Paid client",
+      "Form submitted → Paid client",
     );
     expect(campaignLegFor(reply, IN_HOUSE_MEETING_BOOKING)?.label).toBe(
       "Positive reply → Meeting booked",

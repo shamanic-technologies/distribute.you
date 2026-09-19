@@ -1,15 +1,18 @@
 // WHAT A VISITOR IS BUYING, derived from the channel catalogue features-service
 // publishes — never a local list of our own.
 //
-// The sell-first onboarding asks three narrowing questions before anyone signs
-// up: what outcome do you want, through which channels, and which revenue
-// funnels do you want us to run. Each answer filters the next, and every option
-// on every screen is READ off `GET /v1/public/channels`. A hardcoded copy is
-// what this file exists to avoid: the same copy in `acquisition-channels.ts`
-// went stale listing two channels while the producer sold thirty-three, and the
-// outcome vocabulary is exactly as prone to it — production publishes FOUR
-// entry steps today, and a screen offering the three somebody remembered makes
-// every channel behind the fourth unreachable.
+// The sell-first onboarding asks TWO narrowing questions before anyone signs up:
+// what outcome do you want, and which revenue paths should we run to get it.
+// Each answer filters the next, and every path on the second screen is READ off
+// `GET /v1/public/channels`. A hardcoded copy is what this file exists to avoid:
+// the same copy in `acquisition-channels.ts` went stale listing two channels
+// while the producer sold thirty-three.
+//
+// THERE IS NO CHANNEL QUESTION. We run cold email, so asking a visitor to pick a
+// channel is asking them to confirm the only answer there is, and a screen whose
+// options do not change the next screen is a screen that costs a conversion for
+// nothing. The slug below is the one thing here that is ours rather than the
+// producer's, and it is a fact about what we operate, not a preference.
 //
 // Only value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias).
@@ -94,86 +97,78 @@ export interface CatalogueChannel {
 }
 
 /**
- * AN OUTCOME IS ANY STEP A FUNNEL WE SELL CONTAINS — and what LEADS to it is derived.
+ * THE ONE CHANNEL WE RUN THIS THROUGH.
  *
- * The screen asks what a visitor wants to buy, and the honest answer set is the
- * funnels' own rungs: a website visit, a positive reply, a signup, a booked meeting,
- * a meeting attended, a filled form, a lead form filled in an ad, a paid client.
- * Every one of those is something somebody wants, and every one of them is reachable.
+ * Every path a visitor is offered is (funnel x this channel), and the pair key
+ * carried through signup still names both halves — the identity billing puts its
+ * ceiling on is (offer x funnel x channel), so dropping the channel from the key
+ * would change what is bought rather than what is asked.
  *
- * WHAT THIS REPLACED, and why the old shape was right at the time. An outcome used to
- * be a step a channel produces FROM NOTHING, which in production was four options.
- * That was the correct answer to a real problem: the obvious wider reading, "every step
- * a funnel can reach", was measured against production and came back DEGENERATE — six
- * of nine options resolved to the same 31 channels and the same four funnels, because
- * every published funnel started at a website visit or a reply, so every later rung
- * inherited all 31 visit-producing channels. A screen whose options do not change the
- * next screen is six ways of pressing the same button.
- *
- * What changed is the CATALOGUE, not the reasoning. brand-service published four more
- * funnels on 2026-09-17, three of which start somewhere other than a visit or a reply
- * (a booked meeting delivered by an ad, a lead form filled in an ad) and one of which
- * has no rung between the visit and the sale. So the entry sets genuinely differ per
- * outcome now, and the degeneracy the old shape avoided is gone:
- *
- *   Website visit        -> a visit
- *   Signup               -> a visit
- *   Positive reply       -> a reply
- *   Form filled          -> a visit
- *   Lead form submitted  -> a lead form in the ad
- *   Meeting booked       -> a visit, a reply, or a meeting booked in the ad
- *   Meeting attended     -> a visit, a reply, or a meeting booked in the ad
- *   Paid client          -> all four
- *
- * That table is DERIVED, not maintained: it falls out of which funnels contain the
- * step and what each of those funnels starts on. A funnel published upstream updates
- * it with nothing to remember here.
+ * A slug rather than a read because it is a fact about OUR operations: the
+ * producer publishes forty-two channels and we do not run forty-one of them.
  */
+export const DEFAULT_CHANNEL_SLUG = "sales-cold-email-outreach";
+
+/**
+ * The step every funnel ends on. Implicit everywhere: a visitor picking what they
+ * want is not also asked to confirm they would like to be paid.
+ */
+const TERMINAL_STEP_KEY = "paid_client";
+
+/** The step every website funnel starts on, in the producer's own token. */
+const WEBSITE_VISIT_STEP_KEY = "website_visit";
+
+/**
+ * A BUYER PAYING ON THE WEBSITE, as an outcome a visitor can ask for.
+ *
+ * DTC and e-commerce sell it directly: nobody signs up, nobody books anything,
+ * the buyer arrives and pays. The producer is publishing it as the middle rung of
+ * the website-purchase funnel; until that lands the same funnel is published with
+ * nothing between the visit and the sale, and `funnelReachesOutcome` reads BOTH
+ * shapes (see there). This app names the step in the meantime because the screen
+ * offers it; the moment the wire carries it, the wire's own words win.
+ */
+export const PURCHASE_STEP_KEY = "purchase";
+
+const PURCHASE_FALLBACK: StartOutcome = {
+  key: PURCHASE_STEP_KEY,
+  // "Direct" is what tells it from a signup: money changes hands at checkout,
+  // no account first. Byte-equal with the producer's own words (features-service
+  // v0.170.3), so the screen reads the same before and after the wire carries it.
+  label: "Direct purchase",
+  description: "A buyer pays at checkout on the brand's site, no account needed.",
+};
+
+/**
+ * THE FOUR THINGS A VISITOR CAN ASK US FOR, owner-fixed, in the order they read.
+ *
+ * Every published funnel rung used to be offered, which was eight options and
+ * three of them nobody buys as an outcome: a website visit and a positive reply
+ * are how a funnel STARTS rather than what it is for, an attended meeting is a
+ * step of a booked one, and a paid client is where every path ends anyway. What
+ * is left is the four a buyer actually wants, and picking one names the paths
+ * that reach it with no second question.
+ *
+ * The first three are the producer's own steps and read its words. The fourth is
+ * `purchase`, above.
+ */
+export const START_OUTCOME_KEYS: readonly string[] = [
+  "meeting_booked",
+  "signup",
+  "form_submitted",
+  PURCHASE_STEP_KEY,
+];
+
+/** One thing a visitor can ask for. */
 export interface StartOutcome {
   /** The step key. Also the identity carried through signup. */
   key: string;
-  /** The producer's own wording. */
+  /** The producer's own wording, where the producer publishes the step. */
   label: string;
   description: string;
-  /** Channel slugs that can lead here. Never empty: a step nothing reaches is not an
-   *  outcome, so it is never offered. */
-  channelSlugs: string[];
 }
 
-const uniq = (xs: string[]): string[] => [...new Set(xs)];
-
-/**
- * The funnels that CONTAIN a step, read off the producer's own leg list.
- *
- * By KEY, never by the funnel's `steps`, which the producer states as LABELS — and its
- * label for a rung is not always the step catalogue's label for the same key, so a
- * label join silently finds nothing.
- */
-function funnelsContaining(stepKey: string, legs: CatalogueLegDef[]): Set<string> {
-  const out = new Set<string>();
-  for (const leg of legs) {
-    if (leg.fromStep?.key === stepKey || leg.toStep.key === stepKey) {
-      for (const key of leg.funnelKeys) out.add(key);
-    }
-  }
-  return out;
-}
-
-/**
- * The steps that can LEAD to an outcome: the entry rung of every funnel containing it.
- *
- * A step is among its own entry steps whenever a funnel STARTS on it — which is what
- * makes an ad-delivered booked meeting an outcome you can buy directly as well as one
- * you reach through a visit or a reply. No special case is needed for it.
- */
-export function entryStepsFor(outcomeKey: string, catalogue: StartCatalogue): string[] {
-  const funnels = funnelsContaining(outcomeKey, catalogue.legs);
-  return uniq(
-    catalogue.funnels.filter((f) => funnels.has(f.key)).map((f) => f.entryStep.key),
-  );
-}
-
-/** The producer's catalogue, as the three screens read it. */
+/** The producer's catalogue, as the two screens read it. */
 export interface StartCatalogue {
   channels: CatalogueChannel[];
   funnels: CatalogueFunnelDef[];
@@ -182,70 +177,50 @@ export interface StartCatalogue {
 }
 
 /**
- * The outcomes to offer: every step a funnel we sell contains, in funnel order.
+ * The outcomes to offer: the four above, in that order, in the producer's words.
  *
- * Ordered by the producer's own step list rather than by how many channels reach each
- * one — the steps read as a journey (a visit, then a signup, then a sale), and sorting
- * them by reach scatters that journey across the screen.
+ * A step the producer has stopped publishing is DROPPED and logged rather than
+ * named from memory — we cannot describe a step we no longer read. The one
+ * exception is `purchase`, which is named locally on purpose while the producer
+ * ships it (see `PURCHASE_STEP_KEY`).
  */
 export function startOutcomes(catalogue: StartCatalogue): StartOutcome[] {
-  const reachable = new Set(catalogue.legs.flatMap((l) => [l.fromStep?.key, l.toStep.key]));
-  const producedBy = new Map<string, string[]>();
-  for (const c of catalogue.channels) {
-    for (const step of c.producibleSteps) {
-      const slugs = producedBy.get(step.key);
-      if (slugs) slugs.push(c.slug);
-      else producedBy.set(step.key, [c.slug]);
-    }
-  }
-
+  const byKey = new Map(catalogue.steps.map((s) => [s.key, s]));
   const out: StartOutcome[] = [];
-  for (const step of catalogue.steps) {
-    if (!reachable.has(step.key)) continue;
-    const channelSlugs = uniq(
-      entryStepsFor(step.key, catalogue).flatMap((entry) => producedBy.get(entry) ?? []),
-    );
-    // A step nothing can reach is not something anybody can buy, so it is not offered
-    // rather than offered and then followed by an empty channel screen.
-    if (channelSlugs.length === 0) continue;
-    out.push({
-      key: step.key,
-      label: step.label,
-      description: step.description,
-      channelSlugs,
-    });
+  for (const key of START_OUTCOME_KEYS) {
+    const step = byKey.get(key);
+    if (step) {
+      out.push({ key: step.key, label: step.label, description: step.description });
+      continue;
+    }
+    if (key === PURCHASE_STEP_KEY) {
+      out.push(PURCHASE_FALLBACK);
+      continue;
+    }
+    console.error(`[start-catalogue] the catalogue publishes no step ${key}; not offering it`);
   }
   return out;
 }
 
 /**
- * The channels to offer once outcomes are picked: every channel that can LEAD to any
- * one of them.
+ * The channels a selection runs through: the one we operate, and nothing else.
  *
- * Union rather than intersection, and deliberately: picking two outcomes says "either
- * of these is worth my money", so a channel serving one of them is worth showing. An
- * intersection would empty the screen for anybody who picked a website visit and a
- * positive reply, which is the most ordinary pair there is.
+ * Kept under this name and this signature because it is what every reader of a
+ * stored selection already calls. The OUTCOMES no longer narrow it — they narrow
+ * the funnels, one screen later — so this answers the same question it always
+ * did ("what can we run this through") with the answer the product now has.
  *
- * "Can lead to" is the derivation above — a channel producing the ENTRY rung of any
- * funnel that contains the outcome. Matching the outcome against what a channel
- * produces directly would offer nothing for five of the eight outcomes, because no
- * channel delivers a signup, a filled form or a paid client from nothing.
+ * A stored selection's own channel list is deliberately NOT read: a cookie
+ * written while the channel screen existed can name channels we never ran for
+ * this visitor, and narrowing to the one channel is how those selections keep
+ * resolving rather than resolving to nothing.
  */
 export function channelsForOutcomes(
   catalogue: StartCatalogue,
   outcomeKeys: string[],
 ): CatalogueChannel[] {
   if (outcomeKeys.length === 0) return [];
-  const wanted = new Set(outcomeKeys);
-  const allowed = new Set(
-    startOutcomes(catalogue)
-      .filter((o) => wanted.has(o.key))
-      .flatMap((o) => o.channelSlugs),
-  );
-  return catalogue.channels
-    .filter((c) => allowed.has(c.slug))
-    .sort((a, b) => a.displayOrder - b.displayOrder || a.slug.localeCompare(b.slug));
+  return catalogue.channels.filter((c) => c.slug === DEFAULT_CHANNEL_SLUG);
 }
 
 /** The rungs of a funnel, in order, by the producer's own step keys. */
@@ -275,20 +250,38 @@ export function funnelRungs(funnelKey: string, catalogue: StartCatalogue): Catal
 }
 
 /**
+ * What a funnel CONVERTS: its rungs strictly between the entry and the sale.
+ *
+ * The entry rung is what the channel DELIVERS and the sale is where every funnel
+ * ends, so neither is something a visitor asks us for. What is left is the funnel's
+ * own work, and it is what makes one path different from another.
+ */
+export function funnelInternalRungKeys(funnelKey: string, catalogue: StartCatalogue): string[] {
+  return funnelRungKeys(funnelKey, catalogue)
+    .slice(1)
+    .filter((key) => key !== TERMINAL_STEP_KEY);
+}
+
+/**
  * Whether the picked outcomes BUY this funnel.
  *
- * THE RULE, owner-stated: a funnel is offered only when every one of its rungs was
- * picked, with the sale IMPLICIT — every funnel terminates in a paid client, so asking
- * a visitor to tick it is asking them to confirm they want to be paid.
+ * THE RULE, owner-stated: a funnel is offered when a picked outcome is a rung of
+ * it strictly between its entry step and the sale. Pick a booked meeting and you
+ * are offered both paths that book one; pick a signup and you are offered the one
+ * that converts a visit into one. A funnel with nothing between its entry and the
+ * sale converts nothing a visitor can name, so it is never offered.
  *
- * It is stricter than "a picked outcome is the step it starts on", which was the rule
- * until the catalogue could express the difference. Under that one, ticking a website
- * visit offered all four website funnels, including Form Magnet to somebody who never
- * asked for a form. Under this one a lone website visit offers exactly `Website
- * Purchase` (visit -> paid client) — which only became possible on 2026-09-17, because
- * until brand-service published that funnel there was no way to sell a visit that goes
- * straight to the sale, and the rule would have emptied the screen for the commonest
- * pick there is.
+ * It replaced an every-rung rule, which asked a visitor to tick a booked meeting
+ * AND a meeting attended before either meeting path appeared — two ticks for one
+ * thing anybody would call "get me meetings".
+ *
+ * THE PURCHASE CASE, and it is temporary by construction. A buyer paying on the
+ * website is exactly what the direct visit-to-sale funnel does, and the producer
+ * publishes that funnel today with nothing between the two. So a picked purchase
+ * matches a funnel whose only rungs are a website visit then the sale — derived
+ * from the rungs, never from a funnel key. The moment the producer publishes the
+ * purchase rung, that funnel gains an internal rung, the first branch matches it,
+ * and the second stops applying to it with nothing to change here.
  */
 export function funnelReachesOutcome(
   funnelKey: string,
@@ -296,15 +289,17 @@ export function funnelReachesOutcome(
   catalogue: StartCatalogue,
 ): boolean {
   const picked = new Set(outcomeKeys);
-  const rungs = funnelRungKeys(funnelKey, catalogue);
-  return rungs.every((rung) => rung === TERMINAL_STEP_KEY || picked.has(rung));
+  if (funnelInternalRungKeys(funnelKey, catalogue).some((rung) => picked.has(rung))) return true;
+  return picked.has(PURCHASE_STEP_KEY) && isDirectWebsiteSale(funnelKey, catalogue);
 }
 
-/**
- * The step every funnel ends on. Implicit at the outcome screen — a visitor ticking the
- * other rungs is not also asked to confirm they would like to be paid.
- */
-const TERMINAL_STEP_KEY = "paid_client";
+/** A funnel that goes straight from a website visit to the sale, with nothing between. */
+function isDirectWebsiteSale(funnelKey: string, catalogue: StartCatalogue): boolean {
+  const rungs = funnelRungKeys(funnelKey, catalogue);
+  return (
+    rungs.length === 2 && rungs[0] === WEBSITE_VISIT_STEP_KEY && rungs[1] === TERMINAL_STEP_KEY
+  );
+}
 
 /** One (funnel x channel) pair a visitor can fund: the thing that is actually bought. */
 export interface StartFunnelPair {
@@ -327,17 +322,14 @@ export interface StartFunnelPair {
 }
 
 /**
- * The pairs to offer: one row per (funnel x channel), never one row per funnel.
+ * The pairs to offer: one row per (funnel x channel).
  *
  * (offer x funnel x channel) IS a campaign's identity, and it is the key billing puts
- * its ceiling on, so the pair is the thing a visitor actually buys. The screen used to
- * show one card per funnel with its channels folded inside and the day rate SUMMED
- * across them, which meant ticking "Form Magnet" silently funded every kept channel
- * that sells it. A row per pair makes the purchase explicit and needs no sentence
- * explaining which channels are in it.
+ * its ceiling on, so the pair is the thing a visitor actually buys. With one channel
+ * that is one row per funnel, and the row reads as the funnel — but the key still
+ * names both halves, because what is bought did not change when the question did.
  *
- * Ordered by funnel, then cheapest day rate, so a funnel's rows read together and the
- * cheapest way to buy it reads first.
+ * Ordered by the producer's own funnel order, then cheapest day rate.
  */
 export function funnelsForChannels(
   channels: CatalogueChannel[],
@@ -369,121 +361,6 @@ export function funnelsForChannels(
       a.dailyOperatingCostCents - b.dailyOperatingCostCents ||
       a.channelSlug.localeCompare(b.channelSlug),
   );
-}
-
-/**
- * What the picks are SHORT OF, when the kept channels sell funnels but none is bought.
- *
- * The empty screen has a real cause under the every-rung rule, and it is not the one the
- * screen used to state ("no path starts where your channels land"). It is that a path
- * exists and one of its rungs was not ticked — most often a booked meeting without the
- * meeting attended beside it. Naming the nearest gap is the difference between a dead
- * end and one more tick.
- *
- * NEAREST is the funnel missing the FEWEST rungs, so the suggestion is the cheapest way
- * out rather than an arbitrary one. Returns an empty list when the kept channels sell
- * nothing at all, which is a different problem and gets a different sentence.
- */
-export function missingRungsForNearestFunnel(
-  channels: CatalogueChannel[],
-  outcomeKeys: string[],
-  catalogue: StartCatalogue,
-): CatalogueStep[] {
-  const picked = new Set(outcomeKeys);
-  const byKey = new Map(catalogue.steps.map((s) => [s.key, s]));
-  let best: CatalogueStep[] | null = null;
-  for (const c of channels) {
-    for (const f of c.salesFunnels) {
-      const missing = funnelRungKeys(f.key, catalogue)
-        .filter((rung) => rung !== TERMINAL_STEP_KEY && !picked.has(rung))
-        .map((rung) => byKey.get(rung))
-        .filter((s): s is CatalogueStep => Boolean(s));
-      if (missing.length === 0) continue;
-      if (!best || missing.length < best.length) best = missing;
-    }
-  }
-  return best ?? [];
-}
-
-/** A funnel the picks BUY that no kept channel SELLS, with who would. */
-export interface UnsoldFunnel {
-  funnelKey: string;
-  funnelName: string;
-  /** Every channel in the catalogue that sells it, in display order. */
-  sellerNames: string[];
-}
-
-/**
- * The funnels the picked outcomes buy (every rung ticked) that none of the KEPT
- * channels sells.
- *
- * This is the case the funnel screen used to keep silent about: a visitor ticks a
- * positive reply and an ad-platform form, keeps cold email, and the form funnel simply
- * never appears. Nothing is wrong under the rule, but the screen owes the sentence:
- * which funnel went missing and which channel would have carried it.
- */
-export function unsoldBoughtFunnels(
-  catalogue: StartCatalogue,
-  outcomeKeys: string[],
-  keptChannels: CatalogueChannel[],
-): UnsoldFunnel[] {
-  if (outcomeKeys.length === 0) return [];
-  const soldByKept = new Set(keptChannels.flatMap((c) => c.salesFunnels.map((f) => f.key)));
-  const sorted = [...catalogue.channels].sort(
-    (a, b) => a.displayOrder - b.displayOrder || a.slug.localeCompare(b.slug),
-  );
-  const out: UnsoldFunnel[] = [];
-  for (const f of catalogue.funnels) {
-    if (soldByKept.has(f.key)) continue;
-    if (!funnelReachesOutcome(f.key, outcomeKeys, catalogue)) continue;
-    const sellerNames = sorted
-      .filter((c) => c.salesFunnels.some((sf) => sf.key === f.key))
-      .map((c) => c.name);
-    // A funnel nobody sells is not a gap a visitor can close; it is left out.
-    if (sellerNames.length === 0) continue;
-    out.push({ funnelKey: f.key, funnelName: f.name, sellerNames });
-  }
-  return out;
-}
-
-/** The pairs of one funnel, under that funnel's own name and rungs. */
-export interface StartFunnelGroup {
-  funnelKey: string;
-  funnelName: string;
-  steps: readonly string[];
-  pairs: StartFunnelPair[];
-}
-
-/**
- * The pairs GROUPED by funnel, for a screen that reads as blocks rather than one list.
- *
- * Measured against production: ticking a website visit and a filled form offers 62 rows
- * across two funnels, and the whole catalogue can reach far past that. A row is still
- * one pair — that is the purchase, and it must stay explicit — but the funnel's name and
- * its rungs are stated ONCE above its channels rather than repeated on every card.
- *
- * Order is `funnelsForChannels`'s own, so the cheapest way to buy each funnel still
- * reads first inside its block.
- */
-export function funnelGroups(pairs: StartFunnelPair[]): StartFunnelGroup[] {
-  const groups: StartFunnelGroup[] = [];
-  const byKey = new Map<string, StartFunnelGroup>();
-  for (const p of pairs) {
-    const existing = byKey.get(p.funnelKey);
-    if (existing) {
-      existing.pairs.push(p);
-      continue;
-    }
-    const group: StartFunnelGroup = {
-      funnelKey: p.funnelKey,
-      funnelName: p.funnelName,
-      steps: p.steps,
-      pairs: [p],
-    };
-    byKey.set(p.funnelKey, group);
-    groups.push(group);
-  }
-  return groups;
 }
 
 /** The identity of one pair, as the selection carries it. */
@@ -518,52 +395,4 @@ export function pairKeysFromSelection(
     }
   }
   return [...out];
-}
-
-/** A family of channels, in the producer's own token, with the words a visitor
- *  reads for it. */
-export interface ChannelGroup {
-  family: string;
-  label: string;
-  channels: CatalogueChannel[];
-}
-
-/**
- * What a visitor reads for each family the producer publishes. An unknown
- * family is not an error: it is grouped under its own token, titlecased, so a
- * family added upstream still renders rather than vanishing from the screen.
- */
-const FAMILY_LABEL: Record<string, string> = {
-  outbound_one_to_one: "Direct outreach",
-  paid_reach: "Ads and sponsorships",
-  earned: "Content and press",
-  conversion: "Closing the sale",
-};
-
-const FAMILY_ORDER = ["outbound_one_to_one", "paid_reach", "earned", "conversion"];
-
-/**
- * The channels grouped by family, in a fixed order, so thirty cards read as
- * four short lists rather than one long one. Order within a group is the
- * producer's own display order, untouched.
- */
-export function channelGroups(channels: CatalogueChannel[]): ChannelGroup[] {
-  const byFamily = new Map<string, CatalogueChannel[]>();
-  for (const c of channels) {
-    const list = byFamily.get(c.family);
-    if (list) list.push(c);
-    else byFamily.set(c.family, [c]);
-  }
-  const families = [...byFamily.keys()].sort((a, b) => {
-    const ia = FAMILY_ORDER.indexOf(a);
-    const ib = FAMILY_ORDER.indexOf(b);
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
-  });
-  return families.map((family) => ({
-    family,
-    label:
-      FAMILY_LABEL[family] ??
-      family.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
-    channels: byFamily.get(family)!,
-  }));
 }

@@ -64,6 +64,10 @@ export function StartShell({
   subtitle,
   footer,
   founders,
+  scrollKey,
+  stepLabels,
+  reassurance,
+  aside,
   children,
 }: {
   /** 1-based. The dots render only when there is more than one, because "1 of 1"
@@ -75,9 +79,32 @@ export function StartShell({
   footer: ReactNode;
   /** The platform's raw user count, floored here. Absent keeps the seed line. */
   founders?: number | null;
+  /** Names the screen when several share one step number, so a change of screen
+   *  resets the scroll even when the step does not move. */
+  scrollKey?: string;
+  /** One word per step, shown beside its number. Without them the bar draws
+   *  numbers alone. */
+  stepLabels?: readonly string[];
+  /** A fleet figure for the strip under the card, in place of the founders line.
+   *  The welcome keeps the founders; each question after it gets one figure. */
+  reassurance?: { figure: string; label: string } | null;
+  /** A column OUTSIDE the white card, to its right on a wide screen and under it
+   *  on a narrow one. The returns screen puts the named clients here: inside
+   *  the card they read as part of the question; beside it they read as the
+   *  world vouching for the answer. */
+  aside?: ReactNode;
   children: ReactNode;
 }) {
   const brand = useLandingBrand();
+
+  // The scroll box is ONE element across screens (the shell sits at the same
+  // position in the tree whichever screen renders it), so its scrollTop
+  // survives a screen change: a visitor who scrolled a long list to its end
+  // arrived on the next screen already at the bottom, headline off-screen.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [step, scrollKey]);
   const floored = foundersFloor(founders);
   const foundersText = floored === null ? FOUNDERS_SEED : foundersLine(floored);
 
@@ -103,20 +130,41 @@ export function StartShell({
         </a>
 
         {stepCount > 1 && (
-          <ol className="hidden items-center gap-1.5 sm:flex" aria-label={`Step ${step} of ${stepCount}`}>
-            {Array.from({ length: stepCount }, (_, i) => (
-              <li
-                key={i}
-                aria-current={i + 1 === step ? "step" : undefined}
-                className={`h-1.5 rounded-full transition-all ${
-                  i + 1 < step
-                    ? "w-4 bg-brand-600"
-                    : i + 1 === step
-                      ? "w-8 bg-brand-600"
-                      : "w-4 bg-gray-200"
-                }`}
-              />
-            ))}
+          /* NUMBERED steps, one word each, the current one filled: a row of dots of
+             two widths was reported as a shape nobody could read as a position. */
+          <ol className="hidden items-center gap-1 sm:flex" aria-label={`Step ${step} of ${stepCount}`}>
+            {Array.from({ length: stepCount }, (_, i) => {
+              const n = i + 1;
+              const state = n < step ? "done" : n === step ? "current" : "todo";
+              return (
+                <li key={n} className="flex items-center gap-1">
+                  {i > 0 && <span aria-hidden="true" className="mx-1 h-px w-4 bg-gray-200" />}
+                  <span
+                    aria-current={state === "current" ? "step" : undefined}
+                    className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                      state === "current"
+                        ? "bg-brand-600 text-white"
+                        : state === "done"
+                          ? "text-brand-700"
+                          : "text-gray-400"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+                        state === "current"
+                          ? "bg-white/20"
+                          : state === "done"
+                            ? "bg-brand-600 text-white"
+                            : "border border-gray-300"
+                      }`}
+                    >
+                      {state === "done" ? <CheckIcon size={10} weight="bold" /> : n}
+                    </span>
+                    {stepLabels?.[i]}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         )}
 
@@ -140,11 +188,39 @@ export function StartShell({
         )}
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10">
+      {/* The card, and beside it whatever the screen puts OUTSIDE it. One grid
+          column when there is nothing beside it, so every other screen is
+          byte-identical to before. */}
+      <div
+        className={`relative z-10 flex min-h-0 flex-1 flex-col ${
+          aside ? "gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start" : ""
+        }`}
+      >
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10">
         <div className="shrink-0 start-enter">
           {stepCount > 1 && (
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400 sm:hidden">
               Step {step} of {stepCount}
+              {stepLabels?.[step - 1] ? ` · ${stepLabels[step - 1]}` : ""}
+            </p>
+          )}
+          {brand && (
+            /* The website the visitor typed on the landing, at the head of every
+               screen: their own logo and host, so the form reads as theirs and
+               not as a generic one. The host only: no brand NAME exists before
+               brand-service resolves it at signup, and a guessed one is worse
+               than none. */
+            <p
+              className="mb-3 flex items-center gap-2.5 text-sm text-gray-500"
+              data-landing-brand-eyebrow={brand.host}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
+                <BrandLogo domain={brand.host} size={24} className="rounded-md" fallbackClassName="text-gray-300" />
+              </span>
+              <span className="min-w-0 truncate">
+                Setting this up for{" "}
+                <span className="font-medium text-gray-900">{brand.host}</span>
+              </span>
             </p>
           )}
           <h1 className="mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
@@ -153,21 +229,35 @@ export function StartShell({
           {subtitle && <div className="mt-3 max-w-2xl text-base text-gray-500">{subtitle}</div>}
         </div>
 
-        {/* Scrolls only when it must. The desktop card is wide enough that the
-            outcome and funnel screens fit without scrolling; the channel screen
-            (production publishes 31 behind one outcome) is the one that overflows,
-            and it scrolls inside the card so the footer stays on screen. */}
+        {/* Scrolls only when it must. The desktop card is wide enough that both
+            question screens fit without scrolling; anything longer scrolls inside
+            the card so the footer stays on screen. */}
         {/* Bled 4px on every side (`-m-1 p-1`): a selected card wears a 2px ring OUTSIDE
             its border and a hovered one lifts 2px, and an overflow box clips both at its
             edge. Without the bleed the outline on every edge card was cut off. */}
-        <div className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
+        <div ref={bodyRef} className="-m-1 mt-5 min-h-0 flex-1 overflow-y-auto p-1">{children}</div>
 
         <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
+      </div>
+      {aside && (
+        <div className="relative z-10 min-w-0" data-start-aside>
+          {aside}
+        </div>
+      )}
       </div>
 
       {/* The landing's trust strip, under the card rather than in the hero, so it
           reads as reassurance and not as a claim the screen is making. */}
       <div className="relative z-10 hidden items-center justify-center gap-3 py-1 sm:flex">
+        {reassurance ? (
+          <p className="flex items-baseline gap-2 text-sm text-gray-500" data-reassurance>
+            <span className="font-display text-xl font-medium tracking-tight text-gray-900">
+              {reassurance.figure}
+            </span>
+            {reassurance.label}
+          </p>
+        ) : (
+          <>
         <div className="flex">
           {FACES.map((f, i) => (
             <img
@@ -186,6 +276,8 @@ export function StartShell({
           </span>
           <span data-founder-count>{foundersText}</span>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -306,7 +398,7 @@ export function StartOption({
         <div className="min-w-0">
           <div className="font-display text-base font-medium leading-tight text-gray-900">{title}</div>
           {description && (
-            <div className="mt-1 line-clamp-3 text-sm leading-snug text-gray-500">{description}</div>
+            <div className="mt-1 text-sm leading-snug text-gray-500">{description}</div>
           )}
         </div>
       </div>
@@ -394,7 +486,10 @@ export function StartPathOption({
 
       <div className="flex items-center gap-3 pr-8">
         {mark && <span className="shrink-0">{mark}</span>}
-        <span className="min-w-0 truncate font-display text-base font-medium leading-tight text-gray-900">
+        {/* WRAPS, never truncates. The title is the path's own name and it is what
+            the row is called; "Sales Meeting from Po..." on a phone cuts off the
+            half that tells two paths apart. Same reasoning as the rungs below. */}
+        <span className="min-w-0 font-display text-base font-medium leading-tight text-gray-900">
           {title}
         </span>
         {meta && (
@@ -427,18 +522,6 @@ export function StartPathOption({
 
       {children && <div className="text-xs text-gray-500">{children}</div>}
     </button>
-  );
-}
-
-/** The heading above one family of channels. */
-export function StartGroupLabel({ children, count }: { children: ReactNode; count: number }) {
-  return (
-    <h2 className="mb-3 mt-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400 first:mt-0">
-      {children}
-      <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">
-        {count}
-      </span>
-    </h2>
   );
 }
 
@@ -487,4 +570,159 @@ export function CountUp({
     return () => cancelAnimationFrame(raf);
   }, [value, durationMs]);
   return <span data-count-up={value}>{format(shown)}</span>;
+}
+
+/**
+ * One path on the returns screen: what our clients got back on it per dollar,
+ * and what a first step costs.
+ *
+ * A ROW rather than a card, because the returns screen is the last one before
+ * signup and the owner wants every figure on it visible without scrolling.
+ *
+ * The channel is NOT named: there is one, so naming it beside every path states
+ * the only answer there is over and over (it was also named twice on one row).
+ * Every figure is rendered verbatim off the producer's read; nothing here
+ * divides. The headline is the middle half of what clients got back (the
+ * quartiles) and the median sits under it. An unmeasured path says so. The
+ * line that stated the best workflow's first-step price is gone: owner-cut
+ * 2026-09-18, it read as a bad number on the one screen meant to sell.
+ */
+export function StartReturnRow({
+  index = 0,
+  funnelMark,
+  funnelName,
+  median,
+  p25,
+  p75,
+  reasonLabel,
+  formatReturn,
+}: {
+  index?: number;
+  funnelMark: ReactNode;
+  funnelName: string;
+  median: number | null;
+  p25: number | null;
+  p75: number | null;
+  reasonLabel: string;
+  formatReturn: (x: number) => string;
+}) {
+  const measured = median != null;
+  const range = p25 != null && p75 != null;
+  return (
+    <div
+      className="start-enter flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-gray-200 bg-white px-4 py-3"
+      style={{ "--enter-delay": `${index * 60}ms` } as CSSProperties}
+    >
+      <div className="flex shrink-0 items-center">{funnelMark}</div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900">{funnelName}</p>
+        {!measured && <p className="mt-0.5 text-xs text-gray-500 sm:truncate">{reasonLabel}</p>}
+      </div>
+      <div className="basis-full shrink-0 pl-[44px] sm:basis-auto sm:pl-0 sm:text-right">
+        {measured ? (
+          <>
+            <p className="font-display text-2xl leading-none tracking-tight text-gray-900">
+              {range ? (
+                <>
+                  <CountUp value={p25} format={formatReturn} />
+                  <span className="mx-1 text-base text-gray-400">to</span>
+                  <CountUp value={p75} format={formatReturn} />
+                </>
+              ) : (
+                <CountUp value={median} format={formatReturn} />
+              )}
+              <span className="ml-1 text-xs font-normal text-gray-500">back per dollar</span>
+            </p>
+            {range && (
+              <p className="mt-1 text-xs text-gray-500">{formatReturn(median)} median ROI</p>
+            )}
+          </>
+        ) : (
+          <p className="font-display text-base text-gray-400">Not measured yet</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A named client's card beside the returns: the person, what they got back on
+ * the budget they paid, the path it ran on, the first step's price, the counts.
+ * The homepage's proof card, in the same order, so a visitor who came from it
+ * reads the same people. The path is NAMED because the cards are the top three
+ * returns whatever path they ran, not the paths the visitor picked.
+ */
+export function StartProofCard({
+  index = 0,
+  portrait,
+  name,
+  role,
+  funnelName,
+  returnPerDollar,
+  firstStep,
+  counts,
+  formatReturn,
+}: {
+  index?: number;
+  portrait: string;
+  name: string;
+  role: string;
+  funnelName: string;
+  returnPerDollar: number;
+  firstStep: { label: string; costPerReachUsd: number | null } | null;
+  counts: { label: string; peopleReached: number }[];
+  formatReturn: (x: number) => string;
+}) {
+  return (
+    <article
+      // Dense on purpose: three cards stack beside the rows and all three have
+      // to sit above the fold at 1440x900 (the third clipped under the CTA at
+      // p-4 / text-3xl, measured on the live page).
+      className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-3"
+      style={
+        {
+          "--enter-delay": `${200 + index * 90}ms`,
+        } as CSSProperties
+      }
+      data-proof-card
+    >
+      <div className="flex items-center gap-3">
+        <img src={portrait} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-gray-900">{name}</p>
+          <p className="truncate text-xs text-gray-500">{role}</p>
+        </div>
+      </div>
+      <p className="mt-2 font-display text-2xl leading-none tracking-tight text-gray-900">
+        {formatReturn(returnPerDollar)}
+        <span className="ml-2 text-xs font-normal leading-tight text-gray-500">
+          return on paid budget
+        </span>
+      </p>
+      {firstStep && firstStep.costPerReachUsd != null && (
+        <p className="mt-1 flex justify-between text-xs text-gray-500">
+          <span>Cost per {firstStep.label.toLowerCase()}</span>
+          <b className="font-medium text-gray-900">
+            ${Math.round(firstStep.costPerReachUsd).toLocaleString("en-US")}
+          </b>
+        </p>
+      )}
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+        {counts.map((c) => (
+          <span key={c.label}>
+            <b className="font-medium text-gray-900">{c.peopleReached.toLocaleString("en-US")}</b>{" "}
+            {c.label.toLowerCase()}
+          </span>
+        ))}
+      </div>
+      <p className="mt-1 flex justify-between gap-2 text-xs text-gray-500">
+        <span>Path</span>
+        <b className="min-w-0 truncate text-right font-medium text-gray-900">{funnelName}</b>
+      </p>
+      <p className="mt-1 flex justify-between text-xs text-gray-500">
+        <span>Channel</span>
+        <b className="font-medium text-gray-900">Cold email</b>
+      </p>
+    </article>
+  );
 }

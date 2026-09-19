@@ -404,6 +404,22 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
   return { type: "app" };
 }
 
+/**
+ * The cold-email estate, one page per object. Declared once so the section's
+ * order, labels and hrefs live in a single place — a nav entry whose route does
+ * not exist is a 404 nothing catches, and a route with no nav entry is a page
+ * nobody can reach.
+ */
+const COLD_EMAIL_ROOT = "/audit/cold-email";
+const COLD_EMAIL_ITEMS: SidebarItem[] = [
+  { id: "cold-email-overview", label: "Overview", href: COLD_EMAIL_ROOT, icon: <AuditIcon /> },
+  { id: "cold-email-domains", label: "Domains", href: `${COLD_EMAIL_ROOT}/domains`, icon: <AuditIcon /> },
+  { id: "cold-email-mailboxes", label: "Mailboxes", href: `${COLD_EMAIL_ROOT}/mailboxes`, icon: <AuditIcon /> },
+  { id: "cold-email-accounts", label: "Accounts", href: `${COLD_EMAIL_ROOT}/accounts`, icon: <AuditIcon /> },
+  { id: "cold-email-inbox", label: "Inbox", href: `${COLD_EMAIL_ROOT}/inbox`, icon: <AuditIcon /> },
+  { id: "cold-email-rules", label: "Rules", href: `${COLD_EMAIL_ROOT}/rules`, icon: <AuditIcon /> },
+];
+
 // App Level Sidebar
 function AppLevelSidebar({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
@@ -451,13 +467,25 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           isActive={pathname.startsWith("/audit/accounts")}
         />
         <SidebarLink
-          item={{ id: "audit-instantly", label: "Instantly", href: "/audit/instantly", icon: <AuditIcon /> }}
-          isActive={pathname.startsWith("/audit/instantly")}
-        />
-        <SidebarLink
           item={{ id: "audit-config", label: "Claude config", href: "/audit/config", icon: <AuditIcon /> }}
           isActive={pathname.startsWith("/audit/config")}
         />
+      </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Cold email</h4>
+        {COLD_EMAIL_ITEMS.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={
+              // The Overview lives at the section root, so it must match EXACTLY
+              // or it lights up on every page under it.
+              item.href === COLD_EMAIL_ROOT
+                ? pathname === COLD_EMAIL_ROOT
+                : pathname.startsWith(item.href)
+            }
+          />
+        ))}
       </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
@@ -511,6 +539,19 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         <SidebarLink
           item={{ id: "investor-deck", label: "Investor deck", href: "/investors/deck", icon: <InvestorDeckIcon /> }}
           isActive={pathname.startsWith("/investors/deck")}
+        />
+      </div>
+
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Newsletter</h4>
+        <SidebarLink
+          item={{
+            id: "newsletter-release",
+            label: "Release",
+            href: "/newsletter",
+            icon: <InvestorUpdateIcon />,
+          }}
+          isActive={pathname.startsWith("/newsletter")}
         />
       </div>
     </SidebarSection>

@@ -137,6 +137,25 @@ export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey
 }
 
 /**
+ * The same collapse, for a key that came from OUTSIDE the wire contract.
+ *
+ * `normalizeSalesFunnelKey` throws on purpose: everywhere it is called the key
+ * arrived from a service whose column is CHECK-constrained, so an unknown value
+ * is a drift we want to see. A key read out of a COOKIE is a different thing —
+ * it is untrusted input a visitor can hand-edit and a week-old selection can
+ * carry after the catalogue has moved — and refusing it is the whole of the
+ * correct behaviour, exactly as `decodeStartSelection` refuses a payload it
+ * cannot read. Null means "not a funnel this app offers", never an error.
+ */
+export function salesFunnelKeyOrNull(key: string): SalesFunnelKey | null {
+  try {
+    return normalizeSalesFunnelKey(key as SalesFunnelKeyWire);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Rate fields, named exactly as brand-service stores them. Every one of these
  * also exists on the brand's BLENDED sales economics, so an undeclared funnel
  * can seed a first guess from what the brand already saved.
@@ -216,11 +235,11 @@ const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
     tip: "Of leads who sign up, the share that become paying customers.",
   },
   visitToFormSubmissionPct: {
-    label: "Website visit → form filled",
+    label: "Website visit → form submitted",
     tip: "Of leads who visit your website, the share that submit a form.",
   },
   formSubmissionToPaidClientPct: {
-    label: "Form filled → paid client",
+    label: "Form submitted → paid client",
     tip: "Of leads who submit a form, the share that become paying customers.",
   },
   replyToPaidClientPct: {
@@ -228,7 +247,7 @@ const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
     tip: "Of leads who reply wanting to talk, the share that become paying customers without a meeting ever being booked.",
   },
   leadFormToPaidClientPct: {
-    label: "Lead form submitted → paid client",
+    label: "Form submitted → paid client",
     tip: "Of leads who fill a form inside the ad, the share that become paying customers.",
   },
   visitToClosePct: {
@@ -322,8 +341,8 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     key: "visit_form",
     name: "Form Magnet",
-    steps: ["Website visit", "Form filled", "Paid client"],
-    stepKeys: ["website_visit", "form_filled", "paid_client"],
+    steps: ["Website visit", "Form submitted", "Paid client"],
+    stepKeys: ["website_visit", "form_submitted", "paid_client"],
     legs: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
     goal: "form_submissions",
     requiresWebsite: true,
@@ -367,12 +386,14 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     // Gen Forms — filled without the buyer ever touching the brand's site.
     // Deliberately GENERAL: the same funnel prices a webinar signup, a guide
     // download and a quote request, so naming it after one would exclude the
-    // others. It is why `lead_form_submitted` is its OWN step and not the site's
-    // `form_filled`: what differs is whether a visit happened first.
+    // others. ONE form step product-wide (owner-decided 2026-09-18: "on laisse
+    // juste Form submitted dans notre système"): the ad's form and the site's form
+    // are the same thing a buyer does, and what differs is the FUNNEL, i.e. whether
+    // a website visit came first.
     key: "lead_forms_from_ads",
     name: "Lead Form from Ads",
-    steps: ["Lead form submitted", "Paid client"],
-    stepKeys: ["lead_form_submitted", "paid_client"],
+    steps: ["Form submitted", "Paid client"],
+    stepKeys: ["form_submitted", "paid_client"],
     legs: ["leadFormToPaidClientPct"],
     goal: "form_submissions",
     requiresWebsite: false,

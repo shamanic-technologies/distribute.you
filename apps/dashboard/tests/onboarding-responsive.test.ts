@@ -51,9 +51,13 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).not.toContain("min-h-[100dvh]");
     // Every step routes through the shared shell (no inline card wrappers left).
     // The count dropped from 20 when the brand-level steps (destination / objective
-    // / rates / ltr) went with the flow that asked them.
+    // / rates / ltr) went with the flow that asked them, and rose to 17 with the
+    // `built` step — what we assembled, stated back before anyone is asked for an
+    // account. ⚠️ This is a count over the WHOLE file, so it goes red on any step
+    // added or removed; what it is actually asserting is that no step renders its
+    // own card wrapper. Re-count it, do not delete it.
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
-    expect(shellUses.length).toBe(16);
+    expect(shellUses.length).toBe(17);
     // The first-run account widget rides the step's own header row on mobile
     // instead of a bar of its own above the Brand card, so a step with a header
     // spends one row where it used to spend two. Gated on the escape chrome not
