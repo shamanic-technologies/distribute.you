@@ -107,6 +107,6 @@ describe("onboarding in-progress brand cookie (wiring)", () => {
     expect(onboardingSrc).toContain(
       'if (!resumeBrandIdParam || restored || searchParams.get("launch_checkout")) return;',
     );
-    expect(onboardingSrc).toContain('await runResume("funnels", seededUrl);');
+    expect(onboardingSrc).toContain('await runResume("outcome", seededUrl);');
   });
 });

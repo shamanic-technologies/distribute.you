@@ -54,29 +54,25 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("declareBrandSalesFunnel");
     expect(src).toContain("saveBrandUserFields");
     expect(src).toContain("createCampaign");
-    // Activation is committed ONCE at the terminal launch: the picked set becomes the
-    // brand's EXACT active set (list current active, demote non-picked back to
-    // "suggested", then activate the picks) — so a re-roll / re-onboarding OVERRIDES
-    // the prior selection instead of stacking stale `active` rows.
-    expect(src).toContain('listAudiences(pending.brandId, { status: "active" })');
-    expect(src).toContain('setAudienceStatus(a.id, "suggested")');
-    expect(src).toContain('setAudienceStatus(audienceId, "active")');
+    // NO audience is activated at launch: onboarding collects the customer's
+    // target audience in their own words, and the audiences are built by hand
+    // after payment.
+    expect(src).not.toContain("listAudiences(");
+    expect(src).not.toContain("setAudienceStatus(");
     // No brand-service persona create at launch.
     expect(src).not.toContain("createPersona");
     expect(src).not.toContain("persistPersonaDraftsForLaunch");
   });
 
-  it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
-    // The audience step calls human-service `/suggest` (via the gateway) and shows
-    // ONE candidate per audience; each candidate is already persisted at status
-    // "suggested". Selecting a pick only records it in `selectedAudienceIds` — the
-    // audience step does NOT activate (that would stack stale `active` rows on a
-    // re-roll). Activation happens once at the terminal launch (see the next test).
-    expect(src).toContain("suggestAudiences");
+  it("replaces the persona step with ONE target-audience box, and searches nothing", () => {
+    // The audience step is a single textarea saved on the brand as the
+    // `targetAudience` user-field. No suggest, no candidates, no picks: the
+    // audiences are built by hand after payment, from this text.
+    expect(src).not.toContain("suggestAudiences");
     expect(src).not.toContain("createAudience");
     expect(src).toContain('step === "audiences"');
-    expect(src).toContain("Who do you want to reach?");
-    expect(src).toContain("Suggest audiences");
+    expect(src).toContain("Who do you sell to?");
+    expect(src).toContain("saveBrandTargetAudience(id, text)");
     // The visible persona step is gone (audiences replaced it).
     expect(src).not.toContain('step === "personas"');
   });
@@ -86,21 +82,16 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Drafting your ideal customer profile");
   });
 
-  it("pre-warms the audience step during the loading screen (ICP + suggest in background)", () => {
-    // During hydrateOnboardingInBackground (loading screen) we draft the ICP AND
-    // fire the audience suggest, stash it in state, and feed it to the step as a
-    // `prefetch` prop so candidates are ready on arrival.
+  it("pre-warms the audience step during the loading screen (ICP draft ONLY)", () => {
+    // During hydrateOnboardingInBackground (loading screen) we draft the ICP,
+    // stash it in state, and feed it to the step as a `prefetch` prop so the box
+    // is filled on arrival. No suggest runs: its result was never read before
+    // payment and it was ~35 s of billed LLM + people-search per signup.
     expect(src).toContain("setAudiencePrefetch");
-    expect(src).toContain("audience prewarm (ICP + suggest)");
+    expect(src).toContain("audience prewarm (ICP draft)");
     expect(src).toContain("prefetch={audiencePrefetch}");
-    // The prewarm runs ICP then suggestAudiences in the parent (background).
-    expect(src).toMatch(/suggestBrandIcp\(id\)[\s\S]{0,400}suggestAudiences\(id, prompt\)/);
-    // BOTH paths auto-fire the suggest — zero click. The no-prewarm path always did;
-    // the prewarm path only did when it came back WITH candidates, so a prewarm whose
-    // ICP threw (which skips suggestAudiences entirely) left the step looking like it
-    // merely wanted a click. `seeded` is whichever sentence we ended up with.
-    expect(src).toContain("void runSuggest(seeded)");
-    expect(src.match(/void runSuggest\(seeded\)/g)?.length).toBe(2);
+    expect(src).toContain("suggestBrandIcp(id)");
+    expect(src).not.toContain("runSuggest");
   });
 
   it("asks which services to promote and persists them on the brand profile", () => {
@@ -123,8 +114,11 @@ describe("Beta onboarding guided flow", () => {
     // The standalone goal picker is gone: the funnel the brand picks as primary IS
     // the optimization goal, so the question is asked once, in the words the brand
     // already used to describe how it sells.
-    expect(src).toContain("primary sales funnel goal with us today");
+    // The primary IS the first path picked on the sell-first screens; the radio
+    // step that re-asked it is gone with the funnel step.
+    expect(src).not.toContain("primary sales funnel goal with us today");
     expect(src).not.toContain("What is your primary sales goal?");
+    expect(src).toContain("resolvePrimaryKey(selectedFunnelKeys, primaryFunnelKey)");
     for (const unit of ["signups", "meetings"]) {
       expect(src).toContain(unit);
     }
@@ -179,8 +173,8 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("onboarding has no brand-service persona path (audiences only)", () => {
-    // The whole brand-service persona path is gone — onboarding creates audiences
-    // via human-service /suggest + setAudienceStatus, nothing else.
+    // The whole brand-service persona path is gone — onboarding creates NO
+    // audience at all now; it saves the target audience text on the brand.
     expect(src).not.toContain("setPersonaDrafts");
     expect(src).not.toContain("persistPersonaDraftsForLaunch");
     expect(src).not.toContain("seedOnboardingPersonaFromBrandInfo");
@@ -194,7 +188,7 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {
-    expect(src).toContain("audience prewarm (ICP + suggest)");
+    expect(src).toContain("audience prewarm (ICP draft)");
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields failed");
     expect(src).toContain("displaySetupError");

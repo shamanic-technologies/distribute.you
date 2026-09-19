@@ -33,8 +33,13 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("restored?.rates ??");
     expect(src).toContain("restored?.services ??");
     expect(src).toContain("restored?.audiencePrompt ??");
-    expect(src).toContain("restored?.audienceCandidates ??");
-    expect(src).toContain("restored?.selectedAudienceIds ??");
+    // The candidate list and the picks are no longer state: the audiences are
+    // built by hand after payment. Both fields stay on the persisted SHAPE (a
+    // removal is a version bump) and are written empty.
+    expect(src).not.toContain("restored?.audienceCandidates ??");
+    expect(src).not.toContain("restored?.selectedAudienceIds ??");
+    expect(src).toContain("audienceCandidates: null,");
+    expect(src).toContain("selectedAudienceIds: [],");
     expect(src).toContain("restored?.brandId ??");
     // edited-guards restored so a resume's re-extraction can't clobber user edits.
     expect(src).toContain("restored?.servicesEdited ??");
@@ -105,9 +110,11 @@ describe("Beta onboarding resume persistence", () => {
   it("survives a version bump mid-checkout: reconstructs state from top-level fields instead of nuking the brand", () => {
     // The nested onboardingState is version-guarded; a bump landing while the user is at
     // checkout must NOT throw away the whole blob (brand + budget live at the top level).
-    // selectedAudienceIds is lifted to the top level so even the audience gate survives.
+    // selectedAudienceIds stays on the blob's top level (older readers expect it),
+    // written EMPTY now that onboarding picks no audience.
     expect(src).toContain("selectedAudienceIds: string[];"); // on PendingCheckoutLaunch
     expect(src).toContain("selectedAudienceIds: launchAudienceIds,"); // written at checkout
+    expect(src).toContain("const launchAudienceIds: string[] = [];");
     expect(src).toContain("function reconstructCheckoutOnboardingState");
     // strict reader reconstructs rather than throwing on a stale nested state
     const reader = src.slice(
@@ -115,8 +122,8 @@ describe("Beta onboarding resume persistence", () => {
       src.indexOf("// Coerce a stored profile field"),
     );
     expect(reader).toContain("onboardingState = reconstructCheckoutOnboardingState(parsed, selectedAudienceIds);");
-    // launch audience gate reads the top-level field first
-    expect(src).toContain("storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds");
+    // There is no launch audience gate any more (nothing is picked to gate on).
+    expect(src).not.toContain("Pick at least one audience before launching");
   });
 
   it("carries the v2 funnel selection across the Stripe round-trip", () => {
@@ -187,28 +194,25 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "celebrate"');
   });
 
-  it("activates the picked audiences as the terminal launch commit", () => {
-    // A launched campaign with zero active audiences is a hard dead end (the
-    // "No active audience yet" blocker). completeLaunchAfterCheckout activates the
-    // selected audiences idempotently before campaign create; fail-loud if none.
+  it("activates NO audience at the terminal launch: they are built by hand after payment", () => {
     const launch = src.slice(
       src.indexOf("async function runLaunchWork"),
       src.indexOf("function startBackgroundLaunch"),
     );
-    expect(launch).toContain("const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];");
-    expect(launch).toContain('await setAudienceStatus(audienceId, "active");');
-    expect(launch).toContain("if (launchAudienceIds.length === 0) {");
+    expect(launch).not.toContain("setAudienceStatus");
+    expect(launch).not.toContain("listAudiences(");
+    expect(launch).not.toContain("selectedAudienceIds");
+    // The auto-topup arm still runs first, as before.
+    expect(launch).toContain("await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);");
   });
 
-  it("blocks launch when no audience is selected (no audience-less launch)", () => {
-    // The guard lives in the shared buildPendingLaunchBlob, called by BOTH the Stripe
-    // checkout path (beginCheckoutAndLaunch) and the direct path (launchDirectlyWithoutCheckout).
+  it("does not gate the launch on an audience pick (there is none to make)", () => {
     const build = src.slice(
       src.indexOf("function buildPendingLaunchBlob"),
       src.indexOf("async function beginCheckoutAndLaunch"),
     );
-    expect(build).toContain("const launchAudienceIds = selectedAudienceIds.length");
-    expect(build).toContain("if (launchAudienceIds.length === 0) {");
+    expect(build).not.toContain("if (launchAudienceIds.length === 0) {");
+    expect(build).toContain("const launchAudienceIds: string[] = [];");
   });
 
   it("persists pricing and audience display state, not only launch state", () => {
@@ -216,6 +220,7 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("salesInputs: salesInputsRef.current");
     expect(src).toContain("launchFeatureInputs: launchFeatureInputsRef.current");
     expect(src).toContain("audiencePrompt");
+    // Still on the persisted SHAPE (tolerated on read, written empty).
     expect(src).toContain("audienceCandidates");
     expect(src).toContain("selectedAudienceIds");
     expect(src).toContain("isWorkflowProjectionResponse");

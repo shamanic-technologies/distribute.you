@@ -68,10 +68,13 @@ export function NoAudienceBanner() {
     String(nudge.remainingPct ?? 0),
   );
 
+  // Red is for a state the customer must act on. "We are building it" is ours
+  // to act on, so it wears the brand colour and reads as a status, not an alarm.
+  const building = nudge.tier === "zero-active";
   return (
     <div
-      className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-red-600 px-4 py-2 text-sm text-white"
-      role="alert"
+      className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-white ${building ? "bg-brand-600" : "bg-red-600"}`}
+      role={building ? "status" : "alert"}
     >
       <span className="flex items-center gap-2 font-medium">
         <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,17 +87,19 @@ export function NoAudienceBanner() {
         </svg>
         {message}
       </span>
-      <Link
-        href={audienceCtaHref({
-          orgId,
-          brandId,
-          routeOfferId,
-          offers: offersData?.offers,
-        })}
-        className="rounded-full bg-white/15 px-3 py-0.5 font-semibold ring-1 ring-white/25 transition hover:bg-white/25"
-      >
-        {copy.cta} →
-      </Link>
+      {copy.cta && (
+        <Link
+          href={audienceCtaHref({
+            orgId,
+            brandId,
+            routeOfferId,
+            offers: offersData?.offers,
+          })}
+          className="rounded-full bg-white/15 px-3 py-0.5 font-semibold ring-1 ring-white/25 transition hover:bg-white/25"
+        >
+          {copy.cta} →
+        </Link>
+      )}
     </div>
   );
 }

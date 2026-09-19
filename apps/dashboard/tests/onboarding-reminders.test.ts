@@ -91,8 +91,12 @@ describe("nextReminder", () => {
     );
   });
 
-  it("shows audience when topup is fine but no active audience", () => {
-    expect(nextReminder({ ...base, audienceNudge: ZERO })).toBe("audience");
+  it("shows NO reminder for a brand with no active audience yet: those are built by hand after payment", () => {
+    // Onboarding no longer has the customer pick audiences; the brand's audiences
+    // are built from the target-audience text once they have paid. A modal asking
+    // them to add one would nag them about our own work in progress.
+    expect(nextReminder({ ...base, audienceNudge: ZERO })).toBeNull();
+    expect(nextReminder({ ...base, audienceNudge: ZERO, audienceDismissed: false })).toBeNull();
   });
 
   it("shows audience when active audiences are all exhausted", () => {
@@ -108,7 +112,7 @@ describe("nextReminder", () => {
       nextReminder({
         ...base,
         hasAutoTopup: false,
-        audienceNudge: ZERO,
+        audienceNudge: EXHAUSTED,
         topupDismissed: true,
       }),
     ).toBe("audience");
@@ -161,7 +165,7 @@ describe("nextReminder", () => {
           ...blocked,
           outOfCredit: true,
           topupDismissed: true,
-          audienceNudge: ZERO,
+          audienceNudge: EXHAUSTED,
         }),
       ).toBe("audience");
     });

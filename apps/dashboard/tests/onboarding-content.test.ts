@@ -16,7 +16,7 @@ const banners = [
 const allCopy = [
   ...WELCOME_STEPS.flatMap((s) => [s.title, s.description]),
   ...Object.values(REMINDER_COPY).flatMap((c) => [c.title, c.body, c.cta]),
-  ...banners.flatMap((b) => [b.message, b.cta]),
+  ...banners.flatMap((b): string[] => (b.cta ? [b.message, b.cta] : [b.message])),
 ];
 
 describe("onboarding copy", () => {
@@ -47,9 +47,20 @@ describe("onboarding copy", () => {
     expect(onBehalf?.description).toMatch(/will not read exactly like this/);
   });
 
-  it("reminder copy names both blockers with a CTA", () => {
+  it("reminder copy names the funding blocker with a CTA, and has NO 'add an audience' ask", () => {
     expect(REMINDER_COPY.topup.cta).toMatch(/auto top-up/i);
-    expect(REMINDER_COPY.audience.cta).toMatch(/audience/i);
+    // The audiences are built by hand after payment, from the target-audience text
+    // the customer typed in onboarding. Asking them to add one contradicts that.
+    expect("audience" in REMINDER_COPY).toBe(false);
+    expect(REMINDER_COPY.audienceExhausted.cta).toMatch(/audience/i);
+  });
+
+  it("the no-audience banner states our work in progress and offers no CTA", () => {
+    expect(NO_AUDIENCE_BANNER_COPY.message).toMatch(/building your audiences/i);
+    expect(NO_AUDIENCE_BANNER_COPY.cta).toBeNull();
+    // The other two states are the customer's to act on and keep theirs.
+    expect(AUDIENCE_EXHAUSTED_BANNER_COPY.cta).toMatch(/audience/i);
+    expect(AUDIENCE_LOW_REMAINING_BANNER_COPY.cta).toMatch(/audience/i);
   });
 
   it("recharge reminder (auto-reload-blocked card) asks for credits, not auto-topup", () => {

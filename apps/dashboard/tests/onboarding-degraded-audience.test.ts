@@ -31,11 +31,6 @@ const ONBOARDING = readFileSync(
 );
 const API = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
-const CARD = ONBOARDING.slice(
-  ONBOARDING.indexOf("function AudienceCandidateCard("),
-  ONBOARDING.indexOf("function BrandStepHeader("),
-);
-
 describe("degraded is read off the wire, optional", () => {
   it("declares degraded on the candidate type", () => {
     expect(API).toContain("degraded?: boolean;");
@@ -46,47 +41,12 @@ describe("degraded is read off the wire, optional", () => {
   });
 });
 
-describe("the audience card states it", () => {
-  it("reads the served flag and never infers one", () => {
-    expect(CARD).toContain("candidate.degraded === true");
-    expect(CARD).not.toContain("degraded = candidate.count");
-  });
-
-  it("says in plain words that the audience deserves a look, and what to look at", () => {
-    expect(CARD).toContain("Check this one");
-    expect(CARD).toContain(
-      "This may not match what you asked for. Read the filters before you pick it.",
-    );
-  });
-
-  it("wears a tint that is remapped in dark, with a full-perimeter 1px border", () => {
-    expect(CARD).toContain("border border-orange-200 bg-orange-50");
-    expect(CARD).toContain("text-orange-700");
-  });
-
-  it("carries no coloured side or top border accent", () => {
-    expect(CARD).not.toContain("border-l-");
-    expect(CARD).not.toContain("border-r-");
-    expect(CARD).not.toContain("border-t-");
-  });
-
-  it("adds no em-dash anywhere in the card, comments included", () => {
-    // Deliberately file-wide rather than scoped to the strings: a comment that
-    // spells the forbidden character is one find-and-replace away from becoming
-    // copy, and this guard is cheaper to satisfy than to reason about.
-    expect(CARD).not.toContain("\u2014");
-  });
-});
-
-describe("it is information, never a gate", () => {
-  it("keeps a degraded candidate selectable: the toggle is unconditional and the card is never disabled", () => {
-    expect(CARD).toContain("onClick={onToggle}");
-    expect(CARD).not.toContain("degraded ? undefined : onToggle");
-    expect(CARD).not.toContain("disabled=");
-  });
-
-  it("does not filter, hide or sort candidates by it", () => {
-    expect(ONBOARDING).not.toContain("filter((c) => !c.degraded");
-    expect(ONBOARDING).not.toContain(".degraded ? 1 :");
+describe("onboarding renders no audience card any more", () => {
+  // The onboarding audience step became a single target-audience box (the
+  // audiences are built by hand after payment), so the degraded badge has no
+  // onboarding surface. The flag still travels the wire for the audiences page.
+  it("carries no candidate card", () => {
+    expect(ONBOARDING).not.toContain("function AudienceCandidateCard(");
+    expect(ONBOARDING).not.toContain("candidate.degraded");
   });
 });

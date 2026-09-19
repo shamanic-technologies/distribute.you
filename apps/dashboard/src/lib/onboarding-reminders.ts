@@ -103,7 +103,11 @@ export function nextReminder(state: ReminderState): ReminderKind | null {
     ? !state.hasAutoTopup
     : (state.outOfCredit ?? false);
   if (fundingNeeded && !state.topupDismissed) return "topup";
-  if (state.audienceNudge.tier !== "none" && !state.audienceDismissed)
+  // `zero-active` is NOT a reminder: a brand's audiences are built by hand after
+  // payment from what it told us in onboarding, so there is nothing to ask the
+  // customer to do. The banner states that; a modal would nag them about our work.
+  const tier = state.audienceNudge.tier;
+  if (tier !== "none" && tier !== "zero-active" && !state.audienceDismissed)
     return "audience";
   return null;
 }
