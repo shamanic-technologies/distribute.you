@@ -13,6 +13,7 @@ describe("Platform config registration at startup", () => {
       { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
       { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
       { provider: "google", envVar: "GEMINI_API_KEY" },
+      { provider: "typesafe", envVar: "TYPESAFE_API_KEY" },
       { provider: "postmark", envVar: "POSTMARK_API_KEY" },
       { provider: "postmark-broadcast-stream", envVar: "POSTMARK_BROADCAST_STREAM_ID" },
       { provider: "postmark-inbound-stream", envVar: "POSTMARK_INBOUND_STREAM_ID" },
@@ -64,9 +65,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 40 platform keys", () => {
+    it("should register exactly 41 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(40);
+      expect(matches).toHaveLength(41);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
