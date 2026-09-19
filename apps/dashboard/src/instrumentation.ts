@@ -285,6 +285,13 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "primeforge", envVar: "PRIMEFORGE_API_KEY" },
   { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
   { provider: "google", envVar: "GEMINI_API_KEY" },
+  // TypeSafe (model "Jev") — typed judgements, not generated text: it answers a
+  // closed question with a value PLUS a calibrated probability distribution, which
+  // is what lets a consumer decline to act on a low-confidence answer. chat-service
+  // resolves this through `GET /keys/platform/typesafe/decrypt`, so the provider
+  // string is byte-critical — a rename reads as "vendor unreachable", not as a
+  // config error. Billed on INPUT tokens only; the vendor charges nothing for output.
+  { provider: "typesafe", envVar: "TYPESAFE_API_KEY" },
   { provider: "postmark", envVar: "POSTMARK_API_KEY" },
   { provider: "postmark-broadcast-stream", envVar: "POSTMARK_BROADCAST_STREAM_ID" },
   { provider: "postmark-inbound-stream", envVar: "POSTMARK_INBOUND_STREAM_ID" },
