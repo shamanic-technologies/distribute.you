@@ -135,15 +135,14 @@ export const MAX_PROOF_CARDS = 3;
  *
  * Owner-decided (2026-09-18): the cards are the best returns we can name, not
  * the clients who happened to run the paths the visitor picked; each card names
- * its own path instead. Only three consenting clients exist on the read, so
- * "top three" is every one of them the floor lets through.
+ * its own path instead.
  *
- * The FLOOR is what stops a card contradicting the figure beside it: the screen
- * states the fleet's median return in its strip, and a named client under that
- * median reads as "so it does not work for everyone" one inch from a headline
- * saying it does. A card below the floor is dropped, never re-ranked. A null
- * floor (the fleet figure is not held) drops nothing, because then no figure on
- * the screen is there to be contradicted.
+ * There is NO floor (owner-decided 2026-09-19: "toujours 3, le top 3 global en
+ * terme de ROI"). A floor at the fleet median shipped for one day and left ONE
+ * card on the screen, because two of the three consenting clients sit under the
+ * median that the strip beside them states. The owner would rather read three
+ * real returns beside that median than one; the cards are drawn in a random
+ * order by the caller so the list does not read as a ranking.
  *
  * A brand with no measured return has nothing to lead with and draws no card;
  * a rung nobody reached is dropped from the counts rather than printed as a
@@ -151,10 +150,8 @@ export const MAX_PROOF_CARDS = 3;
  */
 export function proofCardsFor(
   brands: ShowcaseBrand[],
-  opts: { minReturnPerDollar: number | null },
   people: Record<string, ShowcasePerson> = SHOWCASE_PEOPLE,
 ): ProofCard[] {
-  const floor = opts.minReturnPerDollar;
   const cards: ProofCard[] = [];
   for (const b of brands) {
     const person = people[b.brand?.domain];
@@ -162,7 +159,6 @@ export function proofCardsFor(
     for (const f of b.funnels ?? []) {
       const ret = f.returnPerDollar;
       if (typeof ret !== "number" || !Number.isFinite(ret) || ret <= 0) continue;
-      if (typeof floor === "number" && Number.isFinite(floor) && ret < floor) continue;
       const steps = f.steps ?? [];
       const first = steps[1] ?? null;
       cards.push({
@@ -186,6 +182,29 @@ export function proofCardsFor(
   }
   cards.sort((a, b) => b.returnPerDollar - a.returnPerDollar);
   return cards.slice(0, MAX_PROOF_CARDS);
+}
+
+/**
+ * A Fisher-Yates shuffle driven by ONE seed in [0, 1), so the caller can pick
+ * the seed once per mount and the order holds across polls and re-renders:
+ * cards that reorder on every tick read as broken. Never mutates its input.
+ */
+export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
+  const out = [...items];
+  // mulberry32 off the seed's 32-bit expansion: small, deterministic, no dep.
+  let state = Math.floor(seed * 0x100000000) >>> 0;
+  const next = () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────

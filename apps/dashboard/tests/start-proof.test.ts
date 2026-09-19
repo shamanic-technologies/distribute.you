@@ -5,6 +5,7 @@ import {
   proofCardsFor,
   reassuranceFor,
   SHOWCASE_PEOPLE,
+  shuffleWithSeed,
   type ShowcaseBrand,
 } from "../src/lib/start-proof";
 
@@ -96,9 +97,9 @@ const SHOWCASE: ShowcaseBrand[] = [
   },
 ];
 
-describe("proofCardsFor: the top three named clients by return, floored at the fleet median", () => {
+describe("proofCardsFor: the top three named clients by return, whatever the fleet median", () => {
   it("orders by return across EVERY path, not the picked ones, and names the path", () => {
-    const cards = proofCardsFor(SHOWCASE, { minReturnPerDollar: null });
+    const cards = proofCardsFor(SHOWCASE);
     expect(cards.map((c) => [c.domain, c.returnPerDollar, c.funnelName])).toEqual([
       ["opsfolio.com", 51.06, "Form Magnet"],
       ["shockwavecenters.com", 3.0555, "Sales Meeting from Positive Reply"],
@@ -107,20 +108,16 @@ describe("proofCardsFor: the top three named clients by return, floored at the f
     // the person is the map's, never the wire's brand name
     expect(cards[0].person).toBe(SHOWCASE_PEOPLE["opsfolio.com"]);
   });
-  it("drops a card under the floor rather than re-ranking it: a 1.6x beside a '5.2x median' strip is the contradiction the floor exists to stop", () => {
-    // prod 2026-09-18: fleet median 5.22x, so only Opsfolio clears it
-    expect(proofCardsFor(SHOWCASE, { minReturnPerDollar: 5.22 }).map((c) => c.domain)).toEqual(["opsfolio.com"]);
-    // a floor exactly at a card's return keeps it
-    expect(proofCardsFor(SHOWCASE, { minReturnPerDollar: 3.0555 }).map((c) => c.domain)).toEqual([
-      "opsfolio.com",
-      "shockwavecenters.com",
-    ]);
+  it("takes NO floor: the owner wants the top three by ROI on screen, always (2026-09-19)", () => {
+    // prod 2026-09-18: fleet median 5.22x, and a floor there left ONE card.
+    expect(proofCardsFor(SHOWCASE).length).toBe(3);
+    expect((proofCardsFor as unknown as { length: number }).length).toBeLessThanOrEqual(2);
   });
   it("draws no card for a brand the people map does not name, whatever its return", () => {
-    expect(proofCardsFor(SHOWCASE, { minReturnPerDollar: null }).map((c) => c.domain)).not.toContain("unnamed.example");
+    expect(proofCardsFor(SHOWCASE).map((c) => c.domain)).not.toContain("unnamed.example");
   });
   it("leads with the first rung after contact and drops rungs nobody reached", () => {
-    const [doc] = proofCardsFor(SHOWCASE, { minReturnPerDollar: null }).filter((c) => c.domain === "docdinners.com");
+    const [doc] = proofCardsFor(SHOWCASE).filter((c) => c.domain === "docdinners.com");
     expect(doc.firstStep).toEqual({ label: "Positive reply", costPerReachUsd: 238.65 });
     expect(doc.counts).toEqual([
       { label: "Contacted", peopleReached: 15595 },
@@ -133,7 +130,21 @@ describe("proofCardsFor: the top three named clients by return, floored at the f
       { ...SHOWCASE[0], measured: false },
       { ...SHOWCASE[2], funnels: [{ ...SHOWCASE[2].funnels[0], returnPerDollar: null }] },
     ];
-    expect(proofCardsFor(unmeasured, { minReturnPerDollar: null })).toEqual([]);
+    expect(proofCardsFor(unmeasured)).toEqual([]);
+  });
+});
+
+describe("shuffleWithSeed: the cards sit in a random order, stable within one visit", () => {
+  const items = ["a", "b", "c", "d", "e", "f"];
+  it("is a permutation and deterministic for one seed", () => {
+    const a = shuffleWithSeed(items, 0.42);
+    expect([...a].sort()).toEqual(items);
+    expect(shuffleWithSeed(items, 0.42)).toEqual(a);
+    expect(items).toEqual(["a", "b", "c", "d", "e", "f"]); // never mutates
+  });
+  it("different seeds produce different orders", () => {
+    const orders = new Set([0.1, 0.42, 0.77, 0.93].map((seed) => shuffleWithSeed(items, seed).join("")));
+    expect(orders.size).toBeGreaterThan(1);
   });
 });
 

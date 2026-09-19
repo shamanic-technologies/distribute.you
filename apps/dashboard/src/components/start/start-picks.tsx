@@ -39,6 +39,7 @@ import {
 import {
   NO_COMMITMENT_TAG,
   proofCardsFor,
+  shuffleWithSeed,
   reassuranceFor,
   type FleetProof,
   type ShowcaseBrand,
@@ -197,6 +198,8 @@ export function StartPicks({
   const landingBrand = useLandingBrand();
   const brand = brandHost ? { url: `https://${brandHost}`, host: brandHost } : landingBrand;
   const [channelReturns, setChannelReturns] = useState<ChannelReturn[]>([]);
+  // Picked once per mount: a shuffle re-drawn on every poll makes the cards jump.
+  const [proofSeed] = useState(() => Math.random());
   const setOutcomes = (update: (prev: string[]) => string[]) => onOutcomesChange(update(outcomes));
   const setFunnels = (update: (prev: string[]) => string[]) => onFunnelsChange(update(funnels));
 
@@ -277,13 +280,23 @@ export function StartPicks({
   // last screen in one click, and one who wants another path is one toggle away.
   // Only on ARRIVAL with nothing picked, never on a deselect: a visitor who
   // empties the list on purpose must not see the first one snap back.
+  // A path step with ONE option is not a question (owner 2026-09-19: "s'il n'y
+  // a qu'une option sur cette step alors skip-la complètement"): the sole path
+  // is picked and the visitor lands on the returns, and Back from there walks
+  // over the skipped step. Every outcome but Meeting booked offers one path on
+  // the prod catalogue, so this is the common case, not an edge.
+  const solePath = offeredFunnels.length === 1;
   const goToFunnels = () => {
     if (funnels.length === 0 && offeredFunnels.length > 0) {
       onFunnelsChange([offeredFunnels[0].key]);
     }
-    onScreenChange("path");
+    onScreenChange(solePath ? "returns" : "path");
   };
   const back = () => {
+    if (screen === "returns" && solePath) {
+      onScreenChange("outcome");
+      return;
+    }
     const at = START_SCREEN_ORDER.indexOf(screen);
     if (at > 0) onScreenChange(START_SCREEN_ORDER[at - 1]);
   };
@@ -524,12 +537,11 @@ export function StartPicks({
       ).map((r) => ({ funnel: f, row: r })),
     );
 
-  // The top three named clients by return, whatever path they ran, floored at
-  // the fleet median the strip under the card states: a card can never read
-  // lower than the figure beside it. They sit OUTSIDE the white card.
-  const proofCards = proofCardsFor(proof?.showcase ?? [], {
-    minReturnPerDollar: proof?.medianReturnPerDollar ?? null,
-  });
+  // The top three named clients by return, whatever path they ran and whatever
+  // the fleet median beside them says, drawn in a random order fixed for this
+  // visit so they read as three clients rather than a ranking. They sit OUTSIDE
+  // the white card.
+  const proofCards = shuffleWithSeed(proofCardsFor(proof?.showcase ?? []), proofSeed);
 
   return (
     <StartShell
