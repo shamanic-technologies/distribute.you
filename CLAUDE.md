@@ -248,6 +248,14 @@ Until 2026-09-18 the catalogue carried `form_filled` (a form on the brand's own 
 
 Options sit in `StartGrid` (3 across at `lg`, 4 at `xl`). Both question screens fit at 1440x900 without scrolling with the four outcomes; a funnel list longer than the card scrolls INSIDE it, CTA pinned. Verified by rendering the real component (esbuild + compiled Tailwind off `globals.css` + the prod catalogue as fixture) at 1440 and on a Pixel 7, never by grepping classes: step 1 of 3 and 2 of 3, four marked outcomes with Continue disabled until one is picked, and every one of the owner's own pick-to-path examples. The authed wizard after `/onboarding/build` (`onboarding.tsx`) still wears the older look; it is the stated follow-up.
 
+## A REFUSED signed-out setup sends the visitor to sign-up WITH the reason, and every wizard step can go back
+
+The signed-out flow runs only on a website nobody holds. When the anon session was refused as `claimed` (the org owning that domain exists, yours or somebody's earlier walk), `startAnalyze` used to send the visitor to a bare `/sign-up` reading "Create your account" over a form, with nothing saying why the setup stopped; reported as *"After Analyze my product, it redirects me to the signup wall. Normal?"*. `lib/claimed-signup.ts` (alias-free, real unit tests) carries the reason: the redirect is `/sign-up?claimed=<domain>&url=<website>` for that one refusal, and the sign-up page swaps its heading block for *"acme.com is already set up with us"* with a sign-in link. `bad-website` / `cannot-verify` / `unreachable` are ours and keep the generic page, still with `?url=` so signing up lands back on the website typed.
+
+- **The client now carries the server's `reason` on a refusal**, read as a plain string (a reason the server adds later parses). It was deliberately stripped before ("never a reason code"), which was right for the MESSAGE and wrong for the branch: a page cannot explain a situation it is not told about.
+- ⚠️ `?claimed=1` on `/onboarding` is a DIFFERENT flag (the post-claim return that lands on the budget step). Same word, two routes; do not merge them.
+- **Every step of the wizard has a Back button now** except the two transient screens (`loading`, `launching`) and `celebrate`, which is the first screen after payment and has nowhere honest to go back to. `url` returns to the Results pick, `services` to `url`, `phone` to `celebrate`. Guard: `tests/claimed-signup.test.ts` pins the call sites and the back targets.
+
 ## A brand connects the CRM IT ALREADY RUNS ON, and the credential never lives in the service that uses it
 
 `/orgs/:orgId/brands/:brandId/crm` (`components/crm/`), plus the **Integrations**

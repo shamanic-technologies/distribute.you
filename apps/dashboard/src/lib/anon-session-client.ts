@@ -18,8 +18,16 @@ export interface AnonSessionStarted {
 
 export interface AnonSessionRefused {
   started: false;
-  /** Shown to the visitor verbatim. Never a reason code. */
+  /** Shown to the visitor verbatim. */
   message: string;
+  /**
+   * Why, in the server's own vocabulary (`claimed` / `bad-website` /
+   * `cannot-verify`), read as a plain string so a reason the server adds later
+   * parses. `unreachable` is ours: the request itself never completed. The one
+   * reader that branches on it is the sign-up redirect, which needs to tell a
+   * website somebody already holds apart from a website we could not check.
+   */
+  reason: string;
 }
 
 export type AnonSessionResult = AnonSessionStarted | AnonSessionRefused;
@@ -40,13 +48,14 @@ export async function startAnonSession(website: string): Promise<AnonSessionResu
     // went wrong — so a non-ok status is a genuine failure of ours.
     if (!res.ok) {
       console.error(`[anon-session] start failed: ${res.status}`);
-      return { started: false, message: UNREACHABLE };
+      return { started: false, message: UNREACHABLE, reason: "unreachable" };
     }
 
     const body = (await res.json()) as {
       started?: unknown;
       message?: unknown;
       domain?: unknown;
+      reason?: unknown;
     };
 
     if (body.started === true) {
@@ -58,9 +67,12 @@ export async function startAnonSession(website: string): Promise<AnonSessionResu
       message: typeof body.message === "string" && body.message.length > 0
         ? body.message
         : UNREACHABLE,
+      reason: typeof body.reason === "string" && body.reason.length > 0
+        ? body.reason
+        : "unreachable",
     };
   } catch (err) {
     console.error("[anon-session] start errored:", err);
-    return { started: false, message: UNREACHABLE };
+    return { started: false, message: UNREACHABLE, reason: "unreachable" };
   }
 }
