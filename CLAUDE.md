@@ -246,6 +246,92 @@ Until 2026-09-18 the catalogue carried `form_filled` (a form on the brand's own 
 
 Options sit in `StartGrid` (3 across at `lg`, 4 at `xl`). Both question screens fit at 1440x900 without scrolling with the four outcomes; a funnel list longer than the card scrolls INSIDE it, CTA pinned. Verified by rendering the real component (esbuild + compiled Tailwind off `globals.css` + the prod catalogue as fixture) at 1440 and on a Pixel 7, never by grepping classes: step 1 of 3 and 2 of 3, four marked outcomes with Continue disabled until one is picked, and every one of the owner's own pick-to-path examples. The authed wizard after `/onboarding/build` (`onboarding.tsx`) still wears the older look; it is the stated follow-up.
 
+## A brand connects the CRM IT ALREADY RUNS ON, and the credential never lives in the service that uses it
+
+`/orgs/:orgId/brands/:brandId/crm` (`components/crm/`), plus the **Integrations**
+section on Brand Settings (`components/settings/brand-integrations-card.tsx`).
+BETA on both halves — the nav entry in `context-sidebar.tsx` AND the page body —
+because a nav gate alone leaves the URL reachable by typing it, which is a hidden
+link rather than a gate. `useFeatureFlag` returns false for everyone in this app,
+so the gate is `useIsBetaUser` and the badge rides the nav entry.
+
+**THE CREDENTIAL LIVES IN key-service, SCOPED TO (ORGANISATION, BRAND), AND THE
+SERVICE THAT USES IT STORES NOTHING.** Owner-decided 2026-09-19 and it is a fleet
+convention, not a detail of this feature: key-service is the credential store, so
+a consumer inventing its own encrypted column is a second place secrets live and
+a second rotation story. The org grain was not enough — one agency org holds many
+brands, each a different end client with their OWN account, so two brands of one
+org need two different credentials for the same provider and would collide on
+`(org, provider)`. key-service grew `/keys/brands/{brandId}` BESIDE the org grain,
+which is untouched. ⚠️ **An absent brand credential is a 404, never a fallback to
+the org's** — falling back would hand one brand another brand's account.
+
+**CONNECTING IS TWO WRITES AND THE COPY SAYS SO.** The credential goes to
+key-service; the connection goes to crm-service, which resolves that credential
+itself and PROVES it against the vendor before writing anything. So a wrong token
+is refused at connect time **in the vendor's own words**, which is the only thing
+that tells the customer which of the two fields to fix — `integration-write.ts`
+passes a 400's `error` through in full for exactly that reason, and never renders
+the thrown error's own message field (that carries the whole upstream body). A
+credential stored without a successful connect is inert and is overwritten on
+retry; the card states that rather than hiding it.
+
+**THE PAGE RE-DERIVES NOTHING, AND THAT WAS A CORRECTION MID-BUILD.** crm-service
+serves the pipeline ALREADY GROUPED — pipelines, then stages in the stage order
+their own system states, with the per-stage and per-pipeline `count` and
+`totalValue` computed there. An earlier cut of `lib/crm-view.ts` regrouped a flat
+list in the browser, which duplicated the producer; it is deleted and a guard
+forbids `.reduce(` in both that module and the board. **The lesson generalises:
+when a producer is being built in parallel, ask what it will serve GROUPED and
+AGGREGATED before writing any client-side derivation** — building the pure
+presentation early is fine, modelling the data shape early is what gets thrown
+away. It also serves `ungrouped` (deals their system put in no pipeline we
+mirrored), which the page shows so the counts add up to what the customer sees in
+their own CRM.
+
+**NO CURRENCY IS STATED, because none is mirrored.** The vendor reports a
+whole-currency amount and crm-service stores it as a numeric string with no
+currency code in any of the tables involved, so `formatAmount` writes a plain
+grouped number. A `$` would state a currency nobody reported, on money that is
+often not dollars. This is the one place the dashboard's adaptive-USD rule does
+NOT apply: that rule is about what WE charge, this is what THEY are chasing.
+
+**IT NEVER WRITES BACK, structurally.** No service between the dashboard and
+their CRM has a write path to it, so a pipeline card is a thing to look at and
+never a thing to drag — unlike the Leads board, which moves cards because WE own
+that standing. A guard forbids `draggable` / `onDrop` / `useBoardDrag` in the
+board. The gateway deliberately proxies NEITHER the credential-decrypt route NOR
+crm-service's `/internal/*` sync and rebuild triggers, and api-service proves
+their absence with its own tests; so there is no "Sync now" button, and the page
+states when it last read instead. Do not add one by reaching for an internal
+route.
+
+⚠️ `lib/crm-view.ts`, `lib/integrations.ts` and `lib/integration-write.ts` are
+alias-free so they carry REAL unit tests — keep them that way. The four query
+roots (`brandKeys`, `crmConnections`, `crmContacts`, `crmPipeline`) are in
+`PERSISTABLE_QUERY_ROOTS`; unlisted, each cold-skeletons on every visit. The
+contacts table shows ONE page and says so, because its search is local to the
+loaded rows and must never read as a search of the whole population. Guards:
+`tests/crm-view.test.ts` + `tests/crm-beta-gate.test.ts`. (#4285; key-service #64,
+crm-service #16, api-service #958.)
+
+## A guard that pins WHERE a hook may be CALLED goes stale the day a second surface earns it
+
+The source-substring traps above are about a guard matching the wrong TEXT. This
+is a different face: a guard that is right about the INVARIANT and wrong about
+the PLACE. `tenant-switcher.test.ts` asserted that every `useIsBetaUser(` in
+`context-sidebar.tsx` sits inside `CampaignLevelSidebar` — because at the time
+exactly one sidebar carried a beta nav row. Its own comment states the real
+invariant in full ("no CHROME branch is gated"; "banning the name outright would
+forbid any gated nav row"), so the moment a SECOND sidebar legitimately gained a
+gated entry the guard failed on a change it was written to allow.
+
+Read such a guard's comment before touching it: the fix is to widen the PLACE to
+the set of functions that may legitimately hold the affordance, never to delete
+the guard or to weaken the invariant. The tell is a guard whose failure message
+names a location rather than a behaviour, on a file where you added the same
+construct the guard already permits somewhere else.
+
 ## The Claude config console edits a REPO, not a machine — and markdown is the only thing it writes
 
 `/audit/config` (`audit/config/page.tsx`, rules in `lib/config-files.ts`, GitHub in `lib/github-config.ts`) reads and edits the global CLAUDE.md, RTK.md, the 26 skills, the hooks and each repo's own CLAUDE.md. The config Claude Code actually loads lives on a laptop under `~/.claude` and `~/.agents/skills`, which are SYMLINKS into a clone of `shamanic-technologies/agent-config`; admin is a container on the Hetzner box and cannot see that laptop. So every read and write goes through the GitHub Contents API against the repo, and a save is a commit. **That indirection is the design, not a limitation to route around** — do not add a filesystem path, and do not try to reach the machine.
