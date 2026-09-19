@@ -103,8 +103,17 @@ describe("the Leads page pages instead of holding the population", () => {
     // one, so the download was the first page. Measured in production on a brand whose
     // Outreach tab reads 8,135 leads: 50 rows in the file, ~8,100 without the bound.
     const call = PAGE.slice(PAGE.indexOf("<CsvDownloadButton"), PAGE.indexOf("label=\"Export leads\""));
-    expect(call).toContain("leadsExportQuery({ tab: activeTab, search: wireSearch })");
+    expect(call).toContain("leadsExportQuery({ search: wireSearch })");
     expect(call).not.toContain("leadsPageQuery(");
+  });
+
+  it("passes NO tab to the export, so the file is every row the page holds", () => {
+    // The call used to carry `activeTab`, so a press on a tab holding 20 people
+    // downloaded 20 rows under a header reading 16,212 — a correct file that reads as
+    // truncated. One component serves all four Leads grains, so this one call site is
+    // the whole surface.
+    const call = PAGE.slice(PAGE.indexOf("<CsvDownloadButton"), PAGE.indexOf("label=\"Export leads\""));
+    expect(call).not.toContain("activeTab");
   });
 
   it("parses the rows through the SAME reader every other leads read uses", () => {

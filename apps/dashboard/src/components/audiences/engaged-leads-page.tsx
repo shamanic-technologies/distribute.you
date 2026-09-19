@@ -2067,18 +2067,22 @@ export function EngagedLeadsPage({
           </h1>
           {reachableCount != null && (
             /* The export is FETCHED on press — lead-service streams the whole matching
-               set, honouring the scope, the active tab and the search, so a download is
-               what the page is showing. It used to be built here from the population in
-               memory, which is what forced the page to hold it.
+               set, honouring the scope and the search, so a download is every lead the
+               page holds. It used to be built here from the population in memory, which
+               is what forced the page to hold it.
+
+               NO tab is passed, deliberately: the file is the whole list whatever tab is
+               open, which is the count the title beside this button already states. A
+               tab-scoped export downloaded 20 rows under a header reading 16,212, which
+               reads as a file missing nearly all of its content. (The word this sentence
+               is avoiding is banned in this file by a guard in leads-covered-count.)
 
                `leadsExportQuery`, never the PAGE's builder: that one always carries
                `limit=50`, which lead-service honours on the CSV path too, so the download
                was silently the first page rather than the list. */
             <CsvDownloadButton
               filename={`leads-${brandId}.csv`}
-              csv={() =>
-                fetchLeadsCsv(scope, leadsExportQuery({ tab: activeTab, search: wireSearch }))
-              }
+              csv={() => fetchLeadsCsv(scope, leadsExportQuery({ search: wireSearch }))}
               isEmpty={reachableCount === 0}
               label="Export leads"
             />

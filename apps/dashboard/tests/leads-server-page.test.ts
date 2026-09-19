@@ -16,6 +16,7 @@ import {
   leadsSearchParam,
   leadsSearchProblem,
   pageCountFor,
+  REACHABLE_BUCKET,
   reachablePopulation,
   tabCount,
 } from "../src/lib/leads-server-page";
@@ -111,46 +112,73 @@ describe("page query", () => {
 });
 
 describe("export query", () => {
+  const ALL_TABS = [
+    "outreach",
+    "clicks",
+    "positive-replies",
+    "signups",
+    "meetings",
+    "form-submissions",
+    "sales",
+  ] as const;
+
   it("names NO bound, so the file is the whole matching set", () => {
     // The export reused the PAGE's builder, which always carries `limit=50`, and
     // lead-service honours that on the CSV path exactly as on the JSON one. Measured in
     // production on a brand whose Outreach tab reads 8,135 leads: the download was 50.
-    const q = leadsExportQuery({ tab: "outreach", search: "" });
+    const q = leadsExportQuery({ search: "" });
     expect("limit" in q).toBe(false);
     expect("offset" in q).toBe(false);
   });
 
-  it("asks the same scope the table is showing", () => {
-    expect(leadsExportQuery({ tab: "positive-replies", search: "" })).toEqual({
+  it("is the whole list, so it takes no tab at all", () => {
+    // The builder used to take one, and the page passed `activeTab` — so a press on
+    // Sales interests downloaded that bucket alone: 20 rows in production under a
+    // header reading 16,212, which reads as a file truncated by three orders of
+    // magnitude. Owner-decided: every row, whatever tab is open.
+    expect(leadsExportQuery({ search: "" })).toEqual({
       view: "basic",
-      bucket: "positive_reply",
+      bucket: REACHABLE_BUCKET,
       sort: "activity",
     });
   });
 
-  it("carries the search the table is filtered by, and only when the producer accepts it", () => {
-    expect(leadsExportQuery({ tab: "outreach", search: "jane" }).q).toBe("jane");
-    expect(leadsExportQuery({ tab: "outreach", search: "   " }).q).toBeUndefined();
-    expect(leadsExportQuery({ tab: "outreach", search: "a".repeat(201) }).q).toBeUndefined();
+  it("asks for the population the title states, from ONE constant", () => {
+    // If these two ever name different buckets the header states a population the file
+    // does not carry, which is the bug this replaced. One constant, so they cannot.
+    expect(leadsExportQuery({ search: "" }).bucket).toBe(REACHABLE_BUCKET);
+    expect(reachablePopulation(counts)).toBe(counts.counts[REACHABLE_BUCKET]);
   });
 
-  it("differs from the page ONLY by the bound, on every tab", () => {
-    // The two must never drift on WHICH rows they are about — the file has to be what
-    // the reader is looking at. The only difference is how many of them come back.
-    for (const tab of [
-      "outreach",
-      "clicks",
-      "positive-replies",
-      "signups",
-      "meetings",
-      "form-submissions",
-      "sales",
-    ] as const) {
+  it("carries the search the table is filtered by, and only when the producer accepts it", () => {
+    expect(leadsExportQuery({ search: "jane" }).q).toBe("jane");
+    expect(leadsExportQuery({ search: "   " }).q).toBeUndefined();
+    expect(leadsExportQuery({ search: "a".repeat(201) }).q).toBeUndefined();
+  });
+
+  it("differs from a tab's page by the bound AND the bucket, and by nothing else", () => {
+    // The file is the whole list rather than the open tab, so the bucket legitimately
+    // differs. Every OTHER key must still match the page, or the two have drifted on
+    // something nobody decided — the scope, the sort, the search.
+    for (const tab of ALL_TABS) {
       const page = leadsPageQuery({ tab, search: "jane", page: 4 });
-      const exported = leadsExportQuery({ tab, search: "jane" });
+      const exported = leadsExportQuery({ search: "jane" });
       const onlyOnPage = Object.keys(page).filter((k) => !(k in exported));
       expect(onlyOnPage.sort()).toEqual(["limit", "offset"]);
-      for (const key of Object.keys(exported)) expect(exported[key]).toBe(page[key]);
+      for (const key of Object.keys(exported)) {
+        if (key === "bucket") continue;
+        expect(exported[key]).toBe(page[key]);
+      }
+    }
+  });
+
+  it("is byte-identical whichever tab the reader has open", () => {
+    const first = leadsExportQuery({ search: "jane" });
+    for (const tab of ALL_TABS) {
+      // The tab is not an input any more; asserting it over the whole tab set is what
+      // stops a future edit re-introducing one under another name.
+      expect(bucketForTab(tab)).toBeTruthy();
+      expect(leadsExportQuery({ search: "jane" })).toEqual(first);
     }
   });
 });
