@@ -65,6 +65,17 @@ export function bucketForTab(tab: AnyLeadTab): LeadBucket {
 }
 
 /**
+ * The bucket the PAGE is about: everyone we contacted.
+ *
+ * It is what the title counts (`reachablePopulation`) and what an export downloads, and
+ * those two must be ONE constant or the header states a population the file does not
+ * carry — which is exactly how a correct export came to read as truncated by three
+ * orders of magnitude. The other buckets are subsets of it, so it is the union's floor
+ * and the only honest answer to "all of them".
+ */
+export const REACHABLE_BUCKET: LeadBucket = "contacted";
+
+/**
  * Which bucket holds the people at one funnel STAGE.
  *
  * `LeadStageKey` and lead-service's bucket vocabulary are the same seven tokens — the
@@ -135,10 +146,10 @@ export interface LeadsPageRequest {
  * plus the bound — which is what keeps the producer's "absent means unchanged" promise
  * meaningful on this caller.
  */
-function leadsScopeQuery(tab: AnyLeadTab, search: string): Record<string, string> {
+function leadsScopeQuery(bucket: LeadBucket, search: string): Record<string, string> {
   const query: Record<string, string> = {
     view: "basic",
-    bucket: bucketForTab(tab),
+    bucket,
     sort: "activity",
   };
   const q = leadsSearchParam(search);
@@ -148,7 +159,7 @@ function leadsScopeQuery(tab: AnyLeadTab, search: string): Record<string, string
 
 export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
   const query: Record<string, string> = {
-    ...leadsScopeQuery(req.tab, req.search),
+    ...leadsScopeQuery(bucketForTab(req.tab), req.search),
     limit: String(LEADS_PAGE_SIZE),
   };
   const offset = Math.max(0, Math.trunc(req.page)) * LEADS_PAGE_SIZE;
@@ -157,20 +168,30 @@ export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
 }
 
 /**
- * The EXPORT's query — the same scope as the table, and deliberately NO bound.
+ * The EXPORT's query — every lead the page holds, whatever tab is open, and NO bound.
  *
- * The export reused `leadsPageQuery({ ..., page: 0 })` for a while, which always carries
- * `limit=50`. lead-service honours that on the CSV path exactly as it does on the JSON
- * one (`planLeadPage` windows the plan before hydrating it), so a customer pressing
- * Export on a tab whose header read `8,135 leads` downloaded 50 of them — a valid file,
- * right columns, right headings, right scope, silently truncated to the first page.
+ * Two different truncations have made this download read as broken, and they are worth
+ * keeping apart because the second one is invisible.
  *
- * Absent `limit` is the producer's own word for "the whole matching set", which is what
- * an export means. The tab and the search still travel, so the file is what the page is
- * showing rather than everything the brand has.
+ * The bound: the export reused `leadsPageQuery({ ..., page: 0 })` for a while, which
+ * always carries `limit=50`, and lead-service honours that on the CSV path exactly as on
+ * the JSON one. A customer pressing Export on a tab whose header read `8,135 leads`
+ * downloaded 50 — a valid file, right columns, right headings, right scope. Absent
+ * `limit` is the producer's own word for "the whole matching set".
+ *
+ * The TAB: the query then followed `activeTab`, so a press on Sales interests downloaded
+ * that bucket alone — 20 rows against a header reading 16,212, measured in production.
+ * Nothing was wrong with the file; the page simply stated one population and exported
+ * another, which reads as a truncation of three orders of magnitude. Owner-decided: the
+ * download is EVERY row the page has, regardless of the tab being looked at. So it names
+ * `REACHABLE_BUCKET` — the same bucket the title counts — and the file and the header
+ * can no longer disagree.
+ *
+ * The SEARCH still travels: it is what the reader typed, and a download that silently
+ * ignored it would surprise in the other direction.
  */
-export function leadsExportQuery(req: Omit<LeadsPageRequest, "page">): Record<string, string> {
-  return leadsScopeQuery(req.tab, req.search);
+export function leadsExportQuery(req: { search: string }): Record<string, string> {
+  return leadsScopeQuery(REACHABLE_BUCKET, req.search);
 }
 
 /** The counts query — same scope and same search as the list, no bucket and no bound. */
@@ -237,7 +258,7 @@ export function tabCount(counts: LeadBucketCounts | undefined, tab: AnyLeadTab):
  */
 export function reachablePopulation(counts: LeadBucketCounts | undefined): number | null {
   if (!counts) return null;
-  return counts.counts.contacted;
+  return counts.counts[REACHABLE_BUCKET];
 }
 
 /**
