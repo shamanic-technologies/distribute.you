@@ -6,6 +6,7 @@ import {
   CANNOT_VERIFY_MESSAGE,
   CLAIMED_MESSAGE,
   anonSessionStart,
+  canReuseAnonSession,
 } from "../src/lib/anon-session-start";
 
 /** Real unit tests: the module is alias-free apart from the website rule, which
@@ -87,5 +88,69 @@ describe("the file itself", () => {
   it("stays alias-free so these are real unit tests", () => {
     const src = fs.readFileSync(path.join(__dirname, "../src/lib/anon-session-start.ts"), "utf8");
     expect(src).not.toMatch(/from\s+"@\//);
+  });
+});
+
+describe("canReuseAnonSession — the same browser walking the same domain twice", () => {
+  it("reuses a held session for the same domain", () => {
+    expect(canReuseAnonSession({ domain: "acme.com" }, "acme.com")).toBe(true);
+  });
+
+  it("does NOT reuse across different domains", () => {
+    expect(canReuseAnonSession({ domain: "acme.com" }, "other.com")).toBe(false);
+  });
+
+  it("does NOT reuse when no session is held", () => {
+    expect(canReuseAnonSession(null, "acme.com")).toBe(false);
+    expect(canReuseAnonSession(undefined, "acme.com")).toBe(false);
+  });
+
+  it("does NOT reuse when the request names no domain", () => {
+    expect(canReuseAnonSession({ domain: "acme.com" }, null)).toBe(false);
+  });
+
+  // An empty stored domain is a LEGAL token shape, so it must refuse rather
+  // than match another empty — a session that cannot say which website it is
+  // for cannot be shown to be this one.
+  it("does NOT reuse a session that names no domain", () => {
+    expect(canReuseAnonSession({ domain: "" }, "acme.com")).toBe(false);
+  });
+});
+
+describe("the session route wires reuse ahead of the claim question", () => {
+  const route = fs.readFileSync(
+    path.join(__dirname, "../src/app/api/anon/session/route.ts"),
+    "utf8",
+  );
+
+  it("decides reuse before asking whether the domain is claimed", () => {
+    const reuse = route.indexOf("canReuseAnonSession(held, domain)");
+    const claim = route.indexOf("await domainClaim(domain)");
+    expect(reuse).toBeGreaterThan(-1);
+    expect(claim).toBeGreaterThan(-1);
+    expect(reuse).toBeLessThan(claim);
+  });
+
+  // extractDomain is looser than the website rule, so a held session for
+  // acme.com would let `kevin@acme.com` through if the rule ran after reuse.
+  it("refuses a bad website before it can reuse anything", () => {
+    const rule = route.indexOf("websiteInputProblem(website)");
+    const reuse = route.indexOf("canReuseAnonSession(held, domain)");
+    expect(rule).toBeGreaterThan(-1);
+    expect(rule).toBeLessThan(reuse);
+  });
+
+  it("keeps the held session when the typed website is refused", () => {
+    expect(route).toContain('refuse(req, badWebsite, "bad-website", { clearSession: false })');
+  });
+
+  // Re-signing would move issuedAt and turn a bounded session into a rolling
+  // credential, which its own expiry exists to prevent.
+  it("re-sets the SAME token on reuse rather than minting a new one", () => {
+    const at = route.indexOf("canReuseAnonSession(held, domain)");
+    const body = route.slice(at, route.indexOf("// The claim question needs a domain"));
+    expect(body).not.toContain("signAnonSession");
+    expect(body).not.toContain("createAnonymousOrg");
+    expect(body).not.toContain("seedTrialCredit");
   });
 });

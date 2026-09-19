@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { anonSessionStart } from "@/lib/anon-session-start";
+import { anonSessionStart, canReuseAnonSession } from "@/lib/anon-session-start";
+import { websiteInputProblem } from "@/lib/website-input";
 import {
   ANON_COOKIE_OPTIONS,
   ANON_FLAG_COOKIE,
@@ -9,6 +10,7 @@ import {
 import {
   ANON_ORG_PREFIX,
   ANON_PRINCIPAL,
+  readAnonSession,
   signAnonSession,
 } from "@/lib/anon-session-token";
 import { seedTrialCredit } from "@/lib/billing-service";
@@ -19,11 +21,17 @@ import { extractDomain } from "@/lib/extract-domain";
 /**
  * Where a signed-out visitor's setup begins.
  *
- * Four things happen, in this order, and the order is the design: each one is
+ * Five things happen, in this order, and the order is the design: each one is
  * harder to undo than the last, so the cheapest refusals come first.
  *
  *   1. Is this a website at all? The shared rule, so the field says the same
- *      thing here as everywhere else a URL is typed.
+ *      thing here as everywhere else a URL is typed. It does NOT clear a held
+ *      session: a typo must not cost somebody the walk they are in the middle
+ *      of, and destroying it here would make the retry mint a duplicate.
+ *   1b. Is this browser already walking this exact domain? Then it is the same
+ *      walk and it keeps the org it has. Nothing is asked and nothing is
+ *      created — the cheapest outcome of all, and the common one: a reload, a
+ *      back button, or typing the same website twice.
  *   2. Does somebody already own it? Asked BEFORE anything is created, because
  *      creating the brand is what scrapes a site that may be a customer's.
  *   3. Bring the org into being, DECLARING that it has no identity provider.
@@ -47,8 +55,14 @@ const isSecure = (req: NextRequest): boolean => new URL(req.url).protocol === "h
 
 /** A refusal the caller renders verbatim. 200, not an error status: from the
  *  visitor's side nothing went wrong, they simply get the other flow. */
-function refuse(req: NextRequest, message: string, reason: string): NextResponse {
+function refuse(
+  req: NextRequest,
+  message: string,
+  reason: string,
+  { clearSession = true }: { clearSession?: boolean } = {},
+): NextResponse {
   const res = NextResponse.json({ started: false, reason, message });
+  if (!clearSession) return res;
   const opts = { ...ANON_COOKIE_OPTIONS(isSecure(req)), maxAge: 0 };
   // Clear any stale session rather than leaving a browser holding one it is
   // about to stop using. `cookies.set`, never two header appends — see the note
@@ -74,6 +88,44 @@ export async function POST(req: NextRequest) {
   }
 
   const domain = extractDomain(website);
+
+  // The website rule runs FIRST, and ahead of the reuse branch, because a typo
+  // is a typo whatever session is held: `extractDomain` is looser than the rule
+  // (it reads `kevin@acme.com` as `acme.com`), so a held session for acme.com
+  // would otherwise make a refused input succeed. Same function the decision
+  // below calls — one rule, asked at each point that needs it, never a copy.
+  //
+  // It does NOT clear the session: the held walk is for a DIFFERENT, valid
+  // website and is still usable, and destroying it would cost the visitor their
+  // org for a keystroke — after which retyping correctly mints the duplicate
+  // this whole branch exists to prevent.
+  const badWebsite = websiteInputProblem(website);
+  if (badWebsite) return refuse(req, badWebsite, "bad-website", { clearSession: false });
+
+  // Is this browser already walking this exact domain? Then it is the same
+  // walk, and it keeps the org it already has. Checked BEFORE the claim
+  // question because a reused session asks nobody anything: no claim lookup, no
+  // org, no seed, and nothing the visitor already built is orphaned.
+  //
+  // The token is verified (signature + expiry) by `readAnonSession`, so getting
+  // a session back here is proof this browser minted that org. A refused token
+  // simply falls through to the ordinary path and mints a fresh one.
+  const held = readAnonSession(req.cookies.get(ANON_SESSION_COOKIE)?.value, secret).session;
+  if (canReuseAnonSession(held, domain)) {
+    // Re-set the SAME token rather than minting one. Re-signing would move
+    // `issuedAt` and turn a bounded session into a rolling credential, which is
+    // the one thing its own expiry exists to prevent; re-setting repairs a
+    // missing flag cookie and costs nothing.
+    const res = NextResponse.json({ started: true, website: website.trim(), domain, reused: true });
+    const opts = ANON_COOKIE_OPTIONS(isSecure(req));
+    res.cookies.set(ANON_SESSION_COOKIE, req.cookies.get(ANON_SESSION_COOKIE)!.value, {
+      ...opts,
+      httpOnly: true,
+    });
+    res.cookies.set(ANON_FLAG_COOKIE, "1", opts);
+    return res;
+  }
+
   // The claim question needs a domain to ask about. An unparseable one is the
   // visitor's own typo and the website rule below states it in its own words.
   const claim = domain ? await domainClaim(domain) : "unknown";
