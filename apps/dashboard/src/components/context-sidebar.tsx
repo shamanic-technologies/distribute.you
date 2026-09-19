@@ -228,6 +228,12 @@ const CampaignsIcon = () => (
   </svg>
 );
 
+const CrmIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0ZM10.5 15.75a3 3 0 0 0-6 0v.75h6v-.75Z" />
+  </svg>
+);
+
 const SettingsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -366,6 +372,12 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   // queries + badge-reveal plumbing that fed Database remain dropped.
   const defsReady = !featuresLoading;
 
+  // The CRM surface is BETA. `useFeatureFlag` returns false for everyone in this
+  // app, so it would hide the entry from staff too; the email allowlist is what
+  // actually evaluates, and the badge rides the nav entry. The page's own body
+  // gates on the same hook — a nav gate alone leaves the URL reachable.
+  const crmOk = useIsBetaUser();
+
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
   // today). GA. Overview is the brand root.
   const revenueOk = isRevenueFeature(featureSlug);
@@ -414,6 +426,23 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Leads",
             href: `${basePath}/leads`,
             icon: <LeadsIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    // CRM — the client's OWN customer records, read out of whatever system they
+    // already run on, and read-only. It sits at BRAND level because an
+    // integration is connected to a brand: the account belongs to the client,
+    // not to one proposition they sell. Unlike every entry above it this one does
+    // not depend on a revenue feature — a brand selling through nothing yet still
+    // has a CRM to look at.
+    ...(crmOk
+      ? [
+          {
+            id: "brand-crm",
+            label: "CRM",
+            href: `${basePath}/crm`,
+            icon: <CrmIcon />,
+            maturity: "beta" as Maturity,
           } satisfies SidebarItem,
         ]
       : []),
