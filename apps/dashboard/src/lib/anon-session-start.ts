@@ -68,6 +68,33 @@ export const CANNOT_VERIFY_MESSAGE =
   "We couldn't check this website just now. Continue and we'll get you started.";
 
 /**
+ * May this request REUSE the session the browser is already holding?
+ *
+ * A visitor who reloads, presses back, or simply types the same website twice
+ * is the SAME walk, and minting a second org for them is not merely wasteful —
+ * each one costs another trial seed and orphans everything the first one built.
+ * It is also the common case: 8 of the 21 anonymous orgs alive when this shipped
+ * held no brand at all, i.e. somebody started and immediately started again.
+ *
+ * The caller passes a session it has ALREADY VERIFIED (signature and expiry),
+ * so reaching here at all is proof this browser minted that org. That is why no
+ * claim check runs on this path: the visitor is not a stranger asking about a
+ * domain, they are the person who already started it. Re-asking would find the
+ * domain unclaimed — their own org does not claim it, which is the whole point
+ * of the fix above — and mint the duplicate this exists to prevent.
+ *
+ * An EMPTY stored domain refuses. It is a legal token shape, and a session that
+ * cannot say which website it is for cannot be shown to be this one.
+ */
+export function canReuseAnonSession(
+  existing: { domain: string } | null | undefined,
+  domain: string | null,
+): boolean {
+  if (!existing || !domain) return false;
+  return existing.domain.length > 0 && existing.domain === domain;
+}
+
+/**
  * The decision.
  *
  * `bad-website` is the visitor's own typo and carries the website rule's own
