@@ -108,8 +108,9 @@ function compare(a: OpsDomainRow, b: OpsDomainRow, key: SortKey, dir: "asc" | "d
 }
 
 function DomainPanel({ row, onClose }: { row: OpsDomainRow; onClose: () => void }) {
-  const badges = dnsBadges(row.dns);
-  const errors = Object.entries(row.dns.errors);
+  // A domain the sweep never probed has no records to show and none to grade.
+  const badges = row.dns ? dnsBadges(row.dns) : [];
+  const errors = row.dns ? Object.entries(row.dns.errors) : [];
   return (
     <SlideOver title={row.domain} subtitle={row.provider ?? "vendor unknown"} onClose={onClose}>
       <PanelGroup title="Registration">
@@ -153,19 +154,32 @@ function DomainPanel({ row, onClose }: { row: OpsDomainRow; onClose: () => void 
         <div className="flex flex-wrap gap-1 pb-2">
           <DnsBadges dns={row.dns} />
         </div>
-        {badges.map((b) => (
-          <PanelRow key={b.label} label={b.label}>
-            <span className="break-all font-mono text-[11px] text-gray-600">{b.detail ?? "—"}</span>
-          </PanelRow>
-        ))}
-        <PanelRow label="DMARC policy">{row.dns.dmarc.policy ?? "—"}</PanelRow>
-        <PanelRow label="DMARC pct">{row.dns.dmarc.pct === null ? "—" : `${row.dns.dmarc.pct}%`}</PanelRow>
-        <PanelRow label="DMARC rua">
-          {row.dns.dmarc.rua.length ? row.dns.dmarc.rua.join(", ") : "—"}
-        </PanelRow>
-        <PanelRow label="SPF includes">
-          {row.dns.spf.includes.length ? row.dns.spf.includes.join(", ") : "—"}
-        </PanelRow>
+        {/* Never probed: say so once. Printing dashes for every record would read
+            as "we looked and found nothing", which is the opposite of true. */}
+        {row.dns === null ? (
+          <p className="py-1 text-xs text-gray-500">
+            This domain has never been DNS-probed, so nothing is known about its records. The sweep
+            covers the domains we own or send from.
+          </p>
+        ) : (
+          <>
+            {badges.map((b) => (
+              <PanelRow key={b.label} label={b.label}>
+                <span className="break-all font-mono text-[11px] text-gray-600">{b.detail ?? "—"}</span>
+              </PanelRow>
+            ))}
+            <PanelRow label="DMARC policy">{row.dns.dmarc.policy ?? "—"}</PanelRow>
+            <PanelRow label="DMARC pct">
+              {row.dns.dmarc.pct === null ? "—" : `${row.dns.dmarc.pct}%`}
+            </PanelRow>
+            <PanelRow label="DMARC rua">
+              {row.dns.dmarc.rua.length ? row.dns.dmarc.rua.join(", ") : "—"}
+            </PanelRow>
+            <PanelRow label="SPF includes">
+              {row.dns.spf.includes.length ? row.dns.spf.includes.join(", ") : "—"}
+            </PanelRow>
+          </>
+        )}
         {/* An unread record is not an absent one, so a probe error is stated. */}
         {errors.length > 0 && (
           <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
@@ -244,9 +258,13 @@ export default function ColdEmailDomainsPage() {
   // screen, not a metric recomputed from parts.
   const monthlyTotal = domains.reduce((s, d) => s + (d.cost.monthlyCents ?? 0), 0);
   const unpriced = domains.filter((d) => d.cost.monthlyCents === null).length;
+  // Counted over PROBED domains only. A domain nobody has looked at is not a
+  // domain with a problem — it is a domain we know nothing about, so it is
+  // stated separately rather than folded into either side.
   const dnsProblems = domains.filter(
-    (d) => dnsBadges(d.dns).some((b) => b.verdict !== "ok") || dnsErrorCount(d.dns) > 0,
+    (d) => d.dns !== null && (dnsBadges(d.dns).some((b) => b.verdict !== "ok") || dnsErrorCount(d.dns) > 0),
   ).length;
+  const dnsUnread = domains.filter((d) => d.dns === null).length;
 
   function onSort(key: SortKey) {
     if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -275,8 +293,13 @@ export default function ColdEmailDomainsPage() {
         <StatCard
           label="DNS needs attention"
           value={num(dnsProblems)}
-          sub="weak, missing or unread record"
+          sub={
+            dnsUnread > 0
+              ? `weak or missing record · ${num(dnsUnread)} never probed`
+              : "weak or missing record"
+          }
           pending={isPending}
+          hint="Counted over the domains the sweep has probed. A domain it never looked at is stated separately, never graded."
         />
         <StatCard
           label="Sent last 30d"

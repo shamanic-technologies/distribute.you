@@ -160,8 +160,24 @@ const DNS_TINT: Record<DnsVerdict, string> = {
   missing: "bg-red-100 text-red-800",
 };
 
-/** SPF / DMARC / DKIM / MX as four words, each carrying what the record says. */
-export function DnsBadges({ dns }: { dns: OpsDns }) {
+/**
+ * SPF / DMARC / DKIM / MX as four words, each carrying what the record says.
+ *
+ * `dns === null` means the domain was never PROBED, which is not the same fact
+ * as the records being absent — grading it would print four red MISSING badges
+ * for records that may well exist. It says it was not read instead.
+ */
+export function DnsBadges({ dns }: { dns: OpsDns | null }) {
+  if (dns === null) {
+    return (
+      <span
+        title="This domain has never been DNS-probed, so nothing is known about its records."
+        className="inline-block rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500"
+      >
+        DNS not read
+      </span>
+    );
+  }
   return (
     <span className="inline-flex flex-wrap gap-1">
       {dnsBadges(dns).map((b) => (
