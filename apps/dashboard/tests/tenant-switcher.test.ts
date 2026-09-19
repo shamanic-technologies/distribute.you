@@ -32,10 +32,19 @@ describe("Tenant switcher", () => {
     // the guard pins WHERE it may be read: every call site inside that one function,
     // and the chrome itself (`<TenantSwitcher />` in each section's topSlot)
     // unconditional. Banning the name outright would forbid any gated nav row.
-    const campaignAt = sidebar.indexOf("function CampaignLevelSidebar(");
-    const campaignEnd = sidebar.indexOf("\nfunction ", campaignAt + 1);
+    // Every sidebar level may carry a gated NAV ROW (Workflows in the campaign
+    // sidebar, CRM in the brand one), so the guard pins the call inside one of
+    // those functions rather than inside one named function — the latter went
+    // stale the first time a second level gained a beta entry.
+    const navFunctions = ["function CampaignLevelSidebar(", "function BrandLevelSidebar("];
+    const spans = navFunctions.map((fn) => {
+      const at = sidebar.indexOf(fn);
+      expect(at, `${fn} must exist for this guard to mean anything`).toBeGreaterThan(-1);
+      return [at, sidebar.indexOf("\nfunction ", at + 1)] as const;
+    });
     for (let i = sidebar.indexOf("useIsBetaUser("); i !== -1; i = sidebar.indexOf("useIsBetaUser(", i + 1)) {
-      expect(i > campaignAt && i < campaignEnd, "useIsBetaUser outside the campaign nav").toBe(true);
+      const inNav = spans.some(([at, end]) => i > at && i < end);
+      expect(inNav, "useIsBetaUser outside a sidebar nav function").toBe(true);
     }
     expect(sidebar).toContain("topSlot={<TenantSwitcher />}");
     expect(sidebar).not.toMatch(/topSlot=\{[^}]*isBeta/);

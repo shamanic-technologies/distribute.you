@@ -362,6 +362,255 @@ export async function deleteByokKey(
   });
 }
 
+// ==================== BRAND-SCOPED THIRD-PARTY CREDENTIALS ====================
+//
+// A credential the CUSTOMER holds for a third-party account, stored against ONE
+// brand. Distinct grain from the org-wide BYOK keys directly above, and the two
+// never substitute for each other: one agency org holds many brands, each a
+// different end client with their own account, so two brands of one org need two
+// different credentials for the same provider. key-service keys the upsert on
+// (org, brand, provider) and 404s an absent brand credential rather than quietly
+// resolving the org-wide one.
+//
+// The decrypted value is service-to-service only and is deliberately NOT proxied
+// to the browser — a backend that needs the credential resolves it itself. Here we
+// only ever write it and read it back MASKED.
+
+const BrandKeySchema = z.object({
+  provider: z.string(),
+  maskedKey: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type BrandKey = z.infer<typeof BrandKeySchema>;
+
+const ListBrandKeysResponseSchema = z.object({
+  brandId: z.string(),
+  keys: z.array(BrandKeySchema),
+});
+
+const SetBrandKeyResponseSchema = z.object({
+  brandId: z.string(),
+  provider: z.string(),
+  maskedKey: z.string(),
+});
+
+/** This brand's third-party credentials, masked. Never the org-wide ones. */
+export async function listBrandKeys(
+  brandId: string,
+  token?: string,
+): Promise<{ brandId: string; keys: BrandKey[] }> {
+  const raw = await apiCall<unknown>(`/keys/brands/${brandId}`, { token });
+  const parsed = ListBrandKeysResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listBrandKeys response shape mismatch", parsed.error.flatten());
+    throw new Error("listBrandKeys returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Store or replace this brand's credential for one provider. */
+export async function setBrandKey(
+  brandId: string,
+  provider: string,
+  apiKey: string,
+  token?: string,
+): Promise<{ brandId: string; provider: string; maskedKey: string }> {
+  const raw = await apiCall<unknown>(`/keys/brands/${brandId}`, {
+    token,
+    method: "POST",
+    body: { provider, apiKey },
+  });
+  // The write response carries no timestamps, so it is parsed on its OWN schema
+  // rather than the read one — a shared schema would fail every success.
+  const parsed = SetBrandKeyResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] setBrandKey response shape mismatch", parsed.error.flatten());
+    throw new Error("setBrandKey returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Remove this brand's credential for one provider. Leaves every other brand's alone. */
+export async function deleteBrandKey(
+  brandId: string,
+  provider: string,
+  token?: string,
+): Promise<{ message: string }> {
+  return apiCall<{ message: string }>(`/keys/brands/${brandId}/${provider}`, {
+    token,
+    method: "DELETE",
+  });
+}
+
+// ==================== THE CLIENT'S OWN CRM (crm-service, GoHighLevel) ====================
+//
+// A brand connects the CRM it already runs on, and we mirror what is in it so the
+// customer can read their own contacts and pipeline here. READ-ONLY end to end:
+// no service between here and their CRM has a write path back to it, so nothing
+// below sends them anything.
+//
+// The credential does NOT travel on these calls. It is stored once against the
+// brand in key-service (see `setBrandKey` above) and crm-service resolves it
+// itself, service-to-service. Connecting therefore states only WHICH account to
+// read; crm-service proves the credential against the vendor before it writes a
+// connection, and refuses with the vendor's own words when it cannot.
+
+const CrmConnectionSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  locationId: z.string(),
+  // Read as a plain string, never a z.enum: the producer owns this vocabulary and
+  // a reader that closes the set throws the whole page the day it grows.
+  status: z.string(),
+  synced: z.boolean(),
+  lastSyncedAt: z.string().nullable(),
+  lastError: z.string().nullable(),
+  lastRunId: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type CrmConnection = z.infer<typeof CrmConnectionSchema>;
+
+const ListCrmConnectionsResponseSchema = z.object({
+  connections: z.array(CrmConnectionSchema),
+});
+
+/** This brand's CRM connection and its health. Empty when nothing is connected. */
+export async function listCrmConnections(
+  brandId: string,
+  token?: string,
+): Promise<{ connections: CrmConnection[] }> {
+  const raw = await apiCall<unknown>(`/orgs/gohighlevel/connections?brandId=${brandId}`, { token });
+  const parsed = ListCrmConnectionsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listCrmConnections response shape mismatch", parsed.error.flatten());
+    throw new Error("listCrmConnections returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Connect this brand to the CRM account named by `locationId`.
+ *
+ * The credential must ALREADY be stored for this brand — crm-service resolves it
+ * and proves it against the vendor before writing anything, so a wrong token or a
+ * mismatched account is refused here rather than failing silently on the first
+ * sync.
+ */
+export async function connectCrm(
+  brandId: string,
+  locationId: string,
+  token?: string,
+): Promise<{ connection: CrmConnection }> {
+  const raw = await apiCall<unknown>("/orgs/gohighlevel/connections", {
+    token,
+    method: "POST",
+    body: { brandId, locationId },
+  });
+  const parsed = z.object({ connection: CrmConnectionSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] connectCrm response shape mismatch", parsed.error.flatten());
+    throw new Error("connectCrm returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Stop syncing this connection, and drop what was mirrored with it. */
+export async function disconnectCrm(
+  connectionId: string,
+  token?: string,
+): Promise<{ disconnected: boolean; connectionId: string }> {
+  return apiCall<{ disconnected: boolean; connectionId: string }>(`/orgs/gohighlevel/connections/${connectionId}`, {
+    token,
+    method: "DELETE",
+  });
+}
+
+const CrmContactSchema = z.object({
+  id: z.string(),
+  externalId: z.string(),
+  primaryEmail: z.string().nullable(),
+  phoneE164: z.string().nullable(),
+  fullName: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  unsubscribed: z.boolean(),
+  lastRebuiltAt: z.string().nullable(),
+});
+
+/** This brand's contacts, as mirrored out of their own CRM. */
+export async function listCrmContacts(
+  brandId: string,
+  opts: { limit?: number; offset?: number } = {},
+  token?: string,
+): Promise<{ contacts: z.infer<typeof CrmContactSchema>[] }> {
+  const q = new URLSearchParams({ brandId });
+  if (opts.limit != null) q.set("limit", String(opts.limit));
+  if (opts.offset != null) q.set("offset", String(opts.offset));
+  const raw = await apiCall<unknown>(`/orgs/gohighlevel/contacts?${q}`, { token });
+  const parsed = z.object({ contacts: z.array(CrmContactSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listCrmContacts response shape mismatch", parsed.error.flatten());
+    throw new Error("listCrmContacts returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+// The pipeline arrives ALREADY GROUPED, with the per-stage and per-pipeline
+// count and total computed by crm-service. Read them; do not regroup, recount or
+// re-sum here — that would be a second answer to a question already answered,
+// and the two would drift the first time either side changed.
+const CrmOpportunitySchema = z.object({
+  id: z.string(),
+  externalId: z.string(),
+  name: z.string(),
+  status: z.string().nullable(),
+  /** Whole-currency amount as a numeric string. No currency code is mirrored. */
+  monetaryValue: z.string().nullable(),
+  contactName: z.string().nullable(),
+  contactEmail: z.string().nullable(),
+});
+
+const CrmStageSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  position: z.number().nullable(),
+  count: z.number(),
+  totalValue: z.string(),
+  opportunities: z.array(CrmOpportunitySchema),
+});
+
+const CrmPipelineReadSchema = z.object({
+  pipelines: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      count: z.number(),
+      totalValue: z.string(),
+      stages: z.array(CrmStageSchema),
+    }),
+  ),
+  /** Deals their system placed in a pipeline we have not mirrored, or in none. */
+  ungrouped: z.array(CrmOpportunitySchema),
+  totalOpportunities: z.number(),
+});
+
+/** This brand's pipeline, grouped the way their own CRM groups it. */
+export async function getCrmPipeline(
+  brandId: string,
+  token?: string,
+): Promise<z.infer<typeof CrmPipelineReadSchema>> {
+  const raw = await apiCall<unknown>(`/orgs/gohighlevel/opportunities?brandId=${brandId}`, { token });
+  const parsed = CrmPipelineReadSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getCrmPipeline response shape mismatch", parsed.error.flatten());
+    throw new Error("getCrmPipeline returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
 // Chat session history — restore the "Edit with AI" panel after a refresh.
 // Gateway proxies GET /v1/chat/sessions/:sessionId → chat-service /sessions/:id.
 // We only render `messages`; the schema stays tolerant of the other session

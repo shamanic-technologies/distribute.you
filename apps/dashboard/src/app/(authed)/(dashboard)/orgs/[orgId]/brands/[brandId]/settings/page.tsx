@@ -6,6 +6,7 @@ import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
 import { BrandSalesRepPhoneCard } from "@/components/settings/brand-sales-rep-phone-card";
+import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 
 /**
  * Brand Settings holds what a brand IS, and nothing about what it sells.
@@ -51,6 +52,10 @@ export default function BrandSettingsPage() {
           <BrandSalesRepPhoneCard brandId={brandId} />
         </div>
       </section>
+
+      {/* Renders its own section and self-gates on the beta allowlist, so this
+          page stays a plain list of GA surfaces. */}
+      <BrandIntegrationsCard brandId={brandId} />
 
       <section id="conversion-tracking" className="mb-10 scroll-mt-24">
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Conversion Tracking</h2>

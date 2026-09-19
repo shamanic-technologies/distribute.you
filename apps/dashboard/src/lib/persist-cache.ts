@@ -136,6 +136,17 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandSpendableBudget",
   "brandDailyBudget",
   "brandConversionToken",
+  // The brand's connected third-party accounts: which credentials are stored
+  // (masked) and the health of the CRM connection reading them. Both are small,
+  // both are read on every Settings visit, and an unlisted root is default-OFF —
+  // so without these the Integrations section cold-skeletons every time.
+  "brandKeys",
+  "crmConnections",
+  // The mirrored CRM itself. Both are bounded (one page of contacts, one
+  // pipeline) and change on their own sync cadence rather than this brand's, so
+  // a disk read is exactly what they are for.
+  "crmContacts",
+  "crmPipeline",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.
