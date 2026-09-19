@@ -5770,6 +5770,12 @@ export async function getOpsMessageBody(id: string, token?: string): Promise<Ops
 export interface SendForecastDay {
   date: string; // UTC calendar day (YYYY-MM-DD)
   isToday: boolean;
+  // ⚠️ TWO CALENDARS, never one series. `created*` is SEQUENCE-grain and budget-driven — it runs
+  // seven days a week. The send fields below are EMAIL-grain and throughput-driven — Monday to
+  // Friday. Measured 2026-09-19: the fleet created 801 sequences on a Saturday and sent nothing.
+  // Render them as two charts; stacking them in one hides a day the budget was spent.
+  createdActual: number | null; // sequences created that day (past + today-so-far); null on future days
+  createdProjected: number | null; // sequences the budget will create (every day); null on past days
   actualSent: number | null; // past real emails sent that day; null on future days
   inFlightSent: number | null; // scheduled follow-ups (pre-today cohorts); null on past days
   forecastNew: number | null; // projected new-sequence emails (today onward); null on past days
@@ -5782,6 +5788,9 @@ export interface SendForecastSummary {
   followupModel: string; // send cadence model, e.g. "D0/D3/D10"
   activeBrandCount: number;
   totalNewSequencesPerDay: number; // fleet new sequences/day at full budget
+  observedDailyThroughput: number | null; // the fleet's measured send rate on a sending day
+  queuedEmails: number; // emails provisioned and waiting — the gap creation has opened over sending
+  queuedSendingDays: number | null; // sending days that queue takes to clear at the measured rate
 }
 
 export interface SendForecast {

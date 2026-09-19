@@ -4,7 +4,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOpsInfra, getSendForecast, type OpsInfra, type SendForecast } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { SendForecastChart } from "@/components/audit/send-forecast-chart";
+import { CreatedForecastChart, SendForecastChart } from "@/components/audit/send-forecast-chart";
 import { CapacityHistorySection } from "@/components/cold-email/capacity-history-section";
 import { ReconcileSection } from "@/components/cold-email/reconcile-section";
 import {
@@ -62,22 +62,34 @@ export default function ColdEmailOverviewPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <PageHeader
         title="Cold email: overview"
-        blurb="What the sending estate can do today: fleet capacity and queue, one rollup per sending pool, the forecast against that capacity, and who is deliberately held out of the pool."
+        blurb="What the sending estate can do today: capacity against the rate it actually sends at, the backlog between the two, one rollup per sending pool, and who is deliberately held out."
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Daily capacity"
           value={`${num(fleet?.dailyCapacity)}/day`}
           sub={`${num(fleet?.healthyAccountCount)} of ${num(fleet?.totalAccountCount)} addresses healthy`}
           pending={infraPending}
-          hint="The fleet's in-production daily send capacity. The same number the forecast chart draws as its capacity line."
+          hint="What the in-production addresses COULD send in a day, summing their limits. A ceiling, not a rate: the fleet has never come close to it. The same number the sending chart draws as its line."
         />
         <StatCard
-          label="Queued steps"
-          value={num(fleet?.queuedSteps)}
-          sub="un-sent steps held across the fleet"
-          pending={infraPending}
+          label="Sending now"
+          value={forecast?.summary.observedDailyThroughput === null || forecast === undefined
+            ? "—"
+            : `${whole(forecast.summary.observedDailyThroughput)}/day`}
+          sub="measured median on a sending day"
+          pending={forecastPending}
+          hint="What the fleet actually sends on a day it sends, taken from its recent sending days. This is the rate the projection drains at; the capacity beside it is only the ceiling."
+        />
+        <StatCard
+          label="Backlog"
+          value={forecast?.summary.queuedSendingDays === null || forecast === undefined
+            ? "—"
+            : `${whole(forecast.summary.queuedSendingDays)} days`}
+          sub={forecast ? `${whole(forecast.summary.queuedEmails)} emails waiting` : "—"}
+          pending={forecastPending}
+          hint="Emails already provisioned and waiting to go out, and how many sending days that takes to clear at the measured rate. This is the gap creation has opened over sending."
         />
         <StatCard
           label="Blocked domains"
@@ -186,22 +198,50 @@ export default function ColdEmailOverviewPage() {
         <>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-gray-900">Sequences created per day</h3>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-violet-600" /> Created
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-violet-300" /> Projected
+                </span>
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              What the daily budget launches. This runs every day, weekends included. A sequence
+              created on a Saturday simply waits for Monday to go out. No capacity line: mailbox
+              capacity bounds sending, not creation.
+            </p>
+            <div className="mt-4">
+              {forecastPending ? (
+                <Skeleton className="h-[240px] w-full rounded" />
+              ) : (
+                <CreatedForecastChart days={forecast.days} />
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-gray-900">Emails sent per day</h3>
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm bg-indigo-500" /> Sent (actual)
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-sky-500" /> Scheduled follow-ups
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" /> New (projected)
+                  <span className="h-2.5 w-2.5 rounded-sm bg-sky-500" /> Projected
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-0.5 w-4 rounded-sm bg-sky-500" /> Daily capacity
                 </span>
               </div>
             </div>
+            <p className="mt-1 text-xs text-gray-500">
+              What physically goes out, Monday to Friday. The projection drains the queue at the
+              fleet&apos;s measured rate; the dashed line is the ceiling it could reach, not the rate
+              it does. Whatever a day cannot send stays queued for the next one.
+            </p>
             <div className="mt-4">
               {forecastPending ? (
                 <Skeleton className="h-[300px] w-full rounded" />
@@ -215,21 +255,22 @@ export default function ColdEmailOverviewPage() {
 
           <Section
             title="Day by day"
-            blurb="What the fleet has sent and is projected to send, per calendar day."
+            blurb="What the budget created and what the fleet sent, per calendar day. Two different things on two different calendars."
             isPending={forecastPending}
             isError={forecastError}
             error={forecastErrorObj}
           >
             {forecast && (
               <div className="overflow-x-auto">
-                <table className="min-w-[560px] w-full text-sm">
+                <table className="min-w-[720px] w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                       <th className="py-2 pr-4 font-medium">Day</th>
+                      <th className="py-2 px-4 text-right font-medium">Created</th>
+                      <th className="py-2 px-4 text-right font-medium">Created (proj.)</th>
                       <th className="py-2 px-4 text-right font-medium">Sent (actual)</th>
-                      <th className="py-2 px-4 text-right font-medium">Scheduled follow-ups</th>
-                      <th className="py-2 px-4 text-right font-medium">New (projected)</th>
-                      <th className="py-2 pl-4 text-right font-medium">Total</th>
+                      <th className="py-2 px-4 text-right font-medium">Sent (proj.)</th>
+                      <th className="py-2 pl-4 text-right font-medium">Sent total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -246,9 +287,18 @@ export default function ColdEmailOverviewPage() {
                             </span>
                           )}
                         </td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                          {cell(d.createdActual)}
+                        </td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                          {cell(d.createdProjected)}
+                        </td>
                         <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">{cell(d.actualSent)}</td>
-                        <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">{cell(d.inFlightSent)}</td>
-                        <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">{cell(d.forecastNew)}</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                          {d.inFlightSent === null && d.forecastNew === null
+                            ? "—"
+                            : cell((d.inFlightSent ?? 0) + (d.forecastNew ?? 0))}
+                        </td>
                         <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-gray-900">
                           {cell(d.total)}
                         </td>
@@ -257,9 +307,11 @@ export default function ColdEmailOverviewPage() {
                   </tbody>
                 </table>
                 <p className="mt-3 text-xs text-gray-400">
-                  A dash means the series doesn&apos;t apply that day: past days carry no forecast, future
-                  days carry no actual sends yet. {whole(forecast.summary.totalNewSequencesPerDay)} new
-                  sequences/day across {whole(forecast.summary.activeBrandCount)} active brands.
+                  Created counts SEQUENCES, sent counts EMAILS. One sequence owes three emails on the{" "}
+                  {forecast.summary.followupModel} cadence, so the two columns are not comparable. A dash
+                  means the series doesn&apos;t apply that day: past days carry no projection, future days
+                  carry no actuals. {whole(forecast.summary.totalNewSequencesPerDay)} new sequences/day
+                  across {whole(forecast.summary.activeBrandCount)} active brands.
                 </p>
               </div>
             )}
