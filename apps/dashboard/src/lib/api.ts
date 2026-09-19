@@ -201,30 +201,16 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     if (token) {
       url = `${API_URL}/v1${endpoint}`;
       headers["X-API-Key"] = token;
-    } else if (typeof document !== "undefined" && browserHasAnonSession(document.cookie)) {
-      // THIRD BRANCH: the visitor has no account yet.
-      //
-      // The build half of onboarding now runs before signup, against an org
-      // whose external id is `anon_<uuid>` instead of a Clerk org id. That org
-      // is an ordinary org everywhere downstream, so every helper in this file
-      // works unchanged — the only difference is which proxy carries the call,
-      // and that is decided here rather than at ~40 call sites.
-      //
-      // No Authorization header: there is no Clerk session to mint one from.
-      // The anonymous proxy reads a SIGNED httpOnly cookie the browser cannot
-      // forge, checks the call against a closed allowlist, and forwards under
-      // the session's own org. This flag cookie is a routing hint and carries
-      // no authority of its own.
-      //
-      // The flag is checked BEFORE the Clerk branch on purpose: `getTabSessionToken`
-      // returns null while signed out, and the authed proxy answers 401 — so a
-      // visitor mid-flow would see every read fail rather than run anonymously.
-      url = `/api/anon/v1${endpoint}`;
     } else {
-      url = `/api/v1${endpoint}`;
-      const activeOrgId = activeOrgIdFromPath();
-      if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
-
+      // WHICH PROXY CARRIES THIS CALL — and a Clerk session outranks the
+      // anonymous flag, always.
+      //
+      // The build half of onboarding runs before signup, against an org whose
+      // external id is `anon_<uuid>` instead of a Clerk org id. That org is an
+      // ordinary org everywhere downstream, so every helper in this file works
+      // unchanged — the only difference is which proxy carries the call, and
+      // that is decided here rather than at ~40 call sites.
+      //
       // Per-tab org-scoped auth (Clerk multi-tab guidance). The Clerk session
       // COOKIE is a global singleton for the whole browser — it reflects whichever
       // tab was focused LAST, so the proxy's cookie-based `auth()` would scope a
@@ -235,9 +221,43 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       // Bearer over the cookie, giving the proxy the correct per-tab org.
       // (Clerk docs: "Organizations → multiple browser tabs" + "Making
       // authenticated requests".) Read with `?.`: before Clerk loads, or with no
-      // session, we fall back to the cookie (and checkProxyOrg still fails closed).
+      // session, it answers null and the cookie carries the call instead (and
+      // checkProxyOrg still fails closed).
+      //
+      // ⚠️ READ THE TOKEN FIRST. The flag is a ROUTING HINT FOR A BROWSER WITH
+      // NO ACCOUNT, so it may only break the tie when there is no session at all.
+      // It used to be checked BEFORE this, on the reasoning that
+      // `getTabSessionToken` returns null while signed out and the authed proxy
+      // answers 401 — true for a signed-out visitor, and wrong for a signed-in
+      // one. The flag lives 24 hours and only `/sign-up` clears it (through the
+      // claim), so somebody who started the signed-out setup, abandoned it and
+      // then SIGNED IN kept it — and EVERY call in their dashboard was routed to
+      // the anonymous proxy, whose allowlist is closed, and answered
+      // `403 Not available`. Nothing looked broken, which is what made it
+      // expensive: the local-first cache paints the previous visit from disk, so
+      // the whole dashboard read as healthy on stale numbers and the only control
+      // that reported anything was the leads export, which has no cache to fall
+      // back on. Reading the token first costs a signed-out visitor nothing —
+      // `window.Clerk.session` is null for them, so this returns null with no
+      // request and the anonymous branch is taken exactly as before.
       const tabToken = await getTabSessionToken(forceFreshToken);
-      if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
+
+      if (
+        !tabToken &&
+        typeof document !== "undefined" &&
+        browserHasAnonSession(document.cookie)
+      ) {
+        // No Authorization header: there is no Clerk session to mint one from.
+        // The anonymous proxy reads a SIGNED httpOnly cookie the browser cannot
+        // forge, checks the call against a closed allowlist, and forwards under
+        // the session's own org. This flag cookie carries no authority of its own.
+        url = `/api/anon/v1${endpoint}`;
+      } else {
+        url = `/api/v1${endpoint}`;
+        const activeOrgId = activeOrgIdFromPath();
+        if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+        if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
+      }
     }
 
     return fetch(url, {
