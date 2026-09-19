@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
+import { claimedSignUpCopy } from "@/lib/claimed-signup";
 import {
   authFailureProps,
   clerkErrorCode,
@@ -223,6 +224,11 @@ export default function SignUpPage() {
     );
   };
 
+  // A website somebody already holds: the signed-out setup was refused and sent
+  // the visitor here with the website named, so the heading says why they are
+  // on this page instead of the next screen. Absent, the page is unchanged.
+  const claimedCopy = claimedSignUpCopy(searchParams.get("claimed"));
+
   // Derived on every render rather than latched in state: a boolean flipped true
   // on the first keystroke would stay true after the user clears a field again.
   const canSubmitEmail =
@@ -388,12 +394,26 @@ export default function SignUpPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              {pendingVerification ? "Verify your email" : "Create your account"}
+              {pendingVerification
+                ? "Verify your email"
+                : claimedCopy
+                  ? claimedCopy.heading
+                  : "Create your account"}
             </h1>
             <p className="text-base text-gray-500">
-              {pendingVerification
-                ? `We sent a code to ${email}`
-                : "First $30 free, no commitment."}
+              {pendingVerification ? (
+                `We sent a code to ${email}`
+              ) : claimedCopy ? (
+                <>
+                  {claimedCopy.lead}{" "}
+                  <Link href="/sign-in" className="font-medium text-brand-600 hover:text-brand-700">
+                    {claimedCopy.signInLabel}
+                  </Link>{" "}
+                  {claimedCopy.tail}
+                </>
+              ) : (
+                "First $30 free, no commitment."
+              )}
             </p>
           </div>
 

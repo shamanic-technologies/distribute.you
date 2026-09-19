@@ -21,6 +21,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { startAnonSession } from "@/lib/anon-session-client";
+import { claimedSignUpHref } from "@/lib/claimed-signup";
 import {
   StartPicks,
   useStartCatalogue,
@@ -1779,8 +1780,15 @@ export function Onboarding() {
         setBusy(false);
         setStep("url");
         // Not a dead end: signup still works, and everything after it is the
-        // flow that existed before this change.
-        window.location.href = "/sign-up";
+        // flow that existed before this change. A website somebody already
+        // holds is the one refusal the sign-up page can explain, so it is told
+        // which website; the other refusals are ours and it stays generic. The
+        // website rides along either way so signing up lands back on it.
+        window.location.href = claimedSignUpHref({
+          reason: outcome.reason,
+          domain: domain ?? hostname,
+          brandUrl,
+        });
         return;
       }
     } else if (reuseOrg) {
@@ -3276,6 +3284,10 @@ export function Onboarding() {
         maxWidth="sm:max-w-md"
         footer={urlFooter}
       >
+        {/* Every step can go back. This one returns to the Results screen, the
+            last of the sell-first picks, which every entry into the wizard now
+            walks through before asking for the website. */}
+        <BackButton onClick={() => setStep("returns")} />
         {noWebsiteMode ? (
           <>
             <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Tell us about your business</h2>
@@ -3377,6 +3389,7 @@ export function Onboarding() {
         footer={<NextButton onClick={() => { addService(serviceDraft); if (selectedFunnelKeys.length === 0) setStep("path"); else void saveFunnelsAndContinue(); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
         copyText={servicesPrompt}
       >
+        <BackButton onClick={() => setStep("url")} />
         {/* Same placement as the offer levers': the button acts on the QUESTION,
             not on what has been typed, so it reads as another way to answer rather
             than as a step after the fact. The typed-but-unadded chip rides along
@@ -3541,6 +3554,7 @@ export function Onboarding() {
           />
         }
       >
+        <BackButton onClick={() => setStep("celebrate")} />
         <div className="mb-4 flex items-start gap-2">
           <PaperAirplaneIcon className="h-5 w-5 text-brand-600" />
           <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Your phone number.</h2>
