@@ -44,6 +44,7 @@ import {
   type FleetProof,
   type ShowcaseBrand,
 } from "@/lib/start-proof";
+import { SHORT_VIEWPORT } from "@/lib/short-viewport";
 
 /**
  * THE FIRST SCREENS OF ONBOARDING: sell first, build second, sign up last.
@@ -390,7 +391,7 @@ export function StartPicks({
           {pillars.map((p, i) => (
             <div
               key={p.title}
-              className="start-enter rounded-2xl border border-gray-200 bg-gray-50 p-5"
+              className={`start-enter rounded-2xl border border-gray-200 bg-gray-50 p-5 ${SHORT_VIEWPORT.innerCardPadding}`}
               style={{ "--enter-delay": `${(i + 1) * 90}ms` } as React.CSSProperties}
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
