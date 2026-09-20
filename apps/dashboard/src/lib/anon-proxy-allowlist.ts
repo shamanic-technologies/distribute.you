@@ -57,6 +57,10 @@ const RULES: Rule[] = [
   { method: "PUT", segments: ["brands", ":brand", "sales-funnels", ":seg"] },
   { method: "DELETE", segments: ["brands", ":brand", "sales-funnels", ":seg"] },
   { method: "PUT", segments: ["brands", ":brand", "click-destination"] },
+  // The no-website path's only source: there is no site to scrape, so the
+  // pasted business context IS what the extraction reads. Without this the
+  // whole no-website walk 403s one call after the brand is created.
+  { method: "PUT", segments: ["brands", ":brand", "business-context"] },
   { method: "POST", segments: ["brands", ":brand", "icp", "suggest"] },
 
   // ── The audiences we assemble for it ─────────────────────────────────

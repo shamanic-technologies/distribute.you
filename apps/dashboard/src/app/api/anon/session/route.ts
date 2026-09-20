@@ -80,14 +80,22 @@ export async function POST(req: NextRequest) {
   }
 
   let website = "";
+  let noWebsite = false;
   try {
-    const body = (await req.json()) as { website?: unknown };
+    const body = (await req.json()) as { website?: unknown; noWebsite?: unknown };
     website = typeof body.website === "string" ? body.website : "";
+    // DECLARED, never inferred from an empty `website` — see the note on
+    // StartInput. A blank field is a typo and keeps being refused as one.
+    noWebsite = body.noWebsite === true;
   } catch {
     return refuse(req, "We could not read that. Try again.", "bad-request");
   }
 
-  const domain = extractDomain(website);
+  // No website means no domain, which means the website rule has nothing to
+  // judge and the claim question has nothing to ask about. Both are skipped
+  // deliberately below rather than being handed an empty string, which they
+  // would correctly refuse.
+  const domain = noWebsite ? null : extractDomain(website);
 
   // The website rule runs FIRST, and ahead of the reuse branch, because a typo
   // is a typo whatever session is held: `extractDomain` is looser than the rule
@@ -99,7 +107,7 @@ export async function POST(req: NextRequest) {
   // website and is still usable, and destroying it would cost the visitor their
   // org for a keystroke — after which retyping correctly mints the duplicate
   // this whole branch exists to prevent.
-  const badWebsite = websiteInputProblem(website);
+  const badWebsite = noWebsite ? null : websiteInputProblem(website);
   if (badWebsite) return refuse(req, badWebsite, "bad-website", { clearSession: false });
 
   // Is this browser already walking this exact domain? Then it is the same
@@ -111,7 +119,7 @@ export async function POST(req: NextRequest) {
   // a session back here is proof this browser minted that org. A refused token
   // simply falls through to the ordinary path and mints a fresh one.
   const held = readAnonSession(req.cookies.get(ANON_SESSION_COOKIE)?.value, secret).session;
-  if (canReuseAnonSession(held, domain)) {
+  if (canReuseAnonSession(held, domain, noWebsite)) {
     // Re-set the SAME token rather than minting one. Re-signing would move
     // `issuedAt` and turn a bounded session into a rolling credential, which is
     // the one thing its own expiry exists to prevent; re-setting repairs a
@@ -128,9 +136,11 @@ export async function POST(req: NextRequest) {
 
   // The claim question needs a domain to ask about. An unparseable one is the
   // visitor's own typo and the website rule below states it in its own words.
-  const claim = domain ? await domainClaim(domain) : "unknown";
+  // Not asked at all on the no-website path: there is no domain to ask about,
+  // and `unknown` is read as "could not verify", which would refuse everyone.
+  const claim = noWebsite ? "unclaimed" : domain ? await domainClaim(domain) : "unknown";
 
-  const decision = anonSessionStart({ website, claim });
+  const decision = anonSessionStart({ website, claim, noWebsite });
   if (!decision.start) {
     return refuse(req, decision.refusal.message, decision.refusal.reason);
   }

@@ -124,7 +124,7 @@ describe("the session route wires reuse ahead of the claim question", () => {
   );
 
   it("decides reuse before asking whether the domain is claimed", () => {
-    const reuse = route.indexOf("canReuseAnonSession(held, domain)");
+    const reuse = route.indexOf("canReuseAnonSession(held, domain");
     const claim = route.indexOf("await domainClaim(domain)");
     expect(reuse).toBeGreaterThan(-1);
     expect(claim).toBeGreaterThan(-1);
@@ -135,7 +135,7 @@ describe("the session route wires reuse ahead of the claim question", () => {
   // acme.com would let `kevin@acme.com` through if the rule ran after reuse.
   it("refuses a bad website before it can reuse anything", () => {
     const rule = route.indexOf("websiteInputProblem(website)");
-    const reuse = route.indexOf("canReuseAnonSession(held, domain)");
+    const reuse = route.indexOf("canReuseAnonSession(held, domain");
     expect(rule).toBeGreaterThan(-1);
     expect(rule).toBeLessThan(reuse);
   });
@@ -147,7 +147,7 @@ describe("the session route wires reuse ahead of the claim question", () => {
   // Re-signing would move issuedAt and turn a bounded session into a rolling
   // credential, which its own expiry exists to prevent.
   it("re-sets the SAME token on reuse rather than minting a new one", () => {
-    const at = route.indexOf("canReuseAnonSession(held, domain)");
+    const at = route.indexOf("canReuseAnonSession(held, domain");
     const body = route.slice(at, route.indexOf("// The claim question needs a domain"));
     expect(body).not.toContain("signAnonSession");
     expect(body).not.toContain("createAnonymousOrg");

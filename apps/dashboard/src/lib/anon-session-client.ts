@@ -36,12 +36,20 @@ export type AnonSessionResult = AnonSessionStarted | AnonSessionRefused;
  *  outcome as every other refusal: they continue, with the card first. */
 const UNREACHABLE = "We couldn't get set up just now. Continue and we'll get you started.";
 
-export async function startAnonSession(website: string): Promise<AnonSessionResult> {
+export async function startAnonSession(
+  website: string,
+  opts?: { noWebsite?: boolean },
+): Promise<AnonSessionResult> {
+  // The visitor said they HAVE no website. Sent as its own flag rather than as
+  // an empty `website`, because the server refuses a blank field as the typo it
+  // usually is — the two cases look identical on the wire and are opposite in
+  // meaning. See `StartInput.noWebsite`.
+  const noWebsite = opts?.noWebsite === true;
   try {
     const res = await fetch("/api/anon/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ website }),
+      body: JSON.stringify(noWebsite ? { website: "", noWebsite: true } : { website }),
     });
 
     // The route answers 200 for a refusal too — from the visitor's side nothing
