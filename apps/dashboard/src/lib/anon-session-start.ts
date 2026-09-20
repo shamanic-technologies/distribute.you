@@ -31,6 +31,20 @@ export interface StartInput {
   /** Whatever the visitor typed. Not normalised; that is this module's job. */
   website: string;
   claim: DomainClaim;
+  /**
+   * The visitor said they HAVE no website ("I have no website" on the URL step).
+   *
+   * DECLARED, never inferred from an empty string — an empty `website` is also
+   * what a blank or half-typed field gives, and that must keep being refused as
+   * the typo it is. Same discipline as anonymity itself, which client-service
+   * records at creation rather than reading off the shape of an id.
+   *
+   * A visitor with no website has NOTHING TO CLAIM: the claim question is about
+   * a domain, and there is no domain. So the two refusals that exist to protect
+   * another organisation's brand cannot apply, and asking them anyway would
+   * refuse every no-website visitor on a question nobody can answer.
+   */
+  noWebsite?: boolean;
 }
 
 /** Why an anonymous session did not start. Shown to the visitor verbatim. */
@@ -89,8 +103,16 @@ export const CANNOT_VERIFY_MESSAGE =
 export function canReuseAnonSession(
   existing: { domain: string } | null | undefined,
   domain: string | null,
+  noWebsite = false,
 ): boolean {
-  if (!existing || !domain) return false;
+  if (!existing) return false;
+  // A NO-WEBSITE walk has no domain to match on, and that is the whole of its
+  // identity: this browser holds a session, and the visitor has said again that
+  // they have no website, so it is the same walk. Without this the second click
+  // mints a second org and a second trial seed and orphans the first, which is
+  // exactly what the domain check above exists to prevent for everybody else.
+  if (noWebsite) return existing.domain.length === 0;
+  if (!domain) return false;
   return existing.domain.length > 0 && existing.domain === domain;
 }
 
@@ -101,7 +123,11 @@ export function canReuseAnonSession(
  * sentence, so the field says the same thing here as it does everywhere else a
  * URL is typed. The other two are ours, and neither blames the visitor.
  */
-export function anonSessionStart({ website, claim }: StartInput): StartDecision {
+export function anonSessionStart({ website, claim, noWebsite }: StartInput): StartDecision {
+  // Nothing to check and nothing to claim. Stated first because both rules
+  // below are about a domain, and this visitor has none by their own account.
+  if (noWebsite) return { start: true, website: "", refusal: null };
+
   const badWebsite = websiteInputProblem(website);
   if (badWebsite) {
     return { start: false, website: null, refusal: { reason: "bad-website", message: badWebsite } };

@@ -2033,7 +2033,30 @@ export function Onboarding() {
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
     const reuseOrg = !forceNew && !!reuseOrgId;
     let targetOrgId: string | null = null;
-    if (reuseOrg) {
+
+    // SIGNED OUT — the same branch the website path has had since the signed-out
+    // half shipped, and its absence here was a dead end: `createOrganization` is
+    // Clerk's and is undefined with no session, so "I have no website" threw
+    // "Organization setup is not ready yet" for every signed-out visitor. That
+    // button renders on the URL step unconditionally, which is a step reached
+    // before anyone has an account, so the path was unreachable for exactly the
+    // people it exists for.
+    //
+    // There is nothing to claim: the claim question is about a domain and this
+    // visitor has none, so the session is started on that declared fact rather
+    // than on a website string nobody typed.
+    if (!user) {
+      const outcome = await startAnonSession("", { noWebsite: true });
+      if (!outcome.started) {
+        // A refusal is not an error here either: they continue to signup and get
+        // the flow where the card comes first. Stated in the server's own words,
+        // on the step they are already on, never a redirect.
+        setError(outcome.message);
+        setBusy(false);
+        setStep("url");
+        return;
+      }
+    } else if (reuseOrg) {
       targetOrgId = reuseOrgId!;
       maybeRenameFreshSignupOrg(targetOrgId, name);
     } else {
@@ -2067,8 +2090,13 @@ export function Onboarding() {
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
-    // Same resume cookie as the website path — see the note there.
-    document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
+    // Same resume cookie as the website path, and the same guard: signed out
+    // there is no org to scope it to and none is needed, because the edge gate
+    // that reads it only fires for a signed-in user and an anonymous session
+    // already carries its brand inside its own signed token.
+    if (targetOrgId) {
+      document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
+    }
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId, no_website: true });
     applyExtractedServices(extractedServices);
     fetchDoneRef.current = true;
