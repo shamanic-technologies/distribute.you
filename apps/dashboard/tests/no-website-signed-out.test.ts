@@ -103,6 +103,19 @@ describe("the one write the no-website path makes is reachable", () => {
   });
 });
 
+describe("the services step names a source it actually read", () => {
+  it("does not interpolate an empty host into the sentence", () => {
+    // `hostname` is empty on the no-website path, so the unguarded form printed
+    // "We drafted these from ." — a bare full stop where the source belongs, on
+    // the one step whose whole job is to say where the list came from. Observed
+    // on a prod walk.
+    expect(src).toContain("We drafted these from what you told us.");
+    const at = src.indexOf("{servicesDrafted ? (");
+    const block = src.slice(at, src.indexOf("Tell us what you sell", at));
+    expect(block).toContain("hostname ? (");
+  });
+});
+
 describe("the call sites", () => {
   it("the no-website path starts an anonymous session when signed out", () => {
     // A resolver nothing calls is the fix entirely absent with the module
