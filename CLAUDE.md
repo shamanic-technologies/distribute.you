@@ -645,6 +645,52 @@ The signed-out flow mints an anonymous org before anything else exists and creat
 
 Still open, stated rather than hidden: retrying the same domain in the same browser mints a SECOND anonymous org and burns a second $5 internal seed, because the session route never reads the cookie it just set. (client-service v0.27.0, brand-service v0.81.3, 2026-09-19.)
 
+## The ACCOUNT comes before the CHECKOUT, and a signed-in session recovers its org from Clerk
+
+The anonymous flow builds the whole setup before anyone has an account: there is no
+Clerk org and none is created, because the session IS the org and the claim re-points
+it at the Clerk org at signup. Two consequences followed, and both dead-ended every
+visitor on the same screen for two days.
+
+- **`consent` asks for the ACCOUNT while signed out, never the money** (`continueFromConsent`
+  -> `built` when `!user`, `pricing` otherwise). It walked straight to `pricing` -> `bonus`,
+  the PAYMENT step, where `buildPendingLaunchBlob` requires an org id a signed-out session
+  does not have — so Continue threw `Checkout state is missing. Go back to pricing and try
+  again.`, and going back to pricing changes nothing, which makes it a WALL rather than a
+  retry. The screen built for exactly this (`built`, *"Create your account to launch it"*)
+  was UNREACHABLE: its only route in was `continueOffer`'s signed-out branch, i.e. the
+  POST-PAYMENT offer levers, which an anonymous visitor can never reach. Its Back goes to
+  `consent` now, for the same reason.
+- **`orgIdRef` is FILLED from Clerk's active org when nothing else has stated one.** It is
+  written by the loading step, which leaves it null on the anonymous path on purpose, so
+  every snapshot persists `orgId: null`. `/onboarding/claim` then returns with `?claimed=1`,
+  which lands on `pricing` from that same snapshot, and the `?brandId=` param-resume effect
+  that WOULD read Clerk bails whenever a snapshot exists — the ordinary same-tab case. So
+  the ref stayed null and the identical throw fired on the second pass, after the account
+  existed. The effect FILLS ONLY: `createBrandAndFetchServices` is authoritative (on `?new=1`
+  it mints a fresh org and writes it there), so a later Clerk read must never walk over it.
+  `organization.id` is the right source because `pending.orgId` is only ever used as the
+  CLERK org id — the post-launch redirect is `/orgs/<id>/brands/<id>/...`.
+
+⚠️ **The launch blob still REFUSES to build without an org, and that must stay.** The fix is
+to populate the id, never to default it: a placeholder would file the campaign, the money
+and the redirect under an org that is not the customer's.
+
+⚠️ **Still open, stated rather than hidden:** the NO-WEBSITE path
+(`createBrandNoWebsiteAndFetchServices`) has no signed-out branch at all — it calls Clerk
+`createOrganization` while signed out and throws `Organization setup is not ready yet`.
+
+**The generalisable half: a flow that moves its signup wall has TWO doors into the room, and
+a guard on one of them is not a gate.** The account screen existed and was correct; nothing
+routed into it, and nothing went red — `tsc` passes, the suite passes, the wizard renders,
+and the failure is a sentence on a screen nobody on the team walks. The only instrument that
+sees it is the funnel's own output. Measured 2026-09-20: **24 anonymous orgs** (one a test
+probe) and **ZERO campaigns created** in the two days the flow was live, against 15 in the
+two weeks before — so the check that would have caught it on day one is a single
+`GROUP BY day` on `campaigns.created_at`, compared against the week before the ship. When a
+change re-orders where a customer is asked to pay, watch the thing being counted, not the
+tests. Guards: `tests/anon-account-before-checkout.test.ts`. (#4318)
+
 ## A VALIDATOR written before a legitimate EMPTY state exists will reject your own data — and an error handler that CLEANS UP destroys the evidence pointing at it
 
 Two halves of one incident, and the second is what turns a ten-minute fix into an hour.

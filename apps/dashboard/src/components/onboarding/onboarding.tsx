@@ -1257,6 +1257,26 @@ export function Onboarding() {
   const [brandId, setBrandId] = useState<string | null>(() => restored?.brandId ?? null);
   const brandIdRef = useRef<string | null>(restored?.brandId ?? null);
   const orgIdRef = useRef<string | null>(restored?.orgId ?? null);
+
+  // A signed-in session recovers the org it belongs to from Clerk, when nothing
+  // else has stated one.
+  //
+  // `orgIdRef` is written by the loading step, and the SIGNED-OUT path leaves it
+  // null on purpose: the anonymous session IS the org and there is no Clerk org to
+  // name yet. At signup `/onboarding/claim` re-points that same org at the Clerk
+  // org the visitor just made and sends them back here with `?claimed=1` — which
+  // lands on the budget step, from a snapshot written while signed out, so the ref
+  // is restored as null. The `?brandId=` resume effect that WOULD read Clerk bails
+  // whenever a snapshot exists, which is the ordinary same-tab case, so nothing
+  // ever filled it and the launch blob threw on every claimed signup.
+  //
+  // FILLS ONLY, never overwrites. `createBrandAndFetchServices` is authoritative:
+  // on `?new=1` it mints a fresh org and writes it here, and a later Clerk read
+  // must not walk over it.
+  useEffect(() => {
+    if (orgIdRef.current || !organization?.id) return;
+    orgIdRef.current = organization.id;
+  }, [organization?.id]);
   const fetchDoneRef = useRef(false);
   const loadingStartedAtRef = useRef<number | null>(null);
   const checkoutResumeStartedRef = useRef(false);
@@ -2557,6 +2577,16 @@ export function Onboarding() {
     }
   }
 
+  // Consent-step "Continue". SIGNED OUT the next thing is the ACCOUNT, not the
+  // money: `built` states what we assembled and asks for one, and the claim lands
+  // back on `pricing`, so the budget is asked once, after the org exists. Walking
+  // an anonymous visitor into the checkout instead was a dead end — the launch
+  // blob requires an org id a signed-out session does not have by design, so
+  // Continue threw and going back to pricing changed nothing.
+  function continueFromConsent() {
+    setStep(user ? "pricing" : "built");
+  }
+
   // The numbers the best-model ROI is computed from, as the PRIMARY FUNNEL states
   // them: its own funnel legs plus the lifetime revenue that closes the funnel.
   //
@@ -3533,7 +3563,7 @@ export function Onboarding() {
     return (
       <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
+        footer={<NextButton onClick={continueFromConsent} label="Continue" />}
       >
           <BackButton onClick={() => setStep("audiences")} />
           <div className="mb-4 flex items-start gap-2">
@@ -4067,7 +4097,7 @@ export function Onboarding() {
           />
         }
       >
-        <BackButton onClick={() => setStep("offer")} />
+        <BackButton onClick={() => setStep("consent")} />
         <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
           Here&apos;s what we built for you.
         </h2>

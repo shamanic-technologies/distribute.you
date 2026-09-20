@@ -119,7 +119,10 @@ describe("every onboarding step can go back", () => {
     ["services", 'setStep("url")'],
     ["phone", 'setStep("celebrate")'],
     ["consent", 'setStep("audiences")'],
-    ["built", 'setStep("offer")'],
+    // Reached from `consent` now: it is the account gate a SIGNED-OUT visitor
+    // meets instead of the checkout, so Back returns to the screen before it.
+    // `offer` is a post-payment step they cannot have come from.
+    ["built", 'setStep("consent")'],
   ])("%s has a Back button to %s", (step, target) => {
     const block = stepBlock(step);
     expect(block).toContain("<BackButton");
