@@ -119,10 +119,10 @@ describe("every onboarding step can go back", () => {
     ["services", 'setStep("url")'],
     ["phone", 'setStep("celebrate")'],
     ["consent", 'setStep("audiences")'],
-    // Reached from `consent` now: it is the account gate a SIGNED-OUT visitor
-    // meets instead of the checkout, so Back returns to the screen before it.
-    // `offer` is a post-payment step they cannot have come from.
-    ["built", 'setStep("consent")'],
+    // Reached from the LAST offer lever: it is the account gate a SIGNED-OUT
+    // visitor meets instead of the checkout, and the levers it recaps come
+    // before it, so Back returns to the screen it was reached from.
+    ["built", 'setStep("offer")'],
   ])("%s has a Back button to %s", (step, target) => {
     const block = stepBlock(step);
     expect(block).toContain("<BackButton");

@@ -53,15 +53,18 @@ describe("The account comes before the checkout", () => {
 
   const RECOVERY_MARKER = "// A signed-in session recovers the org it belongs to from Clerk";
 
-  it("the consent step asks for the account, not the money, while signed out", () => {
+  it("the consent step asks for the offer, not the money, while signed out", () => {
     const body = between(
       read(onboardingPath),
       "function continueFromConsent()",
-      "\n  // ",
+      "\n  }",
     );
-    // `built` states what we assembled and asks for the account. The claim lands
-    // back on `pricing`, so the budget is asked once — after the org exists.
-    expect(body).toContain('setStep(user ? "pricing" : "built")');
+    // The levers, then the recap that states them, then the account. The claim
+    // lands back on `pricing`, so the budget is asked once — after the org exists.
+    // It routed straight to `built` for one release, which recapped an offer the
+    // visitor had never been asked about (see offer-levers-before-account).
+    expect(body).toContain('setStep(user ? "pricing" : "offer")');
+    expect(body).not.toContain('setStep(user ? "pricing" : "built")');
   });
 
   it("the consent step routes through that function, never straight to pricing", () => {
@@ -76,10 +79,10 @@ describe("The account comes before the checkout", () => {
   it("the account gate goes back to the screen before it", () => {
     const src = read(onboardingPath);
     const builtStep = between(src, 'if (step === "built") {', "\n  if (step ===");
-    // It is reached from consent now, so Back returns there. `offer` is a
-    // post-payment step an anonymous visitor cannot have come from.
-    expect(builtStep).toContain('<BackButton onClick={() => setStep("consent")} />');
-    expect(builtStep).not.toContain('setStep("offer")');
+    // It is reached from the LAST offer lever, so Back returns there — to the
+    // screens this one recaps, at the one it came from.
+    expect(builtStep).toContain('setStep("offer")');
+    expect(builtStep).toContain("setOfferIndex(POST_PAYMENT_OFFER_LEVERS.length - 1)");
   });
 
   it("a signed-in session recovers its org from Clerk", () => {

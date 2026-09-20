@@ -489,6 +489,15 @@ type PendingCheckoutLaunch = {
    * ONBOARDING_STATE_VERSION stays at 8.
    */
   funnelBudgets: Record<string, number>;
+  /**
+   * Whether the six offer levers were answered BEFORE the account existed (the
+   * anonymous path). The post-payment steps run on a FRESH page load — the Stripe
+   * return — so React state cannot carry it there; top level for the same reason
+   * as the selection above, and version-independent, so ONBOARDING_STATE_VERSION
+   * stays at 8. Absent on a blob written before this shipped: reads false, and the
+   * post-payment walk asks the levers exactly as it did then.
+   */
+  leversStatedBeforeAccount?: boolean;
   onboardingState: PersistedOnboardingState;
   createdAt: string;
 };
@@ -537,6 +546,14 @@ type PersistedOnboardingState = {
   // requiring them would strand it (a version bump strands an in-flight checkout).
   startOutcomes?: string[];
   startFunnels?: string[];
+  // Did this visitor answer the six offer levers BEFORE creating the account?
+  // The post-payment sequence ends `model` -> `offer` -> launch, so without this
+  // an anonymous visitor who stated them pre-account is asked the same six
+  // questions again after paying, prefilled with their own answers. OPTIONAL for
+  // the same reason as the two above: a snapshot written before it shipped has
+  // none and reads false, which is exactly the pre-change walk, and requiring it
+  // would need a version bump — which strands an in-flight checkout.
+  leversStatedBeforeAccount?: boolean;
 };
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -846,7 +863,8 @@ function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
     !(p.orgId === null || typeof p.orgId === "string") ||
     typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean" ||
     !(p.startOutcomes === undefined || isStringList(p.startOutcomes)) ||
-    !(p.startFunnels === undefined || isStringList(p.startFunnels))
+    !(p.startFunnels === undefined || isStringList(p.startFunnels)) ||
+    !(p.leversStatedBeforeAccount === undefined || typeof p.leversStatedBeforeAccount === "boolean")
   ) {
     return null;
   }
@@ -973,6 +991,11 @@ export function Onboarding() {
   // read on the far side of the Clerk redirect.
   const [startOutcomes, setStartOutcomes] = useState<string[]>(() => restored?.startOutcomes ?? []);
   const [startFunnels, setStartFunnels] = useState<string[]>(() => restored?.startFunnels ?? []);
+  // Set when a signed-out visitor finishes the offer levers, read by the
+  // post-payment walk so it does not ask them a second time.
+  const [leversStatedBeforeAccount, setLeversStatedBeforeAccount] = useState<boolean>(
+    () => restored?.leversStatedBeforeAccount ?? false,
+  );
   const { catalogue: startCatalogue, catalogueError: startCatalogueError } = useStartCatalogue();
 
   const [step, setStep] = useState<Step>(() =>
@@ -1451,6 +1474,7 @@ export function Onboarding() {
       ratesEdited: ratesEditedRef.current,
       startOutcomes,
       startFunnels,
+      leversStatedBeforeAccount,
     };
   }
 
@@ -1460,7 +1484,7 @@ export function Onboarding() {
   useEffect(() => {
     if (searchParams.get("launch_checkout") === "success") return;
     writeOnboardingState(buildOnboardingState());
-  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, startFunnels]);
+  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, startFunnels, leversStatedBeforeAccount]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -2421,6 +2445,10 @@ export function Onboarding() {
       selectedFunnelKeys: launchFunnelKeys,
       primaryFunnelKey: launchPrimaryFunnelKey,
       funnelBudgets: launchFunnelBudgets,
+      // Live state wins, the stored blob is the fallback — same precedence as the
+      // selection above, so a re-checkout after a cancel still remembers that the
+      // levers were answered before the account.
+      leversStatedBeforeAccount: leversStatedBeforeAccount || (storedPending?.leversStatedBeforeAccount ?? false),
       onboardingState: checkoutState,
       createdAt: new Date().toISOString(),
     };
@@ -2496,6 +2524,10 @@ export function Onboarding() {
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl ?? ""), hostname: pending.hostname });
       setLaunchStep(0);
       setOfferIndex(0);
+      // The levers, when this visitor stated them before the account. React state
+      // is gone by now (this is the Stripe return, a fresh page), so the blob is
+      // where the fact lives.
+      setLeversStatedBeforeAccount(pending.leversStatedBeforeAccount ?? false);
       setStep("celebrate");
       setBusy(false);
       // Kick the whole launch in the BACKGROUND right now — while the user fills the
@@ -2577,14 +2609,18 @@ export function Onboarding() {
     }
   }
 
-  // Consent-step "Continue". SIGNED OUT the next thing is the ACCOUNT, not the
-  // money: `built` states what we assembled and asks for one, and the claim lands
-  // back on `pricing`, so the budget is asked once, after the org exists. Walking
-  // an anonymous visitor into the checkout instead was a dead end — the launch
-  // blob requires an org id a signed-out session does not have by design, so
-  // Continue threw and going back to pricing changed nothing.
+  // Consent-step "Continue". SIGNED OUT the next thing is the OFFER, then the
+  // recap, then the account — never the money: the launch blob requires an org id
+  // a signed-out session does not have by design, so walking an anonymous visitor
+  // into the checkout threw and going back to pricing changed nothing.
+  //
+  // It routed straight to `built` for one release, which skipped the six lever
+  // screens the recap STATES — so the recap listed an offer the visitor had never
+  // been asked about. The levers are asked before they are recapped; the index is
+  // reset so the walk starts at the first one whatever a previous pass left behind.
   function continueFromConsent() {
-    setStep(user ? "pricing" : "built");
+    if (!user) setOfferIndex(0);
+    setStep(user ? "pricing" : "offer");
   }
 
   // The numbers the best-model ROI is computed from, as the PRIMARY FUNNEL states
@@ -2984,6 +3020,11 @@ export function Onboarding() {
     // org adding a brand, or a session that has already paid — this is still the
     // terminal step it has always been.
     if (!user) {
+      // Stated here so the post-payment walk (`model` -> `offer` -> launch) knows
+      // these six screens are already answered and does not ask them again after
+      // the card. It travels on the snapshot AND on the pending blob, because the
+      // post-payment steps run on a fresh page load.
+      setLeversStatedBeforeAccount(true);
       setStep("built");
       return;
     }
@@ -3825,7 +3866,15 @@ export function Onboarding() {
       <StepShell chrome={chrome}
         maxWidth="sm:max-w-2xl"
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
-        footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
+        footer={
+          <NextButton
+            onClick={() => (leversStatedBeforeAccount ? void finalizePostPaymentAndLaunch() : setStep("offer"))}
+            // ASKED ONCE. A visitor who answered the six lever screens before
+            // creating the account is not asked them again after paying; an
+            // existing org adding a brand never saw them, so it still walks them.
+            label={leversStatedBeforeAccount ? "Launch my campaign" : "Continue"}
+          />
+        }
       >
         <BackButton
           onClick={() => {
@@ -3998,10 +4047,21 @@ export function Onboarding() {
     return (
       <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
-        footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
+        footer={
+          <NextButton
+            onClick={continueOffer}
+            busy={busy}
+            // Signed out, nothing launches here: the recap and the account come
+            // next, so the button says what actually happens. Signed in, this IS
+            // the terminal step it has always been.
+            label={isLast ? (user ? "Launch my campaign" : "See what we built") : "Continue"}
+          />
+        }
         copyText={leverPrompt}
       >
-        <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("model"))} />
+        {/* `model` is a POST-PAYMENT step. An anonymous visitor reached the levers
+            from `consent` and has never seen it, so Back returns there instead. */}
+        <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep(user ? "model" : "consent"))} />
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
           Your offer · {offerIndex + 1} of {POST_PAYMENT_OFFER_LEVERS.length}
         </div>
@@ -4097,7 +4157,14 @@ export function Onboarding() {
           />
         }
       >
-        <BackButton onClick={() => setStep("consent")} />
+        {/* Back to the levers this screen recaps — at the LAST one, which is the
+            screen it was reached from. */}
+        <BackButton
+          onClick={() => {
+            setOfferIndex(POST_PAYMENT_OFFER_LEVERS.length - 1);
+            setStep("offer");
+          }}
+        />
         <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
           Here&apos;s what we built for you.
         </h2>
