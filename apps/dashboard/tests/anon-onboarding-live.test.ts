@@ -75,7 +75,11 @@ describe("what must NOT come back", () => {
     // be routed into the summary-then-signup path.
     const src = strip(read("src/components/onboarding/onboarding.tsx"));
     expect(src).toContain("void finalizePostPaymentAndLaunch();");
-    expect(src).toMatch(/if \(!user\) \{\s*setStep\("built"\);/);
+    // The signed-out branch now also STATES that the levers were answered, so the
+    // post-payment walk does not ask the same six screens again after the card.
+    expect(src).toMatch(
+      /if \(!user\) \{\s*setLeversStatedBeforeAccount\(true\);\s*setStep\("built"\);/,
+    );
   });
 });
 
