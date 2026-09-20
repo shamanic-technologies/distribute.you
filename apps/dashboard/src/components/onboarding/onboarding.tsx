@@ -3538,8 +3538,18 @@ export function Onboarding() {
         {/* The "we drafted these" line is a claim about a successful extraction. With
             nothing extracted it described an empty box, which reads as "your site
             sells nothing" — so it is gated on there being a draft to talk about. */}
+        {/* NAME THE SOURCE WE ACTUALLY READ. `hostname` is empty on the no-website
+            path — there is no site — so interpolating it printed "We drafted
+            these from ." with a bare full stop where the source should be, on
+            the one step whose whole job is to say where the list came from.
+            What we read there is what the visitor pasted, so that is what it
+            says. Observed on a prod walk of the no-website path. */}
         {servicesDrafted ? (
-          <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+          hostname ? (
+            <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+          ) : (
+            <p className="mt-2 mb-6 text-gray-500">We drafted these from what you told us. Add or remove until the list matches what you sell.</p>
+          )
         ) : (
           <p className="mt-2 mb-6 text-gray-500">Tell us what you sell. Add one per line.</p>
         )}
