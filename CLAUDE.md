@@ -662,6 +662,22 @@ Still open, stated rather than hidden: retrying the same domain in the same brow
 
 So when a funnel step reads zero: before attributing it to drop-off, spend ONE query asking whether anyone has EVER cleared it, and if the answer is "one, and it is a probe", the step is broken rather than unpopular. A synthetic success is the tell — it passed precisely because it ran without the surrounding surface. **And when you measure a funnel's output at zero, walk EVERY step of it, not only the one you just moved.**
 
+## WALKING ONE BRANCH OF A FLOW SAYS NOTHING ABOUT THE OTHER — the signed-out onboarding has two, and only one had ever been walked
+
+The prod-walk recipe elsewhere in this file is the right instrument and it has a blind spot the recipe itself creates: it describes ONE path (open `/start?url=<domain>`, click the footer CTA, reach the wall), so a clean walk feels like a clean flow. It is a statement about the branch you took. Measured 2026-09-20, minutes apart on the same deploy: the with-website path ran **14 steps with zero 4xx/5xx** to the sign-up wall, and `I have no website` — a button rendering unconditionally on that same URL step — was broken in **three independent places at once**.
+
+- **The org.** It called Clerk's `createOrganization`, which is `undefined` with no session, so every signed-out visitor got `Organization setup is not ready yet. Please try again.` — a sentence about us, on a retry that could never work. The website path had had an `if (!user) -> startAnonSession(...)` branch since the signed-out half shipped; this one never got it.
+- **The session.** The route refuses a blank website as the typo it usually is, so a no-website walk could not start one even with the org fixed.
+- **The allowlist.** `PUT /brands/:brand/business-context` — the ONE write that path makes, and its only extraction source — was absent, so it would have 403'd one call after the brand was created. **An allowlist is a list of the calls somebody REMEMBERED**, and the calls nobody remembers are the ones on the branch nobody walks. Grep every endpoint a branch touches against it rather than trusting the list.
+
+**A DECLARED FACT IS NOT AN EMPTY STRING, and conflating them is what made the second break structural.** A visitor SAYING they have no website and a visitor leaving the field BLANK are byte-identical on the wire and mean opposite things, so the fix carries `noWebsite` as its own flag and never infers it from `website === ""`. Same discipline client-service already applies to anonymity (recorded at creation, never read off the shape of an id), and the same reason: the moment absence is overloaded, the guard that catches a typo also refuses a legitimate answer. A blank field is still refused exactly as before, and a guard pins BOTH directions.
+
+**Nothing to claim means nothing is asked.** The claim question is about a domain and this visitor has none, so it is skipped rather than handed an empty string — which it would correctly answer `unknown`, i.e. `cannot-verify`, refusing every no-website visitor forever on a question nobody can answer. Reuse keys on the same declared fact, so a second click cannot mint a second org and a second trial seed.
+
+**And a walk finds copy that no test can.** The step immediately after rendered `We drafted these from .` — a bare full stop where the source belongs, because the line interpolates the host and there is no host. `tsc` is fine, every guard is fine, and it is on the one step whose whole job is to say where the list came from.
+
+Corollary for the funnel measurement the account-before-checkout section prescribes: it tells you a branch is dead, never WHICH. On that same day signups ran at one a day while campaigns had been zero since 09-17 — one number for a flow with two entrances and a wall in the middle. **List a flow's branches BEFORE walking it, walk each, and say which ones you walked.** Guards: `tests/no-website-signed-out.test.ts`.
+
 ## The ACCOUNT comes before the CHECKOUT, and a signed-in session recovers its org from Clerk
 
 The anonymous flow builds the whole setup before anyone has an account: there is no
