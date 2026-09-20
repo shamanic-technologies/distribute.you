@@ -71,7 +71,9 @@ describe("The offer levers are asked before the recap, and asked once", () => {
     const offerStep = between(src, 'if (step === "offer") {', "\n  // WHAT WE BUILT");
     // `model` is a POST-PAYMENT step: an anonymous visitor has never seen it, so
     // going back there from the first lever is a screen out of nowhere.
-    expect(offerStep).toContain('setStep(user ? "model" : "consent")');
+    // `model` sat between the phone and the levers and is gone: post-payment the
+    // levers now follow the phone step.
+    expect(offerStep).toContain('setStep(user ? "phone" : "consent")');
   });
 
   it("the last lever does not promise a launch to somebody with no account", () => {
@@ -92,13 +94,16 @@ describe("The offer levers are asked before the recap, and asked once", () => {
 
   it("the post-payment walk skips the levers when they were already stated", () => {
     const src = read(onboardingPath);
-    const modelStep = between(src, 'if (step === "model") {', "\n  if (step ===");
+    // The best-model screen used to carry this decision; it ran between the phone
+    // and the levers and is gone, so the phone step carries it.
+    const phone = between(src, "async function savePhoneAndContinue()", "\n  async function");
     // Asked once. A visitor who answered the six screens before creating the
-    // account is not asked them again after paying.
-    expect(modelStep).toContain(SKIP_MARKER);
+    // account is not asked them again after paying — they go straight to launch.
+    expect(phone).toContain(SKIP_MARKER);
+    expect(phone).toContain("finalizePostPaymentAndLaunch()");
     // The signed-in path (an existing org adding a brand) is untouched: it never
     // saw the levers, so it still walks them.
-    expect(modelStep).toContain('setStep("offer")');
+    expect(phone).toContain('setStep("offer")');
   });
 
   it("the flag is stated when the levers are answered before the account", () => {

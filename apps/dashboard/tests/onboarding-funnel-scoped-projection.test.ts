@@ -49,21 +49,7 @@ describe("the projection is priced on the FUNNEL, never on a goal", () => {
     expect(schema).toContain("funnelKey:");
   });
 
-  it("onboarding's best-model fetch takes a funnel key and sends no goal or objective", () => {
-    const fetcher = sliceFrom(
-      onboarding,
-      "function fetchBestModelLadder(id: string, funnelKey: string | null)",
-      700,
-    );
-    expect(fetcher).toContain("funnel: funnelKey as SalesFunnelKeyWire");
-    expect(fetcher).not.toContain("objective");
-    expect(fetcher).not.toContain("optimizationGoalForOutcome");
-  });
 
-  it("both prewarms key on the persisted primary funnel, not the outcome", () => {
-    expect(onboarding).toContain("void fetchBestModelLadder(prewarmId, pending.primaryFunnelKey)");
-    expect(onboarding).not.toContain("fetchBestModelLadder(prewarmId, pending.outcome)");
-  });
 
   it("the campaign overview states its own funnel on the projection read", () => {
     // A campaign runs exactly ONE funnel, so it is the surface that must never ask at
@@ -99,34 +85,7 @@ describe("BestModelStats renders the funnel's own steps", () => {
   });
 });
 
-describe("a single path states no rank", () => {
-  it("hides the Primary tag on the funnel detail step when there is one path", () => {
-    // Bounded by the step that follows, not by a length. Measured numbers here
-    // expire on the next line anybody adds inside the block, and this one did.
-    const step = sliceBetween(onboarding, 'if (step === "funnelStats") {', 'if (step === "model") {');
-    expect(step).toContain("detailFunnels.length > 1 && funnel.key === primaryFunnelKey");
-  });
-
-  it("drops the superlative headline and the rank numeral on the model step", () => {
-    // Bounded by the step that follows, for the same reason as above.
-    const step = sliceBetween(onboarding, 'if (step === "model") {', 'if (step === "offer") {');
-    expect(step).toContain('selectedFunnels.length > 1 ? "Your most profitable path with us."');
-    expect(step).toContain("What your path should return.");
-    // The numeral is a rank; it only means something beside a second path.
-    expect(step).toContain('selectedFunnels.length > 1 ? (');
-    expect(step).toContain("<SalesFunnelMark def={salesFunnelByKey(primaryFunnel.key as SalesFunnelKey)}");
-  });
-});
-
 describe("the funnel detail step prefills what we already know", () => {
-  it("seeds each rate through the shared helper, not an empty object", () => {
-    // The per-key resolution sits 1719 chars into the function.
-    const draft = sliceFrom(onboarding, "function funnelDraft(funnel: FunnelView)", 1900);
-    expect(draft).toContain("funnelDraftFromBrand(def, storedEconomics, defaultDestinationUrl).rates");
-    // Per key: typed here, then the same key typed on another path, then the brand.
-    expect(draft).toContain("typedHere ?? typedOnAnotherPath ?? seeded[rate.key] ?? \"\"");
-    expect(draft).not.toContain("rates: own?.rates ?? {}");
-  });
 
   it("keeps the economics in STATE, so a form seeded from them re-seeds when they land", () => {
     // A ref lands with no re-render: the fields would stay blank under copy saying we
@@ -135,15 +94,6 @@ describe("the funnel detail step prefills what we already know", () => {
     expect(onboarding).toContain("useState<EffectiveSalesEconomics | null>(null)");
   });
 
-  it("marks an optional destination beside its label, and says it once", () => {
-    // The destinations list is the last block of the step, so the slice runs to
-    // the step that follows rather than to a length that expires.
-    const step = sliceBetween(onboarding, 'if (step === "funnelStats") {', 'if (step === "model") {');
-    expect(step).toContain("{dest.optional && (");
-    expect(step).toContain("Optional");
-    // The hint under the input no longer repeats it.
-    expect(funnelView).not.toContain('hint: "Optional.');
-  });
 });
 
 describe("funnelDraftFromBrand seeds from the EFFECTIVE economics shape", () => {
@@ -209,24 +159,4 @@ describe("a PREFILLED rate is a whole number — 8.322 reads as a claim of preci
     expect(src).toContain("const roundRate = (n: number) => roundPrefilledRate(n)");
   });
 
-  it("the % sits beside the number on every rate field, never floated to the far right of a full-width box", () => {
-    const onboarding = readFileSync(resolve(__dirname, "../src/components/onboarding/onboarding.tsx"), "utf8");
-    const card = readFileSync(
-      resolve(__dirname, "../src/components/settings/brand-sales-funnels-card.tsx"),
-      "utf8",
-    );
-    // The settings card used to float the % at the right edge of a w-full input
-    // (the `/day` addon on the budget field keeps that shape: an amount is not a rate).
-    expect(card).not.toMatch(/absolute right-3[^>]*>\s*%\s*</);
-    for (const src of [onboarding, card]) {
-      expect(src).toContain("<RateInput");
-    }
-    const rateInput = readFileSync(resolve(__dirname, "../src/components/rate-input.tsx"), "utf8");
-    expect(rateInput).toContain("text-right");
-    expect(rateInput).toContain("w-28");
-    // Inside a flex-col label an inline-flex box stretches to the column: measured 606px
-    // at 1280 without it, 153px with. The box must not fill the row.
-    expect(rateInput).toContain("self-start");
-    expect(rateInput).not.toContain("w-full");
-  });
 });

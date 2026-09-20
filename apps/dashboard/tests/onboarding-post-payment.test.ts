@@ -24,6 +24,7 @@ describe("post-payment step wiring in onboarding.tsx", () => {
   it("adds the phone / ltr / offer steps to the Step union", () => {
     expect(onboardingSrc).toContain('| "celebrate"');
     expect(onboardingSrc).toContain('| "phone"');
+    // `ltr` stays in the union as a retired name a fail-safe still maps.
     expect(onboardingSrc).toContain('| "ltr"');
     expect(onboardingSrc).toContain('| "offer"');
     // launching stays (the loader still runs after the post-payment steps)
@@ -64,24 +65,30 @@ describe("post-payment step wiring in onboarding.tsx", () => {
     expect(onboardingSrc).toContain("window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);");
   });
 
-  it("introduces the best model after the funnel screens (same ladder + pick as the Strategy page)", () => {
-    expect(onboardingSrc).toContain('| "model"');
-    expect(onboardingSrc).toContain('if (step === "model")');
-    expect(onboardingSrc).toContain("getWorkflowProjectionLadder");
-    expect(onboardingSrc).toContain("pickBestBrandRow");
-    expect(onboardingSrc).toContain("<BestModelStats");
-    // The last funnel screen advances to the model step (not straight to offer)
-    expect(onboardingSrc).toContain('setStep("model");');
-  });
 
-  it("prices each funnel and saves the phone via savePhoneNumber", () => {
-    // The single lifetime-revenue screen is gone: each funnel carries its own, and
-    // each is written on its own screen through the shared partial patch (see
-    // onboarding-funnels-flow.test.ts).
-    expect(onboardingSrc).toContain("async function saveFunnelStatsAndContinue()");
-    expect(onboardingSrc).toContain("declareBrandSalesFunnel(id, funnel.key, patch)");
-    expect(onboardingSrc).not.toContain("function saveLtrAndContinue");
-    expect(onboardingSrc).toContain("await savePhoneNumber(phone);");
+
+  it("runs celebrate -> phone -> launch, and nothing between", () => {
+    // The per-funnel rate screens and the best-model screen used to sit between
+    // the phone and the launch, asking a person who had just paid for conversion
+    // rates. Everything that identifies the business is stated BEFORE the
+    // account now, so the post-payment run is the phone and the launch.
+    expect(onboardingSrc).not.toContain('| "funnelStats"');
+    expect(onboardingSrc).not.toContain('| "model"');
+    expect(onboardingSrc).not.toContain('if (step === "funnelStats")');
+    expect(onboardingSrc).not.toContain('if (step === "model")');
+    expect(onboardingSrc).not.toContain("saveFunnelStatsAndContinue");
+    expect(onboardingSrc).not.toContain("saveModelEconomics");
+    // The expensive cross-org ladder read existed only to feed that screen.
+    expect(onboardingSrc).not.toContain("getWorkflowProjectionLadder");
+    // The phone step goes straight to the launch, or to the levers for somebody
+    // who never saw them (an existing org adding a brand).
+    const phone = onboardingSrc.slice(
+      onboardingSrc.indexOf("async function savePhoneAndContinue()"),
+    );
+    const body = phone.slice(0, phone.indexOf("\n  async function", 1));
+    expect(body).toContain("if (leversStatedBeforeAccount) {");
+    expect(body).toContain("void finalizePostPaymentAndLaunch();");
+    expect(body).toContain('setStep("offer");');
   });
 
   it("walks the offer levers one screen at a time via an index", () => {

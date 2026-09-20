@@ -53,40 +53,8 @@ describe("Onboarding sales-economics writes", () => {
     expect(body).not.toContain("buildEconomicsPayload");
   });
 
-  it("prices the PRIMARY FUNNEL through the shared per-funnel patch path", () => {
-    const body = sliceFrom("async function saveModelEconomics(", 2000);
-    // Same three calls, in the same order, as the funnel's own detail screen: read
-    // what is stored, diff against it, declare. Never a brand-level write.
-    const read = body.indexOf("await getBrandSalesFunnels(id)");
-    const diff = body.indexOf("buildFunnelPatch(def, draft, storedFunnelValues(stored, funnel.key))");
-    const write = body.indexOf("declareBrandSalesFunnel(id, funnel.key, patch)");
-    expect(read).toBeGreaterThan(-1);
-    expect(diff).toBeGreaterThan(read);
-    expect(write).toBeGreaterThan(diff);
-    // brand-service's refusal is a sentence written for a person; `err.message` is
-    // the whole downstream body verbatim.
-    expect(body).toContain("funnelWriteErrorMessage(err)");
-    expect(body).not.toContain("setModelEconomicsError(err instanceof Error ? err.message");
-  });
 
-  it("shows the primary funnel's OWN steps, not the retired goal's rate set", () => {
-    // `RATE_KEYS_FOR_OUTCOME` mixed the entry legs of DIFFERENT funnels (the meeting
-    // goal asked for reply-to-meeting AND visit-to-meeting, one from each meeting
-    // funnel), so the block asked for numbers belonging to no single path.
-    expect(src).not.toContain("RATE_KEYS_FOR_OUTCOME");
-    expect(src).not.toContain("modelEconomicsKeys");
-    // The fields come from the funnel catalogue, so a rate reads the same words here
-    // as on the funnel's own screen.
-    expect(src).toContain("const economicsRates = economicsDef ? funnelRateFields(economicsDef) : []");
-    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: next } })");
-  });
 
-  it("arms the Update button on a live compare, never a sticky latch", () => {
-    expect(src).toContain("economicsSnapshot !== modelEconomicsBaseline");
-    // A boolean set true on first edit and never cleared would leave the button armed
-    // after a change-then-undo.
-    expect(src).not.toContain("setEconomicsDirty(");
-  });
 
   it("warms the stored set on the post-payment paths, which never hydrate", () => {
     // Still needed: it seeds the lifetime revenue the funnel screens prefill from.

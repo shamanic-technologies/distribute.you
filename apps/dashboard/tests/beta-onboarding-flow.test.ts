@@ -51,7 +51,9 @@ describe("Beta onboarding guided flow", () => {
     // the funnels replaced, and features-service prices on the declared funnel.
     expect(src).not.toContain("saveBrandSalesEconomics");
     expect(src).toContain("stateBrandSalesFunnels");
-    expect(src).toContain("declareBrandSalesFunnel");
+    // `declareBrandSalesFunnel` went with the post-payment rate screens: the flow
+    // states the funnel SET and prices nothing at signup.
+    expect(src).not.toContain("declareBrandSalesFunnel");
     expect(src).toContain("saveBrandUserFields");
     expect(src).toContain("createCampaign");
     // NO audience is activated at launch: onboarding collects the customer's
@@ -164,12 +166,13 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Only set this above 0 if prospects can book a meeting directly from your website");
   });
 
-  it("keeps rate inputs editable as text and validates decimals on continue", () => {
-    expect(src).toContain("parseRateTextInput");
-    // Funnel rates are typed into the funnel's own draft, keyed by the catalogue's
-    // rate name rather than the retired goal's short key.
-    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: next } })");
+  it("asks for no conversion rate at signup at all", () => {
+    // The screens that took them ran AFTER the card, between a person who had
+    // just paid and the thing they paid for. Rates and lifetime revenue are
+    // stated on Settings -> Sales Funnels instead.
+    expect(src).not.toContain("editFunnelDraft(");
     expect(src).not.toContain("formatRateInput(e.target.value)");
+    expect(src).not.toContain("<RateInput");
   });
 
   it("onboarding has no brand-service persona path (audiences only)", () => {
