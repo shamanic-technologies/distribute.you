@@ -1,5 +1,6 @@
 import { QueryProvider } from "@/lib/query-provider";
 import { BillingGuardProvider } from "@/lib/billing-guard";
+import { SHORT_VIEWPORT } from "@/lib/short-viewport";
 import { OnboardingCreditGate } from "@/components/onboarding/onboarding-credit-gate";
 import { OnboardingTopChrome } from "@/components/onboarding/onboarding-top-chrome";
 import { SupportButton } from "@/components/support/support-button";
@@ -49,15 +50,22 @@ export default function OnboardingLayout({
             it used to be lifted, so a tall step ran past the viewport
             and the page scrolled — which put the step's Continue button below
             the fold on a desktop screen exactly the way it did on a phone. The
-            step's own card takes the overflow instead (`sm:max-h-full` +
-            an internal scroller in StepShell), so the CTA is on screen at every
-            width. A short step is unaffected: the card keeps its natural height
-            and stays centered. */}
+            step's own card takes the overflow instead (a cap + an internal
+            scroller in StartShell), so the CTA is on screen at every width. A
+            short step is unaffected: the card keeps its natural height and stays
+            centered. On a SHORT window that cap stops being a viewport constant
+            and becomes structural — see `SHORT_VIEWPORT`. */}
         <div className="flex max-h-[100svh] min-h-[100svh] flex-col overflow-hidden bg-gray-50">
           <OnboardingTopChrome />
           {/* Mobile: full-bleed, stretch — each step (StepShell) fills the area
-              edge-to-edge with no card chrome. sm+: the centered floating-card frame. */}
-          <div className="flex min-h-0 flex-1 items-stretch justify-center sm:items-center sm:px-4 sm:py-6">
+              edge-to-edge with no card chrome. sm+: the centered floating-card
+              frame, UNTIL the window is short — see `SHORT_VIEWPORT.stretchRow`,
+              which is what gives the card's cap a definite parent to resolve
+              against down there. Above that threshold this row is byte-identical
+              to what it always was. */}
+          <div
+            className={`flex min-h-0 flex-1 items-stretch justify-center sm:items-center sm:px-4 sm:py-6 ${SHORT_VIEWPORT.stretchRow} ${SHORT_VIEWPORT.outerPadding}`}
+          >
             <div className="flex w-full min-w-0 max-w-6xl flex-1 flex-col sm:max-h-full sm:flex-none">
               <OnboardingCreditGate>{children}</OnboardingCreditGate>
             </div>

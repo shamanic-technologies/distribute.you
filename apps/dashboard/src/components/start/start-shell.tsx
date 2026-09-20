@@ -8,6 +8,7 @@ import { GiftIcon } from "@phosphor-icons/react/dist/csr/Gift";
 import { BrandLogo } from "@/components/brand-logo";
 import { landingBrandFromCookie, type LandingBrand } from "@/lib/start-landing-brand";
 import { foundersFloor, foundersLine } from "@/lib/founders-floor";
+import { SHORT_VIEWPORT } from "@/lib/short-viewport";
 
 /**
  * The frame every signed-out onboarding screen sits in (/start, /onboarding/pay,
@@ -20,11 +21,26 @@ import { foundersFloor, foundersLine } from "@/lib/founders-floor";
  *
  * Deliberately NOT `StepShell` from the authed flow: that one mounts the account
  * widget and reads the escape chrome, and a visitor with no session has neither.
- * What is copied verbatim is the geometry lesson it carries: the desktop cap is
- * stated in VIEWPORT units. A percentage max-height resolves against a parent
- * whose own height is indefinite, so it applies to nothing: the card runs to its
- * natural height, the page scrolls instead of the card, and the CTA lands below
- * the fold at every width at once.
+ *
+ * GEOMETRY. The card is capped so its body scrolls and the CTA stays on screen.
+ * On a tall window that cap is a viewport calc, because the percentage form
+ * applies to nothing when the parent's own height is indefinite. The constant in
+ * it is a hand-counted guess at the chrome, and a guess is all it can be: the
+ * top bar is 20px signed-out and ~66px signed-in. It is 48px short in the
+ * measured case, which does not scroll — it CLIPS, because the card then
+ * overflows the column and the `overflow-hidden` above eats both ends with no
+ * scrollbar to say so. Harmless while the card sits under the cap, which on a
+ * tall window it does.
+ *
+ * SHORT WINDOWS are where it bites, and there the cap becomes structural: the
+ * layout stretches this shell (`SHORT_VIEWPORT.stretchRow`), so the parent
+ * height is definite and `sm:max-h-full` is exact — it follows the top bar, the
+ * gutter, the gaps and the trust strip with no constant to keep in step, and
+ * `sm:my-auto` keeps a short card centered. Everything else compacts one notch.
+ * Measured on the welcome step: the card wants 482px against 224px of chrome, so
+ * it needs a 706px window, and a 1333x587 one overflowed by 71px with the pillar
+ * cards sliced in half. After: zero overflow at 587 and pixel-identical at
+ * 1440x900.
  *
  * Colour rides the `brand-*` ramp, never a literal hex: a customer's dashboard
  * re-declares that ramp at their own hue, so an arbitrary-value charter blue
@@ -127,7 +143,7 @@ export function StartShell({
   const foundersText = floored === null ? FOUNDERS_SEED : foundersLine(floored);
 
   return (
-    <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-4 sm:max-w-6xl sm:px-4">
+    <div className={`relative flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-4 sm:max-w-6xl sm:px-4 ${SHORT_VIEWPORT.stretchShell} ${SHORT_VIEWPORT.shellGap}`}>
       {/* The landing's hero glow: a soft blob behind the card, from a remapped
           ramp step so it tints with the brand and survives the dark surface.
           `opacity-40` is the standalone utility, never a `/40` colour modifier
@@ -139,7 +155,7 @@ export function StartShell({
 
       {/* Pill top bar: the mark on the left, the step dots in the middle, and on
           the right either the brand we are setting this up for or the offer. */}
-      <div className="relative z-10 flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:rounded-full sm:border sm:px-5 sm:py-2 sm:shadow-sm">
+      <div className={`relative z-10 flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:rounded-full sm:border sm:px-5 sm:py-2 sm:shadow-sm ${SHORT_VIEWPORT.pillPadding}`}>
         <a href="https://distribute.you" className="flex items-center gap-2.5">
           <Image src="/logo-distribute.svg" alt="distribute.you" width={26} height={26} />
           <span className="font-display text-base font-medium tracking-tight text-gray-900">
@@ -214,7 +230,7 @@ export function StartShell({
           aside ? "gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start" : ""
         }`}
       >
-      <div className={`relative z-10 flex min-h-0 min-w-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10 ${cardMaxWidth ? `w-full sm:mx-auto ${cardMaxWidth}` : ""}`}>
+      <div className={`relative z-10 flex min-h-0 min-w-0 flex-1 flex-col bg-white p-5 sm:max-h-[calc(100svh-11rem)] sm:flex-none sm:rounded-3xl sm:border sm:border-gray-200 sm:p-8 sm:shadow-sm md:p-10 ${SHORT_VIEWPORT.stretchCard} ${SHORT_VIEWPORT.cardPadding} ${cardMaxWidth ? `w-full sm:mx-auto ${cardMaxWidth}` : ""}`}>
         <div className="shrink-0 start-enter">
           {stepCount > 1 && (
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400 sm:hidden">
@@ -229,7 +245,7 @@ export function StartShell({
                brand-service resolves it at signup, and a guessed one is worse
                than none. */
             <p
-              className="mb-3 flex items-center gap-2.5 text-sm text-gray-500"
+              className={`mb-3 flex items-center gap-2.5 text-sm text-gray-500 ${SHORT_VIEWPORT.eyebrowGap}`}
               data-landing-brand-eyebrow={brand.host}
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -242,11 +258,13 @@ export function StartShell({
             </p>
           )}
           {title !== undefined && (
-            <h1 className="mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
+            <h1 className={`mt-1 font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl ${SHORT_VIEWPORT.title}`}>
               {title}
             </h1>
           )}
-          {subtitle && <div className="mt-3 max-w-2xl text-base text-gray-500">{subtitle}</div>}
+          {subtitle && (
+            <div className={`mt-3 max-w-2xl text-base text-gray-500 ${SHORT_VIEWPORT.subtitleGap}`}>{subtitle}</div>
+          )}
         </div>
 
         {/* Scrolls only when it must. The desktop card is wide enough that both
@@ -255,10 +273,19 @@ export function StartShell({
         {/* Bled 4px on every side (`-m-1 p-1`): a selected card wears a 2px ring OUTSIDE
             its border and a hovered one lifts 2px, and an overflow box clips both at its
             edge. Without the bleed the outline on every edge card was cut off. */}
-        <div ref={bodyRef} className={`-m-1 min-h-0 flex-1 overflow-y-auto p-1 ${title !== undefined || (brand && showEyebrow) || stepCount > 1 ? "mt-5" : ""}`}>{children}</div>
+        <div
+          ref={bodyRef}
+          className={`-m-1 min-h-0 flex-1 overflow-y-auto p-1 ${
+            title !== undefined || (brand && showEyebrow) || stepCount > 1
+              ? `mt-5 ${SHORT_VIEWPORT.bodyGap}`
+              : ""
+          }`}
+        >
+          {children}
+        </div>
 
         {footer != null && footer !== false && (
-          <div className="mt-6 shrink-0 border-t border-gray-100 pt-5">{footer}</div>
+          <div className={`mt-6 shrink-0 border-t border-gray-100 pt-5 ${SHORT_VIEWPORT.footerGap}`}>{footer}</div>
         )}
       </div>
       {aside && (
@@ -270,7 +297,7 @@ export function StartShell({
 
       {/* The landing's trust strip, under the card rather than in the hero, so it
           reads as reassurance and not as a claim the screen is making. */}
-      <div className="relative z-10 hidden items-center justify-center gap-3 py-1 sm:flex">
+      <div className={`relative z-10 hidden items-center justify-center gap-3 py-1 sm:flex ${SHORT_VIEWPORT.trustPadding}`}>
         {reassurance ? (
           <p className="flex items-baseline gap-2 text-sm text-gray-500" data-reassurance>
             <span className="font-display text-xl font-medium tracking-tight text-gray-900">
