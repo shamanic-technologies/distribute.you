@@ -62,9 +62,10 @@ describe("Onboarding mobile responsiveness", () => {
     // own card wrapper. Re-count it, do not delete it.
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
     // 16 since the welcome moved to the sell-first screens (StartPicks draws its
-    // own shell); 14 since the funnel step and the primary pick went (the Path
+    // own shell); 12 since the per-funnel rate screens and the best-model step
+    // went with the post-payment trim, and the funnel step and the primary pick went (the Path
     // screen states the set).
-    expect(shellUses.length).toBe(14);
+    expect(shellUses.length).toBe(12);
     // The first-run account widget rides the step's own header row on mobile
     // instead of a bar of its own above the Brand card, so a step with a header
     // spends one row where it used to spend two. Gated on the escape chrome not
@@ -82,9 +83,10 @@ describe("Onboarding mobile responsiveness", () => {
   it("keeps onboarding controls from forcing horizontal overflow", () => {
     expect(onboardingFlow).toContain("basis-full bg-transparent");
     expect(onboardingFlow).toContain("sm:min-w-[8rem] sm:basis-auto");
-    // The stacked-on-mobile rate rows went with the rates / lifetime-revenue steps;
-    // the funnel screens stack their fields by default (flex-col, full-width inputs).
-    expect(onboardingFlow).toContain("w-full min-w-0 bg-transparent");
+    // The stacked-on-mobile rate rows went with the rates / lifetime-revenue
+    // steps, and the per-funnel screens that replaced them went with the
+    // post-payment trim — so the flow carries no rate field at all now.
+    expect(onboardingFlow).not.toContain("<RateInput");
     // The four-up tier grid went with the single pot it priced. The funding rows
     // stack by default and keep their input on the same line at every width.
     expect(onboardingFlow).toContain("flex shrink-0 items-baseline gap-1 rounded-lg");

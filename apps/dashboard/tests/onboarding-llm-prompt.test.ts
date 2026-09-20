@@ -143,13 +143,14 @@ describe("the button on every step that asks a human to write something", () => 
   });
 
   it("renders on the five steps that take a written answer", () => {
-    // offer (one screen per Hormozi lever) + services + audiences + funnelStats +
-    // the model step's "Your numbers" block. A count over the whole file on
-    // purpose: a sixth render site is a decision to make deliberately, not a thing
-    // to add by accident. Steps with NO written answer (funnel picks, consent,
-    // budget, phone, the url step) carry none.
+    // offer (one screen per Hormozi lever) + services + audiences. A count over
+    // the whole file on purpose: a fourth render site is a decision to make
+    // deliberately, not a thing to add by accident. Steps with NO written answer
+    // (funnel picks, consent, budget, phone, the url step) carry none. The two
+    // that used to be here — the per-funnel rate screens and the best-model
+    // step's "Your numbers" block — ran AFTER the card and are gone.
     const renders = ONBOARDING.match(/<CopyForLLMButton/g) ?? [];
-    expect(renders.length).toBe(5);
+    expect(renders.length).toBe(3);
   });
 
   it("wires each step to its own builder", () => {
@@ -158,9 +159,8 @@ describe("the button on every step that asks a human to write something", () => 
     // pinned span breaks on a reflow that changed nothing.
     expect(ONBOARDING).toContain("buildServicesLLMPrompt(");
     expect(ONBOARDING).toContain("buildAudienceLLMPrompt(");
-    // funnelStats and the model step's economics block are the same fields, so one
-    // builder serves both.
-    expect((ONBOARDING.match(/buildFunnelStatsLLMPrompt\(/g) ?? []).length).toBe(2);
+    // The rate builder went with the two post-payment screens that used it.
+    expect(ONBOARDING).not.toContain("buildFunnelStatsLLMPrompt(");
     expect(ONBOARDING).toContain("buildLeverLLMPrompt(");
   });
 });
@@ -260,23 +260,19 @@ describe("the copy handler is wired to the same string as the button", () => {
   it("hands every step ONE prompt const, never a second call", () => {
     // Two spellings of one answer is how the button and Ctrl+C come to disagree, so
     // each step builds its prompt once and both paths read that const.
-    for (const name of ["leverPrompt", "servicesPrompt", "audienceLlmPrompt", "funnelPrompt", "economicsPrompt"]) {
+    for (const name of ["leverPrompt", "servicesPrompt", "audienceLlmPrompt"]) {
       expect(ONBOARDING).toContain(`<CopyForLLMButton text={${name}} />`);
     }
   });
 
-  it("puts it on four step shells and on the model step's own card", () => {
-    // The model step deliberately does NOT pass copyText: its body also carries the
-    // projection numbers, and a reader copying one of those means that number. Its
-    // block is wrapped instead.
-    expect((ONBOARDING.match(/copyText=\{/g) ?? []).length).toBe(4);
-    expect(ONBOARDING).toContain("<CopyableBlock");
-    expect(ONBOARDING).toContain("text={economicsPrompt}");
-    const model = ONBOARDING.slice(
-      ONBOARDING.indexOf('if (step === "model") {'),
-      ONBOARDING.indexOf('if (step === "offer") {'),
-    );
-    expect(model).not.toContain("copyText=");
+  it("puts it on every step shell that asks for a written answer", () => {
+    // The best-model step deliberately did NOT pass copyText — its body also
+    // carried the projection numbers, so its block was wrapped instead. Both it
+    // and the per-funnel screens ran after the card and are gone, so every
+    // remaining site is a plain step shell.
+    expect((ONBOARDING.match(/copyText=\{/g) ?? []).length).toBe(3);
+    expect(ONBOARDING).not.toContain("<CopyableBlock");
+    expect(ONBOARDING).not.toContain("economicsPrompt");
   });
 
   it("never speaks for the footer, where the CTA lives", () => {

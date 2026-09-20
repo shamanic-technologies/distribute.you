@@ -88,9 +88,6 @@ describe("onboarding — step order", () => {
     expect(consent).toContain('<BackButton onClick={() => setStep("audiences")} />');
   });
 
-  it("collects the economics per funnel after payment", () => {
-    expect(flow).toContain('setStep("funnelStats")');
-  });
 
   it("renders none of the steps the brand-level flow had", () => {
     // `destination`, `objective`, `rates` and `ltr` asked for ONE click
@@ -164,32 +161,8 @@ describe("onboarding — what it writes", () => {
     expect(save).not.toContain("optimizationGoal");
   });
 
-  it("prices each funnel through the same partial patch the settings card uses", () => {
-    const save = sliceFrom("async function saveFunnelStatsAndContinue()", 2900);
-    // Read what is STORED from the wire on every write: the patch is the DIFF
-    // against it, which is what keeps a prefill nobody confirmed from being
-    // written and what makes an emptied field really clear.
-    expect(save).toContain("await getBrandSalesFunnels(id)");
-    expect(save).toContain("buildFunnelPatch(def, draft, storedFunnelValues(stored, funnel.key))");
-    expect(save).toContain("declareBrandSalesFunnel(id, funnel.key, patch)");
-  });
 
-  it("stops the funnel step on a refusal instead of advancing past it", () => {
-    const save = sliceFrom("async function saveFunnelStatsAndContinue()", 2900);
-    expect(save).toContain("setError(funnelWriteErrorMessage(err))");
-    // `err.message` is the whole downstream body verbatim — a JSON blob in front
-    // of a customer, and it destroys the `code` every consumer reads.
-    expect(save).not.toContain("err.message");
-  });
 
-  it("mirrors the brand-level click destination from the first funnel that has one", () => {
-    // The flow no longer asks for it on a screen of its own, but brand-service
-    // still serves it on the brand read and consumers link off it. Same value the
-    // user just typed, never an invented one, and written once per session.
-    const save = sliceFrom("async function saveFunnelStatsAndContinue()", 2900);
-    expect(save).toContain("clickDestinationMirroredRef.current");
-    expect(save).toContain("saveBrandClickDestination(id, page)");
-  });
 });
 
 describe("onboarding — the funnel screens no longer disclaim themselves", () => {
@@ -220,24 +193,9 @@ describe("onboarding — copy", () => {
     expect(flow).not.toContain("Pay per outcome, like Google Ads.");
   });
 
-  it("keeps the model vocabulary off the projection step", () => {
-    const model = sliceBetween('if (step === "model")', 'if (step === "offer") {');
-    expect(model).toContain("Your most profitable path with us.");
-    expect(flow).not.toContain("Your best model.");
-  });
 });
 
 describe("onboarding — funnel catalogue", () => {
-  it("reads the catalogue through the display adapter, never field by field", () => {
-    // Mapping over the adapter means a reshaped catalogue lands here with no edit;
-    // reaching into `.steps` at a render site would break the day it does.
-    expect(flow).toContain("toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[]");
-    // Rate labels come from the catalogue's OWN resolver, so a rate reads the same
-    // word here as on the settings card instead of drifting into a second wording.
-    expect(flow).toContain("funnelRateFields(entry as unknown as SalesFunnelDef)");
-    expect(flow).toContain("selectableFunnels(funnelViews, !noWebsiteMode)");
-    expect(flow).toContain("orderedForDetail(selectedFunnels, primaryFunnelKey)");
-  });
 
   it("keeps a selection from ever losing its primary", () => {
     // A set of selected funnels with none of them primary has no goal for the
@@ -271,7 +229,9 @@ describe("onboarding — resume", () => {
     expect(map).toContain('return "outcome"');
     expect(map).not.toContain('return "funnels"');
     expect(map).toContain('case "ltr":');
-    expect(map).toContain('return "funnelStats"');
+    // Rates and lifetime revenue are not asked at signup at all now, so a
+    // snapshot naming the retired screen lands where the post-payment run begins.
+    expect(map).toContain('return "phone"');
   });
 
   it("routes the cross-session brand resume at the sell-first picks", () => {
@@ -360,12 +320,6 @@ describe("onboarding pricing step — one picked path reads as one path", () => 
     expect(pricing).toContain("across {fundedFunnelCount}");
   });
 
-  it("counts nothing when there is one thing to count", () => {
-    // "Your paths · 1 of 1" reads as a step the flow lost rather than as the only
-    // path there is.
-    expect(flow).toContain('? "Your path"');
-    expect(flow).toContain("`Your paths · ${funnelIndex + 1} of ${detailFunnels.length}`");
-  });
 
   it("ships no em-dash in the copy it rewrote", () => {
     // User-facing onboarding copy: the repo bans U+2014 outright, and both lines
