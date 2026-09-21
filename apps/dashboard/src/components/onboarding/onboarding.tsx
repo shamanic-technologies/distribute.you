@@ -3585,12 +3585,28 @@ export function Onboarding() {
         footer={
           <NextButton
             onClick={() => {
+              // SIGNED IN there is nothing to create, and sending them to
+              // `/sign-up` anyway is a closed loop rather than a no-op: the proxy
+              // bounces an authenticated user off every auth page to `/orgs`, the
+              // first-run gate bounces that to `/onboarding?brandId=`, and the
+              // snapshot restores this very screen. Three redirects and the same
+              // page, so the only control on it reads as dead.
+              //
+              // They reach this screen at all because the snapshot is
+              // sessionStorage: a tab left open across a signup comes back here
+              // with a session attached. The money is what is left to answer, and
+              // it is where `continueFromConsent` already sends a signed-in
+              // visitor.
+              if (user) {
+                setStep("pricing");
+                return;
+              }
               // The account is the next thing, and the claim is what happens on
               // the way back: `/onboarding/claim` re-points the org they have
               // been building at the Clerk org they are about to create.
               window.location.href = "/sign-up";
             }}
-            label="Create my account"
+            label={user ? "Continue" : "Create my account"}
           />
         }
       >
