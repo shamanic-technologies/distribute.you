@@ -90,10 +90,21 @@ export function integrationFor(slug: string): IntegrationDef | null {
  * and it states it in its own words when the connection is refused: guessing at
  * a token's shape here would refuse a valid credential the day the vendor
  * changes its prefix.
+ *
+ * `credentialStored` is a RETRY: the customer's secret is already in the
+ * credential store and the producer resolves it there itself, so a blank secret
+ * field means "keep the one I already gave you" rather than an unanswered
+ * question. Only a SECRET field is forgiven that way — a sub-account id is not a
+ * credential, it is not stored anywhere we can read back, and the connect states
+ * it every time.
  */
 export function missingFields(
   def: IntegrationDef,
   values: Record<string, string>,
+  { credentialStored = false }: { credentialStored?: boolean } = {},
 ): IntegrationField[] {
-  return def.fields.filter((f) => !(values[f.key] ?? "").trim());
+  return def.fields.filter((f) => {
+    if (f.secret && credentialStored) return false;
+    return !(values[f.key] ?? "").trim();
+  });
 }

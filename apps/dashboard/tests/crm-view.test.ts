@@ -208,6 +208,30 @@ describe("missingFields", () => {
     expect(missingFields(ghl, { token: "   ", locationId: "abc" }).map((f) => f.key)).toEqual(["token"]);
   });
 
+  it("forgives a blank SECRET on a retry, because the credential is already stored", () => {
+    // The customer's token is in key-service and the producer resolves it there
+    // itself, so a blank field means "keep it" rather than an unanswered
+    // question. Without this the only way back into a half-finished connection
+    // is to fetch a token the vendor shows exactly once.
+    expect(missingFields(ghl, { locationId: "abc" }, { credentialStored: true })).toEqual([]);
+    expect(missingFields(ghl, { token: "   ", locationId: "abc" }, { credentialStored: true })).toEqual([]);
+  });
+
+  it("still asks for every NON-secret field on a retry", () => {
+    // A sub-account id is not a credential: nothing stores it until the connect
+    // succeeds, so there is nothing to keep and it is stated every time.
+    expect(
+      missingFields(ghl, { token: "pit-x" }, { credentialStored: true }).map((f) => f.key),
+    ).toEqual(["locationId"]);
+  });
+
+  it("asks for the secret when NOTHING is stored, whatever the flag defaults to", () => {
+    expect(missingFields(ghl, { locationId: "abc" }).map((f) => f.key)).toEqual(["token"]);
+    expect(
+      missingFields(ghl, { locationId: "abc" }, { credentialStored: false }).map((f) => f.key),
+    ).toEqual(["token"]);
+  });
+
   it("checks SHAPE only — whether a token authenticates is the producer's answer", () => {
     // Guessing at a vendor's token shape here refuses a valid credential the day
     // they change the prefix. crm-service asks GoHighLevel instead.
