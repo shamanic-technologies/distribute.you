@@ -289,6 +289,47 @@ the thrown error's own message field (that carries the whole upstream body). A
 credential stored without a successful connect is inert and is overwritten on
 retry; the card states that rather than hiding it.
 
+⚠️ **SO THERE IS AN HONEST MIDDLE STATE, AND A STATE THAT REPORTS ITSELF
+UNFINISHED MUST OFFER A WAY TO FINISH IT.** Two writes means a real state where
+the first landed and the second did not, and naming it (`Not finished`) is the
+easy half. The row rendered exactly one control there — the one that throws the
+credential away — because the control slot was a single ternary keyed on
+`connection || credentialStored`, so the moment a key was stored the whole slot
+went to the remove button. A customer who had given both credentials was left
+with a button called **Disconnect**, on something that had never connected.
+Nothing goes red: every state is correct, every label is true, the pill is
+honest, and the person is stuck. It is the card-removal shape from the rule
+above — the surface that reports a failure refusing the only recovery from it —
+and it reads as prudent right up until somebody is in it. **The forward button is
+keyed on the CONNECTION and the way out sits BESIDE it, never in place of it**
+(`unfinished = credentialStored && !connection`, guarded). Generalise past this
+card: whenever a flow is two writes, ask what the surface offers between them.
+
+**A RETRY KEEPS THE CREDENTIAL IT ALREADY HAS, and the field says so.** The
+secret is in key-service and crm-service resolves it there itself, so a blank
+box on a retry means "keep it" — `missingFields(def, values, {credentialStored})`
+forgives a blank SECRET and nothing else, and the connect SKIPS the credential
+write rather than overwriting a working token with an empty string. A typed
+value always wins, which is how a wrong token gets replaced. Only a secret is
+forgiven: a sub-account id is not stored anywhere we can read back, so the
+connect states it every time. Without this the only way back into a
+half-finished connection is to fetch a token the vendor shows exactly once.
+
+**The remove button says what it REMOVES.** A connection is disconnected; a
+credential nothing ever connected with is removed, and its confirmation does not
+promise to stop a sync that never started. Naming something that never happened,
+on the one button somebody stuck here is most afraid to press, is its own reason
+not to press it.
+
+⚠️ **What made the state reachable was a PRODUCER bug, and the consumer half was
+still ours.** crm-service opened its run from an identity header the gateway
+fills from a header or a query param only, so the connect answered 502 before
+reading any token (crm-service#19, #4339). Both are live. The recovery is
+separate work and belongs here whatever the producer does — a wrong token, a
+closed tab or a wrong sub-account id put a customer in the same state with
+nothing broken anywhere. Guards: `tests/crm-unfinished-connection.test.ts`,
+proven red against the pre-change card. (#4343)
+
 **THE PAGE RE-DERIVES NOTHING, AND THAT WAS A CORRECTION MID-BUILD.** crm-service
 serves the pipeline ALREADY GROUPED — pipelines, then stages in the stage order
 their own system states, with the per-stage and per-pipeline `count` and
