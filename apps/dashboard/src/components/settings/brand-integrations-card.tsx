@@ -153,11 +153,20 @@ function IntegrationRow({
   const connect = useMutation({
     mutationFn: async () => {
       // 1. The credential, to the store that owns credentials.
-      try {
-        await setBrandKey(brandId, def.slug, values.token ?? "");
-      } catch (err) {
-        console.error("[integrations] storing the credential failed", err);
-        throw new Error(credentialErrorMessage(err));
+      //
+      //    Skipped on a RETRY the customer left blank: the token is already in
+      //    key-service and crm-service resolves it there itself, so writing an
+      //    empty string would DESTROY a working credential to answer a question
+      //    the customer was told they could leave alone. A typed value always
+      //    wins, which is how a wrong token gets replaced.
+      const typedSecret = (values.token ?? "").trim();
+      if (typedSecret || !credentialStored) {
+        try {
+          await setBrandKey(brandId, def.slug, typedSecret);
+        } catch (err) {
+          console.error("[integrations] storing the credential failed", err);
+          throw new Error(credentialErrorMessage(err));
+        }
       }
       // 2. The connection. crm-service resolves the credential it was just given
       //    and proves it against the vendor, so THIS is what can refuse.
@@ -203,7 +212,14 @@ function IntegrationRow({
     onError: (err: Error) => setError(err.message),
   });
 
-  const blocked = missingFields(def, values);
+  // The credential landed and the connection did not. The row has said so all
+  // along; what it had no way to do was FINISH.
+  const unfinished = credentialStored && !connection;
+  // A connection is disconnected. A credential nothing ever connected with is
+  // removed — calling that "disconnect" names something that never happened, on
+  // the one button somebody stuck here is most afraid to press.
+  const removeLabel = connection ? "Disconnect" : "Remove";
+  const blocked = missingFields(def, values, { credentialStored });
   const busy = connect.isPending || remove.isPending;
 
   return (
@@ -220,6 +236,13 @@ function IntegrationRow({
           </div>
           <p className="mt-0.5 text-sm text-gray-500">{def.blurb}</p>
 
+          {unfinished ? (
+            <p className="mt-2 text-sm text-gray-600">
+              We have your token. Finish connecting to check it against {def.name}
+              {" "}and start reading your {def.surfaceLabel}.
+            </p>
+          ) : null}
+
           {connection?.lastError ? (
             <p className="mt-2 text-sm text-amber-700">{connection.lastError}</p>
           ) : null}
@@ -235,50 +258,56 @@ function IntegrationRow({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {connection || credentialStored ? (
-            confirmingRemove ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate()}
-                  disabled={busy}
-                  className={`rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 ${busy ? "cursor-wait" : "hover:bg-red-100"}`}
-                >
-                  {remove.isPending ? "Removing..." : "Yes, disconnect"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingRemove(false)}
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Keep it
-                </button>
-              </>
-            ) : (
+          {confirmingRemove ? (
+            <>
               <button
                 type="button"
-                onClick={() => setConfirmingRemove(true)}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => remove.mutate()}
+                disabled={busy}
+                className={`rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 ${busy ? "cursor-wait" : "hover:bg-red-100"}`}
               >
-                Disconnect
+                {remove.isPending ? "Removing..." : `Yes, ${removeLabel.toLowerCase()}`}
               </button>
-            )
+              <button
+                type="button"
+                onClick={() => setConfirmingRemove(false)}
+                className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Keep it
+              </button>
+            </>
           ) : (
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-            >
-              {open ? "Cancel" : "Connect"}
-            </button>
+            <>
+              {/* The way FORWARD, wherever there is one. Unfinished is the state
+                  that had none: it said so and offered only the way out. */}
+              {connection ? null : (
+                <button
+                  type="button"
+                  onClick={() => setOpen((v) => !v)}
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+                >
+                  {open ? "Cancel" : unfinished ? "Finish connecting" : "Connect"}
+                </button>
+              )}
+              {connection || credentialStored ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingRemove(true)}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  {removeLabel}
+                </button>
+              ) : null}
+            </>
           )}
         </div>
       </div>
 
       {confirmingRemove ? (
         <p className="mt-3 text-sm text-gray-600">
-          This stops the syncing and removes what we mirrored. Nothing in your{" "}
-          {def.name} account changes.
+          {connection
+            ? `This stops the syncing and removes what we mirrored. Nothing in your ${def.name} account changes.`
+            : `This forgets the token you gave us. Nothing in your ${def.name} account changes, and you can connect again whenever you like.`}
         </p>
       ) : null}
 
@@ -303,7 +332,11 @@ function IntegrationRow({
                 spellCheck={false}
                 className="mt-1 w-full max-w-md rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40"
               />
-              <span className="mt-1 block text-xs text-gray-500">{f.help}</span>
+              <span className="mt-1 block text-xs text-gray-500">
+                {f.secret && credentialStored
+                  ? `Leave blank to keep the ${f.label.toLowerCase()} you already gave us. ${f.help}`
+                  : f.help}
+              </span>
             </label>
           ))}
 
