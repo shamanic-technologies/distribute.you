@@ -5,7 +5,7 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
-import { BrandSalesRepPhoneCard } from "@/components/settings/brand-sales-rep-phone-card";
+import { BrandSalesRepCard } from "@/components/settings/brand-sales-rep-card";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 
 /**
@@ -46,10 +46,10 @@ export default function BrandSettingsPage() {
 
       <BrandDomainCard brandId={brandId} />
 
-      <section id="sales-rep-phone" className="mb-10 scroll-mt-24">
+      <section id="sales-rep" className="mb-10 scroll-mt-24">
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Sales rep</h2>
         <div className="rounded-xl border border-gray-200 bg-white">
-          <BrandSalesRepPhoneCard brandId={brandId} />
+          <BrandSalesRepCard brandId={brandId} />
         </div>
       </section>
 

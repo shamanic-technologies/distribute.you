@@ -2036,69 +2036,70 @@ export async function attachBrandWebsite(
 // four rows for one fact on the brand that asked for this, drifting from the
 // first edit — and a brand with no campaign yet could declare nothing at all.
 //
-// Reached via api-service GET/PUT/DELETE /v1/brands/:id/sales-rep-phone ->
-// brand-service, which owns what a valid number is: it accepts any typed format
-// carrying a country code and stores strict E.164, and REFUSES a national number
-// with no country code rather than inferring one (a guess dials a different
-// person). Its 400 is the answer — never re-implement that rule here.
-const SalesRepPhoneResponseSchema = z.object({
+// Reached via api-service GET/PUT/DELETE /v1/brands/:id/sales-rep ->
+// brand-service, which owns what a valid rep is and states it in sentences a
+// person reads: a phone must carry a country code (no country is inferred — a
+// guess dials a different person), an email is ONE bare address, and a write
+// carrying a phone with no email is refused outright. Its 400 IS the answer;
+// never re-implement any of those rules here.
+const SalesRepResponseSchema = z.object({
+  salesRepEmail: z.string().nullable(),
   salesRepPhone: z.string().nullable(),
 });
 
-export async function getBrandSalesRepPhone(
-  brandId: string,
-  token?: string,
-): Promise<string | null> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep-phone`, { token });
-  const parsed = SalesRepPhoneResponseSchema.safeParse(raw);
+/** The one person to reach for a brand, and the two facts about them. */
+export type SalesRep = z.infer<typeof SalesRepResponseSchema>;
+
+/** Nobody stated. A first-class answer, never an error and never a 404. */
+export const NO_SALES_REP: SalesRep = { salesRepEmail: null, salesRepPhone: null };
+
+function parseSalesRep(raw: unknown, fn: string): SalesRep {
+  const parsed = SalesRepResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getBrandSalesRepPhone: response shape mismatch", {
+    console.error(`[dashboard] ${fn}: response shape mismatch`, {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getBrandSalesRepPhone: invalid response shape");
+    throw new Error(`[dashboard] ${fn}: invalid response shape`);
   }
-  return parsed.data.salesRepPhone;
+  return parsed.data;
 }
 
-export async function setBrandSalesRepPhone(
+export async function getBrandSalesRep(
   brandId: string,
-  salesRepPhone: string,
   token?: string,
-): Promise<string | null> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep-phone`, {
+): Promise<SalesRep> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep`, { token });
+  return parseSalesRep(raw, "getBrandSalesRep");
+}
+
+/**
+ * State the rep. The write REPLACES THE WHOLE REP, so both fields always travel:
+ * omitting the phone CLEARS a number that was there, which is brand-service's
+ * own documented semantic and not something to work around by sending a subset.
+ */
+export async function setBrandSalesRep(
+  brandId: string,
+  rep: { salesRepEmail: string | null; salesRepPhone: string | null },
+  token?: string,
+): Promise<SalesRep> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep`, {
     token,
     method: "PUT",
-    body: { salesRepPhone },
+    body: rep,
   });
-  const parsed = SalesRepPhoneResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] setBrandSalesRepPhone: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] setBrandSalesRepPhone: invalid response shape");
-  }
-  return parsed.data.salesRepPhone;
+  return parseSalesRep(raw, "setBrandSalesRep");
 }
 
-export async function clearBrandSalesRepPhone(
+export async function clearBrandSalesRep(
   brandId: string,
   token?: string,
-): Promise<string | null> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep-phone`, {
+): Promise<SalesRep> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep`, {
     token,
     method: "DELETE",
   });
-  const parsed = SalesRepPhoneResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] clearBrandSalesRepPhone: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] clearBrandSalesRepPhone: invalid response shape");
-  }
-  return parsed.data.salesRepPhone;
+  return parseSalesRep(raw, "clearBrandSalesRep");
 }
 
 // ── Conversion tracking token (per-brand publishable write-key) ──

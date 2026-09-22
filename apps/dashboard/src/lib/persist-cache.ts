@@ -121,7 +121,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brands",
   "brandSalesEconomics",
   "brandFunnelBudgets",
-  "brandSalesRepPhone",
+  "brandSalesRep",
   // The fleet's own figures, behind a funnel-leg price tag and behind the cards
   // offering the funnels an offer does not sell yet. Public and org-less, so both are
   // the same answer for every tenant — and both change on the fleet's cadence, not this
