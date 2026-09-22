@@ -571,6 +571,11 @@ export async function disconnectCrm(
   );
 }
 
+// The three groups are crm-service's own grouping and it always emits them, so
+// they are REQUIRED here with nullable leaves — a field their CRM does not hold
+// reads null, which is a different statement from a group we failed to parse.
+// `.optional()` would read `undefined` for ever on a rename and blank the whole
+// surface silently; required fails the parse loudly instead.
 const CrmContactSchema = z.object({
   id: z.string(),
   externalId: z.string(),
@@ -581,6 +586,30 @@ const CrmContactSchema = z.object({
   lastName: z.string().nullable(),
   unsubscribed: z.boolean(),
   lastRebuiltAt: z.string().nullable(),
+  company: z.object({
+    name: z.string().nullable(),
+    website: z.string().nullable(),
+  }),
+  location: z.object({
+    city: z.string().nullable(),
+    stateRegion: z.string().nullable(),
+    country: z.string().nullable(),
+    postalCode: z.string().nullable(),
+    streetAddress: z.string().nullable(),
+  }),
+  record: z.object({
+    type: z.string().nullable(),
+    leadSource: z.string().nullable(),
+    // Every tag in production is a string, over all 2,694 mirrored contacts.
+    tags: z.array(z.string()).nullable(),
+    createdAt: z.string().nullable(),
+    updatedAt: z.string().nullable(),
+    origin: z.object({
+      medium: z.string().nullable(),
+      url: z.string().nullable(),
+      referrer: z.string().nullable(),
+    }),
+  }),
 });
 
 /** This brand's contacts, as mirrored out of their own CRM. */

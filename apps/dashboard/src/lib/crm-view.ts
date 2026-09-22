@@ -23,7 +23,49 @@
  * Alias-free on purpose, so this carries REAL unit tests. Keep it that way.
  */
 
-/** One person, as their own CRM holds them. Field names are crm-service's. */
+/** The company their CRM attached this person to. */
+export interface CrmContactCompany {
+  name: string | null;
+  website: string | null;
+}
+
+/** Where their CRM places this person. */
+export interface CrmContactLocation {
+  city: string | null;
+  stateRegion: string | null;
+  country: string | null;
+  postalCode: string | null;
+  streetAddress: string | null;
+}
+
+/** How the person arrived, as their CRM recorded it. */
+export interface CrmContactOrigin {
+  medium: string | null;
+  url: string | null;
+  referrer: string | null;
+}
+
+/**
+ * Where the record came from, in the customer's OWN words.
+ *
+ * `type`, `leadSource` and `tags` are arbitrary free text per customer. Nothing
+ * here maps them onto a vocabulary of ours — their meaning is decided elsewhere
+ * and this page only shows what they say.
+ */
+export interface CrmContactRecord {
+  type: string | null;
+  leadSource: string | null;
+  tags: string[] | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  origin: CrmContactOrigin;
+}
+
+/**
+ * One person, as their own CRM holds them. Field names are crm-service's, and
+ * the three groups below are the grouping crm-service serves — identity, the
+ * company, where they are, where the record came from. Do not flatten them here.
+ */
 export interface CrmContact {
   id: string;
   externalId: string;
@@ -34,6 +76,9 @@ export interface CrmContact {
   lastName: string | null;
   unsubscribed: boolean;
   lastRebuiltAt: string | null;
+  company: CrmContactCompany;
+  location: CrmContactLocation;
+  record: CrmContactRecord;
 }
 
 /** One deal, as crm-service serves it inside its stage. */
@@ -150,8 +195,63 @@ export function filterContacts(rows: CrmContact[], query: string): CrmContact[] 
   const q = query.trim().toLowerCase();
   if (!q) return rows;
   return rows.filter((c) =>
-    [c.fullName, c.firstName, c.lastName, c.primaryEmail, c.phoneE164]
+    [
+      c.fullName,
+      c.firstName,
+      c.lastName,
+      c.primaryEmail,
+      c.phoneE164,
+      c.company.name,
+      c.company.website,
+      c.location.city,
+      c.location.stateRegion,
+      c.location.country,
+      c.record.type,
+      c.record.leadSource,
+      ...contactTags(c),
+    ]
       .map((v) => (v ?? "").toLowerCase())
       .some((v) => v.includes(q)),
   );
+}
+
+/**
+ * The company this person is attached to, or nothing.
+ *
+ * Measured on the first customer's 2,694 mirrored contacts: 455 carry a company
+ * and 454 of those carry NO email, so for that set the company is the only
+ * signal beyond a name. It is the reason this field is on the row rather than
+ * behind a click.
+ */
+export function contactCompanyName(c: { company: CrmContactCompany }): string | null {
+  const name = (c.company.name ?? "").trim();
+  return name ? name : null;
+}
+
+/**
+ * Where their CRM places this person, written as one line.
+ *
+ * A presentation join of the parts that exist, in the order a person reads an
+ * address — never a part invented to fill a gap, and nothing at all when their
+ * CRM holds none of it.
+ */
+export function contactPlace(c: { location: CrmContactLocation }): string | null {
+  const parts = [c.location.city, c.location.stateRegion, c.location.country]
+    .map((v) => (v ?? "").trim())
+    .filter(Boolean);
+  return parts.length ? parts.join(", ") : null;
+}
+
+/**
+ * The customer's own tags on this person.
+ *
+ * Their words, unmapped. Blank entries are dropped because a blank tag says
+ * nothing; `null` (their CRM holds no tag list at all) reads as no tags rather
+ * than as an error. Every tag in production is a string — verified against all
+ * 2,694 mirrored contacts — so the reader declares them as such and a
+ * non-string would fail the parse loudly rather than be quietly coerced here.
+ */
+export function contactTags(c: { record: CrmContactRecord }): string[] {
+  const tags = c.record.tags ?? [];
+  return tags.map((t) => t.trim()).filter(Boolean);
 }
