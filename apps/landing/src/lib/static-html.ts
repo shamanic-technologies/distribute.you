@@ -17,7 +17,7 @@ import {
   renderShowcaseSelection,
   reseedProofCards,
   reseedShowcaseCards,
-  pickedBrands,
+  selectionFrom,
   type ShowcaseFunnels,
 } from "@/lib/showcase-funnels";
 
@@ -475,24 +475,18 @@ async function withShowcaseFunnels(html: string): Promise<string> {
   try {
     const data = await fetchShowcaseFunnels();
     if (!data) return html;
-    // The producer PICKS which clients the page names — the most recently begun ones carrying an
-    // outcome for the hero, the highest-returning ones for the proof section. Each group answers its
-    // own question and carries its own verdict, so they are read INDEPENDENTLY: in production today
-    // the return group is measured over ten qualifying clients while the recent one answers
-    // `no_qualifying_clients`, and holding one back for the other would ship the podium as dead code.
-    //
-    // A group the producer declined to answer leaves ITS section on the three clients the page ships
-    // with, reseeded — which is what this page did before the pick existed. Nothing here ranks,
-    // floors or divides; the only decision on this side is where each of the top three sits.
-    const recent = pickedBrands(data.groups?.recentlyStarted, "recentlyStarted");
-    const topReturn = pickedBrands(data.groups?.highestReturn, "highestReturn");
-    let out = html;
-    if (recent) out = renderShowcaseSelection(out, recent);
-    if (topReturn) out = renderProofSelection(out, topReturn);
-    // Whatever the pick did not cover keeps its shipped clients and has their figures refreshed.
-    if (!recent) out = reseedShowcaseCards(out, data);
-    if (!topReturn) out = reseedProofCards(out, data);
-    return out;
+    // The producer PICKS which clients the page names — the most recently started ones
+    // carrying an outcome for the hero, the highest-returning ones for the proof section.
+    // When it states a pick we render it; when it does not (its own earlier contract, which
+    // serves the figures and no pick) the page keeps the three clients it ships with and
+    // only their FIGURES are reseeded, exactly as before. Nothing here ranks or floors:
+    // both orders are the producer's, and the only decision this file makes is where each
+    // of the top three sits on the proof row.
+    const picked = selectionFrom(data);
+    if (picked) {
+      return renderProofSelection(renderShowcaseSelection(html, picked.recent), picked.topReturn);
+    }
+    return reseedProofCards(reseedShowcaseCards(html, data), data);
   } catch (error) {
     console.error("[landing] showcase funnel counts unavailable, keeping the shipped figures", error);
     return html;

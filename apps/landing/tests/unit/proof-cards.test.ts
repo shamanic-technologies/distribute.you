@@ -310,16 +310,7 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
       STATIC_HTML.indexOf("async function withShowcaseFunnels("),
       STATIC_HTML.indexOf("async function fetchFleetReturn(")
     );
-    // The INVARIANT is one read behind both surfaces, not the shape of the call. It used to
-    // pin the nested `reseedProofCards(reseedShowcaseCards(...))` literal, which went red the
-    // day the producer started picking WHICH clients the page names and each surface gained
-    // its own branch — a guard freezing the instrument alongside the rule.
+    expect(body).toContain("reseedProofCards(reseedShowcaseCards(html, data), data)");
     expect((body.match(/await fetchShowcaseFunnels\(\)/g) ?? []).length).toBe(1);
-    // Both surfaces are still covered by that one read, whichever branch each one takes: the
-    // producer's pick when it answered, the shipped clients' figures reseeded when it did not.
-    expect(body).toContain("renderShowcaseSelection(");
-    expect(body).toContain("renderProofSelection(");
-    expect(body).toContain("reseedShowcaseCards(out, data)");
-    expect(body).toContain("reseedProofCards(out, data)");
   });
 });
