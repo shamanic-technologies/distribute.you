@@ -13,8 +13,11 @@ import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
 import {
+  renderProofSelection,
+  renderShowcaseSelection,
   reseedProofCards,
   reseedShowcaseCards,
+  selectionFrom,
   type ShowcaseFunnels,
 } from "@/lib/showcase-funnels";
 
@@ -472,6 +475,17 @@ async function withShowcaseFunnels(html: string): Promise<string> {
   try {
     const data = await fetchShowcaseFunnels();
     if (!data) return html;
+    // The producer PICKS which clients the page names — the most recently started ones
+    // carrying an outcome for the hero, the highest-returning ones for the proof section.
+    // When it states a pick we render it; when it does not (its own earlier contract, which
+    // serves the figures and no pick) the page keeps the three clients it ships with and
+    // only their FIGURES are reseeded, exactly as before. Nothing here ranks or floors:
+    // both orders are the producer's, and the only decision this file makes is where each
+    // of the top three sits on the proof row.
+    const picked = selectionFrom(data);
+    if (picked) {
+      return renderProofSelection(renderShowcaseSelection(html, picked.recent), picked.topReturn);
+    }
     return reseedProofCards(reseedShowcaseCards(html, data), data);
   } catch (error) {
     console.error("[landing] showcase funnel counts unavailable, keeping the shipped figures", error);
