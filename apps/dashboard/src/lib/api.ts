@@ -518,17 +518,33 @@ export async function listCrmConnections(
  * and proves it against the vendor before writing anything, so a wrong token or a
  * mismatched account is refused here rather than failing silently on the first
  * sync.
+ *
+ * ⚠️ `brandId` travels TWICE, in the query string AND in the body, and the query
+ * copy is the load-bearing one. Do NOT delete it as a duplicate.
+ *
+ * The body copy is what crm-service's own handler reads to know which brand to
+ * connect. The query copy is what the api-service gateway promotes to the
+ * `x-brand-id` identity header, and it reads that from a header or a query param
+ * ONLY, never from a body. crm-service opens its run from those headers BEFORE
+ * its handler is reached, and runs-service refuses a run whose brand list is
+ * present and empty — so with the body copy alone the run is refused, crm-service
+ * fails loud with a 502, and the handler never runs. The customer then reads
+ * "We could not reach your CRM just now" on a perfectly good token, because
+ * nothing ever asked the vendor anything.
+ *
+ * This has now happened twice on this service: the CSV upload hit the identical
+ * 400 and was fixed the same way (distribute.you#2968). crm-service owns the
+ * durable fix; this is the half that makes the customer's button work.
  */
 export async function connectCrm(
   brandId: string,
   locationId: string,
   token?: string,
 ): Promise<{ connection: CrmConnection }> {
-  const raw = await apiCall<unknown>("/orgs/gohighlevel/connections", {
-    token,
-    method: "POST",
-    body: { brandId, locationId },
-  });
+  const raw = await apiCall<unknown>(
+    `/orgs/gohighlevel/connections?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "POST", body: { brandId, locationId } },
+  );
   const parsed = z.object({ connection: CrmConnectionSchema }).safeParse(raw);
   if (!parsed.success) {
     console.error("[api] connectCrm response shape mismatch", parsed.error.flatten());
@@ -537,15 +553,22 @@ export async function connectCrm(
   return parsed.data;
 }
 
-/** Stop syncing this connection, and drop what was mirrored with it. */
+/**
+ * Stop syncing this connection, and drop what was mirrored with it.
+ *
+ * `brandId` rides the query string for the same reason the connect does, and it
+ * is the ONLY place it can travel here: the connection is addressed by its own
+ * id, so nothing else in the request names a brand.
+ */
 export async function disconnectCrm(
   connectionId: string,
+  brandId: string,
   token?: string,
 ): Promise<{ disconnected: boolean; connectionId: string }> {
-  return apiCall<{ disconnected: boolean; connectionId: string }>(`/orgs/gohighlevel/connections/${connectionId}`, {
-    token,
-    method: "DELETE",
-  });
+  return apiCall<{ disconnected: boolean; connectionId: string }>(
+    `/orgs/gohighlevel/connections/${connectionId}?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "DELETE" },
+  );
 }
 
 const CrmContactSchema = z.object({
