@@ -5,6 +5,10 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOpsDomains, type OpsDomainRow, type OpsDomains } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { DomainHealthCard } from "@/components/audit/domain-health-card";
+import { EstateEventsPanel } from "@/components/audit/estate-events-panel";
+import { EstateIssuesPanel } from "@/components/audit/estate-issues-panel";
+import { EstateCostsPanel } from "@/components/audit/estate-costs-panel";
+import { VendorName } from "@/components/audit/provider-logo";
 import {
   AsOf,
   DeliveryCell,
@@ -37,9 +41,16 @@ import {
  * first: what it is, who sold it, when it renews, what it publishes in DNS, how
  * it delivers, what it sent, and what it costs.
  *
- * The delete list (to-delete-now / soon / mixed / healthy / not-graded) is the
- * SAME `DomainHealthCard` the old page carried — that verdict lives in
- * `lib/domain-health.ts` and is unchanged.
+ * Above the table, three panels answer the three questions an operator opens
+ * this page with: what is about to cost money (Events), what is broken
+ * (Issues), and what is coming due (Costs). All three derive from the SAME
+ * `["opsDomains"]` read the table renders, so no panel can disagree with a row
+ * under it and none of them costs a request.
+ *
+ * The delete list (`DomainHealthCard`) sits at the BOTTOM: it is a monthly
+ * decision, not the thing you came for. Its verdict lives in
+ * `lib/domain-health.ts` and reads instantly-service's own per-mailbox
+ * lifecycle rather than re-grading the fleet on raw scores.
  */
 
 type SortKey =
@@ -308,9 +319,20 @@ export default function ColdEmailDomainsPage() {
         />
       </div>
 
-      {/* The delete list, above the table: which domains are spent and what
-          turning them off saves. Unchanged from the old page. */}
-      <DomainHealthCard />
+      {/* The three questions, side by side: what moves money, what is broken,
+          what is coming due. One read behind all three. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <EstateEventsPanel domains={domains} isPending={isPending} />
+        <EstateIssuesPanel
+          domains={domains}
+          isPending={isPending}
+          onOpenDomain={(name) => {
+            const row = domains.find((d) => d.domain === name);
+            if (row) setSelected(row);
+          }}
+        />
+        <EstateCostsPanel domains={domains} isPending={isPending} />
+      </div>
 
       <Section
         title="Every domain"
@@ -371,7 +393,7 @@ export default function ColdEmailDomainsPage() {
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-gray-700">
-                        {d.provider ?? <span className="text-gray-400">—</span>}
+                        <VendorName provider={d.provider} />
                         {d.role && <span className="block text-[10px] text-gray-400">{d.role}</span>}
                       </td>
                       <td className="py-2.5 px-2 text-gray-700">
@@ -420,6 +442,11 @@ export default function ColdEmailDomainsPage() {
           </div>
         )}
       </Section>
+
+      {/* The delete list, last: a monthly decision rather than the thing you
+          came for, and the one card that reads the ACCOUNT health feed instead
+          of this page's own. */}
+      <DomainHealthCard />
 
       {selected && <DomainPanel row={selected} onClose={() => setSelected(null)} />}
     </div>
