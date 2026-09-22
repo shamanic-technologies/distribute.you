@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
+import { vendorConsole } from "@/lib/estate-signals";
 
 // Inline brand marks for the sending-account connection provider. Dependency-free
 // (no logo.dev, no token, no runtime network) so the staff audit table renders the
@@ -66,6 +70,57 @@ export function ProviderLogo({ type }: { type: string | null }) {
 }
 
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+
+/**
+ * The BILLING vendor's logo, for a `provider` slug as instantly-service names
+ * it (`gandi`, `primeforge`, `mailforge`, `instantly-dfy`).
+ *
+ * ⚠️ This is a DIFFERENT concept from `ProviderLogo` above, which is keyed on
+ * the CONNECTION PROTOCOL (`google` / `microsoft` / `imap`). One says who
+ * charges us for the domain, the other says how a mailbox connects; a domain
+ * bought from Gandi routinely connects over Google. Do not merge them.
+ *
+ * A vendor the catalogue does not carry draws NOTHING rather than a guessed
+ * mark, and a logo that fails to decode falls back to the plain name — an
+ * empty square beside a vendor name reads as a broken page.
+ */
+export function VendorLogo({ provider, size = 16 }: { provider: string | null; size?: number }) {
+  const vendor = vendorConsole(provider);
+  const [broken, setBroken] = useState(false);
+  // Reset on a new vendor: a sticky flag would swallow the next domain's logo
+  // because the previous row's failed to load.
+  const src =
+    vendor && LOGO_DEV_TOKEN
+      ? `https://img.logo.dev/${vendor.logoDomain}?token=${LOGO_DEV_TOKEN}&size=${size * 2}`
+      : null;
+  useEffect(() => setBroken(false), [src]);
+
+  if (!vendor || !src || broken) return null;
+  return (
+    <img
+      src={src}
+      alt={vendor.label}
+      title={vendor.label}
+      width={size}
+      height={size}
+      onError={() => setBroken(true)}
+      className="shrink-0 rounded"
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+/** The vendor's logo and its own name, the pair every vendor cell renders. */
+export function VendorName({ provider }: { provider: string | null }) {
+  const vendor = vendorConsole(provider);
+  if (!provider) return <span className="text-gray-400">unknown vendor</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <VendorLogo provider={provider} />
+      <span>{vendor?.label ?? provider}</span>
+    </span>
+  );
+}
 
 /**
  * Small Instantly logo, shown next to the Health Score to signal the score is

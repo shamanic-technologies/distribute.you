@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  accountHealthState,
+  accountSendState,
   buildDomainHealthRows,
   domainHealthState,
   mergeDomainCost,
+  DELETE_STATES,
   DOMAIN_TABS,
-  HEALTH_BAR,
-  type AccountHealthState,
+  type AccountSendState,
 } from "../src/lib/domain-health";
 import type { InstantlyInfraDomainRow } from "@/lib/api";
 
@@ -36,9 +36,13 @@ function infra(
 
 /**
  * The Instantly audit's domain card answers "which sending domains do I cancel
- * this month". Two things it must never do: leave a domain out of every tab
- * (the roll-up has to be exhaustive), and state a cost or a verdict it cannot
- * actually support.
+ * this month". Three things it must never do: leave a domain out of every tab
+ * (the roll-up has to be exhaustive), state a cost it cannot support, and offer
+ * a domain for deletion on a mailbox that is still sending or still coming back.
+ *
+ * The verdict is instantly-service's `lifecycleStatus`, never a score
+ * comparison of ours — see the module header for the three ways the local grade
+ * had drifted against the fleet it was grading.
  */
 
 type Row = Parameters<typeof buildDomainHealthRows>[0][number];
@@ -73,75 +77,114 @@ function acct(over: Partial<Row> & { email: string }): Row {
   return { ...base, ...over, domain } as Row;
 }
 
-describe("account grading", () => {
-  it("needs BOTH scores at the bar to call a mailbox healthy", () => {
-    expect(accountHealthState(100, 100, 0)).toBe("healthy");
-    expect(accountHealthState(HEALTH_BAR, HEALTH_BAR, 0)).toBe("healthy");
-    // A perfect health score does not rescue a mailbox landing in spam.
-    expect(accountHealthState(100, 40, 0)).toBe("dead");
-    expect(accountHealthState(40, 100, 0)).toBe("dead");
+describe("reading the producer's verdict", () => {
+  it("maps each documented lifecycle to exactly one send state", () => {
+    expect(accountSendState("in_production")).toBe("sending");
+    expect(accountSendState("in_recovery")).toBe("recovering");
+    expect(accountSendState("deactivated_by_instantly")).toBe("stopped");
+    expect(accountSendState("deactivated_by_user")).toBe("held");
   });
 
-  it("separates dead from dying by what the mailbox still owes", () => {
-    // Nothing queued: nobody is waiting on it, so it can go now.
-    expect(accountHealthState(20, 20, 0)).toBe("dead");
-    // Still draining: deleting it now would drop queued sends.
-    expect(accountHealthState(20, 20, 7)).toBe("dying");
+  it("answers ungraded for an absent or unknown lifecycle, never a default", () => {
+    // A token the producer adds later must read as "we could not grade this",
+    // which is true, rather than silently joining whichever bucket was the
+    // fallback.
+    expect(accountSendState(null)).toBe("ungraded");
+    expect(accountSendState("unclassified")).toBe("ungraded");
+    expect(accountSendState("some_future_state")).toBe("ungraded");
   });
 
-  it("a queue never makes a below-bar mailbox read healthy", () => {
-    expect(accountHealthState(10, 10, 500)).toBe("dying");
-  });
-
-  it("answers ungraded when a score is absent, never a pass or a fail", () => {
-    expect(accountHealthState(null, 100, 0)).toBe("ungraded");
-    expect(accountHealthState(100, null, 0)).toBe("ungraded");
-    expect(accountHealthState(null, null, 0)).toBe("ungraded");
+  it("grades on the lifecycle ALONE — no score can move the answer", () => {
+    // The whole point of the rewrite. A promoted mailbox's health score resets
+    // toward 0 (instantly-service sets IN_PRODUCTION_WARMUP_DAILY = 0 and the
+    // score is a rolling 7-day window), and being under the delivery bar is
+    // what recovery MEANS. Neither may change the verdict.
+    const rows = buildDomainHealthRows([
+      acct({
+        email: "fresh@promoted.com",
+        lifecycleStatus: "in_production",
+        warmupScore: 0,
+        inboxPlacement: { inboxPct: 0, spamPct: 100, missingPct: 0, testedAt: "2026-09-01T00:00:00Z" },
+      }),
+    ]);
+    expect(rows[0].accounts[0].state).toBe("sending");
+    expect(rows[0].state).toBe("healthy");
   });
 });
 
 describe("domain roll-up", () => {
+  const at = (state: AccountSendState, queueSize = 0) => ({ state, queueSize });
+
   it("is exhaustive — every combination lands in a tab", () => {
-    const states: AccountHealthState[] = ["dead", "dying", "healthy", "ungraded"];
+    const states: AccountSendState[] = ["sending", "recovering", "stopped", "held", "ungraded"];
     const tabKeys = new Set(DOMAIN_TABS.map((t) => t.key));
-    // Every non-empty combination of up to three mailboxes.
     for (const a of states) {
-      expect(tabKeys.has(domainHealthState([a]))).toBe(true);
+      expect(tabKeys.has(domainHealthState([at(a)]))).toBe(true);
       for (const b of states) {
-        expect(tabKeys.has(domainHealthState([a, b]))).toBe(true);
+        expect(tabKeys.has(domainHealthState([at(a), at(b)]))).toBe(true);
         for (const c of states) {
-          expect(tabKeys.has(domainHealthState([a, b, c]))).toBe(true);
+          // Run each combination with and without a queue, since the queue is
+          // the only thing that splits the two delete verdicts.
+          expect(tabKeys.has(domainHealthState([at(a), at(b), at(c)]))).toBe(true);
+          expect(tabKeys.has(domainHealthState([at(a), at(b), at(c, 9)]))).toBe(true);
         }
       }
     }
   });
 
-  it("reads the four verdicts as specified", () => {
-    expect(domainHealthState(["dead", "dead"])).toBe("to-delete-now");
-    expect(domainHealthState(["healthy", "healthy"])).toBe("healthy");
-    expect(domainHealthState(["dead", "healthy"])).toBe("mixed");
-    expect(domainHealthState(["dying", "dying"])).toBe("to-delete-soon");
+  it("only a vendor-stopped mailbox can put a domain on the delete list", () => {
+    expect(domainHealthState([at("stopped"), at("stopped")])).toBe("to-delete-now");
+    // Still owes emails: let them drain before cancelling.
+    expect(domainHealthState([at("stopped"), at("stopped", 7)])).toBe("to-delete-soon");
   });
 
-  it("covers the gap a dead-plus-dying domain would otherwise fall through", () => {
-    // No healthy mailbox, so it is not mixed; not all dead, so it is not
-    // deletable yet. This combination matched none of the original four rules.
-    expect(domainHealthState(["dead", "dying"])).toBe("to-delete-soon");
+  it("never offers a domain with a SENDING mailbox for deletion", () => {
+    // The single worst outcome: cancelling a domain the selector is assigning
+    // work to right now.
+    const deletes = new Set<string>(DELETE_STATES);
+    expect(deletes.has(domainHealthState([at("sending")]))).toBe(false);
+    expect(deletes.has(domainHealthState([at("sending"), at("stopped")]))).toBe(false);
+    expect(deletes.has(domainHealthState([at("sending", 400), at("stopped")]))).toBe(false);
+    expect(domainHealthState([at("sending"), at("stopped")])).toBe("mixed");
+    expect(domainHealthState([at("sending"), at("sending")])).toBe("healthy");
   });
 
-  it("never calls a domain deletable while one mailbox still clears the bar", () => {
-    // "To delete soon" promises the whole domain is on its way out. One live
-    // mailbox makes it a decision instead — prod's axionmilestone.com is four
-    // dying mailboxes beside one at 100/100 with 29 emails queued.
-    expect(domainHealthState(["healthy", "dying"])).toBe("mixed");
-    expect(domainHealthState(["healthy", "dying", "dying", "dying"])).toBe("mixed");
+  it("never offers a RECOVERING domain for deletion — it is coming back", () => {
+    // 198 of 294 prod mailboxes were in recovery on 2026-09-22. Being under the
+    // delivery bar is what put them there, so re-grading on delivery reproduced
+    // the gate and called the result a cancellation.
+    const deletes = new Set<string>(DELETE_STATES);
+    expect(domainHealthState([at("recovering")])).toBe("recovering");
+    expect(domainHealthState([at("recovering"), at("stopped")])).toBe("recovering");
+    expect(deletes.has(domainHealthState([at("recovering"), at("stopped", 3)]))).toBe(false);
   });
 
-  it("grades on what it could measure, and says so when it measured nothing", () => {
-    expect(domainHealthState(["ungraded", "healthy"])).toBe("healthy");
-    expect(domainHealthState(["ungraded", "dead"])).toBe("to-delete-now");
-    expect(domainHealthState(["ungraded", "ungraded"])).toBe("not-graded");
+  it("holds a policy-pinned domain out of the delete list entirely", () => {
+    // The brand estate, pinned out of cold email via instantly_domain_policy.
+    // It is not a fault and it is not a cancellation.
+    expect(domainHealthState([at("held")])).toBe("held");
+    expect(domainHealthState([at("held"), at("held")])).toBe("held");
+  });
+
+  it("drops a held mailbox from the live read rather than grading on it", () => {
+    // A held mailbox says nothing about whether the REST of the domain works,
+    // so it neither rescues a spent domain nor condemns a working one.
+    expect(domainHealthState([at("held"), at("sending")])).toBe("healthy");
+    expect(domainHealthState([at("held"), at("stopped")])).toBe("to-delete-now");
+    expect(domainHealthState([at("held"), at("recovering")])).toBe("recovering");
+  });
+
+  it("grades on what it could read, and says so when it read nothing", () => {
+    expect(domainHealthState([at("ungraded"), at("sending")])).toBe("healthy");
+    expect(domainHealthState([at("ungraded"), at("stopped")])).toBe("to-delete-now");
+    expect(domainHealthState([at("ungraded"), at("ungraded")])).toBe("not-graded");
     expect(domainHealthState([])).toBe("not-graded");
+  });
+
+  it("counts the queue over the LIVE mailboxes, not the held ones", () => {
+    // A held mailbox's queue is not a reason to delay cancelling the spent
+    // mailboxes beside it — nothing is draining through a pinned address.
+    expect(domainHealthState([at("held", 500), at("stopped")])).toBe("to-delete-now");
   });
 });
 
@@ -283,33 +326,47 @@ describe("buildDomainHealthRows", () => {
   });
 
   it("carries the verdict through from the mailboxes", () => {
-    const dead = { warmupScore: 10, inboxPct: 10 };
     const rows = buildDomainHealthRows([
-      acct({
-        email: "a@spent.com",
-        warmupScore: dead.warmupScore,
-        inboxPlacement: {
-          inboxPct: dead.inboxPct,
-          spamPct: 90,
-          missingPct: 0,
-          testedAt: "2026-08-01T00:00:00Z",
-        },
-        queueSize: 0,
-      }),
-      acct({
-        email: "b@spent.com",
-        warmupScore: dead.warmupScore,
-        inboxPlacement: {
-          inboxPct: dead.inboxPct,
-          spamPct: 90,
-          missingPct: 0,
-          testedAt: "2026-08-01T00:00:00Z",
-        },
-        queueSize: 0,
-      }),
+      acct({ email: "a@spent.com", lifecycleStatus: "deactivated_by_instantly", queueSize: 0 }),
+      acct({ email: "b@spent.com", lifecycleStatus: "deactivated_by_instantly", queueSize: 0 }),
     ]);
     expect(rows[0].state).toBe("to-delete-now");
-    expect(rows[0].accounts.every((a) => a.state === "dead")).toBe(true);
+    expect(rows[0].accounts.every((a) => a.state === "stopped")).toBe(true);
+  });
+
+  it("carries the producer's reason through for the hover", () => {
+    const rows = buildDomainHealthRows([
+      acct({
+        email: "a@warming.com",
+        lifecycleStatus: "in_recovery",
+        lifecycleReason: "delivery_below_bar",
+      }),
+    ]);
+    expect(rows[0].accounts[0].lifecycleStatus).toBe("in_recovery");
+    expect(rows[0].accounts[0].lifecycleReason).toBe("delivery_below_bar");
+    expect(rows[0].state).toBe("recovering");
+  });
+
+  it("reproduces the prod verdict split the old grading got wrong", () => {
+    // Measured against /internal/audit/account-health on 2026-09-22: the score
+    // grading read 240 of 294 mailboxes as dead or dying and offered 48 of 68
+    // domains for deletion. Only a vendor-stopped mailbox can do that now.
+    const rows = buildDomainHealthRows([
+      // 196 of prod's in_recovery mailboxes carry exactly this reason.
+      acct({ email: "a@warming.com", lifecycleStatus: "in_recovery", lifecycleReason: "delivery_below_bar", warmupScore: 12 }),
+      // A freshly promoted mailbox: warmup daily is 0, so the rolling score sinks.
+      acct({ email: "b@sending.com", lifecycleStatus: "in_production", lifecycleReason: "passed", warmupScore: 8 }),
+      // The brand estate, pinned out of cold email by policy.
+      acct({ email: "c@brand.com", lifecycleStatus: "deactivated_by_user", lifecycleReason: "brand_domain" }),
+      // The only genuinely cancellable shape.
+      acct({ email: "d@spent.com", lifecycleStatus: "deactivated_by_instantly", lifecycleReason: "deactivated_by_instantly" }),
+    ]);
+    const byDomain = new Map(rows.map((r) => [r.domain, r.state]));
+    expect(byDomain.get("warming.com")).toBe("recovering");
+    expect(byDomain.get("sending.com")).toBe("healthy");
+    expect(byDomain.get("brand.com")).toBe("held");
+    expect(byDomain.get("spent.com")).toBe("to-delete-now");
+    expect(rows.filter((r) => (DELETE_STATES as readonly string[]).includes(r.state))).toHaveLength(1);
   });
 
   it("lists each distinct provider on the domain once", () => {
@@ -339,6 +396,20 @@ describe("the card renders the verdict, not a second opinion", () => {
     expect(card).not.toContain("inboxPct >= ");
   });
 
+  it("re-derives no verdict of its own — the scores reach the hover and nothing else", () => {
+    // The card may DISPLAY Instantly's scores; it may not compare them. A
+    // threshold here would be the bug this rewrite removed, rebuilt one
+    // component over.
+    expect(card).not.toMatch(/warmupScore\s*[<>]/);
+    expect(card).not.toMatch(/inboxPct\s*[<>]/);
+    expect(card).toContain("lifecycleLabel(account.lifecycleStatus)");
+  });
+
+  it("draws the BILLING vendor, a different concept from the connection protocol", () => {
+    expect(card).toContain("<VendorLogo key={v} provider={v} />");
+    expect(card).toContain("<ProviderLogo");
+  });
+
   it("renders an unstateable cost as a dash, never a zero", () => {
     expect(card).toContain("row.cost?.recurringCents == null");
     expect(card).toContain("row.cost?.renewalCents == null");
@@ -360,8 +431,8 @@ describe("the card renders the verdict, not a second opinion", () => {
     expect(card).toContain("recurring in this tab");
   });
 
-  it("takes the bar from the one module that defines it", () => {
-    expect(card).toContain("HEALTH_BAR");
-    expect(card).not.toMatch(/=== *95|< *95/);
+  it("holds no bar of its own — the grading module is gone and stays gone", () => {
+    expect(card).not.toContain("HEALTH_BAR");
+    expect(card).not.toMatch(/=== *9[05]|< *9[05]/);
   });
 });

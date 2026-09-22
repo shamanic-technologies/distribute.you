@@ -5,12 +5,12 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getInstantlyAccountHealth, getInstantlyInfraDomains } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { ProviderLogo } from "@/components/audit/provider-logo";
+import { ProviderLogo, VendorLogo } from "@/components/audit/provider-logo";
+import { lifecycleLabel } from "@/lib/instantly-ops";
 import {
   buildDomainHealthRows,
   DOMAIN_TABS,
-  HEALTH_BAR,
-  type AccountHealthState,
+  type AccountSendState,
   type DomainAccount,
   type DomainHealthRow,
   type DomainHealthState,
@@ -28,36 +28,44 @@ import {
  */
 
 // One colour per verdict, used for the dot, the account chip and the domain
-// pill alike. Colour is keyed on the VERDICT, never on the raw score band —
-// a red chip beside a "Healthy" verdict would be the same row contradicting
-// itself. All four tints are in the `html.dark` remap's closed set.
-const ACCOUNT_TONE: Record<AccountHealthState, string> = {
-  dead: "bg-red-500",
-  dying: "bg-amber-500",
-  healthy: "bg-emerald-500",
+// pill alike. Colour is keyed on the VERDICT instantly-service stated, never on
+// a raw score — a red chip beside a "Sending" verdict would be the same row
+// contradicting itself, and grading on the scores is exactly what made the old
+// card offer 48 of 68 domains for deletion. All tints are in the `html.dark`
+// remap's closed set.
+const ACCOUNT_TONE: Record<AccountSendState, string> = {
+  sending: "bg-emerald-500",
+  recovering: "bg-amber-500",
+  stopped: "bg-red-500",
+  held: "bg-sky-500",
   ungraded: "bg-gray-300",
 };
 
-const ACCOUNT_WORD: Record<AccountHealthState, string> = {
-  dead: "Dead",
-  dying: "Dying",
-  healthy: "Healthy",
+const ACCOUNT_WORD: Record<AccountSendState, string> = {
+  sending: "Sending",
+  recovering: "Recovering",
+  stopped: "Stopped by Instantly",
+  held: "Held by us",
   ungraded: "Not graded",
 };
 
 const DOMAIN_PILL: Record<DomainHealthState, string> = {
   "to-delete-now": "border-red-200 bg-red-50 text-red-700",
   "to-delete-soon": "border-amber-200 bg-amber-50 text-amber-700",
+  recovering: "border-amber-200 bg-amber-50 text-amber-700",
   mixed: "border-orange-200 bg-orange-50 text-orange-700",
   healthy: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  held: "border-sky-200 bg-sky-50 text-sky-700",
   "not-graded": "border-gray-200 bg-gray-50 text-gray-600",
 };
 
 const DOMAIN_WORD: Record<DomainHealthState, string> = {
   "to-delete-now": "To delete now",
   "to-delete-soon": "To delete soon",
+  recovering: "Recovering",
   mixed: "Mix state",
-  healthy: "Healthy",
+  healthy: "Sending",
+  held: "Held by us",
   "not-graded": "Not graded",
 };
 
@@ -86,21 +94,25 @@ function shortDate(iso: string): string {
 }
 
 /**
- * One mailbox, in one cell: who it is, whether it lives, both scores and what
- * it still owes. The scores are printed together because a mailbox needs BOTH
- * to clear the bar, so reading either alone answers the wrong question.
+ * One mailbox, in one cell: who it is, what instantly-service says it is doing,
+ * and what it still owes.
+ *
+ * The two scores are on the HOVER, not in the cell, and that is the whole point
+ * of this rewrite: they are Instantly's inputs to a decision the service has
+ * already made, and printing them beside the verdict invited a reader to
+ * re-grade a mailbox on numbers that legitimately read low for a mailbox doing
+ * fine (promotion resets the health score toward 0, and being under the
+ * delivery bar is what recovery MEANS).
  */
 function AccountCell({ account }: { account: DomainAccount }) {
-  const scores =
-    account.warmupScore === null || account.inboxPct === null
-      ? "—"
-      : `${Math.round(account.warmupScore)}/${Math.round(account.inboxPct)}`;
   return (
     <div
       className="flex flex-col gap-0.5"
-      title={`${account.email}\n${ACCOUNT_WORD[account.state]}\nHealth ${
-        account.warmupScore ?? "—"
-      } · Inbox ${account.inboxPct ?? "—"}% · ${account.queueSize} queued`}
+      title={`${account.email}\n${ACCOUNT_WORD[account.state]}${
+        account.lifecycleReason ? ` (${account.lifecycleReason})` : ""
+      }\nHealth ${account.warmupScore ?? "—"} · Inbox ${
+        account.inboxPct ?? "—"
+      }% · ${account.queueSize} queued`}
     >
       <span className="flex items-center gap-1.5">
         <span
@@ -110,8 +122,9 @@ function AccountCell({ account }: { account: DomainAccount }) {
           {account.localPart}
         </span>
       </span>
-      <span className="pl-3 text-[11px] tabular-nums text-gray-500">
-        {scores} · {account.queueSize.toLocaleString("en-US")}
+      <span className="pl-3 text-[11px] text-gray-500">
+        {account.lifecycleStatus ? lifecycleLabel(account.lifecycleStatus) : "no lifecycle"}
+        {account.queueSize > 0 ? ` · ${account.queueSize.toLocaleString("en-US")} queued` : ""}
       </span>
     </div>
   );
@@ -139,9 +152,8 @@ export function DomainHealthCard() {
     [data, infra],
   );
 
-  // Only tabs with rows are offered — a "Not graded" tab is a defensive branch
-  // for a score the wire can serve as null, and an empty one would advertise a
-  // state the fleet is not in.
+  // Only tabs with rows are offered — "Held by us" and "Not graded" are states
+  // a fleet may simply not be in, and an empty tab advertises one it is not.
   const tabs = useMemo(() => {
     const counts = new Map<DomainHealthState, number>();
     for (const row of rows) counts.set(row.state, (counts.get(row.state) ?? 0) + 1);
@@ -197,11 +209,11 @@ export function DomainHealthCard() {
         <div>
           <h2 className="text-sm font-semibold text-gray-900">Sending domains</h2>
           <p className="mt-1 text-xs text-gray-500">
-            The delete list. A domain is what bills and what you cancel, so it is
-            graded from its own mailboxes: a mailbox is dead once it falls under{" "}
-            {HEALTH_BAR} on either score with nothing left in its queue, and
-            dying while it still owes emails. Each cell reads health/inbox and
-            the emails still queued.
+            The delete list. A domain is what bills and what you cancel, so it
+            reads the verdict instantly-service already made per mailbox: only a
+            mailbox Instantly STOPPED puts a domain on the list, a mailbox being
+            warmed back up keeps it off, and a domain we pinned out of cold email
+            on purpose is never a candidate at all. Hover a cell for its reason.
           </p>
         </div>
         {!isPending && !isError && rows.length > 0 && (
@@ -293,6 +305,9 @@ export function DomainHealthCard() {
                     >
                       <td className="py-3 pr-3">
                         <span className="flex items-center gap-1.5">
+                          {row.vendors.map((v) => (
+                            <VendorLogo key={v} provider={v} />
+                          ))}
                           {row.providerTypes.map((type, i) => (
                             <ProviderLogo key={`${type ?? "unknown"}-${i}`} type={type} />
                           ))}
@@ -362,8 +377,11 @@ export function DomainHealthCard() {
                 </tbody>
               </table>
               <p className="mt-3 text-xs text-gray-400">
-                Each account cell reads health/inbox placement and the emails
-                still queued to it. The two money columns are measured from what
+                Each account cell reads the lifecycle instantly-service assigned
+                the mailbox, and the emails still queued to it; the raw health
+                and inbox scores are on the hover, because they are the inputs to
+                that verdict rather than a second opinion on it. The two money
+                columns are measured from what
                 the vendors actually charge us, not assumed from the mailbox
                 provider: <b>Stops now</b> is the mailbox subscription, which
                 ends the day you cancel, while <b>Avoided at renewal</b> is the
