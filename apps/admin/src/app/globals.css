@@ -148,6 +148,20 @@ html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.15); }
 html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
+/* Indigo's text and border weights, which the fill above never had — the same
+   gap green and red were closed for, in the same direction: the fill alone
+   renders a legible-looking chip in the light default while its label sits
+   near-black on the dark surface, so it ships unnoticed. Measured on the
+   cold-email Events CTA (`border-indigo-200 bg-indigo-50 text-indigo-700`),
+   which was unreadable in dark. */
+html.dark .text-indigo-600 { color: #a5b4fc; }
+html.dark .text-indigo-700 { color: #a5b4fc; }
+html.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.35); }
+
+/* Sky, the same trio at once rather than a fill now and its weights later. */
+html.dark .bg-sky-50 { background-color: rgba(14, 165, 233, 0.15); }
+html.dark .text-sky-700 { color: #7dd3fc; }
+html.dark .border-sky-200 { border-color: rgba(14, 165, 233, 0.3); }
 
 /* Shadows — softer in dark mode */
 html.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.3); }
