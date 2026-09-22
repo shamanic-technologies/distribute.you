@@ -181,7 +181,7 @@ function IntegrationRow({
     mutationFn: async () => {
       if (connection) {
         try {
-          await disconnectCrm(connection.id);
+          await disconnectCrm(connection.id, brandId);
         } catch (err) {
           console.error("[integrations] disconnecting failed", err);
           const msg = disconnectErrorMessage(err);
