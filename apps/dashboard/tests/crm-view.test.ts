@@ -3,8 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  contactCompanyName,
   contactDisplayName,
   contactIdentity,
+  contactPlace,
+  contactTags,
   filterContacts,
   formatAmount,
   type CrmContact,
@@ -28,6 +31,22 @@ const person = (o: Partial<CrmContact> & Pick<CrmContact, "id">): CrmContact => 
   lastName: null,
   unsubscribed: false,
   lastRebuiltAt: null,
+  company: { name: null, website: null },
+  location: {
+    city: null,
+    stateRegion: null,
+    country: null,
+    postalCode: null,
+    streetAddress: null,
+  },
+  record: {
+    type: null,
+    leadSource: null,
+    tags: null,
+    createdAt: null,
+    updatedAt: null,
+    origin: { medium: null, url: null, referrer: null },
+  },
   ...o,
 });
 
@@ -115,6 +134,133 @@ describe("filterContacts", () => {
   });
 });
 
+describe("what their CRM holds about the company and the record", () => {
+  const acme = person({
+    id: "1",
+    fullName: "Ada Lovelace",
+    company: { name: "  Acme Plumbing  ", website: "https://acme.example" },
+    location: {
+      city: "Denver",
+      stateRegion: "CO",
+      country: "US",
+      postalCode: "80202",
+      streetAddress: "1 Main St",
+    },
+    record: {
+      type: "lead",
+      leadSource: "Facebook Ad",
+      tags: ["  vip ", "", "cold"],
+      createdAt: "2026-01-02T03:04:05.000Z",
+      updatedAt: null,
+      origin: { medium: "paid", url: "https://acme.example/lp", referrer: null },
+    },
+  });
+
+  it("states the company their CRM attached the person to", () => {
+    expect(contactCompanyName(acme)).toBe("Acme Plumbing");
+  });
+
+  it("says nothing rather than blank when their CRM holds no company", () => {
+    // Absent is a fact about their CRM, never a defaulted value of ours.
+    expect(contactCompanyName(person({ id: "2" }))).toBeNull();
+    expect(contactCompanyName(person({ id: "3", company: { name: "   ", website: null } }))).toBeNull();
+  });
+
+  it("writes the place from the parts that exist, inventing none", () => {
+    expect(contactPlace(acme)).toBe("Denver, CO, US");
+    expect(
+      contactPlace(
+        person({
+          id: "4",
+          location: {
+            city: null,
+            stateRegion: null,
+            country: "US",
+            postalCode: null,
+            streetAddress: null,
+          },
+        }),
+      ),
+    ).toBe("US");
+    expect(contactPlace(person({ id: "5" }))).toBeNull();
+  });
+
+  it("keeps the customer's own tags, drops the blank ones, and reads null as none", () => {
+    expect(contactTags(acme)).toEqual(["vip", "cold"]);
+    expect(contactTags(person({ id: "6" }))).toEqual([]);
+  });
+
+  it("maps no free-text value onto a vocabulary of ours", () => {
+    // Their stage and lead-source words are arbitrary per customer ("Free Trail
+    // Client", "BOOKED - NO BUY"). Serve what they say; the meaning is decided
+    // elsewhere. A map here would be this page inventing one.
+    const view = read("lib/crm-view.ts");
+    expect(view).not.toMatch(/LEAD_SOURCE_LABEL|STAGE_LABEL|normalizeLeadSource|TYPE_LABEL/);
+  });
+});
+
+describe("the contacts table can be matched on company and opened on one person", () => {
+  const rows = [
+    person({ id: "1", fullName: "Ada Lovelace", company: { name: "Acme Plumbing", website: null } }),
+    person({
+      id: "2",
+      fullName: "Grace Hopper",
+      location: {
+        city: "Denver",
+        stateRegion: null,
+        country: null,
+        postalCode: null,
+        streetAddress: null,
+      },
+      record: {
+        type: null,
+        leadSource: "Facebook Ad",
+        tags: ["vip"],
+        createdAt: null,
+        updatedAt: null,
+        origin: { medium: null, url: null, referrer: null },
+      },
+    }),
+  ];
+
+  it("searches the company, the place and their own words too", () => {
+    // 454 of the 455 contacts carrying a company carry NO email, so a search
+    // that only reads identity cannot find most of the people who have one.
+    expect(filterContacts(rows, "acme").map((c) => c.id)).toEqual(["1"]);
+    expect(filterContacts(rows, "denver").map((c) => c.id)).toEqual(["2"]);
+    expect(filterContacts(rows, "facebook").map((c) => c.id)).toEqual(["2"]);
+    expect(filterContacts(rows, "vip").map((c) => c.id)).toEqual(["2"]);
+  });
+
+  it("carries a Company column, because a reader scans the list on it", () => {
+    const src = read("components/crm/crm-contacts-table.tsx");
+    expect(src).toContain(">Company<");
+    expect(src).toContain("contactCompanyName");
+  });
+
+  it("opens one person's detail from the row, by mouse and by keyboard", () => {
+    const src = read("components/crm/crm-contacts-table.tsx");
+    expect(src).toContain("CrmContactDetail");
+    expect(src).toContain("aria-expanded");
+    expect(src).toContain('e.key === "Enter"');
+  });
+
+  it("still writes nothing back to their CRM", () => {
+    // There is no write path between here and their system, and opening a row
+    // must not be read as licence to build one.
+    const table = read("components/crm/crm-contacts-table.tsx");
+    const detail = read("components/crm/crm-contact-detail.tsx");
+    expect(table).not.toMatch(/useMutation|apiCall|fetch\(/);
+    expect(detail).not.toMatch(/useMutation|apiCall|fetch\(/);
+  });
+
+  it("renders a link only for http(s), never for whatever scheme their CRM stored", () => {
+    // The website and the origin URL are somebody else's data landing in an
+    // anchor; any other scheme there is that data deciding what a click does.
+    expect(read("components/crm/crm-contact-detail.tsx")).toContain("^https?:\\/\\/");
+  });
+});
+
 describe("the page renders the producer's grouping and re-derives none of it", () => {
   it("carries no grouping, counting or summing of its own", () => {
     // crm-service serves the pipeline already grouped, with the per-stage and
@@ -149,9 +295,13 @@ describe("the contacts table states one value once", () => {
     expect(read("components/crm/crm-contacts-table.tsx")).toContain('who.source !== "phone"');
   });
 
-  it("shows no Tags column, because their CRM serves us none", () => {
-    const src = read("components/crm/crm-contacts-table.tsx");
-    expect(src).not.toContain(">Tags<");
+  it("keeps the customer's tags out of the row and inside the opened detail", () => {
+    // Their CRM DOES serve tags now (crm-service #21) — this guard used to say
+    // it served none, which stopped being true. Tags are free text per customer
+    // and there are up to a dozen of them, so a column would crush the row: they
+    // belong in the detail a reader opens on one person.
+    expect(read("components/crm/crm-contacts-table.tsx")).not.toContain(">Tags<");
+    expect(read("components/crm/crm-contact-detail.tsx")).toContain("Tags");
   });
 });
 

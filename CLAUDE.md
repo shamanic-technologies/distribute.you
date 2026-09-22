@@ -343,6 +343,16 @@ away. It also serves `ungrouped` (deals their system put in no pipeline we
 mirrored), which the page shows so the counts add up to what the customer sees in
 their own CRM.
 
+**A MIRRORED CONTACT CARRIES THE COMPANY AND THE RECORD'S PROVENANCE, NOT IDENTITY ALONE — AND COMPANY IS A COLUMN, NOT A DETAIL.** crm-service serves identity, then three groups it computes: `company` (name, website), `location` (city, stateRegion, country, postalCode, streetAddress) and `record` (type, leadSource, tags, createdAt, updatedAt, origin{medium,url,referrer}). Render its grouping; do not flatten it here.
+
+- **The company is on the ROW because it is the only signal most of these people have.** Measured on the first customer's 2,694 mirrored contacts: **455 carry a company name and 454 of those carry NO email**, so that set is LARGER than the email set (420) and almost entirely disjoint from it — and we hold no phone numbers at all for this brand's leads, so the phone (2,547) is not a join key. A table that scans on identity alone cannot be scanned for most of the people who have a company.
+- **Everything else opens on ONE person**, because deciding whether a CRM contact and one of our leads are the same human is a per-person question and a twelve-column table answers nothing. The row IS the control (Enter and Space open it too, so the detail is not mouse-only), and it stays a `hidden md:table-cell` fold plus a `md:` floor — the column set and the floor move together or the folded columns are pushed off screen.
+- **Their free text stays their free text.** `type`, `leadSource` and the tags are arbitrary per customer ("Free Trail Client", "BOOKED - NO BUY"). Nothing here maps them onto a vocabulary of ours; a guard fails on any `*_LABEL` / `normalize*` map appearing in `crm-view.ts`.
+- **The three groups are declared REQUIRED with nullable leaves.** The producer always emits them, so `.optional()` would read `undefined` for ever on a rename and blank the surface silently. A field their CRM does not hold reads `null` and the detail says so in words — "their CRM does not hold this" and "we could not read it" are different statements.
+- **`tags` is `z.array(z.string())`, verified against the real population** — all 2,694 mirrored contacts carry an array and every element is a string. A non-string fails the parse loudly rather than being coerced in the browser.
+- **Still no write path.** Opening a row shows more; it offers nothing to change. A guard forbids `useMutation` / `apiCall` / `fetch(` in either component, and only `http(s)` is ever rendered as an anchor — the website and the origin URL are somebody else's data landing in a link.
+- ⚠️ A guard here used to read *"shows no Tags column, because their CRM serves us none"*; that premise died with crm-service #21. It now pins tags OUT of the row and INTO the detail, with the reason. Guards: `tests/crm-view.test.ts`. (#21 producer-side; api-service needed nothing — `GET /v1/orgs/gohighlevel/contacts` is a pure passthrough with a byte-copied query.)
+
 **NO CURRENCY IS STATED, because none is mirrored.** The vendor reports a
 whole-currency amount and crm-service stores it as a numeric string with no
 currency code in any of the tables involved, so `formatAmount` writes a plain
