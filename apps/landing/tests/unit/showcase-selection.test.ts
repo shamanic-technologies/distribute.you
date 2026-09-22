@@ -22,7 +22,7 @@ import {
 import {
   renderProofSelection,
   renderShowcaseSelection,
-  pickedBrands,
+  selectionFrom,
   type ShowcaseBrand,
 } from "@/lib/showcase-funnels";
 import { personFor, SHOWCASE_PEOPLE } from "@/lib/showcase-people";
@@ -88,36 +88,14 @@ const labcritics: ShowcaseBrand = {
 };
 
 describe("the producer picks, this page renders", () => {
-  const measured = (brands: ShowcaseBrand[]) => ({
-    brands,
-    measured: true,
-    unmeasuredReason: null,
-    requestedCount: 3,
-    qualifyingCount: 10,
-  });
-
-  it("honours a group the producer declined to answer", () => {
-    // Production answers exactly this for the recent group today
-    // (`measured: false`, `no_qualifying_clients`). The section keeps its shipped clients.
+  it("takes a pick only when BOTH groups are answered", () => {
+    expect(selectionFrom({ brands: [] })).toBeNull();
+    expect(selectionFrom({ brands: [], recent: [docDinners] })).toBeNull();
+    expect(selectionFrom({ brands: [], topReturn: [opsfolio] })).toBeNull();
+    expect(selectionFrom({ brands: [], recent: [], topReturn: [opsfolio] })).toBeNull();
     expect(
-      pickedBrands(
-        { brands: [], measured: false, unmeasuredReason: "no_qualifying_clients", requestedCount: 3, qualifyingCount: 0 },
-        "recentlyStarted"
-      )
-    ).toBeNull();
-    expect(pickedBrands(undefined, "recentlyStarted")).toBeNull();
-  });
-
-  it("reads each group on its own, so one silence does not gag the other", () => {
-    // The two answer different questions and were never meant to name the same clients — the
-    // producer says so outright. Requiring both would have shipped the podium as dead code.
-    expect(pickedBrands(measured([opsfolio]), "highestReturn")).toEqual([opsfolio]);
-  });
-
-  it("renders a SHORT group rather than refusing it", () => {
-    // The producer states how many qualified, so fewer than three is an answer, not a gap.
-    const short = { ...measured([opsfolio]), qualifyingCount: 1 };
-    expect(pickedBrands(short, "highestReturn")).toEqual([opsfolio]);
+      selectionFrom({ brands: [], recent: [docDinners], topReturn: [opsfolio] })
+    ).toEqual({ recent: [docDinners], topReturn: [opsfolio] });
   });
 
   it("keeps the producer's order and only decides where each card sits", () => {
