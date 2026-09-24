@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
-  ASSISTANT_SHARE,
+  VARIANT_WEIGHTS,
+  drawVariant,
   VARIANT_COOKIE,
   cookieValue,
   decideVariant,
@@ -17,13 +18,19 @@ const CHROME =
 const q = (s = "") => new URLSearchParams(s);
 
 describe("the split rule", () => {
-  it("draws a first-time human by the random number and stores the draw", () => {
-    const base = { cookieHeader: null, userAgent: CHROME, query: q() };
-    expect(decideVariant({ ...base, random: ASSISTANT_SHARE - 0.01 })).toEqual({
-      variant: "assistant", setCookie: true, inTest: true,
-    });
-    expect(decideVariant({ ...base, random: ASSISTANT_SHARE })).toEqual({
-      variant: "control", setCookie: true, inTest: true,
+  it("draws a first-time human by the weights (1/2 concierge, 1/4 each other) and stores it", () => {
+    expect(VARIANT_WEIGHTS).toEqual({ concierge: 0.5, control: 0.25, assistant: 0.25 });
+    expect(drawVariant(0)).toBe("control");
+    expect(drawVariant(0.2499)).toBe("control");
+    expect(drawVariant(0.25)).toBe("assistant");
+    expect(drawVariant(0.4999)).toBe("assistant");
+    expect(drawVariant(0.5)).toBe("concierge");
+    expect(drawVariant(0.9999)).toBe("concierge");
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
+    expect(counts).toEqual({ control: 2500, assistant: 2500, concierge: 5000 });
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.7 })).toEqual({
+      variant: "concierge", setCookie: true, inTest: true,
     });
   });
 
@@ -35,7 +42,7 @@ describe("the split rule", () => {
   });
 
   it("redraws on a cookie value that names no variant", () => {
-    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=junk`, userAgent: CHROME, query: q(), random: 0.1 });
+    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=junk`, userAgent: CHROME, query: q(), random: 0.3 });
     expect(d).toEqual({ variant: "assistant", setCookie: true, inTest: true });
   });
 
@@ -104,6 +111,15 @@ describe("GET / serves the split", () => {
     expect(html).toContain('lp_variant:"assistant"');
     expect(res.headers.get("set-cookie")).toContain("lp_variant=assistant");
     expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("serves the concierge page at / as the homepage: indexable, canonical /", async () => {
+    const { res, html } = await get({ qs: "?variant=concierge" });
+    expect(html).toContain("Just message it.");
+    expect(html).toContain('<link rel="canonical" href="https://distribute.you/">');
+    expect(html).not.toContain('content="noindex"');
+    expect(html).toContain('lp_variant:"concierge"');
+    expect(res.headers.get("set-cookie")).toContain("lp_variant=concierge");
   });
 
   it("serves the current homepage to the control arm, tagged", async () => {
