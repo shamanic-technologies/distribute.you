@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
+  getCrmContactOrigins,
   getCrmPairingCounts,
   listCrmPairings,
   setCrmPairingRuling,
@@ -21,8 +22,8 @@ import {
   DECIDED_BY_LABEL,
   MATCH_METHOD_LABEL,
   OUR_STATE_LABEL,
-  PAIRING_STATES,
   PAIRING_STATE_LABEL,
+  STATE_FILTERS,
   THEIR_STATE_LABEL,
   alignmentFor,
   contactProvenance,
@@ -31,7 +32,10 @@ import {
   judgmentPosition,
   labelOf,
   rulingErrorMessage,
+  topBuckets,
   type Alignment,
+  type CrmContactOrigins,
+  type OriginBucket,
   type CrmPairingCounts,
   type CrmPairingRow,
   type CrmPairings,
@@ -54,8 +58,14 @@ export const PAIRINGS_PAGE = 100;
  */
 export function CrmMergedPage({ brandId }: { brandId: string }) {
   const isBeta = useIsBetaUser();
-  const [offset, setOffset] = useState(0);
-  const [stateFilter, setStateFilter] = useState<string | "all">("all");
+  // Offsets are POSITIONS in their contact list (a filtered page skips rows), so
+  // Previous walks back a stack of the offsets actually visited.
+  const [offsets, setOffsets] = useState<number[]>([0]);
+  const offset = offsets[offsets.length - 1];
+  // Opens on the contacts in common: the rows with something to compare, and a
+  // read that buys no similarity judgment.
+  const [stateFilter, setStateFilter] = useState<string>("paired");
+  const states = STATE_FILTERS.find((f) => f.id === stateFilter)?.states ?? null;
   const [alignFilter, setAlignFilter] = useState<Alignment | "all">("all");
   const [sort, setSort] = useState<"attention" | "name" | "state">("attention");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -64,10 +74,13 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
     enabled: isBeta,
   });
   const pageQ = useAuthQuery(
-    ["crmPairings", brandId, offset],
-    () => listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset }),
+    ["crmPairings", brandId, stateFilter, offset],
+    () => listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states }),
     { enabled: isBeta },
   );
+  const originsQ = useAuthQuery(["crmContactOrigins", brandId], () => getCrmContactOrigins(brandId), {
+    enabled: isBeta,
+  });
 
   if (!isBeta) {
     return (
@@ -88,7 +101,19 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
   // A switch of page keeps the previous page on screen (keepPreviousData); that
   // would show one page's rows under another's pager, so it skeletons instead.
   const pageStale = pageQ.isPlaceholderData;
-  const rows = page ? filterAndSortRows(page.pairings, { state: stateFilter, alignment: alignFilter, sort }) : [];
+  const rows = page ? filterAndSortRows(page.pairings, { state: "all", alignment: alignFilter, sort }) : [];
+  const stateTotal = (() => {
+    const c = countsQ.data?.counts;
+    if (!c) return null;
+    if (!states) return c.crmContacts;
+    let n = 0;
+    for (const st of states) {
+      const v = c.byState[st as keyof typeof c.byState];
+      if (v == null) return null;
+      n += v;
+    }
+    return n;
+  })();
   const open = page?.pairings.find((r) => r.crmContact.id === openId) ?? null;
 
   return (
@@ -103,15 +128,20 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
       </p>
 
       <StatsBand q={countsQ} />
+      <OriginsCard q={originsQ} />
 
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-end gap-3">
           <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
           <Select
-            label="In common"
+            label="Show"
             value={stateFilter}
-            onChange={(v) => setStateFilter(v)}
-            options={[["all", "All"], ...PAIRING_STATES.map((s) => [s, PAIRING_STATE_LABEL[s]] as [string, string])]}
+            onChange={(v) => {
+              setStateFilter(v);
+              setOffsets([0]);
+              setOpenId(null);
+            }}
+            options={STATE_FILTERS.map((f) => [f.id, f.label] as [string, string])}
           />
           <Select
             label="Aligned"
@@ -131,8 +161,7 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
           />
         </div>
         <p className="mb-3 text-xs text-gray-500">
-          Filters and order apply to this page of {PAIRINGS_PAGE} contacts, not to their whole CRM. The counts
-          above cover everyone.
+          &quot;Show&quot; reads their whole CRM. &quot;Aligned&quot; and the order apply to the page on screen.
         </p>
 
         {pageQ.isError ? (
@@ -148,18 +177,19 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
             <div className="min-w-0 flex-1">
               <PairingsTable rows={rows} openId={openId} onOpen={setOpenId} />
               <Pager
-                offset={offset}
+                pageNumber={offsets.length}
                 shown={page.pairings.length}
-                nextOffset={page.nextOffset ?? null}
-                total={countsQ.data?.counts.crmContacts ?? null}
+                hasPrev={offsets.length > 1}
+                hasNext={page.nextOffset != null}
+                total={stateTotal}
                 onPrev={() => {
                   setOpenId(null);
-                  setOffset(Math.max(0, offset - PAIRINGS_PAGE));
+                  setOffsets(offsets.slice(0, -1));
                 }}
                 onNext={() => {
                   if (page.nextOffset == null) return;
                   setOpenId(null);
-                  setOffset(page.nextOffset);
+                  setOffsets([...offsets, page.nextOffset]);
                 }}
               />
             </div>
@@ -387,33 +417,33 @@ function PairingsTable({
 }
 
 function Pager({
-  offset,
+  pageNumber,
   shown,
-  nextOffset,
+  hasPrev,
+  hasNext,
   total,
   onPrev,
   onNext,
 }: {
-  offset: number;
+  pageNumber: number;
   shown: number;
-  nextOffset: number | null;
+  hasPrev: boolean;
+  hasNext: boolean;
   total: number | null;
   onPrev: () => void;
   onNext: () => void;
 }) {
-  const from = shown === 0 ? 0 : offset + 1;
-  const to = offset + shown;
   return (
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pr-20 text-sm text-gray-600">
       <span>
-        {formatCount(from)} to {formatCount(to)}
+        Page {formatCount(pageNumber)}, {formatCount(shown)} {shown === 1 ? "contact" : "contacts"}
         {total != null ? ` of ${formatCount(total)}` : ""}
       </span>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onPrev}
-          disabled={offset === 0}
+          disabled={!hasPrev}
           className="rounded-lg border border-gray-200 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
         >
           Previous
@@ -421,12 +451,55 @@ function Pager({
         <button
           type="button"
           onClick={onNext}
-          disabled={nextOffset == null}
+          disabled={!hasNext}
           className="rounded-lg border border-gray-200 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
         >
           Next
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Where their contacts came from ──────────────────────────────────────────
+
+function OriginsCard({ q }: { q: { data?: CrmContactOrigins; isPending: boolean; isError: boolean } }) {
+  if (q.isError) return <div className="mt-3"><Unavailable what="where their contacts came from" /></div>;
+  if (q.isPending || !q.data) {
+    return <div className="mt-3 h-40 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />;
+  }
+  const d = q.data;
+  return (
+    <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
+      <h3 className="text-sm font-semibold text-gray-900">Where their contacts came from</h3>
+      <p className="mt-1 text-xs text-gray-500">
+        Their CRM&apos;s own words, over all {formatCount(d.totalContacts)} contacts. A contact with no match on our
+        side often simply came from a different channel.
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <BucketList title="Lead source" buckets={d.leadSource} />
+        <BucketList title="Origin" buckets={d.originMedium} />
+      </div>
+    </div>
+  );
+}
+
+function BucketList({ title, buckets }: { title: string; buckets: OriginBucket[] }) {
+  const { shown, more } = topBuckets(buckets, 6);
+  return (
+    <div className="min-w-0">
+      <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{title}</h4>
+      <ul className="space-y-0.5 text-sm">
+        {shown.map((b) => (
+          <li key={b.value ?? "__none"} className="flex justify-between gap-3">
+            <span className={`min-w-0 truncate ${b.value == null ? "text-gray-400" : "text-gray-800"}`}>
+              {b.value ?? "Not set in their CRM"}
+            </span>
+            <span className="shrink-0 tabular-nums text-gray-600">{formatCount(b.count)}</span>
+          </li>
+        ))}
+      </ul>
+      {more > 0 ? <p className="mt-1 text-xs text-gray-500">and {formatCount(more)} more values</p> : null}
     </div>
   );
 }
@@ -515,13 +588,13 @@ function PairingPanel({
         {prov ? (
           <>
             <Field label="Lead source" value={prov.leadSource} />
-            <Field label="Origin" value={prov.originMedium} />
-            <Field label="Type" value={prov.contactType} />
+            <Field label="Origin" value={prov.origin?.medium} />
+            <Field label="Type" value={prov.type} />
             <Field label="Tags" value={prov.tags?.length ? prov.tags.join(", ") : null} />
             <Field label="Added to their CRM" value={prov.createdAt ? friendlyDateTime(prov.createdAt) : null} />
           </>
         ) : (
-          <p className="mt-1 text-xs text-gray-500">Where this record came from is not served on this view yet.</p>
+          <p className="mt-1 text-xs text-gray-500">This row carries no record of where the contact came from.</p>
         )}
       </PanelGroup>
 

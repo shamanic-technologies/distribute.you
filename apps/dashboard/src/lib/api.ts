@@ -28,8 +28,10 @@ import { LeadHistorySchema, type LeadHistory } from "./lead-history";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
 import {
+  CrmContactOriginsSchema,
   CrmPairingCountsSchema,
   CrmPairingsSchema,
+  type CrmContactOrigins,
   type CrmPairingCounts,
   type CrmPairings,
 } from "./crm-pairings";
@@ -698,15 +700,16 @@ export async function getCrmPipeline(
 
 /**
  * One page of the side-by-side view. Bounded by `limit` over THEIR contacts; the
- * view never holds a brand's lead population. `state` narrows to pairing states
- * once lead-service serves that filter; until then it is ignored upstream.
+ * view never holds a brand's lead population. `states` narrows to pairing states
+ * server-side; `offset`/`nextOffset` stay positions in their contact list.
  */
 export async function listCrmPairings(
   brandId: string,
-  opts: { limit: number; offset: number },
+  opts: { limit: number; offset: number; states?: string[] | null },
   token?: string,
 ): Promise<CrmPairings> {
   const q = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
+  if (opts.states?.length) q.set("state", opts.states.join(","));
   const raw = await apiCall<unknown>(`/leads/crm-pairings?${q}`, { token });
   const parsed = CrmPairingsSchema.safeParse(raw);
   if (!parsed.success) {
@@ -726,6 +729,23 @@ export async function getCrmPairingCounts(brandId: string, token?: string): Prom
   if (!parsed.success) {
     console.error("[api] getCrmPairingCounts response shape mismatch", parsed.error.flatten());
     throw new Error("getCrmPairingCounts returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Where the brand's CRM contacts came from, counted by crm-service over the whole
+ * mirrored population (lead source, origin medium, type, tags), verbatim.
+ */
+export async function getCrmContactOrigins(brandId: string, token?: string): Promise<CrmContactOrigins> {
+  const raw = await apiCall<unknown>(
+    `/orgs/gohighlevel/contacts/origins?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = CrmContactOriginsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getCrmContactOrigins response shape mismatch", parsed.error.flatten());
+    throw new Error("getCrmContactOrigins returned an unexpected shape");
   }
   return parsed.data;
 }

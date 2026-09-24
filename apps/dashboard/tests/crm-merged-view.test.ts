@@ -10,6 +10,9 @@ import {
   filterAndSortRows,
   judgmentPosition,
   rulingErrorMessage,
+  topBuckets,
+  STATE_FILTERS,
+  CrmContactOriginsSchema,
   type CrmPairingRow,
 } from "../src/lib/crm-pairings";
 
@@ -113,8 +116,9 @@ describe("helpers", () => {
   });
   it("reads provenance only when the producer carries it", () => {
     expect(contactProvenance(row({}).crmContact)).toBeNull();
-    const withProv = { ...row({}).crmContact, provenance: { leadSource: "Meta Ads", originMedium: "form" } };
+    const withProv = { ...row({}).crmContact, record: { type: "lead", leadSource: "Meta Ads", tags: [], createdAt: null, updatedAt: null, origin: { medium: "form", url: null, referrer: null } } };
     expect(contactProvenance(withProv)?.leadSource).toBe("Meta Ads");
+    expect(contactProvenance(withProv)?.origin?.medium).toBe("form");
   });
   it("filters and orders the page, needs-attention first", () => {
     const rows = [
@@ -161,6 +165,20 @@ describe("schemas parse the deployed shapes", () => {
   });
 });
 
+describe("origins + state filters", () => {
+  it("keeps the producer's order, drops empty buckets, states what is left", () => {
+    const b = [{ value: null, count: 2316 }, { value: "Meta Ads", count: 132 }, { value: "x", count: 0 }, { value: "form 13", count: 107 }];
+    expect(topBuckets(b, 2)).toEqual({ shown: [b[0], b[1]], more: 1 });
+  });
+  it("parses crm-service's origins body", () => {
+    const body = { brandId: "b", totalContacts: 2695, leadSource: [{ value: null, count: 2316 }], originMedium: [{ value: "csv_import", count: 454 }], contactType: [{ value: "lead", count: 2694 }], tags: { tagged: 323, untagged: 2372, labels: [] } };
+    expect(CrmContactOriginsSchema.safeParse(body).success).toBe(true);
+  });
+  it("every state filter names only lead-service's states", () => {
+    for (const f of STATE_FILTERS) for (const st of f.states ?? []) expect(["paired", "unconfirmed", "rejected", "unpaired"]).toContain(st);
+  });
+});
+
 describe("call sites", () => {
   const page = read("src/components/crm/crm-merged-page.tsx");
   const layout = read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/crm/layout.tsx");
@@ -185,6 +203,13 @@ describe("call sites", () => {
     expect(page).toContain("limit: PAIRINGS_PAGE, offset");
     expect(persist).toContain('"crmPairings"');
     expect(persist).toContain('"crmPairingCounts"');
+  });
+  it("filters by pairing state server-side and opens on the pairs in common", () => {
+    expect(page).toContain('useState<string>("paired")');
+    expect(page).toContain("listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states })");
+    expect(read("src/lib/api.ts")).toContain('q.set("state", opts.states.join(","))');
+    expect(page).toContain("getCrmContactOrigins(brandId)");
+    expect(persist).toContain('"crmContactOrigins"');
   });
   it("reveals on settle and never renders a raw error body", () => {
     expect(page).toContain("pageQ.isPending && !pageQ.isError");
