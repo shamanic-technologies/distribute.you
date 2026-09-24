@@ -90,11 +90,15 @@ const STYLE = `<style>
 .cc-m.team { background: var(--surface); border: 1px solid var(--hair); color: var(--text); border-bottom-left-radius: 5px; }
 .cc-m.visitor { margin-left: auto; background: var(--accent); color: #fff; border-bottom-right-radius: 5px; }
 .cc-note { font-size: 12px; color: var(--muted-2); text-align: center; }
-.cc-mail { display: none; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--hair); }
-.cc-mail.show { display: flex; }
-.cc-mail input, .cc-form textarea { flex: 1; min-width: 0; border: 1px solid var(--hair-2); border-radius: 12px; padding: 9px 11px; font: inherit; font-size: 14px; }
-.cc-mail button, .cc-form button { border: 0; border-radius: 12px; padding: 0 14px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; }
-.cc-form { display: flex; gap: 6px; padding: 12px 14px; border-top: 1px solid var(--hair); }
+.cc-gate { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--hair); }
+.cc-gate label { font-size: 13px; color: var(--muted); }
+.cc-gate div { display: flex; gap: 6px; }
+.cc-gate small { font-size: 12px; color: #b91c1c; min-height: 14px; }
+.cc-gate input, .cc-form textarea { flex: 1; min-width: 0; border: 1px solid var(--hair-2); border-radius: 12px; padding: 9px 11px; font: inherit; font-size: 14px; }
+.cc-gate button, .cc-form button { border: 0; border-radius: 12px; padding: 0 14px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; }
+.cc-form { display: none; gap: 6px; padding: 12px 14px; border-top: 1px solid var(--hair); }
+.cc-panel.ready .cc-form { display: flex; }
+.cc-panel.ready .cc-gate { display: none; }
 .cc-form textarea { resize: none; height: 44px; }
 @media (max-width: 860px) {
   .cc-hero { padding: 120px 0 52px; }
@@ -123,7 +127,7 @@ const WIDGET = `<button class="cc-fab" type="button" data-contact="chat" data-wh
 <div class="cc-panel" id="cc-panel" role="dialog" aria-label="Chat with distribute.you">
   <div class="cc-head"><img src="/landing/v2/assets/logo-mark.svg" alt=""><div><b>distribute.you</b><span id="cc-status">Your AI sales assistant · online</span></div><button type="button" id="cc-close" aria-label="Close">&times;</button></div>
   <div class="cc-log" id="cc-log"><div class="cc-m team">Hi! Tell me what you sell and who you want as customers, and I will take it from there.</div></div>
-  <form class="cc-mail" id="cc-mail"><input type="email" name="email" placeholder="Your email, so we can follow up" autocomplete="email"><button type="submit">Save</button></form>
+  <form class="cc-gate" id="cc-gate" novalidate><label for="cc-contact">First, your email or phone number, so we can reach you if you get disconnected.</label><div><input id="cc-contact" name="contact" type="text" inputmode="email" autocomplete="email" placeholder="you@company.com or +1 555 123 4567"><button type="submit">Continue</button></div><small id="cc-gate-err"></small></form>
   <form class="cc-form" id="cc-form"><textarea name="body" placeholder="Type your message" maxlength="2000"></textarea><button type="submit">Send</button></form>
 </div>
 <script>
@@ -132,10 +136,22 @@ const WIDGET = `<button class="cc-fab" type="button" data-contact="chat" data-wh
   var panel = document.getElementById("cc-panel");
   var log = document.getElementById("cc-log");
   var form = document.getElementById("cc-form");
-  var mail = document.getElementById("cc-mail");
+  var gate = document.getElementById("cc-gate");
+  var gateErr = document.getElementById("cc-gate-err");
+  var CONTACT_KEY = "dy_chat_contact";
+  var contact = localStorage.getItem(CONTACT_KEY);
   var status = document.getElementById("cc-status");
   var thread = null, lastId = 0, timer = null, offline = false;
   try { thread = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { thread = null; }
+  function validContact(v) {
+    v = v.trim();
+    if (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v)) return true;
+    if (!/^\\+?[0-9 ().-]+$/.test(v)) return false;
+    var d = v.replace(/[^0-9]/g, "");
+    return d.length >= 7 && d.length <= 15;
+  }
+  function markReady() { panel.classList.add("ready"); }
+  if (thread || contact) markReady();
   function track(name, props) { if (window.posthog) posthog.capture(name, props || {}); }
   function line(cls, text) {
     var d = document.createElement("div");
@@ -161,7 +177,7 @@ const WIDGET = `<button class="cc-fab" type="button" data-contact="chat" data-wh
     panel.classList.add("open");
     poll();
     if (!timer) timer = setInterval(function () { if (!document.hidden && panel.classList.contains("open")) poll(); }, 3000);
-    form.body.focus();
+    (panel.classList.contains("ready") ? form.body : gate.contact).focus();
   }
   document.getElementById("cc-close").addEventListener("click", function () { panel.classList.remove("open"); });
   document.addEventListener("click", function (e) {
@@ -176,26 +192,30 @@ const WIDGET = `<button class="cc-fab" type="button" data-contact="chat" data-wh
     var body = form.body.value.trim();
     if (!body || offline) return;
     form.body.value = "";
-    fetch("/api/chat/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thread: thread, body: body, page: location.pathname }) })
+    fetch("/api/chat/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thread: thread, contact: contact, body: body, page: location.pathname }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         if (res.status === 503) { setOffline(); return; }
+        if (res.j && res.j.error === "contact_required") { form.body.value = body; contact = null; localStorage.removeItem(CONTACT_KEY); panel.classList.remove("ready"); gateErr.textContent = "Enter a valid email or phone number."; gate.contact.focus(); return; }
         if (!res.ok) { form.body.value = body; line("cc-note", "That message did not go through. Try again, or use WhatsApp or email."); return; }
         var first = !thread;
         thread = res.j.thread;
         localStorage.setItem(KEY, JSON.stringify(thread));
         track("chat_message_sent", { first: first });
-        if (first) mail.classList.add("show");
         poll();
       }).catch(function () { form.body.value = body; line("cc-note", "That message did not go through. Try again, or use WhatsApp or email."); });
   });
   form.body.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
-  mail.addEventListener("submit", function (e) {
+  gate.addEventListener("submit", function (e) {
     e.preventDefault();
-    var email = mail.email.value.trim();
-    if (!email || !thread) return;
-    fetch("/api/chat/email", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thread: thread, email: email }) })
-      .then(function (r) { if (r.ok) { mail.classList.remove("show"); line("cc-note", "Saved. We will follow up at " + email + " if you leave."); track("chat_email_left", {}); } });
+    var v = gate.contact.value.trim();
+    if (!validContact(v)) { gateErr.textContent = "Enter a valid email or phone number."; return; }
+    gateErr.textContent = "";
+    contact = v;
+    localStorage.setItem(CONTACT_KEY, v);
+    track("chat_contact_left", { kind: v.indexOf("@") > 0 ? "email" : "phone" });
+    markReady();
+    form.body.focus();
   });
 })();
 </script>`;

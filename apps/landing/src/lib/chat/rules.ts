@@ -42,17 +42,33 @@ export function cleanEmail(raw: unknown): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
+/**
+ * The contact a visitor must leave before their first message: an email or a phone
+ * number, so a conversation survives a closed tab or a lost connection. A phone keeps
+ * its leading `+` and loses the spacing; it needs 7 to 15 digits (E.164's range).
+ */
+export function cleanContact(raw: unknown): string | null {
+  const email = cleanEmail(raw);
+  if (email) return email;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!/^\+?[0-9 ().-]+$/.test(trimmed)) return null;
+  const digits = trimmed.replace(/[^0-9]/g, "");
+  if (digits.length < 7 || digits.length > 15) return null;
+  return (trimmed.startsWith("+") ? "+" : "") + digits;
+}
+
 /** The text the team receives in Telegram for one visitor message. */
 export function relayText(input: {
   code: string;
   body: string;
   page: string | null;
   country: string | null;
-  email: string | null;
+  contact: string | null;
   isFirst: boolean;
 }): string {
   const where = [input.page, input.country].filter(Boolean).join(" · ");
-  const head = `💬 #${input.code}${where ? ` · ${where}` : ""}${input.email ? ` · ${input.email}` : ""}`;
+  const head = `💬 #${input.code}${where ? ` · ${where}` : ""}${input.contact ? ` · ${input.contact}` : ""}`;
   const hint = input.isFirst ? "\n\n(Reply to this message to answer in the chat.)" : "";
   return `${head}\n${input.body}${hint}`;
 }

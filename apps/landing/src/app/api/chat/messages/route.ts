@@ -2,6 +2,7 @@ import {
   MAX_MESSAGES_PER_IP_PER_MINUTE,
   MAX_VISITOR_MESSAGES_PER_THREAD,
   cleanBody,
+  cleanContact,
   makeRateLimiter,
   relayText,
   threadCode,
@@ -30,14 +31,14 @@ export async function POST(request: Request) {
   if (!config) return json({ error: "chat_offline" }, 503);
 
   const input = (await request.json().catch(() => null)) as
-    | { thread?: { id?: unknown; secret?: unknown }; body?: unknown; page?: unknown }
+    | { thread?: { id?: unknown; secret?: unknown }; body?: unknown; page?: unknown; contact?: unknown }
     | null;
   const body = cleanBody(input?.body);
   if (!body) return json({ error: "invalid_message" }, 400);
   if (!allow(clientIp(request), Date.now())) return json({ error: "too_many_messages" }, 429);
 
   let thread: { id: string; secret: string };
-  let email: string | null = null;
+  let contact: string;
   let isFirst = false;
   const page = typeof input?.page === "string" ? input.page.slice(0, 120) : null;
   const country = request.headers.get("cf-ipcountry");
@@ -48,15 +49,19 @@ export async function POST(request: Request) {
       return json({ error: "thread_full" }, 429);
     }
     thread = { id: input.thread.id, secret: input.thread.secret };
-    email = opened.email;
+    contact = opened.contact;
   } else {
-    thread = await createThread({ page, country });
+    // A new conversation needs a way back to the visitor before anything else.
+    const given = cleanContact(input?.contact);
+    if (!given) return json({ error: "contact_required" }, 400);
+    contact = given;
+    thread = await createThread({ page, country, contact });
     isFirst = true;
   }
 
   const telegramMessageId = await sendToTeam(
     config,
-    relayText({ code: threadCode(thread.id), body, page, country, email, isFirst }),
+    relayText({ code: threadCode(thread.id), body, page, country, contact, isFirst }),
   );
   await addMessage({ threadId: thread.id, sender: "visitor", body, telegramMessageId });
   return json({ thread });

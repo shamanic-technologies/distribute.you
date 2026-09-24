@@ -31,7 +31,7 @@ async function ensureSchema(): Promise<ReturnType<typeof postgres>> {
         secret text NOT NULL,
         page text,
         country text,
-        email text,
+        contact text NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
       await db`CREATE TABLE IF NOT EXISTS landing_chat_messages (
@@ -55,30 +55,29 @@ async function ensureSchema(): Promise<ReturnType<typeof postgres>> {
 
 export type ThreadRef = { id: string; secret: string };
 
-export async function createThread(input: { page: string | null; country: string | null }): Promise<ThreadRef> {
+export async function createThread(input: {
+  page: string | null;
+  country: string | null;
+  contact: string;
+}): Promise<ThreadRef> {
   const db = await ensureSchema();
   const ref = { id: randomUUID(), secret: randomBytes(24).toString("base64url") };
-  await db`INSERT INTO landing_chat_threads (id, secret, page, country)
-    VALUES (${ref.id}, ${ref.secret}, ${input.page}, ${input.country})`;
+  await db`INSERT INTO landing_chat_threads (id, secret, page, country, contact)
+    VALUES (${ref.id}, ${ref.secret}, ${input.page}, ${input.country}, ${input.contact})`;
   return ref;
 }
 
-export type ThreadInfo = { id: string; email: string | null; page: string | null; country: string | null; visitorMessages: number };
+export type ThreadInfo = { id: string; contact: string; page: string | null; country: string | null; visitorMessages: number };
 
 /** The thread, when the secret matches it. */
 export async function openThread(ref: ThreadRef): Promise<ThreadInfo | null> {
   const db = await ensureSchema();
-  const rows = await db`SELECT t.id, t.email, t.page, t.country,
+  const rows = await db`SELECT t.id, t.contact, t.page, t.country,
       (SELECT count(*)::int FROM landing_chat_messages m WHERE m.thread_id = t.id AND m.sender = 'visitor') AS visitor_messages
     FROM landing_chat_threads t WHERE t.id = ${ref.id} AND t.secret = ${ref.secret}`;
   const r = rows[0];
   if (!r) return null;
-  return { id: r.id, email: r.email, page: r.page, country: r.country, visitorMessages: r.visitor_messages };
-}
-
-export async function setThreadEmail(threadId: string, email: string): Promise<void> {
-  const db = await ensureSchema();
-  await db`UPDATE landing_chat_threads SET email = ${email} WHERE id = ${threadId}`;
+  return { id: r.id, contact: r.contact, page: r.page, country: r.country, visitorMessages: r.visitor_messages };
 }
 
 export async function addMessage(input: {
