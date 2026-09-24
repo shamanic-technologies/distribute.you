@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from "rea
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { LEADS_POLL_INTERVAL, POLL_INTERVAL } from "@/lib/query-options";
+import { POLL_INTERVAL } from "@/lib/query-options";
 import { invalidateLeadOutcome } from "@/lib/write-invalidation";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
@@ -188,7 +188,7 @@ function useBoardColumnPage(args: {
           shown: args.shown,
         }),
       ),
-    { enabled: args.enabled, refetchInterval: LEADS_POLL_INTERVAL },
+    { enabled: args.enabled, refetchInterval: POLL_INTERVAL },
   );
 }
 
@@ -885,7 +885,7 @@ export function EngagedLeadsPage({
   } = useAuthQuery(
     ["leadBucketCounts", scopeKey, wireSearch],
     () => getLeadBucketCounts(scope, leadBucketCountsQuery(wireSearch)),
-    { refetchInterval: LEADS_POLL_INTERVAL },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   // ONE page of the active tab's bucket. The key carries the scope, the tab, the search
@@ -904,7 +904,7 @@ export function EngagedLeadsPage({
   } = useAuthQuery(
     ["leadsPage", scopeKey, activeTab, wireSearch, page],
     () => listLeadsPage(scope, leadsPageQuery({ tab: activeTab, search: wireSearch, page })),
-    { refetchInterval: LEADS_POLL_INTERVAL },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   const leads = useMemo(() => pageData?.leads ?? [], [pageData]);
@@ -1327,7 +1327,7 @@ export function EngagedLeadsPage({
   const { data: standingCounts } = useAuthQuery(
     ["leadStandingCounts", scopeKey, wireSearch],
     () => getLeadStandingCounts(scope, standingCountsQuery(wireSearch)),
-    { enabled: showBoard, refetchInterval: LEADS_POLL_INTERVAL },
+    { enabled: showBoard, refetchInterval: POLL_INTERVAL },
   );
   const columnTotals = boardColumnTotals(standingCounts);
 
@@ -1454,7 +1454,7 @@ export function EngagedLeadsPage({
         // which is right, and is also why the press had no visible effect for the
         // seconds it takes on a long column. `isPlaceholderData` is exactly that
         // window: true only while a new key is in flight over previous data, and
-        // FALSE on the 15s poll's own refetch of the same key, so the control cannot
+        // FALSE on the 5s poll's own refetch of the same key, so the control cannot
         // blink on a tick nobody asked for.
         growing: read.isPlaceholderData,
       };

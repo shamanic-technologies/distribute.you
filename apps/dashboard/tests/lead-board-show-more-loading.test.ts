@@ -31,7 +31,7 @@ describe("show more says it is working", () => {
   it("the page passes the growing flag, off isPlaceholderData and not isFetching", () => {
     expect(PAGE).toContain("growing: read.isPlaceholderData");
     // `isFetching` is true on every poll of the SAME key, so it would blink the
-    // control every 15 seconds on a column nobody is growing.
+    // control every 5 seconds on a column nobody is growing.
     expect(PAGE).not.toContain("growing: read.isFetching");
   });
 

@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  LEADS_POLL_INTERVAL,
-  POLL_INTERVAL,
-  leadsPollOptions,
-  pollOptions,
-} from "../src/lib/query-options";
+import * as queryOptions from "../src/lib/query-options";
+import { POLL_INTERVAL, pollOptions } from "../src/lib/query-options";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
 
@@ -27,32 +23,22 @@ describe("POLL_INTERVAL", () => {
   });
 });
 
-describe("LEADS_POLL_INTERVAL", () => {
-  it("is slower than the default, because the payload is the reason", () => {
-    // The brand's leads list is unpaginated by design and ~100MB of slim rows on a
-    // heavy brand. Every user action that can change it invalidates it explicitly.
-    expect(LEADS_POLL_INTERVAL).toBeGreaterThan(POLL_INTERVAL);
-    expect(LEADS_POLL_INTERVAL).toBe(15_000);
-  });
-
-  it("leadsPollOptions carries it", () => {
-    expect(leadsPollOptions.refetchInterval).toBe(LEADS_POLL_INTERVAL);
-  });
-
-  it("is what the two lead-list readers poll on", () => {
+describe("the Leads reads", () => {
+  it("poll on the ONE 5s cadence — there is no slower leads tier any more", () => {
+    // The 15s tier existed because a Leads read used to be the whole population
+    // (~100MB). Every reader pages now, and lead-service answers from a kept read model
+    // (sales-lead-service#578) instead of rebuilding the scope per request, so the only
+    // reason for a slower tier is gone. Won and every other statement must land within
+    // the ~5s the rest of the dashboard promises.
+    expect("LEADS_POLL_INTERVAL" in queryOptions).toBe(false);
+    expect("leadsPollOptions" in queryOptions).toBe(false);
     for (const path of [
       "components/audiences/engaged-leads-page.tsx",
       "components/funnels/funnel-leg-page.tsx",
     ]) {
-      expect(read(path)).toContain("refetchInterval: LEADS_POLL_INTERVAL");
+      const src = read(path);
+      expect(src).not.toContain("LEADS_POLL_INTERVAL");
+      expect(src).toContain("refetchInterval: POLL_INTERVAL");
     }
-  });
-
-  it("the revenue read on the leads page stays on the fast tier", () => {
-    // Same file, different question: the money above the table is small and is exactly
-    // what a reader watches after stating an outcome.
-    expect(read("components/audiences/engaged-leads-page.tsx")).toContain(
-      "refetchInterval: POLL_INTERVAL",
-    );
   });
 });

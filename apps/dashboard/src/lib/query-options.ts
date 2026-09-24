@@ -20,16 +20,3 @@ export const POLL_INTERVAL = 5_000;
 export const pollOptions = {
   refetchInterval: POLL_INTERVAL,
 } as const;
-
-// The one exception, and it is about PAYLOAD SIZE rather than freshness. The brand's
-// leads list is unpaginated by design (the revenue engine and the leads page both want
-// the whole population) and runs to ~100MB of slim rows on a heavy brand — polling that
-// every 5s is 12x the transfer of the old cadence, continuously, per open tab, for a
-// list whose contents only move when the backend sends. Every USER action that can
-// change it invalidates it explicitly (see `write-invalidation.ts`), so the interval is
-// only the backstop for somebody else's sending.
-export const LEADS_POLL_INTERVAL = 15_000;
-
-export const leadsPollOptions = {
-  refetchInterval: LEADS_POLL_INTERVAL,
-} as const;

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions, LEADS_POLL_INTERVAL } from "@/lib/query-options";
+import { pollOptions, POLL_INTERVAL } from "@/lib/query-options";
 import { getOfferFunnelRevenue, listLeadsPage, type Lead, type LeadStepName } from "@/lib/api";
 import { bucketForStage } from "@/lib/leads-server-page";
 import {
@@ -174,7 +174,7 @@ export function FunnelLegPage() {
       // times the row (6.2 KB against 1.6 KB measured in production).
       { includeCampaigns: false },
       ),
-    { enabled: Boolean(brandId && fromBucket), refetchInterval: LEADS_POLL_INTERVAL },
+    { enabled: Boolean(brandId && fromBucket), refetchInterval: POLL_INTERVAL },
   );
   const toQ = useAuthQuery(
     ["leadsPage", `brand:${brandId}`, `leg-to:${toBucket ?? "none"}`, "", 0],
@@ -188,7 +188,7 @@ export function FunnelLegPage() {
       undefined,
       { includeCampaigns: false },
       ),
-    { enabled: Boolean(brandId && toBucket), refetchInterval: LEADS_POLL_INTERVAL },
+    { enabled: Boolean(brandId && toBucket), refetchInterval: POLL_INTERVAL },
   );
 
   // What the producer says about this rung, off the read above. `undefined` while it
