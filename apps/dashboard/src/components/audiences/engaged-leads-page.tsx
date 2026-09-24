@@ -1,5 +1,6 @@
 "use client";
 
+import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { useState, useMemo, useEffect, useRef, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
@@ -2453,6 +2454,13 @@ export function EngagedLeadsPage({
                 }
               />
             )}
+            {/* What the customer's own CRM shows for this person (a paired contact's
+                meeting or deal) and whether it counts as ours. At every grain: the
+                credit is about the person within the brand, not one funnel. Renders
+                nothing for a lead no CRM contact is paired with. */}
+            <div className="mb-4">
+              <CrmAttributionCard leadRowId={selectedLead.id} brandId={brandId} />
+            </div>
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Organization</h3>

@@ -1,5 +1,6 @@
 "use client";
 
+import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -636,6 +637,10 @@ function PairingPanel({
           <p className="text-sm text-gray-500">No lead of ours was found for this contact.</p>
         )}
       </PanelGroup>
+
+      {lead && p.state === "paired" ? (
+        <CrmAttributionCard leadRowId={lead.leadCampaignId} brandId={brandId} />
+      ) : null}
 
       <PanelGroup title="Why we paired them">
         <Field label="Found by" value={p.evidence.matchMethod ? labelOf(MATCH_METHOD_LABEL, p.evidence.matchMethod) : "Nothing matched"} />

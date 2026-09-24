@@ -1,4 +1,5 @@
 import { browserHasAnonSession } from "./anon-session-cookie";
+import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
 import { z } from "zod";
 import {
   LeadBucketCountsSchema,
@@ -3024,6 +3025,62 @@ export async function setLeadFollowupNow(
     method: "POST",
     body: { kind: "scheduled", dueAt: now.toISOString() },
   });
+}
+
+/**
+ * Whose win each step the customer's own CRM evidences was (lead-service), for one lead
+ * row: the evidence, the default rule's answer, a person's override, and which stands.
+ * Scoped by `brandId` because the answer is about the person within the brand.
+ */
+export async function getLeadCrmAttribution(
+  leadRowId: string,
+  brandId: string,
+  token?: string,
+): Promise<CrmAttribution> {
+  const raw = await apiCall<unknown>(
+    `/leads/${leadRowId}/crm-attribution?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = CrmAttributionSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadCrmAttribution: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getLeadCrmAttribution: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * A person states whose win one CRM-evidenced step was. Outranks the date rule until
+ * withdrawn. lead-service answers 409 `no_crm_evidence` for a step their CRM does not
+ * evidence.
+ */
+export async function setLeadCrmAttribution(
+  leadRowId: string,
+  step: string,
+  brandId: string,
+  causedByOutreach: boolean,
+  token?: string,
+): Promise<void> {
+  await apiCall<unknown>(
+    `/leads/${leadRowId}/crm-attribution/${step}?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "PUT", body: { causedByOutreach } },
+  );
+}
+
+/** Withdraw a person's answer on one step: the date rule's answer stands again. */
+export async function withdrawLeadCrmAttribution(
+  leadRowId: string,
+  step: string,
+  brandId: string,
+  token?: string,
+): Promise<void> {
+  await apiCall<unknown>(
+    `/leads/${leadRowId}/crm-attribution/${step}?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "DELETE" },
+  );
 }
 
 /**
