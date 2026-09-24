@@ -247,6 +247,7 @@ function CardBody({ card }: { card: LeadBoardCard }) {
 
 export function LeadBoard({
   columns,
+  layout = LEAD_BOARD_COLUMNS,
   scopeNoun,
   onShowMore,
   busy,
@@ -255,6 +256,11 @@ export function LeadBoard({
   onOpen,
   onMove,
 }: {
+  /**
+   * Which columns to draw, in order. The ordinary board is the six triage columns; the
+   * board of ONE sales funnel adds a column per funnel step (`funnelBoardLayout`).
+   */
+  layout?: readonly LeadBoardColumn[];
   /** What the reader is standing in (`campaign`, `offer`, `sales funnel`, `brand`) —
    *  the one blurb whose sentence names the grain it judges against. */
   scopeNoun?: string | null;
@@ -272,7 +278,7 @@ export function LeadBoard({
    * been told is not a column with nobody in it, and its head says nothing rather than
    * `0`.
    */
-  columns: Record<
+  columns: Partial<Record<
     LeadBoardColumnKey,
     {
       cards: LeadBoardCard[];
@@ -287,7 +293,7 @@ export function LeadBoard({
        */
       growing?: boolean;
     }
-  >;
+  >>;
   /** Grow one column by another page. The page owns how far each one is drawn. */
   onShowMore: (column: LeadBoardColumnKey) => void;
   busy: boolean;
@@ -316,8 +322,8 @@ export function LeadBoard({
   // Every card on screen, for the gesture: a drag reads the card it lifted out of one
   // flat list, and which column it came from is on the card itself.
   const cards = useMemo(
-    () => LEAD_BOARD_COLUMNS.flatMap((column) => columns[column.key].cards),
-    [columns],
+    () => layout.flatMap((column) => columns[column.key]?.cards ?? []),
+    [columns, layout],
   );
 
   const startMove = (card: LeadBoardCard, to: LeadBoardColumn) => {
@@ -334,7 +340,7 @@ export function LeadBoard({
     canDrag: (card) =>
       canMove && Boolean(card.email) && movableColumnsFrom(card.column).length > 0,
     onDrop: (card, columnKey) => {
-      const to = LEAD_BOARD_COLUMNS.find((c) => c.key === columnKey);
+      const to = layout.find((c) => c.key === columnKey);
       if (to) startMove(card, to);
     },
     onTap: (card) => onOpen(card.id),
@@ -535,13 +541,15 @@ export function LeadBoard({
       )}
 
       <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
-        {LEAD_BOARD_COLUMNS.map((column) => {
+        {layout.map((column) => {
+          const read = columns[column.key];
+          if (!read) return null;
           const {
             cards: drawn,
             total,
             pending: columnPending,
             growing: columnGrowing,
-          } = columns[column.key];
+          } = read;
           // "Not placed" reports that lead-service could not place some leads, so
           // drawing it on a healthy campaign advertises a problem that is not there.
           // It goes on its SERVED size, not on how many rows arrived: a column drawn

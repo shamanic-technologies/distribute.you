@@ -81,13 +81,28 @@ import { REPLY_KINDS, type ReplyKind } from "./reply-kind";
 import type { LeadStanding, LeadStandingState } from "./lead-standing";
 
 /** The column key. Every lead the producer can place is in exactly one. */
-export type LeadBoardColumnKey =
+export type LeadBoardBaseColumnKey =
   | "contacted"
   | "sales_interest"
   | "won"
   | "disqualified"
   | "opt_out"
   | "unresolved";
+
+/**
+ * A funnel STEP between its entry and its sale, drawn as its own column on the board
+ * of ONE sales funnel. lead-service splits its `sales_interest` standing by stage
+ * (`standing-counts?breakdown=stage`, `?stage=`), a partition of that one standing, so
+ * these columns never overlap and their sizes add up to it. The keys are the
+ * producer's own stage tokens.
+ */
+export type LeadBoardStageColumnKey =
+  | "meeting_booked"
+  | "meeting_attended"
+  | "signup"
+  | "form_submission";
+
+export type LeadBoardColumnKey = LeadBoardBaseColumnKey | LeadBoardStageColumnKey;
 
 export interface LeadBoardColumn {
   key: LeadBoardColumnKey;
@@ -335,7 +350,7 @@ export function leadBoardColumnFor(
  * through both — a second table that could drift is exactly what this file exists to
  * avoid, so the two must be one statement read two ways.
  */
-export const STANDINGS_BY_COLUMN: Record<LeadBoardColumnKey, readonly LeadStandingState[]> = {
+export const STANDINGS_BY_COLUMN: Record<LeadBoardBaseColumnKey, readonly LeadStandingState[]> = {
   contacted: ["contacted", "engaged"],
   sales_interest: ["sales_interest"],
   won: ["customer"],
@@ -387,6 +402,9 @@ export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardCo
  * that it could not answer, which no statement of ours makes it able to.
  */
 export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
+  if (isStageColumnKey(to)) {
+    return "A funnel step is stated on the lead's own panel, where what it cost is asked for.";
+  }
   if (to === "unresolved") {
     return "Nothing to state here. These leads are unplaced because this campaign states no sales funnel, which no answer about the person can settle.";
   }
@@ -448,4 +466,113 @@ export const LEAD_BOARD_PAGE_SIZE = 20;
 export function columnPage(total: number, shown: number): { visible: number; remaining: number } {
   const visible = Math.max(0, Math.min(total, shown));
   return { visible, remaining: Math.max(0, total - visible) };
+}
+
+/**
+ * The funnel steps a board can draw as their own column, in the words the rest of the
+ * dashboard uses for them. Read-only here: a step is stated on the lead's own panel,
+ * which asks what it cost, and the board of a funnel is not where a statement is made.
+ */
+export const STAGE_COLUMNS: Record<LeadBoardStageColumnKey, LeadBoardColumn> = {
+  meeting_booked: {
+    key: "meeting_booked",
+    label: "Meeting booked",
+    blurb: "Leads who booked a meeting.",
+    writable: false,
+    hideWhenEmpty: false,
+  },
+  meeting_attended: {
+    key: "meeting_attended",
+    label: "Meeting attended",
+    blurb: "Leads who showed up to the meeting.",
+    writable: false,
+    hideWhenEmpty: false,
+  },
+  signup: {
+    key: "signup",
+    label: "Signup",
+    blurb: "Leads who signed up.",
+    writable: false,
+    hideWhenEmpty: false,
+  },
+  form_submission: {
+    key: "form_submission",
+    label: "Form submitted",
+    blurb: "Leads who submitted a form.",
+    writable: false,
+    hideWhenEmpty: false,
+  },
+};
+
+export function isStageColumnKey(key: string): key is LeadBoardStageColumnKey {
+  return Object.prototype.hasOwnProperty.call(STAGE_COLUMNS, key);
+}
+
+/**
+ * The ENTRY stages: the measured step that put a lead in `sales_interest`. It keeps the
+ * `sales_interest` column, renamed for what it holds on this funnel.
+ */
+const ENTRY_STAGE_COLUMN: Record<string, Pick<LeadBoardColumn, "label" | "blurb">> = {
+  conversation_reply: { label: "Positive reply", blurb: "Leads who replied with interest." },
+  website_visit: { label: "Website visit", blurb: "Leads who came to the website." },
+};
+
+export interface LeadBoardLayout {
+  columns: readonly LeadBoardColumn[];
+  /**
+   * The producer's stage each column reads, for the columns that read one. Empty on the
+   * ordinary board, where `sales_interest` is the whole standing.
+   */
+  stageOf: Partial<Record<LeadBoardColumnKey, string>>;
+}
+
+export const DEFAULT_BOARD_LAYOUT: LeadBoardLayout = {
+  columns: LEAD_BOARD_COLUMNS,
+  stageOf: {},
+};
+
+/**
+ * The board of ONE sales funnel: a column per step the funnel's leads can stand at.
+ *
+ * `stages` is lead-service's `salesInterestStages`, in its order (the named funnel's
+ * stages first, in funnel order, always present). The entry stage keeps the
+ * `sales_interest` column; every later step gets its own, between it and Close won.
+ * A stage this build has no column for is dropped and logged rather than guessed —
+ * which would under-count the board, and says so.
+ */
+export function funnelBoardLayout(stages: readonly string[]): LeadBoardLayout {
+  const byKey = new Map(LEAD_BOARD_COLUMNS.map((c) => [c.key, c]));
+  const between: LeadBoardColumn[] = [];
+  const stageOf: Partial<Record<LeadBoardColumnKey, string>> = {};
+  for (const stage of stages) {
+    const entry = ENTRY_STAGE_COLUMN[stage];
+    if (entry) {
+      if (stageOf.sales_interest) {
+        console.error(`[dashboard] board: a second entry stage "${stage}" — not drawn`);
+        continue;
+      }
+      between.push({ ...(byKey.get("sales_interest") as LeadBoardColumn), ...entry });
+      stageOf.sales_interest = stage;
+      continue;
+    }
+    if (isStageColumnKey(stage)) {
+      if (stageOf[stage]) continue;
+      between.push(STAGE_COLUMNS[stage]);
+      stageOf[stage] = stage;
+      continue;
+    }
+    console.error(`[dashboard] board: funnel stage "${stage}" has no column — not drawn`);
+  }
+  const at = (key: LeadBoardBaseColumnKey) => byKey.get(key) as LeadBoardColumn;
+  return {
+    columns: [
+      at("contacted"),
+      ...between,
+      at("won"),
+      at("disqualified"),
+      at("opt_out"),
+      at("unresolved"),
+    ],
+    stageOf,
+  };
 }

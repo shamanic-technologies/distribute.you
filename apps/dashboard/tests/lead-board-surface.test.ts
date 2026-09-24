@@ -90,8 +90,10 @@ describe("the leads board is wired, not merely written", () => {
     expect(page).toContain("leadsColumnPageQuery({");
     expect(page).not.toContain('leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 })');
     // The sizes are the producer's counts, added over the standings a column holds.
-    expect(page).toContain("getLeadStandingCounts(scope, standingCountsQuery(wireSearch))");
-    expect(page).toContain("boardColumnTotals(standingCounts)");
+    expect(page).toContain(
+      "getLeadStandingCounts(scope, standingCountsQuery(wireSearch, { byStage: boardByStage }))",
+    );
+    expect(page).toContain("boardColumnTotals(standingCounts, boardLayout.stageOf)");
     // An empty column costs no read once its size is known; before that every column is
     // read in parallel rather than waiting a round trip to find out.
     expect(page).toContain("columnTotals == null || columnTotals[column] > 0");
