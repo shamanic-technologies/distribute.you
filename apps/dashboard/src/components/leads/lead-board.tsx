@@ -283,7 +283,7 @@ export function LeadBoard({
        * the cards on screen are the previous, narrower answer. Distinct from `pending`,
        * which is a column with nothing drawn at all: here there ARE cards, so the column
        * must keep them up AND say that more are coming. Never the poll's own refetch,
-       * which changes nothing on screen and must not blink a control every 15 seconds.
+       * which changes nothing on screen and must not blink a control every 5 seconds.
        */
       growing?: boolean;
     }
