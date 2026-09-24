@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { AnyLeadTab } from "./goal-steps";
 import type { LeadStageKey } from "./lead-funnel-stages";
-import type { LeadBoardColumnKey } from "./lead-board";
-import { STANDINGS_BY_COLUMN } from "./lead-board";
+import type { LeadBoardBaseColumnKey, LeadBoardColumnKey } from "./lead-board";
+import { STANDINGS_BY_COLUMN, isStageColumnKey } from "./lead-board";
 import type { LeadStandingState } from "./lead-standing";
 
 /**
@@ -381,14 +381,30 @@ export const LeadStandingCountsSchema = z.object({
     opted_out: z.number(),
     disqualified: z.number(),
   }),
+  /**
+   * The `sales_interest` leads split by WHERE ON THE FUNNEL they stand — present only
+   * when `breakdown=stage` was asked for, so `.optional()`. A partition of
+   * `counts.sales_interest`: the counts sum to it. `stage` is a plain string because the
+   * producer owns the vocabulary and can widen it before this app ships.
+   */
+  salesInterestStages: z
+    .array(z.object({ stage: z.string(), count: z.number() }))
+    .optional(),
 });
 export type LeadStandingCounts = z.infer<typeof LeadStandingCountsSchema>;
 
-/** Same scope and same search as the list, no standing and no bound. */
-export function standingCountsQuery(search: string): Record<string, string> {
+/**
+ * Same scope and same search as the list, no standing and no bound. `byStage` asks for
+ * the `sales_interest` split a funnel's board draws one column per step from.
+ */
+export function standingCountsQuery(
+  search: string,
+  opts: { byStage?: boolean } = {},
+): Record<string, string> {
   const query: Record<string, string> = {};
   const q = leadsSearchParam(search);
   if (q) query.q = q;
+  if (opts.byStage) query.breakdown = "stage";
   return query;
 }
 
@@ -407,14 +423,26 @@ export function standingCountsQuery(search: string): Record<string, string> {
  */
 export function boardColumnTotals(
   counts: LeadStandingCounts | undefined,
+  stageOf: Partial<Record<LeadBoardColumnKey, string>> = {},
 ): Record<LeadBoardColumnKey, number> | null {
   if (!counts) return null;
-  const out = {} as Record<LeadBoardColumnKey, number>;
+  const out = {
+    meeting_booked: 0,
+    meeting_attended: 0,
+    signup: 0,
+    form_submission: 0,
+  } as Record<LeadBoardColumnKey, number>;
   for (const [column, standings] of Object.entries(STANDINGS_BY_COLUMN) as [
-    LeadBoardColumnKey,
+    LeadBoardBaseColumnKey,
     readonly LeadStandingState[],
   ][]) {
     out[column] = standings.reduce((sum, state) => sum + counts.counts[state], 0);
+  }
+  // A funnel's board: the columns reading a stage take that stage's served size. The
+  // stages partition `sales_interest`, so the board's sizes still add up.
+  const stageCount = new Map((counts.salesInterestStages ?? []).map((s) => [s.stage, s.count]));
+  for (const [column, stage] of Object.entries(stageOf) as [LeadBoardColumnKey, string][]) {
+    out[column] = stageCount.get(stage) ?? 0;
   }
   return out;
 }
@@ -437,13 +465,21 @@ export function leadsColumnPageQuery(req: {
   column: LeadBoardColumnKey;
   search: string;
   shown: number;
+  /** The producer's stage this column reads, on a funnel's board; absent otherwise. */
+  stage?: string;
 }): Record<string, string> {
+  if (isStageColumnKey(req.column) && !req.stage) {
+    throw new Error(`[dashboard] board column "${req.column}" reads a stage and was given none`);
+  }
   const query: Record<string, string> = {
     view: "basic",
-    standing: STANDINGS_BY_COLUMN[req.column].join(","),
+    standing: isStageColumnKey(req.column)
+      ? "sales_interest"
+      : STANDINGS_BY_COLUMN[req.column].join(","),
     sort: "activity",
     limit: String(Math.max(1, Math.trunc(req.shown))),
   };
+  if (req.stage) query.stage = req.stage;
   const q = leadsSearchParam(req.search);
   if (q) query.q = q;
   return query;
