@@ -151,6 +151,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // the counts above it; both are stored state, so a disk read is what they are for.
   "crmPairings",
   "crmPairingCounts",
+  // Whose win each step their CRM evidences was, per lead row (lead-service).
+  "crmAttribution",
   "crmContactOrigins",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
