@@ -1,17 +1,17 @@
 import { SITE, breadcrumb, docPage } from "../v2-shell";
 
 const DESCRIPTION =
-  "distribute.you is an AI-native acquisition agency. You give us a website and a daily budget, we run the campaign from domains we own, and you see what each sales meeting cost you.";
+  "distribute.you is an AI-native cold email agency. You give us a website and a daily budget, we run the campaign from domains we own, and you see what each sales meeting cost you.";
 
 /** `/about`: what we sell, who runs it and how it is paid for. */
 export function renderAboutPage(): string {
   return docPage({
-    title: "About distribute.you: the acquisition agency that shows you the cost",
+    title: "About distribute.you: the cold email agency that shows you the cost",
     description: DESCRIPTION,
     path: "/about",
     eyebrow: "About",
     h1: "We run the acquisition,<br>and we show you the cost.",
-    lead: "distribute.you is an AI-native acquisition agency. You give us a website and a daily budget. We pick the buyers, write the emails, send them from our own domains, answer every interested reply until a meeting is booked, and show you what each one cost.",
+    lead: "distribute.you is an AI-native cold email agency. You give us a website and a daily budget. We pick the buyers, write the emails, send them from our own domains, answer every interested reply until a meeting is booked, and show you what each one cost.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -30,8 +30,8 @@ export function renderAboutPage(): string {
         id: "sell",
         h2: "What we sell",
         tint: true,
-        html: `<p>We sell sales meetings. Cold email is the channel we run most of them through today, the same way a media agency runs paid search. The deliverable is a buyer who wants to talk, not a seat in a tool and not a list of contacts.</p>
-<p>Under the hood the engine tests your offers, your acquisition channels and your audiences against each other and ranks them by return, so the budget moves toward the combination that pays. You keep the ones that work.</p>
+        html: `<p>We sell sales meetings. We get them through one channel, cold email, and we aim to run it better than anyone. The deliverable is a buyer who wants to talk, not a seat in a tool and not a list of contacts.</p>
+<p>Under the hood the engine tests your offers, your email templates, the AI models writing them and your audiences against each other and ranks them by return, so the budget moves toward the combination that pays. You keep the ones that work.</p>
 <p>The software is optional. If you never want to log in, send us your website and we set the whole thing up at the same price. Interested replies land in the inbox you already read.</p>`,
       },
       {

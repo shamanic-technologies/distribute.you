@@ -130,7 +130,7 @@ export function renderComparePage(c: Competitor): string {
     <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${logo(c.domain)}</span></div>
     <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
-    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you is an acquisition agency: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
+    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you is a cold email agency: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
 </section>
