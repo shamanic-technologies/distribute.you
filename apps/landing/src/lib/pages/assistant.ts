@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { SIGN_UP, shell } from "../v2-shell";
 
 /**
@@ -20,6 +22,41 @@ import { SIGN_UP, shell } from "../v2-shell";
 
 export const ASSISTANT_PATH = "/lp/assistant";
 
+/**
+ * Everything below the pitch is BORROWED from the homepage at render time, never
+ * copied: the live client cards, proof, quotes, pipeline, features, stats band, fit,
+ * pricing and FAQ are sliced out of `index-v2.html` by their own section markers, so an
+ * edit to the homepage reaches this page too and the two cannot state different
+ * figures. The live reseeds (showcase funnels, proof cards, founder count) key on data
+ * attributes, so they resolve here exactly as on `/`.
+ *
+ * Only the homepage's "How it works" is left out: this page says it in its own three
+ * steps. A marker the homepage no longer carries THROWS rather than rendering a page
+ * with a section silently missing.
+ */
+export type HomepageBlocks = { showcase: string; proofAndQuotes: string; rest: string };
+
+function between(html: string, start: string, end: string): string {
+  const a = html.indexOf(start);
+  const b = html.indexOf(end, a + start.length);
+  if (a < 0 || b < 0 || html.split(start).length !== 2) {
+    throw new Error(`[landing] homepage marker missing or ambiguous: ${start} .. ${end}`);
+  }
+  return html.slice(a, b);
+}
+
+export function homepageBlocks(home: string): HomepageBlocks {
+  return {
+    showcase: between(home, '<div class="showcase">', "\n  </div>\n</section>"),
+    proofAndQuotes: between(home, "<!-- Proof -->", "<!-- How it works"),
+    rest: between(home, "<!-- Pipeline", "<!-- CTA"),
+  };
+}
+
+function readHomepage(): string {
+  return readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
+}
+
 const TITLE = "distribute.you: the AI sales assistant for founders";
 const DESCRIPTION =
   "An AI sales assistant that finds the people who buy what you sell, writes to them, and hands you only the ones who want to talk. From $1/day, first $30 free.";
@@ -30,7 +67,7 @@ const ICON_CAL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ARROW = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
 const STYLE = `<style>
-.asst-hero { min-height: 0; padding: 150px 0 72px; }
+.asst-hero { min-height: 0; padding: 150px 0 48px; }
 .asst-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 22px; padding: 5px 14px; border-radius: 100px; border: 1px solid var(--hair-2); background: #fff; font-size: 13px; color: var(--muted); }
 .asst-eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-100); }
 .asst-hero h1 { max-width: 820px; }
@@ -63,9 +100,8 @@ const STYLE = `<style>
 .asst-step b { display: block; margin-bottom: 10px; font-family: var(--font-mono, monospace); font-size: 12px; color: var(--accent); }
 .asst-step h3 { margin: 0 0 8px; font-size: 17px; font-weight: 500; color: var(--text); }
 .asst-step p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--muted); }
-.asst-price { text-align: center; }
-.asst-price h2 { margin-bottom: 12px; }
-.asst-price p { max-width: 560px; margin: 0 auto; font-size: 17px; line-height: 1.55; color: var(--muted); }
+.asst-showcase { padding: 0 0 88px; }
+.asst-showcase .showcase { margin-top: 0; }
 @media (max-width: 860px) {
   .asst-hero { padding: 120px 0 56px; }
   .asst-grid { grid-template-columns: minmax(0, 1fr); gap: 44px; }
@@ -82,7 +118,8 @@ function launchForm(id: string): string {
     </form>`;
 }
 
-export function renderAssistantPage(): string {
+export function renderAssistantPage(home: string = readHomepage()): string {
+  const blocks = homepageBlocks(home);
   const body = `${STYLE}
 <section class="hero asst-hero">
   <div class="hero-glow" aria-hidden="true"></div>
@@ -93,6 +130,12 @@ export function renderAssistantPage(): string {
     ${launchForm("asst-hero-form")}
     <div class="asst-fine">First $30 free · Live in 2 minutes · Stop any time</div>
     <div class="asst-proof">__HOT_LEAD_ROW__</div>
+  </div>
+</section>
+
+<section class="asst-showcase">
+  <div class="wrap hero-inner">
+    ${blocks.showcase}
   </div>
 </section>
 
@@ -130,6 +173,7 @@ export function renderAssistantPage(): string {
   </div>
 </section>
 
+${blocks.proofAndQuotes}
 <section class="framed" id="how">
   <div class="wrap">
     <div class="section-head"><h2>Three steps, and only the first one is yours.</h2></div>
@@ -141,12 +185,7 @@ export function renderAssistantPage(): string {
   </div>
 </section>
 
-<section class="framed tint" id="pricing">
-  <div class="wrap asst-price">
-    <h2>From $1/day. First $30 free.</h2>
-    <p>You set a daily budget and pay what the campaign spends. No seat, no retainer, and you can stop any time.</p>
-  </div>
-</section>`;
+${blocks.rest}`;
 
   return shell({
     title: TITLE,
