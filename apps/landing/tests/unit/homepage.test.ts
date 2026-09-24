@@ -85,7 +85,7 @@ describe("the H1 says what we are, read on its own", () => {
   // rides inside the H1, in plain text, rendered server-side.
   it("names the category inside the h1", () => {
     const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
-    expect(h1).toContain("distribute.you is an acquisition agency");
+    expect(h1).toContain("distribute.you is a cold email agency");
   });
 });
 
@@ -148,13 +148,14 @@ describe("the offer the page states", () => {
     expect(html).not.toContain("$400");
   });
 
-  it("marks every not-yet-live pricing item as coming soon, and only there", () => {
-    const pricing = html.slice(html.indexOf('id="pricing"'), html.indexOf('id="faq"'));
-    const flagged = (pricing.match(/data-coming-soon/g) ?? []).length;
-    expect(flagged).toBeGreaterThanOrEqual(8);
-    const outsidePricing = html.replace(pricing, "");
-    expect(outsidePricing).not.toContain("data-coming-soon");
-    expect(outsidePricing.toLowerCase()).not.toContain("coming soon");
+  it("sells the one channel we run, and lists no channel as coming soon", () => {
+    // Owner-decided 2026-09-24: we are cold email specialists. A list of channels we do
+    // not run yet says the opposite, and so does an A/B test of paid ads we never ran.
+    expect(html).not.toContain("data-coming-soon");
+    expect(html.toLowerCase()).not.toContain("coming soon");
+    for (const retired of ["Meta Ads", "<td>Google Ads</td>", "LinkedIn Ads", "multiple acquisition channels", "paid acquisition channels", "across every channel"]) {
+      expect(html).not.toContain(retired);
+    }
   });
 
   it("names the three customers, and pins nothing they are measured by", () => {
@@ -172,10 +173,10 @@ describe("the offer the page states", () => {
 
   it("rates every card five stars, hidden from a screen reader", () => {
     // Same five stars on every card, so they are decoration beside a quote that already
-    // carries the praise — announcing them before each one is noise. 7 quotes, and the
+    // carries the praise — announcing them before each one is noise. 6 quotes, and the
     // marquee ships the set twice so it can scroll seamlessly.
     const rated = html.match(/<div class="stars" aria-hidden="true">\u2605{5}<\/div>/g) ?? [];
-    expect(rated).toHaveLength(14);
+    expect(rated).toHaveLength(12);
     expect(css).toContain(".quote .stars");
   });
 
@@ -184,7 +185,7 @@ describe("the offer the page states", () => {
   });
 
   it("quotes only people who said the words, and never a fabricated founder", () => {
-    for (const who of ["Ryan W.D. Parenti", "Andrew Becker", "Bohdan Petryshyn", "Nazim Zidi", "Christian Lemke", "Katherine Fleishman", "Christopher Lafay"]) {
+    for (const who of ["Ryan W.D. Parenti", "Andrew Becker", "Bohdan Petryshyn", "Christian Lemke", "Katherine Fleishman", "Christopher Lafay"]) {
       expect(html).toContain(who);
     }
     // A role is the one the person publishes, never the one the company name suggests:
@@ -283,9 +284,10 @@ describe("the offer the page states", () => {
 
   it("states the reply-handling feature, and no channel map", () => {
     expect(html).toContain("Answers interested leads ourselves, until the meeting is booked");
-    // The 36-channel hub read as far-fetched and was cut; the #1 channel row carries the best ROI.
+    // The 36-channel hub read as far-fetched and was cut. The ranking card compares
+    // email templates and the AI models writing them, never channels we do not run.
     expect(html).not.toContain('id="channels"');
-    expect(html).toContain('<span class="win">Sales cold email</span></td><td></td><td class="roi">10.2x</td>');
+    expect(html).toContain('<span class="win">Peer case study</span><span class="sub">Pro model</span></td><td></td><td class="roi">10.2x</td>');
   });
 });
 

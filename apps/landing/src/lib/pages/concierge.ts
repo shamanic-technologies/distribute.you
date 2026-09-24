@@ -33,7 +33,7 @@ const TELEGRAM_HREF = `https://t.me/${CONTACT.telegram}`;
 
 const TITLE = "distribute.you: your AI sales assistant. Just message it.";
 const DESCRIPTION =
-  "Message your AI sales assistant by email, WhatsApp, Telegram or chat. It finds your buyers, writes to them and books the meetings. No app, no setup. First $30 free.";
+  "Message your AI sales assistant by email, WhatsApp, Telegram or chat. It finds your buyers, writes and tests the cold emails and books the meetings. No app, no setup. First $30 free.";
 
 const I = {
   chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`,
@@ -236,7 +236,7 @@ export function renderConciergePage(
   <div class="wrap hero-inner">
     <span class="cc-eyebrow"><i></i>AI sales assistant · answers in seconds</span>
     <h1>Your AI sales assistant.<br><span class="accent">Just message it.</span></h1>
-    <p class="cc-sub">Tell it what you sell. It finds your buyers, writes to them, books the meetings and reports back, right where you already talk. No app, no setup.</p>
+    <p class="cc-sub">Tell it what you sell. It finds your buyers, writes and tests the cold emails, books the meetings and reports back, right where you already talk. No app, no setup.</p>
     ${ctas("hero")}
     <div class="cc-fine">First $30 free · It answers instantly, day and night · Stop any time</div>
     <div class="cc-proof">__HOT_LEAD_ROW__</div>
@@ -247,7 +247,7 @@ export function renderConciergePage(
   <div class="wrap">
     <div class="section-head"><h2>Ask it like you would ask a person.</h2></div>
     <div class="cc-asks">
-      <div class="cc-ask rv"><q>Here is my website. Find me clinic owners in Texas who could use it.</q><span>It reads what you sell, builds the list, writes to each of them and follows up.</span></div>
+      <div class="cc-ask rv"><q>Here is my website. Find me clinic owners in Texas who could use it.</q><span>It reads what you sell, builds the list, tries several versions of the email and keeps the one that gets answered.</span></div>
       <div class="cc-ask rv"><q>How many meetings did we book this week?</q><span>It answers with the numbers, the names and what each one cost you.</span></div>
       <div class="cc-ask rv"><q>Spend $20 a day, not $50. And pause the UK.</q><span>Done in the same conversation. No settings page to find.</span></div>
     </div>
