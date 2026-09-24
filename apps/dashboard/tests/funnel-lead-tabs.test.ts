@@ -130,4 +130,18 @@ describe("the call site", () => {
     expect(PAGE).toContain('"meetings-attended": "Meeting attended"');
     expect(PAGE).toContain('sales: "Close won"');
   });
+
+  it("narrows every read to the route's funnel of its offer", () => {
+    // lead-service answers `?offerId=&funnelKey=`; the scope carries the pair so the
+    // counts, the rows, the board and the export all belong to this funnel.
+    expect(PAGE).toContain("? { brandId, funnel: { offerId, funnelKey: funnelScopeKey } }");
+    expect(PAGE).toContain("`funnel:${brandId}:${offerId}:${funnelScopeKey}`");
+    const API = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
+    expect(API).toContain("`&funnelKey=${encodeURIComponent(scope.funnel.funnelKey)}`");
+    const FUNNEL = readFileSync(
+      join(__dirname, "../src/components/funnels/funnel-scoped-pages.tsx"),
+      "utf8",
+    );
+    expect(FUNNEL).not.toContain("not narrowed to");
+  });
 });

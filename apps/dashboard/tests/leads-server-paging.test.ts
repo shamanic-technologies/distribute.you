@@ -35,7 +35,9 @@ describe("the Leads page pages instead of holding the population", () => {
   it("keys every entry on the scope, the tab, the search AND the page", () => {
     // Two windows onto one brand sharing an entry is how a reader on page 7 of Sales
     // interests is served page 1 of Contacted.
-    expect(PAGE).toContain("const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`");
+    expect(PAGE).toContain("? `campaign:${campaignId}`");
+    expect(PAGE).toContain("? `funnel:${brandId}:${offerId}:${funnelScopeKey}`");
+    expect(PAGE).toContain(": `brand:${brandId}`;");
   });
 
   it("allowlists the new roots, or the page cold-loads exactly as it did before", () => {
