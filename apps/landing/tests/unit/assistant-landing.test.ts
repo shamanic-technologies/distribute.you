@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ASSISTANT_PATH, renderAssistantPage } from "../../src/lib/pages/assistant";
+import { ASSISTANT_PATH, homepageBlocks, renderAssistantPage } from "../../src/lib/pages/assistant";
 import { SIGN_UP } from "../../src/lib/v2-shell";
 
 const root = join(__dirname, "../..");
@@ -15,8 +15,17 @@ function visibleText(html: string): string {
     .replace(/<[^>]+>/g, " ");
 }
 
+/** A homepage carrying every marker and nothing else, so the page's OWN copy can be
+ *  asserted without the borrowed sections (the FAQ legitimately says "not guaranteed"). */
+const STUB_HOME = [
+  '<section class="hero"><div class="wrap hero-inner"><div class="showcase">SHOWCASE</div>',
+  "  </div>\n</section>",
+  "<!-- Proof -->PROOF<!-- How it works -->HOW<!-- Pipeline -->REST<!-- CTA -->",
+].join("\n");
+
 describe("/lp/assistant: the value-proposition candidate homepage", () => {
   const html = renderAssistantPage();
+  const own = renderAssistantPage(STUB_HOME);
 
   it("is served by its own route through the shared pipeline", () => {
     const route = read("src/app/lp/assistant/route.ts");
@@ -55,10 +64,38 @@ describe("/lp/assistant: the value-proposition candidate homepage", () => {
     expect(read("public/landing/v2/styles.css")).not.toContain("asst-");
   });
 
-  it("copy carries no em-dash and no promise of guaranteed meetings", () => {
-    const text = visibleText(html);
+  it("its own copy carries no em-dash and no promise of guaranteed meetings", () => {
+    const text = visibleText(own);
     expect(text).not.toContain("—");
     expect(text).not.toMatch(/guarantee/i);
     expect(text).not.toMatch(/at cost|no markup|pass-through/i);
+  });
+
+  it("borrows every homepage section but How it works, in order, from the live file", () => {
+    const home = read("public/landing/index-v2.html");
+    const order = [
+      'class="showcase"',
+      "It works where you already are.",
+      'id="proof"',
+      'id="quotes"',
+      "Three steps, and only the first one is yours.",
+      'id="pipeline"',
+      'id="features"',
+      'class="framed dark"',
+      'id="fit"',
+      'id="pricing"',
+      'id="faq"',
+    ];
+    const at = order.map((m) => html.indexOf(m));
+    at.forEach((i, n) => expect(i, order[n]).toBeGreaterThan(-1));
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(html).not.toContain('id="steps-nav"');
+    const blocks = homepageBlocks(home);
+    expect(html).toContain(blocks.proofAndQuotes);
+    expect(html).toContain(blocks.rest);
+  });
+
+  it("throws rather than silently dropping a section when a homepage marker moves", () => {
+    expect(() => homepageBlocks(STUB_HOME.replace("<!-- Pipeline -->", ""))).toThrow(/marker/);
   });
 });
