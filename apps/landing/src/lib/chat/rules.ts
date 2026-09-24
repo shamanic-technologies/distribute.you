@@ -73,6 +73,18 @@ export function relayText(input: {
   return `${head}\n${input.body}${hint}`;
 }
 
+/**
+ * How long a visitor counts as "chatting" for an unaddressed team message: with exactly
+ * one such visitor, a plain message goes to them; with several, the team must say which.
+ */
+export const ACTIVE_WINDOW_MS = 30 * 60 * 1000;
+
+/** What the bot answers when a team message could not be routed. */
+export function unroutedText(activeCodes: string[]): string {
+  if (activeCodes.length === 0) return "Not sent: nobody is chatting right now.";
+  return `Not sent: ${activeCodes.length} people are chatting. Reply to their message, or start with the code, for example #${activeCodes[0]} your answer.\nActive: ${activeCodes.map((c) => `#${c}`).join(", ")}`;
+}
+
 /** A `#code` at the start of a team message addresses that thread explicitly. */
 export function explicitCode(text: string): { code: string; body: string } | null {
   const m = text.match(/^#([0-9a-f]{6})\s+([\s\S]+)$/i);

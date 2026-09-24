@@ -101,6 +101,7 @@ const store = vi.hoisted(() => ({
   listMessages: vi.fn(),
   threadForTelegramMessage: vi.fn(),
   threadForCode: vi.fn(),
+  activeThreads: vi.fn(),
 }));
 vi.mock("../../src/lib/chat/store", () => store);
 
@@ -184,7 +185,34 @@ describe("chat routes", () => {
     expect(store.addMessage).not.toHaveBeenCalled();
   });
 
+  it("webhook: a plain message goes to the one visitor chatting, and says so", async () => {
+    store.activeThreads.mockResolvedValue(["3289e326-494f-4b85-a6c6-45daf92d9c07"]);
+    const { POST } = await import("../../src/app/api/chat/telegram/route");
+    await POST(new Request("https://distribute.you/api/chat/telegram", {
+      method: "POST", headers: { "x-telegram-bot-api-secret-token": "s3cret" },
+      body: JSON.stringify({ message: { message_id: 8, chat: { id: 42 }, text: "Salut" } }),
+    }));
+    expect(store.addMessage).toHaveBeenCalledWith({
+      threadId: "3289e326-494f-4b85-a6c6-45daf92d9c07", sender: "team", body: "Salut", telegramMessageId: 8,
+    });
+    expect(sent).toEqual(["→ sent to #3289e3"]);
+  });
+
+  it("webhook: with several visitors chatting, a plain message lists the codes instead of guessing", async () => {
+    store.activeThreads.mockResolvedValue(["aaaaaa11-0000-4000-8000-000000000000", "bbbbbb22-0000-4000-8000-000000000000"]);
+    const { POST } = await import("../../src/app/api/chat/telegram/route");
+    await POST(new Request("https://distribute.you/api/chat/telegram", {
+      method: "POST", headers: { "x-telegram-bot-api-secret-token": "s3cret" },
+      body: JSON.stringify({ message: { message_id: 9, chat: { id: 42 }, text: "hello?" } }),
+    }));
+    expect(store.addMessage).not.toHaveBeenCalled();
+    expect(sent[0]).toContain("2 people are chatting");
+    expect(sent[0]).toContain("#aaaaaa your answer");
+    expect(sent[0]).toContain("Active: #aaaaaa, #bbbbbb");
+  });
+
   it("webhook: an unaddressed team message is bounced back with instructions, not lost silently", async () => {
+    store.activeThreads.mockResolvedValue([]);
     const { POST } = await import("../../src/app/api/chat/telegram/route");
     await POST(new Request("https://distribute.you/api/chat/telegram", {
       method: "POST", headers: { "x-telegram-bot-api-secret-token": "s3cret" },
