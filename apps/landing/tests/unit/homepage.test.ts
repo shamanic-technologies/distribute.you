@@ -26,7 +26,7 @@ describe("the homepage is self-contained", () => {
   });
 
   it("is what / serves", () => {
-    expect(route).toContain('staticResponse("index-v2.html"');
+    expect(route).toContain('"index-v2.html"');
   });
 
   it("links only its own stylesheet and script, never the previous homepage's", () => {

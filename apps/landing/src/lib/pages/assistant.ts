@@ -118,7 +118,18 @@ function launchForm(id: string): string {
     </form>`;
 }
 
-export function renderAssistantPage(home: string = readHomepage()): string {
+/**
+ * Where the page is served. At `/lp/assistant` it is a candidate: noindex, no
+ * canonical. At `/` (the A/B test) it IS the homepage for that visitor, so it carries
+ * the homepage's canonical and no noindex, or a crawler that slipped past the bot
+ * check would be told to drop `/` from the index.
+ */
+export type AssistantServing = { at: "candidate" | "homepage" };
+
+export function renderAssistantPage(
+  home: string = readHomepage(),
+  serving: AssistantServing = { at: "candidate" },
+): string {
   const blocks = homepageBlocks(home);
   const body = `${STYLE}
 <section class="hero asst-hero">
@@ -190,9 +201,9 @@ ${blocks.rest}`;
   return shell({
     title: TITLE,
     description: DESCRIPTION,
-    path: ASSISTANT_PATH,
+    path: serving.at === "homepage" ? "/" : ASSISTANT_PATH,
     body,
     jsonLd: [],
-    noindex: true,
+    noindex: serving.at === "candidate",
   });
 }
