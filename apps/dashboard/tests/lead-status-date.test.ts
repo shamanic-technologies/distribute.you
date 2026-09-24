@@ -105,7 +105,8 @@ describe("leads table Date column", () => {
 
   it("dates the row from the status the row shows, not from the tab", () => {
     expect(table).toContain("const status = statusOf(lead);");
-    expect(table).toContain("      : leadDateForStatus(lead, status);");
+    expect(table).toContain("const statusAt = leadDateForStatus(lead, status);");
+    expect(table).toContain("      : statusAt;");
     expect(table).toContain("<StatusBadge status={status} />");
     // The per-tab date is gone: Outreach dated every row at firstContactedAt, so a
     // row reading "Replied" was dated days before the reply it names.
@@ -124,7 +125,9 @@ describe("leads table Date column", () => {
     // A signup has no delivery status to date, so those tabs keep the /revenue join's
     // timestamp — the one exception, and it is a different column meaning, not a bug.
     expect(table).toContain("const dateAt = isOutcomeTab(tab)");
-    expect(table).toContain("? outcomeDates?.get(lead.id) ?? null");
+    // Where the join has no instant (a meeting or deal it never attributed, listed on a
+    // funnel page), the row falls back to its status date rather than a dash.
+    expect(table).toContain("? outcomeDates?.get(lead.id) ?? statusAt");
     expect(table).toContain('hidden md:table-cell">Date</th>');
   });
 
@@ -142,6 +145,6 @@ describe("leads table Date column", () => {
     expect(src).not.toContain("const sortByStatusDate");
     // Membership is what differs per tab, never what a date means — and membership is a
     // bucket the producer answers, so no tab re-sorts anything here.
-    expect(q).toContain("bucketForTab(req.tab)");
+    expect(q).toContain("bucketForLeadsTab(req.tab)");
   });
 });

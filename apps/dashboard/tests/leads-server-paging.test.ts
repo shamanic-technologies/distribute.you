@@ -54,7 +54,7 @@ describe("the Leads page pages instead of holding the population", () => {
   });
 
   it("labels each tab with its OWN size, and says nothing when it has not been told", () => {
-    expect(PAGE).toContain("count: tabCount(bucketCounts, key),");
+    expect(PAGE).toContain("count: tabCount(bucketCounts, key, standingCounts),");
     expect(PAGE).toContain("{tab.count != null && (");
   });
 

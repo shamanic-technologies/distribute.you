@@ -27,7 +27,7 @@ import type { LeadStandingState } from "./lead-standing";
 /**
  * The engagement buckets lead-service names. These are ITS tokens, not the dashboard's
  * tab keys, and the two vocabularies are deliberately kept apart: the producer owns
- * which buckets exist, and `meeting_attended` has no tab here at all.
+ * which buckets exist. `meeting_attended` has a tab only on a sales funnel's own page.
  */
 export const LEAD_BUCKETS = [
   "contacted",
@@ -43,8 +43,8 @@ export type LeadBucket = (typeof LEAD_BUCKETS)[number];
 
 /**
  * Which bucket a tab asks for. Several tabs could in principle share a bucket, and one
- * bucket (`meeting_attended`) is served with no tab pointing at it — that is the
- * producer's catalogue being wider than this surface, not a gap.
+ * bucket (`meeting_attended`) is reached only through `bucketForLeadsTab`, on a funnel's
+ * own page.
  *
  * The dashboard's `meetings` tab is the BOOKED meeting, matching `goal-steps`'
  * `leadField: "meetingBooked"`. Pointing it at `meeting_attended` would count a
@@ -62,6 +62,72 @@ const BUCKET_BY_TAB: Record<AnyLeadTab, LeadBucket> = {
 
 export function bucketForTab(tab: AnyLeadTab): LeadBucket {
   return BUCKET_BY_TAB[tab];
+}
+
+/**
+ * The tabs a SALES FUNNEL's Leads page adds to the goal-keyed set: one per funnel step
+ * the goal vocabulary cannot name, plus the two exits every funnel has.
+ *
+ * `meetings-attended` is a BUCKET (a step somebody reached, nested like the rest).
+ * `disqualified` and `opted-out` are STANDINGS: a partition, one per lead, the same
+ * states the board draws as columns. The two families answer different questions and
+ * are read through different parameters, so a tab says which it is rather than the
+ * caller guessing from its name.
+ */
+export type FunnelStatusTab = "meetings-attended" | "disqualified" | "opted-out";
+export type LeadsTab = AnyLeadTab | FunnelStatusTab;
+
+const STANDING_BY_TAB = {
+  disqualified: "disqualified",
+  "opted-out": "opted_out",
+} as const satisfies Record<string, LeadStandingState>;
+type StandingTab = keyof typeof STANDING_BY_TAB;
+
+export function isStandingTab(tab: LeadsTab): tab is StandingTab {
+  return tab in STANDING_BY_TAB;
+}
+
+/** The bucket a tab reads, or null for a STANDING tab (which has none). */
+export function bucketForLeadsTab(tab: LeadsTab): LeadBucket | null {
+  if (isStandingTab(tab)) return null;
+  if (tab === "meetings-attended") return "meeting_attended";
+  return bucketForTab(tab);
+}
+
+/**
+ * Which tab each funnel step reads. Keyed on the catalogue's own step tokens
+ * (`SALES_FUNNELS[].stepKeys`), so the tabs follow the funnel the route names rather
+ * than the retired goal, which cannot tell the two meeting funnels apart.
+ */
+const TAB_BY_FUNNEL_STEP: Record<string, LeadsTab> = {
+  conversation: "positive-replies",
+  website_visit: "clicks",
+  meeting_booked: "meetings",
+  meeting_attended: "meetings-attended",
+  signup: "signups",
+  form_submitted: "form-submissions",
+  paid_client: "sales",
+};
+
+/**
+ * Every status a funnel's leads can be in, in the funnel's own order: Contacted, then
+ * each step, then the two exits. Always the full set, even at zero — the page states
+ * what the funnel sells, not only what has happened yet.
+ *
+ * A step this map has never heard of is dropped and logged rather than guessed.
+ */
+export function funnelLeadTabs(stepKeys: readonly string[]): LeadsTab[] {
+  const tabs: LeadsTab[] = ["outreach"];
+  for (const step of stepKeys) {
+    const tab = TAB_BY_FUNNEL_STEP[step];
+    if (!tab) {
+      console.error(`[leads] funnel step "${step}" has no Leads tab — not rendered`);
+      continue;
+    }
+    if (!tabs.includes(tab)) tabs.push(tab);
+  }
+  tabs.push("disqualified", "opted-out");
+  return tabs;
 }
 
 /**
@@ -135,7 +201,7 @@ export function leadsSearchParam(raw: string): string | null {
  * lead within itself.
  */
 export interface LeadsPageRequest {
-  tab: AnyLeadTab;
+  tab: LeadsTab;
   search: string;
   page: number;
 }
@@ -157,9 +223,21 @@ function leadsScopeQuery(bucket: LeadBucket, search: string): Record<string, str
   return query;
 }
 
+/** A STANDING tab's list: the same shape as a bucket read, filtered on the partition instead. */
+function standingScopeQuery(standing: LeadStandingState, search: string): Record<string, string> {
+  const query: Record<string, string> = { view: "basic", standing, sort: "activity" };
+  const q = leadsSearchParam(search);
+  if (q) query.q = q;
+  return query;
+}
+
 export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
+  const bucket = bucketForLeadsTab(req.tab);
+  const scoped: Record<string, string> = bucket
+    ? leadsScopeQuery(bucket, req.search)
+    : standingScopeQuery(STANDING_BY_TAB[req.tab as StandingTab], req.search);
   const query: Record<string, string> = {
-    ...leadsScopeQuery(bucketForTab(req.tab), req.search),
+    ...scoped,
     limit: String(LEADS_PAGE_SIZE),
   };
   const offset = Math.max(0, Math.trunc(req.page)) * LEADS_PAGE_SIZE;
@@ -237,9 +315,17 @@ export type LeadBucketCounts = z.infer<typeof LeadBucketCountsSchema>;
  * count we have not been told is not a tab with zero leads, and rendering `0` there
  * states something we do not know.
  */
-export function tabCount(counts: LeadBucketCounts | undefined, tab: AnyLeadTab): number | null {
-  if (!counts) return null;
-  return counts.counts[bucketForTab(tab)];
+export function tabCount(
+  counts: LeadBucketCounts | undefined,
+  tab: LeadsTab,
+  standingCounts?: LeadStandingCounts,
+): number | null {
+  if (isStandingTab(tab)) {
+    return standingCounts ? standingCounts.counts[STANDING_BY_TAB[tab]] : null;
+  }
+  const bucket = bucketForLeadsTab(tab);
+  if (!counts || !bucket) return null;
+  return counts.counts[bucket];
 }
 
 /**
