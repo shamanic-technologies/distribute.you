@@ -12,8 +12,9 @@ import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import type { OptOutChannel } from "@/lib/opt-out-channel";
 import {
-  LEAD_BOARD_COLUMNS,
+  DEFAULT_BOARD_LAYOUT,
   LEAD_BOARD_PAGE_SIZE,
+  funnelBoardLayout,
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
 import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
@@ -174,6 +175,8 @@ const LEADS_SEARCH_DEBOUNCE_MS = 300;
  */
 function useBoardColumnPage(args: {
   column: LeadBoardColumnKey;
+  /** The producer's stage this column reads, on a funnel's board. */
+  stage?: string;
   scope: LeadScope;
   scopeKey: string;
   search: string;
@@ -181,7 +184,7 @@ function useBoardColumnPage(args: {
   enabled: boolean;
 }) {
   return useAuthQuery(
-    ["leadsPage", args.scopeKey, "column", args.column, args.search, args.shown],
+    ["leadsPage", args.scopeKey, "column", args.column, args.stage ?? "", args.search, args.shown],
     () =>
       listLeadsPage(
         args.scope,
@@ -189,6 +192,7 @@ function useBoardColumnPage(args: {
           column: args.column,
           search: args.search,
           shown: args.shown,
+          stage: args.stage,
         }),
       ),
     { enabled: args.enabled, refetchInterval: POLL_INTERVAL },
@@ -1368,14 +1372,32 @@ export function EngagedLeadsPage({
   // reading at all: an empty column's page is not fetched once its size is known, while
   // before the counts land every column is read in parallel rather than waiting a round
   // trip to find out.
+  // A SALES FUNNEL's board asks for the `sales_interest` split by funnel step, and draws a
+  // column per step: a booked meeting is not a positive reply, and the one board that is
+  // about one funnel is where that difference is wanted. Every other grain spans several
+  // funnels and keeps the six triage columns.
+  const boardByStage = Boolean(funnelScopeKey);
   const { data: standingCounts } = useAuthQuery(
-    ["leadStandingCounts", scopeKey, wireSearch],
-    () => getLeadStandingCounts(scope, standingCountsQuery(wireSearch)),
+    ["leadStandingCounts", scopeKey, wireSearch, boardByStage ? "stage" : "standing"],
+    () =>
+      getLeadStandingCounts(scope, standingCountsQuery(wireSearch, { byStage: boardByStage })),
     // Also read by a funnel page's Disqualified and Opt-out tabs, whose counts are
     // standings; same key as the board, so the two dedupe to one poll.
     { enabled: showBoard || funnelPageTabs != null, refetchInterval: POLL_INTERVAL },
   );
-  const columnTotals = boardColumnTotals(standingCounts);
+  // The split is only drawn once the producer has served it: a board laid out from a
+  // stage list we were never given would be columns with no size and no page.
+  const stageList = standingCounts?.salesInterestStages;
+  const boardLayout = useMemo(
+    () =>
+      boardByStage && stageList
+        ? funnelBoardLayout(stageList.map((s) => s.stage))
+        : DEFAULT_BOARD_LAYOUT,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [boardByStage, stageList?.map((s) => s.stage).join(",")],
+  );
+  const inLayout = (key: LeadBoardColumnKey) => boardLayout.columns.some((c) => c.key === key);
+  const columnTotals = boardColumnTotals(standingCounts, boardLayout.stageOf);
 
   // How far each column is drawn. It lives HERE rather than in the board because it
   // drives a fetch now: growing a column asks lead-service for a wider page of that
@@ -1389,12 +1411,15 @@ export function EngagedLeadsPage({
 
   const columnArgs = (column: LeadBoardColumnKey) => ({
     column,
+    stage: boardLayout.stageOf[column],
     scope,
     scopeKey,
     search: wireSearch,
     shown: columnShown[column] ?? LEAD_BOARD_PAGE_SIZE,
     // Before the counts land every column is read; after, an empty one is not read again.
-    enabled: showBoard && (columnTotals == null || columnTotals[column] > 0),
+    // A column the layout does not draw is never read.
+    enabled:
+      showBoard && inLayout(column) && (columnTotals == null || columnTotals[column] > 0),
   });
   // Five explicit calls rather than a loop: the column set is a module constant, but a
   // hook in a loop is a rule nobody should have to re-check on the day a column is added.
@@ -1404,21 +1429,36 @@ export function EngagedLeadsPage({
   const wonColumn = useBoardColumnPage(columnArgs("won"));
   const optOutColumn = useBoardColumnPage(columnArgs("opt_out"));
   const unresolvedColumn = useBoardColumnPage(columnArgs("unresolved"));
+  // The funnel steps a funnel's board may draw. Read only when the layout draws them.
+  const meetingBookedColumn = useBoardColumnPage(columnArgs("meeting_booked"));
+  const meetingAttendedColumn = useBoardColumnPage(columnArgs("meeting_attended"));
+  const signupColumn = useBoardColumnPage(columnArgs("signup"));
+  const formSubmissionColumn = useBoardColumnPage(columnArgs("form_submission"));
   const columnReads: Record<LeadBoardColumnKey, ReturnType<typeof useBoardColumnPage>> = {
     contacted: contactedColumn,
     sales_interest: salesInterestColumn,
+    meeting_booked: meetingBookedColumn,
+    meeting_attended: meetingAttendedColumn,
+    signup: signupColumn,
+    form_submission: formSubmissionColumn,
     won: wonColumn,
     disqualified: disqualifiedColumn,
     opt_out: optOutColumn,
     unresolved: unresolvedColumn,
   };
+  const layoutColumns = boardLayout.columns;
 
   const boardLeads = useMemo(
-    () => LEAD_BOARD_COLUMNS.flatMap((c) => columnReads[c.key].data?.leads ?? []),
+    () => layoutColumns.flatMap((c) => columnReads[c.key].data?.leads ?? []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      layoutColumns,
       contactedColumn.data,
       salesInterestColumn.data,
+      meetingBookedColumn.data,
+      meetingAttendedColumn.data,
+      signupColumn.data,
+      formSubmissionColumn.data,
       wonColumn.data,
       disqualifiedColumn.data,
       optOutColumn.data,
@@ -1430,14 +1470,14 @@ export function EngagedLeadsPage({
   // deliberately NOT `standingCounts.total`, which includes the people nobody wrote to
   // and who therefore appear in no column at all.
   const boardDrawnTotal = columnTotals
-    ? LEAD_BOARD_COLUMNS.reduce((sum, c) => sum + columnTotals[c.key], 0)
+    ? layoutColumns.reduce((sum, c) => sum + columnTotals[c.key], 0)
     : null;
-  const boardReadError = LEAD_BOARD_COLUMNS.some((c) => columnReads[c.key].isError);
+  const boardReadError = layoutColumns.some((c) => columnReads[c.key].isError);
   // A dep the memo below can actually see: `isPlaceholderData` is a flag on each read,
   // not one of the `data` references the memo already depends on, so without this the
   // spinner would only appear when the wider page LANDED — i.e. exactly when it stops
   // being true.
-  const boardGrowing = LEAD_BOARD_COLUMNS.map((c) =>
+  const boardGrowing = layoutColumns.map((c) =>
     columnReads[c.key].isPlaceholderData ? "1" : "0",
   ).join("");
 
@@ -1450,11 +1490,11 @@ export function EngagedLeadsPage({
   // The one thing that overrides it is a statement somebody just made, which speaks for
   // the round trip it takes to land.
   const boardColumns = useMemo(() => {
-    const out = {} as Record<
+    const out = {} as Partial<Record<
       LeadBoardColumnKey,
       { cards: LeadBoardCard[]; total: number | null; pending: boolean; growing: boolean }
-    >;
-    for (const column of LEAD_BOARD_COLUMNS) {
+    >>;
+    for (const column of layoutColumns) {
       const read = columnReads[column.key];
       const cards: LeadBoardCard[] = [];
       for (const lead of read.data?.leads ?? []) {
@@ -1509,6 +1549,7 @@ export function EngagedLeadsPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boardLeads,
+    layoutColumns,
     replyKindByEmail,
     statedReplyKinds,
     columnTotals,
@@ -2228,6 +2269,7 @@ export function EngagedLeadsPage({
                   and grows its own page. */}
               <LeadBoard
                 columns={boardColumns}
+                layout={layoutColumns}
                 scopeNoun={boardScopeNoun}
                 onShowMore={(column) =>
                   setColumnShown((prev) => ({

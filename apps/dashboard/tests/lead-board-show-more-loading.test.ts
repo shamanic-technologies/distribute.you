@@ -36,7 +36,7 @@ describe("show more says it is working", () => {
   });
 
   it("the growing flag is a dep the columns memo can see", () => {
-    expect(PAGE).toContain("const boardGrowing = LEAD_BOARD_COLUMNS.map(");
+    expect(PAGE).toContain("const boardGrowing = layoutColumns.map(");
     const memoAt = PAGE.indexOf("const boardColumns = useMemo(");
     expect(memoAt).toBeGreaterThan(-1);
     expect(PAGE.indexOf("const boardGrowing =")).toBeLessThan(memoAt);
