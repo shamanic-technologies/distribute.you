@@ -1,12 +1,14 @@
-import { explicitCode } from "@/lib/chat/rules";
-import { addMessage, threadForCode, threadForTelegramMessage } from "@/lib/chat/store";
+import { ACTIVE_WINDOW_MS, explicitCode, threadCode, unroutedText } from "@/lib/chat/rules";
+import { activeThreads, addMessage, threadForCode, threadForTelegramMessage } from "@/lib/chat/store";
 import { sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Telegram's webhook. Only the team chat is listened to, and only a message that
- * addresses a thread (a reply to a relayed message, or `#code text`) reaches a visitor.
+ * Telegram's webhook. Only the team chat is listened to. A message reaches a visitor when
+ * it addresses their thread (a reply to a relayed message, or `#code text`), or when it
+ * addresses nobody and exactly one visitor wrote in the last 30 minutes; the bot then
+ * confirms where it went. With several visitors chatting it asks which one.
  *
  * Answers 200 on anything it can parse: Telegram retries a non-2xx and eventually stops
  * delivering, which would cut the team off from every visitor.
@@ -38,10 +40,22 @@ export async function POST(request: Request) {
       body = explicit.body;
     }
   }
+  let implicit = false;
+  if (!threadId && !msg.reply_to_message && !explicitCode(body)) {
+    const active = await activeThreads(new Date(Date.now() - ACTIVE_WINDOW_MS));
+    if (active.length === 1) {
+      threadId = active[0];
+      implicit = true;
+    } else {
+      await sendToTeam(config, unroutedText(active.map(threadCode)));
+      return Response.json({ ok: true });
+    }
+  }
   if (!threadId) {
-    await sendToTeam(config, "Not sent: reply to a visitor's message, or start with #code.");
+    await sendToTeam(config, "Not sent: that message or code matches no conversation.");
     return Response.json({ ok: true });
   }
   await addMessage({ threadId, sender: "team", body, telegramMessageId: msg.message_id });
+  if (implicit) await sendToTeam(config, `→ sent to #${threadCode(threadId)}`);
   return Response.json({ ok: true });
 }

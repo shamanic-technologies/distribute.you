@@ -111,6 +111,15 @@ export async function threadForTelegramMessage(telegramMessageId: number): Promi
   return rows[0]?.thread_id ?? null;
 }
 
+/** Threads a visitor wrote in since `since`, most recent first. */
+export async function activeThreads(since: Date): Promise<string[]> {
+  const db = await ensureSchema();
+  const rows = await db`SELECT thread_id, max(created_at) AS last_at FROM landing_chat_messages
+    WHERE sender = 'visitor' AND created_at >= ${since.toISOString()}::timestamptz
+    GROUP BY thread_id ORDER BY last_at DESC LIMIT 10`;
+  return rows.map((r) => r.thread_id as string);
+}
+
 /** The thread whose id starts with a short code, when exactly one does. */
 export async function threadForCode(code: string): Promise<string | null> {
   const db = await ensureSchema();
