@@ -36,7 +36,7 @@ export const ASSISTANT_PATH = "/lp/assistant";
  */
 export type HomepageBlocks = { showcase: string; proofAndQuotes: string; rest: string };
 
-function between(html: string, start: string, end: string): string {
+export function between(html: string, start: string, end: string): string {
   const a = html.indexOf(start);
   const b = html.indexOf(end, a + start.length);
   if (a < 0 || b < 0 || html.split(start).length !== 2) {
@@ -53,7 +53,7 @@ export function homepageBlocks(home: string): HomepageBlocks {
   };
 }
 
-function readHomepage(): string {
+export function readHomepage(): string {
   return readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
 }
 
