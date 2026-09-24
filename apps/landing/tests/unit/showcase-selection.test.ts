@@ -10,9 +10,12 @@
  * producer states — so a reader that drifts from the wire fails here rather than on the
  * apex page.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   cardFunnel,
+  hasDrawnOutcome,
   PODIUM_ORDER,
   podium,
   pricedStep,
@@ -282,5 +285,45 @@ describe("the people map", () => {
     expect(personFor("nobody.com")).toBeNull();
     expect(personFor(null)).toBeNull();
     expect(personFor(undefined)).toBeNull();
+  });
+});
+
+describe("regressions from the first ship of the pick (#4353)", () => {
+  const page = readFileSync(join(__dirname, "../../public/landing/index-v2.html"), "utf8");
+
+  /** livingvital.ch as production served it on 2026-09-24: picked, and nothing past outreach. */
+  const livingVital: ShowcaseBrand = {
+    brand: { id: "lv", name: "Living Vital", domain: "livingvital.ch" },
+    funnels: [
+      {
+        funnelKey: "sales_meetings_from_conversation",
+        funnelName: "Sales Meeting from Positive Reply",
+        returnPerDollar: 0,
+        steps: [
+          { key: "contacted", label: "Contacted", peopleReached: 183, costPerReachUsd: 0.3 },
+          { key: "start_to_conversation", label: "Positive reply", peopleReached: 0, costPerReachUsd: null },
+          { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
+        ],
+      },
+    ],
+    measured: true,
+    unmeasuredReason: null,
+  };
+
+  it("replacing the proof cards keeps every section after the proof grid", () => {
+    const out = renderProofSelection(page, [opsfolio, docDinners]);
+    for (const id of ['id="quotes"', 'id="pricing"', "</footer>"]) {
+      if (page.includes(id)) expect(out).toContain(id);
+    }
+    expect(page.match(/<\/article>/g)!.length - 3 + 2).toBe(out.match(/<\/article>/g)!.length);
+  });
+
+  it("a client whose drawn funnel shows nothing past outreach is never named", () => {
+    expect(hasDrawnOutcome(livingVital)).toBe(false);
+    expect(hasDrawnOutcome(docDinners)).toBe(true);
+    const out = renderShowcaseSelection(page, [livingVital, docDinners]);
+    expect(out).not.toContain('data-brand="livingvital.ch"');
+    expect(out).toContain('data-brand="docdinners.com"');
+    expect(pickedBrands({ brands: [livingVital], measured: true, unmeasuredReason: null }, "t")).toBeNull();
   });
 });

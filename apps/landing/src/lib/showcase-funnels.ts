@@ -1,5 +1,5 @@
 import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
-import { podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
+import { hasDrawnOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
 
 /**
  * The homepage's three named clients state funnel counts we READ, not counts we
@@ -327,7 +327,14 @@ export function pickedBrands(group: ShowcaseGroup | undefined, label: string): S
     );
     return null;
   }
-  const brands = Array.isArray(group.brands) ? group.brands : [];
+  const served = Array.isArray(group.brands) ? group.brands : [];
+  const brands = served.filter(hasDrawnOutcome);
+  if (brands.length < served.length) {
+    console.warn(
+      `[landing] showcase group "${label}" dropped ${served.length - brands.length} client(s) whose drawn funnel shows nothing past outreach`
+    );
+  }
+  // Nobody left to name: the section keeps its shipped clients, reseeded, like an unanswered group.
   if (brands.length === 0) return null;
   if (
     typeof group.qualifyingCount === "number" &&
@@ -349,7 +356,9 @@ export function pickedBrands(group: ShowcaseGroup | undefined, label: string): S
  * of the pick and must stay last — it is what the whole row is arguing towards.
  */
 export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): string {
-  const cards = brands.map(renderShowcaseCard).filter((card): card is string => card !== null);
+  const cards = brands
+    .filter(hasDrawnOutcome)
+    .map(renderShowcaseCard).filter((card): card is string => card !== null);
   // Every client the producer picked failed to render — a payload with no measured rung
   // for any of them. Keeping the shipped row beats emptying the hero.
   if (cards.length === 0) return html;
@@ -367,14 +376,16 @@ export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): 
  * each of the three sits on the row.
  */
 export function renderProofSelection(html: string, brands: ShowcaseBrand[]): string {
-  const cards = podium(brands)
+  const cards = podium(brands.filter(hasDrawnOutcome))
     .map(renderProofCard)
     .filter((card): card is string => card !== null);
   // A proof card leads with a return, so a pick carrying none renders nothing — and the
   // shipped three, whose returns are reseeded, are a better answer than an empty section.
   if (cards.length === 0) return html;
+  // Bounded to the proof grid's OWN cards: an unbounded `[\s\S]*</article>` runs to the LAST
+  // article on the page and deletes every section in between (quotes, pricing, FAQ).
   return html.replace(
-    /<article class="proof-card rv"[\s\S]*<\/article>/,
-    cards.join("\n      ")
+    /(<div class="proof-grid">\s*)(?:<article class="proof-card rv"[\s\S]*?<\/article>\s*)+/,
+    (_whole, open: string) => `${open}${cards.join("\n      ")}\n`
   );
 }
