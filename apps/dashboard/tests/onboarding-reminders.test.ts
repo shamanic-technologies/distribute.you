@@ -16,9 +16,16 @@ const LOW: AudienceNudge = { tier: "low-remaining", remainingPct: 3 };
 describe("audienceNudge", () => {
   it("zero-active when no active audience exists", () => {
     expect(audienceNudge([]).tier).toBe("zero-active");
-    expect(audienceNudge([{ status: "suggested" }, { status: "archived" }]).tier).toBe(
-      "zero-active",
-    );
+    expect(audienceNudge([{ status: "suggested" }]).tier).toBe("zero-active");
+  });
+
+  it("none when audiences exist but the customer paused or archived them all", () => {
+    // Prod 2026-09-22: a brand with 2 paused audiences read "We are building your
+    // audiences", which was false. Paused/archived is the customer's decision.
+    expect(
+      audienceNudge([{ status: "paused" }, { status: "paused" }, { status: "suggested" }]).tier,
+    ).toBe("none");
+    expect(audienceNudge([{ status: "suggested" }, { status: "archived" }]).tier).toBe("none");
   });
 
   it("none when an active audience still has a healthy pool", () => {
