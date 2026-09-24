@@ -36,7 +36,7 @@ export { V2_STYLES_VERSION };
 /** Same publishable token the homepage and the dashboard bundle carry. */
 const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-function logo(domain: string, size = 40): string {
+export function logo(domain: string, size = 40): string {
   return `<img src="https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=${size * 2}&format=png" alt="" width="${size}" height="${size}">`;
 }
 
@@ -46,11 +46,11 @@ function logo(domain: string, size = 40): string {
  * for the whole section: when the fleet cannot be measured the band is dropped, never a
  * heading over a number nobody measured.
  */
-function liveBand(): string {
+export function liveBand(): string {
   return "__HOT_LEAD_BAND__";
 }
 
-function faqJsonLd(faq: readonly { q: string; a: string }[]) {
+export function faqJsonLd(faq: readonly { q: string; a: string }[]) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -62,7 +62,7 @@ function faqJsonLd(faq: readonly { q: string; a: string }[]) {
   };
 }
 
-function faqList(faq: readonly { q: string; a: string }[]): string {
+export function faqList(faq: readonly { q: string; a: string }[]): string {
   return faq
     .map(
       (f, i) => `<div class="faq-item${i === 0 ? " open" : ""}">
@@ -73,7 +73,7 @@ function faqList(faq: readonly { q: string; a: string }[]): string {
     .join("\n");
 }
 
-function bullets(items: readonly string[], tone: "yes" | "no"): string {
+export function bullets(items: readonly string[], tone: "yes" | "no"): string {
   const mark = tone === "yes" ? "✓" : "·";
   return `<ul>${items.map((t) => `<li><i>${mark}</i><span>${esc(t)}</span></li>`).join("")}</ul>`;
 }

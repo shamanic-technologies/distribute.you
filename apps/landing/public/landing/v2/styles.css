@@ -485,7 +485,7 @@ section.framed::after {
 
 /* ---------- Footer ---------- */
 footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
-.foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 32px; }
+.foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr; gap: 32px; }
 .foot h4 { font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; margin-bottom: 14px; }
 .foot ul { list-style: none; display: grid; gap: 9px; }
 .foot a { font-size: 14px; color: var(--muted); }
@@ -723,6 +723,16 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 .cmp-card-top b { display: block; font-weight: 500; color: var(--text); }
 .cmp-card-top small { display: block; font-size: 13px; color: var(--muted-2); }
 .cmp-card p { font-size: 14px; }
+/* The "best X for Y" cluster (/best, /best/<slug>): a ranked list of full-width cards
+   and the updated / author line under the direct answer. */
+.best-meta { margin-top: 16px; max-width: 720px; font-size: 13px; color: var(--muted-2); line-height: 1.6; }
+.best-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.best-item { display: flex; flex-direction: column; gap: 10px; padding: 22px; border-radius: 16px; background: #fff; border: 1px solid var(--hair); box-shadow: var(--shadow-card); min-width: 0; }
+.best-item.us { border-color: var(--accent-100); background: var(--accent-50); }
+.best-item p { font-size: 14px; overflow-wrap: anywhere; }
+.best-item .cmp-card-top > div { min-width: 0; }
+.best-rank { flex: none; display: inline-flex; width: 28px; height: 28px; border-radius: 999px; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 15px; background: var(--accent-50); color: var(--accent-text); border: 1px solid var(--accent-100); }
+.best-item.us .best-rank { background: #fff; }
 /* Responsive rules sit AFTER the base rules above: same specificity, so order decides. */
 @media (max-width: 960px) {
   .stats.two { grid-template-columns: 1fr; gap: 28px; }
