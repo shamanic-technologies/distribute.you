@@ -309,10 +309,18 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * `structuralSharing`, and the 30-min `maxAge` bound each tolerate a drifted shape.
  *
  * Bump checklist (increment the integer): renamed/removed a field on a response
- * type consumed straight from cache without a safeParse guard. Additive fields
- * (new optional field) do NOT need a bump.
+ * type consumed straight from cache without a safeParse guard, OR added a field
+ * the reader declares REQUIRED and a component dereferences (`c.company.name`).
+ * A restored snapshot never passes through the reader's Zod, so an older entry
+ * lacks the new field and the component throws. Only a genuinely OPTIONAL field
+ * (read as `x?.y`) is safe without a bump.
+ *
+ * "2": `crmContacts` gained the required `company` / `location` / `record`
+ * groups after it was already persisted, and the CRM page crashed on
+ * `Cannot read properties of undefined (reading 'name')` for any browser holding
+ * the older snapshot.
  */
-const PERSIST_CACHE_VERSION = "1";
+const PERSIST_CACHE_VERSION = "2";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
