@@ -17,7 +17,10 @@ export function reminderDismissKey(brandId: string, kind: ReminderKind): string 
 /**
  * The audience blocker is not binary. A brand needs at least one active audience
  * that still has people left to contact:
- *  - `zero-active`   → no active audience at all (first-run setup).
+ *  - `zero-active`   → no audience has been built yet (first-run setup). A brand
+ *                      whose audiences exist but were all PAUSED or ARCHIVED is
+ *                      NOT this: the customer stopped them, and the banner's
+ *                      "we are building your audiences" would be false.
  *  - `exhausted`     → active audiences exist but every one is fully contacted (0%).
  *  - `low-remaining` → active audiences exist but all are almost drained (< threshold).
  *  - `none`          → at least one active audience still has a healthy pool.
@@ -52,7 +55,16 @@ export const LOW_REMAINING_THRESHOLD_PCT = 5;
  */
 export function audienceNudge(audiences: AudienceNudgeInput[]): AudienceNudge {
   const active = audiences.filter((a) => a.status === "active");
-  if (active.length === 0) return { tier: "zero-active" };
+  if (active.length === 0) {
+    // Paused and archived are the customer's own decisions about audiences we
+    // already built, so they are not a blocker to announce and certainly not
+    // "we are building your audiences". `suggested` is never shown to the
+    // customer, so it does not count as built.
+    const decided = audiences.some(
+      (a) => a.status === "paused" || a.status === "archived",
+    );
+    return { tier: decided ? "none" : "zero-active" };
+  }
   const healthy = active.some(
     (a) =>
       a.availableToContactPct == null ||
