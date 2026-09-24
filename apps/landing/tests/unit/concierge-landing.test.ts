@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { CONCIERGE_PATH, CONTACT, renderConciergePage } from "../../src/lib/pages/concierge";
-import { cleanBody, cleanEmail, explicitCode, makeRateLimiter, relayText, threadCode } from "../../src/lib/chat/rules";
+import { cleanBody, cleanContact, cleanEmail, explicitCode, makeRateLimiter, relayText, threadCode } from "../../src/lib/chat/rules";
 
 const read = (p: string) => readFileSync(path.resolve(__dirname, "../..", p), "utf8");
 const visibleText = (html: string) =>
@@ -42,7 +42,12 @@ describe("/lp/concierge: the message-the-assistant candidate", () => {
 
   it("the chat widget talks to the bridge and states when it is offline", () => {
     expect(html).toContain('fetch("/api/chat/messages"');
-    expect(html).toContain('fetch("/api/chat/email"');
+    expect(html).not.toContain("/api/chat/email");
+    expect(html).toContain('id="cc-gate"');
+    expect(html).toContain("your email or phone number, so we can reach you if you get disconnected");
+    expect(html).toContain("contact: contact, body: body");
+    // The gate's own regexes survive the template literal with single backslashes.
+    expect(html).toContain("/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/");
     expect(html).toContain("The chat is offline.");
   });
 
@@ -62,10 +67,20 @@ describe("chat rules", () => {
     expect(cleanEmail("nope")).toBeNull();
   });
 
+  it("accepts an email or a 7 to 15 digit phone as the contact, nothing else", () => {
+    expect(cleanContact(" Jane@Acme.io ")).toBe("Jane@Acme.io");
+    expect(cleanContact("+33 6 80 47 87 02")).toBe("+33680478702");
+    expect(cleanContact("(555) 123-4567")).toBe("5551234567");
+    expect(cleanContact("12345")).toBeNull();
+    expect(cleanContact("call me")).toBeNull();
+    expect(cleanContact("")).toBeNull();
+    expect(cleanContact(undefined)).toBeNull();
+  });
+
   it("shows the team a short code and reads a #code reply", () => {
     expect(threadCode("3f2a9c1e-0000-4000-8000-000000000000")).toBe("3f2a9c");
-    const t = relayText({ code: "3f2a9c", body: "hello", page: "/", country: "FR", email: null, isFirst: true });
-    expect(t.startsWith("💬 #3f2a9c · / · FR\nhello")).toBe(true);
+    const t = relayText({ code: "3f2a9c", body: "hello", page: "/", country: "FR", contact: "a@b.co", isFirst: true });
+    expect(t.startsWith("💬 #3f2a9c · / · FR · a@b.co\nhello")).toBe(true);
     expect(t).toContain("Reply to this message");
     expect(explicitCode("#3F2A9C  sure thing")).toEqual({ code: "3f2a9c", body: "sure thing" });
     expect(explicitCode("no code here")).toBeNull();
@@ -84,7 +99,6 @@ const store = vi.hoisted(() => ({
   openThread: vi.fn(),
   addMessage: vi.fn(),
   listMessages: vi.fn(),
-  setThreadEmail: vi.fn(),
   threadForTelegramMessage: vi.fn(),
   threadForCode: vi.fn(),
 }));
@@ -112,16 +126,28 @@ describe("chat routes", () => {
     expect(await (await GET(new Request("https://distribute.you/api/chat/messages"))).json()).toEqual({ online: false, messages: [] });
   });
 
+  it("refuses to open a conversation without an email or phone", async () => {
+    const { POST } = await import("../../src/app/api/chat/messages/route");
+    const res = await POST(new Request("https://distribute.you/api/chat/messages", {
+      method: "POST", headers: { "cf-connecting-ip": "2.2.2.2" }, body: JSON.stringify({ body: "hi", contact: "nope" }),
+    }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "contact_required" });
+    expect(store.createThread).not.toHaveBeenCalled();
+    expect(sent).toEqual([]);
+  });
+
   it("opens a thread, relays the first message to Telegram, stores it with the relay id", async () => {
     store.createThread.mockResolvedValue({ id: "3f2a9c1e-0000-4000-8000-000000000000", secret: "sec" });
     const { POST } = await import("../../src/app/api/chat/messages/route");
     const res = await POST(new Request("https://distribute.you/api/chat/messages", {
       method: "POST", headers: { "cf-ipcountry": "FR", "cf-connecting-ip": "1.1.1.1" },
-      body: JSON.stringify({ body: "Need clients", page: "/" }),
+      body: JSON.stringify({ body: "Need clients", page: "/", contact: "jane@acme.io" }),
     }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ thread: { id: "3f2a9c1e-0000-4000-8000-000000000000", secret: "sec" } });
-    expect(sent[0]).toContain("💬 #3f2a9c · / · FR\nNeed clients");
+    expect(store.createThread).toHaveBeenCalledWith({ page: "/", country: "FR", contact: "jane@acme.io" });
+    expect(sent[0]).toContain("💬 #3f2a9c · / · FR · jane@acme.io\nNeed clients");
     expect(store.addMessage).toHaveBeenCalledWith({
       threadId: "3f2a9c1e-0000-4000-8000-000000000000", sender: "visitor", body: "Need clients", telegramMessageId: 901,
     });
