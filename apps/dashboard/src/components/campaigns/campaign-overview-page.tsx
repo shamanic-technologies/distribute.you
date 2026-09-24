@@ -29,7 +29,7 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
-import { salesInterestSharePct, websiteVisitSharePct } from "@/lib/funnel-share";
+import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/funnel-share";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { tenantBasePath } from "@/lib/offer-path";
 import {
@@ -207,7 +207,7 @@ export function CampaignOverviewPage() {
   // What share of the contacted leads showed positive reply — SERVED, through the one
   // helper both this page and the Leads page read, so they cannot state the same
   // percentage two ways.
-  const salesInterestShare = salesInterestSharePct(data?.funnelSteps);
+  const positiveReplyShare = positiveReplySharePct(data?.funnelSteps);
   const websiteVisitShare = websiteVisitSharePct(data?.funnelSteps);
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
@@ -781,7 +781,7 @@ export function CampaignOverviewPage() {
             outreachOverride={outreachTotal}
             contactedOverride={leadsContacted}
             outreachLabel="Outreaches"
-            signalSharePct={salesInterestShare}
+            signalSharePct={positiveReplyShare}
             clickSharePct={websiteVisitShare}
             paused={campaignPaused}
           />

@@ -1537,8 +1537,8 @@ export function EngagedLeadsPage({
   //
   // So the row reads what the producers already answer: the population from
   // lead-service's bucket counts (the SAME number the heading states, so the two cannot
-  // disagree), and the sales-interest pair from features-service's funnel steps — the
-  // one `salesInterestSharePct` the campaign Overview reads, so those two surfaces
+  // disagree), and the positive-reply pair from features-service's funnel steps — the
+  // one `positiveReplySharePct` the campaign Overview reads, so those two surfaces
   // cannot state it two ways either.
   //
   // Consequence to hold: the row's positive replies count REPLY SIGNALS while the board's

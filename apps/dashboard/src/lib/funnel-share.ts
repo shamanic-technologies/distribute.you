@@ -16,12 +16,12 @@
 import type { FunnelStepBreakdown } from "./revenue-view";
 
 /**
- * The sales-interest share of the contacted base, 0-100, or null when it cannot be
+ * The positive-reply share of the contacted base, 0-100, or null when it cannot be
  * stated.
  *
  * Gated on TWO things, and both matter:
  *
- *   - the rung has to be the SALES-INTEREST one (`leadField: "repliedPositive"`),
+ *   - the rung has to be the POSITIVE-REPLY one (`leadField: "repliedPositive"`),
  *     because a visit-led funnel's first rung is a website visit and its share is a
  *     different sentence;
  *   - it has to convert FROM `Contacted`, which is the producer's own name for the
@@ -32,7 +32,7 @@ import type { FunnelStepBreakdown } from "./revenue-view";
  * which the producer returns null rather than a fabricated 0% or 100%. A caller renders
  * nothing for it; a 0% would claim nobody was interested when nobody was asked.
  */
-export function salesInterestSharePct(
+export function positiveReplySharePct(
   funnelSteps: FunnelStepBreakdown | null | undefined,
 ): number | null {
   return contactedSharePct(funnelSteps, "repliedPositive");
@@ -43,7 +43,7 @@ export function salesInterestSharePct(
  *
  * The two are mutually exclusive by construction — a funnel begins at one step — so a
  * campaign states one of them and never both. It is a separate wrapper rather than a
- * bare `steps[0]` read for the same reason `salesInterestSharePct` is: a rung deeper in
+ * bare `steps[0]` read for the same reason `positiveReplySharePct` is: a rung deeper in
  * the funnel converts from the rung BEFORE it, so labelling it "of contacted" would be
  * false, and the guard is what stops that.
  */

@@ -204,7 +204,7 @@ describe("OutreachStatCards copy", () => {
   });
 
   it("carries no board-population override at all", () => {
-    // The row briefly took the population and the sales-interest count from whoever
+    // The row briefly took the population and the positive-reply count from whoever
     // drew the board. That was correct while the Leads page held every lead and became
     // a lie the moment its board read gained a bound: the row printed the CAP as the
     // population. Both props are DELETED rather than left unused — an unpassed prop is
@@ -232,12 +232,12 @@ describe("OutreachStatCards copy", () => {
   // The share is SERVED (`funnelSteps.steps[0].conversionFromPreviousPct`). A browser
   // dividing the two counts is the compute-a-stat-in-the-browser bug and would drift
   // from the producer the moment either side changed scope.
-  it("renders the sales-interest share as a served subtitle, never a division", () => {
+  it("renders the positive-reply share as a served subtitle, never a division", () => {
     expect(cards).toContain("signalSharePct?: number | null;");
     expect(cards).toContain("${formatSharePct(signalSharePct)} of leads contacted");
-    // Both sales-interest count cards carry it: the mid-funnel pair AND the 1-step
+    // Both positive-reply count cards carry it: the mid-funnel pair AND the 1-step
     // outcome card, or one campaign would state the share and its sibling would not.
-    // Both sales-interest count cards carry it, and the Website Visits card is the
+    // Both positive-reply count cards carry it, and the Website Visits card is the
     // THIRD: a visit-led funnel's first rung IS the visit, so its share is the same
     // sentence about a different step.
     expect(cards.match(/of leads contacted`/g)?.length).toBe(3);
@@ -259,14 +259,14 @@ describe("OutreachStatCards copy", () => {
     );
     expect(call).toContain("contactedOverride={leadsContacted}");
     expect(call).toContain('outreachLabel="Outreaches"');
-    expect(call).toContain("signalSharePct={salesInterestShare}");
+    expect(call).toContain("signalSharePct={positiveReplyShare}");
     // The contacted base is a SERVED field off the funnel breakdown.
     expect(campaign).toContain("data?.funnelSteps?.contactedRecipients ?? null");
     // The share goes through the ONE helper the Leads page reads too, so the two
     // surfaces cannot state the same percentage two ways.
-    expect(campaign).toContain("salesInterestSharePct(data?.funnelSteps)");
+    expect(campaign).toContain("positiveReplySharePct(data?.funnelSteps)");
     const auto = read("../src/components/revenue/outreach-stat-cards-auto.tsx");
-    expect(auto).toContain("salesInterestSharePct(revenueData?.funnelSteps)");
+    expect(auto).toContain("positiveReplySharePct(revenueData?.funnelSteps)");
   });
 
   // NOTHING reads the retired brand column any more. The auto variant takes the

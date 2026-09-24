@@ -15,7 +15,7 @@
  * ── THE PAGE STILL OWNS THE WORDS ───────────────────────────────────────────────────
  *
  * The producer calls a rung `start_to_conversation` and labels it "Positive reply"; the
- * page says "Sales interests". That wording is the customer's vocabulary and ours to
+ * page says "Positive replies". That wording is the customer's vocabulary and ours to
  * choose, so {@link STEP_LABEL} is the page's own and the producer's label is only the
  * fallback for a rung this file has never heard of. Same rule as when the cards were
  * frozen markup — only the FIGURE ever crossed the wire.
@@ -53,7 +53,7 @@ const CONTACTED = "contacted";
  */
 const STEP_LABEL: Readonly<Record<string, { plural: string; singular: string }>> = {
   contacted: { plural: "Contacted", singular: "contact" },
-  start_to_conversation: { plural: "Sales interests", singular: "sales interest" },
+  start_to_conversation: { plural: "Positive replies", singular: "positive reply" },
   start_to_website_visit: { plural: "Website visits", singular: "website visit" },
   conversation_to_meeting_booked: { plural: "Meetings booked", singular: "meeting booked" },
   meeting_booked_to_meeting_attended: { plural: "Meetings attended", singular: "meeting attended" },

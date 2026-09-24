@@ -179,7 +179,7 @@ export function OutreachStatCards({
    * What share of the contacted leads reached the funnel's FIRST rung, SERVED as
    * `funnelSteps.steps[0].conversionFromPreviousPct` (0-100).
    *
-   * Rendered as the sales-interest card's subtitle. Read verbatim: dividing the two
+   * Rendered as the positive-reply card's subtitle. Read verbatim: dividing the two
    * counts in the browser is the compute-a-stat-in-the-browser bug, and it would drift
    * from the producer the moment either side changed scope. Null is "we could not
    * measure this" (either side unmeasured, or a base of 0) → no subtitle, never a 0%.

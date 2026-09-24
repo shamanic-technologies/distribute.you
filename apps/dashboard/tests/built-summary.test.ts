@@ -12,7 +12,7 @@ const full: BuiltInput = {
     {
       key: "reply_meeting",
       name: "Sales Meeting from Conversation",
-      steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
+      steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
       isPrimary: true,
     },
   ],

@@ -133,7 +133,7 @@ describe("export query", () => {
 
   it("is the whole list, so it takes no tab at all", () => {
     // The builder used to take one, and the page passed `activeTab` — so a press on
-    // Sales interests downloaded that bucket alone: 20 rows in production under a
+    // Positive replies downloaded that bucket alone: 20 rows in production under a
     // header reading 16,212, which reads as a file truncated by three orders of
     // magnitude. Owner-decided: every row, whatever tab is open.
     expect(leadsExportQuery({ search: "" })).toEqual({

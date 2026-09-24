@@ -118,7 +118,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "Nothing to run. You paste a website; we pick the buyers, write, send, and read the replies.",
       "Your domain stays out of it. We send from domains we own and warm.",
-      "The cost of a sales interest is measured and shown, not left for you to work out from a sends counter.",
+      "The cost of a positive reply is measured and shown, not left for you to work out from a sends counter.",
     ],
     chooseThemIf: [
       "You have an SDR or a growth person whose job is to run outbound every day.",
@@ -164,7 +164,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "A person answers the interested replies and books the meeting; you are handed a conversation, not a lead to chase.",
       "Pay for what was spent, from $1/day, rather than a flat $99 whether the month was busy or quiet.",
-      "The cost of a sales interest is measured on your account and published across ours.",
+      "The cost of a positive reply is measured on your account and published across ours.",
     ],
     chooseThemIf: [
       "LinkedIn is where your buyers answer and you want one agent doing both channels.",
@@ -209,7 +209,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "Pre-warmed domains included, so nothing to set up.",
     ],
     whereWeWin: [
-      "You pay for a campaign that reports what a sales interest cost, not for a count of emails.",
+      "You pay for a campaign that reports what a positive reply cost, not for a count of emails.",
       "A person answers the interested replies and books the meeting.",
       "The price per outcome is measured across clients and published live.",
     ],
@@ -222,9 +222,9 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want a human in the loop from the first interested reply.",
     ],
     faq: [
-      { q: "Both start with $30 free. Is the offer the same?", a: "Both give you $30 to start. Explee prices in emails sent, distribute.you in daily budget spent, and shows you what each sales interest cost." },
+      { q: "Both start with $30 free. Is the offer the same?", a: "Both give you $30 to start. Explee prices in emails sent, distribute.you in daily budget spent, and shows you what each positive reply cost." },
       { q: "Explee sends from pre-warmed domains too. What differs?", a: "Who runs it. Explee hands the agent to you. distribute.you runs the campaign as an agency and answers the interested replies until a meeting is booked." },
-      { q: "Is $30 per 1,000 emails cheaper than distribute.you?", a: "Per email, yes. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per sales interest so you can judge before you start." },
+      { q: "Is $30 per 1,000 emails cheaper than distribute.you?", a: "Per email, yes. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per positive reply so you can judge before you start." },
     ],
   },
   {
@@ -307,7 +307,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "There is no stack to assemble. The mailboxes, the warmup, the copy and the replies are our job.",
       "You pay for campaign spend, not for a plan plus a mailbox product plus an infrastructure product.",
-      "The cost of a sales interest is measured and published.",
+      "The cost of a positive reply is measured and published.",
     ],
     chooseThemIf: [
       "You run outbound in-house and want to buy every layer from one place.",
@@ -320,7 +320,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "Agent Frank is an AI agent too. How is distribute.you different?", a: "Frank is software you configure at $499 a month. distribute.you is an agency that starts at $1 a day, runs the campaign on domains we own, and answers the interested replies." },
       { q: "Do I still need mailboxes with distribute.you?", a: "No. We send from mailboxes and domains we own and warm. Your domain never touches cold outreach." },
-      { q: "Which costs less?", a: "For a team running its own outbound at volume, Salesforge's $40 or $80 plan is cheap software. For a founder who wants meetings without running anything, distribute.you charges what the campaign spent and shows what each sales interest cost." },
+      { q: "Which costs less?", a: "For a team running its own outbound at volume, Salesforge's $40 or $80 plan is cheap software. For a founder who wants meetings without running anything, distribute.you charges what the campaign spent and shows what each positive reply cost." },
     ],
   },
   {
@@ -351,7 +351,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "You can start today for $1 a day, without a demo or an annual contract.",
-      "A price you can see, and a cost per sales interest measured on your account.",
+      "A price you can see, and a cost per positive reply measured on your account.",
       "Built for founders and small teams, not procurement.",
     ],
     chooseThemIf: [
@@ -400,7 +400,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "No mailboxes to buy, no list to upload, no sequences to write.",
       "Your reputation stays untouched: we send from our domains.",
-      "A measured cost per sales interest instead of a sends counter.",
+      "A measured cost per positive reply instead of a sends counter.",
     ],
     chooseThemIf: [
       "You are an agency running outbound for many clients and want one console.",
@@ -447,7 +447,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "You do not write, send or answer anything. We do.",
       "No seat: a founder and a team of ten pay the same for the same campaign.",
-      "The cost of a sales interest is measured and shown.",
+      "The cost of a positive reply is measured and shown.",
     ],
     chooseThemIf: [
       "Your buyers answer on LinkedIn or by phone and you have people to work those channels.",
@@ -503,7 +503,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     chooseUsIf: [
       "You want the meetings without building the machine.",
-      "You want one measured cost per sales interest, not a credit ledger.",
+      "You want one measured cost per positive reply, not a credit ledger.",
     ],
     faq: [
       { q: "Clay is not a sending tool. Why compare?", a: "Because a founder deciding how to get meetings weighs building an outbound system in Clay against having one run for them. distribute.you is the second option." },
@@ -587,7 +587,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "From $1 a day instead of $250 a month, charged on what was spent.",
       "No quarterly commitment.",
-      "The cost of a sales interest measured on your account and published across clients.",
+      "The cost of a positive reply measured on your account and published across clients.",
     ],
     chooseThemIf: [
       "You want a fixed monthly volume of contacts and a CRM-integrated agent.",
@@ -598,7 +598,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want a human in the loop on the interested replies.",
     ],
     faq: [
-      { q: "AiSDR's Solo plan is $250 a month. What does distribute.you cost for the same?", a: "There is no fixed volume to match. You set a daily budget from $1 and are charged what the campaign spent; the dashboard shows what each sales interest cost." },
+      { q: "AiSDR's Solo plan is $250 a month. What does distribute.you cost for the same?", a: "There is no fixed volume to match. You set a daily budget from $1 and are charged what the campaign spent; the dashboard shows what each positive reply cost." },
       { q: "Do both handle infrastructure?", a: "Yes. AiSDR sets up and warms domains inside your plan. distribute.you sends from domains we own and warm, so nothing is set up in your name at all." },
       { q: "Is there a commitment with distribute.you?", a: "No. Pause in one click, and the daily budget is a hard cap." },
     ],

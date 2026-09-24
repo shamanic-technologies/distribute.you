@@ -81,7 +81,7 @@ describe("a comparison page", () => {
       it("closes on the fleet's hot-lead band, the same figures the homepage hero states", () => {
         // One token for the whole section (static-html.ts `hotLeadBandHtml`), resolved
         // from the same read as the homepage's `__HOT_LEAD_ROW__`. The retired cost per
-        // sales interest / reply rate / emails sent band is gone.
+        // positive reply / reply rate / emails sent band is gone.
         expect(html).toContain("__HOT_LEAD_BAND__");
         expect(html).not.toContain("__BEST_POSITIVE_REPLY_COST__");
         expect(html).not.toContain("__POSITIVE_REPLY_RATE__");

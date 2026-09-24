@@ -135,7 +135,7 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   {
     key: "sales_interest",
     label: "Positive reply",
-    blurb: "Leads who have shown or expressed positive reply.",
+    blurb: "Leads who replied with interest.",
     writable: true,
     hideWhenEmpty: false,
   },

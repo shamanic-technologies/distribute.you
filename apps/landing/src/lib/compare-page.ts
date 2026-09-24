@@ -87,7 +87,7 @@ export function comparePageTitle(c: Competitor): string {
 }
 
 export function comparePageDescription(c: Competitor): string {
-  return `${c.name} vs distribute.you, side by side: entry price, who runs the campaign, whose domains send, and the measured cost of a sales interest. Prices read from ${c.domain} in ${COMPARE_VERIFIED_LABEL}.`;
+  return `${c.name} vs distribute.you, side by side: entry price, who runs the campaign, whose domains send, and the measured cost of a positive reply. Prices read from ${c.domain} in ${COMPARE_VERIFIED_LABEL}.`;
 }
 
 export function renderComparePage(c: Competitor): string {
@@ -130,7 +130,7 @@ export function renderComparePage(c: Competitor): string {
     <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${logo(c.domain)}</span></div>
     <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
-    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you is an acquisition agency: you paste a website, we run the campaign from domains we own, and you see what each sales interest cost.</p>
+    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you is an acquisition agency: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
 </section>
@@ -144,7 +144,7 @@ export function renderComparePage(c: Competitor): string {
 
 <section class="framed" id="pricing">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Pricing</span><h2>What ${esc(c.name)} charges, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. We charge the budget the campaign spent, from $1 a day, and show what each sales interest cost.</p></div>
+    <div class="section-head"><span class="eyebrow">Pricing</span><h2>What ${esc(c.name)} charges, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. We charge the budget the campaign spent, from $1 a day, and show what each positive reply cost.</p></div>
     <div class="cmp-cols">
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
@@ -153,7 +153,7 @@ export function renderComparePage(c: Competitor): string {
         <p class="plan-desc">First $30 of budget free. Charged on what the campaign spent, nothing else.</p>
         <a class="btn btn-accent" href="${SIGN_UP}">Start free</a>
         <div class="plan-included">Included in the budget</div>
-        <ul><li><i></i>Buyers found and qualified from your website</li><li><i></i>Emails written and sent from our domains</li><li><i></i>Every reply read, the interested ones answered</li><li><i></i>Cost per sales interest on your dashboard</li></ul>
+        <ul><li><i></i>Buyers found and qualified from your website</li><li><i></i>Emails written and sent from our domains</li><li><i></i>Every reply read, the interested ones answered</li><li><i></i>Cost per positive reply on your dashboard</li></ul>
         <div class="plan-foot">Our margin sits inside the budget. What a meeting costs you is measured on your account.</div>
       </div>
     </div>
@@ -235,7 +235,7 @@ export function renderCompareHub(): string {
   <div class="wrap hero-inner">
     <span class="eyebrow">Compare · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <h1>distribute.you <span class="accent">vs</span> the tools and agents you are weighing</h1>
-    <p class="hero-sub">Every page reads the competitor's price from their own site, states where they win, and puts our measured cost per sales interest beside it. One thing is different on all of them: we run the campaign, they sell you the means to.</p>
+    <p class="hero-sub">Every page reads the competitor's price from their own site, states where they win, and puts our measured cost per positive reply beside it. One thing is different on all of them: we run the campaign, they sell you the means to.</p>
   </div>
 </section>
 <section class="framed tint">
@@ -244,7 +244,7 @@ export function renderCompareHub(): string {
 ${liveBand()}`;
   return shell({
     title: `Compare distribute.you with ${COMPETITORS.length} cold email tools and AI SDRs (${COMPARE_VERIFIED_LABEL})`,
-    description: `Side-by-side pages against ${COMPETITORS.map((c) => c.name).join(", ")}: entry price, who runs the campaign, whose domains send, and the measured cost of a sales interest.`,
+    description: `Side-by-side pages against ${COMPETITORS.map((c) => c.name).join(", ")}: entry price, who runs the campaign, whose domains send, and the measured cost of a positive reply.`,
     path: "/compare",
     body,
     jsonLd: [breadcrumb([{ name: "Compare", path: "/compare" }])],
@@ -262,7 +262,7 @@ export function renderAlternativesPage(): string {
   <div class="wrap hero-inner">
     <span class="eyebrow">Alternatives · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <h1>The alternative to running <span class="accent">outbound yourself</span></h1>
-    <p class="hero-sub">Cold email tools, AI SDR agents and data platforms all sell you a way to run outbound. distribute.you is the alternative to all of them: an agency that runs it from domains we own, charges what the campaign spent, and shows what each sales interest cost.</p>
+    <p class="hero-sub">Cold email tools, AI SDR agents and data platforms all sell you a way to run outbound. distribute.you is the alternative to all of them: an agency that runs it from domains we own, charges what the campaign spent, and shows what each positive reply cost.</p>
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="/compare">Every comparison</a></div>
   </div>
 </section>
@@ -275,7 +275,7 @@ export function renderAlternativesPage(): string {
 ${liveBand()}`;
   return shell({
     title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${COMPARE_VERIFIED_LABEL})`,
-    description: `Weighing ${COMPETITORS.map((c) => c.name).join(", ")}? distribute.you runs the outbound for you from domains we own, from $1 a day, and publishes what a sales interest costs.`,
+    description: `Weighing ${COMPETITORS.map((c) => c.name).join(", ")}? distribute.you runs the outbound for you from domains we own, from $1 a day, and publishes what a positive reply costs.`,
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],
