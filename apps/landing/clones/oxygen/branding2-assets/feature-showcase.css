@@ -1,0 +1,218 @@
+/* Three onboarding phases on a plain paper ground. The phase list sits open on
+   the page beside a square glass stage; the pair pins while its runway scrolls
+   past and the phase in view expands (feature-showcase.js). */
+.feature-section {
+  padding: 66px 36px 116px;
+  background: var(--ox-canvas);
+}
+.feature-inner { max-width: 1200px; margin: 0 auto; }
+.feature-intro { margin: 0 auto 56px; text-align: center; }
+.feature-intro h2 {
+  margin: 0; color: var(--ink); font-size: var(--ox-text-section); font-weight: var(--ox-weight-display);
+  letter-spacing: var(--ox-tracking-heading); line-height: var(--ox-leading-tight); text-wrap: balance;
+}
+/* The runway is the scroll distance the pinned showcase spends on the phases:
+   one step per phase, then the page moves on. The distance is content (a
+   spacer), not padding: a sticky box only travels inside its parent's content box. */
+/* No scroll anchoring: the phase list changes height inside the pinned pair, and the
+   browser would otherwise shift the scroll position by the same amount and flip the phase back. */
+.feature-runway { --feature-count: 3; --feature-step: clamp(320px, 60vh, 640px); overflow-anchor: none; }
+.feature-runway::after { content: ''; display: block; height: calc(var(--feature-count) * var(--feature-step)); }
+.feature-runway[data-feature-pinned=false]::after { height: 0; }
+.feature-showcase {
+  position: sticky; top: var(--feature-pin-top, var(--ox-space-6));
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center;
+}
+.feature-runway[data-feature-pinned=false] .feature-showcase { position: static; }
+.feature-navigation { min-width: 0; }
+.feature-tabs { display: flex; flex-direction: column; gap: 4px; }
+.feature-tab {
+  position: relative; display: flex; align-items: flex-start; gap: 16px;
+  width: 100%; padding: 18px 12px 18px 23px; border: 0; border-radius: 0 12px 12px 0;
+  background: transparent; text-align: left; color: var(--secondary);
+  transition: color .3s, background .3s;
+}
+.feature-tab:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; border-radius: 4px; }
+.feature-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--ox-sage) 14.902%, transparent); }
+.feature-tab-track { position: absolute; top: 17px; bottom: 17px; left: 0; width: 2px; overflow: hidden; background: color-mix(in srgb, var(--ox-forest) 8.627%, transparent); }
+.feature-tab-track > span { display: block; height: 100%; background: var(--forest); transform: scaleY(0); transform-origin: top; }
+.feature-tab[aria-selected=true] .feature-tab-track { background: color-mix(in srgb, var(--ox-forest) 14.510%, transparent); }
+.feature-tab[aria-selected=true] .feature-tab-track > span { transform: scaleY(var(--feature-progress, 0)); }
+.feature-tab-number { padding-top: 11px; font-size:var(--ox-text-caption); font-variant-numeric: tabular-nums; color: var(--secondary); }
+.feature-tab-copy { display: block; flex: 1; min-width: 0; }
+.feature-tab-title { display: block; font-size: 27px; line-height: 1.3; letter-spacing: -.04em; font-weight: 480; }
+/* Collapsed phases keep their title; the selected phase opens its description. */
+.feature-tab-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s var(--ox-ease); }
+.feature-tab[aria-selected=true] .feature-tab-detail { grid-template-rows: 1fr; }
+.feature-tab-description { display: block; min-height: 0; overflow: hidden; opacity: 0; transition: opacity .3s; }
+.feature-tab[aria-selected=true] .feature-tab-description { opacity: 1; transition-delay: .12s; }
+.feature-tab-description > span { display: block; padding-top: 9px; font-size:var(--ox-text-body); line-height: 1.7; max-width: 355px; color: var(--secondary); }
+.feature-tab[aria-selected=true] { color: var(--ink); background: var(--sage); }
+.feature-tab[aria-selected=true] .feature-tab-number { color: var(--ink); }
+.feature-tab-arrow { padding-top: 7px; font-size: 22px; opacity: 0; transition: opacity .3s; }
+.feature-tab[aria-selected=true] .feature-tab-arrow { opacity: 1; }
+/* The stage: a square of forest with one glass scene filling almost all of it. */
+.feature-stage {
+  position: relative; isolation: isolate; container-type: inline-size;
+  display: grid; grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; aspect-ratio: 1 / 1;
+  border: 1px solid color-mix(in srgb, var(--ox-forest) 5.098%, transparent); border-radius: 26px; overflow: hidden;
+  background: #ced7c9; box-shadow: inset 0 0 0 1px #ffffff40;
+}
+.feature-landscapes, .feature-landscape { position: absolute; inset: 0; width: 100%; height: 100%; }
+.feature-landscapes { z-index: -2; }
+.feature-landscape {
+  object-fit: cover; object-position: center; opacity: 0; transform: scale(1.045);
+  transition: opacity 1s ease, transform 7s linear;
+}
+.feature-landscape.is-active { opacity: 1; transform: scale(1); }
+.feature-stage::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, color-mix(in srgb, var(--ox-paper) 21.176%, transparent), transparent 24%, transparent 70%, #12281c8c); }
+.feature-panel {
+  grid-area: 1 / 1; min-width: 0; min-height: 0; display: grid; padding: clamp(12px, 3.4cqw, 18px);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(10px); transition: opacity .2s, transform .45s, visibility .2s;
+}
+.feature-stage[data-compact-scene] .feature-panel {
+  container-type: inline-size;
+  width: 460px; height: 460px; padding: var(--ox-space-4);
+  zoom: var(--feature-scene-scale);
+}
+.feature-panel.is-active { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); transition-delay: .18s; }
+.feature-panel:focus-visible { outline: 2px solid var(--forest); outline-offset: -6px; border-radius: 26px; }
+.feature-scene {
+  --_ox-glass-elevation: var(--ox-shadow-float);
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  padding: clamp(12px, 3.6cqw, 20px); border-radius: var(--ox-radius-feature); color: var(--ink);
+}
+.scene-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: clamp(8px, 2.2cqw, 12px); }
+.scene-head strong { font-size: clamp(11px, 2.7cqw, 15px); font-weight: 550; letter-spacing: -.01em; }
+/* Each scene builds in steps: feature-showcase.js counts --step up on the
+   active scene and every [data-step] element fades in once the count reaches it.
+   The resting markup is the complete picture: the steps only hide once the
+   script has marked the runway ready, and never under reduced motion. */
+[data-step="1"] { --k: 1; } [data-step="2"] { --k: 2; } [data-step="3"] { --k: 3; } [data-step="4"] { --k: 4; } [data-step="5"] { --k: 5; } [data-step="6"] { --k: 6; }
+@media (prefers-reduced-motion: no-preference) {
+  .feature-runway[data-feature-ready] .feature-scene [data-step] {
+    --_shown: clamp(0, calc(var(--step, 0) - var(--k) + 1), 1);
+    opacity: var(--_shown);
+    transform: translateY(calc((1 - var(--_shown)) * 8px));
+    transition: opacity .35s var(--ox-ease), transform .35s var(--ox-ease);
+  }
+  .feature-runway[data-feature-ready] .brain-graph [data-step] { transform-box: fill-box; transform-origin: center; transform: scale(calc(.82 + var(--_shown) * .18)); }
+}
+/* Second brain: a graph that keeps growing. */
+.brain-graph { flex: 1; width: 100%; min-height: 0; overflow: visible; font-family: var(--ox-font-sans); }
+.brain-float { animation: brain-drift 7s ease-in-out infinite alternate; }
+.brain-float:nth-child(odd) { animation-duration: 8.5s; animation-delay: -3s; }
+.brain-source, .brain-primitive { animation: brain-drift 9s ease-in-out infinite alternate; animation-delay: -5s; }
+.brain-source:nth-of-type(odd), .brain-primitive:nth-of-type(odd) { animation-duration: 11s; animation-delay: -2s; }
+.brain-edges path { fill: none; stroke: var(--ox-forest); stroke-opacity: .45; stroke-width: 1.5; stroke-linecap: round; }
+.brain-edges--source path { stroke-opacity: .3; stroke-dasharray: 4 5; }
+.brain-node circle { fill: var(--ox-forest); stroke: var(--ox-porcelain); stroke-width: 3; }
+.brain-graph text { text-anchor: middle; font-size: 12px; font-weight: 500; fill: var(--ink); }
+.brain-source rect, .brain-primitive rect { fill: var(--ox-porcelain); fill-opacity: .92; stroke: color-mix(in srgb, var(--ox-forest) 10%, transparent); }
+.brain-source text, .brain-primitive text { font-size: 11px; fill: var(--secondary); }
+.brain-primitive text { fill: var(--ink); }
+.brain-icon { color: var(--ox-forest); overflow: visible; }
+.brain-halo { fill: var(--ox-sage); fill-opacity: .85; }
+.brain-core-disc { fill: var(--ox-porcelain); stroke: color-mix(in srgb, var(--ox-forest) 12%, transparent); }
+/* Sequence: the Sequencer's builder canvas, one node under the next on a dotted grid. */
+.sequence-scene { gap: clamp(6px, 1.6cqw, 8px); }
+.flow-canvas { flex: 1; min-height: 0; display: flex; justify-content: center; padding: clamp(6px, 1.6cqw, 10px) 0 0; border-radius: var(--ox-radius-inner); background-image: radial-gradient(color-mix(in srgb, var(--ox-forest) 22%, transparent) .8px, transparent .9px); background-size: clamp(12px, 3.2cqw, 16px) clamp(12px, 3.2cqw, 16px); }
+.flow { list-style: none; margin: 0; padding: 0; width: min(100%, clamp(220px, 62cqw, 300px)); display: flex; flex-direction: column; align-items: stretch; }
+.flow-node { display: flex; align-items: center; gap: clamp(6px, 1.8cqw, 10px); padding: clamp(7px, 2cqw, 10px) clamp(8px, 2.2cqw, 12px); }
+.flow-node strong { display: block; font-size: clamp(10px, 2.5cqw, 13px); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flow-node small { display: block; margin-top: 2px; font-size: clamp(7px, 1.9cqw, 10px); color: var(--secondary); }
+.flow-node > span:last-child { min-width: 0; }
+.flow-index { display: grid; place-items: center; flex-shrink: 0; width: clamp(16px, 4cqw, 20px); height: clamp(16px, 4cqw, 20px); border-radius: var(--ox-radius-sm); background: color-mix(in srgb, var(--ox-forest) 8%, transparent); color: var(--secondary); font-size: clamp(7px, 1.9cqw, 10px); font-variant-numeric: tabular-nums; }
+.flow-mark { display: grid; place-items: center; flex-shrink: 0; width: clamp(22px, 5.4cqw, 30px); height: clamp(22px, 5.4cqw, 30px); border-radius: var(--ox-radius-control); background: var(--ox-porcelain); box-shadow: var(--ox-shadow-soft); color: var(--forest); }
+.flow-mark img { width: 62%; height: 62%; object-fit: contain; }
+.flow-glyph { width: 60%; height: 60%; }
+.flow-link { position: relative; display: flex; align-items: center; justify-content: center; height: clamp(26px, 6.6cqw, 36px); }
+.flow-link::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: color-mix(in srgb, var(--ox-forest) 30%, transparent); }
+.flow-link::after { content: ''; position: absolute; left: calc(50% - 1.5px); top: 0; width: 3px; height: 7px; border-radius: 2px; background: var(--forest); animation: flow-trace 2.4s ease-in-out infinite; }
+.flow-pill { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 2px clamp(6px, 1.6cqw, 8px); border-radius: var(--ox-radius-pill); border: 1px solid color-mix(in srgb, var(--ox-forest) 14%, transparent); background: var(--ox-porcelain); color: var(--secondary); font-size: clamp(7px, 1.9cqw, 10px); white-space: nowrap; }
+.flow-pill .flow-glyph { width: clamp(9px, 2.2cqw, 12px); height: clamp(9px, 2.2cqw, 12px); color: var(--secondary); }
+.flow-link--end { height: clamp(30px, 7.6cqw, 42px); align-items: flex-end; }
+.flow-link--end::after { animation-duration: 2.8s; }
+.flow-pill--end { color: var(--ink); }
+.flow-pill--end i { width: 6px; height: 6px; border-radius: 50%; background: var(--forest); }
+@keyframes flow-trace { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 7px); opacity: 0; } }
+@keyframes brain-drift { from { translate: 0 0; } to { translate: 2px -3px; } }
+/* Agents: the mark keeps working above a two-by-two grid of the agents on duty. */
+.agent-scene { align-items: stretch; }
+.agent-mark { position: relative; display: grid; place-items: center; width: clamp(52px, 13cqw, 72px); height: clamp(52px, 13cqw, 72px); margin: 0 auto clamp(4px, 1.4cqw, 8px); }
+.agent-mark img { width: 46%; height: 46%; position: relative; z-index: 1; animation: agent-breathe 3.2s ease-in-out infinite; }
+.agent-mark::before { content: ''; position: absolute; inset: 22%; border-radius: 50%; background: var(--ox-porcelain); box-shadow: var(--ox-shadow-soft); }
+.agent-ring { position: absolute; inset: 16%; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--ox-forest) 55%, transparent); animation: agent-pulse 3.2s ease-out infinite; }
+.agent-ring--outer { inset: 0; animation-delay: 1.6s; }
+.agent-orbit { position: absolute; inset: 2%; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--ox-forest) 35%, transparent); animation: agent-orbit 14s linear infinite; }
+.agent-orbit i { position: absolute; top: -4px; left: calc(50% - 4px); width: 8px; height: 8px; border-radius: 50%; background: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ox-sage) 80%, transparent); }
+.agent-head { justify-content: center; margin-bottom: clamp(8px, 2cqw, 12px); }
+.agent-grid { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: clamp(6px, 1.8cqw, 10px); }
+.agent-card { display: flex; flex-direction: column; min-width: 0; padding: clamp(9px, 2.4cqw, 14px) clamp(10px, 2.6cqw, 14px); }
+.agent-card-head { display: flex; align-items: center; gap: clamp(6px, 1.6cqw, 8px); }
+.agent-icon { flex-shrink: 0; box-sizing: border-box; width: clamp(22px, 5.6cqw, 30px); height: clamp(22px, 5.6cqw, 30px); padding: clamp(4px, 1.1cqw, 6px); border-radius: var(--ox-radius-control); background: var(--ox-porcelain); box-shadow: var(--ox-shadow-soft); color: var(--forest); }
+.agent-card-head strong { flex: 1; min-width: 0; font-size: clamp(10px, 2.5cqw, 13px); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-status { flex-shrink: 0; padding: 2px clamp(5px, 1.4cqw, 8px); border-radius: var(--ox-radius-pill); background: color-mix(in srgb, var(--ox-forest) 8%, transparent); color: var(--secondary); font-size: clamp(7px, 1.8cqw, 10px); font-weight: 550; }
+.agent-status.is-live { background: var(--sage); color: var(--forest); }
+.agent-card p { flex: 1; margin: clamp(5px, 1.4cqw, 8px) 0 0; font-size: clamp(8px, 2.1cqw, 11px); line-height: 1.45; color: var(--secondary); }
+.agent-card-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: clamp(6px, 1.6cqw, 10px); font-size: clamp(7px, 1.9cqw, 10px); color: var(--secondary); white-space: nowrap; }
+.agent-card-foot span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.agent-card-foot span:last-child { font-variant-numeric: tabular-nums; }
+/* Keep the motion control reachable by keyboard without visible chrome. */
+.feature-motion { position: absolute; right: 18px; bottom: 18px; z-index: 2; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); background: var(--ox-porcelain); color: var(--ink); font-size: var(--ox-text-caption); border-radius: var(--ox-radius-pill); }
+.feature-motion:focus-visible { width: auto; height: auto; min-height: 36px; padding: 6px 12px; clip-path: none; outline: 2px solid var(--forest); outline-offset: 2px; }
+@keyframes agent-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes agent-pulse { 0% { transform: scale(.7); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes agent-orbit { to { transform: rotate(360deg); } }
+.feature-runway[data-motion-paused=true] .feature-scene * { animation-play-state: paused; }
+@container (max-width: 1100px) {
+  .feature-showcase { gap: 32px; }
+  .feature-tab { gap: 12px; padding-left: 19px; }
+  .feature-tab-title { font-size: 24px; }
+}
+@container (max-width: 800px) {
+  .feature-section { padding: 45px 24px 85px; }
+  .feature-showcase { grid-template-columns: 1fr; gap: var(--ox-space-4); }
+  .feature-intro { margin-bottom: 36px; }
+  .feature-tab { min-height: var(--ox-control-touch); padding-block: var(--ox-space-2); }
+  .feature-tab-track { top: 11px; bottom: 11px; }
+  .feature-tab-description > span { max-width: 470px; line-height: 1.5; }
+  /* Stage first on narrow layouts, so the list's height changes never move it. */
+  .feature-stage { order: -1; width: min(100%, 38svh); max-width: 360px; justify-self: center; }
+}
+@container (max-width: 450px) {
+  .feature-section { padding: 38px 20px 70px; }
+  .feature-intro > p:last-child { font-size:var(--ox-text-label); }
+  .feature-intro > p:last-child br { display: none; }
+  .feature-eyebrow { font-size: var(--ox-text-caption); letter-spacing: var(--ox-tracking-eyebrow); }
+  .feature-tab { padding-left: 14px; padding-right: 5px; gap: 10px; }
+  .feature-tab-title { font-size: 22px; }
+  .feature-tab-number { padding-top: 9px; }
+  .feature-tab-description > span { font-size:var(--ox-text-ui); }
+  .feature-stage { border-radius:var(--ox-radius-feature); }
+}
+/* Keep all three scroll-linked stages in view on short phones in landscape. */
+@media (max-height: 480px) and (orientation: landscape) {
+  @container (max-width: 800px) {
+    .feature-showcase { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .feature-stage { width: min(100%, 70svh); }
+    .feature-tab { padding: var(--ox-space-2); gap: var(--ox-space-2); }
+    .feature-tab-title { font-size: var(--ox-text-lead); }
+    .feature-tab-number, .feature-tab-arrow { display: none; }
+    .feature-tab-description > span { font-size: var(--ox-text-label); line-height: 1.4; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feature-tab, .feature-tab-arrow, .feature-tab-detail, .feature-tab-description, .feature-landscape, .feature-panel { transition: none; }
+  .feature-landscape, .feature-panel { transform: none; }
+  .feature-panel.is-active { transition: none; }
+  .agent-mark img, .agent-ring, .agent-orbit, .brain-float, .brain-source, .brain-primitive, .flow-link::after { animation: none; }
+  .agent-ring { opacity: .5; transform: none; }
+}
+@media (forced-colors: active) {
+  .brain-edges path { stroke: CanvasText; }
+  .brain-node circle, .brain-core-disc, .brain-halo, .brain-source rect, .brain-primitive rect { fill: Canvas; stroke: CanvasText; }
+  .brain-graph text { fill: CanvasText; }
+  .brain-icon { color: CanvasText; }
+}

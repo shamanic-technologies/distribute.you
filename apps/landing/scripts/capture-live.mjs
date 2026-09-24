@@ -89,7 +89,13 @@ async function capture(browser, url, outRoot, pass) {
     await writeFile(target, body);
   });
 
-  await page.goto(url, { waitUntil: "load", timeout: 90000 });
+  // `load` waits on EVERY subresource, and a page holding one long-lived request open
+  // (explee, 2026-09-24) never fires it. Take the document, then give `load` a bounded
+  // chance; the scroll below is what actually triggers the lazy assets we are here for.
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForLoadState("load", { timeout: 30000 }).catch(() => {
+    console.warn(`[capture] ${pass.label}: load never fired within 30s, capturing what arrived`);
+  });
 
   // Walk the page so anything gated on the viewport actually loads. A single jump to the
   // bottom skips whatever an intersection observer only fires on the way past.

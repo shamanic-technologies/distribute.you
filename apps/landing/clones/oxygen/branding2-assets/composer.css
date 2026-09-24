@@ -1,0 +1,114 @@
+/* One shared glass surface, with an unboxed writing area and action row. */
+.chat-shell {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--ox-space-3) var(--ox-space-4);
+  border-radius: var(--ox-radius-card);
+  text-align: left;
+}
+.composer-input {
+  display: grid;
+  min-height: var(--ox-space-10);
+  padding-inline: var(--ox-space-1);
+}
+#prompt, .composer-question {
+  grid-area: 1 / 1;
+  align-self: start;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--ox-hero-ink);
+  font: var(--ox-text-body)/var(--ox-space-5) var(--ox-font-sans);
+  text-align: left;
+}
+#prompt {
+  height: var(--ox-space-5);
+  min-height: var(--ox-space-5);
+  max-height: var(--ox-space-10);
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow-y: auto;
+}
+#prompt::placeholder { opacity: 0; }
+.composer-question { color: var(--ox-hero-secondary); cursor: text; }
+#prompt:not(:placeholder-shown) + .composer-question { opacity: 0; pointer-events: none; }
+.composer-toolbar { display: flex; align-items: center; gap: var(--ox-space-1); margin-top: var(--ox-space-1); }
+.composer-toolbar .ox-button { white-space: nowrap; font-size: var(--ox-text-label); }
+.composer-toolbar .ox-button[hidden] { display: none; }
+.composer-toolbar svg { flex: none; width: var(--ox-icon-sm); height: var(--ox-icon-sm); }
+.composer-plus { font-size: var(--ox-text-title); font-weight: var(--ox-weight-regular); line-height: 1; }
+.composer-toolbar .composer-icon { width: var(--ox-control-touch); padding: 0; flex: none; }
+.composer-toolbar .ox-button--ghost,
+.composer-popover .ox-button { color: var(--ox-hero-ink); box-shadow: none; }
+.composer-popover .ox-button:hover { background: var(--ox-glass-rail); box-shadow: none; }
+.composer-toolbar .ox-button--ghost { position: relative; isolation: isolate; }
+.composer-toolbar .ox-button--ghost::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: var(--ox-control-xs);
+  height: var(--ox-control-xs);
+  border-radius: var(--ox-radius-control);
+  pointer-events: none;
+}
+.composer-toolbar #composer-model::before { width: 100%; }
+.composer-toolbar .ox-button--ghost:is(:hover, :active, [aria-pressed="true"], [aria-expanded="true"]) {
+  background: none;
+  color: var(--ox-hero-ink);
+  box-shadow: none;
+}
+.composer-toolbar .ox-button--ghost:is(:hover, :active, [aria-pressed="true"], [aria-expanded="true"])::before { background: var(--ox-glass-rail); }
+.composer-toolbar .composer-submit { position: relative; margin-left: auto; background: none; color: var(--ox-hero-ink); }
+.composer-toolbar .composer-submit::before {
+  content: '';
+  position: absolute;
+  width: var(--ox-control-xs);
+  height: var(--ox-control-xs);
+  border-radius: var(--ox-radius-control);
+  border: 1px solid var(--ox-glass-line);
+  background: var(--ox-glass-fill);
+  box-shadow: var(--ox-shadow-soft);
+}
+.composer-submit svg { position: relative; }
+.composer-toolbar .composer-submit:hover { background: none; box-shadow: none; }
+.composer-submit:hover::before { background: var(--ox-glass-rail); }
+.chat-shell .ox-button:focus-visible,
+.composer-popover .ox-button:focus-visible { outline: 1px solid var(--ox-hero-ink); outline-offset: 2px; box-shadow: none; }
+.chat-shell #prompt:focus-visible { outline: none; box-shadow: none; }
+.chat-shell[data-keyboard-focus]:has(#prompt:focus-visible) { outline: 1px solid var(--ox-hero-secondary); outline-offset: 2px; }
+#composer-model { min-width: 0; padding-inline: var(--ox-space-1); gap: var(--ox-space-1); }
+#composer-model-label { overflow: hidden; text-overflow: ellipsis; }
+.composer-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: 208px;
+  max-width: calc(100vw - var(--ox-space-6));
+  max-height: calc(100dvh - var(--ox-space-6));
+  overflow-y: auto;
+  padding: var(--ox-space-1);
+  border-radius: var(--ox-radius-inner);
+}
+.composer-popover .ox-button { width: 100%; justify-content: flex-start; padding-inline: var(--ox-space-2); font-size: var(--ox-text-label); }
+.composer-popover .model-selected { margin-left: auto; visibility: hidden; }
+.composer-popover [aria-checked="true"] .model-selected { visibility: visible; }
+.composer-popover img, #composer-model img { flex: none; width: var(--ox-text-body); height: var(--ox-text-body); }
+.composer-attachment { display: flex; align-items: center; max-width: 100%; width: fit-content; padding-left: var(--ox-space-2); margin-top: var(--ox-space-2); font-size: var(--ox-text-label); }
+#composer-attachment-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-attachment .ox-button { flex: none; padding: 0; width: var(--ox-control-touch); background: none; color: var(--ox-hero-secondary); box-shadow: none; }
+@media (pointer: fine) {
+  .composer-popover .ox-button { min-height: var(--ox-control-sm); padding-block: var(--ox-space-1); }
+}
+@media (forced-colors: active) {
+  .composer-submit::before { background: ButtonFace; border-color: ButtonText; box-shadow: none; }
+  .composer-toolbar .ox-button--ghost:is(:hover, :active, [aria-pressed="true"], [aria-expanded="true"])::before { background: ButtonFace; border: 1px solid ButtonText; }
+}
+@container (max-width: 650px) {
+  .chat-shell { padding: var(--ox-space-3); }
+  .composer-toolbar { gap: 0; }
+}

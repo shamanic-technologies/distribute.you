@@ -1,0 +1,84 @@
+/* Shared homepage and branding-preview pricing, loaded after the Forest styles. */
+.landing-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ox-space-4); padding: 0; }
+.landing-plan { display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 0; padding: var(--ox-space-6); border-radius: var(--ox-radius-feature); }
+.landing-plan-price > span:first-child { font-size: calc(var(--ox-text-page) * 1.7); }
+.landing-plan-button { grid-row: 4; margin-top: 0; }
+.pricing-credit-controls { grid-row: 5; min-width: 0; padding-top: var(--ox-space-4); }
+/* One translucent material per card over this controlled forest. The shared
+   rim, blur and fallbacks remain canonical; the local fill lets the scene show. */
+.landing-pricing { --secondary: var(--ink); }
+.pricing-landscape::after { background: linear-gradient(180deg, color-mix(in srgb, var(--ox-paper) 91%, transparent), color-mix(in srgb, var(--ox-paper) 20%, transparent) 35%, color-mix(in srgb, var(--ox-paper) 8%, transparent) 65%, color-mix(in srgb, var(--ox-paper) 42%, transparent)); }
+.landing-plan.ox-glass, .pricing-enterprise.ox-glass, .pricing-breakdown.ox-glass {
+  --_ox-glass-fill: var(--ox-glass-wash-large), color-mix(in srgb, var(--ox-porcelain) 55%, transparent);
+  background: var(--_ox-glass-fill);
+}
+.landing-plan-featured .landing-plan-badge { background: var(--ox-sage); }
+.landing-plan-heading { margin-bottom: var(--ox-space-6); }
+.landing-plan-allowance { margin: var(--ox-space-3) 0 var(--ox-space-6); color: var(--ink); font-size: var(--ox-text-caption); line-height: var(--ox-leading-prose); }
+.landing-plan-features { grid-row: 6; display: grid; align-content: start; gap: var(--ox-space-3); margin: var(--ox-space-6) 0 0; padding: var(--ox-space-6) 0 0; border-top: 1px solid var(--ox-control-line); list-style: none; }
+.landing-plan-features li { display: flex; align-items: baseline; gap: var(--ox-space-2); color: var(--ink); font-size: var(--ox-text-label); line-height: var(--ox-leading-prose); }
+.landing-plan-features li > span { flex-shrink: 0; }
+.pricing-credit-label { display: block; margin-bottom: var(--ox-space-2); color: var(--ink); font-size: var(--ox-text-label); font-weight: var(--ox-weight-medium); }
+.pricing-credit-select { display: flex; align-items: center; justify-content: space-between; gap: var(--ox-space-2); text-align: left; width: max-content; max-width: 100%; min-width: 0; white-space: nowrap; min-height: var(--ox-control-touch); padding: var(--ox-space-3); margin: 0; border: 1px solid var(--ox-control-line); border-radius: var(--ox-radius-control); background: var(--ox-glass-rail); color: var(--ink); font: inherit; font-size: var(--ox-text-label); cursor: pointer; }
+.pricing-credit-select:hover { background: var(--ox-sage); }
+.pricing-credit-menu { width: max-content; }
+.pricing-credit-menu:popover-open { display: grid; }
+.pricing-credit-menu .ox-button { width: auto; min-width: 0; white-space: nowrap; min-height: var(--ox-control-touch); }
+.pricing-credit-menu [aria-checked="true"] { background: var(--ox-sage); }
+.pricing-credit-select:disabled { cursor: default; }
+.pricing-credit-select:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: var(--ox-space-1); }
+.landing-plan-price > span:only-child { color: var(--ink); font-size: calc(var(--ox-text-page) * 1.7); }
+.pricing-breakdown { margin-top: var(--ox-space-4); scroll-margin-top: var(--ox-space-6); color: var(--ink); padding: 0 var(--ox-space-6); border-radius: var(--ox-radius-feature); }
+.pricing-breakdown summary { display: flex; align-items: center; justify-content: space-between; gap: var(--ox-space-6); padding: var(--ox-space-6) 0; min-height: var(--ox-control-touch); cursor: pointer; list-style: none; color: var(--ink); }
+.pricing-breakdown summary::-webkit-details-marker { display: none; }
+.pricing-breakdown summary strong { display: block; font-size: var(--ox-text-lead); font-weight: var(--ox-weight-medium); }
+.pricing-breakdown summary > span > span { display: block; margin-top: var(--ox-space-2); color: var(--secondary); font-size: var(--ox-text-label); }
+.pricing-expand { display: grid; place-items: center; width: var(--ox-control-touch); height: var(--ox-control-touch); flex-shrink: 0; border: 1px solid var(--ox-control-line); border-radius: var(--ox-radius-pill); font-size: var(--ox-text-lead); }
+.pricing-breakdown[open] .pricing-expand { transform: rotate(45deg); }
+.pricing-breakdown summary:hover .pricing-expand { background: var(--ox-sage); }
+.pricing-breakdown summary:focus-visible, .pricing-cost-scroll:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: var(--ox-space-1); }
+.pricing-cost-scroll { overflow-x: auto; }
+.pricing-cost-table { border-collapse: collapse; width: 100%; min-width: 660px; text-align: left; font-size: var(--ox-text-label); line-height: var(--ox-leading-prose); }
+.pricing-cost-table caption { text-align: left; padding: 0 0 var(--ox-space-5); color: var(--secondary); font-size: var(--ox-text-caption); }
+.pricing-cost-table th, .pricing-cost-table td { padding: var(--ox-space-5) var(--ox-space-4); border-bottom: 1px solid var(--ox-hairline); }
+.pricing-cost-table thead th { color: var(--secondary); font-weight: var(--ox-weight-medium); font-size: var(--ox-text-caption); }
+.pricing-cost-table tbody th { font-weight: var(--ox-weight-medium); }
+.pricing-cost-table td:nth-child(2) { white-space: nowrap; color: var(--ink); font-size: var(--ox-text-lead); font-variant-numeric: tabular-nums; }
+.pricing-cost-table td:nth-child(3) { white-space: nowrap; }
+.pricing-cost-table td:last-child { width: 40%; color: var(--secondary); }
+.pricing-cost-table tbody tr:not(.pricing-cost-group):hover { background: var(--ox-sage); }
+.pricing-cost-table .pricing-cost-group th { padding-top: var(--ox-space-8); padding-bottom: var(--ox-space-5); background: var(--ox-glass-rail); }
+.pricing-cost-group strong, .pricing-cost-group span { display: block; }
+.pricing-cost-group strong { color: var(--ink); font-weight: var(--ox-weight-emphasis); font-size: var(--ox-text-body); }
+.pricing-cost-group span { margin-top: var(--ox-space-1); color: var(--secondary); font-size: var(--ox-text-caption); font-weight: var(--ox-weight-regular); }
+.pricing-cost-example { margin: 0; padding: var(--ox-space-6) var(--ox-space-4); color: var(--ink); font-size: var(--ox-text-label); line-height: var(--ox-leading-prose); }
+@container (max-width: 1100px) { .landing-plan { padding: var(--ox-space-5); } .landing-plan-heading { flex-wrap: wrap; min-height: 56px; align-content: start; } }
+@container (max-width: 900px) {
+  .landing-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pricing-enterprise { grid-column: 1 / -1; }
+  .landing-plan { padding: var(--ox-space-6) var(--ox-space-5); }
+  .landing-plan-heading { min-height: 28px; }
+  .landing-plan-price > span:first-child { font-size: calc(var(--ox-text-page) * 1.75); }
+}
+@container (max-width: 650px) {
+  .landing-plans { grid-template-columns: 1fr; }
+  .landing-plan { padding: var(--ox-space-6); }
+  .landing-plan-price > span:first-child { font-size: calc(var(--ox-text-page) * 2); }
+  .pricing-breakdown summary strong { font-size: var(--ox-text-body); }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .landing-plan.ox-glass, .pricing-enterprise.ox-glass, .pricing-breakdown.ox-glass { background: var(--ox-glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .landing-plan.ox-glass, .pricing-enterprise.ox-glass, .pricing-breakdown.ox-glass { background: var(--ox-glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .landing-plan { border-color: var(--ox-forest); }
+}
+@media (forced-colors: active) {
+  .pricing-landscape { display: none; }
+  .landing-pricing, .landing-plan.ox-glass, .pricing-enterprise.ox-glass, .pricing-breakdown.ox-glass { background: Canvas; color: CanvasText; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .landing-plan, .landing-plan-button { border-color: CanvasText; }
+  .landing-pricing a, .landing-pricing a:hover { color: LinkText; background: Canvas; }
+  .landing-pricing a:focus-visible, .landing-stack a:focus-visible { outline-color: Highlight; }
+}
+
+.pricing-cost-credits { white-space: nowrap; }

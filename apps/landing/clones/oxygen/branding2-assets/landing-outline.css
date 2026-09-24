@@ -1,0 +1,38 @@
+/* First-pass landing sections. The existing forest study owns the brand tokens. */
+.landing-section { padding: 92px 36px; }
+.landing-inner { max-width: 1080px; margin: 0 auto; }
+.landing-kicker { display: flex; align-items: center; gap: 9px; margin: 0 0 18px; color: var(--secondary); font-size: var(--ox-text-caption); font-weight: var(--ox-weight-semibold); letter-spacing: var(--ox-tracking-eyebrow); text-transform: uppercase; }
+.landing-kicker::before { content: ''; width: 5px; height: 5px; flex: 0 0 5px; border-radius: 50%; background: var(--forest); }
+.landing-heading { margin: 0; color: var(--ink); font-size: var(--ox-text-section); font-weight: var(--ox-weight-display); line-height: var(--ox-leading-tight); letter-spacing: var(--ox-tracking-heading); text-wrap: balance; }
+.landing-heading span { color: var(--ink); }
+.landing-lead { max-width: 49ch; margin: 22px 0 0; color: var(--secondary); font-size:var(--ox-text-body); line-height: 1.85; }
+.landing-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 44px; color: var(--forest); font-size:var(--ox-text-label); font-weight: 550; text-decoration: none; }
+.landing-link:hover { text-decoration: underline; }
+.landing-link span { font-size:var(--ox-text-lead); }
+
+.landing-faq-grid { display: grid; grid-template-columns: .85fr 1.15fr; gap: 85px; }
+.landing-section#questions { background: var(--ox-canvas); }
+.landing-faq-list { display: grid; gap: var(--ox-space-2); padding: var(--ox-space-3); border-radius: var(--ox-radius-feature); }
+.landing-faq-list details { padding: 0 var(--ox-space-4); }
+.landing-faq-list summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 69px; padding: 19px 0; list-style: none; cursor: pointer; font-size:var(--ox-text-ui); font-weight: 500; }
+.landing-faq-list summary::-webkit-details-marker { display: none; }
+.landing-faq-list summary::after { content: '+'; color: var(--secondary); font-size:var(--ox-text-title); font-weight: 300; }
+.landing-faq-list details[open] summary::after { content: '−'; }
+.landing-faq-list summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 5px; border-radius: 3px; }
+.landing-faq-list details p { margin: -2px 25px 22px 0; color: var(--secondary); font-size:var(--ox-text-label); line-height: 1.85; }
+
+@container (max-width: 900px) {
+  .landing-section { padding: 70px 30px; }
+  .landing-faq-grid { gap: 35px; }
+}
+@container (max-width: 650px) {
+  .landing-section { padding: 58px 22px; }
+  .landing-faq-grid { grid-template-columns: 1fr; gap: 32px; }
+  .landing-heading { font-size: var(--ox-text-section); }
+  .landing-lead { font-size:var(--ox-text-ui); margin-top: 18px; }
+  .landing-kicker { font-size: var(--ox-text-caption); }
+  .landing-faq-list summary { font-size:var(--ox-text-label); min-height: 68px; }
+}
+@media (pointer: coarse) {
+  .landing-pricing-note a, .landing-faq-list details p a { display: inline-flex; align-items: center; min-height: var(--ox-control-touch); }
+}

@@ -1,0 +1,74 @@
+/* Canonical Forest material shared by the specimen and production surfaces. */
+/* The workspace panorama and every adopted shell share this one material.
+   Text over media belongs on a pane or the higher-fill large variant. */
+.ox-glass {
+  --_ox-glass-fill: var(--ox-glass-fill);
+  --_ox-glass-elevation: var(--ox-shadow-soft);
+  position: relative;
+  color: var(--ox-ink);
+  background: var(--_ox-glass-fill);
+  border: 1px solid var(--ox-glass-line);
+  border-radius: var(--ox-radius-card);
+  box-shadow: var(--_ox-glass-elevation), var(--ox-glass-inset);
+  -webkit-backdrop-filter: blur(var(--ox-blur)) saturate(var(--ox-glass-saturation));
+  backdrop-filter: blur(var(--ox-blur)) saturate(var(--ox-glass-saturation));
+}
+.ox-glass::after {
+  content: '';
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--ox-glass-rim-gradient) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.ox-glass--large { --_ox-glass-fill: var(--ox-glass-fill-large); }
+/* Inner surfaces share the parent's optical layer. They never blur again. */
+.ox-glass-pane, .ox-glass-rail { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.ox-glass-pane { color: var(--ox-ink); background: var(--ox-glass-pane); border-radius: var(--ox-radius-inner); }
+.ox-glass-rail { color: var(--ox-ink); background: var(--ox-glass-rail); border-radius: var(--ox-radius-inner); }
+.ox-glass :where(a, button, input, textarea, summary):focus-visible {
+  outline: 2px solid var(--ox-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--ox-porcelain);
+}
+/* Clear is for a small, bold control cluster over rich media. Its host must
+   supply a local scrim; it is not a content-card treatment. */
+.ox-glass--clear {
+  --_ox-glass-fill: linear-gradient(145deg, var(--ox-glass-clear-highlight), transparent 42%), var(--ox-glass-clear);
+  color: var(--ox-porcelain);
+  font-weight: var(--ox-weight-semibold);
+}
+.oxygen-design .ox-glass--clear :where(a, button, input, textarea, summary):focus-visible {
+  outline: 2px solid var(--ox-porcelain);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--ox-ink);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ox-glass { background: var(--ox-glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ox-glass--clear { background: var(--ox-forest); }
+  .ox-glass-pane, .ox-glass-rail { background: var(--ox-glass-fallback); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ox-glass { background: var(--ox-glass-fallback); }
+  .ox-glass--clear { background: var(--ox-forest); }
+  .ox-glass-pane, .ox-glass-rail { background: var(--ox-glass-fallback); }
+}
+@supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .ox-glass::after { display: none; }
+}
+@media (prefers-contrast: more) {
+  .ox-glass { background: var(--ox-glass-fallback); border-color: var(--ox-ink); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ox-glass--clear { background: var(--ox-forest); border-color: var(--ox-porcelain); }
+  .ox-glass-pane, .ox-glass-rail { background: var(--ox-glass-fallback); }
+}
+@media (forced-colors: active) {
+  .ox-glass::after { display: none; }
+  .ox-glass-pane, .ox-glass-rail { color: CanvasText; background: Canvas; }
+  .ox-glass { color: CanvasText; background: Canvas; border-color: CanvasText; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; forced-color-adjust: auto; }
+}

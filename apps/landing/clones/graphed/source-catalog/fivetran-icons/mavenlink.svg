@@ -1,0 +1,25 @@
+<svg width="281" height="44" viewBox="0 0 281 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+ <style type="text/css">
+  .st0{fill:#ED7111;}
+ </style>
+ <g>
+  <path class="st0" d="M36.7,0L19.4,21.8L36.7,44H24.6L10.2,24.5V44H0V0h10.2v19.5L24.6,0H36.7z">
+  </path>
+  <path class="st0" d="M67.3,44l-1.5-5.3H50.2L48.7,44H38L52.8,0h10.2L78,44H67.3z M52.5,30.7h11L58,11.1L52.5,30.7z">
+  </path>
+  <path class="st0" d="M83.2,44V0h10.4l15.2,28.4V0h9.7v44h-10.4L92.9,15.5V44H83.2z">
+  </path>
+  <path class="st0" d="M136.9,44V9h-12V0h34.2v9h-12v35H136.9z">
+  </path>
+  <path class="st0" d="M186.3,44l-1.5-5.3h-15.6l-1.5,5.3H157l14.9-44H182l15,44H186.3z M171.5,30.7h11L177,11.1L171.5,30.7z">
+  </path>
+  <path class="st0" d="M206.7,44V9h-12V0H229v9h-12.2v35H206.7z">
+  </path>
+  <path class="st0" d="M256,44l-1.5-5.3h-15.6l-1.5,5.3h-10.7l14.9-44h10.2l14.9,44H256z M241.2,30.7h11l-5.5-19.5L241.2,30.7z">
+  </path>
+  <path class="st0" d="M269.4,44v-6.2h-2.4v-1h5.8v1h-2.4V44H269.4z">
+  </path>
+  <path class="st0" d="M273.6,44v-7.2h0.9l2.6,5.4l2.6-5.4h0.9V44h-1v-5l-2.3,5h-0.5l-2.3-4.9V44H273.6z">
+  </path>
+ </g>
+</svg>
