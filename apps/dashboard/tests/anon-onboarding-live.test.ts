@@ -67,6 +67,24 @@ describe("the signed-out build half is reachable", () => {
     // Resuming at `built` would ask them to create an account they now have.
     expect(src).toMatch(/claimed"\)\s*===\s*"1"\s*\?\s*"pricing"/);
   });
+
+  it("the generic resume lands a claimed return on the budget step too", () => {
+    // The first frame picked `pricing` and then the generic resume replayed the
+    // loading screen and set the SNAPSHOT step (`built`), so every signup came
+    // back to the recap. Both must name the same target.
+    const src = strip(read("src/components/onboarding/onboarding.tsx"));
+    const at = src.indexOf("const resumeTargetRef = useRef");
+    const block = src.slice(at, src.indexOf("const resumeStartedRef", at));
+    expect(block).toMatch(/claimed"\)\s*===\s*"1"\s*\?\s*"pricing"/);
+  });
+
+  it("a failed checkout never reads the downstream body to the customer", () => {
+    const src = strip(read("src/components/onboarding/onboarding.tsx"));
+    const at = src.indexOf("async function beginCheckoutAndLaunch(");
+    const body = src.slice(at, src.indexOf("async function resumeCheckoutLaunch(", at));
+    expect(body).not.toContain("err.message");
+    expect(body).toContain("Nothing was charged");
+  });
 });
 
 describe("what must NOT come back", () => {
