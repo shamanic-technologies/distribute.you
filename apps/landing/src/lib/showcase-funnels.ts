@@ -1,5 +1,5 @@
 import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
-import { podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
+import { hasDrawnOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
 
 /**
  * The homepage's three named clients state funnel counts we READ, not counts we
@@ -70,25 +70,41 @@ export interface ShowcaseBrand {
 export interface ShowcaseFunnels {
   brands: ShowcaseBrand[];
   /**
-   * THE CLIENTS THE PRODUCER PICKED FOR THE HERO — the most recently started ones that
-   * have produced at least one outcome, in the producer's own order.
+   * THE PRODUCER'S TWO PICKS.
    *
-   * Absent means features-service has not shipped the pick yet, and the page then keeps
-   * the three clients it ships with and merely reseeds their figures — which is exactly
-   * what it did before the pick existed. That is the SHIPPED page as the fallback, not a
-   * fabricated one: every other read on this page degrades the same way.
+   * Absent means features-service is still on its earlier contract — figures, no pick — and the page
+   * then keeps the three clients it ships with and reseeds only their figures, exactly as it did
+   * before the pick existed. That fallback is the SHIPPED page, not a fabricated one.
    */
-  recent?: ShowcaseBrand[];
+  groups?: {
+    /** Most recently begun clients carrying at least one outcome, newest first. */
+    recentlyStarted?: ShowcaseGroup;
+    /** Best measured return on what they paid, past `minSpendUsd`, best first. */
+    highestReturn?: ShowcaseGroup;
+  };
   /**
-   * THE CLIENTS THE PRODUCER PICKED FOR THE PROOF SECTION — the highest return on what
-   * they paid, past a spend floor the producer applies and states, in its own order.
+   * The spend floor the return ranking was taken over, in dollars.
    *
-   * The floor is load-bearing and is deliberately NOT ours to apply: measured in prod,
-   * an unfloored ranking puts a client at 21x on four dollars of spend at the top of the
-   * homepage. A ratio over a denominator that small is not a result, and picking one here
+   * Read for the record rather than applied: the floor is the PRODUCER's and is load-bearing —
+   * measured in prod, an unfloored ranking tops out at 21.5x on $4.12 of spend. Applying one here
    * would be this page ranking clients, which it does not do.
    */
-  topReturn?: ShowcaseBrand[];
+  minSpendUsd?: number;
+}
+
+/**
+ * ONE OF THE PRODUCER'S PICKS, WITH ITS OWN VERDICT ON WHETHER IT COULD ANSWER.
+ *
+ * `measured: false` always carries a reason, and a SHORT group is a stated fact
+ * (`qualifyingCount < requestedCount`) rather than a list a reader has to count — so an empty or
+ * short answer is never served silently, and is never mistaken here for a pick.
+ */
+export interface ShowcaseGroup {
+  brands: ShowcaseBrand[];
+  measured: boolean;
+  unmeasuredReason: string | null;
+  requestedCount?: number;
+  qualifyingCount?: number;
 }
 
 /** Every step the producer states for a domain, flattened and keyed. */
@@ -284,21 +300,52 @@ export function reseedShowcaseCards(html: string, data: ShowcaseFunnels): string
 
 
 /**
- * THE PRODUCER'S PICK, OR NOTHING.
+ * THE CLIENTS OF ONE PICK, OR NOTHING.
  *
- * Both groups must be there and both must be non-empty. A half-answer is not a smaller
- * answer: rendering one section from the wire and leaving the other on its shipped three
- * would put a dynamically-picked client in the hero and a frozen one in the proof section
- * on the same screen, which is the page stating two different opinions about who its
- * clients are.
+ * A group answers its OWN question and carries its OWN verdict, so the two are read independently:
+ * "who started most recently and has produced something" and "who returns best on what they paid"
+ * were never meant to name the same clients, and the producer says outright that a client may be in
+ * both groups or in neither.
+ *
+ * So one group going unanswered does NOT hold the other back. An earlier cut of this required both
+ * or neither, on a worry about coherence — a dynamically-picked client in the hero beside a frozen
+ * one in the proof section. That worry was wrong about the surfaces and would have been expensive:
+ * the recent group answers `no_qualifying_clients` in production today, so "both or nothing" would
+ * have shipped the return podium as dead code.
+ *
+ * `measured: false` is the producer declining to answer and is honoured — the page keeps its shipped
+ * clients for that section rather than rendering a short or empty row. A SHORT group is a different
+ * thing and IS rendered: the producer states how many qualified, so fewer than three is an answer.
  */
-export function selectionFrom(
-  data: ShowcaseFunnels
-): { recent: ShowcaseBrand[]; topReturn: ShowcaseBrand[] } | null {
-  const recent = Array.isArray(data.recent) ? data.recent : [];
-  const topReturn = Array.isArray(data.topReturn) ? data.topReturn : [];
-  if (recent.length === 0 || topReturn.length === 0) return null;
-  return { recent, topReturn };
+export function pickedBrands(group: ShowcaseGroup | undefined, label: string): ShowcaseBrand[] | null {
+  if (!group) return null;
+  if (!group.measured) {
+    // Loud, never swallowed: the producer could not answer, and the page silently keeping its
+    // shipped clients is exactly the kind of thing nobody notices for a month.
+    console.warn(
+      `[landing] showcase group "${label}" unmeasured (${group.unmeasuredReason ?? "no reason given"}), keeping the shipped clients`
+    );
+    return null;
+  }
+  const served = Array.isArray(group.brands) ? group.brands : [];
+  const brands = served.filter(hasDrawnOutcome);
+  if (brands.length < served.length) {
+    console.warn(
+      `[landing] showcase group "${label}" dropped ${served.length - brands.length} client(s) whose drawn funnel shows nothing past outreach`
+    );
+  }
+  // Nobody left to name: the section keeps its shipped clients, reseeded, like an unanswered group.
+  if (brands.length === 0) return null;
+  if (
+    typeof group.qualifyingCount === "number" &&
+    typeof group.requestedCount === "number" &&
+    group.qualifyingCount < group.requestedCount
+  ) {
+    console.warn(
+      `[landing] showcase group "${label}" is short: ${group.qualifyingCount} of ${group.requestedCount} clients qualified`
+    );
+  }
+  return brands;
 }
 
 /**
@@ -309,7 +356,9 @@ export function selectionFrom(
  * of the pick and must stay last — it is what the whole row is arguing towards.
  */
 export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): string {
-  const cards = brands.map(renderShowcaseCard).filter((card): card is string => card !== null);
+  const cards = brands
+    .filter(hasDrawnOutcome)
+    .map(renderShowcaseCard).filter((card): card is string => card !== null);
   // Every client the producer picked failed to render — a payload with no measured rung
   // for any of them. Keeping the shipped row beats emptying the hero.
   if (cards.length === 0) return html;
@@ -327,14 +376,16 @@ export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): 
  * each of the three sits on the row.
  */
 export function renderProofSelection(html: string, brands: ShowcaseBrand[]): string {
-  const cards = podium(brands)
+  const cards = podium(brands.filter(hasDrawnOutcome))
     .map(renderProofCard)
     .filter((card): card is string => card !== null);
   // A proof card leads with a return, so a pick carrying none renders nothing — and the
   // shipped three, whose returns are reseeded, are a better answer than an empty section.
   if (cards.length === 0) return html;
+  // Bounded to the proof grid's OWN cards: an unbounded `[\s\S]*</article>` runs to the LAST
+  // article on the page and deletes every section in between (quotes, pricing, FAQ).
   return html.replace(
-    /<article class="proof-card rv"[\s\S]*<\/article>/,
-    cards.join("\n      ")
+    /(<div class="proof-grid">\s*)(?:<article class="proof-card rv"[\s\S]*?<\/article>\s*)+/,
+    (_whole, open: string) => `${open}${cards.join("\n      ")}\n`
   );
 }

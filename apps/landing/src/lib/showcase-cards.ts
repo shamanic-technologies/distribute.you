@@ -116,6 +116,21 @@ function measuredSteps(funnel: ShowcaseFunnel | null): ShowcaseStep[] {
 }
 
 /**
+ * A CLIENT IS NAMED ONLY IF THE FUNNEL ITS CARD DRAWS SHOWS SOMETHING PAST OUTREACH.
+ *
+ * The producer gates its pick on an outcome count read off its fleet snapshot, which can count an
+ * outcome on a funnel or channel the card does not draw — so a client arrives whose drawn funnel is
+ * contacted-and-zeros (measured 2026-09-24: livingvital.ch, 183 contacted, every rung 0). A card
+ * that names a customer and shows nothing is worse than a shorter row. This is the owner's rule
+ * applied to the served figures: at least one person reached a rung after contacted.
+ */
+export function hasDrawnOutcome(brand: ShowcaseBrand): boolean {
+  return measuredSteps(cardFunnel(brand)).some(
+    (step) => step.key !== CONTACTED && (step.peopleReached as number) > 0
+  );
+}
+
+/**
  * The rung a card prices.
  *
  * The FIRST conversion after the outreach base — the outcome the channel is bought for,
