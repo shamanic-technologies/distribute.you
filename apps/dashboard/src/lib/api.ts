@@ -6150,14 +6150,26 @@ export interface LeadsPage {
   nextCursor: string | null;
 }
 
-/** `?brandId=` or `?campaignId=`, exactly as the unpaginated readers scope themselves. */
+/**
+ * `?brandId=` or `?campaignId=`, exactly as the unpaginated readers scope themselves, plus
+ * ONE sales funnel of an offer (`?offerId=&funnelKey=`). The funnel is carried WITH its
+ * offer because lead-service refuses a funnel named without the offer it narrows.
+ */
 export interface LeadScope {
   brandId?: string;
   campaignId?: string;
+  funnel?: { offerId: string; funnelKey: string };
 }
 
 function leadScopeQuery(scope: LeadScope): string {
   if (scope.campaignId) return `campaignId=${encodeURIComponent(scope.campaignId)}`;
+  if (scope.brandId && scope.funnel) {
+    return (
+      `brandId=${encodeURIComponent(scope.brandId)}` +
+      `&offerId=${encodeURIComponent(scope.funnel.offerId)}` +
+      `&funnelKey=${encodeURIComponent(scope.funnel.funnelKey)}`
+    );
+  }
   if (scope.brandId) return `brandId=${encodeURIComponent(scope.brandId)}`;
   throw new Error("[dashboard] leadScopeQuery: a leads read must name a brand or a campaign");
 }

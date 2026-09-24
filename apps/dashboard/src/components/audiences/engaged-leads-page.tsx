@@ -885,11 +885,26 @@ export function EngagedLeadsPage({
   // so there is nothing to dedupe here. What a person's several campaigns did lives on
   // `lead.campaigns`, served under `?include=campaigns` — the row is the person, the
   // cards are their campaigns.
+  // A sales funnel's own page narrows to that funnel of its offer: every count and every
+  // row then belongs to the funnel, not to the offer's other funnels.
+  const funnelScopeKey =
+    !campaignId && offerId && params.funnelKey
+      ? decodeURIComponent(params.funnelKey as string)
+      : null;
   const scope = useMemo<LeadScope>(
-    () => (campaignId ? { campaignId } : { brandId }),
-    [campaignId, brandId],
+    () =>
+      campaignId
+        ? { campaignId }
+        : funnelScopeKey && offerId
+          ? { brandId, funnel: { offerId, funnelKey: funnelScopeKey } }
+          : { brandId },
+    [campaignId, brandId, offerId, funnelScopeKey],
   );
-  const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`;
+  const scopeKey = campaignId
+    ? `campaign:${campaignId}`
+    : funnelScopeKey
+      ? `funnel:${brandId}:${offerId}:${funnelScopeKey}`
+      : `brand:${brandId}`;
 
   // What the WIRE carries for the search box. Debounced, because a request per keystroke
   // would be evaluated over the whole population; and refused locally when the producer
