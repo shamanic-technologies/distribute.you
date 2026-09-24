@@ -78,6 +78,17 @@ const copy = html
   .replace(/<style[\s\S]*?<\/style>/g, "")
   .replace(/<script[\s\S]*?<\/script>/g, "");
 
+describe("the H1 says what we are, read on its own", () => {
+  // ChatGPT's own index (and most AI search) keeps ~200 characters around the H1 and
+  // ignores the meta description, so a headline that names only an outcome ("revenue in
+  // 24h") leaves an answer engine unable to say what distribute.you IS. The category
+  // rides inside the H1, in plain text, rendered server-side.
+  it("names the category inside the h1", () => {
+    const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
+    expect(h1).toContain("distribute.you is an acquisition agency");
+  });
+});
+
 describe("an existing customer can log in at every width", () => {
   // The pill hid `Log in` below 640px and the footer carries no login link, so on a
   // phone the homepage offered no way back into an account at all. Measured at
