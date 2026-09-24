@@ -311,6 +311,18 @@ describe("stating what a won deal was worth", () => {
     expect(PAGE).toContain("values={panelValues}");
   });
 
+  it("states a CRM-evidenced won deal's value, not only a hand-stated one", () => {
+    // The CRM branch used to render "From your CRM · Happened" and drop the amount their
+    // CRM recorded, so a won deal read as worth nothing on the panel. Bounded to that
+    // branch so the hand-stated render above cannot satisfy it.
+    const crm = SECTION.slice(
+      SECTION.indexOf(") : isFromCrm ? ("),
+      SECTION.indexOf('data-testid="lead-funnel-stage-crm"'),
+    );
+    expect(crm).toContain('data-testid="lead-funnel-stage-value"');
+    expect(crm).toContain("formatValue(values[stage.key] as number)");
+  });
+
   it("sends the amount only when the control asked for one", () => {
     // A `never` carries no value and the producer refuses one, so the key is omitted
     // rather than sent empty. The COST rides along either way.
