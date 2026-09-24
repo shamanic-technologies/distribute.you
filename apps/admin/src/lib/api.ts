@@ -7817,7 +7817,14 @@ const LeadStepEntrySchema = z.object({
    * below — a producer-owned key this app reads and does not name.
    */
   inFunnel: z.boolean().optional(),
-  source: z.enum(["tracker", "manual"]).nullable(),
+  /**
+   * Who evidenced the step: `manual` = a person stated it, `tracker` = the website
+   * tracker reported it, `crm` = the customer's own CRM evidenced it (a paired contact's
+   * meeting or deal). Read as a plain STRING: the vocabulary is lead-service's and it
+   * grows, and an enum here throws the whole lead panel away the first time a value
+   * lands that this app has not heard of yet. Only `manual` is somebody's own words.
+   */
+  source: z.string().nullable(),
   valueCents: z.number().nullable(),
   /**
    * What the CUSTOMER stated getting through this step cost THEM, in cents. Their own
@@ -7862,12 +7869,20 @@ const LeadStepStatementsSchema = z
 
 export type LeadStepStatements = z.infer<typeof LeadStepStatementsSchema>;
 
+/**
+ * The step-statements parse, exported so a guard runs the REAL parser over a real body
+ * (a `source: "crm"` step must parse, not throw the lead panel away).
+ */
+export function parseLeadStepStatements(raw: unknown) {
+  return LeadStepStatementsSchema.safeParse(raw);
+}
+
 export async function getLeadStepStatements(
   leadRowId: string,
   token?: string,
 ): Promise<LeadStepStatements> {
   const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements`, { token });
-  const parsed = LeadStepStatementsSchema.safeParse(raw);
+  const parsed = parseLeadStepStatements(raw);
   if (!parsed.success) {
     console.error("[admin] getLeadStepStatements: response shape mismatch", {
       issues: parsed.error.issues,
