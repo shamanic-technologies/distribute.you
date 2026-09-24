@@ -17,7 +17,7 @@ import { type Maturity } from "@/lib/feature-gates";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
-interface SidebarItem {
+export interface SidebarItem {
   id: string;
   label: string;
   href: string;
@@ -27,7 +27,7 @@ interface SidebarItem {
   maturity?: Maturity;
 }
 
-function SidebarLink({
+export function SidebarLink({
   item,
   isActive,
   badgePending = false,
