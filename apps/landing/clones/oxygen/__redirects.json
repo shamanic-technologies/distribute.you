@@ -1,0 +1,6 @@
+{
+  "/subscribe": {
+    "status": 307,
+    "location": "https://lab-oxygen.distribute.you/auth/sign-in?redirect_url=https%3A%2F%2Foxygen-agent.com%2Fsubscribe%3Fplan%3Doxygen_49"
+  }
+}

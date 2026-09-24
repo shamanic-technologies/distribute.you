@@ -1,0 +1,161 @@
+{
+  "explee": {
+    "origin": "https://explee.com",
+    "sites": [
+      {
+        "label": "auth",
+        "origin": "https://auth.explee.com"
+      }
+    ],
+    "steps": [
+      {
+        "url": "https://explee.com/",
+        "click": [
+          "Sign in"
+        ],
+        "lands": "https://auth.explee.com/sign-in",
+        "mode": "snapshot"
+      },
+      {
+        "url": "https://explee.com/",
+        "click": [
+          "Sign in",
+          "Create account"
+        ],
+        "lands": "https://auth.explee.com/register",
+        "mode": "snapshot"
+      },
+      {
+        "url": "https://explee.com/pricing",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "The primary CTA is the hero form: it only moves once a website is SUBMITTED (their analysis runs server-side), so the capture stops before it. 'I don't have a website' opens a questionnaire modal inside the landing (works in the clone; submitting it is the wall). 'Sign in' is a Next server action that opens an OIDC request on auth.explee.com (Logto); the clone replays the recorded answer, so it lands on our copy of their sign-in page at lab-explee-auth, and 'Create account' there leads to their register page. Logto refuses those pages outside a live OIDC session, so both are SNAPSHOTS: faithful to look at, inert to click. Behind them: email or phone + a code, or LinkedIn, then the campaign builder."
+  },
+  "revid": {
+    "origin": "https://www.revid.ai",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://www.revid.ai/login",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.revid.ai/pricing",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Every signup CTA goes to /login: Google, or an email that gets a magic link ('Get started'), or 'Log in with password'. Behind it: the video creation workspace."
+  },
+  "outrank": {
+    "origin": "https://www.outrank.so",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://www.outrank.so/signin",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.outrank.so/pricing",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Every signup CTA goes to /signin: Google, or an email that gets a sign-in link. Behind it: a 3-day trial and the keyword/article preview for the user's site."
+  },
+  "trustmrr": {
+    "origin": "https://trustmrr.com",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://trustmrr.com/login",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://trustmrr.com/dashboard-dev",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "'Add startup' opens a modal on the landing itself (payment provider + a read-only Stripe API key, then paid add-ons); submitting a key is the wall. 'Get API key' redirects to /login: Google or a 4-digit email code."
+  },
+  "origami": {
+    "origin": "https://origami.chat",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://origami.chat/sign-up",
+        "mode": "snapshot"
+      },
+      {
+        "url": "https://origami.chat/sign-in",
+        "mode": "snapshot"
+      },
+      {
+        "url": "https://origami.chat/pricing",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Start Free / Get Started go to /sign-up: 'Continue with Email' or Google, rendered by Clerk. Clerk's widget refuses to render off its own domain (its API checks the Origin), so sign-up and sign-in are SNAPSHOTS of what a browser rendered: faithful to look at, inert to click. Behind them: their onboarding progress API (answers 401 before an account exists) and the signal workspace."
+  },
+  "oxygen": {
+    "origin": "https://oxygen-agent.com",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://oxygen-agent.com/auth/sign-up",
+        "mode": "snapshot"
+      },
+      {
+        "url": "https://oxygen-agent.com/auth/sign-in",
+        "mode": "snapshot"
+      },
+      {
+        "url": "https://oxygen-agent.com/subscribe?plan=oxygen_49",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Try for Free goes to a Clerk sign-up (first/last name, email, phone, password); the plan CTA (/subscribe?plan=oxygen_49) redirects to Clerk sign-in first. Clerk's widget refuses to render off its own domain (its API checks the Origin), so these two pages are SNAPSHOTS of what a browser rendered: faithful to look at, inert to click. Behind them: checkout for the chosen plan."
+  },
+  "graphed": {
+    "origin": "https://www.graphed.com",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://www.graphed.com/register?returnTo=%2Fbook-demo",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.graphed.com/login?returnTo=%2Fbook-demo",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.graphed.com/register",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.graphed.com/login",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Both CTAs ('Book demo', 'Book a discovery call') go to /register?returnTo=/book-demo: name, email, password or Google. Behind it: the demo booking page."
+  },
+  "gojiberry": {
+    "origin": "https://gojiberry.ai",
+    "sites": [
+      {
+        "label": "app",
+        "origin": "https://app.gojiberry.ai"
+      }
+    ],
+    "steps": [
+      {
+        "url": "https://app.gojiberry.ai/registration",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://app.gojiberry.ai/login",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Every CTA goes to app.gojiberry.ai/registration (served at lab-gojiberry-app): name, business email, password, or Google, for a 7-day trial. Behind it: the agent setup wizard."
+  }
+}

@@ -143,6 +143,10 @@ describe("the reader and the capture script agree on every path", () => {
     ["/_next/image", "?url=%2Fa.jpg&w=96&q=75"],
     ["/a/logo.svg", "?v=2"],
     ["/style.css", "?hash=abc"],
+    // A Next dynamic chunk arrives percent-encoded; stored under the encoded name it was a
+    // 404 sitting on disk, on every Next clone.
+    ["/_next/static/chunks/app/(app)/%5B...slug%5D/page-42f27bf54e338ade.js", ""],
+    ["/customer-quotes/matt%20wetrich.jpeg", ""],
   ];
 
   it.each(cases)("%s%s", (pathname, search) => {
