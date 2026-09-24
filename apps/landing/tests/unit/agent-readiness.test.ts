@@ -103,7 +103,8 @@ describe("Accept negotiation on a statically-served page", () => {
 
 describe("every static route passes the request through", () => {
   it("has no response call that drops the Accept header", () => {
-    expect(read("src/app/route.ts")).toMatch(/staticResponse\("[^"]+", request/);
+    // `/` renders per request for the homepage A/B test and still passes the request on.
+    expect(read("src/app/route.ts")).toMatch(/renderedResponse\(html, request\)/);
     for (const file of [
       "src/app/about/route.ts",
       "src/app/contact/route.ts",
