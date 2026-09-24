@@ -8161,7 +8161,8 @@ export async function createEmbeddedCheckoutSession(
  * The hosted case still carries `url` where it always did, so this stayed
  * backwards compatible while the backend rolled out.
  */
-export type CardSetup =
+export type CardSetup = CardSetupSettlement &
+  (
   | { object: "card_setup"; mode: "hosted_redirect"; url: string }
   | {
       object: "card_setup";
@@ -8188,7 +8189,21 @@ export type CardSetup =
       /** Prefilled so the provider does not ask for what we already know. */
       customer_name?: string | null;
       customer_email?: string | null;
-    };
+    }
+  );
+
+/**
+ * What billing-service did about the outstanding balance while minting the
+ * session (see `cardSessionSettleProblem` in lib/card-change-settle). Optional
+ * on purpose: an older billing deploy states none of it, which reads as nothing
+ * to say. `settle_result` is a plain string so a value billing adds later parses.
+ */
+export interface CardSetupSettlement {
+  settle_result?: string;
+  settled_cents?: number;
+  settle_skip_reason?: string;
+  settle_decline_message?: string | null;
+}
 
 /**
  * Opening the card page is never refused, whatever happens to the money we try

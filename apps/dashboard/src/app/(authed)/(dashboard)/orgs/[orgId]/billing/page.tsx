@@ -16,6 +16,7 @@ import {
   type CreditGrant,
   type Payment,
   type Brand,
+  type CardSetup,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
@@ -24,7 +25,11 @@ import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { latestPaymentFailure } from "@/lib/payment-failure";
 import { availableCreditCents } from "@/lib/credit-runway";
-import { cardChangeSettleCents } from "@/lib/card-change-settle";
+import {
+  cardChangeSettleCents,
+  cardSessionSettleProblem,
+  type SettleProblem,
+} from "@/lib/card-change-settle";
 import { cardRemoveConsequence } from "@/lib/card-remove";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
@@ -275,6 +280,14 @@ export default function BillingPage() {
   // up; the source is held so Confirm opens the page the customer asked for.
   const [confirmSource, setConfirmSource] = useState<"manage" | "invoices" | null>(null);
 
+  // The charge behind the confirmation did not land. The card page was already
+  // prepared by the same call, so it is held here and opened only when the
+  // customer chooses to, after being told why the charge failed.
+  const [settleProblem, setSettleProblem] = useState<{
+    problem: SettleProblem;
+    setup: CardSetup;
+  } | null>(null);
+
   // Removing the card is its own confirmation and its own in-flight state: it
   // shares neither with the portal buttons, because it opens no portal.
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
@@ -470,46 +483,22 @@ export default function BillingPage() {
         `${window.location.origin}${window.location.pathname}`
       );
 
-      // Providers do not all do this the same way: some host a page we send the
-      // customer to, others save a card only through a widget mounted here. The
-      // backend says which; this only renders it.
-      if (setup.mode === "hosted_redirect") {
-        window.location.href = setup.url;
+      // The session is handed over whatever the charge did, and the redirect
+      // used to follow immediately, so a declined charge was never mentioned.
+      // Stop here and say so; the card page stays one click away.
+      const problem = cardSessionSettleProblem(setup);
+      if (problem) {
+        setSettleProblem({ problem, setup });
+        setPortalLoadingSource(null);
+        // The refused charge is now a payment on the list (the failed-payment
+        // banner reads it), so re-read rather than wait for the next poll.
+        void queryClient
+          .refetchQueries({ queryKey: ["billingPayments"] })
+          .catch((err) => console.error("[billing] post-decline refetch failed:", err));
         return;
       }
 
-      const { openCardWidget } = await import("@/lib/card-setup-widget");
-      await openCardWidget({
-        token: setup.token,
-        environment: setup.environment,
-        savePaymentMethodFor: setup.save_payment_method_for,
-        name: setup.customer_name ?? undefined,
-        email: setup.customer_email ?? undefined,
-        onSuccess: () => {
-          // The card only exists at the provider once this fires, so re-read
-          // rather than assuming — otherwise the page would claim a card is on
-          // file before one is. Re-read, NEVER reload: the cache is local-first,
-          // so a reload paints the previous visit's snapshot first and tells a
-          // customer who has just saved a card that they have no payment method,
-          // for as long as the cold billing read takes. Same bug the removal had
-          // (#4252), pointed the other way. The widget has taken itself down by
-          // the time this runs, so the page underneath is what they are looking
-          // at while it settles.
-          void refreshAfterCardSaved();
-        },
-        onCancel: () => {
-          setPortalLoadingSource(null);
-          setConfirmSource(null);
-        },
-        onError: (message) => {
-          setError(message);
-          setPortalLoadingSource(null);
-          setConfirmSource(null);
-        },
-      });
-      // The widget is mounted, so the confirmation has done its job. The hosted
-      // branch above returns before this and navigates away instead.
-      setConfirmSource(null);
+      await continueToCardPage(setup);
     } catch (err) {
       console.error("[billing] card page failed to open", err);
       setError("Failed to open the card page. Please try again.");
@@ -517,6 +506,74 @@ export default function BillingPage() {
       // Drop the modal so the error under the button is readable.
       setConfirmSource(null);
     }
+  }
+
+  /** Close the declined-charge notice without opening the card page. */
+  function dismissSettleProblem() {
+    setSettleProblem(null);
+    setConfirmSource(null);
+  }
+
+  /** The customer read why the charge failed and chose to change the card. */
+  function continueAfterSettleProblem() {
+    const held = settleProblem;
+    const source = confirmSource ?? "manage";
+    setSettleProblem(null);
+    // Close the modal rather than fall back to its "Charging..." state: nothing
+    // is being charged now, and the button's own spinner covers the redirect.
+    setConfirmSource(null);
+    if (!held) return;
+    setPortalLoadingSource(source);
+    void continueToCardPage(held.setup).catch((err) => {
+      console.error("[billing] card page failed to open", err);
+      setError("Failed to open the card page. Please try again.");
+      setPortalLoadingSource(null);
+      setConfirmSource(null);
+    });
+  }
+
+  /** Send the customer to the card page the backend prepared (or mount its widget). */
+  async function continueToCardPage(setup: CardSetup) {
+    // Providers do not all do this the same way: some host a page we send the
+    // customer to, others save a card only through a widget mounted here. The
+    // backend says which; this only renders it.
+    if (setup.mode === "hosted_redirect") {
+      window.location.href = setup.url;
+      return;
+    }
+
+    const { openCardWidget } = await import("@/lib/card-setup-widget");
+    await openCardWidget({
+      token: setup.token,
+      environment: setup.environment,
+      savePaymentMethodFor: setup.save_payment_method_for,
+      name: setup.customer_name ?? undefined,
+      email: setup.customer_email ?? undefined,
+      onSuccess: () => {
+        // The card only exists at the provider once this fires, so re-read
+        // rather than assuming — otherwise the page would claim a card is on
+        // file before one is. Re-read, NEVER reload: the cache is local-first,
+        // so a reload paints the previous visit's snapshot first and tells a
+        // customer who has just saved a card that they have no payment method,
+        // for as long as the cold billing read takes. Same bug the removal had
+        // (#4252), pointed the other way. The widget has taken itself down by
+        // the time this runs, so the page underneath is what they are looking
+        // at while it settles.
+        void refreshAfterCardSaved();
+      },
+      onCancel: () => {
+        setPortalLoadingSource(null);
+        setConfirmSource(null);
+      },
+      onError: (message) => {
+        setError(message);
+        setPortalLoadingSource(null);
+        setConfirmSource(null);
+      },
+    });
+    // The widget is mounted, so the confirmation has done its job. The hosted
+    // branch above returns before this and navigates away instead.
+    setConfirmSource(null);
   }
 
   async function handleRemoveCard() {
@@ -633,7 +690,9 @@ export default function BillingPage() {
           settleCents={settleCents}
           pending={portalLoadingSource !== null}
           onConfirm={() => void openCardPage(confirmSource)}
-          onCancel={() => setConfirmSource(null)}
+          onCancel={settleProblem ? dismissSettleProblem : () => setConfirmSource(null)}
+          problem={settleProblem?.problem ?? null}
+          onContinue={continueAfterSettleProblem}
         />
       )}
       {removeConfirmOpen && (
