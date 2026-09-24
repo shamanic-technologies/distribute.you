@@ -31,15 +31,17 @@ const OpportunitySchema = z.object({
   updatedAt: z.string().nullish(),
 });
 
-const ProvenanceSchema = z
-  .object({
-    leadSource: z.string().nullish(),
-    originMedium: z.string().nullish(),
-    contactType: z.string().nullish(),
-    tags: z.array(z.string()).nullish(),
-    createdAt: z.string().nullish(),
-  })
-  .passthrough();
+/** Where the record came from in their CRM, verbatim (crm-service's `record`, carried by lead-service). */
+const RecordSchema = z.object({
+  type: z.string().nullish(),
+  leadSource: z.string().nullish(),
+  tags: z.array(z.string()).nullish(),
+  createdAt: z.string().nullish(),
+  updatedAt: z.string().nullish(),
+  origin: z
+    .object({ medium: z.string().nullish(), url: z.string().nullish(), referrer: z.string().nullish() })
+    .nullish(),
+});
 
 const CrmSideSchema = z
   .object({
@@ -52,10 +54,9 @@ const CrmSideSchema = z
     phone: z.string().nullish(),
     company: z.string().nullish(),
     unsubscribed: z.boolean(),
-  })
-  // Keeps any field the producer adds (provenance is being asked for), so this
-  // reader does not strip it at the parse boundary.
-  .passthrough();
+    /** Their provenance. Optional so a row predating it still parses. */
+    record: RecordSchema.nullish(),
+  });
 
 const LeadSideSchema = z.object({
   leadId: z.string(),
@@ -304,16 +305,46 @@ export function crmContactLabel(c: CrmPairingRow["crmContact"]): string {
   return (c.email ?? "").trim() || (c.phone ?? "").trim() || "No name";
 }
 
-/** The provenance lead-service may carry on the contact, read tolerantly. */
-export function contactProvenance(c: CrmPairingRow["crmContact"]): z.infer<typeof ProvenanceSchema> | null {
-  const bag = c as Record<string, unknown>;
-  const candidate = bag.provenance ?? bag.record ?? null;
-  if (candidate && typeof candidate === "object") {
-    const parsed = ProvenanceSchema.safeParse(candidate);
-    if (parsed.success) return parsed.data;
-  }
-  return null;
+/** Their record's provenance, or null when the row carries none. */
+export function contactProvenance(c: CrmPairingRow["crmContact"]) {
+  return c.record ?? null;
 }
+
+// ─── Where their contacts came from (crm-service) ────────────────────────────
+
+const OriginBucketSchema = z.object({ value: z.string().nullable(), count: z.number() });
+
+export const CrmContactOriginsSchema = z.object({
+  totalContacts: z.number(),
+  leadSource: z.array(OriginBucketSchema),
+  originMedium: z.array(OriginBucketSchema),
+  contactType: z.array(OriginBucketSchema).nullish(),
+  tags: z
+    .object({ tagged: z.number(), untagged: z.number(), labels: z.array(OriginBucketSchema) })
+    .nullish(),
+});
+
+export type CrmContactOrigins = z.infer<typeof CrmContactOriginsSchema>;
+export type OriginBucket = z.infer<typeof OriginBucketSchema>;
+
+/**
+ * The buckets worth a line, in the producer's order, capped. What is left is
+ * stated as a count of buckets, never folded into an "other" figure we add up.
+ */
+export function topBuckets(buckets: OriginBucket[], max: number): { shown: OriginBucket[]; more: number } {
+  const nonEmpty = buckets.filter((b) => b.count > 0);
+  return { shown: nonEmpty.slice(0, max), more: Math.max(0, nonEmpty.length - max) };
+}
+
+/** The pairing-state sets the table offers, as lead-service's `state` values. */
+export const STATE_FILTERS: { id: string; label: string; states: string[] | null }[] = [
+  { id: "paired", label: "In common", states: ["paired"] },
+  { id: "unconfirmed", label: "Maybe in common", states: ["unconfirmed"] },
+  { id: "both", label: "In common or maybe", states: ["paired", "unconfirmed"] },
+  { id: "rejected", label: "Not the same person", states: ["rejected"] },
+  { id: "unpaired", label: "Only in their CRM", states: ["unpaired"] },
+  { id: "all", label: "Everyone", states: null },
+];
 
 /** Filter + order one loaded page. Never a claim about the whole population. */
 export function filterAndSortRows(
