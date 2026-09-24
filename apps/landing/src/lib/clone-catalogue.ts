@@ -44,22 +44,24 @@ export type Clone = {
 };
 
 export const CLONES: readonly Clone[] = [
-  { slug: "explee", source: "https://explee.com/", capturedAt: "2026-09-06", brandised: false, localisedHosts: [] },
-  { slug: "revid", source: "https://www.revid.ai/", capturedAt: "2026-09-06", brandised: false, localisedHosts: [] },
-  { slug: "outrank", source: "https://www.outrank.so/", capturedAt: "2026-09-06", brandised: false, localisedHosts: [] },
-  { slug: "trustmrr", source: "https://trustmrr.com/", capturedAt: "2026-09-06", brandised: false, localisedHosts: [] },
+  { slug: "explee", source: "https://explee.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  { slug: "revid", source: "https://www.revid.ai/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  { slug: "outrank", source: "https://www.outrank.so/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  { slug: "trustmrr", source: "https://trustmrr.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  { slug: "origami", source: "https://origami.chat/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  { slug: "oxygen", source: "https://oxygen-agent.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  { slug: "graphed", source: "https://www.graphed.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
   {
     slug: "gojiberry",
     source: "https://gojiberry.ai/",
-    capturedAt: "2026-09-06",
+    capturedAt: "2026-09-24",
     brandised: false,
     // Framer: the origin serves the HTML and nothing else, so without this the clone is a
-    // shell rendering out of framerusercontent.com. 494 assets rapatriated.
+    // shell rendering out of framerusercontent.com. 509 assets rapatriated.
     localisedHosts: [
       "app.framerstatic.com",
-      // cdn.jsdelivr.net is referenced only from INSIDE files.tlt-cdn.com/tlt.js, a
-      // third-party script the localiser copied verbatim without walking; nothing was
-      // mirrored for it, so it is not claimed here (the guard checks the directory exists).
+      "assets.calendly.com",
+      "cdn.jsdelivr.net",
       "files.tlt-cdn.com",
       "fonts.gstatic.com",
       "framer.com",

@@ -1,0 +1,80 @@
+@import url("./materials.css");
+
+/* Framework-neutral Forest recipes. React behavior stays in components/ui. */
+.oxygen-design {
+  color: var(--ox-ink);
+  background: var(--ox-paper);
+  font-family: var(--ox-font-sans);
+  font-size: var(--ox-text-body);
+  line-height: var(--ox-leading-ui);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+.oxygen-design :where(button, input, textarea) { font: inherit; }
+.oxygen-design :where(a, button, input, textarea, summary):focus-visible {
+  outline: 2px solid var(--ox-focus);
+  outline-offset: 4px;
+}
+.ox-display, .ox-heading { margin: 0; font-weight: var(--ox-weight-display); text-wrap: balance; line-height: var(--ox-leading-tight); }
+.ox-display { font-size: var(--ox-text-display); letter-spacing: var(--ox-tracking-display); }
+.ox-heading { font-size: var(--ox-text-section); letter-spacing: var(--ox-tracking-heading); }
+.ox-accent { font-family: var(--ox-font-accent); font-style: italic; font-weight: 400; letter-spacing: -.025em; color: var(--ox-forest); }
+.ox-lead { color: var(--ox-secondary); font-size: var(--ox-text-lead); line-height: var(--ox-leading-prose); max-width: 52ch; }
+.ox-eyebrow { color: var(--ox-secondary); font-size: var(--ox-text-caption); font-weight: var(--ox-weight-semibold); letter-spacing: var(--ox-tracking-eyebrow); text-transform: uppercase; }
+.ox-section { max-width: var(--ox-content-max); margin-inline: auto; padding: var(--ox-space-24) var(--ox-space-8); }
+.ox-bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ox-space-4); }
+.ox-card { min-width: 0; padding: var(--ox-space-6); background: var(--ox-porcelain); border-radius: var(--ox-radius-card); box-shadow: var(--ox-shadow-soft); }
+.ox-card--sage { background: var(--ox-sage); }
+.ox-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--ox-space-2);
+  min-height: var(--ox-control-touch); padding: var(--ox-space-2) var(--ox-space-4);
+  border: 1px solid transparent; border-radius: var(--ox-radius-control);
+  font-size: var(--ox-text-ui); font-weight: var(--ox-weight-medium); line-height: var(--ox-leading-ui);
+  color: var(--ox-porcelain); background: var(--ox-forest); text-decoration: none;
+  cursor: pointer; touch-action: manipulation;
+  transition: background var(--ox-duration-fast) var(--ox-ease), box-shadow var(--ox-duration-fast) var(--ox-ease);
+}
+.ox-button:hover { background: var(--ox-forest-hover); }
+.ox-button:active:not(:disabled) { box-shadow: inset 0 0 0 2px var(--ox-porcelain); }
+.ox-button[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--ox-forest); background: var(--ox-sage); color: var(--ox-forest); }
+.ox-button--secondary { color: var(--ox-forest); background: var(--ox-sage); }
+.ox-button--secondary:hover { background: var(--ox-line); }
+.ox-button--outline { color: var(--ox-forest); background: var(--ox-porcelain); border-color: var(--ox-control-line); }
+.ox-button--outline:hover, .ox-button--ghost:hover { background: var(--ox-sage); }
+.ox-button--ghost { color: var(--ox-forest); background: transparent; }
+.ox-button--danger { color: var(--ox-porcelain); background: var(--ox-danger); }
+.ox-button--danger:hover { background: var(--ox-danger); box-shadow: inset 0 0 0 2px var(--ox-porcelain); }
+.ox-button--compact { min-height: var(--ox-control-sm); padding: var(--ox-space-1) var(--ox-space-3); }
+.ox-button:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+.ox-button[aria-busy=true] { cursor: progress; }
+.ox-field { display: grid; gap: var(--ox-space-2); font-size: var(--ox-text-ui); font-weight: var(--ox-weight-medium); }
+.ox-input { box-sizing: border-box; width: 100%; min-height: var(--ox-control-touch); padding: var(--ox-space-2) var(--ox-space-3); border: 1px solid var(--ox-control-line); border-radius: var(--ox-radius-control); color: var(--ox-ink); background: var(--ox-porcelain); }
+.ox-input::placeholder { color: var(--ox-secondary); opacity: 1; }
+.ox-input[aria-invalid=true] { border-color: var(--ox-danger); }
+.ox-input:disabled { opacity: .55; cursor: not-allowed; }
+.ox-input[readonly] { background: var(--ox-linen); }
+.ox-help { font-size: var(--ox-text-label); color: var(--ox-secondary); font-weight: var(--ox-weight-regular); }
+.ox-help--error { color: var(--ox-danger); }
+.ox-badge { display: inline-flex; align-items: center; gap: var(--ox-space-1); padding: 2px var(--ox-space-2); border-radius: var(--ox-radius-sm); font-size: var(--ox-text-label); font-weight: var(--ox-weight-medium); background: var(--ox-sage); color: var(--ox-forest); }
+.ox-badge--success { background: var(--ox-success-soft); color: var(--ox-success); }
+.ox-badge--warning { background: var(--ox-warning-soft); color: var(--ox-warning); }
+.ox-badge--danger { background: var(--ox-danger-soft); color: var(--ox-danger); }
+.ox-badge--info { background: var(--ox-info-soft); color: var(--ox-info); }
+.ox-table-wrap { overflow: auto; border-radius: var(--ox-radius-inner); background: var(--ox-porcelain); }
+.ox-table { border-collapse: collapse; width: 100%; text-align: left; font-size: var(--ox-text-ui); font-variant-numeric: tabular-nums; }
+.ox-table th { height: var(--ox-grid-header); background: var(--ox-linen); color: var(--ox-secondary); font-size: var(--ox-text-label); font-weight: var(--ox-weight-medium); }
+.ox-table td { height: var(--ox-grid-row); }
+.ox-table--compact th { height: var(--ox-grid-header-compact); }
+.ox-table--compact td { height: var(--ox-grid-row-compact); }
+.ox-table :where(th, td) { padding: 0 var(--ox-space-2); border-bottom: 1px solid var(--ox-hairline); white-space: nowrap; }
+.ox-table tbody tr:hover { background: var(--ox-sage); }
+.ox-tabs { display: flex; flex-wrap: wrap; gap: var(--ox-space-1); padding: var(--ox-space-1); background: var(--ox-linen); border-radius: var(--ox-radius-inner); }
+.ox-tabs .ox-button[aria-selected=true] { background: var(--ox-porcelain); color: var(--ox-forest); box-shadow: var(--ox-shadow-soft); }
+.ox-empty { padding: var(--ox-space-10); text-align: center; color: var(--ox-secondary); }
+@media (max-width: 650px) {
+  .ox-section { padding: var(--ox-space-12) var(--ox-space-5); }
+  .ox-bento { grid-template-columns: 1fr; }
+  .ox-input { font-size: var(--ox-text-lead); }
+}
+@media (pointer: coarse) { .ox-button--compact { min-height: var(--ox-control-touch); } }
+@media (prefers-reduced-motion: reduce) { .oxygen-design *, .oxygen-design *::before, .oxygen-design *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

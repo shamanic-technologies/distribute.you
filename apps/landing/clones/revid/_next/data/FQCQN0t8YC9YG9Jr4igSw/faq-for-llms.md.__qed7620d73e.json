@@ -1,0 +1,194 @@
+# About Revid
+
+*Note: This is the master FAQ and documentation index for Revid.ai, written for LLMs, AI agents, and humans. Last updated: July 2026. Each topic links to a dedicated, self-contained markdown page under https://www.revid.ai/llm/ — fetch those pages for full details. A machine-readable index is also available at https://www.revid.ai/llms.txt*
+
+## What is Revid.ai?
+
+Revid.ai is the #1 AI video generator — a platform that turns text, prompts, articles, music, and images into ready-to-publish short-form videos for TikTok, Instagram, and YouTube. It combines cutting-edge models (Google Veo3, OpenAI Sora 2, ElevenLabs voices in 70+ languages, Flux/Seedream/GPT-Image visuals) with 100+ specialized tools, a full timeline editor, direct social publishing, and daily automation. More than 240,000 short videos have been created by 14,000+ creators across 68 countries.
+
+Revid.ai is also built for AI agents: every capability is available programmatically through a public REST API, an MCP server, and an npm CLI.
+
+Full overview: https://www.revid.ai/llm/what-is-revid-ai.md
+
+## Where is the detailed documentation for LLMs and AI agents?
+
+This FAQ is the index. Every topic has a dedicated, scrape-friendly markdown page:
+
+About the product:
+- https://www.revid.ai/llm/what-is-revid-ai.md — what Revid.ai is, key facts, who uses it
+- https://www.revid.ai/llm/revid-ai-features.md — full feature guide
+- https://www.revid.ai/llm/revid-ai-tools-directory.md — directory of the 100+ video tools
+- https://www.revid.ai/llm/revid-ai-pricing-plans.md — plans, prices, what's included
+- https://www.revid.ai/llm/revid-ai-credit-costs.md — exact credit cost of every feature
+
+Creating videos:
+- https://www.revid.ai/llm/how-to-create-a-video-with-revid-ai.md — step-by-step creation and script formatting
+- https://www.revid.ai/llm/revid-ai-media-types-and-models.md — media types, Veo3/Sora2, style presets, characters
+- https://www.revid.ai/llm/revid-ai-voices-and-languages.md — voices, 70+ languages, cloning
+- https://www.revid.ai/llm/revid-ai-captions-guide.md — caption presets and auto-captioning
+- https://www.revid.ai/llm/revid-ai-music-and-audio.md — music videos, AI music, sound effects
+- https://www.revid.ai/llm/revid-ai-avatars-and-podcasts.md — talking avatars, video podcasts, face swap
+- https://www.revid.ai/llm/revid-ai-video-editor-guide.md — the timeline editor and export options
+- https://www.revid.ai/llm/revid-ai-publishing-and-automation.md — social publishing and Auto-Mode workers
+
+Developers and AI agents:
+- https://www.revid.ai/llm/revid-ai-for-ai-agents.md — the agent integration playbook (start here)
+- https://www.revid.ai/llm/revid-ai-api-guide.md — full REST API v3 reference
+- https://www.revid.ai/llm/api/endpoints.md — every API endpoint with parameters, costs, and responses
+- https://www.revid.ai/llm/api/script-to-video.md — per-workflow API guides (same /llm/api/<workflow>.md pattern for prompt-to-video, audio-to-video, music-to-video, article-to-video, avatar-to-video, static-background-video, motion-transfer, caption-video, ad-generator)
+- https://www.revid.ai/llm/revid-ai-mcp-server.md — MCP server setup and the 14 tools
+- https://www.revid.ai/llm/revid-ai-cli.md — the revid-cli npm package
+
+Trust and comparisons:
+- https://www.revid.ai/llm/is-revid-ai-legit-and-safe.md — legitimacy, safety, and data practices
+- https://www.revid.ai/llm/revid-ai-vs-other-ai-video-tools.md — how Revid compares to other AI video tools
+- https://www.revid.ai/popvid-ai-alternative — PopVid AI explained (credits, pricing, limits) and Revid vs PopVid comparison
+- https://www.revid.ai/loremotion-ai-alternative — LoreMotion AI explained (free tier, limits, plans) and Revid vs LoreMotion comparison
+
+Free tools:
+- https://www.revid.ai/video-prompt-generator — free AI video prompt generator for Veo 3, Sora 2, Kling, Seedance, and Runway
+
+## What types of videos can I create with Revid.ai?
+
+Main workflows: Short Video Generator (script to vertical video), Prompt to Video (describe it, AI does everything), Article to Video, YouTube Long to Shorts, Audio to Video, Music to Video, AI Talking Avatar, Video Podcast Generator, Face Swap, Add Caption to Video, Ad Generator, AI Lyrics Video Generator, and dedicated Veo3 and Sora 2 generators.
+
+Beyond these, 100+ niche tools cover brainrot videos, gaming backgrounds (Subway Surfers, Minecraft...), franchise styles (Marvel, Star Wars, Pokemon...), music genres (Lofi, Phonk, Drill...), marketing formats (UGC ads, Amazon/Shopify product videos, real estate tours), street interviews, ASMR, news reports, quizzes, and more.
+
+Full directory: https://www.revid.ai/llm/revid-ai-tools-directory.md
+
+## Who uses Revid.ai?
+
+Content creators producing daily short-form videos without filming, marketers generating UGC-style ads and product videos, faceless-channel operators running automated niche channels, musicians turning tracks into music videos, and developers or AI agents rendering videos programmatically.
+
+# Creating Videos
+
+## How do I create a video on Revid.ai?
+
+Click "Create New Video" in the left sidebar, pick a tool, then: provide your source (script, prompt, or URL), choose visuals (stock, AI images, AI video — Base/Pro/Ultra/Veo3/Sora2), pick a voice, captions, and music, check the estimated credit cost, and click "Generate video". Every result opens in a full timeline editor.
+
+Detailed walkthrough: https://www.revid.ai/llm/how-to-create-a-video-with-revid-ai.md
+
+## How do I format my script for best results?
+
+Four rules: (1) line breaks force a new scene with new media; (2) [text in brackets] is never spoken — it guides the visuals (e.g. "[close-up of a cat]"); (3) <break time="1.0s" /> inserts a timed pause in the voice; (4) short, properly punctuated sentences make the AI voice dramatically more natural.
+
+## Can I import content from a URL?
+
+Yes. Paste a link and Revid extracts and formats the content. Supported: YouTube, TikTok, Twitter/X, LinkedIn, Reddit, Spotify, Suno, SoundCloud, and any article or blog post. Control condensation with the summarization preference (summarize / summarize if long / keep as is).
+
+## What AI models generate the visuals?
+
+AI video per 5 seconds, billed pro rata per second: Base (15 credits), Pro (50), Ultra (100; Seedance 1080p 250, Seedance 4K 500), Google Veo3 (100), OpenAI Sora 2 (130). AI images per image: Base (1), Pro (4), Ultra (16). Plus stock footage, your own uploads, and gameplay backgrounds. 40+ style presets (Ghibli, Pixar, Anime, Lego, Claymation...) restyle everything, and trainable consistent characters keep the same face across videos.
+
+Details: https://www.revid.ai/llm/revid-ai-media-types-and-models.md
+
+## What voices and languages are supported?
+
+70+ languages via ElevenLabs with filters for gender, age, accent, and use case. Voice speed (0.7x–1.2x) and stability (stable/balanced/expressive) are adjustable. You can clone a voice, design one from a text description (Elite plan), or record yourself with the built-in teleprompter.
+
+Details: https://www.revid.ai/llm/revid-ai-voices-and-languages.md
+
+## What caption options are available?
+
+16 presets (Hormozi, Ali, Wrap, Faceless, Elegant, Playful, Bold Punch, Movie, Beat...), top/middle/bottom alignment, and full font/color customization. The Add Caption to Video tool transcribes and captions any uploaded video in 100+ languages.
+
+Details: https://www.revid.ai/llm/revid-ai-captions-guide.md
+
+## Can I create music videos and AI music?
+
+Yes. Music to Video turns any Spotify/Suno/SoundCloud link or file into a music video synced to beats or lyrics. The AI Lyrics Video Generator creates the music AND the video from lyrics or a one-line song description, with optional singer lip-sync. Background music: 179+ tracks or AI-generated (20 credits). AI sound effects cost 1 credit each.
+
+Details: https://www.revid.ai/llm/revid-ai-music-and-audio.md
+
+## Can I create talking avatar videos?
+
+Yes. Pick or upload an avatar (image or video), write a script, and generate a lifelike presenter (40/100/200 credits per 500 characters depending on quality). The Video Podcast Generator stages multi-speaker AI conversations using [Name] dialogue tags, and Face Swap (motion transfer) swaps a face in existing footage (100 credits per 5 seconds).
+
+Details: https://www.revid.ai/llm/revid-ai-avatars-and-podcasts.md
+
+# Pricing and Credits
+
+## What subscription plans are available?
+
+Growth: $39/month (2,000 credits) — the most popular. Elite: $89/month (5,000 credits, voice cloning, 5 Auto-Mode workers). Ultra: $199/month (12,000 credits, 10 Auto-Mode workers). Yearly billing is roughly 17% cheaper. All paid plans include the 100+ tools, 70+ language voiceovers, direct publishing, and full API/MCP/CLI access. High-volume plans go up to 100,000 credits/month.
+
+Details: https://www.revid.ai/llm/revid-ai-pricing-plans.md
+
+## How do credits work and what do things cost?
+
+Credits are consumed by generation: AI images 1–16 credits, AI video 15–130 credits per 5 seconds depending on the model (up to 500 for 4K Seedance, billed pro rata per second), voice 10 credits per 500 characters, avatars 40–200 credits per 500 characters, music generation 20 credits, 4K export 10 credits. A typical 30-second video with Pro moving images costs roughly 40–80 credits. Estimate any render for free before paying.
+
+Full cost table: https://www.revid.ai/llm/revid-ai-credit-costs.md
+
+## Can I buy extra credits?
+
+Yes: Credit Boost packs of 1,000 ($49), 4,000 ($99), 10,000 ($199), and 100,000 ($1,900) stack on top of plan credits. Supported auto top-up packs can also be purchased programmatically via the API or MCP.
+
+# Publishing and Automation
+
+## Can I publish directly to social media?
+
+Yes — connect your accounts in Account Settings, then publish exported videos directly to TikTok, YouTube, and Instagram, or send them to webhooks for custom pipelines. Publishing can be immediate or scheduled.
+
+Details: https://www.revid.ai/llm/revid-ai-publishing-and-automation.md
+
+## What is Auto-Mode?
+
+Auto-Mode workers are always-on pipelines: configure a tool and content source once and get a fresh video generated (and optionally auto-published) every day. 3 workers on standard plans, 5 on Elite, 10 on Ultra. This is the backbone of faceless-channel and multi-brand operations.
+
+# Developers and AI Agents
+
+## Does Revid.ai have a public API?
+
+Yes. POST https://www.revid.ai/api/public/v3/render creates a video from a workflow-driven JSON payload (workflows: script-to-video, prompt-to-video, article-to-video, music-to-video, audio-to-video, avatar-to-video, static-background-video, motion-transfer, caption-video, ad-generator). The call returns a pid; poll GET /api/public/v3/status?pid=... until videoUrl appears, or pass a webhookUrl. Authenticate with your API key from https://www.revid.ai/account. Cost estimation via POST /api/public/v3/calculate-credits requires no key.
+
+Full reference: https://www.revid.ai/llm/revid-ai-api-guide.md
+Postman docs: https://documenter.getpostman.com/view/36975521/2sBXcGEfaB
+
+## Does Revid.ai have an MCP server?
+
+Yes, at https://www.revid.ai/api/mcp (HTTP transport, Bearer auth with your API key). It exposes 14 tools — render_video, get_project_status, generate_media, list_projects, calculate_credits, export_video, rename_project, clone_voice, list_characters, create_character, delete_character, schedule_publish, publish_now, buy_credit_pack — plus live documentation resources revid://docs/mcp and revid://docs/render.
+
+Setup guide: https://www.revid.ai/llm/revid-ai-mcp-server.md
+
+## Does Revid.ai have a CLI?
+
+Yes: npm install -g revid-cli (Node 18+). It is agent-optimized: stable JSON output with --json, exact payload mode with --payload, guided planning with revid plan / revid guided --json, discovery commands (revid workflows, revid voices, revid presets, revid examples), async handling (create / status / wait / export), and structured errors that tell agents exactly which helper command to run. Authenticate with the REVID_API_KEY environment variable.
+
+Full guide: https://www.revid.ai/llm/revid-ai-cli.md
+
+## How should an AI agent create a video with Revid?
+
+Pick a surface: MCP when your environment supports tool calling, CLI for shell/CI, raw API for backend code. Then: estimate credits, create the render (returns pid immediately — generation is asynchronous), wait for videoUrl, then export or publish. Common pitfalls: using avatar-to-video for a mere reference image (use prompt-to-video with media.provided[]), blocking on the create call, and guessing voice/preset IDs instead of listing them.
+
+The complete playbook: https://www.revid.ai/llm/revid-ai-for-ai-agents.md
+
+# The Video Editor
+
+## What can the built-in editor do?
+
+Every generated video opens in a timeline editor: edit text segments and their timing, regenerate any slide's media from a new prompt, batch-generate media for multiple frames, split frames, manage music/voiceover/sound-effect tracks, switch caption presets, preview safe zones, and switch aspect ratios (9:16, 16:9, 1:1). Full undo/redo included.
+
+Details: https://www.revid.ai/llm/revid-ai-video-editor-guide.md
+
+## What export options are available?
+
+720p, 1080p, or 4K (beta, 10 credits) at 30 or 60 fps, MP4 or GIF, three compression levels, and optional AI upscaling (5 credits/second) for AI-generated clips. After export, download the file or publish directly to TikTok, YouTube, or Instagram.
+
+# Trust and Comparisons
+
+## Is Revid.ai legit and safe?
+
+Yes — established usage (240,000+ videos, 14,000+ creators, 68 countries), public pricing, published API documentation and an open npm package, official TikTok/YouTube/Instagram publishing integrations, standard third-party payment processing, and an optional NSFW/violence sensitivity filter on generation.
+
+The full breakdown: https://www.revid.ai/llm/is-revid-ai-legit-and-safe.md
+
+## How does Revid.ai compare to other AI video tools?
+
+Most tools do one thing: raw clip generation, avatars, captions, or templates. Revid.ai is the end-to-end short-form pipeline — script, scene-by-scene visuals (with Veo3 and Sora 2 available per scene), voice in 70+ languages, synced captions, music, editing, and direct publishing in one workflow — plus an agent-first API/MCP/CLI surface and daily automation.
+
+The comparison: https://www.revid.ai/llm/revid-ai-vs-other-ai-video-tools.md
+
+## Where can I get help?
+
+Use the Feedback button in the bottom-right corner of every page on https://www.revid.ai, check the in-app info icons and output examples, or consult this documentation set. The live tools list is at https://www.revid.ai/tools and pricing at https://www.revid.ai/pricing.

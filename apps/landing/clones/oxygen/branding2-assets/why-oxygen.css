@@ -1,0 +1,80 @@
+/* Each benefit is one Forest glass shell; its illustrative tiles never filter again. */
+.why-section { width: 100%; margin-inline: auto; padding: var(--ox-space-16) var(--ox-space-6) var(--ox-space-24); }
+.why-section > .workspace-section { min-height: 0; margin-top: var(--ox-space-4); }
+.why-intro { text-align: center; margin-bottom: var(--ox-space-8); }
+.why-intro .ox-eyebrow { margin: 0 0 var(--ox-space-4); color: var(--secondary); }
+.why-intro .ox-heading { color: var(--ink); }
+.why-canvas { background: var(--ox-canvas); border-radius: var(--ox-radius-feature); }
+.why-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ox-space-3); }
+.why-card { min-width: 0; overflow: hidden; display: flex; flex-direction: column; border-radius: var(--ox-radius-feature); }
+.why-art { height: 184px; display: flex; align-items: center; justify-content: center; padding: var(--ox-space-2) var(--ox-space-3); }
+.why-art svg { width: 100%; height: 100%; max-width: 360px; overflow: visible; }
+.why-diagram { position: relative; height: 100%; aspect-ratio: 18 / 11; max-width: 100%; container-type: inline-size; }
+.why-diagram > svg { position: absolute; inset: 0; }
+.why-illustration-tile { position: absolute; display: grid; place-items: center; background: var(--ox-glass-fill); border: 1px solid var(--ox-glass-line); box-shadow: var(--ox-shadow-soft), var(--ox-glass-inset); }
+.why-channel { width: 12.778%; height: 20.909%; border-radius: var(--ox-radius-control); }
+.why-channel img { width: 68%; height: 68%; object-fit: contain; }
+.why-distribution-core { left: 41.667%; top: 36.364%; width: 16.667%; height: 27.273%; border-radius: var(--ox-radius-inner); }
+.why-distribution-core img { width: 60%; height: 60%; }
+.why-primitive { width: 35.556%; height: 24.545%; border-radius: var(--ox-radius-control); font-size: var(--ox-text-label); color: var(--ox-ink); padding-bottom: var(--ox-space-1); }
+.why-primitive::after { content: ''; position: absolute; bottom: 18%; left: 10%; width: 80%; height: 3px; border-block: 1px solid var(--ox-line); }
+.why-copy { padding: var(--ox-space-3) var(--ox-space-5) var(--ox-space-5); }
+.why-copy h3 { margin: 0 0 var(--ox-space-2); color: var(--ink); font-size: var(--ox-text-title); line-height: 1.3; font-weight: var(--ox-weight-medium); letter-spacing: var(--ox-tracking-heading); text-wrap: balance; }
+.why-copy p { margin: 0; color: var(--secondary); font-size: var(--ox-text-body); line-height: var(--ox-leading-prose); max-width: 36ch; }
+.why-consolidation { gap: var(--ox-space-4); }
+.why-tools { display: grid; grid-template-columns: repeat(3, var(--ox-space-8)); gap: var(--ox-space-2); }
+.why-tools > span, .why-oxygen-mark > span {
+  position: relative; display: grid; place-items: center; background: var(--ox-glass-fill);
+  border: 1px solid var(--ox-glass-line); border-radius: var(--ox-radius-control);
+  box-shadow: var(--ox-shadow-soft), var(--ox-glass-inset);
+}
+.why-tools > span { width: var(--ox-space-8); height: var(--ox-space-8); }
+.why-tool-cross { position: absolute; inset: 0; display: grid; place-items: center; opacity: .65; font: 22px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.why-tools img { width: var(--ox-space-5); height: var(--ox-space-5); object-fit: contain; opacity: .45; }
+.why-tool-dots { color: var(--ox-secondary); font-size: var(--ox-text-title); }
+.why-converge { color: var(--ox-secondary); font-size: var(--ox-text-page); }
+.why-oxygen-mark { display: grid; justify-items: center; gap: var(--ox-space-2); }
+.why-oxygen-mark > span { width: var(--ox-space-16); height: var(--ox-space-16); border-radius: var(--ox-radius-card); }
+.why-oxygen-mark img { width: var(--ox-space-8); height: var(--ox-space-8); }
+.why-oxygen-mark strong { font-size: var(--ox-text-label); font-weight: var(--ox-weight-medium); }
+.why-wire { fill: none; stroke: var(--ox-line); stroke-width: 1.25; }
+.why-glass-tile { fill: url(#why-glass-fill); stroke: var(--ox-glass-highlight); stroke-width: 1.25; }
+.why-graph-node { fill: var(--ox-forest); }
+.why-flow-dot { position: absolute; top: -2px; left: -2px; width: 4px; height: 4px; border-radius: var(--ox-radius-pill); background: var(--ox-forest); opacity: 0; }
+.why-graph-node { stroke: var(--ox-glass-highlight); stroke-width: 3; }
+.why-graph-leaf { fill: var(--ox-secondary); }
+.why-graph-label { fill: var(--ox-secondary); text-anchor: middle; font-family: var(--ox-font-sans); font-size: var(--ox-text-label); }
+.why-graph-company { fill: var(--ox-ink); font-weight: var(--ox-weight-medium); }
+.why-channel, .why-primitive, .why-knowledge-core, .why-graph-branch, .why-graph-leaf { transform-box: fill-box; transform-origin: center; }
+/* Philipp's Apple-style illustrative notification red; not a product danger state. */
+.why-badge { --why-notification-red: #ff3b30; position: absolute; top: -6px; right: -9px; width: 24px; height: 16px; border-radius: var(--ox-radius-pill); background: var(--why-notification-red); box-shadow: 0 0 0 1px var(--ox-paper); color: var(--ox-porcelain); font: var(--ox-weight-medium) var(--ox-text-micro)/16px var(--ox-font-sans); font-variant-numeric: tabular-nums; text-align: center; }
+.why-badge > span { position: absolute; inset: 0; opacity: 0; }
+.why-badge > span:last-child { opacity: 1; }
+@container (max-width: 1250px) {
+  .why-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 650px) {
+  .why-cards { grid-template-columns: 1fr; }
+  .why-section { padding: var(--ox-space-12) var(--ox-space-4); }
+  .why-intro { margin-bottom: var(--ox-space-6); }
+  .why-art { height: 168px; }
+  .why-copy { padding: var(--ox-space-2) var(--ox-space-5) var(--ox-space-5); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .why-glass-tile { fill: var(--ox-glass-fallback); stroke: var(--ox-control-line); }
+  .why-tools > span, .why-oxygen-mark > span, .why-illustration-tile { background: var(--ox-glass-fallback); border-color: var(--ox-control-line); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .why-glass-tile { fill: var(--ox-glass-fallback); }
+  .why-tools > span, .why-oxygen-mark > span, .why-illustration-tile { background: var(--ox-glass-fallback); }
+}
+@media (forced-colors: active) {
+  .why-wire, .why-glass-tile { stroke: CanvasText; }
+  .why-glass-tile { fill: Canvas; }
+  .why-graph-label, .why-graph-node, .why-graph-leaf { fill: CanvasText; }
+  .why-flow-dot { background: CanvasText; }
+  .why-graph-node { stroke: Canvas; }
+  .why-tools > span, .why-oxygen-mark > span, .why-illustration-tile { background: Canvas; border-color: CanvasText; box-shadow: none; }
+  .why-tool-cross { color: CanvasText; text-shadow: none; }
+  .why-badge { background: Highlight; color: HighlightText; }
+}

@@ -51,7 +51,9 @@ async function visit(browser, url, file, credentialsPair) {
     if (response.status() >= 400) failures.push(response.url());
   });
 
-  await page.goto(url, { waitUntil: "load", timeout: 90000 });
+  // Same reason as capture-live.mjs: a page holding a request open never fires `load`.
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForLoadState("load", { timeout: 30000 }).catch(() => {});
   await page.waitForTimeout(4000);
   const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").trim().length);
   await page.screenshot({ path: `${out}/${file}.png` });

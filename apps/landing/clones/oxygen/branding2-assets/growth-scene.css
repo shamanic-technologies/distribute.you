@@ -1,0 +1,71 @@
+/* The fourth forest study keeps the camera fixed while scroll reveals growth. */
+.hero-content { --ink: var(--ox-hero-ink); --forest: var(--ox-hero-ink); --secondary: var(--ox-hero-secondary); }
+#hero-title { font-family: var(--ox-font-sans); font-weight: var(--ox-weight-medium); letter-spacing: var(--ox-tracking-heading); color: var(--ink); }
+#hero-title span { color: inherit; }
+#hero-title .hero-growth { font: inherit; letter-spacing: inherit; }
+/* Two deliberate lines, sized against the page container even on phones. */
+#hero-title { font-size: clamp(19px, 5.5cqi, 56px); }
+#hero-title > .hero-title-line { display: block; white-space: nowrap; }
+/* Start with the first styled paint; the complete entrance takes 690ms.
+   Backwards fill leaves no transform/compositing layer on the finished glass. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-content > :where(.eyebrow, #hero-title, .hero-lead, #chat-form) {
+    animation: hero-enter calc(var(--ox-duration-normal) * 2) var(--ox-ease) backwards;
+  }
+  .hero-content > #hero-title { animation-delay: 70ms; }
+  .hero-content > .hero-lead { animation-delay: 140ms; }
+  .hero-content > #chat-form { animation-delay: 210ms; }
+  .hero-content > #chat-form:is(:focus-within, [data-interacted]) {
+    animation-duration: 0s;
+    animation-delay: 0s;
+  }
+}
+@keyframes hero-enter {
+  from { opacity: 0; transform: translateY(var(--ox-space-3)); }
+  to { opacity: 1; transform: none; }
+}
+@supports (background-clip: text) {
+  [data-headline=metallic] #hero-title {
+    background: var(--ox-hero-metallic);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+}
+@media (forced-colors: active) {
+  [data-headline=metallic] #hero-title { background: none; color: CanvasText; }
+}
+.study-link { text-decoration: none; }
+.growth-world { display: none; position: absolute; inset: 0; z-index: -3; pointer-events: none; overflow: hidden; }
+.growth-world img, .growth-world video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.growth-world video { opacity: 0; }
+[data-scene=growth] .growth-world { display: block; }
+[data-scene=growth] .photo-world, [data-scene=growth] .drawn-world { display: none; }
+[data-scene=growth].growth-ready .growth-world video { opacity: 1; }
+[data-scene=growth] .hero-scroll { height: calc(max(560px, 100svh - var(--study-height, 0px)) + 75svh); }
+[data-scene=growth] .hero { position: sticky; top: var(--study-height, 0px); height: max(560px, calc(100svh - var(--study-height, 0px))); min-height: 0; }
+[data-scene=growth] .hero-content { top: calc(-1 * var(--ox-space-2)); padding-top: 42px; padding-bottom: 44px; }
+[data-scene=growth] .atmosphere { background: radial-gradient(ellipse 42% 52% at 50% 52%, color-mix(in srgb, var(--ox-paper) 90.196%, transparent) 10%, color-mix(in srgb, var(--ox-paper) 70.196%, transparent) 52%, transparent), linear-gradient(0deg, var(--ox-paper), transparent 20%); }
+.growth-progress { display: none; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: color-mix(in srgb, var(--ox-forest) 7.059%, transparent); }
+[data-scene=growth] .growth-progress { display: block; }
+.growth-progress::after { content: ''; display: block; width: 100%; height: 100%; background: color-mix(in srgb, var(--ox-secondary) 50.196%, transparent); transform: scaleX(var(--growth-progress, 0)); transform-origin: left; }
+[data-scene=growth].growth-static .hero-scroll { height: auto; }
+[data-scene=growth].growth-static .hero { position: relative; top: 0; }
+[data-scene=growth].growth-static .growth-world video, [data-scene=growth].growth-static .growth-progress { display: none; }
+@media (max-width: 900px) {
+  .study-bar { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+  .study-controls { flex-wrap: wrap; }
+  .segmented { flex-wrap: wrap; max-width: 100%; }
+  .segmented button { padding: 7px 9px; }
+}
+@container (max-width: 650px) {
+  [data-scene=growth] .hero-content { padding: 30px 20px; }
+  [data-scene=growth] .hero-lead { margin: 16px auto 22px; }
+  [data-scene=growth] .eyebrow { margin-bottom: 18px; }
+  [data-scene=growth] .atmosphere { background: radial-gradient(ellipse 76% 48% at 50% 49%, color-mix(in srgb, var(--ox-paper) 85.098%, transparent) 25%, color-mix(in srgb, var(--ox-paper) 61.176%, transparent) 66%, transparent), linear-gradient(0deg, var(--ox-paper), transparent 24%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-scene=growth] .hero-scroll { height: auto; }
+  [data-scene=growth] .hero { position: relative; top: 0; }
+  .growth-world video, .growth-progress { display: none !important; }
+}

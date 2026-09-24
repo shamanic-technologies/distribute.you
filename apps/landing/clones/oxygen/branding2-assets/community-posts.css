@@ -1,0 +1,64 @@
+.community-section { padding: var(--ox-space-8) var(--ox-space-6); background: var(--ox-paper); scroll-margin-top: 0; }
+.community-scene {
+  border-radius: var(--ox-radius-feature);
+  padding: var(--ox-space-12) var(--ox-space-8) var(--ox-space-6);
+  background: linear-gradient(var(--ox-glass-large), var(--ox-glass-rail) 28%), url('/branding2-assets/workspace-forest.webp') center / cover, var(--ox-sage);
+}
+.community-inner { max-width: 1136px; margin: 0 auto; position: relative; }
+#community-heading { margin: 0 auto var(--ox-space-12); text-align: center; font-size: var(--ox-text-section); font-weight: var(--ox-weight-display); letter-spacing: var(--ox-tracking-heading); line-height: var(--ox-leading-tight); text-wrap: balance; color: var(--ink); }
+#community-heading span { color: var(--ink); }
+.community-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--ox-space-6); }
+.community-column, .community-track { display: flex; flex-direction: column; gap: var(--ox-space-5); min-width: 0; }
+.community-grid--scrolling { height: clamp(680px, 65vw, 840px); align-items: stretch; overflow: hidden; }
+.community-reel { height: 100%; min-height: 0; min-width: 0; overflow: hidden; border-radius: var(--ox-radius-feature); }
+.community-card { color: var(--ink); flex: none; min-width: 0; overflow: hidden; border-radius: var(--ox-radius-feature); }
+.community-author-row { display: flex; align-items: flex-start; gap: var(--ox-space-2); padding: var(--ox-space-4) var(--ox-space-4) 0; }
+.community-author { display: flex; align-items: center; gap: var(--ox-space-2); min-width: 0; flex: 1; text-decoration: none; }
+.community-author > img, .community-initials { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--ox-sage); }
+.community-initials { display: grid; place-items: center; font-size: var(--ox-text-label); font-weight: var(--ox-weight-semibold); color: var(--ox-forest); }
+.community-author-text { min-width: 0; display: block; }
+.community-author-text strong { display: block; font-size: var(--ox-text-label); font-weight: var(--ox-weight-semibold); line-height: 1.4; }
+.community-author:hover strong { text-decoration: underline; }
+.community-role { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ox-text-micro); margin-top: 1px; color: var(--secondary); }
+.community-date { display: flex; align-items: center; gap: var(--ox-space-1); margin-top: var(--ox-space-1); color: var(--secondary); font-size: var(--ox-text-micro); }
+.community-linkedin { display: grid; place-items: center; min-width: var(--ox-control-touch); min-height: var(--ox-control-touch); color: var(--ox-forest); border-radius: var(--ox-radius-sm); }
+.community-linkedin:hover { color: var(--ox-forest-hover); }
+.community-linkedin svg { width: 22px; height: 22px; }
+.community-post-body { padding: var(--ox-space-4); }
+.community-post-body blockquote { margin: 0; color: var(--ink); font-size: var(--ox-text-body); line-height: 1.6; letter-spacing: -.015em; }
+.community-ellipsis, .community-category { color: var(--ink); }
+.community-category { font-size: var(--ox-text-label); }
+.community-media { display: block; position: relative; overflow: hidden; margin: 0 var(--ox-space-3) var(--ox-space-2); border-radius: var(--ox-radius-control); background: var(--ox-forest); text-decoration: none; }
+.community-media img { display: block; width: 100%; height: 120px; object-fit: cover; object-position: center; }
+.community-media--video img { object-position: center 44%; }
+.community-media::after { content: ''; position: absolute; inset: 30% 0 0; background: linear-gradient(transparent, var(--ox-forest)); pointer-events: none; }
+.community-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%); width: 36px; height: 36px; display: grid; place-items: center; padding-left: 2px; border-radius: 50%; background: var(--ox-paper); color: var(--ox-forest); font-size: var(--ox-text-label); z-index: 1; }
+.community-media-caption { position: absolute; bottom: var(--ox-space-2); left: var(--ox-space-3); right: var(--ox-space-3); z-index: 1; color: var(--ox-porcelain); display: flex; align-items: center; justify-content: space-between; font-size: var(--ox-text-micro); }
+.community-engagement { display: flex; align-items: center; justify-content: space-between; gap: var(--ox-space-2); padding: var(--ox-space-2) var(--ox-space-4); font-size: var(--ox-text-micro); color: var(--secondary); }
+.community-reactions { display: inline-flex; align-items: center; gap: var(--ox-space-1); }
+.community-reaction-icon { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--ox-sage); color: var(--ox-forest); }
+.community-read { display: flex; align-items: center; justify-content: space-between; gap: var(--ox-space-2); min-height: var(--ox-control-touch); margin: 0 var(--ox-space-4); padding: var(--ox-space-2) 0; border-top: 1px solid var(--ox-hairline); font-size: var(--ox-text-micro); text-decoration: none; color: var(--secondary); }
+.community-read > span { display: inline-flex; align-items: center; gap: var(--ox-space-1); }
+.community-read:hover { text-decoration: underline; }
+.community-card a:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: -3px; }
+/* No visible playback chrome in the composition; keyboard users can stop and read every post. */
+.community-motion { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.community-motion:focus-visible { width: auto; height: auto; clip-path: none; top: 0; left: 0; z-index: 2; min-height: var(--ox-control-touch); padding: var(--ox-space-3); border: 1px solid var(--ox-control-line); border-radius: var(--ox-radius-control); background: var(--ox-porcelain); color: var(--ox-forest); outline: 2px solid var(--ox-focus); }
+@container (max-width: 960px) {
+  .community-section { padding-inline: var(--ox-space-4); }
+  .community-scene { padding-inline: var(--ox-space-6); }
+  .community-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ox-space-4); }
+  .community-column { display: contents; }
+  .community-reel:nth-child(3) { display: none; }
+}
+@container (max-width: 650px) {
+  .community-section { padding: var(--ox-space-4) var(--ox-space-2); }
+  .community-scene { padding: var(--ox-space-12) var(--ox-space-4) var(--ox-space-6); }
+  #community-heading { margin-bottom: var(--ox-space-8); }
+  .community-grid { grid-template-columns: minmax(0, 1fr); }
+  .community-reel:nth-child(2) { display: none; }
+}
+@media (forced-colors: active) {
+  .community-scene { background: Canvas; }
+  #community-heading, #community-heading span, .community-card :is(blockquote, .community-role, .community-date, .community-engagement, .community-read) { color: CanvasText; }
+}

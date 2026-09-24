@@ -1,0 +1,188 @@
+/* Shared public shell for the Forest preview and adopted marketing routes.
+   React interaction stays in the existing application components. */
+.forest-marketing { color: var(--ox-ink); background: var(--ox-canvas); font-family: var(--ox-font-sans); }
+.forest-marketing body { margin: 0; background: var(--ox-canvas); }
+/* Full-bleed since 2026-09-14 (Philipp): the page fills the viewport at every width —
+   no inset, radius or shadow around it. The landing document and adopted routes share this. */
+.forest-marketing .forest-marketing-page {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  margin: 0;
+  background: var(--ox-paper);
+  color: var(--ox-ink);
+  font: var(--ox-text-body)/var(--ox-leading-ui) var(--ox-font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+.forest-marketing .forest-shell-header { padding-top: var(--ox-space-6); }
+.forest-marketing .forest-site-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--ox-space-8);
+  width: calc(100% - var(--ox-space-16));
+  max-width: 1070px;
+  min-height: var(--ox-control-touch);
+  margin: var(--ox-space-6) auto 0;
+  padding: var(--ox-space-2) var(--ox-space-4) var(--ox-space-2) var(--ox-space-5);
+  border-radius: var(--ox-radius-card);
+  box-sizing: border-box;
+}
+.forest-marketing .forest-shell-header .forest-site-nav { margin-top: 0; }
+.forest-marketing .forest-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ox-space-2);
+  min-height: var(--ox-control-touch);
+  color: var(--ox-ink);
+  font: var(--ox-weight-semibold) var(--ox-text-lead)/var(--ox-leading-ui) var(--ox-font-sans);
+  letter-spacing: .055em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.forest-marketing .forest-brand img { width: var(--ox-space-6); height: var(--ox-space-6); }
+.forest-marketing .forest-nav-links { display: flex; align-items: center; justify-content: center; gap: var(--ox-space-6); font-size: var(--ox-text-label); }
+.forest-marketing .forest-nav-links a { display: inline-flex; align-items: center; justify-content: center; gap: var(--ox-space-1); min-width: var(--ox-control-touch); min-height: var(--ox-control-touch); color: var(--ox-ink); text-decoration: none; white-space: nowrap; }
+.forest-marketing .forest-nav-actions { display: flex; align-items: center; gap: var(--ox-space-1); }
+.forest-marketing .forest-nav-action {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--ox-space-4);
+  min-height: var(--ox-control-touch);
+  padding: var(--ox-space-2) var(--ox-space-3);
+  border: 1px solid var(--ox-hairline);
+  border-radius: var(--ox-radius-sm);
+  background: var(--ox-glass-pane);
+  color: var(--ox-ink);
+  font-size: var(--ox-text-caption);
+  font-weight: 450;
+  text-decoration: none;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.forest-marketing .forest-nav-signin { border-color: transparent; background: transparent; }
+.forest-marketing .forest-nav-signin:hover { background: var(--ox-sage); }
+.forest-marketing .forest-nav-signup { background: var(--ox-forest); color: var(--ox-porcelain); border-color: var(--ox-forest); }
+.forest-marketing .forest-nav-signup:hover { background: var(--ox-ink); border-color: var(--ox-ink); }
+.forest-marketing .forest-nav-links a:hover { color: var(--ox-forest); text-decoration: underline; }
+.forest-marketing .forest-nav-menu-trigger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--ox-control-touch);
+  min-height: var(--ox-control-touch);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ox-radius-sm);
+  color: var(--ox-ink);
+  background: transparent;
+  cursor: pointer;
+}
+.forest-marketing .forest-nav-menu-trigger:is(:hover, [aria-expanded=true]) { background: var(--ox-sage); }
+.forest-nav-menu {
+  width: min(280px, calc(100vw - 24px));
+  max-height: min(420px, calc(100dvh - 88px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--ox-space-2);
+  box-sizing: border-box;
+  font-family: var(--ox-font-sans);
+  --_ox-glass-elevation: var(--ox-shadow-overlay);
+}
+.forest-nav-menu[popover] { position: fixed; inset: auto; margin: 0; }
+.forest-nav-menu .forest-nav-menu-link {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ox-space-2);
+  min-height: var(--ox-control-touch);
+  padding: var(--ox-space-2) var(--ox-space-3);
+  border-radius: var(--ox-radius-sm);
+  color: var(--ox-ink);
+  font-size: var(--ox-text-ui);
+  line-height: var(--ox-leading-ui);
+  text-decoration: none;
+  cursor: pointer;
+}
+.forest-nav-menu .forest-nav-menu-link:is(:hover, :focus-visible, [data-highlighted]) { background: var(--ox-sage); color: var(--ox-ink); }
+.forest-nav-menu .forest-nav-menu-action { font-weight: 450; }
+.forest-nav-menu .forest-nav-menu-signup { justify-content: center; background: var(--ox-forest); color: var(--ox-porcelain); }
+.forest-nav-menu .forest-nav-menu-signup:is(:hover, :focus-visible, [data-highlighted]) { background: var(--ox-ink); color: var(--ox-porcelain); }
+.forest-nav-menu-separator { height: 1px; margin: var(--ox-space-2) 0; background: var(--ox-hairline); }
+.forest-marketing .forest-footer {
+  background: var(--ox-canvas);
+  border-top: 1px solid var(--ox-hairline);
+  border-radius: 0 0 var(--ox-radius-card) var(--ox-radius-card);
+  padding: var(--ox-space-12) max(var(--ox-space-6), 5cqw) var(--ox-space-6);
+  color: var(--ox-secondary);
+}
+.forest-marketing .forest-footer-content {
+  display: grid;
+  grid-template-columns: 1.75fr repeat(3, minmax(0, 1fr));
+  gap: var(--ox-space-10);
+  max-width: 1200px;
+  margin: auto;
+  padding: var(--ox-space-8);
+  border-radius: var(--ox-radius-feature);
+}
+.forest-marketing .forest-footer-brand > p { max-width: 35ch; margin: var(--ox-space-5) 0; font-size: var(--ox-text-label); line-height: var(--ox-leading-prose); }
+.forest-marketing .forest-footer-brand .forest-brand { color: var(--ox-forest); }
+.forest-marketing .forest-footer-start { display: inline-flex; align-items: center; gap: var(--ox-space-1); min-height: var(--ox-control-touch); font-size: var(--ox-text-label); font-weight: var(--ox-weight-medium); color: var(--ox-forest); text-decoration: none; }
+.forest-marketing .forest-footer-content h3 { margin: var(--ox-space-1) 0 var(--ox-space-3); font-size: var(--ox-text-caption); line-height: var(--ox-leading-ui); letter-spacing: var(--ox-tracking-eyebrow); text-transform: uppercase; color: var(--ox-forest); font-weight: var(--ox-weight-emphasis); }
+.forest-marketing .forest-footer-content ul { display: flex; flex-direction: column; gap: 0; list-style: none; padding: 0; margin: 0; }
+.forest-marketing .forest-footer-content li a { display: inline-flex; align-items: center; min-height: var(--ox-control-touch); font-size: var(--ox-text-label); color: var(--ox-ink); text-decoration: none; }
+.forest-marketing .forest-footer a:hover { text-decoration: underline; text-underline-offset: var(--ox-space-1); }
+.forest-marketing .forest-footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ox-space-5); max-width: 1200px; margin: var(--ox-space-8) auto 0; border-top: 1px solid var(--ox-hairline); padding-top: var(--ox-space-5); font-size: var(--ox-text-caption); }
+.forest-marketing .forest-footer-bottom nav { display: flex; flex-wrap: wrap; gap: var(--ox-space-5); }
+.forest-marketing .forest-footer-bottom :is(a, button) { display: inline-flex; align-items: center; gap: var(--ox-space-1); min-height: var(--ox-control-touch); padding: 0; color: var(--ox-secondary); font: inherit; text-decoration: none; border: 0; background: none; cursor: pointer; }
+.forest-marketing :is(.forest-site-nav, .forest-footer) :is(a, button):focus-visible { outline: 2px solid var(--ox-focus); outline-offset: var(--ox-space-1); }
+@container (max-width: 720px) {
+  .forest-marketing .forest-shell-header { padding-top: var(--ox-space-3); }
+  .forest-marketing .forest-site-nav { grid-template-columns: 1fr auto; width: calc(100% - var(--ox-space-6)); margin-top: var(--ox-space-3); padding: var(--ox-space-1) var(--ox-space-3); gap: 0 var(--ox-space-2); }
+  .forest-marketing .forest-site-nav .forest-brand { font-size: var(--ox-text-body); }
+  .forest-marketing .forest-site-nav .forest-brand img { width: var(--ox-space-5); height: var(--ox-space-5); }
+  .forest-marketing .forest-nav-actions { grid-column: 2; grid-row: 1; }
+  .forest-marketing .forest-nav-action { padding-inline: var(--ox-space-2); }
+  .forest-marketing .forest-nav-links { grid-column: 1 / -1; grid-row: 2; display: flex; justify-content: space-between; gap: var(--ox-space-2); }
+  .forest-marketing .forest-nav-links a { min-width: var(--ox-control-touch); }
+  .forest-marketing .forest-site-nav[data-mobile-menu-ready] > :is(.forest-nav-links, .forest-nav-actions) { display: none; }
+  .forest-marketing .forest-site-nav[data-mobile-menu-ready] .forest-nav-menu-trigger { display: inline-flex; grid-column: 2; grid-row: 1; }
+}
+@container (max-width: 650px) {
+  .forest-marketing .forest-footer .forest-brand { font-size: var(--ox-text-body); }
+  .forest-marketing .forest-footer .forest-brand img { width: var(--ox-space-5); height: var(--ox-space-5); }
+  .forest-marketing .forest-footer { padding: var(--ox-space-8) var(--ox-space-6) var(--ox-space-6); }
+  .forest-marketing .forest-footer-content { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ox-space-8) var(--ox-space-6); padding: var(--ox-space-5); }
+  .forest-marketing .forest-footer-brand { grid-column: 1 / -1; }
+  .forest-marketing .forest-footer-bottom { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .forest-marketing .forest-marketing-page { scroll-behavior: auto; }
+  .forest-nav-menu { animation: none; transition: none; }
+}
+@media (forced-colors: active) {
+  .forest-marketing, .forest-marketing body, .forest-marketing .forest-marketing-page, .forest-marketing .forest-footer { background: Canvas; color: CanvasText; }
+  .forest-marketing .forest-nav-action { border-color: ButtonText; }
+  .forest-nav-menu .forest-nav-menu-link { color: LinkText; }
+  .forest-nav-menu .forest-nav-menu-signup { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; }
+}
+
+/* Landing alignment: the GTM plays' 1200px box minus its two 24px insets.
+   Apply once per section, to the visible panel/grid rather than its children. */
+.forest-marketing .forest-content {
+  --forest-content-max: 1152px;
+  --forest-content-gutter: var(--ox-space-6);
+  box-sizing: border-box;
+  width: calc(100% - 2 * var(--forest-content-gutter));
+  max-width: var(--forest-content-max);
+  margin-inline: auto;
+}
+.forest-marketing .forest-section { padding-inline: 0; }
+@container (max-width: 760px) {
+  .forest-marketing .forest-content { --forest-content-gutter: var(--ox-space-5); }
+}
+@container (max-width: 480px) {
+  .forest-marketing .forest-content { --forest-content-gutter: var(--ox-space-4); }
+}

@@ -1,0 +1,12 @@
+/* Forest's functional material layer. Optical recipes live in design-system/materials.css. */
+.site-nav.ox-glass { border-radius: var(--ox-radius-card); }
+.site-nav .nav-links a { color: var(--ox-ink); }
+.hero-content > .eyebrow { border-radius: var(--ox-radius-pill); }
+.feature-navigation .feature-tab { border-radius: var(--ox-radius-control); }
+.feature-navigation .feature-tab:focus-visible { outline-color: var(--ox-focus); }
+.feature-navigation .feature-tab-number { color: var(--secondary); }
+.feature-navigation .feature-tab-title { font-size: var(--ox-text-page); }
+.feature-navigation .feature-tab-track { left: var(--ox-space-2); }
+@container (max-width: 650px) {
+  .feature-navigation .feature-tab-title { font-size: var(--ox-text-title); }
+}

@@ -1,0 +1,34 @@
+.logo-marquee { container-type: inline-size; }
+.customer-logos[aria-hidden=true] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .logo-marquee.ready {
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, var(--ox-ink) 7%, var(--ox-ink) 93%, transparent);
+  }
+  .logo-marquee.ready .logo-track {
+    display: flex;
+    width: max-content;
+    animation: logo-drift-right 34s linear infinite;
+  }
+  .logo-marquee.ready .customer-logos {
+    display: flex;
+    flex: none;
+    flex-wrap: nowrap;
+    width: max-content;
+    min-width: 100vw;
+    min-width: 100cqw;
+    margin: 0;
+    padding: 0 var(--ox-space-12) 0 0;
+    gap: var(--ox-space-12);
+    justify-content: space-around;
+  }
+  .logo-marquee.ready:is(:hover, :focus-within, .paused) .logo-track { animation-play-state: paused; }
+  @container (max-width: 650px) {
+    .logo-marquee.ready .customer-logos { gap: var(--ox-space-8); padding-right: var(--ox-space-8); }
+  }
+}
+/* Two equal rows meet at the same logo, so resetting the animation is seamless. */
+@keyframes logo-drift-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
