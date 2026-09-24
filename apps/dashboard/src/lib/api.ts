@@ -27,6 +27,12 @@ import { parseFeatureRevenue } from "./revenue-parse";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
+import {
+  CrmPairingCountsSchema,
+  CrmPairingsSchema,
+  type CrmPairingCounts,
+  type CrmPairings,
+} from "./crm-pairings";
 // `normalizeSalesFunnelKey` is a RUNTIME import; the rest is type-only. No cycle
 // survives the build: sales-funnels.ts reads this module's goal types with
 // `import type`, which is erased, so the edge only runs in this direction.
@@ -681,6 +687,70 @@ export async function getCrmPipeline(
     throw new Error("getCrmPipeline returned an unexpected shape");
   }
   return parsed.data;
+}
+
+// ==================== THE CLIENT'S CRM BESIDE OUR LEADS (lead-service) ======
+//
+// lead-service pairs each contact of the brand's mirrored CRM with the lead we
+// emailed. The gateway reaches these through its `/v1/leads/*` passthrough (the
+// two reads) and two dedicated proxies (the ruling write and its retraction).
+// Parsed by `crm-pairings.ts`, which holds the schemas so they carry real tests.
+
+/**
+ * One page of the side-by-side view. Bounded by `limit` over THEIR contacts; the
+ * view never holds a brand's lead population. `state` narrows to pairing states
+ * once lead-service serves that filter; until then it is ignored upstream.
+ */
+export async function listCrmPairings(
+  brandId: string,
+  opts: { limit: number; offset: number },
+  token?: string,
+): Promise<CrmPairings> {
+  const q = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
+  const raw = await apiCall<unknown>(`/leads/crm-pairings?${q}`, { token });
+  const parsed = CrmPairingsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listCrmPairings response shape mismatch", parsed.error.flatten());
+    throw new Error("listCrmPairings returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** The counts above the table. Stored state only; safe to poll. */
+export async function getCrmPairingCounts(brandId: string, token?: string): Promise<CrmPairingCounts> {
+  const raw = await apiCall<unknown>(
+    `/leads/crm-pairing-counts?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = CrmPairingCountsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getCrmPairingCounts response shape mismatch", parsed.error.flatten());
+    throw new Error("getCrmPairingCounts returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** A person says whether a CRM contact and one of our leads are one human. */
+export async function setCrmPairingRuling(
+  body: {
+    brandId: string;
+    crmContactId: string;
+    leadId: string;
+    ruling: "accepted" | "rejected";
+    note?: string | null;
+  },
+  token?: string,
+): Promise<unknown> {
+  return apiCall<unknown>("/leads/crm-pairings/rulings", { token, method: "POST", body });
+}
+
+/** Take a ruling back. Nothing is deleted upstream: the statement is marked withdrawn. */
+export async function withdrawCrmPairingRuling(
+  q: { brandId: string; crmContactId: string; leadId: string },
+  token?: string,
+): Promise<unknown> {
+  const params = new URLSearchParams(q);
+  return apiCall<unknown>(`/leads/crm-pairings/rulings?${params}`, { token, method: "DELETE" });
 }
 
 // Chat session history — restore the "Edit with AI" panel after a refresh.
