@@ -76,7 +76,7 @@ ORDER BY e.campaign_id, lower(e.lead_email), e.timestamp
 " clicks.csv
 
 # A positive reply is the frozen classification on the sequence row, the same field
-# features-service prices a sales interest on. Dated by the first inbound event.
+# features-service prices a positive reply on. Dated by the first inbound event.
 run instantly_service "
 SELECT c.instantly_campaign_id,
        lower(c.lead_email) AS lead_email,

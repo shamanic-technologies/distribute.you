@@ -61,7 +61,7 @@ describe("`standing` reaches the board through the real parser", () => {
 
   it("places the parsed row where the producer said, end to end", () => {
     const { leads } = parseLeadsResponse({ leads: [row()] }, "test");
-    // The 67 leads that read as an empty Sales-interest column while this app derived
+    // The 67 leads that read as an empty Positive-reply column while this app derived
     // interest from a reply signal.
     expect(leadBoardColumnFor(leads[0].standing)).toBe("sales_interest");
   });

@@ -153,8 +153,8 @@ describe("a hero card", () => {
   });
 
   it("says the page's own words, not the producer's", () => {
-    // The producer labels the rung "Positive reply"; the page says "Sales interests".
-    expect(card).toContain("<small>Sales interests</small>");
+    // The producer labels the rung "Positive reply"; the page says "Positive replies".
+    expect(card).toContain("<small>Positive replies</small>");
     expect(card).not.toContain("Positive reply");
   });
 
@@ -199,7 +199,7 @@ describe("a proof card", () => {
   it("prices the funnel's first conversion, in the page's own words", () => {
     expect(pricedStep(cardFunnel(docDinners))!.key).toBe("start_to_conversation");
     expect(renderProofCard(docDinners)!).toContain(
-      '<div class="proof-line" data-proof-cost-step="start_to_conversation"><span>Cost per sales interest</span><b>$232</b></div>'
+      '<div class="proof-line" data-proof-cost-step="start_to_conversation"><span>Cost per positive reply</span><b>$232</b></div>'
     );
     expect(renderProofCard(opsfolio)!).toContain(
       '<span>Cost per website visit</span><b>$2.2</b>'

@@ -24,7 +24,7 @@ function card(
   return (
     `<article class="proof-card rv" data-proof-brand="${domain}"${funnelAttr}>` +
     `<div class="proof-roi"><span class="big" data-count="${roi}" data-decimals="1">0<small>x</small></span></div>` +
-    `<div class="proof-line" data-proof-cost-step="${costStep}"><span>Cost per sales interest</span><b>${cost}</b></div>` +
+    `<div class="proof-line" data-proof-cost-step="${costStep}"><span>Cost per positive reply</span><b>${cost}</b></div>` +
     `<div class="proof-funnel">${funnel}</div>` +
     `</article>`
   );
@@ -74,7 +74,7 @@ describe("reseedProofCards", () => {
     // subset of them. An index join would put one rung's count under another's label.
     const html = card("docdinners.com", [
       ["contacted", "12,307", "contacted"],
-      ["start_to_conversation", "20", "sales interests"],
+      ["start_to_conversation", "20", "positive replies"],
       ["conversation_to_meeting_booked", "3", "meetings booked"],
     ]);
     const out = reseedProofCards(
@@ -86,14 +86,14 @@ describe("reseedProofCards", () => {
       ])
     );
     expect(out).toContain("<b>12,552</b>contacted");
-    expect(out).toContain("<b>31</b>sales interests");
+    expect(out).toContain("<b>31</b>positive replies");
     expect(out).toContain("<b>7</b>meetings booked");
   });
 
   it("keeps the label the page ships, never the producer's own word for the rung", () => {
-    const html = card("docdinners.com", [["start_to_conversation", "20", "sales interests"]]);
+    const html = card("docdinners.com", [["start_to_conversation", "20", "positive replies"]]);
     const out = reseedProofCards(html, payload("docdinners.com", [["start_to_conversation", 31]]));
-    expect(out).toContain("<b>31</b>sales interests");
+    expect(out).toContain("<b>31</b>positive replies");
     expect(out).not.toContain("start_to_conversation</span>");
   });
 
@@ -162,9 +162,9 @@ describe("reseedProofCards", () => {
   });
 
   it("prices the ONE rung the card names, joined by that rung's own key", () => {
-    // Doc Dinners' card names the SALES-INTEREST rung: it shipped pointing at the
+    // Doc Dinners' card names the POSITIVE-REPLY rung: it shipped pointing at the
     // meeting-booked key once (#4180 renamed the label without moving the key) and
-    // stated $1,501 where the sales interest had cost $225. This test mirrors the
+    // stated $1,501 where the positive reply had cost $225. This test mirrors the
     // shipped shape, so the fixture must carry the same key the page carries.
     const html = card("docdinners.com", [], "2.2", "$1,159");
     const out = reseedProofCards(
@@ -286,9 +286,9 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
 
   it("keys every cost line by the ONE rung its own words name", () => {
     const priced = [...PROOF.matchAll(/data-proof-cost-step="([a-z_]+)"/g)].map((m) => m[1]);
-    // Both cards labelled "Cost per sales interest" must key the rung their words
+    // Both cards labelled "Cost per positive reply" must key the rung their words
     // name. Doc Dinners shipped pointing at the meeting-booked rung once and stated
-    // $1,501 where the sales interest had cost $225.
+    // $1,501 where the positive reply had cost $225.
     expect(priced).toEqual([
       "start_to_conversation",
       "start_to_website_visit",

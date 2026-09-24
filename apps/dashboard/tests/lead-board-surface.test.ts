@@ -403,7 +403,7 @@ describe("the board explains the two splits a reader would not guess", () => {
     // Each column states what lands in it, in its own blurb.
     for (const blurb of [
       "Individuals we have identified as potential clients.",
-      "Leads who have shown or expressed positive reply.",
+      "Leads who replied with interest.",
       // The scope is filled in at render — see the blurb suite below.
       "Individuals disqualified as leads for this {scope}.",
     ]) {
@@ -516,7 +516,7 @@ describe("the column blurbs name who is in them", () => {
   it("keeps the four sentences the owner wrote", () => {
     for (const blurb of [
       "Individuals we have identified as potential clients.",
-      "Leads who have shown or expressed positive reply.",
+      "Leads who replied with interest.",
       "Individuals disqualified as leads for this {scope}.",
       "Leads who requested to be unsubscribed.",
     ]) {

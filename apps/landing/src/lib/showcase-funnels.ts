@@ -26,7 +26,7 @@ import { hasDrawnOutcome, podium, renderProofCard, renderShowcaseCard } from "@/
  * render, it would look plausible, and it would be a different number entirely.
  *
  * ⚠️ And the LABELS stay in the HTML. The producer calls the reply step
- * `start_to_conversation` and we say "Sales interests"; that wording is the
+ * `start_to_conversation` and we say "Positive replies"; that wording is the
  * customer's vocabulary and ours to choose, so only the FIGURE crosses the wire.
  */
 
@@ -191,7 +191,7 @@ function reseedCard(card: string, counts: Map<string, number>): string {
 /**
  * Rewrite one proof card's funnel cells from the counts the producer states.
  *
- * Only the FIGURE is touched. The label beside it ("sales interests") is the
+ * Only the FIGURE is touched. The label beside it ("positive replies") is the
  * customer's vocabulary and ours to choose — the producer calls that rung
  * `start_to_conversation` — so the wire decides the number and the page decides
  * the words, exactly as it does for the showcase cards above.
@@ -215,7 +215,7 @@ function reseedProofCard(
     }
   );
 
-  // The card names ONE rung in its own words ("Cost per sales interest") and carries
+  // The card names ONE rung in its own words ("Cost per positive reply") and carries
   // that rung's key beside it, so the price is joined by key like every count above.
   // The producer prices every rung on one formula, base included, which is what lets
   // one card ask for a booked meeting and its neighbour for a website visit with no

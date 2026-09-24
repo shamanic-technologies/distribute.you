@@ -17,7 +17,7 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { salesInterestSharePct, websiteVisitSharePct } from "@/lib/funnel-share";
+import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/funnel-share";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { isRunningStatus } from "@/lib/campaign-controls";
@@ -212,7 +212,7 @@ export function OutreachStatCardsAuto({
       contactedOverride={contactedOverride}
       // The share of contacted that showed positive reply, through the one helper the
       // campaign Overview reads too, so the two surfaces cannot state it two ways.
-      signalSharePct={salesInterestSharePct(revenueData?.funnelSteps)}
+      signalSharePct={positiveReplySharePct(revenueData?.funnelSteps)}
       clickSharePct={websiteVisitSharePct(revenueData?.funnelSteps)}
       outreachLabel={contactedOverride != null ? (outreachLabel ?? "Outreaches") : outreachLabel}
     />

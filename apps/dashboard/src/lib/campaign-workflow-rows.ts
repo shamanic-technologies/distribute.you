@@ -153,7 +153,7 @@ export interface CampaignWorkflowRow {
  *
  * A campaign performs ONE leg of its funnel, so the outcome a workflow produced for it
  * is that leg's own: cold email onto a visit-led funnel buys a WEBSITE VISIT and
- * nothing else, while the same channel onto the reply-led funnel buys a SALES INTEREST.
+ * nothing else, while the same channel onto the reply-led funnel buys a POSITIVE REPLY.
  * The table hardcoded the reply pair, so a visit-led campaign read `0 positive replies`
  * on every row while it was measurably buying visits — the same mistake #3880 closed on
  * the Audiences table, one surface over: a campaign-scoped surface keyed on the funnel

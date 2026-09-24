@@ -179,7 +179,7 @@ export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
  * downloaded 50 — a valid file, right columns, right headings, right scope. Absent
  * `limit` is the producer's own word for "the whole matching set".
  *
- * The TAB: the query then followed `activeTab`, so a press on Sales interests downloaded
+ * The TAB: the query then followed `activeTab`, so a press on Positive replies downloaded
  * that bucket alone — 20 rows against a header reading 16,212, measured in production.
  * Nothing was wrong with the file; the page simply stated one population and exported
  * another, which reads as a truncation of three orders of magnitude. Owner-decided: the

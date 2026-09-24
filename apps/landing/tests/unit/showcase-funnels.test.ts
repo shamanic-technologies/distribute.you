@@ -118,9 +118,9 @@ describe("showcase funnel reseed", () => {
   });
 
   it("never takes a cell's LABEL from the producer", () => {
-    // "Sales interests" is our word for what the producer calls a positive reply.
+    // "Positive replies" is our word for what the producer calls a positive reply.
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(card).toContain("<small>Sales interests</small>");
+    expect(card).toContain("<small>Positive replies</small>");
     expect(card).not.toContain("Positive reply");
   });
 

@@ -174,7 +174,7 @@ describe("what a person may state from a column", () => {
     expect(columnReplyKinds("unresolved")).toEqual([]);
   });
 
-  it("keeps a REFERRAL out of the Sales-interest picker", () => {
+  it("keeps a REFERRAL out of the Positive-reply picker", () => {
     // "Not them, but points us on" is not THIS person's interest, and instantly-service
     // projects it to `neutral` for the same reason — so offering it would offer a move
     // nothing could honour.

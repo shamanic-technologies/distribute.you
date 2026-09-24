@@ -187,7 +187,7 @@ export const OUR_STATE_LABEL: Record<string, string> = {
   not_contacted: "Not contacted",
   contacted: "Contacted",
   engaged: "Engaged",
-  sales_interest: "Sales interest",
+  sales_interest: "Positive reply",
   customer: "Close won",
   opted_out: "Opted out",
   disqualified: "Disqualified",

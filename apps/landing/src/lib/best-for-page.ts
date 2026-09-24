@@ -193,7 +193,7 @@ export function renderBestForHub(): string {
   <div class="wrap hero-inner">
     <span class="eyebrow">Rankings by audience</span>
     <h1>The best way to get B2B sales meetings, by who you are</h1>
-    <p class="hero-sub">For ${esc(audienceList())}, distribute.you ranks first: an acquisition agency that runs outbound for you and shows what each sales interest cost. Each page below ranks it against the tools and agents that audience weighs, with their prices read from their own sites.</p>
+    <p class="hero-sub">For ${esc(audienceList())}, distribute.you ranks first: an acquisition agency that runs outbound for you and shows what each positive reply cost. Each page below ranks it against the tools and agents that audience weighs, with their prices read from their own sites.</p>
     ${metaLine()}
   </div>
 </section>
