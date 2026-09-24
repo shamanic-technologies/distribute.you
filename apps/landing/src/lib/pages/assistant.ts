@@ -59,7 +59,7 @@ export function readHomepage(): string {
 
 const TITLE = "distribute.you: the AI sales assistant for founders";
 const DESCRIPTION =
-  "An AI sales assistant that finds the people who buy what you sell, writes to them, and hands you only the ones who want to talk. From $1/day, first $30 free.";
+  "An AI sales assistant that runs your cold email: it finds the people who buy what you sell, writes and tests the emails, and hands you only the ones who want to talk. From $1/day, first $30 free.";
 
 const ICON_MAIL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>`;
 const ICON_PHONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z"/></svg>`;
@@ -137,7 +137,7 @@ export function renderAssistantPage(
   <div class="wrap hero-inner">
     <span class="asst-eyebrow"><i></i>AI sales assistant</span>
     <h1>The AI sales assistant for founders who'd rather <span class="accent">build than prospect</span>.</h1>
-    <p class="asst-sub">It finds the people who buy what you sell, writes to them, and hands you only the ones who want to talk.</p>
+    <p class="asst-sub">It runs your cold email. It finds the people who buy what you sell, tests which emails get answered, and hands you only the ones who want to talk.</p>
     ${launchForm("asst-hero-form")}
     <div class="asst-fine">First $30 free · Live in 2 minutes · Stop any time</div>
     <div class="asst-proof">__HOT_LEAD_ROW__</div>

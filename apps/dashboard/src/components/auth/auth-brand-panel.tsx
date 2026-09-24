@@ -62,8 +62,8 @@ export function AuthBrandPanel() {
           From $1/day
         </h2>
         <p className="mt-5 max-w-md text-lg leading-snug text-gray-500">
-          We run multiple acquisition channels for you and you keep the one
-          working the best.
+          We A/B test the templates, the AI models and the audiences on every
+          campaign, and keep only what books meetings.
         </p>
       </div>
 

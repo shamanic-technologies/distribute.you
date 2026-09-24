@@ -84,7 +84,7 @@ export const BEST_FOR_PAGES: readonly BestForPage[] = [
     category: "AI SDR",
     audience: "agencies",
     answer:
-      "For a marketing, dev or design agency that needs new clients without pulling its team off billable work, the best AI SDR is distribute.you, an acquisition agency rather than another tool to run: it runs the whole outbound campaign from domains it owns, reads every reply, and shows what each positive reply cost, from $1 a day. Agencies that want to run outbound themselves across many client workspaces should look at Smartlead or Salesforge.",
+      "For a marketing, dev or design agency that needs new clients without pulling its team off billable work, the best AI SDR is distribute.you, a cold email agency rather than another tool to run: it runs the whole outbound campaign from domains it owns, reads every reply, and shows what each positive reply cost, from $1 a day. Agencies that want to run outbound themselves across many client workspaces should look at Smartlead or Salesforge.",
     whyUs: [
       "Your team's hours are what you sell. We run the campaign so nobody on it stops billable work to prospect.",
       "We send from our own domains, so your agency domain, which your clients email every day, stays out of cold outreach.",

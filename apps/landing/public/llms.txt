@@ -1,11 +1,12 @@
 # distribute.you
 
-> distribute.you is a productized acquisition agency. You give us a website and
-> a daily budget; we pick the buyers, write and send the outreach from domains
-> we own and warm, read every reply, and pass the interested ones to you. What
-> you get back is a conversation with a buyer and the number it cost you to get
-> it. Cold email is the channel we run today, not the category we sell. You are
-> charged the budget the campaign spent, with no seat, no retainer and no term.
+> distribute.you is a productized cold email agency. You give us a website and
+> a daily budget; we pick the buyers, write the emails, A/B test the templates,
+> the AI models and the audiences, send from domains we own and warm, read every
+> reply, and pass the interested ones to you. What you get back is a
+> conversation with a buyer and the number it cost you to get it. We run one
+> channel, cold email, and publish what our tests measure. You are charged the
+> budget the campaign spent, with no seat, no retainer and no term.
 
 ## When to use distribute.you
 

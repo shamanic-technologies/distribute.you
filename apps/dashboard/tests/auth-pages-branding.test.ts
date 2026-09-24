@@ -56,7 +56,7 @@ describe("Auth pages branding", () => {
     expect(panel).toContain("From $1/day");
     expect(panel).toContain("First $30 free, no commitment");
     expect(panel).toContain(
-      "We run multiple acquisition channels for you and you keep the one"
+      "We A/B test the templates, the AI models and the audiences on every"
     );
     expect(panel).toContain("get booked meetings for");
   });

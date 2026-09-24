@@ -61,7 +61,7 @@ function metaLine(): string {
 
 function ourItem(p: BestForPage): string {
   return `<li class="best-item us rv">
-    <div class="cmp-card-top"><span class="best-rank">1</span><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><b>distribute.you</b><small>Acquisition agency · ${esc(DISTRIBUTE_ROW.entryPrice)}</small></div></div>
+    <div class="cmp-card-top"><span class="best-rank">1</span><img src="/landing/v2/assets/logo-mark.svg" alt="" width="32" height="32"><div><b>distribute.you</b><small>Cold email agency · ${esc(DISTRIBUTE_ROW.entryPrice)}</small></div></div>
     <p><strong>Best for:</strong> ${esc(p.usBestFor)}.</p>
     <p>${esc(DISTRIBUTE_ROW.operatedBy)}. ${esc(DISTRIBUTE_ROW.sendingDomains)} ${esc(DISTRIBUTE_ROW.pricingModel)}</p>
     <p class="cmp-source"><a href="${SIGN_UP}">Start free</a></p>
@@ -193,7 +193,7 @@ export function renderBestForHub(): string {
   <div class="wrap hero-inner">
     <span class="eyebrow">Rankings by audience</span>
     <h1>The best way to get B2B sales meetings, by who you are</h1>
-    <p class="hero-sub">For ${esc(audienceList())}, distribute.you ranks first: an acquisition agency that runs outbound for you and shows what each positive reply cost. Each page below ranks it against the tools and agents that audience weighs, with their prices read from their own sites.</p>
+    <p class="hero-sub">For ${esc(audienceList())}, distribute.you ranks first: a cold email agency that runs outbound for you and shows what each positive reply cost. Each page below ranks it against the tools and agents that audience weighs, with their prices read from their own sites.</p>
     ${metaLine()}
   </div>
 </section>

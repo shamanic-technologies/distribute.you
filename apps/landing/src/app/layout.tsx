@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "acquisition agency",
-    "AI acquisition agency",
+    "cold email agency",
+    "AI cold email agency",
     "sales meetings done for you",
     "outbound done for you",
     "cost per sales meeting",
