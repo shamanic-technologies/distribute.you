@@ -80,6 +80,7 @@ import {
   useSetLeadStepStatement,
   useWithdrawLeadStepStatement,
   withdrawableStages,
+  crmStages,
 } from "@/lib/use-lead-step-statements";
 import {
   listManualQualifications,
@@ -1870,6 +1871,8 @@ export function EngagedLeadsPage({
   // Stages the FUNNEL concluded rather than anybody stating — they render as the answer
   // they are and offer no control.
   const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
+  // Stages the customer's own CRM evidenced: a reading, never a control.
+  const panelFromCrm = useMemo(() => crmStages(stepStatements), [stepStatements]);
   // What we already measured, off the /revenue join the stat cards above already poll —
   // so a tracker-reported outcome and a hand-stated one both show, with no second read.
   const panelTracked = useMemo(() => {
@@ -2426,6 +2429,7 @@ export function EngagedLeadsPage({
                 // one lead's deal is worth one thing, whichever surface asks for it.
                 saleValuePrefillUsd={selectedLead ? prefillUsdFor(selectedLead) : null}
                 withdrawable={panelWithdrawable}
+                fromCrm={panelFromCrm}
                 onWithdraw={onWithdrawStage}
                 // A reply kind is recorded against a CAMPAIGN — instantly-service owns
                 // that vocabulary and keys it on (campaign, email) — so off a campaign

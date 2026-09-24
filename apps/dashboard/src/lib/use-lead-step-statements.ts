@@ -283,6 +283,29 @@ export function impliedStages(
 }
 
 /**
+ * Stages the customer's OWN CRM evidenced (lead-service `source: "crm"`): a paired
+ * contact's meeting booked or held, or a deal their CRM marks won or lost.
+ *
+ * Nobody stated these here, so they are not withdrawable (lead-service refuses with 409
+ * `not_a_statement`, exactly as for a tracker step) and offer no control: the way to
+ * correct one is to reject the CRM pairing on the CRM Merged page. An implied stage is
+ * left to `impliedStages`, which already renders it as the funnel's conclusion.
+ */
+export function crmStages(
+  data: LeadStepStatements | undefined,
+): Partial<Record<LeadStageKey, boolean>> {
+  const out: Partial<Record<LeadStageKey, boolean>> = {};
+  for (const entry of data?.steps ?? []) {
+    if (entry.state === "pending") continue;
+    if (entry.origin === "implied") continue;
+    if (entry.source !== "crm") continue;
+    const key = (entry.step === "purchase" ? "sale" : entry.step) as LeadStageKey;
+    out[key] = true;
+  }
+  return out;
+}
+
+/**
  * The steps of this lead's funnel, in the producer's order, or null when it did not say.
  *
  * Read from `funnelSteps` — lead-service's own name for the funnel's ordered steps.

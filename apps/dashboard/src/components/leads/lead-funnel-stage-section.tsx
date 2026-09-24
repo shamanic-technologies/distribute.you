@@ -54,6 +54,9 @@ const COST_CAPTION = "Your own spend. We never bill it.";
 const TRACKED_TIP =
   "We already recorded this automatically. You can still state it yourself, which is what to do when the automatic match missed, for example when someone signed up with a different address than the one we emailed.";
 
+const CRM_TIP =
+  "Your own CRM shows this for the contact we paired with this lead. If the pairing is wrong, reject it on the CRM Merged page and this goes away.";
+
 /** A stated amount, read back in the same currency the rest of the dashboard shows. */
 function formatValue(valueCents: number): string {
   return (valueCents / 100).toLocaleString("en-US", {
@@ -255,6 +258,7 @@ export function LeadFunnelStageSection({
   tracked,
   delivery,
   implied,
+  fromCrm,
   values,
   costs,
   pending,
@@ -295,6 +299,13 @@ export function LeadFunnelStageSection({
    * moment the statement behind it changed.
    */
   implied?: Partial<Record<LeadStageKey, boolean>>;
+  /**
+   * Stages the customer's OWN CRM evidenced (a paired contact's meeting or deal). A real
+   * answer nobody stated here: it reads as coming from their CRM and offers no control,
+   * because lead-service refuses a withdrawal on it and the way to correct it is to
+   * reject the pairing on the CRM Merged page.
+   */
+  fromCrm?: Partial<Record<LeadStageKey, boolean>>;
   /** What a stated outcome was worth, in cents, for the stages that carry an amount. */
   values?: Partial<Record<LeadStageKey, number | null>>;
   /**
@@ -396,6 +407,7 @@ export function LeadFunnelStageSection({
           const locked = disabled || (pending != null && !busyHere);
           const isTracked = tracked[stage.key] === true;
           const isImplied = implied?.[stage.key] === true;
+          const isFromCrm = !isImplied && fromCrm?.[stage.key] === true && state !== "pending";
           // Read by PRESENCE, not by value: an absent key is a stage nobody stated by
           // hand, a `null` one is a statement made before the cost was asked for, and a
           // `0` is a real answer somebody gave. All three read differently.
@@ -449,6 +461,22 @@ export function LeadFunnelStageSection({
                   >
                     {state === "outcome" ? "Happened" : WONT_LABEL}
                   </span>
+                ) : isFromCrm ? (
+                  <>
+                    <span className="text-xs text-gray-500" data-testid="lead-funnel-stage-crm">
+                      From your CRM
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full border ${
+                        state === "outcome"
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : "bg-gray-100 text-gray-600 border-gray-200"
+                      }`}
+                    >
+                      {state === "outcome" ? "Happened" : WONT_LABEL}
+                    </span>
+                    <InfoTooltip tip={CRM_TIP} />
+                  </>
                 ) : writable && asking?.key === stage.key ? (
                   <StageStatementForm
                     label={stage.label}
