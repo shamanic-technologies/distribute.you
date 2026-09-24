@@ -5176,6 +5176,21 @@ export async function getInstantlyAccountHealth(
 // `renewalCents` is already paid until `renewalAt` and is only avoided then.
 // ---------------------------------------------------------------------------
 
+/**
+ * The EUR -> USD rate instantly-service converted with (ECB daily reference
+ * rate). NULL when no rate is on record, and then every `usd` twin is null too:
+ * there is deliberately no fallback rate, so "cannot state this in dollars" is
+ * never silently read as zero or as the euro figure.
+ */
+const FxRateSchema = z.object({
+  base: z.string(),
+  quote: z.string(),
+  rate: z.number(),
+  asOf: z.string(),
+  source: z.string(),
+});
+export type FxRate = z.infer<typeof FxRateSchema>;
+
 const InstantlyInfraDomainRowSchema = z.object({
   domain: z.string(),
   provider: z.string(),
@@ -5184,16 +5199,28 @@ const InstantlyInfraDomainRowSchema = z.object({
   cancelledAt: z.string().nullable(),
   absentSince: z.string().nullable(),
   vendorMailboxes: z.number(),
+  // False for a vendor whose inventory never reports mailboxes (Instantly DFY),
+  // so its `vendorMailboxes: 0` means "not reported", never "hosts none".
+  vendorReportsMailboxes: z.boolean(),
   monthlyCostCents: z.number().nullable(),
   currency: z.string().nullable(),
   costSource: z.string().nullable(),
   recurringMonthlyCents: z.number().nullable(),
   renewalCents: z.number().nullable(),
   renewalAt: z.string().nullable(),
+  // The same figures in USD at `fx.rate`. Null wherever the native amount is
+  // null OR no rate is on record.
+  usd: z.object({
+    monthlyCostCents: z.number().nullable(),
+    costPerEmailCents: z.number().nullable(),
+    recurringMonthlyCents: z.number().nullable(),
+    renewalCents: z.number().nullable(),
+  }),
 });
 
 const InstantlyInfraDomainsSchema = z.object({
   asOf: z.string(),
+  fx: FxRateSchema.nullable(),
   domains: z.array(InstantlyInfraDomainRowSchema),
 });
 
@@ -5519,6 +5546,9 @@ const OpsDomainSchema = z.object({
   absentSince: z.string().nullable(),
   purchasedAt: z.string().nullable(),
   vendorMailboxes: z.number(),
+  // False for a vendor whose inventory never reports mailboxes (Instantly DFY),
+  // so its `vendorMailboxes: 0` means "not reported", never "hosts none".
+  vendorReportsMailboxes: z.boolean(),
   mailboxes: z.number(),
   addresses: z.object({
     total: z.number(),
@@ -5543,11 +5573,24 @@ const OpsDomainSchema = z.object({
     renewalCents: z.number().nullable(),
     renewalAt: z.string().nullable(),
     paidToDate: OpsPaidToDateSchema.nullable(),
+    // Every money figure above in USD at the response's `fx.rate`. Null wherever
+    // the native amount is null OR no rate is on record (no fallback rate).
+    usd: z.object({
+      monthlyCents: z.number().nullable(),
+      perEmailCents: z.number().nullable(),
+      recurringMonthlyCents: z.number().nullable(),
+      renewalCents: z.number().nullable(),
+      paidToDateCents: z.number().nullable(),
+    }),
   }),
 });
 export type OpsDomainRow = z.infer<typeof OpsDomainSchema>;
 
-const OpsDomainsSchema = z.object({ asOf: z.string(), domains: z.array(OpsDomainSchema) });
+const OpsDomainsSchema = z.object({
+  asOf: z.string(),
+  fx: FxRateSchema.nullable(),
+  domains: z.array(OpsDomainSchema),
+});
 export type OpsDomains = z.infer<typeof OpsDomainsSchema>;
 
 /** One row per (provider, domain): vendor, renewal, DNS, delivery, addresses, cost. */

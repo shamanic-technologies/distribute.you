@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOpsDomains, type OpsDomainRow, type OpsDomains } from "@/lib/api";
+import { getOpsDomains, type FxRate, type OpsDomainRow, type OpsDomains } from "@/lib/api";
+import { liveDomains } from "@/lib/estate-signals";
+import {
+  FX_UNAVAILABLE_NOTE,
+  billedNative,
+  fxRateLine,
+  usdTotal,
+  vendorMailboxMismatch,
+} from "@/lib/estate-usd";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { DomainHealthCard } from "@/components/audit/domain-health-card";
 import { EstateEventsPanel } from "@/components/audit/estate-events-panel";
@@ -51,6 +59,12 @@ import {
  * decision, not the thing you came for. Its verdict lives in
  * `lib/domain-health.ts` and reads instantly-service's own per-mailbox
  * lifecycle rather than re-grading the fleet on raw scores.
+ *
+ * ONE CURRENCY. Every primary money figure is the USD twin instantly-service
+ * serves beside the vendor's own amount (euros converted at the ECB rate the
+ * response names in `fx`). The native amount rides beside it as provenance
+ * ("billed €3.20"). Nothing here converts anything, and a null twin on a priced
+ * row is "no USD rate on record", never zero and never the euro figure.
  */
 
 type SortKey =
@@ -72,7 +86,12 @@ const COLUMNS: { key: SortKey; label: string; align?: "right"; hint?: string }[]
   { key: "addresses", label: "Addresses", align: "right" },
   { key: "delivery", label: "Delivery" },
   { key: "sentLast30d", label: "Sent 30d", align: "right" },
-  { key: "monthly", label: "Monthly", align: "right", hint: "What this domain costs per month, from the vendor rate card." },
+  {
+    key: "monthly",
+    label: "Monthly",
+    align: "right",
+    hint: "What this domain costs per month in USD, from the vendor rate card. Euro amounts are converted at the rate stated under the table.",
+  },
   {
     key: "paid",
     label: "Paid to date",
@@ -82,7 +101,34 @@ const COLUMNS: { key: SortKey; label: string; align?: "right"; hint?: string }[]
 ];
 
 function costMonthly(r: OpsDomainRow): number | null {
-  return r.cost.monthlyCents;
+  return r.cost.usd.monthlyCents;
+}
+
+/**
+ * A USD figure, with the vendor's native amount as provenance when it differs.
+ * `native !== null && usd === null` is "no USD rate on record", stated.
+ */
+function UsdAmount({
+  usd,
+  native,
+  currency,
+}: {
+  usd: number | null;
+  native: number | null;
+  currency: string | null;
+}) {
+  if (native === null && usd === null) return <span className="text-gray-400">—</span>;
+  const billed = billedNative(native, currency);
+  return (
+    <span className="inline-flex flex-col items-end">
+      {usd === null ? (
+        <span className="text-amber-600">no USD rate</span>
+      ) : (
+        <span>{formatCents(usd, "USD")}</span>
+      )}
+      {billed && <span className="text-[10px] text-gray-400">{billed}</span>}
+    </span>
+  );
 }
 
 function compare(a: OpsDomainRow, b: OpsDomainRow, key: SortKey, dir: "asc" | "desc"): number {
@@ -114,11 +160,11 @@ function compare(a: OpsDomainRow, b: OpsDomainRow, key: SortKey, dir: "asc" | "d
     case "monthly":
       return numeric(costMonthly(a), costMonthly(b));
     case "paid":
-      return numeric(a.cost.paidToDate?.cents ?? null, b.cost.paidToDate?.cents ?? null);
+      return numeric(a.cost.usd.paidToDateCents, b.cost.usd.paidToDateCents);
   }
 }
 
-function DomainPanel({ row, onClose }: { row: OpsDomainRow; onClose: () => void }) {
+function DomainPanel({ row, fx, onClose }: { row: OpsDomainRow; fx: FxRate | null; onClose: () => void }) {
   // A domain the sweep never probed has no records to show and none to grade.
   const badges = row.dns ? dnsBadges(row.dns) : [];
   const errors = row.dns ? Object.entries(row.dns.errors) : [];
@@ -141,23 +187,34 @@ function DomainPanel({ row, onClose }: { row: OpsDomainRow; onClose: () => void 
       </PanelGroup>
 
       <PanelGroup title="Cost">
-        <PanelRow label="Monthly">{formatCents(row.cost.monthlyCents, row.cost.currency) ?? "—"}</PanelRow>
+        <PanelRow label="Monthly">
+          <UsdAmount usd={row.cost.usd.monthlyCents} native={row.cost.monthlyCents} currency={row.cost.currency} />
+        </PanelRow>
         <PanelRow label="Source">{row.cost.source ?? "—"}</PanelRow>
         <PanelRow label="Per email">
-          {row.cost.perEmailCents === null ? "—" : `${row.cost.perEmailCents.toFixed(3)}¢`}
+          {row.cost.perEmailCents === null
+            ? "—"
+            : row.cost.usd.perEmailCents === null
+              ? "no USD rate"
+              : `${row.cost.usd.perEmailCents.toFixed(3)}¢`}
         </PanelRow>
         {/* Two different answers: one stops the moment you cancel, the other is
             already paid and is only avoided at the renewal date. */}
         <PanelRow label="Stops on cancel (recurring)">
-          {formatCents(row.cost.recurringMonthlyCents, row.cost.currency) ?? "—"}
+          <UsdAmount
+            usd={row.cost.usd.recurringMonthlyCents}
+            native={row.cost.recurringMonthlyCents}
+            currency={row.cost.currency}
+          />
         </PanelRow>
         <PanelRow label="Avoided at renewal">
-          {formatCents(row.cost.renewalCents, row.cost.currency) ?? "—"}
+          <UsdAmount usd={row.cost.usd.renewalCents} native={row.cost.renewalCents} currency={row.cost.currency} />
         </PanelRow>
         <PanelRow label="Renews on">{utcDay(row.cost.renewalAt)}</PanelRow>
         <PanelRow label="Paid to date">
-          <PaidToDate paid={row.cost.paidToDate} />
+          <PaidToDate paid={row.cost.paidToDate} usdCents={row.cost.usd.paidToDateCents} />
         </PanelRow>
+        <p className="pt-1 text-[10px] text-gray-500">{fx ? fxRateLine(fx) : FX_UNAVAILABLE_NOTE}</p>
         <p className="pt-1 text-[10px] text-amber-600">{PAID_TO_DATE_NOTE}</p>
       </PanelGroup>
 
@@ -216,7 +273,11 @@ function DomainPanel({ row, onClose }: { row: OpsDomainRow; onClose: () => void 
             </PanelRow>
           ))}
         <PanelRow label="Mailboxes (ours)">{num(row.mailboxes)}</PanelRow>
-        <PanelRow label="Mailboxes (vendor)">{num(row.vendorMailboxes)}</PanelRow>
+        <PanelRow label="Mailboxes (vendor)">
+          {/* A vendor that never reports mailboxes serves 0 meaning "not
+              reported", so the 0 is never printed as a count. */}
+          {row.vendorReportsMailboxes ? num(row.vendorMailboxes) : "not reported by this vendor"}
+        </PanelRow>
       </PanelGroup>
 
       <PanelGroup title="Delivery">
@@ -256,6 +317,7 @@ export default function ColdEmailDomainsPage() {
   const [selected, setSelected] = useState<OpsDomainRow | null>(null);
 
   const domains = useMemo(() => data?.domains ?? [], [data]);
+  const fx = data?.fx ?? null;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -267,8 +329,16 @@ export default function ColdEmailDomainsPage() {
 
   // Display rollups over the rows the producer served — a count of what is on
   // screen, not a metric recomputed from parts.
-  const monthlyTotal = domains.reduce((s, d) => s + (d.cost.monthlyCents ?? 0), 0);
-  const unpriced = domains.filter((d) => d.cost.monthlyCents === null).length;
+  //
+  // ⚠️ Summed over the USD TWINS of the LIVE domains. It used to add every
+  // row's native `monthlyCents`, i.e. euro cents plus dollar cents printed as
+  // dollars. A cancelled or vanished domain bills nothing, so it is out. One
+  // priced domain with no USD twin (no rate on record) makes the total
+  // unavailable rather than a partial sum labelled as the total.
+  const liveRows = liveDomains(domains);
+  const monthly = usdTotal(
+    liveRows.map((d) => ({ native: d.cost.monthlyCents, usd: d.cost.usd.monthlyCents })),
+  );
   // Counted over PROBED domains only. A domain nobody has looked at is not a
   // domain with a problem — it is a domain we know nothing about, so it is
   // stated separately rather than folded into either side.
@@ -296,10 +366,18 @@ export default function ColdEmailDomainsPage() {
         <StatCard label="Domains" value={num(domains.length)} pending={isPending} />
         <StatCard
           label="Monthly cost"
-          value={formatCents(monthlyTotal, "USD") ?? "—"}
-          sub={unpriced > 0 ? `${num(unpriced)} with no rate on record` : "every domain priced"}
+          value={monthly.kind === "total" ? formatCents(monthly.cents, "USD") ?? "—" : "Unavailable"}
+          sub={
+            monthly.kind === "unavailable"
+              ? "no EUR to USD rate on record"
+              : `${num(liveRows.length)} live domains${
+                  monthly.unpriced > 0 ? ` · ${num(monthly.unpriced)} with no price on record` : ""
+                }`
+          }
           pending={isPending}
-          hint="Sum of the per-domain monthly rate the vendor rate card states. A domain with no rate contributes nothing rather than a guessed one."
+          hint={`Sum of the per-domain monthly rate in USD over live domains. ${
+            fx ? `${fxRateLine(fx)}.` : FX_UNAVAILABLE_NOTE
+          } A domain with no price contributes nothing rather than a guessed one.`}
         />
         <StatCard
           label="DNS needs attention"
@@ -331,7 +409,7 @@ export default function ColdEmailDomainsPage() {
             if (row) setSelected(row);
           }}
         />
-        <EstateCostsPanel domains={domains} isPending={isPending} />
+        <EstateCostsPanel domains={domains} fx={fx} isPending={isPending} />
       </div>
 
       <Section
@@ -404,7 +482,7 @@ export default function ColdEmailDomainsPage() {
                       </td>
                       <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
                         {num(d.mailboxes)}
-                        {d.vendorMailboxes !== d.mailboxes && (
+                        {vendorMailboxMismatch(d) && (
                           <span className="block text-[10px] text-amber-600">
                             vendor says {num(d.vendorMailboxes)}
                           </span>
@@ -420,17 +498,15 @@ export default function ColdEmailDomainsPage() {
                         <VolumeCell volume={d.volume30d} />
                       </td>
                       <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
-                        {formatCents(d.cost.monthlyCents, d.cost.currency) ?? (
-                          <span className="text-gray-400">—</span>
-                        )}
-                        {d.cost.perEmailCents !== null && (
+                        <UsdAmount usd={d.cost.usd.monthlyCents} native={d.cost.monthlyCents} currency={d.cost.currency} />
+                        {d.cost.usd.perEmailCents !== null && (
                           <span className="block text-[10px] text-gray-400">
-                            {d.cost.perEmailCents.toFixed(2)}¢ / email
+                            {d.cost.usd.perEmailCents.toFixed(2)}¢ / email
                           </span>
                         )}
                       </td>
                       <td className="py-2.5 px-2 text-right">
-                        <PaidToDate paid={d.cost.paidToDate} />
+                        <PaidToDate paid={d.cost.paidToDate} usdCents={d.cost.usd.paidToDateCents} />
                       </td>
                     </tr>
                   ))
@@ -438,6 +514,7 @@ export default function ColdEmailDomainsPage() {
               </tbody>
             </table>
             <AsOf iso={data.asOf} />
+            <p className="mt-1 text-xs text-gray-500">{fx ? `${fxRateLine(fx)}.` : FX_UNAVAILABLE_NOTE}</p>
             <p className="mt-1 text-xs text-amber-600">{PAID_TO_DATE_NOTE}</p>
           </div>
         )}
@@ -448,7 +525,7 @@ export default function ColdEmailDomainsPage() {
           of this page's own. */}
       <DomainHealthCard />
 
-      {selected && <DomainPanel row={selected} onClose={() => setSelected(null)} />}
+      {selected && <DomainPanel row={selected} fx={fx} onClose={() => setSelected(null)} />}
     </div>
   );
 }

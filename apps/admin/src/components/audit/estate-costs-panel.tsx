@@ -10,6 +10,7 @@ import {
   type RenewalBucket,
 } from "@/lib/estate-signals";
 import { formatCents } from "@/lib/instantly-ops";
+import { FX_UNAVAILABLE_NOTE, fxRateLine, type FxRateLike } from "@/lib/estate-usd";
 import { Skeleton } from "@/components/skeleton";
 
 /**
@@ -29,9 +30,11 @@ import { Skeleton } from "@/components/skeleton";
  * bars and reads as a broken chart, so an empty window SAYS SO in words instead
  * of drawing zeros.
  *
- * ONE CURRENCY AT A TIME. Gandi invoices in euros and everyone else in dollars;
- * blending them needs an FX rate nobody here owns, so the picker offers each
- * currency the estate renews in and the chart states which one it is showing.
+ * ONE CURRENCY: US dollars. Gandi invoices in euros and everyone else in
+ * dollars; instantly-service serves a USD twin for every figure, converted at
+ * the ECB rate it names on the response, so the whole estate is one chart and
+ * the rate is stated under it. With no rate on record there is no chart at all
+ * (a euro bar drawn as dollars would be a wrong number), and the panel says why.
  *
  * Palette: `#6366f1` (upcoming) and `#0d9488` (paid). Validated with the
  * dataviz skill's own checker against BOTH surfaces — light `#ffffff` and the
@@ -48,10 +51,10 @@ const PAID = "#0d9488";
  * whose leading digits are cut is worse than a coarser one, and cents on an
  * axis carry nothing. The tooltip still states the exact figure.
  */
-function axisMoney(cents: number, currency: string): string {
+function axisMoney(cents: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency,
+    currency: "USD",
     maximumFractionDigits: 0,
   }).format(cents / 100);
 }
@@ -66,12 +69,10 @@ function CostTooltip({
   active,
   payload,
   grain,
-  currency,
 }: {
   active?: boolean;
   payload?: Array<{ payload: RenewalBucket }>;
   grain: CostGrain;
-  currency: string;
 }) {
   if (!active || !payload?.length) return null;
   const b = payload[0].payload;
@@ -84,14 +85,14 @@ function CostTooltip({
       </p>
       {b.pastCount > 0 && (
         <p className="mt-1 text-gray-600">
-          <span className="font-medium tabular-nums">{formatCents(b.pastCents, currency)}</span> paid
+          <span className="font-medium tabular-nums">{formatCents(b.pastCents, "USD")}</span> paid
           in this {grain === "monthly" ? "month" : grain === "weekly" ? "week" : "day"} ·{" "}
           {b.pastCount} domain{b.pastCount === 1 ? "" : "s"}
         </p>
       )}
       {b.futureCount > 0 && (
         <p className="mt-0.5 text-gray-600">
-          <span className="font-medium tabular-nums">{formatCents(b.futureCents, currency)}</span>{" "}
+          <span className="font-medium tabular-nums">{formatCents(b.futureCents, "USD")}</span>{" "}
           {grain === "daily" ? "due" : "committed through here"} · {b.futureCount} domain
           {b.futureCount === 1 ? "" : "s"} in this bucket
         </p>
@@ -102,26 +103,23 @@ function CostTooltip({
 
 export function EstateCostsPanel({
   domains,
+  fx,
   isPending,
 }: {
   domains: EstateDomain[];
+  /** The served EUR -> USD rate. Null = no rate on record, so nothing is charted. */
+  fx: FxRateLike | null;
   isPending: boolean;
 }) {
   const [grain, setGrain] = useState<CostGrain>("monthly");
-  const [currency, setCurrency] = useState<string | null>(null);
 
   // `now` is read once per render batch off the data identity, so a poll does
   // not slide the buckets under a reader mid-hover.
   const now = useMemo(() => Date.now(), [domains]);
 
-  const currencies = useMemo(
-    () => renewalWindow(domains, grain, "__none__", now).currencies,
-    [domains, grain, now],
-  );
-  const active = currency && currencies.includes(currency) ? currency : currencies[0] ?? null;
   const window = useMemo(
-    () => (active ? renewalWindow(domains, grain, active, now) : null),
-    [domains, grain, active, now],
+    () => (domains.length > 0 ? renewalWindow(domains, grain, now) : null),
+    [domains, grain, now],
   );
 
   return (
@@ -134,24 +132,6 @@ export function EstateCostsPanel({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1">
-          {currencies.length > 1 &&
-            currencies.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCurrency(c)}
-                // `bg-gray-200` + `text-gray-900` rather than a near-black
-                // chip: both are in the `html.dark` remap, so the selected
-                // currency reads as selected on either surface.
-                className={`rounded-md px-2 py-1 text-[11px] font-medium ${
-                  c === active
-                    ? "bg-gray-200 text-gray-900"
-                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
           {COST_GRAINS.map((g) => (
             <button
               key={g}
@@ -172,7 +152,11 @@ export function EstateCostsPanel({
       <div className="mt-3">
         {isPending ? (
           <Skeleton className="h-48 w-full rounded" />
-        ) : !window || !active ? (
+        ) : !fx ? (
+          // No rate: a euro renewal cannot be drawn as dollars, and drawing only
+          // the dollar half would present part of the estate as all of it.
+          <p className="py-10 text-center text-sm text-amber-600">{FX_UNAVAILABLE_NOTE}</p>
+        ) : !window ? (
           <p className="py-10 text-center text-sm text-gray-400">
             No live domain carries a renewal on record.
           </p>
@@ -205,7 +189,7 @@ export function EstateCostsPanel({
                 Upcoming
                 {grain === "daily" ? ", per day" : ", cumulative from today"}
               </span>
-              <span className="ml-auto tabular-nums">{active}</span>
+              <span className="ml-auto tabular-nums">USD</span>
             </div>
 
             <ResponsiveContainer width="100%" height={220}>
@@ -230,11 +214,11 @@ export function EstateCostsPanel({
                   tickLine={false}
                   axisLine={false}
                   width={64}
-                  tickFormatter={(v: number) => axisMoney(v, active)}
+                  tickFormatter={(v: number) => axisMoney(v)}
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(99,102,241,0.06)" }}
-                  content={<CostTooltip grain={grain} currency={active} />}
+                  content={<CostTooltip grain={grain} />}
                 />
                 {/* Today, so past and future read from position as well as hue. */}
                 <ReferenceLine
@@ -251,7 +235,7 @@ export function EstateCostsPanel({
         )}
       </div>
 
-      {!isPending && window && !window.empty && (window.unpricedInWindow > 0 || window.undated > 0) && (
+      {!isPending && fx && window && !window.empty && (window.unpricedInWindow > 0 || window.undated > 0) && (
         // The bars UNDERSTATE by exactly this much. Stated rather than summed
         // as zero and presented as the total.
         <p className="mt-2 border-t border-gray-100 pt-2 text-[11px] text-amber-600">
@@ -274,12 +258,9 @@ export function EstateCostsPanel({
         </p>
       )}
 
-      {!isPending && window && window.currencies.length > 1 && (
-        <p className="mt-2 text-[11px] text-gray-400">
-          Showing {active} only. The estate also renews in{" "}
-          {window.currencies.filter((c) => c !== active).join(", ")}; blending them needs an FX rate
-          nobody here owns.
-        </p>
+      {!isPending && fx && (
+        // The rate is stated where the dollars are, never hardcoded.
+        <p className="mt-2 text-[11px] text-gray-400">{fxRateLine(fx)}.</p>
       )}
     </div>
   );

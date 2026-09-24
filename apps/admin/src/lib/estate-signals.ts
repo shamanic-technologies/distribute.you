@@ -41,6 +41,8 @@ export interface EstateDomain {
     currency: string | null;
     renewalCents: number | null;
     renewalAt: string | null;
+    /** The same renewal in USD at the served rate. Null = cannot state it in dollars. */
+    usd: { renewalCents: number | null };
   };
 }
 
@@ -126,7 +128,9 @@ export interface RenewalEvent {
   domain: string;
   provider: string | null;
   expiresAt: string;
-  /** What the renewal costs, if the vendor priced it. Null stays null. */
+  /** What the renewal costs in USD. Null when unpriced OR when no rate is on record. */
+  renewalUsdCents: number | null;
+  /** The vendor's own figure and currency, kept as provenance beside the USD one. */
   renewalCents: number | null;
   currency: string | null;
 }
@@ -160,6 +164,7 @@ export function nextRenewalEvents(rows: readonly EstateDomain[]): {
       domain: match.domain,
       provider: match.provider,
       expiresAt: match.expiresAt,
+      renewalUsdCents: match.cost.usd.renewalCents,
       renewalCents: match.cost.renewalCents,
       currency: match.cost.currency,
     };
@@ -372,14 +377,17 @@ export interface RenewalBucket {
 
 export interface RenewalWindow {
   grain: CostGrain;
-  currency: string;
+  /** Every figure is USD cents, read off the served twins. */
   buckets: RenewalBucket[];
   /** Renewals in the window the vendor never priced. Stated, never summed as zero. */
   unpricedInWindow: number;
+  /**
+   * Renewals in the window that ARE priced but carry no USD figure (no rate on
+   * record). Stated, never summed as zero and never drawn in their own currency.
+   */
+  unconvertibleInWindow: number;
   /** Live domains carrying a renewal amount with no date at all, so no bucket can hold them. */
   undated: number;
-  /** Every currency the live estate renews in, so the picker can say what it is not showing. */
-  currencies: string[];
   /** True when no bucket in the window carries a single renewal. */
   empty: boolean;
 }
@@ -435,13 +443,12 @@ function bucketKeysAround(now: number, grain: CostGrain): { keys: string[]; curr
 }
 
 /**
- * Renewal payments falling due, bucketed around today, for ONE currency.
+ * Renewal payments falling due, bucketed around today, in USD.
  *
- * Currency is a PARAMETER rather than a blend: Gandi invoices in euros and
- * everyone else in dollars, and merging them needs an FX rate nobody here owns
- * (the same reason `mergeDomainCost` reports null on a mixed domain). The
- * window states every currency the estate renews in so the picker can offer
- * them one at a time.
+ * Every amount is the served USD twin (`cost.usd.renewalCents`): euros were
+ * converted by instantly-service at the rate it names, so the whole estate is
+ * one currency and one chart. A priced renewal whose twin is null (no rate on
+ * record) is counted in `unconvertibleInWindow`, never drawn as zero.
  *
  * A renewal with an amount and NO DATE falls in no bucket at all: it is counted
  * in `undated` and never dropped silently. One with a date and no amount is
@@ -451,20 +458,9 @@ function bucketKeysAround(now: number, grain: CostGrain): { keys: string[]; curr
 export function renewalWindow(
   rows: readonly EstateDomain[],
   grain: CostGrain,
-  currency: string,
   now: number,
 ): RenewalWindow {
   const live = liveDomains(rows);
-  const currencies = [
-    ...new Set(
-      live
-        .filter((r) => r.cost.renewalCents !== null || r.cost.renewalAt !== null)
-        .map((r) => r.cost.currency)
-        .filter((c): c is string => c !== null),
-    ),
-  ].sort();
-
-  const mine = live.filter((r) => r.cost.currency === currency);
   const { keys, currentKey } = bucketKeysAround(now, grain);
   const index = new Map(keys.map((k, i) => [k, i]));
 
@@ -479,9 +475,10 @@ export function renewalWindow(
   }));
 
   let unpricedInWindow = 0;
+  let unconvertibleInWindow = 0;
   let undated = 0;
 
-  for (const row of mine) {
+  for (const row of live) {
     const at = row.cost.renewalAt;
     if (!at) {
       if (row.cost.renewalCents !== null) undated += 1;
@@ -495,13 +492,18 @@ export function renewalWindow(
       unpricedInWindow += 1;
       continue;
     }
+    const usd = row.cost.usd.renewalCents;
+    if (usd === null) {
+      unconvertibleInWindow += 1;
+      continue;
+    }
     // Split on the INSTANT, not the bucket: the bucket holding today legitimately
     // carries both a renewal already taken and one still to come.
     if (t < now) {
-      buckets[i].pastCents += row.cost.renewalCents;
+      buckets[i].pastCents += usd;
       buckets[i].pastCount += 1;
     } else {
-      buckets[i].futureCents += row.cost.renewalCents;
+      buckets[i].futureCents += usd;
       buckets[i].futureCount += 1;
     }
   }
@@ -522,5 +524,5 @@ export function renewalWindow(
     }
   }
 
-  return { grain, currency, buckets, unpricedInWindow, undated, currencies, empty };
+  return { grain, buckets, unpricedInWindow, unconvertibleInWindow, undated, empty };
 }

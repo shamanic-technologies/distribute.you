@@ -135,14 +135,19 @@ export interface DomainHealthRow {
 }
 
 export interface DomainCost {
-  /** Stops billing the moment the domain is cancelled. Null when nothing recurring. */
+  /** USD cents. Stops billing the moment the domain is cancelled. Null when nothing recurring. */
   recurringCents: number | null;
-  /** The yearly registration avoided at `renewalAt`. Null when nothing to renew. */
+  /** USD cents. The yearly registration avoided at `renewalAt`. Null when nothing to renew. */
   renewalCents: number | null;
   renewalAt: string | null;
-  currency: string;
   /** `api` (the vendor told us) or `rate-card` (a versioned local row). */
   source: string | null;
+  /**
+   * True when a vendor priced this domain but no USD figure exists for it (no
+   * EUR -> USD rate on record). The dollar sums above then cannot be stated,
+   * and the card says so rather than showing a partial figure.
+   */
+  unconvertible: boolean;
 }
 
 /**
@@ -213,9 +218,10 @@ export function domainHealthState(
  *
  * A domain can be reported by more than one vendor — the registrar sells the
  * name while the mail host sells the mailboxes — so the rows are summed rather
- * than picked between. Two vendors billing the same domain in different
- * currencies would need an FX rate nobody here owns, so that reports null
- * rather than a wrong sum.
+ * than picked between. Every sum reads the USD TWIN instantly-service serves
+ * (euros converted at the rate it names), so two vendors in two currencies add
+ * up in dollars. A priced row whose twin is null marks the cost `unconvertible`
+ * rather than being summed as zero.
  *
  * A row the vendor stopped reporting, or one it cancelled, contributes nothing:
  * we are no longer paying for it, so there is nothing to save by deleting it.
@@ -224,21 +230,20 @@ export function mergeDomainCost(rows: InstantlyInfraDomainRow[]): DomainCost | n
   const live = rows.filter((r) => !r.absentSince && !r.cancelledAt);
   if (live.length === 0) return null;
 
-  const currencies = new Set(live.map((r) => r.currency).filter((c): c is string => c !== null));
-  if (currencies.size !== 1) return null;
-  const currency = [...currencies][0];
-
   let recurringCents: number | null = null;
   let renewalCents: number | null = null;
   let renewalAt: string | null = null;
   let source: string | null = null;
+  let unconvertible = false;
 
   for (const row of live) {
     if (row.recurringMonthlyCents !== null) {
-      recurringCents = (recurringCents ?? 0) + row.recurringMonthlyCents;
+      if (row.usd.recurringMonthlyCents === null) unconvertible = true;
+      else recurringCents = (recurringCents ?? 0) + row.usd.recurringMonthlyCents;
     }
     if (row.renewalCents !== null) {
-      renewalCents = (renewalCents ?? 0) + row.renewalCents;
+      if (row.usd.renewalCents === null) unconvertible = true;
+      else renewalCents = (renewalCents ?? 0) + row.usd.renewalCents;
       // The soonest renewal is the one that forces a decision.
       if (row.renewalAt && (renewalAt === null || row.renewalAt < renewalAt)) {
         renewalAt = row.renewalAt;
@@ -249,8 +254,8 @@ export function mergeDomainCost(rows: InstantlyInfraDomainRow[]): DomainCost | n
     }
   }
 
-  if (recurringCents === null && renewalCents === null) return null;
-  return { recurringCents, renewalCents, renewalAt, currency, source };
+  if (recurringCents === null && renewalCents === null && !unconvertible) return null;
+  return { recurringCents, renewalCents, renewalAt, source, unconvertible };
 }
 
 /**
