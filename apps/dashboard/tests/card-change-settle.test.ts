@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   cardChangeSettleCents,
+  cardSessionSettleProblem,
   MIN_SETTLE_CHARGE_CENTS,
 } from "../src/lib/card-change-settle";
 
@@ -159,5 +160,63 @@ describe("the confirmation copy", () => {
   it("carries no em-dash", () => {
     const copy = MODAL.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(copy).not.toContain("—");
+  });
+});
+
+
+describe("cardSessionSettleProblem", () => {
+  it("states a decline with the acquirer's own sentence", () => {
+    expect(
+      cardSessionSettleProblem({
+        settle_result: "declined",
+        settle_decline_message: "Your card does not support this type of purchase.",
+      }),
+    ).toEqual({
+      kind: "declined",
+      message: "Your card does not support this type of purchase.",
+    });
+  });
+
+  it("a decline with no sentence still stops the redirect", () => {
+    expect(cardSessionSettleProblem({ settle_result: "declined", settle_decline_message: "  " })).toEqual({
+      kind: "declined",
+      message: null,
+    });
+  });
+
+  it("a charge that got no answer is its own case, not a decline", () => {
+    expect(cardSessionSettleProblem({ settle_result: "failed" })).toEqual({ kind: "failed" });
+  });
+
+  it("charged, not attempted, unknown or absent: nothing to say, redirect as before", () => {
+    expect(cardSessionSettleProblem({ settle_result: "charged" })).toBeNull();
+    expect(cardSessionSettleProblem({ settle_result: "not_attempted" })).toBeNull();
+    expect(cardSessionSettleProblem({ settle_result: "something_new" })).toBeNull();
+    expect(cardSessionSettleProblem({})).toBeNull();
+    expect(cardSessionSettleProblem(null)).toBeNull();
+  });
+});
+
+describe("billing page: a failed settle is stated before the card page opens", () => {
+  const page = readFileSync(
+    join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+    "utf8",
+  );
+  const open = page.slice(
+    page.indexOf("async function openCardPage("),
+    page.indexOf("function dismissSettleProblem("),
+  );
+
+  it("checks the settle outcome BEFORE continuing to the card page", () => {
+    const check = open.indexOf("cardSessionSettleProblem(setup)");
+    const go = open.indexOf("continueToCardPage(setup)");
+    expect(check).toBeGreaterThan(-1);
+    expect(go).toBeGreaterThan(check);
+    expect(open).toContain("setSettleProblem({ problem, setup })");
+  });
+
+  it("passes the problem and a way on to the modal", () => {
+    expect(page).toContain("problem={settleProblem?.problem ?? null}");
+    expect(page).toContain("onContinue={continueAfterSettleProblem}");
   });
 });

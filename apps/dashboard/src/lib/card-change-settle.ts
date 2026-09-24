@@ -78,3 +78,49 @@ export function cardChangeSettleCents(
   if (deficit < MIN_SETTLE_CHARGE_CENTS) return null;
   return deficit;
 }
+
+/**
+ * What billing-service reports about the settle it attempted while minting the
+ * card session. Every field is optional: an older billing deploy states none of
+ * them, and that reads as "nothing to say" rather than as a failure.
+ *
+ *   charged        the balance was taken
+ *   declined       the acquirer refused the card; the balance is still owed
+ *   failed         no answer from the acquirer; nothing is known to be charged
+ *   not_attempted  nothing was presented (nothing owed, no chargeable card...)
+ */
+export interface CardSessionSettlement {
+  settle_result?: string;
+  settle_decline_message?: string | null;
+}
+
+/** A settle the customer must hear about BEFORE being sent to the card page. */
+export type SettleProblem =
+  | { kind: "declined"; message: string | null }
+  | { kind: "failed" };
+
+/**
+ * The problem to state, or null when the redirect can go ahead as before.
+ *
+ * The redirect used to be unconditional, so a declined charge was never
+ * mentioned: the customer left for the card page with no idea the balance was
+ * still owed or why (prod 2026-09-22, "Your card does not support this type of
+ * purchase", redirected in silence). A decline and a no-answer are kept apart
+ * because they send the customer to different actions: a refused card should
+ * be replaced, a card that never reached the bank may be fine.
+ *
+ * An unknown `settle_result` is treated as nothing to say, the same as an
+ * absent one: the page still opens, which is the rule that matters.
+ */
+export function cardSessionSettleProblem(
+  setup: CardSessionSettlement | null | undefined,
+): SettleProblem | null {
+  if (!setup) return null;
+  if (setup.settle_result === "declined") {
+    const raw = setup.settle_decline_message;
+    const message = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    return { kind: "declined", message };
+  }
+  if (setup.settle_result === "failed") return { kind: "failed" };
+  return null;
+}
