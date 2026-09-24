@@ -379,6 +379,16 @@ loaded rows and must never read as a search of the whole population. Guards:
 `tests/crm-view.test.ts` + `tests/crm-beta-gate.test.ts`. (#4285; key-service #64,
 crm-service #16, api-service #958.)
 
+## The CRM page has a second sidebar: Raw (their CRM as mirrored) and Merged (their CRM beside our leads)
+
+`crm/layout.tsx` mounts `CrmSidebar` beside the page (beta, both entries badged); `/crm` stays the Raw page, byte-unchanged, and `/crm/merged` is `components/crm/crm-merged-page.tsx`. Merged is a staff debug surface over lead-service's pairings view: one row per contact of THEIR CRM, the lead we emailed beside it where paired.
+
+- **Every count is served**: `/v1/leads/crm-pairing-counts` for the band, crm-service `/v1/orgs/gohighlevel/contacts/origins` for where their contacts came from (their words, top values, the rest stated as a count). Nothing is summed or subtracted here.
+- **The table reads by pairing state SERVER-SIDE** (`state=` on `/v1/leads/crm-pairings`), and `nextOffset` is a POSITION in their contact list, not a page index, so Previous walks a stack of visited offsets. It opens on `paired`, which buys no similarity judgment; a set including `unconfirmed` is the only read that spends.
+- **"Aligned" compares only fixed-meaning fields** (`lib/crm-pairings.ts` `alignmentFor`, alias-free, real unit tests): their deal STATE vs our STANDING. Stage names are free text per customer and are never mapped. `behind` (closed-won there, no sale here) is the point of the page: 3 of the 14 paired contacts on the first mirrored brand, measured 2026-09-24.
+- **Rulings** (Same person / Not the same person / Take back) go through `setCrmPairingRuling` / `withdrawCrmPairingRuling` and re-read the page and the counts before the button releases. Denying deletes nothing, and the panel says so. Refusals render from the STATUS, never the body.
+- Guards: `tests/crm-merged-view.test.ts`. (#4365, #4369; lead-service #559, crm-service #24, api-service origins proxy)
+
 ## A guard that pins WHERE a hook may be CALLED goes stale the day a second surface earns it
 
 The source-substring traps above are about a guard matching the wrong TEXT. This
