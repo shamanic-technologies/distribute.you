@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderedResponse } from "@/lib/static-html";
 import { renderAssistantPage } from "@/lib/pages/assistant";
+import { renderConciergePage } from "@/lib/pages/concierge";
 import {
   AB_TEST_ENABLED,
   decideVariant,
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 // and `Accept: text/markdown` negotiation.
 //
 // While the A/B test runs (`src/lib/landing-ab.ts`), half of first-time human
-// visitors get the AI-sales-assistant candidate at this same URL instead.
+// visitors get one of the candidates at this same URL instead (see VARIANT_WEIGHTS).
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const wantsMarkdown = (request.headers.get("accept") ?? "").includes("text/markdown");
@@ -35,7 +36,9 @@ export async function GET(request: Request) {
   const page =
     decision.variant === "assistant"
       ? renderAssistantPage(undefined, { at: "homepage" })
-      : readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
+      : decision.variant === "concierge"
+        ? renderConciergePage(undefined, { at: "homepage" })
+        : readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
   const html = decision.inTest
     ? withBeforeBodyEnd(page, variantTrackingScript(decision.variant))
     : page;

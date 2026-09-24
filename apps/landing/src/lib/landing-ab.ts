@@ -1,6 +1,7 @@
 /**
- * The homepage A/B test: `/` serves either the current homepage (`control`) or the
- * AI-sales-assistant candidate (`assistant`, also reachable at `/lp/assistant`).
+ * The homepage A/B test: `/` serves the current homepage (`control`), the
+ * AI-sales-assistant candidate (`assistant`, also at `/lp/assistant`), or the concierge
+ * candidate you just message (`concierge`, also at `/lp/concierge`).
  *
  * Server-side and sticky: the first visit draws a variant and stores it in a cookie on
  * the registrable domain, so a returning visitor (and the dashboard, which shares the
@@ -20,14 +21,32 @@
 
 export const AB_TEST_ENABLED = true;
 
-export const LANDING_VARIANTS = ["control", "assistant"] as const;
+export const LANDING_VARIANTS = ["control", "assistant", "concierge"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
 
 export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
-/** Share of first visits drawn into `assistant`. */
-export const ASSISTANT_SHARE = 0.5;
+/**
+ * Share of first visits drawn into each variant. Owner-set 2026-09-24: half to the
+ * concierge page, a quarter each to the other two. A visitor already holding a cookie
+ * keeps their variant whatever these say.
+ */
+export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
+  concierge: 0.5,
+  control: 0.25,
+  assistant: 0.25,
+};
+
+/** The variant a uniform draw in [0, 1) lands on, walking the weights in a fixed order. */
+export function drawVariant(random: number, weights = VARIANT_WEIGHTS): LandingVariant {
+  let acc = 0;
+  for (const v of LANDING_VARIANTS) {
+    acc += weights[v];
+    if (random < acc) return v;
+  }
+  return "control";
+}
 
 const BOT_UA =
   /bot|crawl|spider|slurp|facebookexternalhit|embedly|preview|headless|lighthouse|pagespeed|inspectiontool|gptbot|chatgpt|oai-search|claude|anthropic|perplexity|bytespider|ahrefs|semrush|curl|wget|python|node-fetch|axios|go-http|java\//i;
@@ -73,7 +92,7 @@ export function decideVariant(input: {
   if (forced) return { variant: forced, setCookie: true, inTest: true };
   const stored = asVariant(cookieValue(input.cookieHeader, VARIANT_COOKIE));
   if (stored) return { variant: stored, setCookie: false, inTest: true };
-  const variant: LandingVariant = input.random < ASSISTANT_SHARE ? "assistant" : "control";
+  const variant = drawVariant(input.random);
   return { variant, setCookie: true, inTest: true };
 }
 
