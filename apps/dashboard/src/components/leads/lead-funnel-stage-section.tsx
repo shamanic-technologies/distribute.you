@@ -463,6 +463,16 @@ export function LeadFunnelStageSection({
                   </span>
                 ) : isFromCrm ? (
                   <>
+                    {/* A won deal their CRM states a value for says what it was worth, in
+                        the same words a hand-stated sale does: one row, one statement. */}
+                    {state === "outcome" && typeof values?.[stage.key] === "number" && (
+                      <span
+                        className="text-xs text-gray-500 flex items-center gap-1"
+                        data-testid="lead-funnel-stage-value"
+                      >
+                        {formatValue(values[stage.key] as number)}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-500" data-testid="lead-funnel-stage-crm">
                       From your CRM
                     </span>
