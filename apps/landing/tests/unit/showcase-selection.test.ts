@@ -10,9 +10,12 @@
  * producer states — so a reader that drifts from the wire fails here rather than on the
  * apex page.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   cardFunnel,
+  hasDrawnOutcome,
   PODIUM_ORDER,
   podium,
   pricedStep,
@@ -22,7 +25,7 @@ import {
 import {
   renderProofSelection,
   renderShowcaseSelection,
-  selectionFrom,
+  pickedBrands,
   type ShowcaseBrand,
 } from "@/lib/showcase-funnels";
 import { personFor, SHOWCASE_PEOPLE } from "@/lib/showcase-people";
@@ -88,14 +91,36 @@ const labcritics: ShowcaseBrand = {
 };
 
 describe("the producer picks, this page renders", () => {
-  it("takes a pick only when BOTH groups are answered", () => {
-    expect(selectionFrom({ brands: [] })).toBeNull();
-    expect(selectionFrom({ brands: [], recent: [docDinners] })).toBeNull();
-    expect(selectionFrom({ brands: [], topReturn: [opsfolio] })).toBeNull();
-    expect(selectionFrom({ brands: [], recent: [], topReturn: [opsfolio] })).toBeNull();
+  const measured = (brands: ShowcaseBrand[]) => ({
+    brands,
+    measured: true,
+    unmeasuredReason: null,
+    requestedCount: 3,
+    qualifyingCount: 10,
+  });
+
+  it("honours a group the producer declined to answer", () => {
+    // Production answers exactly this for the recent group today
+    // (`measured: false`, `no_qualifying_clients`). The section keeps its shipped clients.
     expect(
-      selectionFrom({ brands: [], recent: [docDinners], topReturn: [opsfolio] })
-    ).toEqual({ recent: [docDinners], topReturn: [opsfolio] });
+      pickedBrands(
+        { brands: [], measured: false, unmeasuredReason: "no_qualifying_clients", requestedCount: 3, qualifyingCount: 0 },
+        "recentlyStarted"
+      )
+    ).toBeNull();
+    expect(pickedBrands(undefined, "recentlyStarted")).toBeNull();
+  });
+
+  it("reads each group on its own, so one silence does not gag the other", () => {
+    // The two answer different questions and were never meant to name the same clients — the
+    // producer says so outright. Requiring both would have shipped the podium as dead code.
+    expect(pickedBrands(measured([opsfolio]), "highestReturn")).toEqual([opsfolio]);
+  });
+
+  it("renders a SHORT group rather than refusing it", () => {
+    // The producer states how many qualified, so fewer than three is an answer, not a gap.
+    const short = { ...measured([opsfolio]), qualifyingCount: 1 };
+    expect(pickedBrands(short, "highestReturn")).toEqual([opsfolio]);
   });
 
   it("keeps the producer's order and only decides where each card sits", () => {
@@ -260,5 +285,45 @@ describe("the people map", () => {
     expect(personFor("nobody.com")).toBeNull();
     expect(personFor(null)).toBeNull();
     expect(personFor(undefined)).toBeNull();
+  });
+});
+
+describe("regressions from the first ship of the pick (#4353)", () => {
+  const page = readFileSync(join(__dirname, "../../public/landing/index-v2.html"), "utf8");
+
+  /** livingvital.ch as production served it on 2026-09-24: picked, and nothing past outreach. */
+  const livingVital: ShowcaseBrand = {
+    brand: { id: "lv", name: "Living Vital", domain: "livingvital.ch" },
+    funnels: [
+      {
+        funnelKey: "sales_meetings_from_conversation",
+        funnelName: "Sales Meeting from Positive Reply",
+        returnPerDollar: 0,
+        steps: [
+          { key: "contacted", label: "Contacted", peopleReached: 183, costPerReachUsd: 0.3 },
+          { key: "start_to_conversation", label: "Positive reply", peopleReached: 0, costPerReachUsd: null },
+          { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
+        ],
+      },
+    ],
+    measured: true,
+    unmeasuredReason: null,
+  };
+
+  it("replacing the proof cards keeps every section after the proof grid", () => {
+    const out = renderProofSelection(page, [opsfolio, docDinners]);
+    for (const id of ['id="quotes"', 'id="pricing"', "</footer>"]) {
+      if (page.includes(id)) expect(out).toContain(id);
+    }
+    expect(page.match(/<\/article>/g)!.length - 3 + 2).toBe(out.match(/<\/article>/g)!.length);
+  });
+
+  it("a client whose drawn funnel shows nothing past outreach is never named", () => {
+    expect(hasDrawnOutcome(livingVital)).toBe(false);
+    expect(hasDrawnOutcome(docDinners)).toBe(true);
+    const out = renderShowcaseSelection(page, [livingVital, docDinners]);
+    expect(out).not.toContain('data-brand="livingvital.ch"');
+    expect(out).toContain('data-brand="docdinners.com"');
+    expect(pickedBrands({ brands: [livingVital], measured: true, unmeasuredReason: null }, "t")).toBeNull();
   });
 });

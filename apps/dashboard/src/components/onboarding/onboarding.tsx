@@ -1419,11 +1419,20 @@ export function Onboarding() {
   // race: the generic one re-hydrates the brand and lands on "pricing", flashing the
   // budget modal over the real "launching" flow. Null here = the generic resume effect
   // no-ops on any checkout return.
+  //
+  // A CLAIMED return resumes at the MONEY, the same step the first frame picks.
+  // The snapshot legitimately says `built` (that is where they pressed "Create my
+  // account"), so reading it alone here replayed the loading screen and then put
+  // every freshly signed-up visitor back on the recap, asking them to create the
+  // account they had just created. The first frame and the resume must name ONE
+  // target, or the resume overwrites the first frame a second later.
   const resumeTargetRef = useRef<Step | null>(
     !searchParams.get("launch_checkout") &&
     restored &&
     !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
-      ? resolveResumeStep(restored.step, restored.brandId)
+      ? searchParams.get("claimed") === "1"
+        ? "pricing"
+        : resolveResumeStep(restored.step, restored.brandId)
       : null,
   );
   const resumeStartedRef = useRef(false);
@@ -2487,7 +2496,10 @@ export function Onboarding() {
       window.location.href = session.url;
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
-      setError(err instanceof Error ? err.message : "Checkout failed. Campaign was not launched.");
+      // Never `err.message`: the shared api client sets it to the whole downstream body,
+      // which on an upstream outage is an HTML error page read out to the customer.
+      console.error("[onboarding] checkout session failed:", err);
+      setError("We couldn't open the checkout. Nothing was charged. Please try again in a moment.");
       setBusy(false);
     }
   }
