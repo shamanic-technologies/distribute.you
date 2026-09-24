@@ -2,6 +2,7 @@ import { MetadataRoute } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
 import { listArticles } from "@/lib/blog/db";
 import { comparePaths } from "@/lib/competitors";
+import { bestForPaths } from "@/lib/best-for";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -63,6 +64,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // without a second edit. The hub and /alternatives rank above the per-competitor pages.
   for (const path of comparePaths()) {
     STATIC_SEO_PATHS.push({ path, priority: path.split("/").length > 2 ? 0.7 : 0.8 });
+  }
+
+  // The "best X for Y" cluster, read from its own catalogue for the same reason.
+  for (const path of bestForPaths()) {
+    STATIC_SEO_PATHS.push({ path, priority: 0.8 });
   }
 
   staticEntries.push(

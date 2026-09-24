@@ -211,7 +211,7 @@ describe("every list that names the cluster reads the catalogue", () => {
   it("the stylesheet carries the compare rules and the five-column footer", () => {
     const css = read("public/landing/v2/styles.css");
     expect(css).toContain(".cmp-table {");
-    expect(css).toContain(".foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;");
+    expect(css).toContain(".foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr;");
   });
 });
 

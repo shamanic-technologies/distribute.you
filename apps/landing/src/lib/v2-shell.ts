@@ -9,6 +9,7 @@
  * directly without a module alias.
  */
 import { COMPETITORS } from "./competitors";
+import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
 
 export const SITE = "https://distribute.you";
 /** Where every CTA on the site goes.
@@ -26,7 +27,7 @@ export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 13;
+export const V2_STYLES_VERSION = 14;
 export const V2_MAIN_VERSION = 8;
 
 export function esc(s: string): string {
@@ -42,7 +43,10 @@ export function compareFooterColumn(): string {
   const items = COMPETITORS.map(
     (c) => `<li><a href="/compare/${c.slug}">distribute.you vs ${esc(c.name)}</a></li>`,
   ).join("");
-  return `<div><h4>Compare</h4><ul>${items}<li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div>`;
+  const best = BEST_FOR_PAGES.map(
+    (p) => `<li><a href="/best/${p.slug}">${esc(bestForLinkLabel(p))}</a></li>`,
+  ).join("");
+  return `<div><h4>Compare</h4><ul>${items}<li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div><div><h4>Best for</h4><ul>${best}<li><a href="/best">All rankings</a></li></ul></div>`;
 }
 
 export function nav(): string {
