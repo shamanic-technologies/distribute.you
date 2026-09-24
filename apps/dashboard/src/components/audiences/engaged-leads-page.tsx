@@ -111,6 +111,9 @@ import {
   leadBucketCountsQuery,
   leadsColumnPageQuery,
   leadsExportQuery,
+  funnelLeadTabs,
+  isStandingTab,
+  type LeadsTab,
   leadsPageQuery,
   leadsSearchParam,
   leadsSearchProblem,
@@ -242,14 +245,19 @@ function toBoardCard(
   };
 }
 
-const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
+// `meetings` is the BOOKED meeting and `sales` the closed deal, so they read in the words
+// the funnel and the board use for the same two steps.
+const LEAD_TAB_LABEL: Record<LeadsTab, string> = {
   "positive-replies": "Positive replies",
   clicks: "Website Visits",
   outreach: "Contacted",
   signups: "Signups",
-  meetings: "Meetings",
+  meetings: "Meeting booked",
+  "meetings-attended": "Meeting attended",
   "form-submissions": "Form submissions",
-  sales: "Sales",
+  sales: "Close won",
+  disqualified: "Disqualified",
+  "opted-out": "Opt-out",
 };
 
 const OUTCOME_TABS: ReadonlySet<string> = new Set<OutcomeTab>([
@@ -283,8 +291,8 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
 // held in the browser; there is no such array any more, and it had no bucket to ask for
 // — a read naming no bucket returns the whole scoped population INCLUDING the people
 // carrying no evidence at all, who can appear under no tab. So it is gone, and this
-// union is now exactly `AnyLeadTab`.
-type Tab = AnyLeadTab;
+// union is `AnyLeadTab` plus the steps and exits only a funnel's own page offers.
+type Tab = LeadsTab;
 
 // The Date column reports the date of the STATUS on the same row, so the two cells
 // state one fact together. It used to be per-TAB — Outreach dated every row at
@@ -694,9 +702,13 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             // cells state one fact together. Read once, rendered by BOTH the stacked
             // mobile line and the Date column — the two can never disagree.
             const status = statusOf(lead);
+            // An outcome tab dates the row by its outcome where the tracker join has one,
+            // else by the status beside it: a funnel page lists meetings and deals the
+            // join never attributed, and a dash there would read as "no date".
+            const statusAt = leadDateForStatus(lead, status);
             const dateAt = isOutcomeTab(tab)
-              ? outcomeDates?.get(lead.id) ?? null
-              : leadDateForStatus(lead, status);
+              ? outcomeDates?.get(lead.id) ?? statusAt
+              : statusAt;
             const dateNode = dateAt ? (
               <span className="text-xs text-gray-500" title={new Date(dateAt).toLocaleString()}>{timeAgo(dateAt)}</span>
             ) : (
@@ -820,6 +832,18 @@ export function EngagedLeadsPage({
   // it: "disqualified as leads for this <scope>" is a judgement about ONE grain, and
   // this page renders at four. Read off the route rather than the data — the sentence
   // is about where the reader is, not about what the leads did.
+  // On a SALES FUNNEL's own page the tabs are that funnel's statuses, in its order:
+  // Contacted, every step it sells, then the two exits. Read off the route's funnel
+  // rather than off the brand's live campaigns, which is a union over funnels and is
+  // keyed on the retired goal (it cannot name a meeting ATTENDED at all). `null`
+  // everywhere else, where the goal-keyed set below still applies.
+  const funnelPageTabs: LeadsTab[] | null =
+    !campaignId && params.funnelKey
+      ? funnelLeadTabs(
+          campaignFunnel(decodeURIComponent(params.funnelKey as string) as SalesFunnelKeyWire)
+            ?.stepKeys ?? [],
+        )
+      : null;
   const boardScopeNoun = campaignId
     ? "campaign"
     : params.funnelKey
@@ -1157,7 +1181,7 @@ export function EngagedLeadsPage({
   // switches latch the ref and are never overridden by a later poll.
   // Visible tabs, left→right: the realized-outcome tab FIRST (when the /revenue join
   // serves it), then the funnels' engagement tabs (outcome-first), Outreach last.
-  const visibleTabs: Tab[] = [
+  const visibleTabs: Tab[] = funnelPageTabs ?? [
     ...availableOutcomeTabs.map((t) => t.tab),
     ...funnelTabs.engagement,
   ];
@@ -1187,7 +1211,12 @@ export function EngagedLeadsPage({
     if (!(campaignScoped ? scopeSettled : campaignRows.settled)) return;
     if (!bucketCounts) return;
     hasAutoSelectedTab.current = true;
-    const populated = visibleTabs.find((t) => (tabCount(bucketCounts, t) ?? 0) > 0);
+    // A funnel's tabs run in the funnel's order, so its deepest populated STEP is the
+    // last one; the exits are never where a reader lands.
+    const pickOrder = funnelPageTabs
+      ? visibleTabs.filter((t) => !isStandingTab(t)).reverse()
+      : visibleTabs;
+    const populated = pickOrder.find((t) => (tabCount(bucketCounts, t) ?? 0) > 0);
     setActiveTab(populated ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bucketCounts, campaignRows.settled, scopeSettled, campaignScoped, outcomeAvailable]);
@@ -1327,7 +1356,9 @@ export function EngagedLeadsPage({
   const { data: standingCounts } = useAuthQuery(
     ["leadStandingCounts", scopeKey, wireSearch],
     () => getLeadStandingCounts(scope, standingCountsQuery(wireSearch)),
-    { enabled: showBoard, refetchInterval: POLL_INTERVAL },
+    // Also read by a funnel page's Disqualified and Opt-out tabs, whose counts are
+    // standings; same key as the board, so the two dedupe to one poll.
+    { enabled: showBoard || funnelPageTabs != null, refetchInterval: POLL_INTERVAL },
   );
   const columnTotals = boardColumnTotals(standingCounts);
 
@@ -1519,8 +1550,8 @@ export function EngagedLeadsPage({
   // a tab with nobody in it.
   const tabs: { key: Tab; label: string; count: number | null }[] = visibleTabs.map((key) => ({
     key,
-    label: LEAD_TAB_LABEL[key as AnyLeadTab],
-    count: tabCount(bucketCounts, key),
+    label: LEAD_TAB_LABEL[key],
+    count: tabCount(bucketCounts, key, standingCounts),
   }));
 
 
@@ -2127,8 +2158,13 @@ export function EngagedLeadsPage({
             {!boardOnly && (
             <div className={`flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto ${showBoard ? "hidden" : ""}`}>
               {tabs.map((tab) => (
+                <Fragment key={tab.key}>
+                {/* The exits are a partition, the steps before them are nested buckets,
+                    so a rule between the two says they are not the same kind of count. */}
+                {tab.key === "disqualified" && (
+                  <span aria-hidden className="mx-2 my-2 w-px shrink-0 bg-gray-200" />
+                )}
                 <button
-                  key={tab.key}
                   onClick={() => { setActiveTab(tab.key); setSelectedLead(null); }}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
                     activeTab === tab.key
@@ -2145,6 +2181,7 @@ export function EngagedLeadsPage({
                     </span>
                   )}
                 </button>
+                </Fragment>
               ))}
             </div>
             )}
@@ -2157,7 +2194,7 @@ export function EngagedLeadsPage({
               onChange={setSearch}
               placeholder="Search by name, company, title, or email..."
               resultCount={(showBoard ? boardDrawnTotal : activeTotal) ?? 0}
-              totalCount={(showBoard ? reachableCount : tabCount(bucketCounts, activeTab)) ?? 0}
+              totalCount={(showBoard ? reachableCount : tabCount(bucketCounts, activeTab, standingCounts)) ?? 0}
             />
             {/* A search the producer would refuse is refused HERE, with the reason, and
                 never sent — the alternative is a 400 that empties the table. */}
