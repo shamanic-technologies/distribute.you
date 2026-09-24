@@ -49,14 +49,19 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Every redirect below is OURS, so none of them may fire on a lab host: config
+  // redirects run before src/proxy.ts, and a competitor's own /sign-in or /sign-up (their
+  // onboarding, which is exactly what a clone is there to show) would otherwise be sent to
+  // OUR dashboard before the clone ever saw the request.
   async redirects() {
+    const offLab = [{ type: "host" as const, value: "lab-[a-z0-9-]+\\.distribute\\.you" }];
     return [
       // Old multi-feature performance sub-views collapsed into one page.
-      { source: "/performance/brands", destination: "/performance", permanent: true },
-      { source: "/performance/models", destination: "/performance", permanent: true },
-      { source: "/performance/prompts", destination: "/performance", permanent: true },
-      { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false },
-      { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false },
+      { source: "/performance/brands", destination: "/performance", permanent: true, missing: offLab },
+      { source: "/performance/models", destination: "/performance", permanent: true, missing: offLab },
+      { source: "/performance/prompts", destination: "/performance", permanent: true, missing: offLab },
+      { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },
+      { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false, missing: offLab },
     ];
   },
 };

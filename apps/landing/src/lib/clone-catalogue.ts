@@ -1,3 +1,5 @@
+import onboardingData from "./clone-onboarding.json";
+
 /**
  * The competitor landings we mirror, one entry per clone.
  *
@@ -43,6 +45,71 @@ export type Clone = {
   readonly localisedHosts: readonly string[];
 };
 
+/**
+ * A competitor's ONBOARDING, as far as it goes without an account.
+ *
+ * The landing is the page a visitor reads; this is where its signup CTAs lead — sign-up
+ * and sign-in pages, plan pickers, pricing — captured by `scripts/capture-onboarding.mjs`
+ * from `clone-onboarding.json` (JSON so that plain-node script reads the same list the app
+ * does). Nothing here is ever typed into or submitted: every step is a URL loaded as it
+ * stands, and `wall` records where going further needs an account and what is visible
+ * behind it, so the decision to take a logged-in capture is the owner's.
+ */
+export type OnboardingStep = {
+  /** The URL loaded, verbatim. Its origin is the landing's or one of the clone's `sites`. */
+  readonly url: string;
+  /**
+   * `bytes` (the default): the origin's bytes, served as-is, so the page runs.
+   * `snapshot`: the DOM a browser rendered on the origin, scripts removed and injected
+   * styles inlined — faithful to look at, inert to click. Used only where a third-party
+   * widget refuses to render off its own domain (Clerk checks the Origin), and stated per
+   * step so a snapshot never passes for a live copy.
+   */
+  readonly mode: "bytes" | "snapshot";
+  /**
+   * Button labels clicked, in order, after loading `url` — for a step that only exists
+   * inside a session a click starts (explee's identity provider refuses its sign-in page
+   * outside an OIDC request its landing begins). Clicking a button is as far as it goes:
+   * nothing is typed, nothing is submitted.
+   */
+  readonly click?: readonly string[];
+  /** Where the clicks land (the page stored), when it differs from `url`. */
+  readonly lands?: string;
+};
+
+/**
+ * Another ORIGIN the onboarding lives on (`app.gojiberry.ai`, `auth.explee.com`).
+ *
+ * Served at the root of its own host, `lab-<slug>-<label>.distribute.you`, from
+ * `clones/<slug>/__sites/<label>/` — for the reason the landing is served at a root: its
+ * root-absolute references (`/assets/main.js`) would collide with the landing's under a
+ * shared host, and an app's router reads the path it is mounted at. References to the
+ * origin anywhere in the clone are pointed at that host, which is the second sanctioned
+ * rewrite of references (after `localisedHosts`) and recorded here for the same reason.
+ * Each one is a hostname on the box's Caddy line and a proxied Cloudflare A record.
+ */
+export type CloneSite = { readonly label: string; readonly origin: string };
+
+export type CloneOnboarding = {
+  /** The landing's own origin; pinned equal to `new URL(source).origin` by the tests. */
+  readonly origin: string;
+  readonly sites: readonly CloneSite[];
+  readonly steps: readonly OnboardingStep[];
+  /** Where the capture stopped, and what lies behind it as far as it is visible. */
+  readonly wall: string;
+};
+
+export const CLONE_ONBOARDING = onboardingData as unknown as Readonly<Record<string, CloneOnboarding>>;
+
+/** Where a site's files live, relative to its clone's root. Mirrors `SITES_DIR` in scripts/capture-onboarding.mjs. */
+export const SITES_DIR = "__sites";
+
+/** Recorded redirect hops, one file per root. Mirrors `REDIRECTS_FILE` in scripts/capture-onboarding.mjs. */
+export const REDIRECTS_FILE = "__redirects.json";
+
+/** Recorded Next server-action answers, keyed by action id. Mirrors `ACTIONS_FILE` in scripts/capture-onboarding.mjs. */
+export const ACTIONS_FILE = "__actions.json";
+
 export const CLONES: readonly Clone[] = [
   { slug: "explee", source: "https://explee.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
   { slug: "revid", source: "https://www.revid.ai/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
@@ -61,7 +128,6 @@ export const CLONES: readonly Clone[] = [
     localisedHosts: [
       "app.framerstatic.com",
       "assets.calendly.com",
-      "cdn.jsdelivr.net",
       "files.tlt-cdn.com",
       "fonts.gstatic.com",
       "framer.com",
@@ -94,12 +160,29 @@ export const CLONE_HOST_SUFFIX = ".distribute.you";
  * allowlist entry, so a made-up `lab-anything` cannot reach a directory read.
  */
 export function cloneSlugForHost(host: string | null | undefined): string | null {
+  return cloneTargetForHost(host)?.slug ?? null;
+}
+
+/**
+ * The clone AND the site a request's Host belongs to: `site` is null for the landing
+ * (`lab-<slug>`) and the site's label for one of its onboarding hosts
+ * (`lab-<slug>-<label>`). Both halves come from the catalogue, never from the string.
+ */
+export function cloneTargetForHost(
+  host: string | null | undefined,
+): { slug: string; site: string | null } | null {
   if (!host) return null;
   const hostname = host.split(":")[0].trim().toLowerCase();
   if (!hostname.startsWith(CLONE_HOST_PREFIX) || !hostname.endsWith(CLONE_HOST_SUFFIX)) return null;
 
-  const slug = hostname.slice(CLONE_HOST_PREFIX.length, hostname.length - CLONE_HOST_SUFFIX.length);
-  return CLONES.some((clone) => clone.slug === slug) ? slug : null;
+  const name = hostname.slice(CLONE_HOST_PREFIX.length, hostname.length - CLONE_HOST_SUFFIX.length);
+  if (CLONES.some((clone) => clone.slug === name)) return { slug: name, site: null };
+  for (const clone of CLONES) {
+    for (const site of CLONE_ONBOARDING[clone.slug]?.sites ?? []) {
+      if (`${clone.slug}-${site.label}` === name) return { slug: clone.slug, site: site.label };
+    }
+  }
+  return null;
 }
 
 export function cloneFor(slug: string): Clone | null {

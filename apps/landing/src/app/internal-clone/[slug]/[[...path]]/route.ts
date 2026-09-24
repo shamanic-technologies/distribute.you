@@ -2,7 +2,14 @@ import { constants } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { CLONE_ROUTE_PREFIX, cloneFor } from "@/lib/clone-catalogue";
+import {
+  CLONE_ROUTE_PREFIX,
+  ACTIONS_FILE,
+  REDIRECTS_FILE,
+  SITES_DIR,
+  cloneFor,
+  cloneTargetForHost,
+} from "@/lib/clone-catalogue";
 import {
   clonePathFor,
   contentTypeFor,
@@ -65,15 +72,49 @@ const NOT_FOUND_HEADERS = {
   "cache-control": "no-store",
 } as const;
 
+/**
+ * The directory a request reads from: the clone's root for the landing host, its
+ * `__sites/<label>/` for one of its onboarding hosts. Resolved from the Host header
+ * against the catalogue — the proxy already checked it, and a host whose slug disagrees
+ * with the rewritten segment is refused rather than served from the wrong root.
+ */
+async function rootFor(slug: string, host: string | null): Promise<string | null> {
+  if (cloneFor(slug) === null) return null;
+  const base = path.join(await clonesRoot(), slug);
+  const target = cloneTargetForHost(host);
+  // A request with no clone host is the internal path asked for directly, which the proxy
+  // only lets through on a clone host; serve the landing root as before.
+  if (target === null) return base;
+  if (target.slug !== slug) return null;
+  return target.site === null ? base : path.join(base, SITES_DIR, target.site);
+}
+
+/**
+ * A redirect the origin answered for this path, replayed. Consulted only when no file
+ * matched, so a captured page always wins over a recorded hop.
+ */
+async function recordedRedirect(root: string, pathname: string): Promise<{ status: number; location: string } | null> {
+  let records: Record<string, { status: number; location: string }>;
+  try {
+    records = JSON.parse(await readFile(path.join(root, REDIRECTS_FILE), "utf8"));
+  } catch {
+    return null;
+  }
+  const key = pathname.replace(/\/+$/, "") || "/";
+  const record = records[key];
+  if (!record || record.status < 300 || record.status >= 400 || typeof record.location !== "string") return null;
+  return record;
+}
+
 async function readClone(
-  slug: string,
+  root: string,
   pathname: string,
   search: string,
   accept: string | null,
 ): Promise<{ body: Buffer; file: string } | null> {
-  if (cloneFor(slug) === null) return null;
-
-  const root = path.join(await clonesRoot(), slug);
+  // The landing root holds its sites and the redirect records; neither is a page of it.
+  const first = pathname.split("/").filter(Boolean)[0] ?? "";
+  if (first === SITES_DIR || first === REDIRECTS_FILE || first === ACTIONS_FILE) return null;
 
   // A query-bearing URL is stored beside its plain form, because the origin generates a
   // different response per query (`/_next/image?w=96` and `?w=48` are two pictures). The
@@ -122,8 +163,20 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
   const pathname = originPathFor(url.pathname, CLONE_ROUTE_PREFIX, slug);
 
-  const found = await readClone(slug, pathname, url.search, request.headers.get("accept"));
+  const root = await rootFor(slug, request.headers.get("host"));
+  if (root === null) {
+    return new Response("Not found in this clone.", { status: 404, headers: NOT_FOUND_HEADERS });
+  }
+
+  const found = await readClone(root, pathname, url.search, request.headers.get("accept"));
   if (found === null) {
+    const redirect = await recordedRedirect(root, pathname);
+    if (redirect !== null) {
+      return new Response(null, {
+        status: redirect.status,
+        headers: { location: redirect.location, "x-robots-tag": "noindex, nofollow", "cache-control": "no-store" },
+      });
+    }
     return new Response("Not found in this clone.", { status: 404, headers: NOT_FOUND_HEADERS });
   }
 
@@ -136,6 +189,40 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       "cache-control": "no-store",
     },
   });
+}
+
+/**
+ * A Next server action the origin answered, replayed.
+ *
+ * Some landings start their sign-in with a server action rather than a link (explee's
+ * "Sign in" POSTs to `/` and is answered with an `x-action-redirect` to its identity
+ * provider). A static copy cannot run it, so the capture RECORDS the answer, keyed by the
+ * action id the browser sends in `next-action`, and this replays it with the redirect
+ * already pointed at our copy of the provider. Only a recorded id answers; anything else
+ * is the same 404 a GET miss gets, and nothing is ever executed.
+ */
+export async function POST(request: Request, context: { params: Promise<{ slug: string; path?: string[] }> }) {
+  const { slug } = await context.params;
+  const root = await rootFor(slug, request.headers.get("host"));
+  const actionId = request.headers.get("next-action");
+  if (root !== null && actionId) {
+    try {
+      const actions = JSON.parse(await readFile(path.join(root, ACTIONS_FILE), "utf8")) as Record<
+        string,
+        { status: number; headers: Record<string, string>; body: string }
+      >;
+      const recorded = actions[actionId];
+      if (recorded) {
+        return new Response(recorded.body, {
+          status: recorded.status,
+          headers: { ...recorded.headers, "x-robots-tag": "noindex, nofollow", "cache-control": "no-store" },
+        });
+      }
+    } catch {
+      // no recorded actions for this root — an ordinary miss
+    }
+  }
+  return new Response("Not found in this clone.", { status: 404, headers: NOT_FOUND_HEADERS });
 }
 
 export async function HEAD(request: Request, context: { params: Promise<{ slug: string; path?: string[] }> }) {

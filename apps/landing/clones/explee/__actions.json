@@ -1,0 +1,19 @@
+{
+  "00a7b0c715d2a36e058e10c9ccfb772377ce8b45d3": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/x-component",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding"
+    },
+    "body": "0:{\"a\":\"$@1\",\"f\":\"\",\"q\":\"\",\"i\":false}\n1:{\"ok\":false}\n"
+  },
+  "40a5464813438da05f191ec53aa6be451a55ae0eea": {
+    "status": 200,
+    "headers": {
+      "x-action-revalidated": "1",
+      "x-action-redirect": "https://lab-explee-auth.distribute.you/oidc/auth?client_id=yb37qgq72o4s2o8kao78v&redirect_uri=https%3A%2F%2Fexplee.com%2Fcallback&code_challenge=NxCe4sRMHWtlKvFhellbW-cNjfcKuCD3Na3G7Ce6RrM&code_challenge_method=S256&state=8J66XU4f-NXpELnowHbcCO6VnIXTan9ArRlw0BKXkuca-b5-06t91V2GktyFQngsgIExSz4lEMTABE7z6YI5pQ&response_type=code&prompt=consent&scope=openid+offline_access+email&resource=https%3A%2F%2Fexplee.com%2Fapi;push",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": ""
+  }
+}

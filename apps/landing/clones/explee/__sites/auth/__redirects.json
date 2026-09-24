@@ -1,0 +1,6 @@
+{
+  "/oidc/auth": {
+    "status": 303,
+    "location": "https://lab-explee-auth.distribute.you/sign-in?app_id=yb37qgq72o4s2o8kao78v"
+  }
+}

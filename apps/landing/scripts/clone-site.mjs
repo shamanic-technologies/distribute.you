@@ -93,7 +93,16 @@ export function queryHash(search) {
  * fighting over the same name.
  */
 export function diskPathFor(urlPathname, search = "", fallbackExtension = "") {
-  const clean = urlPathname.split("?")[0].split("#")[0];
+  // DECODED, because the reader decodes (`clonePathFor`): a Next app names its dynamic
+  // chunks `[slug]`, which arrives as `%5Bslug%5D`, and a file stored under the encoded
+  // name was a 404 sitting on disk — every such chunk, on every Next clone.
+  let decoded = urlPathname;
+  try {
+    decoded = decodeURIComponent(urlPathname);
+  } catch {
+    // a malformed escape stays as it came; the reader refuses it anyway
+  }
+  const clean = decoded.split("?")[0].split("#")[0];
   const trimmed = clean.replace(/^\/+/, "").replace(/\/+$/, "");
 
   if (search && search !== "?") {
