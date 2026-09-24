@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FX_UNAVAILABLE_NOTE, fxRateLine } from "@/lib/estate-usd";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getInstantlyAccountHealth, getInstantlyInfraDomains } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
@@ -70,15 +71,15 @@ const DOMAIN_WORD: Record<DomainHealthState, string> = {
 };
 
 /**
- * Money as the vendor bills it. Gandi invoices in euros and everyone else in
- * dollars, so the currency travels with every figure rather than being assumed
- * — blending them would need an FX rate nobody here owns.
+ * Money in USD. Every figure on this card is the served USD twin (euros were
+ * converted by instantly-service at the rate stated under the card), so the
+ * whole estate is one currency.
  */
-function money(cents: number, currency: string): string {
+function money(cents: number): string {
   const amount = cents / 100;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency,
+    currency: "USD",
     minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -180,27 +181,16 @@ export function DomainHealthCard() {
   // cancel. Renewals are already paid, so adding them here would advertise a
   // saving the tab does not actually deliver this month.
   //
-  // Totalled per currency, and shown only when the tab speaks ONE — a summed
-  // "€235 + $169" is not a number, and inventing a rate to merge them would put
-  // an unsourced figure on a card whose whole point is that every number says
-  // where it came from.
+  // In USD, off the served twins, so a tab mixing euro and dollar vendors
+  // totals like any other. A domain priced with no USD twin (no rate on record)
+  // makes the total unstateable rather than partial.
   const tabCost = (() => {
-    const byCurrency = new Map<string, number>();
-    let unstateable = false;
+    let cents = 0;
     for (const row of visible) {
-      if (!row.cost) {
-        unstateable = true;
-        continue;
-      }
-      if (row.cost.recurringCents === null) continue;
-      byCurrency.set(
-        row.cost.currency,
-        (byCurrency.get(row.cost.currency) ?? 0) + row.cost.recurringCents,
-      );
+      if (!row.cost || row.cost.unconvertible) return null;
+      if (row.cost.recurringCents !== null) cents += row.cost.recurringCents;
     }
-    if (unstateable || byCurrency.size !== 1) return null;
-    const [[currency, cents]] = [...byCurrency.entries()];
-    return { currency, cents };
+    return cents;
   })();
 
   return (
@@ -221,11 +211,18 @@ export function DomainHealthCard() {
             {rows.length.toLocaleString("en-US")} domain
             {rows.length === 1 ? "" : "s"}
             {tabCost !== null && visible.length > 0
-              ? ` · ${money(tabCost.cents, tabCost.currency)}/mo recurring in this tab`
+              ? ` · ${money(tabCost)}/mo recurring in this tab`
               : ""}
           </span>
         )}
       </div>
+      {!isPending && !isError && infra && (
+        // The rate the dollar columns were converted at, read off the served
+        // `fx`, never a constant. No rate: say the dollar figures are unavailable.
+        <p className="mt-2 text-[11px] text-gray-400">
+          {infra.fx ? `${fxRateLine(infra.fx)}.` : FX_UNAVAILABLE_NOTE}
+        </p>
+      )}
 
       <div className="mt-4">
         {isError ? (
@@ -323,7 +320,9 @@ export function DomainHealthCard() {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right tabular-nums text-gray-700">
-                        {row.cost?.recurringCents == null ? (
+                        {row.cost?.unconvertible ? (
+                          <span className="text-amber-600">no USD rate</span>
+                        ) : row.cost?.recurringCents == null ? (
                           <span
                             className="text-gray-400"
                             title={
@@ -335,15 +334,17 @@ export function DomainHealthCard() {
                             —
                           </span>
                         ) : (
-                          `${money(row.cost.recurringCents, row.cost.currency)}/mo`
+                          `${money(row.cost.recurringCents)}/mo`
                         )}
                       </td>
                       <td className="py-3 px-3 text-right tabular-nums text-gray-700">
-                        {row.cost?.renewalCents == null ? (
+                        {row.cost?.unconvertible ? (
+                          <span className="text-amber-600">no USD rate</span>
+                        ) : row.cost?.renewalCents == null ? (
                           <span className="text-gray-400">—</span>
                         ) : (
                           <>
-                            {money(row.cost.renewalCents, row.cost.currency)}
+                            {money(row.cost.renewalCents)}
                             <span className="mt-0.5 block text-[11px] font-normal text-gray-400">
                               {row.cost.renewalAt
                                 ? shortDate(row.cost.renewalAt)

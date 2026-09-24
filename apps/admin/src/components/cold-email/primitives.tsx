@@ -245,13 +245,26 @@ export function VolumeCell({ volume }: { volume: OpsVolume }) {
  * An amount the producer labelled an ESTIMATE, rendered with that word attached.
  * There is no branch that prints it bare — see `PAID_TO_DATE_NOTE`.
  */
-export function PaidToDate({ paid }: { paid: OpsPaidToDate | null }) {
+/**
+ * `usdCents`, when passed, is the served USD twin and is shown INSTEAD of the
+ * native amount, with the native one kept as provenance. A null twin on a
+ * present amount means no rate is on record, and it says so rather than
+ * printing a euro figure as the answer.
+ */
+export function PaidToDate({ paid, usdCents }: { paid: OpsPaidToDate | null; usdCents?: number | null }) {
   if (!paid) return <span className="text-gray-400">—</span>;
-  const amount = formatCents(paid.cents, paid.currency);
+  const inUsd = usdCents !== undefined;
+  const amount = inUsd
+    ? usdCents === null
+      ? "no USD rate"
+      : formatCents(usdCents, "USD")
+    : formatCents(paid.cents, paid.currency);
+  const billed = inUsd && paid.currency !== "USD" ? formatCents(paid.cents, paid.currency) : null;
   const qualifier = paidToDateQualifier(paid);
   return (
     <span className="inline-flex flex-col items-end gap-0.5" title={PAID_TO_DATE_NOTE}>
       <span className="tabular-nums text-gray-900">{amount ?? "—"}</span>
+      {billed && <span className="text-[10px] tabular-nums text-gray-400">billed {billed}</span>}
       <span className="text-[10px] uppercase tracking-wide text-amber-600">
         {qualifier ?? "unqualified"}
         {paid.months > 0 ? ` · ${num(paid.months)}mo` : ""}

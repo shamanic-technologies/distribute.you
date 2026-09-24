@@ -45,7 +45,7 @@ function dom(over: Partial<EstateDomain> & { domain: string }): EstateDomain {
       mx: ["1 smtp.google.com"],
       errors: {},
     },
-    cost: { currency: "EUR", renewalCents: 3838, renewalAt: null },
+    cost: { currency: "EUR", renewalCents: 3838, renewalAt: null, usd: { renewalCents: 4380 } },
     ...over,
   };
 }
@@ -138,10 +138,11 @@ describe("events", () => {
         domain: "unpriced.com",
         autorenew: false,
         expiresAt: "2027-06-01T00:00:00Z",
-        cost: { currency: null, renewalCents: null, renewalAt: null },
+        cost: { currency: null, renewalCents: null, renewalAt: null, usd: { renewalCents: null } },
       }),
     ]);
     expect(ending?.renewalCents).toBeNull();
+    expect(ending?.renewalUsdCents).toBeNull();
     expect(ending?.currency).toBeNull();
   });
 
@@ -360,11 +361,17 @@ describe("grouping", () => {
 });
 
 describe("renewal window", () => {
-  const priced = (domain: string, renewalAt: string | null, cents: number | null, currency = "EUR") =>
-    dom({ domain, cost: { currency, renewalCents: cents, renewalAt } });
+  // The USD twin defaults to the native figure, so bucket sums read plainly.
+  const priced = (
+    domain: string,
+    renewalAt: string | null,
+    cents: number | null,
+    currency = "EUR",
+    usd: number | null = cents,
+  ) => dom({ domain, cost: { currency, renewalCents: cents, renewalAt, usd: { renewalCents: usd } } });
 
   it("centres the window on today, seven buckets either side", () => {
-    const w = renewalWindow([priced("a.com", "2026-12-21T00:00:00Z", 3838)], "monthly", "EUR", NOW);
+    const w = renewalWindow([priced("a.com", "2026-12-21T00:00:00Z", 3838)], "monthly", NOW);
     expect(w.buckets).toHaveLength(BUCKETS_BACK + 1 + BUCKETS_FORWARD);
     expect(w.buckets.filter((b) => b.isCurrent)).toHaveLength(1);
     expect(w.buckets.find((b) => b.isCurrent)?.key).toBe("2026-09");
@@ -374,9 +381,9 @@ describe("renewal window", () => {
     // Renewals are yearly events on ~74 domains: prod had 0 in the next 7 days
     // and 0 in the next 7 weeks against 28 in the next 7 months.
     const estate = [priced("a.com", "2026-12-21T00:00:00Z", 3838)];
-    expect(renewalWindow(estate, "daily", "EUR", NOW).empty).toBe(true);
-    expect(renewalWindow(estate, "weekly", "EUR", NOW).empty).toBe(true);
-    expect(renewalWindow(estate, "monthly", "EUR", NOW).empty).toBe(false);
+    expect(renewalWindow(estate, "daily", NOW).empty).toBe(true);
+    expect(renewalWindow(estate, "weekly", NOW).empty).toBe(true);
+    expect(renewalWindow(estate, "monthly", NOW).empty).toBe(false);
   });
 
   it("splits past from future on the INSTANT, so one bucket can carry both", () => {
@@ -385,9 +392,7 @@ describe("renewal window", () => {
         priced("paid.com", "2026-09-02T00:00:00Z", 1000),
         priced("due.com", "2026-09-30T00:00:00Z", 2000),
       ],
-      "monthly",
-      "EUR",
-      NOW,
+      "monthly", NOW,
     );
     const current = w.buckets.find((b) => b.isCurrent)!;
     expect(current.pastCents).toBe(1000);
@@ -403,9 +408,7 @@ describe("renewal window", () => {
         priced("soon.com", "2026-11-10T00:00:00Z", 1000),
         priced("later.com", "2026-12-10T00:00:00Z", 2000),
       ],
-      "monthly",
-      "EUR",
-      NOW,
+      "monthly", NOW,
     );
     const byKey = new Map(w.buckets.map((b) => [b.key, b]));
     // Past stays per-bucket: a running total backwards answers nothing.
@@ -421,24 +424,39 @@ describe("renewal window", () => {
         priced("a.com", "2026-09-24T00:00:00Z", 1000),
         priced("b.com", "2026-09-26T00:00:00Z", 2000),
       ],
-      "daily",
-      "EUR",
-      NOW,
+      "daily", NOW,
     );
     const byKey = new Map(w.buckets.map((b) => [b.key, b]));
     expect(byKey.get("2026-09-24")?.futureCents).toBe(1000);
     expect(byKey.get("2026-09-26")?.futureCents).toBe(2000);
   });
 
-  it("never blends currencies — it shows one and names the rest", () => {
+  it("blends the whole estate in USD off the served twins, never the native euros", () => {
     const estate = [
-      priced("gandi.com", "2026-11-01T00:00:00Z", 3838, "EUR"),
-      priced("forge.com", "2026-11-01T00:00:00Z", 1400, "USD"),
+      // €38.38 served as $43.80 at the producer's rate.
+      priced("gandi.com", "2026-11-01T00:00:00Z", 3838, "EUR", 4380),
+      priced("forge.com", "2026-11-01T00:00:00Z", 1400, "USD", 1400),
     ];
-    const eur = renewalWindow(estate, "monthly", "EUR", NOW);
-    const byKey = new Map(eur.buckets.map((b) => [b.key, b]));
-    expect(byKey.get("2026-11")?.futureCents).toBe(3838);
-    expect(eur.currencies).toEqual(["EUR", "USD"]);
+    const w = renewalWindow(estate, "monthly", NOW);
+    const byKey = new Map(w.buckets.map((b) => [b.key, b]));
+    expect(byKey.get("2026-11")?.futureCents).toBe(4380 + 1400);
+    expect(byKey.get("2026-11")?.futureCount).toBe(2);
+  });
+
+  it("counts a priced renewal with no USD twin instead of summing it as zero", () => {
+    // `usd: null` on a priced row = no EUR -> USD rate on record.
+    const w = renewalWindow(
+      [
+        priced("forge.com", "2026-11-01T00:00:00Z", 1400, "USD", 1400),
+        priced("gandi.com", "2026-11-01T00:00:00Z", 3838, "EUR", null),
+      ],
+      "monthly",
+      NOW,
+    );
+    const byKey = new Map(w.buckets.map((b) => [b.key, b]));
+    expect(byKey.get("2026-11")?.futureCents).toBe(1400);
+    expect(w.unconvertibleInWindow).toBe(1);
+    expect(w.unpricedInWindow).toBe(0);
   });
 
   it("counts an unpriced renewal instead of summing it as zero", () => {
@@ -447,9 +465,7 @@ describe("renewal window", () => {
         priced("priced.com", "2026-11-01T00:00:00Z", 3838),
         priced("unpriced.com", "2026-11-01T00:00:00Z", null),
       ],
-      "monthly",
-      "EUR",
-      NOW,
+      "monthly", NOW,
     );
     const byKey = new Map(w.buckets.map((b) => [b.key, b]));
     expect(byKey.get("2026-11")?.futureCents).toBe(3838);
@@ -458,7 +474,7 @@ describe("renewal window", () => {
   });
 
   it("counts a priced renewal with no date — no bucket can hold it", () => {
-    const w = renewalWindow([priced("undated.com", null, 3838)], "monthly", "EUR", NOW);
+    const w = renewalWindow([priced("undated.com", null, 3838)], "monthly", NOW);
     expect(w.undated).toBe(1);
     expect(w.empty).toBe(true);
   });
@@ -468,17 +484,22 @@ describe("renewal window", () => {
       dom({
         domain: "gone.com",
         cancelledAt: "2026-06-01T00:00:00Z",
-        cost: { currency: "EUR", renewalCents: 3838, renewalAt: "2026-11-01T00:00:00Z" },
+        cost: {
+          currency: "EUR",
+          renewalCents: 3838,
+          renewalAt: "2026-11-01T00:00:00Z",
+          usd: { renewalCents: 4380 },
+        },
       }),
     ];
     for (const grain of COST_GRAINS) {
-      expect(renewalWindow(estate, grain, "EUR", NOW).empty).toBe(true);
+      expect(renewalWindow(estate, grain, NOW).empty).toBe(true);
     }
   });
 
   it("anchors the weekly grain on a Monday so two polls cannot re-bucket a payment", () => {
     // 2026-09-22 is a Tuesday; its week starts Monday the 21st.
-    const w = renewalWindow([priced("a.com", "2026-09-23T00:00:00Z", 100)], "weekly", "EUR", NOW);
+    const w = renewalWindow([priced("a.com", "2026-09-23T00:00:00Z", 100)], "weekly", NOW);
     expect(w.buckets.find((b) => b.isCurrent)?.key).toBe("2026-09-21");
   });
 });

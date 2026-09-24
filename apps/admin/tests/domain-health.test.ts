@@ -24,6 +24,7 @@ function infra(
     cancelledAt: null,
     absentSince: null,
     vendorMailboxes: 0,
+    vendorReportsMailboxes: true,
     monthlyCostCents: null,
     currency: "USD",
     costSource: "rate-card",
@@ -31,6 +32,14 @@ function infra(
     renewalCents: null,
     renewalAt: null,
     ...overrides,
+    // The USD twin mirrors the native figures unless a test states its own.
+    usd: {
+      monthlyCostCents: overrides.monthlyCostCents ?? null,
+      costPerEmailCents: null,
+      recurringMonthlyCents: overrides.recurringMonthlyCents ?? null,
+      renewalCents: overrides.renewalCents ?? null,
+      ...overrides.usd,
+    },
   };
 }
 
@@ -211,13 +220,24 @@ describe("measured cost", () => {
     expect(cost?.renewalAt).toBe("2027-02-01T00:00:00Z");
   });
 
-  it("states nothing rather than blending two currencies", () => {
-    expect(
-      mergeDomainCost([
-        infra({ currency: "EUR", renewalCents: 3838 }),
-        infra({ currency: "USD", recurringMonthlyCents: 500 }),
-      ]),
-    ).toBeNull();
+  it("sums two currencies in USD off the served twins, never the native cents", () => {
+    const cost = mergeDomainCost([
+      // €38.38 served as $43.80 at the producer's rate.
+      infra({ currency: "EUR", renewalCents: 3838, usd: { monthlyCostCents: null, costPerEmailCents: null, recurringMonthlyCents: null, renewalCents: 4380 } }),
+      infra({ currency: "USD", recurringMonthlyCents: 500 }),
+    ]);
+    expect(cost?.renewalCents).toBe(4380);
+    expect(cost?.recurringCents).toBe(500);
+    expect(cost?.unconvertible).toBe(false);
+  });
+
+  it("marks a priced domain with no USD twin unconvertible, never a zero", () => {
+    // `usd: null` on a priced row = no EUR -> USD rate on record.
+    const cost = mergeDomainCost([
+      infra({ currency: "EUR", renewalCents: 3838, usd: { monthlyCostCents: null, costPerEmailCents: null, recurringMonthlyCents: null, renewalCents: null } }),
+    ]);
+    expect(cost?.unconvertible).toBe(true);
+    expect(cost?.renewalCents).toBeNull();
   });
 
   it("saves nothing on a cancelled or vanished domain — it already bills nothing", () => {
@@ -306,7 +326,8 @@ describe("buildDomainHealthRows", () => {
     expect(rows[0].vendors).toEqual(["gandi"]);
     expect(rows[0].expiresAt).toBe("2027-02-03T00:00:00Z");
     expect(rows[0].autorenew).toBe(false);
-    expect(rows[0].cost?.currency).toBe("EUR");
+    // A euro renewal reads as the USD twin the producer served beside it.
+    expect(rows[0].cost?.renewalCents).toBe(3838);
   });
 
   it("still grades every domain when the inventory is unavailable", () => {
@@ -415,11 +436,14 @@ describe("the card renders the verdict, not a second opinion", () => {
     expect(card).toContain("row.cost?.renewalCents == null");
   });
 
-  it("carries the currency with every figure instead of assuming dollars", () => {
-    expect(card).toContain("money(");
-    // A hardcoded dollar sign would misprice the whole Gandi estate, which
-    // invoices in euros.
-    expect(card).not.toMatch(/\$\$\{/);
+  it("states every figure in USD and names the rate it was converted at", () => {
+    expect(card).toContain('currency: "USD"');
+    // The rate is read off the served `fx`, never a constant.
+    expect(card).toContain("fxRateLine(infra.fx)");
+    expect(card).toContain("FX_UNAVAILABLE_NOTE");
+    expect(card).not.toMatch(/1\.1[0-9]{2,}/);
+    // A priced domain with no USD twin says so rather than printing a dash.
+    expect(card).toContain("row.cost?.unconvertible");
   });
 
   it("states no price of its own — every rate comes from the measured inventory", () => {

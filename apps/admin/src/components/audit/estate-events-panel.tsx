@@ -4,6 +4,7 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { VendorLogo } from "@/components/audit/provider-logo";
 import { nextRenewalEvents, vendorConsole, type EstateDomain, type RenewalEvent } from "@/lib/estate-signals";
 import { formatCents } from "@/lib/instantly-ops";
+import { billedNative } from "@/lib/estate-usd";
 import { utcDay } from "@/components/cold-email/primitives";
 import { Skeleton } from "@/components/skeleton";
 
@@ -29,7 +30,16 @@ function EventRow({
   note: string;
 }) {
   const vendor = vendorConsole(event.provider);
-  const price = formatCents(event.renewalCents, event.currency);
+  // USD first (the served twin), the vendor's own figure beside it as provenance.
+  // A priced renewal with no USD twin has no rate on record: say that, never
+  // print the euro amount as if it were dollars.
+  const price =
+    event.renewalCents === null
+      ? "no price on record"
+      : event.renewalUsdCents === null
+        ? "no USD rate on record"
+        : formatCents(event.renewalUsdCents, "USD");
+  const billed = billedNative(event.renewalCents, event.currency);
   return (
     <div className="border-b border-gray-100 py-3 last:border-0 last:pb-0 first:pt-0">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{note}</p>
@@ -58,7 +68,8 @@ function EventRow({
           <span className="text-xs text-gray-400">No console on record for this vendor.</span>
         )}
         <span className="text-[11px] tabular-nums text-gray-400">
-          {price ?? "no price on record"}
+          {price}
+          {billed ? ` · ${billed}` : ""}
         </span>
       </div>
     </div>
