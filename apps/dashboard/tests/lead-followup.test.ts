@@ -181,6 +181,12 @@ describe("the surface that renders it", () => {
     expect(section).toContain("onError: () => setAsked(false)");
   });
 
+  it("offers the follow-up-now button to the beta cohort only, with its badge", () => {
+    expect(section).toContain("const isBeta = useIsBetaUser();");
+    expect(section).toContain("{isBeta && canFollowUpNow(followup) && (");
+    expect(section).toContain('<MaturityBadge level="beta" />');
+  });
+
   it("renders a refusal rather than swallowing it", () => {
     expect(section).toContain("isError");
     expect(section).toContain("error?.message");
