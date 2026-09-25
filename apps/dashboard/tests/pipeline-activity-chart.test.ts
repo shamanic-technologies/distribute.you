@@ -137,8 +137,10 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(chart).toContain("buildWindowDates");
     // Hovering today shows ACTUAL so far (only future days read as "expected").
     expect(chart).toContain("const showActual = !day.isFuture");
-    // Wider windows auto-scroll so today + forecast stay in view.
-    expect(chart).toContain("el.scrollLeft = el.scrollWidth");
+    // The scroll box centres TODAY, never jumps to the far right (which hid it
+    // behind the forecast days in a half-width card).
+    expect(chart).toContain("todayCentre - el.clientWidth / 2");
+    expect(chart).not.toContain("el.scrollLeft = el.scrollWidth");
   });
 
   it("Outcome line extends past today with a dashed expected projection", () => {
