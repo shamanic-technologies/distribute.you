@@ -1,0 +1,19 @@
+1:"$Sreact.fragment"
+2:I[83879,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js","/_next/static/chunks/42971tmhd6jle.js","/_next/static/chunks/2phv_yk9-1csm.js","/_next/static/chunks/0y32sg_z6_e4f.js"],"Page"]
+3:I[13093,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js","/_next/static/chunks/42971tmhd6jle.js","/_next/static/chunks/2phv_yk9-1csm.js","/_next/static/chunks/0y32sg_z6_e4f.js"],"DelegateButton"]
+4:I[48114,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js","/_next/static/chunks/42971tmhd6jle.js","/_next/static/chunks/2phv_yk9-1csm.js","/_next/static/chunks/0y32sg_z6_e4f.js"],"PeopleView"]
+5:I[97367,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js"],"OutletBoundary"]
+6:"$Sreact.suspense"
+a:I[97367,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js"],"ViewportBoundary"]
+b:I[97367,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js"],"MetadataBoundary"]
+c:I[27201,["/_next/static/chunks/1ogjnc5xf1v-6.js","/_next/static/chunks/3g5ixk4l0hmsp.js","/_next/static/chunks/1vsm8ty6wisg9.js"],"IconMark"]
+:HL["/_next/static/chunks/1tddt8c7xweqg.css","style"]
+9:X
+0:{"buildId":"RbllpoeNcu8rwqQbGbRqg","data":[{"rsc":["$","$1","c",{"children":[["$","$L2",null,{"flush":true,"fill":true,"maxWidth":"none","breadcrumbs":[{"label":"Records"},{"label":"People"}],"actions":["$","$L3",null,{}],"children":["$","$L4",null,{}]}],[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/1tddt8c7xweqg.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/42971tmhd6jle.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/2phv_yk9-1csm.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/0y32sg_z6_e4f.js","async":true}]],["$","$L5",null,{"children":["$","$6",null,{"name":"Next.MetadataOutlet","children":"$@7"}]}]]}],"isPartial":"$@8","staleTime":"$9","varyParams":null},{"rsc":["$","$1","h",{"children":[null,["$","$La",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#0a0a0b","media":"(prefers-color-scheme: dark)"}],["$","meta","3",{"name":"theme-color","content":"#f3f3f4","media":"(prefers-color-scheme: light)"}]]}],["$","div",null,{"hidden":true,"children":["$","$Lb",null,{"children":["$","$6",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"People · Keel"}],["$","meta","1",{"name":"description","content":"The revenue workspace where records keep themselves and work is delegated to agents. People make the calls."}],["$","meta","2",{"name":"robots","content":"noindex, nofollow"}],["$","link","3",{"rel":"icon","href":"/icon.svg?icon.2wn4rhdw_06xj.svg","sizes":"any","type":"image/svg+xml"}],["$","$Lc","4",{}]]}]}]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"isPartial":"$@d","staleTime":"$9","varyParams":null}],"isUpgradeableISRFallback":false,"a":"$@e","rootVaryParams":null,"needsRuntimeRequest":"$@f"}
+7:null
+f:true
+9:300
+9:C
+e:0
+d:"$undefined"
+8:"$undefined"

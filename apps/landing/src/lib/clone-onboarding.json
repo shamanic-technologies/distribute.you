@@ -157,5 +157,32 @@
       }
     ],
     "wall": "Every CTA goes to app.gojiberry.ai/registration (served at lab-gojiberry-app): name, business email, password, or Google, for a 7-day trial. Behind it: the agent setup wizard."
+  },
+  "keel": {
+    "origin": "https://keel-workspace.vercel.app",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://keel-workspace.vercel.app/crew",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://keel-workspace.vercel.app/records/companies",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://keel-workspace.vercel.app/records/people",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://keel-workspace.vercel.app/records/deals",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://keel-workspace.vercel.app/work",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "There is no wall: Keel is a public demo workspace with no sign-up and no account, so every screen is reachable signed out. The whole app is mock data (the Loomwell workspace, 24 companies, 34 people, 38 deals, five agents) rendered in the browser, so the clone is the app, not a landing in front of it."
   }
 }
