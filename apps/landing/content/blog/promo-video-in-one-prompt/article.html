@@ -1,0 +1,84 @@
+<p>This video took one prompt. No After Effects, no timeline editor, no stock template: every frame is computed by code, rendered by a headless browser and stitched with ffmpeg. Sound on, it syncs to the beat.</p>
+
+<video src="/blog/promo-video-in-one-prompt/promo.mp4" poster="/blog/promo-video-in-one-prompt/poster.jpg" controls autoplay muted loop playsinline preload="metadata" style="width:100%;max-width:720px;display:block;margin:2rem auto;border-radius:16px;border:1px solid #e4e2de"></video>
+
+<p>Below is the exact prompt, cleaned up so you can paste it into Claude Code (or any coding agent that can run a browser) and get your own. Then how it works, and the one change that made the second draft worth posting.</p>
+
+<h2 id="the-prompt">The prompt</h2>
+
+<p>Replace <code>[PRODUCT]</code> and send it. The agent asks for the rest before writing a line of code.</p>
+
+<pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">Make a 30-second promo video for [PRODUCT], entirely in code.
+
+INPUTS
+Ask me for: what a viewer must believe after watching, 8 to 14 UI states
+that prove it, one accent colour, and a song around 120 BPM.
+
+DIRECTION
+Dribbble-level UI motion. One shape, never cut: every state is the same
+element morphing its size, radius and colour while its content swaps with
+a short blur. A cursor drives every change with real clicks and drags.
+Light warm-grey canvas, black and white components, one accent colour,
+one clean UI font (Geist). Springs everywhere, a tiny overshoot at most.
+The camera zooms so each state fills the frame. One short headline per
+section, at the top, saying what the viewer gets. The last frame is the
+first frame, so it loops.
+Banned: bouncy easing, particle bursts, glows, gradients on UI chrome,
+mismatched icon strokes, dead time, anything that looks like a template.
+
+STRUCTURE
+At most 2 bars of setup. Give every other bar to the value: results piling
+up, the product doing the work, the number that goes up. Something happens
+on every beat.
+
+BUILD
+1. One HTML file, 1440x1440. Every style is computed from time inside
+   seek(t): no CSS transitions, no timers, no state carried between frames.
+2. Springs are closed-form step responses. A value that changes target many
+   times is a chain of springs, each starting from the position and
+   velocity the previous one reached.
+3. Liquid indicators: the leading edge rides a fast spring, the trailing
+   edge a slow one, so it stretches as it moves.
+4. Drags are direct manipulation: while the cursor is held, the value comes
+   from its position. On release it springs back from wherever it was.
+5. Analyse the song with numpy for the beat grid and start on the drop.
+   Place every UI sound on its measured peak.
+6. Render with Playwright, 8 sub-frames per frame, averaged with ffmpeg
+   tmix for motion blur, at 60 fps. Split the render across several
+   browsers.
+7. Before the full render, render one frame per beat and look at each one.
+   Fix anything off the grid, cramped or hard to read.
+
+GOTCHAS
+Never put will-change on anything the camera scales, or text renders
+blurry. Text that swaps inside a morphing container needs its own enter
+and exit timing. Every value must land exactly on its first-frame value
+at the end, cursor included, or the loop stutters.
+
+START
+Ask me for the inputs, then show me the states on the beat grid before
+you write any code.</pre>
+
+<p>We started from a template that circulated on X and changed it where our first render went wrong: the structure rule, the headlines, 8 sub-frames instead of 4, the parallel render and the loop rule.</p>
+
+<h2 id="how-it-works">How it works</h2>
+
+<p><strong>Time is the only input.</strong> The page exposes one function, <code>seek(t)</code>, that sets every width, colour, opacity and cursor position for the instant <code>t</code>. Nothing animates on its own. That is what lets a renderer ask for frame 1,284 out of order and get the same pixels every time.</p>
+
+<p><strong>Springs, solved on paper.</strong> Each moving value is a chain of damped springs evaluated with their closed-form solution. When a target changes, the next spring starts from the exact position and speed the last one reached, so motion never jumps.</p>
+
+<p><strong>The beat decides the schedule.</strong> A short numpy script finds the tempo (121.6 BPM here) and the drop. Every state change lands on a beat, and every click, key press and chime is placed so its loudest sample hits that beat.</p>
+
+<p><strong>Motion blur by averaging.</strong> Chrome renders 480 images per second of video. ffmpeg averages each group of 8 into one frame, which is what makes fast morphs look filmed instead of stepped. Six browsers in parallel render the 27 seconds in about four minutes.</p>
+
+<h2 id="first-draft">What we changed after the first draft</h2>
+
+<p>The first version was a clean tour of the interface: sign up, set a budget, flip a toggle, browse some tabs. It looked good and said almost nothing about why anyone should care.</p>
+
+<p>The second version spends two bars on setup and the rest on what a customer actually gets: website visits, positive replies and booked meetings piling up; the AI answering a lead by email until the meeting is booked; a positive reply turning into a call that briefs you and puts you on the line with the lead; the return on spend climbing past break-even. That is the rule now written into the prompt.</p>
+
+<p>The companies, people and figures in the video are illustrative.</p>
+
+<h2 id="try-it">Try it</h2>
+
+<p>The prompt works for any product with a UI. If you would rather have the part the video is about, <a href="https://distribute.you">distribute.you</a> runs your cold email campaigns for you, from $1/day, with the first $30 free.</p>
