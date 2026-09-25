@@ -10,7 +10,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listAllQuotePitches } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
-import { useRanWorkflows, RAN_WORKFLOWS_PAGE_LIMIT } from "@/components/campaign/ran-workflows";
+import { useRanWorkflows } from "@/components/campaign/ran-workflows";
 
 interface Props {
   orgId: string;
@@ -105,7 +105,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   // workflow on the campaign row: campaign-service picks a workflow for every run, so that
   // column is only what it started with. A slug the catalogue no longer carries is a
   // retired version, not a malformed campaign — it simply gets no link.
-  const { data: ranWorkflows } = useRanWorkflows(campaignId, RAN_WORKFLOWS_PAGE_LIMIT);
+  const { data: ranWorkflows } = useRanWorkflows(campaignId);
   const lastRanSlug = ranWorkflows?.workflows[0]?.workflowSlug ?? null;
   const workflowId = useMemo(() => {
     if (!lastRanSlug || !workflowsData?.workflows) return undefined;

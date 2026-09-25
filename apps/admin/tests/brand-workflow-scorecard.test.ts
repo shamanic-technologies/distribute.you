@@ -95,8 +95,12 @@ describe("brand Workflows scorecard: the table", () => {
   it("reads the brand figures from features-service, never from a runs/spend join", () => {
     expect(page).toContain("getFeatureRevenueByWorkflow");
     // The parameter the producer actually deployed (features-service #772).
-    expect(api).toContain('groupBy: "workflow"');
-    expect(api).not.toContain('groupBy: "workflowSlug"');
+    // Scoped to the revenue reader: runs-service's own `groupBy: "workflowSlug"` is a
+    // legitimate DIFFERENT read elsewhere in api.ts (a campaign's ran workflows).
+    const reader = api.slice(api.indexOf("export async function getFeatureRevenueByWorkflow("));
+    const readerBody = reader.slice(0, reader.indexOf("\nexport ", 1));
+    expect(readerBody).toContain('groupBy: "workflow"');
+    expect(readerBody).not.toContain('groupBy: "workflowSlug"');
   });
 });
 

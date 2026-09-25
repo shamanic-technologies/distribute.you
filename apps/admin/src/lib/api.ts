@@ -1,9 +1,8 @@
 import { z } from "zod";
 import {
-  TRIGGER_SERVICE_NAME,
   TRIGGER_TASK_NAME,
-  TriggerRunsResponseSchema,
-  type TriggerRun,
+  WorkflowRunGroupsResponseSchema,
+  type WorkflowRunGroup,
 } from "./campaign-ran-workflows";
 import {
   buildExpertQuotePitchVariables,
@@ -1745,31 +1744,31 @@ export async function listCampaignRuns(campaignId: string, token?: string): Prom
 }
 
 /**
- * The campaign's most recent TRIGGER runs — one per workflow execution, each carrying
- * the workflow it actually ran (frozen by runs-service at write time). This is what the
- * campaign RAN; `campaign.workflowSlug` is only what it was created with. See
- * `lib/campaign-ran-workflows.ts`.
+ * The workflows a campaign RAN in the last `days` days, one group per workflow with its
+ * trigger count and last run — runs-service aggregates its own ledger, where the workflow
+ * is frozen per run. This is what the campaign ran; the campaign row's own workflow is
+ * only what it was created with. See `lib/campaign-ran-workflows.ts`.
  */
-export async function listCampaignTriggerRuns(
+export async function listCampaignWorkflowRunGroups(
   campaignId: string,
-  limit: number,
+  days: number,
   token?: string,
-): Promise<TriggerRun[]> {
+): Promise<WorkflowRunGroup[]> {
   const q = new URLSearchParams({
+    groupBy: "workflowSlug",
     campaignId,
-    serviceName: TRIGGER_SERVICE_NAME,
     taskName: TRIGGER_TASK_NAME,
-    limit: String(limit),
+    startedAfter: new Date(Date.now() - days * 86_400_000).toISOString(),
   });
-  const raw = await apiCall<unknown>(`/runs?${q.toString()}`, { token });
-  const parsed = TriggerRunsResponseSchema.safeParse(raw);
+  const raw = await apiCall<unknown>(`/runs/stats/costs?${q.toString()}`, { token });
+  const parsed = WorkflowRunGroupsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[admin] listCampaignTriggerRuns: response shape mismatch", {
+    console.error("[admin] listCampaignWorkflowRunGroups: response shape mismatch", {
       issues: parsed.error.issues,
     });
-    throw new Error("[admin] listCampaignTriggerRuns: invalid response shape");
+    throw new Error("[admin] listCampaignWorkflowRunGroups: invalid response shape");
   }
-  return parsed.data.runs;
+  return parsed.data.groups;
 }
 
 // ─── Run events (logs) ───────────────────────────────────────────────────────

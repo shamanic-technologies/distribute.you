@@ -11,10 +11,11 @@
  * the last days ran alioth, delphi, nimbus, helm, baobab, azalea-v4, catalyst.
  *
  * runs-service freezes `workflowSlug` on every run at write time, and each trigger opens
- * exactly one `workflow` / `execute-workflow` run — so the recent trigger runs ARE the
- * answer. This module only groups them; there is NO fallback to the configured slug,
- * since that value is the bug. An empty list means "no trigger in the window", which the
- * surface states as such.
+ * exactly one `execute-workflow` run — so the recent trigger runs ARE the answer, and
+ * runs-service already aggregates them (`/v1/stats/costs?groupBy=workflowSlug` returns
+ * `runCount` + `maxStartedAt` per workflow). This module only orders that answer; there
+ * is NO fallback to the configured slug, since that value is the bug. An empty list means
+ * "no trigger in the window", which the surface states as such.
  *
  * Alias-free (zod only) so it carries real unit tests. Keep it that way.
  */
@@ -22,25 +23,31 @@
 import { z } from "zod";
 
 /** The run that one campaign trigger opens — one per workflow execution. */
-export const TRIGGER_SERVICE_NAME = "workflow";
 export const TRIGGER_TASK_NAME = "execute-workflow";
 
-/** Only the two fields this reads; the rest of the run is passed through untouched. */
-export const TriggerRunSchema = z
+/** How far back "recently" reaches. A busy campaign triggers hundreds of times a day,
+ *  so a window in TIME (not a count of runs) is what shows every workflow it rotated
+ *  through rather than only the last few hours. */
+export const RAN_WORKFLOWS_WINDOW_DAYS = 7;
+
+/** One runs-service `/v1/stats/costs?groupBy=workflowSlug` group. Only the fields read
+ *  here are declared; the cost totals pass through untouched. */
+export const WorkflowRunGroupSchema = z
   .object({
-    workflowSlug: z.string().nullable(),
-    startedAt: z.string(),
+    dimensions: z.object({ workflowSlug: z.string().nullable().optional() }).passthrough(),
+    runCount: z.number(),
+    maxStartedAt: z.string().nullable(),
   })
   .passthrough();
 
-export const TriggerRunsResponseSchema = z
-  .object({ runs: z.array(TriggerRunSchema) })
+export const WorkflowRunGroupsResponseSchema = z
+  .object({ groups: z.array(WorkflowRunGroupSchema) })
   .passthrough();
 
-export type TriggerRun = z.infer<typeof TriggerRunSchema>;
+export type WorkflowRunGroup = z.infer<typeof WorkflowRunGroupSchema>;
 
 export interface RanWorkflow {
-  /** The VERSIONED slug runs-service froze. */
+  /** The VERSIONED slug runs-service froze on the run. */
   workflowSlug: string;
   /** How many triggers in the window ran it. */
   runs: number;
@@ -51,39 +58,31 @@ export interface RanWorkflow {
 export interface RanWorkflowsSummary {
   /** Most recent first. */
   workflows: RanWorkflow[];
-  /** Triggers read (the window size). */
+  /** Triggers in the window, across every workflow. */
   totalRuns: number;
-  /** ISO start of the OLDEST trigger read — the window's lower edge. Null when empty. */
-  windowStart: string | null;
 }
 
 /**
- * Group trigger runs by workflow. A run carrying no workflow is skipped (it cannot be
- * attributed) but still counts toward the window it was read in.
+ * Order runs-service's per-workflow groups, newest run first. A group carrying no
+ * workflow cannot be attributed and is skipped (its runs still count toward the total).
  */
-export function summarizeRanWorkflows(runs: readonly TriggerRun[]): RanWorkflowsSummary {
-  const bySlug = new Map<string, RanWorkflow>();
-  let windowStart: string | null = null;
-  for (const run of runs) {
-    if (windowStart === null || run.startedAt < windowStart) windowStart = run.startedAt;
-    const slug = run.workflowSlug;
-    if (!slug) continue;
-    const prev = bySlug.get(slug);
-    if (!prev) {
-      bySlug.set(slug, { workflowSlug: slug, runs: 1, lastStartedAt: run.startedAt });
-    } else {
-      prev.runs += 1;
-      if (run.startedAt > prev.lastStartedAt) prev.lastStartedAt = run.startedAt;
-    }
+export function summarizeRanWorkflows(groups: readonly WorkflowRunGroup[]): RanWorkflowsSummary {
+  const workflows: RanWorkflow[] = [];
+  let totalRuns = 0;
+  for (const g of groups) {
+    totalRuns += g.runCount;
+    const slug = g.dimensions.workflowSlug;
+    if (!slug || !g.maxStartedAt || g.runCount <= 0) continue;
+    workflows.push({ workflowSlug: slug, runs: g.runCount, lastStartedAt: g.maxStartedAt });
   }
-  const workflows = [...bySlug.values()].sort((a, b) =>
+  workflows.sort((a, b) =>
     a.lastStartedAt === b.lastStartedAt
       ? a.workflowSlug.localeCompare(b.workflowSlug)
       : a.lastStartedAt < b.lastStartedAt
         ? 1
         : -1,
   );
-  return { workflows, totalRuns: runs.length, windowStart };
+  return { workflows, totalRuns };
 }
 
 /**

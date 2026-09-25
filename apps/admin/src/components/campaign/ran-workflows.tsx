@@ -1,28 +1,27 @@
 "use client";
 
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignTriggerRuns } from "@/lib/api";
+import { listCampaignWorkflowRunGroups } from "@/lib/api";
 import { pollOptionsSlow } from "@/lib/query-options";
 import {
+  RAN_WORKFLOWS_WINDOW_DAYS,
   summarizeRanWorkflows,
   workflowShortName,
   type RanWorkflowsSummary,
 } from "@/lib/campaign-ran-workflows";
 
-/** Triggers read on the campaign page — a few days of a busy campaign. */
-export const RAN_WORKFLOWS_PAGE_LIMIT = 300;
-/** Triggers read per card on a list — small, since a list fans out one read per card. */
-export const RAN_WORKFLOWS_CARD_LIMIT = 50;
-
 /**
- * What the campaign ACTUALLY RAN, off its trigger runs. Never the creation-time
- * `campaign.workflowSlug`: campaign-service picks a workflow per run.
+ * What the campaign ACTUALLY RAN over the last week, off its trigger runs. Never the
+ * creation-time workflow on the campaign row: campaign-service picks one per run. One
+ * cheap aggregate, so the campaign page, its sidebar and a list card share one key.
  */
-export function useRanWorkflows(campaignId: string | null | undefined, limit: number) {
+export function useRanWorkflows(campaignId: string | null | undefined) {
   return useAuthQuery(
-    ["campaignRanWorkflows", campaignId ?? "none", limit],
+    ["campaignRanWorkflows", campaignId ?? "none", RAN_WORKFLOWS_WINDOW_DAYS],
     async (): Promise<RanWorkflowsSummary> =>
-      summarizeRanWorkflows(await listCampaignTriggerRuns(campaignId as string, limit)),
+      summarizeRanWorkflows(
+        await listCampaignWorkflowRunGroups(campaignId as string, RAN_WORKFLOWS_WINDOW_DAYS),
+      ),
     { enabled: Boolean(campaignId), ...pollOptionsSlow },
   );
 }
@@ -45,7 +44,7 @@ export function RanWorkflowsCard({
   campaignId: string;
   featureSlug: string;
 }) {
-  const { data, isPending, isError } = useRanWorkflows(campaignId, RAN_WORKFLOWS_PAGE_LIMIT);
+  const { data, isPending, isError } = useRanWorkflows(campaignId);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4" data-testid="ran-workflows">
@@ -62,7 +61,7 @@ export function RanWorkflowsCard({
       ) : isError || !data ? (
         <p className="text-sm text-red-600">Could not read this campaign&apos;s runs.</p>
       ) : data.workflows.length === 0 ? (
-        <p className="text-sm text-gray-500">No run yet in the recent window.</p>
+        <p className="text-sm text-gray-500">No run in the last {RAN_WORKFLOWS_WINDOW_DAYS} days.</p>
       ) : (
         <>
           <ul className="divide-y divide-gray-100">
@@ -82,11 +81,9 @@ export function RanWorkflowsCard({
               </li>
             ))}
           </ul>
-          {data.windowStart && (
-            <p className="mt-2 text-xs text-gray-400">
-              Last {data.totalRuns.toLocaleString("en-US")} runs, since {ago(data.windowStart)}.
-            </p>
-          )}
+          <p className="mt-2 text-xs text-gray-400">
+            Last {RAN_WORKFLOWS_WINDOW_DAYS} days, {data.totalRuns.toLocaleString("en-US")} runs.
+          </p>
         </>
       )}
     </div>
@@ -101,10 +98,10 @@ export function RanWorkflowsInline({
   campaignId: string;
   featureSlug?: string | null;
 }) {
-  const { data, isPending, isError } = useRanWorkflows(campaignId, RAN_WORKFLOWS_CARD_LIMIT);
+  const { data, isPending, isError } = useRanWorkflows(campaignId);
   if (isPending && !isError) return <span className="inline-block h-3 w-24 bg-gray-100 rounded animate-pulse" />;
   if (isError || !data) return <span>Runs unavailable</span>;
-  if (data.workflows.length === 0) return <span>No run yet</span>;
+  if (data.workflows.length === 0) return <span>No run in {RAN_WORKFLOWS_WINDOW_DAYS} days</span>;
   const names = data.workflows.map((w) => workflowShortName(w.workflowSlug, featureSlug));
   const shown = names.slice(0, 3).join(", ");
   const more = names.length > 3 ? ` +${names.length - 3}` : "";
