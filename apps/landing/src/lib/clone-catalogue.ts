@@ -118,6 +118,9 @@ export const CLONES: readonly Clone[] = [
   { slug: "origami", source: "https://origami.chat/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
   { slug: "oxygen", source: "https://oxygen-agent.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
   { slug: "graphed", source: "https://www.graphed.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
+  // A whole demo APP rather than a landing: 30 document routes (crew, records, work) captured
+  // explicitly, since the static pass follows assets and never document links.
+  { slug: "keel", source: "https://keel-workspace.vercel.app/", capturedAt: "2026-09-25", brandised: false, localisedHosts: [] },
   {
     slug: "gojiberry",
     source: "https://gojiberry.ai/",
