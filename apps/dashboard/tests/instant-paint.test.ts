@@ -225,12 +225,4 @@ describe("reveal gates — no surface reads isLoading off a useAuthQuery", () =>
     }
   });
 
-  it("the leg board's skeleton is decided by `pending` alone, never re-locked on !data", () => {
-    const src = fs.readFileSync(
-      path.join(__dirname, "../src/components/funnels/funnel-leg-page.tsx"),
-      "utf-8",
-    );
-    expect(src).not.toContain("{pending || !board ?");
-    expect(src).toContain("{pending ? (");
-  });
 });

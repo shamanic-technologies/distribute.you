@@ -89,6 +89,5 @@ describe("funnel step marks — one tile per step, the same product-wide", () =>
     expect(read("components/start/start-picks.tsx")).toContain("<FunnelStepMark stepKey={o.key}");
     expect(read("components/start/start-picks.tsx")).toContain("mark: <FunnelStepMark stepKey={step.key}");
     expect(read("components/leads/lead-funnel-stage-section.tsx")).toContain("<FunnelStepMark stageKey={stage.key}");
-    expect(read("components/funnels/funnel-leg-board.tsx")).toContain("<FunnelStepMark stageKey={column.stage}");
   });
 });

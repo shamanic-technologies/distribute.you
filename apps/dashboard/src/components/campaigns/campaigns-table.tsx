@@ -33,7 +33,6 @@ import {
 import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import type { FunnelStepBreakdown, FunnelStepRow } from "@/lib/revenue-view";
 import {
-  canonicalSalesFunnelKey,
   normalizeSalesFunnelKey,
   salesFunnelByKey,
   type SalesFunnelDef,
@@ -530,23 +529,20 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
 /**
  * ONE SALES FUNNEL, walked arrow by arrow.
  *
- * The table above lists the campaigns a brand HAS. On a single funnel that is the wrong
- * list: a funnel is sold leg by leg, so the arrows we automate are campaigns and the
- * arrows we do not are worked at the brand's own side — and a table showing only ours
- * tells the customer their funnel is shorter than it is. Every arrow gets a row here,
- * whoever performs it.
+ * On a single funnel the campaigns are laid out in the funnel's own step order, one row
+ * per campaign, each named for the arrow it performs. An arrow no channel of ours
+ * performs gets no row (owner-decided 2026-09-25).
  *
  * The three figures are SERVED rungs of `funnelSteps` (features-service#854). Nothing
  * here divides: a browser computing a user-facing ratio is the compute-a-stat-in-the-
  * browser bug, and it would drift from the producer the moment either side changed
- * scope. `$ Invested` and `$ Budget` stay the campaign's own, so a row we run still says
- * what it cost and what it may spend, and a row nobody runs says neither rather than $0.
+ * scope. `$ Invested` and `$ Budget` stay the campaign's own.
  *
  * WHOSE PRICE. `$ / Outcome` states the CAMPAIGN's own cost wherever the producer
  * answers one for the step (the two a channel produces from nothing), so it divides the
  * same spend the `$ Invested` on that row states and the same count in the cell before
- * it. Deeper in the funnel there is no per-campaign price on the wire, and a row nobody
- * of ours runs has no campaign at all — both state the arrow's own figure instead.
+ * it. Deeper in the funnel there is no per-campaign price on the wire, so the row states
+ * the arrow's own figure instead.
  * `% Conversion` is the arrow's everywhere: it has no per-campaign version, and a share
  * of the step before is a funnel property rather than one campaign's.
  *
@@ -673,7 +669,6 @@ export function FunnelLegTable({
   extra,
   basePath,
   settled,
-  scopePaused = false,
 }: {
   funnel: SalesFunnelDef;
   rows: FunnelLegRow<CampaignRow>[];
@@ -682,36 +677,13 @@ export function FunnelLegTable({
   extra: CampaignRow[];
   basePath: string;
   settled: boolean;
-  /**
-   * NOTHING sells this funnel right now — the verdict the page's own header pill
-   * renders, passed in rather than re-derived from `rows` (`scope-paused.ts` owns that
-   * rule, and restating it here as `rows.every(...)` is a second source for one answer).
-   *
-   * It matters because the figures on this walk are ARROW-scoped: a rung's cost is what
-   * reaching that step has cost the funnel, and the conversion is a share of the step
-   * before. With nothing running, nobody reaches any rung, so `Learning` promises a
-   * number that cannot arrive until the customer restarts something. An arrow the brand
-   * works ITSELF has no campaign of its own to be stopped, which is exactly why it
-   * needs this: without it, those arrows kept reading `Learning` under a header that
-   * already said `Paused`.
-   */
-  scopePaused?: boolean;
 }) {
   const router = useRouter();
-  // Warm both destinations on hover — a leg row opens either its campaign or, for an
-  // arrow the brand works itself, the leg's own page. See `useRoutePrefetch`.
+  // Warm the campaign a row opens on hover. See `useRoutePrefetch`.
   const prefetch = useRoutePrefetch();
   const campaignHref = (row: CampaignRow) => `${basePath}/campaigns/${row.campaign.id}`;
-  const legHref = (toKey: string) =>
-    `${basePath}/funnels/${encodeURIComponent(canonicalSalesFunnelKey(funnel.key))}/legs/${encodeURIComponent(toKey)}`;
   const open = (row: CampaignRow) => router.push(campaignHref(row));
-  // An arrow the brand works itself has no campaign to open, and it is the one a person
-  // most needs to act on: its own page is where they say who crossed it. An arrow WE run
-  // keeps opening its campaign — that page has a budget, a status and settings a leg page
-  // has nothing to say about.
-  const openLeg = (toKey: string) => router.push(legHref(toKey));
-  const warm = (row: CampaignRow | null, toKey: string) =>
-    prefetch(row ? campaignHref(row) : legHref(toKey));
+  const warm = (row: CampaignRow) => prefetch(campaignHref(row));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
@@ -752,58 +724,41 @@ export function FunnelLegTable({
                 <tr
                   /* An arrow several campaigns share has one row EACH, so the key
                      carries the campaign — a key on the arrow alone would collide. */
-                  key={`leg-${leg.toIndex}-${campaign?.campaign.id ?? "unclaimed"}`}
-                  onClick={campaign ? () => open(campaign) : () => openLeg(leg.toKey)}
-                  onMouseEnter={() => warm(campaign, leg.toKey)}
-                  onFocus={() => warm(campaign, leg.toKey)}
+                  key={`leg-${leg.toIndex}-${campaign.campaign.id}`}
+                  onClick={() => open(campaign)}
+                  onMouseEnter={() => warm(campaign)}
+                  onFocus={() => warm(campaign)}
                   className="cursor-pointer transition hover:bg-gray-50"
                 >
                   <td className="px-4 py-3 text-gray-800">
-                    {/* The leg is handed in rather than resolved from a channel: an arrow
-                        nobody sells us has no channel to resolve one from, and it is
-                        still one of this funnel's arrows. */}
+                    {/* The leg is handed in, so the row names the arrow this campaign
+                        performs rather than the whole funnel. */}
                     <CampaignIdentity
                       funnel={funnel}
-                      featureSlug={campaign?.campaign.featureSlug ?? null}
+                      featureSlug={campaign.campaign.featureSlug ?? null}
                       leg={leg}
-                      statesOperator
                     />
                   </td>
-                  {/* A campaign states its OWN count; an arrow nobody of ours performs
-                      states the arrow's rung, which is the only count there is for it. */}
+                  {/* The campaign's OWN count, and what IT paid for one outcome here, so
+                      the price, the count beside it and the `$ Invested` further along
+                      the row all answer at one scope. */}
                   <LegOutcomeCells
                     step={step}
-                    outcomes={
-                      campaign
-                        ? campaignStepOutcomes(campaign.revenue, leg.toKey)
-                        : step?.recipientsReached
-                    }
-                    /* A campaign states what IT paid for one outcome here, so the price,
-                       the count beside it and the `$ Invested` further along the row all
-                       answer at one scope. An arrow nobody of ours runs has no campaign
-                       to ask, and states the funnel's own figure. */
-                    campaignCostCents={
-                      campaign ? campaignStepCostCents(campaign.revenue, leg.toKey) : undefined
-                    }
+                    outcomes={campaignStepOutcomes(campaign.revenue, leg.toKey)}
+                    campaignCostCents={campaignStepCostCents(campaign.revenue, leg.toKey)}
                     sharesArrow={sharesArrow}
                     arrowLead={arrowLead}
-                    /* The row's own campaign where there is one; the SCOPE's verdict
-                       where there is not. An arrow the brand works itself is never
-                       `stopped` on its own — what stops it is the funnel going quiet. */
-                    paused={campaign ? !isActiveStatus(campaign.campaign.status) : scopePaused}
+                    paused={!isActiveStatus(campaign.campaign.status)}
                   />
-                  {/* Money the CAMPAIGN spent and may spend. An arrow the brand works
-                      itself costs us nothing to run, so it states neither rather than $0
-                      — "we have no figure" and "it cost nothing" are different. */}
                   <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
-                    {campaign ? fmtUsd(campaign.revenue?.committedCostUsd) : "—"}
+                    {fmtUsd(campaign.revenue?.committedCostUsd)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
                     {/* The `/ day` rider is the sibling table's: a ceiling is a RATE, and
                         the bare figure reads as a total beside the money column to its
                         left, which really is one. Withheld on the dash — "we have no
                         figure" is not a figure per day. */}
-                    {campaign && campaign.budgetCents != null ? (
+                    {campaign.budgetCents != null ? (
                       <>
                         {fmtDailyBudgetUsd(campaign.budgetCents)}
                         <span className="text-gray-400"> / day</span>
@@ -813,7 +768,7 @@ export function FunnelLegTable({
                     )}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
-                    {campaign ? <StatusPill status={campaign.campaign.status} /> : null}
+                    <StatusPill status={campaign.campaign.status} />
                   </td>
                 </tr>
               ))}
@@ -821,8 +776,8 @@ export function FunnelLegTable({
                 <tr
                   key={row.campaign.id}
                   onClick={() => open(row)}
-                  onMouseEnter={() => warm(row, "")}
-                  onFocus={() => warm(row, "")}
+                  onMouseEnter={() => warm(row)}
+                  onFocus={() => warm(row)}
                   className="cursor-pointer transition hover:bg-gray-50"
                 >
                   <td className="px-4 py-3 text-gray-800">
@@ -890,7 +845,6 @@ function CampaignsTableInner({
   offerId,
   funnelKey,
   funnelSteps,
-  paused = false,
 }: {
   brandId: string;
   featureSlug: string;
@@ -921,17 +875,6 @@ function CampaignsTableInner({
    * with no figures rather than dropping them.
    */
   funnelSteps?: FunnelStepBreakdown | null;
-  /**
-   * NOTHING in this scope is running — the verdict `useScopePaused` builds and the
-   * header pill above this table already renders. Read by the funnel WALK, whose
-   * figures are the arrow's rather than any one campaign's, so an arrow with no
-   * campaign of ours still has to say `Paused` rather than `Learning`.
-   *
-   * Passed in, never re-derived: this component holds `rows` and could test them, and a
-   * second spelling of the rule is how a header and the table under it come to
-   * disagree about one funnel.
-   */
-  paused?: boolean;
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
@@ -972,7 +915,6 @@ function CampaignsTableInner({
         extra={legTable.extra}
         basePath={basePath}
         settled={settled}
-        scopePaused={paused}
       />
     );
   }

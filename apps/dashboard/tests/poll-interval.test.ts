@@ -34,7 +34,6 @@ describe("the Leads reads", () => {
     expect("leadsPollOptions" in queryOptions).toBe(false);
     for (const path of [
       "components/audiences/engaged-leads-page.tsx",
-      "components/funnels/funnel-leg-page.tsx",
     ]) {
       const src = read(path);
       expect(src).not.toContain("LEADS_POLL_INTERVAL");

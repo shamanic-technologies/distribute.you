@@ -77,7 +77,7 @@ describe("channelsForLeg", () => {
   it("offers the booking channels on the leg out of a positive reply, and no entry channel", () => {
     const booking = LEGS[1];
     const slugs = channelsForLeg(booking, ALL).map((c) => c.featureSlug);
-    expect(slugs).toEqual(["ai-meeting-booking", "your-team-meeting-booking"]);
+    expect(slugs).toEqual(["ai-meeting-booking"]);
     expect(slugs).not.toContain("sales-cold-email-outreach");
   });
 
@@ -86,14 +86,17 @@ describe("channelsForLeg", () => {
   it("drops a platform channel campaign-service provisions nothing for", () => {
     const attendance = LEGS[2];
     const slugs = channelsForLeg(attendance, ALL).map((c) => c.featureSlug);
-    expect(slugs).toEqual(["your-team-meeting-attendance"]);
     expect(slugs).not.toContain("agency-meeting-attendance");
   });
 
-  // Customer-operated is read off the WIRE, so it never consults the provisionable list.
-  it("keeps a customer-operated channel whatever the provisionable list says", () => {
-    const attendance = LEGS[2];
-    expect(channelsForLeg(attendance, ALL)[0].operatedBy).toBe("customer");
+  // Owner-decided 2026-09-25: the board offers the channels WE run. A card for an arrow
+  // the brand works by hand was read by nobody.
+  it("drops a customer-operated channel", () => {
+    for (const leg of LEGS) {
+      expect(channelsForLeg(leg, ALL).some((c) => c.operatedBy === "customer"), leg.label).toBe(
+        false,
+      );
+    }
   });
 
   it("files a channel under no leg of a funnel that does not contain its arrow", () => {
@@ -105,34 +108,24 @@ describe("channelsForLeg", () => {
   });
 
   it("matches on BOTH steps, so a shared destination is not a shared leg", () => {
-    // Both booking channels reach `meeting_booked`; only one does it from a website visit.
+    // AI booking reaches `meeting_booked`, but out of a reply, never out of a visit.
     const fromVisit = { fromIndex: 0, toIndex: 1, fromKey: "website_visit", toKey: "meeting_booked", label: "x" };
     const slugs = channelsForLeg(fromVisit, ALL).map((c) => c.featureSlug);
-    expect(slugs).toEqual(["your-team-meeting-booking"]);
     expect(slugs).not.toContain("ai-meeting-booking");
   });
 });
 
 describe("buildLegColumns", () => {
-  it("gives every arrow a column, in the funnel's own order", () => {
+  it("gives a column to each arrow a channel of ours performs, in the funnel's own order", () => {
     const cols = buildLegColumns({ legs: LEGS, channels: ALL, savedCentsBySlug: {}, runningBySlug: {}, hasCampaignBySlug: {} });
-    expect(cols).toHaveLength(4);
-    expect(cols.map((c) => c.leg.toKey)).toEqual([
-      "conversation",
-      "meeting_booked",
-      "meeting_attended",
-      "paid_client",
-    ]);
+    expect(cols.map((c) => c.leg.toKey)).toEqual(["conversation", "meeting_booked"]);
   });
 
-  // A column with nothing to offer is the honest answer for a leg we do not sell yet.
-  // Omitting it would tell a customer their funnel is shorter than it is.
-  it("keeps a column that has no fundable channel at all", () => {
+  // Owner-decided 2026-09-25: an arrow no channel of ours can work gets no column.
+  it("drops a column left with no card", () => {
     const cols = buildLegColumns({ legs: LEGS, channels: [COLD], savedCentsBySlug: {}, runningBySlug: {}, hasCampaignBySlug: {} });
-    expect(cols).toHaveLength(4);
+    expect(cols).toHaveLength(1);
     expect(cols[0].cards).toHaveLength(1);
-    expect(cols[1].cards).toEqual([]);
-    expect(cols[3].cards).toEqual([]);
   });
 
   // The offer-scoped narrowing already lives in `funnelChannelBudgets`, which Offer
@@ -148,11 +141,9 @@ describe("buildLegColumns", () => {
     const ai = cols[1].cards.find((c) => c.channel.featureSlug === "ai-meeting-booking")!;
     expect(ai.savedCents).toBe(500);
     expect(ai.funded).toBe(true);
-    const yourTeam = cols[1].cards.find(
-      (c) => c.channel.featureSlug === "your-team-meeting-booking",
-    )!;
-    expect(yourTeam.savedCents).toBe(0);
-    expect(yourTeam.funded).toBe(false);
+    const crm = cols[0].cards.find((c) => c.channel.featureSlug === "sales-crm-email-outreach")!;
+    expect(crm.savedCents).toBe(0);
+    expect(crm.funded).toBe(false);
   });
 
   it("treats a zero ceiling as not funded, which is how a channel is turned off", () => {
@@ -229,13 +220,13 @@ describe("buildLegColumns state", () => {
     const cols = buildLegColumns({
       legs: LEGS,
       channels: ALL,
-      savedCentsBySlug: { "ai-meeting-booking": 1000, "your-team-meeting-booking": 500 },
-      runningBySlug: { "ai-meeting-booking": false, "your-team-meeting-booking": true },
-      hasCampaignBySlug: { "ai-meeting-booking": true, "your-team-meeting-booking": true },
+      savedCentsBySlug: { "sales-cold-email-outreach": 1000, "sales-crm-email-outreach": 500 },
+      runningBySlug: { "sales-cold-email-outreach": false, "sales-crm-email-outreach": true },
+      hasCampaignBySlug: { "sales-cold-email-outreach": true, "sales-crm-email-outreach": true },
     });
-    const byslug = Object.fromEntries(cols[1].cards.map((c) => [c.channel.featureSlug, c.state]));
-    expect(byslug["ai-meeting-booking"]).toBe("paused");
-    expect(byslug["your-team-meeting-booking"]).toBe("running");
+    const byslug = Object.fromEntries(cols[0].cards.map((c) => [c.channel.featureSlug, c.state]));
+    expect(byslug["sales-cold-email-outreach"]).toBe("paused");
+    expect(byslug["sales-crm-email-outreach"]).toBe("running");
   });
 
   // A slug absent from a SETTLED map is a channel no row covers: not running, and with

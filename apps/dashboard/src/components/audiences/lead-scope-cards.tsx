@@ -17,7 +17,6 @@ import { channelSlugLabel } from "@/lib/campaign-title";
 import { campaignLegFor } from "@/lib/campaign-leg";
 import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
 import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
-import { funnelLegOperator, funnelLegOperatorLabel } from "@/lib/funnel-leg-operator";
 import { SALES_FUNNELS } from "@/lib/sales-funnels";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
@@ -144,13 +143,10 @@ export function LeadScopeCards({
           title={leg.label}
           unnamed={null}
           /* A funnel is sold leg by leg, so the arrow is what the campaign actually
-             buys — and WHO works it is the other half of that sentence. */
-          subtitle={`Worked by ${funnelLegOperatorLabel(
-            funnelLegOperator(leg.fromKey, leg.toKey),
-            displayBrand?.name,
-          )}.`}
-          href={offer ? `${offerPath}/funnels/${funnel.key}/legs/${leg.toKey}` : null}
-          linkLabel="View leg"
+             buys. A leg has no page of its own: the funnel card above links there. */
+          subtitle="The step of the funnel this campaign works."
+          href={null}
+          linkLabel={null}
         />
       )}
       {sole?.featureSlug && (
