@@ -34,11 +34,12 @@ describe("the audience step is one box", () => {
     }
   });
 
-  it("prefills the box from brand-service's ICP draft, and says so when it could not", () => {
+  it("prefills the box from brand-service's ICP draft, and says NOTHING when it could not", () => {
     expect(step).toContain("suggestBrandIcp(brandId)");
     expect(step).toContain("prefetch.promise");
     expect(step).toContain("Drafting your ideal customer profile");
-    expect(step).toContain("to draft this. Tell us in your own words.");
+    // A failed prefill is ours to know about, not the customer's (owner-decided 2026-09-25).
+    expect(step).not.toContain("Tell us in your own words.");
   });
 
   it("cannot continue on an empty box", () => {

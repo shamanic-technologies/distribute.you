@@ -1224,8 +1224,6 @@ export function Onboarding() {
   // what a swallowed extract failure used to look like. There is no third
   // "still reading" state: the loading screen does not end until the services
   // have been read (or have failed to be), so nothing can still be in flight.
-  const [servicesExtractFailed, setServicesExtractFailed] = useState(false);
-  const [servicesRetrying, setServicesRetrying] = useState(false);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
   // Post-payment steps (phone → ltr → offer levers). `phone` is user-level
@@ -1923,7 +1921,6 @@ export function Onboarding() {
       extractedServices = normalizeServices(mappedFields?.fields.services?.value);
     }
     captureSetupMilestone(extractedServices.length > 0 ? "services_extracted" : "services_extract_failed", servicesStartedAt);
-    setServicesExtractFailed(extractedServices.length === 0);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -2079,7 +2076,6 @@ export function Onboarding() {
     });
     const extractedServices = normalizeServices(contextFields?.fields.services?.value);
     captureSetupMilestone(extractedServices.length > 0 ? "services_extracted" : "services_extract_failed", servicesStartedAt);
-    setServicesExtractFailed(extractedServices.length === 0);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -3061,34 +3057,6 @@ export function Onboarding() {
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
-  // Re-run the service extraction from the services step. The loading screen
-  // already tried the landing page and then the whole site, so the retry walks
-  // the whole site again (the wider of the two) — the point is that a failure is
-  // recoverable in place instead of leaving the step permanently empty with
-  // nothing to press.
-  async function retryServicesExtract() {
-    const id = brandIdRef.current;
-    if (!id || servicesRetrying) return;
-    setServicesRetrying(true);
-    const startedAt = performance.now();
-    try {
-      const fields = await extractBrandFields([id], SERVICES_PROFILE_FIELDS, {
-        urlStrategy: noWebsiteMode ? undefined : "url_map",
-        mode: "suggest",
-      });
-      const next = normalizeServices(fields.fields.services?.value);
-      captureSetupMilestone(next.length > 0 ? "services_extracted" : "services_extract_failed", startedAt);
-      setServicesExtractFailed(next.length === 0);
-      applyExtractedServices(next);
-    } catch (e) {
-      console.error("[dashboard] retryServicesExtract failed:", e);
-      captureSetupMilestone("services_extract_failed", startedAt);
-      setServicesExtractFailed(true);
-    } finally {
-      setServicesRetrying(false);
-    }
-  }
-
   function addService(raw: string) {
     const value = raw.trim();
     setServiceDraft("");
@@ -3249,11 +3217,6 @@ export function Onboarding() {
     // A list on screen came from somewhere: either the extraction produced it or the
     // user typed it. Either way there is a draft to talk about.
     const servicesDrafted = services.length > 0;
-    // Nothing to show: the loading screen's read is over and it produced nothing.
-    // Say that, and give the reader a way to ask again. There is no waiting state
-    // here — nothing that could still deliver a list is running once this step
-    // renders.
-    const servicesUnread = !servicesDrafted && servicesExtractFailed;
     // One string, two paths: the button writes it and Ctrl+C rewrites to it.
     const servicesPrompt = buildServicesLLMPrompt(
       [...services, serviceDraft.trim()].filter(Boolean),
@@ -3318,23 +3281,11 @@ export function Onboarding() {
             className="min-w-0 flex-1 basis-full bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none sm:min-w-[8rem] sm:basis-auto"
           />
         </div>
-        {/* A settled empty read is a verdict, stated as one. The read itself
-            happened on the loading screen, so a spinner here would be a lie. */}
-        {servicesUnread ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-amber-800">
-            <span>We couldn&apos;t read your site. Add what you sell, or try again.</span>
-            <button
-              type="button"
-              onClick={retryServicesExtract}
-              disabled={servicesRetrying}
-              className="font-semibold text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
-            >
-              {servicesRetrying ? "Reading…" : "Try again"}
-            </button>
-          </div>
-        ) : (
-          services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>
-        )}
+        {/* A failed prefill says NOTHING. The reader was never promised a draft,
+            so an empty box with the ordinary hint is the whole truth for them;
+            telling them we could not read their site only advertises a failure
+            they cannot act on. The failure is logged and captured in PostHog. */}
+        {services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
       </StepShell>
     );
   }
@@ -3924,9 +3875,6 @@ function OnboardingAudiences({
   // an audience suggest (LLM + a people search, ~35 s, billed) and asked the
   // customer to pick cards; it is gone with the picks and the activation.
   const [icpLoading, setIcpLoading] = useState(true);
-  // True when the box is EMPTY because brand-service could not draft an ICP, so
-  // the step says so instead of presenting a blank as a prompt to fill.
-  const [icpFallback, setIcpFallback] = useState(false);
   const icpFetchedRef = useRef(false);
   // Mirror of the prompt for the seed below, which runs inside a promise callback
   // created at MOUNT: reading `prompt` there reads the mount render, so the
@@ -3947,7 +3895,7 @@ function OnboardingAudiences({
     }
     const adopt = (drafted: string, failed: boolean) => {
       if (!promptRef.current.trim() && drafted) onPromptChange(drafted);
-      if (failed) setIcpFallback(true);
+      if (failed) console.error("[dashboard] ICP prefill produced nothing; the box stays empty");
     };
     if (prefetch) {
       setIcpLoading(true);
@@ -3955,13 +3903,11 @@ function OnboardingAudiences({
         .then(({ prompt: p, icpFailed }) => adopt(p, icpFailed))
         .catch((e) => {
           console.error("[dashboard] audience prefetch adopt failed:", e);
-          setIcpFallback(true);
         })
         .finally(() => setIcpLoading(false));
       return;
     }
     if (!brandId) {
-      setIcpFallback(true);
       setIcpLoading(false);
       return;
     }
@@ -3971,7 +3917,6 @@ function OnboardingAudiences({
         adopt(icp.trim(), !icp.trim());
       } catch (e) {
         console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
-        setIcpFallback(true);
       } finally {
         setIcpLoading(false);
       }
@@ -4023,13 +3968,6 @@ function OnboardingAudiences({
             </div>
           )}
         </div>
-        {/* An empty box because brand-service could not draft an ICP looks like a
-            box nobody has drafted yet, so the reader is told which they are holding. */}
-        {icpFallback && !icpLoading && !prompt.trim() && (
-          <p className="mt-2 text-xs text-gray-500">
-            We couldn&apos;t read enough from <span className="font-medium text-gray-700">{hostname}</span> to draft this. Tell us in your own words.
-          </p>
-        )}
         {error && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</div>
         )}
