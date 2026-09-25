@@ -77,11 +77,10 @@ describe("Leads right panel — audience row and email copy", () => {
     // row and the sole-campaign card came to differ about one audience.
     expect(body).toContain("audienceDetailHref({");
     expect(body).toContain("audienceOfferId: audience.offerId,");
-    // The route's deeper segments are what make the link match the page's grain.
+    // The route's campaign is what makes the link match the page's grain.
     expect(body).toContain("const campaignId = params.id as string | undefined;");
-    expect(body).toContain("const funnelKey = params.funnelKey as string | undefined;");
     expect(body).toContain("campaignId,");
-    expect(body).toContain("funnelKey,");
+    expect(body).not.toContain("funnelKey,");
     // Never reassembled here — the resolver owns the offer choice and the path.
     expect(body).not.toContain("tenantBasePath(");
     // No offer resolvable ⟹ no link at all, rather than one pointing at a 404.

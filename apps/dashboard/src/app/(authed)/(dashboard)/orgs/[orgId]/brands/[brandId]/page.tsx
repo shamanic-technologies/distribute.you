@@ -22,7 +22,10 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
-import { OfferFunnelsPage } from "@/components/funnels/offer-funnels-page";
+import { OfferOutcomesTable } from "@/components/offers/offer-outcomes-table";
+import { RewardTaskBand } from "@/components/rewards/reward-task-band";
+import { useBrandRewardTasks } from "@/lib/use-reward-tasks";
+import { dueTaskForOffer } from "@/lib/reward-tasks";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { useScopePaused } from "@/lib/use-scope-paused";
@@ -371,6 +374,10 @@ export default function BrandOverviewPage() {
   // clears the moment one of them is measured.
   const brandPath = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = offerId ? `${brandPath}/offers/${offerId}` : brandPath;
+  // The one thing to DO on this offer, and what doing it pays: refreshing the numbers
+  // every money figure here is worked out from. Renders only while a refresh is owed.
+  const rewardTasks = useBrandRewardTasks(offerId ? brandId : null);
+  const rewardTask = offerId ? dueTaskForOffer(rewardTasks.data?.tasks ?? [], offerId) : null;
 
   // Still walking down to the scope this landing belongs in. The route's own transition
   // skeleton, so the walk looks like the navigation it is rather than a blank — and it is
@@ -447,6 +454,7 @@ export default function BrandOverviewPage() {
        components and state nothing. */
     <LearningToneProvider tone="primary">
     <DashboardPage width="wide" className="space-y-4">
+      <RewardTaskBand task={rewardTask} settingsHref={`${basePath}/settings`} />
       <ScopeLearningBand phase={data?.learningPhase ?? null} brandId={brandId} offerId={offerId} />
       {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
           charts the return instead. */}
@@ -465,7 +473,7 @@ export default function BrandOverviewPage() {
         // Stated at BOTH grains, from one narrowed read. It used to be NULL at offer
         // scope on the premise that a budget is funded per brand and an offer has no
         // ceiling of its own — which stopped being true when billing put the offer in
-        // its key: an offer's ceiling is a served figure, and the funnel page one level
+        // its key: an offer's ceiling is a served figure, and each campaign one level
         // down has been stating its own since. A bare numerator with no denominator
         // reads as a total beside a card whose neighbour really is one.
         dailyBudgetCents={runningDailyBudgetCents}
@@ -529,16 +537,13 @@ export default function BrandOverviewPage() {
       <div className="space-y-3 pt-2">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-gray-800">
-            {offerId ? "Sales funnels" : "Offers"}
+            {offerId ? "Outcomes" : "Offers"}
           </h2>
         </div>
         {offerId ? (
-          /* An offer sells through FUNNELS, and a campaign buys one LEG of one of
-             them — so a campaign has a cost per step and no return of its own, and
-             listing campaigns here would skip the level where a return exists. The
-             offer level names no campaign at all now; a funnel row walks down to
-             the campaigns carrying it. */
-          <OfferFunnelsPage embedded />
+          /* What the offer BUYS: one row per outcome, and under each the leg x
+             channel rows serving it, each opening its campaign. */
+          <OfferOutcomesTable brandId={brandId} offerId={offerId} basePath={basePath} />
         ) : (
           <OffersTable brandId={brandId} featureSlug={featureSlug} basePath={brandPath} />
         )}

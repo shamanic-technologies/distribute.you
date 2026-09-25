@@ -2833,7 +2833,6 @@ export function Onboarding() {
           orgId: String(orgId),
           brandId: String(id),
           offerId: result.offerId,
-          funnelKey: result.funnelKey,
         }),
       );
     } catch (err) {

@@ -1,0 +1,168 @@
+{
+  "brandId": "75d7e3e8-6926-4f85-a557-976895400666",
+  "offerId": "d5ecba00-783a-4939-b5bd-f85b9e6b7d9e",
+  "outcomes": [
+    {
+      "legs": [
+        {
+          "legKey": "start_to_conversation",
+          "toStep": {
+            "key": "conversation",
+            "label": "Positive reply"
+          },
+          "fromStep": null,
+          "spentUsd": 61.11,
+          "valueUsd": 0,
+          "legSource": "stated",
+          "countBasis": "campaign_leads",
+          "campaignIds": [
+            "4769db14-0a79-4f8e-8b3e-983189d0296d"
+          ],
+          "channelName": "Sales Feedback Request Cold Email Outreach",
+          "featureSlug": "feedback-request-cold-email-outreach",
+          "roiMultiple": 0,
+          "unmeasuredReason": null,
+          "costPerOutcomeUsd": null,
+          "recipientsReached": 0,
+          "valuePerOutcomeUsd": 271.1111111111111
+        },
+        {
+          "legKey": "start_to_conversation",
+          "toStep": {
+            "key": "conversation",
+            "label": "Positive reply"
+          },
+          "fromStep": null,
+          "spentUsd": 5330.06,
+          "valueUsd": 7048.888888888889,
+          "legSource": "stated",
+          "countBasis": "campaign_leads",
+          "campaignIds": [
+            "07ba2403-fcf8-457b-a459-905d59697599",
+            "08a2d83a-ce38-4943-8391-7c9cb5a4f092",
+            "0906e830-9edb-40a5-90a3-31a46699fe66",
+            "10a43f92-0754-454d-b0b1-f40b66968946",
+            "21c4acca-8b2f-4e77-9b47-6fff9b071645",
+            "2c325491-e5a2-4ac1-90e4-8919488c373b",
+            "30c5f385-1d18-4d25-9162-0b872fd4677b",
+            "3855184f-42db-4d8c-b092-72a5a8705cac",
+            "392d4667-865a-49ea-a264-423544808a1e",
+            "392f9e32-f23f-40c5-9d38-cb6750a272d3",
+            "3a48a40a-176d-4a95-8c02-32ed6b759655",
+            "3d8de040-9d6f-4f98-9172-56c5d851da0e",
+            "3f7a7754-1cac-452b-8f3f-f57d2b3c0c74",
+            "5640e826-f84b-4ec0-81cb-f79e6ab2fbb7",
+            "5e5b8bde-d9e3-4fd7-98c2-452215475bed",
+            "61b30f76-f023-4ff7-828f-ce7dd171d80b",
+            "62f56069-38a4-49ad-b754-2b742db1abf4",
+            "65ddeb32-4c8b-4a9d-8961-a41f8818de4c",
+            "66b85370-0f7b-479f-8ef7-8cf741624a4a",
+            "683cd043-039e-4dad-a785-80c1fb3fa63d",
+            "69a311e6-64e9-4c03-b87c-4679eb517663",
+            "6b4d8375-b0ee-43ce-9760-02e164e61185",
+            "6bd51f13-2ea1-4ae6-b0c8-49fa38743d34",
+            "70d25b48-9b82-4090-9aa7-4a18e69d4783",
+            "72e1c6eb-db12-4010-8a52-2ce75998f131",
+            "7e865461-dda5-4150-899e-648873dd1031",
+            "828889f2-bc74-4739-b375-c095f194f108",
+            "96c89229-f5d2-4659-a8dc-0d5b45639cae",
+            "973ade67-f2aa-4fc2-ad93-c671c566b227",
+            "9bc27ed7-2fd5-4fb4-b523-026eb919e8ae",
+            "9f4df4fd-35bf-4b94-8323-96382ec9a991",
+            "a07eea83-102f-4d77-94ac-eff225f4b954",
+            "a3bff38e-a371-41d6-bb0e-4dcc505dcac3",
+            "b47449e2-a8c1-4357-bc4e-7eb6a7e9d477",
+            "b83e0164-eae2-4c91-afa6-4c18f0ed6daf",
+            "b99f540f-6a9c-40b4-8714-c24e3aa03d06",
+            "c03b21ad-a661-4ac7-9fa0-44530f004391",
+            "c04f3950-4218-4c3c-ab4c-75bc6185705e",
+            "c1f66f81-c95e-4698-b083-f02d5aab4446",
+            "d6f34212-02e3-4108-b1b9-179316b3eb85",
+            "d7af6711-1f92-49ba-b79c-83e956b0abb0",
+            "dc7229c4-4c56-4253-b82a-e002a5ca6c04",
+            "e9d402de-fa0b-4779-b2f0-27c3f01a52a7",
+            "eb36dde8-fee3-4925-b001-b212aa13f3ba",
+            "f7b1b610-4fa1-4b54-8fec-f7be124dc32b",
+            "f7d3a80b-0d12-4edc-9e5b-d11e277167f8",
+            "fcffc4dd-51c7-41a3-aed3-d5c345d6586f"
+          ],
+          "channelName": "Sales Cold Email Outreach",
+          "featureSlug": "sales-cold-email-outreach",
+          "roiMultiple": 1.645864603880979,
+          "unmeasuredReason": null,
+          "costPerOutcomeUsd": 205.00230769230768,
+          "recipientsReached": 26,
+          "valuePerOutcomeUsd": 271.1111111111111
+        }
+      ],
+      "step": {
+        "key": "conversation",
+        "label": "Positive reply",
+        "description": "A buyer answers with interest, on whatever medium the channel runs on."
+      },
+      "spentUsd": 5391.17,
+      "valueUsd": 7048.888888888889,
+      "roiMultiple": 1.6197384116692741,
+      "unmeasuredReason": null,
+      "costPerOutcomeUsd": 207.3526923076923,
+      "recipientsReached": 26,
+      "valuePerOutcomeUsd": 271.1111111111111,
+      "valueBasisFunnelKey": "sales_meetings_from_conversation"
+    },
+    {
+      "legs": [
+        {
+          "legKey": "conversation_to_meeting_booked",
+          "toStep": {
+            "key": "meeting_booked",
+            "label": "Meeting booked"
+          },
+          "fromStep": {
+            "key": "conversation",
+            "label": "Positive reply"
+          },
+          "spentUsd": 2.07,
+          "valueUsd": 2666.666666666667,
+          "legSource": "derived_from_funnel",
+          "countBasis": "offer_leads_at_step",
+          "campaignIds": [
+            "8c748ddd-86a2-4d7f-9f67-1528c7136665",
+            "a8c3bcda-1d45-4a3f-9cd0-77bf8f1f1a78"
+          ],
+          "channelName": "AI Meeting Booking",
+          "featureSlug": "ai-meeting-booking",
+          "roiMultiple": null,
+          "unmeasuredReason": "not_attributable",
+          "costPerOutcomeUsd": null,
+          "recipientsReached": 45,
+          "valuePerOutcomeUsd": 444.44444444444446
+        }
+      ],
+      "step": {
+        "key": "meeting_booked",
+        "label": "Meeting booked",
+        "description": "A buyer takes a slot in the calendar. Nobody has met yet."
+      },
+      "spentUsd": 2.07,
+      "valueUsd": 2666.666666666667,
+      "roiMultiple": null,
+      "unmeasuredReason": "not_attributable",
+      "costPerOutcomeUsd": null,
+      "recipientsReached": 45,
+      "valuePerOutcomeUsd": 444.44444444444446,
+      "valueBasisFunnelKey": "sales_meetings_from_conversation"
+    }
+  ],
+  "costBasis": "charged",
+  "maturityDays": 14,
+  "outcomeCauses": {
+    "priced": [
+      "outreach"
+    ]
+  },
+  "hiddenCampaignIds": [],
+  "unattributedCampaignIds": [
+    "2dd0ac9a-450c-4245-8e82-10239fad97d4",
+    "6c4400df-c851-480f-ac46-24e3eae3ba71"
+  ]
+}

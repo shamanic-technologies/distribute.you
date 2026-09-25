@@ -471,8 +471,8 @@ export interface RevenueOverview {
    * block, every count series, the ROI history, the funnel walk) is 43KB.
    *
    * The persisted cache refuses any snapshot over `MAX_PERSISTED_ENTRY_BYTES` (2MB,
-   * persist-cache.ts), so `brandRevenue` / `offerRevenue` / `offerFunnelRevenue` /
-   * `featureRevenue` were never written to disk — and those four keys are what every
+   * persist-cache.ts), so `brandRevenue` / `offerRevenue` /
+   * `featureRevenue` were never written to disk — and those three keys are what every
    * money card, the Return-on-spend chart and the cost card read. Nothing errored: the
    * reveal gates are settle-based and correct, the network answered, the numbers were
    * right. Those surfaces simply cold-skeletoned on EVERY load, on every brand, offer,

@@ -488,14 +488,13 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
     expect(table).toContain("<CampaignsTableInner {...props} />");
   });
 
-  it("the funnel Overview states the primary, and only that page does", () => {
-    // The page's own accent — the table inside it keeps its own by construction.
-    const funnel = read("components/funnels/funnel-overview-page.tsx");
-    expect(funnel).toContain('<LearningToneProvider tone="primary">');
+  it("no shared page states a tone of its own", () => {
+    // The tone belongs to the surface: a shared component stating one would repaint
+    // every grain that mounts it.
     for (const page of [
       "components/campaigns/campaign-overview-page.tsx",
       "components/campaigns/campaigns-page.tsx",
-      "components/funnels/offer-funnels-page.tsx",
+      "components/offers/offer-outcomes-table.tsx",
     ]) {
       expect(read(page)).not.toContain("LearningToneProvider");
     }
@@ -512,14 +511,14 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
     expect(read(`${OFFER}/page.tsx`)).not.toContain("LearningToneProvider");
   });
 
-  it("states the primary on the offer's other three routes, from the ROUTE", () => {
-    // Those three mount components that are ALSO mounted at the brand and campaign
+  it("states the primary on the offer's other routes, from the ROUTE", () => {
+    // Those mount components that are ALSO mounted at the brand and campaign
     // grains, so a tone set inside them would repaint grains nobody asked to change.
     const OFFER = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]";
     for (const route of [
       `${OFFER}/audiences/page.tsx`,
       `${OFFER}/audiences/leads/page.tsx`,
-      `${OFFER}/funnels/page.tsx`,
+      `${OFFER}/campaigns/page.tsx`,
     ]) {
       expect(read(route)).toContain('<LearningToneProvider tone="primary">');
     }

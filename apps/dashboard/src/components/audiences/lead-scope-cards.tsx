@@ -130,10 +130,10 @@ export function LeadScopeCards({
           title={funnel.name}
           unnamed={null}
           /* The steps in the funnel's own words — the same ones the Sales Funnels
-             settings card and the funnel page read, never a second vocabulary. */
+             settings card reads, never a second vocabulary. */
           subtitle={funnel.steps.join(" → ")}
-          href={offer ? `${offerPath}/funnels/${funnel.key}` : null}
-          linkLabel="View funnel"
+          href={null}
+          linkLabel={null}
         />
       )}
       {leg && funnel && (
@@ -143,7 +143,7 @@ export function LeadScopeCards({
           title={leg.label}
           unnamed={null}
           /* A funnel is sold leg by leg, so the arrow is what the campaign actually
-             buys. A leg has no page of its own: the funnel card above links there. */
+             buys. Neither the funnel nor the leg has a page of its own. */
           subtitle="The step of the funnel this campaign works."
           href={null}
           linkLabel={null}
@@ -227,10 +227,9 @@ function AudienceScopeCard({ audience }: { audience: LeadCampaignAudience }) {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   // The route's own scope. `offerId` is absent on the brand Leads page; `id` names a
-  // campaign and `funnelKey` a funnel, each present only on their own route.
+  // campaign, present only on its own route.
   const routeOfferId = params.offerId as string | undefined;
   const campaignId = params.id as string | undefined;
-  const funnelKey = params.funnelKey as string | undefined;
   // The audience opens at the grain the reader is standing on — a campaign's Leads page
   // opens it on that campaign's Audiences page rather than dropping them back to the
   // offer. `audienceDetailHref` owns the rule (including "no offer resolvable ⟹ no
@@ -242,7 +241,6 @@ function AudienceScopeCard({ audience }: { audience: LeadCampaignAudience }) {
     audienceOfferId: audience.offerId,
     routeOfferId,
     campaignId,
-    funnelKey,
   });
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">

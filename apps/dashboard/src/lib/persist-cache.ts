@@ -125,14 +125,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandSalesEconomics",
   "brandFunnelBudgets",
   "brandSalesRep",
-  // The fleet's own figures, behind a funnel-leg price tag and behind the cards
-  // offering the funnels an offer does not sell yet. Public and org-less, so both are
-  // the same answer for every tenant — and both change on the fleet's cadence, not this
-  // brand's, which is exactly what a cached-to-disk read is for. They are two different
-  // questions: the first is a projected unit price per step, the second is the median of
-  // what our clients actually got.
-  "channelFunnelEconomics",
-  "fleetFunnelReturn",
   // What the brand may actually spend today (campaign status joined to its ceilings,
   // served by campaign-service). An unlisted root is default-OFF, so the header's
   // money cold-skeletons on every visit without this line.
@@ -166,12 +158,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // path. Each key carries the offer, so two propositions never share an entry.
   "offerUserFields",
   "offerSalesFunnels",
-  // The funnel grain, between the offer and its campaigns: the offer's Sales-funnels
-  // table and the per-funnel Overview it drills into. Each key carries the offer and
-  // the funnel key, so two funnels never share an entry.
-  "offerFunnels",
-  "offerFunnelRevenue",
-  "offerFunnelPipelineActivity",
+  // The offer's outcome table: one row per outcome it buys, the leg x channel rows
+  // under each. Keyed on the offer, so two propositions never share an entry.
+  "offerOutcomes",
   // The brand's WHOLE lead population. Big — over the size cap on a heavy brand (44.5 MB
   // over 12,945 rows on one, 99 MB on the largest), so it is allowlisted and still
   // refused at write time; the query keeps `keepPreviousData` in memory and the

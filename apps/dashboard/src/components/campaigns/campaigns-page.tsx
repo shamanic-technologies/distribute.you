@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -14,17 +13,13 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   getOfferRevenue,
   getBrandRevenue,
-  getOfferFunnelRevenue,
   keepLastGoodFeatureRevenue,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
-import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
-import { campaignFunnel } from "@/lib/campaign-funnel";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
-import { FunnelLegColumnsBoard } from "@/components/campaigns/funnel-leg-columns-board";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import { LearningTag } from "@/components/learning-tag";
@@ -75,19 +70,6 @@ export function CampaignsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const basePath = tenantBasePath(orgId, brandId, offerId);
-  // Arrived from a sales funnel? Narrow to the campaigns carrying that funnel. A
-  // display filter over rows the hook already fetched, so the walk down costs no
-  // request; the header says which funnel, because a list silently showing a third
-  // of itself reads as an offer with fewer campaigns than it has.
-  // The funnel comes from the ROUTE (`.../funnels/[funnelKey]`), which is the only
-  // way in: an offer names no campaign of its own, so this page is always reached
-  // through the funnel whose campaigns it lists.
-  const funnelKey = params.funnelKey ? decodeURIComponent(String(params.funnelKey)) : null;
-  const narrowedFunnel = funnelKey ? campaignFunnel(funnelKey as never) : null;
-  const narrowedKey = funnelKey
-    ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire)
-    : null;
-
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
   // different campaigns. Both queries dedupe on their keys, so this costs no network.
@@ -100,34 +82,7 @@ export function CampaignsPage() {
   // ...and whether the scope this route names is STOPPED, which outranks it. Nothing
   // running means no outcome can land, so `Learning` would promise a number that cannot
   // arrive; `Paused` is what the scope's own header pill already says, off the SAME rows.
-  // Narrowed by the funnel when the route names one, so a funnel page answers for the
-  // campaigns it lists rather than for every campaign its offer sells.
-  const { paused: scopePaused } = useScopePaused(brandId, {
-    offerId,
-    funnelKey: funnelKey ?? null,
-  });
-
-  // The rows the TABLE shows, which under a funnel is a subset of the offer's. The
-  // learning band speaks for what is on screen, so it reads these: on a funnel page a
-  // lead picked from the offer's other funnels would count days for a campaign this
-  // page never lists.
-  const scopedRows = useMemo(
-    () =>
-      narrowedKey
-        ? rows.filter(
-            (r) =>
-              r.campaign.funnelKey != null &&
-              normalizeSalesFunnelKey(r.campaign.funnelKey) === narrowedKey,
-          )
-        : rows,
-    [rows, narrowedKey],
-  );
-  // The band says when the withheld figures become readable, and the scope's figures
-  // clear the moment ONE of its campaigns is measured — so a scope that already
-  // cleared must not carry a countdown. It did: this brand's cold email had 18 sales
-  // interests (measured) beside a stopped feedback-request campaign at 0, and the band
-  // counted days for the second while the first had already priced the funnel.
-  const scopedLearning = scopeIsLearning(scopedRows);
+  const { paused: scopePaused } = useScopePaused(brandId, { offerId });
 
   const channels = useAcquisitionChannels();
 
@@ -155,28 +110,7 @@ export function CampaignsPage() {
     },
   );
 
-  // The learning verdict for the scope this ROUTE names, which is NOT always the scope
-  // the header's money answers for: arrive through a sales funnel and the list narrows
-  // to that funnel's campaigns, while the header deliberately keeps answering for the
-  // whole offer. So a band fed from the header's body would state the offer's countdown
-  // under a funnel's heading — a wider scope wearing a narrower name.
-  //
-  // The key is byte-equal to the one the funnel Overview polls, so walking down from it
-  // costs no request; `enabled` off the narrow, so an un-narrowed list never fires it.
-  const funnelRevenueQ = useAuthQuery(
-    ["offerFunnelRevenue", brandId, offerId ?? "none", narrowedKey ?? "none"],
-    () => getOfferFunnelRevenue(offerId!, funnelKey!, brandId),
-    {
-      enabled: revenueEnabled && Boolean(offerId) && Boolean(funnelKey),
-      refetchInterval: POLL_INTERVAL,
-      structuralSharing: (prev, next) =>
-        keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
-    },
-  );
-  // Narrowed ⟹ the funnel's verdict; otherwise the scope the header already reads.
-  const learningPhase = funnelKey
-    ? (funnelRevenueQ.data?.learningPhase ?? null)
-    : (brandRevenueQ.data?.learningPhase ?? null);
+  const learningPhase = brandRevenueQ.data?.learningPhase ?? null;
 
   // #1 acquisition channel = the channel of the best-ROI RUNNING campaign, named as the
   // brand Settings catalogue names it (display argmax over already-fetched rows, not a
@@ -243,51 +177,12 @@ export function CampaignsPage() {
           />
         </div>
 
-        {funnelKey && (
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-gray-600">
-              Showing the campaigns carrying{" "}
-              <span className="font-medium text-gray-900">
-                {narrowedFunnel?.name ?? funnelKey}
-              </span>
-              .
-            </span>
-            <Link href={basePath} className="text-brand-600 hover:underline">
-              All sales funnels
-            </Link>
-          </div>
-        )}
-        {/* The funnel's own arrows, side by side, with every channel that can work each
-            one — funded or not. The table below states how the funded ones are DOING;
-            only this states what else could run, which is the one way a customer reaches
-            a channel they have not bought. Off a funnel there is no single walk to lay
-            out, so the table stands alone exactly as before. */}
-        {funnelKey && narrowedFunnel && (
-          <div className="mb-6">
-            <FunnelLegColumnsBoard
-              brandId={brandId}
-              offerId={offerId}
-              funnel={narrowedFunnel}
-            />
-          </div>
-        )}
-        {/* The table is the BRAND and OFFER answer, and it stands alone there: those
-            scopes span several funnels, so they have no single walk to lay out and the
-            board never renders. Under ONE funnel the board above already walks every
-            arrow, whoever performs it, so a table beneath it walked the same arrows a
-            second time — one screen answering one question twice. */}
-        {!funnelKey && (
         <CampaignsTable
           brandId={brandId}
           featureSlug={featureSlug}
           basePath={basePath}
           offerId={offerId}
-          funnelKey={funnelKey}
-          // No walk here: this branch only renders when the route names NO funnel, and
-          // the brand and offer lists span several, so there is no single one to lay
-          // out. Under a funnel the board above is the walk.
         />
-        )}
       </div>
     </div>
   );

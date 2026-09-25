@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  pausedByFunnel,
   pausedByOffer,
   scopeIsPaused,
   scopePausedFor,
@@ -21,9 +20,6 @@ const row = (over: Partial<ControlRow>): ControlRow => ({
   offerId: over.offerId ?? null,
   legKey: null,
 });
-
-const funnelScope = (key: string) =>
-  ({ def: { key }, featureSlug: "sales-cold-email-outreach" }) as unknown as ControlRow["scope"];
 
 describe("scopeIsPaused", () => {
   it("says a scope with no campaign at all is NOT paused", () => {
@@ -75,22 +71,6 @@ describe("pausedByOffer", () => {
   });
 });
 
-describe("pausedByFunnel", () => {
-  it("answers per funnel, keyed on the funnel the money is keyed on", () => {
-    const map = pausedByFunnel([
-      row({ rowId: "f1", scope: funnelScope("reply_meeting"), running: false }),
-      row({ rowId: "f2", scope: funnelScope("visit_signup"), running: true }),
-    ]);
-    expect(map.get("reply_meeting")).toBe(true);
-    expect(map.get("visit_signup")).toBe(false);
-  });
-
-  it("leaves out a campaign that predates the funnels", () => {
-    const map = pausedByFunnel([row({ rowId: "old", scope: null, running: false })]);
-    expect(map.size).toBe(0);
-  });
-});
-
 describe("scopePausedFor", () => {
   const map = new Map([["A", true]]);
 
@@ -138,13 +118,6 @@ describe("every surface PASSES the flag, not merely handles it", () => {
     return src.slice(at, at + len);
   };
 
-  it("the funnel Overview states its funnel's verdict on the row and the return chart", () => {
-    const src = read("components/funnels/funnel-overview-page.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(sliceFrom(src, "<RevenueOverviewSection", 2400)).toContain("paused={scopePaused}");
-    expect(sliceFrom(src, "<OutreachStatCards", 1600)).toContain("paused={scopePaused}");
-  });
-
   it("the brand Overview states the brand's verdict", () => {
     const src = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
     expect(src).toContain("useScopePaused(");
@@ -189,22 +162,7 @@ describe("every surface PASSES the flag, not merely handles it", () => {
     expect(src).toContain("scopePausedFor(");
   });
 
-  it("the funnels table reads a per-funnel verdict", () => {
-    const src = read("components/funnels/offer-funnels-page.tsx");
-    expect(src).toContain("usePausedByFunnel(");
-    expect(src).toContain("scopePausedFor(");
-  });
-
-  it("the funnel's own page hands its verdict to the leg walk", () => {
-    // The walk's figures are the ARROW's, not any one campaign's, so a page that states
-    // `Paused` on its stat row while the table under it reads `Learning` is one screen
-    // contradicting itself.
-    const src = read("components/funnels/funnel-overview-page.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(src).toContain("paused={scopePaused}");
-  });
-
-  it("the leg walk never re-derives the verdict from the rows it holds", () => {
+  it("the campaigns table never re-derives the verdict from the rows it holds", () => {
     // `scope-paused.ts` owns the rule. This component fetches the very rows it would
     // need to restate it, which is exactly why the ban is worth pinning: two spellings
     // of one answer drift the day `rollupStatus` gains a state.

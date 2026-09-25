@@ -69,9 +69,9 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       // brand metadata + config
       "brand", "brands", "brandSalesEconomics", "brandFunnelBudgets",
       "brandSpendableBudget", "brandDailyBudget", "brandConversionToken",
-      // offers + the funnel grain
+      // offers + their outcome rows
       "brandOffers", "brandOffer", "offerUserFields", "offerSalesFunnels",
-      "offerFunnels", "offerFunnelRevenue", "offerFunnelPipelineActivity",
+      "offerOutcomes",
       // leads
       "brandLeads", "leadEmail", "leadReplyKind", "campaignReplyKinds",
       // money, at each grain it is asked at
@@ -354,9 +354,7 @@ describe("every org-scoped read's root is allowlisted (or explicitly sensitive)"
     expect([...unlisted].map(([r, f]) => `${r} (${f})`)).toEqual([]);
   });
 
-  it("persists the funnel grain", () => {
-    expect(isPersistableQueryKey(["offerFunnels", "brand", "offer"])).toBe(true);
-    expect(isPersistableQueryKey(["offerFunnelRevenue", "brand", "offer", "k"])).toBe(true);
-    expect(isPersistableQueryKey(["offerFunnelPipelineActivity", "b", "o", "k"])).toBe(true);
+  it("persists the offer's outcome rows", () => {
+    expect(isPersistableQueryKey(["offerOutcomes", "brand", "offer"])).toBe(true);
   });
 });

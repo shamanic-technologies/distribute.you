@@ -152,13 +152,13 @@ describe("brand surfaces list campaigns and state money", () => {
   const campaignsPage = read("components/campaigns/campaigns-page.tsx");
   const audiences = read("components/audiences/customer-audiences-page.tsx");
 
-  it("renders ONE campaigns table, and the offer Overview lists FUNNELS instead", () => {
+  it("renders ONE campaigns table, and the offer Overview lists OUTCOMES instead", () => {
     // A component, never a second copy — two copies is how a campaign comes to read
     // one way on one surface and another way one click over.
     expect(table).toContain("export function CampaignsTable(");
-    // The offer level names no campaign: it sells through funnels, and a campaign buys
-    // one LEG of one of them, so it has a cost per step and no return of its own.
-    expect(overview).toContain("<OfferFunnelsPage embedded />");
+    // The offer Overview states what the offer BUYS, one row per outcome; its
+    // campaigns are one click down, from each leg row or the Campaigns list.
+    expect(overview).toContain("<OfferOutcomesTable");
     expect(overview).not.toContain("<CampaignsTable");
   });
 

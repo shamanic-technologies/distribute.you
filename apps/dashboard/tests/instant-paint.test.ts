@@ -190,7 +190,6 @@ describe("route transitions — the destination is warmed before the click", () 
     // a `router.push` target unless the row asks for it.
     for (const file of [
       "components/offers/offers-table.tsx",
-      "components/funnels/offer-funnels-page.tsx",
       "components/campaigns/campaigns-table.tsx",
     ]) {
       const src = read(file);

@@ -7,7 +7,6 @@ const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
 const CARD = read("components/settings/brand-sales-funnels-card.tsx");
 const CONTROLS = read("lib/campaign-controls.ts");
-const BOARD = read("components/campaigns/funnel-leg-columns-board.tsx");
 
 /** Slice from an anchor to the NEXT declaration, so the bound moves with the file. */
 function sliceBetween(haystack: string, anchor: string, until: string): string {
@@ -40,28 +39,6 @@ describe("money never decides that something runs", () => {
   // A status write addresses a campaign. Null is what makes the switch a CREATE.
   it("still states which campaign a status write can address", () => {
     expect(CONTROLS).toContain("campaignId: string | null;");
-  });
-});
-
-describe("the funnel board says Not started rather than Running or Paused", () => {
-  it("carries the fourth state and its own word", () => {
-    expect(read("lib/funnel-leg-columns.ts")).toContain('"not_started"');
-    expect(BOARD).toContain('not_started: "Not started"');
-  });
-
-  // Whether a campaign EXISTS and whether it RUNS are two questions, and the difference
-  // is the whole point: one map cannot carry both.
-  it("resolves hasCampaign from the SAME buildControlRows pass as running", () => {
-    expect(BOARD).toContain("hasCampaignBySlug");
-    expect(BOARD).toContain("row.campaignId !== null");
-    // ONE pass, not two: a second `buildControlRows` call is a second answer.
-    expect(BOARD.split("buildControlRows(").length - 1).toBe(1);
-  });
-
-  it("hands both maps to buildLegColumns at the CALL SITE", () => {
-    const call = sliceBetween(BOARD, "buildLegColumns({", "}),");
-    expect(call).toContain("runningBySlug,");
-    expect(call).toContain("hasCampaignBySlug,");
   });
 });
 

@@ -44,15 +44,15 @@ export const LEAD_OUTCOME_ROOTS = [
   "offerRevenue",
   "brandRevenue",
   "brandOfferMoney",
-  "offerFunnelRevenue",
+  // The offer's outcome rows count the same outcomes.
+  "offerOutcomes",
   // Per-audience evidence and costs — the Audiences table and the Top-3 card both rank
   // on an outcome count that just changed.
   "featureAudienceStats",
   // The outreach stat row's own counts.
   "featureStats",
-  // The activity and outcome charts, at both grains that serve them.
+  // The activity and outcome charts.
   "featurePipelineActivity",
-  "offerFunnelPipelineActivity",
 ] as const;
 
 /**
@@ -71,7 +71,6 @@ export const CAMPAIGN_MONEY_ROOTS = [
   "campaign",
   "brandDailyBudget",
   "brandSpendableBudget",
-  "offerFunnels",
 ] as const;
 
 /**

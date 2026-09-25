@@ -24,33 +24,6 @@ describe("audienceDetailHref", () => {
     );
   });
 
-  it("opens the audience at the FUNNEL grain when the route names one", () => {
-    expect(
-      audienceDetailHref({
-        orgId: ORG,
-        brandId: BRAND,
-        audienceId: AUDIENCE,
-        audienceOfferId: OFFER,
-        routeOfferId: OFFER,
-        funnelKey: "sales_meetings_from_conversation",
-      }),
-    ).toBe(
-      `/orgs/${ORG}/brands/${BRAND}/offers/${OFFER}/funnels/sales_meetings_from_conversation/audiences?audienceId=${AUDIENCE}`,
-    );
-  });
-
-  it("encodes the funnel segment — the route reads it back decoded", () => {
-    const href = audienceDetailHref({
-      orgId: ORG,
-      brandId: BRAND,
-      audienceId: AUDIENCE,
-      audienceOfferId: OFFER,
-      routeOfferId: OFFER,
-      funnelKey: "a/b c",
-    });
-    expect(href).toContain("/funnels/a%2Fb%20c/audiences");
-  });
-
   it("stays at the OFFER grain when the route names no narrower scope", () => {
     expect(
       audienceDetailHref({
@@ -129,20 +102,6 @@ describe("audienceDetailHref", () => {
     ).toBeNull();
   });
 
-  it("prefers the campaign over the funnel when a route somehow names both", () => {
-    const href = audienceDetailHref({
-      orgId: ORG,
-      brandId: BRAND,
-      audienceId: AUDIENCE,
-      audienceOfferId: OFFER,
-      routeOfferId: OFFER,
-      campaignId: "camp_1",
-      funnelKey: "website_purchases",
-    });
-    expect(href).toContain("/campaigns/camp_1/audiences");
-    expect(href).not.toContain("/funnels/");
-  });
-
   it("encodes the audience id into the query", () => {
     const href = audienceDetailHref({
       orgId: ORG,
@@ -171,9 +130,10 @@ describe("call sites", () => {
   ] as const) {
     it(`${name} builds the audience link through audienceDetailHref`, () => {
       expect(src).toContain("audienceDetailHref");
-      // Both read the route's deeper segments so the link can match the grain.
+      // Both read the route's campaign so the link can match the grain. The funnel
+      // level is gone, so neither reads a funnel segment.
       expect(src).toContain("params.id");
-      expect(src).toContain("params.funnelKey");
+      expect(src).not.toContain("params.funnelKey");
       // And neither reassembles the string itself.
       expect(src).not.toContain("/audiences?audienceId=${audience.id}");
     });
