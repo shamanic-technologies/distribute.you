@@ -42,8 +42,8 @@ describe("the services are read on the loading screen, and the services step nev
     return SRC.slice(at, stop);
   }
 
-  it("tracks the extract failure as state, and has no hydrating state to wait on", () => {
-    expect(SRC).toContain("const [servicesExtractFailed, setServicesExtractFailed] = useState(false)");
+  it("has no failure state and no hydrating state to wait on", () => {
+    expect(SRC).not.toContain("servicesExtractFailed");
     expect(SRC).not.toContain("servicesHydrating");
     expect(SRC).not.toContain("servicesPending");
   });
@@ -61,13 +61,11 @@ describe("the services are read on the loading screen, and the services step nev
     expect(create).toContain("const mappedFields = await extractBrandFields");
   });
 
-  it("records the outcome off the LIST, not off the response object", () => {
+  it("records the outcome off the LIST, for telemetry only", () => {
     // A 200 carrying no services is a failure to read the site, the same as a throw.
+    // It is captured for us and never shown to the customer.
     const create = fn("createBrandAndFetchServices");
-    expect(create).toContain("setServicesExtractFailed(extractedServices.length === 0)");
-    expect(create).not.toContain("setServicesExtractFailed(!serviceFields)");
-    const noSite = fn("createBrandNoWebsiteAndFetchServices");
-    expect(noSite).toContain("setServicesExtractFailed(extractedServices.length === 0)");
+    expect(create).toContain('extractedServices.length > 0 ? "services_extracted" : "services_extract_failed"');
   });
 
   it("the background hydrate never writes the services list", () => {
@@ -79,18 +77,18 @@ describe("the services are read on the loading screen, and the services step nev
   it("every extraction writes the list through the one guarded applier", () => {
     expect(fn("createBrandAndFetchServices")).toContain("applyExtractedServices(extractedServices)");
     expect(fn("createBrandNoWebsiteAndFetchServices")).toContain("applyExtractedServices(extractedServices)");
-    expect(fn("retryServicesExtract")).toContain("applyExtractedServices(next)");
     const apply = SRC.slice(SRC.indexOf("function applyExtractedServices("), SRC.indexOf("async function hydrateOnboardingInBackground("));
     expect(apply).toContain("prev.length ? prev : nextServices");
     expect(apply).toContain("servicesEditedRef.current");
   });
 
-  it("states only the failed case on the services step, with a retry", () => {
+  it("a failed prefill says NOTHING to the customer (owner-decided 2026-09-25)", () => {
+    // The reader was never promised a draft, so an empty box with the ordinary
+    // hint is the whole truth for them. No error line, no retry.
     expect(SRC).not.toContain("Still reading");
-    // JSX entity form — the apostrophe in the rendered copy is `&apos;` in source.
-    expect(SRC).toContain("We couldn&apos;t read your site");
-    expect(SRC).toContain("retryServicesExtract");
-    expect(SRC).toContain("const servicesUnread = !servicesDrafted && servicesExtractFailed;");
+    expect(SRC).not.toContain("couldn&apos;t read your site");
+    expect(SRC).not.toContain("retryServicesExtract");
+    expect(SRC).not.toContain("servicesUnread");
   });
 
   it("does not claim it drafted a list it failed to fetch", () => {
@@ -125,9 +123,8 @@ describe("audience seed reads live state, not a mount-time closure", () => {
     expect(adopt).not.toContain("runSuggest");
   });
 
-  it("labels a fallback prompt as a fallback rather than a drafted ICP", () => {
-    expect(SRC).toContain("const [icpFallback, setIcpFallback] = useState(false)");
-    expect(SRC).toContain("setIcpFallback(true)");
-    expect(SRC).toContain("couldn&apos;t read enough from");
+  it("a failed ICP prefill says NOTHING to the customer (owner-decided 2026-09-25)", () => {
+    expect(SRC).not.toContain("icpFallback");
+    expect(SRC).not.toContain("couldn&apos;t read enough from");
   });
 });
