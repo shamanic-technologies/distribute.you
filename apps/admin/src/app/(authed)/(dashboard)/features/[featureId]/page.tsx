@@ -14,6 +14,7 @@ import { formatStatValue } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
 import { CoordinatedReveal } from "@/components/coordinated-reveal";
 import { Skeleton } from "@/components/skeleton";
+import { RanWorkflowsInline } from "@/components/campaign/ran-workflows";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -295,12 +296,6 @@ function CampaignCard({
 }) {
   const statusStyle = STATUS_STYLES[campaign.status] || "bg-gray-100 text-gray-500 border-gray-200";
 
-  const workflowLabel = campaign.workflowSlug
-    ? campaign.workflowSlug
-        .split("-")
-        .slice(-1)[0]
-        ?.replace(/^\w/, (c) => c.toUpperCase()) ?? campaign.workflowSlug
-    : "Unknown";
 
   const rowOutputs = [...outputs].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, 4);
 
@@ -327,7 +322,8 @@ function CampaignCard({
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
           </svg>
-          {workflowLabel}
+          {/* What it RAN (trigger runs), never the creation-time workflowSlug. */}
+          <RanWorkflowsInline campaignId={campaign.id} featureSlug={campaign.featureSlug} />
         </span>
         <span>Created {timeAgo(campaign.createdAt)}</span>
       </div>

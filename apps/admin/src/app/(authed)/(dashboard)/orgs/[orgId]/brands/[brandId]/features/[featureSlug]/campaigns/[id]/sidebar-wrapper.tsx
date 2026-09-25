@@ -10,6 +10,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { listWorkflows, listCampaignOutlets, listJournalistsEnriched, listMediaKitsByCampaign, fetchFeatureStats, listAllRankedOpportunities, listAllQuotePitches } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
+import { useRanWorkflows, RAN_WORKFLOWS_PAGE_LIMIT } from "@/components/campaign/ran-workflows";
 
 interface Props {
   orgId: string;
@@ -100,14 +101,16 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
     ...entities.map((e) => !(entityLoading[e.name] ?? false)),
   ]);
 
+  // The workflow the campaign LAST RAN (its newest trigger run), never the creation-time
+  // workflow on the campaign row: campaign-service picks a workflow for every run, so that
+  // column is only what it started with. A slug the catalogue no longer carries is a
+  // retired version, not a malformed campaign — it simply gets no link.
+  const { data: ranWorkflows } = useRanWorkflows(campaignId, RAN_WORKFLOWS_PAGE_LIMIT);
+  const lastRanSlug = ranWorkflows?.workflows[0]?.workflowSlug ?? null;
   const workflowId = useMemo(() => {
-    if (!campaign?.workflowSlug || !workflowsData?.workflows) return undefined;
-    const match = workflowsData.workflows.find((w) => w.workflowSlug === campaign.workflowSlug);
-    if (!match && campaign.workflowSlug) {
-      console.error(`[dashboard] Campaign ${campaign.id} has workflowSlug="${campaign.workflowSlug}" which does not match any workflow slug. This campaign may have been created with the workflow name instead of slug.`);
-    }
-    return match?.id;
-  }, [campaign?.workflowSlug, workflowsData?.workflows]);
+    if (!lastRanSlug || !workflowsData?.workflows) return undefined;
+    return workflowsData.workflows.find((w) => w.workflowSlug === lastRanSlug)?.id;
+  }, [lastRanSlug, workflowsData?.workflows]);
 
   const companyCount = useMemo(() => {
     const names = new Set(leads.map((l) => l.lead?.organization?.name ?? null).filter(Boolean));
