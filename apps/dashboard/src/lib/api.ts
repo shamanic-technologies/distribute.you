@@ -706,11 +706,12 @@ export async function getCrmPipeline(
  */
 export async function listCrmPairings(
   brandId: string,
-  opts: { limit: number; offset: number; states?: string[] | null },
+  opts: { limit: number; offset: number; states?: string[] | null; toConfirm?: boolean },
   token?: string,
 ): Promise<CrmPairings> {
   const q = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
   if (opts.states?.length) q.set("state", opts.states.join(","));
+  if (opts.toConfirm) q.set("toConfirm", "true");
   const raw = await apiCall<unknown>(`/leads/crm-pairings?${q}`, { token });
   const parsed = CrmPairingsSchema.safeParse(raw);
   if (!parsed.success) {

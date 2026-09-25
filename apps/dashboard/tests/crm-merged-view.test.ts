@@ -9,6 +9,7 @@ import {
   crmContactLabel,
   filterAndSortRows,
   judgmentPosition,
+  needsConfirmation,
   rulingErrorMessage,
   topBuckets,
   STATE_FILTERS,
@@ -28,6 +29,7 @@ function row(opts: {
   opps?: Opp[];
   name?: string | null;
   ruling?: boolean;
+  toConfirm?: boolean;
 }): CrmPairingRow {
   const opps = (opts.opps ?? []).map((o, i) => ({
     id: `o${i}`,
@@ -55,7 +57,8 @@ function row(opts: {
     },
     pairing: {
       state: opts.state ?? "paired",
-      decidedBy: "signal",
+      decidedBy: opts.toConfirm ? "judgment" : "signal",
+      toConfirm: opts.toConfirm ?? false,
       lead: { leadId: "l1", leadCampaignId: "lc1", campaignId: "k1", fullName: "Ada", email: null, jobTitle: null, company: null },
       evidence: { matchMethod: "email", matchConfidence: "deterministic", candidateCount: 1, matchedAt: null },
       judgment: { status: "not_needed", unavailableReason: null, samePersonProbability: null, model: null, judgedAt: null },
@@ -206,7 +209,8 @@ describe("call sites", () => {
   });
   it("filters by pairing state server-side and opens on the pairs in common", () => {
     expect(page).toContain('useState<string>("paired")');
-    expect(page).toContain("listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states })");
+    expect(page).toContain("listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states, toConfirm: filterToConfirm })");
+    expect(read("src/lib/api.ts")).toContain('q.set("toConfirm", "true")');
     expect(read("src/lib/api.ts")).toContain('q.set("state", opts.states.join(","))');
     expect(page).toContain("getCrmContactOrigins(brandId)");
     expect(persist).toContain('"crmContactOrigins"');
@@ -224,5 +228,51 @@ describe("call sites", () => {
   it("carries no em-dash in copy", () => {
     const code = page.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     expect(code).not.toContain("—");
+  });
+});
+
+describe("to confirm — doubt counts as ours, and a person settles it", () => {
+  it("a paired row on a hesitant judgment needs confirming until somebody rules", () => {
+    expect(needsConfirmation(row({ toConfirm: true }))).toBe(true);
+    expect(needsConfirmation(row({ toConfirm: true, ruling: true }))).toBe(false);
+    expect(needsConfirmation(row({}))).toBe(false);
+    expect(needsConfirmation(row({ state: "unconfirmed", toConfirm: true }))).toBe(false);
+  });
+  it("an older row with no flag parses and reads as confident", () => {
+    const r = row({});
+    const { toConfirm: _drop, ...pairing } = r.pairing;
+    const body = { crmConnected: true, pairings: [{ ...r, pairing }], nextOffset: null, judgmentThresholds: { pairAt: 0.85, rejectAt: 0.15 } };
+    const parsed = CrmPairingsSchema.parse(body);
+    expect(needsConfirmation(parsed.pairings[0])).toBe(false);
+  });
+  it("the counts carry the to-confirm subset", () => {
+    const body = {
+      crmConnected: true,
+      counts: {
+        crmContacts: 2694, crmContactsWithEmail: 420,
+        byState: { paired: 60, unconfirmed: 0, rejected: 122, unpaired: 2512 },
+        pairedToConfirm: 31,
+        byMatchMethod: { email: 14 }, opportunities: 0,
+        opportunitiesByState: { open: 0, won: 0, lost: 0, abandoned: 0, unrecognised: 0 },
+        opportunitiesWithUncomparableStage: 0,
+      },
+      ourLeadsNoCrmContactPointsAt: 0,
+    };
+    expect(CrmPairingCountsSchema.parse(body).counts.pairedToConfirm).toBe(31);
+  });
+  it("'Needs attention first' puts the pairings to confirm above every alignment", () => {
+    const behind = row({ id: "behind", ours: "contacted", opps: [{ state: "won" }], name: "A" });
+    const toConfirm = row({ id: "tc", toConfirm: true, name: "Z" });
+    const out = filterAndSortRows([behind, toConfirm], { state: "all", alignment: "all", sort: "attention" });
+    expect(out.map((r) => r.crmContact.id)).toEqual(["tc", "behind"]);
+  });
+  it("the page shows a To confirm section above the table, read server-side", () => {
+    const page = read("src/components/crm/crm-merged-page.tsx");
+    expect(page).toContain("<ToConfirmSection");
+    expect(page.indexOf("<ToConfirmSection")).toBeLessThan(page.indexOf("<PairingsTable rows={rows}"));
+    expect(page).toContain("states: TO_CONFIRM_STATES, toConfirm: true");
+    expect(page).toContain('const TO_CONFIRM_STATES = ["paired"]');
+    expect(page).toContain("c.pairedToConfirm");
+    expect(page).not.toContain("A candidate exists, nobody has ruled");
   });
 });

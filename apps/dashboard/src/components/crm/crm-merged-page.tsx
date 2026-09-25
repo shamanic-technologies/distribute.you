@@ -32,6 +32,7 @@ import {
   filterAndSortRows,
   judgmentPosition,
   labelOf,
+  needsConfirmation,
   rulingErrorMessage,
   topBuckets,
   type Alignment,
@@ -44,6 +45,12 @@ import {
 
 /** Contacts per page of the table. The view pages over THEIR contacts. */
 export const PAIRINGS_PAGE = 100;
+
+/** Rows the "To confirm" section reads at once. The rest is one filter away. */
+export const TO_CONFIRM_PAGE = 50;
+
+/** The pairing state the "To confirm" set lives in: they are pairings, just hesitant ones. */
+const TO_CONFIRM_STATES = ["paired"];
 
 /**
  * Their CRM and our leads, one row per contact of THEIR CRM.
@@ -66,17 +73,28 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
   // Opens on the contacts in common: the rows with something to compare, and a
   // read that buys no similarity judgment.
   const [stateFilter, setStateFilter] = useState<string>("paired");
-  const states = STATE_FILTERS.find((f) => f.id === stateFilter)?.states ?? null;
+  const filter = STATE_FILTERS.find((f) => f.id === stateFilter);
+  const states = filter?.states ?? null;
+  const filterToConfirm = filter?.toConfirm === true;
   const [alignFilter, setAlignFilter] = useState<Alignment | "all">("all");
   const [sort, setSort] = useState<"attention" | "name" | "state">("attention");
   const [openId, setOpenId] = useState<string | null>(null);
+  // Which list the open row came from, so the panel opens beside it.
+  const [openFrom, setOpenFrom] = useState<"toConfirm" | "table">("table");
 
   const countsQ = useAuthQuery(["crmPairingCounts", brandId], () => getCrmPairingCounts(brandId), {
     enabled: isBeta,
   });
   const pageQ = useAuthQuery(
     ["crmPairings", brandId, stateFilter, offset],
-    () => listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states }),
+    () => listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states, toConfirm: filterToConfirm }),
+    { enabled: isBeta },
+  );
+  // The pairings that already count for us on a hesitant judgment, waiting for a
+  // person. Same root as the table, so a ruling's re-read refreshes both.
+  const toConfirmQ = useAuthQuery(
+    ["crmPairings", brandId, "toConfirmSection"],
+    () => listCrmPairings(brandId, { limit: TO_CONFIRM_PAGE, offset: 0, states: TO_CONFIRM_STATES, toConfirm: true }),
     { enabled: isBeta },
   );
   const originsQ = useAuthQuery(["crmContactOrigins", brandId], () => getCrmContactOrigins(brandId), {
@@ -106,6 +124,7 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
   const stateTotal = (() => {
     const c = countsQ.data?.counts;
     if (!c) return null;
+    if (filterToConfirm) return c.pairedToConfirm ?? null;
     if (!states) return c.crmContacts;
     let n = 0;
     for (const st of states) {
@@ -115,7 +134,24 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
     }
     return n;
   })();
-  const open = page?.pairings.find((r) => r.crmContact.id === openId) ?? null;
+  const toConfirmRows = (toConfirmQ.data?.pairings ?? []).filter(needsConfirmation);
+  const openSource = openFrom === "toConfirm" ? toConfirmRows : (page?.pairings ?? []);
+  const open = openSource.find((r) => r.crmContact.id === openId) ?? null;
+  const thresholds = toConfirmQ.data?.judgmentThresholds ?? page?.judgmentThresholds ?? null;
+  const openRow = (from: "toConfirm" | "table") => (id: string) => {
+    setOpenFrom(from);
+    setOpenId(id);
+  };
+  const panel =
+    open && thresholds ? (
+      <PairingPanel
+        key={open.crmContact.id}
+        brandId={brandId}
+        row={open}
+        thresholds={thresholds}
+        onClose={() => setOpenId(null)}
+      />
+    ) : null;
 
   return (
     <DashboardPage width="wide">
@@ -129,6 +165,21 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
       </p>
 
       <StatsBand q={countsQ} />
+
+      <ToConfirmSection
+        q={toConfirmQ}
+        rows={toConfirmRows}
+        total={countsQ.data?.counts.pairedToConfirm ?? null}
+        openId={openFrom === "toConfirm" ? openId : null}
+        onOpen={openRow("toConfirm")}
+        panel={openFrom === "toConfirm" ? panel : null}
+        onSeeAll={() => {
+          setStateFilter("toConfirm");
+          setOffsets([0]);
+          setOpenId(null);
+        }}
+      />
+
       <OriginsCard q={originsQ} />
 
       <section className="mt-8">
@@ -176,7 +227,7 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
         ) : (
           <div className="relative flex min-h-[24rem] gap-4">
             <div className="min-w-0 flex-1">
-              <PairingsTable rows={rows} openId={openId} onOpen={setOpenId} />
+              <PairingsTable rows={rows} openId={openFrom === "table" ? openId : null} onOpen={openRow("table")} />
               <Pager
                 pageNumber={offsets.length}
                 shown={page.pairings.length}
@@ -194,15 +245,7 @@ export function CrmMergedPage({ brandId }: { brandId: string }) {
                 }}
               />
             </div>
-            {open ? (
-              <PairingPanel
-                key={open.crmContact.id}
-                brandId={brandId}
-                row={open}
-                thresholds={page.judgmentThresholds}
-                onClose={() => setOpenId(null)}
-              />
-            ) : null}
+            {openFrom === "table" ? panel : null}
           </div>
         )}
       </section>
@@ -226,10 +269,22 @@ function StatsBand({ q }: { q: { data?: CrmPairingCounts; isPending: boolean; is
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Their contacts" value={c.crmContacts} sub={`${formatCount(c.crmContactsWithEmail)} of them with an email`} />
         <Stat label={PAIRING_STATE_LABEL.paired} value={c.byState.paired ?? null} tone="good" />
-        <Stat label={PAIRING_STATE_LABEL.unconfirmed} value={c.byState.unconfirmed ?? null} tone="warn" sub="A candidate exists, nobody has ruled" />
+        <Stat
+          label="To confirm"
+          value={c.pairedToConfirm ?? null}
+          tone="warn"
+          sub="Already counted as ours. Confirm or deny below"
+        />
         <Stat label={PAIRING_STATE_LABEL.rejected} value={c.byState.rejected ?? null} />
         <Stat label={PAIRING_STATE_LABEL.unpaired} value={c.byState.unpaired ?? null} />
         <Stat label="Our leads their CRM never heard of" value={d.ourLeadsNoCrmContactPointsAt} />
+        {(c.byState.unconfirmed ?? 0) > 0 ? (
+          <Stat
+            label={PAIRING_STATE_LABEL.unconfirmed}
+            value={c.byState.unconfirmed ?? null}
+            sub="The similarity model could not answer yet. Asked again on the next pass"
+          />
+        ) : null}
         <Stat
           label="Their deals"
           value={c.opportunities}
@@ -309,6 +364,71 @@ function Pill({ text, tone }: { text: string; tone?: string }) {
   );
 }
 
+/** The pairing's state, saying so when it counts for us on a hesitant judgment. */
+function PairingPill({ row }: { row: CrmPairingRow }) {
+  if (needsConfirmation(row)) return <Pill text="In common, to confirm" tone={STATE_TONE.unconfirmed} />;
+  return <Pill text={labelOf(PAIRING_STATE_LABEL, row.pairing.state)} tone={STATE_TONE[row.pairing.state]} />;
+}
+
+// ─── To confirm ──────────────────────────────────────────────────────────────
+
+/**
+ * The pairings a hesitant similarity judgment decided in our favour. They
+ * already count (the owner's rule: when in doubt, lean toward us), so this is
+ * where a person confirms or denies them. It sits above everything else because
+ * a wrong one inflates the customer's ROI until somebody looks.
+ */
+function ToConfirmSection({
+  q,
+  rows,
+  total,
+  openId,
+  onOpen,
+  panel,
+  onSeeAll,
+}: {
+  q: { isPending: boolean; isError: boolean; data?: CrmPairings };
+  rows: CrmPairingRow[];
+  total: number | null;
+  openId: string | null;
+  onOpen: (id: string) => void;
+  panel: React.ReactNode;
+  onSeeAll: () => void;
+}) {
+  if (q.isError) return <div className="mt-6"><Unavailable what="the pairings to confirm" /></div>;
+  if (q.isPending || !q.data) {
+    return <div className="mt-6 h-24 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />;
+  }
+  if (!q.data.crmConnected || rows.length === 0) return null;
+  return (
+    <section className="mt-6">
+      <div className="mb-1 flex flex-wrap items-baseline gap-2">
+        <h2 className="text-lg font-semibold text-gray-900">To confirm</h2>
+        {total != null ? <span className="text-sm text-gray-500">{formatCount(total)}</span> : null}
+      </div>
+      <p className="mb-3 text-sm text-gray-500">
+        The similarity model thinks these may be the same person. They already count as ours. Open one to confirm or
+        deny it.
+      </p>
+      <div className="relative flex min-h-[12rem] gap-4">
+        <div className="min-w-0 flex-1">
+          <PairingsTable rows={rows} openId={openId} onOpen={onOpen} />
+          {total != null && total > rows.length ? (
+            <button
+              type="button"
+              onClick={onSeeAll}
+              className="mt-2 text-sm text-brand-600 hover:underline"
+            >
+              See all {formatCount(total)} in the table below
+            </button>
+          ) : null}
+        </div>
+        {panel}
+      </div>
+    </section>
+  );
+}
+
 function PairingsTable({
   rows,
   openId,
@@ -365,7 +485,7 @@ function PairingsTable({
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <Pill text={labelOf(PAIRING_STATE_LABEL, r.pairing.state)} tone={STATE_TONE[r.pairing.state]} />
+                  <PairingPill row={r} />
                   {r.pairing.ruling ? <div className="mt-1 text-xs text-gray-500">Ruled by a person</div> : null}
                   <div className="mt-1 md:hidden">
                     {a !== "not_in_common" ? <Pill text={ALIGNMENT_LABEL[a]} tone={ALIGN_TONE[a]} /> : null}
@@ -570,7 +690,7 @@ function PairingPanel({
         <div className="min-w-0">
           <h3 className="truncate text-base font-semibold text-gray-900">{crmContactLabel(c)}</h3>
           <div className="mt-1 flex flex-wrap gap-1">
-            <Pill text={labelOf(PAIRING_STATE_LABEL, p.state)} tone={STATE_TONE[p.state]} />
+            <PairingPill row={row} />
             {alignmentFor(row) !== "not_in_common" ? (
               <Pill text={ALIGNMENT_LABEL[alignmentFor(row)]} tone={ALIGN_TONE[alignmentFor(row)]} />
             ) : null}
@@ -653,7 +773,7 @@ function PairingPanel({
             p.judgment.samePersonProbability != null
               ? `${Math.round(p.judgment.samePersonProbability * 100)}% same person (pairs at ${Math.round(thresholds.pairAt * 100)}%, rejects at ${Math.round(thresholds.rejectAt * 100)}%)${position === "between" ? ", between the two" : ""}`
               : p.judgment.status === "unavailable"
-                ? "Asked, no answer"
+                ? "Asked, no answer yet. Asked again on the next pass"
                 : p.judgment.status === "not_needed"
                   ? "Not needed"
                   : "Not asked"
@@ -669,6 +789,12 @@ function PairingPanel({
 
       {lead ? (
         <div className="mt-4 border-t border-gray-100 pt-4">
+          {needsConfirmation(row) ? (
+            <p className="mb-3 text-sm text-gray-700">
+              The similarity model was not sure. This pairing already counts as ours: confirm it, or deny it to take it
+              out.
+            </p>
+          ) : null}
           <label className="block text-xs text-gray-500">
             Note (optional)
             <input
