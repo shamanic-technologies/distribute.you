@@ -1,0 +1,15 @@
+{
+  "slug": "promo-video-in-one-prompt",
+  "title": "How to make a promo video with one prompt (no After Effects)",
+  "excerpt": "Our 27-second product video is pure code: one HTML file, a spring engine and headless Chrome. Here is the exact prompt that made it, ready to copy, and what we changed between the first draft and the one we posted.",
+  "tags": [
+    "motion design",
+    "prompt",
+    "Claude Code",
+    "product video",
+    "Playwright"
+  ],
+  "publishedAt": "2026-09-25T12:00:00.000Z",
+  "coverImagePath": "/blog/promo-video-in-one-prompt/hero.png",
+  "source": "manual"
+}
