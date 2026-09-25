@@ -11,7 +11,15 @@
  * a person typed into the partial write brand-service expects.
  */
 
-import type { BrandArrowRatePatch, BrandFunnelArrowRate } from "./api";
+import type { BrandArrowRatePatch, EffectiveArrowRate } from "./api";
+
+/** What the brand has STATED for one arrow, whichever read it came from. */
+export type StatedArrowRate = {
+  fromStep: string;
+  toStep: string;
+  stated: boolean;
+  ratePct: number | null;
+};
 
 /** One arrow's identity, as brand-service names it: its two step labels. */
 export function arrowId(arrow: { fromStep: string; toStep: string }): string {
@@ -40,7 +48,7 @@ export function parseRateInput(raw: string): number | null | undefined {
  * reported, not dropped, so the form can say which field is wrong.
  */
 export function arrowRatePatch(
-  arrows: BrandFunnelArrowRate[],
+  arrows: StatedArrowRate[],
   drafts: Record<string, string>,
 ): { patch: BrandArrowRatePatch[]; invalid: string[] } {
   const patch: BrandArrowRatePatch[] = [];
@@ -63,4 +71,54 @@ export function arrowRatePatch(
 export function formatRatePct(pct: number): string {
   const rounded = Math.round(pct * 10) / 10;
   return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`;
+}
+
+/** The brand's own statement, read off the effective-rate row that carries it. */
+export function statedFromEffective(arrow: EffectiveArrowRate): StatedArrowRate {
+  return {
+    fromStep: arrow.fromStep,
+    toStep: arrow.toStep,
+    stated: arrow.manualRatePct !== null,
+    ratePct: arrow.manualRatePct,
+  };
+}
+
+/**
+ * The value a rate field OPENS with: the brand's own statement, else the
+ * cross-org median as a prefill. A prefill is only shown; it is written only if
+ * the person edits the field or confirms it (see `arrowRatePatch`, which sends
+ * nothing for an arrow the form never touched).
+ */
+export function rateFieldSeed(arrow: EffectiveArrowRate): string {
+  const value = arrow.manualRatePct ?? arrow.median.ratePct;
+  return value === null ? "" : String(Math.round(value * 10) / 10);
+}
+
+/**
+ * Where the number the product prices on came from, in words. Read off the
+ * producer's `source`; a source this app does not know yet is named as it came,
+ * rather than dressed as one it does.
+ */
+export function rateSourceLabel(arrow: EffectiveArrowRate): string {
+  switch (arrow.source) {
+    case "measured":
+      return `Measured on ${arrow.measured.fromReached ?? 0} leads`;
+    case "manual":
+      return "Your value";
+    case "median":
+      return `Median of ${arrow.median.brandCount} ${arrow.median.brandCount === 1 ? "client" : "clients"}`;
+    case null:
+      return "No rate yet";
+    default:
+      return arrow.source;
+  }
+}
+
+/**
+ * The arrows of a funnel that have nothing MEASURED behind them, i.e. whose number
+ * rests on a statement or a median. This is what the activation modal asks about;
+ * a funnel whose every arrow is measured has nothing to confirm.
+ */
+export function unmeasuredArrows(arrows: EffectiveArrowRate[]): EffectiveArrowRate[] {
+  return arrows.filter((a) => a.source !== "measured");
 }

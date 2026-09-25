@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -80,6 +80,7 @@ import {
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
+import { FunnelActivationModal } from "@/components/settings/funnel-activation-modal";
 import { spendableCampaignsForFunnel } from "@/lib/use-running-daily-budget";
 import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -291,6 +292,15 @@ export function BrandSalesFunnelsCard({
   // One card open at a time: the list reorders itself around the selection, so
   // several open forms would move under the cursor.
   const [openKey, setOpenKey] = useState<SalesFunnelKey | null>(null);
+  // The funnel an offer JUST started selling through, while its rates are shown
+  // for confirmation. Set only on a first declaration: an update to a funnel the
+  // offer already sells through has nothing new to confirm.
+  const [activation, setActivation] = useState<{
+    funnelKey: SalesFunnelKey;
+    lifetimeRevenueUsd: number | null;
+    bookingUrl: string | null;
+  } | null>(null);
+  const closeActivation = useCallback(() => setActivation(null), []);
   const [pendingKey, setPendingKey] = useState<SalesFunnelKey | null>(null);
   const hydrated = useRef(false);
   // The payload the form was last seeded FROM. A boolean latch cannot do this
@@ -485,7 +495,18 @@ export function BrandSalesFunnelsCard({
     mutationFn: (vars: { def: SalesFunnelDef; patch: ReturnType<typeof buildFunnelPatch> }) =>
       declareOfferSalesFunnel(brandId, offerId, vars.def.key, vars.patch),
     onSuccess: (res, vars) => {
+      const firstDeclaration = !states[vars.def.key].declared;
       cacheDeclared(res.funnel);
+      if (firstDeclaration) {
+        // The brand's rates now cover a funnel they did not before, so re-read them
+        // before the modal states them.
+        void queryClient.invalidateQueries({ queryKey: ["brandConversionRates", brandId] });
+        setActivation({
+          funnelKey: vars.def.key,
+          lifetimeRevenueUsd: res.funnel.lifetimeRevenueUsd,
+          bookingUrl: res.funnel.bookingUrl,
+        });
+      }
       // Show exactly what persisted, so the card can never claim a value the
       // store rejected or normalized differently.
       patch(vars.def.key, {
@@ -1509,6 +1530,16 @@ export function BrandSalesFunnelsCard({
           </p>
         )}
       </div>
+
+      {activation && (
+        <FunnelActivationModal
+          brandId={brandId}
+          funnelKey={activation.funnelKey}
+          lifetimeRevenueUsd={activation.lifetimeRevenueUsd}
+          bookingUrl={activation.bookingUrl}
+          onClose={closeActivation}
+        />
+      )}
     </section>
   );
 }

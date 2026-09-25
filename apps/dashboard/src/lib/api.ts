@@ -1891,6 +1891,70 @@ export async function stateBrandFunnelRates(
   return parsed.data.funnel;
 }
 
+// ─── Effective conversion rates (features-service, 2026-09-25) ───────────────
+//
+// The rate every money figure is priced on, per (brand, funnel, arrow), and WHERE
+// it came from: MEASURED on the brand's own leads once enough of them reached the
+// arrow's FROM step, else what the brand STATED by hand, else the cross-org MEDIAN
+// of stated rates. features-service resolves it; this app never re-derives it.
+//
+// `source` and the three candidates are read as served. `source` is a plain
+// string because the producer's vocabulary may grow, and a closed set here would
+// throw the whole section the day it did.
+const MeasuredArrowRateSchema = z.object({
+  fromReached: z.number().nullable(),
+  toReached: z.number().nullable(),
+  ratePct: z.number().nullable(),
+  sufficient: z.boolean(),
+  gap: z.string().nullable(),
+});
+
+const EffectiveArrowRateSchema = z.object({
+  fromStep: z.string(),
+  toStep: z.string(),
+  effectiveRatePct: z.number().nullable(),
+  source: z.string().nullable(),
+  unresolvedReason: z.string().nullable(),
+  measured: MeasuredArrowRateSchema,
+  manualRatePct: z.number().nullable(),
+  median: z.object({ ratePct: z.number().nullable(), brandCount: z.number() }),
+});
+
+export type EffectiveArrowRate = z.infer<typeof EffectiveArrowRateSchema>;
+
+const BrandConversionRatesSchema = z.object({
+  brandId: z.string(),
+  minMeasuredFromReached: z.number(),
+  contactedRecipients: z.number(),
+  funnels: z.array(
+    z.object({
+      funnelKey: z.enum(SALES_FUNNEL_KEYS_WIRE).transform(normalizeSalesFunnelKey),
+      name: z.string(),
+      steps: z.array(z.string()),
+      arrows: z.array(EffectiveArrowRateSchema),
+    }),
+  ),
+});
+
+export type BrandConversionRates = z.infer<typeof BrandConversionRatesSchema>;
+
+/** GET /brands/:brandId/conversion-rates — the effective rate of every arrow. */
+export async function getBrandConversionRates(
+  brandId: string,
+  token?: string,
+): Promise<BrandConversionRates> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/conversion-rates`, { token });
+  const parsed = BrandConversionRatesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandConversionRates: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandConversionRates: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ─── Offers (Org > Brand > Offer > Campaign) ─────────────────────────────────
 //
 // A BRAND is an identity: a name, a domain, a logo, a conversion-tracking snippet.

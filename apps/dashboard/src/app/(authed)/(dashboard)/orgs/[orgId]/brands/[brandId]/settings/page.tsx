@@ -7,6 +7,7 @@ import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
 import { BrandSalesRepCard } from "@/components/settings/brand-sales-rep-card";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
+import { BrandConversionRatesCard } from "@/components/settings/brand-conversion-rates-card";
 
 /**
  * Brand Settings holds what a brand IS, and nothing about what it sells.
@@ -56,6 +57,19 @@ export default function BrandSettingsPage() {
       {/* Renders its own section and self-gates on the beta allowlist, so this
           page stays a plain list of GA surfaces. */}
       <BrandIntegrationsCard brandId={brandId} />
+
+      {/* How the brand converts, one rate per funnel arrow. A rate describes how the
+          BRAND sells, so it lives here and every offer selling the funnel shares it. */}
+      <section id="conversion-rates" className="mb-10 scroll-mt-24">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Conversion rates</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          We use what we measure on your own leads once enough have reached a step, your value
+          until then, and the median of our clients when you have not given one.
+        </p>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <BrandConversionRatesCard brandId={brandId} />
+        </div>
+      </section>
 
       <section id="conversion-tracking" className="mb-10 scroll-mt-24">
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Conversion Tracking</h2>
