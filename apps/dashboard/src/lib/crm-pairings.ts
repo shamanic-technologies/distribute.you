@@ -78,6 +78,13 @@ const RulingSchema = z.object({
 const PairingSchema = z.object({
   state: str,
   decidedBy: str.nullish(),
+  /**
+   * True on a PAIRED row a hesitant similarity judgment decided. Doubt leans to
+   * the customer: the pairing already counts (its CRM evidence reaches the lead
+   * and the ROI), and a person should confirm or deny it. Optional so a row
+   * from an older producer still parses.
+   */
+  toConfirm: z.boolean().nullish(),
   lead: LeadSideSchema.nullish(),
   evidence: z.object({
     matchMethod: str.nullish(),
@@ -136,6 +143,8 @@ export const CrmPairingCountsSchema = z.object({
     crmContacts: z.number(),
     crmContactsWithEmail: z.number(),
     byState: z.object({ paired: count, unconfirmed: count, rejected: count, unpaired: count }),
+    /** Of `byState.paired`, how many rest on a hesitant judgment. A subset, never a fifth state. */
+    pairedToConfirm: count,
     byMatchMethod: z.record(z.string(), z.number().nullish()),
     opportunities: z.number(),
     opportunitiesByState: z.object({
@@ -161,7 +170,7 @@ export const PAIRING_STATES = ["paired", "unconfirmed", "rejected", "unpaired"] 
 
 export const PAIRING_STATE_LABEL: Record<string, string> = {
   paired: "In common",
-  unconfirmed: "Maybe in common",
+  unconfirmed: "Not judged yet",
   rejected: "Not the same person",
   unpaired: "Only in their CRM",
 };
@@ -285,6 +294,14 @@ export function alignmentFor(row: Pick<CrmPairingRow, "pairing" | "ourStanding" 
   return CLOSED_OURS.has(ours) ? "conflict" : "aligned";
 }
 
+/**
+ * A pairing that counts for the customer on a hesitant judgment and that nobody
+ * has confirmed or denied yet: the "To confirm" set. A person's ruling settles it.
+ */
+export function needsConfirmation(row: Pick<CrmPairingRow, "pairing">): boolean {
+  return row.pairing.state === "paired" && row.pairing.toConfirm === true && !row.pairing.ruling;
+}
+
 /** Where the model's probability sits against the two bars lead-service applies. */
 export function judgmentPosition(
   p: number | null | undefined,
@@ -337,10 +354,10 @@ export function topBuckets(buckets: OriginBucket[], max: number): { shown: Origi
 }
 
 /** The pairing-state sets the table offers, as lead-service's `state` values. */
-export const STATE_FILTERS: { id: string; label: string; states: string[] | null }[] = [
+export const STATE_FILTERS: { id: string; label: string; states: string[] | null; toConfirm?: boolean }[] = [
   { id: "paired", label: "In common", states: ["paired"] },
-  { id: "unconfirmed", label: "Maybe in common", states: ["unconfirmed"] },
-  { id: "both", label: "In common or maybe", states: ["paired", "unconfirmed"] },
+  { id: "toConfirm", label: "In common, to confirm", states: ["paired"], toConfirm: true },
+  { id: "unconfirmed", label: "Not judged yet", states: ["unconfirmed"] },
   { id: "rejected", label: "Not the same person", states: ["rejected"] },
   { id: "unpaired", label: "Only in their CRM", states: ["unpaired"] },
   { id: "all", label: "Everyone", states: null },
@@ -369,7 +386,10 @@ export function filterAndSortRows(
   return [...kept].sort((a, b) => {
     if (opts.sort === "name") return byName(a, b);
     if (opts.sort === "state") return stateRank(a.pairing.state) - stateRank(b.pairing.state) || byName(a, b);
+    // A pairing waiting for a person's confirmation outranks every alignment:
+    // it already counts in the customer's ROI on a hesitant judgment.
     return (
+      Number(needsConfirmation(b)) - Number(needsConfirmation(a)) ||
       ATTENTION_ORDER.indexOf(alignmentFor(a)) - ATTENTION_ORDER.indexOf(alignmentFor(b)) ||
       stateRank(a.pairing.state) - stateRank(b.pairing.state) ||
       byName(a, b)
