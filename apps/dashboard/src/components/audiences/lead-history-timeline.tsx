@@ -2,7 +2,6 @@
 
 import { EmailSignature } from "@/components/email-signature";
 import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { emailBodySegments, linkDisplayText } from "@/lib/email-body-links";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import {
@@ -31,32 +30,12 @@ export function LeadHistoryTimeline({
   history,
   heading = "Activity",
   bare = false,
-  canReadEmailCopy,
-  betaOnlyCopy = false,
   showNextFollowup = false,
 }: {
   history: LeadHistory;
   heading?: string;
   /** Rendered INSIDE a campaign card, so it drops the card chrome. */
   bare?: boolean;
-  /**
-   * Whether the WORDS of a message may be read — ours drafted, ours as it went out,
-   * and the prospect's own reply alike.
-   *
-   * One gate over all three, because the timeline's GA job is to state what HAPPENED
-   * to a person; reading the copy is what a sales interest earns. A reader with no
-   * such interest sees the rows and none of the text, so this is the only flag a
-   * body is rendered behind — there is no second, laxer rule for a message we sent.
-   */
-  canReadEmailCopy: boolean;
-  /**
-   * Whether the copy is visible BECAUSE the reader is on the beta list.
-   *
-   * A reader who earned the copy through a sales interest is reading a GA surface,
-   * so badging it beta would name the wrong reason; only the beta-only case carries
-   * the badge. Distinct from `canReadEmailCopy` for exactly that.
-   */
-  betaOnlyCopy?: boolean;
   /**
    * Whether to state what we owe this person NEXT, under the rows.
    *
@@ -67,16 +46,10 @@ export function LeadHistoryTimeline({
   showNextFollowup?: boolean;
 }) {
   const note = incompleteNote(history);
-  // A DRAFT row is its body and nothing else — it names no moment a person can act on,
-  // so without the words it is a heading over an empty box. It is dropped BEFORE the
-  // map rather than inside it, because the connector rail and the `+Nd` gap both read
-  // their neighbours by index: filtering during the render would measure a gap from a
-  // row nobody can see and hang a connector off the last visible one. Every OTHER row
-  // survives the gate — a send, a reply, a visit are things that HAPPENED, which is
-  // the timeline's GA job; only their text is withheld.
-  const visible = history.events.filter(
-    (e) => canReadEmailCopy || e.type !== "generated_email",
-  );
+  // Every row the producer sent is drawn, with its words: the timeline states what
+  // happened to a person AND what was said, to every reader (owner-decided 2026-09-25,
+  // reversing #4226, which withheld every body until a sales interest).
+  const visible = history.events;
   if (visible.length === 0 && !note) return null;
 
   const nowMs = Date.now();
@@ -177,10 +150,8 @@ export function LeadHistoryTimeline({
                     </a>
                   </p>
                 )}
-                {/* THE WORDS, behind ONE gate whatever the message is. Reading them is
-                    the whole reason to open this panel, and it is what a sales interest
-                    earns; the rows above say what happened to everyone else. */}
-                {hasReadableBody(e) && canReadEmailCopy && (
+                {/* THE WORDS. Reading them is the whole reason to open this panel. */}
+                {hasReadableBody(e) && (
                   <div
                     className={`mt-1.5 rounded border p-2 ${
                       e.direction === "inbound"
@@ -223,22 +194,9 @@ export function LeadHistoryTimeline({
                     {e.type === "generated_email" && <EmailSignature className="text-xs" />}
                   </div>
                 )}
-                {/* The badge rides the copy a beta reader can see, never an empty row.
-                    It used to stand IN PLACE of a withheld body, which advertised a
-                    thing nobody could open on a row that then said nothing at all. And
-                    it is `betaOnlyCopy`, not `canReadEmailCopy`: copy earned by a sales
-                    interest is GA, so badging it beta would name the wrong reason. */}
-                {betaOnlyCopy && hasReadableBody(e) && (
-                  <span className="mt-1.5 inline-flex">
-                    <MaturityBadge level="beta" />
-                  </span>
-                )}
                 {/* We hold this message and could not read it. Said out loud, because an
-                    empty card reads as a prospect who wrote nothing — but only to a
-                    reader who would have been shown the words: told to someone the copy
-                    is withheld from, it explains the absence of a thing they were never
-                    going to see. */}
-                {canReadEmailCopy && e.bodyStatus === "unavailable" && (
+                    empty card reads as a prospect who wrote nothing. */}
+                {e.bodyStatus === "unavailable" && (
                   <p className="mt-1.5 text-xs text-gray-500">
                     We hold this message and could not read it.
                   </p>
