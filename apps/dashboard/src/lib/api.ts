@@ -1619,6 +1619,13 @@ const SALES_FUNNEL_KEYS_WIRE = [
   "sales_meetings_from_website",
   "website_purchases",
   "form_magnet",
+  // The four funnels added after the rename. `normalizeSalesFunnelKey` already
+  // maps them; this list did not, so any read carrying one threw — which the
+  // brand-grain rates read, serving EVERY catalogue funnel, does on every call.
+  "sales_from_conversation",
+  "sales_meetings_from_ads",
+  "lead_forms_from_ads",
+  "sales_from_website",
 ] as const;
 
 const DeclaredSalesFunnelSchema = z.object({
@@ -1800,6 +1807,88 @@ export async function undeclareBrandSalesFunnel(
     throw new Error("[dashboard] undeclareBrandSalesFunnel: invalid response shape");
   }
   return parsed.data;
+}
+
+// ─── Brand-grain conversion rates (brand-service, 2026-09-25) ────────────────
+//
+// A conversion rate describes how a BRAND sells, so it is stated once per
+// (brand, funnel, arrow) and shared by every offer selling that funnel. Lifetime
+// revenue and the booking link stay per offer.
+//
+// An arrow is named by the two step LABELS brand-service serves, and a write
+// sends those strings back verbatim: this app keeps its own step vocabulary
+// (`lib/sales-funnels.ts`) and the two are not byte-equal everywhere, so
+// translating one into the other here is how a write lands on an arrow nobody
+// reads. `stated: false` means the brand never gave us the number; its `ratePct`
+// is then null, never a zero.
+const BrandFunnelArrowRateSchema = z.object({
+  fromStep: z.string(),
+  toStep: z.string(),
+  ratePct: z.number().nullable(),
+  stated: z.boolean(),
+  statedAt: z.string().nullable(),
+});
+
+export type BrandFunnelArrowRate = z.infer<typeof BrandFunnelArrowRateSchema>;
+
+const BrandFunnelRatesSchema = z.object({
+  funnelKey: z.enum(SALES_FUNNEL_KEYS_WIRE).transform(normalizeSalesFunnelKey),
+  name: z.string(),
+  steps: z.array(z.string()),
+  arrows: z.array(BrandFunnelArrowRateSchema),
+});
+
+export type BrandFunnelRates = z.infer<typeof BrandFunnelRatesSchema>;
+
+const GetBrandFunnelRatesResponseSchema = z.object({
+  funnels: z.array(BrandFunnelRatesSchema),
+});
+
+/** GET /brands/:brandId/funnel-rates — every funnel's arrows, stated or not. */
+export async function getBrandFunnelRates(
+  brandId: string,
+  token?: string,
+): Promise<BrandFunnelRates[]> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-rates`, { token });
+  const parsed = GetBrandFunnelRatesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandFunnelRates: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandFunnelRates: invalid response shape");
+  }
+  return parsed.data.funnels;
+}
+
+export type BrandArrowRatePatch = { fromStep: string; toStep: string; ratePct: number | null };
+
+const PutBrandFunnelRatesResponseSchema = z.object({ funnel: BrandFunnelRatesSchema });
+
+/**
+ * PUT /brands/:brandId/funnel-rates/:funnelKey — state or clear the brand's rate
+ * on some arrows of one funnel. PARTIAL: an arrow the patch omits is untouched,
+ * `ratePct: null` clears it. Applies to every offer of the brand.
+ */
+export async function stateBrandFunnelRates(
+  brandId: string,
+  funnelKey: string,
+  arrowRates: BrandArrowRatePatch[],
+  token?: string,
+): Promise<BrandFunnelRates> {
+  const raw = await apiCall<unknown>(
+    `/brands/${brandId}/funnel-rates/${encodeURIComponent(funnelKey)}`,
+    { token, method: "PUT", body: { arrowRates } },
+  );
+  const parsed = PutBrandFunnelRatesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] stateBrandFunnelRates: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] stateBrandFunnelRates: invalid response shape");
+  }
+  return parsed.data.funnel;
 }
 
 // ─── Offers (Org > Brand > Offer > Campaign) ─────────────────────────────────

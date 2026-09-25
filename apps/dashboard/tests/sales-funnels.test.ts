@@ -886,7 +886,15 @@ describe("Sales Funnels card", () => {
     expect(src).toContain("const showNumbers = state.declared || isOpen;");
     expect(src).toContain("showNumbers ? funnelDestinationChips(def, state.draft) : []");
     expect(src).toContain("showNumbers ? funnelLifetimeLabel(state.draft) : null");
-    expect(src).toContain("i > 0 && showNumbers ? funnelLegPct(def, state.draft, i - 1) : null");
+  });
+
+  // Conversion rates are the BRAND's (stated once per funnel arrow on Brand
+  // Settings), so this offer-level card neither shows nor writes one: two
+  // editors for one number is how an offer comes to contradict its brand.
+  it("neither renders nor writes a conversion rate", () => {
+    expect(src).not.toContain("funnelLegPct(");
+    expect(src).not.toContain("<RateInput");
+    expect(src).toContain("const { rates: _offerRates, ...body } = buildFunnelPatch(");
   });
 
   // The chosen funnels come first with a green tag; the rest sit below, greyed.
@@ -906,7 +914,6 @@ describe("Sales Funnels card", () => {
   it("titles each card with the funnel name and keeps its steps under it", () => {
     expect(src).toContain("{def.name}");
     expect(src).toContain("def.steps.map((step, i)");
-    expect(src).toContain("funnelLegPct(def, state.draft, i - 1)");
   });
 
   // A tile that only covers the title reads as decoration next to a two-line
