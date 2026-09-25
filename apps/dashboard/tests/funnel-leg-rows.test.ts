@@ -68,7 +68,7 @@ describe("funnelLegs — every arrow of the funnel, run by us or not", () => {
   });
 });
 
-describe("buildFunnelLegRows — the funnel walked, with who performs each arrow", () => {
+describe("buildFunnelLegRows — the funnel walked, one row per campaign of ours", () => {
   const steps: FunnelStepRow[] = [
     step({ leadField: "repliedPositive", step: "Positive reply", recipientsReached: 41 }),
     step({
@@ -97,21 +97,16 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
     }),
   ];
 
-  it("lists EVERY arrow, including the ones no campaign of ours performs", () => {
+  it("draws NO row for an arrow no campaign of ours performs", () => {
+    // Owner-decided 2026-09-25: rows naming a team rather than a channel were read by
+    // nobody. Only the arrow cold email performs survives.
     const { rows } = buildFunnelLegRows({
       legs: funnelLegs(reply),
       steps,
       campaigns: [{ toIndex: legOf(COLD_EMAIL), campaign: "cold-email" }],
     });
-    expect(rows.map((r) => r.leg.label)).toEqual([
-      "Positive reply",
-      "Positive reply → Meeting booked",
-      "Meeting booked → Meeting attended",
-      "Meeting attended → Paid client",
-    ]);
-    // Cold email does the entry arrow; the brand works the other three itself, and
-    // those rows exist with no campaign rather than being dropped.
-    expect(rows.map((r) => r.campaign)).toEqual(["cold-email", null, null, null]);
+    expect(rows.map((r) => r.leg.label)).toEqual(["Positive reply"]);
+    expect(rows.map((r) => r.campaign)).toEqual(["cold-email"]);
   });
 
   it("joins each arrow to its rung by the producer's leadField, never by position", () => {
@@ -120,30 +115,31 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
       // still land each rung on its own arrow rather than shifting the table by one.
       legs: funnelLegs(reply),
       steps: [...steps].reverse(),
-      campaigns: [],
+      campaigns: [0, 1, 2, 3].map((toIndex) => ({ toIndex, campaign: `c${toIndex}` })),
     });
     expect(rows.map((r) => r.step?.recipientsReached)).toEqual([41, 12, 9, 2]);
     expect(rows[3].step?.conversionFromPreviousPct).toBe(22.2);
   });
 
-  it("puts a customer-operated arrow's own figures on its row", () => {
-    // The closing arrow is worked at the brand's side, and its outcomes are still
-    // measured — a manual row is a row with numbers, not an empty one.
+  it("puts the rung on a campaign performing a deeper arrow", () => {
     const { rows } = buildFunnelLegRows({
       legs: funnelLegs(reply),
       steps,
       campaigns: [{ toIndex: legOf(FOUNDER_LED_CLOSING), campaign: "founder-led" }],
     });
-    expect(rows[3].campaign).toBe("founder-led");
-    expect(rows[3].step?.recipientsReached).toBe(2);
-    expect(rows[2].campaign).toBeNull();
-    expect(rows[2].step?.recipientsReached).toBe(9);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].campaign).toBe("founder-led");
+    expect(rows[0].step?.recipientsReached).toBe(2);
   });
 
-  it("states an arrow with NO served rung rather than hiding it", () => {
-    const { rows } = buildFunnelLegRows({ legs: funnelLegs(reply), steps: null, campaigns: [] });
-    expect(rows.length).toBe(4);
-    expect(rows.every((r) => r.step === null)).toBe(true);
+  it("keeps a campaign row whose arrow has NO served rung", () => {
+    const { rows } = buildFunnelLegRows({
+      legs: funnelLegs(reply),
+      steps: null,
+      campaigns: [{ toIndex: 0, campaign: "cold-email" }],
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].step).toBeNull();
   });
 
   it("hands back a campaign this funnel has no arrow for instead of filing it wrongly", () => {
@@ -152,7 +148,7 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
       steps,
       campaigns: [{ toIndex: null, campaign: "unplaceable" }],
     });
-    expect(rows.every((r) => r.campaign === null)).toBe(true);
+    expect(rows).toEqual([]);
     expect(extra).toEqual(["unplaceable"]);
   });
 
@@ -172,7 +168,7 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
       "cold-email",
       "cold-sms",
     ]);
-    expect(rows.length).toBe(5);
+    expect(rows.length).toBe(2);
     expect(extra).toEqual([]);
   });
 
@@ -184,26 +180,9 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
       steps,
       campaigns: [{ toIndex: 2, campaign: "closer" }, { toIndex: 0, campaign: "cold-email" }],
     });
-    expect(rows.map((r) => r.leg.toIndex)).toEqual([0, 1, 2, 3]);
+    expect(rows.map((r) => r.leg.toIndex)).toEqual([0, 2]);
     expect(rows[0].campaign).toBe("cold-email");
-    expect(rows[2].campaign).toBe("closer");
-  });
-
-  it("sinks a row whose cost is unstated below one that states it", () => {
-    // An absent figure is not a low one.
-    const priced = [
-      step({ leadField: "repliedPositive", recipientsReached: 41, costPerReachCents: 500 }),
-    ];
-    const { rows } = buildFunnelLegRows({
-      legs: funnelLegs(reply),
-      steps: priced,
-      campaigns: [],
-    });
-    // Only the first rung is priced; the three unpriced ones keep their step order
-    // behind it rather than jumping ahead of it.
-    expect(rows.map((r) => r.leg.toIndex)).toEqual([0, 1, 2, 3]);
-    expect(rows[0].step?.costPerReachCents).toBe(500);
-    expect(rows.slice(1).every((r) => r.step === null)).toBe(true);
+    expect(rows[1].campaign).toBe("closer");
   });
 
   it("maps every step of every funnel we sell to a producer leadField", () => {
@@ -328,11 +307,14 @@ describe("arrowLead", () => {
     campaign: id,
   });
 
-  it("leads every arrow, shared or not", () => {
-    const { rows } = buildFunnelLegRows<string>({ legs, steps: [], campaigns: [] });
-    // Every arrow is unclaimed here, so each is alone and each leads itself.
-    expect(rows.every((r) => r.arrowLead)).toBe(true);
-    expect(rows).toHaveLength(legs.length);
+  it("leads every arrow a campaign performs alone", () => {
+    const { rows } = buildFunnelLegRows<string>({
+      legs,
+      steps: [],
+      campaigns: [on("cold-email", COLD_EMAIL), on("closer", FOUNDER_LED_CLOSING)],
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.arrowLead && !r.sharesArrow)).toBe(true);
   });
 
   it("marks exactly one lead per arrow when two campaigns feed it", () => {
@@ -362,23 +344,12 @@ describe("arrowLead", () => {
       ],
     });
     const leads = rows.filter((r) => r.arrowLead);
-    // One lead per arrow, and never two in a row on the same arrow.
-    expect(leads).toHaveLength(legs.length);
+    // One lead per arrow drawn, and never two in a row on the same arrow.
+    expect(leads).toHaveLength(2);
     for (let i = 1; i < rows.length; i += 1) {
       if (rows[i].leg.toIndex === rows[i - 1].leg.toIndex) expect(rows[i].arrowLead).toBe(false);
       else expect(rows[i].arrowLead).toBe(true);
     }
   });
 
-  it("leads an arrow nobody of ours performs", () => {
-    const { rows } = buildFunnelLegRows<string>({
-      legs,
-      steps: [],
-      campaigns: [on("closer", FOUNDER_LED_CLOSING)],
-    });
-    // An unclaimed arrow is alone on itself, so it states the rung it has.
-    const unclaimed = rows.filter((r) => r.campaign === null);
-    expect(unclaimed.length).toBeGreaterThan(0);
-    expect(unclaimed.every((r) => r.arrowLead && !r.sharesArrow)).toBe(true);
-  });
 });

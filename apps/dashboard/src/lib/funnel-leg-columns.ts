@@ -32,6 +32,10 @@ import { channelRunState } from "./channel-start";
  * what campaign-service provisions, so a channel published upstream with no workflow
  * behind it is absent here rather than present-and-dead.
  *
+ * A CUSTOMER-operated channel is left out (owner-decided 2026-09-25): the board offers
+ * the channels WE run, and a card for an arrow the brand works by hand was read by
+ * nobody. Offer Settings still lists every fundable channel.
+ *
  * Catalogue order is preserved, which is features-service's own `displayOrder`.
  */
 export function channelsForLeg(
@@ -40,6 +44,7 @@ export function channelsForLeg(
 ): AcquisitionChannelDef[] {
   return channels.filter((channel) => {
     if (!channelIsFundable(channel)) return false;
+    if (channel.operatedBy === "customer") return false;
     return channel.legs.some((l) => l.from === leg.fromKey && l.to === leg.toKey);
   });
 }
@@ -140,10 +145,8 @@ export interface LegColumn {
 /**
  * The funnel as columns, in its own step order.
  *
- * EVERY arrow gets a column, including one nothing can be funded on today. Dropping it
- * would tell a customer their funnel is shorter than it is — the same reason the table
- * this replaces gives a row to the arrows the brand works itself. A column with no
- * cards states why rather than disappearing.
+ * An arrow no channel of ours can perform gets NO column (owner-decided 2026-09-25):
+ * it would only ever say the brand works it by hand, which nobody read.
  */
 export function buildLegColumns({
   legs,
@@ -175,20 +178,22 @@ export function buildLegColumns({
    */
   hasCampaignBySlug: Record<string, boolean> | undefined;
 }): LegColumn[] {
-  return legs.map((leg) => ({
-    leg,
-    cards: channelsForLeg(leg, channels).map((channel) => {
-      const savedCents = savedCentsBySlug[channel.featureSlug] ?? 0;
-      const running = runningBySlug ? (runningBySlug[channel.featureSlug] ?? false) : undefined;
-      const hasCampaign = hasCampaignBySlug
-        ? (hasCampaignBySlug[channel.featureSlug] ?? false)
-        : undefined;
-      return {
-        channel,
-        savedCents,
-        funded: savedCents > 0,
-        state: legChannelState({ savedCents, running, hasCampaign }),
-      };
-    }),
-  }));
+  return legs
+    .map((leg) => ({
+      leg,
+      cards: channelsForLeg(leg, channels).map((channel) => {
+        const savedCents = savedCentsBySlug[channel.featureSlug] ?? 0;
+        const running = runningBySlug ? (runningBySlug[channel.featureSlug] ?? false) : undefined;
+        const hasCampaign = hasCampaignBySlug
+          ? (hasCampaignBySlug[channel.featureSlug] ?? false)
+          : undefined;
+        return {
+          channel,
+          savedCents,
+          funded: savedCents > 0,
+          state: legChannelState({ savedCents, running, hasCampaign }),
+        };
+      }),
+    }))
+    .filter((col) => col.cards.length > 0);
 }

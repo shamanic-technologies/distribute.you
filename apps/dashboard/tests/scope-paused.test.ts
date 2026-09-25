@@ -171,12 +171,6 @@ describe("every surface PASSES the flag, not merely handles it", () => {
     expect(src).toContain("paused={scopePaused}");
   });
 
-  it("the funnel leg page states its funnel's verdict", () => {
-    const src = read("components/funnels/funnel-leg-page.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(src).toContain("paused={scopePaused}");
-  });
-
   it("the shared Audiences page falls back to its SCOPE when no campaign is named", () => {
     const src = read("components/audiences/customer-audiences-page.tsx");
     expect(src).toContain("useScopePaused(");
@@ -208,19 +202,6 @@ describe("every surface PASSES the flag, not merely handles it", () => {
     const src = read("components/funnels/funnel-overview-page.tsx");
     expect(src).toContain("useScopePaused(");
     expect(src).toContain("paused={scopePaused}");
-  });
-
-  it("a leg row with NO campaign falls back to the scope's verdict", () => {
-    // The gap this closes: an arrow the brand works itself has no campaign to be
-    // stopped, so `campaign ? ... : false` left every `Done by you` row reading
-    // `Learning` on a funnel nothing sells. Pinned as the CALL SITE, not only the
-    // component — a table that handles `paused` while no page passes it is the feature
-    // entirely absent with the component perfectly correct.
-    const src = read("components/campaigns/campaigns-table.tsx");
-    expect(src).toContain(
-      "paused={campaign ? !isActiveStatus(campaign.campaign.status) : scopePaused}",
-    );
-    expect(src).toContain("scopePaused={paused}");
   });
 
   it("the leg walk never re-derives the verdict from the rows it holds", () => {

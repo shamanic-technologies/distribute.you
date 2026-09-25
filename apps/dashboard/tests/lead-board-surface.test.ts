@@ -242,10 +242,9 @@ describe("one gesture, two actions, told apart by time", () => {
   });
 
   it("runs the ONE shared gesture rather than a copy of it", () => {
-    // Both kanbans call it, so a change to how a card is picked up reaches both.
+    // The shared hook, so a future second kanban inherits the same gesture.
     expect(board).toContain("useBoardDrag<LeadBoardCard>");
     expect(board).toContain("board.cardHandlers(card)");
-    expect(read("components/funnels/funnel-leg-board.tsx")).toContain("useBoardDrag<LegBoardCard>");
   });
 
   it("picks a card up on a HOLD and opens it on a tap", () => {

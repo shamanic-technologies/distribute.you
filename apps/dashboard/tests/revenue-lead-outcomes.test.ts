@@ -256,11 +256,8 @@ describe("no browser surface reads the full lead array", () => {
     expect(digest).not.toContain("parseFeatureRevenue(");
   });
 
-  it("has both per-lead consumers read the narrowed list", () => {
-    for (const p of [
-      "src/components/audiences/engaged-leads-page.tsx",
-      "src/components/funnels/funnel-leg-page.tsx",
-    ]) {
+  it("has the per-lead consumer read the narrowed list", () => {
+    for (const p of ["src/components/audiences/engaged-leads-page.tsx"]) {
       const src = read(p);
       expect(src).toContain("leadOutcomes");
       expect(src).not.toMatch(/revenue(Data)?[.?]*\.data\?\.leads\b/);

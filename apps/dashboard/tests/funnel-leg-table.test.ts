@@ -42,7 +42,7 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(call).toContain("funnelKey={rawKey}");
   });
 
-  it("states one row per arrow, whoever performs it", () => {
+  it("states one row per campaign of ours, on the arrow it performs", () => {
     expect(table).toContain("buildFunnelLegRows");
     expect(table).toContain("funnelLegs(funnelDef)");
     // The campaign's leg is resolved against the channel catalogue at the render side,
@@ -51,21 +51,17 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(table).toContain("acquisitionChannelForFeatureSlug(row.campaign.featureSlug, channels)");
   });
 
-  // `Done by you` was one sentence for TWO different parties, and it was wrong on the
-  // arrows we work ourselves: a customer reading it on `Positive reply -> Meeting booked`
-  // concludes nobody is answering the replies their budget just bought.
-  it("names WHO works an arrow nobody sells us, in the channel's own shape", () => {
-    expect(table).toContain("statesOperator");
+  // Owner-decided 2026-09-25: an arrow no channel of ours performs is not drawn. The
+  // rows it replaced (`Done by you`, then `<Brand> team` / `Distribute.you team`) were
+  // read by nobody, and they opened a leg page that no longer exists.
+  it("draws no row for an arrow nobody of ours performs, and names no team", () => {
+    expect(table).not.toContain("statesOperator");
+    expect(table).not.toContain("openLeg");
+    expect(table).not.toContain("/legs/");
     expect(table).not.toContain("Done by you");
-    expect(identity).toContain("funnelLegOperator");
-    expect(identity).toContain("funnelLegOperatorLabel");
-    // Our own mark for our arrows, the brand's logo for theirs — the same `Via <mark>
-    // <name>` line a channel renders, so the two read as one vocabulary.
-    expect(identity).toContain("/logo-distribute.svg");
-    expect(identity).toContain("<BrandLogo");
-    // The brand is read off the open tenant, not passed in: every surface rendering this
-    // is already inside that brand and the hook is the one home for its name and logo.
-    expect(identity).toContain("useTenantSwitcher()");
+    expect(identity).not.toContain("funnelLegOperator");
+    expect(identity).not.toContain("OperatorVia");
+    expect(identity).not.toContain(" team");
   });
 
   // The status pill on the row already says the campaign is stopped; `Learning` beside it
@@ -76,12 +72,7 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(legCells).toContain("if (paused) return <LearningTag withInfo={false} paused />;");
     // The gate is threaded from the CALL SITE, or the component is correct and the
     // feature is entirely absent.
-    // An arrow the brand works itself has no campaign to be stopped, so it falls back to
-    // the SCOPE's verdict — the figures on that row are the arrow's, and with nothing
-    // selling the funnel nobody reaches its rungs. Pinned in `scope-paused.test.ts` too.
-    expect(table).toContain(
-      "paused={campaign ? !isActiveStatus(campaign.campaign.status) : scopePaused}",
-    );
+    expect(table).toContain("paused={!isActiveStatus(campaign.campaign.status)}");
     expect(table).toContain("paused={!isActiveStatus(row.campaign.status)}");
   });
 
@@ -163,9 +154,7 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     // The rung is funnel-scoped. With two campaigns feeding one step, printing it on
     // both rows lends one campaign the other's evidence: measured in prod, cold email
     // had 18 positive replies and a feedback-request campaign 0, and both read 18.
-    expect(legTable).toContain("campaignStepOutcomes(campaign.revenue, leg.toKey)");
-    // An arrow no campaign of ours performs has only the rung, which IS its count.
-    expect(legTable).toContain("step?.recipientsReached");
+    expect(legTable).toContain("outcomes={campaignStepOutcomes(campaign.revenue, leg.toKey)}");
   });
 
   it("prices a row with the CAMPAIGN's own cost, never the whole funnel's, where the producer answers one", () => {
@@ -174,15 +163,12 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     // funnel's spend, so three figures on one row answered at three scopes.
     expect(legCells).toContain("const statesOwnCost = campaignCostCents !== undefined;");
     expect(legCells).toContain("formatCentsAsUsdAdaptive(campaignCostCents)");
-    // The arrow's own figure is still what a row nobody of ours runs states, and what a
-    // step with no per-campaign price falls back to.
+    // The arrow's own figure is what a step with no per-campaign price falls back to.
     expect(legCells).toContain("formatCentsAsUsdAdaptive(step.costPerReachCents)");
     // The CALL SITE, not only the component: a prop the table never passes leaves the
     // component perfectly correct and the behaviour entirely absent.
     const map = legTable.slice(legTable.indexOf("{rows.map("));
     expect(map).toContain("campaignStepCostCents(campaign.revenue, leg.toKey)");
-    // A row with no campaign has nobody to ask, and states the funnel's figure.
-    expect(map).toContain("campaign ? campaignStepCostCents(campaign.revenue, leg.toKey) : undefined");
   });
 
   it("keeps the RATE arrow-scoped, so it alone carries the state-once treatment", () => {
@@ -218,11 +204,10 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(table).not.toContain("title=");
   });
 
-  it("states no money for an arrow no campaign of ours runs", () => {
+  it("states the campaign's own money on its row", () => {
     const body = legTable;
-    // "we have no figure" and "it cost nothing" are different statements.
-    expect(body).toContain("campaign ? fmtUsd(campaign.revenue?.committedCostUsd) : \"—\"");
-    expect(body).toContain("campaign && campaign.budgetCents != null");
+    expect(body).toContain("fmtUsd(campaign.revenue?.committedCostUsd)");
+    expect(body).toContain("campaign.budgetCents != null");
     // A ceiling is a RATE, said the same way the sibling table says it.
     expect(body).toContain("/ day");
   });

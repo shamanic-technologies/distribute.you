@@ -9,8 +9,6 @@ import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { campaignFunnel } from "@/lib/campaign-funnel";
-import { funnelLegs } from "@/lib/campaign-leg";
-import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
 import type { SalesFunnelDef, SalesFunnelKeyWire } from "@/lib/sales-funnels";
 
 /**
@@ -43,8 +41,6 @@ export interface OfferRoute {
   campaignId: string | null;
   /** Present on `.../offers/:offerId/funnels/:funnelKey` and everything under it. */
   funnelKey: string | null;
-  /** Present only on `.../funnels/:funnelKey/legs/:legKey`. */
-  legKey: string | null;
   /** Present only on `.../campaigns/:campaignId/workflows/:workflowDynastySlug`. */
   workflowDynastySlug: string | null;
 }
@@ -73,15 +69,9 @@ export function offerRouteFromPath(pathname: string): OfferRoute | null {
     // funnel's, and a crumb that vanished one level down would leave the deepest
     // pages saying least about where they are.
     funnelKey,
-    // One ARROW of that funnel. It is the deepest thing a path names, and it was
-    // the one level the bar said nothing about: a leg page read
-    // `Offer / <funnel>` and never named the arrow it had opened, so two
-    // different legs of one funnel wore the same crumb.
-    legKey: funnelKey !== null && sixth === "legs" && seventh ? decodeURIComponent(seventh) : null,
-    // ONE WORKFLOW of that campaign — the deepest thing a campaign path names. Read
-    // off the same two segments the leg is read off, one level under the campaign, so
-    // a future level shift breaks here with a test on it rather than in whichever
-    // component hardcoded an index.
+    // ONE WORKFLOW of that campaign — the deepest thing a campaign path names, one
+    // level under the campaign, so a future level shift breaks here with a test on it
+    // rather than in whichever component hardcoded an index.
     workflowDynastySlug:
       section === "campaigns" && fourth && sixth === "workflows" && seventh
         ? decodeURIComponent(seventh)
@@ -178,7 +168,7 @@ export function HeaderPageContext() {
   // The offer crumb is a LINK only while it is not the page you are on — a
   // breadcrumb's last item is where you already are.
   const offerIsCurrent =
-    route.campaignId === null && route.funnelKey === null && route.legKey === null;
+    route.campaignId === null && route.funnelKey === null;
   // The funnel this page is under, which the PATH does not always say.
   //
   // A campaign lives at `.../offers/:offerId/campaigns/:id` — off the funnel it was
@@ -203,16 +193,6 @@ export function HeaderPageContext() {
   // crumb resolve it from, never a second spelling.
   const funnelDef = funnelKey ? campaignFunnel(funnelKey as SalesFunnelKeyWire) : null;
   const funnelPath = `${offerPath}/funnels/${encodeURIComponent(funnelKey ?? "")}`;
-  // The ARROW this page is, off the funnel's own walk — the SAME list the funnel
-  // page lists its rows from and the same words a campaign is named with, so an
-  // arrow reads identically whether you opened it as a leg or as the campaign
-  // that performs it. A `legKey` naming no arrow of this funnel renders NO crumb
-  // rather than a guessed one, exactly as the funnel crumb does for a key the
-  // catalogue does not carry.
-  const leg =
-    route.legKey !== null
-      ? (funnelLegs(funnelDef).find((l) => l.toKey === route.legKey) ?? null)
-      : null;
 
   const offerLabel = offer ? (
     <>
@@ -261,21 +241,6 @@ export function HeaderPageContext() {
               It is a LINK while you are deeper than its own Overview, and the page
               you are on otherwise: a breadcrumb's last item is where you already are. */}
           <FunnelCrumb def={funnelDef} label={funnelKey} href={funnelPath} />
-        </>
-      )}
-
-      {leg !== null && (
-        <>
-          <Separator />
-          {/* The deepest thing the path names, so it is where you already are —
-              never a link. Its mark is the one the funnel's own leg rows draw. */}
-          <span
-            aria-current="page"
-            className="flex min-w-0 items-center gap-1.5 font-medium text-gray-800"
-          >
-            <FunnelLegMark fromKey={leg.fromKey} toKey={leg.toKey} size="xs" />
-            <span className="truncate">{leg.label}</span>
-          </span>
         </>
       )}
 

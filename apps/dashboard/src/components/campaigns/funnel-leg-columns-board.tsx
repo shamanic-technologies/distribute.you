@@ -238,14 +238,7 @@ export function FunnelLegColumnsBoard({
               <h3 className="min-w-0 text-sm font-medium text-gray-900">{col.leg.label}</h3>
             </header>
 
-            {col.cards.length === 0 ? (
-              // Stated rather than omitted: a missing column would tell a customer their
-              // funnel is shorter than it is.
-              <p className="rounded-xl border border-dashed border-gray-200 px-3 py-4 text-xs text-gray-500">
-                Nothing sells this step yet. You work it yourself for now.
-              </p>
-            ) : (
-              col.cards.map((card) => (
+            {col.cards.map((card) => (
                 <LegChannelTile
                   key={card.channel.featureSlug}
                   card={card}
@@ -254,8 +247,7 @@ export function FunnelLegColumnsBoard({
                   stepLabel={funnel.steps[col.leg.toIndex] ?? ""}
                   onOpen={() => setOpenSlug(card.channel.featureSlug)}
                 />
-              ))
-            )}
+            ))}
           </section>
         ))}
       </div>

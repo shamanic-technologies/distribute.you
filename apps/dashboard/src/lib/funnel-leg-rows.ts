@@ -1,10 +1,8 @@
-// A funnel, walked ARROW BY ARROW, with whoever performs each arrow beside it.
+// A funnel, walked ARROW BY ARROW, one row per campaign of ours performing an arrow.
 //
-// The campaigns table used to be one line per campaign, which shows a customer only the
-// legs WE run. A funnel is sold leg by leg and the legs we do not automate are worked at
-// the brand's side, so a table that lists two rows for a four-arrow funnel tells them
-// their funnel is two steps long. Every arrow gets a row; a row we run names its
-// campaign, and a row the brand does itself says so.
+// An arrow no channel of ours performs gets NO row (owner-decided 2026-09-25): those
+// rows named a team rather than a channel, nobody clicked them and nobody understood
+// them. Stating that a lead crossed such a step happens from the lead panel.
 //
 // Every FIGURE on a row is a served rung of `funnelSteps` (features-service#854): how
 // many reached that step, what reaching it cost, and what share of the step before
@@ -119,12 +117,9 @@ export interface FunnelLegRow<C> {
   leg: CampaignLeg;
   /** The served rung landing on this leg's step, or null when the producer states none. */
   step: FunnelStepRow | null;
-  /**
-   * The campaign performing this leg, or null when nobody here does. Null is the
-   * customer-operated case — the brand works that arrow itself — and it is a row like
-   * any other rather than an omission.
-   */
-  campaign: C | null;
+  /** The campaign performing this leg. Always one of ours: an arrow no campaign
+   *  performs is not drawn. */
+  campaign: C;
   /**
    * Whether another campaign performs this SAME arrow.
    *
@@ -162,11 +157,9 @@ export interface FunnelLegRow<C> {
  * `extra` rather than filed under an arrow it does not perform: naming the wrong arrow is
  * worse than showing the arrow as unclaimed.
  *
- * EVERY arrow gets a row. An arrow with several campaigns gets one row EACH — a brand can
- * fund two channels onto the same step, and the earlier shape gave the arrow to the first
- * and dumped the rest at the bottom of the table, which reads as campaigns the funnel has
- * no place for. An arrow with none gets its row anyway: that is the leg the brand works
- * itself, and it is the whole reason this walks arrows rather than listing campaigns.
+ * An arrow with several campaigns gets one row EACH — a brand can fund two channels onto
+ * the same step. An arrow with NO campaign of ours gets no row at all (owner-decided
+ * 2026-09-25): a row naming a team rather than a channel was read by nobody.
  *
  * ORDER: the funnel's own step order first, then cheapest per outcome. The step order is
  * what makes the table a funnel — a reader follows it top to bottom the way a lead moves
@@ -190,10 +183,7 @@ export function buildFunnelLegRows<C>({
     const wanted = LEAD_FIELD_BY_STEP_KEY[canonicalFunnelStepKey(leg.toKey)];
     const step = steps?.find((s) => s.leadField === wanted) ?? null;
     const onThisLeg = campaigns.filter((c) => c.toIndex === leg.toIndex);
-    if (onThisLeg.length === 0) {
-      rows.push({ leg, step, campaign: null, sharesArrow: false, arrowLead: true });
-      continue;
-    }
+    if (onThisLeg.length === 0) continue;
     const sharesArrow = onThisLeg.length > 1;
     for (const c of onThisLeg)
       rows.push({ leg, step, campaign: c.campaign, sharesArrow, arrowLead: false });
