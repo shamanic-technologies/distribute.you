@@ -138,10 +138,5 @@ describe("the call site", () => {
     expect(PAGE).toContain("`funnel:${brandId}:${offerId}:${funnelScopeKey}`");
     const API = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
     expect(API).toContain("`&funnelKey=${encodeURIComponent(scope.funnel.funnelKey)}`");
-    const FUNNEL = readFileSync(
-      join(__dirname, "../src/components/funnels/funnel-scoped-pages.tsx"),
-      "utf8",
-    );
-    expect(FUNNEL).not.toContain("not narrowed to");
   });
 });

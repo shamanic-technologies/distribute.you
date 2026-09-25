@@ -536,8 +536,8 @@ function leadReachedSomething(lead: z.infer<typeof LeadOutcomeSchema>): boolean 
  *
  * That array is what took the dashboard's instant paint away. The persisted cache
  * refuses any snapshot over `MAX_PERSISTED_ENTRY_BYTES` (2MB, persist-cache.ts), so
- * `brandRevenue` / `offerRevenue` / `offerFunnelRevenue` / `featureRevenue` were never
- * written to disk at all — and those four keys are what every money card, the
+ * `brandRevenue` / `offerRevenue` / `featureRevenue` were never
+ * written to disk at all — and those three keys are what every money card, the
  * Return-on-spend chart and the cost card read. Nothing errored: the reveal gates are
  * settle-based and correct, the network answered, the numbers were right. Every one of
  * those surfaces simply cold-skeletoned on EVERY load, on every brand, offer, funnel and

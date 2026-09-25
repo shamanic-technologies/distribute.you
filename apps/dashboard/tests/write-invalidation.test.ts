@@ -40,25 +40,24 @@ describe("invalidateRoots", () => {
 describe("LEAD_OUTCOME_ROOTS", () => {
   it("covers EVERY grain the same money is served under", () => {
     // The bug this closes: `featureRevenue` alone left the brand Overview, the offer
-    // money, the funnel walk and the per-campaign rows on the pre-write figure.
+    // money, the offer's outcome rows and the per-campaign rows on the pre-write figure.
     for (const root of [
       "featureRevenue",
       "featureRevenueByCampaign",
       "offerRevenue",
       "brandRevenue",
       "brandOfferMoney",
-      "offerFunnelRevenue",
+      "offerOutcomes",
     ]) {
       expect(LEAD_OUTCOME_ROOTS).toContain(root);
     }
   });
 
-  it("covers the per-audience costs, the stat row and both activity grains", () => {
+  it("covers the per-audience costs, the stat row and the activity grain", () => {
     for (const root of [
       "featureAudienceStats",
       "featureStats",
       "featurePipelineActivity",
-      "offerFunnelPipelineActivity",
     ]) {
       expect(LEAD_OUTCOME_ROOTS).toContain(root);
     }
@@ -89,8 +88,8 @@ describe("CAMPAIGN_MONEY_ROOTS", () => {
     expect(CAMPAIGN_MONEY_ROOTS).toContain("brandSpendableBudget");
   });
 
-  it("carries the campaign rows, the single campaign, the brand total and the funnels", () => {
-    for (const root of ["campaigns", "campaign", "brandDailyBudget", "offerFunnels"]) {
+  it("carries the campaign rows, the single campaign and the brand total", () => {
+    for (const root of ["campaigns", "campaign", "brandDailyBudget"]) {
       expect(CAMPAIGN_MONEY_ROOTS).toContain(root);
     }
   });

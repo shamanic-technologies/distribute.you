@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { listBrandOffers, getOfferFunnels } from "@/lib/api";
+import { listBrandOffers } from "@/lib/api";
 import {
   LANDING_RESOLVE_BUDGET_MS,
   hasLandingIntent,
-  landingFunnelHref,
   landingOfferHref,
   soleChildId,
 } from "@/lib/landing-drilldown";
@@ -17,18 +16,18 @@ import {
  * Carries a sign-in landing down to the deepest scope that has no choice left in it.
  *
  * Mounted by the Overview page, which serves BOTH the brand and the offer grain, so one
- * hook walks the whole thing: brand -> its sole offer -> that offer's sole funnel. See
+ * hook walks the whole thing: brand -> its sole offer, which is the end of the walk. See
  * `lib/landing-drilldown.ts` for why the walk is gated on a marker param rather than on
  * the bare URL.
  *
- * Both reads are keys the destination page ALREADY polls — `brandOffers` feeds the brand
- * Overview's Offers table, `offerFunnels` the offer Overview's Sales-funnels table — so
- * the walk costs no request and, both roots being in `PERSISTABLE_QUERY_ROOTS`, resolves
- * from disk on every visit after the first.
+ * The read is a key the destination page ALREADY polls — `brandOffers` feeds the brand
+ * Overview's Offers table — so the walk costs no request and, the root being in
+ * `PERSISTABLE_QUERY_ROOTS`, resolves from disk on every visit after the first. On an
+ * offer the walk has nothing left to do and only strips its marker.
  *
  * It counts the rows the page WOULD RENDER, deliberately: a page is only skipped when
  * the table it would have shown holds exactly one row, so drilling past a level can
- * never hide a second offer or a second funnel from the reader.
+ * never hide a second offer from the reader.
  *
  * Returns whether the caller should hold its render — and a held render is the route's
  * own `DashboardPageSkeleton`, never a blank: the walk is a navigation, so it should look
@@ -64,28 +63,15 @@ export function useLandingDrilldown({
     : null;
   const here = offerPath ?? brandPath;
 
-  // Only ever ONE of the two runs: the grain this page is mounted at.
+  // Only the brand grain has a level left to walk.
   const offersQ = useAuthQuery(
     ["brandOffers", brandId],
     () => listBrandOffers(brandId),
     { enabled: landing && !offerId && Boolean(brandId), ...pollOptions },
   );
-  const funnelsQ = useAuthQuery(
-    ["offerFunnels", brandId, offerId],
-    () => getOfferFunnels(offerId as string, brandId),
-    { enabled: landing && Boolean(offerId && brandId), ...pollOptions },
-  );
+  // An offer is the end of the walk: nothing to read, the marker is simply stripped.
+  const settled = offerId ? true : offersQ.data !== undefined || offersQ.isError;
 
-  const q = offerId ? funnelsQ : offersQ;
-  const settled = q.data !== undefined || q.isError;
-
-  // Long enough for the per-query persister's disk restore, far short of a cold
-  // features-service round trip. Not a retry and not a fallback: it decides which of two
-  // honest destinations this visit gets, and it decides it once.
-  //
-  // Scoped to the grain by `here`: the brand hands the landing to its offer, and that
-  // hop is a fresh question with its own answer to wait for. A single latch across both
-  // would spend the brand's budget and leave the offer none.
   const [gaveUpAt, setGaveUpAt] = useState<string | null>(null);
   const gaveUp = gaveUpAt === here;
   useEffect(() => {
@@ -94,21 +80,13 @@ export function useLandingDrilldown({
     return () => clearTimeout(t);
   }, [landing, settled, here]);
 
-  const next = !landing || !settled || gaveUp
+  const next = !landing || !settled || gaveUp || offerId
     ? null
-    : offerId
-      ? (() => {
-          const key = soleChildId(funnelsQ.data?.funnels, (f) => f.funnelKey);
-          return key ? landingFunnelHref(offerPath as string, key) : null;
-        })()
-      : (() => {
-          const id = soleChildId(offersQ.data?.offers, (o) => o.offerId);
-          return id ? landingOfferHref(brandPath, id) : null;
-        })();
+    : (() => {
+        const id = soleChildId(offersQ.data?.offers, (o) => o.offerId);
+        return id ? landingOfferHref(brandPath, id) : null;
+      })();
 
-  // Two destinations, and both are a `replace`: the marker is a resolution step, never a
-  // place to go back to. When the walk stops here, the replace strips the marker so a
-  // later refresh or bookmark of this URL is a plain visit.
   const target = landing && (settled || gaveUp) ? (next ?? here) : null;
   useEffect(() => {
     if (target) router.replace(target);

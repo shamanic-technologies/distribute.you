@@ -585,48 +585,17 @@ describe("Campaigns page (GA)", () => {
     expect(detail).not.toContain("isRevenueFeature");
   });
 
-  describe("under one funnel the board is the whole answer", () => {
-    /**
-     * The board above walks every arrow of the funnel, whoever performs it, and offers
-     * every channel that could work each one. A table beneath it walked the SAME arrows
-     * a second time — one screen answering one question twice — so under a funnel the
-     * board stands alone.
-     */
-    it("renders the table only when the route names NO funnel", () => {
-      expect(page).toContain("{!funnelKey && (");
+  describe("the list is the offer's own, with no funnel level under it", () => {
+    it("renders the table and reads no funnel", () => {
       expect(page).toContain("<CampaignsTable");
-    });
-
-    it("still lays out the funnel's arrows there", () => {
-      expect(page).toContain("{funnelKey && narrowedFunnel && (");
-      expect(page).toContain("FunnelLegColumnsBoard");
-    });
-
-    it("hands the table no walk", () => {
-      // The brand and offer lists span several funnels and have no single walk, so the
-      // prop is absent rather than passed `undefined` through a ternary that can only
-      // ever take one branch.
+      expect(page).not.toContain("funnelKey");
+      expect(page).not.toContain("FunnelLegColumnsBoard");
       expect(page).not.toContain("funnelSteps={");
     });
 
-    it("reads the funnel's body ONLY for the learning verdict, never to feed the table", () => {
-      // This guard used to ban the funnel read outright, because the only thing that had
-      // ever fetched it was the table's walk and that walk is gone. The read is back for
-      // a different reason and the ban would have hidden a real scope bug: arriving
-      // through a sales funnel narrows this list to that funnel's campaigns while the
-      // header deliberately keeps answering for the whole OFFER, so a band fed from the
-      // header's body would state the offer's countdown under a funnel's heading.
-      //
-      // What must stay true is the original intent: the funnel body feeds the VERDICT
-      // and nothing else, and the key is byte-equal to the one the funnel Overview
-      // already polls so walking down costs no request.
-      expect(page).toContain('["offerFunnelRevenue", brandId, offerId ?? "none", narrowedKey ?? "none"]');
-      expect(page).toContain("const learningPhase = funnelKey");
+    it("states the learning verdict of the scope its header answers for", () => {
+      expect(page).toContain("const learningPhase = brandRevenueQ.data?.learningPhase ?? null;");
       expect(page).toContain("phase={learningPhase}");
-      // Nothing else may read it: the table's columns and the header's money stay on
-      // the scope they answer for.
-      expect(page).not.toContain("funnelRevenueQ.data?.costEconomics");
-      expect(page).not.toContain("funnelRevenueQ.data?.totalPipelineUsd");
     });
   });
 

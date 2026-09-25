@@ -1,8 +1,9 @@
 // Signing in lands on the DEEPEST scope that has no choice left in it.
 //
 // The walk is: the last brand opened in this org (the `last-brand-{orgId}` cookie the
-// edge already reads), then that brand's offer if it sells exactly ONE, then that
-// offer's sales funnel if it is sold through exactly ONE. Each step skips a page whose
+// edge already reads), then that brand's offer if it sells exactly ONE — the end of the
+// walk, since an offer's page states its outcomes rather than a list of children. The
+// step skips a page whose
 // only content would be a list with a single row and a heading above it — the level
 // exists because a brand CAN sell several propositions, not because every brand does.
 //
@@ -62,13 +63,4 @@ export function soleChildId<T>(
 /** `/orgs/:orgId/brands/:brandId/offers/:offerId`, still resolving. */
 export function landingOfferHref(brandPath: string, offerId: string): string {
   return landingHref(`${brandPath}/offers/${encodeURIComponent(offerId)}`);
-}
-
-/**
- * `/orgs/:orgId/brands/:brandId/offers/:offerId/funnels/:funnelKey` — the end of the
- * walk, so it carries NO marker: a funnel sells through legs, and a leg is worked by
- * whoever performs it rather than being a level with a single obvious child.
- */
-export function landingFunnelHref(offerPath: string, funnelKey: string): string {
-  return `${offerPath}/funnels/${encodeURIComponent(funnelKey)}`;
 }

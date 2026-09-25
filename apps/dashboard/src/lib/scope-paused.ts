@@ -44,19 +44,6 @@ export function pausedByOffer(rows: readonly ControlRow[]): Map<string, boolean>
   return groupPaused(rows, (row) => row.offerId);
 }
 
-/**
- * The same verdict per SALES FUNNEL, keyed on the funnel the campaign's money is keyed
- * on (`scope.def.key`) rather than on the raw wire spelling — the wire carries two
- * spellings of every funnel, and matching the raw string would silently read empty for
- * whichever half the producer happens to be emitting.
- *
- * A campaign that predates the funnels names none, so it belongs to no funnel's verdict
- * rather than to whichever one the reader is looking at.
- */
-export function pausedByFunnel(rows: readonly ControlRow[]): Map<string, boolean> {
-  return groupPaused(rows, (row) => row.scope?.def.key ?? null);
-}
-
 function groupPaused(
   rows: readonly ControlRow[],
   keyOf: (row: ControlRow) => string | null,

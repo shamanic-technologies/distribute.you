@@ -5,7 +5,7 @@ import { listCampaignsByBrand } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { buildControlRows, type ControlRow } from "@/lib/campaign-controls";
-import { pausedByFunnel, pausedByOffer, scopeIsPaused } from "@/lib/scope-paused";
+import { pausedByOffer, scopeIsPaused } from "@/lib/scope-paused";
 
 /**
  * Whether the scope a surface is about is STOPPED, at whatever grain it is on.
@@ -63,22 +63,6 @@ export function usePausedByOffer(
   const { rows, settled } = useScopeControlRows(brandId, { enabled });
   const pausedByOfferId = useMemo(() => pausedByOffer(rows), [rows]);
   return { pausedByOfferId, settled };
-}
-
-/**
- * The same verdict for every SALES FUNNEL of one offer, for the funnels table.
- *
- * Keyed on the NORMALIZED funnel key, so a caller looks its row up through
- * `normalizeSalesFunnelKey` rather than on whichever spelling the wire happened to carry.
- */
-export function usePausedByFunnel(
-  brandId: string,
-  offerId: string,
-  { enabled = true }: { enabled?: boolean } = {},
-): { pausedByFunnelKey: Map<string, boolean>; settled: boolean } {
-  const { rows, settled } = useScopeControlRows(brandId, { offerId, enabled });
-  const pausedByFunnelKey = useMemo(() => pausedByFunnel(rows), [rows]);
-  return { pausedByFunnelKey, settled };
 }
 
 /**

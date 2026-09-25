@@ -7,9 +7,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { OfferMark } from "@/components/marks/offer-mark";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-import { campaignFunnel } from "@/lib/campaign-funnel";
-import type { SalesFunnelDef, SalesFunnelKeyWire } from "@/lib/sales-funnels";
 
 /**
  * WHERE you are, below the tenant: the offer, and the campaign under it.
@@ -39,8 +36,6 @@ export interface OfferRoute {
   offerId: string;
   /** Present only on `.../offers/:offerId/campaigns/:id`. */
   campaignId: string | null;
-  /** Present on `.../offers/:offerId/funnels/:funnelKey` and everything under it. */
-  funnelKey: string | null;
   /** Present only on `.../campaigns/:campaignId/workflows/:workflowDynastySlug`. */
   workflowDynastySlug: string | null;
 }
@@ -58,17 +53,11 @@ export function offerRouteFromPath(pathname: string): OfferRoute | null {
   if (p[0] !== "orgs" || p[2] !== "brands" || p[4] !== "offers") return null;
   const [, orgId, , brandId, , offerId, section, fourth, sixth, seventh] = p;
   if (!orgId || !brandId || !offerId) return null;
-  const funnelKey = section === "funnels" && fourth ? decodeURIComponent(fourth) : null;
   return {
     orgId,
     brandId,
     offerId,
     campaignId: section === "campaigns" && fourth ? fourth : null,
-    // Every page UNDER a funnel keeps the funnel crumb — its Overview, its
-    // campaigns, its leads, its audiences, its settings — because they are all that
-    // funnel's, and a crumb that vanished one level down would leave the deepest
-    // pages saying least about where they are.
-    funnelKey,
     // ONE WORKFLOW of that campaign — the deepest thing a campaign path names, one
     // level under the campaign, so a future level shift breaks here with a test on it
     // rather than in whichever component hardcoded an index.
@@ -100,33 +89,6 @@ const HomeIcon = () => (
     />
   </svg>
 );
-
-/** The funnel half of the crumb: its mark and its name, on one line like every
- *  other crumb. `xs` so it lines up with the offer tile beside it. */
-function FunnelCrumb({
-  def,
-  label,
-  href,
-}: {
-  def: SalesFunnelDef | null;
-  label: string;
-  href: string;
-}) {
-  const body = (
-    <>
-      {def && <SalesFunnelMark def={def} size="xs" />}
-      <span className="truncate">{def?.name ?? label}</span>
-    </>
-  );
-  return (
-    <Link
-      href={href}
-      className="flex min-w-0 items-center gap-1.5 font-medium text-gray-800 transition hover:text-gray-600"
-    >
-      {body}
-    </Link>
-  );
-}
 
 export function HeaderPageContext() {
   const pathname = usePathname() ?? "";
@@ -167,20 +129,7 @@ export function HeaderPageContext() {
   const campaign = campaignQ.data?.campaign ?? null;
   // The offer crumb is a LINK only while it is not the page you are on — a
   // breadcrumb's last item is where you already are.
-  const offerIsCurrent =
-    route.campaignId === null && route.funnelKey === null;
-  // The funnel this page is under, which the PATH does not always say.
-  //
-  // A campaign lives at `.../offers/:offerId/campaigns/:id` — off the funnel it was
-  // opened from — so a crumb gated on the path segment vanished exactly one level
-  // deeper than the list the campaign was picked in: the bar read
-  // `Offer / <leg> Via <channel>` and never named the funnel that leg is an arrow
-  // of. The campaign states its own funnel, in the SAME wire vocabulary the funnels
-  // route carries, so the crumb reads the same words and links to the same page
-  // whichever way you arrived. A campaign that states none (the pre-funnel campaign)
-  // renders no crumb rather than a guessed one, and the crumb simply arrives with
-  // the campaign read the bar already makes.
-  const funnelKey = route.funnelKey ?? campaign?.funnelKey ?? null;
+  const offerIsCurrent = route.campaignId === null;
   // Null only while the catalogue read is in flight — a settled read that does not
   // describe the slug falls back to the slug, which is a true name for it.
   const workflowName =
@@ -189,10 +138,6 @@ export function HeaderPageContext() {
       : (workflowsQ.data?.find((w) => w.workflowDynastySlug === route.workflowDynastySlug)
           ?.workflowDynastyName ??
         (workflowsQ.isPending && !workflowsQ.isError ? null : route.workflowDynastySlug));
-  // The funnel off the shared catalogue — the same one the table and the campaign
-  // crumb resolve it from, never a second spelling.
-  const funnelDef = funnelKey ? campaignFunnel(funnelKey as SalesFunnelKeyWire) : null;
-  const funnelPath = `${offerPath}/funnels/${encodeURIComponent(funnelKey ?? "")}`;
 
   const offerLabel = offer ? (
     <>
@@ -234,21 +179,11 @@ export function HeaderPageContext() {
         </Link>
       )}
 
-      {funnelKey !== null && (
-        <>
-          <Separator />
-          {/* A funnel is named as what it IS, with the mark the tables draw for it.
-              It is a LINK while you are deeper than its own Overview, and the page
-              you are on otherwise: a breadcrumb's last item is where you already are. */}
-          <FunnelCrumb def={funnelDef} label={funnelKey} href={funnelPath} />
-        </>
-      )}
-
       {route.campaignId !== null && (
         <>
           <Separator />
-          {/* A campaign is named as what it IS — the funnel it buys, through the
-              channel it buys it on — by the same component the Campaigns table
+          {/* A campaign is named as what it IS — the leg it performs, through the
+              channel it performs it on — by the same component the Campaigns table
               renders, marks included. */}
           {campaign ? (
             route.workflowDynastySlug !== null ? (

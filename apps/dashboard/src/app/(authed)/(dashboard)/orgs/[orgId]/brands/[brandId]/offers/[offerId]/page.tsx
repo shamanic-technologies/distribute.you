@@ -8,7 +8,7 @@ import BrandOverviewPage from "@/app/(authed)/(dashboard)/orgs/[orgId]/brands/[b
  * `EngagedLeadsPage({ campaignId })`): one page, an optional scope read off the
  * route, never a second copy that drifts. The component reads `offerId` from
  * `useParams()`, so mounting it here is what scopes every read to this offer and
- * swaps the brand's Offers list for this offer's funnels and audiences.
+ * swaps the brand's Offers list for this offer's outcomes and audiences.
  *
  * It states no Learning accent of its own: the component already reads in the brand's
  * PRIMARY, because the brand grain reads in it too and this file renders the brand

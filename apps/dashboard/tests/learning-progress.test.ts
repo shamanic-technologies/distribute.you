@@ -281,18 +281,10 @@ describe("the band divides nothing", () => {
 
 describe("every surface feeds the band from its OWN scope's body", () => {
   // A band fed from a wider read states a wider scope's countdown under a narrower
-  // name. The Campaigns list is the one that can drift: arrive through a sales funnel
-  // and it narrows to that funnel's campaigns while its header keeps answering for the
-  // whole offer, so the band needs the funnel's own body there.
-  it("the funnel Overview reads its funnel's body", () => {
-    const page = src("components/funnels/funnel-overview-page.tsx");
-    expect(page).toContain("phase={data?.learningPhase ?? null}");
-  });
-
-  it("the campaigns list narrows to the funnel when the route names one", () => {
+  // name.
+  it("the campaigns list reads the scope its header answers for", () => {
     const page = src("components/campaigns/campaigns-page.tsx");
-    expect(page).toContain('["offerFunnelRevenue", brandId, offerId ?? "none", narrowedKey ?? "none"]');
-    expect(page).toContain("const learningPhase = funnelKey");
+    expect(page).toContain("const learningPhase = brandRevenueQ.data?.learningPhase ?? null;");
     expect(page).toContain("phase={learningPhase}");
   });
 

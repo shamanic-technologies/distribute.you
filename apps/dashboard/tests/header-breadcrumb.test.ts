@@ -49,20 +49,10 @@ describe("the top bar names where you are below the tenant", () => {
     expect(src).not.toContain('|| "Campaign"');
   });
 
-  // A campaign lives at `.../offers/:id/campaigns/:id` — OFF the funnel it was
-  // opened from — so a crumb gated on the path segment vanished exactly one level
-  // deeper than the list the campaign was picked in: the bar read
-  // `Offer / <leg> Via <channel>` and never named the funnel the leg belongs to.
-  // The campaign states its own funnel, in the SAME wire vocabulary the funnels
-  // route carries, so the crumb reads the same words and links to the same page
-  // whichever way you arrived.
-  it("names the funnel on a campaign page, off the campaign's own key", () => {
-    expect(src).toContain("route.funnelKey ?? campaign?.funnelKey ?? null");
-    // The gate is the RESOLVED key, never the path segment — that distinction is
-    // the whole fix.
-    expect(src).toContain("{funnelKey !== null && (");
-    expect(src).not.toContain("{route.funnelKey !== null && (");
-    expect(src).toContain("funnels/${encodeURIComponent(funnelKey");
+  // The funnel is no longer a page, so the bar names no funnel: Offer / Campaign.
+  it("names no funnel crumb", () => {
+    expect(src).not.toContain("funnel");
+    expect(src).not.toContain("/funnels/");
   });
 
   // Every tile in the bar is the SAME size, and it holds by construction.
@@ -98,15 +88,14 @@ describe("the top bar names where you are below the tenant", () => {
   });
 });
 /**
- * The funnel leg page is GONE (owner-decided 2026-09-25): an arrow no channel of ours
- * performs is hidden from every customer surface, so there is no leg route for the
- * bar to name.
+ * The funnel leg page is GONE (owner-decided 2026-09-25), and so is the funnel level
+ * above it: the bar names the offer and, under it, the campaign.
  */
 describe("no leg crumb", () => {
   it("parses no `legs` segment and draws no leg crumb", () => {
     expect(src).not.toContain("legKey");
     expect(src).not.toContain('"legs"');
     expect(src).not.toContain("<FunnelLegMark");
-    expect(src).toContain("route.campaignId === null && route.funnelKey === null;");
+    expect(src).toContain("const offerIsCurrent = route.campaignId === null;");
   });
 });

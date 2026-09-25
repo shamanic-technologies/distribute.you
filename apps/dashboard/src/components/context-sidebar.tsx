@@ -11,8 +11,6 @@ import { formatCount } from "@/lib/format-number";
 import { TenantSwitcher } from "@/components/tenant-switcher";
 import { RewardsCard } from "@/components/invite/rewards-card";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { campaignFunnel } from "@/lib/campaign-funnel";
-import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { type Maturity } from "@/lib/feature-gates";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -216,12 +214,6 @@ const OffersIcon = () => (
   </svg>
 );
 
-const FunnelsIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18l-7 8v5l-4 2v-7L3 5z" />
-  </svg>
-);
-
 const CampaignsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
@@ -245,12 +237,11 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "org" | "brand" | "offer" | "funnel" | "campaign";
+  type: "app" | "org" | "brand" | "offer" | "campaign";
   orgId?: string;
   brandId?: string;
   offerId?: string;
   campaignId?: string;
-  funnelKey?: string;
 }
 
 /**
@@ -273,13 +264,6 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
         // "Campaigns" nav entry highlights.
         if (segments[6] === "campaigns" && segments[7]) {
           return { type: "campaign", orgId, brandId, offerId, campaignId: segments[7] };
-        }
-        // Funnel LEVEL — `.../funnels/[funnelKey]` is the level between the offer and
-        // a campaign: an offer sells through funnels, and a campaign buys one LEG of
-        // one of them. It gets its own sidebar so the crumb names the funnel you are
-        // standing in rather than leaving it to the page heading.
-        if (segments[6] === "funnels" && segments[7]) {
-          return { type: "funnel", orgId, brandId, offerId, funnelKey: segments[7] };
         }
         return { type: "offer", orgId, brandId, offerId };
       }
@@ -506,79 +490,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 // (campaign-filtered pages); Strategy + Audiences are campaign-scoped views of the
 // brand's shared config (a campaign inherits what campaign-service does not store
 // per campaign). GA: shown on every revenue feature, no staff gate, no beta badge.
-/**
- * ONE sales funnel, the level between an offer and a campaign.
- *
- * An offer sells through funnels and a campaign buys one LEG of one of them, so this
- * is where a return exists and the campaigns beneath it are what produced it. The
- * sidebar names the funnel, so a reader standing in it knows which funnel they
- * are looking at without reading the page heading.
- */
-function FunnelLevelSidebar({ orgId, brandId, offerId, funnelKey, pathname }: {
-  orgId: string;
-  brandId: string;
-  offerId: string;
-  funnelKey: string;
-  pathname: string;
-}) {
-  const featureSlug = useSoleFeatureSlug();
-  const revenueOk = isRevenueFeature(featureSlug);
-  const offerPath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
-  const funnelBase = `${offerPath}/funnels/${funnelKey}`;
-
-  // The funnel does NOT name itself here: the top bar's breadcrumb does, the way it
-  // names the campaign one level down. Two places naming the same thing is how they
-  // come to disagree, and a sidebar that repeats the crumb wastes the one row a
-  // reader scans for where they can GO.
-  const items: SidebarItem[] = revenueOk
-    ? [
-        { id: "funnel-overview", label: "Overview", href: funnelBase, icon: <OverviewIcon /> },
-        {
-          id: "funnel-campaigns",
-          label: "Campaigns",
-          href: `${funnelBase}/campaigns`,
-          icon: <CampaignsIcon />,
-        },
-        { id: "funnel-leads", label: "Leads", href: `${funnelBase}/leads`, icon: <LeadsIcon /> },
-        {
-          id: "funnel-audiences",
-          label: "Audiences",
-          href: `${funnelBase}/audiences`,
-          icon: <AudiencesIcon />,
-        },
-      ]
-    : [];
-
-  return (
-    <SidebarSection
-      topSlot={<TenantSwitcher />}
-      // Configuration is not a place you work, so it is anchored at the bottom —
-      // exactly like Campaign Settings in the campaign sidebar and Offer Settings in
-      // the offer one.
-      footer={
-        <div className="border-t border-gray-100">
-          <div className="p-2 space-y-0.5">
-            <SidebarLink
-              item={{
-                id: "funnel-settings",
-                label: "Sales Funnel Settings",
-                href: `${funnelBase}/settings`,
-                icon: <SettingsIcon />,
-              }}
-              isActive={pathname === `${funnelBase}/settings`}
-            />
-          </div>
-          <RewardsCard />
-        </div>
-      }
-    >
-      {items.map((item) => (
-        <SidebarLink key={item.id} item={item} isActive={pathname === item.href} />
-      ))}
-    </SidebarSection>
-  );
-}
-
 function CampaignLevelSidebar({ orgId, brandId, offerId, campaignId, pathname }: {
   orgId: string;
   brandId: string;
@@ -713,10 +624,10 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
     ...(revenueOk
       ? [
           {
-            id: "offer-funnels",
-            label: "Sales funnels",
-            href: `${basePath}/funnels`,
-            icon: <FunnelsIcon />,
+            id: "offer-campaigns",
+            label: "Campaigns",
+            href: `${basePath}/campaigns`,
+            icon: <CampaignsIcon />,
           } satisfies SidebarItem,
         ]
       : []),
@@ -808,16 +719,6 @@ export function ContextSidebar() {
           orgId={level.orgId!}
           brandId={level.brandId!}
           offerId={level.offerId!}
-          pathname={pathname}
-        />
-      );
-    case "funnel":
-      return (
-        <FunnelLevelSidebar
-          orgId={level.orgId!}
-          brandId={level.brandId!}
-          offerId={level.offerId!}
-          funnelKey={level.funnelKey!}
           pathname={pathname}
         />
       );

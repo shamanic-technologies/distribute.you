@@ -6,7 +6,7 @@ import {
   daysSinceChanged,
   dueCountForOffer,
   formatReward,
-  rewardTaskFor,
+  dueTaskForOffer,
   type RewardTask,
 } from "../src/lib/reward-tasks";
 
@@ -38,30 +38,19 @@ function task(over: Partial<RewardTask> = {}): RewardTask {
   };
 }
 
-/** The two spellings of one funnel key, as `normalizeSalesFunnelKey` maps them. */
-const normalize = (k: string) =>
-  ({ visit_signup: "website_purchases", website_purchases: "website_purchases" })[k] ?? k;
-
-describe("rewardTaskFor", () => {
-  it("finds this funnel's task whichever spelling either side used", () => {
+describe("dueTaskForOffer", () => {
+  it("finds a DUE task on this offer, whichever funnel it belongs to", () => {
     const t = task();
-    // The producer sent the canonical key; the route carries the legacy one.
-    expect(rewardTaskFor([t], "o1", "visit_signup", normalize)).toBe(t);
-    expect(rewardTaskFor([t], "o1", "website_purchases", normalize)).toBe(t);
+    expect(dueTaskForOffer([t], "o1")).toBe(t);
   });
 
-  it("never returns another OFFER's task for the same funnel", () => {
-    // A brand sells one funnel through several offers; matching on the funnel
-    // alone would put a sibling offer's task under this one's name.
-    const mine = task({ scope: { ...task().scope, offerId: "o2" } });
-    expect(rewardTaskFor([mine], "o1", "website_purchases", normalize)).toBeNull();
+  it("never returns another OFFER's task", () => {
+    expect(dueTaskForOffer([task({ scope: { ...task().scope, offerId: "o2" } })], "o1")).toBeNull();
   });
 
-  it("answers null for a funnel the ledger does not carry", () => {
-    // The ordinary case for a funnel switched off: nobody can refresh numbers
-    // on a funnel that is off, so it is not listed.
-    expect(rewardTaskFor([task()], "o1", "reply_meeting", normalize)).toBeNull();
-    expect(rewardTaskFor([], "o1", "website_purchases", normalize)).toBeNull();
+  it("answers null when nothing is due", () => {
+    expect(dueTaskForOffer([task({ due: false })], "o1")).toBeNull();
+    expect(dueTaskForOffer([], "o1")).toBeNull();
   });
 });
 
@@ -162,51 +151,38 @@ describe("the band", () => {
 });
 
 describe("the call sites", () => {
-  const funnel = read("components/funnels/funnel-overview-page.tsx");
-  const offers = read("components/funnels/offer-funnels-page.tsx");
+  // The offer Overview is the brand page component, scoped by the route.
+  const offer = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
   const pill = read("components/rewards/reward-credits-pill.tsx");
   const hook = read("lib/use-reward-tasks.ts");
   const api = read("lib/api.ts");
 
-  it("is MOUNTED on the funnel Overview — a band nothing renders is the feature absent", () => {
-    expect(funnel).toContain("<RewardTaskBand");
-    expect(funnel).toContain("task={rewardTask}");
+  it("is MOUNTED on the offer Overview — a band nothing renders is the feature absent", () => {
+    expect(offer).toContain("<RewardTaskBand");
+    expect(offer).toContain("task={rewardTask}");
+    expect(offer).toContain("settingsHref={`${basePath}/settings`}");
   });
 
   it("sits ABOVE the learning band, because it is the actionable one", () => {
-    expect(funnel.indexOf("<RewardTaskBand")).toBeLessThan(funnel.indexOf("<ScopeLearningBand"));
+    expect(offer.indexOf("<RewardTaskBand")).toBeLessThan(offer.lastIndexOf("<ScopeLearningBand"));
   });
 
   it("selects the task through the shared rule, never a local match", () => {
-    expect(funnel).toContain("rewardTaskFor(");
-    expect(funnel).not.toMatch(/tasks.*\.find\(/);
-  });
-
-  it("normalises the funnel key on BOTH sides through the one map", () => {
-    // Two spellings exist on the wire; a raw comparison silently matches nothing.
-    expect(funnel).toContain("normalizeSalesFunnelKey(k as SalesFunnelKeyWire)");
-    expect(offers).toContain("normalizeSalesFunnelKey(k as SalesFunnelKeyWire)");
+    expect(offer).toContain("dueTaskForOffer(");
+    expect(offer).not.toMatch(/tasks.*\.find\(/);
   });
 
   it("reads ONE brand-wide key everywhere, so no two surfaces can disagree", () => {
     expect(hook).toContain('["rewardTasks", brandId ?? "none"]');
-    for (const src of [funnel, offers, pill]) expect(src).toContain("useBrandRewardTasks(");
+    for (const src of [offer, pill]) expect(src).toContain("useBrandRewardTasks(");
     // Nobody may build the key by hand beside the hook.
-    for (const src of [funnel, offers, pill]) expect(src).not.toContain('"rewardTasks",');
+    for (const src of [offer, pill]) expect(src).not.toContain('"rewardTasks",');
   });
 
   it("badges the top-bar pill only on a BRAND route, and only when something is due", () => {
     // A count of tasks the reader cannot act on from where they are is a nag.
     expect(pill).toContain('pathname.split("/")[4] === "brands"');
     expect(pill).toContain("{dueCount > 0 && (");
-  });
-
-  it("states the offer's children as a marker plus a way in, not their tasks", () => {
-    expect(offers).toContain("rewardDueFor(row.funnelKey)");
-    expect(offers).toContain("1 due");
-    // No day count, no reward amount, no dueAt restated on the parent's row.
-    expect(offers).not.toContain("daysSinceChanged");
-    expect(offers).not.toContain("formatReward");
   });
 
   it("reads the gateway path api-service actually deployed", () => {

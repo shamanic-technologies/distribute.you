@@ -53,7 +53,6 @@ describe("every pipeline-activity reader states a timezone", () => {
   const sites: Array<[string, string]> = [
     ["brand Overview", "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"],
     ["campaign Overview", "components/campaigns/campaign-overview-page.tsx"],
-    ["funnel Overview", "components/funnels/funnel-overview-page.tsx"],
   ];
 
   for (const [name, path] of sites) {

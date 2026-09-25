@@ -300,14 +300,13 @@ function AudienceRow({ audience }: { audience: LeadCampaignAudience }) {
   const brandId = params.brandId as string;
   // Present on the offer and campaign routes, absent on the brand one.
   const routeOfferId = params.offerId as string | undefined;
-  // `id` names a campaign and `funnelKey` a funnel, each present only on their route.
+  // `id` names a campaign, present only on its own route.
   const campaignId = params.id as string | undefined;
-  const funnelKey = params.funnelKey as string | undefined;
   // The audience opens at the grain the reader is standing on, and the rule lives in
   // ONE place both panel surfaces read: the audience's own offer decides WHICH offer
   // (a link to an entity is built from where that entity lives, never from the route
   // — building it from the route sent every brand-level reader to a 404), and the
-  // route's own campaign/funnel decides how DEEP, so a reader is not dropped back to
+  // route's own campaign decides how DEEP, so a reader is not dropped back to
   // the offer. No offer resolvable ⟹ NO link: some audiences predate the offer level
   // and have no page to open, and a link to a 404 is worse than a row that simply
   // states the audience. Same render while the lookup is in flight — we do not claim
@@ -319,7 +318,6 @@ function AudienceRow({ audience }: { audience: LeadCampaignAudience }) {
     audienceOfferId: audience.offerId,
     routeOfferId,
     campaignId,
-    funnelKey,
   });
   return (
     <div className="mt-3 border-t border-gray-200 pt-3">

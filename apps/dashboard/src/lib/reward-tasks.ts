@@ -56,26 +56,11 @@ export type RewardTask = {
 export type RewardRollupEntry = { offerId: string; dueCount: number; taskCount: number };
 
 /**
- * This funnel's task, out of the brand's set.
- *
- * `normalize` maps both sides onto one spelling — pass
- * `normalizeSalesFunnelKey`. A funnel the ledger does not carry answers null,
- * which is the ordinary case for a funnel that is switched off (client-service
- * lists only active ones, because nobody can refresh numbers on a funnel that
- * is off).
+ * The first task DUE on this offer, whichever of its funnels it belongs to — the one
+ * thing to do on the offer's own page. Null when nothing is due, so the band says nothing.
  */
-export function rewardTaskFor(
-  tasks: readonly RewardTask[],
-  offerId: string,
-  funnelKey: string,
-  normalize: (key: string) => string,
-): RewardTask | null {
-  const wanted = normalize(funnelKey);
-  for (const task of tasks) {
-    if (task.scope.offerId !== offerId) continue;
-    if (normalize(task.scope.funnelKey) === wanted) return task;
-  }
-  return null;
+export function dueTaskForOffer(tasks: readonly RewardTask[], offerId: string): RewardTask | null {
+  return tasks.find((t) => t.scope.offerId === offerId && t.due) ?? null;
 }
 
 /**

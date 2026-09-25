@@ -5,7 +5,6 @@ import {
   LANDING_PARAM,
   LANDING_RESOLVE_BUDGET_MS,
   hasLandingIntent,
-  landingFunnelHref,
   landingHref,
   landingOfferHref,
   soleChildId,
@@ -70,29 +69,14 @@ describe("soleChildId — a list of one has no decision in it", () => {
 describe("the hrefs the walk hands down", () => {
   const brandPath = "/orgs/o1/brands/b1";
 
-  it("keeps the marker on the offer hop — the walk continues there", () => {
+  it("keeps the marker on the offer hop, which the offer page then strips", () => {
     expect(landingOfferHref(brandPath, "off_1")).toBe(
       "/orgs/o1/brands/b1/offers/off_1?land=1",
     );
   });
 
-  it("drops the marker at the funnel — that is where the walk stops", () => {
-    expect(landingFunnelHref(`${brandPath}/offers/off_1`, "reply_meeting")).toBe(
-      "/orgs/o1/brands/b1/offers/off_1/funnels/reply_meeting",
-    );
-    expect(
-      hasLandingIntent(
-        new URLSearchParams(
-          landingFunnelHref(`${brandPath}/offers/off_1`, "reply_meeting").split("?")[1] ??
-            "",
-        ),
-      ),
-    ).toBe(false);
-  });
-
   it("encodes ids so an odd key cannot break the path", () => {
     expect(landingOfferHref(brandPath, "a/b")).toContain("a%2Fb");
-    expect(landingFunnelHref(`${brandPath}/offers/off_1`, "a b")).toContain("a%20b");
   });
 });
 
@@ -153,8 +137,7 @@ describe("where the walk is set, and where it is honoured", () => {
 
   it("picking an OFFER names its own destination, so it carries no marker", () => {
     // The walk exists to skip a level with no choice in it. An offer pick has already
-    // made that choice, and a funnel is worked leg by leg rather than being a level
-    // with one obvious child.
+    // made that choice, and the offer is the end of the walk.
     const hook = read("lib/use-tenant-switcher.ts");
     expect(hook).toContain(
       "router.push(`/orgs/${orgId}/brands/${brandId}/offers/${newOfferId}`)",
@@ -163,12 +146,12 @@ describe("where the walk is set, and where it is honoured", () => {
 
   it("the walk counts the rows the page would show, on the keys it already polls", () => {
     const hook = read("lib/use-landing-drilldown.ts");
-    // `brandOffers` is the brand Overview's Offers table; `offerFunnels` is the offer
-    // Overview's Sales-funnels table. Same keys → no request, and the walk can never
-    // skip a level whose table holds a row the reader has not seen.
+    // `brandOffers` is the brand Overview's Offers table. Same key → no request, and the
+    // walk can never skip a level whose table holds a row the reader has not seen.
     expect(hook).toContain('["brandOffers", brandId]');
-    expect(hook).toContain('["offerFunnels", brandId, offerId]');
     // Reveal on SETTLE: an errored read stops the walk instead of holding forever.
-    expect(hook).toContain("q.data !== undefined || q.isError");
+    expect(hook).toContain("offersQ.data !== undefined || offersQ.isError");
+    // An offer is the end of the walk: nothing is read there, only the marker stripped.
+    expect(hook).not.toContain("offerFunnels");
   });
 });

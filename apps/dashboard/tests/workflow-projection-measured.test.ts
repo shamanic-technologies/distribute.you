@@ -175,17 +175,6 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `measured.fromReached` to say how many leads a measured rate rests on. Not a
       // projection row and not a flag.
       "lib/brand-conversion-rates.ts",
-      // A DIFFERENT producer's field under the same name: features-service's
-      // channel-funnel price list marks each (channel, funnel) pair `measured`, meaning
-      // the fleet has spent enough through it to state a price. Nothing to do with a
-      // workflow projection row, so this file is not a second copy of the check below —
-      // it just happens to read a word the scan cannot tell apart. A NEW file matching
-      // still fails, which is the point.
-      "lib/funnel-leg-price.ts",
-      // Same producer, same field, one grain up: the offer's funnel catalogue reads
-      // `result.measured` off that very price list to decide whether the fleet has a
-      // figure for a funnel nobody here sells yet.
-      "lib/offer-funnel-catalogue.ts",
       // A THIRD producer's field under the same name: features-service's public
       // return-on-spend reads mark a (channel, funnel) pair and a whole channel
       // `measured`, meaning enough brands past the spend floor to state a median.

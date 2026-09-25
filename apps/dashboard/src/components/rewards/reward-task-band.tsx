@@ -4,7 +4,7 @@ import Link from "next/link";
 import { daysSinceChanged, formatReward, type RewardTask } from "@/lib/reward-tasks";
 
 /**
- * The one thing to DO on this funnel, and what doing it pays.
+ * The one thing to DO on this offer, and what doing it pays.
  *
  * ## It renders ONLY when there is something to do
  *
@@ -31,7 +31,7 @@ import { daysSinceChanged, formatReward, type RewardTask } from "@/lib/reward-ta
  *
  * ## Colour
  *
- * The brand ramp, like every other accent on a funnel page (that page states
+ * The brand ramp, like every other accent on an offer page (that page states
  * `tone="primary"`). Never a literal hex: `:root[data-brand-tint]` re-declares
  * the ramp at the open brand's hue, so the band is the customer's colour. Every
  * class it wears carries an `html.dark` AND an `html.dark[data-brand-tint]`

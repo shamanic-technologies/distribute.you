@@ -10,10 +10,10 @@ import {
 } from "./leads-server-page";
 import type { PublicChannelLegsWire } from "./stated-campaign-leg";
 import type { PublishedChannelTerms } from "./channel-minimums";
-import type { ChannelFunnelEconomicsPair } from "./funnel-leg-price";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
+import { parseOfferOutcomes, type OfferOutcomes } from "./offer-outcomes";
 import type {
   WorkflowCatalogueRow,
   WorkflowDynastyMembership,
@@ -2693,127 +2693,6 @@ export async function getPublicChannelsSignedOut(): Promise<PublicChannelWire[]>
   return parsed.data.channels;
 }
 
-/**
- * What each (channel x sales funnel) pair costs, per step, across the whole fleet.
- *
- * `GET /public/channel-funnel-economics` is features-service's own price list: it
- * publishes, for every pair it can measure, the cost of reaching each step of that
- * funnel through that channel. Public, no auth, no org scope — it is a catalogue price,
- * not this brand's spend, which is exactly what a card offering a channel nobody has
- * funded needs to state.
- *
- * `measured: false` is a first-class answer (`no_spend_recorded` for a channel the fleet
- * has never run) and carries no economics at all. It is NOT a zero: a consumer must say
- * nothing rather than state a price we have not measured.
- *
- * Declared NARROW on purpose, like `getPublicChannels` beside it: it carries what a
- * price tag and a funnel card read (the per-step costs, the pair's return, the sale
- * price and the brand count behind them) and nothing else. The per-step milestone flags
- * and the rest of the evidence block are left undeclared rather than mirrored.
- */
-const ChannelFunnelEconomicsSchema = z.object({
-  pairs: z.array(
-    z.object({
-      channelSlug: z.string(),
-      funnelKey: z.string(),
-      funnelSteps: z.array(z.string()),
-      result: z.object({
-        measured: z.boolean(),
-        economics: z
-          .object({
-            steps: z.array(z.object({ costPerStepUsd: z.number().nullable() })),
-            // The pair's own return and the price it rests on, read by the offer's
-            // funnel catalogue. `.nullish()` matches the producer: a pair can be
-            // measured at the step grain and carry no priced sale, and a brand count
-            // is stated only where there is one.
-            returnPerDollar: z.number().nullish(),
-            costPerSaleUsd: z.number().nullish(),
-            evidence: z.object({ brandCount: z.number().nullish() }).nullish(),
-          })
-          .nullish(),
-      }),
-    }),
-  ),
-});
-
-/** GET /public/channel-funnel-economics — the fleet's price per (channel, funnel) step. */
-export async function getChannelFunnelEconomics(
-  token?: string,
-): Promise<ChannelFunnelEconomicsPair[]> {
-  const raw = await apiCall<unknown>(`/public/channel-funnel-economics`, { token });
-  const parsed = ChannelFunnelEconomicsSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getChannelFunnelEconomics: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getChannelFunnelEconomics: invalid response shape");
-  }
-  return parsed.data.pairs;
-}
-
-/**
- * What the MIDDLE client actually got through one sales funnel, per acquisition channel.
- *
- * `GET /public/features/funnel-return-on-spend` answers a different question from the
- * price list above it, and the two must never be relabelled as each other. That one is a
- * PROJECTION: a pooled unit price run through the fleet's MEAN declared conversion rates
- * and its MEAN lifetime revenue, which describes no client in particular and in
- * production differs from what clients get by an order of magnitude. This one is
- * REALIZED and per BRAND: each data point is one client's own expected pipeline through
- * that funnel over what that client committed on that channel, which is byte-same as the
- * ROI that brand reads on its own dashboard, and the statistic across them is the MEDIAN.
- *
- * The population is brands that declared the funnel and are past a spend floor, so a
- * client who has barely started cannot move it. A pair with too few brands behind it
- * answers `measured: false` with a reason, never a figure taken over a wider population
- * to make one appear, so a consumer states that shortfall rather than a number.
- *
- * Declared NARROW, like the two public readers above it: the identity of the pair, the
- * verdict, and the two medians a card renders. The distribution (p25 / p75 / min / max)
- * and the snapshot timestamp are the producer's own and are deliberately not mirrored.
- *
- * `measured` is REQUIRED, and every figure beside it is required-and-nullable, so those
- * are `.nullish()` rather than `.optional()`: the producer MEANS to send the nulls on an
- * unmeasured pair, and `.optional()` parses every body except the ones they exist for.
- */
-const FleetFunnelReturnSchema = z.object({
-  pairs: z.array(
-    z.object({
-      channelSlug: z.string(),
-      channelName: z.string().nullish(),
-      funnelKey: z.string(),
-      measured: z.boolean(),
-      reason: z.string().nullish(),
-      brandCount: z.number().nullish(),
-      medianReturnPerDollar: z.number().nullish(),
-      medianCostPerPaidClientUsd: z.number().nullish(),
-      costPerPaidClientBrandCount: z.number().nullish(),
-    }),
-  ),
-});
-
-/** One (channel x funnel) pair's fleet median, as narrowly as this app reads one. */
-export type FleetFunnelReturnPair = z.infer<
-  typeof FleetFunnelReturnSchema
->["pairs"][number];
-
-/** GET /public/features/funnel-return-on-spend — the fleet median per pair. */
-export async function getFleetFunnelReturn(
-  token?: string,
-): Promise<FleetFunnelReturnPair[]> {
-  const raw = await apiCall<unknown>(`/public/features/funnel-return-on-spend`, { token });
-  const parsed = FleetFunnelReturnSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFleetFunnelReturn: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getFleetFunnelReturn: invalid response shape");
-  }
-  return parsed.data.pairs;
-}
-
 /** GET /brands/:brandId/funnel-budgets — the ceilings, plus the total they sum to. */
 export async function getBrandFunnelBudgets(
   brandId: string,
@@ -4591,125 +4470,20 @@ export async function getFeatureRevenue(
 }
 
 /**
- * An offer's money, ONE ROW PER SALES FUNNEL.
- *
- * The grain under the offer, and the reason it exists: the product sells a funnel one
- * LEG at a time, so a campaign buys a single link and has no return of its own — the
- * lifetime revenue sits at the END of the funnel's steps. The funnel is the finest
- * scope whose money divides into a return at all.
- *
- * ROWS DO NOT SUM TO THE OFFER, deliberately. Money adds (a run belongs to exactly one
- * funnel) but people do not (a lead worked through two funnels is ONE lead to the offer
- * and sits in both rows) and no ratio does. The offer's own read stays the number to
- * trust for "what did this offer do", and `unattributedCampaignIds` names the campaigns
- * whose spend is in the offer and in no row.
- *
- * ⚠️ `costCoverage` states which dollars the cost is made of. It reads
- * `platform_spend_only` today: a funnel whose last legs are worked by the customer's own
- * team reads CHEAPER here than it truly is, because what those legs cost THEM is
- * declared per lead against lead-service and this read does not yet fold it in. The
- * field is on the wire precisely so a consumer states the gap rather than presenting an
- * optimistic return as the whole answer.
+ * An offer's OUTCOMES: one row per outcome it buys, and under each the leg × channel
+ * rows serving it in parallel. The model and every rule behind reading it live in
+ * `lib/offer-outcomes.ts`; this only asks, on the NET basis every money read here uses.
+ * Rows are not additive, so no consumer prints a total of them.
  */
-/**
- * A channel carrying a funnel, as features-service states it: the feature slug it IS,
- * and the campaigns of this offer running on it.
- *
- * It carries NO display name. A channel's name is resolved from the catalogue this app
- * already fetches, which is where every other surface reads it — asking the producer
- * for a second copy of it is how the two come to disagree.
- */
-const OfferFunnelChannelSchema = z.object({
-  featureSlug: z.string(),
-  campaignIds: z.array(z.string()),
-});
-/**
- * What the CUSTOMER states their own legs cost them. Never charged, in no ledger of
- * ours, and it never reaches billing.
- *
- * NULL means the statements could not be READ. Zeros mean nobody has stated one. Two
- * different things a reader acts on differently, so they are never collapsed.
- */
-const CustomerDeclaredCostSchema = z.object({
-  declaredCostUsd: z.number(),
-  /** How many statements carried a cost. A stated zero is an answer and is counted. */
-  statedCount: z.number(),
-  /** How many did not, because nobody was ever asked. Above 0 = cannot be fully costed. */
-  unstatedCount: z.number(),
-});
-const OfferFunnelRowSchema = z.object({
-  funnelKey: z.string(),
-  name: z.string(),
-  steps: z.array(z.string()),
-  campaignIds: z.array(z.string()),
-  channels: z.array(OfferFunnelChannelSchema),
-  /** False leaves every money-derived figure null and names the missing ingredient. */
-  priced: z.boolean(),
-  unpricedReason: z.string().nullable(),
-  headline: z.object({ totalPipelineUsd: z.number().nullable() }),
-  /** What the customer was CHARGED. Reported apart, never blended into the block below. */
-  costEconomics: z.object({
-    committedCostUsd: z.number().optional(),
-    costOfAcquisitionPct: z.number().nullable(),
-    roiMultiple: z.number().nullable(),
-    costPerAcquisitionUsd: z.number().nullish(),
-  }),
-  customerCost: CustomerDeclaredCostSchema.nullish(),
-  /** Which dollars THIS ROW's figures are made of. */
-  costCoverage: z.string().nullish(),
-  /**
-   * The funnel's cost of acquisition WITH the customer's own legs in it, and the return
-   * that divides by it. The byte-same three ratios off the summed basis, so with nothing
-   * declared this block is identical to the charged one and the whole ladder moves
-   * together the day a cost is stated.
-   *
-   * `.nullish()` for rollout tolerance only: required on the wire today.
-   */
-  combinedCostEconomics: z
-    .object({
-      platformCommittedCostUsd: z.number(),
-      customerDeclaredCostUsd: z.number(),
-      committedCostUsd: z.number(),
-      costOfAcquisitionPct: z.number().nullable(),
-      roiMultiple: z.number().nullable(),
-      costPerAcquisitionUsd: z.number().nullable(),
-    })
-    .nullish(),
-});
-const OfferFunnelsResponseSchema = z.object({
-  offerId: z.string(),
-  brandId: z.string(),
-  costBasis: z.string(),
-  /** Which dollars the cost is made of. Rendered, never hidden. */
-  costCoverage: z.string(),
-  funnels: z.array(OfferFunnelRowSchema),
-  unattributedCampaignIds: z.array(z.string()),
-});
-export type OfferFunnelRow = z.infer<typeof OfferFunnelRowSchema>;
-export type OfferFunnels = z.infer<typeof OfferFunnelsResponseSchema>;
-
-export async function getOfferFunnels(
+export async function getOfferOutcomes(
   offerId: string,
   brandId: string,
   token?: string,
-): Promise<OfferFunnels> {
+): Promise<OfferOutcomes> {
   const query = new URLSearchParams({ brandId });
-  // Same NET basis as every other money read on this app. Never a per-caller toggle.
   query.set("pricing", "net");
-
-  const raw = await apiCall<unknown>(
-    `/offers/${offerId}/funnels?${query.toString()}`,
-    { token },
-  );
-
-  const parsed = OfferFunnelsResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getOfferFunnels: response shape mismatch", {
-      issues: parsed.error.issues,
-    });
-    throw new Error("[dashboard] getOfferFunnels: invalid response shape");
-  }
-  return parsed.data;
+  const raw = await apiCall<unknown>(`/offers/${offerId}/outcomes?${query.toString()}`, { token });
+  return parseOfferOutcomes(raw, "getOfferOutcomes");
 }
 
 /**
@@ -4745,65 +4519,6 @@ export async function getOfferRevenue(
   query.set("pricing", "net");
   const raw = await apiCall<unknown>(`/offers/${offerId}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getOfferRevenue");
-}
-
-/**
- * What ONE SALES FUNNEL of an offer returned.
- *
- * The grain a customer's funnel screen asks about, and the same realized-money answer
- * the offer read gives one level up: the spend breakdown the cost card reads,
- * `roiHistory` over the brand's whole life, the dated series and the leads ledger.
- * features-service prices the funnel on its OWN declared terms, so a $200 self-serve
- * funnel and a $20k contract funnel are never blended.
- *
- * The SAME parser as every other grain. It carries no `featureSlug` — a funnel spans
- * the channels carrying its legs — which is exactly the field that must not be
- * required in a parser shared across grains.
- *
- * A funnel this offer does not sell answers 404 rather than the offer's own numbers
- * under a funnel's name; the caller renders that, never a fabricated zero.
- */
-export async function getOfferFunnelRevenue(
-  offerId: string,
-  funnelKey: string,
-  brandId: string,
-  token?: string,
-): Promise<RevenueOverview> {
-  const query = new URLSearchParams({ brandId });
-  // Same NET basis as every other money read on this app. Never a per-caller toggle.
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(
-    `/offers/${offerId}/funnels/${encodeURIComponent(funnelKey)}/revenue?${query.toString()}`,
-    { token },
-  );
-  return parseFeatureRevenue(raw, "getOfferFunnelRevenue");
-}
-
-/** GET /offers/:offerId/funnels/:funnelKey/pipeline-activity — the funnel's own days. */
-export async function getOfferFunnelPipelineActivity(
-  offerId: string,
-  funnelKey: string,
-  params: { brandId: string; days?: number; timezone?: string },
-  token?: string,
-): Promise<PipelineActivityResponse> {
-  const query = new URLSearchParams({ brandId: params.brandId });
-  if (params.days != null) query.set("days", String(params.days));
-  if (params.timezone) query.set("timezone", params.timezone);
-  // Net, for the reason the per-feature reader states at length: the forecast bar
-  // divides a budget the org really spends, so a gross divisor understates it.
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(
-    `/offers/${offerId}/funnels/${encodeURIComponent(funnelKey)}/pipeline-activity?${query.toString()}`,
-    { token },
-  );
-  const parsed = PipelineActivityResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getOfferFunnelPipelineActivity: response shape mismatch", {
-      issues: parsed.error.issues,
-    });
-    throw new Error("[dashboard] getOfferFunnelPipelineActivity: invalid response shape");
-  }
-  return parsed.data;
 }
 
 /**
