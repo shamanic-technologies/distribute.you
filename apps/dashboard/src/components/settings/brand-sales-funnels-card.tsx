@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { RateInput } from "@/components/rate-input";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -63,7 +62,6 @@ import {
   funnelDestinationChips,
   funnelDraftFromBrand,
   funnelDraftFromDeclared,
-  funnelLegPct,
   funnelLifetimeLabel,
   funnelRateFields,
   funnelWriteErrorMessage,
@@ -78,11 +76,11 @@ import {
 } from "@/lib/sales-funnels";
 import {
   formatLocaleInteger,
-  formatLocaleNumberInputValue,
   parseLocaleNumberInput,
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
+import { FunnelActivationModal } from "@/components/settings/funnel-activation-modal";
 import { spendableCampaignsForFunnel } from "@/lib/use-running-daily-budget";
 import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -294,6 +292,15 @@ export function BrandSalesFunnelsCard({
   // One card open at a time: the list reorders itself around the selection, so
   // several open forms would move under the cursor.
   const [openKey, setOpenKey] = useState<SalesFunnelKey | null>(null);
+  // The funnel an offer JUST started selling through, while its rates are shown
+  // for confirmation. Set only on a first declaration: an update to a funnel the
+  // offer already sells through has nothing new to confirm.
+  const [activation, setActivation] = useState<{
+    funnelKey: SalesFunnelKey;
+    lifetimeRevenueUsd: number | null;
+    bookingUrl: string | null;
+  } | null>(null);
+  const closeActivation = useCallback(() => setActivation(null), []);
   const [pendingKey, setPendingKey] = useState<SalesFunnelKey | null>(null);
   const hydrated = useRef(false);
   // The payload the form was last seeded FROM. A boolean latch cannot do this
@@ -488,7 +495,18 @@ export function BrandSalesFunnelsCard({
     mutationFn: (vars: { def: SalesFunnelDef; patch: ReturnType<typeof buildFunnelPatch> }) =>
       declareOfferSalesFunnel(brandId, offerId, vars.def.key, vars.patch),
     onSuccess: (res, vars) => {
+      const firstDeclaration = !states[vars.def.key].declared;
       cacheDeclared(res.funnel);
+      if (firstDeclaration) {
+        // The brand's rates now cover a funnel they did not before, so re-read them
+        // before the modal states them.
+        void queryClient.invalidateQueries({ queryKey: ["brandConversionRates", brandId] });
+        setActivation({
+          funnelKey: vars.def.key,
+          lifetimeRevenueUsd: res.funnel.lifetimeRevenueUsd,
+          bookingUrl: res.funnel.bookingUrl,
+        });
+      }
       // Show exactly what persisted, so the card can never claim a value the
       // store rejected or normalized differently.
       patch(vars.def.key, {
@@ -778,24 +796,6 @@ export function BrandSalesFunnelsCard({
     }));
   }
 
-  function editRate(key: SalesFunnelKey, rateKey: FunnelRateKey, value: string) {
-    setStates((prev) => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        touched: true,
-        error: null,
-        draft: { ...prev[key].draft, rates: { ...prev[key].draft.rates, [rateKey]: value } },
-      },
-    }));
-  }
-
-  function normalizeRate(key: SalesFunnelKey, rateKey: FunnelRateKey) {
-    const parsed = parseLocaleNumberInput(states[key].draft.rates[rateKey] ?? "");
-    if (parsed === null) return;
-    editRate(key, rateKey, formatLocaleNumberInputValue(parsed));
-  }
-
   function normalizeLtr(key: SalesFunnelKey) {
     const parsed = parseLocaleNumberInput(states[key].draft.lifetimeRevenueUsd);
     if (parsed === null) return;
@@ -976,7 +976,10 @@ export function BrandSalesFunnelsCard({
         return;
       }
     }
-    const body = buildFunnelPatch(def, state.draft, state.saved);
+    // Conversion rates are the BRAND's now (one rate per funnel arrow, stated on
+    // Brand Settings), so this offer-level card never writes one. The patch still
+    // carries the offer's own fields: lifetime revenue, destination, booking link.
+    const { rates: _offerRates, ...body } = buildFunnelPatch(def, state.draft, state.saved);
     // An already-declared funnel with nothing changed has no write to make; an
     // undeclared one is still declared, with a body that prices nothing yet.
     // Two services, so two writes. The ceiling only goes when it MOVED: billing
@@ -1046,7 +1049,6 @@ export function BrandSalesFunnelsCard({
     const showNumbers = state.declared || isOpen;
     const chips = showNumbers ? funnelDestinationChips(def, state.draft) : [];
     const lifetime = showNumbers ? funnelLifetimeLabel(state.draft) : null;
-    const rateFields = funnelRateFields(def);
     const dimmed = !state.declared && !isOpen;
     // What this offer funds the funnel at — the sum of the very figures the open
     // form edits, so the closed card and the open one cannot disagree. It says
@@ -1096,16 +1098,10 @@ export function BrandSalesFunnelsCard({
               closes the funnel, where the last step earns it. */}
           <p className="mt-0.5 flex flex-wrap items-start gap-x-1.5 text-xs text-gray-500">
             {def.steps.map((step, i) => {
-              const pct = i > 0 && showNumbers ? funnelLegPct(def, state.draft, i - 1) : null;
               return (
                 <span key={step} className="inline-flex items-start gap-1.5">
                   {i > 0 && (
-                    <span className="inline-flex flex-col items-center">
-                      <span className="leading-5 text-gray-300">→</span>
-                      {pct && (
-                        <span className="-mt-0.5 text-[10px] leading-none text-gray-400">{pct}</span>
-                      )}
-                    </span>
+                    <span className="leading-5 text-gray-300">→</span>
                   )}
                   <span className="leading-5">{step}</span>
                 </span>
@@ -1234,21 +1230,6 @@ export function BrandSalesFunnelsCard({
         {isOpen && (
           <div className="border-t border-gray-100 p-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {rateFields.map((rate) => (
-                <div key={rate.key}>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
-                    {rate.label}
-                    <InfoTooltip tip={rate.tip} placement="top" />
-                  </label>
-                  <RateInput
-                    ariaLabel={rate.label}
-                    value={state.draft.rates[rate.key] ?? ""}
-                    onChange={(next) => editRate(def.key, rate.key, next)}
-                    onBlur={() => normalizeRate(def.key, rate.key)}
-                  />
-                </div>
-              ))}
-
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
                   Customer Lifetime Revenue
@@ -1549,6 +1530,16 @@ export function BrandSalesFunnelsCard({
           </p>
         )}
       </div>
+
+      {activation && (
+        <FunnelActivationModal
+          brandId={brandId}
+          funnelKey={activation.funnelKey}
+          lifetimeRevenueUsd={activation.lifetimeRevenueUsd}
+          bookingUrl={activation.bookingUrl}
+          onClose={closeActivation}
+        />
+      )}
     </section>
   );
 }

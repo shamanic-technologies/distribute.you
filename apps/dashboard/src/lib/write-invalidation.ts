@@ -82,6 +82,19 @@ export const CAMPAIGN_MONEY_ROOTS = [
  * wanted here: the reader sees their own change immediately and nothing else costs a
  * request until somebody looks at it.
  */
+/**
+ * Every root a CONVERSION RATE moves. A rate is what every money figure is priced
+ * on, so changing one moves the same money grains a lead statement does, plus the
+ * rates read itself and the workflow projection (whose ROI and CAC divide by the
+ * rate's product). The projection is expensive, and it is here anyway: a brand that
+ * just corrected a rate is looking at exactly the figures it feeds.
+ */
+export const CONVERSION_RATE_ROOTS = [
+  ...LEAD_OUTCOME_ROOTS,
+  "brandConversionRates",
+  "workflowProjection",
+] as const;
+
 export function invalidateRoots(client: InvalidatingClient, roots: readonly string[]): void {
   for (const root of roots) client.invalidateQueries({ queryKey: [root] });
 }
@@ -92,6 +105,10 @@ export function invalidateLeadOutcome(client: InvalidatingClient): void {
 }
 
 /** Everything a budget or campaign-status write moves. */
+export function invalidateConversionRates(client: InvalidatingClient): void {
+  invalidateRoots(client, CONVERSION_RATE_ROOTS);
+}
+
 export function invalidateCampaignMoney(client: InvalidatingClient): void {
   invalidateRoots(client, CAMPAIGN_MONEY_ROOTS);
 }

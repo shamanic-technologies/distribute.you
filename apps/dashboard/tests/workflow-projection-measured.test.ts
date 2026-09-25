@@ -169,6 +169,12 @@ describe("the filter runs at the ONE reader boundary", () => {
       // module read that same declared field.
       "components/workflows/campaign-workflows-page.tsx",
       "components/workflows/workflow-rank-panel.tsx",
+      // A FOURTH producer's field under the same name: features-service's brand
+      // conversion-rates read carries a `measured` BLOCK per funnel arrow (the rate
+      // observed on the brand's own leads and its denominator). The rates module reads
+      // `measured.fromReached` to say how many leads a measured rate rests on. Not a
+      // projection row and not a flag.
+      "lib/brand-conversion-rates.ts",
       // A DIFFERENT producer's field under the same name: features-service's
       // channel-funnel price list marks each (channel, funnel) pair `measured`, meaning
       // the fleet has spent enough through it to state a price. Nothing to do with a

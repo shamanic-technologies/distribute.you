@@ -116,12 +116,20 @@ describe("sales economics surfaces use locale-aware text inputs", () => {
       "utf-8"
     );
     expect(content).toContain('from "@/lib/format-number"');
-    expect(content).toContain("formatLocaleNumberInputValue");
     expect(content).toContain("parseLocaleNumberInput");
-    // The rate fields render through the shared RateInput (text + decimal inputMode
-    // live there); the card's own remaining inputs are text, never number.
-    expect(content).toContain("<RateInput");
+    // The card's remaining inputs (lifetime revenue, budgets) are text, never number.
     expect(content).toContain('type="text"');
+    expect(content).not.toContain('type="number"');
+  });
+
+  // Conversion rates are the BRAND's now and are edited in one place, which
+  // renders them through the shared RateInput (text + decimal inputMode live there).
+  it("brand conversion rates render through the shared RateInput", () => {
+    const content = fs.readFileSync(
+      path.join(__dirname, "../src/components/settings/funnel-rates-editor.tsx"),
+      "utf-8"
+    );
+    expect(content).toContain("<RateInput");
     expect(content).not.toContain('type="number"');
   });
 
