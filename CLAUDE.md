@@ -1200,6 +1200,18 @@ leads surfaces.
   site) and the rename half of `tests/offer-create.test.ts`, which asserts there is
   exactly ONE rename surface and that `offer-name-card.tsx` is gone. (#3996)
 
+## Conversion rates are the BRAND's, one per (funnel, arrow), and the number priced on is resolved upstream
+
+Owner-decided 2026-09-25. A rate describes how a BRAND sells, so it is stated once on **Brand Settings > Conversion rates** (`components/settings/brand-conversion-rates-card.tsx`) and shared by every offer selling that funnel. Lifetime revenue, the booking link and the destination page stay on each offer's funnel card. ⚠️ The offer funnel card (`brand-sales-funnels-card.tsx`) therefore neither renders nor WRITES a rate: it strips `rates` from `buildFunnelPatch` before declaring (a seeded prefill would otherwise be stored per offer on first declare). Parts of the Sales Funnels section below describing rate fields on that card are HISTORY.
+
+- **Two reads, two owners.** The rate every money figure is priced on is features-service's `GET /v1/brands/:id/conversion-rates`: per arrow, `effectiveRatePct` + `source` (`measured` once >= `minMeasuredFromReached` (10) leads reached the FROM step, else `manual`, else the cross-org `median` of STATED rates) + the three candidates. The brand's own value is WRITTEN through brand-service `PUT /v1/brands/:id/funnel-rates/:funnelKey` (partial; `ratePct: null` clears). Nothing here re-derives the effective rate.
+- **An arrow is named by brand-service's step LABELS** (`fromStep`/`toStep`, e.g. "Form filled"), and a write sends back the exact strings served. Do not translate them through `lib/sales-funnels.ts`, whose step words differ.
+- **A median is a PREFILL, never a statement.** The field opens on the brand's value else the median, and `arrowRatePatch` (`lib/brand-conversion-rates.ts`, alias-free, real unit tests) sends only the arrows a person touched.
+- **ONE editor, two mounts:** `FunnelRatesEditor` renders on Brand Settings and in `FunnelActivationModal`, which the offer funnel card opens on a funnel's FIRST declaration and which closes itself when every arrow is already measured. Closing it writes nothing.
+- A rate write re-reads `CONVERSION_RATE_ROOTS` (`lib/write-invalidation.ts`): every money grain plus the rates read and the workflow projection. `brandConversionRates` is persisted.
+- Right-censoring is accepted for now (a meeting booked yesterday cannot be attended yet, so a young brand's measured rate reads low).
+- Guards: `tests/brand-conversion-rates.test.ts` + `tests/brand-conversion-rates-surface.test.ts`. (brand-service #538, api-service #971 + #973, features-service #1051)
+
 ## The Sales Funnels section is what a brand STATES about how it sells, and every field on it persists per funnel
 
 `BrandSalesFunnelsCard` (`components/settings/brand-sales-funnels-card.tsx`, model in `lib/sales-funnels.ts`) is **GA** and is the brand Settings page's ONLY sales-economics surface: it REPLACED the flat `Click Destination` and `Sales Economics` sections, whose cards were deleted from `apps/dashboard` with them (`apps/admin` keeps its own separate copies — staff fork, deliberately not synced). A funnel owns the conversion rates, the lifetime revenue and the landing page those two held ONE set of for the whole brand, so a brand selling a $200 self-serve plan and a $20k contract prices each one. It renders its own heading and offers FOUR funnels, multi-select, each with its own conversion rates, its own customer lifetime revenue and its own destinations:

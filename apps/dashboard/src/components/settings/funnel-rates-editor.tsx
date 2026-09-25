@@ -69,9 +69,13 @@ export function FunnelRatesEditor({
   const mutation = useMutation({
     mutationFn: () => stateBrandFunnelRates(brandId, funnel.funnelKey, patch),
     onSuccess: async () => {
+      // Re-read BEFORE clearing the drafts: cleared first, the fields would fall back
+      // to the pre-save values for the length of the read, and a saved rate would
+      // look like it had not taken.
+      invalidateConversionRates(queryClient);
+      await queryClient.refetchQueries({ queryKey: ["brandConversionRates", brandId] });
       setDrafts({});
       setSaved(true);
-      await invalidateConversionRates(queryClient);
       onSaved?.();
     },
     onError: (err) => {
@@ -103,12 +107,13 @@ export function FunnelRatesEditor({
                   {arrow.fromStep} <span className="text-gray-300">→</span> {arrow.toStep}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  {arrow.effectiveRatePct !== null ? (
-                    <span className="font-medium text-gray-700">{formatRatePct(arrow.effectiveRatePct)}</span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}{" "}
-                  <span data-rate-source={arrow.source ?? "none"}>· {rateSourceLabel(arrow)}</span>
+                  {arrow.effectiveRatePct !== null && (
+                    <>
+                      <span className="font-medium text-gray-700">{formatRatePct(arrow.effectiveRatePct)}</span>{" "}
+                      ·{" "}
+                    </>
+                  )}
+                  <span data-rate-source={arrow.source ?? "none"}>{rateSourceLabel(arrow)}</span>
                 </p>
                 {measuredWins && (
                   <p className="mt-0.5 text-xs text-gray-400">
