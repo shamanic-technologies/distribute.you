@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+  TRIGGER_SERVICE_NAME,
+  TRIGGER_TASK_NAME,
+  TriggerRunsResponseSchema,
+  type TriggerRun,
+} from "./campaign-ran-workflows";
+import {
   buildExpertQuotePitchVariables,
   coerceExtractedToString,
   selectPriorSubmittedPitches,
@@ -1736,6 +1742,34 @@ export interface CampaignRun {
 /** GET /runs?campaignId={id} — returns runs for a campaign via runs-service proxy */
 export async function listCampaignRuns(campaignId: string, token?: string): Promise<{ runs: CampaignRun[] }> {
   return apiCall<{ runs: CampaignRun[] }>(`/runs?campaignId=${encodeURIComponent(campaignId)}`, { token });
+}
+
+/**
+ * The campaign's most recent TRIGGER runs — one per workflow execution, each carrying
+ * the workflow it actually ran (frozen by runs-service at write time). This is what the
+ * campaign RAN; `campaign.workflowSlug` is only what it was created with. See
+ * `lib/campaign-ran-workflows.ts`.
+ */
+export async function listCampaignTriggerRuns(
+  campaignId: string,
+  limit: number,
+  token?: string,
+): Promise<TriggerRun[]> {
+  const q = new URLSearchParams({
+    campaignId,
+    serviceName: TRIGGER_SERVICE_NAME,
+    taskName: TRIGGER_TASK_NAME,
+    limit: String(limit),
+  });
+  const raw = await apiCall<unknown>(`/runs?${q.toString()}`, { token });
+  const parsed = TriggerRunsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listCampaignTriggerRuns: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] listCampaignTriggerRuns: invalid response shape");
+  }
+  return parsed.data.runs;
 }
 
 // ─── Run events (logs) ───────────────────────────────────────────────────────

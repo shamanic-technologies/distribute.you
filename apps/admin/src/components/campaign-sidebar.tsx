@@ -185,7 +185,7 @@ export function CampaignSidebar({ campaignId, orgId, brandId, featureSlug, entit
       ? [
           {
             id: "workflow",
-            label: "Workflow",
+            label: "Last workflow run",
             href: `/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${workflowId}`,
             icon: <WorkflowIcon />,
           },

@@ -17,6 +17,7 @@ import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
 import { CostBreakdown } from "@/components/campaign/cost-breakdown";
 import { CampaignRevenueSection } from "@/components/campaign/campaign-revenue-section";
 import { PressKitResults } from "@/components/campaign/press-kit-results";
+import { RanWorkflowsCard } from "@/components/campaign/ran-workflows";
 import {
   RelaunchCampaignModal,
   buildBudgetParams,
@@ -278,6 +279,12 @@ export default function CampaignOverviewPage() {
         {relaunchError && (
           <p className="mt-2 text-sm text-red-600">{relaunchError}</p>
         )}
+      </div>
+
+      {/* What the campaign ACTUALLY ran, off its trigger runs — never the creation-time
+          workflowSlug, since a workflow is picked for every run. */}
+      <div className="mb-6">
+        <RanWorkflowsCard campaignId={campaign.id} featureSlug={featureSlug} />
       </div>
 
       {/* Entity-specific results */}

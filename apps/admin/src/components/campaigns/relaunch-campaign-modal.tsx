@@ -145,10 +145,11 @@ export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage
             </div>
           </div>
 
-          {/* Workflow (read-only) */}
+          {/* Starting workflow (read-only). What the relaunch is CREATED with; a workflow
+              is then picked for every run, so this is not what the campaign runs. */}
           <div>
             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-              Workflow
+              Created with workflow
             </label>
             <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
               <span className="text-sm text-gray-700">{campaign.workflowSlug ?? "—"}</span>
