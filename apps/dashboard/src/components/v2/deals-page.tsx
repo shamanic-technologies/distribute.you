@@ -24,6 +24,8 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
  * (86 of 87 on the brand that surfaced this), so the word overstated replies.
  */
 const V2_COLUMN_LABEL: Partial<Record<LeadBoardColumnKey, string>> = {
+  // Everybody we wrote to who is still in play: the same standings v1 calls "Leads".
+  contacted: "Contacted",
   sales_interest: "Interested",
 };
 
@@ -53,6 +55,7 @@ export function DealsPage() {
   const columns = LEAD_BOARD_COLUMNS.filter(
     (c) => !(c.hideWhenEmpty && (totals?.[c.key] ?? 0) === 0),
   );
+  const contacted = totals?.contacted ?? null;
   const interested = totals?.sales_interest ?? null;
   const replied = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const won = totals?.won ?? null;
@@ -77,6 +80,11 @@ export function DealsPage() {
             <p className="k-fg2 mt-1 text-[14px]">
               {won != null && interested != null ? (
                 <>
+                  {contacted != null ? (
+                    <>
+                      <span className="k-fg font-medium tabular-nums">{formatCount(contacted)}</span> contacted,{" "}
+                    </>
+                  ) : null}
                   <span className="k-fg font-medium tabular-nums">{formatCount(interested)}</span> interested (a website visit or a positive reply)
                   {replied != null ? (
                     <>
