@@ -21,6 +21,7 @@
 // Only relative value imports live here, so this module stays directly unit-testable
 // (vitest does not resolve the "@" alias).
 
+import { paymentHoldKindForStopReason, type PaymentHoldKind } from "./payment-hold-reason";
 import {
   acquisitionChannelForFeatureSlug,
   type AcquisitionChannelDef,
@@ -122,11 +123,12 @@ export interface ControlRow {
   /** Is it running right now, per campaign-service's own word. */
   running: boolean;
   /**
-   * Stopped because billing could not charge the org's card, not by a person.
-   * Starting it is refused until the customer pays and fixes the card, so the
-   * row says so instead of offering a restart that reads like any other.
+   * Stopped because billing cannot charge the org (the card was declined, or there
+   * is no card at all), not by a person. Starting it is refused until that is fixed,
+   * so the row says so instead of offering a restart that reads like any other.
+   * Null when it is not held over payment.
    */
-  paymentDeclined: boolean;
+  paymentHold: PaymentHoldKind | null;
   /**
    * The (offer, leg, channel) its money is keyed on, or null for a campaign that
    * names no leg. Such a row can still be stopped and restarted — the status is its
@@ -242,7 +244,7 @@ export function buildControlRows(
       // A channel with NO campaign is not running, whatever it is funded at: money
       // starts nothing (campaign-service, 2026-09-06).
       running: false,
-      paymentDeclined: false,
+      paymentHold: null,
       scope,
       savedCents: campaignSavedCents(scope, budgets),
       offerId: o.offerId,
@@ -261,10 +263,12 @@ export function buildControlRows(
         runningCampaignIds,
         running: runningCampaignIds.length > 0,
         // The representative is the row a restart would address, so its reason is
-        // the one that decides whether that restart will be refused. Spelled here
-        // rather than imported: `payment-declined.ts` imports this module.
-        paymentDeclined:
-          runningCampaignIds.length === 0 && representative.stopReason === "payment_declined",
+        // the one that decides whether that restart will be refused. Read from the
+        // import-free reason module: `payment-declined.ts` imports this module.
+        paymentHold:
+          runningCampaignIds.length === 0
+            ? paymentHoldKindForStopReason(representative.stopReason)
+            : null,
         scope,
         savedCents: scope ? campaignSavedCents(scope, budgets) : 0,
         offerId: representative.offerId,

@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_HOLD_LABEL, type PaymentHoldKind } from "@/lib/payment-declined";
 import Link from "next/link";
 import { useId } from "react";
 import { useParams } from "next/navigation";
@@ -244,7 +245,16 @@ export function SectionTitle({ children, count, right }: { children: React.React
 }
 
 /** Running / paused as Keel draws an agent's state. */
-export function StateDot({ running, label }: { running: boolean; label?: string }) {
+export function StateDot({
+  running,
+  label,
+  hold,
+}: {
+  running: boolean;
+  label?: string;
+  /** Stopped by billing over payment: says so instead of a plain "Paused". */
+  hold?: PaymentHoldKind | null;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
       {running ? (
@@ -252,7 +262,7 @@ export function StateDot({ running, label }: { running: boolean; label?: string 
       ) : (
         <span className="h-2 w-2 rounded-full border-[1.5px] border-[var(--fg-2)]" />
       )}
-      {label ?? (running ? "Running" : "Paused")}
+      {label ?? (running ? "Running" : hold ? PAYMENT_HOLD_LABEL[hold] : "Paused")}
     </span>
   );
 }

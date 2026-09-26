@@ -1,6 +1,6 @@
 "use client";
 
-import { campaignStartRefusalMessage } from "@/lib/payment-declined";
+import { campaignStartRefusalMessage, PAYMENT_HOLD_ROW_NOTE, strongestPaymentHold } from "@/lib/payment-declined";
 import { PaymentDeclinedNotice } from "@/components/billing/payment-declined-notice";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -391,11 +391,8 @@ export function CampaignControlsModal({
             )}
           </p>
         )}
-        {row.paymentDeclined && !failures[row.rowId] && (
-          <p className="mt-1.5 text-xs text-amber-700">
-            Paused because your card was declined, not by anyone on your team. It can be
-            started again once your balance is paid and a working card is on file.
-          </p>
+        {row.paymentHold && !failures[row.rowId] && (
+          <p className="mt-1.5 text-xs text-amber-700">{PAYMENT_HOLD_ROW_NOTE[row.paymentHold]}</p>
         )}
         {failures[row.rowId] && (
           <p className="mt-1.5 text-xs text-red-600">{failures[row.rowId]}</p>
@@ -405,6 +402,7 @@ export function CampaignControlsModal({
   }
 
   const rollup = rollupStatus(rows);
+  const rollupHold = rollup === "paused" ? strongestPaymentHold(rows.map((r) => r.paymentHold)) : null;
   const scopeWord = campaignId ? "campaign" : offerId ? "offer" : "brand";
   const singleCampaign = campaignId != null;
 
@@ -448,9 +446,7 @@ export function CampaignControlsModal({
             </p>
           ) : (
             <>
-              {rollup === "paused" && rows.some((r) => r.paymentDeclined) && (
-                <PaymentDeclinedNotice className="mb-3" />
-              )}
+              {rollupHold && <PaymentDeclinedNotice kind={rollupHold} className="mb-3" />}
               {rows.length > 1 && (
                 <div className="mb-3 flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
                   <span className="text-xs font-medium uppercase tracking-wide text-gray-500">

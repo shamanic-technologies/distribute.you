@@ -106,7 +106,7 @@ export function MissionsTable({
                       </div>
                     </td>
                     <td className="px-3">
-                      <StateDot running={m.running} />
+                      <StateDot running={m.running} hold={m.paymentHold} />
                     </td>
                     <td className="px-3 text-right tabular-nums">{n(g?.websiteClicks)}</td>
                     <td className="px-3 text-right tabular-nums">{n(g?.positiveReplies)}</td>

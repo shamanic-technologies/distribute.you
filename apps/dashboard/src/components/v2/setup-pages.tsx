@@ -1,5 +1,6 @@
 "use client";
 
+import type { PaymentHoldKind } from "@/lib/payment-declined";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -269,7 +270,7 @@ export function V2MissionSettingsPage() {
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Settings" }]}
-      title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} /> : name}
+      title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
       tabs={missionTabs(orgId, brandId, campaignId, "settings")}
     >
       {!offerId ? (
@@ -292,12 +293,12 @@ export function V2MissionSettingsPage() {
   );
 }
 
-function MissionTitle({ crewColor, glyph, name, running }: { crewColor: string; glyph: CrewGlyph; name: string; running: boolean }) {
+function MissionTitle({ crewColor, glyph, name, running, hold }: { crewColor: string; glyph: CrewGlyph; name: string; running: boolean; hold: PaymentHoldKind | null }) {
   return (
     <span className="flex min-w-0 items-center gap-3">
       <CrewMark color={crewColor} glyph={glyph} size={32} />
       <span className="truncate">{name}</span>
-      <StateDot running={running} />
+      <StateDot running={running} hold={hold} />
     </span>
   );
 }
@@ -309,7 +310,7 @@ export function V2MissionWorkflowsPage() {
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Workflows" }]}
-      title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} /> : name}
+      title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
       tabs={missionTabs(orgId, brandId, campaignId, "workflows")}
       width="max-w-none"
     >

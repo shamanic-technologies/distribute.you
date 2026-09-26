@@ -12,6 +12,7 @@ import { v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
+import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -22,7 +23,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const search = useSearchParams();
   // No brand in the URL (the org's brand picker): no brand sidebar to draw.
-  const hasBrand = Boolean(useParams<{ brandId?: string }>().brandId);
+  const brandId = useParams<{ brandId?: string }>().brandId;
+  const hasBrand = Boolean(brandId);
   // A navigation closes the drawer, wherever it was started from.
   useEffect(() => setOpen(false), [pathname, search]);
 
@@ -38,6 +40,13 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
           {hasBrand && <V2Sidebar />}
         </div>
         <main className="k-panel k-scroll relative my-2 ml-2 mr-2 min-w-0 flex-1 overflow-y-auto lg:ml-0">
+          {/* Every brand page states it when billing has stopped the brand's missions
+              (a declined card, or no card), the same notice v1's Overviews carry. */}
+          {brandId && (
+            <div className="px-4 pt-3 empty:hidden md:px-6">
+              <ScopePaymentDeclinedBand brandId={brandId} />
+            </div>
+          )}
           {children}
         </main>
         {/* Overlays the sidebar opens (the ⌘K palette) render here, outside the drawer,
