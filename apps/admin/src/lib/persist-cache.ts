@@ -163,8 +163,8 @@ export function persisterStorageKey(bucket: string | null | undefined): string {
  * list readers and keep-last-good `structuralSharing` tolerate a drifted shape.
  *
  * Bump checklist (increment the integer): renamed/removed a field on a response
- * type consumed straight from cache, OR a NEW field a component reads WITHOUT
- * optional chaining. A restored snapshot never goes through the reader's
+ * type consumed straight from cache, OR a NEW field a component reads without
+ * a `?.` guard. A restored snapshot never goes through the reader's
  * `safeParse`, so a field the schema now REQUIRES is simply absent on it and the
  * page throws (v2: `cost.usd` on the cold-email Domains page read `monthlyCents`
  * off `undefined`). Only a field every consumer reads as optional is safe
