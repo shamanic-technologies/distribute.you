@@ -7,7 +7,6 @@ import type { ConversionOrg } from "@/lib/revenue-view";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { useBrandRevenue } from "@/components/v2/data";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
@@ -90,7 +89,7 @@ function StageBars({ tag }: { tag: string | null }) {
 }
 
 /**
- * Companies (beta): Keel's company table over the organisations features-service already
+ * Companies: Keel's company table over the organisations features-service already
  * dedupes and values on the brand's revenue read. The expected revenue is its own served
  * figure, the order is that figure, and a row opens the company. The tabs and the search
  * only narrow rows already loaded; nothing is computed.
@@ -167,7 +166,7 @@ export function CompaniesPage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Records" }, { label: "Companies" }]} actions={<MaturityBadge level="beta" />} />
+      <TopBar crumbs={[{ label: "Records" }, { label: "Companies" }]} />
       <RecordsTabs
         tabs={TABS.map((t) => ({
           key: t.key,

@@ -7,7 +7,6 @@ import type { Lead, RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -26,7 +25,7 @@ interface DoneGroup {
 }
 
 /**
- * Work (beta): Keel's task board on runs-service. What waits (missions not sending
+ * Work: Keel's task board on runs-service. What waits (missions not sending
  * right now, each stating why), what is running (today's runs still in flight), what
  * needs a person (interested replies), and what the crew finished today (today's runs,
  * grouped by crew and step). Every card is a served row; the crew filter only hides
@@ -82,7 +81,7 @@ export function WorkPage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Work" }]} actions={<MaturityBadge level="beta" />} />
+      <TopBar crumbs={[{ label: "Work" }]} />
       <div className="px-4 pb-10 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">

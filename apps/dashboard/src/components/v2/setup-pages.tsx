@@ -22,7 +22,6 @@ import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 import { v2Base, v2Href, v2MissionHref, v2OfferHref } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { OffersTable } from "@/components/offers/offers-table";
 import { NewOfferModal } from "@/components/offers/new-offer-modal";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
@@ -47,7 +46,7 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v2/ui";
 
 /**
- * The v2 (beta) Setup pages and the account pages behind the user menu.
+ * The v2 Setup pages and the account pages behind the user menu.
  *
  * Every v1 page a v2 user used to be sent to has a twin here, in the Keel frame, so v2
  * never hands the reader back to v1. They are built from v1's OWN business components
@@ -82,7 +81,7 @@ export function V2Page({
 }) {
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<MaturityBadge level="beta" />} />
+      <TopBar crumbs={crumbs} />
       <div className={`mx-auto ${width} px-4 pb-16 pt-6 md:px-6`}>
         {title != null && (
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -389,7 +388,7 @@ export function V2BrandSettingsPage() {
 export function V2AccountFrame({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <TopBar crumbs={[{ label: "Account" }, { label }]} actions={<MaturityBadge level="beta" />} />
+      <TopBar crumbs={[{ label: "Account" }, { label }]} />
       <div className="v2-embed">{children}</div>
     </>
   );

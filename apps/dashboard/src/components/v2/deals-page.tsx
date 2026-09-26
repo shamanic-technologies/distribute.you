@@ -12,7 +12,6 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { leadStatusLabel } from "@/lib/lead-status";
 import { STANDINGS_BY_COLUMN, LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -41,7 +40,7 @@ const COLUMN_DOT: Record<LeadBoardColumnKey, string> = {
 };
 
 /**
- * Deals (beta): Keel's pipeline board, drawn from lead-service's STANDINGS — a partition,
+ * Deals: Keel's pipeline board, drawn from lead-service's STANDINGS — a partition,
  * so every person is in exactly one column and the column sizes are the producer's own
  * counts. Each column is its own page on the producer's activity order, the same reads
  * v1's board makes. Moving a card is a statement with a cost, so a card opens the
@@ -90,7 +89,6 @@ export function DealsPage() {
         crumbs={[{ label: "Records" }, { label: "Deals" }]}
         actions={
           <>
-            <MaturityBadge level="beta" />
           </>
         }
       />
