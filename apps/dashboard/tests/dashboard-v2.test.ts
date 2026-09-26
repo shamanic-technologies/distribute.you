@@ -365,3 +365,13 @@ describe("Keel parity, second pass", () => {
     expect(crew).not.toMatch(/completedCount\s*\//);
   });
 });
+
+describe("v2 sidebar Deals badge agrees with the Deals board", () => {
+  it("counts the in-play board columns off the same column totals the page reads", () => {
+    const shell = read("src/components/v2/v2-shell.tsx");
+    expect(shell).toContain("boardColumnTotals(standings)");
+    expect(shell).toContain("boardTotals.contacted + boardTotals.sales_interest + boardTotals.won");
+    expect(shell).toContain("trailing={<Count n={dealsInPlay} />}");
+    expect(shell).not.toContain("standings.counts.sales_interest + standings.counts.customer");
+  });
+});
