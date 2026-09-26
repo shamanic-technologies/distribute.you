@@ -3,7 +3,7 @@
 /**
  * THE WORKFLOWS A CAMPAIGN'S CHANNEL CAN RUN, IN THE ORDER WE PICK THEM, AND WHY.
  *
- * A campaign is (offer x funnel x channel). The channel is worked by a WORKFLOW — the
+ * A campaign is (offer x leg x channel). The channel is worked by a WORKFLOW — the
  * pipeline that finds the people, writes the email and sends it — and we swap a
  * campaign onto a better one when the numbers say so. A customer therefore has three
  * questions about this list, in this order: why is it in THIS order, which one is
@@ -53,14 +53,11 @@
  *
  * ── THE LADDER IS ASKED AT THE CAMPAIGN'S OWN LEG ────────────────────────────────
  *
- * A campaign performs ONE arrow of its funnel, so the read sends `leg=<campaign.legKey>`
- * and features-service prices it through the brand's best-returning declared funnel
- * containing that leg. `funnel=<campaign.funnelKey>` is the fallback for a campaign
- * created before the leg column, and a campaign stating neither sends nothing at all.
- * Never both: `leg` wins at the producer, so sending two is a second source of truth.
+ * A campaign performs ONE leg, so the read sends `leg=<campaign.legKey>`, and a campaign
+ * stating none sends nothing at all.
  *
  * A FAILED ladder read is STATED, never papered over. The leg-keyed read legitimately
- * 404s (`leg_not_declared`) and 502s (`declared_funnels_unavailable`), and falling back
+ * 404s and 502s, and falling back
  * to a wider scope would answer a question nobody asked — so the surface renders with no
  * rank and no why, and says why.
  *
@@ -100,7 +97,7 @@
  *     sole feature — a campaign on another channel would list somebody else's workflows.
  *  3. A PRICE UNDER THE BAR SAYS SO (`Learning`; `Paused` while the campaign is stopped,
  *     because nothing is being measured then).
- *  4. THE OUTCOME IS THE CAMPAIGN'S OWN LEG, never its funnel — a visit-led campaign is
+ *  4. THE OUTCOME IS THE CAMPAIGN'S OWN LEG — a visit-led campaign is
  *     counted and priced in WEBSITE VISITS.
  *  5. A RETIRED workflow gets NO row: the rows are the channel's catalogue, and a
  *     lineage nobody can be put on is not an option.
@@ -193,9 +190,9 @@ import { useCampaignOutcomePair } from "@/lib/use-campaign-outcome-pair";
 /**
  * THE OUTCOME COLUMN PAIR, in the words every other surface already uses.
  *
- * A campaign performs ONE leg of its funnel, so the pair is that leg's own: a
- * visit-led campaign buys website visits and reading `0 positive replies` on every row
- * describes an arrow it never runs. Byte-equal to the stat cards' and the Audiences
+ * A campaign performs ONE leg, so the pair is that leg's own: a visit-led campaign buys
+ * website visits and reading `0 positive replies` on every row describes a leg it never
+ * runs. Byte-equal to the stat cards' and the Audiences
  * table's — a website visit is never called a positive reply.
  */
 const OUTCOME_COLUMNS: Record<
@@ -257,7 +254,7 @@ const WHY_TIP =
   "Where this workflow's estimate came from, in one line. Open the row for the full breakdown.";
 
 const PROJECTED_COUNT_TIP =
-  "This count was walked through your funnel's own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
+  "This count was walked through your own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
 
 const RUNNING_TIP =
   "The workflow that actually ran last, read from the record of what we sent. We pick it, and we change it when another one is producing outcomes more cheaply.";
@@ -346,10 +343,8 @@ export function CampaignWorkflowsPage() {
   const campaignId = String(params.id ?? "");
 
   const { campaign, featureSlug, settled: slugSettled } = useScopedFeatureSlug(campaignId);
-  // WHICH OUTCOME these rows are counted and priced by — the campaign's own LEG, never
-  // its funnel. A visit-led campaign read `0 positive replies` on every row before this,
-  // for an arrow it does not run.
-  const pair = useCampaignOutcomePair(campaign, featureSlug);
+  // WHICH OUTCOME these rows are counted and priced by — the campaign's own LEG.
+  const pair = useCampaignOutcomePair(campaign);
   const columns = OUTCOME_COLUMNS[pair];
   const revenueOk = featureSlug !== null && isRevenueFeature(featureSlug);
   const ready = isBeta && Boolean(featureSlug);
@@ -371,46 +366,35 @@ export function CampaignWorkflowsPage() {
     { ...pollOptions, enabled: ready && Boolean(brandId) && Boolean(campaignId) },
   );
 
-  // THE RANKING. Asked at the campaign's own leg, and its arguments ride the key: a
-  // leg-keyed answer and a funnel-keyed one are different bodies and must never share
-  // a cache entry.
+  // THE RANKING. Asked at the campaign's own leg, and its arguments ride the key — the
+  // same key the campaign Overview's cost floor reads, so the two dedupe to one request.
   const legKey = campaign?.legKey ?? null;
-  const funnelKey = campaign?.funnelKey ?? null;
   const ladderQ = useAuthQuery(
-    [
-      "workflowRankLadder",
-      brandId,
-      legKey ?? "none",
-      legKey ? "none" : (funnelKey ?? "none"),
-      // The campaign rides the KEY as well as the request: a body carrying the campaign
-      // grain and one without it are different answers and must never share an entry.
-      legKey ? campaignId : "none",
-    ],
+    ["workflowRankLadder", brandId, legKey ?? "none", campaignId],
     () =>
       getWorkflowRankLadder({
         featureSlug: featureSlug as string,
         brandId,
         leg: legKey,
-        funnel: legKey ? null : funnelKey,
         campaignId,
       }),
-    { ...pollOptions, enabled: ready && Boolean(brandId), retry: false },
+    { ...pollOptions, enabled: ready && Boolean(brandId) && Boolean(legKey), retry: false },
   );
 
   // THE COLUMN ORDER, and the sidebar's. `/audience-stats` already ranks this campaign's
   // audiences on their own pooled cost per outcome, so it is read in the order served and
   // never re-sorted. The key is byte-equal to the campaign Overview's, so the two dedupe
-  // to one poll. A campaign predating the funnel column names no funnel and therefore no
-  // order: it gets the campaign column alone rather than an order invented here.
+  // to one poll. A campaign naming no leg has no order: it gets the campaign column
+  // alone rather than an order invented here.
   const audienceStatsQ = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, funnelKey ?? "none", "campaign", campaignId],
+    ["featureAudienceStats", featureSlug, brandId, legKey ?? "none", "campaign", campaignId],
     () =>
       fetchFeatureAudienceStats(featureSlug as string, {
         brandId,
-        funnel: funnelKey as NonNullable<typeof funnelKey>,
+        leg: legKey,
         campaignId,
       }),
-    { ...pollOptions, enabled: ready && Boolean(brandId) && Boolean(funnelKey) },
+    { ...pollOptions, enabled: ready && Boolean(brandId) && Boolean(legKey) },
   );
 
   // The brand's own mark, for the panel's brand grain. `["brand", brandId]` is the key the
@@ -505,7 +489,7 @@ export function CampaignWorkflowsPage() {
 
   // The outcome noun the ranked estimate is about. The producer states it on a
   // leg-keyed body (`leg.toStep.label`), so it is READ rather than spelled here; the
-  // column's own word is the fallback for a funnel- or goal-keyed answer.
+  // column's own word is the fallback for a goal-keyed answer.
   const outcomeNoun = ladderQ.data?.leg?.toStep.label ?? columns.noun;
   // The column header IS the plural, so the sentence is handed both forms rather than
   // deriving one: a `+ "s"` rule produced "positive replys" the first time the noun was

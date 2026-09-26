@@ -1,28 +1,25 @@
 // Is this running, and how hard — for one campaign, one offer, or a whole brand.
 //
-// A campaign IS (offer x sales funnel x acquisition channel), and it carries TWO
-// independent answers to that question:
+// A campaign IS (offer x leg x acquisition channel), and it carries TWO independent
+// answers to that question:
 //
-//   - a STATUS, which campaign-service stores on the campaign row and flips
-//     through `PATCH /campaigns/:id` with `activate` / `stop`;
-//   - a daily CEILING, which billing keys on the triple and which
-//     `saveBrandFunnelBudget` writes.
+//   - a STATUS, which campaign-service stores on the campaign row and flips through
+//     `PATCH /campaigns/:id` with `activate` / `stop`;
+//   - a daily CEILING, which billing keys on the same address and which
+//     `saveCampaignBudget` writes.
 //
-// They are deliberately NOT one field. Stopping a campaign by dropping its
-// ceiling to zero would throw away the amount, and billing's floor only lets a
-// funnel funded under its minimum be KEPT or RAISED — so a campaign
-// grandfathered under the floor could be stopped that way and never restarted at
-// the same figure. A status flag costs nothing to reverse, which is what makes
-// "pause and resume" an ordinary action rather than a decision.
+// They are deliberately NOT one field. Stopping a campaign by dropping its ceiling to
+// zero would throw the amount away, and billing's floor only lets a channel funded under
+// its minimum be KEPT or RAISED — so a campaign grandfathered under the floor could be
+// stopped that way and never restarted at the same figure. A status flag costs nothing
+// to reverse, which is what makes "pause and resume" an ordinary action.
 //
-// This module holds the ROW MODEL the controls modal edits and the pure
-// derivations around it. Every grain edits the same rows — a campaign — because
-// that is the only thing either write can address: the brand and the offer are
-// scopes, not things billing or campaign-service fund. Nothing here sums a
-// brand-wide ceiling; billing serves that figure and the brand Overview reads it.
+// This module holds the ROW MODEL the controls modal edits and the pure derivations
+// around it. Every grain edits the same rows — a campaign — because that is the only
+// thing either write can address: the brand and the offer are scopes.
 //
-// Only relative value imports live here, so this module stays directly
-// unit-testable (vitest does not resolve the "@" alias).
+// Only relative value imports live here, so this module stays directly unit-testable
+// (vitest does not resolve the "@" alias).
 
 import {
   acquisitionChannelForFeatureSlug,
@@ -32,56 +29,37 @@ import {
   campaignBudgetScope,
   campaignSavedCents,
   runningAfterBudget,
-  type BrandFunnelBudgetSet,
   type CampaignBudgetRow,
   type CampaignBudgetScope,
+  type CampaignBudgetSet,
 } from "./campaign-budget";
-import {
-  SALES_FUNNELS,
-  normalizeSalesFunnelKey,
-  type SalesFunnelDef,
-  type SalesFunnelKey,
-  type SalesFunnelKeyWire,
-} from "./sales-funnels";
 
 /**
- * A (funnel, channel, offer) a customer may fund but has not.
+ * A (leg, channel, offer) a customer may fund but has not started.
  *
- * Stated by the caller rather than derived here: which channels perform which arrow is
- * the acquisition catalogue's answer, and this module holds no catalogue.
+ * Stated by the caller rather than derived here: which channels perform which leg is
+ * the published catalogue's answer, and this module holds no catalogue.
  */
 export interface OfferableChannel {
-  funnelKey: string;
+  legKey: string;
   featureSlug: string;
   /** What the channel is called, read off the catalogue by the caller. */
   channelName: string;
   offerId: string | null;
 }
 
-/**
- * The fields this module reads off a campaign-service campaign.
- *
- * It extends `CampaignBudgetRow` rather than restating its two fields, so the
- * funnel spelling stays whatever `lib/campaign-budget.ts` accepts — a second
- * declaration would drift the moment the wire vocabulary moves again.
- */
+/** The fields this module reads off a campaign-service campaign. */
 export interface ControlCampaign extends CampaignBudgetRow {
   id: string;
   status: string;
   offerId: string | null;
-  /**
-   * The funnel LEG this campaign states it is bought for, when it states one.
-   * Carried through so the modal names a campaign the way the row you clicked to
-   * open it named it — a campaign reading one way in the table and another in the
-   * modal that funds it is one campaign described twice.
-   */
   legKey?: string | null;
   /** Why campaign-service stopped it, when it says. See `lib/payment-declined.ts`. */
   stopReason?: string | null;
   /**
-   * When campaign-service created this row. Read only to pick which row of a
-   * campaign a RESTART targets when none of them is running: the most recent one
-   * is the campaign as it last ran, and its ancestors are history.
+   * When campaign-service created this row. Read only to pick which row of a campaign
+   * a RESTART targets when none of them is running: the most recent one is the
+   * campaign as it last ran, and its ancestors are history.
    */
   createdAt: string;
 }
@@ -104,7 +82,7 @@ export function isRunningStatus(status: string): boolean {
 /**
  * One campaign, as the controls modal shows and edits it.
  *
- * A row is one campaign as a CUSTOMER knows it — (funnel x channel x offer) —
+ * A row is one campaign as a CUSTOMER knows it — (leg x channel x offer) —
  * not one campaign-service row. campaign-service mints a fresh row every time a
  * campaign's workflow changes and keeps only the newest `ongoing`, so a campaign
  * that has been running for months is stored as dozens of rows: one live and the
@@ -150,10 +128,10 @@ export interface ControlRow {
    */
   paymentDeclined: boolean;
   /**
-   * The (funnel, channel) its money is keyed on, or null for a campaign that
-   * predates the funnels. Such a row can still be stopped and restarted — the
-   * status is its own — but has no ceiling to point at, and guessing one would
-   * offer to spend money against a row billing would refuse.
+   * The (offer, leg, channel) its money is keyed on, or null for a campaign that
+   * names no leg. Such a row can still be stopped and restarted — the status is its
+   * own — but has no ceiling to point at, and guessing one would offer to spend money
+   * against a row billing would refuse.
    */
   scope: CampaignBudgetScope | null;
   /** What billing stores for THIS campaign, in cents. Zero = funded at nothing. */
@@ -161,10 +139,8 @@ export interface ControlRow {
   /** The offer this campaign sells, which is what narrows its ceiling. */
   offerId: string | null;
   /**
-   * The leg the campaign states. Taken from the SAME representative row the id and
-   * the scope come from: every member of a group shares the (funnel, channel, offer)
-   * identity, so they state one leg, and reading it off a different member would be a
-   * second source for one answer.
+   * The leg the campaign performs — part of its identity, so every member of a group
+   * states the same one.
    */
   legKey: string | null;
 }
@@ -179,12 +155,12 @@ export interface ControlRow {
  *   - STOPPED campaigns are included. The modal is where a customer restarts
  *     one, so a live-only list would make stopping irreversible from the UI.
  *   - Only ACQUISITION-CHANNEL campaigns. A brand's PR or AI-visibility campaign
- *     runs no sales funnel, so it has no ceiling and belongs to no offer; listing
+ *     performs no leg, so it has no ceiling and belongs to no offer; listing
  *     it would offer a budget field that can never be written.
  *   - The offer filter reads the campaign's OWN `offerId`. A campaign carrying
  *     none belongs to no offer and is left out rather than folded into whichever
  *     one the reader happens to be looking at.
- *   - Rows are GROUPED by (funnel, channel, offer) — one line per campaign as a
+ *   - Rows are GROUPED by (leg, channel, offer) — one line per campaign as a
  *     customer knows it, not one per stored row. campaign-service mints a fresh
  *     row on every workflow change, so one campaign is stored as many; a list
  *     per row shows the same campaign dozens of times, each offering to edit the
@@ -192,8 +168,8 @@ export interface ControlRow {
  *     once per row. Measured in prod: one offer held 46 rows of a single
  *     campaign and read $2,310/day against a real $50.
  *
- * A campaign that predates the funnels names no triple, so it groups by its own
- * id: it has no ceiling to share and nothing to double count.
+ * A campaign that names no leg groups by its own id: it has no ceiling to share and
+ * nothing to double count.
  *
  * Order is running-first then by identity, so the rows do not reshuffle under
  * the cursor as toggles are flipped — the sort key is the SAVED status, never
@@ -201,112 +177,76 @@ export interface ControlRow {
  */
 export function buildControlRows(
   campaigns: ControlCampaign[],
-  budgets: BrandFunnelBudgetSet | undefined,
+  budgets: CampaignBudgetSet | undefined,
   channels: AcquisitionChannelDef[],
   filter: {
     offerId?: string;
     campaignId?: string;
-    funnelKey?: string | null;
+    /** Scope to ONE leg: the campaigns performing it, whatever their channel. */
+    legKey?: string | null;
     /**
-     * Scope to ONE acquisition channel.
-     *
-     * Distinct from `campaignId`, and not a convenience for it: the funnel board
-     * offers channels that have NO campaign at all, so the row a customer clicked
-     * routinely has no id to filter on. Its identity is the triple billing keys a
-     * ceiling on — (funnel x channel x offer) — and the channel is the only part of
-     * it the other two filters do not already carry.
+     * Scope to ONE acquisition channel. Distinct from `campaignId`: a channel with no
+     * campaign yet has no id to filter on.
      */
     featureSlug?: string | null;
   } = {},
   /**
    * Channels a customer may fund that have NO campaign yet.
    *
-   * Optional because every existing caller lists what already runs. The board on a
-   * funnel's page is the one surface that also has to show what COULD run, and a
-   * channel nobody has funded is invisible to a campaign-derived list by construction
-   * — which is precisely the channel someone opens that page to turn on.
+   * Optional because most callers list what already runs. Offer Settings is the one
+   * surface that also has to show what COULD run, and a channel nobody has started is
+   * invisible to a campaign-derived list by construction.
    */
   offerable: readonly OfferableChannel[] = [],
 ): ControlRow[] {
-  // Normalized ONCE, and an unmapped key narrows to nothing rather than throwing:
-  // the wire carries two spellings of every funnel, so matching the raw string
-  // would silently read empty for whichever half the producer happens to emit.
-  let wantedFunnel: SalesFunnelKey | null = null;
-  if (filter.funnelKey) {
-    try {
-      wantedFunnel = normalizeSalesFunnelKey(filter.funnelKey as SalesFunnelKeyWire);
-    } catch {
-      return [];
-    }
-  }
-
   const scoped = campaigns.filter((c) => {
     if (filter.campaignId) return c.id === filter.campaignId;
     if (acquisitionChannelForFeatureSlug(c.featureSlug, channels) === null) return false;
     if (filter.featureSlug && c.featureSlug !== filter.featureSlug) return false;
     if (filter.offerId && c.offerId !== filter.offerId) return false;
-    if (wantedFunnel) {
-      // A campaign that predates the funnels names none, so it belongs to no
-      // funnel's list rather than to whichever one the reader is looking at.
-      const scope = campaignBudgetScope(c, channels);
-      if (!scope || scope.def.key !== wantedFunnel) return false;
-    }
+    if (filter.legKey && c.legKey !== filter.legKey) return false;
     return true;
   });
 
   const groups = new Map<string, ControlCampaign[]>();
   for (const c of scoped) {
-    const scope = campaignBudgetScope(c, channels);
-    const rowId = scope
-      ? `${scope.def.key}|${scope.featureSlug}|${c.offerId ?? ""}`
+    const rowId = c.legKey && c.featureSlug
+      ? `${c.legKey}|${c.featureSlug}|${c.offerId ?? ""}`
       : `campaign:${c.id}`;
     const bucket = groups.get(rowId);
     if (bucket) bucket.push(c);
     else groups.set(rowId, [c]);
   }
 
-  // Filed under the SAME triple a campaign row uses, so a channel that already has one
-  // can never appear twice — a second row would offer to edit one billing ceiling in two
-  // places and count it twice in every total.
+  // Filed under the SAME address a campaign row uses, so a channel that already has a
+  // campaign can never appear twice — a second row would offer to edit one billing
+  // ceiling in two places and count it twice in every total.
   const offeredRows: ControlRow[] = [];
   for (const o of offerable) {
     if (filter.campaignId) break;
     if (filter.featureSlug && o.featureSlug !== filter.featureSlug) continue;
     if (filter.offerId && o.offerId !== filter.offerId) continue;
-    let key: SalesFunnelKey;
-    try {
-      key = normalizeSalesFunnelKey(o.funnelKey as SalesFunnelKeyWire);
-    } catch {
-      continue;
-    }
-    if (wantedFunnel && key !== wantedFunnel) continue;
-    const def = SALES_FUNNELS.find((f) => f.key === key);
-    if (!def) continue;
-    const rowId = `${key}|${o.featureSlug}|${o.offerId ?? ""}`;
+    if (filter.legKey && o.legKey !== filter.legKey) continue;
+    const rowId = `${o.legKey}|${o.featureSlug}|${o.offerId ?? ""}`;
     if (groups.has(rowId)) continue;
     const scope: CampaignBudgetScope = {
-      def,
+      offerId: o.offerId,
+      legKey: o.legKey,
       featureSlug: o.featureSlug,
       channelName: o.channelName,
     };
-    const savedCents = campaignSavedCents(scope, o.offerId ?? undefined, budgets);
     offeredRows.push({
       rowId,
       campaignId: null,
       runningCampaignIds: [],
-      // A channel with NO campaign is not running, whatever it is funded at. Money
-      // has started nothing since campaign-service deleted provisioning on
-      // 2026-09-06, so reading the ceiling as a verdict states the opposite of the
-      // truth for every funded-but-never-launched channel: production carried one
-      // reading "Running" on the funnel board at the same moment Offer Settings read
-      // "Paused" for the same offer, the same funnel and the same channel, with
-      // neither true and nothing ever going to run.
+      // A channel with NO campaign is not running, whatever it is funded at: money
+      // starts nothing (campaign-service, 2026-09-06).
       running: false,
       paymentDeclined: false,
       scope,
-      savedCents,
+      savedCents: campaignSavedCents(scope, budgets),
       offerId: o.offerId,
-      legKey: null,
+      legKey: o.legKey,
     });
   }
 
@@ -326,9 +266,7 @@ export function buildControlRows(
         paymentDeclined:
           runningCampaignIds.length === 0 && representative.stopReason === "payment_declined",
         scope,
-        savedCents: scope
-          ? campaignSavedCents(scope, representative.offerId ?? undefined, budgets)
-          : 0,
+        savedCents: scope ? campaignSavedCents(scope, budgets) : 0,
         offerId: representative.offerId,
         legKey: representative.legKey ?? null,
       };
@@ -338,84 +276,6 @@ export function buildControlRows(
       if (a.running !== b.running) return a.running ? -1 : 1;
       return a.rowId.localeCompare(b.rowId);
     });
-}
-
-/**
- * The same rows, filed under the SALES FUNNEL each campaign sells.
- *
- * A campaign is named for the LEG it performs (`Positive reply`), which is an
- * arrow of a funnel and not the funnel itself — so a flat list of campaigns
- * states what each one buys and never what it buys it FOR. On a scope selling
- * several funnels that reads as several unrelated lines: the modal named an
- * arrow and a channel and left the reader to work out which funnel the money was
- * going into.
- *
- * The funnel is what a customer reads a set of campaigns under, so grouping puts
- * the campaigns selling one funnel on screen together. The FLOOR is one grain
- * finer — it is the channel's, judged per (funnel, channel) pair.
- *
- * Group order is FIRST APPEARANCE in the row order this module already sorted,
- * so a funnel with a running campaign leads and nothing reshuffles as toggles
- * are flipped. Campaigns that predate the funnels name none, so they group under
- * a null funnel and sort LAST — they have no ceiling and belong to no funnel, and
- * putting them among the funnels would read as one.
- */
-export interface ControlRowGroup {
-  /** The funnel these campaigns sell, or null for campaigns that predate them. */
-  funnel: SalesFunnelDef | null;
-  rows: ControlRow[];
-}
-
-export function groupControlRowsByFunnel(rows: ControlRow[]): ControlRowGroup[] {
-  const order: string[] = [];
-  const byKey = new Map<string, ControlRowGroup>();
-  for (const row of rows) {
-    const key = row.scope?.def.key ?? "";
-    let group = byKey.get(key);
-    if (!group) {
-      group = { funnel: row.scope?.def ?? null, rows: [] };
-      byKey.set(key, group);
-      order.push(key);
-    }
-    group.rows.push(row);
-  }
-  // A stable sort, so first-appearance order survives inside each class.
-  return order.map((k) => byKey.get(k)!).sort((a, b) => (a.funnel ? 0 : 1) - (b.funnel ? 0 : 1));
-}
-
-/**
- * What a funnel HEADING states, read off the drafts so it moves as they are typed.
- *
- * Both figures are DERIVED from the campaign rows under it and neither is written:
- * a funnel is a scope, not a thing billing or campaign-service fund, so an editable
- * total there would have to be split back across its campaigns and no split the
- * customer did not state is honest. The heading exists to say what the rows below
- * it add up to right now.
- *
- * `running` follows the same rule as the scope pill (`rollupStatus`): a funnel is
- * running while at least one campaign in it is, so it reads OFF only once every one
- * of them is off. With a single campaign the two are the same switch by
- * construction, which is what makes flipping either one flip the other.
- *
- * The total adds up every campaign's TYPED ceiling, running or not — it is the sum
- * of the numbers on screen, not a claim about what will be spent today. What may
- * actually be spent is `scopeTotalCents`, which counts only the running ones and is
- * what the summary above Confirm states.
- */
-export function groupHeadingState(
-  rows: ControlRow[],
-  drafts: Record<string, ControlDraft>,
-): { running: boolean; budgetUsd: number } {
-  let running = false;
-  let budgetUsd = 0;
-  for (const row of rows) {
-    const draft = drafts[row.rowId];
-    if (draft ? draft.running : row.running) running = true;
-    if (!row.scope) continue;
-    const typed = parseDailyBudgetUsd(draft ? draft.budget : String(Math.round(row.savedCents / 100)));
-    if (typed !== null && typed > 0) budgetUsd += typed;
-  }
-  return { running, budgetUsd };
 }
 
 /**
@@ -446,7 +306,7 @@ function pickRepresentative(
  * A scope is RUNNING when at least one campaign in it is: the customer asked us
  * to reach people and we are reaching them. There is deliberately no third word
  * for a scope where some run and others do not — "partially paused" was one, and
- * it read as a fault on a brand doing exactly what it meant to (one funnel live,
+ * it read as a fault on a brand doing exactly what it meant to (one campaign live,
  * an older one deliberately stopped). Which campaigns are running is what the
  * rows themselves say, one toggle each; the pill answers the coarser question
  * the reader asked by glancing at it.
@@ -488,20 +348,16 @@ export const ROLLUP_STYLE: Record<ControlRollup, string> = {
  * surfaced this: one campaign running at $50 and one paused at $10 read
  * `$60 / day` on its Overview.
  *
- * It adds up the rows' OWN ceilings — the ones `campaignSavedCents` already
- * narrowed to each campaign's offer — which is the same shape as the funnels
- * card's per-offer total and for the same reason: billing's per-pair figure
- * spans every offer selling that pair, so it names money a reader on one offer
- * cannot see.
+ * It adds up the rows' OWN ceilings, one per campaign address.
  *
  * It is correct ONLY because a row is a campaign IDENTITY rather than a stored
- * campaign row: billing keys one ceiling per (funnel, channel, offer), so a list
+ * campaign row: billing keys one ceiling per (offer, leg, channel), so a list
  * per stored row would add the same ceiling up once per row. That is exactly
  * what it did — 46 rows of one campaign read $2,310/day against a real $50.
  *
  * ⚠️ This is ALSO how the BRAND's figure is obtained now, and that is a reversal.
  * billing serves a brand total (`GET /brands/:id/daily-budget`) and the Overview
- * used to read it — but billing keys ceilings on the triple and stores NO status,
+ * used to read it — but billing keys ceilings on the address and stores NO status,
  * while campaign-service stores the status and no money, so NEITHER producer can
  * answer "what may be spent today" on its own. This join is the only place both
  * halves are in hand, and it is free: the rows come off the two query keys the
@@ -545,7 +401,7 @@ export interface StatusWrite {
 
 export interface BudgetWrite {
   rowId: string;
-  funnelKey: string;
+  legKey: string;
   featureSlug: string;
   offerId: string | null;
   cents: number;
@@ -560,7 +416,7 @@ export interface ControlsDiff {
 
 /**
  * Only what CHANGED, so a Confirm never re-states a value it was not asked to
- * touch — the same discipline as the funnels card's partial patch. The two write
+ * touch. The two write
  * kinds are computed independently: flipping a toggle must not restate an
  * amount, and editing an amount must not restate a status.
  *
@@ -624,7 +480,7 @@ export function controlsDiff(
     if (cents !== row.savedCents) {
       budgetWrites.push({
         rowId: row.rowId,
-        funnelKey: row.scope.def.key,
+        legKey: row.scope.legKey,
         featureSlug: row.scope.featureSlug,
         offerId: row.offerId,
         cents,
@@ -636,52 +492,31 @@ export function controlsDiff(
 }
 
 /**
- * Which ceilings are judged together against one floor: the (funnel, channel)
- * PAIR, billing's own `minimumGroupOf`.
+ * What each CHANNEL would be funded at, across the brand, once this form lands — in
+ * whole dollars. billing judges a channel's floor on that total, and this modal can
+ * move several rows of one channel at once, so each is checked against the total the
+ * form is simultaneously changing. Campaigns the modal does not show are held
+ * constant at what billing stores.
  *
- * Every channel states a floor of its own — its published daily operating cost —
- * so each is judged on its own money, and neither a sibling channel's spend nor
- * a sibling's floor has anything to say about whether this one can run.
+ * Computed ONLY to check the form before it is written. billing holds the same rule
+ * and its 400 is what decides; nothing displayed is derived from this.
  */
-export function pairKey(funnelKey: string, featureSlug: string): string {
-  return `${funnelKey}\u0000${featureSlug}`;
-}
-
-/**
- * What each (funnel, channel) PAIR would be funded at once this form lands, in
- * whole dollars.
- *
- * The floor binds the pair's TOTAL across offers, not one campaign — a customer
- * splitting one funded pair across two offers must not be refused for each half
- * being under a bar the whole clears. This modal can edit SEVERAL rows of one
- * pair at once, so projecting them one at a time would check each against a
- * total the form is simultaneously changing.
- *
- * Siblings the modal does not show (another offer's campaign on the same pair)
- * are what billing's per-pair figure carries beyond the rows here, so they are
- * held constant.
- *
- * Computed ONLY to check the form before it is written. billing holds the same
- * rule and its 400 is what decides; nothing displayed is derived from this.
- */
-export function projectedPairTotalsUsd(
+export function projectedChannelTotalsUsd(
   rows: ControlRow[],
   drafts: Record<string, ControlDraft>,
-  savedPairCents: Record<string, number>,
+  savedChannelCents: Record<string, number>,
 ): Record<string, number> {
   const out: Record<string, number> = {};
   const seen = new Set<string>();
   for (const row of rows) {
     if (!row.scope) continue;
-    const key = pairKey(row.scope.def.key, row.scope.featureSlug);
+    const key = row.scope.featureSlug;
     if (!seen.has(key)) {
       seen.add(key);
       const inModal = rows
-        .filter(
-          (r) => r.scope && pairKey(r.scope.def.key, r.scope.featureSlug) === key,
-        )
+        .filter((r) => r.scope?.featureSlug === key)
         .reduce((sum, r) => sum + (r.savedCents > 0 ? r.savedCents : 0), 0);
-      const siblings = Math.max(0, (savedPairCents[key] ?? 0) - inModal);
+      const siblings = Math.max(0, (savedChannelCents[key] ?? 0) - inModal);
       out[key] = Math.round(siblings / 100);
     }
     const typed = parseDailyBudgetUsd(drafts[row.rowId]?.budget ?? "");
@@ -785,12 +620,9 @@ export function controlWriteErrorMessage(status: number | null, kind: "status" |
   // customer to re-type a number that was never the problem, which is exactly what
   // happened the first time someone tried to fund a newly published channel.
   if (status === 400) {
-    return "We could not fund this channel. The amount may be outside what this funnel allows, or this channel may not be fundable yet.";
+    return "We could not fund this channel. The amount may be under what this channel needs a day, or this channel may not be fundable yet.";
   }
   if (status === 403) return "You do not have access to this campaign's budget.";
   if (status === 404) return "This campaign no longer exists.";
-  if (status === 409) {
-    return "This funnel is sold through more than one campaign, so we could not tell which one this budget was for. Set it on Offer Settings instead.";
-  }
   return "We could not save this daily budget. Try again in a moment.";
 }

@@ -471,110 +471,6 @@ export function StartOption({
 }
 
 /**
- * A FULL-WIDTH option: one revenue path, its whole path drawn across the row.
- *
- * The grid card above states a title and a line; a path is a sequence, and a sequence
- * folded into a card reads as a row of pills nobody parses. Here every rung gets its
- * own tile and its own words, the arrows sit between them, and the channel that runs
- * it plus its price close the row. Same selected/hover recipe as the card, so a pick
- * reads the same on every screen.
- */
-export function StartPathOption({
-  selected,
-  onToggle,
-  title,
-  meta,
-  mark,
-  rungs,
-  index = 0,
-  children,
-}: {
-  selected: boolean;
-  onToggle: () => void;
-  /** The channel that runs the path. */
-  title: ReactNode;
-  /** The price, or the operator. */
-  meta?: ReactNode;
-  /** The channel's own mark. */
-  mark?: ReactNode;
-  /** One entry per rung: its tile and its words, in the producer's order. */
-  rungs: { key: string; label: string; mark: ReactNode }[];
-  index?: number;
-  children?: ReactNode;
-}) {
-  const [popKey, setPopKey] = useState(0);
-  const wasSelected = useRef(selected);
-  useEffect(() => {
-    if (selected && !wasSelected.current) setPopKey((k) => k + 1);
-    wasSelected.current = selected;
-  }, [selected]);
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={selected}
-      style={{ "--enter-delay": `${Math.min(index, 24) * 40}ms` } as CSSProperties}
-      className={`start-enter group relative flex w-full flex-col gap-3 rounded-2xl border p-4 text-left transition-all ${
-        selected
-          ? "border-brand-600 bg-brand-50 shadow-md ring-2 ring-brand-200"
-          : "border-gray-200 bg-white hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
-      }`}
-    >
-      <span
-        key={popKey}
-        aria-hidden="true"
-        className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
-          selected
-            ? "start-pop border-brand-600 bg-brand-600 text-white"
-            : "border-gray-300 bg-white text-transparent group-hover:border-brand-300"
-        }`}
-      >
-        <CheckIcon size={14} weight="bold" />
-      </span>
-
-      <div className="flex items-center gap-3 pr-8">
-        {mark && <span className="shrink-0">{mark}</span>}
-        {/* WRAPS, never truncates. The title is the path's own name and it is what
-            the row is called; "Sales Meeting from Po..." on a phone cuts off the
-            half that tells two paths apart. Same reasoning as the rungs below. */}
-        <span className="min-w-0 font-display text-base font-medium leading-tight text-gray-900">
-          {title}
-        </span>
-        {meta && (
-          <span
-            className={`ml-auto shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-              selected ? "bg-white text-brand-700" : "bg-gray-100 text-gray-700"
-            }`}
-          >
-            {meta}
-          </span>
-        )}
-      </div>
-
-      {/* The path, full length: every rung a tile plus its words, an arrow between. It
-          wraps on a phone rather than truncating; a path missing its last rung is not
-          the path. */}
-      <ol className="flex flex-wrap items-center gap-x-3 gap-y-2" aria-label="Path">
-        {rungs.map((r, i) => (
-          <li key={r.key} className="flex items-center gap-3">
-            {i > 0 && (
-              <ArrowRightIcon size={18} weight="bold" className="shrink-0 text-gray-300" aria-hidden="true" />
-            )}
-            <span className="flex items-center gap-2">
-              {r.mark}
-              <span className="text-sm font-medium text-gray-800">{r.label}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-
-      {children && <div className="text-xs text-gray-500">{children}</div>}
-    </button>
-  );
-}
-
-/**
  * Whole dollars, spelled the way every price on this flow reads: a floor, not a
  * bill. A day rate is a commercial term we set, so cents read as noise the same
  * way they do on a daily budget anywhere else in the product.
@@ -622,91 +518,16 @@ export function CountUp({
 }
 
 /**
- * One path on the returns screen: what our clients got back on it per dollar,
- * and what a first step costs.
- *
- * A ROW rather than a card, because the returns screen is the last one before
- * signup and the owner wants every figure on it visible without scrolling.
- *
- * The channel is NOT named: there is one, so naming it beside every path states
- * the only answer there is over and over (it was also named twice on one row).
- * Every figure is rendered verbatim off the producer's read; nothing here
- * divides. The headline is the middle half of what clients got back (the
- * quartiles) and the median sits under it. An unmeasured path says so. The
- * line that stated the best workflow's first-step price is gone: owner-cut
- * 2026-09-18, it read as a bad number on the one screen meant to sell.
- */
-export function StartReturnRow({
-  index = 0,
-  funnelMark,
-  funnelName,
-  median,
-  p25,
-  p75,
-  reasonLabel,
-  formatReturn,
-}: {
-  index?: number;
-  funnelMark: ReactNode;
-  funnelName: string;
-  median: number | null;
-  p25: number | null;
-  p75: number | null;
-  reasonLabel: string;
-  formatReturn: (x: number) => string;
-}) {
-  const measured = median != null;
-  const range = p25 != null && p75 != null;
-  return (
-    <div
-      className="start-enter flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-gray-200 bg-white px-4 py-3"
-      style={{ "--enter-delay": `${index * 60}ms` } as CSSProperties}
-    >
-      <div className="flex shrink-0 items-center">{funnelMark}</div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">{funnelName}</p>
-        {!measured && <p className="mt-0.5 text-xs text-gray-500 sm:truncate">{reasonLabel}</p>}
-      </div>
-      <div className="basis-full shrink-0 pl-[44px] sm:basis-auto sm:pl-0 sm:text-right">
-        {measured ? (
-          <>
-            <p className="font-display text-2xl leading-none tracking-tight text-gray-900">
-              {range ? (
-                <>
-                  <CountUp value={p25} format={formatReturn} />
-                  <span className="mx-1 text-base text-gray-400">to</span>
-                  <CountUp value={p75} format={formatReturn} />
-                </>
-              ) : (
-                <CountUp value={median} format={formatReturn} />
-              )}
-              <span className="ml-1 text-xs font-normal text-gray-500">back per dollar</span>
-            </p>
-            {range && (
-              <p className="mt-1 text-xs text-gray-500">{formatReturn(median)} median ROI</p>
-            )}
-          </>
-        ) : (
-          <p className="font-display text-base text-gray-400">Not measured yet</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * A named client's card beside the returns: the person, what they got back on
- * the budget they paid, the path it ran on, the first step's price, the counts.
- * The homepage's proof card, in the same order, so a visitor who came from it
- * reads the same people. The path is NAMED because the cards are the top three
- * returns whatever path they ran, not the paths the visitor picked.
+ * A named client's card: the person, what they got back on the budget they paid, the
+ * first step's price, the counts, and the outcome they reached. The homepage's proof
+ * card, in the same order, so a visitor who came from it reads the same people.
  */
 export function StartProofCard({
   index = 0,
   portrait,
   name,
   role,
-  funnelName,
+  outcomeLabel,
   returnPerDollar,
   firstStep,
   counts,
@@ -716,7 +537,7 @@ export function StartProofCard({
   portrait: string;
   name: string;
   role: string;
-  funnelName: string;
+  outcomeLabel: string | null;
   returnPerDollar: number;
   firstStep: { label: string; costPerReachUsd: number | null } | null;
   counts: { label: string; peopleReached: number }[];
@@ -764,10 +585,12 @@ export function StartProofCard({
           </span>
         ))}
       </div>
-      <p className="mt-1 flex justify-between gap-2 text-xs text-gray-500">
-        <span>Path</span>
-        <b className="min-w-0 truncate text-right font-medium text-gray-900">{funnelName}</b>
-      </p>
+      {outcomeLabel && (
+        <p className="mt-1 flex justify-between gap-2 text-xs text-gray-500">
+          <span>Outcome</span>
+          <b className="min-w-0 truncate text-right font-medium text-gray-900">{outcomeLabel}</b>
+        </p>
+      )}
       <p className="mt-1 flex justify-between text-xs text-gray-500">
         <span>Channel</span>
         <b className="font-medium text-gray-900">Cold email</b>

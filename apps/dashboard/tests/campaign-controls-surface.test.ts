@@ -60,7 +60,7 @@ describe("campaign controls — one modal, three grains", () => {
 
 describe("the trigger states money it READS", () => {
   it("states what may be spent TODAY at brand grain, not billing's status-blind total", () => {
-    // billing keys a ceiling on (funnel x channel x offer) and stores NO status, so
+    // billing keys a ceiling on (offer x leg x channel) and stores NO status, so
     // its served brand total counts a paused campaign's money: one running at $50
     // beside one paused at $10 read `$60 / day`. Neither producer can answer this
     // alone, and the join is free — the trigger already holds both reads.
@@ -77,7 +77,7 @@ describe("the trigger states money it READS", () => {
 
   it("counts one ceiling per campaign, because a row is an identity", () => {
     // campaign-service stores one campaign as many rows; the sum is honest only
-    // because `buildControlRows` groups them onto the triple billing funds.
+    // because `buildControlRows` groups them onto the address billing funds.
     const lib = read("lib/campaign-controls.ts");
     expect(lib).toContain("runningCampaignIds");
     expect(lib).toContain("pickRepresentative");
@@ -124,12 +124,13 @@ describe("the affordance survives a touch screen", () => {
 
 describe("status and budget stay two independent answers", () => {
   it("stops a campaign through its STATUS, never by zeroing its ceiling", () => {
-    // Zero throws the amount away, and billing's per-funnel floor only lets a
-    // funnel funded under its minimum be KEPT or RAISED — so a grandfathered
+    // Zero throws the amount away, and billing's per-channel floor only lets a
+    // channel funded under its minimum be KEPT or RAISED — so a grandfathered
     // campaign stopped that way could never be restarted where it was.
     expect(api).toContain("export async function setCampaignStatus");
     expect(modal).toContain("setCampaignStatus");
-    expect(modal).toContain("saveBrandFunnelBudget");
+    expect(modal).toContain("saveCampaignBudget");
+    expect(modal).not.toContain("saveBrandFunnelBudget");
   });
 
   it("sends the identity headers campaign-service validates before an activate", () => {
@@ -170,7 +171,7 @@ describe("a fan-out reports itself honestly", () => {
 
   it("writes only what the form CHANGED", () => {
     expect(modal).toContain("controlsDiff(rows, drafts)");
-    expect(modal).not.toContain("rows.map((row) => saveBrandFunnelBudget");
+    expect(modal).not.toContain("rows.map((row) => saveCampaignBudget");
   });
 });
 
@@ -189,30 +190,11 @@ describe("no aggregate is editable anywhere", () => {
   });
 });
 
-describe("the modal files each campaign under its sales funnel", () => {
-  it("groups the rows through the ONE derivation, never a second grouping", () => {
-    expect(modal).toContain("groupControlRowsByFunnel(rows)");
-    expect(modal).toContain("<FunnelHeading");
-  });
-
-  it("suppresses the heading when the modal is ALREADY scoped to one funnel", () => {
-    // That page names the funnel above the control that opened this, and saying it
-    // twice on one screen is chrome rather than clarity.
-    expect(modal).toContain("const showFunnelHeadings = !funnelKey;");
-  });
-
-  it("states the funnel's figures from the DRAFTS, and writes neither", () => {
-    // The daily budget is read-only at funnel grain: billing keys a ceiling on
-    // (funnel x channel x offer), so the only fundable thing is a campaign and a
-    // funnel-level field would have to split its figure back across them.
-    const at = modal.indexOf("function FunnelHeading(");
-    expect(at).toBeGreaterThan(-1);
-    const body = modal.slice(at, modal.indexOf("\n}\n", at));
-    expect(body).toContain("groupHeadingState(group.rows, drafts)");
-    expect(body).not.toContain("<input");
-    // The switch DOES write — a status is per campaign, so flipping the heading
-    // sets every campaign under it.
-    expect(body).toContain('role="switch"');
-    expect(modal).toContain("function setGroupRunning(");
+describe("the modal lists campaigns flat", () => {
+  it("files no campaign under a sales funnel heading any more", () => {
+    // Retired with the sales-funnel model: a row is an (offer x leg x channel)
+    // campaign and there is no funnel grain above it to group under.
+    expect(modal).not.toContain("groupControlRowsByFunnel");
+    expect(modal).not.toContain("FunnelHeading");
   });
 });

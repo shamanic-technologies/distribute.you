@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   hotLeadStats,
-  NO_COMMITMENT_TAG,
   proofCardsFor,
   reassuranceFor,
   SHOWCASE_PEOPLE,
@@ -31,12 +30,6 @@ describe("hotLeadStats: the homepage hero's derivation over the ranked brands", 
   });
 });
 
-describe("the commitment tag", () => {
-  it("is a constant: no path we sell carries a commitment, whatever the channel's 'minimum days' says", () => {
-    expect(NO_COMMITMENT_TAG).toBe("No commitment");
-  });
-});
-
 const SHOWCASE: ShowcaseBrand[] = [
   {
     brand: { id: "1", name: "Doc Dinners", domain: "docdinners.com" },
@@ -44,8 +37,6 @@ const SHOWCASE: ShowcaseBrand[] = [
     unmeasuredReason: null,
     funnels: [
       {
-        funnelKey: "sales_meetings_from_conversation",
-        funnelName: "Sales Meeting from Positive Reply",
         returnPerDollar: 1.6237,
         steps: [
           { key: "contacted", label: "Contacted", peopleReached: 15595, costPerReachUsd: 0.306 },
@@ -63,8 +54,6 @@ const SHOWCASE: ShowcaseBrand[] = [
     unmeasuredReason: null,
     funnels: [
       {
-        funnelKey: "form_magnet",
-        funnelName: "Form Magnet",
         returnPerDollar: 51.06,
         steps: [
           { key: "contacted", label: "Contacted", peopleReached: 2808, costPerReachUsd: 0.1 },
@@ -79,8 +68,6 @@ const SHOWCASE: ShowcaseBrand[] = [
     unmeasuredReason: null,
     funnels: [
       {
-        funnelKey: "sales_meetings_from_conversation",
-        funnelName: "Sales Meeting from Positive Reply",
         returnPerDollar: 3.0555,
         steps: [
           { key: "contacted", label: "Contacted", peopleReached: 3497, costPerReachUsd: 0.2 },
@@ -93,18 +80,19 @@ const SHOWCASE: ShowcaseBrand[] = [
     brand: { id: "4", name: "Nobody Consented", domain: "unnamed.example" },
     measured: true,
     unmeasuredReason: null,
-    funnels: [{ funnelKey: "form_magnet", funnelName: "Form Magnet", returnPerDollar: 99, steps: [] }],
+    funnels: [{ returnPerDollar: 99, steps: [] }],
   },
 ];
 
 describe("proofCardsFor: the top three named clients by return, whatever the fleet median", () => {
-  it("orders by return across EVERY path, not the picked ones, and names the path", () => {
+  it("orders by return across EVERY path, not the picked ones, and names the outcome reached", () => {
     const cards = proofCardsFor(SHOWCASE);
-    expect(cards.map((c) => [c.domain, c.returnPerDollar, c.funnelName])).toEqual([
-      ["opsfolio.com", 51.06, "Form Magnet"],
-      ["shockwavecenters.com", 3.0555, "Sales Meeting from Positive Reply"],
-      ["docdinners.com", 1.6237, "Sales Meeting from Positive Reply"],
+    expect(cards.map((c) => [c.domain, c.returnPerDollar, c.outcomeLabel])).toEqual([
+      ["opsfolio.com", 51.06, "Website visit"],
+      ["shockwavecenters.com", 3.0555, "Positive reply"],
+      ["docdinners.com", 1.6237, "Meeting booked"],
     ]);
+    expect(new Set(cards.map((c) => c.id)).size).toBe(3);
     // the person is the map's, never the wire's brand name
     expect(cards[0].person).toBe(SHOWCASE_PEOPLE["opsfolio.com"]);
   });
@@ -151,9 +139,8 @@ describe("shuffleWithSeed: the cards sit in a random order, stable within one vi
 describe("reassuranceFor: one fleet figure per question, the homepage hero's three", () => {
   const proof = { hotLeads: { hotLeads: 881, companies: 23, medianCostUsd: 6.2 }, medianReturnPerDollar: 5.2 };
   const fmt = (x: number) => `${x.toFixed(1)}x`;
-  it("states the count, then the price, then the return", () => {
+  it("states the count, then the return", () => {
     expect(reassuranceFor("outcome", proof, fmt)).toEqual({ figure: "881", label: "hot leads for 23 companies" });
-    expect(reassuranceFor("funnels", proof, fmt)).toEqual({ figure: "$6", label: "median cost per hot lead" });
     expect(reassuranceFor("returns", proof, fmt)).toEqual({ figure: "5.2x", label: "median ROI reported" });
   });
   it("falls back to nothing (the founders line) for a figure we do not hold", () => {

@@ -2,20 +2,12 @@
  * Reading client-service's reward-task ledger for the surface in front of the
  * reader.
  *
- * The ledger answers per BRAND — every active sales funnel of every offer, plus
- * a per-offer roll-up — because one read per brand is one poll, and a funnel
- * page filtering that to its own row is a display lookup rather than a second
- * request. Nothing here derives a task, a due date or a reward: every one of
- * those is client-service's, which is the whole reason it owns the ledger.
- *
- * ## Why the funnel key is normalised by the CALLER
- *
- * Two spellings of every funnel key exist on the wire (`normalizeSalesFunnelKey`
- * in `sales-funnels.ts` is the one place that maps them), and the producer is
- * free to send either. Re-implementing that map here would be a second copy of a
- * vocabulary this repo has already watched drift, so the comparison takes the
- * normaliser as an argument instead. That also keeps this module alias-free, so
- * it carries real unit tests. Do NOT add an `@/…` import.
+ * The ledger answers per BRAND — every task of every offer, plus a per-offer
+ * roll-up — because one read per brand is one poll, and a page filtering that to
+ * its own offer is a display lookup rather than a second request. Nothing here
+ * derives a task, a due date or a reward: every one of those is client-service's,
+ * which is the whole reason it owns the ledger. Alias-free, so it carries real unit
+ * tests. Do NOT add an `@/…` import.
  *
  * ## Why an absent roll-up is null and not zero
  *
@@ -24,12 +16,12 @@
  * count we invented reads exactly like a measured one.
  */
 
-/** The granularity a task belongs to. Today: one sales funnel of one offer. */
+/** The granularity a task belongs to. The producer may state a finer scope; only the
+ *  offer is read. */
 export type RewardTaskScope = {
   type: string;
   brandId: string;
   offerId: string;
-  funnelKey: string;
 };
 
 /** One reward task, exactly as client-service states it. */
@@ -45,8 +37,8 @@ export type RewardTask = {
   /**
    * `observed` — we compared two readings and they differed, so the clock is
    * ours and certain. `producer_ts` — this is the first time the ledger ever saw
-   * this funnel, so the baseline is brand-service's own last-touched timestamp,
-   * which ALSO moves when a funnel is merely switched off and on. A day count
+   * this scope, so the baseline is brand-service's own last-touched timestamp,
+   * which ALSO moves for reasons that are not a refresh. A day count
    * derived from that baseline is therefore a number we cannot stand behind.
    */
   contentChangedProvenance: string;
@@ -56,7 +48,7 @@ export type RewardTask = {
 export type RewardRollupEntry = { offerId: string; dueCount: number; taskCount: number };
 
 /**
- * The first task DUE on this offer, whichever of its funnels it belongs to — the one
+ * The first task DUE on this offer — the one
  * thing to do on the offer's own page. Null when nothing is due, so the band says nothing.
  */
 export function dueTaskForOffer(tasks: readonly RewardTask[], offerId: string): RewardTask | null {
@@ -78,7 +70,7 @@ export function dueCountForOffer(
 }
 
 /**
- * How long this funnel's numbers have gone unchanged, in whole days, or `null`
+ * How long this task's numbers have gone unchanged, in whole days, or `null`
  * when we cannot honestly say.
  *
  * Null in two cases, and both matter:

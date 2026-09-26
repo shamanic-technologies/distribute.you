@@ -30,7 +30,7 @@ export function NoAudienceBanner() {
   const params = useParams();
   const orgId = params?.orgId as string | undefined;
   const brandId = (params?.brandId as string | undefined) ?? null;
-  // Present on the offer, funnel and campaign routes; absent on the brand one.
+  // Present on the offer and campaign routes; absent on the brand one.
   const routeOfferId = (params?.offerId as string | undefined) ?? null;
 
   const { data } = useAuthQuery<AudiencesResponse>(

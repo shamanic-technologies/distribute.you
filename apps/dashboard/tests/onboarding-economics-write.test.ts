@@ -42,19 +42,17 @@ describe("Onboarding sales-economics writes", () => {
     expect(src).not.toContain("optimizationGoal:");
   });
 
-  it("there is no primary-funnel step to write from: the first pick is the primary", () => {
-    // The step that asked "which one first?" is gone with the "How do you sell?"
-    // step (both were the Path screen's question twice). The primary is derived in
-    // `saveFunnelsAndContinue`, and it still writes no brand-level economics.
+  it("the outcome comes from the picks, and the services step writes nothing", () => {
+    // No step asks "which one first?" any more: the outcome is the first picked
+    // outcome's campaign, derived in `continueFromServices`, and that handler
+    // writes no brand-level economics.
     expect(src).not.toContain("savePrimaryFunnelAndContinue");
-    const body = sliceFrom("async function saveFunnelsAndContinue()", 900);
-    expect(body).toContain("resolvePrimaryKey(selectedFunnelKeys, primaryFunnelKey)");
-    expect(body).toContain("setOutcome(nextOutcome)");
+    expect(src).not.toContain("saveFunnelsAndContinue");
+    const body = src.slice(src.indexOf("function continueFromServices()"), src.indexOf("setOutcome(nextOutcome);") + 40);
+    expect(body).toContain("launchPairs.find((p) => p.toKey === startOutcomes[0])");
+    expect(body).toContain("if (nextOutcome) setOutcome(nextOutcome);");
     expect(body).not.toContain("buildEconomicsPayload");
   });
-
-
-
 
   it("warms the stored set on the post-payment paths, which never hydrate", () => {
     // Still needed: it seeds the lifetime revenue the funnel screens prefill from.

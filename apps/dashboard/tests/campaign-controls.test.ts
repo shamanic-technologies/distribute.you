@@ -8,8 +8,6 @@ import {
   controlWriteErrorMessage,
   controlsDiff,
   diffSummary,
-  groupControlRowsByFunnel,
-  groupHeadingState,
   hasChanges,
   isRunningStatus,
   nextTotalCents,
@@ -28,24 +26,23 @@ const CHANNELS = acquisitionChannelsFromFeatures([
     name: "Sales Cold Email Outreach",
     description: "We email your buyers from our own domains, on your behalf.",
     displayOrder: 1,
-    salesFunnels: ["sales_meetings_from_conversation", "website_purchases"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
     slug: "feedback-request-cold-email-outreach",
     name: "Feedback Request Cold Email Outreach",
     description: "We ask your buyers about the problem you solve.",
     displayOrder: 2,
-    salesFunnels: ["sales_meetings_from_conversation"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
     slug: "google-ads",
     name: "Google Ads",
     description: "Buy the searches your buyers already run.",
     displayOrder: 20,
-    salesFunnels: ["sales_meetings_from_website", "website_purchases", "form_magnet"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "website_visit" }] },
   },
 ]);
-
 
 const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
@@ -53,11 +50,14 @@ const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 const OFFER_A = "11111111-1111-4111-8111-111111111111";
 const OFFER_B = "22222222-2222-4222-8222-222222222222";
 const COLD_EMAIL = "sales-cold-email-outreach";
+/** Two legs, opaque keys as features-service mints them. */
+const LEG_A = "start_to_conversation";
+const LEG_B = "start_to_website_visit";
 
 function campaign(over: Partial<ControlCampaign> & { id: string }): ControlCampaign {
   return {
     status: "ongoing",
-    funnelKey: "reply_meeting",
+    legKey: LEG_A,
     featureSlug: COLD_EMAIL,
     offerId: OFFER_A,
     createdAt: "2026-05-01T00:00:00.000Z",
@@ -65,19 +65,13 @@ function campaign(over: Partial<ControlCampaign> & { id: string }): ControlCampa
   };
 }
 
-/** billing's answer, at the finest grain it serves. */
-function budgets(rows: { funnelKey: string; featureSlug: string; offerId: string | null; cents: number }[]) {
+/** billing's answer: one ceiling per (offer, leg, channel). */
+function budgets(rows: { legKey: string; featureSlug: string; offerId: string | null; cents: number }[]) {
   return {
-    funnels: [] as { funnelKey: string; dailyBudgetCents: number }[],
-    channels: rows.map((r) => ({
-      funnelKey: r.funnelKey,
-      featureSlug: r.featureSlug,
-      dailyBudgetCents: r.cents,
-    })),
-    offers: rows.map((r) => ({
-      funnelKey: r.funnelKey,
-      featureSlug: r.featureSlug,
+    campaigns: rows.map((r) => ({
       offerId: r.offerId,
+      legKey: r.legKey,
+      featureSlug: r.featureSlug,
       dailyBudgetCents: r.cents,
     })),
   };
@@ -86,13 +80,13 @@ function budgets(rows: { funnelKey: string; featureSlug: string; offerId: string
 /**
  * A channel the brand has NEVER funded has no campaign, so it has no row built from
  * one — and it is exactly the channel a customer needs to see in order to turn it on.
- * These rows carry no campaign id, so no status write can ever address them: funding
- * one IS turning it on, and campaign-service provisions the campaign on its own tick.
+ * These rows carry no campaign id, so no status write can ever address them: a status
+ * is a fact about a campaign and there is none yet.
  */
 describe("buildControlRows — a channel with no campaign yet", () => {
   const OFFERABLE = [
     {
-      funnelKey: "reply_meeting" as const,
+      legKey: LEG_A,
       featureSlug: "feedback-request-cold-email-outreach",
       channelName: "Feedback Request Cold Email Outreach",
       offerId: OFFER_A,
@@ -108,7 +102,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
     expect(offered!.runningCampaignIds).toEqual([]);
   });
 
-  // The campaign row already states this triple; a second row would offer to edit the
+  // The campaign row already states this address; a second row would offer to edit the
   // same billing ceiling twice and double it in every total.
   it("never duplicates a triple a campaign already holds", () => {
     const rows = buildControlRows(
@@ -130,7 +124,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
       [campaign({ id: "a" })],
       budgets([
         {
-          funnelKey: "reply_meeting",
+          legKey: LEG_A,
           featureSlug: "feedback-request-cold-email-outreach",
           offerId: OFFER_A,
           cents: 700,
@@ -145,7 +139,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
     // NOT running, whatever it is funded at. This line asserted the opposite until
     // campaign-service deleted provisioning-from-a-funded-ceiling (2026-09-06, "money
     // starts nothing"): a channel with no campaign runs nothing and never will until a
-    // person starts one, so reading the ceiling as a verdict put `Running` on the funnel
+    // person starts one, so reading the ceiling as a verdict put `Running` on one
     // board at the same moment Offer Settings read `Paused` for the same channel.
     expect(offered.running).toBe(false);
   });
@@ -160,7 +154,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
     expect(diff.budgetWrites).toEqual([
       {
         rowId: offered.rowId,
-        funnelKey: "reply_meeting",
+        legKey: LEG_A,
         featureSlug: "feedback-request-cold-email-outreach",
         offerId: OFFER_A,
         cents: 1200,
@@ -174,7 +168,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
       [campaign({ id: "a" })],
       budgets([
         {
-          funnelKey: "reply_meeting",
+          legKey: LEG_A,
           featureSlug: "feedback-request-cold-email-outreach",
           offerId: OFFER_A,
           cents: 700,
@@ -190,7 +184,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
     expect(diff.budgetWrites).toEqual([
       {
         rowId: offered.rowId,
-        funnelKey: "reply_meeting",
+        legKey: LEG_A,
         featureSlug: "feedback-request-cold-email-outreach",
         offerId: OFFER_A,
         cents: 0,
@@ -200,9 +194,9 @@ describe("buildControlRows — a channel with no campaign yet", () => {
 });
 
 /**
- * The funnel board opens this modal from ONE card, and a card is one channel under one
- * arrow. Without a channel filter the reader pressed one card and was handed a budget
- * field and a toggle for every sibling channel of the funnel.
+ * A surface can open this modal for ONE channel under one leg. Without a channel filter
+ * the reader pressed one card and was handed a budget field and a toggle for every
+ * sibling channel.
  *
  * It is deliberately NOT `campaignId`: the board's whole job is to offer channels that
  * have no campaign at all, so the row most in need of scoping has no id to scope on.
@@ -210,7 +204,7 @@ describe("buildControlRows — a channel with no campaign yet", () => {
 describe("buildControlRows — scoped to one acquisition channel", () => {
   const OFFERABLE = [
     {
-      funnelKey: "reply_meeting" as const,
+      legKey: LEG_A,
       featureSlug: "feedback-request-cold-email-outreach",
       channelName: "Feedback Request Cold Email Outreach",
       offerId: OFFER_A,
@@ -244,17 +238,17 @@ describe("buildControlRows — scoped to one acquisition channel", () => {
     expect(rows[0].scope?.featureSlug).toBe("feedback-request-cold-email-outreach");
   });
 
-  // A channel can sell several funnels, so the slug alone would match a sibling
-  // funnel's row for the same channel. The board pairs the two.
-  it("still narrows by funnel, so one channel's two funnels stay apart", () => {
+  // A channel can perform several legs, so the slug alone would match a sibling
+  // leg's row for the same channel. The caller pairs the two.
+  it("still narrows by leg, so one channel's two legs stay apart", () => {
     const rows = buildControlRows(
       [
-        campaign({ id: "a", funnelKey: "reply_meeting" }),
-        campaign({ id: "b", funnelKey: "visit_signup" }),
+        campaign({ id: "a", legKey: LEG_A }),
+        campaign({ id: "b", legKey: LEG_B }),
       ],
       undefined,
       CHANNELS,
-      { featureSlug: COLD_EMAIL, funnelKey: "reply_meeting" },
+      { featureSlug: COLD_EMAIL, legKey: LEG_A },
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["a"]);
   });
@@ -287,7 +281,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     const rows = buildControlRows(
       [
         campaign({ id: "a" }),
-        campaign({ id: "b", status: "stopped", funnelKey: "visit_signup" }),
+        campaign({ id: "b", status: "stopped", legKey: LEG_B }),
       ],
       undefined, CHANNELS,
     );
@@ -338,12 +332,12 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     expect(rows[0].running).toBe(false);
   });
 
-  it("keeps one line per identity, so two funnels stay two rows", () => {
+  it("keeps one line per identity, so two legs stay two rows", () => {
     const rows = buildControlRows(
       [
         campaign({ id: "a1" }),
         campaign({ id: "a2", status: "stopped" }),
-        campaign({ id: "b1", funnelKey: "visit_signup" }),
+        campaign({ id: "b1", legKey: LEG_B }),
       ],
       undefined, CHANNELS,
       { offerId: OFFER_A },
@@ -351,11 +345,11 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     expect(rows).toHaveLength(2);
   });
 
-  it("a campaign that predates the funnels names no triple, so it groups alone", () => {
+  it("a campaign that names no leg has no address, so it groups alone", () => {
     // It has no ceiling to share, so nothing can be double counted; folding two
     // of them together would hide one campaign behind the other.
     const rows = buildControlRows(
-      [campaign({ id: "old1", funnelKey: null }), campaign({ id: "old2", funnelKey: null })],
+      [campaign({ id: "old1", legKey: null }), campaign({ id: "old2", legKey: null })],
       undefined, CHANNELS,
     );
     expect(rows).toHaveLength(2);
@@ -393,13 +387,13 @@ describe("buildControlRows — which campaigns a grain controls", () => {
 
   it("each row's ceiling is narrowed by its OWN offer, never the surface's", () => {
     const set = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
-      { funnelKey: "visit_signup", featureSlug: COLD_EMAIL, offerId: OFFER_B, cents: 900 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
+      { legKey: LEG_B, featureSlug: COLD_EMAIL, offerId: OFFER_B, cents: 900 },
     ]);
     const rows = buildControlRows(
       [
         campaign({ id: "a" }),
-        campaign({ id: "b", offerId: OFFER_B, funnelKey: "visit_signup" }),
+        campaign({ id: "b", offerId: OFFER_B, legKey: LEG_B }),
       ],
       set, CHANNELS,
     );
@@ -408,8 +402,8 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     expect(byId.b).toBe(900);
   });
 
-  it("a campaign that predates the funnels has no scope and no ceiling", () => {
-    const rows = buildControlRows([campaign({ id: "old", funnelKey: null })], undefined, CHANNELS);
+  it("a campaign that names no leg has no scope and no ceiling", () => {
+    const rows = buildControlRows([campaign({ id: "old", legKey: null })], undefined, CHANNELS);
     expect(rows[0].scope).toBeNull();
     expect(rows[0].savedCents).toBe(0);
   });
@@ -417,7 +411,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
   it("orders running first, on the SAVED status so rows do not reshuffle mid-edit", () => {
     const rows = buildControlRows(
       [
-        campaign({ id: "z", funnelKey: "visit_signup" }),
+        campaign({ id: "z", legKey: LEG_B }),
         campaign({ id: "a", status: "stopped" }),
       ],
       undefined, CHANNELS,
@@ -425,45 +419,43 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     expect(rows.map((r) => r.campaignId)).toEqual(["z", "a"]);
   });
 
-  it("narrows to ONE funnel, reading either wire spelling of it", () => {
+  it("narrows to ONE leg", () => {
     const all = [
-      campaign({ id: "reply", funnelKey: "reply_meeting" }),
-      campaign({ id: "purchase", funnelKey: "visit_signup" }),
+      campaign({ id: "reply", legKey: LEG_A }),
+      campaign({ id: "visit", legKey: LEG_B }),
     ];
-    for (const spelling of ["reply_meeting", "sales_meetings_from_conversation"]) {
-      const rows = buildControlRows(all, undefined, CHANNELS, { funnelKey: spelling });
-      expect(rows.map((r) => r.campaignId)).toEqual(["reply"]);
-    }
+    const rows = buildControlRows(all, undefined, CHANNELS, { legKey: LEG_A });
+    expect(rows.map((r) => r.campaignId)).toEqual(["reply"]);
   });
 
-  it("the funnel filter composes with the offer filter, never replaces it", () => {
+  it("the leg filter composes with the offer filter, never replaces it", () => {
     const rows = buildControlRows(
       [
-        campaign({ id: "mine", funnelKey: "reply_meeting", offerId: OFFER_A }),
-        campaign({ id: "sibling", funnelKey: "reply_meeting", offerId: OFFER_B }),
+        campaign({ id: "mine", legKey: LEG_A, offerId: OFFER_A }),
+        campaign({ id: "sibling", legKey: LEG_A, offerId: OFFER_B }),
       ],
       undefined,
       CHANNELS,
-      { offerId: OFFER_A, funnelKey: "reply_meeting" },
+      { offerId: OFFER_A, legKey: LEG_A },
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["mine"]);
   });
 
-  it("a campaign that names no funnel belongs to no funnel's list", () => {
+  it("a campaign that names no leg belongs to no leg's list", () => {
     const rows = buildControlRows(
-      [campaign({ id: "old", funnelKey: null })],
+      [campaign({ id: "old", legKey: null })],
       undefined,
       CHANNELS,
-      { funnelKey: "reply_meeting" },
+      { legKey: LEG_A },
     );
     expect(rows).toEqual([]);
   });
 
-  it("an unmapped funnel key narrows to nothing rather than throwing", () => {
+  it("a leg key nothing carries narrows to nothing rather than throwing", () => {
     expect(() =>
-      buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, { funnelKey: "nonsense" }),
+      buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, { legKey: "nonsense" }),
     ).not.toThrow();
-    expect(buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, { funnelKey: "nonsense" })).toEqual([]);
+    expect(buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, { legKey: "nonsense" })).toEqual([]);
   });
 });
 
@@ -489,7 +481,7 @@ describe("rollupStatus — one word for a scope, exhaustive", () => {
 
   it("a MIX is ACTIVE — one campaign running means the scope is running", () => {
     // There is deliberately no third word. "Partially paused" read as a fault on
-    // a brand doing exactly what it meant to: one funnel live, an older one
+    // a brand doing exactly what it meant to: one campaign live, an older one
     // stopped. Which campaigns run is what the rows say, one toggle each.
     expect(rollupStatus([row(true, "a"), row(false, "b")])).toBe("active");
     expect(rollupStatus([row(false, "a"), row(true, "b"), row(false, "c")])).toBe("active");
@@ -554,10 +546,10 @@ describe("parseDailyBudgetUsd", () => {
 describe("scopeTotalCents", () => {
   it("adds the rows' own ceilings", () => {
     const set = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
     ]);
     const rows = buildControlRows(
-      [campaign({ id: "a" }), campaign({ id: "old", funnelKey: null })],
+      [campaign({ id: "a" }), campaign({ id: "old", legKey: null })],
       set, CHANNELS,
     );
     // The unscoped row contributes nothing: it has no ceiling to add.
@@ -565,11 +557,11 @@ describe("scopeTotalCents", () => {
   });
 
   it("counts ONE ceiling per campaign, not one per stored row", () => {
-    // billing keys one ceiling on (funnel, channel, offer). A list per stored row
+    // billing keys one ceiling on (offer, leg, channel). A list per stored row
     // added that same ceiling up once per row: prod read $2,310/day off 46 rows
     // of one campaign whose real ceiling is $50.
     const set = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
     ]);
     const rows = buildControlRows(
       [
@@ -589,9 +581,9 @@ describe("scopeTotalCents", () => {
     // cold-email campaign (1 ongoing) plus one stopped feedback-request campaign,
     // against exactly two billing ceilings — $50 and $10.
     const set = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
       {
-        funnelKey: "reply_meeting",
+        legKey: LEG_A,
         featureSlug: "feedback-request-cold-email-outreach",
         offerId: null,
         cents: 1000,
@@ -625,13 +617,13 @@ describe("scopeTotalCents", () => {
     // Pausing is a status, not a zeroed amount, precisely so the figure survives a
     // restart. That is also why it cannot be in a total answering "per day".
     const set = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
-      { funnelKey: "visit_signup", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 1000 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
+      { legKey: LEG_B, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 1000 },
     ]);
     const rows = buildControlRows(
       [
         campaign({ id: "live" }),
-        campaign({ id: "paused", status: "stopped", funnelKey: "visit_signup" }),
+        campaign({ id: "paused", status: "stopped", legKey: LEG_B }),
       ],
       set, CHANNELS,
       { offerId: OFFER_A },
@@ -642,7 +634,7 @@ describe("scopeTotalCents", () => {
 
   it("is zero when every campaign is paused, and that is a real answer", () => {
     const set = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
     ]);
     const rows = buildControlRows([campaign({ id: "a", status: "stopped" })], set, CHANNELS, {
       offerId: OFFER_A,
@@ -661,7 +653,7 @@ function draftsBy(
 
 describe("controlsDiff — only what changed", () => {
   const set = budgets([
-    { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
+    { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
   ]);
   const rows = buildControlRows([campaign({ id: "a" })], set, CHANNELS);
   const unchanged = draftsBy(rows, { a: { running: true, budget: "24" } });
@@ -708,7 +700,7 @@ describe("controlsDiff — only what changed", () => {
     // The modal edits several rows at once, so stopping a campaign nobody touched
     // would be a write nobody asked for.
     const zeroSet = budgets([
-      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 0 },
+      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 0 },
     ]);
     const zeroRows = buildControlRows([campaign({ id: "a" })], zeroSet, CHANNELS);
     const diff = controlsDiff(zeroRows, draftsBy(zeroRows, { a: { running: true, budget: "" } }));
@@ -742,7 +734,7 @@ describe("controlsDiff — only what changed", () => {
     expect(diff.budgetWrites).toEqual([
       {
         rowId: rows[0].rowId,
-        funnelKey: "reply_meeting",
+        legKey: LEG_A,
         featureSlug: COLD_EMAIL,
         offerId: OFFER_A,
         cents: 4000,
@@ -762,7 +754,7 @@ describe("controlsDiff — only what changed", () => {
   });
 
   it("a row with no scope never produces a budget write", () => {
-    const old = buildControlRows([campaign({ id: "old", funnelKey: null })], set, CHANNELS);
+    const old = buildControlRows([campaign({ id: "old", legKey: null })], set, CHANNELS);
     const diff = controlsDiff(old, draftsBy(old, { old: { running: false, budget: "99" } }));
     expect(diff.budgetWrites).toEqual([]);
     expect(diff.statusWrites.map((w) => [w.campaignId, w.activate])).toEqual([["old", false]]);
@@ -797,11 +789,11 @@ describe("controlsDiff — only what changed", () => {
 
 describe("diffSummary — what Confirm is about to do", () => {
   const set = budgets([
-    { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
-    { funnelKey: "visit_signup", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 1000 },
+    { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
+    { legKey: LEG_B, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 1000 },
   ]);
   const rows = buildControlRows(
-    [campaign({ id: "a" }), campaign({ id: "b", funnelKey: "visit_signup" })],
+    [campaign({ id: "a" }), campaign({ id: "b", legKey: LEG_B })],
     set, CHANNELS,
   );
 
@@ -842,7 +834,7 @@ describe("diffSummary — what Confirm is about to do", () => {
     const mixed = buildControlRows(
       [
         campaign({ id: "a" }),
-        campaign({ id: "b", status: "stopped", funnelKey: "visit_signup" }),
+        campaign({ id: "b", status: "stopped", legKey: LEG_B }),
       ],
       set, CHANNELS,
     );
@@ -856,7 +848,7 @@ describe("diffSummary — what Confirm is about to do", () => {
 
   it("counts restarts and pauses separately", () => {
     const stopped = buildControlRows(
-      [campaign({ id: "a", status: "stopped" }), campaign({ id: "b", funnelKey: "visit_signup" })],
+      [campaign({ id: "a", status: "stopped" }), campaign({ id: "b", legKey: LEG_B })],
       set, CHANNELS,
     );
     const diff = controlsDiff(
@@ -886,7 +878,9 @@ describe("controlWriteErrorMessage — our copy, never the downstream body", () 
     expect(controlWriteErrorMessage(400, "budget")).toContain("could not fund this channel");
     expect(controlWriteErrorMessage(400, "budget")).not.toContain("Check the amount");
     expect(controlWriteErrorMessage(400, "budget")).toContain("may not be fundable yet");
-    expect(controlWriteErrorMessage(409, "budget")).toContain("more than one campaign");
+    // A ceiling is keyed on one (offer, leg, channel), so there is no ambiguous
+    // funnel-wide 409 to explain any more; an unexpected status reads generically.
+    expect(controlWriteErrorMessage(409, "budget")).toContain("Try again");
     expect(controlWriteErrorMessage(null, "status")).toContain("Try again");
   });
 
@@ -898,78 +892,5 @@ describe("controlWriteErrorMessage — our copy, never the downstream body", () 
     // The doc comments are internal, so only the string literals are checked.
     const literals = lib.match(/"[^"\n]{12,}"/g) ?? [];
     for (const s of literals) expect(s).not.toContain("—");
-  });
-});
-
-describe("a campaign is filed under the sales funnel it sells", () => {
-  it("groups the rows by funnel, first-appearance order, unfunnelled LAST", () => {
-    // A campaign is NAMED for the leg it performs, which is an arrow of a funnel
-    // and not the funnel itself — so a flat list says what each one buys and never
-    // what funnel it buys it for.
-    const rows = buildControlRows(
-      [
-        campaign({ id: "a", funnelKey: "reply_meeting" }),
-        campaign({ id: "b", funnelKey: "visit_signup", status: "stopped" }),
-        campaign({ id: "c", funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
-        campaign({ id: "orphan", funnelKey: null }),
-      ],
-      undefined,
-      CHANNELS,
-    );
-    const groups = groupControlRowsByFunnel(rows);
-    expect(groups.map((g) => g.funnel?.key ?? null)).toEqual([
-      "reply_meeting",
-      "visit_signup",
-      null,
-    ]);
-    expect(groups[0].rows).toHaveLength(2);
-    // A campaign that predates the funnels belongs to no funnel and sorts last —
-    // it has no ceiling, and putting it among the funnels would read as one.
-    expect(groups[2].rows.map((r) => r.campaignId)).toEqual(["orphan"]);
-  });
-
-  it("states the funnel's running state as the ROLLUP of its campaigns", () => {
-    // OFF only once EVERY campaign under it is off, which is the same rule the
-    // scope pill states. With one campaign the two switches are the same switch.
-    const rows = buildControlRows(
-      [
-        campaign({ id: "a", funnelKey: "reply_meeting", status: "stopped" }),
-        campaign({ id: "b", funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
-      ],
-      undefined,
-      CHANNELS,
-    );
-    const drafts: Record<string, ControlDraft> = {};
-    for (const r of rows) drafts[r.rowId] = { running: r.running, budget: "" };
-    expect(groupHeadingState(rows, drafts).running).toBe(true);
-
-    for (const r of rows) drafts[r.rowId] = { running: false, budget: "" };
-    expect(groupHeadingState(rows, drafts).running).toBe(false);
-  });
-
-  it("adds up the TYPED ceilings, so the parent moves as a child is typed", () => {
-    const rows = buildControlRows(
-      [
-        campaign({ id: "a", funnelKey: "reply_meeting" }),
-        campaign({ id: "b", funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
-      ],
-      undefined,
-      CHANNELS,
-    );
-    const drafts: Record<string, ControlDraft> = {
-      [rows[0].rowId]: { running: true, budget: "24" },
-      [rows[1].rowId]: { running: true, budget: "8" },
-    };
-    expect(groupHeadingState(rows, drafts).budgetUsd).toBe(32);
-
-    // A PAUSED campaign's ceiling still counts here: the heading is the sum of the
-    // numbers on screen, not a claim about what gets spent today (that is
-    // `scopeTotalCents`, which the summary above Confirm states).
-    drafts[rows[1].rowId] = { running: false, budget: "8" };
-    expect(groupHeadingState(rows, drafts).budgetUsd).toBe(32);
-
-    // A half-typed field states nothing rather than a fabricated zero-and-carry.
-    drafts[rows[0].rowId] = { running: true, budget: "" };
-    expect(groupHeadingState(rows, drafts).budgetUsd).toBe(8);
   });
 });

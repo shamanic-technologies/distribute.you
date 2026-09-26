@@ -9,8 +9,7 @@ import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
 import { isVisitDrivenGoal } from "@/lib/api";
-import { funnelSteps } from "@/lib/goal-steps";
-import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { legSteps, type LegSteps } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 
@@ -36,7 +35,7 @@ export function RevenueOverviewSection({
   pipelineActivity,
   pipelineActualSeries,
   optimizationGoal,
-  funnelKey,
+  leg,
   visitToMeetingPct,
   visitToSignupPct,
   expectedOutcome,
@@ -64,17 +63,16 @@ export function RevenueOverviewSection({
   };
   /**
    * The goal, for the surfaces that still have one — the activity chart's step labels
-   * and the Outcome line's signal. A BRAND has none (it runs several funnels at once)
+   * and the Outcome line's signal. A BRAND has none (it runs several legs at once)
    * and renders neither, so it passes nothing rather than a picked default.
    */
   optimizationGoal?: BrandOptimizationGoal;
   /**
-   * The sales funnel this section is scoped to, when it is scoped to one — forwarded to
-   * the activity chart and used for the Outcome line's own signal. A campaign states one
-   * funnel; a brand runs several at once, so it states none and the goal keys everything
-   * exactly as before.
+   * The leg this section is scoped to, when it is scoped to one — forwarded to the
+   * activity chart and used for the Outcome line's own signal. A campaign states one;
+   * a brand runs several at once, so it states none and the goal keys everything.
    */
-  funnelKey?: SalesFunnelKeyWire | null;
+  leg?: LegSteps | null;
   /** Conversion rates the activity chart labels its bars with. Absent at brand level,
    *  which does not render that chart. */
   visitToMeetingPct?: number | null;
@@ -100,7 +98,7 @@ export function RevenueOverviewSection({
    *
    * Rendered on the SAME gate as the activity band (`showActivityChart`), so it is
    * campaign-only by construction: a brand and an offer run several channels and several
-   * funnels at once, and every card this band was built for (the campaign's audiences,
+   * legs at once, and every card this band was built for (the campaign's audiences,
    * the models its workflows write with, its conversion rate) states one campaign's
    * answer. A separate flag would be a second way to say the same thing, and the two
    * would drift.
@@ -133,18 +131,18 @@ export function RevenueOverviewSection({
    *
    * They describe ONE acquisition channel — the emails sales cold outreach sends
    * and the clicks they earn — so they belong to the campaign that runs that
-   * channel. A brand runs several channels and several funnels at once, and the
+   * channel. A brand runs several channels and several legs at once, and the
    * brand Overview answers a different question: what the whole thing returned.
    */
   showActivityChart?: boolean;
   /**
    * Chart RETURN ON SPEND across the brand's life instead of the cumulative count of
-   * one funnel signal.
+   * one signal.
    *
    * The signal line answers a narrower question than the brand Overview asks — a brand
-   * runs several funnels, and the one thing every one of them is judged on is what came
-   * back per dollar. The campaign Overview keeps the signal line: it sells exactly one
-   * funnel, so its own signal IS what that campaign is buying.
+   * runs several legs, and the one thing every one of them is judged on is what came
+   * back per dollar. The campaign Overview keeps the signal line: it performs exactly one
+   * leg, so its own signal IS what that campaign is buying.
    */
   showRoiTrend?: boolean;
   /** Every campaign selling this scope is still learning — the return line then states
@@ -204,12 +202,10 @@ export function RevenueOverviewSection({
   // check is inlined at the render site so TypeScript narrows the prop.
   // The "Outcome" card's single cumulative line tracks the brand's goal signal:
   // website clicks for a signups brand, positive replies for a meetings brand.
-  // Keyed on the FUNNEL when the surface states one: the goal cannot separate a meeting won
-  // from a reply from one won on the website (both are `sales_meetings`), so a goal-keyed
-  // line labels the wrong signal on one of the two. A brand states no funnel and keeps the
-  // goal's answer.
-  const isVisitDriven = funnelKey
-    ? funnelSteps(funnelKey).some((s) => s.key === "website_visits")
+  // Keyed on the LEG when the surface states one: the goal cannot separate a meeting won
+  // from a reply from one won on the website. A brand states no leg and keeps the goal's.
+  const isVisitDriven = leg
+    ? legSteps(leg).some((s) => s.key === "website_visits")
     : optimizationGoal
       ? isVisitDrivenGoal(optimizationGoal)
       : false;
@@ -321,7 +317,7 @@ export function RevenueOverviewSection({
                 data={pipelineActivity}
                 pipelineActualSeries={pipelineActualSeries}
                 optimizationGoal={optimizationGoal}
-                funnelKey={funnelKey}
+                leg={leg}
                 trackerSetUp={trackerSetUp}
                 visitToMeetingPct={visitToMeetingPct}
                 visitToSignupPct={visitToSignupPct}

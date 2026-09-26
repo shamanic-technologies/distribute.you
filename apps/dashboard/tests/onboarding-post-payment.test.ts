@@ -78,8 +78,15 @@ describe("post-payment step wiring in onboarding.tsx", () => {
     expect(onboardingSrc).not.toContain('if (step === "model")');
     expect(onboardingSrc).not.toContain("saveFunnelStatsAndContinue");
     expect(onboardingSrc).not.toContain("saveModelEconomics");
-    // The expensive cross-org ladder read existed only to feed that screen.
-    expect(onboardingSrc).not.toContain("getWorkflowProjectionLadder");
+    // The cross-org ladder read no longer feeds a screen: its one call is the
+    // launch asking the producer for each funded campaign's workflow pick.
+    const ladderCalls = onboardingSrc.match(/await getWorkflowProjectionLadder\(/g) ?? [];
+    expect(ladderCalls.length).toBe(1);
+    const launch = onboardingSrc.slice(
+      onboardingSrc.indexOf("async function runLaunchWork("),
+      onboardingSrc.indexOf("async function resolveLaunchCampaigns("),
+    );
+    expect(launch).toContain("await getWorkflowProjectionLadder(");
     // The phone step goes straight to the launch, or to the levers for somebody
     // who never saw them (an existing org adding a brand).
     const phone = onboardingSrc.slice(

@@ -27,19 +27,15 @@ import {
  */
 export function BuiltSummaryPanel({
   input,
-  funnelMarks,
+  campaignMarks,
 }: {
   input: BuiltInput;
   /**
-   * A funnel's tile, RESOLVED BY THE CALLER, keyed on the funnel key.
-   *
-   * The catalogue's own lookup THROWS on a key it does not carry, and a throw
-   * on the payoff screen loses the whole summary — so the resolution stays with
-   * the caller, which already holds the catalogue, and a funnel with no mark
-   * here simply draws none. Same reason the model below names no display
-   * string: this component cannot drift from a vocabulary it never reads.
+   * A campaign's leg tile, RESOLVED BY THE CALLER, keyed on the campaign key. A
+   * campaign with no mark here simply draws none. Same reason the model below names
+   * no display string: this component cannot drift from a vocabulary it never reads.
    */
-  funnelMarks?: Record<string, React.ReactNode>;
+  campaignMarks?: Record<string, React.ReactNode>;
 }) {
   const summary = builtSummary(input);
   const subtitle = builtSubtitle(summary);
@@ -78,36 +74,19 @@ export function BuiltSummaryPanel({
           );
         }
 
-        if (section.kind === "funnels") {
+        if (section.kind === "campaigns") {
           return (
-            <Block key="funnels" title="How you sell it">
+            <Block key="campaigns" title="What we'll run">
               <ul className="space-y-2.5">
-                {section.items.map((f) => {
-                  // Resolved by the caller off the catalogue that owns the
-                  // funnel, so it reads the same here as on every other surface.
-                  // A funnel with no mark draws none rather than a borrowed one.
-                  const mark = funnelMarks?.[f.key];
-                  return (
-                    <li key={f.key} className="flex items-start gap-2.5">
-                      {mark}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                          <span className="truncate">{f.name}</span>
-                          {f.isPrimary && (
-                            <span className="shrink-0 rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
-                              First
-                            </span>
-                          )}
-                        </div>
-                        {f.steps.length > 0 && (
-                          <div className="mt-0.5 text-xs leading-5 text-gray-500">
-                            {f.steps.join(" → ")}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
+                {section.items.map((c) => (
+                  <li key={c.key} className="flex items-start gap-2.5">
+                    {campaignMarks?.[c.key]}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-gray-900">{c.label}</div>
+                      <div className="mt-0.5 text-xs leading-5 text-gray-500">Via {c.channelName}</div>
+                    </div>
+                  </li>
+                ))}
               </ul>
             </Block>
           );

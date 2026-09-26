@@ -60,9 +60,10 @@ export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
 // ─────────────────────────────────────────────────────────────────────────
 // The named clients: the homepage's three proof cards, off the same read.
 //
-// features-service publishes the funnel counts and the realized return of the
-// clients who agreed to be named. The card leads with the PERSON behind the
-// number, and the person is not on the wire (brand-service holds a domain and a
+// features-service publishes the step counts and the realized return of the clients
+// who agreed to be named (one entry per path they ran, under the producer's own
+// historical field name `funnels`, read here and nowhere else). The card leads with
+// the PERSON behind the number, and the person is not on the wire (brand-service holds a domain and a
 // name, not a founder's face), so the three are stated here, keyed on the domain
 // the producer serves. A brand the producer serves that this map does not name
 // draws no card: a client's figures never appear without their consent.
@@ -74,16 +75,15 @@ export interface ShowcaseStep {
   costPerReachUsd?: number | null;
 }
 
-export interface ShowcaseFunnel {
-  funnelKey: string;
-  funnelName: string;
+/** One path a named client ran: its realized return and the steps it reached. */
+export interface ShowcasePath {
   returnPerDollar?: number | null;
   steps: ShowcaseStep[];
 }
 
 export interface ShowcaseBrand {
   brand: { id: string; name: string; domain: string };
-  funnels: ShowcaseFunnel[];
+  funnels: ShowcasePath[];
   measured: boolean;
   unmeasuredReason: string | null;
 }
@@ -113,14 +113,14 @@ export const SHOWCASE_PEOPLE: Record<string, ShowcasePerson> = {
   },
 };
 
-/** One proof card: a person, their return, the path it was on, the counts. */
+/** One proof card: a person, their return, the outcome it reached, the counts. */
 export interface ProofCard {
+  /** Stable per card: the domain plus the path's position in the producer's list. */
+  id: string;
   domain: string;
   person: ShowcasePerson;
-  funnelKey: string;
-  /** The producer's own name for the path, stated on the card because the
-   *  cards are no longer filtered to the paths the visitor picked. */
-  funnelName: string;
+  /** The deepest step somebody reached, in the producer's words. */
+  outcomeLabel: string | null;
   returnPerDollar: number;
   /** The first rung after contact: what it cost and what it is called. */
   firstStep: { label: string; costPerReachUsd: number | null } | null;
@@ -134,8 +134,8 @@ export const MAX_PROOF_CARDS = 3;
  * The TOP THREE named clients by return, whatever path they ran.
  *
  * Owner-decided (2026-09-18): the cards are the best returns we can name, not
- * the clients who happened to run the paths the visitor picked; each card names
- * its own path instead.
+ * the clients who happened to run what the visitor picked; each card names the
+ * outcome it reached instead.
  *
  * There is NO floor (owner-decided 2026-09-19: "toujours 3, le top 3 global en
  * terme de ROI"). A floor at the fleet median shipped for one day and left ONE
@@ -156,16 +156,17 @@ export function proofCardsFor(
   for (const b of brands) {
     const person = people[b.brand?.domain];
     if (!person || !b.measured) continue;
-    for (const f of b.funnels ?? []) {
-      const ret = f.returnPerDollar;
-      if (typeof ret !== "number" || !Number.isFinite(ret) || ret <= 0) continue;
-      const steps = f.steps ?? [];
+    (b.funnels ?? []).forEach((path, i) => {
+      const ret = path.returnPerDollar;
+      if (typeof ret !== "number" || !Number.isFinite(ret) || ret <= 0) return;
+      const steps = path.steps ?? [];
       const first = steps[1] ?? null;
+      const reached = steps.filter((s) => typeof s.peopleReached === "number" && s.peopleReached > 0);
       cards.push({
+        id: `${b.brand.domain}:${i}`,
         domain: b.brand.domain,
         person,
-        funnelKey: f.funnelKey,
-        funnelName: f.funnelName,
+        outcomeLabel: reached.length > 1 ? reached[reached.length - 1].label : null,
         returnPerDollar: ret,
         firstStep: first
           ? {
@@ -174,11 +175,9 @@ export function proofCardsFor(
                 typeof first.costPerReachUsd === "number" ? first.costPerReachUsd : null,
             }
           : null,
-        counts: steps
-          .filter((s) => typeof s.peopleReached === "number" && s.peopleReached > 0)
-          .map((s) => ({ label: s.label, peopleReached: s.peopleReached as number })),
+        counts: reached.map((s) => ({ label: s.label, peopleReached: s.peopleReached as number })),
       });
-    }
+    });
   }
   cards.sort((a, b) => b.returnPerDollar - a.returnPerDollar);
   return cards.slice(0, MAX_PROOF_CARDS);
@@ -210,17 +209,6 @@ export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
 // ─────────────────────────────────────────────────────────────────────────
 // Wording.
 
-/**
- * The tag a platform-operated path wears. There is NO commitment on any path we
- * sell: a customer pays one day at a time and stops any day. features-service
- * publishes `minimumCommitmentDays: 30` on the cold-email channel, but that
- * figure is how long a result takes to SHOW (the pay screen says so), and
- * #4268 rendered it as "30-day commitment", a claim the owner corrected
- * (2026-09-18: "none of them have"). So the tag is a constant, and nothing on
- * the path screen reads that field.
- */
-export const NO_COMMITMENT_TAG = "No commitment";
-
 export interface FleetProof {
   hotLeads: HotLeadStats | null;
   /** The fleet's median return on spend, over brands past the producer's floor. */
@@ -234,7 +222,7 @@ export interface FleetProof {
  * line, never to a blank.
  */
 export function reassuranceFor(
-  screen: "outcome" | "funnels" | "returns",
+  screen: "outcome" | "returns",
   proof: FleetProof | null,
   formatReturn: (x: number) => string,
 ): { figure: string; label: string } | null {
@@ -243,12 +231,6 @@ export function reassuranceFor(
     return {
       figure: proof.hotLeads.hotLeads.toLocaleString("en-US"),
       label: `hot leads for ${proof.hotLeads.companies} companies`,
-    };
-  }
-  if (screen === "funnels" && proof.hotLeads) {
-    return {
-      figure: `$${Math.round(proof.hotLeads.medianCostUsd).toLocaleString("en-US")}`,
-      label: "median cost per hot lead",
     };
   }
   if (screen === "returns" && proof.medianReturnPerDollar != null) {

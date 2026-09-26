@@ -2,11 +2,11 @@
  * ONE ROW PER WORKFLOW A CAMPAIGN'S CHANNEL CAN RUN, and what each one did — at the
  * grain the reader picked.
  *
- * A campaign is (offer x funnel x channel), and the channel is run by a WORKFLOW —
+ * A campaign is (offer x leg x channel), and the channel is run by a WORKFLOW —
  * the pipeline that finds the people, writes the email and sends it. A customer
  * looking at one campaign wants to know which workflows their channel offers, which
  * one is running right now, and what each of the others produced. Nothing in the
- * product answered that: the money surfaces answer per campaign and per funnel, and
+ * product answered that: the money surfaces answer per campaign and per offer, and
  * the workflow was a word on a settings screen.
  *
  * ── THE CATALOGUE DECIDES WHICH ROWS EXIST ───────────────────────────────────────
@@ -151,12 +151,12 @@ export interface CampaignWorkflowRow {
 /**
  * WHICH OUTCOME THIS CAMPAIGN'S ROWS ARE PRICED BY.
  *
- * A campaign performs ONE leg of its funnel, so the outcome a workflow produced for it
- * is that leg's own: cold email onto a visit-led funnel buys a WEBSITE VISIT and
- * nothing else, while the same channel onto the reply-led funnel buys a POSITIVE REPLY.
+ * A campaign performs ONE leg, so the outcome a workflow produced for it
+ * is that leg's own: cold email on the leg onto a visit buys a WEBSITE VISIT and
+ * nothing else, while the same channel on the leg onto a reply buys a POSITIVE REPLY.
  * The table hardcoded the reply pair, so a visit-led campaign read `0 positive replies`
  * on every row while it was measurably buying visits — the same mistake #3880 closed on
- * the Audiences table, one surface over: a campaign-scoped surface keyed on the funnel
+ * the Audiences table, one surface over: a campaign-scoped surface keyed on the goal
  * instead of the leg.
  *
  * Only two pairs exist here, because only two are SERVED per workflow: the grouped read

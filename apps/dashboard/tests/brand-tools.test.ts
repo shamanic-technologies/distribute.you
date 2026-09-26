@@ -107,9 +107,7 @@ describe("brand-tools removal", () => {
       const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listLeadsPage(scope, leadsPageQuery(");
-      expect(src).toContain("? `campaign:${campaignId}`");
-      expect(src).toContain("? `funnel:${brandId}:${offerId}:${funnelScopeKey}`");
-      expect(src).toContain(": `brand:${brandId}`;");
+      expect(src).toContain("const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`;");
       // The whole-population readers are gone from this page: holding a brand's every
       // lead is what made it uncacheable and therefore permanently skeletoned.
       expect(src).not.toContain("listBrandLeads");

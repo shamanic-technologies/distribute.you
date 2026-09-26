@@ -63,21 +63,20 @@ describe("the RANKING is the producer's, asked at the campaign's own LEG", () =>
     expect(TABLE).toContain("rankWorkflowRows");
   });
 
-  it("sends the campaign's LEG, and the funnel only when it states none", () => {
-    // `leg` wins over `funnel` at the producer, so sending both is a second source of
-    // truth about what a campaign performs.
+  it("sends the campaign's LEG, and nothing else about what it performs", () => {
+    // A campaign performs exactly one leg; there is no funnel to fall back to.
     const at = TABLE.indexOf("getWorkflowRankLadder({");
     expect(at).toBeGreaterThan(-1);
     const call = TABLE.slice(at, TABLE.indexOf("}),", at));
     expect(call).toContain("leg: legKey");
-    expect(call).toContain("funnel: legKey ? null : funnelKey");
+    expect(call).not.toContain("funnel");
     expect(TABLE).toContain("campaign?.legKey ?? null");
   });
 
-  it("the reader forwards exactly one of them, and asks for net", () => {
+  it("the reader forwards the leg, and asks for net", () => {
     const body = sliceFn(API, "export async function getWorkflowRankLadder(");
     expect(body).toContain('query.set("leg", params.leg);');
-    expect(body).toContain("else if (params.funnel)");
+    expect(body).not.toContain("params.funnel");
     expect(body).toContain('query.set("pricing", "net")');
   });
 
@@ -89,16 +88,17 @@ describe("the RANKING is the producer's, asked at the campaign's own LEG", () =>
     const campaignAt = body.indexOf('query.set("campaignId", params.campaignId)');
     expect(legAt).toBeGreaterThan(-1);
     expect(campaignAt).toBeGreaterThan(legAt);
-    expect(body.indexOf("else if (params.funnel)")).toBeGreaterThan(campaignAt);
+    // Nested inside the leg branch: nothing reaches the campaign set outside it.
+    expect(body).toContain(
+      'if (params.leg) {\n    query.set("leg", params.leg);',
+    );
   });
 
   it("the ladder's arguments ride its cache key", () => {
-    // A leg-keyed answer and a funnel-keyed one are different bodies; sharing a key
-    // serves one campaign's ranking to another's question. The campaign is in it for
-    // the same reason: a body carrying its grain is a different answer.
-    expect(TABLE).toContain('"workflowRankLadder",');
-    expect(TABLE).toContain('legKey ?? "none",');
-    expect(TABLE).toContain('legKey ? campaignId : "none",');
+    // Two legs are different bodies; sharing a key serves one campaign's ranking to
+    // another's question. The campaign is in it for the same reason: a body carrying
+    // its grain is a different answer.
+    expect(TABLE).toContain('["workflowRankLadder", brandId, legKey ?? "none", campaignId]');
   });
 
   it("keeps the UNMEASURED rows, which is the whole reason it is a second reader", () => {
@@ -224,7 +224,7 @@ describe("THE MATRIX — rows are the served rank, columns the served audience o
     const overview = read("src/components/campaigns/campaign-overview-page.tsx");
     expect(overview).toContain('"featureAudienceStats", featureSlug, brandId,');
     expect(TABLE).toContain(
-      '["featureAudienceStats", featureSlug, brandId, funnelKey ?? "none", "campaign", campaignId]',
+      '["featureAudienceStats", featureSlug, brandId, legKey ?? "none", "campaign", campaignId]',
     );
   });
 
@@ -907,7 +907,7 @@ describe("no provider stack — the only logo on a row is the model's", () => {
   });
 });
 
-describe("the outcome pair is the campaign's own LEG, never its funnel", () => {
+describe("the outcome pair is the campaign's own LEG", () => {
   it("both surfaces resolve it through the ONE hook", () => {
     for (const [name, src] of [
       ["table", TABLE],
@@ -915,7 +915,7 @@ describe("the outcome pair is the campaign's own LEG, never its funnel", () => {
     ] as const) {
       expect(src, name).toContain("WorkflowOutcomePair");
     }
-    expect(TABLE).toContain("useCampaignOutcomePair(campaign, featureSlug)");
+    expect(TABLE).toContain("useCampaignOutcomePair(campaign)");
   });
 
   it("the panel is HANDED the pair rather than resolving a second one", () => {

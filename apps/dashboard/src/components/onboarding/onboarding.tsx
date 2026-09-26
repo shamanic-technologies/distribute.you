@@ -31,11 +31,12 @@ import {
   type StartScreen,
 } from "@/components/start/start-picks";
 import { StartShell } from "@/components/start/start-shell";
-import { funnelKeysFromSelection, startSelectionCookieAssignment } from "@/lib/start-selection-cookie";
-import { DEFAULT_CHANNEL_SLUG } from "@/lib/start-catalogue";
+import { pairsForOutcomes, startPairKey, type StartLegPair } from "@/lib/start-catalogue";
+import { LegMark } from "@/components/marks/leg-mark";
+import { goalForLeg } from "@/lib/goal-steps";
+import { legLabelFor } from "@/lib/legs";
 import { BuiltSummaryPanel } from "@/components/onboarding/built-summary-panel";
 import { InfoTooltip } from "@/components/visibility/metric-info";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
 import { useOnboardingEscapeChrome } from "@/components/onboarding/onboarding-top-chrome";
 import posthog from "posthog-js";
@@ -54,8 +55,6 @@ import {
   type UserFieldKey,
   type UserFieldValue,
   getSalesEconomicsEffective,
-  stateBrandSalesFunnels,
-  type DeclaredSalesFunnel,
   savePhoneNumber,
   listBrandOffers,
   suggestBrandIcp,
@@ -69,10 +68,9 @@ import {
   createCheckoutSession,
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
-  getPublicChannels,
-  getPublicChannelsSignedOut,
-  saveBrandDailyBudget,
-  stateBrandFunnelBudgets,
+  getWorkflowProjectionLadder,
+  getPublicCatalogueSignedOut,
+  saveCampaignBudget,
   salesObjectiveForOptimizationGoal,
   sendAuthNotification,
   type BrandOptimizationGoal,
@@ -91,7 +89,6 @@ import {
   coerceListField,
   coerceTextField,
 } from "@/lib/strategy-model";
-import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
 import { Skeleton } from "@/components/skeleton";
 import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
 import { phoneSyntaxProblem } from "@/lib/phone-syntax";
@@ -126,31 +123,8 @@ import {
 } from "@/lib/channel-minimums";
 import { BrandLogo } from "@/components/brand-logo";
 import { RateInput } from "@/components/rate-input";
-import {
-  SALES_FUNNELS,
-  funnelRateFields,
-  roundPrefilledRate,
-  salesFunnelByKey,
-  normalizeSalesFunnelKey,
-  salesFunnelKeyOrNull,
-  funnelWriteErrorMessage,
-  type SalesFunnelDef,
-  type SalesFunnelKey,
-  type SalesFunnelKeyWire,
-  type FunnelDraft,
-  type DeclaredFunnelValues,
-} from "@/lib/sales-funnels";
-import { launchLegKey } from "@/lib/stated-campaign-leg";
-import { fundedLaunchFunnelKey } from "@/lib/launch-funnel";
 import { soleOfferId } from "@/lib/launch-offer";
 import { launchDestinationHref } from "@/lib/launch-destination";
-import {
-  resolvePrimaryKey,
-  selectableFunnels,
-  toFunnelViews,
-  type FunnelCatalogueEntry,
-  type FunnelView,
-} from "@/lib/onboarding-funnel-view";
 import { validateInvite } from "@/lib/api";
 import { inviteCodeFromCookie } from "@/lib/invite-link";
 import { onboardingBrandCookieAssignment } from "@/lib/onboarding-brand-cookie";
@@ -190,26 +164,14 @@ const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
 const CHECKOUT_CANCELLED_NOTICE = "Your setup is saved. Finish checkout below to launch your campaign.";
-/**
- * What the user typed on one funnel's post-payment detail screen. Keyed by rate
- * key and by destination kind, because a funnel can send people to both a page
- * on the brand's site and a scheduling link.
- */
-type FunnelDraftState = {
-  rates: Record<string, string>;
-  ltr: string;
-  destinations: Record<string, string>;
-};
-
 type Step =
   | "welcome"
   // THE SELL-FIRST SCREENS, the wizard's own first steps: what the visitor
-  // wants, through which path, and what our clients got back. They were a
-  // separate route (`/start`) handing off through a cookie and a full
-  // navigation; the seam read as two products, so they are steps now.
-  // Appended to ALL_STEPS rather than inserted, so an older snapshot parses.
+  // wants, and what the campaigns that reach it return. They were a separate
+  // route (`/start`) handing off through a cookie and a full navigation; the
+  // seam read as two products, so they are steps now. A snapshot naming a step
+  // that no longer exists parses onto the first pick (`parseOnboardingState`).
   | "outcome"
-  | "path"
   | "returns"
   | "url"
   | "loading"
@@ -224,10 +186,6 @@ type Step =
   | "objective"
   | "rates"
   | "audiences"
-  // The brand states every funnel it sells through, then which one we optimize
-  // for first.
-  | "funnels"
-  | "primary"
   // What we assembled, stated back — the last screen before anyone is asked for
   // an account. Appended to ALL_STEPS rather than inserted, so a snapshot
   // written before it existed still parses and no version bump is needed.
@@ -242,12 +200,10 @@ type Step =
   // intentionally NOT in ALL_STEPS and need no ONBOARDING_STATE_VERSION bump.
   | "celebrate"
   | "phone"
-  // LEGACY, same reason as above — the single lifetime-revenue screen the
-  // per-funnel screens replaced.
+  // LEGACY, same reason as above — the single lifetime-revenue screen.
   | "ltr"
-  // RETIRED — the per-funnel rate screens and the best-model screen used to run
-  // HERE, after the card. They collected each funnel's conversion rates and its
-  // lifetime revenue, and they asked for them at the worst moment in the whole
+  // RETIRED — the rate screens and the best-model screen used to run HERE, after
+  // the card. They collected conversion rates and lifetime revenue, and they asked for them at the worst moment in the whole
   // flow: a person who has just paid, on a screen standing between them and the
   // thing they paid for. Everything that identifies the business is already
   // stated BEFORE the account (the goal, the path, the services, the audience,
@@ -258,22 +214,21 @@ type Step =
   // persist effect skips on `?launch_checkout=success`) and were never in
   // ALL_STEPS, so nothing parses against them and no snapshot can name one.
   //
-  // WHAT IT COSTS, stated rather than hidden: a new brand declares its funnels
-  // with no rates and no lifetime revenue, so features-service prices its
-  // pipeline off brand-service's effective economics until the customer states
-  // its own on Settings -> Sales Funnels. A figure we cannot measure reads as
-  // unmeasured there, which is the honest render.
+  // WHAT IT COSTS, stated rather than hidden: a new brand states no leg rates
+  // and no lifetime revenue, so features-service prices its pipeline off
+  // brand-service's effective economics until the customer states its own on
+  // Offer Settings. A figure we cannot measure reads as unmeasured there.
   | "offer"
   | "launching";
 
 // The sales goal drives the projection count so the budget cards show the chosen
 // unit, never "closes". Outcome IS the BrandOptimizationGoal — every downstream
 // helper (salesObjectiveForOptimizationGoal, workflowOutcomeUnitCost, goalSteps)
-// already handles every goal; the funnel just wires the chosen one through.
+// already handles every goal; the flow just wires the chosen one through.
 // Labels use Google Ads' conversion-goal category names ("version Google Ads").
 // `beta` goals show only to beta users for now (Kevin): Sales (combined) and Book
 // appointments (sales meetings) are gated; Sign-ups / Page views / Contacts /
-// Submit lead forms / Purchases are ungated in the funnel.
+// Submit lead forms / Purchases are ungated here.
 type Outcome = BrandOptimizationGoal;
 const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?: boolean }[] = [
   { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
@@ -296,15 +251,6 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
 // the many call sites read intent (goal for the chosen outcome).
 function optimizationGoalForOutcome(outcome: Outcome): BrandOptimizationGoal {
   return outcome;
-}
-
-// The outcome a funnel's goal is priced as, or null when the catalogue prices no
-// such outcome. Read by BOTH the primary-funnel pick and the skip that fires when
-// the brand picked a single funnel — one home, so the two can never disagree about
-// which outcome a funnel buys.
-function outcomeForFunnelGoal(goal: string | null | undefined): Outcome | null {
-  if (!goal) return null;
-  return OUTCOMES.find((o) => o.key === goal)?.key ?? null;
 }
 
 // Conversion-rate fields, mirroring brand-sales-economics-card's PctKey set.
@@ -352,15 +298,6 @@ function rateToText(n: number): string {
   return formatLocaleNumberInputValue(n);
 }
 
-/** The custom "Other" $/day, parsed. null when the field is empty or not a positive amount. */
-/** A funnel-key → whole-dollars map, as the pending blob may carry it. */
-function isFunnelBudgetMap(v: unknown): v is Record<string, number> {
-  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
-  return Object.values(v as Record<string, unknown>).every(
-    (n) => typeof n === "number" && Number.isFinite(n) && n >= 0,
-  );
-}
-
 function parseCustomBudget(raw: string): number | null {
   const parsed = parseLocaleNumberInput(raw);
   return parsed !== null && parsed > 0 ? Math.round(parsed) : null;
@@ -402,7 +339,7 @@ const TAG_TONES = [
 
 // Outcome-count tiers (per month) — each maps to a $/day via the projection unit
 // cost, shown as the tier's primary $/day. "Other" is a custom $/day.
-// What the old tier grid marked "Recommended", now the number the primary funnel
+// What the old tier grid marked "Recommended", now the number the first campaign
 // is seeded with. Kept as the outcomes/month it buys rather than a dollar amount,
 // because the dollars depend on the brand's own cost per outcome.
 const RECOMMENDED_OUTCOME_COUNT = 50;
@@ -441,15 +378,41 @@ type AudiencePrefetch = {
  *
  * The scope is carried out because the terminal redirect lands on the deepest level
  * with no choice left in it, and the launch has already resolved both: the offer it
- * read off the brand and the funnel the customer funded. `offerId` is null when the
+ * read off the brand. `offerId` is null when the
  * launch could not name ONE offer (several, or a failed read) — the campaign then
  * ships unattributed and the redirect hands the landing to the walk instead.
  */
 type LaunchResult = {
   campaignId: string;
   offerId: string | null;
-  funnelKey: string;
 };
+
+/** One campaign the launch funds and creates: a leg, through a channel, at a ceiling. */
+type LaunchCampaign = {
+  legKey: string;
+  featureSlug: string;
+  /** The leg in the customer's words, for the campaign's name. */
+  label: string;
+  channelName: string;
+  dailyBudgetUsd: number;
+};
+
+function isLaunchCampaignList(v: unknown): v is LaunchCampaign[] {
+  return (
+    Array.isArray(v) &&
+    v.every(
+      (c) =>
+        isUnknownRecord(c) &&
+        typeof c.legKey === "string" &&
+        typeof c.featureSlug === "string" &&
+        typeof c.label === "string" &&
+        typeof c.channelName === "string" &&
+        typeof c.dailyBudgetUsd === "number" &&
+        Number.isFinite(c.dailyBudgetUsd) &&
+        c.dailyBudgetUsd >= 0,
+    )
+  );
+}
 
 type PendingCheckoutLaunch = {
   version: 1;
@@ -470,25 +433,15 @@ type PendingCheckoutLaunch = {
   // Lifted to the top level (version-independent) so a checkout return survives a
   // stale/incompatible nested onboardingState — the launch + audience gate keep working.
   selectedAudienceIds: string[];
-  // v2 — the funnels the brand picked, and the one it optimizes for first. Lifted for
-  // the SAME reason as selectedAudienceIds, and it is what makes the post-payment
-  // per-funnel screens reachable at all: those steps run on a FRESH page load (the
-  // Stripe return), so the React state that held the selection is gone by then. Without
-  // this the `funnelStats` step found no funnel and silently skipped itself to `model`,
-  // which also lost its primary-funnel card. Living at the TOP level (not in
-  // PersistedOnboardingState) keeps ONBOARDING_STATE_VERSION at 8 — a bump strands an
-  // in-flight checkout. A blob written before this shipped carries neither: they read
-  // [] / null and the screens skip exactly as they did then.
-  selectedFunnelKeys: string[];
-  primaryFunnelKey: string | null;
   /**
-   * What each picked funnel is funded with, in whole dollars per day. The brand is
-   * charged their SUM, and billing stores them per funnel once the launch runs —
-   * so this has to survive the Stripe round-trip, which is a FRESH page load.
-   * Top level for the same reason as the selection above: version-independent, so
-   * ONBOARDING_STATE_VERSION stays at 8.
+   * The campaigns this launch funds, one per (leg x channel), each with its daily
+   * ceiling in whole dollars. billing stores one ceiling per (offer, leg, channel),
+   * and this has to survive the Stripe round-trip, which is a FRESH page load — so it
+   * lives at the TOP level, version-independent, and ONBOARDING_STATE_VERSION stays 8.
+   * Absent on a blob written before campaigns were funded per leg: the launch then
+   * funds the first campaign the picked outcomes need with the whole budget.
    */
-  funnelBudgets: Record<string, number>;
+  campaigns: LaunchCampaign[];
   /**
    * Whether the six offer levers were answered BEFORE the account existed (the
    * anonymous path). The post-payment steps run on a FRESH page load — the Stripe
@@ -540,12 +493,11 @@ type PersistedOnboardingState = {
   orgId: string | null;
   servicesEdited: boolean;
   ratesEdited: boolean;
-  // The sell-first picks (outcome keys, and (funnel x channel) pair keys), so a
-  // refresh on any step keeps them and the funnel step stays pre-selected.
+  // The sell-first picks (outcome keys), so a refresh on any step keeps them.
   // OPTIONAL: a snapshot written before the picks became steps has none, and
   // requiring them would strand it (a version bump strands an in-flight checkout).
+  // An older snapshot may carry other pick fields; they are not read.
   startOutcomes?: string[];
-  startFunnels?: string[];
   // Did this visitor answer the six offer levers BEFORE creating the account?
   // The post-payment sequence ends `model` -> `offer` -> launch, so without this
   // an anonymous visitor who stated them pre-account is asked the same six
@@ -701,17 +653,10 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   const selectedAudienceIds = isStringList(parsed.selectedAudienceIds)
     ? parsed.selectedAudienceIds
     : parseOnboardingState(parsed.onboardingState)?.selectedAudienceIds ?? [];
-  // The v2 funnel selection is lifted the same way, and is deliberately NOT part of the
-  // validity check above: it is a preview surface, so a blob written before it shipped
-  // (or by the GA flow, which has no funnels) must still launch. Absent = no funnel
-  // screens, which is the pre-existing behaviour, never a blocked launch.
-  const selectedFunnelKeys = isStringList(parsed.selectedFunnelKeys) ? parsed.selectedFunnelKeys : [];
-  const primaryFunnelKey = typeof parsed.primaryFunnelKey === "string" ? parsed.primaryFunnelKey : null;
-  // Read as tolerantly as the selection, and for the same reason: a blob written
-  // before per-funnel funding shipped carries none, and it must still LAUNCH. An
-  // empty map falls back to the brand-level write below, which is what that blob
-  // was always going to do.
-  const funnelBudgets = isFunnelBudgetMap(parsed.funnelBudgets) ? parsed.funnelBudgets : {};
+  // Read tolerantly, and deliberately NOT part of the validity check above: a blob
+  // written before campaigns were funded per leg carries none, and it must still
+  // LAUNCH. An empty map funds the first campaign the picks need with the whole budget.
+  const campaigns = isLaunchCampaignList(parsed.campaigns) ? parsed.campaigns : [];
   // The nested onboardingState only re-renders the deeper wizard. If it fails to parse
   // (a version bump landed mid-checkout), reconstruct a minimal current-version state
   // from the top-level fields — the brand + budget survive; the user re-picks nothing
@@ -726,9 +671,7 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   return {
     ...parsed,
     selectedAudienceIds,
-    selectedFunnelKeys,
-    primaryFunnelKey,
-    funnelBudgets,
+    campaigns,
     onboardingState,
   } as PendingCheckoutLaunch;
 }
@@ -829,21 +772,27 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
 // step in this list, so old snapshots keep parsing and ONBOARDING_STATE_VERSION
 // stays put (a bump strands an in-flight checkout).
 const ALL_STEPS: Step[] = [
-  "welcome", "url", "loading", "services", "destination", "objective", "rates", "funnels", "primary", "audiences", "consent", "pricing", "bonus", "launching",
+  "welcome", "url", "loading", "services", "destination", "objective", "rates", "audiences", "consent", "pricing", "bonus", "launching",
   // APPENDED, never inserted: this list is what a persisted snapshot parses
   // against, so the order is not meaningful and growing it at the end keeps
   // every older snapshot valid. A bump would strand a session mid-checkout.
   "built",
-  "outcome", "path", "returns",
+  "outcome", "returns",
 ];
 
 function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
   if (!isUnknownRecord(value)) return null;
-  const p = value as Partial<PersistedOnboardingState>;
+  // A step this flow no longer has (a retired pick screen) is not a reason to throw the
+  // whole snapshot away: it lands on the first pick, which asks the same thing now.
+  const p = (
+    typeof value.step === "string" && !ALL_STEPS.includes(value.step as Step)
+      ? { ...value, step: "outcome" }
+      : value
+  ) as Partial<PersistedOnboardingState>;
   if (
     p.version !== ONBOARDING_STATE_VERSION ||
     (p.flowKey !== "signup" && p.flowKey !== "add" && p.flowKey !== "new") ||
-    typeof p.step !== "string" || !ALL_STEPS.includes(p.step as Step) ||
+    typeof p.step !== "string" ||
     typeof p.url !== "string" ||
     typeof p.noWebsiteMode !== "boolean" ||
     typeof p.brandName !== "string" || typeof p.brandContext !== "string" ||
@@ -863,7 +812,6 @@ function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
     !(p.orgId === null || typeof p.orgId === "string") ||
     typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean" ||
     !(p.startOutcomes === undefined || isStringList(p.startOutcomes)) ||
-    !(p.startFunnels === undefined || isStringList(p.startFunnels)) ||
     !(p.leversStatedBeforeAccount === undefined || typeof p.leversStatedBeforeAccount === "boolean")
   ) {
     return null;
@@ -920,13 +868,13 @@ function resolveResumeStep(step: Step, brandId: string | null): Step {
 /**
  * Where a session belongs when it is pointed at a step the brand-level flow had
  * and this one does not. Nothing ROUTES into those steps any more, but a RESUME
- * sets the step directly — from a sessionStorage snapshot written before the
- * funnels flow shipped, or from an in-flight checkout blob — so without this
- * mapping the user lands on a step that no longer renders.
+ * sets the step directly — from an old sessionStorage snapshot, or from an
+ * in-flight checkout blob — so without this mapping the user lands on a step that
+ * no longer renders.
  *
  * Each legacy step maps to the point in the order that asks the same thing: the
- * click destination is asked per funnel after payment, so its slot is the
- * audience step; the single goal and its rates are replaced by the funnel picks.
+ * click destination's slot is the audience step; the single goal and its rates are
+ * replaced by the outcome pick.
  */
 function legacyStepFor(step: Step): Step {
   switch (step) {
@@ -934,14 +882,9 @@ function legacyStepFor(step: Step): Step {
       return "audiences";
     case "objective":
     case "rates":
-    // The funnel set is stated on the sell-first Path screen; the wizard's own
-    // how-do-you-sell step and the primary pick were removed (one question
-    // twice), so a snapshot naming either lands on the picks.
-    case "funnels":
-    case "primary":
       return "outcome";
-    // The single lifetime-revenue screen, and the per-funnel screens that
-    // replaced it, are both gone: rates and lifetime revenue are not asked at
+    // The single lifetime-revenue screen, and the rate screens that replaced it,
+    // are both gone: rates and lifetime revenue are not asked at
     // signup at all. A snapshot naming it lands on the phone step, where the
     // post-payment run now begins. Never reached from a resume (the post-payment
     // steps are not persisted); the render fail-safe uses this arm.
@@ -988,11 +931,9 @@ export function Onboarding() {
   const restored = restoreRef.current;
 
   // THE SELL-FIRST PICKS, the wizard's own first three steps. They live here so
-  // they persist with the rest of the snapshot, pre-select the funnel step, and
-  // still reach the `distribute-start` cookie the proxy and the payment screens
-  // read on the far side of the Clerk redirect.
+  // they persist with the rest of the snapshot and name the campaigns the budget
+  // step funds.
   const [startOutcomes, setStartOutcomes] = useState<string[]>(() => restored?.startOutcomes ?? []);
-  const [startFunnels, setStartFunnels] = useState<string[]>(() => restored?.startFunnels ?? []);
   // Set when a signed-out visitor finishes the offer levers, read by the
   // post-payment walk so it does not ask them a second time.
   const [leversStatedBeforeAccount, setLeversStatedBeforeAccount] = useState<boolean>(
@@ -1024,9 +965,8 @@ export function Onboarding() {
           // on the goal step.
           "loading"
         : fromAdd
-          ? // Adding a brand: the pitch is not repeated, the three sell-first
-            // screens are. They are the ONLY place the funnel set is stated now
-            // that the how-do-you-sell step is gone.
+          ? // Adding a brand: the pitch is not repeated, the sell-first screens
+            // are. They are the ONLY place the outcomes are stated.
             "outcome"
           : // A fresh visitor: the welcome, then the three sell-first screens,
             // then the website (only if the landing did not carry one), then the
@@ -1074,80 +1014,27 @@ export function Onboarding() {
 
   const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
 
-  // ── The sales funnels the brand sells through ───────────────────────────────
-  // Read straight off the shared catalogue through the display adapter, so a new
-  // funnel or a renamed leg lands here with no edit. Deliberately EPHEMERAL
-  // (absent from the persisted snapshot): adding fields there means bumping
-  // ONBOARDING_STATE_VERSION, which strands an in-flight checkout. The selection
-  // instead rides the TOP LEVEL of the pending-checkout blob, which is
-  // version-independent, so it survives the Stripe round-trip.
-  // The rate LABELS come from the catalogue's own resolver, so a rate reads the
-  // same word here as it does on the settings card.
-  const funnelViews = toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[], (entry) =>
-    funnelRateFields(entry as unknown as SalesFunnelDef),
-  );
-  const offeredFunnels = selectableFunnels(funnelViews, !noWebsiteMode);
-  const [selectedFunnelKeys, setSelectedFunnelKeys] = useState<string[]>([]);
-  // THE PATHS PICKED ON THE SELL-FIRST SCREENS ARE THE FUNNEL STEP'S ANSWER.
-  // The picks name (funnel x channel) pairs in the producer's spelling; this
-  // app's catalogue names funnels in its own. Each key goes through the
-  // tolerant collapse and anything it cannot name — a funnel the catalogue no
-  // longer offers, a hand-edited snapshot — is dropped rather than guessed.
-  // The picks ARE the answer: the wizard's own how-do-you-sell step and the
-  // primary pick were removed, since asking either two screens after "how should
-  // it turn into revenue?" is the same question twice. A flow that reaches the
-  // services step with no pick is sent back to the Path screen.
-  const pickedFunnelKeys = funnelKeysFromSelection(startFunnels)
-    .map((key) => salesFunnelKeyOrNull(key))
-    .filter((key): key is NonNullable<typeof key> => key !== null && offeredFunnels.some((f) => f.key === key));
-  const pickedFunnelKeysJoined = pickedFunnelKeys.join(",");
-  useEffect(() => {
-    if (pickedFunnelKeys.length === 0) return;
-    setSelectedFunnelKeys((current) => (current.length > 0 ? current : pickedFunnelKeys));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickedFunnelKeysJoined]);
-  // Every pick is written through immediately, so a visitor who signs up from a
-  // second tab, or who is bounced through an OAuth round, arrives with what they
-  // chose. `paid: []` on purpose: these steps are where a selection is MADE, and
-  // anything bought under a previous one belongs to that one. The channel is not
-  // picked, so it is STATED — billing keys its ceiling on the (funnel x channel)
-  // pair. Only the signup flow: an existing customer adding a brand never sees
-  // the picks, and a blank write here would erase a selection in flight.
-  useEffect(() => {
-    if (flowKey !== "signup") return;
-    document.cookie = startSelectionCookieAssignment({
-      outcomes: startOutcomes,
-      channels: [DEFAULT_CHANNEL_SLUG],
-      funnels: startFunnels,
-      paid: [],
-    });
-  }, [flowKey, startOutcomes, startFunnels]);
-  const [primaryFunnelKey, setPrimaryFunnelKey] = useState<string | null>(null);
-  // Per-funnel draft answers for the post-payment detail screens, keyed by funnel.
-  // Each holds that funnel's rate fields plus its own lifetime revenue and
-  // destination — a self-serve signup customer and an enterprise meeting customer
-  // are not worth the same and do not land on the same page.
-  const selectedFunnels = offeredFunnels.filter((f) => selectedFunnelKeys.includes(f.key));
-  const primaryFunnel = selectedFunnels.find((f) => f.key === primaryFunnelKey) ?? null;
-  // A brand that picked ONE path. Read by the budget step (which drops every "each
-  // path" sentence and its total).
-  const onePath = selectedFunnels.length === 1;
-  // What the brand's economics actually say, for the funnel screens to prefill from.
-  // Deliberately NOT in the persisted snapshot: adding a field there forces an
-  // ONBOARDING_STATE_VERSION bump, which strands an in-flight checkout — and this is
-  // re-read from the wire on the post-payment page load anyway (prewarmStoredEconomics).
-  const [storedEconomics, setStoredEconomics] = useState<EffectiveSalesEconomics | null>(null);
+  // ── The campaigns the picked outcomes need ──────────────────────────────────
+  // One per (leg x channel), derived from the published catalogue: an outcome is a
+  // step one of our channels lands a leg on, and reaching it may need the campaign
+  // that produces the step before it too (`legsTo`). Nothing is picked here that the
+  // outcome did not already say.
+  // A brand with NO website cannot be sent to one, so a campaign moving a lead onto or
+  // off a website visit is dropped for it rather than funded to do nothing.
+  const launchPairs: StartLegPair[] = (
+    startCatalogue ? pairsForOutcomes(startOutcomes, startCatalogue.wire) : []
+  ).filter((p) => !noWebsiteMode || (p.toKey !== "website_visit" && p.fromKey !== "website_visit"));
+  // A brand launching ONE campaign. Read by the budget step (which drops every "each
+  // campaign" sentence and its total).
+  const onePath = launchPairs.length === 1;
   const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ...DEFAULT_RATES });
   const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ...DEFAULT_RATE_TEXT });
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
   const [serviceDraft, setServiceDraft] = useState("");
-  // The brand-level page outreach clicks land on. Each FUNNEL owns its own
-  // landing page, and the screens that asked for one ran AFTER the card and are
-  // gone, so the flow no longer asks this at all. brand-service still serves the
-  // field on the brand read and consumers link off it, so the value survives and
-  // is set on Settings instead. "" means "not set yet". Seeded from
-  // a sub-page in the incoming brand URL (landing pricing prefill or `?url=`), so
-  // arriving with "acme.com/pricing" prefills that page on the funnel screen.
+  // The brand-level page outreach clicks land on. The flow no longer asks it;
+  // brand-service still serves the field on the brand read and consumers link off
+  // it, so the value survives and is set on Settings instead. "" means "not set
+  // yet". Seeded from a sub-page in the incoming brand URL (`?url=acme.com/pricing`).
   // Kept in the persisted snapshot: removing a field there is what forces an
   // ONBOARDING_STATE_VERSION bump, which strands an in-flight checkout.
   const [clickDestinationUrl, setClickDestinationUrl] = useState<string>(
@@ -1162,51 +1049,24 @@ export function Onboarding() {
   // LEGACY, and kept only because they are FIELDS on the persisted snapshot:
   // removing one narrows what a snapshot may carry, which strands a session that
   // was mid-checkout. Nothing in the flow writes them any more — the money is
-  // funded per funnel (`funnelBudgets`) and the brand is charged their sum. They
-  // are still restored so an older snapshot round-trips unchanged.
+  // funded per campaign (`campaignBudgets`) and the brand is charged their sum.
   const [selectedBudget, setSelectedBudget] = useState<number | null>(() => restored?.selectedBudget ?? null);
   const [customBudget, setCustomBudget] = useState(() => restored?.customBudget ?? "");
-  // The daily ceiling the user funds each PICKED funnel with, in whole dollars as
-  // typed, keyed by funnel. This is what the brand is charged the sum of, and what
-  // billing stores per funnel at launch.
-  //
-  // Deliberately EPHEMERAL, like the funnel selection it belongs to: a field on the
-  // persisted snapshot means bumping ONBOARDING_STATE_VERSION, which strands an
-  // in-flight checkout. It rides the TOP LEVEL of the pending-checkout blob instead,
-  // which is version-independent, so it survives the Stripe round-trip.
-  const [funnelBudgets, setFunnelBudgets] = useState<Record<string, string>>({});
+  // The daily ceiling the user funds each campaign with, in whole dollars as typed,
+  // keyed `<legKey>::<channelSlug>`. What the brand is charged the sum of, and what
+  // billing stores per (offer, leg, channel) at launch. EPHEMERAL: it rides the TOP
+  // LEVEL of the pending-checkout blob instead, which is version-independent.
+  const [campaignBudgets, setCampaignBudgets] = useState<Record<string, string>>({});
 
-  // What a day of cold email costs to run — the floor every ceiling stated here
-  // must clear, read from that channel's own published terms rather than from a
-  // per-funnel table. Signup funds one channel: a funnel-grain ceiling names no
-  // channel, and billing resolves a funnel that funds none yet to cold email, so
-  // that is the channel these figures are judged against.
-  //
-  // Fetched imperatively because this flow holds no react-query provider of its
-  // own — it can create the org it runs in, so it opts out of the org-keyed one.
-  // Through the PUBLIC route, because this wizard runs signed out: `/api/v1/*`
-  // lives inside `(authed)` and answers a session-less read with the sign-in
-  // page, so the authed reader threw on HTML on every signed-out visit.
-  // NO floor is the honest reading while it settles or if it fails: billing holds
-  // the same rule against the same figure and its 400 is what decides, so nothing
-  // here refuses money billing would accept.
-  const [channelMinimums, setChannelMinimums] = useState<ChannelMinimums>(NO_CHANNEL_MINIMUMS);
-  useEffect(() => {
-    let live = true;
-    getPublicChannelsSignedOut()
-      .then((channels) => {
-        if (live) setChannelMinimums(channelMinimumsFromWire(channels));
-      })
-      .catch((err) => {
-        console.error("[dashboard] onboarding: could not read the channels' published terms", err);
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
-  const launchFloorCents = channelMinimumCents(channelMinimums, SALES_FEATURE_SLUG);
-  /** The same floor in whole dollars, rounded UP so the seed can never be refused. */
-  const launchFloorUsd = launchFloorCents === null ? null : Math.ceil(launchFloorCents / 100);
+  // What a day of each channel costs to run — the floor its ceilings must clear,
+  // read from the channel's own published terms (the same catalogue the picks read).
+  // NO floor is the honest reading while it settles: billing holds the same rule
+  // against the same figure and its 400 is what decides.
+  const channelMinimums: ChannelMinimums = startCatalogue
+    ? channelMinimumsFromWire(startCatalogue.wire.channels)
+    : NO_CHANNEL_MINIMUMS;
+  /** A channel's published floor in cents, or null when the catalogue states none. */
+  const floorCentsFor = (channelSlug: string) => channelMinimumCents(channelMinimums, channelSlug);
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
   const [audiencePrompt, setAudiencePrompt] = useState(() => restored?.audiencePrompt ?? "");
   // Pre-warmed audience step: during the loading screen we draft the ICP prompt
@@ -1251,10 +1111,6 @@ export function Onboarding() {
   // The model step lets the user edit the two things the ROI is computed from
   // (lifetime revenue and the goal's conversion rate) and recompute, because a return
   // under 1x is otherwise unexplainable on a screen that shows neither number.
-  // What the primary funnel's draft looked like the last time this step wrote it (or
-  // when the step was first shown). The Update button arms on a LIVE compare against
-  // it, never a sticky "edited" latch: typing a value and undoing it must disarm the
-  // button again.
   // Aggressive parallel launch. The whole launch (audiences, auto-topup, budget,
   // campaign create, onboarding-complete) is kicked off in the BACKGROUND the moment
   // the checkout returns — while the user fills the optional post-payment steps — so
@@ -1315,11 +1171,6 @@ export function Onboarding() {
   // step, so it must still be seeded from the wire on a checkout return even when the
   // user edited a conversion rate before checkout (which sets `ratesEditedRef`).
   const ltvEditedRef = useRef(false);
-  // Whether a funnel's landing page has already been mirrored onto the brand-level
-  // click destination this session. The funnel screens run primary-first, so the
-  // first one that lands a click on the site owns that field; a later funnel must
-  // not silently repoint it.
-  const clickDestinationMirroredRef = useRef(false);
   // The sales feature's declared input definitions — needed to build the
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>(restored?.salesInputs ?? []);
@@ -1394,11 +1245,6 @@ export function Onboarding() {
   useEffect(() => {
     if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies");
   }, [noWebsiteMode, outcome]);
-  // Baseline for the model step's Update button: the primary funnel's draft as it
-  // stood when the step was shown. Captured here rather than at each of the several
-  // places that can ENTER the step (the funnel screens' Continue, the offer step's
-  // Back, a fresh page load resuming at `model`), so no entry path can forget it.
-  // Cleared on leaving so re-entering re-seeds against whatever was written since.
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -1464,7 +1310,6 @@ export function Onboarding() {
       servicesEdited: servicesEditedRef.current,
       ratesEdited: ratesEditedRef.current,
       startOutcomes,
-      startFunnels,
       leversStatedBeforeAccount,
     };
   }
@@ -1475,7 +1320,7 @@ export function Onboarding() {
   useEffect(() => {
     if (searchParams.get("launch_checkout") === "success") return;
     writeOnboardingState(buildOnboardingState());
-  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, startFunnels, leversStatedBeforeAccount]);
+  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, brandId, flowKey, searchParams, pricingHydrationVersion, startOutcomes, leversStatedBeforeAccount]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -1514,10 +1359,10 @@ export function Onboarding() {
   // Cross-session brand resume (?brandId=, no snapshot): the per-brand setup gate
   // redirected a never-finished brand here. Fetch it to seed the URL, then replay the
   // loading-screen hydration (idempotent upsert + services/economics/projection/
-  // audience prewarm from backend) and land on the funnels step — the user re-confirms
-  // funnels → primary → audiences → consent → budget with everything before it prefilled.
-  // We stop at the funnels step (not budget) because the pre-terminal audience picks +
-  // budget tier live only in the sessionStorage snapshot, which is gone cross-session
+  // audience prewarm from backend) and land on the outcome pick — the user re-confirms
+  // outcomes → audiences → consent → budget with everything before it prefilled.
+  // We stop at the picks (not budget) because the pre-terminal picks and budgets
+  // live only in the sessionStorage snapshot, which is gone cross-session
   // — so the user must re-pick those, but nothing typed earlier is lost (it's saved
   // in backend and re-hydrated). A live snapshot (same tab) wins and skips this.
   const paramResumeStartedRef = useRef(false);
@@ -1540,7 +1385,7 @@ export function Onboarding() {
         setBrandId(resumeBrandIdParam);
         brandIdRef.current = resumeBrandIdParam;
         if (organization?.id) orgIdRef.current = organization.id;
-        // The funnel set is stated on the sell-first screens, so a resumed brand
+        // The outcomes are stated on the sell-first screens, so a resumed brand
         // starts there; `continueAfterPicks` then skips the analyze it already ran.
         await runResume("outcome", seededUrl);
       } catch (err) {
@@ -1666,7 +1511,7 @@ export function Onboarding() {
     // `prefetch` null when a fast click-through reached the audience step, which
     // then fired its OWN ICP + suggest while this one ran unadopted: two ~35 s
     // suggest runs per signup, both billed. By the time the user clicks through
-    // services → funnels → primary, candidates are ready. Fail-soft — a failed
+    // services → audiences, candidates are ready. Fail-soft — a failed
     // ICP/suggest resolves candidates:null and the step falls back to its own draft
     // + manual "Suggest audiences".
     const audiencePrewarm = (async (): Promise<{ prompt: string; icpFailed: boolean }> => {
@@ -1751,7 +1596,8 @@ export function Onboarding() {
       // A prefilled DEFAULT is a whole number (8.8429 → 9): the backend economics
       // carry full precision, and a guess offered with decimals reads as a
       // measurement. The user can still type finer precision manually.
-      const roundRate = (n: number) => roundPrefilledRate(n);
+      // A rate under half a percent seeds 1, never 0: a guess of zero reads as "never".
+      const roundRate = (n: number) => (n > 0 && n < 0.5 ? 1 : Math.round(n));
       const loaded: Record<RateKey, number> = {
         ltv: Math.round(e.lifetimeRevenueUsd),
         v2s: roundRate(e.visitToSignupPct),
@@ -1759,7 +1605,7 @@ export function Onboarding() {
         v2m: roundRate(e.visitToMeetingPct),
         r2m: roundRate(e.replyToMeetingPct),
         m2c: roundRate(e.meetingToClosePct),
-        // The effective economics carry only the signup/meeting funnel + the derived
+        // The effective economics carry only the signup/meeting rates + the derived
         // visit→close. Seed website_visits' visit→paid from visitToClosePct (same grain);
         // the reply/form beta rates have no effective-econ source → keep the seeded
         // defaults (the user tweaks them on the rates step).
@@ -1830,7 +1676,7 @@ export function Onboarding() {
     // There is no Clerk org to create and none is created — the session IS an
     // org, one with no identity provider attached yet, and at signup that same
     // org is re-pointed at the Clerk org the visitor makes. So nothing here
-    // moves later: the brand, the funnels, the audiences and the spend are
+    // moves later: the brand, the outcomes, the audiences and the spend are
     // already on the org that becomes theirs.
     //
     // A REFUSAL IS NOT AN ERROR. It means this visitor gets the flow we shipped
@@ -2126,11 +1972,6 @@ export function Onboarding() {
       throw new Error("Your conversion rates could not be loaded. Please try again.");
     }
     econRef.current = economics;
-    // ALSO state, not only the ref: the funnel detail screens seed their conversion
-    // rates from this, and a ref lands with no re-render — the form would stay blank
-    // under copy that says we prefilled it. `funnelDraft` derives the seed at render,
-    // so an untouched field picks the values up the moment they arrive.
-    setStoredEconomics(economics);
     return economics;
   }
 
@@ -2181,7 +2022,7 @@ export function Onboarding() {
   // re-saves any offer-lever edits on top.
   //
   // Returns the created campaign id AND the scope it was created in — the offer it
-  // sells and the funnel it runs — because the terminal redirect lands on the deepest
+  // sells — because the terminal redirect lands on the deepest
   // scope with no choice left in it, and this is where both are already resolved. A
   // null offer is the launch failing to name one (see below), never a level to invent.
   async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<LaunchResult> {
@@ -2201,16 +2042,11 @@ export function Onboarding() {
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
     // The OFFER everything this launch creates is about. A campaign is
-    // (offer x funnel x channel) and billing keys its ceiling on the same triple,
-    // so a launch that names no offer produces a campaign no offer page can show
-    // and a ceiling that addresses the pair rather than the campaign it funds.
+    // (offer x leg x channel) and billing keys its ceiling on the same address, so a
+    // launch that names no offer has nowhere to put the money.
     //
-    // Read, never created: brand-service gives a brand its first offer on the
-    // first brand-scoped write, and the funnels step made one several minutes ago.
-    // Best-effort BY DESIGN — the customer has already been charged, and both
-    // consumers adopt an unattributed row on their own cadence, so a brand whose
-    // offers cannot be read (or that holds several, where there is no single
-    // correct answer) launches unattributed rather than not at all.
+    // Read, never created: brand-service gives a brand its first offer on the first
+    // brand-scoped write, which this flow made several minutes ago.
     let launchOfferId: string | null = null;
     try {
       const { offers } = await listBrandOffers(pending.brandId);
@@ -2219,88 +2055,69 @@ export function Onboarding() {
       console.error("[dashboard] launch could not name the brand's offer", err);
     }
     if (!launchOfferId) {
-      console.error(
-        `[dashboard] launch could not name the brand's offer for brand ${pending.brandId} — campaign and ceiling ship unattributed`,
+      throw new Error(
+        "We could not find this brand's offer, so there is nowhere to fund the campaign yet. Try again in a moment.",
       );
     }
-    // Fund each funnel it its own ceiling. billing then answers the brand's daily
-    // budget as their SUM, so every consumer that reads the brand total — the launch
-    // gate, the runway, the credit alerts, the Overview tile — is unchanged.
-    //
-    // A blob written before per-funnel funding shipped carries no map; it falls back
-    // to the single brand-level write, which is exactly what it expected to happen.
-    const funnelBudgetRows = Object.entries(pending.funnelBudgets ?? {})
-      .filter(([, usd]) => usd > 0)
-      .map(([funnelKey, usd]) => ({
-        funnelKey,
-        dailyBudgetCents: Math.round(usd * 100),
-        ...(launchOfferId ? { offerId: launchOfferId } : {}),
-      }));
-    if (funnelBudgetRows.length > 0) {
-      await stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows);
-    } else {
-      await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
+    const launchCampaigns = await resolveLaunchCampaigns(pending);
+    const funded = launchCampaigns.filter((c) => c.dailyBudgetUsd > 0);
+    if (funded.length === 0) {
+      throw new Error("No campaign was funded for this launch. Go back and fund at least one before launching.");
+    }
+    // Fund each campaign its own ceiling. billing answers the brand's daily budget as
+    // their SUM, so every consumer of the brand total is unchanged.
+    for (const c of funded) {
+      await saveCampaignBudget(
+        pending.brandId,
+        { offerId: launchOfferId, legKey: c.legKey, featureSlug: c.featureSlug },
+        Math.round(c.dailyBudgetUsd * 100),
+      );
     }
     setLaunchStep(2);
     // Audience avatars are generated server-side by human-service the moment an
     // audience flips to `active` (org-billed, fire-and-forget, idempotent), so the
-    // onboarding no longer generates them here — that would race the server gen and
-    // double-bill. See human-service #144.
+    // onboarding no longer generates them here. See human-service #144.
     setLaunchStep(3);
-    // The campaign states which funnel it sells, and it is one the customer just
-    // FUNDED a few lines above — the same map billing was written from, so the
-    // campaign and its ceiling can never name different funnels. When several are
-    // funded, exactly ONE campaign is created here (the primary funded funnel, else
-    // the first funded one in catalogue order) and campaign-service provisions the
-    // rest, one per funded funnel, on its next tick.
-    const launchFunnelKey = fundedLaunchFunnelKey(pending.funnelBudgets ?? {}, pending.primaryFunnelKey);
-    if (!launchFunnelKey) {
-      throw new Error(
-        "No sales funnel was funded for this launch. Go back and fund at least one funnel before launching.",
-      );
-    }
-    const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
-    // WHICH ARROW of that funnel this campaign buys, stated the way the fleet keys it.
-    //
-    // A campaign is (brand x offer x channel x leg), and the leg is what a customer
-    // actually buys — the funnel cannot name which of its own arrows a channel performs.
-    // Resolved out of the published channel catalogue, so the identifier is
-    // features-service's rather than one minted here, and the arrow is placed by the SAME
-    // rule every surface later reads it back with.
-    //
-    // Best-effort by construction: the customer has already been charged by the time this
-    // runs, so a catalogue read that fails must not strand the launch. A campaign that
-    // states no leg is read exactly as every campaign created before the column existed.
-    const launchLeg = await getPublicChannels()
-      .then((channels) => launchLegKey(channels, SALES_FEATURE_SLUG, salesFunnelByKey(normalizeSalesFunnelKey(launchFunnelKey))))
-      .catch((err) => {
-        console.error("[dashboard] launch: could not resolve the leg for this campaign", err);
-        return null;
+    // One campaign per funded (leg x channel), each on the producer's own workflow
+    // pick for THAT leg. The first sales campaign keeps the workflow the budget step
+    // was priced on when the ladder has no pick of its own.
+    let firstCampaignId: string | null = null;
+    for (const c of funded) {
+      const workflowSlug = await getWorkflowProjectionLadder({
+        featureSlug: c.featureSlug,
+        brandId: pending.brandId,
+        leg: c.legKey,
+      })
+        .then((ladder) => ladder.recommendedWorkflowDynastySlug)
+        .catch((err) => {
+          console.error(`[dashboard] launch: no workflow pick for ${c.legKey} via ${c.featureSlug}`, err);
+          return null;
+        });
+      const chosen = workflowSlug ?? (c.featureSlug === SALES_FEATURE_SLUG ? pending.workflowSlug : null);
+      if (!chosen) {
+        throw new Error(`${c.channelName} has no workflow ready for ${c.label} yet, so that campaign cannot start.`);
+      }
+      const featureInputs =
+        c.featureSlug === SALES_FEATURE_SLUG
+          ? pending.featureInputs ?? (await buildFeatureInputsForLaunch(pending.brandId))
+          : await featureInputsFor(c.featureSlug, pending.brandId, launchOfferId);
+      const { campaign } = await createCampaignWithoutBrandEnrichment({
+        legKey: c.legKey,
+        offerId: launchOfferId,
+        // The leg AND the channel are in the name: campaign-service refuses a name the
+        // org already holds, and one outcome can need several (leg, channel) pairs.
+        name: `${pending.hostname} — ${c.label} (${c.channelName})`,
+        workflowSlug: chosen,
+        // A no-website brand carries no URL; it's already created by name, so the
+        // gateway takes its brandId directly. Exactly one is sent.
+        ...(pending.brandUrl ? { brandUrls: [pending.brandUrl] } : { brandIds: [pending.brandId] }),
+        featureSlug: c.featureSlug,
+        featureInputs,
+        // No per-campaign budget ceiling is stated: campaign-service refuses one on a
+        // sales campaign. The money was written to billing above, per campaign.
       });
-    const { campaign } = await createCampaignWithoutBrandEnrichment({
-      funnelKey: launchFunnelKey,
-      ...(launchLeg ? { legKey: launchLeg } : {}),
-      // The proposition this campaign sells, resolved above from the brand's own
-      // offers. Omitted rather than nulled when there is no single correct answer:
-      // campaign-service adopts an offer-less campaign on its own tick.
-      ...(launchOfferId ? { offerId: launchOfferId } : {}),
-      name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
-      workflowSlug: pending.workflowSlug,
-      // A no-website brand carries no URL; it's already created by name, so the
-      // gateway takes its brandId directly (a website brand passes brandUrls, which
-      // the gateway upserts to a brandId). Exactly one is sent.
-      ...(pending.brandUrl
-        ? { brandUrls: [pending.brandUrl] }
-        : { brandIds: [pending.brandId] }),
-      featureSlug: SALES_FEATURE_SLUG,
-      featureInputs,
-      // No per-campaign budget ceiling is stated, and campaign-service refuses one
-      // on a sales campaign. The daily budget the customer picked was written to
-      // billing a few lines above, on the brand's funnel ceilings, at the
-      // (funnel, channel, offer) grain that IS a campaign — nothing reads a
-      // per-campaign copy, so stating one only 400s the launch, after the
-      // customer has already been charged.
-    });
+      firstCampaignId ??= campaign.id;
+    }
     setLaunchStep(4);
     posthog.capture("onboarding_completed", {
       flow: "beta",
@@ -2329,7 +2146,46 @@ export function Onboarding() {
     sendAuthNotification("goal_launched", undefined, {
       outcomeNoun: outcomeNounPlural(pending.outcome),
     }).catch(() => {});
-    return { campaignId: campaign.id, offerId: launchOfferId, funnelKey: launchFunnelKey };
+    return { campaignId: firstCampaignId ?? "", offerId: launchOfferId };
+  }
+
+  // The campaigns a pending launch funds. A blob written before campaigns were funded
+  // per leg carries none: the first campaign its picked outcomes need takes the whole
+  // budget, which is what that blob was always going to spend.
+  async function resolveLaunchCampaigns(pending: PendingCheckoutLaunch): Promise<LaunchCampaign[]> {
+    if (pending.campaigns.length > 0) return pending.campaigns;
+    const catalogue = await getPublicCatalogueSignedOut();
+    const pairs = pairsForOutcomes(pending.onboardingState.startOutcomes ?? [], {
+      channels: catalogue.channels as never,
+      steps: (catalogue.steps ?? []) as never,
+    });
+    const first = pairs[0];
+    if (!first) return [];
+    console.error("[dashboard] launch: legacy pending blob carries no campaigns, funding the first one the picks need");
+    return [
+      {
+        legKey: first.legKey,
+        featureSlug: first.channelSlug,
+        label: legLabelFor(first.fromLabel, first.toLabel),
+        channelName: first.channelName,
+        dailyBudgetUsd: pending.budgetUsd,
+      },
+    ];
+  }
+
+  // A non-sales channel's own inputs, prefilled for this offer.
+  async function featureInputsFor(featureSlug: string, brandId: string, offerId: string): Promise<Record<string, string>> {
+    const [{ feature }, prefill] = await Promise.all([
+      getFeature(featureSlug),
+      prefillFeatureInputs(featureSlug, [brandId], offerId),
+    ]);
+    const prefilled = prefillToStringMap(prefill.prefilled);
+    const out: Record<string, string> = {};
+    for (const input of feature.inputs ?? []) {
+      const value = prefilled[input.key]?.trim();
+      if (value) out[input.key] = value;
+    }
+    return out;
   }
 
   // Fire the full launch ONCE, in the background, the moment checkout returns. Idempotent
@@ -2382,25 +2238,18 @@ export function Onboarding() {
     // audiences are built by hand after payment), so the blob carries an empty
     // list under the field older readers still expect.
     const launchAudienceIds: string[] = [];
-    // Live selection wins, the stored blob is the fallback, so a re-checkout after
-    // a cancel carries whatever the user has picked NOW. This is NOT a launch gate:
-    // the per-funnel screens are a preview, so an empty selection must never block
-    // a paid launch — it just means those screens have nothing to ask.
-    const launchFunnelKeys = selectedFunnelKeys.length
-      ? selectedFunnelKeys
-      : storedPending?.selectedFunnelKeys ?? [];
-    const launchPrimaryFunnelKey = primaryFunnelKey ?? storedPending?.primaryFunnelKey ?? null;
-    // Live funding wins, the stored blob is the fallback — same precedence as the
-    // selection, so a re-checkout after a cancel carries what the user funds NOW.
-    const liveFunnelBudgets = Object.fromEntries(
-      launchFunnelKeys
-        .map((key) => [key, funnelBudgetUsd(key)] as const)
-        .filter(([, usd]) => usd > 0),
-    );
-    const launchFunnelBudgets =
-      Object.keys(liveFunnelBudgets).length > 0
-        ? liveFunnelBudgets
-        : storedPending?.funnelBudgets ?? {};
+    // Live funding wins, the stored blob is the fallback, so a re-checkout after a
+    // cancel carries what the user funds NOW.
+    const liveCampaigns: LaunchCampaign[] = launchPairs
+      .map((pair) => ({
+        legKey: pair.legKey,
+        featureSlug: pair.channelSlug,
+        label: legLabelFor(pair.fromLabel, pair.toLabel),
+        channelName: pair.channelName,
+        dailyBudgetUsd: pairBudgetUsd(pair.key),
+      }))
+      .filter((c) => c.dailyBudgetUsd > 0);
+    const launchCampaigns = liveCampaigns.length > 0 ? liveCampaigns : storedPending?.campaigns ?? [];
     // The first charge is the budget MINUS the welcome gift; the auto-topup reload
     // below is the FULL budget. Reusing the discounted figure for both would leave
     // every later reload short by the gift, forever, on a one-time discount.
@@ -2431,9 +2280,7 @@ export function Onboarding() {
       profile: brandIdRef.current === id && (noWebsiteMode || normalizedCurrentUrl) ? profile : storedPending?.profile,
       services: brandIdRef.current === id && (noWebsiteMode || normalizedCurrentUrl) ? services : storedPending?.services,
       selectedAudienceIds: launchAudienceIds,
-      selectedFunnelKeys: launchFunnelKeys,
-      primaryFunnelKey: launchPrimaryFunnelKey,
-      funnelBudgets: launchFunnelBudgets,
+      campaigns: launchCampaigns,
       // Live state wins, the stored blob is the fallback — same precedence as the
       // selection above, so a re-checkout after a cancel still remembers that the
       // levers were answered before the account.
@@ -2511,7 +2358,7 @@ export function Onboarding() {
       const pending = readPendingCheckoutLaunch();
       pendingCheckoutRef.current = pending;
       applyRestoredOnboardingState(pending.onboardingState, { step: "celebrate" });
-      applyRestoredFunnelSelection(pending);
+      applyRestoredCampaignBudgets(pending);
       setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl ?? ""), hostname: pending.hostname });
       setLaunchStep(0);
@@ -2639,7 +2486,7 @@ export function Onboarding() {
         setBusy(false);
       }
     }
-    // STRAIGHT TO THE LAUNCH. The per-funnel rate screens and the best-model
+    // STRAIGHT TO THE LAUNCH. The rate screens and the best-model
     // screen used to sit here, asking a person who had just paid for conversion
     // rates — the worst moment in the flow to ask anything.
     //
@@ -2655,16 +2502,6 @@ export function Onboarding() {
     setStep("offer");
   }
 
-  // States the WHOLE set of funnels the brand sells through: exactly these, no
-  // others. Distinct from declaring one funnel — this is what flips `declared`
-  // (a brand that has answered, vs one that has never told us anything) and what
-  // removes a funnel the user unpicked. features-service reads that declared set
-  // to arbitrate which goal a campaign runs, so it has to land BEFORE the budget
-  // step, which prices the outcome the primary funnel buys.
-  //
-  // It carries no economics: those are asked once per funnel after payment. A
-  // funnel already in the set keeps what it was priced with, so re-stating the
-  // set on a resume never wipes a value the brand confirmed.
   // The one thing the audience step collects: who the customer sells to, in
   // their own words. Saved on the brand as the `targetAudience` user-field (the
   // same store the brand profile reads), where the person building the
@@ -2698,80 +2535,23 @@ export function Onboarding() {
     }
   }
 
-  async function saveFunnelsAndContinue() {
-    // The primary is the first picked funnel (or the one already held). There is
-    // no screen asking for it any more: the Path screen already ordered the picks,
-    // and asking "which one first?" after it was one question twice. The outcome
-    // it buys prices the budget step, so it is written from the DERIVED funnel
-    // here rather than from `primaryFunnelKey`, whose setter has not applied yet.
-    const primaryKey = resolvePrimaryKey(selectedFunnelKeys, primaryFunnelKey);
-    setPrimaryFunnelKey(primaryKey);
-    const nextOutcome = outcomeForFunnelGoal(offeredFunnels.find((f) => f.key === primaryKey)?.goal);
-    if (nextOutcome) setOutcome(nextOutcome);
-    const nextStep: Step = "audiences";
-    const id = brandIdRef.current;
-    if (!id) {
-      // No brand yet (fast click-through): the per-funnel writes after payment
-      // declare each picked funnel on their own, so do not block the step.
-      setError(null);
-      setStep(nextStep);
+  // The services CTA. The goal the budget step is priced on is the FIRST outcome
+  // picked: the campaign landing on it is what the budget buys.
+  function continueFromServices() {
+    if (launchPairs.length === 0) {
+      // Every campaign the picks need goes through a website this brand does not have
+      // (or nothing was picked): back to the pick, saying why.
+      setError(noWebsiteMode ? "Without a website we reach people by reply. Pick an outcome that starts with a positive reply." : null);
+      setStep("outcome");
       return;
     }
+    const target = launchPairs.find((p) => p.toKey === startOutcomes[0]) ?? launchPairs[launchPairs.length - 1];
+    const nextOutcome = goalForLeg(target ? { fromKey: target.fromKey, toKey: target.toKey } : null);
+    if (nextOutcome) setOutcome(nextOutcome);
     setError(null);
-    setBusy(true);
-    try {
-      await stateBrandSalesFunnels(id, selectedFunnelKeys);
-      setStep(nextStep);
-    } catch (err) {
-      if (isInsufficientCredit(err)) {
-        creditRetryRef.current = () => saveFunnelsAndContinue();
-        return;
-      }
-      // brand-service writes its 400s for a person to read ("this funnel starts
-      // with a click onto the brand's website…"). Never `err.message`: the shared
-      // api client sets it to the whole downstream body verbatim, which would put
-      // a JSON blob in front of a customer.
-      setError(funnelWriteErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
+    setStep("audiences");
   }
 
-  // "at your budget, this path builds $X of pipeline a month".
-  //
-  // ⚠️ This is the ONE number in this flow that is derived in the browser, and
-  // it must not stay that way: features-service owns every displayed stat, and two
-  // browser-derived numbers on one card is exactly how surfaces drift. There is no
-  // served field for it today (the projection returns cost per outcome, cost per
-  // paid client, the ROI multiple and the CAC share — not a budget-scaled pipeline),
-  // so the request is filed against features-service and this reads from the fields
-  // that ARE served until it lands.
-  //
-  // Returns null — not a zero, not a guess — whenever any input is missing, so an
-  // unpriceable path says nothing rather than promising nothing.
-  function monthlyPipelineLabel(resolved: { costPerPaidClientUsd: number | null } | null): string | null {
-    const budget = budgetForCharge();
-    const costPerClient = resolved?.costPerPaidClientUsd ?? null;
-    const ltr = rates.ltv;
-    if (budget == null || budget <= 0) return null;
-    if (costPerClient == null || costPerClient <= 0) return null;
-    if (!ltr || ltr <= 0) return null;
-    const clientsPerMonth = (budget * 30) / costPerClient;
-    const pipeline = clientsPerMonth * ltr;
-    if (!Number.isFinite(pipeline) || pipeline <= 0) return null;
-    return `$${formatLocaleInteger(Math.round(pipeline))}`;
-  }
-
-  // Write this funnel's economics, then advance to the next screen or the
-  // projection. Runs on the post-payment fresh page load, so what is STORED is
-  // read from the wire on every write rather than trusted from client state —
-  // the patch is the DIFF against it, which is what keeps a field the user
-  // confirmed elsewhere from being overwritten from a stale copy, and what makes
-  // an emptied field clear (an explicit `null`) instead of being omitted.
-  //
-  // Errors STOP the step. brand-service's 400 names the one thing to fix and the
-  // field is right there, so advancing past it would drop what was typed with
-  // nothing said — the same class as a save that silently persists nothing.
   // Offer-lever step Continue: advance to the next lever, or (on the last one)
   // finalize the launch. Lever edits live in `profile` state and are saved on top of
   // the background launch's as-of-checkout profile by finalizePostPaymentAndLaunch.
@@ -2826,7 +2606,7 @@ export function Onboarding() {
       const orgId = pending?.orgId ?? orgIdRef.current;
       // Land on the DEEPEST scope with no choice left in it, the same place signing in
       // lands — and name it outright rather than handing the walk a bare brand URL: the
-      // launch just created this campaign, so it holds the offer and the funnel already,
+      // launch just created this campaign, so it holds the offer already,
       // and the walk's own reads would be cold here (see `lib/launch-destination.ts`).
       router.push(
         launchDestinationHref({
@@ -2869,18 +2649,12 @@ export function Onboarding() {
     setStep(opts?.step ?? resolveResumeStep(state.step, state.brandId));
   }
 
-  // v2 — put the picked funnels back after the Stripe round-trip. The selection lives
-  // in React state only (see PendingCheckoutLaunch), and the checkout return is a FRESH
-  // page load, so without this the per-funnel screens have nothing to walk and skip
-  // themselves. Reads the blob's top-level fields, which are version-independent.
-  function applyRestoredFunnelSelection(pending: PendingCheckoutLaunch) {
-    setSelectedFunnelKeys(pending.selectedFunnelKeys);
-    setPrimaryFunnelKey(pending.primaryFunnelKey);
-    // The funding comes back with the selection, or a cancel would land on pricing
-    // with every path reading zero and the customer re-typing what they just set.
-    setFunnelBudgets(
+  // Put the funding back after a cancelled Stripe round-trip, or a cancel lands on
+  // pricing with every campaign reading zero and the customer re-typing what they set.
+  function applyRestoredCampaignBudgets(pending: PendingCheckoutLaunch) {
+    setCampaignBudgets(
       Object.fromEntries(
-        Object.entries(pending.funnelBudgets ?? {}).map(([key, usd]) => [key, String(usd)]),
+        pending.campaigns.map((c) => [startPairKey(c.legKey, c.featureSlug), String(c.dailyBudgetUsd)]),
       ),
     );
   }
@@ -2931,9 +2705,7 @@ export function Onboarding() {
       try {
         const pending = readPendingCheckoutLaunch();
         applyRestoredOnboardingState(pending.onboardingState, { step: "pricing" });
-        // A cancel lands back on pricing, where Back walks up through primary/funnels —
-        // so the selection has to come back here too, not only on the success return.
-        applyRestoredFunnelSelection(pending);
+        applyRestoredCampaignBudgets(pending);
         void hydratePricingForRestoredCheckout(pending.onboardingState).catch((e) => {
           console.error("[dashboard] onboarding checkout-cancel pricing restore failed:", e);
           setError(e instanceof Error ? e.message : "Could not restore your budget options. Try again.");
@@ -2947,7 +2719,7 @@ export function Onboarding() {
   }, [searchParams]);
 
   // Put a number in front of the customer instead of a row of empty fields: the
-  // funnel they picked to start on takes the recommended budget, the others start
+  // campaign landing on the first outcome takes the recommended budget, the others start
   // unfunded and they fund what they want. Runs on the pricing step rather than at
   // the pick, because the goal and its projection have both settled by then — the
   // unit cost read a step earlier would still be the previous goal's.
@@ -2955,24 +2727,29 @@ export function Onboarding() {
   // Seeds ONCE and only into an untouched set: a resume, a cancelled checkout or a
   // Back must never overwrite what the customer already funded.
   useEffect(() => {
-    if (step !== "pricing" || !primaryFunnelKey) return;
-    setFunnelBudgets((prev) => {
+    const first = launchPairs.find((p) => p.toKey === startOutcomes[0]) ?? launchPairs[0];
+    if (step !== "pricing" || !first) return;
+    const floorCents = floorCentsFor(first.channelSlug);
+    // Rounded UP so the seed can never be refused.
+    const floorUsd = floorCents === null ? null : Math.ceil(floorCents / 100);
+    setCampaignBudgets((prev) => {
       if (Object.values(prev).some((v) => (parseLocaleNumberInput(v) ?? 0) > 0)) return prev;
       const recommended = budgetForCount(RECOMMENDED_OUTCOME_COUNT);
       // Nothing to seed with: neither a priced projection nor a published floor.
       // An empty field is honest; a figure nobody computed is not.
-      if (recommended === null && launchFloorUsd === null) return prev;
-      const seed = recommended ?? launchFloorUsd ?? 0;
-      const floored = launchFloorUsd === null ? seed : Math.max(launchFloorUsd, seed);
-      return { ...prev, [primaryFunnelKey]: String(floored) };
+      if (recommended === null && floorUsd === null) return prev;
+      const seed = recommended ?? floorUsd ?? 0;
+      const floored = floorUsd === null ? seed : Math.max(floorUsd, seed);
+      return { ...prev, [first.key]: String(floored) };
     });
     // `budgetForCount` reads the live projection and the floor lands a moment
     // after mount; re-running as either warms is the point, and the untouched-set
     // guard makes the repeat a no-op.
-  }, [step, primaryFunnelKey, pricingHydrationVersion, launchFloorUsd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, launchPairs.map((p) => p.key).join(","), pricingHydrationVersion, startCatalogue]);
 
   // ── Per-outcome economics for the budget cards ──────────────────
-  // The outcome-optimized workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
+  // The outcome-optimized workflow's projection (counts at PROJECTION_REF_BUDGET).
   function activeWorkflow() {
     const resp = projectionRef.current;
     if (!resp) return null;
@@ -3017,32 +2794,36 @@ export function Onboarding() {
     return Math.max(0, Math.round((b * 30) / uc));
   }
 
-  /** What this funnel is funded with, in whole dollars. Blank or junk reads as 0. */
-  function funnelBudgetUsd(key: string): number {
-    const parsed = parseLocaleNumberInput((funnelBudgets[key] ?? "").trim());
+  /** What this campaign is funded with, in whole dollars. Blank or junk reads as 0. */
+  function pairBudgetUsd(key: string): number {
+    const parsed = parseLocaleNumberInput((campaignBudgets[key] ?? "").trim());
     return parsed === null ? 0 : Math.max(0, Math.round(parsed));
   }
 
   /**
-   * The picked funnels whose ceiling is under their own floor. Zero is never in
-   * here: a funnel funded at nothing is one the brand is not paying for, which is
-   * an ordinary answer — the gate is that at least ONE of them is funded.
+   * The campaigns whose CHANNEL is funded under its floor. billing judges the floor
+   * on a channel's total across the brand, so the campaigns of one channel are summed
+   * before the check. Zero is never in here: a channel funded at nothing is one the
+   * brand is not paying for, which is an ordinary answer.
    */
-  function underfundedFunnels(): FunnelView[] {
-    return selectedFunnels.filter((f) =>
-      // Zero stored: signup is a brand stating its ceilings for the FIRST time,
-      // so the floor applies in full. The grandfather in `channelBudgetBelowMinimum`
-      // exists for brands billing already funds under it, which nobody here is.
-      channelBudgetBelowMinimum(launchFloorCents, funnelBudgetUsd(f.key), 0),
+  function underfundedPairs(): StartLegPair[] {
+    const totals = new Map<string, number>();
+    for (const pair of launchPairs) {
+      totals.set(pair.channelSlug, (totals.get(pair.channelSlug) ?? 0) + pairBudgetUsd(pair.key));
+    }
+    return launchPairs.filter(
+      (pair) =>
+        pairBudgetUsd(pair.key) > 0 &&
+        // Zero stored: signup states its ceilings for the FIRST time, so the floor
+        // applies in full.
+        channelBudgetBelowMinimum(floorCentsFor(pair.channelSlug), totals.get(pair.channelSlug) ?? 0, 0),
     );
   }
 
-  // The $/day the brand is charged: the SUM of what each picked funnel is funded
-  // with. Null when nothing is funded yet, so the step cannot be passed — "we could
-  // not price this" and "it costs nothing" are different statements, and only the
-  // first should hold the Continue button.
+  // The $/day the brand is charged: the SUM of what each campaign is funded with.
+  // Null when nothing is funded yet, so the step cannot be passed.
   function derivedBudget(): number | null {
-    const total = selectedFunnels.reduce((sum, f) => sum + funnelBudgetUsd(f.key), 0);
+    const total = launchPairs.reduce((sum, pair) => sum + pairBudgetUsd(pair.key), 0);
     return total > 0 ? total : null;
   }
 
@@ -3073,19 +2854,18 @@ export function Onboarding() {
   }
 
   // ── Step renders ─────────────────────────────────────────────────
-  if (step === "welcome" || step === "outcome" || step === "path" || step === "returns") {
+  if (step === "welcome" || step === "outcome" || step === "returns") {
     return (
       <StartPicks
         screen={step}
         catalogue={startCatalogue}
         catalogueError={startCatalogueError}
         outcomes={startOutcomes}
-        funnels={startFunnels}
         onOutcomesChange={setStartOutcomes}
-        onFunnelsChange={setStartFunnels}
         onScreenChange={(next: StartScreen) => setStep(next)}
         onContinue={continueAfterPicks}
         brandHost={domain}
+        notice={step === "outcome" ? error : null}
       />
     );
   }
@@ -3224,7 +3004,7 @@ export function Onboarding() {
     return (
       <StepShell chrome={chrome}
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => { addService(serviceDraft); if (selectedFunnelKeys.length === 0) setStep("path"); else void saveFunnelsAndContinue(); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); continueFromServices(); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
         copyText={servicesPrompt}
       >
         <BackButton onClick={() => setStep("url")} />
@@ -3290,10 +3070,8 @@ export function Onboarding() {
   }
 
   // Fail-safe: nothing ROUTES into the steps the brand-level flow had, but a resume
-  // can still point at one (a snapshot written before the funnels flow shipped, an
-  // in-flight checkout blob). Land on the step that asks the same thing now instead
-  // of rendering a step this flow does not have — the same pattern the funnelStats
-  // branch uses when it has no funnel to show.
+  // can still point at one (an old snapshot, an in-flight checkout blob). Land on the
+  // step that asks the same thing now instead of rendering a step this flow does not have.
   if (step === "destination" || step === "objective" || step === "rates" || step === "ltr") {
     setStep(legacyStepFor(step));
     return null;
@@ -3318,15 +3096,6 @@ export function Onboarding() {
         onEdit={() => setStep("url")}
       />
     );
-  }
-
-  // The funnel step and the primary pick no longer render: the sell-first Path
-  // screen is where the set is stated. A resume can still point here (a snapshot
-  // or an in-flight checkout blob written before they went), so land on the
-  // picks — the same fail-safe shape as the retired-step branch above.
-  if (step === "funnels" || step === "primary") {
-    setStep(legacyStepFor(step));
-    return null;
   }
 
   if (step === "consent") {
@@ -3421,13 +3190,6 @@ export function Onboarding() {
     );
   }
 
-  // One screen per selected funnel, primary first. Replaces the single
-  // lifetime-revenue screen: a self-serve signup customer and an enterprise
-  // meeting customer are not worth the same and do not land on the same page,
-  // so each funnel carries its own rates, its own lifetime revenue and its own
-  // destinations — and each is written to brand-service on Continue, through the
-  // same partial patch the Settings card uses.
-
   if (step === "offer") {
     const lever = POST_PAYMENT_OFFER_LEVERS[offerIndex];
     const raw = profile[lever.key];
@@ -3511,15 +3273,11 @@ export function Onboarding() {
   if (step === "built") {
     const summaryInput = {
       services,
-      funnels: selectedFunnelKeys.map((key) => {
-        const def = SALES_FUNNELS.find((f) => f.key === normalizeSalesFunnelKey(key as never));
-        return {
-          key,
-          name: def?.name ?? "",
-          steps: def?.steps ?? [],
-          isPrimary: key === primaryFunnelKey,
-        };
-      }),
+      campaigns: launchPairs.map((pair) => ({
+        key: pair.key,
+        label: legLabelFor(pair.fromLabel, pair.toLabel),
+        channelName: pair.channelName,
+      })),
       // The customer's own words for who they sell to. Not an audience list: the
       // audiences are built by hand after payment, from exactly this text.
       targetAudience: audiencePrompt,
@@ -3533,12 +3291,10 @@ export function Onboarding() {
           : coerceTextField(profile[l.key]),
       })),
     };
-    // Resolved HERE and handed over, because the catalogue's own lookup throws
-    // on a key it does not carry and a throw on this screen loses the summary.
-    const funnelMarks: Record<string, ReactNode> = {};
-    for (const f of summaryInput.funnels) {
-      const def = SALES_FUNNELS.find((d) => d.key === normalizeSalesFunnelKey(f.key as never));
-      if (def) funnelMarks[f.key] = <SalesFunnelMark def={def} size="sm" />;
+    // Resolved HERE and handed over, so the panel names nothing of its own.
+    const campaignMarks: Record<string, ReactNode> = {};
+    for (const pair of launchPairs) {
+      campaignMarks[pair.key] = <LegMark fromKey={pair.fromKey} toKey={pair.toKey} size="sm" />;
     }
 
     return (
@@ -3586,7 +3342,7 @@ export function Onboarding() {
         <p className="mt-2 mb-5 text-gray-500">
           Create your account to launch it. Nothing goes out until you do.
         </p>
-        <BuiltSummaryPanel input={summaryInput} funnelMarks={funnelMarks} />
+        <BuiltSummaryPanel input={summaryInput} campaignMarks={campaignMarks} />
       </StepShell>
     );
   }
@@ -3696,18 +3452,16 @@ export function Onboarding() {
     );
   }
 
-  // pricing — one daily ceiling per PICKED funnel. The brand is charged their sum,
-  // and billing stores them per funnel, so the money the customer commits to is
-  // allocated to the paths they chose rather than to one undifferentiated pot.
+  // pricing — one daily ceiling per campaign. The brand is charged their sum, and
+  // billing stores them per (offer, leg, channel), so the money the customer commits
+  // to is allocated to the campaigns their outcomes need.
   const displayBudget = budgetForCharge();
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
-  const fundedFunnelCount = selectedFunnels.filter((f) => funnelBudgetUsd(f.key) > 0).length;
-  const underfunded = underfundedFunnels();
-  // `onePath` is derived once at the top of the flow: a brand that picked ONE path
-  // reads every "each path" sentence as being about something it does not have, and
-  // two of them contradicted this screen's own button (Continue is gated on at least
-  // one funded path, so inviting the user to leave the only path at 0 promises a step
-  // it then refuses). The plural copy is byte-identical for a real multi-path pick.
+  const fundedCount = launchPairs.filter((pair) => pairBudgetUsd(pair.key) > 0).length;
+  const underfunded = underfundedPairs();
+  const underfundedKeys = new Set(underfunded.map((p) => p.key));
+  // `onePath` (one campaign) is derived once at the top of the flow: a brand launching ONE campaign
+  // reads every "each campaign" sentence as being about something it does not have.
   return (
     <StepShell chrome={chrome}
       header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
@@ -3726,14 +3480,14 @@ export function Onboarding() {
     >
       <BackButton onClick={() => setStep("consent")} />
       <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
-        {onePath ? "Set your daily budget." : "Fund each path."}
+        {onePath ? "Set your daily budget." : "Fund each campaign."}
       </h2>
       <p className="mt-2 mb-5 text-gray-500">
         {onePath ? (
-          <>Set what we may spend a day on this path. You can change it whenever you like.</>
+          <>Set what we may spend a day on this campaign. You can change it whenever you like.</>
         ) : (
           <>
-            Set what each path may spend a day. You can leave one at <strong>0</strong> and start it later. Fund at least one to continue.
+            Set what each campaign may spend a day. You can leave one at <strong>0</strong> and start it later. Fund at least one to continue.
           </>
         )}
       </p>
@@ -3745,54 +3499,54 @@ export function Onboarding() {
         <p className="text-sm leading-6 text-brand-800">
           {onePath
             ? "We spend up to your ceiling, and never more than that in a day."
-            : "Each path spends up to its own ceiling, and never more than that in a day."}{" "}
+            : "Each campaign spends up to its own ceiling, and never more than that in a day."}{" "}
           You pay as you go for what we actually spend. Cancel anytime.
         </p>
       </div>
 
       <div className="space-y-3">
-        {selectedFunnels.map((f) => {
-          const usd = funnelBudgetUsd(f.key);
-          const under = channelBudgetBelowMinimum(launchFloorCents, usd, 0);
+        {launchPairs.map((pair) => {
+          const usd = pairBudgetUsd(pair.key);
+          const under = underfundedKeys.has(pair.key);
+          const floorCents = floorCentsFor(pair.channelSlug);
           const count = usd > 0 ? countForBudget(usd) : null;
+          const label = legLabelFor(pair.fromLabel, pair.toLabel);
           return (
             <div
-              key={f.key}
+              key={pair.key}
               className={`rounded-xl border-2 p-4 transition ${
                 under ? "border-red-200 bg-red-50" : usd > 0 ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"
               }`}
             >
               <div className="flex items-start gap-3">
-                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${f.tone.iconBg} ${f.tone.iconText}`}>
-                  <SalesFunnelMark def={salesFunnelByKey(f.key as SalesFunnelKey)} size="md" />
-                </span>
+                <LegMark fromKey={pair.fromKey} toKey={pair.toKey} size="md" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-gray-900">{f.title}</div>
-                  <FunnelStepRow steps={f.steps} tone={f.tone} />
+                  <div className="text-sm font-medium text-gray-900">{label}</div>
+                  <div className="mt-1 text-xs text-gray-500">Via {pair.channelName}</div>
                 </div>
                 <div className="flex shrink-0 items-baseline gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 focus-within:border-brand-400">
                   <span className="text-lg font-bold text-gray-400">$</span>
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={funnelBudgets[f.key] ?? ""}
+                    value={campaignBudgets[pair.key] ?? ""}
                     onChange={(e) =>
-                      setFunnelBudgets((prev) => ({
+                      setCampaignBudgets((prev) => ({
                         ...prev,
-                        [f.key]: e.target.value.replace(/\D/g, ""),
+                        [pair.key]: e.target.value.replace(/\D/g, ""),
                       }))
                     }
                     placeholder="0"
-                    aria-label={`Daily budget for ${f.title}`}
+                    aria-label={`Daily budget for ${label} via ${pair.channelName}`}
                     className="w-16 bg-transparent text-right text-lg font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
                   />
                   <span className="text-xs font-normal text-gray-500">/ day</span>
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-1 pl-14 text-xs">
-                {under && launchFloorCents !== null ? (
+                {under && floorCents !== null ? (
                   <span className="text-red-600">
-                    This path starts at {fmtDailyFloorUsd(launchFloorCents)} a day.
+                    {pair.channelName} starts at {fmtDailyFloorUsd(floorCents)} a day.
                     {!onePath && " Leave it at 0 to skip it for now."}
                   </span>
                 ) : count != null ? (
@@ -3800,10 +3554,9 @@ export function Onboarding() {
                     <span className="text-gray-500">{fmtCount(count)} {outcomeMeta.unit} / mo</span>
                     <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                   </>
-                ) : launchFloorCents !== null ? (
+                ) : floorCents !== null ? (
                   <span className="text-gray-400">
-                    {onePath ? "From" : "Not funded. From"} {fmtDailyFloorUsd(launchFloorCents)} a
-                    day.
+                    {onePath ? "From" : "Not funded. From"} {fmtDailyFloorUsd(floorCents)} a day.
                   </span>
                 ) : (
                   !onePath && <span className="text-gray-400">Not funded.</span>
@@ -3815,12 +3568,12 @@ export function Onboarding() {
       </div>
 
       {/* The total is a SUM, so it only says something when there is more than one
-          thing to add. With one path it restates the figure typed an inch above,
+          thing to add. With one campaign it restates the figure typed an inch above,
           under a second label, alongside a count that card already carries. */}
       {!onePath && displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
-          <span className="text-gray-400"> across {fundedFunnelCount} {fundedFunnelCount === 1 ? "path" : "paths"}</span>
+          <span className="text-gray-400"> across {fundedCount} {fundedCount === 1 ? "campaign" : "campaigns"}</span>
           {displayCount != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> · {fmtCount(displayCount)} {outcomeMeta.unit} / mo estimated</span>}
         </div>
       )}
@@ -4071,12 +3824,12 @@ function stepperFor(step: Step): { step: number; count: number } {
     case "objective":
     case "rates":
     case "audiences":
-      return { step: 4, count: START_STEP_COUNT };
+      return { step: 3, count: START_STEP_COUNT };
     case "built":
     case "consent":
     case "pricing":
     case "bonus":
-      return { step: 5, count: START_STEP_COUNT };
+      return { step: 4, count: START_STEP_COUNT };
     default:
       return { step: 1, count: 1 };
   }
@@ -4289,69 +4042,6 @@ function NextButton({ onClick, disabled = false, busy = false, label = "Continue
   return (
     <button onClick={onClick} disabled={disabled || busy} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
       {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Saving…</> : <>{label} <ArrowRightIcon className="h-4 w-4" /></>}
-    </button>
-  );
-}
-
-// The funnel's steps, rendered under its title. Discreet on purpose: the name is
-// what identifies the path, the steps are the reminder of what it means.
-function FunnelStepRow({ steps, tone }: { steps: string[]; tone: { iconBg: string; iconText: string } }) {
-  if (steps.length === 0) return null;
-  return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500">
-      {steps.map((s, i) => (
-        <span key={`${s}-${i}`} className="flex items-center gap-1.5">
-          {i > 0 && <span className={tone.iconText}>→</span>}
-          <span>{s}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// One sales funnel, as a selectable card: a tone-coloured mark tall enough to
-// cover both text rows, the funnel's NAME as the heading, and its steps under it
-// in a lighter weight. `radio` switches the control from multi-select to the
-// single primary-goal pick — same card, so the two steps read as one idea.
-function FunnelSelectCard({
-  funnel,
-  selected,
-  onToggle,
-  radio = false,
-}: {
-  funnel: FunnelView;
-  selected: boolean;
-  onToggle: () => void;
-  radio?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
-    >
-      <span
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${funnel.tone.iconBg} ${funnel.tone.iconText}`}
-      >
-        <span className="flex flex-col items-center gap-[3px]">
-          {funnel.steps.slice(0, 4).map((s, i) => (
-            <span
-              key={`${s}-${i}`}
-              className="block h-[3px] rounded-full bg-current"
-              style={{ width: `${18 - i * 3}px` }}
-            />
-          ))}
-        </span>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-gray-900">{funnel.title}</span>
-        <FunnelStepRow steps={funnel.steps} tone={funnel.tone} />
-      </span>
-      <span
-        className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${radio ? "rounded-full" : "rounded-md"} ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
-      >
-        {selected && <CheckIcon className="h-3 w-3" />}
-      </span>
     </button>
   );
 }

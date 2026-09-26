@@ -15,7 +15,7 @@ import { ANON_PRINCIPAL, readAnonSession, signAnonSession } from "@/lib/anon-ses
  * The org it forwards as is an ordinary org — one whose external id is
  * `anon_<uuid>` rather than a Clerk org id, which the gateway resolves through
  * client-service exactly as it resolves any other. So every producer downstream
- * is untouched: the wizard writes funnels, suggests audiences and extracts an
+ * is untouched: the wizard writes the brand, suggests audiences and extracts an
  * offer against a real org, and at signup that org is re-pointed at the Clerk
  * org the visitor just created. Nothing moves.
  *

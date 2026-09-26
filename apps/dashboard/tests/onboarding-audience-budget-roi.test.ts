@@ -59,12 +59,11 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
     });
 
     it("charges the SUM of what each path is funded with", () => {
-      // Reading the typed field per funnel, never a mirrored copy — the same
-      // reason the custom tier used to read its text: a keystroke-lagging number
-      // must not be what reaches Stripe.
+      // Reading the typed field per campaign, never a mirrored copy: a
+      // keystroke-lagging number must not be what reaches Stripe.
       const body = sliceFrom("function derivedBudget(): number | null {", 400);
-      expect(body).toContain("selectedFunnels.reduce");
-      expect(body).toContain("funnelBudgetUsd(f.key)");
+      expect(body).toContain("launchPairs.reduce");
+      expect(body).toContain("pairBudgetUsd(pair.key)");
       // Null, never zero, when nothing is funded: "we could not price this" and
       // "it costs nothing" are different statements, and only the first holds the
       // Continue button.
@@ -78,12 +77,14 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       // live brand keep a ceiling carried under its floor has nobody to cover
       // here, and passing anything else would let signup state a sub-floor one.
       //
-      // The floor itself is the CHANNEL's own published operating cost, read off
-      // `GET /public/channels`. Signup funds one channel — a funnel-grain ceiling
-      // names none, and billing resolves a funnel that funds none yet to cold
-      // email — so that is what these figures are judged against.
-      expect(src).toContain("channelBudgetBelowMinimum(launchFloorCents, funnelBudgetUsd(f.key), 0)");
-      expect(src).toContain("channelMinimumCents(channelMinimums, SALES_FEATURE_SLUG)");
+      // The floor itself is the CHANNEL's own published operating cost, and billing
+      // judges it on the channel's TOTAL across the brand, so the campaigns of one
+      // channel are summed before the check.
+      expect(src).toContain("const underfunded = underfundedPairs();");
+      const body = sliceFrom("function underfundedPairs(): StartLegPair[] {", 900);
+      expect(body).toContain("totals.set(pair.channelSlug");
+      expect(body).toContain("channelBudgetBelowMinimum(floorCentsFor(pair.channelSlug), totals.get(pair.channelSlug) ?? 0, 0)");
+      expect(src).toContain("channelMinimumCents(channelMinimums, channelSlug)");
       expect(src).not.toContain("FUNNEL_MIN_DAILY_BUDGET_USD");
     });
 
@@ -93,14 +94,14 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       // of the pending blob — version-independent — exactly like the selection it
       // belongs to. A field on the snapshot instead would force a bump, and a bump
       // strands an in-flight checkout.
-      expect(src).toContain("funnelBudgets: Record<string, number>");
-      expect(src).toContain("funnelBudgets: launchFunnelBudgets");
-      expect(src).toContain("isFunnelBudgetMap(parsed.funnelBudgets)");
+      expect(src).toContain("campaigns: LaunchCampaign[];");
+      expect(src).toContain("campaigns: launchCampaigns,");
+      expect(src).toContain("isLaunchCampaignList(parsed.campaigns) ? parsed.campaigns : []");
       expect(src).toContain("ONBOARDING_STATE_VERSION = 8");
-      // Read tolerantly: a blob written before per-funnel funding shipped carries
-      // none, and it must still LAUNCH — falling back to the single brand write.
-      expect(src).toContain("stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows)");
-      expect(src).toContain("saveBrandDailyBudget(pending.brandId");
+      // Read tolerantly: a blob written before per-campaign funding shipped carries
+      // none, and it must still LAUNCH, funding the first campaign the picks need.
+      expect(src).toContain("const launchCampaigns = await resolveLaunchCampaigns(pending);");
+      expect(src).toContain("if (pending.campaigns.length > 0) return pending.campaigns;");
     });
   });
 

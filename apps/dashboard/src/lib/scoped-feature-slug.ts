@@ -3,7 +3,7 @@
 /**
  * WHICH CHANNEL a surface is about — the campaign's own, whenever a campaign is open.
  *
- * A campaign is (offer x funnel x channel), and campaign-service states the channel on
+ * A campaign is (offer x leg x channel), and campaign-service states the channel on
  * the row as its `featureSlug`. `useSoleFeatureSlug()` answers a different question: it
  * returns the brand's ONE GA feature, which is right for a brand-scoped surface and
  * silently wrong the moment a campaign on any other channel is open. The failure is not
@@ -11,14 +11,14 @@
  * a channel the reader is not looking at:
  *
  *   - a campaign row filtered by `featureSlug === soleSlug` does not contain the open
- *     campaign at all, so a surface deriving the funnel from those rows derives nothing
- *     and renders no funnel-scoped section whatsoever;
+ *     campaign at all, so a surface deriving the leg from those rows derives nothing
+ *     and renders no leg-scoped section whatsoever;
  *   - `/revenue?campaignId=` fired under the sole slug answers for the wrong channel's
  *     money, so the stat row above states one channel's spend under another's name.
  *
  * Measured on the brand that surfaced it: a `feedback-request-cold-email-outreach`
  * campaign whose Leads page fetched `sales-cold-email-outreach` throughout and drew no
- * "Funnel progress" section on any lead. The campaign Overview had already been fixed
+ * step-progress section on any lead. The campaign Overview had already been fixed
  * (it reads `campaign?.featureSlug`); this is the same narrowing, in one place, so the
  * surfaces that share a screen cannot state different channels.
  *

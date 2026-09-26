@@ -44,7 +44,7 @@ export function SidebarLink({
       // `dynamic` on the provider), and for a dynamic route Next's default prefetch
       // fetches only the LAYOUTS — it stops at the nearest `loading.tsx`. So a click
       // still waits on a server round-trip for the page itself, and what fills that
-      // wait is the nearest loading boundary: on any funnel / leg / settings
+      // wait is the nearest loading boundary: on any leg / settings
       // sub-route the nearest one is `offers/[offerId]/loading.tsx`, so drilling in
       // blanks the WHOLE offer area to a full-page skeleton. `prefetch` pulls the
       // page's own payload too, so the click has nothing left to wait for and the
@@ -662,7 +662,7 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
       footer={
         // Anchored to the bottom, outside the scrollable nav, exactly like the
         // brand sidebar's own Settings link: what the offer PROMISES and the
-        // funnels it is sold through are configuration, not a place you work.
+        // campaigns it is sold through are configuration, not a place you work.
         <div className="border-t border-gray-100">
           <div className="p-2 space-y-0.5">
             <SidebarLink

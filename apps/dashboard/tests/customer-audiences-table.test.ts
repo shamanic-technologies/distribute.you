@@ -77,17 +77,13 @@ describe("Audiences page", () => {
     expect(src).toContain('optimizationGoal === "form_submissions" && trackerSetUp');
   });
 
-  it("shows a signal pair only when that step is on the campaign's own funnel", () => {
-    // The gate is the FUNNEL's steps, not the retired goal: `reply_meeting` and
-    // `visit_meeting` both answer to `sales_meetings`, so a goal-keyed table printed
-    // "Website Visits / Cost per website visit" on a campaign whose funnel starts at a
-    // positive reply. `!brandLevelMoney` still drops both at brand level, where a visit
-    // names one funnel's first step while the rows are attributed across every funnel.
-    expect(src).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");
-    // The funnel gate is the FALLBACK now: a campaign whose own LEG we can place shows
-    // that leg's pair alone (a `visit_form` campaign performing only the entry leg was
-    // reading "Cost per form submission" for an arrow it never runs). The funnel-wide
-    // gate is what a brand-level table and an unplaceable leg still read.
+  it("shows a signal pair only when that step is on the campaign's own leg", () => {
+    // The gate is the LEG's steps, not the retired goal alone: `!brandLevelMoney` still
+    // drops both pairs at brand level, where a visit names one leg's step while the
+    // rows are attributed across every leg the brand runs. A campaign whose own leg we
+    // can place shows that leg's pair alone; the step gate is what a brand-level table
+    // and an unplaceable leg still read.
+    expect(src).toContain("const scopeSteps = stepsFor(optimizationGoal, campaignLeg);");
     expect(src).toContain('hasStep("website_visits") && !brandLevelMoney');
     expect(src).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
     expect(src).toContain("{showVisitCols && (");

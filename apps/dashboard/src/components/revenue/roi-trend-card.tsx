@@ -19,8 +19,8 @@ import { LearningTag } from "@/components/learning-tag";
 /**
  * "Return on spend" — the brand's ROI across its whole life, one line.
  *
- * It replaces a cumulative count of one funnel signal, which answered a narrower
- * question than the page it sits on: a brand runs several funnels, and the thing every
+ * It replaces a cumulative count of one signal, which answered a narrower
+ * question than the page it sits on: a brand buys several outcomes, and the thing every
  * one of them is judged on is what came back per dollar.
  *
  * Both legs of every point are CUMULATIVE and REALIZED — features-service dates spend by

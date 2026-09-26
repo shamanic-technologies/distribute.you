@@ -11,7 +11,7 @@ import {
   fmtDailyFloorUsd,
   isGrandfatheredChannelFunding,
   minimumChannelBudgetUsd,
-  projectedPairTotalUsd,
+  projectedChannelTotalUsd,
 } from "../src/lib/channel-minimums";
 
 const read = (p: string) => readFileSync(join(__dirname, p), "utf8");
@@ -161,15 +161,15 @@ describe("what a person is told", () => {
 
 describe("the group a floor binds", () => {
   it("adds the typed figure to what the pair's OTHER offers hold", () => {
-    expect(projectedPairTotalUsd(3000, 1000, 40)).toBe(60);
+    expect(projectedChannelTotalUsd(3000, 1000, 40)).toBe(60);
   });
 
   it("holds the siblings constant when this ceiling is defunded", () => {
-    expect(projectedPairTotalUsd(3000, 1000, 0)).toBe(20);
+    expect(projectedChannelTotalUsd(3000, 1000, 0)).toBe(20);
   });
 
   it("never reads a negative typed figure as a credit against the siblings", () => {
-    expect(projectedPairTotalUsd(3000, 1000, -5)).toBe(20);
+    expect(projectedChannelTotalUsd(3000, 1000, -5)).toBe(20);
   });
 });
 
@@ -220,7 +220,7 @@ describe("the smallest funded figure a ceiling may hold", () => {
     ] as const) {
       const min = minimumChannelBudgetUsd(minimum, group, own);
       if (min === 0) continue;
-      const projected = projectedPairTotalUsd(group, own, min);
+      const projected = projectedChannelTotalUsd(group, own, min);
       expect(
         channelBudgetBelowMinimum(minimum, projected, group),
         `clamped ${min} is itself refused at floor ${minimum}`,

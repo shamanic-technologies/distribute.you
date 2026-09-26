@@ -10,28 +10,30 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   ApiError,
-  getBrandFunnelBudgets,
+  getBrandCampaignBudgets,
   getCampaign,
-  saveBrandFunnelBudget,
+  saveCampaignBudget,
   setCampaignStatus,
-  type BrandFunnelBudgets,
+  type BrandCampaignBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
   campaignBudgetScope,
-  campaignPairCents,
   campaignSavedCents,
+  channelTotalCents,
   runningAfterBudget,
 } from "@/lib/campaign-budget";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor } from "@/lib/legs";
 import { useChannelMinimums } from "@/lib/use-channel-minimums";
 import {
   channelBudgetBelowMinimum,
   channelMinimumCents,
   fmtDailyFloorUsd,
   minimumChannelBudgetUsd,
-  projectedPairTotalUsd,
+  projectedChannelTotalUsd,
 } from "@/lib/channel-minimums";
 import { controlWriteErrorMessage, isRunningStatus } from "@/lib/campaign-controls";
 import { SettingsSaveRow } from "@/components/settings/settings-save-row";
@@ -40,16 +42,16 @@ import { Skeleton } from "@/components/skeleton";
 /**
  * Campaign Settings — is this campaign running, and what may it spend in a day.
  *
- * A campaign IS (offer x sales funnel x acquisition channel), and it carries TWO
+ * A campaign IS (offer x leg x acquisition channel), and it carries TWO
  * independent answers to that question:
  *
  *   - a STATUS, which campaign-service stores on the campaign row;
- *   - a daily CEILING, which billing keys on exactly that triple.
+ *   - a daily CEILING, which billing keys on exactly that address.
  *
  * They are deliberately NOT one field, and this page is where a customer states
  * both. Pausing keeps the ceiling untouched, so restarting is one click and the
  * amount is still there; zeroing the ceiling throws the amount away, and
- * billing's per-funnel floor only lets a funnel funded under its minimum be KEPT
+ * billing's per-channel floor only lets a channel funded under its minimum be KEPT
  * or RAISED — so a campaign grandfathered under the floor, stopped that way,
  * could never be restarted at the figure it was running. Pause is therefore what
  * the copy offers, and zero survives as the way to genuinely defund.
@@ -59,16 +61,16 @@ import { Skeleton } from "@/components/skeleton";
  * button rather than reported after: money and a campaign's life are what this
  * screen changes.
  *
- * The narrowing that turns billing's per-pair figure into THIS campaign's money
- * lives in `lib/campaign-budget.ts`, because the Campaigns table and the campaign
+ * The lookup that turns billing's answer into THIS campaign's money lives in
+ * `lib/campaign-budget.ts`, because the Campaigns table and the campaign
  * Overview state the very same figure read-only, and the controls modal edits it
- * at three grains. Several windows onto one number are fine; a second narrowing
+ * at three grains. Several windows onto one number are fine; a second lookup
  * is how they would come to disagree.
  *
  * DELIBERATELY NOT ON THIS PAGE:
  *   - the campaign's NAME, its audiences and its click destination. Those are
  *     statements about the OFFER, which has its own Settings page.
- *   - the offer, the funnel, the channel, the feature. Those are what the
+ *   - the offer, the leg, the channel. Those are what the
  *     campaign IS: changing one does not configure this campaign, it makes it
  *     another one.
  */
@@ -83,7 +85,7 @@ export function parseDailyBudgetUsd(value: string): number | null {
 
 /**
  * What a clamp says, once a typed figure has been put back to the smallest one
- * the funnel allows.
+ * the channel allows.
  *
  * It names both numbers and then offers pause, because the customer who typed a
  * figure under the floor was trying to spend less — and the honest answer to
@@ -91,7 +93,7 @@ export function parseDailyBudgetUsd(value: string): number | null {
  * campaign without losing anything.
  */
 export function budgetClampMessage(fromUsd: number, toUsd: number): string {
-  return `$${fromUsd} is under what this funnel may be funded at, so we put it back to $${toUsd} a day. Pause the campaign instead if you want it to stop for now — its budget is kept and restarting is one click.`;
+  return `$${fromUsd} is under what this channel may be funded at, so we put it back to $${toUsd} a day. Pause the campaign instead if you want it to stop for now — its budget is kept and restarting is one click.`;
 }
 
 /**
@@ -126,23 +128,22 @@ export function CampaignSettingsCard({
   );
   const campaign = campaignData?.campaign ?? null;
 
-  // billing's ceilings, on the brand-scoped key the funnels card already reads.
+  // billing's ceilings, on the brand-scoped key Offer Settings already reads.
   const {
     data: budgetData,
     isPending: budgetPending,
     isError: budgetError,
-  } = useAuthQuery(["brandFunnelBudgets", brandId], () => getBrandFunnelBudgets(brandId));
+  } = useAuthQuery(["brandCampaignBudgets", brandId], () => getBrandCampaignBudgets(brandId));
+  const catalogue = useLegCatalogue();
 
   const channels = useAcquisitionChannels();
   const scope = campaign ? campaignBudgetScope(campaign, channels) : null;
-  const savedCents = scope ? campaignSavedCents(scope, offerId, budgetData) : 0;
-  // The (funnel, channel) PAIR across every offer — billing's own grain for the
-  // floor. This campaign's own ceiling is one offer's share of it, so a customer
-  // splitting a funded pair in two is never refused for each half being under a
-  // bar the whole clears.
-  const savedPairCents = scope ? campaignPairCents(scope, budgetData) : 0;
-  // The floor is the CHANNEL's own published daily operating cost — cold email
-  // costs what cold email costs, whatever funnel the leads later travel. Null
+  const savedCents = scope ? campaignSavedCents(scope, budgetData) : 0;
+  // The CHANNEL's total across the brand — billing's own grain for the floor. This
+  // campaign's own ceiling is one share of it, so a customer splitting a funded channel
+  // in two is never refused for each half being under a bar the whole clears.
+  const savedChannelCents = scope ? channelTotalCents(scope.featureSlug, budgetData) : 0;
+  // The floor is the CHANNEL's own published daily operating cost. Null
   // while the catalogue is settling or for a channel it does not price, which
   // states no floor here and leaves billing's 400 to decide.
   const minimums = useChannelMinimums();
@@ -163,7 +164,7 @@ export function CampaignSettingsCard({
   const [value, setValue] = useState("");
   const [baseline, setBaseline] = useState("");
   const [touched, setTouched] = useState(false);
-  const seededFrom = useRef<BrandFunnelBudgets | null>(null);
+  const seededFrom = useRef<BrandCampaignBudgets | null>(null);
 
   useEffect(() => {
     if (!budgetData || !scope || seededFrom.current === budgetData) return;
@@ -188,10 +189,10 @@ export function CampaignSettingsCard({
   const [clamped, setClamped] = useState<{ from: number; to: number } | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const funnelKey = scope?.def.key ?? null;
+  const legKey = scope?.legKey ?? null;
 
   /**
-   * Put a figure the funnel may not be funded at back to the smallest one it
+   * Put a figure the channel may not be funded at back to the smallest one it
    * may, on BLUR rather than on every keystroke: typing `1` on the way to `10`
    * must not jump to the floor under the cursor.
    *
@@ -200,13 +201,13 @@ export function CampaignSettingsCard({
    */
   function clampToMinimum(): number | null {
     const typed = parseDailyBudgetUsd(value);
-    if (!funnelKey || typed === null || typed <= 0) return typed;
-    const projected = projectedPairTotalUsd(savedPairCents, savedCents, typed);
-    if (!channelBudgetBelowMinimum(minimumCents, projected, savedPairCents)) {
+    if (!legKey || typed === null || typed <= 0) return typed;
+    const projected = projectedChannelTotalUsd(savedChannelCents, savedCents, typed);
+    if (!channelBudgetBelowMinimum(minimumCents, projected, savedChannelCents)) {
       setClamped(null);
       return typed;
     }
-    const min = minimumChannelBudgetUsd(minimumCents, savedPairCents, savedCents);
+    const min = minimumChannelBudgetUsd(minimumCents, savedChannelCents, savedCents);
     setValue(String(min));
     setClamped({ from: typed, to: min });
     // RETURNED as well as set: `setValue` does not land before this tick ends,
@@ -228,20 +229,19 @@ export function CampaignSettingsCard({
         });
       }
       if (cents !== null && scope) {
-        return await saveBrandFunnelBudget(brandId, scope.def.key, cents, scope.featureSlug, offerId);
+        return await saveCampaignBudget(
+          brandId,
+          { offerId, legKey: scope.legKey, featureSlug: scope.featureSlug },
+          cents,
+        );
       }
       return null;
     },
-    onSuccess: (set) => {
-      // Write what billing answered into the cache the page reads, THEN
-      // invalidate the lists — a bare invalidate would leave a failed refetch
-      // showing the pre-save figure.
-      if (set) {
-        queryClient.setQueryData(["brandFunnelBudgets", brandId], set);
-        seededFrom.current = set;
-        // Show exactly what persisted, so the field can never claim a ceiling
-        // billing normalized differently.
-        const persisted = scope ? campaignSavedCents(scope, offerId, set) : 0;
+    onSuccess: (row) => {
+      // Show exactly what persisted, so the field can never claim a ceiling billing
+      // normalized differently. The brand-wide list is re-read by the invalidation below.
+      if (row) {
+        const persisted = row.dailyBudgetCents ?? 0;
         const next = persisted > 0 ? String(Math.round(persisted / 100)) : "";
         setBaseline(next);
         setValue(next);
@@ -372,16 +372,16 @@ export function CampaignSettingsCard({
         <section className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-1 text-sm font-semibold text-gray-900">Daily budget</h3>
           <p className="text-sm text-gray-500">
-            This campaign predates the sales funnels, so it has no budget of its own yet. Fund it on
-            Offer Settings, where each funnel states what it may spend in a day.
+            This campaign names no leg, so it has no budget of its own yet. Fund it on Offer
+            Settings, where each campaign states what it may spend in a day.
           </p>
         </section>
       ) : (
         <section className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-1 text-sm font-semibold text-gray-900">Daily budget</h3>
           <p className="mb-3 text-sm text-gray-500">
-            The most this campaign may spend in a day, selling {scope.def.name} through{" "}
-            {scope.channelName}.
+            The most this campaign may spend in a day, reaching{" "}
+            {legFor(catalogue, scope.legKey)?.label ?? "its step"} through {scope.channelName}.
             {/* The floor is the channel's own published operating cost. A channel
                 whose terms we could not read states none rather than a figure
                 nobody chose for it — billing still holds one either way. */}

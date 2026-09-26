@@ -10,7 +10,7 @@ const ONBOARDING = readFileSync(
 
 // The end of onboarding lands where SIGNING IN lands: the deepest scope that has no
 // choice left in it. It does not need the walk to find that scope — the launch just
-// created the campaign, so it holds the offer and the funnel already.
+// created the campaign, so it holds the offer already.
 describe("launchDestinationHref", () => {
   it("names the offer outright, with NO marker: it is the end of the walk", () => {
     expect(launchDestinationHref({ orgId: "org_1", brandId: "b1", offerId: "o1" })).toBe(
@@ -45,9 +45,9 @@ describe("the onboarding terminal redirect", () => {
   });
 
   it("carries the launch's own scope out of runLaunchWork", () => {
-    expect(ONBOARDING).toContain(
-      "{ campaignId: campaign.id, offerId: launchOfferId, funnelKey: launchFunnelKey }",
-    );
+    // The launch creates one campaign per funded pair and lands on the offer it
+    // named, carrying the first campaign it created.
+    expect(ONBOARDING).toContain('return { campaignId: firstCampaignId ?? "", offerId: launchOfferId };');
   });
 
   it("no longer pushes the bare brand URL, nor the dead launched= param", () => {

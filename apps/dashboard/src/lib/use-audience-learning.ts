@@ -8,7 +8,8 @@ import { fetchFeatureAudienceStats, type FeatureAudienceStatsRow } from "@/lib/a
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { audienceIsLearning } from "@/lib/learning-threshold";
 import { stepsFor } from "@/lib/goal-steps";
-import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor } from "@/lib/legs";
 
 /**
  * Which of a scope's audiences are still learning, one answer each.
@@ -32,6 +33,7 @@ export function useAudienceLearning(
   // The scope's campaigns, through the hook the Campaigns table already uses — same
   // keys, no network, and the same list the money above these rows is judged on.
   const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
+  const catalogue = useLegCatalogue();
 
   const statsQs = useQueries({
     queries: campaignRows.map(({ campaign }) => ({
@@ -39,14 +41,14 @@ export function useAudienceLearning(
         "featureAudienceStats",
         featureSlug,
         brandId,
-        campaign.funnelKey ?? "no-funnel",
+        campaign.legKey ?? "no-leg",
         "all-statuses",
         campaign.id,
       ] as const,
       queryFn: () =>
         fetchFeatureAudienceStats(featureSlug, {
           brandId,
-          ...(campaign.funnelKey ? { funnel: campaign.funnelKey } : {}),
+          ...(campaign.legKey ? { leg: campaign.legKey } : {}),
           statuses: "active,paused,archived",
           campaignId: campaign.id,
         }),
@@ -60,11 +62,10 @@ export function useAudienceLearning(
     const counts = new Map<string, Array<number | null | undefined>>();
     campaignRows.forEach(({ campaign }, i) => {
       const rows = statsData[i]?.audiences ?? [];
-      // What this campaign's funnel actually measures — a positive reply on the reply-led
-      // funnels, a website visit on the visit-led ones. Never its terminal outcome: that
-      // needs the brand's tracker live and is legitimately 0, which would hold every
-      // audience in learning forever.
-      const steps = stepsFor(null, campaign.funnelKey as SalesFunnelKeyWire | null);
+      // What this campaign's leg actually measures — a positive reply or a website visit.
+      // A leg landing on a tracked step (a signup, a sale) needs the brand's tracker live
+      // and is legitimately 0, which would hold every audience in learning forever.
+      const steps = stepsFor(null, legFor(catalogue, campaign.legKey));
       const has = (key: string) => steps.some((step) => step.key === key);
       const read = (row: FeatureAudienceStatsRow): number | null | undefined => {
         if (has("positive_replies")) return row.evidence.positiveReplies;
@@ -84,7 +85,7 @@ export function useAudienceLearning(
     for (const [id, list] of counts) map.set(id, audienceIsLearning(list));
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignRows, ...statsData]);
+  }, [campaignRows, catalogue, ...statsData]);
 
   // Reveal on SETTLE, so one failed read cannot hold a table forever — and a scope with
   // NO campaigns settles immediately with an empty map, which gates nothing.

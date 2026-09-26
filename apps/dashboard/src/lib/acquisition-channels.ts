@@ -1,11 +1,10 @@
 // The channels a brand can acquire buyers through. A channel is WHERE we go to
-// find them; a sales funnel (see `sales-funnels.ts`) is what happens once one of
-// them lands. The two are separate models on purpose: the same funnel can be fed
-// by cold email today and by paid clicks later.
+// find them, and each performs one or more LEGS (see `legs.ts`): the moves that take
+// a lead from one step to another.
 //
 // A CHANNEL IS A FEATURE SLUG, and features-service owns WHICH channels exist.
-// It publishes them as ordinary features, each stating the sales funnels it may
-// be sold through, so this module DERIVES the list from the features the app
+// It publishes them as ordinary features, each stating what it is as a channel
+// (`acquisitionChannel`), so this module DERIVES the list from the features the app
 // already fetches rather than keeping a copy of it. A copy is what this file
 // used to be, and it went stale the way a copy always does: the producer sold
 // thirty-three channels while the copy listed two and called the rest "coming
@@ -14,7 +13,7 @@
 // What stays local is the MARK, and only the mark. Which logo or glyph stands
 // for a channel is a rendering decision this app owns; nothing upstream states
 // it, and a channel we have not drawn yet is still a channel. So an unmarked
-// channel keeps its name, its funnels and its money, and simply draws no tile:
+// channel keeps its name, its legs and its money, and simply draws no tile:
 // a mark we would have to invent is worse than none.
 //
 // Only value imports that carry no "@" alias live here, so this module stays
@@ -53,8 +52,7 @@ export type OwnChannelGlyph =
  * A channel run on somebody else's platform wears that platform's real logo,
  * fetched by domain (logo.dev) like every other provider on the product. A
  * channel that is OURS has no vendor to borrow a mark from, so it gets a
- * Phosphor duotone glyph in a tinted tile, the same treatment the sales funnels
- * use. Tones are whole class strings because Tailwind cannot see a class
+ * Phosphor duotone glyph in a tinted tile, the same treatment the legs use. Tones are whole class strings because Tailwind cannot see a class
  * assembled at runtime, and every tint used here is in the `html.dark` remap.
  */
 /**
@@ -65,7 +63,7 @@ export type OwnChannelGlyph =
  * accent. Orange is the remaining member of the rotated set that is unmistakably its own
  * colour beside both the primary and the secondary the legs wear.
  *
- * Same argument as `FUNNEL_LEG_TONE`, one column over: a row states its leg and then the
+ * Same argument as `LEG_TONE`, one column over: a row states its leg and then the
  * channel it buys it through, so the two tiles have to read as two KINDS of thing. Four
  * colours across the channels made them read as four kinds of channel, which is not a
  * distinction anybody needs, since the glyph and the vendor logo already say which
@@ -90,14 +88,14 @@ export type AcquisitionChannelDef = {
   mark: AcquisitionChannelMark | null;
   /**
    * WHO puts the hours in. `platform` is us; `customer` is the brand's own team,
-   * which is how a funnel is sold one leg at a time: the legs we do not automate are
+   * and the legs we do not automate are
    * worked at their side. Null when the producer states nothing, which is read
    * as the behaviour that came before the field shipped rather than as a denial.
    */
   operatedBy: string | null;
   /**
    * The legs this channel performs: the step it moves a lead FROM and the step it
-   * moves it TO. `from: null` means the lead was not on the funnel at all, which is
+   * moves it TO. `from: null` means the lead was on no step at all, which is
    * what an entry channel does. Empty when the producer states nothing.
    */
   legs: ChannelLeg[];
@@ -118,19 +116,9 @@ export interface ChannelSource {
   description: string;
   displayOrder?: number;
   /**
-   * Which sales funnels the feature may be sold through.
-   *
-   * An EMPTY array is a statement and the reason this predicate works: every
-   * feature that is not an acquisition channel (PR, hiring, VC, press kits,
-   * expert quotes) states `[]`, so selling through nothing IS not being a
-   * channel. ABSENT means the producer did not answer, which is read as the
-   * behaviour that came before the field shipped rather than as a denial.
-   */
-  salesFunnels?: string[];
-  /**
-   * What the feature states about being a channel. Structural and fully optional:
-   * the producer added it after this reader existed, and a row without it is a
-   * channel we simply know less about, never an error.
+   * What the feature states about being a channel. NULL (or absent) is the producer
+   * saying this feature is not one — PR, hiring, VC, press kits — which is exactly
+   * the predicate this module filters on.
    */
   acquisitionChannel?: {
     operatedBy?: string;
@@ -168,8 +156,8 @@ export const CHANNEL_MARKS: Record<string, AcquisitionChannelMark> = {
   },
   // A calendar rather than an envelope, although it answers by email: the row it
   // draws on states the LEG it performs, and this one ends on a booked meeting.
-  // Deliberately not the CHECK the reply-led funnel wears on its own mark. The
-  // two sit side by side on a campaign row, and one glyph twice reads as one thing.
+  // Deliberately not the glyph its leg wears: the two sit side by side on a campaign
+  // row, and one glyph twice reads as one thing.
   "ai-meeting-booking": {
     kind: "own",
     glyph: "calendar-plus",
@@ -245,8 +233,8 @@ export function channelMarkForSlug(
 /**
  * Every channel the environment sells, built from the features it serves.
  *
- * A feature is a channel when it states at least one sales funnel it can be sold
- * through. That predicate is the producer's own statement rather than a list
+ * A feature is a channel when it states what it is as one (`acquisitionChannel`).
+ * That predicate is the producer's own statement rather than a list
  * kept here, which is the whole point: a channel published upstream is offerable
  * the moment it is published, and one retired upstream stops being offered
  * without an edit here.
@@ -259,7 +247,7 @@ export function acquisitionChannelsFromFeatures(
   features: ChannelSource[],
 ): AcquisitionChannelDef[] {
   return features
-    .filter((f) => f.salesFunnels === undefined || f.salesFunnels.length > 0)
+    .filter((f) => f.acquisitionChannel != null)
     .map((f) => ({
       featureSlug: f.slug,
       name: f.name,

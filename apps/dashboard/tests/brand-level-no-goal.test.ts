@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { leadTabsForFunnels } from "../src/lib/goal-steps";
+import { leadTabsForLegs } from "../src/lib/goal-steps";
 
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
@@ -9,45 +9,46 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 /**
  * At brand level there is no goal.
  *
- * The brand goal is a RETIRED brand-service column — `NOT NULL` with a server default,
- * so it reads "website purchases" for a brand that stated nothing — and it cannot tell
- * the two meeting funnels apart either, since both echo `meetingBooked`. What a brand
- * actually sells through is the funnels its live campaigns run, and what it is judged
- * on is the return.
+ * The brand goal is a RETIRED brand-service column: `NOT NULL` with a server default,
+ * so it reads "website purchases" for a brand that stated nothing. What a brand
+ * actually sells through is the legs its live campaigns run, and what it is judged on
+ * is the return.
  */
-describe("Leads tabs come from the active campaigns' funnels", () => {
-  it("unions the funnels, most advanced first, with Outreach always last", () => {
-    const both = leadTabsForFunnels(["reply_meeting", "visit_signup"]);
+describe("Leads tabs come from the active campaigns' legs", () => {
+  const REPLY_TO_MEETING = { fromKey: "conversation", toKey: "meeting_booked" };
+  const ONTO_VISIT = { fromKey: null, toKey: "website_visit" };
+  const VISIT_TO_SIGNUP = { fromKey: "website_visit", toKey: "signup" };
+
+  it("unions the legs, most advanced first, with Outreach always last", () => {
+    const both = leadTabsForLegs([REPLY_TO_MEETING, VISIT_TO_SIGNUP]);
     expect(both.engagement).toEqual(["positive-replies", "clicks", "outreach"]);
-    // Each funnel contributes the outcome its own steps terminate in — a booked
-    // meeting for reply_meeting, a signup for visit_signup — most advanced first.
     expect(both.outcomes).toEqual(["meetings", "signups"]);
   });
 
   it("gives a brand with no live campaign the one tab that is always true", () => {
-    // Every lead we contacted is in Outreach whatever the funnel, so this is the
+    // Every lead we contacted is in Outreach whatever the leg, so this is the
     // honest floor rather than an empty page.
-    expect(leadTabsForFunnels([])).toEqual({ engagement: ["outreach"], outcomes: [] });
+    expect(leadTabsForLegs([])).toEqual({ engagement: ["outreach"], outcomes: [] });
   });
 
-  it("dedupes two funnels that share a step", () => {
-    const meetings = leadTabsForFunnels(["visit_meeting", "visit_signup"]);
-    expect(meetings.engagement).toEqual(["clicks", "outreach"]);
-    expect(meetings.outcomes).toEqual(["meetings", "signups"]);
+  it("dedupes two legs that share a step", () => {
+    const visits = leadTabsForLegs([ONTO_VISIT, VISIT_TO_SIGNUP]);
+    expect(visits.engagement).toEqual(["clicks", "outreach"]);
+    expect(visits.outcomes).toEqual(["signups"]);
   });
 
-  it("orders the union the same way whichever order the funnels arrive in", () => {
+  it("orders the union the same way whichever order the legs arrive in", () => {
     // A page whose tab order depended on which campaign was created first would look
-    // different to two brands running the same funnels.
-    expect(leadTabsForFunnels(["visit_signup", "reply_meeting"])).toEqual(
-      leadTabsForFunnels(["reply_meeting", "visit_signup"]),
+    // different to two brands running the same legs.
+    expect(leadTabsForLegs([VISIT_TO_SIGNUP, REPLY_TO_MEETING])).toEqual(
+      leadTabsForLegs([REPLY_TO_MEETING, VISIT_TO_SIGNUP]),
     );
   });
 
   it("reads the live campaigns, and no goal, on the Leads page", () => {
     const page = read("components/audiences/engaged-leads-page.tsx");
     expect(page).toContain("useCampaignRows(brandId, soleFeatureSlug)");
-    expect(page).toContain("leadTabsForFunnels(activeFunnelKeys)");
+    expect(page).toContain("leadTabsForLegs(activeLegs)");
     // The retired goal is gone from this surface entirely.
     expect(page).not.toContain("optimizationGoal");
     expect(page).not.toContain("leadTabsFor(goal");
@@ -103,8 +104,8 @@ describe("the daily digest is news about the return", () => {
  *
  * `org_brands.optimization_goal` is `NOT NULL` with a server default, so it reads
  * "website purchases" for a brand that stated nothing — brand-service's own schema
- * comment says nothing reads it. Any surface that resolved it was naming a funnel the
- * brand may never have declared.
+ * comment says nothing reads it. Any surface that resolved it was naming an outcome
+ * the brand may never have chosen.
  */
 describe("no surface reads the retired brand goal", () => {
   const SRC_DIR = path.join(__dirname, "../src");
@@ -124,18 +125,17 @@ describe("no surface reads the retired brand goal", () => {
     expect(offenders.map((f) => path.relative(SRC_DIR, f))).toEqual([]);
   });
 
-  it("derives a goal from a FUNNEL, never a funnel from a goal", () => {
-    const funnels = read("lib/sales-funnels.ts");
-    // Lossless direction: every funnel terminates in exactly one outcome. The reverse
-    // is lossy — `sales_meetings` covers both meeting funnels — and stays banned.
-    expect(funnels).toContain("export function goalForFunnelKey(");
-    expect(read("lib/campaign-funnel.ts")).not.toContain("primaryFunnelForGoal");
+  it("derives a goal from a LEG, never a leg from a goal", () => {
+    const steps = read("lib/goal-steps.ts");
+    // Lossless direction: every leg lands on exactly one step.
+    expect(steps).toContain("export function goalForLeg(");
+    expect(steps).not.toContain("legForGoal");
   });
 
-  it("lets a surface state no funnel at all, instead of defaulting to one", () => {
+  it("lets a surface state no leg at all, instead of defaulting to one", () => {
     const steps = read("lib/goal-steps.ts");
-    // Neither funnel nor goal → the Outreach floor, which is true whatever a brand sells.
-    expect(steps).toContain("if (funnelKey) return funnelSteps(funnelKey);");
+    // Neither leg nor goal: the Outreach floor, which is true whatever a brand sells.
+    expect(steps).toContain("if (leg) return legSteps(leg);");
     expect(steps).toContain("if (goal) return goalSteps(goal);");
     expect(steps).toContain("return [OUTREACH_STEP];");
   });

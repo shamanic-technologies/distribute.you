@@ -19,28 +19,28 @@ const FEATURES: ChannelSource[] = [
     name: "Sales Cold Email Outreach",
     description: "Find leads matching your ICP and email them.",
     displayOrder: 1,
-    salesFunnels: ["sales_meetings_from_conversation", "website_purchases"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
     slug: "google-ads",
     name: "Google Ads",
     description: "Buy the searches your buyers already run.",
     displayOrder: 20,
-    salesFunnels: ["sales_meetings_from_website", "website_purchases", "form_magnet"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "website_visit" }] },
   },
   {
     slug: "cold-call-outreach",
     name: "Cold Call Outreach",
     description: "Reach buyers by phone, one call at a time.",
     displayOrder: 13,
-    salesFunnels: ["sales_meetings_from_conversation"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
     slug: "pr-cold-email-outreach",
     name: "PR Cold Email Outreach",
     description: "Pitch journalists.",
     displayOrder: 5,
-    salesFunnels: [],
+    acquisitionChannel: null,
   },
 ];
 
@@ -77,19 +77,17 @@ describe("the catalogue is READ, never restated", () => {
 });
 
 describe("what makes a feature a channel", () => {
-  // Selling through nothing IS not being a channel, and the producer states it:
-  // every feature that is not one (PR, hiring, VC, press kits, expert quotes)
-  // answers with an empty list.
-  it("drops a feature that sells through no funnel", () => {
+  // The producer states what is a channel: every feature that is not one (PR,
+  // hiring, VC, press kits) answers `acquisitionChannel: null`.
+  it("drops a feature whose channel blob is null", () => {
     const slugs = acquisitionChannelsFromFeatures(FEATURES).map((c) => c.featureSlug);
     expect(slugs).not.toContain("pr-cold-email-outreach");
   });
 
-  // ABSENT is "we could not ask", which is read as the behaviour that came before
-  // the field shipped rather than as a denial. The two are different statements.
-  it("keeps a feature that states nothing at all", () => {
+  // A feature that states nothing about being a channel is not one.
+  it("drops a feature that states no channel blob at all", () => {
     const quiet: ChannelSource[] = [{ slug: "x-ads", name: "X Ads", description: "d" }];
-    expect(acquisitionChannelsFromFeatures(quiet).map((c) => c.featureSlug)).toEqual(["x-ads"]);
+    expect(acquisitionChannelsFromFeatures(quiet)).toEqual([]);
   });
 });
 
@@ -106,7 +104,7 @@ describe("marks", () => {
   });
 
   // A channel published upstream that this app has not drawn is still a channel:
-  // it keeps its name, its funnels and its money, and simply draws no tile.
+  // it keeps its name, its legs and its money, and simply draws no tile.
   it("answers null for a channel it has not drawn, without dropping it", () => {
     // A slug the producer could publish tomorrow; every slug it publishes TODAY
     // carries a mark (pinned in start-flow-surface.test.ts).
@@ -166,8 +164,7 @@ describe("acquisitionChannelForFeatureSlug", () => {
 describe("there is no channels card", () => {
   // The card STATED what runs and persisted nothing, so it collected no answer and
   // lost none when it went. A channel is not chosen anywhere: it is FUNDED on the
-  // funnel it feeds, on Offer Settings, and funding a (funnel, channel) pair is
-  // what makes it run.
+  // leg it performs, on Offer Settings.
   it("keeps no settings card of its own", () => {
     expect(
       fs.existsSync(
@@ -215,8 +212,11 @@ describe("a campaign's channel is read, never inferred", () => {
 });
 
 describe("copy", () => {
-  it("carries no em-dash", () => {
-    const lib = read("../src/lib/acquisition-channels.ts");
+  it("carries no em-dash in anything it could render", () => {
+    // Comments are exempt from the copy rule; strings are not.
+    const lib = read("../src/lib/acquisition-channels.ts")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
     expect(lib).not.toContain("—");
   });
 });
@@ -229,7 +229,6 @@ describe("a channel carries the leg it performs and who runs it", () => {
         name: "Sales Cold Email Outreach",
         description: "",
         displayOrder: 1,
-        salesFunnels: ["sales_meetings_from_conversation"],
         acquisitionChannel: {
           operatedBy: "platform",
           stepTransitions: [{ from: null, to: "conversation" }],
@@ -240,7 +239,6 @@ describe("a channel carries the leg it performs and who runs it", () => {
         name: "Founder Led Closing",
         description: "",
         displayOrder: 2,
-        salesFunnels: ["sales_meetings_from_conversation"],
         acquisitionChannel: {
           operatedBy: "customer",
           stepTransitions: [{ from: "meeting_attended", to: "paid_client" }],
@@ -257,7 +255,7 @@ describe("a channel carries the leg it performs and who runs it", () => {
     // The field shipped after this reader existed. A row without it is a channel we know
     // less about, never an error and never a fabricated operator.
     const [channel] = acquisitionChannelsFromFeatures([
-      { slug: "x", name: "X", description: "", salesFunnels: ["form_magnet"] },
+      { slug: "x", name: "X", description: "", acquisitionChannel: {} },
     ]);
     expect(channel.operatedBy).toBeNull();
     expect(channel.legs).toEqual([]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RocketIcon } from "@phosphor-icons/react/dist/csr/Rocket";
 import { WalletIcon } from "@phosphor-icons/react/dist/csr/Wallet";
 import { ChartLineUpIcon } from "@phosphor-icons/react/dist/csr/ChartLineUp";
@@ -8,36 +8,20 @@ import {
   StartShell,
   StartButton,
   StartOption,
-  StartPathOption,
   StartGrid,
-  StartReturnRow,
   StartProofCard,
   fromPerDay,
   useLandingBrand,
 } from "./start-shell";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-import { FunnelStepMark } from "@/components/marks/funnel-step-mark";
-import { salesFunnelDefForWireKeyOrNull } from "@/lib/sales-funnels";
+import { StepMark } from "@/components/marks/step-mark";
+import { LegMark } from "@/components/marks/leg-mark";
 import {
   startOutcomes,
-  channelsForOutcomes,
-  funnelsForChannels,
-  funnelRungs,
-  DEFAULT_CHANNEL_SLUG,
+  pairsForOutcomes,
+  legsTo,
   type StartCatalogue,
 } from "@/lib/start-catalogue";
 import {
-  returnRowsForFunnel,
-  returnReasonLabel,
-  type PairReturn,
-  type ChannelReturn,
-} from "@/lib/start-returns";
-import {
-  startSelectionCookieAssignment,
-  type StartSelection,
-} from "@/lib/start-selection-cookie";
-import {
-  NO_COMMITMENT_TAG,
   proofCardsFor,
   shuffleWithSeed,
   reassuranceFor,
@@ -49,48 +33,34 @@ import { SHORT_VIEWPORT } from "@/lib/short-viewport";
 /**
  * THE FIRST SCREENS OF ONBOARDING: sell first, build second, sign up last.
  *
- * A welcome, TWO narrowing questions and a proof screen, rendered by the wizard
- * (`components/onboarding/onboarding.tsx`) as its own first steps — one flow,
- * one shell, one stepper, no reload between the pitch and the setup. They used
- * to be a separate route (`/start`) that handed off to the wizard through a
- * cookie and a full navigation, and the seam read as two products.
+ * A welcome, ONE question and a proof screen, rendered by the wizard
+ * (`components/onboarding/onboarding.tsx`) as its own first steps — one flow, one
+ * shell, one stepper, no reload between the pitch and the setup.
  *
- * CONTROLLED. The picks live in the wizard's state (so they persist with the rest
- * of the snapshot and pre-select the funnel step); this component only draws the
- * screens and reports each toggle. It still writes the `distribute-start` cookie
- * on every pick, because the proxy and the payment screens read it back on the
- * far side of the Clerk redirect.
+ * THE QUESTION IS THE OUTCOME. An outcome is a step one of our channels lands a leg
+ * on; picking one names the campaigns that reach it (one per leg x channel, walked back
+ * to a leg that starts from nothing), so there is no second question.
  *
- * THE CHANNEL IS NOT A QUESTION. We run cold email, so the screen that asked
- * which channels to run offered one real answer and cost a step of the funnel to
- * collect it. The selection still CARRIES the channel (`DEFAULT_CHANNEL_SLUG`),
- * because what is bought is a (funnel x channel) pair and that is what billing
- * keys its ceiling on; what went is the asking.
- *
- * Every option on every screen is READ off the channel catalogue
- * features-service publishes. What this file decides is wording and the mark
- * beside each option.
+ * CONTROLLED. The picks live in the wizard's state (so they persist with the rest of
+ * the snapshot); this component only draws the screens and reports each toggle.
+ * Every option is READ off the catalogue features-service publishes.
  */
 
-export type StartScreen = "welcome" | "outcome" | "path" | "returns";
+export type StartScreen = "welcome" | "outcome" | "returns";
 
-export const START_SCREEN_ORDER: StartScreen[] = ["welcome", "outcome", "path", "returns"];
+export const START_SCREEN_ORDER: StartScreen[] = ["welcome", "outcome", "returns"];
 
 /**
- * THE WHOLE FLOW's stepper, stated once. The three pick screens are steps 1-3;
- * the build half of the wizard (website, services, funnels, audiences, the
- * summary) is one step, and the account + money is the last. A visitor reads
- * one bar from the landing to the dashboard.
+ * THE WHOLE FLOW's stepper, stated once. The pick screens are steps 1-2; the build
+ * half of the wizard (website, services, audiences, the summary) is one step, and the
+ * account + money is the last.
  */
-export const START_STEP_LABELS = ["Goal", "Path", "Results", "Your setup", "Review"] as const;
+export const START_STEP_LABELS = ["Goal", "Results", "Your setup", "Review"] as const;
 export const START_STEP_COUNT = START_STEP_LABELS.length;
 
 export interface StartCatalogueState {
-  /** The producer's catalogue whole: its channels, its funnels, its legs and its root
-   *  step vocabulary. All three screens are DERIVED from it — which outcomes exist,
-   *  which channels lead to them, and which (funnel x channel) pairs they buy. */
+  /** The producer's catalogue: its channels (with the legs they perform) and its steps. */
   wire: StartCatalogue;
-  pairs: PairReturn[];
   founders: number | null;
   /** The fleet's proof, each half nullable on its own. */
   proof: FleetProof & {
@@ -98,36 +68,20 @@ export interface StartCatalogueState {
   };
 }
 
-/** One decimal under 10x, a whole number above it — the product's one spelling
- *  of a return. Above ten the decimal changes no decision and reads as false
- *  precision on a figure that moves. */
+/** One decimal under 10x, a whole number above it — the product's one spelling of a
+ *  return. */
 export const formatReturn = (x: number): string => (x < 10 ? `${x.toFixed(1)}x` : `${Math.round(x)}x`);
 
 /**
- * The funnel's own tile, or nothing for a funnel this app draws no mark for.
- *
- * TOLERANT BY DESIGN. The producer publishes more funnels than this app holds
- * marks for, and the name beside the tile comes off the wire, so an unmarked
- * funnel still reads correctly. Resolving through the THROWING normalizer here
- * is what made the screen die on its own decoration.
- */
-function funnelMark(wireKey: string) {
-  const def = salesFunnelDefForWireKeyOrNull(wireKey);
-  return def ? <SalesFunnelMark def={def} size="sm" /> : null;
-}
-
-/**
- * The catalogue the four screens draw from, read once by the wizard that hosts
- * them and handed down — the wizard also reads `founders` off it for the trust
- * strip under every later step.
+ * The catalogue the screens draw from, read once by the wizard that hosts them and
+ * handed down — the wizard also reads `founders` off it for the trust strip.
  */
 export function useStartCatalogue(): { catalogue: StartCatalogueState | null; catalogueError: boolean } {
   const [catalogue, setCatalogue] = useState<StartCatalogueState | null>(null);
   const [catalogueError, setCatalogueError] = useState(false);
 
-  // The catalogue is the whole screen's content, so a failed read is STATED
-  // rather than rendered as an empty list: a visitor shown "no channels" reads
-  // it as us selling nothing.
+  // The catalogue is the whole screen's content, so a failed read is STATED rather
+  // than rendered as an empty list.
   useEffect(() => {
     let live = true;
     fetch("/api/public/catalogue")
@@ -140,16 +94,12 @@ export function useStartCatalogue(): { catalogue: StartCatalogueState | null; ca
         const cat = body?.channels;
         const wire: StartCatalogue = {
           channels: cat?.channels ?? cat ?? [],
-          funnels: cat?.funnels ?? [],
-          legs: cat?.legs ?? [],
           steps: cat?.steps ?? [],
         };
-        const pairs = body?.returns?.pairs ?? [];
         const founders = typeof body?.founders === "number" ? body.founders : null;
         const p = body?.proof ?? {};
         setCatalogue({
           wire,
-          pairs,
           founders,
           proof: {
             hotLeads: p.hotLeads ?? null,
@@ -174,130 +124,57 @@ export function StartPicks({
   catalogue,
   catalogueError,
   outcomes,
-  funnels,
   onOutcomesChange,
-  onFunnelsChange,
   onScreenChange,
   onContinue,
   brandHost,
+  notice = null,
 }: {
   screen: StartScreen;
   catalogue: StartCatalogueState | null;
   catalogueError: boolean;
   outcomes: string[];
-  funnels: string[];
   onOutcomesChange: (next: string[]) => void;
-  onFunnelsChange: (next: string[]) => void;
-  /** Moves between the four screens, both ways. */
+  /** Moves between the screens, both ways. */
   onScreenChange: (next: StartScreen) => void;
   /** The last screen's CTA: the wizard takes over (website, then the build). */
   onContinue: () => void;
-  /** The website the wizard already holds, so the bar keeps naming it after
-   *  the landing cookie has been consumed. */
+  /** The website the wizard already holds, so the bar keeps naming it after the
+   *  landing cookie has been consumed. */
   brandHost: string | null;
+  /** Why the wizard sent the visitor back to the pick, when it did. */
+  notice?: string | null;
 }) {
   const landingBrand = useLandingBrand();
   const brand = brandHost ? { url: `https://${brandHost}`, host: brandHost } : landingBrand;
-  const [channelReturns, setChannelReturns] = useState<ChannelReturn[]>([]);
   // Picked once per mount: a shuffle re-drawn on every poll makes the cards jump.
   const [proofSeed] = useState(() => Math.random());
-  const setOutcomes = (update: (prev: string[]) => string[]) => onOutcomesChange(update(outcomes));
-  const setFunnels = (update: (prev: string[]) => string[]) => onFunnelsChange(update(funnels));
-
-  // Every pick is written through immediately, so a visitor who signs up from a
-  // second tab, or who is bounced through an OAuth round, arrives with what they
-  // chose rather than with whatever the last full screen happened to be.
-  const remember = useCallback((selection: StartSelection) => {
-    document.cookie = startSelectionCookieAssignment(selection);
-  }, []);
-
-  useEffect(() => {
-    // `paid: []` on purpose, never carried over. These screens are where a
-    // selection is MADE, so anything bought under a previous one belongs to that
-    // one; inheriting it would mark funnels paid that this selection never
-    // charged for, and send somebody past the payment step for free. A completed
-    // flow clears the cookie anyway, so there is normally nothing to inherit.
-    // The channel is not picked, so it is STATED: the payment and brand screens
-    // resolve (funnel x channel) pairs out of this cookie, and a selection naming
-    // no channel buys nothing.
-    remember({ outcomes, channels: [DEFAULT_CHANNEL_SLUG], funnels, paid: [] });
-  }, [outcomes, funnels, remember]);
 
   const allOutcomes = useMemo(
     () => (catalogue ? startOutcomes(catalogue.wire) : []),
     [catalogue],
   );
-  // The one channel we run, read off the catalogue rather than assumed present:
-  // a catalogue that does not publish it has nothing for this flow to sell, and
-  // the funnel screen says so rather than rendering an empty list.
-  const keptChannels = useMemo(
-    () => (catalogue ? channelsForOutcomes(catalogue.wire, outcomes) : []),
+
+  // An outcome the catalogue no longer offers (an older snapshot, a retired step) is
+  // dropped from the picks rather than carried into the build.
+  useEffect(() => {
+    if (allOutcomes.length === 0) return;
+    const offered = new Set(allOutcomes.map((o) => o.key));
+    const next = outcomes.filter((k) => offered.has(k));
+    if (next.length !== outcomes.length) onOutcomesChange(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allOutcomes]);
+
+  const campaigns = useMemo(
+    () => (catalogue ? pairsForOutcomes(outcomes, catalogue.wire) : []),
     [catalogue, outcomes],
   );
-  // Filtered by the OUTCOMES: the channel sells every funnel that starts on any
-  // step it produces, and the visitor asked for one thing. One row per
-  // (funnel x channel) — the thing a visitor actually buys, and the key billing
-  // puts its ceiling on.
-  const offeredFunnels = useMemo(
-    () =>
-      catalogue ? funnelsForChannels(keptChannels, outcomes, catalogue.wire) : [],
-    [keptChannels, outcomes, catalogue],
-  );
-
-  // Changing the outcome can drop a path the visitor had already picked. Keeping
-  // it would carry an unbuyable pick into the payment screens, so the selection
-  // is narrowed to what is still offered.
-  useEffect(() => {
-    const offered = new Set(offeredFunnels.map((f) => f.key));
-    const next = funnels.filter((k) => offered.has(k));
-    if (next.length !== funnels.length) onFunnelsChange(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offeredFunnels]);
-
-  // The per-channel returns are only needed by the proof screen, and only for
-  // the channels actually kept, so they are read on arrival rather than up
-  // front. A failed read leaves the rows on whatever their pair says.
-  useEffect(() => {
-    if (screen !== "returns" || keptChannels.length === 0) return;
-    let live = true;
-    const slugs = keptChannels.map((c) => c.slug).join(",");
-    fetch(`/api/public/channel-returns?slugs=${encodeURIComponent(slugs)}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((body) => {
-        if (live) setChannelReturns(body?.returns ?? []);
-      })
-      .catch((err) => console.error("[start] channel returns read failed:", err));
-    return () => {
-      live = false;
-    };
-  }, [screen, keptChannels]);
 
   const toggle = (list: string[], value: string): string[] =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
   const go = (next: StartScreen) => onScreenChange(next);
-  // The path screen arrives with its FIRST offered path already picked
-  // (owner-asked, 2026-09-18): a visitor who takes the default reaches the
-  // last screen in one click, and one who wants another path is one toggle away.
-  // Only on ARRIVAL with nothing picked, never on a deselect: a visitor who
-  // empties the list on purpose must not see the first one snap back.
-  // A path step with ONE option is not a question (owner 2026-09-19: "s'il n'y
-  // a qu'une option sur cette step alors skip-la complètement"): the sole path
-  // is picked and the visitor lands on the returns, and Back from there walks
-  // over the skipped step. Every outcome but Meeting booked offers one path on
-  // the prod catalogue, so this is the common case, not an edge.
-  const solePath = offeredFunnels.length === 1;
-  const goToFunnels = () => {
-    if (funnels.length === 0 && offeredFunnels.length > 0) {
-      onFunnelsChange([offeredFunnels[0].key]);
-    }
-    onScreenChange(solePath ? "returns" : "path");
-  };
   const back = () => {
-    if (screen === "returns" && solePath) {
-      onScreenChange("outcome");
-      return;
-    }
     const at = START_SCREEN_ORDER.indexOf(screen);
     if (at > 0) onScreenChange(START_SCREEN_ORDER[at - 1]);
   };
@@ -379,8 +256,8 @@ export function StartPicks({
         }
         subtitle={
           brand
-            ? `Three quick questions and you see what our clients got back. Then we set it up for ${brand.host}.`
-            : "Three quick questions and you see what our clients got back. You only make an account once you have seen the price."
+            ? `One question and you see what our clients got back. Then we set it up for ${brand.host}.`
+            : "One question and you see what our clients got back. You only make an account once you have seen the price."
         }
         footer={footer(<StartButton onClick={() => go("outcome")}>Start</StartButton>)}
       >
@@ -417,144 +294,58 @@ export function StartPicks({
         reassurance={reassuranceFor("outcome", proof, formatReturn)}
         scrollKey={screen}
         title="What should we get you?"
-        subtitle="Pick everything worth paying for. Each one opens a different way of turning it into revenue."
+        subtitle="Pick everything worth paying for. We run the campaigns that reach each one."
         footer={footer(
-          <StartButton onClick={goToFunnels} disabled={outcomes.length === 0}>
+          <StartButton onClick={() => go("returns")} disabled={outcomes.length === 0}>
             Continue
           </StartButton>,
           picked(outcomes.length, "outcome"),
         )}
       >
+        {notice && (
+          <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>
+        )}
         <StartGrid>
           {allOutcomes.length === 0 && <Loading />}
-          {allOutcomes.map((o, i) => (
-            <StartOption
-              key={o.key}
-              index={i}
-              selected={outcomes.includes(o.key)}
-              onToggle={() => setOutcomes((prev) => toggle(prev, o.key))}
-              title={o.label}
-              description={o.description}
-              mark={<FunnelStepMark stepKey={o.key} size="sm" />}
-            />
-          ))}
+          {allOutcomes.map((o, i) => {
+            const legs = catalogue ? legsTo(o.key, catalogue.wire) : [];
+            const channelNames = [...new Set(legs.map((c) => c.channelName))].join(" and ");
+            return (
+              <StartOption
+                key={o.key}
+                index={i}
+                selected={outcomes.includes(o.key)}
+                onToggle={() => onOutcomesChange(toggle(outcomes, o.key))}
+                title={o.label}
+                description={
+                  channelNames ? `${o.description} Through ${channelNames}.` : o.description
+                }
+                mark={<StepMark stepKey={o.key} size="sm" />}
+              />
+            );
+          })}
         </StartGrid>
       </StartShell>
     );
   }
 
-  if (screen === "path") {
-    return (
-      <StartShell
-        step={2}
-        stepCount={START_STEP_COUNT}
-        stepLabels={START_STEP_LABELS}
-        brand={brand}
-        founders={founders}
-        reassurance={reassuranceFor("funnels", proof, formatReturn)}
-        scrollKey={screen}
-        title="How should it turn into revenue?"
-        subtitle="Each path ends with a paying client. You pay per path, one day at a time, and you can stop any of them."
-        footer={footer(
-          <StartButton onClick={() => go("returns")} disabled={funnels.length === 0}>
-            Continue
-          </StartButton>,
-          picked(funnels.length, "path"),
-        )}
-      >
-        {offeredFunnels.length === 0 ? (
-          <p className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-            {keptChannels.length === 0 ? (
-              <>
-                We could not load what we run this through. Reload the page and it should come
-                back.
-              </>
-            ) : (
-              <>
-                None of our revenue paths turns what you picked into a paying client yet. Go back
-                and pick something else.
-              </>
-            )}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {/* ONE ROW PER FUNNEL. The channel is the same on every row, so naming it
-                on each one states the only answer there is over and over; the row is
-                the path, and the path is what the visitor is choosing between. */}
-            {offeredFunnels.map((f, i) => {
-              const rungs = catalogue
-                ? funnelRungs(f.funnelKey, catalogue.wire).map((step) => ({
-                    key: step.key,
-                    label: step.label,
-                    mark: <FunnelStepMark stepKey={step.key} size="sm" />,
-                  }))
-                : [];
-              return (
-                <StartPathOption
-                  key={f.key}
-                  index={i}
-                  selected={funnels.includes(f.key)}
-                  onToggle={() => setFunnels((prev) => toggle(prev, f.key))}
-                  title={f.funnelName}
-                  mark={funnelMark(f.funnelKey)}
-                  meta={
-                    f.operatedBy === "customer"
-                      ? "You run it"
-                      : fromPerDay(f.dailyOperatingCostCents)
-                  }
-                  rungs={rungs}
-                >
-                  {/* No path carries a commitment; the tag says so and reads NO
-                      producer field (the channel's "minimum days" is how long a
-                      result takes to show, not a term). */}
-                  {f.operatedBy === "customer" ? (
-                    "Your own team works this one."
-                  ) : (
-                    <span className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
-                      {NO_COMMITMENT_TAG}
-                    </span>
-                  )}
-                </StartPathOption>
-              );
-            })}
-          </div>
-        )}
-      </StartShell>
-    );
-  }
-
   // returns
-  // One row per (funnel x channel) pair the visitor kept, in the order they were
-  // offered, so the whole screen fits without scrolling: what they picked, what
-  // our clients got back on it, what a paying client cost them.
-  const returnRows = offeredFunnels
-    .filter((f) => funnels.includes(f.key))
-    .flatMap((f) =>
-      returnRowsForFunnel(
-        f.funnelKey,
-        [f.channelSlug],
-        catalogue?.pairs ?? [],
-        channelReturns,
-      ).map((r) => ({ funnel: f, row: r })),
-    );
-
-  // The top three named clients by return, whatever path they ran and whatever
-  // the fleet median beside them says, drawn in a random order fixed for this
-  // visit so they read as three clients rather than a ranking. They sit OUTSIDE
-  // the white card.
+  // The top three named clients by return, drawn in a random order fixed for this
+  // visit so they read as three clients rather than a ranking. They sit OUTSIDE the
+  // white card.
   const proofCards = shuffleWithSeed(proofCardsFor(proof?.showcase ?? []), proofSeed);
 
   return (
     <StartShell
-      step={3}
+      step={2}
       stepCount={START_STEP_COUNT}
       stepLabels={START_STEP_LABELS}
       brand={brand}
       founders={founders}
       reassurance={reassuranceFor("returns", proof, formatReturn)}
       scrollKey={screen}
-      title="What our clients got back"
-      subtitle="Measured on real clients, per dollar spent. Where we have not measured a path yet, we say so."
+      title="What we would run for you"
+      subtitle="One campaign per step, each with its own daily budget. You set the amounts before anything starts."
       footer={footer(
         <StartButton onClick={onContinue}>
           See what we&apos;d build for you
@@ -565,12 +356,12 @@ export function StartPicks({
           <div className="flex flex-col gap-2" data-proof-cards>
             {proofCards.map((c, i) => (
               <StartProofCard
-                key={`${c.domain}:${c.funnelKey}`}
+                key={c.id}
                 index={i}
                 portrait={c.person.portrait}
                 name={c.person.name}
                 role={c.person.role}
-                funnelName={c.funnelName}
+                outcomeLabel={c.outcomeLabel}
                 returnPerDollar={c.returnPerDollar}
                 firstStep={c.firstStep}
                 counts={c.counts}
@@ -581,19 +372,29 @@ export function StartPicks({
         ) : null
       }
     >
-      <div className="flex flex-col gap-2">
-        {returnRows.map(({ funnel, row }, i) => (
-          <StartReturnRow
-            key={funnel.key}
-            index={i}
-            funnelMark={funnelMark(funnel.funnelKey)}
-            funnelName={funnel.funnelName}
-            median={row.median}
-            p25={row.p25}
-            p75={row.p75}
-            reasonLabel={returnReasonLabel(row.reason)}
-            formatReturn={formatReturn}
-          />
+      <div className="flex flex-col gap-2" data-start-campaigns>
+        {campaigns.length === 0 && (
+          <p className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
+            None of our channels reaches what you picked yet. Go back and pick something else.
+          </p>
+        )}
+        {campaigns.map((c, i) => (
+          <div
+            key={c.key}
+            className="start-enter flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-gray-200 bg-white px-4 py-3"
+            style={{ "--enter-delay": `${i * 60}ms` } as React.CSSProperties}
+          >
+            <LegMark fromKey={c.fromKey} toKey={c.toKey} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {c.fromLabel ? `${c.fromLabel} → ${c.toLabel}` : c.toLabel}
+              </p>
+              <p className="text-xs text-gray-500">Via {c.channelName}</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+              {fromPerDay(c.dailyOperatingCostCents)}
+            </span>
+          </div>
         ))}
       </div>
     </StartShell>

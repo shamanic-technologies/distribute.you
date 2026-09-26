@@ -271,7 +271,7 @@ export default function SignUpPage() {
       } else {
         // Reported, not just displayed — see the sign-in page: a non-complete
         // status throws nothing, so an uncaptured branch is a stuck user who
-        // leaves no trace in the funnel.
+        // leaves no trace in PostHog.
         posthog.capture("signup_email_incomplete", {
           stage: "verify",
           status: result.status ?? "unknown",

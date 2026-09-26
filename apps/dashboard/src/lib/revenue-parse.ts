@@ -58,7 +58,7 @@ const RevenueLeadSchema = z.object({
   // stripped them at the parse boundary: a consumer asking whether a lead REPLIED, or
   // CLICKED, or ATTENDED the meeting read `undefined` forever and could not tell that
   // apart from "not measured". Verified on the wire (2026-08-28) — every lead row on the
-  // funnel-scoped read carries all three beside the ones below.
+  // leg-scoped read carries all three beside the ones below.
   clicked: z.boolean().optional(),
   repliedPositive: z.boolean().optional(),
   meetingAttended: z.boolean().optional(),
@@ -140,7 +140,7 @@ const CostEconomicsSchema = z.object({
  * WHAT ONE OUTCOME HAS COST, PER DAY (features-service#980).
  *
  * `cumulativeOutcomes` is FRACTIONAL on a deeper leg — the observable driver signal
- * walked forward through the funnel's rates — which is what `outcomeObserved` tells a
+ * walked forward through the leg rates — which is what `outcomeObserved` tells a
  * consumer apart. `costPerOutcomeUsd` is null, never 0, on a day with no denominator.
  *
  * `outcomeStep.description` is `.optional()` because the producer states it on some steps
@@ -297,8 +297,8 @@ const SpendSchema = z.object({
 });
 
 /**
- * One rung of the funnel: how many reached it, what reaching it cost, and what share of
- * the rung before converted into it.
+ * One step of the walk: how many reached it, what reaching it cost, and what share of
+ * the step before converted into it.
  *
  * Every figure here is SERVED. The rate in particular has to be: a browser dividing two
  * served counts is the compute-a-stat-in-the-browser bug, and it would drift from the
@@ -326,7 +326,7 @@ const StepCustomerCostSchema = z.object({
   costPerReachCents: z.number().nullable(),
 });
 
-const FunnelStepSchema = z.object({
+const StepWalkRowSchema = z.object({
   step: z.string(),
   leadField: z.string(),
   recipientsReached: z.number().nullable(),
@@ -337,17 +337,16 @@ const FunnelStepSchema = z.object({
   customerCost: StepCustomerCostSchema.nullish(),
 });
 
-const FunnelStepsSchema = z.object({
-  funnelKey: z.string(),
+const StepWalkSchema = z.object({
   name: z.string(),
   committedSpentCents: z.number(),
-  /** DISTINCT leads contacted — the base the FIRST rung converts from. */
+  /** DISTINCT leads contacted — the base the FIRST step converts from. */
   contactedRecipients: z.number(),
-  steps: z.array(FunnelStepSchema),
+  steps: z.array(StepWalkRowSchema),
 });
 
 
-/** One step of a funnel as the producer names it, on the learning verdict. */
+/** One step as the producer names it, on the learning verdict. */
 const LearningOutcomeStepSchema = z.object({
   key: z.string(),
   label: z.string(),
@@ -429,18 +428,14 @@ const FeatureRevenueResponseSchema = z.object({
   repliedPositive: SignalSeriesSchema.optional(),
   meetingsBooked: SignalSeriesSchema.optional(),
   purchased: SignalSeriesSchema.optional(),
-  // THE FUNNEL WALKED STEP BY STEP (features-service#854, live). Required AND NULLABLE
-  // on the wire, which is the producer saying `null` is a value it means to send: it
-  // is null wherever there is no ONE funnel to walk (the brand and offer grains span
-  // several, a lensed read is a subset of the leads beside the whole spend, a channel
-  // with no funnel wired never read its leads at all). `.optional()` would parse every
-  // body EXCEPT the one the null was written for, so `.nullish()` — the same call the
-  // required-and-nullable rule prescribes, and it also tolerates a cached pre-#854 body.
-  funnelSteps: FunnelStepsSchema.nullish(),
-  // WHEN THIS SCOPE'S FIGURES STOP BEING NOISE. `.nullish()` for the same reason
-  // `funnelSteps` is: the producer means to send `null` on the reads that carry no
-  // verdict (the lensed body, the lean groups, the no-funnel short-circuit, the cold
-  // path), and `.optional()` would parse every body EXCEPT the one the null was
+  // THE STEPS WALKED IN ORDER. Required AND NULLABLE on the wire: null wherever there is
+  // no one path to walk. `.nullish()` for the required-and-nullable rule. The key is the
+  // PRODUCER's historical field name (features-service#854), read here and nowhere else:
+  // the parser hands it on as `stepWalk`.
+  funnelSteps: StepWalkSchema.nullish(),
+  // WHEN THIS SCOPE'S FIGURES STOP BEING NOISE. `.nullish()` for the same reason the
+  // step walk is: the producer means to send `null` on the reads that carry no verdict
+  // (the lensed body, the lean groups, the cold path), and `.optional()` would parse every body EXCEPT the one the null was
   // written for. It also tolerates a cached pre-v0.165.0 body.
   learningPhase: LearningPhaseSchema.nullish(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
@@ -531,7 +526,7 @@ function leadReachedSomething(lead: z.infer<typeof LeadOutcomeSchema>): boolean 
  * Measured in prod (brand `75d7e3e8`, 2026-08-31): `/brands/:id/revenue` answers
  * **10,903,573 bytes**, of which **10,860,781** are the 9,854-entry `leads[]`. The
  * per-feature read is the same size. Everything else on the body — the headline, the
- * economics, the spend block, every count series, the ROI history, the funnel walk —
+ * economics, the spend block, every count series, the ROI history, the step walk —
  * is 43KB.
  *
  * That array is what took the dashboard's instant paint away. The persisted cache
@@ -540,7 +535,7 @@ function leadReachedSomething(lead: z.infer<typeof LeadOutcomeSchema>): boolean 
  * written to disk at all — and those three keys are what every money card, the
  * Return-on-spend chart and the cost card read. Nothing errored: the reveal gates are
  * settle-based and correct, the network answered, the numbers were right. Every one of
- * those surfaces simply cold-skeletoned on EVERY load, on every brand, offer, funnel and
+ * those surfaces simply cold-skeletoned on EVERY load, on every brand, offer and
  * campaign page, while the small reads beside them (the Offers table's `brandOfferMoney`,
  * 118KB) painted instantly from disk. That contrast is the whole bug report.
  *
@@ -580,7 +575,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // differently-sized populations — the undated legs sit in the totals and on no
     // day — and stop agreeing with the figure printed inches above it.
     conversionRateHistory: d.conversionRateHistory ?? null,
-    funnelSteps: d.funnelSteps ?? null,
+    stepWalk: d.funnelSteps ?? null,
     // Passed through whole. The band renders these figures verbatim: the browser no
     // longer picks a price, multiplies a threshold or divides a countdown.
     learningPhase: (d.learningPhase ?? null) as RevenueOverview["learningPhase"],

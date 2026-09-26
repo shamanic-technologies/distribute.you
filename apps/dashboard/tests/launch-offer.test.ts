@@ -12,10 +12,9 @@ const onboarding = readFileSync(
 function launchWorkBody(): string {
   const at = onboarding.indexOf("async function runLaunchWork(");
   expect(at).toBeGreaterThan(-1);
-  // Measured 2026-08-24: the campaign create sits 5726 chars in, the last thing
-  // any guard here asserts on. 7000 keeps headroom for comments; every assertion
-  // below is a toContain, so a slice running long costs nothing.
-  return onboarding.slice(at, at + 7000);
+  // Bounded to the next declaration rather than a measured length, so the slice
+  // moves with the file.
+  return onboarding.slice(at, onboarding.indexOf("async function resolveLaunchCampaigns(", at));
 }
 
 describe("soleOfferId", () => {
@@ -39,16 +38,16 @@ describe("soleOfferId", () => {
 });
 
 describe("the launch names the offer on everything it creates", () => {
-  it("states it on the campaign, which is (offer x funnel x channel)", () => {
+  it("states it on the campaign, which is (offer x leg x channel)", () => {
     const body = launchWorkBody();
     expect(body).toContain("createCampaignWithoutBrandEnrichment({");
-    expect(body).toContain("...(launchOfferId ? { offerId: launchOfferId } : {})");
+    expect(body).toContain("offerId: launchOfferId,");
   });
 
   it("states it on the ceiling that paces that campaign", () => {
     const body = launchWorkBody();
-    expect(body).toContain("stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows)");
-    expect(body).toContain("...(launchOfferId ? { offerId: launchOfferId } : {})");
+    expect(body).toContain("saveCampaignBudget(");
+    expect(body).toContain("{ offerId: launchOfferId, legKey: c.legKey, featureSlug: c.featureSlug }");
   });
 
   it("resolves it from the brand's own offers, never from a guess", () => {
@@ -57,11 +56,12 @@ describe("the launch names the offer on everything it creates", () => {
     expect(body).toContain("soleOfferId(");
   });
 
-  it("never strands a paid launch on the attribution read", () => {
+  it("logs a failed attribution read, and funds nothing it cannot name", () => {
     const body = launchWorkBody();
-    // The read is best-effort BY DESIGN: the customer has already been charged,
-    // and both consumers adopt an unattributed row on their own cadence, so a
-    // failure here is logged loud and the launch continues.
+    // billing keys a ceiling on (offer, leg, channel), so a launch that names no
+    // offer has nowhere to put the money: it logs loud and refuses rather than
+    // inventing an offer.
     expect(body).toContain("[dashboard] launch could not name the brand's offer");
+    expect(body).toContain("if (!launchOfferId) {");
   });
 });

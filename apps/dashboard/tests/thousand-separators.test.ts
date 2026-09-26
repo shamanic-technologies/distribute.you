@@ -110,23 +110,21 @@ describe("sidebar components use formatCount for badges", () => {
 describe("sales economics surfaces use locale-aware text inputs", () => {
   // The flat settings sales-economics card is gone; a funnel now owns the rates
   // and the lifetime revenue, and its inputs carry the same helpers.
-  it("settings sales funnels use the shared locale input helpers instead of number inputs", () => {
+  it("offer campaign settings take amounts as text inputs, never number inputs", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/settings/brand-sales-funnels-card.tsx"),
+      path.join(__dirname, "../src/components/settings/offer-campaigns-card.tsx"),
       "utf-8"
     );
-    expect(content).toContain('from "@/lib/format-number"');
-    expect(content).toContain("parseLocaleNumberInput");
-    // The card's remaining inputs (lifetime revenue, budgets) are text, never number.
+    // Lifetime revenue and the per-campaign budgets are text, so a thousands
+    // separator is typeable; the lifetime revenue strips it before parsing.
     expect(content).toContain('type="text"');
     expect(content).not.toContain('type="number"');
+    expect(content).toContain('value.replace(/,/g, "")');
+    expect(content).toContain("parseDailyBudgetUsd(budget)");
   });
-
-  // Conversion rates are the BRAND's now and are edited in one place, which
-  // renders them through the shared RateInput (text + decimal inputMode live there).
   it("brand conversion rates render through the shared RateInput", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/settings/funnel-rates-editor.tsx"),
+      path.join(__dirname, "../src/components/settings/leg-rates-editor.tsx"),
       "utf-8"
     );
     expect(content).toContain("<RateInput");

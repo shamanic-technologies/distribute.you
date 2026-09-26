@@ -8,12 +8,11 @@
  * answer until the next tick reads as the click having done nothing.
  *
  * The trap this exists to close is that ONE fact is served under SEVERAL query roots.
- * The same money is asked for per channel, per campaign, per offer, per funnel and per
- * brand, each under its own key because each is a different answer from
+ * The same money is asked for per channel, per campaign, per offer and per brand, each under its own key because each is a different answer from
  * features-service — so a mutation that invalidates the one root it happens to know
  * about leaves every sibling grain showing the pre-write figure. A lead statement used
  * to invalidate `featureRevenue` alone, so the campaign's own cards moved and the
- * brand Overview, the offer money, the funnel walk and the audience costs did not.
+ * brand Overview, the offer money, the step walk and the audience costs did not.
  *
  * Alias-free and dependency-free ON PURPOSE (the client is taken structurally, so this
  * module imports nothing) — that is what lets it carry real unit tests rather than a
@@ -28,9 +27,9 @@ export interface InvalidatingClient {
 /**
  * Every root restating an OUTCOME a lead reached.
  *
- * A funnel-step statement, a reply kind, a board move: all of them change what landed,
+ * A step statement, a reply kind, a board move: all of them change what landed,
  * so they change the money that divides by it, the per-audience costs that rank on it,
- * the funnel rungs that count it and the activity the charts draw from it.
+ * the steps that count it and the activity the charts draw from it.
  *
  * `workflowProjection` is deliberately ABSENT. It is a FLEET-wide benchmark of what an
  * outcome costs across every org, not a statement about this brand's own results — one
@@ -62,15 +61,15 @@ export const LEAD_OUTCOME_ROOTS = [
  * ceilings to campaign-service's statuses, so it moves on a pause exactly as it moves on
  * a budget edit, and it is what the header money and the cost card's denominator read.
  *
- * `brandFunnelBudgets` is deliberately ABSENT: both writers already write billing's own
- * answer into that key with `setQueryData`, and invalidating it would replace a figure
- * we have just been told with a re-read that can fail and fall back to the pre-save one.
+ * `brandCampaignBudgets` is here too: billing answers a write with ONE row, not the
+ * set, so the set every surface reads is re-read rather than patched.
  */
 export const CAMPAIGN_MONEY_ROOTS = [
   "campaigns",
   "campaign",
   "brandDailyBudget",
   "brandSpendableBudget",
+  "brandCampaignBudgets",
 ] as const;
 
 /**
@@ -82,7 +81,7 @@ export const CAMPAIGN_MONEY_ROOTS = [
  * request until somebody looks at it.
  */
 /**
- * Every root a CONVERSION RATE moves. A rate is what every money figure is priced
+ * Every root a CONVERSION RATE or a LIFETIME REVENUE moves. A rate is what every money figure is priced
  * on, so changing one moves the same money grains a lead statement does, plus the
  * rates read itself and the workflow projection (whose ROI and CAC divide by the
  * rate's product). The projection is expensive, and it is here anyway: a brand that
@@ -91,6 +90,8 @@ export const CAMPAIGN_MONEY_ROOTS = [
 export const CONVERSION_RATE_ROOTS = [
   ...LEAD_OUTCOME_ROOTS,
   "brandConversionRates",
+  "brandLegRates",
+  "offerEconomics",
   "workflowProjection",
 ] as const;
 

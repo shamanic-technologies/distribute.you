@@ -18,7 +18,7 @@ import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
  * first toggle.
  *
  * A COMPONENT rather than a copy in each surface, for the same reason the
- * acquisition-channel and sales-funnel marks are: the tenant switcher and the
+ * acquisition-channel and leg marks are: the tenant switcher and the
  * top-bar breadcrumb both draw an offer, and two icon definitions is how they
  * come to disagree about what an offer looks like.
  *

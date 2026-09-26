@@ -49,7 +49,7 @@ describe("step statements with a CRM-evidenced step", () => {
   });
 
   const hook = readFileSync(join(__dirname, "../src/lib/use-lead-step-statements.ts"), "utf8");
-  const panel = readFileSync(join(__dirname, "../src/components/leads/lead-funnel-stage-section.tsx"), "utf8");
+  const panel = readFileSync(join(__dirname, "../src/components/leads/lead-stage-section.tsx"), "utf8");
   const page = readFileSync(join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"), "utf8");
 
   it("only a person's statement is withdrawable, so a CRM step never is", () => {

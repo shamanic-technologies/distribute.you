@@ -11,12 +11,6 @@ import {
   onboardingBrandCookieName,
   onboardingResumeHref,
 } from "@/lib/onboarding-brand-cookie";
-import {
-  START_SELECTION_COOKIE,
-  decodeStartSelection,
-  selectionIsPayable,
-  selectionIsPaid,
-} from "@/lib/start-selection-cookie";
 import { isBetaEmail } from "@/lib/beta-allowlist";
 import {
   UI_VERSION_COOKIE,
@@ -33,19 +27,17 @@ const isPublicRoute = createRouteMatcher([
   "/sso-callback(.*)",
   "/claim(.*)",
   // The sell-first half of onboarding. It runs BEFORE signup by design: a
-  // visitor picks what they want to buy, through which channels, and which
-  // revenue funnels, and only then makes an account. Behind the auth gate it
+  // visitor picks the outcomes they want to buy, and only then makes an account. Behind the auth gate it
   // would be a screen nobody in the market can reach.
   "/start(.*)",
   // The BUILD half, which now runs before signup too: a visitor walks their own
-  // services, funnels, audiences, rates and offer, and sees what we assembled,
+  // services, audiences and offer, and sees what we assembled,
   // before being asked for an account or a card. It spends against an anonymous
   // org through `/api/anon/*`, which carries its own signed session and its own
   // allowlist — this entry only decides that the SCREEN is reachable.
   //
-  // EXACT, not a prefix: `/onboarding/pay` and `/onboarding/build` are the two
-  // steps that genuinely need the account to exist, and they stay behind the
-  // gate. A `(.*)` here would open them.
+  // EXACT, not a prefix: `/onboarding/claim` needs the account to exist and stays
+  // behind the gate. A `(.*)` here would open it.
   "/onboarding",
   "/api/public(.*)",
   "/api/anon(.*)",
@@ -76,8 +68,7 @@ export default clerkMiddleware(
     // Where an unfinished onboarding resumes. The wizard's own progress lives in
     // sessionStorage, so it is gone the moment the tab closes — but the brand it
     // created is still in brand-service, and `/onboarding?brandId=` re-hydrates
-    // everything from there (services, funnels, rates, lifetime revenue) and lands
-    // on the funnels step. Without the brand id the flow can only start over at
+    // everything from there (services, offer) and lands on the picks. Without the brand id the flow can only start over at
     // the welcome screen, which is what a user who left at the budget step used to
     // get. Org-scoped cookie, so a brand abandoned under one org never resumes
     // inside another (onboarding can create a brand-new org).
@@ -86,23 +77,6 @@ export default clerkMiddleware(
         ? req.cookies.get(onboardingBrandCookieName(orgId))?.value
         : undefined;
       if (inProgressBrand) return onboardingResumeHref(inProgressBrand);
-
-      // Somebody who came through the sell-first screens has already chosen what
-      // to buy, so the first thing they should see after signup is the price of
-      // it, not a wizard asking the same questions again. The picks ride a
-      // cookie because Clerk's signup is a redirect a query param does not
-      // survive; they are read HERE rather than on the page so the very first
-      // frame lands on the right screen.
-      //
-      // `paid` decides which half: money already taken means the brand-building
-      // screens, and nothing taken yet means the payment screens. Reading this
-      // only ever REDIRECTS -- no selection means the ordinary wizard, exactly
-      // as before.
-      const picks = decodeStartSelection(
-        req.cookies.get(START_SELECTION_COOKIE)?.value,
-      );
-      if (selectionIsPaid(picks)) return "/onboarding/build";
-      if (selectionIsPayable(picks)) return "/onboarding/pay";
       return "/onboarding";
     };
     const isExplicitDashboardRoot =
@@ -218,8 +192,7 @@ export default clerkMiddleware(
         if (lastBrand) {
           // The marker says the hierarchy is still being RESOLVED, not that this is the
           // destination: the brand page reads its offers and, if the brand sells exactly
-          // one, hands the landing down to it (and that offer down to its funnel if it
-          // is sold through exactly one). Gated on the marker so no ordinary link into a
+          // one, hands the landing down to it. Gated on the marker so no ordinary link into a
           // brand ever bounces — see `lib/landing-drilldown.ts`.
           return NextResponse.redirect(
             new URL(

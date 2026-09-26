@@ -81,7 +81,7 @@ function metricCount(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): 
  * cost column it replaced: cost per outcome ranks audiences by CHEAPNESS, so an audience
  * that converts to nothing outranks an expensive one that pays. At brand level, rank on
  * the return; null (unmeasurable, or a producer that predates it) prints "-", since a
- * brand runs several funnels and has no single step to fall back to.
+ * brand buys several outcomes and has no single step to fall back to.
  *
  * A CAMPAIGN-scoped card never reads it: a campaign buys one outcome and is judged on
  * what that outcome costs.
@@ -136,15 +136,15 @@ export function TopAudiencesCard({
   audiences?: AudienceWire[];
   pending?: boolean;
   /**
-   * The cost column a CAMPAIGN-scoped card LEADS with — its own funnel's outcome, which
+   * The cost column a CAMPAIGN-scoped card LEADS with — its own leg's outcome, which
    * is the thing the campaign is run to make cheaper.
    *
    * Absent at BRAND level: there is no goal there to derive one from, and it would be one
-   * funnel's step on a surface that sums several anyway. Without it the card ranks on the
+   * leg's step on a surface that sums several anyway. Without it the card ranks on the
    * return and prints "-" for a row that has none.
    */
   metric?: AudienceRankMetric;
-  /** Set on the campaign Overview, which sells exactly one funnel. */
+  /** Set on the campaign Overview, which sells exactly one leg. */
   campaignScoped?: boolean;
   /**
    * The campaign a row belongs to, when this card is on one. A row opens the audience
@@ -175,14 +175,14 @@ export function TopAudiencesCard({
   //
   // The cost column is the brand's own metric, NOT `data.sortMetric`: features-service
   // classes websitePurchase / sales as reply-driven and returns `cppr` for them, which
-  // printed "CPPR / 0 replies" on a goal whose funnel has no reply step, next to an
+  // printed "CPPR / 0 replies" on a goal whose path has no reply step, next to an
   // Audiences page that hides the reply columns for that same brand.
   //
-  // A cost per outcome (cost per positive reply, cost per visit) names ONE funnel's step,
-  // and a brand runs several funnels at once — so on a BRAND surface it labels a sum with
+  // A cost per outcome (cost per positive reply, cost per visit) names ONE leg's step,
+  // and a brand buys several outcomes at once — so on a BRAND surface it labels a sum with
   // one member's vocabulary. At brand level the card therefore states the return and
   // nothing else, even when the projection is missing (that row prints "-"). The campaign
-  // Overview sells exactly one funnel, so its own step IS what it buys and the cost leads.
+  // Overview sells exactly one leg, so its own step IS what it buys and the cost leads.
   const brandLevelMoney = !campaignScoped;
   // A RETURN answers a brand's question, not a campaign's. A campaign buys ONE outcome
   // and is run to make that outcome cheaper, so the number it is judged on is its cost
@@ -282,7 +282,7 @@ export function TopAudiencesCard({
           // two replies they swing on the next one. The row says `Learning` in the value
           // slot and drops its cost subtitle entirely rather than printing a price with
           // a caveat. Only where there IS a metric to count (the campaign card) — at
-          // brand level there is no single funnel whose outcomes to count.
+          // brand level there is no single leg whose outcomes to count.
           const rowLearning = isStats && !!metric && isLearning(outcomes);
           // The scope's own rule, one audience at a time: its return reads `Learning`
           // until one of the scope's campaigns has priced THIS audience. Same answer the
@@ -292,7 +292,7 @@ export function TopAudiencesCard({
             audienceLearningFor(learningByAudienceId ?? new Map(), key, learningSettled);
           // The second line carries what the headline cost DIVIDES BY, so a reader can see
           // how much evidence is behind the price. Never a value the row does not have —
-          // and never at BRAND level, where the count is one funnel's vocabulary on a
+          // and never at BRAND level, where the count is one leg's vocabulary on a
           // surface that sums several.
           const subtitle =
             brandLevelMoney || !metric || rowLearning || outcomes == null

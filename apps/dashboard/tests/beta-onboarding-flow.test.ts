@@ -47,13 +47,11 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("persists rates and profile and launches a real campaign", () => {
-    // Economics are stated PER SALES FUNNEL now — the brand-wide record is the model
-    // the funnels replaced, and features-service prices on the declared funnel.
+    // No brand-wide economics record is written at signup, and no rate is stated:
+    // the launch funds one ceiling per campaign (offer x leg x channel) instead.
     expect(src).not.toContain("saveBrandSalesEconomics");
-    expect(src).toContain("stateBrandSalesFunnels");
-    // `declareBrandSalesFunnel` went with the post-payment rate screens: the flow
-    // states the funnel SET and prices nothing at signup.
     expect(src).not.toContain("declareBrandSalesFunnel");
+    expect(src).toContain("saveCampaignBudget(");
     expect(src).toContain("saveBrandUserFields");
     expect(src).toContain("createCampaign");
     // NO audience is activated at launch: onboarding collects the customer's
@@ -112,15 +110,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest" })');
   });
 
-  it("takes the goal from the primary funnel and prices in that unit", () => {
-    // The standalone goal picker is gone: the funnel the brand picks as primary IS
-    // the optimization goal, so the question is asked once, in the words the brand
-    // already used to describe how it sells.
-    // The primary IS the first path picked on the sell-first screens; the radio
-    // step that re-asked it is gone with the funnel step.
+  it("takes the goal from the picked outcome and prices in that unit", () => {
+    // The standalone goal picker is gone: the outcome picked on the sell-first
+    // screens IS the optimization goal, so the question is asked once.
     expect(src).not.toContain("primary sales funnel goal with us today");
     expect(src).not.toContain("What is your primary sales goal?");
-    expect(src).toContain("resolvePrimaryKey(selectedFunnelKeys, primaryFunnelKey)");
+    expect(src).not.toContain("resolvePrimaryKey");
     for (const unit of ["signups", "meetings"]) {
       expect(src).toContain(unit);
     }
@@ -155,11 +150,10 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("projectionRef.current?.recommendedWorkflowDynastySlug");
   });
 
-  it("asks the conversion rates the funnel catalogue defines, not the goal's", () => {
-    // The per-goal rate list held the entry legs of DIFFERENT funnels, so it asked for
-    // numbers belonging to no single path. Each funnel's own steps are the question now.
+  it("keeps the conversion-rate labels, and no per-goal rate list", () => {
+    // The per-goal rate list held the entry legs of DIFFERENT paths, so it asked for
+    // numbers belonging to no single one.
     expect(src).not.toContain("RATE_KEYS_FOR_OUTCOME");
-    expect(src).toContain("funnelRateFields");
     expect(src).toContain("Website visits to signup rate");
     expect(src).toContain("Positive reply → sales meeting");
     expect(src).toContain("Website visit → sales meeting");
@@ -214,8 +208,8 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("Always on");
   });
 
-  it("funds each picked funnel before direct checkout", () => {
-    expect(src).toContain("funnelBudgetUsd");
+  it("funds each campaign the picks need before direct checkout", () => {
+    expect(src).toContain("pairBudgetUsd");
     expect(src).toContain("budgetForCount");
     expect(src).toContain("Continue to checkout");
     expect(src).toContain("const checkoutAmountCents = firstCharge.chargeCents;");
@@ -226,9 +220,9 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("shows $/day per path as the primary value, outcomes/mo secondary", () => {
-    // One ceiling per funnel, typed. There is no tier list any more: the tiers
-    // priced ONE pot, which is the thing per-funnel funding replaced.
-    expect(src).toContain("setFunnelBudgets");
+    // One ceiling per campaign, typed. There is no tier list any more: the tiers
+    // priced ONE pot, which is the thing per-campaign funding replaced.
+    expect(src).toContain("setCampaignBudgets");
     expect(src).toContain("countForBudget");
     expect(src).not.toContain("COUNT_TIERS");
     expect(src).not.toContain("customBudgetSelected");

@@ -57,7 +57,7 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain(
       'const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;',
     );
-    expect(cards).toContain("{showFunnelMetrics && showVisitPair && (");
+    expect(cards).toContain("{showStepMetrics && showVisitPair && (");
     expect(cards).toContain('label: "Positive replies"');
     expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
@@ -105,10 +105,10 @@ describe("OutreachStatCards copy", () => {
     // The per-goal outcome (Signups / Sales Meetings / Form submissions / Purchases, or
     // NONE for website_visits/positive_replies) comes from the goal-steps single source —
     // the component no longer hardcodes a visit-vs-reply binary that mislabelled the newer
-    // goals. `outcomeStepFor` is that source keyed on the campaign's funnel when it states
+    // goals. `outcomeStepFor` is that source keyed on the campaign's leg when it states
     // one, and on the goal otherwise.
     expect(cards).toContain("outcomeStepFor");
-    expect(cards).toContain("const outcomeStep = outcomeStepFor(goal, funnelKey)");
+    expect(cards).toContain("const outcomeStep = outcomeStepFor(goal, leg)");
     expect(cards).not.toContain("isVisitDrivenGoal");
   });
 
@@ -155,16 +155,16 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("maximumFractionDigits: decimals");
   });
 
-  it("states the brand's money at brand level and leaves the funnel steps to the campaign", () => {
+  it("states the brand's money at brand level and leaves the leg steps to the campaign", () => {
     // A brand sells through SEVERAL sales funnels at once, so a Website-Visits or
     // Sales-Meetings card there names one funnel's step while the row beside it sums
     // every funnel. The brand Overview therefore shows Outreach plus the four money
     // cards; the campaign Overview (one funnel by construction) keeps the step pairs.
     expect(cards).toContain("showEconomics?: boolean");
-    expect(cards).toContain("showFunnelMetrics = true");
+    expect(cards).toContain("showStepMetrics = true");
     expect(cards).toContain("{showEconomics && (");
-    expect(cards).toContain("{showFunnelMetrics && showReplyPair && (");
-    expect(cards).toContain("{showFunnelMetrics && outcomeCard && (");
+    expect(cards).toContain("{showStepMetrics && showReplyPair && (");
+    expect(cards).toContain("{showStepMetrics && outcomeCard && (");
     expect(cards).toContain('label="Pipeline revenue"');
     expect(cards).toContain('label="ROI"');
     expect(cards).toContain('label="$ CAC"');
@@ -180,7 +180,7 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("formatUsd(totalPipelineUsd)");
     // The brand page is the one that turns the two modes on.
     expect(page).toContain("showEconomics");
-    expect(page).toContain("showFunnelMetrics={false}");
+    expect(page).toContain("showStepMetrics={false}");
     expect(page).toContain("economics={revenueRevealed ? data?.costEconomics : null}");
   });
 
@@ -260,26 +260,26 @@ describe("OutreachStatCards copy", () => {
     expect(call).toContain("contactedOverride={leadsContacted}");
     expect(call).toContain('outreachLabel="Outreaches"');
     expect(call).toContain("signalSharePct={positiveReplyShare}");
-    // The contacted base is a SERVED field off the funnel breakdown.
-    expect(campaign).toContain("data?.funnelSteps?.contactedRecipients ?? null");
+    // The contacted base is a SERVED field off the step walk.
+    expect(campaign).toContain("data?.stepWalk?.contactedRecipients ?? null");
     // The share goes through the ONE helper the Leads page reads too, so the two
     // surfaces cannot state the same percentage two ways.
-    expect(campaign).toContain("positiveReplySharePct(data?.funnelSteps)");
+    expect(campaign).toContain("positiveReplySharePct(data?.stepWalk)");
     const auto = read("../src/components/revenue/outreach-stat-cards-auto.tsx");
-    expect(auto).toContain("positiveReplySharePct(revenueData?.funnelSteps)");
+    expect(auto).toContain("positiveReplySharePct(revenueData?.stepWalk)");
   });
 
   // NOTHING reads the retired brand column any more. The auto variant takes the
   // CAMPAIGN's own funnel when it is on a campaign route, and at brand level renders
   // the money cards with no funnel pair at all — the same split the brand Overview
   // takes, since a brand sells through several funnels at once.
-  it("reads no brand goal anywhere, and keys the row on the campaign's funnel", () => {
+  it("reads no brand goal anywhere, and keys the row on the campaign's leg", () => {
     expect(auto).not.toContain("salesEconomics");
     expect(auto).not.toContain("optimizationGoal");
-    expect(auto).toContain("scopedCampaign?.funnelKey");
-    expect(auto).toContain("funnelKey={funnelKey}");
+    expect(auto).toContain("const leg = useCampaignLeg(scopedCampaign);");
+    expect(auto).toContain("leg={leg}");
     expect(auto).toContain("showEconomics={!campaignId}");
-    expect(auto).toContain("showFunnelMetrics={!!campaignId}");
+    expect(auto).toContain("showStepMetrics={!!campaignId}");
     expect(page).not.toContain("optimizationGoal");
     expect(page).not.toContain("getBrandSalesEconomics");
   });

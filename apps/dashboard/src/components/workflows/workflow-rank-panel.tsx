@@ -118,7 +118,7 @@ const BASIS_TIP =
   "Charged is money you paid. Incurred counts spend we later refunded at full value, because it answers what the workflow COSTS to produce an outcome rather than what you were billed, which is why the fleet block is read apart from the rest.";
 
 const PROJECTED_TIP =
-  "This count was walked through your funnel's own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
+  "This count was walked through your own conversion rates rather than observed directly, so it is an expectation, not a headcount.";
 
 function fmtUsd(value: number | null | undefined): string {
   return value == null ? "—" : formatUsdAdaptive(value);

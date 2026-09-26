@@ -23,7 +23,7 @@ const banner = readFileSync(join(__dirname, "../src/components/onboarding/no-aud
 const reminders = readFileSync(join(__dirname, "../src/components/onboarding/onboarding-reminders.tsx"), "utf8");
 
 const step = flow.slice(flow.indexOf("function OnboardingAudiences("), flow.indexOf("function BrandStepHeader("));
-const saver = flow.slice(flow.indexOf("async function saveTargetAudienceAndContinue()"), flow.indexOf("async function saveFunnelsAndContinue()"));
+const saver = flow.slice(flow.indexOf("async function saveTargetAudienceAndContinue()"), flow.indexOf("function continueFromServices()"));
 
 describe("the audience step is one box", () => {
   it("asks who the customer sells to and searches nothing", () => {

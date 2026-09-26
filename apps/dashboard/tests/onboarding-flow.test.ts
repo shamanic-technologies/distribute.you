@@ -37,11 +37,11 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).toContain("Continue to checkout");
   });
 
-  it("states a per-path ceiling with post-paid copy", () => {
-    // No brand-level cap any more: each path spends up to its own ceiling, and
+  it("states a per-campaign ceiling with post-paid copy", () => {
+    // No brand-level cap any more: each campaign spends up to its own ceiling, and
     // the brand total is their sum. Saying "your brand daily budget cap" beside
-    // four separate ceilings would name a number nobody sets.
-    expect(content).toContain("Each path spends up to its own ceiling");
+    // several separate ceilings would name a number nobody sets.
+    expect(content).toContain("Each campaign spends up to its own ceiling");
     expect(content).toContain("You pay as you go for what we actually spend");
     expect(content).not.toContain("brand daily budget cap");
   });
@@ -57,7 +57,9 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
     expect(content).toContain("launch_checkout");
     expect(content).toContain("completeLaunchAfterCheckout");
-    expect(content).toContain("saveBrandDailyBudget");
+    // Every funded campaign gets its own ceiling in billing, never one brand write.
+    expect(content).toContain("saveCampaignBudget(");
+    expect(content).not.toContain("saveBrandDailyBudget");
     expect(content).toContain("featureInputs,");
     expect(content).toContain("createCampaignWithoutBrandEnrichment");
     // Setup mode is now the path for a budget the $30 welcome gift covers: card

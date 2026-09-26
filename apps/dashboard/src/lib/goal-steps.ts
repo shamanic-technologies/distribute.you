@@ -1,11 +1,9 @@
 import type { BrandOptimizationGoal } from "@/lib/api";
-import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnels";
 
 /**
- * Per-goal funnel STEPS — the single source every goal-aware surface reads so the
+ * The STEPS a surface shows — the single source every step-aware surface reads so the
  * stat cards, Leads-page tabs, table columns, and the Outreach-activity graph all
- * show the SAME steps for a brand's optimization goal (never a step off the goal's
- * funnel, never an omitted one). Replaces the scattered `isVisitDrivenGoal(...)`
+ * show the SAME steps (never an unbought step, never an omitted one). Replaces the scattered `isVisitDrivenGoal(...)`
  * binary that mis-labelled the newer goals (form_submissions/purchase/positive_replies
  * borrowed the Signups/Sales-Meetings surfaces — the "half-wired goal" trap, CLAUDE.md
  * "~8 dashboard surfaces").
@@ -85,8 +83,7 @@ export interface GoalStep {
     /**
      * SINGULAR human noun for this outcome, for copy that prices one of them
      * ("Cost / sales meeting"). Lives on the step because the step is what a
-     * funnel-keyed surface has in hand — the retired goal cannot name it: one goal
-     * covers both meeting funnels, and it is the FUNNEL's steps that decide what was bought.
+     * leg-keyed surface has in hand — the retired goal cannot name it.
      */
     noun: string;
     /**
@@ -210,7 +207,7 @@ const SALE_OUTCOME: GoalStep = {
   },
 };
 
-/** Ordered funnel steps (base → outcome) for a brand's optimization goal. */
+/** Ordered steps (base → outcome) for a brand's optimization goal. */
 export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
   switch (goal) {
     case "website_visits":
@@ -232,106 +229,111 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
   }
 }
 
+/** The two steps of a LEG, in the producer's step tokens. `fromKey` null = entry leg. */
+export type LegSteps = { fromKey: string | null; toKey: string };
+
 /**
- * Ordered funnel steps for the SALES FUNNEL a campaign runs — the richer keying, and
- * the one a campaign-scoped surface must use.
- *
- * The goal cannot name a funnel on its own: `reply_meeting` and `visit_meeting` both
- * answer to `sales_meetings`, so `goalSteps` has to cover BOTH paths and hands out the
- * website-visit leg to a campaign that never buys a click. That is what put "Website
- * Visits · Cost per website visit" on a Sales-Meeting-from-Conversation campaign, whose
- * funnel starts at a positive reply. The funnel key knows which one it is.
- *
- * Each funnel maps onto exactly the step constants above, so a funnel-keyed surface and
- * a goal-keyed one cannot drift into two labels for one number:
- *  - `reply_meeting`  Outreach → Positive replies → Sales Meetings
- *  - `visit_meeting`  Outreach → Website Visits  → Sales Meetings
- *  - `visit_signup`   Outreach → Website Visits  → Signups
- *  - `visit_form`     Outreach → Website Visits  → Form submissions
- *
- * The last step of every funnel is its own terminal OUTCOME, so a campaign always
- * carries an outcome pair — unlike the 1-step goals, which have none.
+ * The surface step each PRODUCER step token maps onto. `meeting_attended` has none:
+ * nothing counts or prices an attended meeting per lead or per day on these surfaces.
+ * The two form spellings retired on 2026-09-18 read as `form_submitted`.
  */
-export function funnelSteps(funnelKey: SalesFunnelKeyWire): GoalStep[] {
-  switch (normalizeSalesFunnelKey(funnelKey)) {
-    case "reply_meeting":
-      return [OUTREACH_STEP, REPLIES_STEP, MEETINGS_OUTCOME];
-    case "visit_meeting":
-      return [OUTREACH_STEP, VISITS_STEP, MEETINGS_OUTCOME];
-    case "visit_signup":
-      return [OUTREACH_STEP, VISITS_STEP, SIGNUPS_OUTCOME];
-    case "visit_form":
-      return [OUTREACH_STEP, VISITS_STEP, FORM_OUTCOME];
-    // The four added on 2026-09-17. Each is the SHORTEST path to its own terminal
-    // outcome, so each drops the rung its longer sibling inserts — which is the
-    // whole reason they exist as separate funnels rather than as one.
-    case "sales_from_conversation":
-      // The sale closes inside the conversation: no meeting is ever booked, so the
-      // reply is the last thing before the sale.
-      return [OUTREACH_STEP, REPLIES_STEP, SALE_OUTCOME];
-    case "sales_meetings_from_ads":
-      // The ad DELIVERS the booked meeting, so nothing of ours sits between the
-      // outreach and it — no visit, no reply. That absence is the funnel.
-      return [OUTREACH_STEP, MEETINGS_OUTCOME];
-    case "lead_forms_from_ads":
-      // Same shape one outcome over: the form is filled on the ad platform, so no
-      // website visit happens at all. `visit_form` is the version that has one.
-      return [OUTREACH_STEP, FORM_OUTCOME];
-    case "sales_from_website":
-      // The buyer lands and pays. Every other website funnel inserts a rung here.
-      return [OUTREACH_STEP, VISITS_STEP, PURCHASE_OUTCOME];
-  }
+const STEP_BY_TOKEN: Readonly<Record<string, GoalStep>> = {
+  conversation: REPLIES_STEP,
+  website_visit: VISITS_STEP,
+  meeting_booked: MEETINGS_OUTCOME,
+  signup: SIGNUPS_OUTCOME,
+  form_submitted: FORM_OUTCOME,
+  form_filled: FORM_OUTCOME,
+  lead_form_submitted: FORM_OUTCOME,
+  purchase: PURCHASE_OUTCOME,
+  paid_client: SALE_OUTCOME,
+};
+
+/**
+ * The goal a leg's landing step stands for — for the surfaces still keyed on the goal
+ * vocabulary (projections, audience ranking). A step with no goal of its own (an attended
+ * meeting) reads as the meetings goal, the closest outcome anything prices.
+ */
+const GOAL_BY_TOKEN: Readonly<Record<string, BrandOptimizationGoal>> = {
+  conversation: "positive_replies",
+  website_visit: "website_visits",
+  meeting_booked: "sales_meetings",
+  meeting_attended: "sales_meetings",
+  signup: "signups",
+  form_submitted: "form_submissions",
+  form_filled: "form_submissions",
+  lead_form_submitted: "form_submissions",
+  purchase: "website_purchase",
+  paid_client: "sales",
+};
+
+export function goalForLeg(leg: LegSteps | null | undefined): BrandOptimizationGoal | null {
+  if (!leg) return null;
+  return GOAL_BY_TOKEN[leg.toKey] ?? null;
 }
 
 /**
- * The steps a surface should show: the FUNNEL's when one is stated, the goal's otherwise.
+ * Ordered steps for ONE LEG — what a campaign-scoped surface shows, because a campaign
+ * is (offer x leg x channel) and buys exactly that leg.
  *
- * `funnelKey` is null on a brand-level surface (a brand sells through several funnels at
- * once, so no single funnel's steps describe it) and on a pre-funnel campaign that predates the
- * model. Both fall back to the goal, which is what every one of these surfaces did before
- * the funnel existed — so a null is byte-identical to the old behaviour, not a degraded
- * one. Every funnel-aware surface reads THIS, never `goalSteps` directly.
+ * Outreach first (every lead we contacted), then the step the leg converts FROM when it
+ * has one, then the step it lands ON. An entry leg onto a positive reply reads
+ * `Outreach → Positive replies`; the AI meeting booker's leg reads `Outreach → Positive
+ * replies → Sales Meetings`.
+ */
+export function legSteps(leg: LegSteps): GoalStep[] {
+  const out: GoalStep[] = [OUTREACH_STEP];
+  for (const token of [leg.fromKey, leg.toKey]) {
+    const step = token ? STEP_BY_TOKEN[token] : undefined;
+    if (step && !out.includes(step)) out.push(step);
+  }
+  return out;
+}
+
+/**
+ * The steps a surface should show: the LEG's when one is stated, the goal's otherwise.
+ *
+ * `leg` is null on a brand- or offer-level surface (several legs run at once, so no
+ * single leg describes it). Every leg-aware surface reads THIS, never `goalSteps`.
  */
 export function stepsFor(
   goal: BrandOptimizationGoal | null | undefined,
-  funnelKey?: SalesFunnelKeyWire | null,
+  leg?: LegSteps | null,
 ): GoalStep[] {
-  if (funnelKey) return funnelSteps(funnelKey);
+  if (leg) return legSteps(leg);
   if (goal) return goalSteps(goal);
-  // Neither: the surface states no funnel and there is no goal to stand in for one —
-  // the brand goal is retired, and defaulting to it named a funnel the brand may never
-  // have declared. `Outreach` is the honest floor: every lead we contacted is in it
-  // whatever the funnel, so a surface with no funnel shows that and nothing more.
+  // Neither: `Outreach` is the honest floor — every lead we contacted is in it.
   return [OUTREACH_STEP];
 }
 
-/** `goalLeadTabs`, keyed on the funnel when one is stated. */
+/** `goalLeadTabs`, keyed on the leg when one is stated. */
 export function leadTabsFor(
   goal: BrandOptimizationGoal | null | undefined,
-  funnelKey?: SalesFunnelKeyWire | null,
+  leg?: LegSteps | null,
 ): LeadTab[] {
-  return stepsFor(goal, funnelKey)
+  return stepsFor(goal, leg)
     .filter((s): s is GoalStep & { tab: LeadTab } => s.tab !== undefined)
     .map((s) => s.tab)
     .reverse();
 }
 
-/** `goalChartMetricKeys`, keyed on the funnel when one is stated. */
+/** `goalChartMetricKeys`, keyed on the leg when one is stated. */
 export function chartMetricKeysFor(
   goal: BrandOptimizationGoal | null | undefined,
-  funnelKey?: SalesFunnelKeyWire | null,
+  leg?: LegSteps | null,
 ): ChartMetricKey[] {
-  return stepsFor(goal, funnelKey)
+  return stepsFor(goal, leg)
     .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
     .map((s) => s.chartKey);
 }
 
-/** `goalOutcomeStep`, keyed on the funnel when one is stated. */
+/** `goalOutcomeStep`, keyed on the leg when one is stated: the DEEPEST outcome step. */
 export function outcomeStepFor(
   goal: BrandOptimizationGoal | null | undefined,
-  funnelKey?: SalesFunnelKeyWire | null,
+  leg?: LegSteps | null,
 ): GoalStep | null {
-  return stepsFor(goal, funnelKey).find((s) => s.outcome !== undefined) ?? null;
+  const outcomes = stepsFor(goal, leg).filter((s) => s.outcome !== undefined);
+  return outcomes[outcomes.length - 1] ?? null;
 }
 
 /**
@@ -396,12 +398,12 @@ export function goalOutcomeTab(
   return outcomeTabFor(goal, null);
 }
 
-/** `goalOutcomeTab`, keyed on the funnel when one is stated. */
+/** `goalOutcomeTab`, keyed on the leg when one is stated. */
 export function outcomeTabFor(
   goal: BrandOptimizationGoal | null | undefined,
-  funnelKey?: SalesFunnelKeyWire | null,
+  leg?: LegSteps | null,
 ): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } | null {
-  const step = outcomeStepFor(goal, funnelKey);
+  const step = outcomeStepFor(goal, leg);
   if (!step?.outcome) return null;
   return {
     tab: step.outcome.tab,
@@ -412,36 +414,27 @@ export function outcomeTabFor(
 }
 
 /**
- * The tabs a BRAND shows: the union over the funnels its ACTIVE campaigns sell.
+ * The tabs a BRAND or OFFER shows: the union over the legs its ACTIVE campaigns buy.
  *
- * A brand runs several sales funnels at once, so no single funnel's steps describe it and the
- * goal cannot stand in — that column is retired in brand-service (`NOT NULL` with a
- * server default, so it reads "website purchases" for a brand that stated nothing) and
- * it collapses the two meeting funnels onto one word anyway. What a brand actually
- * sells through is what its live campaigns run.
- *
- * Built from `funnelSteps`, the same per-funnel step list a campaign-scoped surface reads,
- * so a tab cannot mean one thing on a campaign page and another on the brand's.
- *
- * `outreach` is always present and always last: every lead we contacted is in it
- * whatever the funnel, so a brand with no live campaign still has one truthful tab
- * rather than an empty page.
+ * Built from `legSteps`, the same per-leg step list a campaign-scoped surface reads, so a
+ * tab cannot mean one thing on a campaign page and another on the brand's. `outreach` is
+ * always present and always last: every lead we contacted is in it, so a scope with no
+ * live campaign still has one truthful tab.
  */
-export function leadTabsForFunnels(funnelKeys: readonly SalesFunnelKeyWire[]): {
+export function leadTabsForLegs(legs: readonly LegSteps[]): {
   engagement: LeadTab[];
   outcomes: OutcomeTab[];
 } {
   const engagement = new Set<LeadTab>(["outreach"]);
   const outcomes = new Set<OutcomeTab>();
-  for (const key of funnelKeys) {
-    for (const step of funnelSteps(key)) {
+  for (const leg of legs) {
+    for (const step of legSteps(leg)) {
       if (step.tab) engagement.add(step.tab);
       if (step.outcome) outcomes.add(step.outcome.tab);
     }
   }
-  // ONE canonical order, so a union assembled from any set of funnels always reads the
-  // same way. A page whose tab order depended on which campaign happened to be created
-  // first would look different to two brands running the same funnels.
+  // ONE canonical order, so a union assembled from any set of legs always reads the
+  // same way.
   const order = (tab: LeadTab | OutcomeTab): number => {
     const at = TAB_ORDER.indexOf(tab);
     return at === -1 ? TAB_ORDER.length : at;
@@ -465,7 +458,7 @@ const TAB_ORDER: readonly (LeadTab | OutcomeTab)[] = [
 
 /**
  * The realized-outcome tab descriptor, looked up by TAB rather than by a goal — a
- * brand's funnels can terminate in several, so the per-goal lookup cannot answer it.
+ * brand's campaigns can land on several outcomes, so the per-goal lookup cannot answer it.
  */
 export function outcomeTabDescriptor(
   tab: OutcomeTab,

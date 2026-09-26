@@ -90,10 +90,8 @@ describe("the leads board is wired, not merely written", () => {
     expect(page).toContain("leadsColumnPageQuery({");
     expect(page).not.toContain('leadsPageQuery({ tab: "outreach", search: wireSearch, page: 0 })');
     // The sizes are the producer's counts, added over the standings a column holds.
-    expect(page).toContain(
-      "getLeadStandingCounts(scope, standingCountsQuery(wireSearch, { byStage: boardByStage }))",
-    );
-    expect(page).toContain("boardColumnTotals(standingCounts, boardLayout.stageOf)");
+    expect(page).toContain("getLeadStandingCounts(scope, standingCountsQuery(wireSearch))");
+    expect(page).toContain("boardColumnTotals(standingCounts)");
     // An empty column costs no read once its size is known; before that every column is
     // read in parallel rather than waiting a round trip to find out.
     expect(page).toContain("columnTotals == null || columnTotals[column] > 0");
@@ -509,7 +507,7 @@ describe("the column blurbs name who is in them", () => {
     // The prop, not only the component: a board handed no scope would silently read
     // "campaign" on a brand page.
     expect(page).toContain("scopeNoun={boardScopeNoun}");
-    for (const noun of ['"campaign"', '"sales funnel"', '"offer"', '"brand"']) {
+    for (const noun of ['"campaign"', '"offer"', '"brand"']) {
       expect(page).toContain(noun);
     }
   });
@@ -589,8 +587,8 @@ describe("Close won is a column, and moving into it states a SALE", () => {
     );
   });
 
-  it("opens the value field with the lead's OWN funnel price, resolved by the page", () => {
-    // The board has no business reading the offer's declared funnels, and a per-card
+  it("opens the value field with the offer's own price, resolved by the page", () => {
+    // The board has no business reading the offer's economics, and a per-card
     // lookup in the form would be a second resolution of the same fact.
     expect(page).toContain("prefillUsdFor(lead)");
     expect(board).toContain("prefillUsd={pending.card.prefillUsd}");

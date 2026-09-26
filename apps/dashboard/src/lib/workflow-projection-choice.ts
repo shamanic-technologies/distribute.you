@@ -33,7 +33,7 @@ function serverOutcomeUnitCost(
   if (goal === "form_submissions") {
     return positiveOrNull(workflow.costPerFormSubmissionUsd ?? workflow.costPerOutcomeUsd);
   }
-  // website_purchase = the paid client itself (multi-step close funnel) → cost-per-paid-client.
+  // website_purchase = the paid client itself (multi-step close) → cost-per-paid-client.
   if (goal === "website_purchase") {
     return positiveOrNull(workflow.costPerCloseUsd ?? workflow.costPerOutcomeUsd);
   }

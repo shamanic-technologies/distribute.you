@@ -127,7 +127,7 @@ describe("call sites", () => {
     expect(read("components/campaigns/campaign-controls-trigger.tsx")).toContain("r.paymentDeclined");
     expect(read("components/campaigns/campaign-controls-modal.tsx")).toContain("row.paymentDeclined");
     expect(read("components/settings/campaign-settings-card.tsx")).toContain("isPaymentDeclinedStop(campaign)");
-    expect(read("components/settings/brand-sales-funnels-card.tsx")).toContain("declinedByChannel");
+    expect(read("components/settings/offer-campaigns-card.tsx")).toContain("row.paymentDeclined && !row.running");
   });
   it("every restart surface renders campaign-service's refusal", () => {
     expect(read("components/campaigns/campaign-controls-modal.tsx")).toContain("campaignStartRefusalMessage(err.status, err.body)");

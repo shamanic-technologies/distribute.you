@@ -16,7 +16,7 @@
 
 import { useState } from "react";
 import { InfoTooltip } from "@/components/visibility/metric-info";
-import { StageStatementForm } from "@/components/leads/lead-funnel-stage-section";
+import { StageStatementForm } from "@/components/leads/lead-stage-section";
 
 export const CAUSE_TIP =
   "Whether the outreach we run for you is what produced this deal. Say no when it came from something else you already do — a referral, an event, a pipeline you already had — even though we had also emailed them. A no costs you nothing: the deal still counts as yours and stays in your revenue. It only keeps its value out of the return we report on our own outreach, so that number is about what we actually caused.";
@@ -27,7 +27,7 @@ export function CloseWonForm({
   onSubmit,
   onCancel,
 }: {
-  /** The brand's own stated lifetime revenue for THIS lead's funnel, in whole dollars. */
+  /** The offer's own stated lifetime revenue, in whole dollars. */
   prefillUsd: number | null;
   busy: boolean;
   onSubmit: (input: {

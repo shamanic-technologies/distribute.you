@@ -14,18 +14,17 @@ import { BrandConversionRatesCard } from "@/components/settings/brand-conversion
  *
  * A brand is an identity: a name, a domain, a logo, a conversion-tracking
  * snippet. The name and the logo are editable here (Identity) — both are DERIVED
- * by default and were, until then, unfixable by the person they describe. What it promises and the funnels it is sold through belong to an
- * OFFER, so the Hormozi offer card and the Sales Funnels card moved to Offer
- * Settings (`.../offers/[offerId]/settings`), where they carry the offer and can
- * be answered once per proposition instead of once per brand.
+ * by default and were, until then, unfixable by the person they describe. What it
+ * promises, what a client is worth and the campaigns that sell it belong to an OFFER
+ * (`.../offers/[offerId]/settings`). The conversion rates stay here: a rate describes
+ * how the BRAND sells, one per leg.
  *
  * The domain card renders only on a brand created without a website, and it is the
- * ONLY place such a brand can ever attach one — every website-led funnel refuses to
- * be declared until it has.
+ * ONLY place such a brand can ever attach one.
  *
  * The sales-rep number is here for the same reason: WHO picks up when a buyer says
  * yes is a property of the brand, not of one campaign. A campaign is
- * (offer x funnel x channel), so per-campaign storage would be the same number
+ * (offer x leg x channel), so per-campaign storage would be the same number
  * retyped once per channel selling one offer, and a brand with no campaign yet
  * could declare nothing at all.
  */
@@ -58,8 +57,8 @@ export default function BrandSettingsPage() {
           page stays a plain list of GA surfaces. */}
       <BrandIntegrationsCard brandId={brandId} />
 
-      {/* How the brand converts, one rate per funnel arrow. A rate describes how the
-          BRAND sells, so it lives here and every offer selling the funnel shares it. */}
+      {/* How the brand converts, one rate per leg. A rate describes how the BRAND
+          sells, so it lives here and every offer shares it. */}
       <section id="conversion-rates" className="mb-10 scroll-mt-24">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Conversion rates</h2>
         <p className="mb-3 text-sm text-gray-500">

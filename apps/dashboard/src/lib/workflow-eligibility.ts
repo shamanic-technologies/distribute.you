@@ -1,7 +1,7 @@
 /**
  * WHICH WORKFLOWS THIS PAGE DOES NOT SHOW, AND WHY.
  *
- * A campaign sells one leg of one funnel, and the workflow serving it writes its email
+ * A campaign sells one leg, and the workflow serving it writes its email
  * with one LLM. Measured fleet-wide: the capability TIER of that model decides the
  * outcome, and the direction depends on what the leg sells — the cheap tier badly
  * underperforms on a leg selling a conversation, the strong and frontier tiers are
@@ -69,7 +69,7 @@ export interface EligibilityLadderRow {
    *  and `audience` are THIS campaign's own spend; `brand` and `crossOrg` are a wider pool
    *  standing in because this campaign has produced nothing through this workflow. */
   resolved: { grain?: string | null };
-  /** ABSENT on a funnel- or goal-keyed body. This page always names a leg, so in practice
+  /** ABSENT on a goal-keyed body. This page always names a leg, so in practice
    *  it is always there; absent means the producer stated nothing and nothing is hidden. */
   modelEligibility?: RowModelEligibility | null;
 }

@@ -1,53 +1,27 @@
 "use client";
 
 /**
- * WHICH OUTCOME A CAMPAIGN'S WORKFLOW SURFACES ARE PRICED BY — the campaign's own LEG,
- * never its funnel.
+ * WHICH OUTCOME A CAMPAIGN'S WORKFLOW SURFACES ARE PRICED BY — the campaign's own LEG.
  *
- * A campaign is (offer x funnel x channel) and it performs ONE arrow of that funnel, so
- * the outcome each workflow produced FOR IT is that arrow's own. The Workflows table
- * hardcoded the reply pair, so a visit-led campaign read `0 positive replies` on every
- * row while it was measurably buying website visits — the same trap #3880 closed on the
- * Audiences table, one surface over.
+ * A campaign is (offer x leg x channel), so the outcome each workflow produced FOR IT is
+ * the step its leg lands on. The leg is the one the campaign STATES, looked up in the
+ * platform catalogue (already polled on these pages, so naming it costs no request).
  *
- * The precedence is every other leg-aware surface's: the campaign's own STATED leg wins,
- * and the derivation from the channel's published legs is the fallback for campaigns
- * that predate the column. Both reads are already in flight on these pages (the campaign
- * row, and the platform leg catalogue behind `useFunnelLegIndex` / the acquisition-channel
- * catalogue projected off the features query), so naming the outcome costs no request.
- *
- * A campaign stating no funnel, a leg we cannot place, or a leg whose step has no
- * per-workflow figure all answer `"reply"` — exactly what these surfaces read before, so
- * nothing regresses to a column of dashes.
+ * A leg we cannot resolve, or one whose step has no per-workflow figure, answers
+ * `"reply"` — what these surfaces read before legs existed, so nothing regresses to a
+ * column of dashes.
  */
 
 import { useMemo } from "react";
-import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
-import { campaignFunnel } from "@/lib/campaign-funnel";
-import { campaignLegFor } from "@/lib/campaign-leg";
-import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
-import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
 import { legColumnPair } from "@/lib/campaign-leg-columns";
+import { useCampaignLeg } from "@/lib/use-leg-catalogue";
 import {
   workflowOutcomePairFor,
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
 import type { Campaign } from "@/lib/api";
 
-export function useCampaignOutcomePair(
-  campaign: Campaign | null | undefined,
-  featureSlug: string | null,
-): WorkflowOutcomePair {
-  const channels = useAcquisitionChannels();
-  const legIndex = useFunnelLegIndex();
-  return useMemo(() => {
-    const funnel = campaignFunnel(campaign?.funnelKey ?? null);
-    if (!funnel || !featureSlug) return workflowOutcomePairFor(null);
-    const stated = statedCampaignLeg(funnel, campaign?.legKey, legIndex);
-    const leg =
-      stated ??
-      campaignLegFor(funnel, acquisitionChannelForFeatureSlug(featureSlug, channels)?.legs);
-    return workflowOutcomePairFor(legColumnPair(leg));
-  }, [campaign?.funnelKey, campaign?.legKey, featureSlug, channels, legIndex]);
+export function useCampaignOutcomePair(campaign: Campaign | null | undefined): WorkflowOutcomePair {
+  const leg = useCampaignLeg(campaign);
+  return useMemo(() => workflowOutcomePairFor(legColumnPair(leg)), [leg]);
 }

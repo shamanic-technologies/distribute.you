@@ -2,7 +2,7 @@
 
 import { PAYMENT_DECLINED_LABEL, PAYMENT_DECLINED_STYLE } from "@/lib/payment-declined";
 import { useMemo, useState } from "react";
-import { getBrandFunnelBudgets, listCampaignsByBrand } from "@/lib/api";
+import { getBrandCampaignBudgets, listCampaignsByBrand } from "@/lib/api";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -33,7 +33,7 @@ import { Skeleton } from "@/components/skeleton";
  *
  * Brand grain used to pass billing's own served total (`GET
  * /brands/:id/daily-budget`) instead, and that figure is status-BLIND: billing
- * keys a ceiling on (funnel x channel x offer) and stores no status, so a paused
+ * keys a ceiling on (offer x leg x channel) and stores no status, so a paused
  * campaign's money stayed in it — a brand running one campaign at $50 beside one
  * paused at $10 read `$60 / day`. Neither producer can answer this alone, since
  * campaign-service holds the status and no money, and the join costs nothing
@@ -41,18 +41,15 @@ import { Skeleton } from "@/components/skeleton";
  * survives for the CAMPAIGN grain, which states its own configured ceiling —
  * the number Campaign Settings edits, beside a pill already saying it is paused.
  *
- * The offer-grain sum is the same shape as the funnels card's per-offer total,
- * and for the same reason: billing's per-funnel figure spans every offer selling
- * it, so it would name money a reader on one offer cannot see. That sum is honest only
- * because a ROW is a campaign IDENTITY (funnel x channel x offer) rather than a
- * stored campaign row: billing keys one ceiling on that triple, campaign-service
- * stores one campaign as many rows, and a list per row added the same ceiling up
- * once per row.
+ * That sum is honest only because a ROW is a campaign IDENTITY (offer x leg x
+ * channel) rather than a stored campaign row: billing keys one ceiling on that
+ * address, campaign-service stores one campaign as many rows, and a list per row
+ * added the same ceiling up once per row.
  */
 export function CampaignControlsTrigger({
   brandId,
   offerId,
-  funnelKey,
+  legKey,
   campaignId,
   totalCentsOverride,
   className = "",
@@ -60,12 +57,8 @@ export function CampaignControlsTrigger({
   brandId: string;
   /** Scope to one offer. Omitted at brand grain. */
   offerId?: string;
-  /**
-   * Scope to ONE sales funnel of that offer. Pair it with `offerId`: billing keys
-   * a ceiling on (funnel x channel x offer), so a bare funnel spans every offer
-   * selling it and would list a sibling offer's campaigns under this one's name.
-   */
-  funnelKey?: string | null;
+  /** Scope to ONE leg of that offer. */
+  legKey?: string | null;
   /** Scope to one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
   /**
@@ -80,8 +73,8 @@ export function CampaignControlsTrigger({
   const [open, setOpen] = useState(false);
 
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
-  const budgetsQ = useAuthQuery(["brandFunnelBudgets", brandId], () =>
-    getBrandFunnelBudgets(brandId),
+  const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () =>
+    getBrandCampaignBudgets(brandId),
   );
 
   const channels = useAcquisitionChannels();
@@ -89,10 +82,10 @@ export function CampaignControlsTrigger({
     () =>
       buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
         offerId,
-        funnelKey,
+        legKey,
         campaignId,
       }),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId],
+    [campaignsQ.data, budgetsQ.data, channels, offerId, legKey, campaignId],
   );
 
   // Reveal on SETTLE (resolved OR errored) — a failed read shows the honest
@@ -165,7 +158,6 @@ export function CampaignControlsTrigger({
         <CampaignControlsModal
           brandId={brandId}
           offerId={offerId}
-          funnelKey={funnelKey}
           campaignId={campaignId}
           onClose={() => setOpen(false)}
         />

@@ -4,12 +4,11 @@ import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-dec
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { goalForFunnelKey, normalizeSalesFunnelKey, salesFunnelByKey } from "@/lib/sales-funnels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
-  getBrandFunnelBudgets,
+  getBrandCampaignBudgets,
   getCampaign,
   getFeatureRevenue,
   fetchFeatureStats,
@@ -30,7 +29,7 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
-import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/funnel-share";
+import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/step-share";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { tenantBasePath } from "@/lib/offer-path";
 import {
@@ -38,9 +37,8 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
-import { campaignLegFor } from "@/lib/campaign-leg";
-import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
-import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
+import { useCampaignLeg } from "@/lib/use-leg-catalogue";
+import { goalForLeg } from "@/lib/goal-steps";
 import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { bestWorkflowFloor } from "@/lib/cost-per-outcome-asymptote";
@@ -134,25 +132,25 @@ export function CampaignOverviewPage() {
   const campaignPaused = campaign != null && !isRunningStatus(campaign.status);
 
   // This campaign's OWN daily ceiling, read-only. billing keys a ceiling on
-  // (org, brand, funnel, channel, offer), which is exactly what a campaign is, so
+  // (offer, leg, channel), which is exactly what a campaign is, so
   // this is the campaign's money and not a brand-wide sum wearing its name — the
   // figure that used to sit here and had to go. The key is the one Campaign
   // Settings and the Campaigns table already read, so all three share one request
   // and the header can never state a ceiling the settings page would not edit.
-  const { data: funnelBudgets } = useAuthQuery(
-    ["brandFunnelBudgets", brandId],
-    () => getBrandFunnelBudgets(brandId),
+  const { data: campaignBudgets } = useAuthQuery(
+    ["brandCampaignBudgets", brandId],
+    () => getBrandCampaignBudgets(brandId),
     { ...pollOptions },
   );
   const channels = useAcquisitionChannels();
   const campaignBudgetCentsValue = campaign
-    ? campaignBudgetCents(campaign, campaign.offerId ?? undefined, funnelBudgets, channels)
+    ? campaignBudgetCents(campaign, campaignBudgets, channels)
     : null;
 
   // The channel THIS campaign runs on — read off the campaign, never resolved from
   // the brand's sole feature.
   //
-  // A campaign IS (offer x funnel x channel), and an offer is sold through several
+  // A campaign IS (offer x leg x channel), and an offer is sold through several
   // channels at once. Asking the brand for "its" feature returns whichever single
   // one is GA, so every read on this page was scoped to a channel the open campaign
   // may not even run on: a campaign on the brand's second channel had its spend,
@@ -165,7 +163,7 @@ export function CampaignOverviewPage() {
   const featureSlug = campaign?.featureSlug ?? null;
   // Gated on the channel CATALOGUE, not on the brand's revenue-feature set: that set
   // decides which features get a revenue page on a BRAND-scoped surface, and this
-  // page is scoped to one campaign. A campaign sells a funnel through a channel, so
+  // page is scoped to one campaign. A campaign performs a leg through a channel, so
   // it has money to show whichever channel it is — and gating on the brand's GA
   // feature is what would blank this page for a campaign on any other one.
   const isChannelCampaign = acquisitionChannelForFeatureSlug(featureSlug, channels) !== null;
@@ -201,15 +199,15 @@ export function CampaignOverviewPage() {
   const outreachSeries = data?.sequences ?? data?.outreachContacted;
   const outreachTotal = outreachSeries?.total ?? null;
   // A lead is contacted ONCE and outreached as many times as its sequence has steps, so
-  // the campaign states both: `contactedRecipients` is the funnel's own base (the number
-  // its first rung converts from, so the card and the share below it agree by
-  // construction), and `outreachTotal` above is the undeduped volume that tracks spend.
-  const leadsContacted = data?.funnelSteps?.contactedRecipients ?? null;
+  // the campaign states both: `contactedRecipients` is the base its first step converts
+  // from (so the card and the share below it agree by construction), and `outreachTotal`
+  // above is the undeduped volume that tracks spend.
+  const leadsContacted = data?.stepWalk?.contactedRecipients ?? null;
   // What share of the contacted leads showed positive reply — SERVED, through the one
   // helper both this page and the Leads page read, so they cannot state the same
   // percentage two ways.
-  const positiveReplyShare = positiveReplySharePct(data?.funnelSteps);
-  const websiteVisitShare = websiteVisitSharePct(data?.funnelSteps);
+  const positiveReplyShare = positiveReplySharePct(data?.stepWalk);
+  const websiteVisitShare = websiteVisitSharePct(data?.stepWalk);
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
     const outreachByDay = countByDay(data?.sequences ?? data?.outreachContacted);
@@ -268,23 +266,13 @@ export function CampaignOverviewPage() {
     () => getBrandSalesEconomics(brandId),
     { enabled, ...pollOptions },
   );
-  // The campaign's OWN goal, from campaign-service — NOT the brand column, which is
-  // retired and would name a funnel this campaign never ran. Null when a campaign
-  // predates the field; the funnel it states is the richer answer anyway, and every
-  // step surface here already prefers it.
-  // The funnel a campaign states it sells — the richer answer, and what every step
-  // surface here prefers.
-  const campaignFunnelKey = campaign?.funnelKey ?? null;
+  // WHICH LEG this campaign performs, off the campaign row and the published catalogue
+  // — the same lookup every leg-aware surface makes. Both reads are already in flight.
+  const campaignLeg = useCampaignLeg(campaign);
+  // The campaign's OWN goal, from campaign-service; else the goal its leg lands on.
   const optimizationGoal: BrandOptimizationGoal = campaign?.goal
     ? optimizationGoalForRuntimeGoal(campaign.goal)
-    : campaignFunnelKey
-      ? goalForFunnelKey(campaignFunnelKey)
-      : "sales_meetings";
-  // What this campaign actually SELLS, read off the campaign row. It is the richer of the
-  // two fields: `sales_meetings` covers both meeting funnels, so the goal alone cannot say
-  // whether the funnel starts at a positive reply or at a click onto the site — and every
-  // step-labelled surface below (stat cards, activity bars, the Outcome line) needs to
-  // know. NULL on a pre-funnel campaign, which correctly falls back to the goal.
+    : (goalForLeg(campaignLeg) ?? "sales_meetings");
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
@@ -307,23 +295,6 @@ export function CampaignOverviewPage() {
   const trackerSetUp =
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
-  // WHICH ARROW this campaign performs, resolved with the SAME precedence every other
-  // leg-aware surface uses (the campaign's own stated leg, else the derivation from the
-  // channel's legs). A campaign sells one leg of its funnel, so ranking its audiences on
-  // the funnel's TERMINAL outcome prices an arrow it does not run — this card read "Cost
-  // per form submission" on a campaign buying website visits. Both reads are already in
-  // flight, so this costs no request.
-  const legIndex = useFunnelLegIndex();
-  const campaignFunnel = campaignFunnelKey
-    ? salesFunnelByKey(normalizeSalesFunnelKey(campaignFunnelKey))
-    : null;
-  const campaignLeg = useMemo(() => {
-    if (!campaignFunnel || !featureSlug) return null;
-    const stated = statedCampaignLeg(campaignFunnel, campaign?.legKey, legIndex);
-    if (stated) return stated;
-    const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
-    return campaignLegFor(campaignFunnel, channel?.legs);
-  }, [campaignFunnel, featureSlug, channels, campaign?.legKey, legIndex]);
   /**
    * WHERE THE COST CURVE IS HEADING — the recommended workflow's own campaign-grain price.
    *
@@ -348,18 +319,16 @@ export function CampaignOverviewPage() {
       "workflowRankLadder",
       brandId,
       campaign?.legKey ?? "none",
-      campaign?.legKey ? "none" : (campaignFunnelKey ?? "none"),
-      campaign?.legKey ? campaignId : "none",
+      campaignId,
     ],
     () =>
       getWorkflowRankLadder({
         featureSlug: featureSlug as string,
         brandId,
         leg: campaign?.legKey ?? null,
-        funnel: campaign?.legKey ? null : campaignFunnelKey,
         campaignId,
       }),
-    { enabled: Boolean(featureSlug && brandId && campaignId), retry: false },
+    { enabled: Boolean(featureSlug && brandId && campaignId && campaign?.legKey), retry: false },
   );
 
   const costFloor = useMemo(() => {
@@ -420,7 +389,7 @@ export function CampaignOverviewPage() {
       brandId,
       featureSlug,
       "overview-outcome",
-      campaignFunnelKey ?? optimizationGoal,
+      campaign?.legKey ?? optimizationGoal,
       monthlyBudgetUsd,
       economicsData?.salesEconomics?.updatedAt ?? "no-economics",
     ],
@@ -429,12 +398,9 @@ export function CampaignOverviewPage() {
         featureSlug: featureSlug!,
         brandId,
         objective: salesObjectiveForOptimizationGoal(optimizationGoal),
-        // A campaign runs exactly ONE funnel, so it states it — same param the
-        // audience-stats read above already sends. Without it the projection is
-        // priced from BOTH channels at once (`clicks·visitToMeeting +
-        // replies·replyToMeeting`), which on a conversation-led campaign forecasts
-        // the website funnel it does not sell.
-        ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : {}),
+        // A campaign performs exactly ONE leg, so it states it. Without it the
+        // projection is priced from every path at once.
+        ...(campaign?.legKey ? { leg: campaign.legKey } : {}),
         budgetUsd: monthlyBudgetUsd ?? undefined,
       }),
     {
@@ -495,16 +461,14 @@ export function CampaignOverviewPage() {
   // features-service `?campaignId=` (via api-service forward). Keyed by campaignId so
   // it's a distinct cache entry from the brand-wide Top-audiences card.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, campaignFunnelKey ?? audienceStatsGoal, "campaign", campaignId],
+    ["featureAudienceStats", featureSlug, brandId, campaign?.legKey ?? audienceStatsGoal, "campaign", campaignId],
     // No `limit` — the server would pre-pick its top 3 by ITS OWN sortMetric, a different
     // column than this card shows. The card sorts + slices on the brand's metric instead.
-    // A campaign sells exactly ONE funnel and states which, so it names it: the goal
-    // cannot, since `reply_meeting` and `visit_meeting` both answer to `meetingBooked`
-    // and would price a reply-driven funnel against clicks it never buys. A campaign that
-    // predates the funnel keeps the goal.
+    // A campaign performs exactly ONE leg and states which, so it names it. A campaign
+    // naming none keeps the goal.
     () => fetchFeatureAudienceStats(featureSlug!, {
       brandId,
-      ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : { goal: audienceStatsGoal }),
+      ...(campaign?.legKey ? { leg: campaign.legKey } : { goal: audienceStatsGoal }),
       campaignId,
     }),
     { enabled, ...pollOptions },
@@ -558,15 +522,9 @@ export function CampaignOverviewPage() {
   const basePath = tenantBasePath(orgId, brandId, offerId);
   const campaignsPath = `${basePath}/campaigns`;
 
-  // The BRAND-level daily-budget read below is the outcome forecast's, and only
-  // that: billing answers it with the SUM of every funnel's ceiling, which is the
-  // right number for "what does the money buy per month" and the wrong one to
-  // print under one campaign's name. The header's ceiling is a different read at
-  // a different grain — billing's (offer x funnel x channel) row, this campaign's
-  // own — and the two must not be confused for each other.
-  //
-  // campaign-service's own per-campaign budget column stays out of both: it is a
-  // mirror nothing edits, so it is machinery rather than a number for a screen.
+  // The BRAND-level running budget above is the outcome forecast's, and only that. The
+  // header's ceiling is a different read at a different grain — billing's (offer x leg
+  // x channel) row, this campaign's own.
 
   if (!campaignLoading && !campaign) {
     return (
@@ -593,54 +551,11 @@ export function CampaignOverviewPage() {
     );
   }
 
-  // This page states NO campaign identity of its own — there is no heading here.
-  // The top bar (HeaderPageContext) already names the open campaign as what it
-  // IS, the sales funnel it buys × the acquisition channel it buys through, with
-  // both marks, off the same `["campaign", id]` query this page polls. An h1
-  // repeating it printed one statement twice, a few pixels apart, which is the
-  // duplication this repo treats as a bug — the same reason the `Campaigns /`
-  // back-link went, the bar already links back to the list. A campaign is named
-  // ONCE per screen, in the bar, because that is the part that survives every
-  // sub-route of the campaign rather than only its Overview.
-  //
-  // There is NO run-status bar here any more. That bar stated three BRAND-level
-  // things — the retired optimization goal, the brand pause flag and the brand's
-  // daily budget — on a page scoped to ONE campaign and ONE funnel: the goal word
-  // cannot even name which of the two meeting funnels this is, and its dollar
-  // figure was billing's SUM of every funnel's ceiling rather than this
-  // campaign's. What replaced it is neither of those: billing now keys a ceiling
-  // on (offer x funnel x channel), which is exactly what a campaign is, so the
-  // figure on the right is the campaign's own money and the pill is the
-  // campaign's own status. Nothing here is editable, and campaign-service's own
-  // budget column is still nowhere on the page.
-  //
-  // The surface is GA, so there is no maturity badge here nor on the nav entry.
-  //
-  // What the page DOES state, on the SAME ROW as the section heading and to its
-  // right, is this campaign's own daily ceiling and its own status. It rides the
-  // heading through `RevenueOverviewSection`'s `headerAction` slot rather than
-  // standing as a band of its own above it: a full-width line over the title
-  // reads as a second heading, and this is an attribute of what the heading names
-  // rather than a statement one level up from it. Neither duplicates the top bar:
-  // the bar names WHICH campaign is open, this says whether it is running and what
-  // it may spend while it does. The ceiling is billing's (offer x funnel x channel) row, which
-  // is exactly what a campaign is, so it is this campaign's money rather than the
-  // brand-wide sum the old run-status bar printed.
-  //
-  // It is also the way IN to changing both, through the shared controls modal —
-  // the same one the brand and offer Overviews open, scoped here to one row. That
-  // is not the old editor-in-the-header coming back: the header renders no field
-  // and holds no mutation, and the modal writes through the SAME narrowing
-  // (`campaignBudgetScope` / `campaignSavedCents`) that Offer Settings and
-  // Campaign Settings read. Several windows onto one number are fine; a second
-  // narrowing is not, which is why that rule lives in `lib/campaign-budget.ts`
-  // alone.
-  //
-  // Status and budget stay two INDEPENDENT answers. Pausing flips
-  // campaign-service's own status and leaves the ceiling untouched, so the amount
-  // survives and restarting is one click — stopping a campaign by dropping its
-  // ceiling to zero would throw the figure away, and billing's per-funnel floor
-  // would then refuse to put a grandfathered campaign back where it was.
+  // This page states NO campaign identity of its own: the top bar names the open
+  // campaign. What rides the section heading is this campaign's own ceiling (billing's
+  // offer x leg x channel row) and its own status, and it is the way into the shared
+  // controls modal. Status and budget stay two INDEPENDENT answers: pausing leaves the
+  // ceiling untouched, so restarting is one click.
   const CampaignStatusLine = campaign ? (
     <CampaignControlsTrigger
       brandId={brandId}
@@ -706,7 +621,7 @@ export function CampaignOverviewPage() {
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
         optimizationGoal={optimizationGoal}
-        funnelKey={campaignFunnelKey}
+        leg={campaignLeg}
         trackerSetUp={trackerSetUp}
         visitToMeetingPct={visitToMeetingPct}
         visitToSignupPct={visitToSignupPct}
@@ -722,17 +637,12 @@ export function CampaignOverviewPage() {
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
         // Today's spend gets its CEILING beside it, and the ceiling is THIS
-        // campaign's own — billing's (offer x funnel x channel) row, the same
-        // figure the header states and Campaign Settings edits. The brand and
-        // offer Overviews state none for the opposite reason: a brand's total is
-        // the SUM of every funnel, so beside one offer's spend it would be a
-        // denominator of a wider scope than the numerator. A campaign IS the
-        // triple billing keys, so here the pair is one scope, and it is what
-        // makes "$50" readable as "$50 of $50" rather than a bare figure.
+        // campaign's own — billing's (offer x leg x channel) row, the same figure
+        // the header states and Campaign Settings edits.
         dailyBudgetCents={campaignBudgetCentsValue}
         budgetNote={
           campaignBudgetCentsValue == null
-            ? "This campaign states no funnel or channel, so billing has no ceiling keyed to it: this is what it spent today, with nothing of its own to compare it against."
+            ? "This campaign states no leg or channel, so billing has no ceiling keyed to it: this is what it spent today, with nothing of its own to compare it against."
             : undefined
         }
         brandId={brandId}
@@ -755,7 +665,7 @@ export function CampaignOverviewPage() {
               audiences={audienceStatsRevealed ? displayAudiences : undefined}
               pending={!audienceStatsRevealed}
               metric={audienceStatsMetric}
-              // One campaign sells one funnel, so its own step IS what it buys —
+              // One campaign performs one leg, so its own step IS what it buys —
               // the per-outcome cost stays here and is dropped at brand level.
               campaignScoped
               campaignId={campaignId}
@@ -780,7 +690,7 @@ export function CampaignOverviewPage() {
             spend={revenueRevealed ? data?.spend : null}
             pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
-            funnelKey={campaignFunnelKey}
+            leg={campaignLeg}
             outreachOverride={outreachTotal}
             contactedOverride={leadsContacted}
             outreachLabel="Outreaches"

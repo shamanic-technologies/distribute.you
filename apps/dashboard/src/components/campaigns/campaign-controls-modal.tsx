@@ -5,11 +5,10 @@ import { PaymentDeclinedNotice } from "@/components/billing/payment-declined-not
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
-  getBrandFunnelBudgets,
+  getBrandCampaignBudgets,
   listCampaignsByBrand,
-  saveBrandFunnelBudget,
+  saveCampaignBudget,
   setCampaignStatus,
-  type BrandFunnelBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
@@ -20,17 +19,12 @@ import {
   controlWriteErrorMessage,
   controlsDiff,
   diffSummary,
-  groupControlRowsByFunnel,
-  groupHeadingState,
   hasChanges,
-  pairKey,
-  projectedPairTotalsUsd,
+  projectedChannelTotalsUsd,
   draftRunning,
   rollupStatus,
   type ControlDraft,
   type ControlRow,
-  type ControlRowGroup,
-  type OfferableChannel,
 } from "@/lib/campaign-controls";
 import { useChannelMinimums } from "@/lib/use-channel-minimums";
 import {
@@ -39,7 +33,8 @@ import {
   channelMinimumCents,
 } from "@/lib/channel-minimums";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor } from "@/lib/legs";
 import { Skeleton } from "@/components/skeleton";
 
 /**
@@ -51,7 +46,7 @@ import { Skeleton } from "@/components/skeleton";
  * A grain that edited an aggregate would have to split it back across the
  * campaigns, and no split the customer did not state is honest.
  *
- * A row is a campaign as the CUSTOMER knows it — (funnel x channel x offer) —
+ * A row is a campaign as the CUSTOMER knows it — (leg x channel x offer) —
  * never one campaign-service row. campaign-service mints a fresh row on every
  * workflow change and keeps only the newest `ongoing`, so one campaign is stored
  * as many; listing them per row showed the same campaign dozens of times, each
@@ -61,11 +56,11 @@ import { Skeleton } from "@/components/skeleton";
  *
  *   - a toggle, which flips campaign-service's own status. It costs nothing to
  *     reverse and leaves the ceiling untouched, so the amount survives a pause.
- *   - a daily budget, billing's (offer x funnel x channel) row.
+ *   - a daily budget, billing's (offer x leg x channel) row.
  *
  * Collapsing the two into one field (pause = set it to zero) is what this
- * replaces: zero throws the amount away, and billing's per-funnel floor only
- * lets a funnel funded under its minimum be KEPT or RAISED — so a campaign
+ * replaces: zero throws the amount away, and billing's per-channel floor only
+ * lets a channel funded under its minimum be KEPT or RAISED — so a campaign
  * grandfathered under the floor, stopped that way, could never be restarted at
  * the figure it was running.
  *
@@ -75,51 +70,21 @@ import { Skeleton } from "@/components/skeleton";
  * The writes are a FAN-OUT (there is no bulk endpoint), so a failure is reported
  * per row and the modal stays open. It never claims a success it does not have.
  */
-/** Stable, so the memo above does not re-run on every render of a caller that omits it. */
-const EMPTY_OFFERABLE: readonly OfferableChannel[] = [];
-
 export function CampaignControlsModal({
   brandId,
   offerId,
-  funnelKey,
   featureSlug,
   campaignId,
   prefillBudgetUsd,
-  offerable = EMPTY_OFFERABLE,
   onClose,
 }: {
   brandId: string;
   /** Scope to one offer's campaigns. Omitted at brand grain. */
   offerId?: string;
-  /**
-   * Scope to ONE sales funnel of that offer. Pair it with `offerId`: billing keys
-   * a ceiling on (funnel x channel x offer), so a bare funnel spans every offer
-   * selling it and would list a sibling offer's campaigns under this one's name.
-   */
-  funnelKey?: string | null;
-  /**
-   * Scope to ONE acquisition channel of that funnel.
-   *
-   * The funnel board opens this from a card, and a card is one channel under one
-   * arrow — so listing every channel of the funnel answers a question the reader did
-   * not ask and offers a budget field and a toggle per sibling they never clicked.
-   *
-   * NOT `campaignId`: the board's whole job is to offer channels that have no
-   * campaign yet, and those have no id to scope on. Paired with `offerId` and
-   * `funnelKey` it names the triple billing keys a ceiling on, which is exactly one
-   * row.
-   */
+  /** Scope to ONE acquisition channel of that offer. */
   featureSlug?: string | null;
   /** Scope to exactly one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
-  /**
-   * Channels the caller says a customer may fund and has not.
-   *
-   * Empty at every grain that lists what already runs. The funnel board supplies it
-   * because a channel with no campaign is invisible to a campaign-derived list, and
-   * that is exactly the channel someone opens the board to switch on.
-   */
-  offerable?: readonly OfferableChannel[];
   /**
    * Open with the daily budget already set to this figure, in whole dollars.
    *
@@ -140,9 +105,10 @@ export function CampaignControlsModal({
   // Both keys are byte-equal to the ones the Campaigns table, Offer Settings and
   // Campaign Settings already read, so opening this costs no new request.
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
-  const budgetsQ = useAuthQuery(["brandFunnelBudgets", brandId], () =>
-    getBrandFunnelBudgets(brandId),
+  const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () =>
+    getBrandCampaignBudgets(brandId),
   );
+  const catalogue = useLegCatalogue();
 
   // A figure offered for ONE campaign has no row to land on at a wider grain.
   const prefill = campaignId != null ? prefillBudgetUsd : undefined;
@@ -154,33 +120,10 @@ export function CampaignControlsModal({
         campaignsQ.data?.campaigns ?? [],
         budgetsQ.data,
         channels,
-        { offerId, funnelKey, featureSlug, campaignId },
-        offerable,
+        { offerId, featureSlug, campaignId },
       ),
-    [
-      campaignsQ.data,
-      budgetsQ.data,
-      channels,
-      offerId,
-      funnelKey,
-      featureSlug,
-      campaignId,
-      offerable,
-    ],
+    [campaignsQ.data, budgetsQ.data, channels, offerId, featureSlug, campaignId],
   );
-
-  /**
-   * A campaign is named for the LEG it performs, which is an ARROW of a funnel and
-   * not the funnel itself — so a flat list states what each campaign buys and never
-   * what funnel it buys it for. Every row therefore sits under the sales funnel it
-   * sells.
-   *
-   * Suppressed when the modal is already scoped to one funnel: that page names the
-   * funnel above the control that opened this, and saying it twice on one screen is
-   * chrome rather than clarity.
-   */
-  const groups = useMemo(() => groupControlRowsByFunnel(rows), [rows]);
-  const showFunnelHeadings = !funnelKey;
 
   // SEEDED from the queries and RE-SEEDED whenever either payload is a different
   // object than the one the drafts were built from — never a once-per-mount
@@ -217,28 +160,18 @@ export function CampaignControlsModal({
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  // What billing funds each (funnel, channel) PAIR at, across every offer — the
-  // grain the channel's floor binds. An older billing serving no per-pair rows
-  // meant one channel per funnel, which is what the funnel figure has always
-  // stood for, so it stands in for the pair there.
-  const savedPairCents = useMemo(() => {
+  // What billing funds each CHANNEL at across the brand — the grain its floor binds.
+  const savedChannelCents = useMemo(() => {
     const out: Record<string, number> = {};
-    const pairs = budgetsQ.data?.channels;
-    if (pairs === undefined) {
-      for (const row of rows) {
-        if (!row.scope) continue;
-        const funnel = budgetsQ.data?.funnels.find((f) => f.funnelKey === row.scope!.def.key);
-        out[pairKey(row.scope.def.key, row.scope.featureSlug)] = funnel?.dailyBudgetCents ?? 0;
-      }
-      return out;
+    for (const c of budgetsQ.data?.campaigns ?? []) {
+      out[c.featureSlug] = (out[c.featureSlug] ?? 0) + (c.dailyBudgetCents > 0 ? c.dailyBudgetCents : 0);
     }
-    for (const c of pairs) out[pairKey(c.funnelKey, c.featureSlug)] = c.dailyBudgetCents;
     return out;
-  }, [budgetsQ.data, rows]);
+  }, [budgetsQ.data]);
 
   const projected = useMemo(
-    () => projectedPairTotalsUsd(rows, drafts, savedPairCents),
-    [rows, drafts, savedPairCents],
+    () => projectedChannelTotalsUsd(rows, drafts, savedChannelCents),
+    [rows, drafts, savedChannelCents],
   );
 
   // Each channel's own published daily operating cost. No floor for a channel is
@@ -250,7 +183,7 @@ export function CampaignControlsModal({
   const summary = diffSummary(rows, diff);
   const restarting = diff.statusWrites.some((w) => w.activate);
 
-  // A row whose funnel would land under its floor blocks Confirm. billing holds
+  // A row whose channel would land under its floor blocks Confirm. billing holds
   // the same rule and its 400 is what decides; this is here to make typing
   // pleasant, not to be the source of truth.
   const belowFloor = useMemo(
@@ -258,15 +191,15 @@ export function CampaignControlsModal({
       rows
         .filter((row) => {
           if (!row.scope) return false;
-          const key = pairKey(row.scope.def.key, row.scope.featureSlug);
+          const key = row.scope.featureSlug;
           return channelBudgetBelowMinimum(
-            channelMinimumCents(minimums, row.scope.featureSlug),
+            channelMinimumCents(minimums, key),
             projected[key] ?? 0,
-            savedPairCents[key] ?? 0,
+            savedChannelCents[key] ?? 0,
           );
         })
         .map((r) => r.rowId),
-    [rows, projected, savedPairCents, minimums],
+    [rows, projected, savedChannelCents, minimums],
   );
 
   const blocked = diff.invalidRows.length > 0 || belowFloor.length > 0;
@@ -294,36 +227,10 @@ export function CampaignControlsModal({
     });
   }
 
-  /**
-   * One decision for every campaign of ONE funnel.
-   *
-   * The heading's switch is the rollup of the rows under it, so flipping it sets
-   * them all rather than storing a state of its own — there is nothing at funnel
-   * grain to store. With a single campaign under the funnel the two switches are
-   * the same switch, which is why either one moves the other.
-   */
-  function setGroupRunning(rowIds: string[], running: boolean) {
-    setTouched((prev) => {
-      const next = new Set(prev);
-      for (const id of rowIds) next.add(id);
-      return next;
-    });
-    setDrafts((prev) => {
-      const next = { ...prev };
-      for (const row of rows) {
-        if (!rowIds.includes(row.rowId)) continue;
-        next[row.rowId] = { ...(next[row.rowId] ?? draftFor(row)), running };
-      }
-      return next;
-    });
-  }
-
   async function confirm() {
     setSaving(true);
     setFailures({});
     const nextFailures: Record<string, string> = {};
-    let latestBudgets: BrandFunnelBudgets | null = null;
-
     // Sequential rather than parallel: the budget writes all address the same
     // brand row set and billing answers with the WHOLE set each time, so racing
     // them would leave whichever landed last in the cache regardless of order.
@@ -353,16 +260,20 @@ export function CampaignControlsModal({
     }
 
     for (const write of diff.budgetWrites) {
+      if (!write.offerId) {
+        // billing keys a ceiling on the offer too; a campaign naming none has no
+        // address to write to, and sending one would be refused.
+        nextFailures[write.rowId] = controlWriteErrorMessage(400, "budget");
+        continue;
+      }
       try {
-        latestBudgets = await saveBrandFunnelBudget(
+        await saveCampaignBudget(
           brandId,
-          write.funnelKey,
+          { offerId: write.offerId, legKey: write.legKey, featureSlug: write.featureSlug },
           write.cents,
-          write.featureSlug,
-          write.offerId ?? undefined,
         );
       } catch (err) {
-        console.error("[dashboard] saveBrandFunnelBudget failed", err);
+        console.error("[dashboard] saveCampaignBudget failed", err);
         nextFailures[write.rowId] = controlWriteErrorMessage(
           err instanceof ApiError ? err.status : null,
           "budget",
@@ -370,12 +281,6 @@ export function CampaignControlsModal({
       }
     }
 
-    // Write what billing answered into the cache the page reads, THEN invalidate
-    // the lists — a bare invalidate would leave a failed refetch showing the
-    // pre-save figures.
-    if (latestBudgets) {
-      queryClient.setQueryData(["brandFunnelBudgets", brandId], latestBudgets);
-    }
     // Every figure that states what a campaign may spend, or whether it runs at all —
     // `brandSpendableBudget` above all, which is the join of billing's ceilings to
     // campaign-service's statuses and is what the header money reads.
@@ -393,7 +298,7 @@ export function CampaignControlsModal({
     onClose();
   }
 
-  /** One campaign's line, the same at every grain and under every funnel heading. */
+  /** One campaign's line, the same at every grain. */
   function renderRow(row: ControlRow) {
     const draft = drafts[row.rowId] ?? draftFor(row);
     // What the switch reads once the typed budget is taken into account: a campaign
@@ -402,7 +307,7 @@ export function CampaignControlsModal({
     // while the write pauses it.
     const running = draftRunning(row, draft);
     const zeroed = draft.running && !running;
-    const key = row.scope ? pairKey(row.scope.def.key, row.scope.featureSlug) : null;
+    const key = row.scope?.featureSlug ?? null;
     const minimumCents = channelMinimumCents(minimums, row.scope?.featureSlug);
     const floorHit = belowFloor.includes(row.rowId);
     const invalid = diff.invalidRows.includes(row.rowId);
@@ -414,9 +319,9 @@ export function CampaignControlsModal({
               the campaign the way the row you clicked to get here named it. */}
           <div className="min-w-0 text-sm text-gray-800">
             <CampaignIdentity
-              funnel={row.scope?.def ?? null}
               featureSlug={row.scope?.featureSlug ?? null}
               legKey={row.legKey}
+              leg={legFor(catalogue, row.legKey)}
             />
           </div>
           <div className="flex items-center gap-3">
@@ -462,20 +367,14 @@ export function CampaignControlsModal({
         </div>
         {!row.scope && (
           <p className="mt-1.5 text-xs text-gray-500">
-            This campaign predates the sales funnels, so it has no budget of its own. It
-            can still be paused and restarted.
+            This campaign names no leg, so it has no budget of its own. It can still be
+            paused and restarted.
           </p>
         )}
         {zeroed && (
           <p className="mt-1.5 text-xs text-gray-500">
             A daily budget of $0 pauses this campaign: it is held on the funding gate
             and never sends. Give it an amount to run it again.
-          </p>
-        )}
-        {row.campaignId === null && !running && (
-          <p className="mt-1.5 text-xs text-gray-500">
-            Nothing runs on this channel yet. Funding it is what starts it, and the
-            campaign appears within a few minutes.
           </p>
         )}
         {invalid && (
@@ -488,7 +387,7 @@ export function CampaignControlsModal({
             {channelBudgetFloorMessage(
               row.scope.channelName,
               minimumCents,
-              savedPairCents[key] ?? 0,
+              savedChannelCents[key] ?? 0,
             )}
           </p>
         )}
@@ -506,11 +405,8 @@ export function CampaignControlsModal({
   }
 
   const rollup = rollupStatus(rows);
-  const scopeWord = campaignId ? "campaign" : funnelKey ? "funnel" : offerId ? "offer" : "brand";
-  // One channel of one funnel is one campaign as a customer knows it, so it reads the
-  // singular — "Campaigns of this funnel" over a single row states a list that is not
-  // there and invites a reader to look for the siblings it is deliberately not showing.
-  const singleCampaign = campaignId != null || featureSlug != null;
+  const scopeWord = campaignId ? "campaign" : offerId ? "offer" : "brand";
+  const singleCampaign = campaignId != null;
 
   return (
     <div
@@ -579,39 +475,9 @@ export function CampaignControlsModal({
                 </div>
               )}
 
-              <div className="space-y-3">
-                {groups.map((group) => (
-                  <div
-                    key={group.funnel?.key ?? "no-funnel"}
-                    className={
-                      showFunnelHeadings
-                        ? "overflow-hidden rounded-lg border border-gray-200"
-                        : undefined
-                    }
-                  >
-                    {showFunnelHeadings && (
-                      /* The parent this campaign belongs to, stating what its rows add
-                         up to. A background tint and a full-perimeter 1px border, never
-                         a side accent. */
-                      <FunnelHeading
-                        group={group}
-                        drafts={drafts}
-                        onRunningChange={(running) =>
-                          setGroupRunning(
-                            group.rows.map((r) => r.rowId),
-                            running,
-                          )
-                        }
-                      />
-                    )}
-                    <ul
-                      className={`divide-y divide-gray-100 ${showFunnelHeadings ? "px-3" : ""}`}
-                    >
-                      {group.rows.map((row) => renderRow(row))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+              <ul className="divide-y divide-gray-100">
+                {rows.map((row) => renderRow(row))}
+              </ul>
             </>
           )}
         </div>
@@ -645,64 +511,6 @@ export function CampaignControlsModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * The funnel a group of campaigns sells, with the two things that group ADDS UP to.
- *
- * Neither figure is written here. The daily budget is READ-ONLY on purpose: billing
- * keys a ceiling on (funnel x channel x offer), so the only thing a customer can
- * fund is a campaign, and a funnel-level field would have to split its figure back
- * across them. It tracks the fields below it as they are typed, so the parent moves
- * the moment a child does.
- *
- * The switch DOES write, because pausing is a status and every campaign carries its
- * own — flipping the heading sets each of them. It reads OFF only once every campaign
- * under it is off, which is the same rule the scope pill states, so a funnel with one
- * live campaign never reads as stopped.
- */
-function FunnelHeading({
-  group,
-  drafts,
-  onRunningChange,
-}: {
-  group: ControlRowGroup;
-  drafts: Record<string, ControlDraft>;
-  onRunningChange: (running: boolean) => void;
-}) {
-  const { running, budgetUsd } = groupHeadingState(group.rows, drafts);
-  const name = group.funnel?.name ?? "No sales funnel";
-  const fundable = group.rows.some((r) => r.scope);
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-3 py-2">
-      <div className="flex min-w-0 items-center gap-2">
-        {group.funnel && <SalesFunnelMark def={group.funnel} size="xs" />}
-        <span className="truncate text-xs font-medium text-gray-600">{name}</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={running}
-          aria-label={running ? `Pause every campaign of ${name}` : `Restart every campaign of ${name}`}
-          onClick={() => onRunningChange(!running)}
-          className={`relative h-5 w-9 shrink-0 rounded-full transition ${
-            running ? "bg-green-500" : "bg-gray-300"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${
-              running ? "left-[18px]" : "left-0.5"
-            }`}
-          />
-        </button>
-        {/* Whole dollars, like every daily budget in the app, and never an input. */}
-        <span className="text-xs tabular-nums text-gray-500">
-          {fundable ? `$${budgetUsd.toLocaleString("en-US")} / day` : "\u2014"}
-        </span>
       </div>
     </div>
   );

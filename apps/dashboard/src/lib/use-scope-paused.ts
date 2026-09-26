@@ -28,22 +28,15 @@ export function useScopePaused(
   brandId: string,
   {
     offerId,
-    funnelKey,
     campaignId,
     enabled = true,
   }: {
     offerId?: string;
-    /**
-     * Scope to ONE sales funnel. Pair it with `offerId`: billing keys a ceiling on
-     * (funnel x channel x offer), so a bare funnel spans every offer selling it and
-     * would answer for a sibling offer's campaigns.
-     */
-    funnelKey?: string | null;
     campaignId?: string;
     enabled?: boolean;
   } = {},
 ): { paused: boolean; settled: boolean } {
-  const { rows, settled } = useScopeControlRows(brandId, { offerId, funnelKey, campaignId, enabled });
+  const { rows, settled } = useScopeControlRows(brandId, { offerId, campaignId, enabled });
   return { paused: settled ? scopeIsPaused(rows) : false, settled };
 }
 
@@ -76,12 +69,10 @@ function useScopeControlRows(
   brandId: string,
   {
     offerId,
-    funnelKey,
     campaignId,
     enabled = true,
   }: {
     offerId?: string;
-    funnelKey?: string | null;
     campaignId?: string;
     enabled?: boolean;
   },
@@ -95,10 +86,9 @@ function useScopeControlRows(
     () =>
       buildControlRows(campaignsQ.data?.campaigns ?? [], undefined, channels, {
         offerId,
-        funnelKey,
-        campaignId,
+            campaignId,
       }),
-    [campaignsQ.data, channels, offerId, funnelKey, campaignId],
+    [campaignsQ.data, channels, offerId, campaignId],
   );
 
   const settled = campaignsQ.data !== undefined || campaignsQ.isError;

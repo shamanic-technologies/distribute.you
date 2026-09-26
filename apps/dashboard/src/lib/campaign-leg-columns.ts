@@ -1,23 +1,19 @@
 // WHICH per-audience columns a CAMPAIGN's own leg earns.
 //
-// A campaign is (offer x funnel x channel) and it performs ONE arrow of that funnel —
-// cold email puts a lead onto the visit-led funnel and does nothing else; a human fills
-// the form. So a campaign-scoped surface that renders the whole FUNNEL's columns states
-// arrows this campaign never runs, each of which has its own page worked by whoever
-// performs it. That is the same mistake the lead panel's Funnel-progress section made
-// before it moved onto the leg, one surface over: the funnel is the campaign's context,
-// the leg is its job.
+// A campaign is (offer x leg x channel) and it performs ONE leg, so a campaign-scoped
+// surface renders the columns of the step that leg LANDS ON and nothing else: cold email
+// puts a lead on a positive reply or a website visit and does nothing after it.
 //
-// This module is the map from the step a leg LANDS ON to the column pair that prices it,
-// and to the cost column a ranking surface should lead with. It introduces no vocabulary
-// of its own — the tokens are the funnel catalogue's `stepKeys` (the producer's spelling,
-// which is what `CampaignLeg` carries) and the metrics are `strategy-model`'s.
+// This module is the map from that step to the column pair that prices it, and to the
+// cost column a ranking surface should lead with. The step tokens are the producer's.
 //
-// Alias-free on purpose (both imports are type-only and erase at build) so this module
+// Alias-free on purpose (the import is type-only and erases at build) so this module
 // carries REAL unit tests. Keep it that way.
 
-import type { CampaignLeg } from "./campaign-leg";
 import type { AudienceRankMetric } from "./strategy-model";
+
+/** The one fact about a leg this module reads: the step it lands on. */
+export type LandingLeg = { toKey: string };
 
 /**
  * The per-audience column PAIR a step is priced by — a count and its cost.
@@ -30,15 +26,15 @@ import type { AudienceRankMetric } from "./strategy-model";
 export type LegColumnPair = "reply" | "visit" | "signup" | "formSubmission" | "sale";
 
 const PAIR_BY_STEP_KEY: Readonly<Record<string, LegColumnPair>> = {
-  // The producer calls the reply funnel's first step `conversation`; the customer reads
-  // "Positive reply". Matching is by TOKEN for that reason — a key is not a sentence.
+  // The producer calls this step `conversation`; the customer reads "Positive reply".
+  // Matching is by TOKEN for that reason — a key is not a sentence.
   conversation: "reply",
   website_visit: "visit",
   signup: "signup",
   // ONE form step since 2026-09-18 (a form is a form, on the site or in the ad).
   // The two spellings it replaced are read as it, so a leg off a body written
   // before the merge still prices; this module imports nothing at runtime, so
-  // the alias is inlined rather than read off `funnel-step-marks`.
+  // the alias is inlined rather than read off `step-marks`.
   form_submitted: "formSubmission",
   form_filled: "formSubmission",
   lead_form_submitted: "formSubmission",
@@ -57,13 +53,10 @@ const METRIC_BY_PAIR: Readonly<Record<LegColumnPair, AudienceRankMetric>> = {
 };
 
 /**
- * The column pair this leg earns, or null when it earns none.
- *
- * Keyed on `toKey` — the step the arrow LANDS ON — because that is what the campaign
- * buys. An entry leg buys the funnel's first step; an internal one buys the step it
- * converts into.
+ * The column pair this leg earns, or null when it earns none. Keyed on `toKey`, the
+ * step the leg LANDS ON, because that is what the campaign buys.
  */
-export function legColumnPair(leg: CampaignLeg | null | undefined): LegColumnPair | null {
+export function legColumnPair(leg: LandingLeg | null | undefined): LegColumnPair | null {
   if (!leg) return null;
   return PAIR_BY_STEP_KEY[leg.toKey] ?? null;
 }
@@ -76,7 +69,7 @@ export function legColumnPair(leg: CampaignLeg | null | undefined): LegColumnPai
  * back to `audienceRankMetric`, the goal-keyed answer these surfaces read before legs
  * existed — so a campaign whose leg we cannot price reads exactly as it did before.
  */
-export function legRankMetric(leg: CampaignLeg | null | undefined): AudienceRankMetric | null {
+export function legRankMetric(leg: LandingLeg | null | undefined): AudienceRankMetric | null {
   const pair = legColumnPair(leg);
   return pair ? METRIC_BY_PAIR[pair] : null;
 }
@@ -87,7 +80,7 @@ export function legRankMetric(leg: CampaignLeg | null | undefined): AudienceRank
  * The three tracked outcomes (signup, form submission, sale) are attributed by the
  * brand's own conversion tracker, so with no tracker installed their columns would only
  * ever print "-". A leg whose pair is unavailable falls the caller back to the
- * funnel-wide gating rather than leaving the table with no outcome column at all.
+ * goal-wide gating rather than leaving the table with no outcome column at all.
  * Replies come from the email gateway and visits from the delivery layer, so neither
  * depends on the tracker.
  */

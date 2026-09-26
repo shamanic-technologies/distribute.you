@@ -33,11 +33,12 @@ describe("the payoff screen renders and decides nothing", () => {
     expect(CODE).not.toMatch(/\.sort\(/);
   });
 
-  it("resolves no funnel from the catalogue — that lookup THROWS on an unknown key", () => {
-    // A throw here loses the whole summary on the one screen that has to land.
-    expect(CODE).not.toContain("salesFunnelByKey");
-    expect(CODE).not.toContain("SALES_FUNNELS");
-    expect(SRC).toContain("funnelMarks");
+  it("resolves no mark or label itself: the caller hands them over resolved", () => {
+    // A lookup that throws on an unknown key here loses the whole summary on the
+    // one screen that has to land.
+    expect(CODE).not.toContain("legFor(");
+    expect(CODE).not.toContain("legMarkFor");
+    expect(SRC).toContain("campaignMarks");
   });
 
   it("states the empty case instead of rendering a blank card", () => {
@@ -62,7 +63,7 @@ describe("what may NOT appear on it", () => {
 
   it("carries no em-dash in the copy it renders", () => {
     const jsx = CODE.slice(CODE.indexOf("return ("));
-    // Arrow between funnel steps is U+2192, not an em-dash.
+    // Arrow between leg steps is U+2192, not an em-dash.
     expect(jsx).not.toContain("—");
   });
 });

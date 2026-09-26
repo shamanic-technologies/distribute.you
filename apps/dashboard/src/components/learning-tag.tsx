@@ -38,7 +38,7 @@ export function LearningToneProvider({
  * `InfoTooltip` (a native tooltip attribute shows nothing on a phone).
  *
  * The tone comes from `LearningToneProvider`, defaulting to the charter's TERTIARY —
- * every campaign surface reads in one accent, owner-decided. The funnel Overview states
+ * every campaign surface reads in one accent, owner-decided. The offer Overview states
  * `primary` instead, and the Campaigns / leg table pins itself back to `tertiary` so it
  * is orange on every page by construction rather than by whoever remembers.
  *

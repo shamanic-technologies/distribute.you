@@ -10,7 +10,7 @@
 // from components reused in the public-report bundle.
 
 /**
- * One rung of the funnel: how many reached it, what reaching it cost, and what share of
+ * One step of the walk: how many reached it, what reaching it cost, and what share of
  * the rung before converted into it. Every figure is SERVED — a browser dividing two
  * served counts is the compute-a-stat-in-the-browser bug, and it would drift from the
  * producer's own answer the moment either side changed scope.
@@ -27,7 +27,7 @@ export interface StepCustomerCost {
   costPerReachCents: number | null;
 }
 
-export interface FunnelStepRow {
+export interface StepWalkRow {
   step: string;
   leadField: string;
   recipientsReached: number | null;
@@ -36,21 +36,21 @@ export interface FunnelStepRow {
   fromRecipientsReached: number | null;
   conversionFromPreviousPct: number | null;
   /**
-   * What the CUSTOMER states this rung cost them, beside what we charged. Absent on a
+   * What the CUSTOMER states this step cost them, beside what we charged. Absent on a
    * body older than features-service v0.148.0, null when the statements could not be
    * read — both mean "we have no figure", never "it was free".
    */
   customerCost?: StepCustomerCost | null;
 }
 
-/** The whole funnel, walked. Null on any read spanning more than one funnel. */
-export interface FunnelStepBreakdown {
-  funnelKey: string;
+/** The steps a campaign's leads reached, walked in order. Null on a read with no one
+ *  path to walk (brand and offer grains, a lensed read). */
+export interface StepWalk {
   name: string;
   committedSpentCents: number;
-  /** DISTINCT leads contacted — the base the FIRST rung converts from. */
+  /** DISTINCT leads contacted — the base the FIRST step converts from. */
   contactedRecipients: number;
-  steps: FunnelStepRow[];
+  steps: StepWalkRow[];
 }
 
 export interface RevenuePoint {
@@ -86,7 +86,7 @@ export type LeadOutcomeField = "signup" | "meetingBooked" | "formSubmission" | "
 
 /**
  * What ONE lead has reached — the only thing a browser surface ever asks a `/revenue`
- * lead row. Structurally a `LeadStageEvidence` (lead-funnel-stages.ts) plus its id and
+ * lead row. Structurally a `LeadStageEvidence` (lead-stages.ts) plus its id and
  * the four realized-outcome timestamps, so it feeds `trackedStages` directly.
  *
  * Every flag is optional and `undefined` means "not measured", which is NOT `false`
@@ -243,7 +243,7 @@ export interface CostEconomics {
    * It is `lifetimeRevenueUsd / roiMultiple` — the same statement as ROI and % CAC in a
    * third unit, which is why it MATCHES the lensed `costPerConversionUsd` for the same
    * scope rather than being a second opinion. Null (never 0) when the brand states no
-   * lifetime revenue, when the pipeline is null/0, or when no funnel is wired.
+   * lifetime revenue, or when the pipeline is null/0.
    */
   costPerAcquisitionUsd: number | null;
   /**
@@ -385,7 +385,7 @@ export interface RevenueOverview {
    *  Absent at the offer and brand grains, which span several channels. No consumer
    *  reads it. */
   featureSlug?: string;
-  /** Org-deduped expected pipeline. Null when no funnel is wired / no saved economics. */
+  /** Org-deduped expected pipeline. Null when there are no saved economics. */
   totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
   costEconomics: CostEconomics;
@@ -399,13 +399,10 @@ export interface RevenueOverview {
    */
   roiHistory?: RoiHistory | null;
   /**
-   * The funnel walked step by step, or null when there is no ONE funnel to walk.
-   *
-   * Null at the brand and offer grains by construction (both span several funnels), on
-   * a lensed read, and for a channel with no funnel wired. The funnel Overview is the
-   * one surface that gets a value, which is the whole point of the field.
+   * The steps walked in order, or null when there is no one path to walk (brand and
+   * offer grains, a lensed read). A campaign is the surface that gets a value.
    */
-  funnelSteps?: FunnelStepBreakdown | null;
+  stepWalk?: StepWalk | null;
   /**
    * Canonical spend block (Total spent / today / top sources / CPC / CPS / CPSM),
    * server-computed + reconciled to runs ACTUAL spend. Present on the un-lensed
@@ -468,7 +465,7 @@ export interface RevenueOverview {
    * **10,903,573 bytes**, of which **10,860,781** are that array — 9,854 rows, each
    * carrying a name, a photo URL, an org, a logo, tags, a seniority, an industry, an
    * employee count. Everything else on the body (the headline, the economics, the spend
-   * block, every count series, the ROI history, the funnel walk) is 43KB.
+   * block, every count series, the ROI history, the step walk) is 43KB.
    *
    * The persisted cache refuses any snapshot over `MAX_PERSISTED_ENTRY_BYTES` (2MB,
    * persist-cache.ts), so `brandRevenue` / `offerRevenue` /
@@ -476,13 +473,13 @@ export interface RevenueOverview {
    * money card, the Return-on-spend chart and the cost card read. Nothing errored: the
    * reveal gates are settle-based and correct, the network answered, the numbers were
    * right. Those surfaces simply cold-skeletoned on EVERY load, on every brand, offer,
-   * funnel and campaign page, while the small reads beside them (the Offers table's
+   * and campaign page, while the small reads beside them (the Offers table's
    * `brandOfferMoney`, 118KB) painted from disk instantly. That contrast IS the bug
    * report.
    *
    * Only TWO browser surfaces read per-lead rows and both do the same thing with them:
    * build a `leadId → outcome` MAP (the Leads page's outcome tab + its detail panel, and
-   * the funnel-leg board's `trackedStages`). A lead carrying no outcome is looked up and
+   * the lead board's stages). A lead carrying no outcome is looked up and
    * found absent, which is byte-identical to it not being in the array at all — so
    * carrying it costs 10.8MB to say nothing. On the brand that surfaced this: **72 of
    * 9,854** leads carry an outcome, and they serialize to **19,720 bytes**.
@@ -511,8 +508,8 @@ export interface RevenueOverview {
    * (features-service v0.165.0).
    *
    * Null wherever the producer states it cannot answer for this read: the lensed
-   * `?lens=` body, the lean `?groupBy=` groups, the no-funnel short-circuit and the
-   * cold-start path — the same gate `spend` and `funnelSteps` already ride. Null is
+   * `?lens=` body, the lean `?groupBy=` groups, the short-circuits and the
+   * cold-start path — the same gate `spend` and `stepWalk` already ride. Null is
    * "this read carries no verdict", never "the scope is priced".
    */
   learningPhase?: LearningPhase | null;
@@ -543,7 +540,7 @@ export interface CostPerOutcomePoint {
    *  curve rides, so the two describe the same money. */
   cumulativeSpendUsd: number;
   /** Every outcome of this leg's step DATED up to that day. FRACTIONAL on a deeper leg,
-   *  where it is the driver signal walked forward through the funnel's own rates. */
+   *  where it is the driver signal walked forward through the leg rates. */
   cumulativeOutcomes: number;
   /** `cumulativeSpendUsd / cumulativeOutcomes`. NULL — never 0 — while either is still 0:
    *  "could not be measured" and "cost nothing" are different statements. */
@@ -558,7 +555,7 @@ export interface CostPerOutcomeHistory {
   legKey: string;
   /**
    * TRUE ⟺ the counts are raw OBSERVATIONS. FALSE means they were walked forward through
-   * the funnel's rates from the signal we can observe, so the whole curve is a PROJECTION
+   * the leg rates from the signal we can observe, so the whole curve is a PROJECTION
    * — a different statement from a measured price, and this app does not let those two
    * share a label unremarked.
    */
@@ -599,7 +596,7 @@ export interface ConversionRateHistory {
   /** The leg that step closes, canonical. */
   legKey: string;
   /** TRUE ⟺ the outcome counts are raw OBSERVATIONS; FALSE means the curve is a
-   *  PROJECTION walked forward through the funnel's rates, which the card states. */
+   *  PROJECTION walked forward through the leg rates, which the card states. */
   outcomeObserved: boolean;
   /** Ascending, one entry per day the scope reached someone or converted one. */
   daily: ConversionRatePoint[];

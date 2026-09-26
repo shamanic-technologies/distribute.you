@@ -2,7 +2,7 @@
  * The token that IS the anonymous session.
  *
  * The signed-out half of onboarding does real, org-scoped work: it creates a
- * brand, declares funnels, suggests audiences, extracts an offer. Every one of
+ * brand, suggests audiences, extracts an offer. Every one of
  * those is an ordinary org-scoped write, because an anonymous session IS an org
  * — one client-service has minted with no Clerk org attached yet. At signup we
  * write the new Clerk org id onto that same row, so nothing moves.
@@ -51,7 +51,7 @@ export interface AnonSession {
    * The same org's INTERNAL uuid, carried because the claim needs it.
    *
    * client-service addresses the claim by internal uuid — the id every brand,
-   * funnel, audience, run and cost was written against — and nothing hands that
+   * offer, audience, run and cost was written against — and nothing hands that
    * back at signup time. Reading it once, when the org is created, is cheaper
    * and more certain than resolving it again at the one moment a failure loses
    * everything the visitor built.

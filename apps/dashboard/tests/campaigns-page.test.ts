@@ -88,7 +88,7 @@ describe("Campaigns page (GA)", () => {
   // The Channel and Sales funnel columns say what brand Settings says: the
   // channel's own mark + catalogue name, and the funnel's mark + name. A second
   // wording for either would be the same thing under two names on two screens.
-  it("draws Channel and Sales funnel from the brand-Settings catalogues", () => {
+  it("draws the leg and the channel from the published catalogues", () => {
     // The channel is READ off the campaign's own feature slug, never inferred
     // from the workflow: a channel IS a feature slug, and two cold-email
     // channels differ only by their offer, so a workflow guess cannot tell them
@@ -96,12 +96,13 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("acquisitionChannelForFeatureSlug");
     expect(table).not.toContain("acquisitionChannelForWorkflowSlug");
     expect(identity).toContain("<AcquisitionChannelMark");
-    expect(identity).toContain("<SalesFunnelMark");
-    // ONE cell states the pair: a campaign IS (offer x funnel x channel), so the
-    // funnel and the channel were never two independent answers — only two
-    // columns. The row reads them from the campaign it is given, once.
+    expect(identity).toContain("<LegMark");
+    expect(identity).not.toContain("<SalesFunnelMark");
+    // ONE cell states the pair: a campaign IS (offer x leg x channel), so the leg
+    // and the channel were never two independent answers — only two columns. The
+    // row reads them from the campaign it is given, once.
     expect(table).toContain("<CampaignCell campaign={campaign} />");
-    expect(table).toContain("campaignFunnel(campaign.funnelKey)");
+    expect(table).toContain("leg={legFor(catalogue, campaign.legKey)}");
     expect(identity).toContain("acquisitionChannelForFeatureSlug(featureSlug, channels)");
     // The layout lives in one module, because the budget modal states the same
     // pair for the same campaigns and a second copy is how the row and the modal
@@ -117,23 +118,20 @@ describe("Campaigns page (GA)", () => {
   // deriving a funnel from it prints steps the campaign never stated.
   // campaign-service persists the funnel on every campaign, so a missing one is
   // a real gap and reads as one.
-  it("names the funnel from the campaign's own key, with no goal fallback", () => {
+  it("names the leg from the campaign's own key, with no goal fallback", () => {
     // `\n}\n` and not `\n}`: the props are destructured with a type annotation,
     // so the first `\n}` in this component closes the parameter block, not the
     // function — slicing there cuts the body out entirely.
     const cell = table.slice(table.indexOf("export function CampaignCell("));
     const body = cell.slice(0, cell.indexOf("\n}\n"));
-    expect(body).toContain("campaignFunnel(campaign.funnelKey)");
+    expect(body).toContain("legKey={campaign.legKey}");
     expect(body).not.toContain("primaryFunnelForGoal");
-    // The row is named for the LEG the campaign performs, which falls back to the
-    // funnel's own name when the channel states no leg of it — so a campaign is
-    // never unnamed, and a funnel we cannot resolve at all is a real gap that
-    // reads as one.
-    expect(identity).toContain("campaignLegFor(funnel, channel?.def?.legs)");
-    // A funnel we cannot resolve at all is a real gap and reads as one; a channel that
-    // states no leg of this funnel still names the funnel it sells.
-    expect(identity).toContain('{leg?.label ?? funnel?.name ?? "—"}');
-    expect(api).toContain("funnelKey: SalesFunnelKeyWire | null;");
+    // The row is named for the LEG the campaign states, LOOKED UP in the catalogue
+    // rather than parsed. A leg we cannot resolve is a real gap and reads as one.
+    expect(identity).toContain("return leg ?? legFor(catalogue, legKey);");
+    expect(identity).toContain('{leg?.label ?? "—"}');
+    expect(api).toContain("legKey: string | null;");
+    expect(api).not.toContain("funnelKey: SalesFunnelKeyWire | null;");
   });
 
   // A campaign a brand has been running keeps running when that brand funds its
@@ -162,7 +160,7 @@ describe("Campaigns page (GA)", () => {
   it("states one row per identity — the live campaign, else the latest paused one", () => {
     expect(table).toContain("const listedCampaigns = useMemo(");
     expect(table).toContain(
-      "const key = `${c.offerId ?? \"\"}|${c.funnelKey ?? \"\"}|${c.featureSlug ?? \"\"}`",
+      "const key = `${c.offerId ?? \"\"}|${c.legKey ?? \"\"}|${c.featureSlug ?? \"\"}`",
     );
     // A live row wins its identity outright; between two dead ones, the latest.
     expect(table).toContain("if (isActiveStatus(held.status)) continue;");
@@ -297,12 +295,12 @@ describe("Campaigns page (GA)", () => {
     expect(page).toContain("activeRows.find((r) => r.revenue?.roiMultiple != null)");
     expect(page).not.toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
     // Leads: brand level reads the running rows; a campaign's own page reads its
-    // own row whatever its status, so a paused campaign still states its funnel.
+    // own row whatever its status, so a paused campaign still states its leg.
     const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain(": campaignRows.activeRows.map((r) => r.campaign.funnelKey);");
-    // A campaign takes its funnel off its OWN row: the campaign rows are filtered by
+    expect(leads).toContain(": campaignRows.activeRows.map((r) => r.campaign.legKey);");
+    // A campaign takes its leg off its OWN row: the campaign rows are filtered by
     // feature, so a campaign on any other channel is not among them at all.
-    expect(leads).toContain("? [scopedCampaign?.funnelKey ?? null]");
+    expect(leads).toContain("? [scopedCampaign?.legKey ?? null]");
     expect(leads).not.toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
   });
 
@@ -395,11 +393,11 @@ describe("Campaigns page (GA)", () => {
   // A row states what its campaign may spend in a day beside whether it is
   // running — the ceiling and the status are one answer in two cells.
   it("states each campaign's own daily ceiling, narrowed by the ROW's own offer", () => {
-    // billing's per-pair figure spans every offer selling that pair, so a row
-    // that borrowed the pair total would print a sibling offer's money under
-    // this campaign's name. Reading the row's own offer is what makes the
+    // billing keys one ceiling per (offer x leg x channel), and the helper reads the
+    // ROW's own offer off the campaign it is given, so a row cannot print a sibling
+    // offer's money under this campaign's name. That is what makes the
     // brand-scoped list and the offer-scoped one agree about one campaign.
-    expect(table).toContain("campaignBudgetCents(c, c.offerId ?? undefined, budgets, channels)");
+    expect(table).toContain("campaignBudgetCents(c, budgets, channels)");
     expect(table).toContain("fmtDailyBudgetUsd(budgetCents)");
     // Stated as a RATE, in the campaign header's own words and style: a bare
     // figure reads as a total beside the two money columns to its left, which
@@ -411,7 +409,7 @@ describe("Campaigns page (GA)", () => {
     // Settings cannot disagree about one campaign's money.
     expect(table).toContain('from "@/lib/campaign-budget"');
     // The key Campaign Settings and Offer Settings already read → no new poll.
-    expect(table).toContain('["brandFunnelBudgets", brandId]');
+    expect(table).toContain('["brandCampaignBudgets", brandId]');
     // A ceiling is not a charge, and the tip says so rather than letting a
     // reader read it as spend beside four columns that are.
     expect(table).toContain("COLUMN_INFO.budget");
@@ -455,19 +453,19 @@ describe("Campaigns page (GA)", () => {
       expect(table).not.toContain("md:hidden");
     });
 
-    it("states the funnel above the channel in one cell, pinned to the mark's height", () => {
+    it("states the leg above the channel in one cell, pinned to the mark's height", () => {
       const at = identity.indexOf("export function CampaignIdentity(");
       expect(at).toBeGreaterThan(-1);
       const cell = identity.slice(at, identity.indexOf("\n}\n", at));
-      const funnelAt = cell.indexOf("<SalesFunnelMark");
+      const legAt = cell.indexOf("<LegMark");
       const channelAt = cell.indexOf("<AcquisitionChannelMark");
-      expect(funnelAt).toBeGreaterThan(-1);
-      expect(channelAt).toBeGreaterThan(funnelAt);
+      expect(legAt).toBeGreaterThan(-1);
+      expect(channelAt).toBeGreaterThan(legAt);
       // The channel line is the quiet one, and it says what it is.
       expect(cell).toContain("text-xs");
       expect(cell).toContain("text-gray-500");
       expect(cell).toContain("Via");
-      // Two lines whose leadings add to the funnel tile's own 32px (`sm` = h-8),
+      // Two lines whose leadings add to the leg tile's own 32px (`sm` = h-8),
       // so the row is the height of the icon rather than of whatever the text
       // needs. 18 on the second because the channel mark there is `xs` (18px).
       expect(cell).toContain("h-8");

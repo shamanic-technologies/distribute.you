@@ -9,10 +9,10 @@ import { useCallback, useRef } from "react";
  * WHY this is not just `<Link prefetch>`: the dashboard's drill-down rows navigate
  * with `router.push` inside an `onClick`, not with a `<Link>` — a table row carries
  * its own controls, so it cannot be an anchor. Nothing prefetches a `router.push`
- * target, so brand -> offer -> funnel -> campaign is four cold server round-trips,
- * and each one is filled by the nearest `loading.tsx`, which for every funnel and
+ * target, so brand -> offer -> campaign is three cold server round-trips,
+ * and each one is filled by the nearest `loading.tsx`, which for every offer and
  * campaign sub-route is the OFFER's — so the whole offer area blanks to a full-page
- * skeleton on each step down. That is the "skeleton on the funnel page" report.
+ * skeleton on each step down. That is the "skeleton on every page" report.
  *
  * Hover (and keyboard focus) is the signal: a row the pointer is resting on is about
  * to be clicked, and the payload has the whole hover duration to arrive. Bounded by

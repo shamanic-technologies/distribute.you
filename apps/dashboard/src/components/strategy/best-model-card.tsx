@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { WORKFLOW_GRAIN_LABEL } from "@/lib/strategy-model";
 import { stepsFor, type GoalStep } from "@/lib/goal-steps";
-import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import type { LegSteps } from "@/lib/goal-steps";
 import type { WorkflowProjectionResolved, WorkflowProjectionRow } from "@/lib/api";
 import { formatRoi } from "@/lib/format-roi";
 
@@ -111,7 +111,7 @@ export function BestModelStats({
   roiMultiple,
   floored,
   cppr,
-  funnelKey,
+  leg,
 }: {
   resolved: WorkflowProjectionResolved;
   bestName: string;
@@ -120,19 +120,18 @@ export function BestModelStats({
   roiMultiple: number | null;
   floored: boolean;
   cppr: number | null;
-  /** The SALES FUNNEL these numbers were priced on. Null states no funnel. */
-  funnelKey: SalesFunnelKeyWire | null;
+  /** The LEG these numbers were priced on. Null states no leg. */
+  leg: LegSteps | null;
 }) {
-  // Every tile is gated on the FUNNEL's own steps, never on a goal. `sales_meetings`
-  // covers BOTH meeting funnels, so a goal-gated grid put "Cost per website visit"
-  // beside a reply→meeting funnel that has no visit leg — a step the brand does not buy,
-  // on the card that prices what it does. A null funnel states no steps (`[Outreach]`),
-  // so only the funnel-independent tiles render rather than a borrowed set.
-  const steps = stepsFor(null, funnelKey);
+  // Every tile is gated on the LEG's own steps, never on a goal: a goal-gated grid put
+  // "Cost per website visit" beside a leg that has no visit — a step the brand does not
+  // buy. A null leg states no steps (`[Outreach]`), so only the step-independent tiles
+  // render rather than a borrowed set.
+  const steps = stepsFor(null, leg);
   const hasStep = (key: GoalStep["key"]) => steps.some((s) => s.key === key);
   const showVisitStat = hasStep("website_visits");
   const showReplyStat = hasStep("positive_replies");
-  // The funnel's terminal step, and the only honest source for the outcome's name here.
+  // The leg's landing step, and the only honest source for the outcome's name here.
   const outcomeStep = steps.find((s) => s.outcome) ?? null;
   // The step's own singular noun, not its label: a label is a column heading ("Sales
   // Meetings") and this prices ONE of them.

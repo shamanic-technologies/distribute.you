@@ -17,7 +17,8 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/funnel-share";
+import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/step-share";
+import { useCampaignLeg } from "@/lib/use-leg-catalogue";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { isRunningStatus } from "@/lib/campaign-controls";
@@ -105,12 +106,10 @@ export function OutreachStatCardsAuto({
     { enabled, ...pollOptions },
   );
 
-  // WHICH steps this row shows comes from the campaign's own SALES FUNNEL, never from
-  // the brand goal — that column is retired in brand-service (NOT NULL with a server
-  // default, so it reads "website purchases" for a brand that stated nothing) and it
-  // cannot separate the two meeting funnels either. Same `["campaign", id]` key the
+  // WHICH steps this row shows comes from the campaign's own LEG, never from the brand
+  // goal — that column is retired in brand-service. Same `["campaign", id]` key the
   // campaign Overview and the top bar already poll → one request for all three.
-  const funnelKey = scopedCampaign?.funnelKey ?? null;
+  const leg = useCampaignLeg(scopedCampaign);
   // A PAUSED campaign says `Paused` where it would otherwise say `Learning`: the tag
   // withholds a figure because too few outcomes have landed, and on a stopped campaign
   // none are landing, so it would promise a number that cannot arrive until the customer
@@ -165,12 +164,12 @@ export function OutreachStatCardsAuto({
 
   // Whether the SCOPE this row answers for is still learning — every campaign selling it
   // is. Only the ratios below are gated by it, and only where they render (a campaign-
-  // scoped row shows funnel steps instead). Read through the same hook the Campaigns
+  // scoped row shows its leg's steps instead). Read through the same hook the Campaigns
   // table uses, on the same query keys, so it costs no network and a page cannot state a
   // return the campaigns beneath it are all declining to state.
   // The brand/offer learning gate, on the feature the brand-level list has always been
   // pinned to. An offer-scoped list spans channels anyway, and a campaign-scoped row
-  // states funnel steps rather than these ratios.
+  // states its leg's steps rather than these ratios.
   const { rows: campaignRows } = useCampaignRows(brandId, soleFeatureSlug, offerId);
   const economicsLearning = scopeIsLearning(campaignRows);
 
@@ -198,22 +197,22 @@ export function OutreachStatCardsAuto({
       stats={featureStats}
       spend={revenueData?.spend}
       pending={!statsRevealed}
-      funnelKey={funnelKey}
+      leg={leg}
       economics={revenueData?.costEconomics}
       totalPipelineUsd={revenueData?.totalPipelineUsd}
-      // A BRAND sells through several funnels at once, so its row states MONEY and no
-      // funnel steps — the same split the brand Overview takes. A campaign sells one,
-      // so its own steps are what it buys.
+      // A BRAND runs several legs at once, so its row states MONEY and no steps — the
+      // same split the brand Overview takes. A campaign performs one, so its own steps
+      // are what it buys.
       showEconomics={!campaignId}
       economicsLearning={economicsLearning}
-      showFunnelMetrics={!!campaignId}
+      showStepMetrics={!!campaignId}
       paused={withheldPaused}
       outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
       contactedOverride={contactedOverride}
       // The share of contacted that showed positive reply, through the one helper the
       // campaign Overview reads too, so the two surfaces cannot state it two ways.
-      signalSharePct={positiveReplySharePct(revenueData?.funnelSteps)}
-      clickSharePct={websiteVisitSharePct(revenueData?.funnelSteps)}
+      signalSharePct={positiveReplySharePct(revenueData?.stepWalk)}
+      clickSharePct={websiteVisitSharePct(revenueData?.stepWalk)}
       outreachLabel={contactedOverride != null ? (outreachLabel ?? "Outreaches") : outreachLabel}
     />
   );

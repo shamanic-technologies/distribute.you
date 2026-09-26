@@ -29,7 +29,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  *
  * The two belong on ONE card because they are one question — which offer is
  * this — and they are the first thing on Offer Settings for the same reason:
- * everything below it (the funnels, what it promises) is about a proposition
+ * everything below it (its campaigns, what it promises) is about a proposition
  * you have to be able to name first.
  *
  * ── Rules ───────────────────────────────────────────────────────────────────

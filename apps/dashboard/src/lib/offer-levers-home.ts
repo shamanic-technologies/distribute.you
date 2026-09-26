@@ -13,7 +13,7 @@ import type { Campaign } from "@/lib/api";
  *
  * That has one consequence this module exists to hold: an offer with NO cold
  * email campaign would have nowhere left to state its levers at all. An offer is
- * born at signup and a campaign is only provisioned once a funnel is funded, so
+ * born at signup and a campaign is only provisioned once a leg is funded, so
  * that gap is the ordinary case for a brand that has not launched yet, not an
  * edge. Offer Settings therefore keeps the editor exactly while no cold email
  * campaign exists, and hands it over the moment one does. One editable card at a

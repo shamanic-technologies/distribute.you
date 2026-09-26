@@ -156,7 +156,7 @@ describe("the filter runs at the ONE reader boundary", () => {
     };
     walk(dir);
     expect(hits.map((h) => path.relative(dir, h)).sort()).toEqual([
-      // A THIRD producer's field under the same name (see `lib/start-returns.ts`
+      // A THIRD producer's field under the same name (see `lib/start-proof.ts`
       // below): the pre-signup catalogue route branches on `return-on-spend`'s
       // `measured` for the fleet median. Not a projection row.
       "app/api/public/catalogue/route.ts",
@@ -170,20 +170,18 @@ describe("the filter runs at the ONE reader boundary", () => {
       "components/workflows/campaign-workflows-page.tsx",
       "components/workflows/workflow-rank-panel.tsx",
       // A FOURTH producer's field under the same name: features-service's brand
-      // conversion-rates read carries a `measured` BLOCK per funnel arrow (the rate
+      // conversion-rates read carries a `measured` BLOCK per leg (the rate
       // observed on the brand's own leads and its denominator). The rates module reads
       // `measured.fromReached` to say how many leads a measured rate rests on. Not a
       // projection row and not a flag.
       "lib/brand-conversion-rates.ts",
       // A THIRD producer's field under the same name: features-service's public
-      // return-on-spend reads mark a (channel, funnel) pair and a whole channel
-      // `measured`, meaning enough brands past the spend floor to state a median.
+      // return-on-spend read marks a whole channel `measured`, meaning enough brands past the spend floor to state a median.
       // The pre-signup proof screen branches on it to decide whether it may state
       // a figure at all, which is the opposite question from a projection row's.
       // Same third producer: the proof module reads `showcase-funnels`' per-brand
       // `measured` (the fleet holds a realized return for that named client).
       "lib/start-proof.ts",
-      "lib/start-returns.ts",
       // The campaign Overview's Top-3-LLMs list, off the SAME ladder the second reader
       // above uses. It BRANCHES on `measured` for exactly the reason the two modules
       // below do: an explore row's figure is the price of one outreach, cheapest by

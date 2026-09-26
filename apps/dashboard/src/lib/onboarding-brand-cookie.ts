@@ -11,7 +11,7 @@
  *
  * The cross-session resume it needs ALREADY EXISTS: `/onboarding?brandId=<id>`
  * fetches the brand, seeds the URL, replays the loading-screen hydration and
- * lands on the funnels step with services / funnels / rates / lifetime revenue
+ * lands on the outcome pick with services / rates / lifetime revenue
  * pre-filled. It was only reachable from `BrandSetupGate`, which fires for an org
  * that is ALREADY `onboardingComplete` (the add-a-second-brand case) — so the
  * one path that recovers a half-finished signup could never serve a first
@@ -57,7 +57,7 @@ export function onboardingBrandCookieName(orgId: string): string {
 /**
  * Where the edge gate sends a user whose onboarding is unfinished and whose
  * in-progress brand we know. The flow's own param-resume effect takes it from
- * here (fetch the brand, replay hydration, land on the funnels step).
+ * here (fetch the brand, replay hydration, land on the outcome pick).
  */
 export function onboardingResumeHref(brandId: string): string {
   return `/onboarding?${ONBOARDING_BRAND_PARAM}=${encodeURIComponent(brandId)}`;

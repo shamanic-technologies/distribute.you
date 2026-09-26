@@ -18,7 +18,7 @@ import { isLearning } from "@/lib/learning-threshold";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { isActiveStatus, NumericHead } from "@/components/campaigns/campaigns-table";
-import { FunnelStepMark } from "@/components/marks/funnel-step-mark";
+import { StepMark } from "@/components/marks/step-mark";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { LearningTag } from "@/components/learning-tag";
 import { Skeleton } from "@/components/skeleton";
@@ -251,7 +251,7 @@ export function OfferOutcomesTable({
                           className="flex w-full min-w-0 items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded"
                         >
                           {expandable && <Chevron open={isOpen} />}
-                          <FunnelStepMark stepKey={row.step.key} size="sm" />
+                          <StepMark stepKey={row.step.key} size="sm" />
                           <span className="min-w-0">
                             <span className="block truncate font-medium text-gray-900">
                               {pluralStepLabel(row.step.label)}

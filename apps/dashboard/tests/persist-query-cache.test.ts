@@ -67,10 +67,10 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "orgIdentity", "billingAccount", "creditGrants", "billingPayments",
       "inviteStatus", "freeCreditPromises",
       // brand metadata + config
-      "brand", "brands", "brandSalesEconomics", "brandFunnelBudgets",
+      "brand", "brands", "brandSalesEconomics", "brandCampaignBudgets",
       "brandSpendableBudget", "brandDailyBudget", "brandConversionToken",
       // offers + their outcome rows
-      "brandOffers", "brandOffer", "offerUserFields", "offerSalesFunnels",
+      "brandOffers", "brandOffer", "offerUserFields", "offerEconomics",
       "offerOutcomes",
       // leads
       "brandLeads", "leadEmail", "leadReplyKind", "campaignReplyKinds",
@@ -108,6 +108,9 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
       "enrichedJournalists", "brandMediaKits", "mediaKit", "outletStatsCosts",
       "campaignActivity", "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
+      // Retired with the sales-funnel model: budgets and lifetime revenue are keyed on
+      // (offer x leg x channel) and on the offer now.
+      "brandFunnelBudgets", "offerSalesFunnels",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(false);
     }
