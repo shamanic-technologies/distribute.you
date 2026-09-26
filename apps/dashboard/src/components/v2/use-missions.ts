@@ -5,12 +5,10 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrandOffers } from "@/lib/api";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
-import { campaignFunnel } from "@/lib/campaign-funnel";
-import { campaignLegFor, type CampaignLeg } from "@/lib/campaign-leg";
-import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
+import { legFor, type LegDef } from "@/lib/legs";
 import {
   ALL_OFFERS,
   isActiveStatus,
@@ -22,7 +20,7 @@ import { crewFor, type CrewIdentity } from "@/lib/v2/crews";
 export interface Mission {
   row: CampaignRow;
   crew: CrewIdentity;
-  leg: CampaignLeg | null;
+  leg: LegDef | null;
   offerId: string;
   offerName: string | null;
   running: boolean;
@@ -45,14 +43,14 @@ export interface CrewSummary {
  * v1 Campaigns table and brand Overview use — at the all-offers grain, so a brand
  * selling through several channels lists every channel's missions, and nothing here
  * costs a request v1 does not already make. The only thing added is naming: which
- * crew performs a mission is the campaign's own leg on its own channel, resolved by
- * the same precedence v1 names a campaign with.
+ * crew performs a mission is the campaign's own leg on its own channel, read off the
+ * producer's leg catalogue, as v1 names a campaign.
  */
 export function useMissions(orgId: string, brandId: string) {
   const featureSlug = useSoleFeatureSlug();
   const { rows, settled } = useCampaignRows(brandId, featureSlug, ALL_OFFERS);
   const channels = useAcquisitionChannels();
-  const legIndex = useFunnelLegIndex();
+  const legCatalogue = useLegCatalogue();
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
     enabled: !!brandId,
   });
@@ -67,10 +65,8 @@ export function useMissions(orgId: string, brandId: string) {
       rows.flatMap((row) => {
         const c = row.campaign;
         if (!c.offerId || !c.featureSlug) return [];
-        const funnel = campaignFunnel(c.funnelKey);
         const def = acquisitionChannelForFeatureSlug(c.featureSlug, channels);
-        const leg =
-          statedCampaignLeg(funnel, c.legKey, legIndex) ?? campaignLegFor(funnel, def?.legs);
+        const leg = legFor(legCatalogue, c.legKey);
         const crew = crewFor(
           c.featureSlug,
           leg?.toKey ?? null,
@@ -88,7 +84,7 @@ export function useMissions(orgId: string, brandId: string) {
           },
         ];
       }),
-    [rows, channels, legIndex, offerNames, orgId, brandId],
+    [rows, channels, legCatalogue, offerNames, orgId, brandId],
   );
 
   const crews = useMemo<CrewSummary[]>(() => {

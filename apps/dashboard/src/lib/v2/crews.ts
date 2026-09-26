@@ -5,7 +5,7 @@
  * lands on) performed through one ACQUISITION CHANNEL. It is presented like a
  * teammate with a proper name, so a reader can say "Scout brought 40 visits" rather
  * than "the cold-email-to-website-visit leg". A MISSION is a crew working one OFFER,
- * which is exactly a campaign identity (offer x funnel x channel) — so missions need
+ * which is exactly a campaign identity (offer x leg x channel) — so missions need
  * nothing new from any service.
  *
  * Names are OURS, stable per (channel, landing step), and there are only as many as
