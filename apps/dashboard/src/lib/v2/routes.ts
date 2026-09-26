@@ -17,6 +17,7 @@ export type V2Section =
   | "billing"
   | "api-keys"
   | "account"
+  | "team"
   | "referral";
 
 export function v2Base(orgId: string, brandId: string): string {
@@ -52,6 +53,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "billing",
     "api-keys",
     "account",
+    "team",
     "referral",
   ];
   // An offer's Targeting tab is Targeting, not Offers.

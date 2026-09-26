@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useClerk, useOrganization, useUser } from "@clerk/nextjs";
+import posthog from "posthog-js";
 import { listLeadsPage, type Lead } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { leadsSearchParam, leadsSearchProblem } from "@/lib/leads-server-page";
@@ -14,6 +15,8 @@ import { backToV1Href, switchUiVersion } from "@/components/ui-version-switch";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { supportWhatsAppHref } from "@/components/support/support-button";
+import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
@@ -24,8 +27,8 @@ import { v2Base, v2Href, type V2Section } from "@/lib/v2/routes";
 /**
  * The three sidebar controls of v2 (beta), drawn the way Explee and Keel draw them:
  * the tenant switcher at the top (Explee's project switcher), the account menu at the
- * bottom (Explee's user menu, whose pages are Billing, Invite a friend and the
- * account itself), and Keel's command palette behind the search box and ⌘K.
+ * bottom (Explee's user menu, whose pages are Team, API Keys, Billing and Refer a
+ * friend), and Keel's command palette behind the search box and ⌘K.
  *
  * Switching reuses `useTenantSwitcher` — the org switch is the same guarded
  * join / setActive / token re-mint dance v1 runs, so v2 cannot race it differently.
@@ -51,15 +54,10 @@ function useOutside(open: boolean, onClose: () => void) {
   return ref;
 }
 
-const Check = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" className="ml-auto shrink-0 text-[var(--fg-1)]" aria-hidden="true">
-    <path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 const Plus = () => (
-  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] shadow-[inset_0_0_0_1px_var(--line)]">
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-      <path d="M5 1.5v7M1.5 5h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+    <svg width="14" height="14" viewBox="0 0 14 14" className="k-fg3" aria-hidden="true">
+      <path d="M7 2.5v9M2.5 7h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   </span>
 );
@@ -71,6 +69,8 @@ const Updown = () => (
 
 const itemCls =
   "flex h-8 w-full min-w-0 items-center gap-2 rounded-[8px] px-2 text-left text-[13px] text-[var(--fg-1)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none disabled:opacity-50";
+/** The row you are on reads selected, the way Explee marks the open project (no check mark). */
+const currentCls = "bg-[var(--bg-selected)] font-medium";
 
 function MenuLabel({ children }: { children: React.ReactNode }) {
   return <p className="k-fg3 px-2 pb-1 pt-2 text-[12px]">{children}</p>;
@@ -128,7 +128,6 @@ export function TenantSwitcherV2() {
       </button>
       {open && (
         <div role="menu" className="k-popover absolute left-0 right-0 top-full z-50 mt-1 p-1">
-          <MenuLabel>Brands{t.displayOrgName ? ` in ${t.displayOrgName}` : ""}</MenuLabel>
           <div className="k-scroll max-h-56 overflow-y-auto">
             {t.brandsLoading && t.brands.length === 0 ? (
               <p className="k-fg3 px-2 py-1.5 text-[12px]">Loading…</p>
@@ -138,7 +137,8 @@ export function TenantSwitcherV2() {
                   key={b.id}
                   type="button"
                   role="menuitem"
-                  className={itemCls}
+                  aria-current={b.id === t.brandId ? "true" : undefined}
+                  className={`${itemCls} ${b.id === t.brandId ? currentCls : ""}`}
                   onClick={() => {
                     setOpen(false);
                     if (t.orgId) router.push(v2Base(t.orgId, b.id));
@@ -146,12 +146,12 @@ export function TenantSwitcherV2() {
                 >
                   <BrandLogo domain={b.domain ?? null} logoUrl={b.logoUrl} size={20} className="shrink-0 rounded-[5px]" fallbackClassName="h-5 w-5 shrink-0" />
                   <span className="truncate">{b.name || b.domain || "Brand"}</span>
-                  {b.id === t.brandId && <Check />}
                 </button>
               ))
             )}
           </div>
-          <button type="button" role="menuitem" className={`${itemCls} k-fg2`} onClick={() => router.push("/onboarding?from=add")}>
+          <div className="my-1 h-px bg-[var(--line-subtle)]" />
+          <button type="button" role="menuitem" className={itemCls} onClick={() => router.push("/onboarding?from=add")}>
             <Plus />
             New brand
           </button>
@@ -176,20 +176,18 @@ export function TenantSwitcherV2() {
                 type="button"
                 role="menuitem"
                 disabled={!!t.switchingOrgId}
-                className={itemCls}
+                aria-current={o.id === t.orgId ? "true" : undefined}
+                className={`${itemCls} ${o.id === t.orgId ? currentCls : ""}`}
                 onClick={() => (o.id === t.orgId ? setOpen(false) : void t.handleOrgSwitch(o.id, o.name))}
               >
                 <OrgAvatar name={o.name} imageUrl={o.imageUrl} hasImage={o.hasImage} sizeClass="w-5 h-5" />
                 <span className="truncate">{o.name}</span>
-                {t.switchingOrgId === o.id ? (
-                  <span className="k-fg3 ml-auto text-[12px]">Switching…</span>
-                ) : (
-                  o.id === t.orgId && <Check />
-                )}
+                {t.switchingOrgId === o.id && <span className="k-fg3 ml-auto text-[12px]">Switching…</span>}
               </button>
             ))}
           </div>
-          <button type="button" role="menuitem" className={`${itemCls} k-fg2`} onClick={() => router.push("/onboarding?new=1&from=add")}>
+          <div className="my-1 h-px bg-[var(--line-subtle)]" />
+          <button type="button" role="menuitem" className={itemCls} onClick={() => router.push("/onboarding?new=1&from=add")}>
             <Plus />
             New organization
           </button>
@@ -201,51 +199,100 @@ export function TenantSwitcherV2() {
 
 // ─── Account menu (Explee's user menu) ──────────────────────────────────────
 
+/**
+ * Explee's user menu, in its order and its words: the email on top, then Team, API
+ * Keys, Billing, Refer a friend (with what it earns), Help, then Sign out. Each item
+ * opens a v2 page with our data; Help opens the support chat the FAB opens.
+ *
+ * Explee's Notifications, Feedback and Theme are left out: we store no notification
+ * preferences, have nowhere to send a feedback note, and v2 has no dark theme, so each
+ * would be a control that does nothing. Back to v1 is ours (the one way out of v2), and
+ * the email row opens the Profile page, since Explee's menu has no profile item.
+ */
 const MENU_ICON = {
-  profile: "M8 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm-5 5.5c.5-2.3 2.6-3.5 5-3.5s4.5 1.2 5 3.5",
-  billing: "M2.5 4h11v8h-11zM2.5 6.5h11",
+  team: "M6 7.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.5c.4-2 2-3.2 4-3.2s3.6 1.2 4 3.2M10.5 3.2a2.2 2.2 0 0 1 0 4.1M12 9.9c1.2.4 2 1.4 2.2 3.1",
   key: "M6 9.5a3 3 0 1 1 2.6-1.5l4.9 4.9-1.2 1.2-1-1-1 1-1-1 1-1-2.1-2.1A3 3 0 0 1 6 9.5Z",
+  billing: "M3.5 2.5h9v11l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1zM6 5.5h4M6 8h4",
   gift: "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z",
+  help: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2",
   back: "M6 4 3 7l3 3M3.5 7H10a3 3 0 0 1 0 6H8",
   out: "M9.5 3.5h3v9h-3M6.5 5 3.5 8l3 3M3.5 8h7",
 };
 function MI({ d }: { d: string }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="k-fg3 shrink-0" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="k-fg2 shrink-0" aria-hidden="true">
       <path d={d} stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
+function Initial({ label, size }: { label: string; size: number }) {
+  return (
+    <span
+      className="k-fg2 flex shrink-0 items-center justify-center rounded-full bg-[var(--bg-selected)] text-[11px] font-medium uppercase"
+      style={{ width: size, height: size }}
+    >
+      {label.slice(0, 1)}
+    </span>
+  );
+}
+
 export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: string }) {
   const { user } = useUser();
+  const { organization } = useOrganization();
   const { signOut } = useClerk();
   const [open, setOpen] = useState(false);
   const ref = useOutside(open, () => setOpen(false));
   const name = user?.fullName || user?.firstName || "";
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const base = v2Base(orgId, brandId);
-  const links: { href: string; label: string; icon: string }[] = [
-    { href: `${base}/account`, label: "Profile", icon: MENU_ICON.profile },
+  const close = () => setOpen(false);
+  const links: { href: string; label: string; icon: string; pill?: string }[] = [
+    { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
+    { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
     { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
-    { href: `${base}/api-keys`, label: "API key", icon: MENU_ICON.key },
-    { href: `${base}/referral`, label: "Invite a friend", icon: MENU_ICON.gift },
+    { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
   ];
+  const avatar = (size: number) =>
+    user?.imageUrl && user.hasImage ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={user.imageUrl} alt="" className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
+    ) : (
+      <Initial label={name || email} size={size} />
+    );
   return (
     <div ref={ref} className="relative px-2 pb-2 pt-1">
       {open && (
         <div role="menu" className="k-popover absolute bottom-full left-2 right-2 z-50 mb-1 p-1">
-          <div className="px-2 pb-1.5 pt-1.5">
-            <p className="truncate text-[13px] font-medium">{name || email}</p>
-            {name && <p className="k-fg3 truncate text-[12px]">{email}</p>}
-          </div>
+          <Link href={`${base}/account`} role="menuitem" onClick={close} className="k-fg3 block truncate rounded-[8px] px-2 py-1.5 text-[13px] hover:bg-[var(--bg-hover)]" title="Profile">
+            {email || name}
+          </Link>
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           {links.map((l) => (
-            <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={() => setOpen(false)}>
+            <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close}>
               <MI d={l.icon} />
-              {l.label}
+              <span className="min-w-0 truncate">{l.label}</span>
+              {l.pill && (
+                <span className="ml-auto shrink-0 rounded-[6px] bg-[color-mix(in_oklab,var(--run)_12%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--run)]">
+                  {l.pill}
+                </span>
+              )}
             </Link>
           ))}
+          <a
+            href={supportWhatsAppHref(email, organization?.name ?? "")}
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            className={itemCls}
+            onClick={() => {
+              posthog.capture("support_whatsapp_clicked", { location: "dashboard-v2-menu", orgId: organization?.id ?? null });
+              close();
+            }}
+          >
+            <MI d={MENU_ICON.help} />
+            Help
+          </a>
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <button
             type="button"
@@ -256,6 +303,7 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
             <MI d={MENU_ICON.back} />
             Back to v1
           </button>
+          <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <button type="button" role="menuitem" className={itemCls} onClick={() => void signOut({ redirectUrl: "/sign-in" })}>
             <MI d={MENU_ICON.out} />
             Sign out
@@ -269,17 +317,13 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         aria-haspopup="menu"
         className="flex w-full items-center gap-2.5 rounded-[8px] px-1.5 py-1.5 text-left hover:bg-[var(--bg-hover)]"
       >
-        {user?.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.imageUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
-        ) : (
-          <span className="h-7 w-7 shrink-0 rounded-full bg-[var(--bg-selected)]" />
-        )}
+        {avatar(28)}
         <span className="min-w-0 flex-1 leading-4">
-          <span className="block truncate text-[13px] font-medium">{name || email}</span>
-          <span className="k-fg3 flex items-center gap-1.5 truncate text-[12px]">
-            Dashboard v2 <MaturityBadge level="beta" />
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[13px] font-medium">{name || email}</span>
+            <MaturityBadge level="beta" />
           </span>
+          {name && <span className="k-fg3 block truncate text-[12px]">{email}</span>}
         </span>
         <Updown />
       </button>
@@ -316,7 +360,9 @@ const SETUP: { section: V2Section; label: string }[] = [
   { section: "integrations", label: "Integrations" },
   { section: "settings", label: "Brand settings" },
   { section: "billing", label: "Billing" },
-  { section: "referral", label: "Invite a friend" },
+  { section: "team", label: "Team" },
+  { section: "api-keys", label: "API Keys" },
+  { section: "referral", label: "Refer a friend" },
 ];
 
 function matches(text: string, q: string): boolean {

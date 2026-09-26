@@ -150,6 +150,18 @@ describe("v2 wiring", () => {
     expect(read("src/components/v2/v2-shell.tsx")).toContain("<AccountMenuV2 ");
   });
 
+  it("the account menu follows Explee's user menu: Team, API Keys, Billing, Refer a friend, Help, Sign out", () => {
+    const menus = read("src/components/v2/sidebar-menus.tsx");
+    const order = ['label: "Team"', 'label: "API Keys"', 'label: "Billing"', 'label: "Refer a friend"', "Help\n", "Sign out"];
+    const at = order.map((o) => menus.indexOf(o, menus.indexOf("export function AccountMenuV2")));
+    expect(at.every((i) => i > 0)).toBe(true);
+    expect([...at].sort((x, y) => x - y)).toEqual(at);
+    // Help opens the same identified support chat the FAB opens.
+    expect(menus).toContain("supportWhatsAppHref(email,");
+    // Team is a v2 page on Clerk's own members, read-only.
+    expect(read("src/components/v2/team-page.tsx")).toContain("useOrganization({ memberships:");
+  });
+
   it("the v1 sidebar offers the switch, beta-only and badged", () => {
     expect(read("src/components/context-sidebar.tsx")).toContain("<SwitchToV2 />");
     const sw = read("src/components/ui-version-switch.tsx");
@@ -179,6 +191,7 @@ describe("v2 wiring", () => {
     "/billing",
     "/api-keys",
     "/account",
+    "/team",
     "/referral",
   ];
 
