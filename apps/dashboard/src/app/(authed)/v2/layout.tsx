@@ -7,8 +7,8 @@ const sans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display:
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 /**
- * Dashboard v2 (beta). A server wrapper only so the fonts and the scoped stylesheet
- * load here; everything else is the client layout (beta gate + v1's data providers).
+ * Dashboard v2. A server wrapper only so the fonts and the scoped stylesheet
+ * load here; everything else is the client layout (v1's data providers).
  */
 export default function V2Layout({ children }: { children: React.ReactNode }) {
   return (

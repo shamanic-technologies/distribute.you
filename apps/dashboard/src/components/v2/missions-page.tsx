@@ -9,12 +9,11 @@ import { MissionsTable } from "@/components/v2/missions-table";
 import { useMissions } from "@/components/v2/use-missions";
 import { useBrandRevenue } from "@/components/v2/data";
 import { Figure, SectionTitle, Shimmer, SparkLine, StatTile, TopBar } from "@/components/v2/ui";
-import { MaturityBadge } from "@/components/maturity-badge";
 
 const DAYS = 30;
 
 /**
- * Missions (beta): Explee's dashboard — the four performance figures across every
+ * Missions: Explee's dashboard — the four performance figures across every
  * mission, then the missions table. Figures are served totals; lines are served
  * per-day series with the absent days read as the zeros they are.
  */
@@ -50,7 +49,6 @@ export function MissionsPage() {
         crumbs={[{ label: "Missions" }]}
         actions={
           <>
-            <MaturityBadge level="beta" />
             {rev.enabled && <CampaignControlsTrigger brandId={brandId} />}
           </>
         }

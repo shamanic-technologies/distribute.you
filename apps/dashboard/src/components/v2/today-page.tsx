@@ -15,7 +15,6 @@ import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
-import { MaturityBadge } from "@/components/maturity-badge";
 import {
   BarSpark,
   EmptyNote,
@@ -61,7 +60,7 @@ function greeting(now: Date): string {
 }
 
 /**
- * v2 "Today" (beta) — Keel's home, stating our brand. Every figure is a served field
+ * v2 "Today" — Keel's home, stating our brand. Every figure is a served field
  * on v1's own query keys; the only arithmetic is choosing which served bucket is today.
  */
 export function TodayPage() {
@@ -138,7 +137,6 @@ export function TodayPage() {
         crumbs={[{ label: "Today" }]}
         actions={
           <>
-            <MaturityBadge level="beta" />
             {rev.enabled && <CampaignControlsTrigger brandId={brandId} />}
           </>
         }

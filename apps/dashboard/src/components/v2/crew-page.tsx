@@ -9,7 +9,6 @@ import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { isLearning } from "@/lib/learning-threshold";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission, type CrewSummary } from "@/components/v2/use-missions";
 import { formatRunDuration, useCrewOutcomes, useCrewRuns, useRecentRuns, runState, runTaskLabel, type CrewOutcomes, type CrewRuns } from "@/components/v2/runs";
@@ -40,7 +39,7 @@ function crewCeilingCents(missions: Mission[]): number {
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
 /**
- * Crew (beta): Keel's agent grid on runs-service. A crew is one leg through one channel.
+ * Crew: Keel's agent grid on runs-service. A crew is one leg through one channel.
  * Each card states its runs today with a week of daily counts, when it last ran, what
  * it spent today against what its running missions may spend, and the result its
  * missions landed. The header states the brand's runs and spend today against its
@@ -88,7 +87,6 @@ export function CrewPage() {
               </svg>
               Add a crew
             </Link>
-            <MaturityBadge level="beta" />
           </>
         }
       />

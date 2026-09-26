@@ -14,7 +14,6 @@ import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { backToV1Href, switchUiVersion } from "@/components/ui-version-switch";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -26,7 +25,7 @@ import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, type V2Section } from "@/lib/v2/routes";
 
 /**
- * The three sidebar controls of v2 (beta), drawn the way Explee and Keel draw them:
+ * The three sidebar controls of v2, drawn the way Explee and Keel draw them:
  * the tenant switcher at the top (Explee's project switcher), the account menu at the
  * bottom (Explee's user menu, whose pages are Team, API Keys, Billing and Refer a
  * friend), and Keel's command palette behind the search box and ⌘K.
@@ -322,7 +321,6 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         <span className="min-w-0 flex-1 leading-4">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-[13px] font-medium">{name || email}</span>
-            <MaturityBadge level="beta" />
           </span>
           {name && <span className="k-fg3 block truncate text-[12px]">{email}</span>}
         </span>

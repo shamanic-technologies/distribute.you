@@ -10,7 +10,6 @@ import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
 import { leadWentCold, wentColdReason, WENT_COLD_LABEL } from "@/lib/lead-cold";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { v2Href } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { CloseWonForm } from "@/components/leads/close-won-form";
@@ -37,7 +36,7 @@ function standingState(lead: Lead): string | null {
 }
 
 /**
- * One person (beta), laid out as Keel lays out one record: who they are on top, what
+ * One person, laid out as Keel lays out one record: who they are on top, what
  * happened with them in the main column (lead-service's own ordered history: every
  * message both ways, every delivery fact), and the facts beside it.
  *
@@ -72,7 +71,6 @@ export function PersonPage() {
     <>
       <TopBar
         crumbs={[{ label: "People", href: v2Href(orgId, brandId, "people") }, { label: name || " " }]}
-        actions={<MaturityBadge level="beta" />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         {leadQ.isError ? (

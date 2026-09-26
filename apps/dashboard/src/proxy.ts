@@ -11,7 +11,6 @@ import {
   onboardingBrandCookieName,
   onboardingResumeHref,
 } from "@/lib/onboarding-brand-cookie";
-import { isBetaEmail } from "@/lib/beta-allowlist";
 import {
   UI_VERSION_COOKIE,
   parseUiVersion,
@@ -141,18 +140,16 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL(onboardingHref(), req.url));
     }
 
-    // Dashboard v2 (beta). A beta user who chose v2 lands on v2 from the first frame:
+    // Dashboard v2 is the default for every signed-in user. A user on v2 lands on v2 from the first frame:
     // the choice is a cookie so it survives a reload and a new sign-in, and it is
     // read HERE, pre-paint, rather than by a client redirect that would flash v1.
     // Every v1 brand page has a v2 twin now (`v2PathForV1`), so a v2 user is never
     // sent back to v1 by a link, a `router.push` or a typed URL — including the
     // links inside the v1 business components v2 embeds. The bare org lands on the
     // last brand. The only way into v1 is the "Back to v1" switch, which flips the
-    // cookie first. The cookie is a preference, never an authorisation: without a
-    // beta email nothing moves.
+    // cookie to `v1` first; nothing else sends anyone back to v1.
     const wantsV2 =
       !!userId &&
-      isBetaEmail(sessionClaims?.email) &&
       parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2" &&
       !req.nextUrl.searchParams.has("autoCreate") &&
       !hasExplicitHierarchyIntent(req.nextUrl.searchParams);

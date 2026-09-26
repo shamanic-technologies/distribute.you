@@ -11,7 +11,6 @@ import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isLearning } from "@/lib/learning-threshold";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { v2Href } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions } from "@/components/v2/use-missions";
@@ -21,7 +20,7 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StateDot, StatTile, TopBar } 
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 
 /**
- * One mission (beta), laid out as Keel lays out one record: identity and state on top,
+ * One mission, laid out as Keel lays out one record: identity and state on top,
  * the figures in a row, what it produced in the main column, the facts about it on the
  * right. Every figure is the mission's own served group; the controls are v1's modal;
  * the hold is campaign-service's own sentence.
@@ -63,7 +62,6 @@ export function MissionPage() {
     <>
       <TopBar
         crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name || " " }]}
-        actions={<MaturityBadge level="beta" />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         {!mission ? (

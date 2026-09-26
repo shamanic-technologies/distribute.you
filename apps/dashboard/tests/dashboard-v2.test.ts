@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync } from "fs";
 import { resolve } from "path";
 import {
   matchV1BrandRoot,
@@ -17,11 +17,12 @@ const ROOT = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
 describe("ui-version", () => {
-  it("reads only an exact v2 as v2", () => {
+  it("v2 is the default: only an exact v1 reads as v1", () => {
     expect(parseUiVersion("v2")).toBe("v2");
     expect(parseUiVersion("v1")).toBe("v1");
-    expect(parseUiVersion(undefined)).toBe("v1");
-    expect(parseUiVersion("V2")).toBe("v1");
+    expect(parseUiVersion(undefined)).toBe("v2");
+    expect(parseUiVersion("")).toBe("v2");
+    expect(parseUiVersion("V1")).toBe("v2");
   });
 
   it("writes a year-long, site-wide cookie, Secure only on https", () => {
@@ -130,22 +131,25 @@ const V2_FILES = [
 ];
 
 describe("v2 wiring", () => {
-  it("the edge honours the choice only for a beta email, and keeps Clerk synced under /v2", () => {
+  it("the edge sends every signed-in user to v2 unless they chose v1, and keeps Clerk synced under /v2", () => {
     const proxy = read("src/proxy.ts");
-    expect(proxy).toContain("isBetaEmail(sessionClaims?.email)");
+    // v2 is GA: no allowlist decides who lands on it.
+    expect(proxy).not.toContain("isBetaEmail(");
     expect(proxy).toContain('parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2"');
     expect(proxy).toContain("v2PathForV1(pathname, req.nextUrl.search");
     expect(proxy).toContain('"/v2/orgs/:id"');
   });
 
-  it("the v2 tree is gated on the beta allowlist and wears the beta badge", () => {
+  it("the v2 tree is GA: no allowlist gate, no beta badge anywhere", () => {
     const layout = read("src/components/v2/v2-client-layout.tsx");
-    expect(layout).toContain("isBetaEmail(user?.primaryEmailAddress?.emailAddress)");
-    expect(layout).toContain("This page is not available");
+    expect(layout).not.toContain("isBetaEmail");
+    expect(layout).not.toContain("This page is not available");
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
-    // The sidebar's account menu carries the badge and the one way back to v1.
+    for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
+      expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");
+    }
+    // The account menu carries the one way back to v1.
     const menus = read("src/components/v2/sidebar-menus.tsx");
-    expect(menus).toContain('<MaturityBadge level="beta" />');
     expect(menus).toContain("Back to v1");
     expect(read("src/components/v2/v2-shell.tsx")).toContain("<AccountMenuV2 ");
   });
@@ -164,11 +168,11 @@ describe("v2 wiring", () => {
     expect(read("src/components/v2/team-page.tsx")).toContain("!isAdminEmail(m.publicUserData?.identifier)");
   });
 
-  it("the v1 sidebar offers the switch, beta-only and badged", () => {
+  it("the v1 sidebar offers the way back to v2 to everyone, unbadged", () => {
     expect(read("src/components/context-sidebar.tsx")).toContain("<SwitchToV2 />");
     const sw = read("src/components/ui-version-switch.tsx");
-    expect(sw).toContain("if (!isBeta) return null;");
-    expect(sw).toContain('<MaturityBadge level="beta" />');
+    expect(sw).not.toContain("isBeta");
+    expect(sw).not.toContain("MaturityBadge");
   });
 
   const V2_ROUTES = [

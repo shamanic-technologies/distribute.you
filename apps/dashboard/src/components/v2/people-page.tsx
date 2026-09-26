@@ -12,7 +12,6 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { leadsExportQuery, leadsSearchParam, leadsSearchProblem, LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { v2Href } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBucketCounts } from "@/components/v2/data";
@@ -38,7 +37,7 @@ export const PEOPLE_TABS: { key: string; label: string; bucket: LeadBucket }[] =
 ];
 
 /**
- * People (beta): Keel's people table over lead-service's own pages. The tab is a bucket,
+ * People: Keel's people table over lead-service's own pages. The tab is a bucket,
  * the order is lead-service's activity order, the search runs on the producer over the
  * whole population, and every count is served. A row opens the person in v1's lead
  * panel, which carries the conversation and every statement v2 does not rebuild.
@@ -100,7 +99,7 @@ export function PeoplePage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} actions={<MaturityBadge level="beta" />} />
+      <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} />
       <RecordsTabs
         tabs={PEOPLE_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? counts.counts[t.bucket] : null }))}
         active={tab.key}

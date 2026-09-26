@@ -1,6 +1,6 @@
 /**
- * Which version of the dashboard a beta user is on: v1 (the current one) or v2
- * (the Keel-style shell being built beside it, under `/v2`).
+ * Which version of the dashboard a user is on: v2 (the Keel-style shell under `/v2`,
+ * the default for everyone) or v1 (the previous one, kept behind "Back to v1").
  *
  * The choice is a COOKIE rather than a client store because it is a routing
  * decision, and routing decisions belong at the edge (`proxy.ts`): a beta user who
@@ -8,9 +8,8 @@
  * sign-in, and only a cookie can be read before paint. It is NOT httpOnly because
  * the switch control that writes it is a client component.
  *
- * The cookie is a PREFERENCE, never an authorisation: the edge honours it only for
- * a beta email, and the v2 layout gates its body on the same allowlist. A non-beta
- * user carrying `v2` (someone removed from the list) is simply never redirected.
+ * The cookie is a PREFERENCE, never an authorisation: it only picks between two
+ * dashboards over the same data, both open to every signed-in user.
  *
  * Alias-free on purpose: the edge imports it, and the `@` alias is not resolved
  * under vitest, so keeping it on no imports at all is what lets it carry real unit
@@ -23,9 +22,12 @@ export type UiVersion = "v1" | "v2";
 /** One year: the choice should outlive every session it is made in. */
 const UI_VERSION_MAX_AGE_S = 60 * 60 * 24 * 365;
 
-/** Anything but an exact `v2` reads as v1, which is the dashboard everyone else sees. */
+/**
+ * v2 is the default dashboard: anything but an exact `v1` reads as v2. `v1` is only
+ * ever written by the "Back to v1" switch, so a person lands on v1 only by asking.
+ */
 export function parseUiVersion(raw: string | null | undefined): UiVersion {
-  return raw === "v2" ? "v2" : "v1";
+  return raw === "v1" ? "v1" : "v2";
 }
 
 /** The `document.cookie` assignment for a choice. Pure, so the string is testable. */
@@ -67,7 +69,8 @@ export function matchV1BrandRoot(pathname: string): { orgId: string; brandId: st
 }
 
 /**
- * Where a v1 dashboard URL lives in v2, for a user who chose v2.
+ * Where a v1 dashboard URL lives in v2, for a user on v2 (everyone but those who
+ * chose "Back to v1").
  *
  * Every v1 brand page now has a v2 twin, so a v2 user is never sent back to v1 by a
  * link, a `router.push` or a typed URL: `proxy.ts` rewrites the v1 path here, pre-paint,

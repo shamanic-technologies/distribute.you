@@ -11,7 +11,6 @@ import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { leadsSearchParam } from "@/lib/leads-server-page";
 import { v2Href } from "@/lib/v2/routes";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue } from "@/components/v2/data";
@@ -38,7 +37,7 @@ interface TimelineEntry {
 }
 
 /**
- * One company (beta): Keel's record page. The header and the stage come off the
+ * One company: Keel's record page. The header and the stage come off the
  * organisation features-service values on the brand's revenue read; the people are
  * lead-service's own search on the company name; the timeline is each person's own
  * first-occurrence timestamps as lead-service serves them. Nothing is derived.
@@ -147,7 +146,6 @@ export function CompanyPage() {
                 </Link>
               </span>
             )}
-            <MaturityBadge level="beta" />
           </>
         }
       />
