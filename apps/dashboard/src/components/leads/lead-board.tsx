@@ -19,6 +19,7 @@ import {
 import { OPT_OUT_CHANNELS, type OptOutChannel } from "@/lib/opt-out-channel";
 import { replyKindOption, replyKindPill, type ReplyKind } from "@/lib/reply-kind";
 import { timeAgo } from "@/lib/friendly-datetime";
+import { WENT_COLD_LABEL } from "@/lib/lead-cold";
 
 /**
  * The leads BOARD — four triage columns, one card per lead.
@@ -98,6 +99,14 @@ export interface LeadBoardCard {
    * lifetime revenue, resolved by the page.
    */
   prefillUsd: number | null;
+  /**
+   * lead-service's verdict that this lead WENT COLD (stuck past its window while the
+   * brand's own CRM shows nothing), or null. Passed in like the status: this component
+   * takes nothing from the wire. Drawn as its own quiet tag, because the pipeline beside
+   * the board already values the lead at zero and a card reading as live would contradict
+   * it. The reason sentence lives in the lead panel, one click away.
+   */
+  wentCold: { step: string } | null;
 }
 
 /**
@@ -227,6 +236,14 @@ function CardBody({ card }: { card: LeadBoardCard }) {
             way when the row is tight, never the date: the longest kind is far longer
             than any age, and a truncated "3 h…" states nothing at all. Absent instant
             renders nothing — an undated status is honest, an invented date is not. */}
+        {card.wentCold && (
+          <span
+            data-testid="lead-board-card-cold"
+            className="inline-flex shrink-0 rounded-full border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500"
+          >
+            {WENT_COLD_LABEL}
+          </span>
+        )}
         {card.statusAt && (
           <span
             data-testid="lead-board-card-age"

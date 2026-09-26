@@ -131,6 +131,7 @@ import {
 import { LeadCampaignSections } from "@/components/audiences/lead-campaign-sections";
 import { LeadScopeCards } from "@/components/audiences/lead-scope-cards";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
+import { leadWentCold, wentColdReason, WENT_COLD_LABEL } from "@/lib/lead-cold";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // legs (`leadTabsForLegs`); this map only names them.
@@ -230,6 +231,8 @@ function toBoardCard(
     // card says nothing rather than borrowing a date.
     statusAt: statedAt ?? leadDateForStatus(lead, status),
     prefillUsd,
+    // lead-service's verdict, read through the one helper the panel reads too.
+    wentCold: leadWentCold(lead.standing),
   };
 }
 
@@ -2299,6 +2302,19 @@ export function EngagedLeadsPage({
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
+            {/* lead-service's verdict that this lead went cold, with the reason. The same
+                helper the board card reads, so the two cannot disagree, and it renders at
+                every grain because the fact is about the person, not about a leg. */}
+            {(() => {
+              const cold = leadWentCold(selectedLead.standing);
+              if (!cold) return null;
+              return (
+                <div data-testid="lead-panel-cold" className="bg-gray-100 rounded-lg border border-gray-200 p-3 mb-4 text-sm">
+                  <p className="font-medium text-gray-700">{WENT_COLD_LABEL}</p>
+                  <p className="text-gray-500 mt-0.5">{wentColdReason(cold)}</p>
+                </div>
+              );
+            })()}
             {/* Wherever a leg is STATED, which is the campaign's own. At brand and offer
                 grain several legs run at once, so the section states nothing at all. */}
             {panelLeg && (
