@@ -8,7 +8,9 @@ describe("Clerk org/URL sync guards", () => {
   it("proxy.ts wires organizationSyncOptions so URL [orgId] drives Clerk active org", () => {
     const src = readFileSync(resolve(ROOT, "src/proxy.ts"), "utf8");
     expect(src).toContain("organizationSyncOptions");
-    expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*['"]\/orgs\/:id['"]\s*,\s*['"]\/orgs\/:id\/\(\.\*\)['"]\s*\]/);
+    // v1 URLs first, then the same two shapes under the v2 dashboard prefix — the
+    // URL org drives Clerk's active org in both trees.
+    expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*['"]\/orgs\/:id['"]\s*,\s*['"]\/orgs\/:id\/\(\.\*\)['"]\s*,\s*['"]\/v2\/orgs\/:id['"]\s*,\s*['"]\/v2\/orgs\/:id\/\(\.\*\)['"]\s*\]/);
   });
 
   it("handleOrgSwitch calls BOTH setActive and router.push to prevent client/URL drift", () => {

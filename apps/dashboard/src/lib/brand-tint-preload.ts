@@ -39,7 +39,9 @@ import { TINT_ATTR, HUE_VAR, CHROMA_VAR, DELTA_VAR } from "./brand-tint";
  * the API-key page carry no brand, so they carry no tint.
  */
 export function brandIdFromPathname(pathname: string): string | null {
-  const parts = pathname.split("/").filter(Boolean);
+  const all = pathname.split("/").filter(Boolean);
+  // The v2 dashboard mounts the same tree under `/v2` — same brand, same tint.
+  const parts = all[0] === "v2" ? all.slice(1) : all;
   if (parts[0] !== "orgs" || !parts[1]) return null;
   if (parts[2] !== "brands" || !parts[3]) return null;
   return parts[3];
@@ -56,6 +58,7 @@ export function brandIdFromPathname(pathname: string): string | null {
  */
 export const BRAND_TINT_PRELOAD_SCRIPT = `(function(){
 var parts=location.pathname.split("/").filter(Boolean);
+if(parts[0]==="v2")parts=parts.slice(1);
 if(parts[0]!=="orgs"||!parts[1]||parts[2]!=="brands"||!parts[3])return;
 var prefix=${JSON.stringify(`${TENANT_IDENTITY_COOKIE}=`)};
 var row=document.cookie.split("; ").filter(function(p){return p.indexOf(prefix)===0})[0];
