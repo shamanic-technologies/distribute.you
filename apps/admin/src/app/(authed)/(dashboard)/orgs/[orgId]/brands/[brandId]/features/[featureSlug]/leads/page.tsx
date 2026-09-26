@@ -3,14 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCampaignsByBrand } from "@/lib/api";
+import { getLegCatalogueBody, listCampaignsByBrand } from "@/lib/api";
+import { EMPTY_LEG_CATALOGUE, legCatalogueFromWire, legFor, type LegDef } from "@/lib/legs";
 import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
 import {
-  funnelDisplayName,
-  leadFunnelStages,
+  leadLegStages,
   leadStepErrorMessage,
   trackedStages,
-  type SalesFunnelKeyWire,
   type WritableStageKey,
 } from "@/lib/lead-funnel-stages";
 import {
@@ -328,24 +327,34 @@ export default function FeatureLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
-  // ── Funnel stages for the open lead ──────────────────────────────────────────
-  // This page lists a whole FEATURE's leads, so the steps are the funnel of each lead's
-  // OWN campaign — not one funnel for the whole page. campaign-service persists it on the
-  // campaign row; a campaign that states none has no funnel to walk and the section
-  // renders nothing rather than showing steps it never sold.
+  // ── Leg stages for the open lead ─────────────────────────────────────────────
+  // This page lists a whole FEATURE's leads, so the steps are the LEG of each lead's OWN
+  // campaign — not one leg for the whole page. campaign-service persists `legKey` on the
+  // campaign row and features-service's public catalogue names its two steps. A campaign
+  // that states no leg (one predating legs) has no steps to walk, and the section renders
+  // nothing rather than showing steps it was never bought for.
   const { data: campaignsData } = useAuthQuery(
     ["campaigns", brandId],
     () => listCampaignsByBrand(brandId),
   );
-  const funnelByCampaignId = useMemo(() => {
-    const m = new Map<string, SalesFunnelKeyWire>();
+  const { data: legCatalogueBody } = useAuthQuery(["legCatalogue"], () => getLegCatalogueBody());
+  const legCatalogue = useMemo(
+    () => (legCatalogueBody ? legCatalogueFromWire(legCatalogueBody) : EMPTY_LEG_CATALOGUE),
+    [legCatalogueBody],
+  );
+  const legByCampaignId = useMemo(() => {
+    const m = new Map<string, LegDef>();
     for (const c of campaignsData?.campaigns ?? []) {
-      if (c.funnelKey) m.set(c.id, c.funnelKey as SalesFunnelKeyWire);
+      const leg = legFor(legCatalogue, c.legKey);
+      if (leg) m.set(c.id, leg);
+      else if (c.legKey && legCatalogueBody) {
+        console.error(`[admin] leads: campaign ${c.id} states leg "${c.legKey}" the catalogue does not carry`);
+      }
     }
     return m;
-  }, [campaignsData]);
-  const panelFunnelKey = selectedLead ? funnelByCampaignId.get(selectedLead.campaignId) ?? null : null;
-  const panelStages = useMemo(() => leadFunnelStages(panelFunnelKey), [panelFunnelKey]);
+  }, [campaignsData, legCatalogue, legCatalogueBody]);
+  const panelLeg = selectedLead ? legByCampaignId.get(selectedLead.campaignId) ?? null : null;
+  const panelStages = useMemo(() => leadLegStages(panelLeg), [panelLeg]);
   const { data: stepStatements } = useLeadStepStatements(selectedLead?.id ?? null);
   const setStage = useSetLeadStepStatement(selectedLead?.id ?? null);
   const [panelPending, setPanelPending] = useState<{ key: WritableStageKey; next: "outcome" | "never" } | null>(null);
@@ -497,9 +506,9 @@ export default function FeatureLeadsPage() {
                 </div>
               </div>
             )}
-            {panelFunnelKey && (
+            {panelLeg && (
               <LeadFunnelStageSection
-                funnelName={funnelDisplayName(panelFunnelKey)}
+                legLabel={panelLeg.label}
                 stages={panelStages}
                 states={panelStates}
                 tracked={panelTracked}

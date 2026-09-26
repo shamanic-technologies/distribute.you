@@ -25,7 +25,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { budgetFieldsForCampaign, SALES_BUDGET_NOTE } from "@/lib/campaign-budget-fields";
-import { SALES_FUNNEL_KEYS, salesFunnelLabel } from "@/lib/sales-funnel-keys";
+import { CampaignIdentityPicker, campaignIdentityProblem, useCampaignIdentity } from "@/components/campaigns/campaign-identity-picker";
 import { extractDomain } from "@/lib/extract-domain";
 import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -207,15 +207,21 @@ export default function CreateCampaignPage() {
   const [isCreating, setIsCreating] = useState(false);
   const isCreatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  // Which sales funnel the campaign sells. A sales feature MUST state one — it is what
-  // the campaign is paced and priced on — and staff pick it rather than have it derived
-  // from the goal. A feature that sells through no sales funnel states none.
-  const needsSalesFunnel = isRevenueFeature(featureId);
-  const [funnelKey, setFunnelKey] = useState<string>("");
+  // A sales campaign is (offer x leg x channel): staff state the leg it is bought for
+  // and the offer it sells, the way campaign-service identifies it. A feature outside
+  // the sales family states neither.
+  const needsLeg = isRevenueFeature(featureId);
 
   // Brand state
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [newBrandUrl, setNewBrandUrl] = useState("");
+  // The brand a new URL resolved to on Go: its offers are only listable once it exists.
+  const [goBrandId, setGoBrandId] = useState<string | null>(null);
+  const identityBrandId =
+    selectedBrandId && selectedBrandId !== "__new__" ? selectedBrandId : goBrandId;
+  const identity = useCampaignIdentity(identityBrandId, featureId, needsLeg);
+  const identityProblem = needsLeg ? campaignIdentityProblem(identity) : null;
+  const legKey = needsLeg ? identity.legKey || null : null;
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   // Fetch ranked workflows (family-aggregated stats from workflow-service)
@@ -337,6 +343,7 @@ export default function CreateCampaignPage() {
       try {
         const { brandId: newId } = await upsertBrand(resolvedBrandUrl);
         brandId = newId;
+        setGoBrandId(newId);
       } catch {
         setFormData({ ...EMPTY_FORM, brandUrl: resolvedBrandUrl });
         setIsLoadingProfile(false);
@@ -373,11 +380,10 @@ export default function CreateCampaignPage() {
       setIsCreating(false);
       return;
     }
-    // Stop rather than send a funnel nobody stated: campaign-service refuses a sales
-    // campaign with no funnel, and a default picked here would be a funnel the brand
-    // is neither paced nor priced on.
-    if (needsSalesFunnel && !funnelKey) {
-      setCreateError("Pick the sales funnel this campaign sells.");
+    // Stop rather than send a leg or an offer nobody stated: a default picked here would
+    // file the campaign, and the money pacing it, under something nobody chose.
+    if (identityProblem || (needsLeg && !identity.offerId)) {
+      setCreateError(identityProblem ?? "Pick the offer this campaign sells.");
       isCreatingRef.current = false;
       setIsCreating(false);
       return;
@@ -385,16 +391,16 @@ export default function CreateCampaignPage() {
 
     setCreateError(null);
 
-    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
-    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
-    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // A ceiling belongs to a campaign bought for NO leg. A sales campaign is paced on
+    // the brand's daily ceiling for its (offer, leg, channel) in billing, and
+    // campaign-service 400s the whole creation if we state one here.
     // The typed amount still drives the credit guard and the projections above.
     const ceiling: Record<string, string> = {};
     if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
     if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
     if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
-    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
+    const budgetParams = budgetFieldsForCampaign(legKey, ceiling);
 
     const generateName = () => {
       const now = new Date();
@@ -406,7 +412,8 @@ export default function CreateCampaignPage() {
         workflowSlug: selectedRow.workflowSlug,
         featureSlug: featureId,
         brandUrls: [brandUrl],
-        funnelKey: needsSalesFunnel ? funnelKey : null,
+        offerId: needsLeg ? identity.offerId || null : null,
+        legKey,
         ...budgetParams,
         featureInputs: inputFields,
       };
@@ -439,33 +446,34 @@ export default function CreateCampaignPage() {
       isCreatingRef.current = false;
       setIsCreating(false);
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, needsSalesFunnel, funnelKey, refetchCampaigns]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, needsLeg, identity.offerId, identityProblem, legKey, refetchCampaigns]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
     if (!selectedRow || !budgetAmount) return;
-    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
-    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
-    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // A ceiling belongs to a campaign bought for NO leg. A sales campaign is paced on
+    // the brand's daily ceiling for its (offer, leg, channel) in billing, and
+    // campaign-service 400s the whole creation if we state one here.
     // The typed amount still drives the credit guard and the projections above.
     const ceiling: Record<string, string> = {};
     if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
     if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
     if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
-    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
+    const budgetParams = budgetFieldsForCampaign(legKey, ceiling);
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowSlug: selectedRow.workflowSlug,
       brandUrl: intentBrandUrl,
-      // The funnel rides the blob: the resume path creates the campaign on a fresh
-      // page load, where the picked value is gone.
-      funnelKey: needsSalesFunnel ? funnelKey : null,
+      // The offer and leg ride the blob: the resume path creates the campaign on a
+      // fresh page load, where the picked values are gone.
+      offerId: needsLeg ? identity.offerId || null : null,
+      legKey,
       ...budgetParams,
       featureInputs: intentInputFields,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, needsSalesFunnel, funnelKey]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, needsLeg, identity.offerId, legKey]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-topup, show the modal */
   const handleCreateCampaign = useCallback(async () => {
@@ -545,10 +553,12 @@ export default function CreateCampaignPage() {
       setIsCreating(true);
       (async () => {
         try {
-          // The funnel was stated before checkout and rides the blob; a blob written
-          // before it did carries none, and campaign-service refuses that for a sales
-          // feature rather than us inventing one on the way back in.
-          const payload = { name: generateName(), workflowSlug, featureSlug: featureId, funnelKey: null, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          // The offer and leg were stated before checkout and ride the blob. A blob
+          // written before they did carries neither, and they are never invented on the
+          // way back in; a retired `funnelKey` in an old blob is dropped, never sent.
+          const { funnelKey: _retiredFunnelKey, ...current } = rest as Record<string, unknown>;
+          void _retiredFunnelKey;
+          const payload = { name: generateName(), workflowSlug, featureSlug: featureId, offerId: null, legKey: null, ...current } as unknown as Parameters<typeof createCampaign>[0];
           try {
             await createCampaign(payload);
           } catch (firstErr) {
@@ -804,31 +814,18 @@ export default function CreateCampaignPage() {
           {/* A sales campaign holds no ceiling of its own, so say where its money lives
               rather than leave an input that quietly does nothing to the campaign. The
               amount above still gates the credit check before we create anything. */}
-          {needsSalesFunnel && (
+          {needsLeg && (
             <p className="basis-full text-xs text-gray-500" data-testid="sales-budget-note">
               {SALES_BUDGET_NOTE} The amount above is only used to check this org can afford the run.
             </p>
           )}
 
-          {needsSalesFunnel && (
+          {needsLeg && (
             <>
               <div className="hidden sm:block h-6 w-px bg-gray-200" />
 
-              {/* Sales funnel — what this campaign sells */}
-              <div className="flex items-center gap-2" data-testid="funnel-controls">
-                <span className="text-xs text-gray-500 uppercase tracking-wider">Funnel:</span>
-                <select
-                  value={funnelKey}
-                  onChange={(e) => setFunnelKey(e.target.value)}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
-                  data-testid="funnel-select"
-                >
-                  <option value="">Pick a funnel</option>
-                  {SALES_FUNNEL_KEYS.map((key) => (
-                    <option key={key} value={key}>{salesFunnelLabel(key)}</option>
-                  ))}
-                </select>
-              </div>
+              {/* What this campaign is: the offer it sells and the leg it is bought for */}
+              <CampaignIdentityPicker identity={identity} />
             </>
           )}
 
@@ -837,7 +834,7 @@ export default function CreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || (needsSalesFunnel && !funnelKey)}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || (needsLeg && !identity.legKey)}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             data-testid="go-button"
           >

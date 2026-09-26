@@ -41,7 +41,7 @@ import {
   type SalesObjective,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
-import { SALES_FUNNEL_KEYS, salesFunnelLabel } from "@/lib/sales-funnel-keys";
+import { CampaignIdentityPicker, campaignIdentityProblem, useCampaignIdentity } from "@/components/campaigns/campaign-identity-picker";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { budgetFieldsForCampaign, SALES_BUDGET_NOTE } from "@/lib/campaign-budget-fields";
 import { projectFunnel, type FunnelEconomics } from "@/lib/sales-funnel-projection";
@@ -290,11 +290,14 @@ export default function FeatureCreateCampaignPage() {
   const [isCreating, setIsCreating] = useState(false);
   const isCreatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  // Which sales funnel the campaign sells. A sales feature MUST state one — it is what
-  // the campaign is paced and priced on — and staff pick it rather than have it derived
-  // from the goal. A feature that sells through no sales funnel states none.
-  const needsSalesFunnel = isRevenueFeature(featureSlug);
-  const [funnelKey, setFunnelKey] = useState<string>("");
+  // A sales campaign is (offer x leg x channel): staff state the offer it sells and
+  // the leg it is bought for, the way campaign-service identifies it. A feature outside
+  // the sales family states neither.
+  const needsLeg = isRevenueFeature(featureSlug);
+  const identity = useCampaignIdentity(brandId, featureSlug, needsLeg);
+  const identityProblem = needsLeg ? campaignIdentityProblem(identity) : null;
+  const legKey = needsLeg ? identity.legKey || null : null;
+  const offerIdForCreate = needsLeg ? identity.offerId || null : null;
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [additionalBrandIds, setAdditionalBrandIds] = useState<string[]>([]);
@@ -807,7 +810,10 @@ export default function FeatureCreateCampaignPage() {
         formData.brandUrl || baseUrl,
         ...additionalBrands.map((b) => b.url).filter((u): u is string => u != null),
       ];
-      const testFunnelKey = needsSalesFunnel ? funnelKey || null : null;
+      if (identityProblem) {
+        setTestError((s) => ({ ...s, [wf.id]: identityProblem }));
+        return;
+      }
       const now = new Date();
       const name = `Test — ${wf.workflowDynastyName} — ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}.${String(now.getMilliseconds()).padStart(3, "0")}`;
       const { campaign } = await createCampaign({
@@ -815,13 +821,14 @@ export default function FeatureCreateCampaignPage() {
         workflowSlug: wf.workflowSlug,
         brandUrls,
         featureSlug,
-        // A test run is still a campaign on this feature, so it states the same funnel —
-        // and a campaign that states one holds no ceiling of its own, so the test cap
-        // rides only on a non-sales feature. maxLeads: 3 is what bounds a sales test run.
-        funnelKey: testFunnelKey,
+        // A test run is still a campaign on this feature, so it states the same offer and
+        // leg — and a campaign bought for a leg holds no ceiling of its own, so the test
+        // cap rides only on a non-sales feature. maxLeads: 3 bounds a sales test run.
+        offerId: offerIdForCreate,
+        legKey,
         featureInputs: inputValues,
         maxLeads: 3,
-        ...budgetFieldsForCampaign(testFunnelKey, { maxBudgetTotalUsd: TEST_RUN_BUDGET_USD }),
+        ...budgetFieldsForCampaign(legKey, { maxBudgetTotalUsd: TEST_RUN_BUDGET_USD }),
       } as unknown as Parameters<typeof createCampaign>[0]);
       setTests((t) => ({ ...t, [wf.id]: { campaignId: campaign.id, status: campaign.status, emails: [] } }));
     } catch (err) {
@@ -834,7 +841,7 @@ export default function FeatureCreateCampaignPage() {
     } finally {
       setTestStarting((s) => ({ ...s, [wf.id]: false }));
     }
-  }, [brand, testStarting, featureInputs, formData, additionalBrands, featureSlug, needsSalesFunnel, funnelKey]);
+  }, [brand, testStarting, featureInputs, formData, additionalBrands, featureSlug, identityProblem, offerIdForCreate, legKey]);
 
   // Workflow IDs for key status check
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
@@ -1002,11 +1009,10 @@ export default function FeatureCreateCampaignPage() {
       setIsCreating(false);
       return;
     }
-    // Stop rather than send a funnel nobody stated: campaign-service refuses a sales
-    // campaign with no funnel, and a default picked here would be a funnel the brand
-    // is neither paced nor priced on.
-    if (needsSalesFunnel && !funnelKey) {
-      setCreateError("Pick the sales funnel this campaign sells.");
+    // Stop rather than send a leg or an offer nobody stated: a default picked here would
+    // file the campaign, and the money pacing it, under something nobody chose.
+    if (identityProblem) {
+      setCreateError(identityProblem);
       isCreatingRef.current = false;
       setIsCreating(false);
       return;
@@ -1014,16 +1020,16 @@ export default function FeatureCreateCampaignPage() {
 
     setCreateError(null);
 
-    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
-    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
-    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // A ceiling belongs to a campaign bought for NO leg. A sales campaign is paced on
+    // the brand's daily ceiling for its (offer, leg, channel) in billing, and
+    // campaign-service 400s the whole creation if we state one here.
     // The typed amount still drives the credit guard and the projections above.
     const ceiling: Record<string, string> = {};
     if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
     if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
     if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
-    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
+    const budgetParams = budgetFieldsForCampaign(legKey, ceiling);
 
     const generateName = () => {
       const now = new Date();
@@ -1045,7 +1051,8 @@ export default function FeatureCreateCampaignPage() {
         workflowSlug: selectedRow.workflowSlug,
         brandUrls,
         featureSlug: featureSlug,
-        funnelKey: needsSalesFunnel ? funnelKey : null,
+        offerId: offerIdForCreate,
+        legKey,
         ...budgetParams,
         featureInputs: inputValues,
       };
@@ -1092,16 +1099,16 @@ export default function FeatureCreateCampaignPage() {
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
     if (!selectedRow || !budgetAmount) return;
-    // A ceiling belongs to a campaign that sells through NO sales funnel. A sales
-    // campaign is paced on the brand's daily ceiling for its (funnel, channel, offer)
-    // in billing, and campaign-service 400s the whole creation if we state one here.
+    // A ceiling belongs to a campaign bought for NO leg. A sales campaign is paced on
+    // the brand's daily ceiling for its (offer, leg, channel) in billing, and
+    // campaign-service 400s the whole creation if we state one here.
     // The typed amount still drives the credit guard and the projections above.
     const ceiling: Record<string, string> = {};
     if (budgetFrequency === "one-off") ceiling.maxBudgetTotalUsd = budgetAmount;
     if (budgetFrequency === "daily") ceiling.maxBudgetDailyUsd = budgetAmount;
     if (budgetFrequency === "weekly") ceiling.maxBudgetWeeklyUsd = budgetAmount;
     if (budgetFrequency === "monthly") ceiling.maxBudgetMonthlyUsd = budgetAmount;
-    const budgetParams = budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling);
+    const budgetParams = budgetFieldsForCampaign(legKey, ceiling);
 
     const { brandUrl: intentBrandUrl, ...intentInputFields } = formData;
     const intentBrandUrls = [
@@ -1112,13 +1119,14 @@ export default function FeatureCreateCampaignPage() {
       workflowSlug: selectedRow.workflowSlug,
       displayLabel: selectedRow.workflowDynastyName,
       brandUrls: intentBrandUrls,
-      // The funnel rides the blob: the resume path creates the campaign on a fresh
-      // page load, where the picked value is gone.
-      funnelKey: needsSalesFunnel ? funnelKey : null,
+      // The offer and leg ride the blob: the resume path creates the campaign on a
+      // fresh page load, where the picked values are gone.
+      offerId: offerIdForCreate,
+      legKey,
       ...budgetParams,
       featureInputs: intentInputFields,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, additionalBrands, needsSalesFunnel, funnelKey]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, additionalBrands, offerIdForCreate, legKey]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-topup, show the modal.
    *  If the user already has a saved payment method, silently configure auto-topup and proceed. */
@@ -1236,10 +1244,12 @@ export default function FeatureCreateCampaignPage() {
             }
           }
           let result: { campaign: Campaign };
-          // The funnel was stated before checkout and rides the blob; a blob written
-          // before it did carries none, and campaign-service refuses that for a sales
-          // feature rather than us inventing one on the way back in.
-          const payload = { name: generateName(), workflowSlug, featureSlug: featureSlug, funnelKey: null, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          // The offer and leg were stated before checkout and ride the blob. A blob
+          // written before they did carries neither, and they are never invented on the
+          // way back in; a retired `funnelKey` in an old blob is dropped, never sent.
+          const { funnelKey: _retiredFunnelKey, ...current } = rest as Record<string, unknown>;
+          void _retiredFunnelKey;
+          const payload = { name: generateName(), workflowSlug, featureSlug: featureSlug, offerId: null, legKey: null, ...current } as unknown as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {
@@ -1653,10 +1663,17 @@ export default function FeatureCreateCampaignPage() {
               {/* A sales campaign holds no ceiling of its own, so say where its money lives
                   rather than leave an input that quietly does nothing to the campaign. The
                   amount above still prices the projection and gates the credit check. */}
-              {needsSalesFunnel && (
+              {needsLeg && (
                 <p className="mt-3 text-xs text-gray-500" data-testid="sales-budget-note">
                   {SALES_BUDGET_NOTE} The amount above prices the projection and checks this org can afford the run.
                 </p>
+              )}
+
+              {/* What this campaign is: the offer it sells and the leg it is bought for. */}
+              {needsLeg && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <CampaignIdentityPicker identity={identity} />
+                </div>
               )}
 
               {(() => {
@@ -2024,25 +2041,12 @@ export default function FeatureCreateCampaignPage() {
             </select>
           </div>
 
-          {needsSalesFunnel && (
+          {needsLeg && (
             <>
               <div className="hidden sm:block h-6 w-px bg-gray-200" />
 
-              {/* Sales funnel — what this campaign sells */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 uppercase tracking-wider">Funnel:</span>
-                <select
-                  value={funnelKey}
-                  onChange={(e) => setFunnelKey(e.target.value)}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
-                  data-testid="funnel-select"
-                >
-                  <option value="">Pick a funnel</option>
-                  {SALES_FUNNEL_KEYS.map((key) => (
-                    <option key={key} value={key}>{salesFunnelLabel(key)}</option>
-                  ))}
-                </select>
-              </div>
+              {/* What this campaign is: the offer it sells and the leg it is bought for */}
+              <CampaignIdentityPicker identity={identity} />
             </>
           )}
 
@@ -2051,7 +2055,7 @@ export default function FeatureCreateCampaignPage() {
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || isLoadingProfile || showForm || (needsSalesFunnel && !funnelKey)}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || isLoadingProfile || showForm || !!identityProblem}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Go &rarr;

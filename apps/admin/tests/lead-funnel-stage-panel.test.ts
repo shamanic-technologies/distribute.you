@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  FUNNEL_STEPS,
   isWritableStage,
-  leadFunnelStages,
+  leadLegStages,
   saleValueCentsFrom,
   trackedStages,
 } from "../src/lib/lead-funnel-stages";
@@ -14,31 +13,27 @@ const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 const PAGE = read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx");
 const SECTION = read("src/components/leads/lead-funnel-stage-section.tsx");
 
-describe("admin funnel stages", () => {
-  it("walks each funnel's own steps", () => {
-    expect(leadFunnelStages("reply_meeting").map((s) => s.key)).toEqual([
-      "positive_reply",
-      "meeting_booked",
-      "meeting_attended",
-      "sale",
-    ]);
-    expect(leadFunnelStages("visit_form").map((s) => s.key)).toEqual([
-      "website_visit",
-      "form_submission",
-      "sale",
-    ]);
+describe("admin leg stages", () => {
+  it("walks the leg's own two steps, from then to", () => {
+    expect(
+      leadLegStages({ fromKey: "conversation", toKey: "meeting_booked", fromLabel: "Positive reply", toLabel: "Meeting booked" }).map((s) => s.key),
+    ).toEqual(["positive_reply", "meeting_booked"]);
+    expect(
+      leadLegStages({ fromKey: null, toKey: "website_visit", fromLabel: null, toLabel: "Website visit" }).map((s) => s.key),
+    ).toEqual(["website_visit"]);
   });
 
-  it("states nothing for a campaign that names no funnel", () => {
-    // A campaign with no funnel has no steps. Showing steps it never sold would be
-    // worse than showing none.
-    expect(leadFunnelStages(null)).toEqual([]);
+  it("states nothing for a campaign that names no leg", () => {
+    // A campaign with no leg has no steps. Showing steps it was never bought for would
+    // be worse than showing none.
+    expect(leadLegStages(null)).toEqual([]);
   });
 
-  it("resolves the funnel from each lead's OWN campaign, not one funnel for the whole page", () => {
+  it("resolves the leg from each lead's OWN campaign, never a retired funnel", () => {
     // This page lists a whole feature's leads across many campaigns.
-    expect(PAGE).toContain("funnelByCampaignId.get(selectedLead.campaignId)");
-    expect(PAGE).toContain("if (c.funnelKey) m.set(c.id, c.funnelKey");
+    expect(PAGE).toContain("legByCampaignId.get(selectedLead.campaignId)");
+    expect(PAGE).toContain("legFor(legCatalogue, c.legKey)");
+    expect(PAGE).not.toContain("funnelKey");
   });
 
   it("offers no control on a stage lead-service cannot record", () => {
@@ -90,18 +85,4 @@ describe("the reply vocabulary no longer offers deal progress", () => {
     }
   });
 
-  it("keeps admin's funnels equal to the funnel catalogue's names", () => {
-    expect(Object.keys(FUNNEL_STEPS).sort()).toEqual(
-      [
-        "lead_forms_from_ads",
-        "reply_meeting",
-        "sales_from_conversation",
-        "sales_from_website",
-        "sales_meetings_from_ads",
-        "visit_form",
-        "visit_meeting",
-        "visit_signup",
-      ],
-    );
-  });
 });

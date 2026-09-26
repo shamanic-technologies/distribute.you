@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Campaign } from "@/lib/api";
-import { SALES_BUDGET_NOTE, statesSalesFunnel } from "@/lib/campaign-budget-fields";
+import { SALES_BUDGET_NOTE, statesLeg } from "@/lib/campaign-budget-fields";
 
 export type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
 
@@ -52,18 +52,18 @@ interface Props {
   errorMessage: string | null;
   onClose: () => void;
   /**
-   * `null` when the campaign sells through a sales funnel: it holds no ceiling of its
-   * own, so there is nothing to edit and nothing to send.
+   * `null` when the campaign is bought for a leg: it holds no ceiling of its own, so
+   * there is nothing to edit and nothing to send.
    */
   onConfirm: (budget: RelaunchBudget | null) => void;
 }
 
 export function RelaunchCampaignModal({ open, campaign, submitting, errorMessage, onClose, onConfirm }: Props) {
-  // A campaign that states a funnel is paced on the brand's daily ceiling in billing;
+  // A campaign bought for a leg is paced on the brand's daily ceiling in billing;
   // campaign-service refuses a per-campaign one. So there is no budget to edit, and the
   // row's own stale ceiling (written before that guard shipped) must not be sent back —
   // relaunching it verbatim is exactly the 400.
-  const editsBudget = !statesSalesFunnel(campaign.funnelKey);
+  const editsBudget = !statesLeg(campaign.legKey);
   const initial = useMemo(
     () => (editsBudget ? deriveBudgetFromCampaign(campaign) : null),
     [campaign, editsBudget],

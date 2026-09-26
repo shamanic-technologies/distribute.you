@@ -1,123 +1,15 @@
 /**
- * The stages of ONE campaign's sales funnel, as a person states them about ONE lead.
+ * The stages of the ONE LEG a campaign is bought for, as a person states them about ONE
+ * lead: the step the leg converts FROM (when it has one) and the step it lands ON.
  *
- * Twin of the customer dashboard's `lib/lead-funnel-stages.ts`, with ONE difference: the
- * dashboard derives each step list from `SALES_FUNNELS[key].steps`, its funnel catalogue.
- * This app has no such catalogue (the staff console is a deliberate fork and carries its
- * own settings surfaces), so the funnels are written out below.
- *
- * That literal copy is pinned by a guard in the DASHBOARD's suite — `FUNNEL_STEPS` here
- * must equal `SALES_FUNNELS`'s steps there, funnel for funnel and label for label. The
- * guard lives on that side on purpose: `apps/dashboard`'s tests are a CI merge gate and
- * this app's are not, so a drift caught there blocks a merge instead of rotting quietly.
- *
- * NOT keyed on the brand goal. `sales_meetings` covers both meeting funnels, so a goal
- * cannot say whether the funnel starts at a reply or at a website visit — the exact
- * distinction this panel exists to record.
+ * Twin of the customer dashboard's `lib/lead-stages.ts` `leadLegStages`. The sales
+ * funnel this used to walk is retired fleet-wide (campaign-service dropped
+ * `funnel_key`); a campaign is (offer x leg x channel), so the panel walks its leg.
+ * Steps are keyed on the producer's step TOKEN, never on a label (labels are copy).
  *
  * Alias-free on purpose, so it carries real unit tests rather than source-substring
  * guards. Keep it that way.
  */
-
-/**
- * The eight funnel keys. The first four keep this app's short spelling; the four
- * brand-service added on 2026-09-17 were born canonical and have no short form, so
- * their key IS their wire key.
- */
-export type SalesFunnelKey =
-  | "reply_meeting"
-  | "visit_meeting"
-  | "visit_signup"
-  | "visit_form"
-  | "sales_from_conversation"
-  | "sales_meetings_from_ads"
-  | "lead_forms_from_ads"
-  | "sales_from_website";
-
-/** The canonical spellings the wire uses. */
-export type CanonicalSalesFunnelKey =
-  | "sales_meetings_from_conversation"
-  | "sales_meetings_from_website"
-  | "website_purchases"
-  | "form_magnet"
-  | "sales_from_conversation"
-  | "sales_meetings_from_ads"
-  | "lead_forms_from_ads"
-  | "sales_from_website";
-
-export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
-
-/**
- * Each funnel's steps, base to terminal — the SAME labels the dashboard's catalogue
- * carries. Pinned equal by the dashboard-side guard; edit both or neither.
- */
-export const FUNNEL_STEPS: Record<SalesFunnelKey, { name: string; steps: string[] }> = {
-  reply_meeting: {
-    name: "Sales Meeting from Positive Reply",
-    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
-  },
-  visit_meeting: {
-    name: "Sales Meeting from Website",
-    steps: ["Website visit", "Meeting booked", "Meeting attended", "Paid client"],
-  },
-  // KEY/NAME MISMATCH ON PURPOSE, matching brand-service and the dashboard: the key is
-  // a frozen wire token, and this funnel's middle rung is a SIGNUP. The name "Website
-  // Purchase" belongs to `sales_from_website`.
-  visit_signup: {
-    name: "Signups",
-    steps: ["Website visit", "Signup", "Paid client"],
-  },
-  visit_form: {
-    name: "Form Magnet",
-    steps: ["Website visit", "Form submitted", "Paid client"],
-  },
-  sales_from_conversation: {
-    name: "Sale from Positive Reply",
-    steps: ["Positive reply", "Paid client"],
-  },
-  sales_meetings_from_ads: {
-    name: "Sales Meeting from Ads",
-    steps: ["Meeting booked", "Meeting attended", "Paid client"],
-  },
-  lead_forms_from_ads: {
-    name: "Lead Form from Ads",
-    steps: ["Form submitted", "Paid client"],
-  },
-  sales_from_website: {
-    name: "Website Purchase",
-    steps: ["Website visit", "Paid client"],
-  },
-};
-
-/**
- * Collapse any wire spelling onto the key the funnels are written on.
- *
- * THROWS on anything else rather than guessing a funnel — the column is
- * CHECK-constrained upstream, so a value arriving here that we cannot name is a
- * vocabulary drift worth seeing, not one to paper over with a plausible funnel.
- */
-export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey {
-  switch (key) {
-    case "reply_meeting":
-    case "sales_meetings_from_conversation":
-      return "reply_meeting";
-    case "visit_meeting":
-    case "sales_meetings_from_website":
-      return "visit_meeting";
-    case "visit_signup":
-    case "website_purchases":
-      return "visit_signup";
-    case "visit_form":
-    case "form_magnet":
-      return "visit_form";
-    case "sales_from_conversation":
-    case "sales_meetings_from_ads":
-    case "lead_forms_from_ads":
-    case "sales_from_website":
-      return key;
-  }
-  throw new Error(`Unmapped sales funnel key: ${key as string}`);
-}
 
 /** Stable id for a stage. Never a label — labels are copy and copy changes. */
 export type LeadStageKey =
@@ -194,54 +86,50 @@ export interface LeadFunnelStage {
   wontLabel: string;
 }
 
-const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
-  // `label` overrides what THIS panel calls the step, and exactly one step needs it.
-  // The catalogue prices the leg on the buyer's answer; on a lead panel the row
-  // already carries that answer's own KIND beside it, so a heading naming the
-  // interest states the very thing the control next to it is there to answer.
-  "Positive reply": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
-  "Website visit": { key: "website_visit", wontLabel: "Won't visit" },
-  "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
-  "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
-  Signup: { key: "signup", wontLabel: "Won't sign up" },
-  "Form submitted": { key: "form_submission", wontLabel: "Won't fill it" },
+/**
+ * Producer step token → stage. A token with no entry has no stage lead-service accepts a
+ * statement on or renders (a direct purchase today), and is skipped rather than drawn.
+ */
+const STAGE_FOR_TOKEN: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
+  // `label` overrides what THIS panel calls the step, and exactly one step needs it: the
+  // row already carries the reply's own KIND beside it, so "Replied" is the fact.
+  conversation: { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
+  website_visit: { key: "website_visit", wontLabel: "Won't visit" },
+  meeting_booked: { key: "meeting_booked", wontLabel: "Won't book" },
+  meeting_attended: { key: "meeting_attended", wontLabel: "Won't attend" },
+  signup: { key: "signup", wontLabel: "Won't sign up" },
+  form_submitted: { key: "form_submission", wontLabel: "Won't fill it" },
   // The two pre-2026-09-18 spellings, read as the one form step.
-  "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
-  // A form on the AD PLATFORM. lead-service records that a form was filled; which
-  // funnel it belongs to is the campaign's, so it shares the stage rather than
-  // inventing one lead-service would refuse.
-  "Lead form submitted": { key: "form_submission", wontLabel: "Won't fill it" },
-  "Paid client": { key: "sale", wontLabel: "Won't buy" },
+  form_filled: { key: "form_submission", wontLabel: "Won't fill it" },
+  lead_form_submitted: { key: "form_submission", wontLabel: "Won't fill it" },
+  paid_client: { key: "sale", wontLabel: "Won't buy" },
 };
 
-/** The funnel's display name, for the line under the panel heading. */
-export function funnelDisplayName(funnelKey: SalesFunnelKeyWire): string {
-  return FUNNEL_STEPS[normalizeSalesFunnelKey(funnelKey)].name;
-}
-
 /**
- * The ordered stages of the campaign's funnel, base → terminal.
- *
- * An ABSENT funnel returns NOTHING rather than guessed steps — a campaign that states
- * no funnel has no steps to walk, and inventing one would show a staff member steps the
- * campaign never sold.
+ * The stages of the ONE leg a campaign performs, from → to. An ABSENT leg returns
+ * NOTHING rather than guessed steps: a campaign that states no leg has no steps to walk.
  */
-export function leadFunnelStages(funnelKey: SalesFunnelKeyWire | null | undefined): LeadFunnelStage[] {
-  if (!funnelKey) return [];
-  const funnel = FUNNEL_STEPS[normalizeSalesFunnelKey(funnelKey)];
+export function leadLegStages(
+  leg: { fromKey: string | null; toKey: string; fromLabel: string | null; toLabel: string } | null | undefined,
+): LeadFunnelStage[] {
+  if (!leg) return [];
+  const refs = [
+    ...(leg.fromKey ? [{ key: leg.fromKey, label: leg.fromLabel }] : []),
+    { key: leg.toKey, label: leg.toLabel as string | null },
+  ];
   const stages: LeadFunnelStage[] = [];
-  for (const step of funnel.steps) {
-    const stage = STAGE_FOR_STEP[step];
-    if (!stage) {
-      console.error(`[admin] lead-funnel-stages: no stage for step "${step}"`);
-      continue;
-    }
-    stages.push({ key: stage.key, label: stage.label ?? step, wontLabel: stage.wontLabel });
+  for (const ref of refs) {
+    const stage = STAGE_FOR_TOKEN[ref.key];
+    if (!stage) continue;
+    if (stages.some((s) => s.key === stage.key)) continue;
+    stages.push({ key: stage.key, label: stage.label ?? ref.label ?? stage.key, wontLabel: stage.wontLabel });
   }
   return stages;
 }
 
-export const LEAD_STAGE_KEYS: readonly LeadStageKey[] = Object.values(STAGE_FOR_STEP).map((s) => s.key);
+export const LEAD_STAGE_KEYS: readonly LeadStageKey[] = [
+  ...new Set(Object.values(STAGE_FOR_TOKEN).map((s) => s.key)),
+];
 
 /**
  * What we ALREADY measured about a lead. Declared structurally rather than importing a
