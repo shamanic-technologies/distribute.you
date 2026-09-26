@@ -349,6 +349,9 @@ section.framed::after {
 
 /* ---------- Features (gojiberry two-column cards) ---------- */
 .features { display: grid; gap: 16px; }
+/* A grid item's min-width is its content's by default, so one long word held these
+   cards (and .plan, .show-card) wider than a 320px phone. */
+.feature, .plan, .show-card { min-width: 0; }
 .feature {
   display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
   padding: 36px; border-radius: 20px;

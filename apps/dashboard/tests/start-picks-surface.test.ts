@@ -102,6 +102,9 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     const asideAt = SHELL.indexOf("data-start-aside");
     expect(cardFooter).toBeGreaterThan(0);
     expect(asideAt).toBeGreaterThan(cardFooter);
+    // Below sm it stacks under the card inside a 100svh column and takes the
+    // card's height, so a phone does not draw it (same as the trust strip).
+    expect(SHELL).toContain('className="relative z-10 hidden min-w-0 sm:block" data-start-aside');
   });
 
   it("the last CTA says what it does: continue into the wizard, no account yet", () => {
