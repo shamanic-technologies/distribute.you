@@ -98,13 +98,6 @@ export function DealsPage() {
               </button>
             );
           })}
-          {columns.map((c) => (
-            <span key={c.key} className="k-btn pointer-events-none h-7 text-[12px]">
-              <span className="h-2 w-2 rounded-[2px]" style={{ background: COLUMN_DOT[c.key] }} />
-              {c.label}
-              <span className="k-fg3 tabular-nums">{totals?.[c.key] != null ? formatCount(totals[c.key] ?? 0) : ""}</span>
-            </span>
-          ))}
           <span className="k-inset ml-auto inline-flex rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
             <span className="k-btn h-6 px-2 text-[12px]">Board</span>
             <Link href={v2Href(orgId, brandId, "people")} className="k-btn-ghost h-6 px-2 text-[12px]">Table</Link>

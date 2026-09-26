@@ -20,8 +20,14 @@ import { useBrandRevenue } from "@/components/v2/data";
 /** The result a mission's leg lands on, read off its own served group. */
 export function missionResult(m: Mission): { count: number | null; noun: string; costCents: number | null } {
   const g = m.row.revenue;
-  if (m.leg?.toKey === "conversation") return { count: g?.positiveReplies ?? null, noun: "positive replies", costCents: g?.cpprCents ?? null };
-  if (m.leg?.toKey === "website_visit") return { count: g?.websiteClicks ?? null, noun: "website visits", costCents: g?.cpcCents ?? null };
+  if (m.leg?.toKey === "conversation") {
+    const n = g?.positiveReplies ?? null;
+    return { count: n, noun: n === 1 ? "positive reply" : "positive replies", costCents: g?.cpprCents ?? null };
+  }
+  if (m.leg?.toKey === "website_visit") {
+    const n = g?.websiteClicks ?? null;
+    return { count: n, noun: n === 1 ? "website visit" : "website visits", costCents: g?.cpcCents ?? null };
+  }
   return { count: null, noun: "results", costCents: null };
 }
 
@@ -264,8 +270,12 @@ function CrewCard({
 
       <Link href={workHref} className="k-hover -mx-2 mt-2 flex items-center gap-2 rounded-[8px] px-2 py-2 text-[13px]">
         <span className="k-fg3 shrink-0">{lastRun && runState(lastRun) === "running" ? "Now" : "Last"}</span>
-        <span className="min-w-0 flex-1 truncate">{lastRun ? runTaskLabel(lastRun) : "Nothing run yet"}</span>
-        {lastRun && <span className="k-mono k-fg3 shrink-0 text-[11px]">{timeAgo(lastRun.startedAt)}</span>}
+        <span className="min-w-0 flex-1 truncate">
+          {lastRun ? runTaskLabel(lastRun) : runs?.lastRunAt ? "Ran a step" : "No run in 7 days"}
+        </span>
+        {(lastRun?.startedAt ?? runs?.lastRunAt) && (
+          <span className="k-mono k-fg3 shrink-0 text-[11px]">{timeAgo(lastRun?.startedAt ?? runs?.lastRunAt ?? "")}</span>
+        )}
         <svg width="12" height="12" viewBox="0 0 12 12" className="k-fg4 shrink-0" aria-hidden="true">
           <path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
