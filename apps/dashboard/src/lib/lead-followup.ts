@@ -21,9 +21,28 @@ import type { LeadHistory } from "./lead-history";
  * that way.
  */
 
+/**
+ * WHO WILL ANSWER a scheduled follow-up, as lead-service reports campaign-service's word.
+ *
+ * A due date alone promises nothing: the debt is claimed only by a live campaign on the
+ * continuing leg, and five prospects once waited up to twenty days under "Next follow-up
+ * due now" with nobody able to claim them. Three answers, never collapsed:
+ * `answered` (a campaign will), `unanswered` (nobody will, `absence` says why) and
+ * `unknown` (we could not check). This module decides NONE of it; it reads the field.
+ */
+export interface FollowupAnswerer {
+  state: "answered" | "unanswered" | "unknown";
+  answeredByFeatureSlug: string | null;
+  absence: string | null;
+  startableFeatureSlugs: string[];
+}
+
 export type LeadFollowup =
-  /** A date is on record and the person will be answered then. */
-  | { state: "scheduled"; dueAt: string; followupCount: number }
+  /**
+   * A date is on record. `answerer` is null only on a payload older than the field,
+   * which reads exactly as it did before it existed.
+   */
+  | { state: "scheduled"; dueAt: string; followupCount: number; answerer: FollowupAnswerer | null }
   /** The schedule was ended, and why. Nothing further goes out. */
   | { state: "stopped"; reason: string | null }
   /** Nothing is owed and nothing was stopped — most often nobody has replied yet. */
@@ -48,9 +67,106 @@ export function leadFollowup(history: LeadHistory | null | undefined): LeadFollo
       state: "scheduled",
       dueAt: scheduled.dueAt,
       followupCount: scheduled.followupCount ?? 0,
+      answerer: readAnswerer(scheduled.answerer),
     };
   }
   return { state: "not_set" };
+}
+
+function readAnswerer(raw: unknown): FollowupAnswerer | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as {
+    state?: unknown;
+    answeredBy?: { featureSlug?: unknown } | null;
+    absence?: unknown;
+    startableFeatureSlugs?: unknown;
+  };
+  // An answer we do not recognise is one we cannot vouch for, so it reads as unknown:
+  // never "due now" and never "nobody".
+  const state =
+    a.state === "answered" || a.state === "unanswered" || a.state === "unknown"
+      ? a.state
+      : "unknown";
+  return {
+    state,
+    answeredByFeatureSlug:
+      typeof a.answeredBy?.featureSlug === "string" ? a.answeredBy.featureSlug : null,
+    absence: typeof a.absence === "string" ? a.absence : null,
+    startableFeatureSlugs: Array.isArray(a.startableFeatureSlugs)
+      ? a.startableFeatureSlugs.filter((x): x is string => typeof x === "string")
+      : [],
+  };
+}
+
+/**
+ * Why nobody will answer, in the customer's words. Keyed on campaign-service's own
+ * `absence` token, verbatim; a token we do not know yet still says nobody will answer
+ * rather than printing the code.
+ */
+const ABSENCE_REASON: Record<string, string> = {
+  no_answering_campaign: "No campaign on this offer answers interested replies yet.",
+  answering_campaign_stopped: "The campaign that answers interested replies on this offer is paused.",
+  answering_campaign_serves_another:
+    "The campaign that answers interested replies here is set up for another campaign's leads.",
+  no_leg_continues: "No step comes after this one, so no campaign picks them up.",
+  campaign_states_no_leg:
+    "This campaign does not state its step, so we cannot match a campaign to answer them.",
+  campaign_states_no_offer:
+    "This campaign does not state its offer, so we cannot match a campaign to answer them.",
+  campaign_states_no_brand:
+    "This campaign does not state its brand, so we cannot match a campaign to answer them.",
+};
+
+/** The absences a customer fixes by starting (or restarting) the answering channel. */
+const STARTABLE_ABSENCES = new Set(["no_answering_campaign", "answering_campaign_stopped"]);
+
+export type FollowupFix =
+  /** Start the answering channel on this offer (`featureSlug` is what can answer). */
+  | { kind: "start"; featureSlug: string | null }
+  /** Turn the paused answering campaign back on. */
+  | { kind: "restart" };
+
+export interface FollowupNotice {
+  /** The line itself. */
+  line: string;
+  /** One sentence under it saying why, or null. */
+  detail: string | null;
+  /** Whether the line is a warning (nobody will answer / we could not check). */
+  tone: "neutral" | "warning";
+  /** What the customer can do about it, or null. */
+  fix: FollowupFix | null;
+}
+
+/**
+ * Everything the foot of the timeline states about the next follow-up.
+ *
+ * Only an ANSWERED follow-up (or one on a payload older than the answerer field) states
+ * a due date: that is the one case where the date is a promise somebody will keep.
+ */
+export function followupNotice(followup: LeadFollowup, now: Date = new Date()): FollowupNotice {
+  if (followup.state !== "scheduled" || !followup.answerer || followup.answerer.state === "answered") {
+    return { line: followupLine(followup, now), detail: null, tone: "neutral", fix: null };
+  }
+  const a = followup.answerer;
+  if (a.state === "unknown") {
+    return {
+      line: "We could not check who will answer this person",
+      detail: "Try again in a moment.",
+      tone: "warning",
+      fix: null,
+    };
+  }
+  const absence = a.absence ?? "";
+  let fix: FollowupFix | null = null;
+  if (absence === "answering_campaign_stopped") fix = { kind: "restart" };
+  else if (STARTABLE_ABSENCES.has(absence))
+    fix = { kind: "start", featureSlug: a.startableFeatureSlugs[0] ?? null };
+  return {
+    line: "Nobody will answer this person",
+    detail: ABSENCE_REASON[absence] ?? null,
+    tone: "warning",
+    fix,
+  };
 }
 
 /**
@@ -82,5 +198,11 @@ export function followupLine(followup: LeadFollowup, now: Date = new Date()): st
  * simply absent rather than present and refusing.
  */
 export function canFollowUpNow(followup: LeadFollowup): boolean {
-  return followup.state !== "stopped";
+  if (followup.state === "stopped") return false;
+  // Bringing it forward promises an answer sooner. When nobody will answer, or we could
+  // not check, there is no answer to bring forward.
+  if (followup.state === "scheduled" && followup.answerer && followup.answerer.state !== "answered") {
+    return false;
+  }
+  return true;
 }
