@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * What happened to ONE lead at each stage of its campaign's sales funnel, stated by a
+ * What happened to ONE lead at each step of its campaign's leg, stated by a
  * person rather than measured.
  *
  * Presentational on purpose — it takes the stages, what is known about each, and one
  * callback. The page owns the reads and the write, so this file carries no query, no
  * mutation and no knowledge of how an outcome is recorded. That is what lets it be the
  * SAME component in the customer dashboard and the staff console: two copies of a
- * control that states a customer's funnel is how the two surfaces come to disagree
+ * control that states a customer's leg is how the two surfaces come to disagree
  * about one lead.
  *
  * One difference from the dashboard's copy: no reply control on the reply row. This
@@ -54,7 +54,7 @@ const COST_CAPTION = "Your own spend. We never bill it.";
 
 
 const DELIVERY_TIP =
-  "What our sending has already done with this lead, measured rather than stated: queued, sent, delivered, bounced, unsubscribed. Nobody edits it here, and it is not a step of the funnel below, which is about what the person did next.";
+  "What our sending has already done with this lead, measured rather than stated: queued, sent, delivered, bounced, unsubscribed. Nobody edits it here, and it is not a step of the leg below, which is about what the person did next.";
 
 const TRACKED_TIP =
   "We already recorded this automatically. You can still state it yourself, which is what to do when the automatic match missed, for example when someone signed up with a different address than the one we emailed.";
@@ -220,7 +220,7 @@ function StageStatementForm({
 }
 
 export function LeadFunnelStageSection({
-  funnelName,
+  legLabel,
   stages,
   states,
   tracked,
@@ -233,8 +233,8 @@ export function LeadFunnelStageSection({
   onSet,
   disabled = false,
 }: {
-  /** The campaign's funnel, named so the reader knows which funnel's steps these are. */
-  funnelName: string;
+  /** The campaign's leg, named so the reader knows which leg's steps these are. */
+  legLabel: string;
   stages: LeadFunnelStage[];
   /** What has been stated per stage. A stage absent from the map is pending. */
   states: Partial<Record<LeadStageKey, LeadStageState>>;
@@ -300,10 +300,10 @@ export function LeadFunnelStageSection({
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <h3 className={HEADING_CLASS}>Funnel progress</h3>
-        <InfoTooltip tip="What happened to this lead at each stage of the funnel this campaign sells. Anything you state here counts exactly like something we tracked automatically." />
+        <h3 className={HEADING_CLASS}>Leg progress</h3>
+        <InfoTooltip tip="What happened to this lead at each step of the leg this campaign is bought for. Anything you state here counts exactly like something we tracked automatically." />
       </div>
-      <p className="text-xs text-gray-500 mb-3">{funnelName}</p>
+      <p className="text-xs text-gray-500 mb-3">{legLabel}</p>
 
       <ul className="divide-y divide-gray-100">
         {delivery != null && (

@@ -16,6 +16,7 @@ import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { budgetFieldsPresent, omitBudgetOnSalesCampaign } from "./campaign-budget-fields";
+import type { PublicCatalogueWire } from "./legs";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -309,9 +310,11 @@ export interface Campaign {
   // carries this field since v0.42.2 (PR #469).
   brandUrls: string[];
   featureInputs: Record<string, string> | null;
-  // Which sales funnel this campaign sells, as campaign-service stores it on the row.
-  // Null for a feature that sells through no sales funnel; never derived from the goal.
-  funnelKey: string | null;
+  // The proposition and the LEG this campaign is bought for, as campaign-service stores
+  // them on the row: a campaign is (offer x leg x channel). Null leg = a campaign outside
+  // the sales family, or one created before legs existed; never derived from the goal.
+  offerId: string | null;
+  legKey: string | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;
@@ -2859,19 +2862,20 @@ export async function createWorkflow(
 
 // Create campaign
 //
-// `funnelKey` states which sales funnel the campaign sells, and it is REQUIRED rather
-// than optional so a new caller has to answer the question: a sales campaign is paced
-// on that funnel's own ceiling in billing and priced on its own economics, and
-// campaign-service 400s one that states none. A feature that sells through no sales
-// funnel (PR, hiring, VC, AI visibility) states an explicit null.
+// A campaign is (offer x leg x channel). `offerId` and `legKey` are REQUIRED rather than
+// optional so a new caller has to answer the question: a sales campaign is paced on
+// billing's ceiling for its (offer, leg, channel) and priced on that leg. A feature
+// outside the sales family (PR, hiring, VC, AI visibility) states an explicit null leg.
+// The sales funnel is retired fleet-wide and is never sent.
 export async function createCampaign(
   params: {
     name: string;
     workflowSlug: string;
     brandUrls: string[];
-    funnelKey: string | null;
-    // A per-campaign ceiling is for a NON-sales campaign only — one whose funnelKey is
-    // null. State one beside a funnel and campaign-service 400s; see campaign-budget-fields.
+    offerId: string | null;
+    legKey: string | null;
+    // A per-campaign ceiling is for a NON-sales campaign only — one whose legKey is
+    // null. State one beside a leg and campaign-service 400s; see campaign-budget-fields.
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
@@ -2888,7 +2892,7 @@ export async function createCampaign(
   const body = omitBudgetOnSalesCampaign(params as unknown as Record<string, unknown>);
   if (carried.length > 0 && body !== params) {
     console.error(
-      `[createCampaign] dropped ${carried.join(", ")} — a campaign selling funnel "${String(params.funnelKey)}" holds no ceiling of its own; its money is billing's per (funnel, channel, offer). Fix the caller.`,
+      `[createCampaign] dropped ${carried.join(", ")} — a campaign bought for leg "${String(params.legKey)}" holds no ceiling of its own; its money is billing's per (offer, leg, channel). Fix the caller.`,
     );
   }
   const { campaign } = await apiCall<{ campaign: RawCampaign }>("/campaigns", {
@@ -6997,6 +7001,8 @@ const PublicChannelStepSchema = z.object({
  * produced its first signal, which is what every entry channel does.
  */
 const PublicStepTransitionSchema = z.object({
+  /** The leg's canonical key, minted by features-service. Opaque: looked up, never split. */
+  legKey: z.string().optional(),
   from: PublicChannelStepSchema.nullable(),
   to: PublicChannelStepSchema,
 });
@@ -7035,6 +7041,34 @@ export type PublicChannelStep = z.infer<typeof PublicChannelStepSchema>;
 export type PublicStepTransition = z.infer<typeof PublicStepTransitionSchema>;
 export type PublicChannel = z.infer<typeof PublicChannelSchema>;
 export type PublicChannelCatalogue = z.infer<typeof PublicChannelCatalogueSchema>;
+
+/**
+ * GET /public/channels, RAW, for the leg catalogue (`lib/legs.ts`). The typed reader
+ * above serves the model page; this one hands the body to `legCatalogueFromWire`, which
+ * reads it structurally so a leg published upstream is nameable here the moment it is.
+ */
+export async function getLegCatalogueBody(): Promise<PublicCatalogueWire> {
+  return apiCall<PublicCatalogueWire>(`/public/channels`);
+}
+
+const BrandOfferSchema = z.object({
+  offerId: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+});
+export type BrandOffer = z.infer<typeof BrandOfferSchema>;
+const ListBrandOffersResponseSchema = z.object({ offers: z.array(BrandOfferSchema) });
+
+/** GET /brands/:brandId/offers — every proposition this brand sells. */
+export async function listBrandOffers(brandId: string, token?: string): Promise<{ offers: BrandOffer[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers`, { token });
+  const parsed = ListBrandOffersResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listBrandOffers: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[admin] listBrandOffers: invalid response shape");
+  }
+  return parsed.data;
+}
 
 export async function getPublicChannelCatalogue(): Promise<PublicChannelCatalogue> {
   const raw = await apiCall<unknown>(`/public/channels`);

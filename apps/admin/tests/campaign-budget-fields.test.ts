@@ -7,7 +7,7 @@ import {
   budgetFieldsPresent,
   omitBudgetOnSalesCampaign,
   SALES_BUDGET_NOTE,
-  statesSalesFunnel,
+  statesLeg,
 } from "../src/lib/campaign-budget-fields";
 
 const APP = join(__dirname, "../src/app/(authed)/(dashboard)");
@@ -36,16 +36,16 @@ describe("which campaigns may state a ceiling", () => {
     ]);
   });
 
-  it("reads a stated funnel as the sales family", () => {
-    expect(statesSalesFunnel("sales_meetings_from_conversation")).toBe(true);
-    expect(statesSalesFunnel("form_magnet")).toBe(true);
+  it("reads a stated leg as the sales family", () => {
+    expect(statesLeg("conversation_to_meeting_booked")).toBe(true);
+    expect(statesLeg("start_to_conversation")).toBe(true);
   });
 
   it("reads null, undefined and an unpicked picker as stating none", () => {
-    expect(statesSalesFunnel(null)).toBe(false);
-    expect(statesSalesFunnel(undefined)).toBe(false);
-    expect(statesSalesFunnel("")).toBe(false);
-    expect(statesSalesFunnel("   ")).toBe(false);
+    expect(statesLeg(null)).toBe(false);
+    expect(statesLeg(undefined)).toBe(false);
+    expect(statesLeg("")).toBe(false);
+    expect(statesLeg("   ")).toBe(false);
   });
 
   it("keeps no list of sales feature slugs — campaign-service owns that vocabulary", () => {
@@ -59,15 +59,15 @@ describe("which campaigns may state a ceiling", () => {
 });
 
 describe("budgetFieldsForCampaign", () => {
-  it("passes the ceiling through for a campaign that states no funnel", () => {
+  it("passes the ceiling through for a campaign that states no leg", () => {
     expect(budgetFieldsForCampaign(null, { maxBudgetDailyUsd: "10" })).toEqual({
       maxBudgetDailyUsd: "10",
     });
   });
 
-  it("sends nothing for a campaign that states a funnel", () => {
+  it("sends nothing for a campaign that states a leg", () => {
     expect(
-      budgetFieldsForCampaign("website_purchases", { maxBudgetMonthlyUsd: "200" }),
+      budgetFieldsForCampaign("start_to_website_visit", { maxBudgetMonthlyUsd: "200" }),
     ).toEqual({});
   });
 });
@@ -75,7 +75,7 @@ describe("budgetFieldsForCampaign", () => {
 describe("omitBudgetOnSalesCampaign", () => {
   const sales = {
     name: "x",
-    funnelKey: "sales_meetings_from_website",
+    legKey: "website_visit_to_meeting_booked",
     maxBudgetDailyUsd: "10",
     featureInputs: { a: "b" },
   };
@@ -83,40 +83,41 @@ describe("omitBudgetOnSalesCampaign", () => {
   it("drops every ceiling from a sales payload and keeps the rest", () => {
     expect(omitBudgetOnSalesCampaign(sales)).toEqual({
       name: "x",
-      funnelKey: "sales_meetings_from_website",
+      legKey: "website_visit_to_meeting_booked",
       featureInputs: { a: "b" },
     });
   });
 
   it("drops all four at once", () => {
     const out = omitBudgetOnSalesCampaign({
-      funnelKey: "form_magnet",
+      legKey: "start_to_website_visit",
       maxBudgetDailyUsd: "1",
       maxBudgetWeeklyUsd: "2",
       maxBudgetMonthlyUsd: "3",
       maxBudgetTotalUsd: "4",
     });
-    expect(out).toEqual({ funnelKey: "form_magnet" });
+    expect(out).toEqual({ legKey: "start_to_website_visit" });
   });
 
   it("leaves a non-sales payload untouched, by identity", () => {
-    const nonSales = { funnelKey: null, maxBudgetTotalUsd: "500" };
+    const nonSales = { legKey: null, maxBudgetTotalUsd: "500" };
     expect(omitBudgetOnSalesCampaign(nonSales)).toBe(nonSales);
   });
 
   it("leaves a sales payload that carries no ceiling untouched, by identity", () => {
-    const clean = { funnelKey: "form_magnet", name: "x" };
+    const clean = { legKey: "start_to_website_visit", name: "x" };
     expect(omitBudgetOnSalesCampaign(clean)).toBe(clean);
   });
 
   it("reports which ceilings a payload carries", () => {
     expect(budgetFieldsPresent(sales)).toEqual(["maxBudgetDailyUsd"]);
-    expect(budgetFieldsPresent({ funnelKey: null })).toEqual([]);
+    expect(budgetFieldsPresent({ legKey: null })).toEqual([]);
   });
 
   it("says where a sales campaign's money lives", () => {
     expect(SALES_BUDGET_NOTE).toContain("billing");
-    expect(SALES_BUDGET_NOTE).toContain("sales funnel, acquisition channel, offer");
+    expect(SALES_BUDGET_NOTE).toContain("offer, leg, acquisition channel");
+    expect(SALES_BUDGET_NOTE).not.toMatch(/funnel/i);
   });
 });
 
@@ -140,7 +141,7 @@ describe("createCampaign is the choke point, and it is loud", () => {
   });
 });
 
-describe("every staff create path sends a ceiling only when there is no funnel", () => {
+describe("every staff create path sends a ceiling only when there is no leg", () => {
   for (const [name, src] of [
     ["the feature-level create", featureNew],
     ["the brand-level create", brandNew],
@@ -148,7 +149,7 @@ describe("every staff create path sends a ceiling only when there is no funnel",
     it(`${name} routes both its create and its checkout-resume blob through the gate`, () => {
       // Two sites per page: doCreateCampaign and saveCampaignIntent.
       const gated = src.split(
-        "budgetFieldsForCampaign(needsSalesFunnel ? funnelKey : null, ceiling)",
+        "budgetFieldsForCampaign(legKey, ceiling)",
       ).length - 1;
       expect(gated).toBe(2);
     });
@@ -163,11 +164,11 @@ describe("every staff create path sends a ceiling only when there is no funnel",
     });
   }
 
-  it("the brand-level test run drops its cap when the campaign states a funnel", () => {
+  it("the brand-level test run drops its cap when the campaign states a leg", () => {
     const at = brandNew.indexOf("const runWorkflowTest");
     const body = brandNew.slice(at, brandNew.indexOf("}, [brand, testStarting", at));
     expect(body).toContain(
-      "...budgetFieldsForCampaign(testFunnelKey, { maxBudgetTotalUsd: TEST_RUN_BUDGET_USD })",
+      "...budgetFieldsForCampaign(legKey, { maxBudgetTotalUsd: TEST_RUN_BUDGET_USD })",
     );
     expect(body).not.toContain("maxBudgetTotalUsd: TEST_RUN_BUDGET_USD,");
   });
@@ -181,8 +182,8 @@ describe("a relaunch does not send back the ceiling on the row it copies", () =>
     expect(body).toContain("...(budget ? buildBudgetParams(budget.amount, budget.frequency) : {})");
   });
 
-  it("the modal edits a budget only for a campaign that states no funnel", () => {
-    expect(modal).toContain("const editsBudget = !statesSalesFunnel(campaign.funnelKey);");
+  it("the modal edits a budget only for a campaign that states no leg", () => {
+    expect(modal).toContain("const editsBudget = !statesLeg(campaign.legKey);");
     expect(modal).toContain("onConfirm: (budget: RelaunchBudget | null) => void;");
     expect(modal).toContain("onConfirm(null);");
   });

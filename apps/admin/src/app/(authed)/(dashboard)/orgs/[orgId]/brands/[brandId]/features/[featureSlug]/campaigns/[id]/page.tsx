@@ -121,6 +121,15 @@ export default function CampaignOverviewPage() {
 
   const handleRelaunchSubmit = async (budget: RelaunchBudget | null) => {
     if (!campaign || !campaign.workflowSlug) return;
+    // A sales campaign is (offer x leg x channel). One created before legs existed
+    // states none, and relaunching it would create a campaign nobody can price or pace:
+    // say so rather than invent a leg or fall back to the retired funnel.
+    if (campaign.featureSlug && isRevenueFeature(campaign.featureSlug) && !campaign.legKey) {
+      setRelaunchError(
+        "This campaign states no leg (it predates legs), so it cannot be relaunched as it is. Create a new campaign and pick its offer and leg.",
+      );
+      return;
+    }
     setRelaunching(true);
     setRelaunchError(null);
 
@@ -132,15 +141,14 @@ export default function CampaignOverviewPage() {
       workflowSlug: campaign.workflowSlug,
       featureSlug: campaign.featureSlug,
       brandUrls: campaign.brandUrls,
-      // A relaunch sells exactly what the campaign it relaunches sells — read off the
-      // campaign's own row, never re-derived from its goal. A campaign that states no
-      // funnel relaunches stating none, and campaign-service refuses it if the feature
-      // needs one; that refusal is the gap surfacing, not something to paper over here.
-      funnelKey: campaign.funnelKey ?? null,
-      // Only a campaign that states NO funnel carries a ceiling of its own — the modal
-      // hands back null for one that does, and campaign-service 400s the relaunch if a
-      // sales campaign states one anyway (a stale ceiling on the row it copies is
-      // exactly how that fired).
+      // A relaunch is the same campaign identity as the one it relaunches: the offer and
+      // the leg are read off the campaign's own row, never re-derived from its goal.
+      offerId: campaign.offerId ?? null,
+      legKey: campaign.legKey ?? null,
+      // Only a campaign bought for NO leg carries a ceiling of its own — the modal hands
+      // back null for one that is, and campaign-service 400s the relaunch if a sales
+      // campaign states one anyway (a stale ceiling on the row it copies is exactly how
+      // that fired).
       ...(budget ? buildBudgetParams(budget.amount, budget.frequency) : {}),
     };
     if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;
