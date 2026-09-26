@@ -321,6 +321,28 @@ export function CompanyPage() {
               </div>
 
               <div className="space-y-3">
+                {facts?.shortDescription ? (
+                  <div className="k-card p-4">
+                    <div className="mb-2 flex items-baseline justify-between gap-2">
+                      <p className="flex items-center gap-1.5 text-[13px] font-medium">
+                        <CompanyMark name={name} domain={org.orgDomain ?? null} size={16} />
+                        Brief
+                      </p>
+                      <p className="k-fg3 text-[12px]">from their company profile</p>
+                    </div>
+                    <p className="k-fg2 whitespace-pre-line text-[13px] leading-[20px]">{facts.shortDescription}</p>
+                    {facts.foundedYear || facts.annualRevenue ? (
+                      <dl className="mt-3 space-y-1.5 border-t border-[var(--line-subtle)] pt-3 text-[12px]">
+                        {facts.foundedYear ? (
+                          <div className="flex justify-between gap-3"><dt className="k-fg3">Founded</dt><dd className="tabular-nums">{facts.foundedYear}</dd></div>
+                        ) : null}
+                        {facts.annualRevenue ? (
+                          <div className="flex justify-between gap-3"><dt className="k-fg3">Revenue</dt><dd className="truncate">{facts.annualRevenue}</dd></div>
+                        ) : null}
+                      </dl>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="k-card p-4">
                   <SectionTitle count={peopleQ.data ? people.length : null}>People</SectionTitle>
                   {!peopleQ.data ? (
