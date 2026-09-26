@@ -299,3 +299,14 @@ describe("v2 Deals states who we contacted", () => {
     expect(src).toContain("{formatCount(contacted)}</span> contacted");
   });
 });
+
+describe("v2 Deals prices the contacted column off features-service", () => {
+  const src = read("src/components/v2/deals-page.tsx");
+  it("reads the served contacted value and computes none of it", () => {
+    expect(src).toContain("getContactedValue(brandId, valueIds)");
+    expect(src).toContain('["contactedValue", brandId, valueIds.join(",")]');
+    expect(src).toContain("value.data?.totalExpectedValueUsd");
+    expect(src).not.toMatch(/expectedValueUsd\s*\*/);
+    expect(src).not.toMatch(/\.reduce\(/);
+  });
+});

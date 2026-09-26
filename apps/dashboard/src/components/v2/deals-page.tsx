@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
+import { getContactedValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
@@ -172,6 +172,18 @@ function DealColumn({
     { refetchInterval: POLL_INTERVAL, enabled: total === null || total > 0 },
   );
   const all = total === 0 ? [] : (q.data?.leads ?? null);
+  // What the contacted, not-yet-engaged people are worth in expectation. features-service
+  // prices them (a separate figure, not in the pipeline or the ROI); this column only
+  // shows it, joined to its cards by lead id.
+  const valued = column === "contacted";
+  const valueIds = valued && all ? all.map((l) => l.leadId).filter((id): id is string => !!id) : [];
+  const value = useAuthQuery(
+    ["contactedValue", brandId, valueIds.join(",")],
+    () => getContactedValue(brandId, valueIds),
+    { refetchInterval: POLL_INTERVAL, enabled: valued && total !== 0 && all !== null },
+  );
+  const valueByLead = new Map((value.data?.leads ?? []).map((v) => [v.leadId, v.expectedValueUsd]));
+  const columnValue = value.data?.totalExpectedValueUsd ?? null;
   const leads = all && crewFilter ? all.filter((l) => missionFor(l.campaignId)?.crew.key === crewFilter) : all;
   return (
     <section className="flex w-[272px] min-w-[240px] shrink-0 flex-col md:flex-1 md:basis-0">
@@ -179,6 +191,11 @@ function DealColumn({
         <span className="h-2 w-2 rounded-[2px]" style={{ background: COLUMN_DOT[column] }} />
         <span className="text-[13px] font-medium">{label}</span>
         <span className="k-fg3 text-[13px] tabular-nums">{total == null ? "" : formatCount(total)}</span>
+        {valued && columnValue != null ? (
+          <span className="k-fg2 ml-auto text-[12px] tabular-nums" title="Expected value of these leads, from your conversion rates and client value. Not counted in your pipeline.">
+            {formatUsdAdaptive(columnValue)} expected
+          </span>
+        ) : null}
       </header>
       <div className="mb-3 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
         <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100)}%`, background: COLUMN_DOT[column] }} />
@@ -202,6 +219,9 @@ function DealColumn({
                     <PersonAvatar lead={lead} size={18} />
                   )}
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
+                  {valued && lead.leadId && valueByLead.get(lead.leadId) != null ? (
+                    <span className="k-fg2 shrink-0 text-[12px] tabular-nums">{formatUsdAdaptive(valueByLead.get(lead.leadId) as number)}</span>
+                  ) : null}
                 </div>
                 {company ? (
                   <div className="k-fg2 mt-1.5 flex items-center gap-1.5 text-[12px]">

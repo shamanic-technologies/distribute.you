@@ -4089,6 +4089,36 @@ export async function getOfferRevenue(
 }
 
 /**
+ * What a brand's contacted-but-not-yet-engaged leads are worth in expectation —
+ * features-service `GET /brands/:brandId/contacted-value`. A SEPARATE figure: it is not in
+ * the pipeline, the ROI or any money total. Priced by features-service off the brand's own
+ * conversion rates and client value; nothing here multiplies anything. `null` means the producer could not
+ * measure it and says why in `unmeasuredReason`, never a zero.
+ */
+const ContactedValueSchema = z.object({
+  totalExpectedValueUsd: z.number().nullable(),
+  perLeadExpectedValueUsd: z.number().nullable(),
+  unmeasuredReason: z.string().nullable(),
+  leads: z.array(z.object({ leadId: z.string(), expectedValueUsd: z.number().nullable() })),
+  nextCursor: z.string().nullable(),
+});
+export type ContactedValue = z.infer<typeof ContactedValueSchema>;
+
+/** The priced subset for the lead ids given (≤1000, the producer's cap), plus the brand total. */
+export async function getContactedValue(brandId: string, leadIds: string[]): Promise<ContactedValue> {
+  const query = new URLSearchParams();
+  if (leadIds.length > 0) query.set("leadIds", leadIds.slice(0, 1000).join(","));
+  else query.set("limit", "1");
+  const raw = await apiCall<unknown>(`/brands/${brandId}/contacted-value?${query.toString()}`);
+  const parsed = ContactedValueSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getContactedValue] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getContactedValue: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
  * What a BRAND returned — across every acquisition channel it runs.
  *
  * The offer read above, one level further up, and NOT the sum of it: a brand holds

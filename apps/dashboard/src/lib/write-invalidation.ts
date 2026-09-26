@@ -45,6 +45,8 @@ export const LEAD_OUTCOME_ROOTS = [
   "brandOfferMoney",
   // The offer's outcome rows count the same outcomes.
   "offerOutcomes",
+  // A lead that converts leaves the contacted population v2 Deals prices.
+  "contactedValue",
   // Per-audience evidence and costs — the Audiences table and the Top-3 card both rank
   // on an outcome count that just changed.
   "featureAudienceStats",
