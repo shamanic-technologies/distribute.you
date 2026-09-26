@@ -1693,6 +1693,12 @@ const MeasuredLegRateSchema = z.object({
   ratePct: z.number().nullable(),
   sufficient: z.boolean(),
   gap: z.string().nullable(),
+  // WHERE the counts were read (features-service v0.177.1, 2026-09-26): `crm` = the
+  // client's whole CRM (a leg their own sales team runs), `our_leads` = our leads. On
+  // our leads, `outcomesCounted` says which outcomes the counts include. Plain strings,
+  // since the producer owns the vocabulary; absent on an older body.
+  basis: z.string().nullish(),
+  outcomesCounted: z.string().nullish(),
 });
 
 const EffectiveLegRateSchema = z.object({
