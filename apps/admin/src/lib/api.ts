@@ -6086,10 +6086,12 @@ export interface CustomerCurrentEconomics {
   cacPct: number | null; // CAC as a share of LTR, percent
 }
 
+// Pool figures are human-service's own (Σ sizeCount / Σ availableToContactCount over the
+// brand's active audiences). null = unreadable, never 0: a 0 reads as "out of people".
 export interface CustomerAudiencesRollup {
   count: number;
-  totalSize: number;
-  totalRemaining: number;
+  totalSize: number | null;
+  totalRemaining: number | null;
   pctUsed: number | null;
 }
 
@@ -6097,8 +6099,8 @@ export interface CustomerBestAudience {
   audienceId: string;
   name: string;
   cacUsd: number | null;
-  size: number;
-  remaining: number;
+  size: number | null;
+  remaining: number | null;
   pctRemaining: number | null;
 }
 
