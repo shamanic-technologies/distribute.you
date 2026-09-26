@@ -66,8 +66,9 @@ export function CompanyPage() {
       (peopleQ.data?.leads ?? []).filter((l) => {
         const o = l.lead?.organization;
         if (!o) return false;
-        if (org?.orgDomain && o.primaryDomain) return o.primaryDomain === org.orgDomain;
-        return (o.name ?? "").toLowerCase() === (org?.orgName ?? "").toLowerCase();
+        const sameDomain = !!org?.orgDomain && o.primaryDomain === org.orgDomain;
+        const sameName = !!org?.orgName && (o.name ?? "").toLowerCase() === org.orgName.toLowerCase();
+        return sameDomain || sameName;
       }),
     [peopleQ.data, org],
   );
@@ -170,13 +171,13 @@ export function CompanyPage() {
             </div>
 
             <div className="k-card mt-5 overflow-hidden">
-              <div className="grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-[1.6fr_1fr_1fr_1fr] md:divide-x md:divide-y-0">
+              <div className="grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-[2.2fr_1fr_1fr_1fr] md:divide-x md:divide-y-0">
                 <div className="p-4">
                   <p className="k-label">Stage</p>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[13px]">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[13px] xl:flex-nowrap">
                     {FLOW.map((f, i) => (
                       <span key={f.tag} className="flex items-center gap-1.5">
-                        {i > 0 && <span className="h-px w-3 bg-[var(--line-strong)]" />}
+                        {i > 0 && <span className="h-px w-2.5 bg-[var(--line-strong)]" />}
                         <span
                           className={
                             i === reachedIndex
