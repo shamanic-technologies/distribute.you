@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Lead } from "@/lib/api";
 import { Initials } from "@/components/v2/ui";
+import { v2PersonHref } from "@/lib/v2/routes";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -22,9 +23,9 @@ export function leadTitle(lead: Lead): string | null {
   return lead.lead?.currentTitle ?? lead.lead?.headline ?? null;
 }
 
-/** The v1 Leads page opened on one person (the lead panel), until v2 has its own. */
-export function v1LeadHref(orgId: string, brandId: string, lead: Lead): string {
-  return `/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/leads?leadRowId=${encodeURIComponent(lead.id)}`;
+/** One person's own v2 page. */
+export function personHref(orgId: string, brandId: string, lead: Lead): string {
+  return v2PersonHref(orgId, brandId, lead.id);
 }
 
 /** A person: their photo when lead-service holds one that loads, else initials. */

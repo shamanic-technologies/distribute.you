@@ -36,7 +36,7 @@ function BetaGate({ children }: { children: React.ReactNode }) {
           <p className="text-[14px] font-medium">This page is not available</p>
           <p className="k-fg2 mt-1">It is part of a preview that is not open yet.</p>
           <a
-            href="/orgs"
+            href="/"
             className="k-btn-strong mt-4"
           >
             Go to your dashboard

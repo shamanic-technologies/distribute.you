@@ -15,7 +15,7 @@ import { isBetaEmail } from "@/lib/beta-allowlist";
 import {
   UI_VERSION_COOKIE,
   parseUiVersion,
-  matchV1BrandRoot,
+  v2PathForV1,
   stripV2Prefix,
   v2DashboardHref,
 } from "@/lib/ui-version";
@@ -144,10 +144,12 @@ export default clerkMiddleware(
     // Dashboard v2 (beta). A beta user who chose v2 lands on v2 from the first frame:
     // the choice is a cookie so it survives a reload and a new sign-in, and it is
     // read HERE, pre-paint, rather than by a client redirect that would flash v1.
-    // Only the two LANDING shapes are redirected — the bare org and the brand root
-    // (whose v2 twin is the Dashboard). Every deeper v1 page stays reachable,
-    // because v2 links to them for each section it has not rebuilt yet. The cookie
-    // is a preference, never an authorisation: without a beta email nothing moves.
+    // Every v1 brand page has a v2 twin now (`v2PathForV1`), so a v2 user is never
+    // sent back to v1 by a link, a `router.push` or a typed URL — including the
+    // links inside the v1 business components v2 embeds. The bare org lands on the
+    // last brand. The only way into v1 is the "Back to v1" switch, which flips the
+    // cookie first. The cookie is a preference, never an authorisation: without a
+    // beta email nothing moves.
     const wantsV2 =
       !!userId &&
       isBetaEmail(sessionClaims?.email) &&
@@ -155,12 +157,11 @@ export default clerkMiddleware(
       !req.nextUrl.searchParams.has("autoCreate") &&
       !hasExplicitHierarchyIntent(req.nextUrl.searchParams);
     if (wantsV2) {
-      const brandRoot = matchV1BrandRoot(pathname);
-      if (brandRoot) {
-        return NextResponse.redirect(
-          new URL(v2DashboardHref(brandRoot.orgId, brandRoot.brandId), req.url),
-        );
-      }
+      const v2Path = v2PathForV1(pathname, req.nextUrl.search, {
+        lastBrand: (org) => req.cookies.get(lastBrandCookieName(org))?.value,
+        activeOrgId: orgId ?? null,
+      });
+      if (v2Path) return NextResponse.redirect(new URL(v2Path, req.url));
       const landing = matchOrgLanding(pathname);
       const lastBrand = landing
         ? req.cookies.get(lastBrandCookieName(landing.orgId))?.value

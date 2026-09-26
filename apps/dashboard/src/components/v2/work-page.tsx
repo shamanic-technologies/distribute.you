@@ -14,7 +14,7 @@ import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useNeedsYourCall } from "@/components/v2/data";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
-import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, v1LeadHref } from "@/components/v2/people-bits";
+import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 
 interface DoneGroup {
   key: string;
@@ -161,7 +161,7 @@ export function WorkPage() {
               <EmptyNote>Nobody is waiting on you.</EmptyNote>
             ) : (
               needsCall.map((l) => (
-                <LeadCard key={l.id} lead={l} m={missionByCampaignId.get(l.campaignId) ?? null} href={v1LeadHref(orgId, brandId, l)} />
+                <LeadCard key={l.id} lead={l} m={missionByCampaignId.get(l.campaignId) ?? null} href={personHref(orgId, brandId, l)} />
               ))
             )}
           </Column>

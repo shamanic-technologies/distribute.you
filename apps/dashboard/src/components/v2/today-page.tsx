@@ -43,7 +43,7 @@ import {
   leadCompanyDomain,
   leadName,
   leadTitle,
-  v1LeadHref,
+  personHref,
 } from "@/components/v2/people-bits";
 
 const SPARK_DAYS = 14;
@@ -208,7 +208,7 @@ export function TodayPage() {
                         lead={lead}
                         mission={missionByCampaignId.get(lead.campaignId) ?? null}
                         highlight={i === 0}
-                        href={v1LeadHref(orgId, brandId, lead)}
+                        href={personHref(orgId, brandId, lead)}
                       />
                     ))
                   )}
@@ -252,7 +252,7 @@ export function TodayPage() {
                     visits={visits.data?.leads ?? null}
                     replies={replies.data?.leads ?? null}
                     missionFor={(id) => missionByCampaignId.get(id) ?? null}
-                    hrefFor={(lead) => v1LeadHref(orgId, brandId, lead)}
+                    hrefFor={(lead) => personHref(orgId, brandId, lead)}
                   />
                 </section>
               </aside>

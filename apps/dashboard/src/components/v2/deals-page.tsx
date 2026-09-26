@@ -16,7 +16,7 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
-import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, v1LeadHref } from "@/components/v2/people-bits";
+import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 
 /**
  * v2 names the `sales_interest` column for what it holds. v1's board calls it
@@ -41,8 +41,8 @@ const COLUMN_DOT: Record<LeadBoardColumnKey, string> = {
  * Deals (beta): Keel's pipeline board, drawn from lead-service's STANDINGS — a partition,
  * so every person is in exactly one column and the column sizes are the producer's own
  * counts. Each column is its own page on the producer's activity order, the same reads
- * v1's board makes. Moving a card is a statement with a cost; it stays on v1's board,
- * which asks for it, so this board opens the person rather than writing.
+ * v1's board makes. Moving a card is a statement with a cost, so a card opens the
+ * person's own v2 page, where the win is stated with its cost and value.
  */
 export function DealsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
@@ -64,9 +64,6 @@ export function DealsPage() {
         crumbs={[{ label: "Records" }, { label: "Deals" }]}
         actions={
           <>
-            <Link href={`/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/leads`} className="k-btn hidden sm:inline-flex">
-              Move cards in v1
-            </Link>
             <MaturityBadge level="beta" />
           </>
         }
@@ -189,7 +186,7 @@ function DealColumn({
             const m = missionFor(lead.campaignId);
             const at = leadDateForStatus(lead, getLeadConsolidatedStatus(lead));
             return (
-              <Link key={lead.id} href={v1LeadHref(orgId, brandId, lead)} className="k-card block p-3">
+              <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-card block p-3">
                 <div className="flex items-center gap-2">
                   {company ? (
                     <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
