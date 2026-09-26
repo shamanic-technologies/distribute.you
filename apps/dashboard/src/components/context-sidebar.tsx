@@ -14,6 +14,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { type Maturity } from "@/lib/feature-gates";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { explicitHierarchyHref } from "@/lib/last-brand";
+import { SwitchToV2 } from "@/components/ui-version-switch";
 
 export interface SidebarItem {
   id: string;
@@ -115,6 +116,8 @@ function SidebarSection({ topSlot, title, children, footer }: {
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {children}
       </nav>
+      {/* Beta only: renders nothing for everyone else, so v1 is unchanged for them. */}
+      <SwitchToV2 />
       {footer}
     </aside>
   );

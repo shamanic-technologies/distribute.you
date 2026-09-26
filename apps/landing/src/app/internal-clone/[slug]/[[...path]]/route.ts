@@ -14,6 +14,8 @@ import {
   clonePathFor,
   contentTypeFor,
   originPathFor,
+  isRscCacheBusterOnly,
+  pickRscVariant,
   pickStoredVariant,
   withinRoot,
 } from "@/lib/clone-files";
@@ -144,6 +146,24 @@ async function readClone(
       try {
         const names = await readdir(directory);
         const picked = pickStoredVariant(names, path.basename(stemRelative), accept);
+        if (picked !== null) {
+          const file = path.join(directory, picked);
+          if (withinRoot(root, file)) return { body: await readFile(file), file };
+        }
+      } catch {
+        // the directory does not exist — an ordinary miss
+      }
+    }
+  }
+
+  // A Next router payload asked for under a cache-buster the capture never saw: the bytes
+  // are the same for every `_rsc` value, so any stored variant answers it.
+  const plainRelative = candidates[1];
+  if (isRscCacheBusterOnly(search) && plainRelative !== null) {
+    const directory = path.join(root, path.dirname(plainRelative));
+    if (withinRoot(root, directory)) {
+      try {
+        const picked = pickRscVariant(await readdir(directory), path.basename(plainRelative));
         if (picked !== null) {
           const file = path.join(directory, picked);
           if (withinRoot(root, file)) return { body: await readFile(file), file };

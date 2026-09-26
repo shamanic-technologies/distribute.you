@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  isPaymentDeclinedStop,
+  PAYMENT_DECLINED_LABEL,
+  PAYMENT_DECLINED_STYLE,
+} from "@/lib/payment-declined";
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -167,7 +172,18 @@ function statusLabel(status: string): string {
  * been running keeps running when that brand funds its campaigns, so the page never has
  * to explain away a live campaign that never gets a turn.
  */
-export function StatusPill({ status }: { status: string }) {
+export function StatusPill({ status, stopReason }: { status: string; stopReason?: string | null }) {
+  // A campaign billing stopped over a declined card is NOT one somebody paused:
+  // starting it is refused until the payment is fixed, so it says so.
+  if (isPaymentDeclinedStop({ status, stopReason })) {
+    return (
+      <span
+        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${PAYMENT_DECLINED_STYLE}`}
+      >
+        {PAYMENT_DECLINED_LABEL}
+      </span>
+    );
+  }
   const cls = isActiveStatus(status)
     ? RUNNING_STATUS_STYLE
     : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
@@ -654,7 +670,7 @@ function CampaignsTableInner({
                   )}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  <StatusPill status={campaign.status} />
+                  <StatusPill status={campaign.status} stopReason={campaign.stopReason} />
                 </td>
               </tr>
           );

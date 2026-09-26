@@ -15,7 +15,9 @@ import {
 import {
   clonePathFor,
   contentTypeFor,
+  isRscCacheBusterOnly,
   originPathFor,
+  pickRscVariant,
   queryHash,
   withinRoot,
 } from "@/lib/clone-files";
@@ -410,5 +412,27 @@ describe("the serving surface", () => {
     expect(route).not.toContain("staticResponse");
     expect(route).not.toContain("analyticsHead");
     expect(route).not.toContain("withCanonicalOrganization");
+  });
+});
+
+describe("a Next router payload under a cache-buster the capture never saw", () => {
+  it("recognises a query that is only `_rsc`", () => {
+    expect(isRscCacheBusterOnly("?_rsc=3h9d7")).toBe(true);
+    expect(isRscCacheBusterOnly("?_rsc=3h9d7&w=96")).toBe(false);
+    expect(isRscCacheBusterOnly("?w=96")).toBe(false);
+    expect(isRscCacheBusterOnly("")).toBe(false);
+    expect(isRscCacheBusterOnly("?")).toBe(false);
+  });
+
+  it("serves any stored variant of the same segment, deterministically", () => {
+    const names = [
+      "__next._tree.__qc25b62249d.txt",
+      "__next._tree.__q3456ab9cf9.txt",
+      "__next.crew.__PAGE__.__q029f51b8a6.txt",
+      "index.html",
+    ];
+    expect(pickRscVariant(names, "__next._tree.txt")).toBe("__next._tree.__q3456ab9cf9.txt");
+    expect(pickRscVariant(names, "__next.crew.__PAGE__.txt")).toBe("__next.crew.__PAGE__.__q029f51b8a6.txt");
+    expect(pickRscVariant(names, "__next.work.__PAGE__.txt")).toBeNull();
   });
 });

@@ -3,6 +3,7 @@ import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
 import { INVITE_FORWARD_SCRIPT } from "@/lib/static-html";
+import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch-script";
 import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
@@ -161,6 +162,10 @@ export default function RootLayout({
             __html: `document.documentElement.setAttribute('data-theme','light')`,
           }}
         />
+        {/* First touch: the channel that brought this visitor, recorded once for
+            the dashboard to hand over at org creation. Same string as the
+            static pages (static-html.ts analyticsHead()). */}
+        <script dangerouslySetInnerHTML={{ __html: FIRST_TOUCH_CAPTURE_SCRIPT }} />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{

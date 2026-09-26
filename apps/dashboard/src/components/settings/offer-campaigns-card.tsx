@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_DECLINED_LABEL, PAYMENT_DECLINED_STYLE } from "@/lib/payment-declined";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -383,7 +384,17 @@ function OfferCampaignRow({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 text-sm text-gray-800">
           <CampaignIdentity featureSlug={featureSlug} legKey={row.legKey} />
-          <p className="mt-0.5 text-xs text-gray-500">{CHANNEL_RUN_STATE_LABEL[state]}</p>
+          {row.paymentDeclined && !row.running ? (
+            // Paused by billing over a declined card, not by a person: a restart is
+            // refused until the payment is fixed, so it does not read as a plain pause.
+            <span
+              className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${PAYMENT_DECLINED_STYLE}`}
+            >
+              {PAYMENT_DECLINED_LABEL}
+            </span>
+          ) : (
+            <p className="mt-0.5 text-xs text-gray-500">{CHANNEL_RUN_STATE_LABEL[state]}</p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <button

@@ -25,6 +25,8 @@
  * worth a lockfile change.)
  */
 
+import type { FirstTouch } from "./first-touch";
+
 const CLIENT_SERVICE_URL = process.env.CLIENT_SERVICE_URL;
 const CLIENT_SERVICE_API_KEY = process.env.CLIENT_SERVICE_API_KEY;
 
@@ -120,4 +122,48 @@ export async function claimAnonymousOrg(input: ClaimInput): Promise<ClaimOutcome
   const refusal = typeof res.reason === "string" ? res.reason : `http_${status}`;
   console.error(`[client-service] claim refused for ${orgId}: ${refusal}`);
   return { claimed: false, alreadyClaimed: false, refusal };
+}
+
+/** Who the first touch belongs to: the anonymous org's internal uuid, or the
+ *  identity-provider pair an ordinary signup knows. */
+export type AcquisitionTarget =
+  | { orgId: string }
+  | { externalOrgId: string; externalUserId: string };
+
+/**
+ * Hand an org its FIRST TOUCH (`POST /internal/acquisitions`).
+ *
+ * client-service keeps the first one it receives and answers every later one
+ * `recorded: false`, so calling this from several places (the anonymous start,
+ * the signup, the end of onboarding) is safe and deliberate: whichever lands
+ * first wins, and a claimed anonymous org keeps the touch it had before.
+ *
+ * NEVER FATAL TO THE CALLER, and never silent. Attribution failing must not cost
+ * somebody their signup, so this returns `null` on failure instead of throwing —
+ * after logging the status loudly, because a hand-over nobody hears about is how
+ * the week's revenue came to be unattributable in the first place.
+ */
+export async function recordAcquisition(
+  target: AcquisitionTarget,
+  acquisition: FirstTouch,
+): Promise<{ orgId: string; recorded: boolean } | null> {
+  try {
+    const { status, body } = await call<{ orgId?: string; recorded?: boolean; error?: string }>(
+      "/internal/acquisitions",
+      { ...target, acquisition },
+    );
+    if (status < 200 || status >= 300 || typeof body.orgId !== "string") {
+      console.error(
+        `[client-service] acquisition hand-over refused: ${status} ${body.error ?? ""} channel=${acquisition.channel}`,
+      );
+      return null;
+    }
+    console.log(
+      `[client-service] acquisition org=${body.orgId} channel=${acquisition.channel} recorded=${body.recorded === true}`,
+    );
+    return { orgId: body.orgId, recorded: body.recorded === true };
+  } catch (err) {
+    console.error("[client-service] acquisition hand-over failed:", err);
+    return null;
+  }
 }

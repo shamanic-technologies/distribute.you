@@ -361,12 +361,17 @@ export function PipelineActivityChart({
     [data, pipelineActualSeries, rangeDays, optimizationGoal, trackerSetUp, leg],
   );
 
-  // Keep the live edge (today + forecast) in view — wider windows would otherwise
-  // scroll the meaningful right side off-screen behind the empty older past days.
+  // Centre TODAY in the scroll box. Scrolling to the far right showed only the
+  // forecast days once the card shared its row with the cost curve (half width),
+  // pushing today off the left edge. Categories are equal width, so today's
+  // centre is its index share of the scroll width.
+  const todayIndex = chartData.findIndex((d) => d.isToday);
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [rangeDays, chartData.length]);
+    if (!el || todayIndex < 0) return;
+    const todayCentre = ((todayIndex + 0.5) / chartData.length) * el.scrollWidth;
+    el.scrollLeft = Math.max(0, todayCentre - el.clientWidth / 2);
+  }, [rangeDays, chartData.length, todayIndex]);
 
   if (data.days.length === 0) {
     return (

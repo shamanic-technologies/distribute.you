@@ -11,6 +11,14 @@ import {
   onboardingBrandCookieName,
   onboardingResumeHref,
 } from "@/lib/onboarding-brand-cookie";
+import { isBetaEmail } from "@/lib/beta-allowlist";
+import {
+  UI_VERSION_COOKIE,
+  parseUiVersion,
+  matchV1BrandRoot,
+  stripV2Prefix,
+  v2DashboardHref,
+} from "@/lib/ui-version";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
@@ -133,6 +141,35 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL(onboardingHref(), req.url));
     }
 
+    // Dashboard v2 (beta). A beta user who chose v2 lands on v2 from the first frame:
+    // the choice is a cookie so it survives a reload and a new sign-in, and it is
+    // read HERE, pre-paint, rather than by a client redirect that would flash v1.
+    // Only the two LANDING shapes are redirected — the bare org and the brand root
+    // (whose v2 twin is the Dashboard). Every deeper v1 page stays reachable,
+    // because v2 links to them for each section it has not rebuilt yet. The cookie
+    // is a preference, never an authorisation: without a beta email nothing moves.
+    const wantsV2 =
+      !!userId &&
+      isBetaEmail(sessionClaims?.email) &&
+      parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2" &&
+      !req.nextUrl.searchParams.has("autoCreate") &&
+      !hasExplicitHierarchyIntent(req.nextUrl.searchParams);
+    if (wantsV2) {
+      const brandRoot = matchV1BrandRoot(pathname);
+      if (brandRoot) {
+        return NextResponse.redirect(
+          new URL(v2DashboardHref(brandRoot.orgId, brandRoot.brandId), req.url),
+        );
+      }
+      const landing = matchOrgLanding(pathname);
+      const lastBrand = landing
+        ? req.cookies.get(lastBrandCookieName(landing.orgId))?.value
+        : undefined;
+      if (landing && lastBrand) {
+        return NextResponse.redirect(new URL(v2DashboardHref(landing.orgId, lastBrand), req.url));
+      }
+    }
+
     // "Land on last-visited brand" — READ side. On a bare `/orgs/:orgId`,
     // redirect pre-paint to the last brand opened in that org (remembered in
     // the org-scoped cookie below). Zero flash, zero data fetch — same edge
@@ -174,7 +211,8 @@ export default clerkMiddleware(
     // (only the edge reads it), org-scoped, 1 year. `secure` only in prod so the
     // cookie persists over http on localhost.
     if (userId) {
-      const brandPath = matchBrandPath(pathname);
+      // A v2 brand URL is the same brand, so it refreshes the same memory.
+      const brandPath = matchBrandPath(stripV2Prefix(pathname));
       if (brandPath) {
         res.cookies.set(
           lastBrandCookieName(brandPath.orgId),
@@ -198,7 +236,7 @@ export default clerkMiddleware(
     // (or redirects if the user is not a member). Prevents the dashboard from issuing
     // API calls under a stale active org after navigation or tab switching.
     organizationSyncOptions: {
-      organizationPatterns: ["/orgs/:id", "/orgs/:id/(.*)"],
+      organizationPatterns: ["/orgs/:id", "/orgs/:id/(.*)", "/v2/orgs/:id", "/v2/orgs/:id/(.*)"],
     },
   },
 );

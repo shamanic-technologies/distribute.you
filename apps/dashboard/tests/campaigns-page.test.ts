@@ -139,7 +139,9 @@ describe("Campaigns page (GA)", () => {
   // and provisioning an empty twin. So the page invents no state: it renders the
   // campaign's own status, and there is no "superseded" anywhere in the fleet.
   it("renders the campaign's own status and invents no state", () => {
-    expect(table).toContain("<StatusPill status={campaign.status} />");
+    // The stop REASON rides with the status: a campaign billing paused over a declined
+    // card reads its own words (see payment-declined.test.ts).
+    expect(table).toContain("<StatusPill status={campaign.status} stopReason={campaign.stopReason} />");
     expect(page).not.toContain("superseded");
     expect(page).not.toContain("Superseded");
   });

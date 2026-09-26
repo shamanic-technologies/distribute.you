@@ -3,6 +3,7 @@ import { PartneroViaCapture } from "@/components/partnero-via-capture";
 import { InviteCapture } from "@/components/invite/invite-capture";
 import { LandingUrlCapture } from "@/components/landing-url-capture";
 import { BRAND_TINT_PRELOAD_SCRIPT } from "@/lib/brand-tint-preload";
+import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.distribute.you";
@@ -102,6 +103,12 @@ export default function RootLayout({
           for why this cannot be a server render.
         */}
         <script dangerouslySetInnerHTML={{ __html: BRAND_TINT_PRELOAD_SCRIPT }} />
+        {/*
+          Records which channel first brought this visitor, once, on the
+          registrable domain, so the org they create is credited to it. The
+          landing renders the same string. See `lib/first-touch`.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: FIRST_TOUCH_CAPTURE_SCRIPT }} />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{

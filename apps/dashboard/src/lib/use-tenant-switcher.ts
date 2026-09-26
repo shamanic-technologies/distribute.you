@@ -18,6 +18,7 @@ import { useTenantIdentity } from "@/components/tenant-identity-provider";
 import { withTimeout, isTimeoutError } from "@/lib/with-timeout";
 import { orgSwitchErrorMessage } from "@/lib/org-switch-error";
 import { landingHref } from "@/lib/landing-drilldown";
+import { stripV2Prefix } from "@/lib/ui-version";
 
 /**
  * How long any single leg of an org switch may take before the switcher gives up
@@ -164,7 +165,8 @@ export function useTenantSwitcher() {
   // Parse path structure:
   // /orgs/[orgId]/brands/[brandId]/offers/[offerId]/<section>/[id]
   // The product ships ONE feature → no `/features/[featureSlug]` segment.
-  const pathParts = pathname.split("/").filter(Boolean);
+  // The v2 dashboard mounts the same org/brand tree under `/v2`; read it the same way.
+  const pathParts = stripV2Prefix(pathname).split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   // ONE rule, shared with the pre-paint tint script — two parsers would
   // eventually disagree about which brand is open.

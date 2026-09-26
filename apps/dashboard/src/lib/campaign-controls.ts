@@ -54,6 +54,8 @@ export interface ControlCampaign extends CampaignBudgetRow {
   status: string;
   offerId: string | null;
   legKey?: string | null;
+  /** Why campaign-service stopped it, when it says. See `lib/payment-declined.ts`. */
+  stopReason?: string | null;
   /**
    * When campaign-service created this row. Read only to pick which row of a campaign
    * a RESTART targets when none of them is running: the most recent one is the
@@ -119,6 +121,12 @@ export interface ControlRow {
   runningCampaignIds: string[];
   /** Is it running right now, per campaign-service's own word. */
   running: boolean;
+  /**
+   * Stopped because billing could not charge the org's card, not by a person.
+   * Starting it is refused until the customer pays and fixes the card, so the
+   * row says so instead of offering a restart that reads like any other.
+   */
+  paymentDeclined: boolean;
   /**
    * The (offer, leg, channel) its money is keyed on, or null for a campaign that
    * names no leg. Such a row can still be stopped and restarted — the status is its
@@ -234,6 +242,7 @@ export function buildControlRows(
       // A channel with NO campaign is not running, whatever it is funded at: money
       // starts nothing (campaign-service, 2026-09-06).
       running: false,
+      paymentDeclined: false,
       scope,
       savedCents: campaignSavedCents(scope, budgets),
       offerId: o.offerId,
@@ -251,6 +260,11 @@ export function buildControlRows(
         campaignId: representative.id,
         runningCampaignIds,
         running: runningCampaignIds.length > 0,
+        // The representative is the row a restart would address, so its reason is
+        // the one that decides whether that restart will be refused. Spelled here
+        // rather than imported: `payment-declined.ts` imports this module.
+        paymentDeclined:
+          runningCampaignIds.length === 0 && representative.stopReason === "payment_declined",
         scope,
         savedCents: scope ? campaignSavedCents(scope, budgets) : 0,
         offerId: representative.offerId,

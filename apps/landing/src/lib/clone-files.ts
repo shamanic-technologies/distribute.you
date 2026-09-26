@@ -108,6 +108,37 @@ export function pickStoredVariant(
   return preferred ?? matches[0];
 }
 
+/**
+ * True when a query is nothing but Next's router cache-buster (`?_rsc=<hash>`).
+ *
+ * A Next 16 app navigates client-side by fetching per-segment payloads such as
+ * `/crew/__next._tree.txt?_rsc=3h9d7`. The `_rsc` value is a hash of the requesting
+ * router's state, so the value a clone's visitor sends never equals one the capture
+ * recorded, while the payload behind it is the same bytes for every value (measured on
+ * keel: eleven captured variants of one segment, one md5). An exact miss therefore falls
+ * back to ANY stored variant of that path — without it every click 404s its prefetch and
+ * the app degrades to a full page load per navigation.
+ */
+export function isRscCacheBusterOnly(search: string): boolean {
+  if (!search || search === "?") return false;
+  const keys = [...new URLSearchParams(search).keys()];
+  return keys.length === 1 && keys[0] === "_rsc";
+}
+
+/**
+ * Which stored `?_rsc=` variant to serve for a cache-buster miss. `plainName` is the file
+ * name the path maps to with no query (`__next._tree.txt`); the stored siblings are
+ * `__next._tree.__q<hash>.txt`. Sorted so the pick is deterministic; null is a 404.
+ */
+export function pickRscVariant(candidates: readonly string[], plainName: string): string | null {
+  const dot = plainName.lastIndexOf(".");
+  const stem = dot === -1 ? plainName : plainName.slice(0, dot);
+  const ext = dot === -1 ? "" : plainName.slice(dot);
+  const prefix = `${stem}.${QUERY_MARKER}`;
+  const matches = candidates.filter((name) => name.startsWith(prefix) && name.endsWith(ext)).sort();
+  return matches[0] ?? null;
+}
+
 /** True when `candidate` resolves inside `root`. The second gate, after the segment check. */
 export function withinRoot(root: string, candidate: string): boolean {
   const resolvedRoot = path.resolve(root);

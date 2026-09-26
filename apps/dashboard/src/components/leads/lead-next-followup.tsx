@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { canFollowUpNow, followupLine, leadFollowup } from "@/lib/lead-followup";
 import type { LeadHistory } from "@/lib/lead-history";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useFollowUpNow } from "@/lib/use-lead-followup";
 
 /**
@@ -25,6 +27,9 @@ export function LeadNextFollowup({
   leadRowId: string;
 }) {
   const followup = leadFollowup(history);
+  // The line is GA; bringing the follow-up forward is beta. It writes an email to a
+  // prospect ahead of schedule, so it stays with the beta cohort until it has run.
+  const isBeta = useIsBetaUser();
   const { mutate, isPending, isError, error } = useFollowUpNow(leadRowId);
   // What the person just asked for, held locally over the round trip. Both calls take a
   // moment (the write, then the re-read of the history it invalidates), and for both of
@@ -51,7 +56,7 @@ export function LeadNextFollowup({
       {/* Never offered on a stopped schedule: it ended because the prospect booked, opted
           out, or answered, so a control offering to write to them anyway offers the one
           thing that state exists to prevent. Absent rather than present-and-refusing. */}
-      {canFollowUpNow(followup) && (
+      {isBeta && canFollowUpNow(followup) && (
         <button
           type="button"
           onClick={() => {
@@ -59,11 +64,12 @@ export function LeadNextFollowup({
             mutate(undefined, { onError: () => setAsked(false) });
           }}
           disabled={isPending}
-          className={`shrink-0 rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 ${
+          className={`inline-flex shrink-0 items-center gap-1 rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 ${
             isPending ? "cursor-wait" : "hover:bg-gray-50 disabled:opacity-40"
           }`}
         >
           {isPending ? "Moving..." : "Follow up now"}
+          <MaturityBadge level="beta" />
         </button>
       )}
     </div>
