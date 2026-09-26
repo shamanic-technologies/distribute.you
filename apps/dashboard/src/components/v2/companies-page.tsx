@@ -348,7 +348,7 @@ export function CompaniesPage() {
                 {formatCount(selected.size)} selected · clear
               </button>
             )}
-            <span className="hidden items-center gap-1 md:inline-flex">
+            <span className="k-keys hidden items-center gap-1 md:inline-flex">
               <span className="k-kbd">X</span> select
             </span>
           </>

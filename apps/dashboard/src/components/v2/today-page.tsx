@@ -436,7 +436,7 @@ function CallCard({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link href={href} className={highlight ? "k-btn-accent" : "k-btn-strong"}>
             Open conversation
-            {highlight && <span className="rounded-[4px] bg-white/20 px-1 text-[10px]">↵</span>}
+            {highlight && <span className="k-keys rounded-[4px] bg-white/20 px-1 text-[10px]">↵</span>}
           </Link>
           <a href={`mailto:${lead.email}`} className="k-btn">
             Email

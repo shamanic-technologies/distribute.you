@@ -85,7 +85,7 @@ function TopBarUniversal() {
   return (
     <>
       {orgId && brandId ? <Bell orgId={orgId} brandId={brandId} /> : null}
-      <button type="button" onClick={openPalette} aria-label="Open command palette" className="k-btn-ghost hidden h-8 gap-0.5 px-1.5 md:inline-flex">
+      <button type="button" onClick={openPalette} aria-label="Open command palette" className="k-keys k-btn-ghost hidden h-8 gap-0.5 px-1.5 md:inline-flex">
         <span className="k-kbd">⌘</span>
         <span className="k-kbd">K</span>
       </button>
@@ -342,7 +342,7 @@ export function StackMeter({
 /** A keyboard hint the way Keel prints them: keys, then what they do. */
 export function KeyHint({ keys, label }: { keys: string[]; label: string }) {
   return (
-    <span className="k-fg3 inline-flex items-center gap-1 text-[12px]">
+    <span className="k-keys k-fg3 inline-flex items-center gap-1 text-[12px]">
       {keys.map((k) => (
         <span key={k} className="k-kbd">{k}</span>
       ))}
