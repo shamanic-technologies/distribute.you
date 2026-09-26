@@ -288,8 +288,12 @@ export function StartShell({
           <div className={`mt-6 shrink-0 border-t border-gray-100 pt-5 ${SHORT_VIEWPORT.footerGap}`}>{footer}</div>
         )}
       </div>
+      {/* Hidden on a phone, like the trust strip below: there it stacks UNDER the
+          card inside a 100svh column, so it takes the card's height. Measured at
+          320x568 the list above it shrank to one clipped line, and at 390x844 the
+          aside itself was cut off at the bottom. */}
       {aside && (
-        <div className="relative z-10 min-w-0" data-start-aside>
+        <div className="relative z-10 hidden min-w-0 sm:block" data-start-aside>
           {aside}
         </div>
       )}
