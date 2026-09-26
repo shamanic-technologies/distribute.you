@@ -10,7 +10,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
-  getBrandFunnelBudgets,
+  getBrandCampaignBudgets,
   getFeatureRevenueByCampaign,
   type Campaign,
   type CampaignRevenueGroup,
@@ -22,8 +22,8 @@ import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
-import { campaignFunnel } from "@/lib/campaign-funnel";
-import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor, type LegCatalogue } from "@/lib/legs";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
@@ -37,7 +37,7 @@ import { Skeleton } from "@/components/skeleton";
  * one way on one page and another way on the next.
  *
  * Every displayed number is a READY features-service field. The only non-formatting
- * client work is joining the campaign row (channel / funnel / status from
+ * client work is joining the campaign row (channel / leg / status from
  * campaign-service) to its revenue group by campaignId — a display arrangement of wire
  * data, never a derived metric.
  */
@@ -164,7 +164,7 @@ function statusLabel(status: string): string {
 
 /**
  * The campaign's own status. There is no state invented here: a campaign a brand has
- * been running keeps running when that brand funds its funnels, so the page never has
+ * been running keeps running when that brand funds its campaigns, so the page never has
  * to explain away a live campaign that never gets a turn.
  */
 export function StatusPill({ status }: { status: string }) {
@@ -179,7 +179,7 @@ export function StatusPill({ status }: { status: string }) {
 }
 
 /**
- * WHICH campaign this row is: the funnel it sells, with the channel it sells
+ * WHICH campaign this row is: the leg it performs, with the channel it performs it
  * through under it.
  *
  * The layout lives in `campaign-identity` because the budget modal states the
@@ -187,11 +187,12 @@ export function StatusPill({ status }: { status: string }) {
  * read one way in this table and another way in the modal that funds it.
  */
 export function CampaignCell({ campaign }: { campaign: Campaign }) {
+  const catalogue = useLegCatalogue();
   return (
     <CampaignIdentity
-      funnel={campaignFunnel(campaign.funnelKey)}
       featureSlug={campaign.featureSlug}
       legKey={campaign.legKey}
+      leg={legFor(catalogue, campaign.legKey)}
     />
   );
 }
@@ -225,11 +226,10 @@ export interface CampaignRow {
 }
 
 /**
- * The outcome a campaign's projections rest on: the first step of its funnel that is
- * actually MEASURED — a positive reply on the reply-led funnels, a website visit on the
- * visit-led ones.
+ * The outcome a campaign's projections rest on: the step of its leg that is actually
+ * MEASURED — a positive reply or a website visit.
  *
- * Not the funnel's terminal outcome (a booked meeting, a signup): those need the brand's
+ * Not a tracked step (a booked meeting, a signup): those need the brand's
  * conversion tracker to be live and are legitimately 0 for most campaigns, so gating on
  * them would print `Learning` forever on a campaign that is measurably working.
  *
@@ -241,9 +241,10 @@ export interface CampaignRow {
 function campaignSignalCount(
   campaign: Campaign,
   group: CampaignRevenueGroup | null,
+  catalogue: LegCatalogue,
 ): number | null | undefined {
   if (!group) return undefined;
-  const steps = stepsFor(null, campaign.funnelKey);
+  const steps = stepsFor(null, legFor(catalogue, campaign.legKey));
   const has = (key: string) => steps.some((step) => step.key === key);
   if (has("positive_replies")) return group.positiveReplies;
   if (has("website_visits")) return group.websiteClicks;
@@ -296,9 +297,10 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // Offer Settings and Campaign Settings already read, so a surface rendering the
   // table beside either costs no second request — and the figure a row states is
   // by construction the figure those pages edit.
-  const budgetsQ = useAuthQuery(["brandFunnelBudgets", brandId], () =>
-    getBrandFunnelBudgets(brandId),
+  const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () =>
+    getBrandCampaignBudgets(brandId),
   );
+  const catalogue = useLegCatalogue();
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
   // The table is the campaigns a brand HAS on THIS feature — one line per campaign,
@@ -307,17 +309,17 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // Two filters, and both are load-bearing:
   //
   // Feature. `listCampaignsByBrand` answers for the whole brand, so it also returns the
-  // brand's PR, AI-visibility and VC campaigns — products that run no sales funnel and
+  // brand's PR, AI-visibility and VC campaigns — products that perform no leg and
   // whose figures this table never fetched: `getFeatureRevenueByCampaign` is scoped to
-  // `featureSlug`. So those rows arrived with no group and rendered `— / — / —` under a
-  // Sales funnel column they can never fill. A table listing one population and pricing
+  // `featureSlug`. So those rows arrived with no group and rendered `— / — / —` under
+  // columns they can never fill. A table listing one population and pricing
   // another is the incoherence, not merely the clutter.
   //
   // Status is NOT a filter — see `listedCampaigns` below. A campaign a customer
   // paused is still one of their campaigns, and a list that drops it says they
   // have none.
   //
-  // Offer. A campaign is (offer x funnel x channel), so an offer-scoped surface
+  // Offer. A campaign is (offer x leg x channel), so an offer-scoped surface
   // lists the campaigns that sell THAT proposition. campaign-service carries the
   // offer on the row, so this is a filter on a stored value, never a guess: a
   // campaign that carries no offer belongs to none and is left out rather than
@@ -329,8 +331,8 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // their campaigns and silently drops the rest. It did: a customer funded a second
   // cold-email channel, campaign-service provisioned and ran it, and the offer
   // screen kept showing one line. The feature filter's REASON survives intact — it
-  // exists to keep out the brand's PR, AI-visibility and VC campaigns, which run no
-  // sales funnel and can never fill these columns — so the offer-scoped test asks
+  // exists to keep out the brand's PR, AI-visibility and VC campaigns, which perform
+  // no leg and can never fill these columns — so the offer-scoped test asks
   // exactly that instead: is this campaign's feature an ACQUISITION CHANNEL? The
   // catalogue answers, so a third channel needs no edit here.
   //
@@ -368,8 +370,8 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   }, [featureCampaigns]);
 
   // Gated on the channel catalogue, NOT on `isRevenueFeature`: that set decides which
-  // features get a revenue PAGE, and this is a data read. A channel sells a sales
-  // funnel, so it has money to report; if it has none yet the groups come back empty
+  // features get a revenue PAGE, and this is a data read. A channel performs legs,
+  // so it has money to report; if it has none yet the groups come back empty
   // and the row reads `—`, which is the honest answer rather than a withheld one.
   const channelGroupQs = useQueries({
     queries: channelSlugs.map((slug) => ({
@@ -381,7 +383,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   });
   // ONE LINE PER IDENTITY, running or paused.
   //
-  // A campaign IS (offer x funnel x channel) — the triple billing funds and the one
+  // A campaign IS (offer x leg x channel) — the address billing funds and the one
   // features-service totals server-side, so every row's money already includes what
   // that identity's earlier rows spent. campaign-service enforces at most one
   // `ongoing` row per identity (migration 0044) but keeps every superseded one, so
@@ -401,7 +403,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const listedCampaigns = useMemo(() => {
     const byIdentity = new Map<string, Campaign>();
     for (const c of featureCampaigns) {
-      const key = `${c.offerId ?? ""}|${c.funnelKey ?? ""}|${c.featureSlug ?? ""}`;
+      const key = `${c.offerId ?? ""}|${c.legKey ?? ""}|${c.featureSlug ?? ""}`;
       const held = byIdentity.get(key);
       if (!held) {
         byIdentity.set(key, c);
@@ -438,20 +440,18 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // — and last-updated breaks that tie, so the campaigns with no figures are ordered
   // by the only thing left that distinguishes them.
   //
-  // Each row's ceiling is narrowed by the campaign's OWN `offerId`, not by the
-  // surface's: billing's per-pair figure spans every offer selling that pair, so
-  // a row that borrowed the pair total would state a sibling offer's money under
-  // this campaign's name. Reading the row's own offer makes the brand-scoped list
-  // and the offer-scoped one state the same number for the same campaign.
+  // Each row's ceiling is read at the campaign's OWN address (offer x leg x channel),
+  // so the brand-scoped list and the offer-scoped one state the same number for the
+  // same campaign.
   const budgets = budgetsQ.data;
   const rows = useMemo<CampaignRow[]>(() => {
     const joined = listedCampaigns.map((c) => {
       const revenue = groupsById.get(c.id) ?? null;
-      const signal = campaignSignalCount(c, revenue);
+      const signal = campaignSignalCount(c, revenue, catalogue);
       return {
         campaign: c,
         revenue,
-        budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets, channels),
+        budgetCents: campaignBudgetCents(c, budgets, channels),
         // A count the producer did not answer cannot say the row is thin.
         learning: signal === undefined ? false : isLearning(signal),
         signal,
@@ -472,12 +472,12 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
-  }, [listedCampaigns, groupsById, budgets, channels]);
+  }, [listedCampaigns, groupsById, budgets, channels, catalogue]);
 
   // The rows that are RUNNING, for the surfaces whose question is about live
   // campaigns rather than about the brand's campaigns: the Campaigns page's "#1
-  // acquisition channel" tile, and the funnels the Leads tabs are built from. Both
-  // read this rather than `rows` — naming a channel or offering a funnel tab off a
+  // acquisition channel" tile, and the legs the Leads tabs are built from. Both
+  // read this rather than `rows` — naming a channel or offering a tab off a
   // campaign that stopped months ago describes something the brand no longer sells.
   //
   // Derived from `rows`, not from a second filter over the campaigns: one identity
@@ -514,7 +514,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
  * colour. Owner-decided: every tag on a surface reads in that surface's accent.
  *
  * Consequence, and it is the point: this table reads PRIMARY on the brand Overview, on
- * the offer Overview and on the offer's Funnels page, and keeps the default tertiary on
+ * the offer Overview, and keeps the default tertiary on
  * the campaign-grain surfaces, which state no tone.
  */
 export function CampaignsTable(props: Parameters<typeof CampaignsTableInner>[0]) {
@@ -526,7 +526,6 @@ function CampaignsTableInner({
   featureSlug,
   basePath,
   offerId,
-  funnelKey,
 }: {
   brandId: string;
   featureSlug: string;
@@ -534,32 +533,16 @@ function CampaignsTableInner({
   basePath: string;
   /** The OFFER whose campaigns to list. Omitted → every campaign of the brand. */
   offerId?: string;
-  /**
-   * Narrow to ONE sales funnel, which is how the Sales funnels page walks down into
-   * the campaigns carrying a funnel. A DISPLAY filter over rows the hook already
-   * fetched: the query key does not change, so arriving here from a funnel costs no
-   * request and the two surfaces cannot disagree about a campaign.
-   *
-   * Normalised on both sides — a funnel key travels under two spellings while the
-   * fleet migrates, and comparing them raw would silently show nothing.
-   */
-  funnelKey?: string | null;
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
-  const { rows: allRows, settled } = useCampaignRows(brandId, featureSlug, offerId);
-  const narrowed = funnelKey ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire) : null;
-  const rows = narrowed
-    ? allRows.filter(
-        (r) => r.campaign.funnelKey != null && normalizeSalesFunnelKey(r.campaign.funnelKey) === narrowed,
-      )
-    : allRows;
+  const { rows, settled } = useCampaignRows(brandId, featureSlug, offerId);
 
 
   return (
     /* Below `md` the row narrows to the two things a reader can act on: what the
        campaign returns, and which campaign it is. Both are columns at EVERY width
-       now — `Campaign` states the funnel and the channel together, so the pair
+       now — `Campaign` states the leg and the channel together, so the pair
        needs no separate mobile stacking and no width can show half an identity.
 
        The floor is gated at the breakpoint the money columns come back:
@@ -567,7 +550,7 @@ function CampaignsTableInner({
        columns hidden, so the two that survived get pushed off to the right and
        read as missing. `table-fixed` below `md` is what makes the truncation bite
        — in the default auto layout a column grows to its content, so one long
-       funnel name widens the whole row however many `truncate`s it carries. */
+       leg name widens the whole row however many `truncate`s it carries. */
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
       <table className="w-full table-fixed text-sm md:table-auto md:min-w-[760px]">
         <thead>
@@ -576,7 +559,7 @@ function CampaignsTableInner({
               which is the dashboard's reference entity table: a heavier,
               differently-tracked header reads as a different product. */}
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            {/* Which campaign, first: the funnel it sells with the channel under
+            {/* Which campaign, first: the leg it performs with the channel under
                 it. It is the row's identity, so it leads at every width — the two
                 columns it replaces stated one thing in two places. */}
             <th className="px-4 py-3 w-[70%] md:w-auto">Campaign</th>

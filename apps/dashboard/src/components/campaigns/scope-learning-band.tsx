@@ -4,7 +4,7 @@ import { LearningProgressCallout } from "@/components/campaigns/learning-progres
 import type { LearningPhase } from "@/lib/revenue-view";
 
 /**
- * The learning band for whatever scope a page IS — brand, offer, funnel or campaign.
+ * The learning band for whatever scope a page IS — brand, offer or campaign.
  *
  * It takes the verdict as a PROP, off the page's OWN revenue read, rather than making a
  * read of its own. That is the point rather than a convenience: the band and the figures

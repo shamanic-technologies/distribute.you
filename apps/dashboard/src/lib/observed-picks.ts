@@ -65,7 +65,7 @@ export interface ObservedPicks {
 /**
  * The workflow the campaign LAST ran, as a `RunningWorkflow` the row builder accepts.
  *
- * Null on every honest absence: the block missing (a funnel- or goal-keyed body, which
+ * Null on every honest absence: the block missing (a goal-keyed body, which
  * this page never asks for), the block null (runs unreachable), or no trigger yet.
  */
 export function runningFromObservedPicks(

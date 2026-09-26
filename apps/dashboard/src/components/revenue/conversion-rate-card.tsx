@@ -40,7 +40,7 @@ import type { ConversionRateHistory } from "@/lib/revenue-view";
  *
  * The title names the step through `outcomeStep.label`, never a noun picked here: a
  * campaign's outcome is whichever step its leg lands on. `outcomeObserved: false` means
- * the counts were walked forward through the funnel's own rates from the signal we can
+ * the counts were walked forward through the brand's leg rates from the signal we can
  * observe, so the whole curve is a PROJECTION and the card says so — a projected figure
  * and a measured one never share a label unremarked.
  */
@@ -135,7 +135,7 @@ export function ConversionRateCard({
   const tip = [
     "How often the people this campaign reached went on to convert, since its first day. Cumulative, so each point is the whole run to that date rather than that day alone.",
     projected
-      ? "The outcome count is walked forward through your funnel's own conversion rates from the signal we can observe, so this curve is a projection rather than a raw count."
+      ? "The outcome count is walked forward through your own conversion rates from the signal we can observe, so this curve is a projection rather than a raw count."
       : null,
     undated > 0
       ? "The line covers the people and outcomes carrying a date. The headline covers the whole campaign, so the two differ by whatever has no date on it."

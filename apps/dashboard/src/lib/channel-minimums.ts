@@ -1,20 +1,15 @@
 // The least a funded daily ceiling may be stated at, READ from the acquisition
 // channel's own published commercial terms.
 //
-// WHAT DECIDES A FLOOR. A campaign is (offer x sales funnel x acquisition
-// channel), and what a day of it costs is a property of the CHANNEL: cold email
-// costs what cold email costs, whoever runs it and whatever funnel the leads
-// later travel. So two campaigns on the same channel share a floor even when
-// their funnels differ — which is exactly what the per-FUNNEL table this
-// replaced could not express, and why it priced the same work two ways.
+// WHAT DECIDES A FLOOR. A campaign is (offer x leg x acquisition channel), and
+// what a day of it costs is a property of the CHANNEL: cold email costs what cold
+// email costs, whoever runs it and whatever leg it performs.
 //
 // WHERE THE FIGURE LIVES. features-service publishes every channel's commercial
 // terms on `GET /public/channels`, `terms.dailyOperatingCostCents` among them.
 // That IS the floor, and it is read from there rather than copied into a table
-// here: a local copy of another service's product figure goes stale silently,
-// and the one that used to live in `sales-funnels.ts` did — it stated $24 a day
-// for the meeting funnels months after billing had moved cold email to $8, so
-// the dashboard refused money billing would have taken.
+// here: a local copy of another service's product figure goes stale silently, and
+// the one that used to live here did, refusing money billing would have taken.
 //
 // WHAT DECIDES, FULL STOP. billing-service. It holds the same rule against the
 // same published figure and its 400 is the answer; everything here exists to
@@ -22,11 +17,9 @@
 // unreadable catalogue states NO floor rather than a guessed one, and the write
 // goes out and is judged where it is judged.
 //
-// WHICH CEILINGS ARE JUDGED TOGETHER: the (funnel, channel) PAIR, on the SUM of
-// the offers funding it — billing's `minimumGroupOf`. A customer splitting one
-// funded pair across two offers must not be refused for each half being under a
-// floor the whole clears, and a sibling channel's money has nothing to say about
-// whether this one can run.
+// WHICH CEILINGS ARE JUDGED TOGETHER: every campaign on the CHANNEL, across the
+// brand — billing's own grouping. A customer splitting one channel across two
+// campaigns must not be refused for each half being under a floor the whole clears.
 //
 // Only relative value imports live here, so this module stays directly
 // unit-testable (vitest does not resolve the "@" alias).
@@ -88,7 +81,7 @@ export function fmtDailyFloorUsd(cents: number): string {
 }
 
 /**
- * True when billing already funds this pair UNDER the channel's own floor.
+ * True when billing already funds this channel UNDER the channel's own floor.
  *
  * The grandfather is derived from the stored ceiling and nothing else: no flag,
  * no column, no per-org override — the same rule billing derives it by.
@@ -102,11 +95,11 @@ export function isGrandfatheredChannelFunding(
 }
 
 /**
- * Whether this (funnel, channel) pair may be funded at this many dollars a day,
+ * Whether this channel may be funded at this many dollars a day,
  * given what it is funded at TODAY.
  *
- * Zero passes: a defunded pair is an ordinary state, not an error, and it is how
- * a customer stops one channel without forgetting how the funnel sells.
+ * Zero passes: a defunded channel is an ordinary state, not an error, and it is how
+ * a customer stops one channel without losing anything else it stated.
  *
  * The floor governs what a customer may NEWLY state, never what one has already
  * been running. Ceilings predating it were carried over verbatim — they are the
@@ -114,10 +107,9 @@ export function isGrandfatheredChannelFunding(
  * Refusing every write of such a ceiling leaves its owner two moves: leave it
  * exactly alone, or defund it. Raising it TOWARDS the floor would be refused,
  * which is the wrong direction to block, and because the gate runs before a
- * whole form is saved it also blocked editing a conversion rate on a funnel
- * whose money nobody was trying to change.
+ * whole form is saved it also blocked edits nobody was making to the money.
  *
- * So a pair funded under its floor may be kept, or raised to any higher figure
+ * So a channel funded under its floor may be kept, or raised to any higher figure
  * including one still under the floor. It may not be LOWERED to another funded
  * sub-floor figure: that is a new statement below the bar. The grandfather is
  * spent the moment the total reaches the floor, which falls out of the check
@@ -140,7 +132,7 @@ export function channelBudgetBelowMinimum(
 }
 
 /**
- * The line under a channel's budget field. A pair already funded under its floor
+ * The line under a channel's budget field. A channel already funded under its floor
  * is told what it may DO, not a starting figure it is already below: quoting the
  * floor there reads as "you are not allowed to be here", on a ceiling the brand
  * has been paying against for weeks.
@@ -160,11 +152,11 @@ export function channelBudgetHint(
 }
 
 /**
- * What to tell someone whose budget was refused. A grandfathered pair gets the
+ * What to tell someone whose budget was refused. A grandfathered channel gets the
  * moves it actually has, not a floor it is not allowed to walk down to.
  *
  * `channelName` is what the customer calls the channel, because the floor is the
- * CHANNEL's: the funnel names which ceiling, the channel says what it costs.
+ * CHANNEL's.
  */
 export function channelBudgetFloorMessage(
   channelName: string,
@@ -180,28 +172,28 @@ export function channelBudgetFloorMessage(
 }
 
 /**
- * What the (funnel, channel) PAIR would be funded at once one ceiling's typed
+ * What the CHANNEL would be funded at once one ceiling's typed
  * figure lands, in whole dollars.
  *
- * The floor binds the pair, not one offer's share: a customer splitting one
- * funded pair across two offers must not be refused for each half being under a
- * bar the whole clears. So the check and the clamp both ask what the PAIR total
+ * The floor binds the channel, not one campaign's share: a customer splitting one
+ * funded channel across two campaigns must not be refused for each half being under a
+ * bar the whole clears. So the check and the clamp both ask what the CHANNEL total
  * becomes, holding the siblings this form is not editing constant.
  *
- * Computed ONLY to check a form before it is written. billing serves the pair
+ * Computed ONLY to check a form before it is written. billing holds the channel
  * total and holds the same rule; nothing displayed is derived from this.
  */
-export function projectedPairTotalUsd(
-  savedPairCents: number,
+export function projectedChannelTotalUsd(
+  savedChannelCents: number,
   savedOwnCents: number,
   typedUsd: number,
 ): number {
-  const siblings = Math.max(0, savedPairCents - savedOwnCents);
+  const siblings = Math.max(0, savedChannelCents - savedOwnCents);
   return Math.round(siblings / 100) + Math.max(0, typedUsd);
 }
 
 /**
- * The smallest FUNDED figure one ceiling of a pair may hold, in whole dollars —
+ * The smallest FUNDED figure one ceiling of a channel may hold, in whole dollars —
  * what a typed value under the bar is put back to.
  *
  * Refusing a sub-floor figure and leaving it on screen makes the customer guess
@@ -211,7 +203,7 @@ export function projectedPairTotalUsd(
  * Derived from the SAME rule `channelBudgetBelowMinimum` enforces, in the same
  * two branches, so a clamped value can never itself be refused. The remainder is
  * rounded UP: rounding it down can land a dollar under the bar it was computed
- * from. The siblings are held constant, so a pair that already clears the bar
+ * from. The siblings are held constant, so a channel that already clears the bar
  * without this ceiling may hold any amount and the minimum is zero.
  *
  * ZERO is never clamped by the caller: defunding is an ordinary state, and the

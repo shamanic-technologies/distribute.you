@@ -13,10 +13,7 @@ import path from "node:path";
  * Nothing was red: tsc passed, the suite passed, the build passed, and the name
  * reads as correct.
  */
-const ROUTES = [
-  "src/app/api/public/catalogue/route.ts",
-  "src/app/api/public/channel-returns/route.ts",
-];
+const ROUTES = ["src/app/api/public/catalogue/route.ts"];
 
 const read = (p: string) => readFileSync(path.join(process.cwd(), p), "utf8");
 

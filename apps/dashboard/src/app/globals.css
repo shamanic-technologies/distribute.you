@@ -383,7 +383,7 @@ html.dark .bg-brand-100 { background-color: oklch(74% 0.17 258 / 0.2); }
 html.dark .border-brand-200 { border-color: oklch(74% 0.17 258 / 0.3); }
 /* The brand ramp's own TEXT weight in dark. `brand-600` is a 54%-lightness token —
    correct on the white surface, near-invisible on the dark one — and it had no remap
-   because nothing wore it as a foreground until the sales-funnel mark did. Same 74%
+   because nothing wore it as a foreground until the mark tiles did. Same 74%
    lightness the `bg-brand-50` fill beside it uses, and restated in the tint block below
    like every other literal-hue brand utility. */
 html.dark .text-brand-600 { color: oklch(74% 0.17 258); }
@@ -653,8 +653,13 @@ html.dark .placeholder-gray-400::placeholder { color: var(--dy-muted); }
 html.dark .placeholder-gray-500::placeholder { color: var(--dy-muted); }
 
 /* Divide colors */
-html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--dy-border-hi); }
-html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--dy-border); }
+/* Tailwind v4 draws `divide-y` as the BOTTOM border of every child but the last, so the
+   sibling selector alone misses the FIRST child's line, which stayed light on the dark
+   surface. Both forms are remapped. */
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-gray-200 > :not(:last-child) { border-color: var(--dy-border-hi); }
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-gray-100 > :not(:last-child) { border-color: var(--dy-border); }
 
 /* Input/form elements */
 html.dark input, html.dark textarea, html.dark select {
@@ -809,10 +814,10 @@ html.dark[data-brand-tint] .dy-eyebrow {
 }
 
 /* ── Decorative hue rotation ───────────────────────────────────────────
- * The mark tiles (sales funnels, acquisition channels, the offer tag) are a
+ * The mark tiles (legs, acquisition channels, the offer tag) are a
  * CATEGORICAL scale: purple / indigo / blue / orange exist to be told APART,
  * not to carry meaning. Repainting them all in the brand hue would collapse
- * four funnels into one colour, so the family is ROTATED instead — every hue
+ * four marks into one colour, so the family is ROTATED instead — every hue
  * moves by the same delta the brand applied to the charter, which preserves
  * the spacing between them exactly. They stay as distinguishable from each
  * other as they are today and read as belonging to the brand.

@@ -14,9 +14,9 @@ import { OfferMark } from "@/components/marks/offer-mark";
  * A brand states a NEW thing it sells.
  *
  * One field, because that is the whole of what brand-service takes: a new offer
- * starts with NOTHING — no funnel, no confirmed field — and is independent of
+ * starts with NOTHING — no campaign, no confirmed field — and is independent of
  * every other offer on the brand. So this asks for the name and then hands over
- * to Offer Settings, where the funnels and what the offer promises are stated.
+ * to Offer Settings, where its campaigns and what the offer promises are stated.
  * Collecting those here would be a second copy of two editors that already exist
  * one click away.
  *
@@ -60,7 +60,7 @@ export function NewOfferModal({
       queryClient.setQueryData(["brandOffer", brandId, offer.offerId], { offer });
       onClose();
       // Settings, not the offer's Overview: the offer is EMPTY, so its Overview has
-      // nothing to state and its funnels are the only thing there is to do next.
+      // nothing to state and its campaigns are the only thing there is to do next.
       router.push(`${offerBasePath}/${offer.offerId}/settings`);
     },
     onError: (err) => {
@@ -131,7 +131,7 @@ export function NewOfferModal({
           />
           <div className="mt-1.5 flex items-start gap-3">
             <p className="min-w-0 flex-1 text-xs text-gray-400">
-              One thing this brand sells, {OFFER_NAME_RULES}. It gets its own funnels,
+              One thing this brand sells, {OFFER_NAME_RULES}. It gets its own campaigns,
               audiences and campaigns, and returns its own number.
             </p>
             <CharCounter

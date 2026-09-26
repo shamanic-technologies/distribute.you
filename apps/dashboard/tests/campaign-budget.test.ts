@@ -3,10 +3,11 @@ import {
   campaignBudgetCents,
   campaignBudgetScope,
   campaignSavedCents,
-  campaignPairCents,
+  channelTotalCents,
   fmtDailyBudgetUsd,
   runningAfterBudget,
-  type BrandFunnelBudgetSet,
+  type CampaignBudgetSet,
+  type CampaignCeiling,
 } from "../src/lib/campaign-budget";
 import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
 
@@ -17,24 +18,16 @@ const CHANNELS = acquisitionChannelsFromFeatures([
     name: "Sales Cold Email Outreach",
     description: "We email your buyers from our own domains, on your behalf.",
     displayOrder: 1,
-    salesFunnels: ["sales_meetings_from_conversation", "website_purchases"],
-  },
-  {
-    slug: "feedback-request-cold-email-outreach",
-    name: "Feedback Request Cold Email Outreach",
-    description: "We ask your buyers about the problem you solve.",
-    displayOrder: 2,
-    salesFunnels: ["sales_meetings_from_conversation"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
     slug: "google-ads",
     name: "Google Ads",
     description: "Buy the searches your buyers already run.",
     displayOrder: 20,
-    salesFunnels: ["sales_meetings_from_website", "website_purchases", "form_magnet"],
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "website_visit" }] },
   },
 ]);
-
 
 /**
  * `lib/campaign-budget.ts` is alias-free, so these are real unit tests rather
@@ -43,45 +36,38 @@ const CHANNELS = acquisitionChannelsFromFeatures([
  */
 
 const SALES = "sales-cold-email-outreach";
+const LEG = "start_to_conversation";
 const OFFER = "offer-1";
 const SIBLING = "offer-2";
 
-const campaign = (over: Partial<{ funnelKey: string; featureSlug: string }> = {}) =>
-  ({
-    funnelKey: "reply_meeting",
-    featureSlug: SALES,
-    ...over,
-  }) as Parameters<typeof campaignBudgetScope>[0];
+const campaign = (
+  over: Partial<{ legKey: string | null; featureSlug: string | null; offerId: string | null }> = {},
+) => ({ legKey: LEG, featureSlug: SALES, offerId: OFFER, ...over });
 
-const budgets = (over: Partial<BrandFunnelBudgetSet> = {}): BrandFunnelBudgetSet => ({
-  funnels: [{ funnelKey: "reply_meeting", dailyBudgetCents: 5000 }],
+const ceiling = (over: Partial<CampaignCeiling> = {}): CampaignCeiling => ({
+  offerId: OFFER,
+  legKey: LEG,
+  featureSlug: SALES,
+  dailyBudgetCents: 3000,
   ...over,
 });
 
+const set = (...campaigns: CampaignCeiling[]): CampaignBudgetSet => ({ campaigns });
+
 describe("campaignBudgetScope", () => {
-  it("names the funnel and the channel a campaign's money is keyed on", () => {
+  it("names the offer, the leg and the channel a campaign's money is keyed on", () => {
     const scope = campaignBudgetScope(campaign(), CHANNELS);
-    expect(scope?.def.key).toBe("reply_meeting");
+    expect(scope?.offerId).toBe(OFFER);
+    expect(scope?.legKey).toBe(LEG);
     expect(scope?.featureSlug).toBe(SALES);
     // The channel's catalogue name, not the raw slug.
     expect(scope?.channelName).toBe("Sales Cold Email Outreach");
   });
 
-  it("reads the canonical spelling of a funnel key as the same funnel", () => {
-    expect(campaignBudgetScope(campaign({ funnelKey: "sales_meetings_from_conversation" }), CHANNELS)?.def.key).toBe(
-      "reply_meeting",
-    );
-  });
-
-  it("is null for a campaign that names no funnel or no channel", () => {
-    // The pre-funnel campaigns point at no ceiling, and guessing one would offer
-    // to spend money against a row billing would refuse.
-    expect(campaignBudgetScope(campaign({ funnelKey: undefined as never }), CHANNELS)).toBeNull();
-    expect(campaignBudgetScope(campaign({ featureSlug: undefined as never }), CHANNELS)).toBeNull();
-  });
-
-  it("is null for a funnel spelling this catalogue does not carry", () => {
-    expect(campaignBudgetScope(campaign({ funnelKey: "sold_by_carrier_pigeon" as never }), CHANNELS)).toBeNull();
+  it("is null for a campaign that names no leg or no channel", () => {
+    // Guessing one would offer to spend money against a row billing would refuse.
+    expect(campaignBudgetScope(campaign({ legKey: null }), CHANNELS)).toBeNull();
+    expect(campaignBudgetScope(campaign({ featureSlug: null }), CHANNELS)).toBeNull();
   });
 
   it("falls back to the raw slug for a channel the catalogue has no name for", () => {
@@ -94,79 +80,75 @@ describe("campaignBudgetScope", () => {
 describe("campaignSavedCents", () => {
   const scope = campaignBudgetScope(campaign(), CHANNELS)!;
 
-  it("reads the per-pair grain when billing serves it", () => {
-    const set = budgets({
-      channels: [{ funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 3000 }],
-    });
-    expect(campaignSavedCents(scope, undefined, set)).toBe(3000);
+  it("reads the ceiling stored at the campaign's own address", () => {
+    expect(campaignSavedCents(scope, set(ceiling()))).toBe(3000);
   });
 
-  it("falls back to the per-funnel figure on a billing that serves no pairs", () => {
-    // Absent `channels` is the older deploy, where a funnel meant one channel.
-    expect(campaignSavedCents(scope, undefined, budgets())).toBe(5000);
+  it("narrows to the offer that owns the campaign", () => {
+    const both = set(ceiling(), ceiling({ offerId: SIBLING, dailyBudgetCents: 2000 }));
+    // Neither offer may claim the other's money.
+    expect(campaignSavedCents(scope, both)).toBe(3000);
+    expect(campaignSavedCents({ ...scope, offerId: SIBLING }, both)).toBe(2000);
   });
 
-  it("narrows a pair to the offer that owns the campaign", () => {
-    const set = budgets({
-      channels: [{ funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 5000 }],
-      offers: [
-        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: OFFER, dailyBudgetCents: 3000 },
-        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: SIBLING, dailyBudgetCents: 2000 },
-      ],
-    });
-    // The pair sums to 5000; neither offer may claim the other's money.
-    expect(campaignSavedCents(scope, OFFER, set)).toBe(3000);
-    expect(campaignSavedCents(scope, SIBLING, set)).toBe(2000);
+  it("reads a ceiling stated before billing carried the offer as this campaign's", () => {
+    expect(campaignSavedCents(scope, set(ceiling({ offerId: null, dailyBudgetCents: 900 })))).toBe(900);
   });
 
-  it("is zero when billing has answered and the pair is funded for other offers only", () => {
-    const set = budgets({
-      channels: [{ funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 2000 }],
-      offers: [
-        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: SIBLING, dailyBudgetCents: 2000 },
-      ],
-    });
-    expect(campaignSavedCents(scope, OFFER, set)).toBe(0);
+  it("prefers the offer's own row over one naming no offer", () => {
+    expect(
+      campaignSavedCents(scope, set(ceiling({ offerId: null, dailyBudgetCents: 900 }), ceiling())),
+    ).toBe(3000);
+  });
+
+  it("is zero when the address is funded for other offers only", () => {
+    expect(campaignSavedCents(scope, set(ceiling({ offerId: SIBLING })))).toBe(0);
+  });
+
+  it("is zero for another leg or another channel", () => {
+    expect(campaignSavedCents(scope, set(ceiling({ legKey: "other_leg" })))).toBe(0);
+    expect(campaignSavedCents(scope, set(ceiling({ featureSlug: "google-ads" })))).toBe(0);
   });
 
   it("is zero with no answer at all", () => {
-    expect(campaignSavedCents(scope, OFFER, undefined)).toBe(0);
-  });
-
-  it("is zero for a pair billing carries no row for", () => {
-    const set = budgets({
-      channels: [{ funnelKey: "visit_signup", featureSlug: SALES, dailyBudgetCents: 4000 }],
-    });
-    expect(campaignSavedCents(scope, undefined, set)).toBe(0);
+    expect(campaignSavedCents(scope, undefined)).toBe(0);
   });
 });
 
 describe("campaignBudgetCents", () => {
   it("is NULL when billing has not answered, which is not the same as zero", () => {
     // A dash means "we have no figure"; $0 means the campaign is stopped.
-    expect(campaignBudgetCents(campaign(), OFFER, undefined, CHANNELS)).toBeNull();
+    expect(campaignBudgetCents(campaign(), undefined, CHANNELS)).toBeNull();
   });
 
   it("is NULL for a campaign with no ceiling to point at", () => {
-    expect(campaignBudgetCents(campaign({ funnelKey: undefined as never }), OFFER, budgets(), CHANNELS)).toBeNull();
+    expect(campaignBudgetCents(campaign({ legKey: null }), set(ceiling()), CHANNELS)).toBeNull();
   });
 
   it("states zero for a campaign billing funds at zero", () => {
-    const set = budgets({
-      channels: [{ funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 0 }],
-    });
-    expect(campaignBudgetCents(campaign(), undefined, set, CHANNELS)).toBe(0);
+    expect(campaignBudgetCents(campaign(), set(ceiling({ dailyBudgetCents: 0 })), CHANNELS)).toBe(0);
   });
 
   it("states the campaign's own offer-scoped ceiling", () => {
-    const set = budgets({
-      channels: [{ funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 5000 }],
-      offers: [
-        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: OFFER, dailyBudgetCents: 3000 },
-        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: SIBLING, dailyBudgetCents: 2000 },
-      ],
-    });
-    expect(campaignBudgetCents(campaign(), OFFER, set, CHANNELS)).toBe(3000);
+    const both = set(ceiling(), ceiling({ offerId: SIBLING, dailyBudgetCents: 2000 }));
+    expect(campaignBudgetCents(campaign(), both, CHANNELS)).toBe(3000);
+  });
+});
+
+describe("channelTotalCents — the grain a channel's floor is judged on", () => {
+  it("sums every funded ceiling of the channel across the brand", () => {
+    const all = set(
+      ceiling(),
+      ceiling({ offerId: SIBLING, dailyBudgetCents: 2000 }),
+      ceiling({ legKey: "other_leg", dailyBudgetCents: 500 }),
+      ceiling({ featureSlug: "google-ads", dailyBudgetCents: 9900 }),
+    );
+    expect(channelTotalCents(SALES, all)).toBe(5500);
+  });
+
+  it("reads a channel billing has no row for as unfunded, never unknown", () => {
+    expect(channelTotalCents(SALES, set())).toBe(0);
+    expect(channelTotalCents(SALES, undefined)).toBe(0);
   });
 });
 
@@ -184,55 +166,6 @@ describe("fmtDailyBudgetUsd", () => {
     expect(fmtDailyBudgetUsd(0)).toBe("$0");
     expect(fmtDailyBudgetUsd(null)).toBe("—");
     expect(fmtDailyBudgetUsd(undefined)).toBe("—");
-  });
-});
-
-describe("the (funnel, channel) PAIR a ceiling belongs to", () => {
-  // The grain the channel's floor binds: billing judges a funded pair on the sum
-  // of the offers funding it, so a form is CHECKED against this while it EDITS
-  // one offer's own share.
-  const scope = campaignBudgetScope(
-    { funnelKey: "sales_meetings_from_conversation", featureSlug: "sales-cold-email-outreach" },
-    CHANNELS,
-  )!;
-
-  it("reads the per-pair figure, which spans every offer", () => {
-    const budgets: BrandFunnelBudgetSet = {
-      funnels: [{ funnelKey: "reply_meeting", dailyBudgetCents: 5000 }],
-      channels: [
-        {
-          funnelKey: "reply_meeting",
-          featureSlug: "sales-cold-email-outreach",
-          dailyBudgetCents: 3000,
-        },
-      ],
-      offers: [
-        {
-          funnelKey: "reply_meeting",
-          featureSlug: "sales-cold-email-outreach",
-          offerId: "offer-a",
-          dailyBudgetCents: 1200,
-        },
-      ],
-    };
-    expect(campaignPairCents(scope, budgets)).toBe(3000);
-    // ...while this offer's own share is what the form edits.
-    expect(campaignSavedCents(scope, "offer-a", budgets)).toBe(1200);
-  });
-
-  it("falls back to the funnel figure when billing serves no per-pair rows", () => {
-    // An older billing meant one channel per funnel, which is exactly what the
-    // funnel figure has always stood for.
-    expect(
-      campaignPairCents(scope, {
-        funnels: [{ funnelKey: "reply_meeting", dailyBudgetCents: 2400 }],
-      }),
-    ).toBe(2400);
-  });
-
-  it("reads a pair billing has no row for as unfunded, never unknown", () => {
-    expect(campaignPairCents(scope, { funnels: [], channels: [] })).toBe(0);
-    expect(campaignPairCents(scope, undefined)).toBe(0);
   });
 });
 

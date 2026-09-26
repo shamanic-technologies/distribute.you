@@ -109,7 +109,7 @@ function IdentitySkeleton({ markClass, barClass }: { markClass: string; barClass
  * The offer mark, from the SHARED component. It was defined here and is now
  * drawn by the top-bar breadcrumb too — two definitions is how the switcher and
  * the bar come to disagree about what an offer looks like, which is the same
- * reason the acquisition-channel and sales-funnel marks are components.
+ * reason the acquisition-channel and leg marks are components.
  */
 const OfferTile = ({ imageUrl }: { imageUrl?: string | null }) => <OfferMark size="md" imageUrl={imageUrl} />;
 

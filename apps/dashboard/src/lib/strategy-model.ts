@@ -89,14 +89,14 @@ export type AudienceRankMetric = "cppr" | "cps" | "cpfs" | "cpsale" | "cpc";
  * ONE home, because the two surfaces read the same rows and had drifted: the card obeyed
  * the `sortMetric` features-service returns, and features classes `websitePurchase` /
  * `sales` as reply-driven — so a website-purchase brand read "CPPR $319 / 0 replies" on the
- * Overview while its Audiences page hid the reply columns entirely (that goal's funnel is
+ * Overview while its Audiences page hid the reply columns entirely (that goal's path is
  * visit -> signup -> paid; there is no reply step to divide by). Two pages, one brand, one
  * moment, contradicting each other. The dashboard decides its own column here and ignores
  * `sortMetric` — the Audiences page already never read it.
  *
  * The tracker gate matters: with no tracker there are no attributed signups / form
  * submissions / sales, so the outcome column would only ever print "-", and the honest
- * fallback is the funnel step we DO measure (cost per website visit).
+ * fallback is the step we DO measure (cost per website visit).
  */
 export function audienceRankMetric(
   goal: BrandOptimizationGoal,
@@ -187,7 +187,7 @@ export function outcomeNounPlural(goal: BrandOptimizationGoal): string {
 
 /** The workflow-projection objective for the brand's saved goal.
  *  Sends features-service's NATIVE objective per goal so the server computes the right
- *  funnel: website_visits + positive_replies are SINGLE-STEP (visit→paid / reply→paid),
+ *  path: website_visits + positive_replies are SINGLE-STEP (visit→paid / reply→paid),
  *  form_submissions two-step, signups → self-serve, sales_meetings → meeting-booked.
  *  (features-service supports all five natively — the single-step goals no longer borrow
  *  self-serve, which was serving cost-per-SIGNUP under a website_visits brand.) */

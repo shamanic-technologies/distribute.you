@@ -92,10 +92,10 @@ export const SENSITIVE_QUERY_ROOTS = new Set(["apiKeys", "byokKeys", "keySources
  * SENSITIVE_QUERY_ROOTS; a future UNKNOWN root is default-OFF until listed here.
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
-  // The platform leg catalogue — no org, no auth, one answer for every tenant.
-  "publicChannels",
-  // The brand's effective conversion rate per funnel arrow (Brand Settings + the
-  // funnel-activation modal on Offer Settings).
+  // The platform step, leg and channel catalogue — no org, no auth, one answer for
+  // every tenant.
+  "publicCatalogue",
+  // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
   // only source of an org's name and it hydrates asynchronously, so without a disk
@@ -109,7 +109,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Billing — the account, its credit grants and its payment history.
   "billingAccount",
   "creditGrants",
-  // The reward-task ledger: what a funnel owes and how many children of a
+  // The reward-task ledger: what an offer owes and how many children of a
   // superior scope have something due. Unlisted, the band and the badge
   // cold-fetch on every visit.
   "rewardTasks",
@@ -123,7 +123,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brand",
   "brands",
   "brandSalesEconomics",
-  "brandFunnelBudgets",
+  // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
+  "brandCampaignBudgets",
   "brandSalesRep",
   // What the brand may actually spend today (campaign status joined to its ceilings,
   // served by campaign-service). An unlisted root is default-OFF, so the header's
@@ -157,7 +158,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Offer Settings reads both of these on every visit, over the slow brand-service
   // path. Each key carries the offer, so two propositions never share an entry.
   "offerUserFields",
-  "offerSalesFunnels",
+  // The offer's lifetime revenue.
+  "offerEconomics",
   // The offer's outcome table: one row per outcome it buys, the leg x channel rows
   // under each. Keyed on the offer, so two propositions never share an entry.
   "offerOutcomes",
@@ -165,8 +167,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // over 12,945 rows on one, 99 MB on the largest), so it is allowlisted and still
   // refused at write time; the query keeps `keepPreviousData` in memory and the
   // per-query persister restores it lazily on its own fetch. The Leads page no longer
-  // reads it: it asks for one page at a time (`leadsPage` below). What still does is the
-  // funnel-leg board, which partitions the population rather than paging it.
+  // reads it: it asks for one page at a time (`leadsPage` below). A write still
+  // invalidates it.
   "brandLeads",
   // ONE page of a scope's leads, and every bucket's count. These are what the Leads page
   // reads now, and the point of them is that each entry is SMALL enough to be written:

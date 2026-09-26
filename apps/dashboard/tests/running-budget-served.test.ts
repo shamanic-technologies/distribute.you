@@ -40,25 +40,12 @@ describe("the running daily budget is read, never rebuilt in the browser", () =>
     expect(hook).not.toContain("data.offers\n");
   });
 
-  // A FUNNEL is the one grain the producer does not total: it decomposes by offer and by campaign,
-  // and a funnel is neither. So this case adds up the campaign rows it already served — the only
-  // sum in the file, and it is a sum of SERVED per-campaign figures rather than a re-derivation of
-  // the join above (no campaign list, no budget map, no status pairing).
-  it("sums the funnel's own campaigns, because no served total exists at that grain", () => {
-    expect(hook).toContain("normalizeSalesFunnelKey");
-    expect(hook).toContain("data.campaigns");
-    expect(hook).toContain("reduce(\n              (sum, c) => sum + c.runningDailyBudgetCents,");
-  });
-
-  // billing keys a ceiling on (funnel x channel x offer), so a funnel with no offer beside it spans
-  // every offer selling it — and would print a sibling offer's money under this one's name.
-  it("narrows the funnel sum to the offer when one is given", () => {
-    // The narrowing lives in ONE exported helper now, shared with the funnels table so a
-    // row and the page it drills into cannot state different money for one funnel.
-    const at = hook.indexOf("export function spendableCampaignsForFunnel(");
-    expect(at).toBeGreaterThan(-1);
-    expect(hook.slice(at, at + 700)).toContain("offerId ? c.offerId === offerId : true");
-    expect(hook).toContain("spendableCampaignsForFunnel(data, funnelKey, offerId)");
+  // The funnel grain went with the sales-funnel model. The finest grain left is ONE campaign,
+  // and it is a SELECTION over the producer's per-campaign decomposition, never a sum.
+  it("narrows to a campaign by SELECTING the campaign's own served figure", () => {
+    expect(hook).toContain("data.campaigns.find((c) => c.campaignId === campaignId)");
+    expect(hook).not.toContain("reduce(");
+    expect(hook).not.toContain("normalizeSalesFunnelKey");
   });
 
   it("reports null — not zero — while the read is unresolved or failed", () => {

@@ -14,7 +14,7 @@ import { claimAnonymousOrg } from "@/lib/client-service";
  * The moment the account exists: the org they have been building IS theirs.
  *
  * Nothing moves. client-service swaps the external identity underneath the same
- * internal org, so every brand, funnel, audience, run and cost written while
+ * internal org, so every brand, offer, audience, run and cost written while
  * they were signed out is already on the right org — there is no copy, no
  * cross-service migration, and nothing to lose on the one request that matters
  * most in the whole flow.

@@ -88,57 +88,6 @@ export function buildAudienceLLMPrompt(
   ]);
 }
 
-/** One conversion rate the funnel asks for: the label as the reader sees it and
- *  whatever is currently in the box. */
-export type RateAsk = { label: string; value: string };
-
-/** One destination the funnel asks for (a landing page, a booking link). */
-export type DestinationAsk = { label: string; value: string; optional: boolean };
-
-/** The funnel-economics steps (`funnelStats`, and the "Your numbers" block on
- *  `model`). Every field is a NUMBER or a URL the reader has to transcribe back
- *  into its own box, so the answer is asked for as one labelled value per line
- *  rather than as prose. */
-export function buildFunnelStatsLLMPrompt(input: {
-  funnelTitle: string;
-  steps: string[];
-  rates: RateAsk[];
-  lifetimeRevenue: string;
-  destinations: DestinationAsk[];
-  services: string[];
-  domain: string;
-}): string {
-  const { funnelTitle, steps, rates, lifetimeRevenue, destinations, services, domain } = input;
-  const path = steps.length ? steps.join(" -> ") : funnelTitle;
-  const lines = [
-    businessLine(domain),
-    "",
-    CAMPAIGN_LINE,
-    "",
-    `Question: What is this path worth to me, and where does it send people?`,
-    `The path: ${funnelTitle} (${path})`,
-    "These numbers decide what one customer is worth and therefore how much the campaign can spend to win one, so a wrong number here prices the whole campaign wrong.",
-    "",
-    `What I sell: ${services.length ? services.join(", ") : "(not stated yet)"}`,
-    "",
-    "My current values:",
-    ...rates.map((r) => `- ${r.label}: ${draftOr(r.value)}`),
-    `- Lifetime revenue per paid client (USD): ${draftOr(lifetimeRevenue)}`,
-  ];
-  for (const dest of destinations) {
-    lines.push(`- ${dest.label}${dest.optional ? " (optional)" : ""}: ${draftOr(dest.value)}`);
-  }
-  lines.push(
-    "",
-    "Correct anything that looks wrong for a business like mine and fill anything missing.",
-    "Percentages are whole numbers without the percent sign. Lifetime revenue is a plain number of US dollars, no currency symbol.",
-    "If you cannot tell what a destination URL should be, leave it as it is.",
-    "Return only the same labelled lines with the corrected values, nothing else.",
-  );
-  return joinPrompt(lines);
-}
-
-
 // ── Ctrl+C on a step ────────────────────────────────────────────────────────
 
 /** What the `copy` handler sees at the moment the event fires. Passed in rather

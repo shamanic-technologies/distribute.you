@@ -21,7 +21,7 @@ export interface BoardDragState<T> {
 /**
  * The pointer gesture EVERY kanban in the dashboard shares.
  *
- * The two boards write different things — the Leads board states a reply kind, the funnel
+ * The two boards write different things — the Leads board states a reply kind, the leg
  * board states a step statement — so they keep their own move handlers and their own
  * cards. What they must not each own is the GESTURE: a person who learns hold-to-lift and
  * tap-to-open on one board has learned it on the other, and two copies of a pointer state

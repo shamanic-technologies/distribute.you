@@ -1,7 +1,7 @@
 // Which OFFER the campaign created at the end of onboarding sells, and which
 // offer the ceiling that paces it funds.
 //
-// A campaign is (offer x funnel x channel). The funnel and the channel were
+// A campaign is (offer x leg x channel). The leg and the channel were
 // already stated; the offer was not, so every campaign a signup produced named
 // none — and a campaign attributed to no offer belongs to no offer page, which
 // is where a customer looks for it. Same for the ceiling: billing keys it on the
@@ -10,7 +10,7 @@
 //
 // There is nothing to CREATE here. brand-service gives a brand its first offer
 // on the first brand-scoped write, and onboarding has already made several by
-// the time it launches (the funnels write makes one, the user-fields write
+// the time it launches (the brand write makes one, the user-fields write
 // makes one) — so by launch the offer exists and this only has to read it.
 //
 // Only relative value imports live here, so this module stays directly

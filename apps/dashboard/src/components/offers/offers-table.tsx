@@ -51,7 +51,7 @@ const OFFER_COLUMN_INFO = {
   roi: COLUMN_INFO.roi,
   cacPct: COLUMN_INFO.cacPct,
   revenue:
-    "Expected pipeline revenue: the outcomes this offer has produced so far, valued with the conversion rates and customer lifetime revenue set for the funnels it is sold through. It is a projection of what this pipeline is worth, not money already collected.",
+    "Expected pipeline revenue: the outcomes this offer has produced so far, valued with the conversion rates and customer lifetime revenue set for this offer. It is a projection of what this pipeline is worth, not money already collected.",
   invested:
     "What this offer has cost so far, net of any discount: money already billed plus money reserved for emails its campaigns have queued. It is the same figure the ROI and % CAC beside it are calculated from. Those two are projections of what it is worth going forward, so this is not a multiplier of them.",
 } as const;

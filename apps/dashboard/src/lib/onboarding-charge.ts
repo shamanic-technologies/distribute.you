@@ -42,7 +42,7 @@ export interface FirstChargePlan {
  * The first checkout for a daily budget.
  *
  * A budget that is absent, negative or not finite charges NOTHING rather than
- * throwing: onboarding has already refused to launch without a funded funnel, so
+ * throwing: onboarding has already refused to launch without a funded campaign, so
  * reaching here with no number is a bug upstream, and taking a guessed amount off
  * somebody's card is the one outcome worse than taking none.
  */

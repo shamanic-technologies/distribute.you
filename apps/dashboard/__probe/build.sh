@@ -1,0 +1,2 @@
+cd "$(dirname "$0")/.."
+../../node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/bin/esbuild __probe/$1.tsx --bundle --format=iife --jsx=automatic --outfile=__probe/$1.js --define:process.env.NODE_ENV='"development"' --alias:@clerk/nextjs=./__probe/stubs.tsx --alias:next/navigation=./__probe/stubs.tsx --alias:posthog-js=./__probe/stubs.tsx --alias:next/link=./__probe/link.tsx --alias:node:crypto=./__probe/crypto.ts --external:fs --external:stream --external:zlib --external:path --external:os --loader:.json=json --log-level=error

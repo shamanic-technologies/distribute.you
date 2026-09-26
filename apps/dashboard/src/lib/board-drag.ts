@@ -1,6 +1,6 @@
 // ONE GESTURE for every kanban in the dashboard.
 //
-// Two boards move cards today — the Leads triage board and the funnel-arrow board — and
+// Two boards move cards today — the Leads triage board and the leg board — and
 // they write different things (a reply kind against a campaign; a step statement against
 // a leads_campaigns row). What they must NOT differ on is how a card is picked up, what
 // a tap does, and what the reader sees while a card is in the air: a person who learns

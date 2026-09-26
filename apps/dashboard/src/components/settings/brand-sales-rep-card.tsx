@@ -30,7 +30,7 @@ import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 // never a second copy of the rule.
 //
 // One rep per BRAND, and that grain is the whole design. A campaign is
-// (offer x funnel x channel), so a number stored per campaign is the same fact
+// (offer x leg x channel), so a number stored per campaign is the same fact
 // retyped once per channel selling one offer — four rows on the brand this was
 // built for, drifting from the first edit — and a brand with no campaign yet
 // could declare nothing at all. The rep answers for the brand.

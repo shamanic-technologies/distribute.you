@@ -25,7 +25,6 @@ function task(over: Partial<RewardTask> = {}): RewardTask {
       type: "sales_funnel",
       brandId: "b1",
       offerId: "o1",
-      funnelKey: "website_purchases",
     },
     rewardCents: 100,
     due: true,

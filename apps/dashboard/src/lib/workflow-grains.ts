@@ -49,7 +49,7 @@ export const WORKFLOW_GRAINS: readonly WorkflowGrain[] = ["campaign", "brand", "
 export interface WorkflowLegOutcome {
   costPerOutcomeUsd: number | null;
   outcomeCount: number | null;
-  /** FALSE means the count was walked through the funnel's declared rates rather than
+  /** FALSE means the count was walked through the brand's leg rates rather than
    *  observed — a projection, and it says so on screen rather than reading as people. */
   outcomeObserved: boolean;
   spentUsd: number;

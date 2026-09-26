@@ -85,7 +85,7 @@ export interface WorkflowLadderGrainBlock {
   unitCosts: WorkflowLadderUnitCosts;
   /**
    * The grain's own projected outcome COUNT. Routinely FRACTIONAL on a multi-step
-   * funnel (clicks x a conversion rate), which is why no sentence states it as a
+   * path (clicks x a conversion rate), which is why no sentence states it as a
    * count of people — the observed evidence above is what a sentence may quote.
    */
   resolvedOutcomeCount?: number | null;

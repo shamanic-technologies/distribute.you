@@ -12,9 +12,8 @@ import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
 import type { OptOutChannel } from "@/lib/opt-out-channel";
 import {
-  DEFAULT_BOARD_LAYOUT,
+  LEAD_BOARD_COLUMNS,
   LEAD_BOARD_PAGE_SIZE,
-  funnelBoardLayout,
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
 import { leadStatusLabel, leadStatusPill } from "@/lib/lead-status";
@@ -35,7 +34,7 @@ import {
   leadDateForStatus,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
-  getOfferSalesFunnels,
+  getOfferEconomics,
   listAudiences,
   listChannelWorkflows,
   listChannelWorkflowDynasties,
@@ -46,31 +45,29 @@ import {
   type AudienceWire,
 } from "@/lib/api";
 import {
-  leadTabsForFunnels,
+  leadTabsForLegs,
   outcomeTabDescriptor,
   type AnyLeadTab,
   type OutcomeTab,
 } from "@/lib/goal-steps";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
+import { LeadStageSection } from "@/components/leads/lead-stage-section";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { LeadLocationMap } from "@/components/leads/lead-location-map";
 import {
-  closeWonFunnelKey,
   dealCause,
   leadCloseWonState,
   saleValuePrefillUsd,
 } from "@/lib/lead-close-won";
 import {
-  leadFunnelLegStages,
+  leadLegStages,
   leadStepErrorMessage,
   leadStepWithdrawErrorMessage,
   trackedStages,
   type LeadStageState,
   type WritableStageKey,
-} from "@/lib/lead-funnel-stages";
-import { salesFunnelByKey } from "@/lib/sales-funnels";
+} from "@/lib/lead-stages";
 import {
   impliedStages,
   stageStatesFrom,
@@ -93,14 +90,11 @@ import {
 } from "@/lib/api";
 import type { ReplyKind } from "@/lib/reply-kind";
 import { useMutation } from "@tanstack/react-query";
-import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
-import { campaignFunnel } from "@/lib/campaign-funnel";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { campaignLegFor } from "@/lib/campaign-leg";
-import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
-import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
+import { legFor, type LegDef } from "@/lib/legs";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { leadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -112,8 +106,6 @@ import {
   leadBucketCountsQuery,
   leadsColumnPageQuery,
   leadsExportQuery,
-  funnelLeadTabs,
-  isStandingTab,
   type LeadsTab,
   leadsPageQuery,
   leadsSearchParam,
@@ -142,9 +134,9 @@ import { LeadScopeCards } from "@/components/audiences/lead-scope-cards";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
-// funnels (`leadTabsForFunnels`); this map only names them.
+// legs (`leadTabsForLegs`); this map only names them.
 //
-// The base tab says "Contacted", not the funnel step's own word, because this page
+// The base tab says "Contacted", not a step's own word, because this page
 // counts PEOPLE while the brand Overview counts the email sequences we sent them —
 // two honest numbers that read as one broken one under a shared label (prod: 9,915
 // sequences against 7,895 leads on the same brand, the same afternoon).
@@ -175,8 +167,6 @@ const LEADS_SEARCH_DEBOUNCE_MS = 300;
  */
 function useBoardColumnPage(args: {
   column: LeadBoardColumnKey;
-  /** The producer's stage this column reads, on a funnel's board. */
-  stage?: string;
   scope: LeadScope;
   scopeKey: string;
   search: string;
@@ -184,7 +174,7 @@ function useBoardColumnPage(args: {
   enabled: boolean;
 }) {
   return useAuthQuery(
-    ["leadsPage", args.scopeKey, "column", args.column, args.stage ?? "", args.search, args.shown],
+    ["leadsPage", args.scopeKey, "column", args.column, args.search, args.shown],
     () =>
       listLeadsPage(
         args.scope,
@@ -192,7 +182,6 @@ function useBoardColumnPage(args: {
           column: args.column,
           search: args.search,
           shown: args.shown,
-          stage: args.stage,
         }),
       ),
     { enabled: args.enabled, refetchInterval: POLL_INTERVAL },
@@ -208,11 +197,7 @@ function useBoardColumnPage(args: {
 function toBoardCard(
   lead: Lead,
   column: LeadBoardColumnKey,
-  /**
-   * What to open the deal-value field with for THIS lead, in whole dollars — its own
-   * campaign's funnel, never a sibling funnel's. Resolved by the page because it needs
-   * the offer's declared funnels, which the board has no business reading.
-   */
+  /** What to open the deal-value field with, in whole dollars: the offer's own value. */
   prefillUsd: number | null,
   // A bare string, like the card's own field: lead-service and instantly-service own the
   // kind vocabulary and can widen it before this app ships, so a kind with no label here
@@ -250,18 +235,15 @@ function toBoardCard(
 }
 
 // `meetings` is the BOOKED meeting and `sales` the closed deal, so they read in the words
-// the funnel and the board use for the same two steps.
+// the board uses for the same two steps.
 const LEAD_TAB_LABEL: Record<LeadsTab, string> = {
   "positive-replies": "Positive replies",
   clicks: "Website Visits",
   outreach: "Contacted",
   signups: "Signups",
   meetings: "Meeting booked",
-  "meetings-attended": "Meeting attended",
   "form-submissions": "Form submissions",
   sales: "Close won",
-  disqualified: "Disqualified",
-  "opted-out": "Opt-out",
 };
 
 const OUTCOME_TABS: ReadonlySet<string> = new Set<OutcomeTab>([
@@ -294,8 +276,7 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
 // own bucket. `"all"` used to sit in this union as the base ordering key for an array
 // held in the browser; there is no such array any more, and it had no bucket to ask for
 // — a read naming no bucket returns the whole scoped population INCLUDING the people
-// carrying no evidence at all, who can appear under no tab. So it is gone, and this
-// union is `AnyLeadTab` plus the steps and exits only a funnel's own page offers.
+// carrying no evidence at all, who can appear under no tab. So it is gone.
 type Tab = LeadsTab;
 
 // The Date column reports the date of the STATUS on the same row, so the two cells
@@ -481,7 +462,7 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
 // The queue step, named for what it is. Instantly holds the lead until its next
 // weekday sending window, so this row routinely precedes the first email by days.
 // The panel used to assemble a lead's timeline HERE, in the browser, out of six
-// services: the delivery evidence and funnel statements from lead-service, the copy we
+// services: the delivery evidence and step statements from lead-service, the copy we
 // generated and its planned cadence from content-generation-service, the messages
 // exchanged and the hand-recorded reply statements from instantly-service, the outcomes
 // from features-service. The customer's own mailbox, which for some prospects holds the
@@ -537,16 +518,15 @@ function LeadsLoadingSkeleton() {
  *
  * The one place in the table that WRITES. Everything it needs comes off the row the
  * page already holds — lead-service decides `won` (a standing of `customer` means the
- * funnel's last step is reached) — so a column over pages of rows costs no request per
- * lead.
+ * last step is reached) — so a column over pages of rows costs no request per lead.
  *
- * Three states, and the middle one is not the absence of the other two: a funnel we
- * cannot place has no sale step to offer, so the cell states nothing rather than a
- * blank that reads as "not won" or a button that would be refused.
+ * Three states, and the middle one is not the absence of the other two: a lead with no
+ * standing has no campaign to state a sale against, so the cell states nothing rather
+ * than a blank that reads as "not won" or a button that would be refused.
  */
 function CloseWonCell({ lead, prefillUsd, busy, onState }: {
   lead: Lead;
-  /** The brand's own stated lifetime revenue for THIS lead's funnel, in whole dollars. */
+  /** The offer's own stated lifetime revenue, in whole dollars. */
   prefillUsd: number | null;
   busy: boolean;
   onState: (input: { costCents: number; valueCents: number; causedByOutreach: boolean }) => void;
@@ -707,8 +687,8 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             // mobile line and the Date column — the two can never disagree.
             const status = statusOf(lead);
             // An outcome tab dates the row by its outcome where the tracker join has one,
-            // else by the status beside it: a funnel page lists meetings and deals the
-            // join never attributed, and a dash there would read as "no date".
+            // else by the status beside it: a tab can list meetings and deals the join
+            // never attributed, and a dash there would read as "no date".
             const statusAt = leadDateForStatus(lead, status);
             const dateAt = isOutcomeTab(tab)
               ? outcomeDates?.get(lead.id) ?? statusAt
@@ -836,30 +816,12 @@ export function EngagedLeadsPage({
   // it: "disqualified as leads for this <scope>" is a judgement about ONE grain, and
   // this page renders at four. Read off the route rather than the data — the sentence
   // is about where the reader is, not about what the leads did.
-  // On a SALES FUNNEL's own page the tabs are that funnel's statuses, in its order:
-  // Contacted, every step it sells, then the two exits. Read off the route's funnel
-  // rather than off the brand's live campaigns, which is a union over funnels and is
-  // keyed on the retired goal (it cannot name a meeting ATTENDED at all). `null`
-  // everywhere else, where the goal-keyed set below still applies.
-  const funnelPageTabs: LeadsTab[] | null =
-    !campaignId && params.funnelKey
-      ? funnelLeadTabs(
-          campaignFunnel(decodeURIComponent(params.funnelKey as string) as SalesFunnelKeyWire)
-            ?.stepKeys ?? [],
-        )
-      : null;
-  const boardScopeNoun = campaignId
-    ? "campaign"
-    : params.funnelKey
-      ? "sales funnel"
-      : offerId
-        ? "offer"
-        : "brand";
+  const boardScopeNoun = campaignId ? "campaign" : offerId ? "offer" : "brand";
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   // Board first: it is the view that answers where a lead IS.
   //
-  // At CAMPAIGN grain it is the ONLY view — no switch, no funnel tabs, no table. A
-  // campaign sells one funnel and its leads are worked one by one, so "where is this
+  // At CAMPAIGN grain it is the ONLY view — no switch, no tabs, no table. A
+  // campaign buys one leg and its leads are worked one by one, so "where is this
   // person" is the whole question and a second view of the same rows is a control that
   // only ever answers a question the page beside it already answers.
   //
@@ -889,26 +851,11 @@ export function EngagedLeadsPage({
   // so there is nothing to dedupe here. What a person's several campaigns did lives on
   // `lead.campaigns`, served under `?include=campaigns` — the row is the person, the
   // cards are their campaigns.
-  // A sales funnel's own page narrows to that funnel of its offer: every count and every
-  // row then belongs to the funnel, not to the offer's other funnels.
-  const funnelScopeKey =
-    !campaignId && offerId && params.funnelKey
-      ? decodeURIComponent(params.funnelKey as string)
-      : null;
   const scope = useMemo<LeadScope>(
-    () =>
-      campaignId
-        ? { campaignId }
-        : funnelScopeKey && offerId
-          ? { brandId, funnel: { offerId, funnelKey: funnelScopeKey } }
-          : { brandId },
-    [campaignId, brandId, offerId, funnelScopeKey],
+    () => (campaignId ? { campaignId } : { brandId }),
+    [campaignId, brandId],
   );
-  const scopeKey = campaignId
-    ? `campaign:${campaignId}`
-    : funnelScopeKey
-      ? `funnel:${brandId}:${offerId}:${funnelScopeKey}`
-      : `brand:${brandId}`;
+  const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`;
 
   // What the WIRE carries for the search box. Debounced, because a request per keystroke
   // would be evaluated over the whole population; and refused locally when the producer
@@ -956,7 +903,7 @@ export function EngagedLeadsPage({
   const activeTotal = pageData?.total ?? tabCount(bucketCounts, activeTab);
 
   // Every campaign of the brand, keyed by its own id — what the panel's tree needs to
-  // name a campaign's funnel, channel and leg. The key is byte-equal to the one
+  // name a campaign's leg and channel. The key is byte-equal to the one
   // `useCampaignRows` already polls below, so this costs no request. Its OWN rows are
   // feature-filtered and identity-collapsed, which is right for a table listing
   // campaigns and wrong here: this person may have been contacted by a channel the
@@ -971,9 +918,6 @@ export function EngagedLeadsPage({
       const c = allCampaignsData?.campaigns.find((x) => x.id === id);
       if (!c) return null;
       return {
-        // Normalized here rather than in the tree: the wire carries two spellings of
-        // every funnel, and the normalizer is typed against the closed key union.
-        funnelKey: c.funnelKey ? normalizeSalesFunnelKey(c.funnelKey) : null,
         featureSlug: c.featureSlug,
         legKey: c.legKey,
         status: c.status,
@@ -982,7 +926,7 @@ export function EngagedLeadsPage({
     [allCampaignsData],
   );
 
-  // Deep-link seed: `?leadRowId=` (a funnel-leg board card navigates here rather
+  // Deep-link seed: `?leadRowId=` (a link from another surface navigates here rather
   // than carrying its own copy of the lead panel) opens that lead's panel on first
   // paint. Seeded once the rows arrive -- a one-shot latch, so a poll can never
   // re-open a panel the reader has closed, and selection is local state thereafter.
@@ -999,54 +943,38 @@ export function EngagedLeadsPage({
   }, [initialLeadRowId, leads]);
 
   // The published channel catalogue, derived from the `["features"]` query this app
-  // already holds — a `useMemo`, not a request. Read twice below: to decide whether the
-  // open campaign's channel has money to report, and to place its leg in the funnel.
+  // already holds — a `useMemo`, not a request. Read to decide whether the open
+  // campaign's channel has money to report.
   const channels = useAcquisitionChannels();
 
-  // WHICH CHANNEL this page is about. A campaign is (offer x funnel x channel) and
+  // WHICH CHANNEL this page is about. A campaign is (offer x leg x channel) and
   // states its channel on its own row, so a campaign-scoped page reads THAT — never the
   // brand's sole GA feature, which is a different channel for every campaign that is not
-  // on it. Under the sole slug this page fetched `sales-cold-email-outreach` while the
-  // reader had a `feedback-request-cold-email-outreach` campaign open: the row filter
-  // below then matched no campaign, so no funnel resolved and the lead panel drew no
-  // "Funnel progress" section at all, while the stat row above stated the other
-  // channel's money. The read is the key the campaign Overview and the top bar already
+  // on it: the stat row would state another channel's money. The read is the key the campaign Overview and the top bar already
   // poll, so it costs no request.
   const { campaign: scopedCampaign, featureSlug, settled: scopeSettled } =
     useScopedFeatureSlug(campaignId);
   const campaignScoped = Boolean(campaignId);
 
-  // WHICH TABS this page shows comes from the funnels the brand's ACTIVE campaigns
-  // sell. At brand level that is the UNION over every live campaign; under a campaign
-  // it is that campaign's own funnel, the one thing it sells.
-  //
-  // Never the brand goal: that column is retired in brand-service (NOT NULL with a
-  // server default, so it reads "website purchases" for a brand that stated nothing)
-  // and it collapses the two meeting funnels onto one word, so a brand booking
-  // meetings off replies was offered a Website Visits tab it never buys.
+  // WHICH TABS this page shows comes from the legs the ACTIVE campaigns buy. At brand
+  // level that is the UNION over every live campaign; under a campaign it is that
+  // campaign's own leg, the one thing it buys.
   //
   // At brand level that is `activeRows`, never `rows`: the table those rows feed also
-  // lists PAUSED campaigns, and a funnel nobody is running has no leads arriving —
-  // offering its tab describes something the brand no longer sells. Under a campaign
-  // it is that campaign's OWN row whatever its status, so a paused campaign's page
-  // still states the funnel it sold.
-  //
-  // Only the BRAND branch reads those rows, and it keeps its own feature: with no
-  // campaign to bound it, the brand list stays pinned to the one feature it always was.
-  // A campaign takes its funnel off its OWN row instead — the rows are filtered by
-  // feature, so a campaign on any other channel is not among them and asking them for
-  // its funnel is asking a list that cannot contain it.
+  // lists PAUSED campaigns, and a leg nobody is running has no leads arriving. Under a
+  // campaign it is that campaign's OWN row whatever its status.
   const soleFeatureSlug = useSoleFeatureSlug();
   const campaignRows = useCampaignRows(brandId, soleFeatureSlug);
-  const activeFunnelKeys = useMemo(() => {
+  const legCatalogue = useLegCatalogue();
+  const activeLegs = useMemo(() => {
     const keys = campaignScoped
-      ? [scopedCampaign?.funnelKey ?? null]
-      : campaignRows.activeRows.map((r) => r.campaign.funnelKey);
+      ? [scopedCampaign?.legKey ?? null]
+      : campaignRows.activeRows.map((r) => r.campaign.legKey);
     return keys
-      .filter((k): k is NonNullable<typeof k> => k != null)
-      .map(normalizeSalesFunnelKey);
-  }, [campaignRows.activeRows, campaignScoped, scopedCampaign]);
-  const funnelTabs = useMemo(() => leadTabsForFunnels(activeFunnelKeys), [activeFunnelKeys]);
+      .map((k) => legFor(legCatalogue, k))
+      .filter((leg): leg is LegDef => leg !== null);
+  }, [campaignRows.activeRows, campaignScoped, scopedCampaign, legCatalogue]);
+  const legTabs = useMemo(() => leadTabsForLegs(activeLegs), [activeLegs]);
 
   // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
   // live on the /revenue `leads[]` rows rather than on the lead row itself — so fetch
@@ -1097,11 +1025,11 @@ export function EngagedLeadsPage({
     return m;
   }, [revenueData]);
 
-  // One descriptor per outcome the active funnels terminate in — a brand selling
-  // through several has several, so this is a list rather than a per-goal lookup.
+  // One descriptor per outcome the active legs land on — a brand buying several has
+  // several, so this is a list rather than a per-goal lookup.
   const outcomeTabs = useMemo(
-    () => funnelTabs.outcomes.map(outcomeTabDescriptor),
-    [funnelTabs],
+    () => legTabs.outcomes.map(outcomeTabDescriptor),
+    [legTabs],
   );
   // Gated on whether features-service ATTRIBUTES the outcome (#476), never on whether
   // anyone has converted yet — a brand with the tracker live and zero signups keeps its
@@ -1199,10 +1127,10 @@ export function EngagedLeadsPage({
   // lands on an empty tab; default to the last (Outreach) when all empty. User manual
   // switches latch the ref and are never overridden by a later poll.
   // Visible tabs, left→right: the realized-outcome tab FIRST (when the /revenue join
-  // serves it), then the funnels' engagement tabs (outcome-first), Outreach last.
-  const visibleTabs: Tab[] = funnelPageTabs ?? [
+  // serves it), then the legs' engagement tabs (outcome-first), Outreach last.
+  const visibleTabs: Tab[] = [
     ...availableOutcomeTabs.map((t) => t.tab),
-    ...funnelTabs.engagement,
+    ...legTabs.engagement,
   ];
 
   // The population the tabs can actually reach, for the title.
@@ -1213,7 +1141,7 @@ export function EngagedLeadsPage({
   // advertise rows the table can never show — about 5,000 of the 12,945 on the brand
   // that surfaced this — which is the bug #3071 fixed, so `bucket-counts.total` is
   // deliberately NOT what this reads. It reads the CONTACTED bucket, the base tab that
-  // holds every lead we contacted whatever the funnel, and therefore the union's floor.
+  // holds every lead we contacted, and therefore the union's floor.
   // `null` while the counts are unsettled: a population we have not been told is not a
   // population of zero.
   const reachableCount = reachablePopulation(bucketCounts);
@@ -1225,17 +1153,12 @@ export function EngagedLeadsPage({
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
     // Wait for the CAMPAIGNS query, which is what decides the tab set: firing the latch
-    // first lands on a tab the funnels do not even offer, and it is one-shot, so a later
+    // first lands on a tab the legs do not even offer, and it is one-shot, so a later
     // answer cannot correct it. And wait for the counts, for the same reason.
     if (!(campaignScoped ? scopeSettled : campaignRows.settled)) return;
     if (!bucketCounts) return;
     hasAutoSelectedTab.current = true;
-    // A funnel's tabs run in the funnel's order, so its deepest populated STEP is the
-    // last one; the exits are never where a reader lands.
-    const pickOrder = funnelPageTabs
-      ? visibleTabs.filter((t) => !isStandingTab(t)).reverse()
-      : visibleTabs;
-    const populated = pickOrder.find((t) => (tabCount(bucketCounts, t) ?? 0) > 0);
+    const populated = visibleTabs.find((t) => (tabCount(bucketCounts, t) ?? 0) > 0);
     setActiveTab(populated ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bucketCounts, campaignRows.settled, scopeSettled, campaignScoped, outcomeAvailable]);
@@ -1256,9 +1179,6 @@ export function EngagedLeadsPage({
   // replacing the other — the table keeps the search, the sort, the dates and the
   // export a board has nowhere to put.
   //
-  // It renders only when exactly ONE funnel is in scope. A brand selling through
-  // several has no single order to lay columns out in, which is the same refusal
-  // `leadFunnelStages` already makes and for the same reason.
   // A move on the board is a WRITE whose only visible effect is the card jumping
   // column, and that jump comes from a re-read. Holding what was just stated keeps the
   // card where the person put it while the producer answers — the producer's own
@@ -1276,15 +1196,14 @@ export function EngagedLeadsPage({
   // once both invalidations have settled): a permanent client override would hide the
   // producer legitimately answering something else, which is the one thing this change
   // exists to stop. A move that does not take is a real answer — stating "Interested"
-  // on a campaign whose funnel is entered by a website visit is a positive reply, and
-  // a positive reply is not the step that campaign sells — and the reader must see it.
+  // on a campaign whose leg lands on a website visit is a positive reply, and a positive
+  // reply is not the step that campaign sells — and the reader must see it.
   const [statedReplyKinds, setStatedReplyKinds] = useState<
     Map<string, { kind: string; at: string; column: LeadBoardColumnKey } | null>
   >(new Map());
 
-  // The columns are TRIAGE states, not funnel rungs, so they need no funnel to lay out
-  // in — which is why the board is offered at brand level too now. The funnel's own
-  // rungs are stated on the lead's panel, where the cost and value of a rung are asked
+  // The columns are TRIAGE states, not steps, so the board is offered at every grain.
+  // Steps are stated on the lead's panel, where the cost and value of a step are asked
   // for; the board answers the other question, "is this one still in play".
   //
   // The FINE reply kind a person stated lives with instantly-service and is keyed on
@@ -1325,30 +1244,18 @@ export function EngagedLeadsPage({
   const boardOnly = Boolean(campaignId);
   const showBoard = boardOnly || view === "board";
 
-  // What the OFFER said each of its funnels is worth, read for ONE reason: it is what
-  // the deal-value field opens with when somebody states a won deal, so they confirm
-  // their own stated lifetime revenue instead of retyping it per lead.
-  //
-  // OFFER-scoped, because that is the grain the brand states a lifetime revenue at: it
-  // is a property of (offer, funnel), so a brand-wide read would open the field with a
-  // number a DIFFERENT proposition is worth. The key is byte-equal to the one the Sales
-  // Funnels card already polls, so this dedupes to no extra request.
-  //
-  // Consequence, accepted: at BRAND grain there is no offer to name — a lead can be on
-  // any of the brand's — so the read is disabled and the field opens EMPTY, exactly as
-  // it did before. Reading the brand-wide figure there instead would be this surface
-  // borrowing a sibling offer's number, which is the one thing a prefill must not do.
-  const { data: salesFunnelsData } = useAuthQuery(
-    ["offerSalesFunnels", brandId, offerId ?? "none"],
-    () => getOfferSalesFunnels(brandId, offerId as string),
+  // What the OFFER says a client won through it is worth, read for ONE reason: it is
+  // what the deal-value field opens with when somebody states a won deal, so they
+  // confirm their own stated lifetime revenue instead of retyping it per lead. At BRAND
+  // grain there is no offer to name, so the read is disabled and the field opens EMPTY.
+  const { data: offerEconomics } = useAuthQuery(
+    ["offerEconomics", brandId, offerId ?? "none"],
+    () => getOfferEconomics(brandId, offerId as string),
     { enabled: !!offerId },
   );
-  // The prefill for ONE lead: its own campaign's funnel, never a sibling funnel's. An
-  // offer is sold through several funnels at once and prices each one, and the lead is
-  // on exactly one of them.
   const prefillUsdFor = useCallback(
-    (lead: Lead) => saleValuePrefillUsd(salesFunnelsData?.funnels, closeWonFunnelKey(lead)),
-    [salesFunnelsData],
+    (_lead: Lead) => saleValuePrefillUsd(offerEconomics?.lifetimeRevenueUsd),
+    [offerEconomics],
   );
 
   // ⚠️ Declared ABOVE the board's reads on purpose. `boardColumns` calls `prefillUsdFor`
@@ -1372,32 +1279,12 @@ export function EngagedLeadsPage({
   // reading at all: an empty column's page is not fetched once its size is known, while
   // before the counts land every column is read in parallel rather than waiting a round
   // trip to find out.
-  // A SALES FUNNEL's board asks for the `sales_interest` split by funnel step, and draws a
-  // column per step: a booked meeting is not a positive reply, and the one board that is
-  // about one funnel is where that difference is wanted. Every other grain spans several
-  // funnels and keeps the six triage columns.
-  const boardByStage = Boolean(funnelScopeKey);
   const { data: standingCounts } = useAuthQuery(
-    ["leadStandingCounts", scopeKey, wireSearch, boardByStage ? "stage" : "standing"],
-    () =>
-      getLeadStandingCounts(scope, standingCountsQuery(wireSearch, { byStage: boardByStage })),
-    // Also read by a funnel page's Disqualified and Opt-out tabs, whose counts are
-    // standings; same key as the board, so the two dedupe to one poll.
-    { enabled: showBoard || funnelPageTabs != null, refetchInterval: POLL_INTERVAL },
+    ["leadStandingCounts", scopeKey, wireSearch],
+    () => getLeadStandingCounts(scope, standingCountsQuery(wireSearch)),
+    { enabled: showBoard, refetchInterval: POLL_INTERVAL },
   );
-  // The split is only drawn once the producer has served it: a board laid out from a
-  // stage list we were never given would be columns with no size and no page.
-  const stageList = standingCounts?.salesInterestStages;
-  const boardLayout = useMemo(
-    () =>
-      boardByStage && stageList
-        ? funnelBoardLayout(stageList.map((s) => s.stage))
-        : DEFAULT_BOARD_LAYOUT,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [boardByStage, stageList?.map((s) => s.stage).join(",")],
-  );
-  const inLayout = (key: LeadBoardColumnKey) => boardLayout.columns.some((c) => c.key === key);
-  const columnTotals = boardColumnTotals(standingCounts, boardLayout.stageOf);
+  const columnTotals = boardColumnTotals(standingCounts);
 
   // How far each column is drawn. It lives HERE rather than in the board because it
   // drives a fetch now: growing a column asks lead-service for a wider page of that
@@ -1411,15 +1298,12 @@ export function EngagedLeadsPage({
 
   const columnArgs = (column: LeadBoardColumnKey) => ({
     column,
-    stage: boardLayout.stageOf[column],
     scope,
     scopeKey,
     search: wireSearch,
     shown: columnShown[column] ?? LEAD_BOARD_PAGE_SIZE,
     // Before the counts land every column is read; after, an empty one is not read again.
-    // A column the layout does not draw is never read.
-    enabled:
-      showBoard && inLayout(column) && (columnTotals == null || columnTotals[column] > 0),
+    enabled: showBoard && (columnTotals == null || columnTotals[column] > 0),
   });
   // Five explicit calls rather than a loop: the column set is a module constant, but a
   // hook in a loop is a rule nobody should have to re-check on the day a column is added.
@@ -1429,24 +1313,15 @@ export function EngagedLeadsPage({
   const wonColumn = useBoardColumnPage(columnArgs("won"));
   const optOutColumn = useBoardColumnPage(columnArgs("opt_out"));
   const unresolvedColumn = useBoardColumnPage(columnArgs("unresolved"));
-  // The funnel steps a funnel's board may draw. Read only when the layout draws them.
-  const meetingBookedColumn = useBoardColumnPage(columnArgs("meeting_booked"));
-  const meetingAttendedColumn = useBoardColumnPage(columnArgs("meeting_attended"));
-  const signupColumn = useBoardColumnPage(columnArgs("signup"));
-  const formSubmissionColumn = useBoardColumnPage(columnArgs("form_submission"));
   const columnReads: Record<LeadBoardColumnKey, ReturnType<typeof useBoardColumnPage>> = {
     contacted: contactedColumn,
     sales_interest: salesInterestColumn,
-    meeting_booked: meetingBookedColumn,
-    meeting_attended: meetingAttendedColumn,
-    signup: signupColumn,
-    form_submission: formSubmissionColumn,
     won: wonColumn,
     disqualified: disqualifiedColumn,
     opt_out: optOutColumn,
     unresolved: unresolvedColumn,
   };
-  const layoutColumns = boardLayout.columns;
+  const layoutColumns = LEAD_BOARD_COLUMNS;
 
   const boardLeads = useMemo(
     () => layoutColumns.flatMap((c) => columnReads[c.key].data?.leads ?? []),
@@ -1455,10 +1330,6 @@ export function EngagedLeadsPage({
       layoutColumns,
       contactedColumn.data,
       salesInterestColumn.data,
-      meetingBookedColumn.data,
-      meetingAttendedColumn.data,
-      signupColumn.data,
-      formSubmissionColumn.data,
       wonColumn.data,
       disqualifiedColumn.data,
       optOutColumn.data,
@@ -1559,8 +1430,7 @@ export function EngagedLeadsPage({
 
   const [boardError, setBoardError] = useState<string | null>(null);
   // A board move states a REPLY KIND, the same write the lead panel makes — never a
-  // funnel-step statement, which is what the funnel columns used to write and which
-  // asks for a cost this board has nowhere to collect.
+  // step statement, which asks for a cost this board has nowhere to collect.
   const moveOnBoard = useMutation({
     mutationFn: ({ email, kind }: { email: string; kind: ReplyKind }) =>
       setManualQualification({ campaignId: campaignId as string, email, status: kind }),
@@ -1600,14 +1470,14 @@ export function EngagedLeadsPage({
   }, [activeTotal, page, pageCount]);
 
   // Tabs = the realized-outcome tab (when available) + the goal's on-path engagement
-  // steps, outcome-first (goal-steps single source), off-funnel steps dropped. Each
+  // steps, outcome-first (goal-steps single source), unbought steps dropped. Each
   // states its OWN size, straight off `bucket-counts` — the whole tab, not the page.
   // `null` while that read is unsettled: a tab we have not been told the size of is not
   // a tab with nobody in it.
   const tabs: { key: Tab; label: string; count: number | null }[] = visibleTabs.map((key) => ({
     key,
     label: LEAD_TAB_LABEL[key],
-    count: tabCount(bucketCounts, key, standingCounts),
+    count: tabCount(bucketCounts, key),
   }));
 
 
@@ -1624,13 +1494,13 @@ export function EngagedLeadsPage({
   //
   // So the row reads what the producers already answer: the population from
   // lead-service's bucket counts (the SAME number the heading states, so the two cannot
-  // disagree), and the positive-reply pair from features-service's funnel steps — the
+  // disagree), and the positive-reply pair from features-service's step walk — the
   // one `positiveReplySharePct` the campaign Overview reads, so those two surfaces
   // cannot state it two ways either.
   //
   // Consequence to hold: the row's positive replies count REPLY SIGNALS while the board's
-  // own column renders lead-service's funnel-aware standing, and on a funnel entered by
-  // a website visit those legitimately differ. The board states its own bound above
+  // own column renders lead-service's leg-aware standing, and on a campaign whose leg
+  // lands on a website visit those legitimately differ. The board states its own bound above
   // itself; closing that gap needs standing counts from lead-service, which is a
   // producer ask, not a number to derive here.
 
@@ -1698,7 +1568,7 @@ export function EngagedLeadsPage({
     },
     [setAnyStage],
   );
-  // The OPEN PERSON's campaigns, nested offer > funnel > campaign.
+  // The OPEN PERSON's campaigns, nested offer > campaign.
   //
   // The cards are lead-service's own (`?include=campaigns`), never a grouping of rows: a
   // brand-scoped read answers one row per person, so grouping rows draws one card
@@ -1708,11 +1578,9 @@ export function EngagedLeadsPage({
     [selectedLead, campaignInfoOf],
   );
 
-  // WHICH levels of Brand > Offer > Funnel > Funnel leg > Channel > Audience every one
-  // of this person's campaigns agrees on. The agreed ones are stated as their own
-  // stacked cards above; only what varies is left to the nested list, so a
-  // campaign-scoped panel reads as six cards, a funnel-scoped one as three cards over a
-  // list of leg x channel, and a brand-scoped one as one card over the whole nest.
+  // WHICH levels of Brand > Offer > Leg > Channel > Audience every one of this person's
+  // campaigns agrees on. The agreed ones are stated as their own stacked cards above;
+  // only what varies is left to the nested list.
   const panelScope = useMemo(() => leadPanelScope(leadCampaignTree), [leadCampaignTree]);
 
   // ONE CARD OPEN AT A TIME, and the first one by default so a person in a single
@@ -1740,10 +1608,8 @@ export function EngagedLeadsPage({
   // Which campaign the open card belongs to — what the email read below is scoped by.
   const openCampaignId = useMemo(() => {
     for (const offer of leadCampaignTree.offers) {
-      for (const funnel of offer.funnels) {
-        for (const node of funnel.campaigns) {
-          if (node.rowId === openCampaignRowId) return node.campaignId;
-        }
+      for (const node of offer.campaigns) {
+        if (node.rowId === openCampaignRowId) return node.campaignId;
       }
     }
     return null;
@@ -1852,69 +1718,17 @@ export function EngagedLeadsPage({
   }, [panelWorkflowReady, panelWorkflowCatalogue, panelWorkflowDynasties, panelWorkflowSlug]);
 
 
-  // ── Funnel-stage statements for the open lead ────────────────────────────────
-  // WHICH funnel this panel walks. Exactly two scopes STATE one, and neither guesses:
-  //
-  //  - a CAMPAIGN states its own — `activeFunnelKeys` is already narrowed to that
-  //    campaign's row above, so there is nothing extra to fetch;
-  //  - a FUNNEL route states it in the URL, and that funnel is the page's whole subject.
-  //
-  // Brand and offer state NOTHING, deliberately: several funnels run at once there, so
-  // there is no single walk and the section does not render at all.
-  //
-  // The route key is read the way every other funnel-scoped surface reads it —
-  // `campaignFunnel` normalizes both wire spellings and THROWS on a key the catalogue
-  // does not carry, which is the same contract `funnel-scoped-pages` and the leg page
-  // already honour on this route. Absent (`params.funnelKey` undefined at the other
-  // three scopes) is null, which is a different statement from unknown.
-  const routeFunnelKey = params.funnelKey
-    ? (decodeURIComponent(params.funnelKey as string) as SalesFunnelKeyWire)
-    : null;
-  const panelFunnel = campaignId
-    ? activeFunnelKeys[0]
-      ? salesFunnelByKey(activeFunnelKeys[0])
-      : null
-    : campaignFunnel(routeFunnelKey);
-  // WHICH ARROW of that funnel this campaign performs. A funnel is sold leg by leg, so
-  // walking the whole funnel here offers a control for arrows this campaign does not
-  // run — each of which has its own page, worked by whoever performs it. The channel
-  // is the campaign's own feature slug, and its legs come off the catalogue the page
-  // already holds (a `useMemo` over the `["features"]` query, so no extra request).
-  //
-  // The campaign's OWN statement wins where it makes one: `legKey` names the arrow it
-  // was bought for, and unlike the derivation it stays correct once a channel performs
-  // several arrows of one funnel. The derivation is the fallback for every campaign
-  // that predates the column. Both reads are already in flight — the campaign row is
-  // the key the top bar polls, the leg catalogue is a platform-wide one — so this costs
-  // no request.
-  //
-  // A leg is a CAMPAIGN's answer and only a campaign's: off a campaign route there is
-  // no arrow to narrow to, and `featureSlug` there is the brand's SOLE channel rather
-  // than one this page is about — so deriving a leg from it would slice the funnel by
-  // a channel the reader never named. Null instead, which walks the whole funnel: the
-  // UNION of every arrow, since `funnelLegs` tiles the steps end to end and that union
-  // is exactly what a funnel-scoped reader can state.
-  const legIndex = useFunnelLegIndex();
-  const panelLeg = useMemo(() => {
-    if (!campaignId || !panelFunnel || !featureSlug) return null;
-    const stated = statedCampaignLeg(panelFunnel, scopedCampaign?.legKey, legIndex);
-    if (stated) return stated;
-    const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
-    return campaignLegFor(panelFunnel, channel?.legs);
-  }, [campaignId, panelFunnel, featureSlug, channels, scopedCampaign?.legKey, legIndex]);
-  // A leg we cannot place falls back to the whole funnel, the sentence this panel read
-  // before legs existed. `later` is never rendered — it is what a `never` also ends.
-  const panelWalk = useMemo(
-    () => (panelFunnel ? leadFunnelLegStages(panelFunnel.key, panelLeg) : { stages: [], later: [] }),
-    [panelFunnel, panelLeg],
-  );
-  const panelStages = panelWalk.stages;
-  // Read wherever the section RENDERS, which is wherever a funnel is stated — the gate
-  // is `panelFunnel`, not `campaignId`. A statement is keyed on the leads_campaigns row
-  // the table already carries, so a funnel-scoped reader writes exactly as the leg board
-  // one level down already does; there is no campaign to have.
+  // ── Step statements for the open lead ────────────────────────────────────────
+  // WHICH leg this panel states. Only a CAMPAIGN states one: it is bought for exactly
+  // one leg, and `activeLegs` is already narrowed to that campaign's row above. Brand and
+  // offer state NOTHING, deliberately: several legs run at once there, so there is no
+  // single one and the section does not render at all.
+  const panelLeg = campaignId ? (activeLegs[0] ?? null) : null;
+  const panelStages = useMemo(() => leadLegStages(panelLeg), [panelLeg]);
+  // Read wherever the section RENDERS, which is wherever a leg is stated. A statement
+  // is keyed on the leads_campaigns row the table already carries.
   const { data: stepStatements } = useLeadStepStatements(
-    panelFunnel && selectedLead ? selectedLead.id : null,
+    panelLeg && selectedLead ? selectedLead.id : null,
   );
   const setStage = useSetLeadStepStatement(selectedLead?.id ?? null);
   // The target of the statement in flight. Held here rather than derived from the
@@ -1956,7 +1770,7 @@ export function EngagedLeadsPage({
   // lead-service refuses it — so the control is not offered rather than offered and
   // refused.
   const panelWithdrawable = useMemo(() => withdrawableStages(stepStatements), [stepStatements]);
-  // Stages the FUNNEL concluded rather than anybody stating — they render as the answer
+  // Stages the producer CONCLUDED rather than anybody stating — they render as the answer
   // they are and offer no control.
   const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
   // Stages the customer's own CRM evidenced: a reading, never a control.
@@ -2215,11 +2029,6 @@ export function EngagedLeadsPage({
             <div className={`flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto ${showBoard ? "hidden" : ""}`}>
               {tabs.map((tab) => (
                 <Fragment key={tab.key}>
-                {/* The exits are a partition, the steps before them are nested buckets,
-                    so a rule between the two says they are not the same kind of count. */}
-                {tab.key === "disqualified" && (
-                  <span aria-hidden className="mx-2 my-2 w-px shrink-0 bg-gray-200" />
-                )}
                 <button
                   onClick={() => { setActiveTab(tab.key); setSelectedLead(null); }}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
@@ -2250,7 +2059,7 @@ export function EngagedLeadsPage({
               onChange={setSearch}
               placeholder="Search by name, company, title, or email..."
               resultCount={(showBoard ? boardDrawnTotal : activeTotal) ?? 0}
-              totalCount={(showBoard ? reachableCount : tabCount(bucketCounts, activeTab, standingCounts)) ?? 0}
+              totalCount={(showBoard ? reachableCount : tabCount(bucketCounts, activeTab)) ?? 0}
             />
             {/* A search the producer would refuse is refused HERE, with the reason, and
                 never sent — the alternative is a 400 that empties the table. */}
@@ -2269,7 +2078,6 @@ export function EngagedLeadsPage({
                   and grows its own page. */}
               <LeadBoard
                 columns={boardColumns}
-                layout={layoutColumns}
                 scopeNoun={boardScopeNoun}
                 onShowMore={(column) =>
                   setColumnShown((prev) => ({
@@ -2294,7 +2102,7 @@ export function EngagedLeadsPage({
                   setBoardError(null);
                   // Stating a SALE, and taking one back. Handled before anything else
                   // because they are the only two moves that address a lead ROW rather
-                  // than a person's email — a funnel-step statement belongs to the
+                  // than a person's email — a step statement belongs to the
                   // (lead, campaign) row, and the reply/opt-out writes below are keyed
                   // on the email so they can reach every campaign at once.
                   //
@@ -2503,14 +2311,12 @@ export function EngagedLeadsPage({
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
-            {/* Wherever a funnel is STATED: the campaign's own, or the one the funnel
-                route names. At brand and offer grain several funnels run at once, so
-                there is no single walk and the section states nothing at all. */}
-            {panelFunnel && (
-              <LeadFunnelStageSection
-                funnelName={panelFunnel.name}
+            {/* Wherever a leg is STATED, which is the campaign's own. At brand and offer
+                grain several legs run at once, so the section states nothing at all. */}
+            {panelLeg && (
+              <LeadStageSection
+                legName={panelLeg.label}
                 stages={panelStages}
-                laterStages={panelWalk.later}
                 states={panelStates}
                 tracked={panelTracked}
                 delivery={<StatusBadge status={statusOf(selectedLead)} />}
@@ -2540,7 +2346,7 @@ export function EngagedLeadsPage({
                         onSet: onSetReply,
                         // Only offered while something STANDS. Every row this read serves
                         // is a human statement, so a standing kind is by construction
-                        // somebody's own words — unlike a funnel step, where a tracker
+                        // somebody's own words — unlike a step, where a tracker
                         // can be the author.
                         onWithdraw: shownReplyKind ? onWithdrawReply : undefined,
                       }
@@ -2550,7 +2356,7 @@ export function EngagedLeadsPage({
             )}
             {/* What the customer's own CRM shows for this person (a paired contact's
                 meeting or deal) and whether it counts as ours. At every grain: the
-                credit is about the person within the brand, not one funnel. Renders
+                credit is about the person within the brand, not one campaign. Renders
                 nothing for a lead no CRM contact is paired with. */}
             <div className="mb-4">
               <CrmAttributionCard leadRowId={selectedLead.id} brandId={brandId} />
@@ -2591,7 +2397,6 @@ export function EngagedLeadsPage({
                 their campaigns agree on. What varies is the list underneath. */}
             <LeadScopeCards
               offer={panelScope.offer}
-              funnelKey={panelScope.funnelKey}
               sole={
                 panelScope.sole
                   ? {
@@ -2639,7 +2444,6 @@ export function EngagedLeadsPage({
               onToggle={toggleCampaign}
               /* Neither band repeats a card two inches above it. */
               showOffers={!panelScope.offer}
-              showFunnels={panelScope.funnelKey ? false : undefined}
               renderDetail={(node) =>
                 // Only the OPEN card is read for — a person in eleven campaigns must
                 // not fire eleven of these — so only that card can draw one.

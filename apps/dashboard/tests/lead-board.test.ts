@@ -288,8 +288,8 @@ describe("a drop lands everywhere, and the form is where a move is refused", () 
       expect(columnMoveRefusal(key)).toBeNull();
     }
     // The reason, not a bare "not allowed": nothing anybody states about the person
-    // settles a campaign that names no sales funnel.
-    expect(columnMoveRefusal("unresolved")).toMatch(/funnel/i);
+    // settles a campaign whose sale we could not tell.
+    expect(columnMoveRefusal("unresolved")).toMatch(/what their campaign sells/i);
   });
 
   it("offers no REPLY KIND for Opt-out or Not-placed, for different reasons", () => {
@@ -344,8 +344,8 @@ describe("columnBlurb", () => {
     expect(columnBlurb(disqualified, "offer")).toBe(
       "Individuals disqualified as leads for this offer.",
     );
-    expect(columnBlurb(disqualified, "sales funnel")).toBe(
-      "Individuals disqualified as leads for this sales funnel.",
+    expect(columnBlurb(disqualified, "brand")).toBe(
+      "Individuals disqualified as leads for this brand.",
     );
   });
 

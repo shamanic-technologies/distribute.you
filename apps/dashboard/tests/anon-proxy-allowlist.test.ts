@@ -19,7 +19,7 @@ const allow = (method: string, endpoint: string, brandId = BRAND) =>
   anonCallAllowed({ method, endpoint, brandId });
 
 describe("what the signed-out wizard may call", () => {
-  it("permits the brand, funnel, audience and projection calls it makes", () => {
+  it("permits the brand, audience and projection calls it makes", () => {
     const calls: [string, string][] = [
       ["POST", "/brands"],
       ["GET", `/brands/${BRAND}`],
@@ -28,10 +28,8 @@ describe("what the signed-out wizard may call", () => {
       ["PUT", `/brands/${BRAND}/user-fields`],
       ["GET", `/brands/${BRAND}/offers`],
       ["GET", `/brands/${BRAND}/sales-economics-effective`],
-      ["GET", `/brands/${BRAND}/sales-funnels`],
-      ["PUT", `/brands/${BRAND}/sales-funnels`],
-      ["PUT", `/brands/${BRAND}/sales-funnels/reply_meeting`],
-      ["DELETE", `/brands/${BRAND}/sales-funnels/reply_meeting`],
+      ["PUT", `/brands/${BRAND}/click-destination`],
+      ["PUT", `/brands/${BRAND}/business-context`],
       ["POST", `/brands/${BRAND}/icp/suggest`],
       ["GET", "/orgs/audiences?brandId=x&status=active"],
       ["POST", "/orgs/audiences/suggest"],
@@ -81,6 +79,11 @@ describe("what it may NOT call", () => {
     }
   });
 
+  it("refuses the retired sales-funnel routes: the flow states no funnel", () => {
+    expect(allow("GET", `/brands/${BRAND}/sales-funnels`).allowed).toBe(false);
+    expect(allow("PUT", `/brands/${BRAND}/sales-funnels`).allowed).toBe(false);
+  });
+
   it("refuses a method the rule does not carry", () => {
     // Reading a brand is fine; deleting one is not a call this flow makes.
     expect(allow("GET", `/brands/${BRAND}`).allowed).toBe(true);
@@ -94,7 +97,7 @@ describe("what it may NOT call", () => {
       refusal: "wrong-brand",
     });
     expect(allow("GET", `/brands/${OTHER}/user-fields`).refusal).toBe("wrong-brand");
-    expect(allow("PUT", `/brands/${OTHER}/sales-funnels`).refusal).toBe("wrong-brand");
+    expect(allow("PUT", `/brands/${OTHER}/business-context`).refusal).toBe("wrong-brand");
     expect(allow("POST", `/brands/${OTHER}/icp/suggest`).refusal).toBe("wrong-brand");
   });
 
@@ -115,7 +118,7 @@ describe("what it may NOT call", () => {
       allowed: false,
       refusal: "wrong-brand",
     });
-    expect(allow("PUT", `/brands/${BRAND}/sales-funnels`, "").allowed).toBe(false);
+    expect(allow("PUT", `/brands/${BRAND}/user-fields`, "").allowed).toBe(false);
   });
 
   it("but STILL lets it create one — its first act names no brand", () => {

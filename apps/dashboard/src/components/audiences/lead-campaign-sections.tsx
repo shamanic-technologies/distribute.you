@@ -7,7 +7,8 @@ import { audienceDetailHref } from "@/lib/audience-detail-href";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useOfferImages } from "@/lib/use-offer-images";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
-import { SALES_FUNNELS } from "@/lib/sales-funnels";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor } from "@/lib/legs";
 import type {
   LeadCampaignCardLike,
   LeadCampaignNode,
@@ -16,7 +17,7 @@ import type {
 } from "@/lib/lead-campaign-tree";
 
 /**
- * A PERSON's campaigns in the lead panel, nested offer > funnel > campaign, with
+ * A PERSON's campaigns in the lead panel, nested offer > campaign, with
  * everything a campaign decided about them sitting UNDER that campaign.
  *
  * The cards are lead-service's own (`?include=campaigns`), not a grouping of rows: a
@@ -56,7 +57,6 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
   onToggle,
   renderDetail,
   showOffers = true,
-  showFunnels,
 }: {
   tree: LeadCampaignTree<C>;
   /**
@@ -67,9 +67,6 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
    * repeating a card two inches above it is noise, not hierarchy.
    */
   showOffers?: boolean;
-  /** Overrides the tree's own answer, for the same reason: the funnel is stated as a
-   *  card above when every campaign agrees on it. */
-  showFunnels?: boolean;
   audienceFor: (card: C) => LeadCampaignAudience | null;
   /** The one open card, or null when the reader closed it. */
   openRowId: string | null;
@@ -80,7 +77,6 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
 }) {
   if (tree.campaignCount === 0) return null;
   const many = tree.campaignCount > 1;
-  const funnelBands = showFunnels ?? tree.showFunnels;
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
@@ -92,7 +88,6 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
             key={offer.offerId ?? "no-offer"}
             offer={offer}
             showOffer={showOffers}
-            showFunnels={funnelBands}
             collapsible={many}
             audienceFor={audienceFor}
             openRowId={openRowId}
@@ -108,8 +103,7 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
 /**
  * The offer this person was contacted to be sold, above the campaigns that sold it.
  *
- * Always drawn, even for a single offer: unlike the funnel, nothing inside the card
- * names the proposition, so dropping the band at one would lose a fact rather than
+ * Always drawn, even for a single offer: nothing inside the card names the proposition, so dropping the band at one would lose a fact rather than
  * remove a repetition.
  *
  * A card whose offer lead-service could not resolve renders the band with no name and
@@ -120,7 +114,6 @@ export function LeadCampaignSections<C extends LeadCampaignCardLike>({
 function OfferBand<C extends LeadCampaignCardLike>({
   offer,
   showOffer,
-  showFunnels,
   collapsible,
   audienceFor,
   openRowId,
@@ -129,7 +122,6 @@ function OfferBand<C extends LeadCampaignCardLike>({
 }: {
   offer: LeadOfferNode<C>;
   showOffer: boolean;
-  showFunnels: boolean;
   collapsible: boolean;
   audienceFor: (card: C) => LeadCampaignAudience | null;
   openRowId: string | null;
@@ -174,27 +166,16 @@ function OfferBand<C extends LeadCampaignCardLike>({
             : "space-y-3"
         }
       >
-        {offer.funnels.map((funnel) => (
-          <div key={funnel.funnelKey ?? "no-funnel"}>
-            {showFunnels && (
-              <p className="mb-2 text-xs font-medium text-gray-500">
-                {SALES_FUNNELS.find((f) => f.key === funnel.funnelKey)?.name ?? "Funnel not stated"}
-              </p>
-            )}
-            <div className="space-y-3">
-              {funnel.campaigns.map((node) => (
-                <CampaignCard
-                  key={node.rowId}
-                  node={node}
-                  collapsible={collapsible}
-                  open={openRowId === node.rowId}
-                  onToggle={onToggle}
-                  audience={audienceFor(node.card)}
-                  renderDetail={renderDetail}
-                />
-              ))}
-            </div>
-          </div>
+        {offer.campaigns.map((node) => (
+          <CampaignCard
+            key={node.rowId}
+            node={node}
+            collapsible={collapsible}
+            open={openRowId === node.rowId}
+            onToggle={onToggle}
+            audience={audienceFor(node.card)}
+            renderDetail={renderDetail}
+          />
         ))}
       </div>
     </div>
@@ -210,7 +191,7 @@ function OfferBand<C extends LeadCampaignCardLike>({
  *
  * The header is a `role="button"` div rather than a real button element, because the
  * open body contains its own links and a nested interactive element inside a button is
- * invalid HTML — the same reason the Sales Funnels settings card does it this way. With ONE
+ * invalid HTML. With ONE
  * campaign there is nothing to switch between, so the header is not a control at all.
  */
 function CampaignCard<C extends LeadCampaignCardLike>({
@@ -228,12 +209,12 @@ function CampaignCard<C extends LeadCampaignCardLike>({
   audience: LeadCampaignAudience | null;
   renderDetail: (node: LeadCampaignNode<C>) => ReactNode;
 }) {
-  const funnel = SALES_FUNNELS.find((f) => f.key === node.info?.funnelKey) ?? null;
+  const catalogue = useLegCatalogue();
   const identity = (
     <CampaignIdentity
-      funnel={funnel}
       featureSlug={node.info?.featureSlug ?? null}
       legKey={node.info?.legKey ?? null}
+      leg={legFor(catalogue, node.info?.legKey)}
     />
   );
   return (

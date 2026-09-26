@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildAudienceLLMPrompt,
-  buildFunnelStatsLLMPrompt,
   buildServicesLLMPrompt,
   copyStepIntent,
 } from "../src/components/onboarding/llm-prompt";
@@ -60,71 +59,11 @@ describe("audience prompt", () => {
   });
 });
 
-describe("funnel economics prompt", () => {
-  const base = {
-    funnelTitle: "Sales Meeting from Positive Reply",
-    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
-    rates: [
-      { label: "Positive reply to meeting booked", value: "40" },
-      { label: "Meeting attended to paid client", value: "" },
-    ],
-    lifetimeRevenue: "2500",
-    destinations: [
-      { label: "Booking link", value: "https://cal.com/acme", optional: true },
-    ],
-    services: ["SEO audits"],
-    domain: "acme.com",
-  };
-
-  it("labels every value the reader has to transcribe back", () => {
-    const out = buildFunnelStatsLLMPrompt(base);
-    expect(out).toContain("- Positive reply to meeting booked: 40");
-    expect(out).toContain("- Meeting attended to paid client: (nothing yet)");
-    expect(out).toContain("- Lifetime revenue per paid client (USD): 2500");
-    expect(out).toContain("- Booking link (optional): https://cal.com/acme");
-  });
-
-  it("states the units, because these values go back into separate boxes", () => {
-    const out = buildFunnelStatsLLMPrompt(base);
-    expect(out).toContain("Percentages are whole numbers without the percent sign.");
-    expect(out).toContain("Return only the same labelled lines with the corrected values, nothing else.");
-  });
-
-  it("names the path so the model prices the right one", () => {
-    const out = buildFunnelStatsLLMPrompt(base);
-    expect(out).toContain(
-      "Sales Meeting from Positive Reply (Positive reply -> Meeting booked -> Meeting attended -> Paid client)",
-    );
-  });
-
-  it("emits no destination line when there are none", () => {
-    // The model step edits the economics alone, so it passes an empty list. A
-    // stray empty destination row would read as a field the reader forgot.
-    const out = buildFunnelStatsLLMPrompt({ ...base, destinations: [] });
-    expect(out).not.toContain("Booking link");
-    expect(out).toContain("- Lifetime revenue per paid client (USD): 2500");
-  });
-
-  it("falls back to the title when a path states no steps", () => {
-    const out = buildFunnelStatsLLMPrompt({ ...base, steps: [] });
-    expect(out).toContain("The path: Sales Meeting from Positive Reply (Sales Meeting from Positive Reply)");
-  });
-});
-
 describe("prompt copy", () => {
   it("ships no em-dash in anything a reader pastes", () => {
     const outputs = [
       buildServicesLLMPrompt(["x"], "acme.com"),
       buildAudienceLLMPrompt("y", ["x"], "acme.com"),
-      buildFunnelStatsLLMPrompt({
-        funnelTitle: "t",
-        steps: ["a"],
-        rates: [{ label: "r", value: "1" }],
-        lifetimeRevenue: "2",
-        destinations: [{ label: "d", value: "u", optional: false }],
-        services: ["x"],
-        domain: "acme.com",
-      }),
     ];
     for (const out of outputs) expect(out).not.toContain("—");
   });

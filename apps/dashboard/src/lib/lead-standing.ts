@@ -12,11 +12,11 @@
  * it joins onto the membership row, and the hand-stated step statements it owns), so
  * it authors the policy now and everything else RENDERS it.
  *
- * It is FUNNEL-AWARE, which is the half this app could never have got right. A
- * campaign selling `form_magnet` sells `visit -> form -> paid`, so somebody landing on
- * the site has reached the step it sells; a campaign selling meetings off a
- * conversation prices a positive REPLY, and the same person visiting the site has done
- * something that campaign does not price. The grain is `(lead, campaign)`, so one
+ * It is LEG-AWARE, which is the half this app could never have got right. A campaign
+ * performing the leg onto a website visit sells that visit, so somebody landing on the
+ * site has reached the step it sells; a campaign performing the leg onto a positive
+ * reply prices a REPLY, and the same person visiting the site has done something that
+ * campaign does not price. The grain is `(lead, campaign)`, so one
  * person can legitimately stand at `sales_interest` under one campaign and `engaged`
  * under another — which is what is true, and what a reply-signal rule here read as one
  * answer for both.
@@ -40,9 +40,9 @@
  *  - `not_contacted` — never written to.
  *  - `contacted`     — written to, nothing since.
  *  - `engaged`       — something happened that is not the step this campaign sells.
- *  - `sales_interest`— they reached the step this campaign's funnel is entered by, or a
- *                      later step of it.
- *  - `customer`      — the funnel's last step (the sale) is reached.
+ *  - `sales_interest`— they reached the step this campaign's leg lands on, or a later
+ *                      step.
+ *  - `customer`      — the sale is reached.
  *  - `opted_out`     — the prospect asked us to stop. Their own act, and legally
  *                      binding, which is why it is a STATE of its own rather than a
  *                      shade of `disqualified`: the board draws it apart, with its own
@@ -84,16 +84,11 @@ export type LeadStandingSignal =
   | "unsubscribed";
 
 /** Why the state is `unresolved`, and null for every other state. Never a default. */
-export type LeadStandingUnresolvedReason =
-  | "delivery_not_queried"
-  | "campaign_service_unavailable"
-  | "campaign_unknown"
-  | "funnel_unstated"
-  | "statements_unreadable";
+export type LeadStandingUnresolvedReason = string;
 
 /**
- * Who said it: `stated` = a person (or the website tracker), `implied` = the campaign's
- * funnel implies it from another statement, `measured` = the delivery layer measured it.
+ * Who said it: `stated` = a person (or the website tracker), `implied` = the step order
+ * implies it from another statement, `measured` = the delivery layer measured it.
  */
 export type LeadStandingOrigin = "stated" | "implied" | "measured";
 
@@ -110,20 +105,18 @@ export interface LeadStanding {
   signal: LeadStandingSignal;
   origin: LeadStandingOrigin | null;
   reason: LeadStandingUnresolvedReason | null;
-  /** The sales funnel this campaign sells, as campaign-service states it. */
-  funnelKey: string | null;
-  /** The step somebody takes to get ONTO this campaign's funnel. */
+  /** The step somebody takes to get ONTO this campaign's leg. */
   entryStep: string | null;
   /** Which signal that entry step is read off. */
   entryMeasure: "delivery_click" | "positive_reply" | null;
   /**
-   * Whether this person got onto the campaign's funnel. Answered separately from
+   * Whether this person got onto the campaign's leg. Answered separately from
    * `state` because both can be true at once: somebody who clicked and then
    * unsubscribed reached the entry step AND is disqualified. null — never false — when
-   * the signal for it cannot be resolved (every ads-led funnel, for one).
+   * the signal for it cannot be resolved (every ads-led leg, for one).
    */
   reachedEntryStep: boolean | null;
-  /** The deepest step of this campaign's funnel known reached, or null. */
+  /** The deepest step known reached, or null. */
   deepestStep: string | null;
   /** When the deciding statement was made, when a statement decided the state. */
   at: string | null;

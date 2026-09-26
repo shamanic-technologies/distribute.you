@@ -6,7 +6,7 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 /**
- * A campaign is (offer x funnel x channel) and states its channel on its own row.
+ * A campaign is (offer x leg x channel) and states its channel on its own row.
  * `useSoleFeatureSlug()` answers a DIFFERENT question — the brand's one GA feature —
  * and it is silently wrong for every campaign that is not on it: nothing errors, every
  * figure is real, and the surface describes a channel the reader is not looking at.
@@ -49,26 +49,27 @@ describe("a campaign-scoped surface reads the CAMPAIGN's channel", () => {
     });
   }
 
-  it("resolves the leads page's funnel from the campaign, not from feature-filtered rows", () => {
+  it("resolves the leads page's leg from the campaign, not from feature-filtered rows", () => {
     const src = read("components/audiences/engaged-leads-page.tsx");
     // The rows are filtered by feature, so a campaign on any other channel is not among
-    // them: asking them for its funnel is asking a list that cannot contain it.
-    expect(src).toContain("? [scopedCampaign?.funnelKey ?? null]");
+    // them: asking them for its leg is asking a list that cannot contain it.
+    expect(src).toContain("? [scopedCampaign?.legKey ?? null]");
     expect(src).not.toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
     // ...and the brand branch keeps the one feature the brand list has always used.
     expect(src).toContain("useCampaignRows(brandId, soleFeatureSlug)");
   });
 
-  it("places the lead panel's leg with the campaign's OWN channel", () => {
+  it("states the lead panel's steps off the campaign's OWN leg", () => {
     const src = read("components/audiences/engaged-leads-page.tsx");
-    expect(src).toContain("acquisitionChannelForFeatureSlug(featureSlug, channels)");
-    // The section renders off that walk — pin the CALL SITE, not only the component: a
-    // component that handles a prop no page passes is the feature entirely absent.
-    const at = src.indexOf("<LeadFunnelStageSection");
+    // A campaign states its leg on its own row; the panel reads it from there rather
+    // than placing one from a channel's legs.
+    expect(src).toContain("const panelLeg = campaignId ? (activeLegs[0] ?? null) : null;");
+    // Pin the CALL SITE, not only the component: a component that handles a prop no
+    // page passes is the feature entirely absent.
+    const at = src.indexOf("<LeadStageSection");
     expect(at).toBeGreaterThan(-1);
     const callSite = src.slice(at, at + 400);
     expect(callSite).toContain("stages={panelStages}");
-    expect(callSite).toContain("laterStages={panelWalk.later}");
   });
 
   it("gates a campaign's money on the channel CATALOGUE, never the brand's GA set", () => {

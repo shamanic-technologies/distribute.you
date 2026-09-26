@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getPublicChannels } from "@/lib/api";
+import { getPublicCatalogue } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import {
   NO_CHANNEL_MINIMUMS,
@@ -15,7 +15,7 @@ import {
  * ceiling must clear.
  *
  * Read from `GET /public/channels`, where features-service publishes every
- * channel's commercial terms, on the SAME query key the leg index already polls,
+ * channel's commercial terms, on the SAME query key the leg catalogue already polls,
  * so knowing a floor costs no request. It is a PLATFORM catalogue — no org, no
  * brand, no auth — so it is the same answer for every tenant and changes only
  * when a channel is published or re-priced.
@@ -27,6 +27,6 @@ import {
  * same rule against the same figure and its 400 is what decides.
  */
 export function useChannelMinimums(): ChannelMinimums {
-  const { data } = useAuthQuery(["publicChannels"], () => getPublicChannels(), pollOptions);
-  return useMemo(() => (data ? channelMinimumsFromWire(data) : NO_CHANNEL_MINIMUMS), [data]);
+  const { data } = useAuthQuery(["publicCatalogue"], () => getPublicCatalogue(), pollOptions);
+  return useMemo(() => (data ? channelMinimumsFromWire(data.channels) : NO_CHANNEL_MINIMUMS), [data]);
 }

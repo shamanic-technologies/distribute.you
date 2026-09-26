@@ -4,7 +4,7 @@ import { z } from "zod";
  * What happened to ONE person, in order, as lead-service assembles it.
  *
  * This replaces a merge the BROWSER used to do. The panel fetched six services — the
- * delivery evidence and the funnel statements from lead-service, the copy we generated
+ * delivery evidence and the step statements from lead-service, the copy we generated
  * and its planned cadence from content-generation-service, the messages exchanged and
  * the hand-recorded reply statements from instantly-service, the outcomes from
  * features-service — de-duplicated them, sorted them by timestamp and decided what to

@@ -1,7 +1,7 @@
 // Which features expose the revenue overview + conversions surfaces.
 //
 // Gate the FAMILY here, never a per-slug `===` scattered across consumers — when a
-// new feature gets its own funnel economics, add its slug here once (CLAUDE.md: a
+// new feature gets its own economics, add its slug here once (CLAUDE.md: a
 // slug re-version rots every hardcoded-slug consumer). Today only sales-cold-email
 // has saved economics + the visit/reply channels the calc lib understands.
 

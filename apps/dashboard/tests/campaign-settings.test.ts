@@ -52,11 +52,15 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
   });
 
   it("edits BILLING's own row, never a campaign-service mirror of it", () => {
-    // A campaign is (offer x funnel x channel) and billing keys a ceiling on
-    // exactly that triple, so this is the campaign's own money — the same stored
-    // row Offer Settings edits for every channel of the funnel at once.
-    expect(card).toContain("saveBrandFunnelBudget(brandId, scope.def.key, cents, scope.featureSlug, offerId)");
-    expect(card).toContain("getBrandFunnelBudgets");
+    // A campaign is (offer x leg x channel) and billing keys a ceiling on exactly
+    // that address, so this is the campaign's own money — the same stored row Offer
+    // Settings edits.
+    expect(card).toContain("saveCampaignBudget(");
+    expect(card).toContain(
+      "{ offerId, legKey: scope.legKey, featureSlug: scope.featureSlug },",
+    );
+    expect(card).toContain("getBrandCampaignBudgets");
+    expect(card).not.toContain("saveBrandFunnelBudget");
     expect(card).not.toContain("updateCampaign");
     expect(card).not.toContain("maxBudgetDailyUsd");
   });
@@ -72,13 +76,11 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
     // and the campaign Overview would start disagreeing about one campaign's
     // money. The card holds no copy of its own: it imports the shared helpers.
     expect(card).toContain('from "@/lib/campaign-budget"');
-    expect(card).toContain("campaignSavedCents");
-    const lib = read("lib/funnel-channels.ts");
-    expect(lib).toContain("export function offerScopedCents");
-    expect(lib).toContain("savedCents: offerScopedCents(");
+    expect(card).toContain("campaignSavedCents(scope, budgetData)");
+    expect(exists("lib/funnel-channels.ts")).toBe(false);
     const budget = read("lib/campaign-budget.ts");
     expect(budget).toContain("export function campaignSavedCents");
-    expect(budget).toContain("return offerScopedCents(");
+    expect(card).not.toContain("function findCeiling");
   });
 
   it("stops a campaign by PAUSING it, and says why zero is not the same thing", () => {
@@ -139,10 +141,10 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
   it("puts a figure under the channel's floor BACK to the smallest one allowed", () => {
     // Refusing it and leaving the typed value on screen makes the customer guess
     // what is allowed; naming the floor alone makes them do the subtraction the
-    // pair's other offers imply. On BLUR, never per keystroke: typing `1` on
+    // channel's other ceilings imply. On BLUR, never per keystroke: typing `1` on
     // the way to `10` must not jump to the floor under the cursor.
     expect(card).toContain("onBlur={clampToMinimum}");
-    expect(card).toContain("minimumChannelBudgetUsd(minimumCents, savedPairCents, savedCents)");
+    expect(card).toContain("minimumChannelBudgetUsd(minimumCents, savedChannelCents, savedCents)");
     expect(card).toContain("export function budgetClampMessage");
     expect(card).toContain("Pause the campaign instead if you want it to stop for now");
     // Zero is left alone — defunding is an ordinary state, not a refusal.
@@ -153,33 +155,33 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
     expect(card).toContain("const nextTyped = clampToMinimum();");
   });
 
-  it("reads the floor off the CHANNEL's published terms, on the pair's total", () => {
+  it("reads the floor off the CHANNEL's published terms, on the channel's total", () => {
     // The floor is a property of the acquisition channel — cold email costs what
-    // cold email costs, whatever funnel the leads later travel — and it is read
-    // from that channel's own published operating cost rather than a table here.
-    // billing judges it on the (funnel, channel) pair's total across offers, so a
-    // customer splitting one funded pair in two is never refused for each half
-    // being under a bar the whole clears. Its 400 is what decides.
+    // cold email costs, whatever leg it performs — and it is read from that
+    // channel's own published operating cost rather than a table here. billing
+    // judges it on the channel's total across the brand, so a customer splitting a
+    // funded channel in two is never refused for each half being under a bar the
+    // whole clears. Its 400 is what decides.
     expect(card).toContain("channelMinimumCents(minimums, scope?.featureSlug)");
-    expect(card).toContain("campaignPairCents(scope, budgetData)");
-    expect(card).toContain("channelBudgetBelowMinimum(minimumCents, projected, savedPairCents)");
+    expect(card).toContain("channelTotalCents(scope.featureSlug, budgetData)");
+    expect(card).toContain("channelBudgetBelowMinimum(minimumCents, projected, savedChannelCents)");
     expect(card).not.toContain("FUNNEL_MIN_DAILY_BUDGET_USD");
     // The projection and the clamp read ONE rule, in the alias-free lib, so they
     // carry real unit tests and can never disagree about the same bar.
     const floors = read("lib/channel-minimums.ts");
-    expect(floors).toContain("export function projectedPairTotalUsd");
+    expect(floors).toContain("export function projectedChannelTotalUsd");
     expect(floors).toContain("export function minimumChannelBudgetUsd");
-    expect(floors).toContain("savedPairCents - savedOwnCents");
-    expect(card).not.toContain("export function projectedPairTotalUsd");
+    expect(floors).toContain("savedChannelCents - savedOwnCents");
+    expect(card).not.toContain("export function projectedChannelTotalUsd");
   });
 
-  it("states a campaign that names no funnel or channel instead of guessing one", () => {
-    // The pre-funnel campaigns predate the model, so they point at no ceiling.
+  it("states a campaign that names no leg or channel instead of guessing one", () => {
+    // A campaign naming no leg points at no ceiling.
     const budget = read("lib/campaign-budget.ts");
     expect(budget).toContain("export function campaignBudgetScope");
-    expect(budget).toContain("if (!campaign.funnelKey || !campaign.featureSlug) return null;");
+    expect(budget).toContain("if (!campaign.legKey || !campaign.featureSlug) return null;");
     expect(card).toContain("campaignBudgetScope(campaign, channels)");
-    expect(card).toContain("predates the sales funnels");
+    expect(card).toContain("This campaign names no leg, so it has no budget of its own yet.");
   });
 
   it("prints its own copy on a refusal, never the api client's message", () => {
@@ -204,8 +206,10 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
   });
 
   it("shows exactly what persisted, so it cannot claim a ceiling billing normalized", () => {
-    expect(card).toContain('queryClient.setQueryData(["brandFunnelBudgets", brandId], set);');
-    expect(card).toContain("const persisted = scope ? campaignSavedCents(scope, offerId, set) : 0;");
+    // billing answers the write with the ONE row it stored; the field shows that,
+    // and the brand-wide set is re-read rather than patched.
+    expect(card).toContain("const persisted = row.dailyBudgetCents ?? 0;");
+    expect(card).toContain("invalidateCampaignMoney(queryClient);");
   });
 
   it("renders the budget in whole dollars, never cents", () => {
@@ -216,7 +220,7 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
 
   it("adds no unlisted query root", () => {
     const persist = read("lib/persist-cache.ts");
-    for (const root of ["campaign", "campaigns", "brandFunnelBudgets"]) {
+    for (const root of ["campaign", "campaigns", "brandCampaignBudgets"]) {
       expect(persist).toContain(`"${root}"`);
     }
   });

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  arrowId,
-  arrowRatePatch,
+  legId,
+  legRatePatch,
   formatRatePct,
   parseRateInput,
 } from "../src/lib/brand-conversion-rates";
 
-const stated = { fromStep: "Positive reply", toStep: "Meeting booked", ratePct: 30, stated: true, statedAt: "2026-09-25T00:00:00Z" };
-const unstated = { fromStep: "Meeting booked", toStep: "Meeting attended", ratePct: null, stated: false, statedAt: null };
+const stated = { fromStep: "Positive reply", toStep: "Meeting booked", ratePct: 30, stated: true };
+const unstated = { fromStep: "Meeting booked", toStep: "Meeting attended", ratePct: null, stated: false };
 
 describe("parseRateInput", () => {
   it("reads a blank field as a clear, a number as a rate, and refuses the rest", () => {
@@ -20,32 +20,32 @@ describe("parseRateInput", () => {
   });
 });
 
-describe("arrowRatePatch", () => {
-  it("sends only the arrows whose value moved", () => {
-    const { patch, invalid } = arrowRatePatch([stated, unstated], {
-      [arrowId(stated)]: "30",
-      [arrowId(unstated)]: "80",
+describe("legRatePatch", () => {
+  it("sends only the legs whose value moved", () => {
+    const { patch, invalid } = legRatePatch([stated, unstated], {
+      [legId(stated)]: "30",
+      [legId(unstated)]: "80",
     });
     expect(invalid).toEqual([]);
     expect(patch).toEqual([{ fromStep: "Meeting booked", toStep: "Meeting attended", ratePct: 80 }]);
   });
 
-  it("clears a stated arrow the form emptied, and never clears an unstated one", () => {
-    const { patch } = arrowRatePatch([stated, unstated], {
-      [arrowId(stated)]: "",
-      [arrowId(unstated)]: "",
+  it("clears a stated leg the form emptied, and never clears an unstated one", () => {
+    const { patch } = legRatePatch([stated, unstated], {
+      [legId(stated)]: "",
+      [legId(unstated)]: "",
     });
     expect(patch).toEqual([{ fromStep: "Positive reply", toStep: "Meeting booked", ratePct: null }]);
   });
 
-  it("omits an arrow the form never touched", () => {
-    expect(arrowRatePatch([stated, unstated], {}).patch).toEqual([]);
+  it("omits a leg the form never touched", () => {
+    expect(legRatePatch([stated, unstated], {}).patch).toEqual([]);
   });
 
   it("reports a value that is not a rate instead of dropping it", () => {
-    const { patch, invalid } = arrowRatePatch([stated], { [arrowId(stated)]: "lots" });
+    const { patch, invalid } = legRatePatch([stated], { [legId(stated)]: "lots" });
     expect(patch).toEqual([]);
-    expect(invalid).toEqual([arrowId(stated)]);
+    expect(invalid).toEqual([legId(stated)]);
   });
 });
 

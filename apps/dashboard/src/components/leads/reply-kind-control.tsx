@@ -3,7 +3,7 @@
 /**
  * What kind of reply arrived, stated by a person.
  *
- * Sits on the reply row of the funnel-progress panel. It is a PICKER rather than the
+ * Sits on the reply row of the step-progress panel. It is a PICKER rather than the
  * two buttons every other row carries, because a reply is not a yes/no: there are nine
  * kinds in four groups, and the whole reason the vocabulary split four ways on the
  * positive side is that "positive" alone cannot separate "interested but not the buyer"

@@ -40,7 +40,7 @@ export default function OrgOverviewPage() {
   useEffect(() => {
     if (landingBrandId) {
       // Same landing marker the edge redirect carries, so the no-cookie path deepens
-      // into a sole offer / sole funnel exactly like the returning-user path does.
+      // into a sole offer exactly like the returning-user path does.
       router.replace(landingHref(`/orgs/${orgId}/brands/${landingBrandId}`));
     }
   }, [landingBrandId, orgId, router]);

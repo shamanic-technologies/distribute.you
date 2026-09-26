@@ -4,10 +4,9 @@ import { hotLeadStats, type ShowcaseBrand } from "@/lib/start-proof";
 /**
  * The catalogue the SIGNED-OUT half of onboarding is built from.
  *
- * Everything the first three screens offer — which outcomes we can buy, which
- * channels deliver them, which revenue funnels those channels sell, and what a
- * day of each costs — is published by features-service on two public, org-less
- * routes. This handler is the one place that reads them, for two reasons:
+ * Everything the first screens offer — which outcomes we can buy, which channels
+ * deliver them through which legs, and what a day of each costs — is published by
+ * features-service on public, org-less routes. This handler is the one place that reads them, for two reasons:
  *
  *  - The visitor has no session yet. The dashboard's own `/api/v1` proxy sits
  *    inside `(authed)` and attaches a Clerk bearer, so it cannot serve a screen
@@ -105,14 +104,13 @@ async function readSoft<T>(label: string, path: string): Promise<T | null> {
 export interface StartProofPayload {
   hotLeads: { hotLeads: number; companies: number; medianCostUsd: number } | null;
   medianReturnPerDollar: number | null;
-  /** The named clients' funnels, exactly as features-service publishes them. */
+  /** The named clients, exactly as features-service publishes them. */
   showcase: ShowcaseBrand[];
 }
 
 /**
  * The fleet's proof: hot leads (the SAME derivation as the homepage hero, over
- * the per-brand ranked read), the fleet's median return, and the named clients'
- * funnels.
+ * the per-brand ranked read), the fleet's median return, and the named clients.
  */
 async function readProof(): Promise<StartProofPayload> {
   const [ranked, fleetReturn, showcase] = await Promise.all([
@@ -124,7 +122,8 @@ async function readProof(): Promise<StartProofPayload> {
       "return-on-spend",
       `features/return-on-spend?featureSlug=${CHANNEL_SLUG}&minSpendUsd=${MIN_SPEND_USD}`,
     ),
-    readSoft<{ brands?: ShowcaseBrand[] }>("showcase-funnels", "features/showcase-funnels"),
+    // The producer's route keeps its historical name; nothing here reads it as a funnel.
+    readSoft<{ brands?: ShowcaseBrand[] }>("showcase", "features/showcase-funnels"),
   ]);
 
   const median = fleetReturn?.measured ? fleetReturn.medianReturnPerDollar : null;
@@ -138,12 +137,8 @@ async function readProof(): Promise<StartProofPayload> {
 
 export async function GET() {
   try {
-    const [channelsRes, returnsRes, foundersRes, proof] = await Promise.all([
+    const [channelsRes, foundersRes, proof] = await Promise.all([
       readPublic("channels"),
-      // Median return on spend per (channel x funnel), with quartiles, over
-      // brands past the producer's own spend floor. The visitor sees it on the
-      // screen before signup, which is the whole argument for signing up.
-      readPublic("features/funnel-return-on-spend"),
       // The platform's own user count, the same public read the landing floors
       // into its trust strip. Third half that may legitimately be missing --
       // and the ONE read here that is not under `/v1`, see `readGatewayPublic`.
@@ -163,20 +158,6 @@ export async function GET() {
 
     const channels = await channelsRes.json();
 
-    // The returns are the one HALF that may legitimately be missing: the producer
-    // states a figure only for a pair enough brands have spent on, and a visitor
-    // with no numbers beside a channel is a weaker screen, not a broken one. So a
-    // failed read here degrades to "we have not measured this" rather than taking
-    // the whole catalogue down with it -- but it is logged, never swallowed.
-    let returns: unknown = null;
-    if (returnsRes.ok) {
-      returns = await returnsRes.json();
-    } else {
-      console.error(
-        `[start-catalogue] funnel-return-on-spend read failed: ${returnsRes.status}`,
-      );
-    }
-
     let founders: number | null = null;
     if (foundersRes.ok) {
       const data = (await foundersRes.json()) as { totalUsers?: number | null };
@@ -185,7 +166,7 @@ export async function GET() {
       console.error(`[start-catalogue] stats/users read failed: ${foundersRes.status}`);
     }
 
-    return NextResponse.json({ channels, returns, founders, proof });
+    return NextResponse.json({ channels, founders, proof });
   } catch (err) {
     console.error("[start-catalogue] catalogue read errored:", err);
     return NextResponse.json({ error: "Catalogue is unavailable" }, { status: 502 });

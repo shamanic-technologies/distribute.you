@@ -414,7 +414,7 @@ export function useTenantSwitcher() {
 
   // Picking a brand chooses a TENANT; where inside it you land is a resolution, so it
   // carries the same landing marker sign-in does and walks down to the sole offer / sole
-  // funnel (`useLandingDrilldown`). Coming back to a brand from Billing or the API-key
+  // offer (`useLandingDrilldown`). Coming back to a brand from Billing or the API-key
   // page — the switcher is the only way back, the back links are deleted — therefore
   // lands where signing in would, instead of always on the brand Overview.
   //

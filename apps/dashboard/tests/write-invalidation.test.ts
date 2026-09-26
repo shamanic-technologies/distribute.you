@@ -94,9 +94,10 @@ describe("CAMPAIGN_MONEY_ROOTS", () => {
     }
   });
 
-  it("does NOT invalidate the budget set the writers just wrote by hand", () => {
-    // Both writers `setQueryData` billing's own answer into it. Re-reading would
-    // replace a figure we have just been told with one a failed refetch can lose.
+  it("re-reads the campaign budget set, since billing answers a write with ONE row", () => {
+    // The set every surface reads cannot be patched from a single-row answer, so it
+    // is re-read. The retired per-funnel set is gone and must not come back.
+    expect(CAMPAIGN_MONEY_ROOTS).toContain("brandCampaignBudgets");
     expect(CAMPAIGN_MONEY_ROOTS).not.toContain("brandFunnelBudgets");
   });
 
@@ -134,7 +135,7 @@ describe("call sites", () => {
     ["components/audiences/engaged-leads-page.tsx", "invalidateLeadOutcome"],
     ["components/campaigns/campaign-controls-modal.tsx", "invalidateCampaignMoney"],
     ["components/settings/campaign-settings-card.tsx", "invalidateCampaignMoney"],
-    ["components/settings/brand-sales-funnels-card.tsx", "invalidateCampaignMoney"],
+    ["components/settings/offer-campaigns-card.tsx", "invalidateCampaignMoney"],
   ];
 
   for (const [path, fn] of sites) {

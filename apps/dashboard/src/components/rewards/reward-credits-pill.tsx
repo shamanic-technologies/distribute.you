@@ -55,7 +55,7 @@ export function RewardCreditsPill() {
   // The badge counts what is DUE on the brand in view, and nothing else. A count
   // of tasks the reader cannot act on from where they are is a nag rather than a
   // signal, so off a brand route there is no badge at all. This is the SAME key
-  // the funnel band polls, so the badge costs no request of its own.
+  // the reward band polls, so the badge costs no request of its own.
   const brandId = pathname.split("/")[4] === "brands" ? (pathname.split("/")[5] ?? null) : null;
   const { data: rewardTasks } = useBrandRewardTasks(brandId);
   const dueCount = rewardTasks?.rollup?.brand?.dueCount ?? 0;

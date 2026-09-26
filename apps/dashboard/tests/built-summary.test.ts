@@ -8,12 +8,11 @@ import { builtSubtitle, builtSummary, type BuiltInput } from "../src/lib/built-s
 
 const full: BuiltInput = {
   services: ["Fractional CFO", "Bookkeeping"],
-  funnels: [
+  campaigns: [
     {
-      key: "reply_meeting",
-      name: "Sales Meeting from Conversation",
-      steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
-      isPrimary: true,
+      key: "start_to_conversation::sales-cold-email-outreach",
+      label: "Positive reply",
+      channelName: "Sales Cold Email Outreach",
     },
   ],
   targetAudience: "Owners of US dental clinics with 2 to 10 chairs.",
@@ -24,7 +23,7 @@ describe("what the summary states", () => {
   it("reads in the order the visitor built it", () => {
     expect(builtSummary(full).sections.map((s) => s.kind)).toEqual([
       "services",
-      "funnels",
+      "campaigns",
       "targetAudience",
       "offer",
     ]);
@@ -32,12 +31,12 @@ describe("what the summary states", () => {
 
   it("DROPS a section with nothing in it rather than rendering it empty", () => {
     const s = builtSummary({ ...full, targetAudience: "", levers: [] });
-    expect(s.sections.map((x) => x.kind)).toEqual(["services", "funnels"]);
+    expect(s.sections.map((x) => x.kind)).toEqual(["services", "campaigns"]);
     expect(s.isEmpty).toBe(false);
   });
 
   it("says so when it has nothing at all, instead of a blank card", () => {
-    const s = builtSummary({ services: [], funnels: [], targetAudience: null, levers: [] });
+    const s = builtSummary({ services: [], campaigns: [], targetAudience: null, levers: [] });
     expect(s.sections).toEqual([]);
     expect(s.isEmpty).toBe(true);
   });
@@ -83,21 +82,21 @@ describe("what the summary states", () => {
 describe("the line under the heading", () => {
   it("states counts the visitor can check against the sections", () => {
     // The target audience is prose, not a quantity, so it is never counted.
-    expect(builtSubtitle(builtSummary(full))).toBe("2 services and 1 sales funnel");
+    expect(builtSubtitle(builtSummary(full))).toBe("2 services and 1 campaign");
   });
 
   it("is singular when there is one of something", () => {
     const one = builtSummary({ ...full, services: ["Only one"] });
-    expect(builtSubtitle(one)).toBe("1 service and 1 sales funnel");
+    expect(builtSubtitle(one)).toBe("1 service and 1 campaign");
   });
 
   it("counts only what is shown", () => {
-    const s = builtSummary({ ...full, funnels: [] });
+    const s = builtSummary({ ...full, campaigns: [] });
     expect(builtSubtitle(s)).toBe("2 services");
   });
 
   it("is null with nothing to count, so no sentence of zeroes is printed", () => {
-    expect(builtSubtitle(builtSummary({ services: [], funnels: [], targetAudience: "", levers: [] }))).toBeNull();
+    expect(builtSubtitle(builtSummary({ services: [], campaigns: [], targetAudience: "", levers: [] }))).toBeNull();
   });
 
   it("never counts the OFFER — its levers are prose, not a quantity", () => {

@@ -82,8 +82,8 @@ describe('Audiences page under a campaign', () => {
     // At most ONE narrower grain reaches features-service: a campaign already belongs
     // to exactly one offer, so stating both would be two answers to one question.
     expect(body).toContain('...(campaignId ? { campaignId } : { offerId })');
-    // A campaign names its FUNNEL; the brand-level read names neither it nor a goal.
-    expect(body).toContain('funnel: campaignFunnelKey');
+    // A campaign names its LEG; the brand-level read names neither it nor a goal.
+    expect(body).toContain('{ leg: campaign.legKey }');
     expect(body).toContain('brandLevelMoney');
   });
 

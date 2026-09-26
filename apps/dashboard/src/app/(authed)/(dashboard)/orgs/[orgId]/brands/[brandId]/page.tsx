@@ -64,7 +64,7 @@ function withActual(metric: PipelineActivityMetric, actual: number | null): Pipe
  * Brand overview AND offer overview — ONE component, scoped by the route.
  *
  * A BRAND is an identity (a name, a domain, a logo, a tracking snippet); an OFFER
- * is a proposition (what it promises, and the funnels it is sold through). So the
+ * is a proposition (what it promises, and the outcomes it is sold for). So the
  * two levels answer different questions with the same numbers, and this file is
  * mounted at both: `.../brands/[brandId]` with no `offerId`, and
  * `.../brands/[brandId]/offers/[offerId]`, which re-exports it. That is the repo's
@@ -81,8 +81,8 @@ function withActual(metric: PipelineActivityMetric, actual: number | null): Pipe
  *    the brand would skip the level that owns them.
  *
  * Neither level renders the per-day Outreach-activity bars: that chart labels the
- * steps of ONE sales funnel on ONE channel, and an offer, exactly like the brand
- * above it, is sold through several funnels and several channels at once. It is
+ * steps of ONE leg on ONE channel, and an offer, exactly like the brand above it, is
+ * sold through several legs and several channels at once. It is
  * the campaign Overview that names one of each. That is also why no
  * pipeline-activity read is made at offer scope at all: features-service serves it
  * with a null expected series (the daily budget is funded per brand, and there is
@@ -99,8 +99,7 @@ export default function BrandOverviewPage() {
   // scope, not a missing value.
   const offerId = params.offerId as string | undefined;
   // A sign-in landing is still being RESOLVED down the hierarchy while its marker is on
-  // the URL: this brand hands it to its offer if it sells exactly one, and that offer to
-  // its funnel if it is sold through exactly one. Gated on the marker, so every ordinary
+  // the URL: this brand hands it to its offer if it sells exactly one. Gated on the marker, so every ordinary
   // link into a brand or an offer lands where it points — see `lib/landing-drilldown.ts`.
   const { holding: landingHolding } = useLandingDrilldown({ orgId, brandId, offerId });
   const featureSlug = useSoleFeatureSlug();
@@ -269,7 +268,7 @@ export default function BrandOverviewPage() {
 
   // What this scope may spend TODAY — its RUNNING campaigns' ceilings. billing's own
   // `GET /brands/:id/daily-budget` used to answer this and it is status-BLIND:
-  // billing keys ceilings on (funnel x channel x offer) and stores no status, so
+  // billing keys ceilings on (offer x leg x channel) and stores no status, so
   // a brand running one campaign at $50 beside one paused at $10 answered $60,
   // and the cost card's denominator inherited the overstatement.
   //
@@ -300,7 +299,7 @@ export default function BrandOverviewPage() {
   // and it fed exactly two things: the Outcome line's forward projection, which the
   // Return-on-spend chart replaced, and a spend cap that priced the reassurance banner's
   // learning window in that goal's outcome. A brand has no goal — it runs several
-  // funnels at once — so the objective it was asked for came off the retired,
+  // legs at once — so the objective it was asked for came off the retired,
   // server-defaulted brand column. The banner is held to its own claim in TIME instead.
 
   // Real audience-level cost evidence from features-service. This replaces the
@@ -311,12 +310,10 @@ export default function BrandOverviewPage() {
     // is a different column than the one this card shows for a sale-terminating goal. The
     // card sorts and slices on the brand's metric instead (a brand has a handful of active
     // audiences, so the full list is cheap).
-    // NEITHER goal nor funnel: the brand-level read. features-service then prices every
-    // audience through the best-returning funnel the brand declared and sorts on return
-    // descending, which is the only honest answer here — a brand runs several funnels at
-    // once, so naming one would denominate the card in a single funnel's terms.
-    // `offerId` is a SCOPE, not a funnel or a goal: it narrows which audiences are
-    // priced, never the funnel they are priced through.
+    // NEITHER goal nor leg: the brand-level read. features-service then prices every
+    // audience on the best path it can reach and sorts on return descending — a brand
+    // runs several legs at once, so naming one would denominate the card in its terms.
+    // `offerId` is a SCOPE: it narrows which audiences are priced.
     () => fetchFeatureAudienceStats(featureSlug, { brandId, offerId }),
     { enabled: enabled && !!offerId, ...pollOptions },
   );
@@ -481,17 +478,17 @@ export default function BrandOverviewPage() {
         featureSlug={featureSlug}
         basePath={basePath}
         // Per-day outreach bars describe the cold-email channel, not the brand.
-        // A brand runs several channels and several funnels at once, so its
+        // A brand runs several channels and several legs at once, so its
         // Overview answers what the whole thing returned; the campaign Overview
         // keeps the chart for the one channel it runs.
         showActivityChart={false}
-        // Chart what came back per dollar, not the cumulative count of one funnel's
-        // signal — a brand runs several funnels and is judged on the return.
+        // Chart what came back per dollar, not the cumulative count of one leg's
+        // signal — a brand runs several legs and is judged on the return.
         showRoiTrend
         // The Top-3 audiences card is OFFER-level only. An audience is a set of
         // people picked for a proposition, so at brand level it would rank the
         // audiences of several offers against each other under one heading — the
-        // same reason the funnel step pairs are off this page.
+        // same reason the step pairs are off this page.
         costBottomCard={
           offerId ? (
             <TopAudiencesCard
@@ -506,11 +503,10 @@ export default function BrandOverviewPage() {
         }
         topRow={
           /* Brand-level stat row: what we sent, what the pipeline is worth, and
-             what it cost to produce one customer. The funnel-specific pairs
-             (Website Visits / cost per visit, and the goal's outcome pair) name
-             the steps of ONE sales funnel, so they live on the campaign Overview
-             — a brand sells through several funnels at once and the row above
-             them sums every one. */
+             what it cost to produce one customer. The step pairs (Website Visits /
+             cost per visit, and the outcome pair) name ONE leg's steps, so they live
+             on the campaign Overview — a brand runs several legs at once and the row
+             above them sums every one. */
           <OutreachStatCards
             stats={featureStats}
             spend={revenueRevealed ? data?.spend : null}
@@ -521,7 +517,7 @@ export default function BrandOverviewPage() {
             showEconomics
             economicsLearning={economicsLearning}
             paused={scopePaused}
-            showFunnelMetrics={false}
+            showStepMetrics={false}
           />
         }
       />

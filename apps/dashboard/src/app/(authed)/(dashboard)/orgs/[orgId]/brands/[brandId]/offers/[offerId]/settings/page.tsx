@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { DashboardPage } from "@/components/dashboard-page";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
-import { BrandSalesFunnelsCard } from "@/components/settings/brand-sales-funnels-card";
+import { OfferCampaignsCard } from "@/components/settings/offer-campaigns-card";
 import { listCampaignsByBrand } from "@/lib/api";
 import { coldEmailCampaignForOffer } from "@/lib/offer-levers-home";
 import { tenantBasePath } from "@/lib/offer-path";
@@ -15,18 +15,16 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 /**
  * Offer Settings — what this proposition promises, and how it is sold.
  *
- * Both cards used to sit on Brand Settings, from before the offer level existed.
- * They belong here: the 7 Hormozi user-fields are what the offer promises, and a
- * funnel's conversion rates, lifetime revenue and destinations are facts about
- * the proposition, not about the brand's identity. A brand selling a $200
- * self-serve plan and a $20k contract has two different answers to every one of
- * them, and the brand-scoped routes have exactly one place to put them.
+ * The 7 Hormozi user-fields are what the offer promises, and its lifetime revenue and
+ * its campaigns (one per leg x channel, each with a daily budget and a state) are
+ * facts about the proposition, not about the brand's identity. The conversion rates
+ * are the BRAND's, per leg, and live on Brand Settings.
  *
  * Both cards take the offer explicitly rather than reading the route themselves,
  * so the page states the scope once and neither card can drift onto another one.
  *
  * Offer identity leads: its name and the mark it wears. Everything under it (the
- * funnels it is sold through, what it promises) is about a proposition a reader
+ * campaigns that sell it, what it promises) is about a proposition a reader
  * has to be able to name first, so the page states WHICH offer this is before it
  * states anything about it.
  *
@@ -34,8 +32,8 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * they are the words that channel's emails are written around. They are stored on
  * the offer, so that page is a window onto this offer's answer rather than a
  * second copy of it. This page keeps the SAME editor exactly while the offer has
- * no cold email campaign: an offer is born at signup and a campaign is only
- * provisioned once a funnel is funded, so without the fallback a brand that has
+ * no cold email campaign: an offer is born at signup and a campaign only exists once
+ * somebody starts one, so without the fallback a brand that has
  * not launched yet would have nowhere at all to state what it promises. One
  * editable card at a time, and never zero.
  *
@@ -69,7 +67,7 @@ export default function OfferSettingsPage() {
       <OfferIdentityCard brandId={brandId} offerId={offerId} />
 
       <div className="mt-10">
-        <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
+        <OfferCampaignsCard brandId={brandId} offerId={offerId} />
       </div>
 
       {!isPending && (

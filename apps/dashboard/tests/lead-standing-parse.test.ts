@@ -47,9 +47,8 @@ describe("`standing` reaches the board through the real parser", () => {
     // The two the board dereferences...
     expect(standing?.state).toBe("sales_interest");
     expect(standing?.signal).toBe("measured_visit");
-    // ...and the eight it does not, which must not be stripped either: they are what
+    // ...and the ones it does not, which must not be stripped either: they are what
     // a later surface reads, and a stripped field reads as "the producer sent none".
-    expect(standing?.funnelKey).toBe("form_magnet");
     expect(standing?.entryStep).toBe("website_visit");
     expect(standing?.entryMeasure).toBe("delivery_click");
     expect(standing?.reachedEntryStep).toBe(true);

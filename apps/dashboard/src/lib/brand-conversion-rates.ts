@@ -1,29 +1,27 @@
 /**
- * The brand-grain conversion rates, as the Brand Settings section and the
- * funnel-activation modal edit them. Pure and alias-free (its only import is
+ * The brand-grain conversion rates, as the Brand Settings section edits them. Pure and alias-free (its only import is
  * type-only and erased at build), so it carries real unit tests — keep it that way.
  *
  * Owner-decided 2026-09-25: a conversion rate describes how a BRAND sells, so
- * there is one stated rate per (brand, funnel, arrow), shared by every offer
- * selling that funnel. The number the product prices on is decided upstream —
+ * there is one stated rate per (brand, leg), shared by every offer. The number the product prices on is decided upstream —
  * measured when enough people reached the step, else what the brand stated, else
  * the cross-org median — and this module never re-derives it. It only turns what
  * a person typed into the partial write brand-service expects.
  */
 
-import type { BrandArrowRatePatch, EffectiveArrowRate } from "./api";
+import type { BrandLegRatePatch, EffectiveLegRate } from "./api";
 
-/** What the brand has STATED for one arrow, whichever read it came from. */
-export type StatedArrowRate = {
+/** What the brand has STATED for one leg, whichever read it came from. */
+export type StatedLegRate = {
   fromStep: string;
   toStep: string;
   stated: boolean;
   ratePct: number | null;
 };
 
-/** One arrow's identity, as brand-service names it: its two step labels. */
-export function arrowId(arrow: { fromStep: string; toStep: string }): string {
-  return `${arrow.fromStep}\u0000${arrow.toStep}`;
+/** One leg's identity, as brand-service names it: its two step labels. */
+export function legId(leg: { fromStep: string; toStep: string }): string {
+  return `${leg.fromStep}\u0000${leg.toStep}`;
 }
 
 /**
@@ -41,28 +39,28 @@ export function parseRateInput(raw: string): number | null | undefined {
 }
 
 /**
- * The PARTIAL write: exactly the arrows whose typed value differs from what the
- * brand has stated. An untouched arrow is omitted, so editing one rate never
- * restates the others from a possibly stale copy; a field emptied on an arrow the
+ * The PARTIAL write: exactly the legs whose typed value differs from what the
+ * brand has stated. An untouched leg is omitted, so editing one rate never
+ * restates the others from a possibly stale copy; a field emptied on an leg the
  * brand had stated sends `null`, which clears it. A draft that is not a rate is
  * reported, not dropped, so the form can say which field is wrong.
  */
-export function arrowRatePatch(
-  arrows: StatedArrowRate[],
+export function legRatePatch(
+  legs: StatedLegRate[],
   drafts: Record<string, string>,
-): { patch: BrandArrowRatePatch[]; invalid: string[] } {
-  const patch: BrandArrowRatePatch[] = [];
+): { patch: BrandLegRatePatch[]; invalid: string[] } {
+  const patch: BrandLegRatePatch[] = [];
   const invalid: string[] = [];
-  for (const arrow of arrows) {
-    const id = arrowId(arrow);
+  for (const leg of legs) {
+    const id = legId(leg);
     if (!(id in drafts)) continue;
     const next = parseRateInput(drafts[id]);
     if (next === undefined) {
       invalid.push(id);
       continue;
     }
-    const current = arrow.stated ? arrow.ratePct : null;
-    if (next !== current) patch.push({ fromStep: arrow.fromStep, toStep: arrow.toStep, ratePct: next });
+    const current = leg.stated ? leg.ratePct : null;
+    if (next !== current) patch.push({ fromStep: leg.fromStep, toStep: leg.toStep, ratePct: next });
   }
   return { patch, invalid };
 }
@@ -74,23 +72,23 @@ export function formatRatePct(pct: number): string {
 }
 
 /** The brand's own statement, read off the effective-rate row that carries it. */
-export function statedFromEffective(arrow: EffectiveArrowRate): StatedArrowRate {
+export function statedFromEffective(leg: EffectiveLegRate): StatedLegRate {
   return {
-    fromStep: arrow.fromStep,
-    toStep: arrow.toStep,
-    stated: arrow.manualRatePct !== null,
-    ratePct: arrow.manualRatePct,
+    fromStep: leg.fromStep,
+    toStep: leg.toStep,
+    stated: leg.manualRatePct !== null,
+    ratePct: leg.manualRatePct,
   };
 }
 
 /**
  * The value a rate field OPENS with: the brand's own statement, else the
  * cross-org median as a prefill. A prefill is only shown; it is written only if
- * the person edits the field or confirms it (see `arrowRatePatch`, which sends
- * nothing for an arrow the form never touched).
+ * the person edits the field or confirms it (see `legRatePatch`, which sends
+ * nothing for an leg the form never touched).
  */
-export function rateFieldSeed(arrow: EffectiveArrowRate): string {
-  const value = arrow.manualRatePct ?? arrow.median.ratePct;
+export function rateFieldSeed(leg: EffectiveLegRate): string {
+  const value = leg.manualRatePct ?? leg.median.ratePct;
   return value === null ? "" : String(Math.round(value * 10) / 10);
 }
 
@@ -99,26 +97,17 @@ export function rateFieldSeed(arrow: EffectiveArrowRate): string {
  * producer's `source`; a source this app does not know yet is named as it came,
  * rather than dressed as one it does.
  */
-export function rateSourceLabel(arrow: EffectiveArrowRate): string {
-  switch (arrow.source) {
+export function rateSourceLabel(leg: EffectiveLegRate): string {
+  switch (leg.source) {
     case "measured":
-      return `Measured on ${arrow.measured.fromReached ?? 0} leads`;
+      return `Measured on ${leg.measured.fromReached ?? 0} leads`;
     case "manual":
       return "Your value";
     case "median":
-      return `Median of ${arrow.median.brandCount} ${arrow.median.brandCount === 1 ? "client" : "clients"}`;
+      return `Median of ${leg.median.brandCount} ${leg.median.brandCount === 1 ? "client" : "clients"}`;
     case null:
       return "No rate yet";
     default:
-      return arrow.source;
+      return leg.source;
   }
-}
-
-/**
- * The arrows of a funnel that have nothing MEASURED behind them, i.e. whose number
- * rests on a statement or a median. This is what the activation modal asks about;
- * a funnel whose every arrow is measured has nothing to confirm.
- */
-export function unmeasuredArrows(arrows: EffectiveArrowRate[]): EffectiveArrowRate[] {
-  return arrows.filter((a) => a.source !== "measured");
 }

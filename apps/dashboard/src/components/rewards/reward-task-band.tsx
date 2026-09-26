@@ -25,7 +25,7 @@ import { daysSinceChanged, formatReward, type RewardTask } from "@/lib/reward-ta
  * client-service states HOW it knows when the numbers last changed. When it
  * compared two readings itself the age is certain and we print it. When the
  * baseline is brand-service's own last-touched timestamp — which also moves
- * when a funnel is merely switched off and on — there is no honest day count,
+ * for reasons that are not a refresh — there is no honest day count,
  * so the band says the refresh is owed and stops there. `daysSinceChanged`
  * holds that rule, with real unit tests.
  *

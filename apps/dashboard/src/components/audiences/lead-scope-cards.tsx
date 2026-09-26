@@ -7,17 +7,14 @@ import { audienceDetailHref } from "@/lib/audience-detail-href";
 import { BrandLogo } from "@/components/brand-logo";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useOfferImages } from "@/lib/use-offer-images";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
+import { LegMark } from "@/components/marks/leg-mark";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
-import { campaignLegFor } from "@/lib/campaign-leg";
-import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
-import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
-import { SALES_FUNNELS } from "@/lib/sales-funnels";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor } from "@/lib/legs";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { WorkflowModelCell, WorkflowTemplateCell } from "@/components/workflows/workflow-cells";
 import type { LeadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
@@ -26,17 +23,15 @@ import type { LeadCampaignAudience } from "@/components/audiences/lead-campaign-
 /**
  * The hierarchy the open lead sits in, ONE CARD PER LEVEL, stacked.
  *
- * Brand > Offer > Funnel > Funnel leg > Channel > Audience is how the product is sold,
- * and a panel that nests all six inside each other reads as one box with a paragraph in
- * it. Each level a person's campaigns AGREE on gets its own card here — mark, title, one
+ * Brand > Offer > Leg > Channel > Audience is how the product is sold, and a panel that
+ * nests all of them inside each other reads as one box with a paragraph in it. Each level a person's campaigns AGREE on gets its own card here — mark, title, one
  * line saying what it is, and the link to its own page — and only what varies is left to
  * the nested list underneath.
  *
  * WHICH levels those are is `leadPanelScope`'s answer, computed off the person's own
- * cards rather than off the route: a funnel-scoped page serves the brand's rows, so the
- * route's funnel is not a fact about everyone on it. In the ordinary case the two agree,
- * which is why a campaign-scoped panel draws all six and a brand-scoped one draws Brand
- * alone.
+ * cards rather than off the route: an offer-scoped page serves the brand's rows, so the
+ * route's offer is not a fact about everyone on it. A campaign-scoped panel draws every
+ * level and a brand-scoped one draws Brand alone.
  *
  * A level we cannot resolve renders NOTHING rather than a card reading `-`: every one of
  * these is fail-soft upstream, so an absent value means "we could not say" as often as
@@ -44,11 +39,9 @@ import type { LeadCampaignAudience } from "@/components/audiences/lead-campaign-
  */
 export function LeadScopeCards({
   offer,
-  funnelKey,
   sole,
 }: {
   offer: { id: string; name: string | null } | null;
-  funnelKey: string | null;
   /** The leg, channel and audience are facts about the PERSON only when they have one
    *  campaign. With several, each card in the list below states its own. */
   sole: {
@@ -70,25 +63,18 @@ export function LeadScopeCards({
   const brandId = params.brandId as string;
   const { displayBrand } = useTenantSwitcher();
   const channels = useAcquisitionChannels();
-  const legIndex = useFunnelLegIndex();
+  const catalogue = useLegCatalogue();
   // The offer arrives from lead-service as `{id, name}` and carries no image, so the
   // mark is resolved from the brand's own offer list — a lookup over a query this page
   // already polls. See `lib/offer-image.ts`.
   const offerImage = useOfferImages(brandId);
 
-  // A lookup that ANSWERS rather than one that throws on a key it does not carry: the
-  // key here comes off a campaign row, so a funnel we cannot name renders no card.
-  const funnel = funnelKey ? SALES_FUNNELS.find((f) => f.key === funnelKey) ?? null : null;
   const channel = sole?.featureSlug
     ? acquisitionChannelForFeatureSlug(sole.featureSlug, channels)
     : null;
-  // Same precedence as `CampaignIdentity`, so a campaign cannot read as one leg here and
-  // another in the top bar above it: the campaign's own stated leg wins, the derivation
-  // from the channel's legs is the fallback for every campaign predating the column.
-  const leg =
-    funnel && sole
-      ? statedCampaignLeg(funnel, sole.legKey, legIndex) ?? campaignLegFor(funnel, channel?.legs)
-      : null;
+  // The same lookup `CampaignIdentity` makes, so a campaign cannot read as one leg here
+  // and another in the top bar above it.
+  const leg = sole ? legFor(catalogue, sole.legKey) : null;
   const offerPath = tenantBasePath(orgId, brandId, offer?.id ?? null);
 
   return (
@@ -123,28 +109,14 @@ export function LeadScopeCards({
           linkLabel="View offer"
         />
       )}
-      {funnel && (
+      {leg && (
         <ScopeCard
-          heading="Sales funnel"
-          mark={<SalesFunnelMark def={funnel} size="sm" />}
-          title={funnel.name}
-          unnamed={null}
-          /* The steps in the funnel's own words — the same ones the Sales Funnels
-             settings card reads, never a second vocabulary. */
-          subtitle={funnel.steps.join(" → ")}
-          href={null}
-          linkLabel={null}
-        />
-      )}
-      {leg && funnel && (
-        <ScopeCard
-          heading="Funnel leg"
-          mark={<FunnelLegMark fromKey={leg.fromKey} toKey={leg.toKey} size="sm" />}
+          heading="Leg"
+          mark={<LegMark fromKey={leg.fromKey} toKey={leg.toKey} size="sm" />}
           title={leg.label}
           unnamed={null}
-          /* A funnel is sold leg by leg, so the arrow is what the campaign actually
-             buys. Neither the funnel nor the leg has a page of its own. */
-          subtitle="The step of the funnel this campaign works."
+          /* The move this campaign buys. A leg has no page of its own. */
+          subtitle="The step this campaign moves a lead to."
           href={null}
           linkLabel={null}
         />

@@ -6,10 +6,10 @@ import { getBrandRewardTasks, type BrandRewardTasks } from "@/lib/api";
 /**
  * The brand's reward-task ledger, on ONE key every surface shares.
  *
- * One read per brand answers the funnel band, the per-offer due count and the
+ * One read per brand answers the reward band, the per-offer due count and the
  * badge on the top-bar pill, so drilling from a brand into an offer into a
- * funnel costs no further request and the three can never state different counts
- * for one brand. A per-funnel read would be one request per row on a brand that
+ * offer costs no further request and the three can never state different counts
+ * for one brand. A per-offer read would be one request per row on a brand that
  * sells through several.
  *
  * The root is allowlisted in `PERSISTABLE_QUERY_ROOTS`, so it paints from disk

@@ -57,7 +57,7 @@ export function OffersPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Offers</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Everything this brand sells. Each offer has its own funnels, audiences and
+            Everything this brand sells. Each offer has its own campaigns, audiences and
             campaigns, and returns its own number.
           </p>
         </div>

@@ -35,12 +35,9 @@ import {
   type FeatureAudienceStatsGoal,
 } from "@/lib/api";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
-import { campaignLegFor } from "@/lib/campaign-leg";
-import { statedCampaignLeg } from "@/lib/stated-campaign-leg";
-import { useFunnelLegIndex } from "@/lib/use-funnel-leg-index";
+import { useCampaignLeg } from "@/lib/use-leg-catalogue";
 import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
-import { goalForFunnelKey, normalizeSalesFunnelKey, salesFunnelByKey } from "@/lib/sales-funnels";
-import { stepsFor } from "@/lib/goal-steps";
+import { goalForLeg, stepsFor } from "@/lib/goal-steps";
 import { isLearning } from "@/lib/learning-threshold";
 import { audienceLearningFor, useAudienceLearning } from "@/lib/use-audience-learning";
 import { LearningTag } from "@/components/learning-tag";
@@ -322,9 +319,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // Campaign identity, on the key the campaign Overview + the header page context
   // already poll — React Query serves all three from one request.
   const campaign = scopedCampaign;
-  // The funnel a campaign states it sells — the canonical way to price its columns.
-  // Absent on the brand route (no campaign) and on a campaign that predates the model.
-  const campaignFunnelKey = campaign?.funnelKey ?? null;
+  // The leg a campaign performs — the canonical way to price its columns. Absent on the
+  // brand route (no campaign). Both reads behind it are already in flight.
+  const campaignLeg = useCampaignLeg(campaign);
   // A campaign that is STOPPED is not gathering the outcomes the learning bar waits for,
   // so every withheld figure below reads `Paused` rather than `Learning` — the same word
   // its status pill uses, so one campaign is not described two ways. Which figures are
@@ -333,22 +330,19 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // work these audiences and no single status answers for the table.
   const campaignPaused = campaign != null && !isRunningStatus(campaign.status);
   // Off a campaign route the same question is asked of the SCOPE: this table's rows are
-  // an OFFER's audiences (a set is picked for a proposition, never for a funnel), so on a
-  // brand, offer or funnel page it answers for the offer's campaigns — the verdict the
+  // an OFFER's audiences (a set is picked for a proposition), so on a brand or offer page
+  // it answers for the offer's campaigns — the verdict the
   // pill on that page's own header already renders. `none` (a scope with no campaign at
   // all) is unmeasured rather than stopped, so it keeps the word it read before.
   const { paused: scopePaused } = useScopePaused(brandId, { offerId });
   const withheldPaused = campaignPaused || scopePaused;
 
-  // The CAMPAIGN's own goal, from campaign-service, else the goal its own FUNNEL
-  // implies. Never the brand column: it is retired (NOT NULL with a server default) and
-  // a brand runs several funnels anyway, so at brand level the money columns render and
-  // none of this is read.
+  // The CAMPAIGN's own goal, from campaign-service, else the goal its own LEG lands on.
+  // Never the brand column: it is retired, and at brand level the money columns render
+  // and none of this is read.
   const optimizationGoal: BrandOptimizationGoal = campaign?.goal
     ? optimizationGoalForRuntimeGoal(campaign.goal)
-    : campaignFunnelKey
-      ? goalForFunnelKey(campaignFunnelKey)
-      : "sales_meetings";
+    : (goalForLeg(campaignLeg) ?? "sales_meetings");
 
   // Conversion-tracker liveness (lead-service pixel). status: "not_set_up" (no ping,
   // no event) | "live_waiting" (tag pinging, no conversion yet) | "live" (real
@@ -369,35 +363,11 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // (left of Cost per click), and default the sort to CPPR asc. BOTH reply goals qualify:
   // positive_replies is the goal whose outcome IS the reply, so gating on meetingBooked alone
   // would hide the reply columns on the very brand that optimises for replies.
-  // WHICH steps this table's columns describe: the CAMPAIGN's own funnel when it states
-  // one, the goal otherwise. Keyed on the funnel because the goal cannot separate the two
-  // meeting funnels — `reply_meeting` and `visit_meeting` both answer to `sales_meetings`,
-  // so a goal-keyed table printed "Website Visits / Cost per website visit" on a campaign
-  // whose funnel starts at a positive reply, and hid the reply pair on one that starts at a
-  // click. Same single source the stat cards read (`stepsFor`), so a campaign's columns and
-  // its cards cannot describe two different funnels.
-  const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);
-  const hasStep = (key: string) => funnelStepsHere.some((step) => step.key === key);
-  // WHICH ARROW of that funnel this campaign performs. A funnel is sold leg by leg, so
-  // the funnel's whole column set overstates almost every campaign: cold email puts a
-  // lead onto the visit-led funnel and does nothing else, while a human fills the form —
-  // so a `visit_form` campaign was reading "Cost per form submission / Form submissions"
-  // for an arrow it never runs, which has its own page under the funnel. Same precedence
-  // every other leg-aware surface uses: the campaign's own stated leg wins, the
-  // derivation from the channel's legs is the fallback for campaigns predating the
-  // column. Both reads are already in flight (the campaign row and the platform leg
-  // catalogue), so this costs no request.
-  const legIndex = useFunnelLegIndex();
-  const campaignFunnel = campaignFunnelKey
-    ? salesFunnelByKey(normalizeSalesFunnelKey(campaignFunnelKey))
-    : null;
-  const campaignLeg = useMemo(() => {
-    if (!campaignFunnel || !featureSlug) return null;
-    const stated = statedCampaignLeg(campaignFunnel, campaign?.legKey, legIndex);
-    if (stated) return stated;
-    const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
-    return campaignLegFor(campaignFunnel, channel?.legs);
-  }, [campaignFunnel, featureSlug, channels, campaign?.legKey, legIndex]);
+  // WHICH steps this table's columns describe: the CAMPAIGN's own leg when it states one,
+  // the goal otherwise. Same single source the stat cards read (`stepsFor`), so a
+  // campaign's columns and its cards cannot describe two different steps.
+  const scopeSteps = stepsFor(optimizationGoal, campaignLeg);
+  const hasStep = (key: string) => scopeSteps.some((step) => step.key === key);
   // The column pair this leg earns, and whether it can carry a number for this brand.
   // A leg we cannot place, one whose step features-service prices no per-audience column
   // for (both meeting steps), or a tracked pair on a brand with no tracker installed all
@@ -407,26 +377,25 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   const legScoped = legPairIsAvailable(legPair, trackerSetUp);
   const showMeetingCols = audienceStatsGoal === "meetingBooked" || audienceStatsGoal === "positiveReply";
   // signups goal → surface the REAL per-audience signup outcome: "Cost per signup"
-  // (CPS) + "Signups" columns FIRST (after Audience, before the website-visit funnel),
+  // (CPS) + "Signups" columns FIRST (after Audience, before the website-visit pair),
   // default sort CPS asc. Gated on the conversion tracker being set up — with no tracker
   // there are no signups to attribute, so the columns would only ever show 0 / "-".
   // (website_visits stays visit-only, no CPS.)
   /**
    * At BRAND level the table states MONEY — return per dollar and the cost of winning a
-   * customer — and drops every funnel-scoped column.
+   * customer — and drops every step-scoped column.
    *
-   * A brand sells through several sales funnels at once, so "Positive replies" / its cost
-   * and "Website Visits" / "Cost per website visit" each name the steps of ONE of them
-   * while the rows beside them are attributed across all of them. The campaign level is
-   * where those belong: a campaign sells exactly one funnel, so its own steps ARE what
-   * it buys — and that page keeps every column it has today.
+   * A brand runs several legs at once, so "Positive replies" / its cost and "Website
+   * Visits" / "Cost per website visit" each name ONE leg's step while the rows beside them
+   * are attributed across all of them. The campaign level is where those belong: a
+   * campaign performs exactly one leg, so its own steps ARE what it buys.
    */
   const brandLevelMoney = !campaignScoped;
   // Which audiences the scope's campaigns have priced, and which are still learning. An
   // audience clears the bar the moment ONE of those campaigns has produced enough
   // outcomes FROM IT — the same rule the money above this table follows, one level down.
   // Only read where the money columns render (brand and offer); a campaign-scoped table
-  // states its own funnel's per-outcome costs, which carry their own gate.
+  // states its own leg's per-outcome costs, which carry their own gate.
   // Read only where the money columns render — brand and offer grain — and the brand
   // list has always been pinned to its one feature, so it keeps it.
   const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(
@@ -435,45 +404,34 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     offerId,
   );
   // Under a campaign whose leg we could place, the leg's OWN pair is the only one that
-  // renders — the funnel-wide gate below is what a brand-level table and a campaign with
+  // renders — the goal-keyed gate below is what a brand-level table and a campaign with
   // an unplaceable leg keep.
   const showSignupCols = legScoped
     ? legPair === "signup"
     : optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney;
   // form_submissions goal → surface the real per-audience outcome: "Cost per form
   // submission" (CPFS) + "Form submissions" columns FIRST (before the website-visit
-  // funnel), default sort CPFS asc. Also gated on the tracker being set up.
+  // pair), default sort CPFS asc. Also gated on the tracker being set up.
   const showFormSubmissionCols = legScoped
     ? legPair === "formSubmission"
     : optimizationGoal === "form_submissions" && trackerSetUp && !brandLevelMoney;
   // website_purchase (multi-step close) + sales (combined) both terminate in a real
   // per-audience SALE outcome: "Cost per sale" (CP Sale) + "Sales" columns FIRST
-  // (before the website-visit funnel), default sort CP Sale asc. Gated on the tracker
+  // (before the website-visit pair), default sort CP Sale asc. Gated on the tracker
   // being set up — with no tracker there are no sales to attribute.
   const showSaleCols = legScoped
     ? legPair === "sale"
     : (optimizationGoal === "sales" || optimizationGoal === "website_purchase") &&
       trackerSetUp &&
       !brandLevelMoney;
-  // The combined `sales` goal wins a paying client via EITHER the visit→paid OR the
-  // reply→paid path, so its ranking surfaces BOTH funnels: the reply funnel (Positive
-  // replies + CPPR) ALONGSIDE the website-visit funnel + the Sale outcome — mirroring the
-  // sales-meetings reply columns. website_purchase stays visit-only (single close path).
-  // A reply pair renders when a positive reply is ON the steps — the reply→meeting funnel,
-  // the reply-terminal goal, and the combined `sales` goal (which wins a client through
-  // either path, so it surfaces both signals).
+  // The combined `sales` goal wins a paying client via EITHER the visit OR the reply path,
+  // so its ranking surfaces both pairs. A reply pair renders when a positive reply is ON
+  // the steps.
   const showReplyCols = legScoped
     ? legPair === "reply"
     : (hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney;
-  // The website-visit pair is funnel-scoped like every pair above it: it names the
-  // first step of the visit-led funnels while the rows beside it are attributed across
-  // every funnel the brand sells through. Off at brand level for that reason, and off
-  // for positive_replies because a click is not in the reply→paid funnel at all.
-  // ...and the visit pair only when a click onto the site is on the funnel. It used to read
-  // `!isPositiveReplies`, which is the retired GOAL's answer: true for every campaign whose
-  // goal is not the reply-terminal one, including the reply→meeting funnel that buys no
-  // visit at all. That is the sibling-condition trap — a pair already gated on something
-  // else reads as done and survives the sweep that turns its siblings off.
+  // The website-visit pair is step-scoped like every pair above it, off at brand level,
+  // and on only when a website visit is one of the steps.
   const showVisitCols = legScoped
     ? legPair === "visit"
     : hasStep("website_visits") && !brandLevelMoney;
@@ -486,9 +444,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // At brand level the table leads with RETURN, highest first — cost per outcome ranks
   // by cheapness, so an audience converting to nothing would outrank an expensive one
   // that pays. Every other column here is a cost, where cheapest-first is right.
-  // ...and it leads with the cost column that prices THAT arrow, not the funnel's
-  // terminal outcome: a campaign buying website visits ranked its audiences on cost per
-  // form submission, a price it has nothing to do with. `legRankMetric` answers null for
+  // ...and it leads with the cost column that prices THAT leg: a campaign buying website
+  // visits must not rank its audiences on cost per form submission. `legRankMetric` answers null for
   // every leg the gates above could not scope, which falls back to the goal-keyed column
   // these surfaces read before legs existed.
   const defaultSortCol: SortCol = brandLevelMoney
@@ -502,7 +459,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     setSortDir(defaultSortDir);
   }, [defaultSortCol, defaultSortDir, hasUserSorted]);
   // Visit-driven outcome goals (signups / form_submissions) present the outcome cost
-  // FIRST but the website-visit funnel below it — so break ties on the cheapest
+  // FIRST but the website-visit pair below it — so break ties on the cheapest
   // website-visit cost (CPC) ASC: two audiences with the same (or missing) outcome
   // cost then rank by cheapest visit. Only applies while sorting by the outcome-cost
   // column itself (CPS / CPFS); a manual sort on any other header is single-key.
@@ -531,21 +488,20 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
       "featureAudienceStats",
       featureSlug,
       brandId,
-      brandLevelMoney ? "brand-return" : campaignFunnelKey ?? audienceStatsGoal,
+      brandLevelMoney ? "brand-return" : campaign?.legKey ?? audienceStatsGoal,
       "all-statuses",
       campaignScopeKey,
     ],
     () =>
-      // Brand level names NEITHER goal nor funnel — features-service prices every
-      // audience through the best-returning funnel the brand declared and sorts on
-      // return descending. Under a campaign the funnel is stated, because a campaign
-      // sells exactly one and the goal cannot separate the two meeting funnels.
+      // Brand level names NEITHER goal nor leg — features-service prices every audience
+      // on the best path it can reach and sorts on return descending. Under a campaign
+      // the leg is stated, because a campaign performs exactly one.
       fetchFeatureAudienceStats(featureSlug as string, {
         brandId,
         ...(brandLevelMoney
           ? {}
-          : campaignFunnelKey
-            ? { funnel: campaignFunnelKey }
+          : campaign?.legKey
+            ? { leg: campaign.legKey }
             : { goal: audienceStatsGoal }),
         statuses: "active,paused,archived",
         // At most one narrower grain reaches features-service: a campaign already
@@ -859,7 +815,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                     </>
                   )}
                   {/* website_purchase / sales goals: the SALE outcome columns lead (cost then
-                      count), before the reply + website-visit funnels. Cost per sale is the default sort. */}
+                      count), before the reply + website-visit pairs. Cost per sale is the default sort. */}
                   {showSaleCols && (
                     <>
                       <SortHeader
@@ -887,7 +843,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                     </>
                   )}
                   {/* signups goal: the outcome columns lead (cost then count), before the
-                      website-visit funnel. Cost per signup is the default sort (cheapest first). */}
+                      website-visit pair. Cost per signup is the default sort (cheapest first). */}
                   {showSignupCols && (
                     <>
                       <SortHeader
@@ -902,7 +858,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                     </>
                   )}
                   {/* form_submissions goal: outcome columns lead (cost then count), before the
-                      website-visit funnel. Cost per form submission is the default sort. */}
+                      website-visit pair. Cost per form submission is the default sort. */}
                   {showFormSubmissionCols && (
                     <>
                       <SortHeader
@@ -931,7 +887,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                   )}
                   {/* Realized spend, campaign-scoped. It sits directly left of Outreach
                       here, which is where the brand table already carries it — every
-                      funnel pair above is off at brand level, so the two tables print
+                      step pair above is off at brand level, so the two tables print
                       this column in the same place. Same served field, same net basis
                       billing charges; the browser divides nothing to get it. */}
                   {campaignScoped && (
@@ -1034,7 +990,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                         </>
                       )}
                       {/* website_purchase / sales outcome cells (cost then count), before the
-                          reply + website-visit funnels. Sale fields are optional on the wire —
+                          reply + website-visit pairs. Sale fields are optional on the wire —
                           render "-" until a sale is attributed for the audience. */}
                       {showSaleCols && (
                         <>
@@ -1096,7 +1052,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           </td>
                         </>
                       )}
-                      {/* signups outcome cells (cost then count), before the website-visit funnel.
+                      {/* signups outcome cells (cost then count), before the website-visit pair.
                           Signup fields are optional on the wire — render "-" until the producer ships. */}
                       {showSignupCols && (
                         <>
@@ -1122,7 +1078,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           </td>
                         </>
                       )}
-                      {/* form_submissions outcome cells (cost then count), before the website-visit funnel. */}
+                      {/* form_submissions outcome cells (cost then count), before the website-visit pair. */}
                       {showFormSubmissionCols && (
                         <>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">

@@ -5,7 +5,7 @@ import { join } from "node:path";
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 const PAGE = read("src/components/audiences/engaged-leads-page.tsx");
-const SECTION = read("src/components/leads/lead-funnel-stage-section.tsx");
+const SECTION = read("src/components/leads/lead-stage-section.tsx");
 const LIB = read("src/lib/lead-close-won.ts");
 // The FORM the cell mounts. It moved out of the page when the board grew its own Close
 // won column: two copies of "whose win was it, and what was it worth" is how one
@@ -130,31 +130,29 @@ describe("the Close won column", () => {
   });
 });
 
-describe("the deal-value field opens with the brand's own stated lifetime revenue", () => {
-  it("resolves it per lead, off the lead's OWN funnel", () => {
-    const resolver = sliceTo(PAGE, "const prefillUsdFor = useCallback(", "const stateCloseWon");
-    expect(resolver).toContain("saleValuePrefillUsd(salesFunnelsData?.funnels, closeWonFunnelKey(lead))");
+describe("the deal-value field opens with the offer's own stated lifetime revenue", () => {
+  it("resolves it off the offer's economics", () => {
+    const resolver = sliceTo(PAGE, "const prefillUsdFor = useCallback(", "[offerEconomics]");
+    expect(resolver).toContain("saleValuePrefillUsd(offerEconomics?.lifetimeRevenueUsd)");
   });
 
-  it("reads the OFFER's funnels, on the key the Sales Funnels card already polls", () => {
-    // A lifetime revenue is a property of (offer, funnel), so a brand-wide read would
-    // open the field with what a DIFFERENT proposition is worth. The shared key means
-    // no extra request.
-    expect(PAGE).toContain('["offerSalesFunnels", brandId, offerId ?? "none"]');
-    expect(PAGE).toContain("enabled: !!offerId");
-    expect(PAGE).not.toContain("getBrandSalesFunnels");
+  it("reads the OFFER's economics, never a brand-wide figure", () => {
+    // A lifetime revenue is a property of the offer, so a brand-wide read would open
+    // the field with what a DIFFERENT proposition is worth.
+    expect(PAGE).toContain('["offerEconomics", brandId, offerId ?? "none"]');
+    expect(PAGE).toContain("getOfferEconomics(brandId, offerId as string)");
   });
 
   it("passes it to the PANEL too, so one deal is worth one thing on both surfaces", () => {
     // The guard pins the CALL SITE, not only the component: a page that resolves the
     // value and does not pass it is the feature entirely absent with the component
     // perfectly correct.
-    const call = sliceTo(PAGE, "<LeadFunnelStageSection", ">Organization<");
+    const call = sliceTo(PAGE, "<LeadStageSection", ">Organization<");
     expect(call).toContain("saleValuePrefillUsd={selectedLead ? prefillUsdFor(selectedLead) : null}");
   });
 
   it("seeds the field ONCE, so it cannot rewrite an amount somebody is typing", () => {
-    const form = sliceTo(SECTION, "export function StageStatementForm(", "export function LeadFunnelStageSection(");
+    const form = sliceTo(SECTION, "export function StageStatementForm(", "export function LeadStageSection(");
     expect(form).toContain("useState(() =>");
     expect(form).toContain("defaultValueUsd != null && defaultValueUsd > 0");
   });
@@ -162,7 +160,7 @@ describe("the deal-value field opens with the brand's own stated lifetime revenu
   it("is a PREFILL, not a default — what is sent is whatever the field holds", () => {
     // The producer refuses a sale with no value on purpose, and nothing here sends a
     // number on the author's behalf: an empty field still leaves the button disabled.
-    const form = sliceTo(SECTION, "export function StageStatementForm(", "export function LeadFunnelStageSection(");
+    const form = sliceTo(SECTION, "export function StageStatementForm(", "export function LeadStageSection(");
     expect(form).toContain("const valueCents = saleValueCentsFrom(rawValue);");
     expect(form).toContain("if (needsValue && valueCents == null) return;");
   });

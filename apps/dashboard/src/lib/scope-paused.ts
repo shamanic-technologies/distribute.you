@@ -1,7 +1,7 @@
 import { rollupStatus, type ControlRow } from "./campaign-controls";
 
 /**
- * Is this SCOPE stopped — brand, offer or funnel.
+ * Is this SCOPE stopped — brand or offer.
  *
  * A `Learning` tag says a figure is withheld because too few outcomes have landed. On a
  * scope where NOTHING is running, no outcome can land, so the tag promises a number that

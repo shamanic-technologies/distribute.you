@@ -234,7 +234,7 @@ export const EMAIL_TEMPLATES = [
   // whatever happened is a report, and an inbox learns to ignore it. A flat or
   // falling day sends nothing.
   //
-  // There is no goal here. A brand runs several sales funnels at once, so the email
+  // There is no goal here. A brand buys several outcomes at once, so the email
   // names what actually landed — `{{newOutcomes}}` reads "3 positive replies and 1
   // signup" — rather than collapsing the day onto the one outcome a retired brand
   // column happened to point at. Both return figures are served by features-service

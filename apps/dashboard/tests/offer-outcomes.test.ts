@@ -108,7 +108,7 @@ describe("legCampaignId", () => {
   const row = (over: Partial<CampaignRef>): CampaignRef => ({
     id: "x",
     offerId: "o1",
-    funnelKey: "f1",
+    legKey: "l1",
     featureSlug: "cold",
     status: "stopped",
     updatedAt: "2026-09-01T00:00:00.000Z",
@@ -133,7 +133,7 @@ describe("legCampaignId", () => {
   });
 
   it("links NOTHING when the ids are two different campaigns", () => {
-    const campaigns = [row({ id: "a" }), row({ id: "b", funnelKey: "f2" })];
+    const campaigns = [row({ id: "a" }), row({ id: "b", legKey: "l2" })];
     expect(legCampaignId(["a", "b"], campaigns, active)).toBeNull();
   });
 

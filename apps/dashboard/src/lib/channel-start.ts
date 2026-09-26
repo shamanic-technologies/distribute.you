@@ -1,4 +1,4 @@
-// Whether an acquisition channel of a funnel is RUNNING, and what it takes to
+// Whether a campaign (an offer's leg on one channel) is RUNNING, and what it takes to
 // change that.
 //
 // Money and status are two independent facts about one channel: billing holds the
@@ -12,14 +12,13 @@
 //
 // So a funded channel with no campaign is NOT_STARTED, forever, until a person
 // starts it. That is the state this module exists to name, and the reason Offer
-// Settings grew a status control: before it, a customer could declare a funnel, fund
-// every channel of it, press Update, and watch nothing happen with no way to act.
+// Settings grew a status control: before it, a customer could fund every channel, press Update, and watch nothing happen with no way to act.
 //
 // Only relative value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias).
 
 /**
- * What a channel of a funnel is DOING, for one offer.
+ * What one (leg, channel) of an offer is DOING.
  *
  * `not_started` is a real fourth state and is the whole point: a channel the brand
  * has funded and nobody has launched is neither running nor paused. Calling it
@@ -100,7 +99,7 @@ export interface ChannelStatusMove {
  *
  * Pausing says the ceiling is KEPT, because the alternative a customer would
  * otherwise reach for is emptying the amount, and that one is not free to undo:
- * billing's per-funnel floor only lets a funnel funded under its minimum be kept or
+ * billing's per-channel floor only lets a channel funded under its minimum be kept or
  * raised, so a channel grandfathered under the floor and defunded could never be
  * funded back at the figure it was running.
  */
@@ -174,7 +173,7 @@ export function channelWriteErrorMessage(err: unknown, kind: "start" | "pause"):
  *
  * The 400 on a START is its own sentence because it has its own cause: campaign-service
  * validates the workflow's tracking headers and refuses a sales campaign that states no
- * funnel, so a refusal there is about the channel being unrunnable rather than about
+ * leg, so a refusal there is about the channel being unrunnable rather than about
  * anything the customer typed. Naming the amount would send them to re-type a number
  * that was never the problem.
  */
@@ -185,7 +184,7 @@ export function channelStartErrorMessage(status: number | null, kind: "start" | 
     return "We could not pause this channel. Try again in a moment.";
   }
   if (status === 400) {
-    return "We could not start this channel. It may not be ready to run for this funnel yet.";
+    return "We could not start this channel. It may not be ready to run for this outcome yet.";
   }
   if (status === 402) {
     return "Your credit balance is too low to start a channel. Top up and try again.";
@@ -197,7 +196,7 @@ export function channelStartErrorMessage(status: number | null, kind: "start" | 
 /**
  * Whether a channel we are about to start has a workflow to run.
  *
- * features-service ranks the channel's workflows for the funnel and names its own
+ * features-service ranks the channel's workflows for the leg and names its own
  * pick (`recommendedWorkflowDynastySlug`, an argmin over MEASURED rows). A channel it
  * cannot name one for has nothing to run, so the create is refused HERE rather than
  * being sent with a slug of our own choosing: which workflow serves a campaign is the

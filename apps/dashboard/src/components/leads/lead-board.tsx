@@ -94,12 +94,8 @@ export interface LeadBoardCard {
    */
   statusAt: string | null;
   /**
-   * What to open the deal-value field with, in whole dollars — the brand's own stated
-   * lifetime revenue for THIS lead's funnel, resolved by the page.
-   *
-   * On the card rather than looked up in the form: a board draws hundreds of cards and
-   * the funnel a lead is on is a property of the lead, so resolving it per-card at the
-   * page's one read costs nothing and the form stays free of a second lookup.
+   * What to open the deal-value field with, in whole dollars — the offer's own stated
+   * lifetime revenue, resolved by the page.
    */
   prefillUsd: number | null;
 }
@@ -117,7 +113,7 @@ export interface LeadBoardCard {
  *   - `withdrawal` — take an opt-out back. It carries no destination on purpose: where
  *                    the card lands afterwards is lead-service's answer, not ours.
  *   - `sale`       — the deal closed: what it cost, what it was worth, and whether our
- *                    outreach caused it. A funnel-step statement against the lead's own
+ *                    outreach caused it. A step statement against the lead's own
  *                    ROW, which is why it carries a row id rather than an email.
  *   - `saleWithdrawal` — take that back. lead-service's own undo for a statement, never
  *                    the opposite statement, so it carries no amounts and no
@@ -247,7 +243,6 @@ function CardBody({ card }: { card: LeadBoardCard }) {
 
 export function LeadBoard({
   columns,
-  layout = LEAD_BOARD_COLUMNS,
   scopeNoun,
   onShowMore,
   busy,
@@ -256,12 +251,7 @@ export function LeadBoard({
   onOpen,
   onMove,
 }: {
-  /**
-   * Which columns to draw, in order. The ordinary board is the six triage columns; the
-   * board of ONE sales funnel adds a column per funnel step (`funnelBoardLayout`).
-   */
-  layout?: readonly LeadBoardColumn[];
-  /** What the reader is standing in (`campaign`, `offer`, `sales funnel`, `brand`) —
+  /** What the reader is standing in (`campaign`, `offer`, `brand`) —
    *  the one blurb whose sentence names the grain it judges against. */
   scopeNoun?: string | null;
   /**
@@ -322,8 +312,8 @@ export function LeadBoard({
   // Every card on screen, for the gesture: a drag reads the card it lifted out of one
   // flat list, and which column it came from is on the card itself.
   const cards = useMemo(
-    () => layout.flatMap((column) => columns[column.key]?.cards ?? []),
-    [columns, layout],
+    () => LEAD_BOARD_COLUMNS.flatMap((column) => columns[column.key]?.cards ?? []),
+    [columns],
   );
 
   const startMove = (card: LeadBoardCard, to: LeadBoardColumn) => {
@@ -340,7 +330,7 @@ export function LeadBoard({
     canDrag: (card) =>
       canMove && Boolean(card.email) && movableColumnsFrom(card.column).length > 0,
     onDrop: (card, columnKey) => {
-      const to = layout.find((c) => c.key === columnKey);
+      const to = LEAD_BOARD_COLUMNS.find((c) => c.key === columnKey);
       if (to) startMove(card, to);
     },
     onTap: (card) => onOpen(card.id),
@@ -456,7 +446,7 @@ export function LeadBoard({
               </p>
               {/* The SAME form the leads table's Close won column mounts — one place
                   the two questions are asked, and one place lead-service's mandatory
-                  cost lives. A sale is a funnel-step statement, not a fact about a
+                  cost lives. A sale is a step statement, not a fact about a
                   message, which is why this column offers no reply kinds. */}
               {/* Bounded, because the form is built for a table CELL and stacks its
                   fields to the right. Left to the panel's full width the question sits
@@ -541,7 +531,7 @@ export function LeadBoard({
       )}
 
       <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
-        {layout.map((column) => {
+        {LEAD_BOARD_COLUMNS.map((column) => {
           const read = columns[column.key];
           if (!read) return null;
           const {

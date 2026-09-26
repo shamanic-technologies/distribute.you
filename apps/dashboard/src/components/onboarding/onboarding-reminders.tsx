@@ -59,7 +59,7 @@ export function OnboardingReminders() {
   const brandId = (params?.brandId as string | undefined) ?? null;
   const router = useRouter();
   const orgId = params?.orgId as string | undefined;
-  // Present on the offer, funnel and campaign routes; absent on the brand one.
+  // Present on the offer and campaign routes; absent on the brand one.
   const routeOfferId = (params?.offerId as string | undefined) ?? null;
   const { showPaymentRequired } = useBillingGuard();
 

@@ -145,6 +145,6 @@ describe("leads table Date column", () => {
     expect(src).not.toContain("const sortByStatusDate");
     // Membership is what differs per tab, never what a date means — and membership is a
     // bucket the producer answers, so no tab re-sorts anything here.
-    expect(q).toContain("bucketForLeadsTab(req.tab)");
+    expect(q).toContain("bucketForTab(req.tab)");
   });
 });

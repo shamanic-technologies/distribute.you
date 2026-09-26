@@ -115,7 +115,7 @@ describe("Offer Settings states the offer's identity", () => {
 
   it("mounts the card FIRST — every card under it is about an offer you must name first", () => {
     expect(page).toContain("<OfferIdentityCard brandId={brandId} offerId={offerId} />");
-    expect(page.indexOf("<OfferIdentityCard")).toBeLessThan(page.indexOf("<BrandSalesFunnelsCard"));
+    expect(page.indexOf("<OfferIdentityCard")).toBeLessThan(page.indexOf("<OfferCampaignsCard"));
   });
 
   it("writes the name through the reader that had no caller at all before this", () => {

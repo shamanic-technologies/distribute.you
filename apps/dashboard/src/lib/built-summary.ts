@@ -3,8 +3,8 @@
  *
  * This is the screen the whole reorder exists for: a visitor typed a website
  * ten minutes ago and has since watched us read their site, name their
- * services, pick the funnels they sell through, say who they sell to and
- * draft their offer. Asking for a card before showing them any of it is what
+ * services, pick the outcomes they want, say who they sell to and draft
+ * their offer. Asking for a card before showing them any of it is what
  * this replaces.
  *
  * So the one rule here is that it states what is TRUE. A section with nothing
@@ -14,19 +14,18 @@
  * about to decide whether we are worth paying on exactly this evidence.
  *
  * Alias-free so it carries real unit tests. The caller resolves every display
- * string (funnel names, step labels, lever titles) from the catalogues that own
+ * string (leg labels, channel names, lever titles) from the catalogues that own
  * them and hands them over already resolved — this module names nothing of its
  * own, so it cannot drift from the vocabulary the rest of the flow uses.
  */
 
-export interface BuiltFunnel {
+/** One campaign we will run: a leg, through a channel. */
+export interface BuiltCampaign {
   key: string;
-  /** The funnel's own name, from the catalogue. */
-  name: string;
-  /** Its steps, in order, in the customer's words. */
-  steps: string[];
-  /** The one we start on. Exactly one is expected; zero is tolerated. */
-  isPrimary: boolean;
+  /** The leg in the customer's words ("Positive reply", "Positive reply → Meeting booked"). */
+  label: string;
+  /** The channel that performs it. */
+  channelName: string;
 }
 
 
@@ -39,7 +38,7 @@ export interface BuiltLever {
 
 export interface BuiltInput {
   services: string[];
-  funnels: BuiltFunnel[];
+  campaigns: BuiltCampaign[];
   /**
    * Who the customer sells to, in their own words. NOT a list of audiences:
    * those are built by hand after payment, from exactly this text.
@@ -50,7 +49,7 @@ export interface BuiltInput {
 
 export type BuiltSection =
   | { kind: "services"; items: string[] }
-  | { kind: "funnels"; items: BuiltFunnel[] }
+  | { kind: "campaigns"; items: BuiltCampaign[] }
   | { kind: "targetAudience"; text: string }
   | { kind: "offer"; items: BuiltLever[] };
 
@@ -73,13 +72,13 @@ const clean = (s: string): boolean => typeof s === "string" && s.trim().length >
 
 export function builtSummary(input: BuiltInput): BuiltSummary {
   const services = (input.services ?? []).filter(clean);
-  const funnels = (input.funnels ?? []).filter((f) => f && clean(f.name));
+  const campaigns = (input.campaigns ?? []).filter((c) => c && clean(c.label));
   const targetAudience = typeof input.targetAudience === "string" ? input.targetAudience.trim() : "";
   const levers = (input.levers ?? []).filter((l) => l && filled(l));
 
   const sections: BuiltSection[] = [];
   if (services.length > 0) sections.push({ kind: "services", items: services });
-  if (funnels.length > 0) sections.push({ kind: "funnels", items: funnels });
+  if (campaigns.length > 0) sections.push({ kind: "campaigns", items: campaigns });
   if (targetAudience) sections.push({ kind: "targetAudience", text: targetAudience });
   if (levers.length > 0) sections.push({ kind: "offer", items: levers });
 
@@ -101,7 +100,7 @@ export function builtSubtitle(summary: BuiltSummary): string | null {
     if (s.kind === "targetAudience") continue;
     const n = s.items.length;
     if (s.kind === "services") parts.push(`${n} ${n === 1 ? "service" : "services"}`);
-    if (s.kind === "funnels") parts.push(`${n} ${n === 1 ? "sales funnel" : "sales funnels"}`);
+    if (s.kind === "campaigns") parts.push(`${n} ${n === 1 ? "campaign" : "campaigns"}`);
   }
   if (parts.length === 0) return null;
   if (parts.length === 1) return parts[0];

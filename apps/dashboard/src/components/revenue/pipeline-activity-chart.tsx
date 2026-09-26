@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { chartMetricKeysFor, TRACKER_DEPENDENT_CHART_KEYS } from "@/lib/goal-steps";
-import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import type { LegSteps } from "@/lib/goal-steps";
 import type {
   BrandOptimizationGoal,
   PipelineActivityMetric,
@@ -177,9 +177,9 @@ const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
 function activeMetrics(
   optimizationGoal: BrandOptimizationGoal,
   trackerSetUp: boolean,
-  funnelKey?: SalesFunnelKeyWire | null,
+  leg?: LegSteps | null,
 ): MetricDef[] {
-  return chartMetricKeysFor(optimizationGoal, funnelKey)
+  return chartMetricKeysFor(optimizationGoal, leg)
     .filter((k) => trackerSetUp || !TRACKER_DEPENDENT_CHART_KEYS.has(k))
     .map((k) => METRIC_BY_KEY[k]);
 }
@@ -198,17 +198,17 @@ function buildChartData({
   rangeDays,
   optimizationGoal,
   trackerSetUp,
-  funnelKey,
+  leg,
 }: {
   data: PipelineActivityResponse;
   pipelineActualSeries: PipelineActualSeries | undefined;
   rangeDays: number;
   optimizationGoal: BrandOptimizationGoal;
   trackerSetUp: boolean;
-  funnelKey?: SalesFunnelKeyWire | null;
+  leg?: LegSteps | null;
 }): ChartDatum[] {
   const today = data.days.find((day) => day.isToday)?.date ?? formatIsoDate(new Date());
-  const metrics = activeMetrics(optimizationGoal, trackerSetUp, funnelKey);
+  const metrics = activeMetrics(optimizationGoal, trackerSetUp, leg);
   const maps: Partial<Record<ChartMetricKey, Map<string, number>>> = {};
   for (const metric of metrics) {
     maps[metric.key] = buildDailyCountMap(pipelineActualSeries?.[metric.key]);
@@ -312,18 +312,17 @@ export function PipelineActivityChart({
   pipelineActualSeries,
   optimizationGoal,
   trackerSetUp = false,
-  funnelKey,
+  leg,
 }: {
   data: PipelineActivityResponse;
   pipelineActualSeries?: PipelineActualSeries;
   optimizationGoal: BrandOptimizationGoal;
   /**
-   * The sales funnel this chart is scoped to, when it is scoped to one. A campaign sells
-   * exactly one funnel, and a reply→meeting funnel buys no website visits — so a
-   * goal-keyed bar set would plot a Website Visits series the campaign never bought.
-   * Absent at brand level (several funnels at once) → the goal keys the bars as before.
+   * The leg this chart is scoped to, when it is scoped to one. A campaign performs
+   * exactly one leg, and a leg onto a reply buys no website visits — so a goal-keyed bar
+   * set would plot a series the campaign never bought. Absent at brand level → the goal.
    */
-  funnelKey?: SalesFunnelKeyWire | null;
+  leg?: LegSteps | null;
   /**
    * Conversion-tracker liveness (lead-service pixel). When false, tracker-outcome
    * bars (Form submissions) are hidden — they carry no data until the tracker
@@ -334,7 +333,7 @@ export function PipelineActivityChart({
   visitToMeetingPct?: number | null;
   visitToSignupPct?: number | null;
 }) {
-  const metrics = activeMetrics(optimizationGoal, trackerSetUp, funnelKey);
+  const metrics = activeMetrics(optimizationGoal, trackerSetUp, leg);
   const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(7);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -357,9 +356,9 @@ export function PipelineActivityChart({
         rangeDays,
         optimizationGoal,
         trackerSetUp,
-        funnelKey,
+        leg,
       }),
-    [data, pipelineActualSeries, rangeDays, optimizationGoal, trackerSetUp, funnelKey],
+    [data, pipelineActualSeries, rangeDays, optimizationGoal, trackerSetUp, leg],
   );
 
   // Keep the live edge (today + forecast) in view — wider windows would otherwise

@@ -46,7 +46,7 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
     // This guard used to forbid a denominator outright, because the only figure
     // billing could answer with was the SUM of every funnel's ceiling — a wider
     // scope than the numerator beside it, so "$50 spent of $180" said nothing
-    // about this campaign. billing keys a ceiling on (offer x funnel x channel)
+    // about this campaign. billing keys a ceiling on (offer x leg x channel)
     // now, which is exactly what a campaign is, so the pair is one scope and the
     // card states it. What stays banned is the old sum and any recomposition.
     expect(page).toContain("dailyBudgetCents={campaignBudgetCentsValue}");
@@ -86,13 +86,14 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
   });
 
   it("states THIS campaign's ceiling, narrowed by its own offer", () => {
-    // billing's per-pair figure spans every offer selling that pair, so the
-    // narrowing is what makes the number this campaign's rather than a sibling
-    // offer's. It is the shared helper, so the header, the Campaigns table and
-    // Campaign Settings cannot disagree about one campaign's money.
+    // billing keys one ceiling per (offer x leg x channel); the helper reads the
+    // campaign's own offer off its row, so the number is this campaign's rather than
+    // a sibling offer's. It is the shared helper, so the header, the Campaigns table
+    // and Campaign Settings cannot disagree about one campaign's money.
     expect(page).toContain('from "@/lib/campaign-budget"');
-    expect(page).toContain("campaignBudgetCents(campaign, campaign.offerId ?? undefined");
-    expect(page).toContain('["brandFunnelBudgets", brandId]');
+    expect(page).toContain("campaignBudgetCents(campaign, campaignBudgets, channels)");
+    expect(page).toContain('["brandCampaignBudgets", brandId]');
+    expect(page).not.toContain('["brandFunnelBudgets", brandId]');
   });
 
   it("holds no editor of its own — the header opens the shared modal", () => {
@@ -101,7 +102,7 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
     // this one campaign. Several windows onto one number are fine; a second
     // NARROWING is not, which is why that rule lives in lib/campaign-budget.ts alone
     // and every window reads it.
-    expect(page).not.toContain("saveBrandFunnelBudget");
+    expect(page).not.toContain("saveCampaignBudget");
     expect(page).not.toContain("useMutation");
     expect(page).not.toContain("<input");
     expect(page).toContain("CampaignControlsTrigger");
@@ -157,8 +158,11 @@ describe("onboarding launch — no per-campaign budget ceiling", () => {
     expect(body).not.toContain("maxBudget");
   });
 
-  it("still writes the customer's chosen budget to billing's funnel ceilings", () => {
-    expect(onboarding).toContain("stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows)");
+  it("still writes the customer's chosen budget to billing's per-campaign ceilings", () => {
+    expect(onboarding).toContain("await saveCampaignBudget(");
+    expect(onboarding).toContain(
+      "{ offerId: launchOfferId, legKey: c.legKey, featureSlug: c.featureSlug }",
+    );
   });
 
   it("does not declare a maxBudget* param a caller could fill in again", () => {

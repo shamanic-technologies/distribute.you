@@ -10,7 +10,7 @@ import { soleOfferId, type OfferIdentity } from "./launch-offer";
  * mounted on the dashboard shell, which is brand-scoped, and both built their
  * CTA as `/orgs/:orgId/brands/:brandId/audiences` — a path that does not exist.
  * So the one affordance on a banner whose whole job is to unblock outreach was a
- * 404, at every grain, including the offer and funnel routes whose own URL
+ * 404, at every grain, including the offer routes whose own URL
  * already names the offer.
  *
  * Same failure as the lead panel's audience card (`lead-campaign-sections.tsx`):
@@ -18,7 +18,7 @@ import { soleOfferId, type OfferIdentity } from "./launch-offer";
  * route the reader happens to be standing on.
  *
  * Resolution, in order:
- *   1. the ROUTE's own offer, present under `/offers/:offerId` (offer, funnel and
+ *   1. the ROUTE's own offer, present under `/offers/:offerId` (offer and
  *      campaign routes all carry it) — the reader already picked that offer;
  *   2. the brand's SOLE offer, when it has exactly one, so a brand-level reader
  *      still lands on the page rather than one hop short of it;

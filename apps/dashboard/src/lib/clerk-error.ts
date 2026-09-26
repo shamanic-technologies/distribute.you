@@ -76,7 +76,7 @@ export function isGoogleOnlyAccountError(err: unknown): boolean {
  * ship an email address into analytics.
  *
  * A non-Clerk throw (network drop, CORS) reports `unknown` rather than omitting
- * the field, so "we could not classify this" stays visible in the funnel instead
+ * the field, so "we could not classify this" stays visible in PostHog instead
  * of blending into the events that predate this instrumentation.
  */
 export function authFailureProps(

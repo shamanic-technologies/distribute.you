@@ -12,9 +12,9 @@ import {
  * vitest (which does not resolve the `@` alias in this repo). Keep it alias-free.
  *
  * The fixture mirrors what lead-service actually serves: a person's campaign cards, one
- * per membership row, spanning offers and funnels. A brand-scoped read answers ONE ROW
- * per person, so the CARDS are the only place several campaigns exist — 56,809 people
- * are in more than one, one sampled person in 11 identities across 9 offers.
+ * per membership row, spanning offers. A brand-scoped read answers ONE ROW per person,
+ * so the CARDS are the only place several campaigns exist — 56,809 people are in more
+ * than one, one sampled person in 11 identities across 9 offers.
  */
 
 const card = (over: Partial<LeadCampaignCardLike> & { id: string }): LeadCampaignCardLike => ({
@@ -25,7 +25,6 @@ const card = (over: Partial<LeadCampaignCardLike> & { id: string }): LeadCampaig
 });
 
 const info = (over: Partial<CampaignInfo>): CampaignInfo => ({
-  funnelKey: null,
   featureSlug: null,
   legKey: null,
   status: "ongoing",
@@ -36,14 +35,14 @@ const OFFER_A = { id: "o1", name: "Acme Pro" };
 const OFFER_B = { id: "o2", name: "Acme Lite" };
 
 const infos: Record<string, CampaignInfo> = {
-  c1: info({ funnelKey: "reply_meeting", featureSlug: "sales-cold-email-outreach" }),
-  c2: info({ funnelKey: "visit_signup", featureSlug: "sales-cold-email-outreach" }),
-  c3: info({ funnelKey: "reply_meeting", featureSlug: "feedback-request-cold-email-outreach" }),
+  c1: info({ legKey: "start_to_conversation", featureSlug: "sales-cold-email-outreach" }),
+  c2: info({ legKey: "start_to_website_visit", featureSlug: "sales-cold-email-outreach" }),
+  c3: info({ legKey: "start_to_conversation", featureSlug: "feedback-request-cold-email-outreach" }),
 };
 const lookup = (id: string): CampaignInfo | null => infos[id] ?? null;
 
 describe("buildLeadCampaignTree", () => {
-  it("nests offer > funnel > campaign and counts every card it will draw", () => {
+  it("nests offer > campaign and counts every card it will draw", () => {
     const tree = buildLeadCampaignTree(
       [
         card({ id: "r1", campaignId: "c1", offer: OFFER_A, audienceId: "a1" }),
@@ -53,56 +52,14 @@ describe("buildLeadCampaignTree", () => {
       lookup,
     );
     expect(tree.offers.map((o) => o.offerId)).toEqual(["o1", "o2"]);
-    expect(tree.offers[0].funnels.map((f) => f.funnelKey)).toEqual([
-      "reply_meeting",
-      "visit_signup",
-    ]);
-    expect(tree.offers[0].funnels[0].campaigns.map((c) => c.campaignId)).toEqual(["c1"]);
+    expect(tree.offers[0].campaigns.map((c) => c.campaignId)).toEqual(["c1", "c2"]);
+    expect(tree.offers[1].campaigns.map((c) => c.campaignId)).toEqual(["c3"]);
     expect(tree.campaignCount).toBe(3);
   });
 
-  // Two campaigns of one offer on one funnel are two cards under one band, not two
-  // bands — the band names the funnel, the cards name the channel each buys through.
-  it("puts two campaigns on the same offer and funnel under one band", () => {
-    const tree = buildLeadCampaignTree(
-      [
-        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
-        card({ id: "r3", campaignId: "c3", offer: OFFER_A }),
-      ],
-      lookup,
-    );
-    expect(tree.offers).toHaveLength(1);
-    expect(tree.offers[0].funnels).toHaveLength(1);
-    expect(tree.offers[0].funnels[0].campaigns.map((c) => c.campaignId)).toEqual(["c1", "c3"]);
-  });
-
-  // A header over a set of one states nothing, and the campaign card's own leg line
-  // already names its funnel.
-  it("shows the funnel band only when more than one funnel is present", () => {
-    const one = buildLeadCampaignTree([card({ id: "r1", offer: OFFER_A })], lookup);
-    expect(one.showFunnels).toBe(false);
-    const two = buildLeadCampaignTree(
-      [
-        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
-        card({ id: "r2", campaignId: "c2", offer: OFFER_A }),
-      ],
-      lookup,
-    );
-    expect(two.showFunnels).toBe(true);
-  });
-
-  // A campaign stating NO funnel is one we could not name, never a second funnel:
-  // counting it would draw a band over one real funnel and one blank.
-  it("does not let an unnamed funnel turn on the band", () => {
-    const tree = buildLeadCampaignTree(
-      [
-        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
-        card({ id: "r9", campaignId: "unknown", offer: OFFER_A }),
-      ],
-      lookup,
-    );
-    expect(tree.showFunnels).toBe(false);
-    expect(tree.campaignCount).toBe(2);
+  it("hands each campaign the info the caller's lookup holds for it", () => {
+    const tree = buildLeadCampaignTree([card({ id: "r1", campaignId: "c2", offer: OFFER_A })], lookup);
+    expect(tree.offers[0].campaigns[0].info?.legKey).toBe("start_to_website_visit");
   });
 
   // lead-service took the trouble to serve this card; the campaigns read simply has not
@@ -113,8 +70,8 @@ describe("buildLeadCampaignTree", () => {
       () => null,
     );
     expect(tree.campaignCount).toBe(1);
-    expect(tree.offers[0].funnels[0].campaigns[0].info).toBeNull();
-    expect(tree.offers[0].funnels[0].campaigns[0].campaignId).toBe("gone");
+    expect(tree.offers[0].campaigns[0].info).toBeNull();
+    expect(tree.offers[0].campaigns[0].campaignId).toBe("gone");
   });
 
   // lead-service is fail-soft on the offer, so an absent one means "we could not say"
@@ -147,10 +104,7 @@ describe("buildLeadCampaignTree", () => {
       ],
       lookup,
     );
-    expect(tree.offers[0].funnels.map((f) => f.funnelKey)).toEqual([
-      "visit_signup",
-      "reply_meeting",
-    ]);
+    expect(tree.offers[0].campaigns.map((c) => c.campaignId)).toEqual(["c2", "c1"]);
   });
 
   // lead-service emits one card per membership row, so this is impossible today;
@@ -179,29 +133,10 @@ describe("buildLeadCampaignTree", () => {
     expect(tree.campaignCount).toBe(2);
   });
 
-  it("normalizes the funnel key through the caller's normalizer when given one", () => {
-    const wire: Record<string, CampaignInfo> = {
-      c1: info({ funnelKey: "reply_meeting" }),
-      c2: info({ funnelKey: "sales_meetings_from_conversation" }),
-    };
-    const tree = buildLeadCampaignTree(
-      [
-        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
-        card({ id: "r2", campaignId: "c2", offer: OFFER_A }),
-      ],
-      (id) => wire[id] ?? null,
-      () => "reply_meeting",
-    );
-    // Both spellings are one funnel, so one band and no funnel header.
-    expect(tree.offers[0].funnels).toHaveLength(1);
-    expect(tree.showFunnels).toBe(false);
-  });
-
   it("returns an empty tree for no cards", () => {
     const tree = buildLeadCampaignTree([], lookup);
     expect(tree.offers).toEqual([]);
     expect(tree.campaignCount).toBe(0);
-    expect(tree.showFunnels).toBe(false);
     expect(tree.audienceCount).toBe(0);
   });
 });
@@ -228,25 +163,24 @@ describe("firstCampaignRowId", () => {
 /**
  * WHICH levels the panel states as its own stacked cards.
  *
- * The rule is CASCADING agreement across the person's own cards, never the route: a
- * funnel-scoped page serves the brand's rows, so a lead listed there routinely carries
- * campaigns of another funnel and stating the route's funnel about them would be false.
+ * The rule is agreement across the person's own cards, never the route: an offer-scoped
+ * page serves the brand's rows, so a lead listed there routinely carries campaigns of
+ * another offer and stating the route's offer about them would be false.
  */
 describe("leadPanelScope", () => {
-  it("states offer, funnel and the sole card when the person has one campaign", () => {
+  it("states the offer and the sole card when the person has one campaign", () => {
     const tree = buildLeadCampaignTree(
       [card({ id: "r1", campaignId: "c1", offer: OFFER_A, audienceId: "a1" })],
       lookup,
     );
     const scope = leadPanelScope(tree);
     expect(scope.offer).toEqual({ id: "o1", name: "Acme Pro" });
-    expect(scope.funnelKey).toBe("reply_meeting");
     expect(scope.sole?.rowId).toBe("r1");
   });
 
-  // Two campaigns of one offer on one funnel: the offer and the funnel are still facts
-  // about the person, but the leg, the channel and the audience are each card's own.
-  it("keeps offer and funnel but no sole card when two campaigns share both", () => {
+  // Two campaigns of one offer: the offer is still a fact about the person, but the
+  // leg, the channel and the audience are each card's own.
+  it("keeps the offer but no sole card when two campaigns share it", () => {
     const tree = buildLeadCampaignTree(
       [
         card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
@@ -256,26 +190,10 @@ describe("leadPanelScope", () => {
     );
     const scope = leadPanelScope(tree);
     expect(scope.offer?.id).toBe("o1");
-    expect(scope.funnelKey).toBe("reply_meeting");
     expect(scope.sole).toBeNull();
   });
 
-  it("drops the funnel when the offer's campaigns sell two of them", () => {
-    const tree = buildLeadCampaignTree(
-      [
-        card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
-        card({ id: "r2", campaignId: "c2", offer: OFFER_A }),
-      ],
-      lookup,
-    );
-    const scope = leadPanelScope(tree);
-    expect(scope.offer?.id).toBe("o1");
-    expect(scope.funnelKey).toBeNull();
-  });
-
-  // Cascading: an offer that varies makes "one funnel" meaningless even when the two
-  // campaigns happen to sell the same one.
-  it("drops offer AND funnel when two offers are in play", () => {
+  it("drops the offer when two offers are in play", () => {
     const tree = buildLeadCampaignTree(
       [
         card({ id: "r1", campaignId: "c1", offer: OFFER_A }),
@@ -285,7 +203,7 @@ describe("leadPanelScope", () => {
     );
     const scope = leadPanelScope(tree);
     expect(scope.offer).toBeNull();
-    expect(scope.funnelKey).toBeNull();
+    expect(scope.sole).toBeNull();
   });
 
   // An offer lead-service could not resolve is not an agreed offer: null there means
@@ -294,14 +212,13 @@ describe("leadPanelScope", () => {
     const tree = buildLeadCampaignTree([card({ id: "r1", campaignId: "c1" })], lookup);
     const scope = leadPanelScope(tree);
     expect(scope.offer).toBeNull();
-    expect(scope.funnelKey).toBeNull();
     // The card itself is still sole — its leg, channel and audience are still facts
-    // about this person, and only the levels above it are unstated.
+    // about this person, and only the level above it is unstated.
     expect(scope.sole?.rowId).toBe("r1");
   });
 
   it("states nothing for a person with no campaigns", () => {
     const scope = leadPanelScope(buildLeadCampaignTree([], lookup));
-    expect(scope).toEqual({ offer: null, funnelKey: null, sole: null });
+    expect(scope).toEqual({ offer: null, sole: null });
   });
 });

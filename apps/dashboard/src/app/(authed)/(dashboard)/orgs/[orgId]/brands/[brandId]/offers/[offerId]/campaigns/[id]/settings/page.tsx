@@ -11,14 +11,14 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 /**
  * Campaign Settings — the money, and the words the emails say.
  *
- * A campaign is (offer x sales funnel x acquisition channel). Who it says it to is
+ * A campaign is (offer x leg x acquisition channel). Who it says it to is
  * a statement about the offer and stays on Offer Settings; what it may spend in a
  * day is genuinely its own, including nothing, which is how a customer stops one.
  *
  * The Hormozi levers sit here for the COLD EMAIL channel and nowhere else, because
  * they are the words that channel's emails are written around. They are stored on
  * the OFFER, so this card is a window onto the offer's own answer rather than a
- * second copy of it: an offer sold through two cold email funnels states one set of
+ * second copy of it: an offer sold through two cold email campaigns states one set of
  * levers and both campaigns show it. Offer Settings keeps the same editor exactly
  * while no cold email campaign exists, so the levers are never unreachable.
  *

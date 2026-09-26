@@ -57,15 +57,6 @@ describe("Onboarding — no-website path (beta)", () => {
     expect(src).toContain('setStep("audiences")');
   });
 
-  it("hides the website-led funnels in no-website mode", () => {
-    // A funnel that starts with a click onto the site cannot run without a site,
-    // and brand-service 400s on declaring one — so it is never offered.
-    expect(src).toContain("selectableFunnels(funnelViews, !noWebsiteMode)");
-    // The funnel set comes from the sell-first picks; a website-led pick on a
-    // no-website brand is dropped against the same offered set.
-    expect(src).toContain("offeredFunnels.some((f) => f.key === key)");
-  });
-
   it("locks the optimization goal to positive_replies in no-website mode", () => {
     expect(src).toContain('if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies")');
   });
@@ -77,23 +68,5 @@ describe("Onboarding — no-website path (beta)", () => {
     // PUT /brands/:id/business-context { content } before extraction.
     expect(api).toContain("/business-context");
     expect(api).toContain("body: { content: context }");
-  });
-});
-
-describe("Dashboard goal pickers — restrict to positive_replies when brand has no website", () => {
-  // The brand status bar carried a DISPLAY coercion here — a brand stored on a
-  // visit-driven goal read "positive replies" so it never claimed a path it cannot
-  // run. The bar is gone (money, and pausing, are per-funnel on Brand Settings), and
-  // the rule now holds by construction rather than by coercion: every website-led
-  // funnel refuses to be declared for a brand with no domain, so a no-website brand
-  // can only ever have declared the reply-led one.
-  // The settings sales-economics card carried the same restriction until brand
-  // Settings dropped its flat goal picker: a no-website brand is now restricted
-  // by the funnel catalogue itself, since every website-led funnel refuses to be
-  // declared for a brand with no domain.
-  it("locks every website-led funnel on a brand with no domain", () => {
-    const src = read("src/components/settings/brand-sales-funnels-card.tsx");
-    expect(src).toContain("const noWebsite = !!brand && brand.url == null;");
-    expect(src).toContain("def.requiresWebsite && noWebsite");
   });
 });

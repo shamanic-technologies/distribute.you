@@ -6,12 +6,12 @@ import {
   type LeadStepName,
   type LeadStepStatements,
 } from "./api";
-import type { LeadStageKey, LeadStageState } from "./lead-funnel-stages";
+import type { LeadStageKey, LeadStageState } from "./lead-stages";
 import { useAuthQuery, useQueryClient } from "./use-auth-query";
 import { invalidateLeadOutcome } from "./write-invalidation";
 
 /**
- * Per-lead funnel step statements — the read behind the panel, and the write it makes.
+ * Per-lead step statements — the read behind the panel, and the write it makes.
  *
  * Keyed on the leads_campaigns ROW id (what a table row carries), not on the person:
  * the row is what carries the campaign, and a statement made from a campaign screen has
@@ -61,7 +61,7 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
       queryClient.invalidateQueries({ queryKey: leadStepStatementsQueryKey(leadRowId ?? "none") });
       // The brand's outcome counts move on the next read of the revenue join, which is
       // what the stat cards above the table render. EVERY grain of that money is a
-      // different key — per channel, per campaign, per offer, per funnel, per brand —
+      // different key — per channel, per campaign, per offer, per brand —
       // plus the per-audience costs and the charts, so all of them are re-read at once
       // rather than the one root this mutation happens to know about.
       invalidateLeadOutcome(queryClient);
@@ -220,7 +220,7 @@ export function stageCostsFrom(
  * Which stages carry a statement a PERSON made, and can therefore be taken back.
  *
  * Three things read as an answer on a step and only one of them is somebody's words: a
- * tracker reported it, the funnel implies it from a statement on another step, or a
+ * tracker reported it, the step order implies it from a statement on another step, or a
  * person stated it. lead-service refuses a withdrawal on the first two (409
  * `not_a_statement` / `nothing_stated`), and the honest surface for a refusal we can
  * predict is not offering the control — so the panel asks this before it makes an
@@ -259,16 +259,16 @@ export function stageStatesFrom(
 }
 
 /**
- * Which stages the FUNNEL concluded rather than a person stating (lead-service v0.60.0).
+ * Which stages the STEP ORDER concluded rather than a person stating (lead-service v0.60.0).
  *
- * A funnel is ORDERED: a "never" makes every later step never, an outcome makes every
+ * The steps are ORDERED: a "never" makes every later step never, an outcome makes every
  * earlier one reached. Those steps are real answers and render as such — but nobody
  * said them, so they carry no author and no date, and offering a control on one would
  * invite somebody to "state" a thing that is already concluded and would move on its own
  * the moment the statement behind it changed.
  *
  * A producer that has not shipped `origin` yet reports nothing implied, which is exactly
- * how this read behaved before the funnel existed.
+ * how this read behaved before the order existed.
  */
 export function impliedStages(
   data: LeadStepStatements | undefined,
@@ -289,7 +289,7 @@ export function impliedStages(
  * Nobody stated these here, so they are not withdrawable (lead-service refuses with 409
  * `not_a_statement`, exactly as for a tracker step) and offer no control: the way to
  * correct one is to reject the CRM pairing on the CRM Merged page. An implied stage is
- * left to `impliedStages`, which already renders it as the funnel's conclusion.
+ * left to `impliedStages`, which already renders it as the order's conclusion.
  */
 export function crmStages(
   data: LeadStepStatements | undefined,
@@ -303,19 +303,4 @@ export function crmStages(
     out[key] = true;
   }
   return out;
-}
-
-/**
- * The steps of this lead's funnel, in the producer's order, or null when it did not say.
- *
- * Read from `funnelSteps` — lead-service's own name for the funnel's ordered steps.
- *
- * Read from the producer rather than resolved here: it takes the funnel from
- * campaign-service and refuses (409) a campaign that states none, so this is the one
- * answer that cannot drift from what the campaign actually sells.
- */
-export function funnelStepsFrom(data: LeadStepStatements | undefined): LeadStageKey[] | null {
-  const steps = data?.funnelSteps;
-  if (!steps) return null;
-  return steps.map((s) => (s === "purchase" ? "sale" : s) as LeadStageKey);
 }

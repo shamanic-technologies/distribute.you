@@ -300,8 +300,8 @@ function previousUtcDay(): string {
 /**
  * One kind of outcome a lead can reach, with the per-lead timestamp that proves it.
  *
- * There is no goal here. A brand runs several sales funnels at once, so what is NEW
- * on a given day is whatever actually landed — a reply on one funnel, a signup on
+ * There is no goal here. A brand buys several outcomes at once, so what is NEW
+ * on a given day is whatever actually landed — a reply on one campaign, a signup on
  * another — and the digest names each kind rather than collapsing them into the one
  * outcome a retired brand column happened to point at.
  *
@@ -447,7 +447,7 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
       const timeAgo = lead.outcomeAt ? escapeHtml(formatTimeAgo(lead.outcomeAt)) : "";
       // Green outcome pill — names what THIS person did today ("signup", "positive
       // reply", "website visit"). Per lead, not per brand: a brand running several
-      // funnels has several kinds landing on one day, and one shared noun would
+      // outcomes has several kinds landing on one day, and one shared noun would
       // label a signup as a reply.
       const outcomeBadge = lead.outcomeNoun
         ? `<span style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 9px;border-radius:9999px;white-space:nowrap;">${escapeHtml(lead.outcomeNoun)}</span>`

@@ -32,7 +32,7 @@ import type { CostPerOutcomeHistory } from "@/lib/revenue-view";
  *
  * CAMPAIGN-ONLY by construction: it rides the same gate the outreach bars ride, and
  * those describe one acquisition channel. A brand runs several channels and several
- * funnels at once and states no single outcome, so neither card renders there.
+ * outcomes at once and states no single one, so neither card renders there.
  *
  * Every figure is SERVED. Nothing here divides a spend by a count — the repo forbids a
  * browser-computed metric, and the reason bites exactly here: an outcome that carries no
@@ -65,7 +65,7 @@ interface PlotPoint {
 
 /**
  * An outcome count is FRACTIONAL below an entry leg (the driver signal walked through the
- * funnel's rates), so it rounds for display rather than printing `2.4 outcomes` — while
+ * brand's leg rates), so it rounds for display rather than printing `2.4 outcomes` — while
  * never rounding a non-zero share down to `0`, which would state that nothing is missing.
  */
 function formatOutcomeCount(n: number): string {
@@ -417,7 +417,7 @@ export function CostPerOutcomeCard({
         </p>
       )}
 
-      {/* A count walked forward through the funnel's rates is a PROJECTION, and this app
+      {/* A count walked forward through the leg rates is a PROJECTION, and this app
           does not let a projected figure and a measured one share a label unremarked. An
           entry leg is a raw observation and says nothing. */}
       {mode === "curve" && history != null && !history.outcomeObserved && (

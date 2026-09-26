@@ -34,12 +34,12 @@ describe("the brand Overview is scoped to the brand's money", () => {
     expect(campaign).not.toContain("showActivityChart={false}");
   });
 
-  it("shows the four money cards and no per-funnel step pair", () => {
+  it("shows the four money cards and no per-leg step pair", () => {
     expect(overview).toContain("showEconomics");
-    expect(overview).toContain("showFunnelMetrics={false}");
+    expect(overview).toContain("showStepMetrics={false}");
     expect(overview).toContain("totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}");
-    // The campaign Overview sells one funnel, so it keeps the step pairs.
-    expect(campaign).not.toContain("showFunnelMetrics={false}");
+    // The campaign Overview performs one leg, so it keeps the step pairs.
+    expect(campaign).not.toContain("showStepMetrics={false}");
   });
 
   it("reads every money figure off features-service, never dividing in the browser", () => {
@@ -169,19 +169,15 @@ describe("brand surfaces list campaigns and state money", () => {
     expect(campaignsPage).not.toContain("costEconomics.costPerConversionUsd");
   });
 
-  it("states ROI and $ CAC on the brand Audiences table, and no funnel step columns", () => {
+  it("states ROI and $ CAC on the brand Audiences table, and no step columns", () => {
     expect(audiences).toContain("const brandLevelMoney = !campaignScoped;");
-    // Every funnel-scoped pair is off at brand level; the campaign route keeps them all.
+    // Every step-scoped pair is off at brand level; the campaign route keeps them all.
     expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
-    // The two signal pairs are keyed on the CAMPAIGN's own funnel steps, never on the
-    // retired goal — a goal cannot separate the two meeting funnels, so it printed the
-    // visit pair on a campaign whose funnel starts at a positive reply. `!brandLevelMoney`
-    // is still what turns both off at brand level.
-    // The funnel gate is the fallback under a campaign whose leg we can place (see
-    // campaign-leg-columns.test.ts); `!brandLevelMoney` is still what turns it off here.
+    // The two signal pairs are keyed on the CAMPAIGN's own leg steps, never on the
+    // retired goal alone. `!brandLevelMoney` is still what turns both off at brand level.
     expect(audiences).toContain('hasStep("website_visits") && !brandLevelMoney');
     expect(audiences).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
-    expect(audiences).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");
+    expect(audiences).toContain("const scopeSteps = stepsFor(optimizationGoal, campaignLeg);");
     expect(audiences).toContain('label="ROI"');
     expect(audiences).toContain('label="% CAC"');
     expect(audiences).toContain('label="$ CAC"');
@@ -233,7 +229,7 @@ describe("brand surfaces list campaigns and state money", () => {
  * level — naming one funnel would denominate the whole table in one funnel's terms,
  * and the goal that used to pick it is a server-defaulted retired column.
  */
-describe("brand-level audience reads name neither a funnel nor a goal", () => {
+describe("brand-level audience reads name neither a leg nor a goal", () => {
   const overview = read(
     "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
@@ -250,20 +246,20 @@ describe("brand-level audience reads name neither a funnel nor a goal", () => {
     expect(overview).not.toContain("audienceStatsGoal");
   });
 
-  it("omits both params at brand level and names the FUNNEL under a campaign", () => {
+  it("omits both params at brand level and names the LEG under a campaign", () => {
     expect(audiences).toContain("brandLevelMoney");
-    expect(audiences).toContain("funnel: campaignFunnelKey");
-    // A campaign that predates the funnel model still has its goal to fall back on.
+    expect(audiences).toContain("{ leg: campaign.legKey }");
+    // A campaign stating no leg still has its goal to fall back on.
     expect(audiences).toContain("goal: audienceStatsGoal");
-    expect(campaign).toContain("funnel: campaignFunnelKey");
+    expect(campaign).toContain("{ leg: campaign.legKey }");
   });
 
   it("makes both params optional on the reader, so omitting them is expressible", () => {
-    expect(api).toContain("funnel?: SalesFunnelKeyWire;");
+    expect(api).toContain("leg?: string | null;");
     expect(api).toContain("goal?: FeatureAudienceStatsGoal;");
     // Neither is written unless the caller asked for it — an empty string would be a
     // named-but-unrecognised value, which features-service 400s.
-    expect(api).toContain('if (params.funnel) query.set("funnel", params.funnel);');
+    expect(api).toContain('if (params.leg) query.set("leg", params.leg);');
     expect(api).toContain('else if (params.goal) query.set("goal", params.goal);');
   });
 
@@ -271,8 +267,5 @@ describe("brand-level audience reads name neither a funnel nor a goal", () => {
     expect(api).toContain('z.literal("returnPerDollar")');
     // `goal` is null on the brand read — a strict union would throw on every one.
     expect(api).toContain('z.literal("formSubmission"),\n  ]).nullable(),');
-    // Each row names the funnel it was priced through: an audience's best funnel is
-    // routinely not the brand's.
-    expect(api).toContain("basisFunnelKey");
   });
 });

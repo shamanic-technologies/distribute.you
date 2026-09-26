@@ -154,7 +154,7 @@ export default function SignInPage() {
    * Route a sign-in result to the step it is actually waiting on.
    *
    * Every branch reports itself. The status that broke this page was invisible
-   * in the funnel precisely because the branch that handled it captured
+   * in PostHog precisely because the branch that handled it captured
    * nothing, so a stuck user left no trace to diagnose from.
    */
   const advanceSignIn = async (

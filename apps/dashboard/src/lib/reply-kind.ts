@@ -5,7 +5,7 @@
  * for value. It owns this list; this file is a rendering of it, so when it widens, this
  * widens — do NOT invent a value here.
  *
- * Why it is separate from the funnel stages next to it: a reply is a fact about a
+ * Why it is separate from the step statements next to it: a reply is a fact about a
  * MESSAGE, and a booked meeting or a paid client is a fact about the DEAL. They used to
  * share one statement per lead and only the latest survived, so a lead who replied
  * positively and then booked read as having no reply sentiment at all — stating one
@@ -44,7 +44,7 @@ export interface ReplyKindOption {
  * ones that are not really replies at all.
  *
  * ⚠️ `lead_meeting_requested` is a REPLY fact — they asked for a call. It is NOT the
- * deal fact "a meeting exists on a calendar", which is the `meeting_booked` funnel
+ * deal fact "a meeting exists on a calendar", which is the `meeting_booked` step
  * stage right below it in the same panel. Two different statements, deliberately, and
  * a reader can truthfully make both.
  *

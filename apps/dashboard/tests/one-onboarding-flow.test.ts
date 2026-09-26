@@ -1,9 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { funnelKeysFromSelection } from "../src/lib/start-selection-cookie";
 
-// ONE ONBOARDING FLOW. The three sell-first screens (goal, path, results) used
+// ONE ONBOARDING FLOW. The sell-first screens (goal, results) used
 // to be their own route, `/start`, handing off to the wizard through a cookie
 // and a full navigation; the owner read the seam as two products ("I want both
 // merged into one seamless onboarding flow"). They are the wizard's own first
@@ -13,31 +12,6 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", rel), "utf8");
 const wizard = read("src/components/onboarding/onboarding.tsx");
 const picks = read("src/components/start/start-picks.tsx");
 const shell = read("src/components/start/start-shell.tsx");
-
-describe("funnelKeysFromSelection", () => {
-  it("takes the funnel half of a pair key, deduped, order kept", () => {
-    expect(
-      funnelKeysFromSelection([
-        "sales_meetings_from_conversation::sales-cold-email-outreach",
-        "form_magnet::sales-cold-email-outreach",
-        "sales_meetings_from_conversation::feedback-request-cold-email-outreach",
-      ]),
-    ).toEqual(["sales_meetings_from_conversation", "form_magnet"]);
-  });
-
-  it("tolerates the older funnel-only shape", () => {
-    expect(
-      funnelKeysFromSelection([
-        "form_magnet",
-        "sales_meetings_from_website::sales-cold-email-outreach",
-      ]),
-    ).toEqual(["form_magnet", "sales_meetings_from_website"]);
-  });
-
-  it("drops an entry with no funnel half", () => {
-    expect(funnelKeysFromSelection(["::channel", ""])).toEqual([]);
-  });
-});
 
 describe("/start is the wizard", () => {
   it("redirects to /onboarding with the query, relatively, and hosts no page of its own", () => {
@@ -58,10 +32,10 @@ describe("/start is the wizard", () => {
 
 describe("the sell-first screens are wizard steps", () => {
   it("names them in the step union and appends them to the parse allowlist", () => {
-    expect(wizard).toMatch(/type Step =[\s\S]*\| "outcome"\n\s*\| "path"\n\s*\| "returns"/);
+    expect(wizard).toMatch(/type Step =[\s\S]*\| "outcome"\n\s*\| "returns"/);
     // Appended, never inserted: ALL_STEPS is what an older snapshot parses
     // against, and a bump strands an in-flight checkout.
-    expect(wizard).toContain('"built",\n  "outcome", "path", "returns",\n];');
+    expect(wizard).toContain('"built",\n  "outcome", "returns",\n];');
   });
 
   it("opens a fresh visitor on the welcome, then the picks", () => {
@@ -73,15 +47,13 @@ describe("the sell-first screens are wizard steps", () => {
     expect(init).not.toContain("continuation");
   });
 
-  it("renders the four screens through StartPicks, controlled by the wizard's own state", () => {
-    const at = wizard.indexOf('if (step === "welcome" || step === "outcome" || step === "path" || step === "returns") {');
+  it("renders the three screens through StartPicks, controlled by the wizard's own state", () => {
+    const at = wizard.indexOf('if (step === "welcome" || step === "outcome" || step === "returns") {');
     expect(at).toBeGreaterThan(-1);
     const render = wizard.slice(at, at + 900);
     expect(render).toContain("<StartPicks");
     expect(render).toContain("outcomes={startOutcomes}");
-    expect(render).toContain("funnels={startFunnels}");
     expect(render).toContain("onOutcomesChange={setStartOutcomes}");
-    expect(render).toContain("onFunnelsChange={setStartFunnels}");
     expect(render).toContain("onContinue={continueAfterPicks}");
     expect(render).toContain("brandHost={domain}");
     // The picks component owns no state of its own and no navigation.
@@ -91,30 +63,19 @@ describe("the sell-first screens are wizard steps", () => {
 
   it("persists the picks with the snapshot, tolerantly, with no version bump", () => {
     expect(wizard).toContain("startOutcomes?: string[];");
-    expect(wizard).toContain("startFunnels?: string[];");
     expect(wizard).toContain("!(p.startOutcomes === undefined || isStringList(p.startOutcomes))");
     expect(wizard).toContain("restored?.startOutcomes ?? []");
-    expect(wizard).toContain("restored?.startFunnels ?? []");
     expect(wizard).toContain("const ONBOARDING_STATE_VERSION = 8;");
   });
 
-  it("still writes the selection cookie the proxy and the payment screens read", () => {
-    const at = wizard.indexOf("document.cookie = startSelectionCookieAssignment({");
-    expect(at).toBeGreaterThan(-1);
-    const effect = wizard.slice(at - 200, at + 300);
-    expect(effect).toContain('if (flowKey !== "signup") return;');
-    expect(effect).toContain("channels: [DEFAULT_CHANNEL_SLUG]");
-    expect(effect).toContain("paid: [],");
-  });
-
-  it("the picks ARE the funnel selection: there is no funnel step left to skip", () => {
-    const at = wizard.indexOf("const pickedFunnelKeys = funnelKeysFromSelection(startFunnels)");
-    expect(at).toBeGreaterThan(-1);
-    const block = wizard.slice(at, at + 900);
-    expect(block).toContain(".map((key) => salesFunnelKeyOrNull(key))");
-    expect(block).toContain("offeredFunnels.some((f) => f.key === key)");
-    expect(block).toContain("setSelectedFunnelKeys((current) => (current.length > 0 ? current : pickedFunnelKeys));");
-    expect(block).not.toContain("normalizeSalesFunnelKey(");
+  it("the picked outcomes ARE the campaign selection: nothing is picked twice", () => {
+    // The campaigns a launch funds are derived from the picked outcomes against the
+    // published catalogue; no later step re-asks which paths to run.
+    expect(wizard).toContain(
+      "startCatalogue ? pairsForOutcomes(startOutcomes, startCatalogue.wire) : []",
+    );
+    expect(wizard).not.toContain("startSelectionCookieAssignment");
+    expect(wizard).not.toContain("setSelectedFunnelKeys");
     expect(wizard).not.toContain("funnelsStepSkipped");
   });
 
@@ -146,15 +107,18 @@ describe("one shell for the whole flow", () => {
     expect(withChrome.length).toBe(calls.length);
   });
 
-  it("places the build at step 4, the review and the money at step 5, and hides the bar after payment", () => {
+  it("places the build at step 3, the review and the money at step 4, and hides the bar after payment", () => {
+    // The picks are steps 1 and 2 (Goal, Results), so the setup and the review
+    // follow them on the one four-label stepper.
+    expect(picks).toContain('START_STEP_LABELS = ["Goal", "Results", "Your setup", "Review"]');
     const at = wizard.indexOf("function stepperFor(step: Step)");
     expect(at).toBeGreaterThan(-1);
     const fn = wizard.slice(at, at + 700);
     expect(fn).toContain('case "services":');
-    expect(fn).toContain("return { step: 4, count: START_STEP_COUNT };");
+    expect(fn).toContain("return { step: 3, count: START_STEP_COUNT };");
     expect(fn).toContain('case "built":');
     expect(fn).toContain('case "pricing":');
-    expect(fn).toContain("return { step: 5, count: START_STEP_COUNT };");
+    expect(fn).toContain("return { step: 4, count: START_STEP_COUNT };");
     expect(fn).toContain("return { step: 1, count: 1 };");
   });
 
@@ -178,15 +142,15 @@ describe("one shell for the whole flow", () => {
   });
 });
 
-describe("the public channels reader", () => {
+describe("the public catalogue reader", () => {
   const api = read("src/lib/api.ts");
 
-  it("reads /api/public/catalogue and parses through the ONE channels schema", () => {
-    const at = api.indexOf("export async function getPublicChannelsSignedOut(");
+  it("reads /api/public/catalogue and parses through the ONE catalogue parser", () => {
+    const at = api.indexOf("export async function getPublicCatalogueSignedOut(");
     expect(at).toBeGreaterThan(-1);
     const fn = api.slice(at, at + 1000);
     expect(fn).toContain('fetch("/api/public/catalogue")');
-    expect(fn).toContain("PublicChannelsSchema.safeParse(body.channels)");
+    expect(fn).toContain('parsePublicCatalogue(body.channels, "getPublicCatalogueSignedOut")');
     expect(fn).not.toContain("apiCall(");
   });
 });

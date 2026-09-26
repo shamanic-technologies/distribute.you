@@ -46,7 +46,6 @@ const OfferOutcomeLegSchema = z.object({
 const OfferOutcomeRowSchema = z.object({
   ...FiguresShape,
   step: z.object({ key: z.string(), label: z.string(), description: z.string() }),
-  valueBasisFunnelKey: z.string().nullable(),
   legs: z.array(OfferOutcomeLegSchema),
 });
 
@@ -117,7 +116,7 @@ export function pluralStepLabel(label: string): string {
 export interface CampaignRef {
   id: string;
   offerId?: string | null;
-  funnelKey?: string | null;
+  legKey?: string | null;
   featureSlug?: string | null;
   status: string;
   updatedAt: string;
@@ -126,7 +125,7 @@ export interface CampaignRef {
 /**
  * The ONE campaign a leg × channel row links to, or null.
  *
- * A campaign as the customer knows it is one (offer × funnel × channel) IDENTITY, and
+ * A campaign as the customer knows it is one (offer × leg × channel) IDENTITY, and
  * campaign-service stores it as many rows (it used to mint one per workflow switch, and
  * keeps them). So `campaignIds` routinely lists dozens of rows of ONE campaign. The row
  * links when those ids collapse to exactly one identity — to its live row, else the
@@ -145,7 +144,7 @@ export function legCampaignId(
   const rows = campaigns.filter((c) => wanted.has(c.id));
   if (rows.length === 0) return campaignIds.length === 1 ? campaignIds[0] : null;
   const identities = new Set(
-    rows.map((c) => `${c.offerId ?? ""}|${c.funnelKey ?? ""}|${c.featureSlug ?? ""}`),
+    rows.map((c) => `${c.offerId ?? ""}|${c.legKey ?? ""}|${c.featureSlug ?? ""}`),
   );
   if (identities.size !== 1) return null;
   let held: CampaignRef | null = null;

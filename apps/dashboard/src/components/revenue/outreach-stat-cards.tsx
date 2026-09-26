@@ -5,7 +5,7 @@ import { ScoreCard } from "@/components/visibility/score-card";
 import { LearningTag } from "@/components/learning-tag";
 import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
-import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import type { LegSteps } from "@/lib/goal-steps";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import type { BrandOptimizationGoal } from "@/lib/api";
@@ -95,7 +95,7 @@ function Cell({ children }: { children: ReactNode }) {
  * submissions/CPFS, Sales/CP Sale) is deliberately NOT here. It depended on the
  * brand's conversion tracker, so for a brand that never set one up it rendered a
  * "set this up" CTA in place of both values — a pair of cards stating nothing but
- * a chore. The reply-terminal funnel keeps its Positive replies pair, which is
+ * a chore. A reply-terminal leg keeps its Positive replies pair, which is
  * inbox-sourced and always has a real value.
  *
  * The COUNTS derive from already-fetched featureStats; the COST metrics (CPC /
@@ -110,7 +110,7 @@ export function OutreachStatCards({
   spend,
   pending,
   optimizationGoal,
-  funnelKey,
+  leg,
   outreachOverride,
   contactedOverride,
   signalSharePct,
@@ -120,7 +120,7 @@ export function OutreachStatCards({
   totalPipelineUsd,
   showEconomics = false,
   economicsLearning = false,
-  showFunnelMetrics = true,
+  showStepMetrics = true,
   showOutreach = true,
   paused = false,
 }: {
@@ -134,19 +134,11 @@ export function OutreachStatCards({
   pending: boolean;
   optimizationGoal?: BrandOptimizationGoal;
   /**
-   * The SALES FUNNEL this surface is scoped to, when it is scoped to one.
-   *
-   * A campaign sells exactly one funnel and states which on its own row, so it passes
-   * this and the funnel decides which steps appear. The goal cannot: `reply_meeting` and
-   * `visit_meeting` both answer to `sales_meetings`, so a goal-keyed row prints "Website
-   * Visits / Cost per website visit" on a campaign whose funnel starts at a positive
-   * reply — the wrong funnel's steps under the campaign's own name.
-   *
-   * Absent on a brand-level surface (a brand runs several funnels at once, so no single
-   * funnel's steps describe it) and on a pre-funnel campaign → the goal keys the row exactly as
-   * before.
+   * The LEG this surface is scoped to, when it is scoped to one. A campaign performs
+   * exactly one leg, so the leg decides which steps appear. Absent on a brand-level
+   * surface (several legs run at once) → the goal keys the row.
    */
-  funnelKey?: SalesFunnelKeyWire | null;
+  leg?: LegSteps | null;
   /**
    * When set, the Outreach count comes from this value (the brand Overview passes
    * the number of `contacted` leads on the SAME `/revenue` payload the table +
@@ -166,8 +158,8 @@ export function OutreachStatCards({
    */
   outreachLabel?: string;
   /**
-   * DISTINCT leads this scope contacted — `funnelSteps.contactedRecipients`, the base
-   * the funnel's first rung converts from.
+   * DISTINCT leads this scope contacted — `stepWalk.contactedRecipients`, the base the
+   * first step converts from.
    *
    * When present the row states TWO outreach cards, because a lead is contacted once and
    * outreached several times: "Leads contacted" (people) then `outreachLabel` (actions).
@@ -176,8 +168,8 @@ export function OutreachStatCards({
    */
   contactedOverride?: number | null;
   /**
-   * What share of the contacted leads reached the funnel's FIRST rung, SERVED as
-   * `funnelSteps.steps[0].conversionFromPreviousPct` (0-100).
+   * What share of the contacted leads reached the FIRST step, SERVED as
+   * `stepWalk.steps[0].conversionFromPreviousPct` (0-100).
    *
    * Rendered as the positive-reply card's subtitle. Read verbatim: dividing the two
    * counts in the browser is the compute-a-stat-in-the-browser bug, and it would drift
@@ -186,10 +178,10 @@ export function OutreachStatCards({
    */
   signalSharePct?: number | null;
   /**
-   * The same share for a funnel whose FIRST rung is a website visit, served as that
-   * rung's `conversionFromPreviousPct`.
+   * The same share for a leg whose FIRST step is a website visit, served as that
+   * step's `conversionFromPreviousPct`.
    *
-   * Its own prop rather than a reuse of `signalSharePct`: a funnel begins at ONE step,
+   * Its own prop rather than a reuse of `signalSharePct`: a walk begins at ONE step,
    * so the two are mutually exclusive by construction and a single prop would let a
    * caller state the reply share under the visit card. Read verbatim; null renders no
    * subtitle, never a 0%.
@@ -216,20 +208,18 @@ export function OutreachStatCards({
    */
   economicsLearning?: boolean;
   /**
-   * Whether to render the FUNNEL-specific pairs (Website Visits + cost per visit,
-   * and the goal's outcome pair). A brand runs several sales funnels at once, so
-   * at brand level those name one funnel's steps while the row above them sums
-   * every funnel — the money cards are the honest brand-level statement. A
-   * campaign sells exactly ONE funnel, so it keeps them.
+   * Whether to render the STEP pairs (Website Visits + cost per visit, and the outcome
+   * pair). A brand runs several legs at once, so at brand level those would name one
+   * leg's steps while the row sums them all — the money cards are the honest brand-level
+   * statement. A campaign performs exactly ONE leg, so it keeps them.
    */
-  showFunnelMetrics?: boolean;
+  showStepMetrics?: boolean;
   /**
    * Whether to state the OUTREACH count.
    *
-   * True everywhere a scope has one. A SALES FUNNEL does not: outreach is what a
-   * channel does, counted per channel and per brand, and a funnel carrying several
-   * channels has no outreach of its own to state. A zero there would read as "nobody
-   * was contacted", which is false.
+   * True everywhere a scope has one. Outreach is what a channel does, counted per
+   * channel and per brand; a scope with no outreach of its own passes false rather than
+   * a zero that would read as "nobody was contacted".
    */
   showOutreach?: boolean;
   /**
@@ -246,23 +236,21 @@ export function OutreachStatCards({
   paused?: boolean;
 }) {
   // No default goal. The brand one is retired — `NOT NULL` with a server default, so it
-  // reads "website purchases" for a brand that stated nothing — and defaulting to it put
-  // a funnel's steps on a surface that never named one. Absent goal AND absent funnel
-  // means the step helpers return the Outreach floor and no funnel pair renders.
+  // reads "website purchases" for a brand that stated nothing. Absent goal AND absent leg
+  // means the step helpers return the Outreach floor and no step pair renders.
   const goal = optimizationGoal ?? null;
-  // Which steps this row states, keyed on the FUNNEL when the surface is scoped to one and
-  // on the goal otherwise. Every pair below is decided from this list rather than from a
-  // `goal === "x"` test, so a funnel that does not buy a click cannot be given the
-  // Website-Visits pair (the reply→meeting funnel is exactly that case).
-  const steps = stepsFor(goal, funnelKey);
+  // Which steps this row states, keyed on the LEG when the surface is scoped to one and on
+  // the goal otherwise. Every pair below is decided from this list, so a leg that does
+  // not buy a click cannot be given the Website-Visits pair.
+  const steps = stepsFor(goal, leg);
   const hasStep = (key: string) => steps.some((s) => s.key === key);
   // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
   // Sales), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
   // the single source, so form_submissions/website_purchase/sales no longer borrow the
   // Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
-  const outcomeStep = outcomeStepFor(goal, funnelKey);
-  // A reply that is the TERMINAL step (the `positive_replies` goal: reply → paid). Clicks /
-  // website visits aren't in that funnel, and there is no downstream outcome step, so the
+  const outcomeStep = outcomeStepFor(goal, leg);
+  // A reply that is the TERMINAL step (the `positive_replies` goal, or an entry leg onto a
+  // reply). There is no downstream outcome step, so the
   // outcome pair becomes Positive replies + Cost per positive reply — the ONLY outcome pair
   // this row still states, because it is inbox-sourced and never needs a conversion tracker.
   const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;
@@ -287,12 +275,10 @@ export function OutreachStatCards({
     costLearning: isLearning(clicks),
   };
 
-  // The Website Visits pair renders only when a click onto the site is actually on the
-  // funnel. It is for the reply→meeting funnel, whose first step is a positive reply.
+  // The Website Visits pair renders only when a website visit is actually one of the steps.
   const showVisitPair = hasStep("website_visits");
-  // The reply pair as a MID-funnel signal, beside its own outcome below: the reply→meeting
-  // funnel (reply → meeting booked) and the combined `sales` goal (which wins a paying
-  // client via EITHER the visit→paid or the reply→paid path, so it shows both signals).
+  // The reply pair as a signal beside its own outcome below: a reply→meeting leg, and the
+  // combined `sales` goal (which shows both signals).
   // Reply attribution is inbox-sourced, so no conversion-tracker CTA.
   const showReplyPair = hasStep("positive_replies") && !isPositiveReplies;
 
@@ -374,14 +360,14 @@ export function OutreachStatCards({
           />
         </Cell>
       )}
-      {/* The brand-level money cards. A brand sells through SEVERAL sales funnels at
-          once, so the only figures that describe the whole brand are what the pipeline
-          is worth and what it cost — the per-funnel step counts beside them would each
-          name one funnel while the row sums them all.
+      {/* The brand-level money cards. A brand runs SEVERAL legs at once, so the only
+          figures that describe the whole brand are what the pipeline is worth and what it
+          cost — per-leg step counts beside them would each name one leg while the row sums
+          them all.
 
           Every value is read VERBATIM off features-service; there is no browser math
           here. `$ CAC` rides `costPerAcquisitionUsd` — the field served on the DEFAULT
-          un-lensed read (the Overview is the whole brand, every funnel), NOT the
+          un-lensed read (the Overview is the whole brand), NOT the
           lens-only `costPerConversionUsd`, which is absent here and left the card on a
           dash. The two are equal for the same scope by construction. */}
       {showEconomics && (
@@ -433,10 +419,8 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* Only when a click onto the site is on the funnel. The `positive_replies` goal
-          (reply→paid) and the reply→meeting FUNNEL both start at a reply, so neither
-          buys a website visit and neither gets these two cards. */}
-      {showFunnelMetrics && showVisitPair && (
+      {/* Only when a website visit is one of the steps. */}
+      {showStepMetrics && showVisitPair && (
         <>
           <Cell>
             <ScoreCard
@@ -463,11 +447,10 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* The reply as a mid-funnel signal, above its own outcome: the reply→meeting funnel
-          (where it takes the slot the Website Visits pair holds on the website funnels),
-          and the combined `sales` goal (which shows both signals).
+      {/* The reply as a signal above its own outcome: a reply→meeting leg, and the
+          combined `sales` goal (which shows both signals).
           Inbox-sourced attribution → no conversion-tracker CTA. */}
-      {showFunnelMetrics && showReplyPair && (
+      {showStepMetrics && showReplyPair && (
         <>
           <Cell>
             <ScoreCard
@@ -508,7 +491,7 @@ export function OutreachStatCards({
       {/* Outcome pair — the reply for positive_replies (its 1-step outcome), and nothing
           else. website_visits stays 1-step with no card (its outcome IS the Website Visits
           card above); a tracker-sourced outcome states no pair at all. */}
-      {showFunnelMetrics && outcomeCard && (
+      {showStepMetrics && outcomeCard && (
         <>
           <Cell>
             <ScoreCard

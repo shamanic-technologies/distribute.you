@@ -65,7 +65,6 @@ describe("InfoTooltip — usable with a thumb", () => {
       "src/components/audiences/engaged-leads-page.tsx",
       "src/components/onboarding/onboarding.tsx",
       "src/components/strategy/best-model-card.tsx",
-      "src/components/settings/brand-sales-funnels-card.tsx",
       "src/components/settings/brand-offer-card.tsx",
     ];
     for (const rel of migrated) {
@@ -77,5 +76,12 @@ describe("InfoTooltip — usable with a thumb", () => {
       // owns that class now, so no call site should still carry it.
       expect(body, `${rel} still hand-rolls a native-title tip`).not.toContain("cursor-help");
     }
+    // The card that replaced the per-funnel one carries no (i) of its own, and
+    // must not grow a hand-rolled one either.
+    const campaigns = fs.readFileSync(
+      path.join(root, "src/components/settings/offer-campaigns-card.tsx"),
+      "utf-8",
+    );
+    expect(campaigns).not.toContain("cursor-help");
   });
 });
