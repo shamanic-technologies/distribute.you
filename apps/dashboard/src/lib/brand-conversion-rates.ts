@@ -93,6 +93,18 @@ export function rateFieldSeed(leg: EffectiveLegRate): string {
 }
 
 /**
+ * A measured rate names the population it was read on. A leg the client's own
+ * sales team runs is measured on their whole CRM; a leg only our outreach can
+ * observe is measured on our leads. With no basis stated it reads as it always did.
+ */
+function measuredLabel(measured: EffectiveLegRate["measured"]): string {
+  const n = measured.fromReached ?? 0;
+  if (measured.basis === "crm") return `Measured on ${n} contacts in your CRM`;
+  if (measured.basis === "our_leads") return `Measured on ${n} of our leads`;
+  return `Measured on ${n} leads`;
+}
+
+/**
  * Where the number the product prices on came from, in words. Read off the
  * producer's `source`; a source this app does not know yet is named as it came,
  * rather than dressed as one it does.
@@ -100,7 +112,7 @@ export function rateFieldSeed(leg: EffectiveLegRate): string {
 export function rateSourceLabel(leg: EffectiveLegRate): string {
   switch (leg.source) {
     case "measured":
-      return `Measured on ${leg.measured.fromReached ?? 0} leads`;
+      return measuredLabel(leg.measured);
     case "manual":
       return "Your value";
     case "median":
