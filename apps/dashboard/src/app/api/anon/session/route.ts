@@ -15,7 +15,8 @@ import {
 } from "@/lib/anon-session-token";
 import { seedTrialCredit } from "@/lib/billing-service";
 import { domainClaim } from "@/lib/brand-service";
-import { createAnonymousOrg } from "@/lib/client-service";
+import { createAnonymousOrg, recordAcquisition } from "@/lib/client-service";
+import { firstTouchForHandover } from "@/lib/first-touch";
 import { extractDomain } from "@/lib/extract-domain";
 
 /**
@@ -152,6 +153,12 @@ export async function POST(req: NextRequest) {
     // gateway resolves identity with a body of its own and cannot say it, so
     // this is the one create that does not go through the gateway.
     const { orgId } = await createAnonymousOrg(anonOrgId, ANON_PRINCIPAL);
+
+    // Which channel brought this visitor, recorded on the org while it is
+    // still anonymous: the claim keeps the internal uuid, so the credit
+    // survives signup. Awaited (the org must carry it before anything else
+    // can) but never fatal — it logs its own failure.
+    await recordAcquisition({ orgId }, firstTouchForHandover(req.headers.get("cookie")));
 
     // Nothing works until this lands, so a failure refuses the session.
     await seedTrialCredit(orgId);

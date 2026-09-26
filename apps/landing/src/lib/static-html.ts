@@ -9,6 +9,7 @@ import {
   notAcceptableBody,
 } from "@/lib/content-negotiation";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
+import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch-script";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
@@ -53,7 +54,10 @@ function analyticsHead(): string {
 
   // Partnero affiliate tracking + cross-subdomain via-forward, then the customer
   // referral code on the same journey.
-  return ga + posthog + ahrefs + partneroHead() + inviteHead();
+  // First touch: which channel brought this visitor, recorded once on the
+  // registrable domain for the dashboard to hand over at org creation.
+  const firstTouch = `<script>${FIRST_TOUCH_CAPTURE_SCRIPT}</script>`;
+  return firstTouch + ga + posthog + ahrefs + partneroHead() + inviteHead();
 }
 
 /**
