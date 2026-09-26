@@ -2,6 +2,7 @@
 
 import { useOrganization } from "@clerk/nextjs";
 import { OrgAvatar } from "@/components/org-avatar";
+import { isAdminEmail } from "@/lib/admin-allowlist";
 import { V2Page } from "@/components/v2/setup-pages";
 
 /**
@@ -9,14 +10,18 @@ import { V2Page } from "@/components/v2/setup-pages";
  * organization and its members are Clerk's own, read-only here: inviting a teammate
  * and deleting the organization are writes the dashboard does not offer anywhere yet,
  * so they are left out rather than drawn as controls that do nothing.
+ *
+ * Staff are hidden: god-mode makes every staff account a real member of every org it
+ * opens, so listing them would show the customer people who are not on their team.
  */
 
 const ROLE_LABEL: Record<string, string> = { "org:admin": "Admin", "org:member": "Member" };
 
 export function V2TeamPage() {
   const { organization, isLoaded, memberships } = useOrganization({ memberships: { pageSize: 50, keepPreviousData: true } });
-  const rows = memberships?.data ?? [];
-  const total = memberships?.count ?? rows.length;
+  const all = memberships?.data ?? [];
+  const rows = all.filter((m) => !isAdminEmail(m.publicUserData?.identifier));
+  const total = (memberships?.count ?? all.length) - (all.length - rows.length);
   const pending = !isLoaded || (memberships?.isLoading ?? true);
   return (
     <V2Page crumbs={[{ label: "Account" }, { label: "Team" }]} title={organization?.name ?? "Team"} sub="Everyone who can open this organization." width="max-w-[760px]">
