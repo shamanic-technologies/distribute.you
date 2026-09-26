@@ -15,7 +15,8 @@ import { useMissions, type Mission, type CrewSummary } from "@/components/v2/use
 import { useCrewRuns, useRecentRuns, runState, runTaskLabel, type CrewRuns } from "@/components/v2/runs";
 import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
-import { useBrandRevenue } from "@/components/v2/data";
+import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
+import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-modal";
 
 /** The result a mission's leg lands on, read off its own served group. */
 export function missionResult(m: Mission): { count: number | null; noun: string; costCents: number | null } {
@@ -53,6 +54,8 @@ export function CrewPage() {
   const revenue = useBrandRevenue(brandId);
   const { cents: ceiling } = useRunningDailyBudgetCents(brandId, { enabled: revenue.enabled });
   const runningCrews = crews.filter((c) => c.running > 0).length;
+  const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
+  const [runsShown, setRunsShown] = useState(30);
 
   let runsToday = 0;
   let spendToday = 0;
@@ -97,9 +100,24 @@ export function CrewPage() {
                 : "Your crew"}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              {settled
-                ? `${crews.length} ${crews.length === 1 ? "crew" : "crews"}. Each one moves your leads one step, through one channel.`
-                : " "}
+              {settled ? (
+                <>
+                  {crews.length} {crews.length === 1 ? "crew" : "crews"}
+                  {runsSettled ? `, ${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today` : ""}.
+                  {needsCall != null && needsCall > 0 ? (
+                    <>
+                      {" "}
+                      <Link href={v2Href(orgId, brandId, "work")} className="k-fg hover:underline">
+                        {formatCount(needsCall)} {needsCall === 1 ? "needs" : "need"} your call.
+                      </Link>
+                    </>
+                  ) : (
+                    " Each one moves your leads one step, through one channel."
+                  )}
+                </>
+              ) : (
+                " "
+              )}
             </p>
           </div>
           {settled && (
@@ -122,6 +140,7 @@ export function CrewPage() {
                   runsSettled={runsSettled}
                   lastRun={lastRunByCrew.get(c.crew.key) ?? null}
                   workHref={v2Href(orgId, brandId, "work")}
+                  brandId={brandId}
                 />
               ))}
           {settled && (
@@ -145,7 +164,16 @@ export function CrewPage() {
           )}
         </div>
 
-        <RecentRuns runs={recent.data ?? null} error={recent.isError} missionFor={(id) => (id ? missionByCampaignId.get(id) ?? null : null)} crews={crews} />
+        <RecentRuns
+          runs={recent.data ?? null}
+          error={recent.isError}
+          missionFor={(id) => (id ? missionByCampaignId.get(id) ?? null : null)}
+          crews={crews}
+          runsToday={runsSettled ? runsToday : null}
+          spendTodayCents={runsSettled ? spendToday : null}
+          shown={runsShown}
+          onMore={() => setRunsShown((n) => n + 30)}
+        />
       </div>
     </>
   );
@@ -158,6 +186,7 @@ function CrewCard({
   runsSettled,
   lastRun,
   workHref,
+  brandId,
 }: {
   crew: CrewSummary;
   missions: Mission[];
@@ -165,7 +194,18 @@ function CrewCard({
   runsSettled: boolean;
   lastRun: RunRow | null;
   workHref: string;
+  brandId: string;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const running = crew.running > 0;
+  const offerIds = [...new Set(missions.map((m) => m.offerId))];
+  const scope =
+    missions.length === 1
+      ? { campaignId: missions[0].row.campaign.id }
+      : offerIds.length === 1
+        ? { offerId: offerIds[0], featureSlug: missions[0]?.row.campaign.featureSlug ?? null }
+        : {};
   const ceiling = crewCeilingCents(missions);
   const leg = missions[0]?.leg?.label ?? null;
   const results = missions.map(missionResult);
@@ -183,7 +223,57 @@ function CrewCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[15px] font-medium">{crew.crew.name}</p>
-            <StateDot running={crew.running > 0} />
+            <span className="flex items-center gap-1">
+              <StateDot running={running} />
+              <span className="relative">
+                <button
+                  type="button"
+                  aria-label={`${crew.crew.name} actions`}
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="k-btn-ghost h-6 w-6 justify-center px-0"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                    <circle cx="3.5" cy="8" r="1.2" fill="currentColor" />
+                    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+                    <circle cx="12.5" cy="8" r="1.2" fill="currentColor" />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                    <div className="k-popover absolute right-0 top-7 z-40 w-[220px] p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setControlsOpen(true);
+                        }}
+                        className="k-hover flex w-full items-center rounded-[8px] px-2 py-1.5 text-left text-[13px]"
+                      >
+                        {running ? "Pause or change budget" : "Restart or change budget"}
+                      </button>
+                      <Link href={workHref} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
+                        See its work
+                      </Link>
+                      <div className="my-1 h-px bg-[var(--line-subtle)]" />
+                      <p className="k-fg3 px-2 pb-1 pt-0.5 text-[11px]">Missions</p>
+                      {missions.map((m) => (
+                        <Link key={m.row.campaign.id} href={m.href} className="k-hover flex items-center gap-2 rounded-[8px] px-2 py-1.5 text-[13px]">
+                          <StateDot running={m.running} label="" />
+                          <span className="truncate">{m.offerName ?? "Offer"}</span>
+                        </Link>
+                      ))}
+                      {missions.length === 1 && (
+                        <Link href={`${missions[0].href}/workflows`} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
+                          Workflows
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                )}
+              </span>
+            </span>
           </div>
           <p className="k-fg2 truncate text-[13px]">
             {leg ? `Brings ${leg.toLowerCase()}` : "Moves your leads one step"}
@@ -297,8 +387,45 @@ function CrewCard({
           );
         })}
       </ul>
+
+      <div className="mt-auto pt-3">
+        <div className="k-inset grid grid-cols-2 rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+          {(["Paused", "Running"] as const).map((label) => {
+            const on = (label === "Running") === running;
+            return (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={on}
+                onClick={() => (on ? undefined : setControlsOpen(true))}
+                className={`h-7 rounded-[7px] text-[13px] ${on ? "bg-[var(--bg-raised)] font-medium text-[var(--fg-1)] shadow-[inset_0_0_0_1px_var(--line),var(--elev-control)]" : "text-[var(--fg-2)] hover:text-[var(--fg-1)]"}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="k-fg2 mt-2 text-[12px] leading-[18px]">
+          {running
+            ? "Works on its own inside its daily budget. People who reply with interest wait for you in Work."
+            : "Paused. Nothing is sent until you restart it, and its budget is kept."}
+        </p>
+      </div>
+      {controlsOpen && <CampaignControlsModal brandId={brandId} {...scope} onClose={() => setControlsOpen(false)} />}
     </div>
   );
+}
+
+/** How long one run took, off its own two served instants. */
+function took(run: RunRow): string | null {
+  if (!run.completedAt) return null;
+  const ms = new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
 function RecentRuns({
@@ -306,11 +433,19 @@ function RecentRuns({
   error,
   missionFor,
   crews,
+  runsToday,
+  spendTodayCents,
+  shown,
+  onMore,
 }: {
   runs: RunRow[] | null;
   error: boolean;
   missionFor: (campaignId: string | null) => Mission | null;
   crews: CrewSummary[];
+  runsToday: number | null;
+  spendTodayCents: number | null;
+  shown: number;
+  onMore: () => void;
 }) {
   const [filter, setFilter] = useState<string | null>(null);
   const rows = (runs ?? []).filter((r) => {
@@ -347,16 +482,16 @@ function RecentRuns({
             <table className="w-full min-w-[720px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
-                  {["Time", "Crew", "Step", "Mission", "Status", "Cost"].map((h) => (
-                    <th key={h} className={`k-label px-3 py-2.5 font-medium first:pl-4 last:pr-4 ${h === "Cost" ? "text-right" : "text-left"}`}>{h}</th>
+                  {["Time", "Crew", "Step", "Mission", "Status", "Took", "Cost"].map((h) => (
+                    <th key={h} className={`k-label px-3 py-2.5 font-medium first:pl-4 last:pr-4 ${h === "Cost" || h === "Took" ? "text-right" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 ? (
-                  <tr><td colSpan={6}><EmptyNote>No run yet.</EmptyNote></td></tr>
+                  <tr><td colSpan={7}><EmptyNote>No run yet.</EmptyNote></td></tr>
                 ) : (
-                  rows.slice(0, 30).map((run) => {
+                  rows.slice(0, shown).map((run) => {
                     const m = missionFor(run.campaignId);
                     const st = runState(run);
                     const cost = Number(run.ownCostInUsdCents);
@@ -383,6 +518,7 @@ function RecentRuns({
                             {st === "failed" ? "Failed" : st === "running" ? "Running" : "Done"}
                           </span>
                         </td>
+                        <td className="k-mono k-fg2 px-3 text-right text-[12px] tabular-nums">{took(run) ?? "—"}</td>
                         <td className="k-mono k-fg2 px-3 pr-4 text-right text-[12px] tabular-nums">
                           {cost > 0 ? formatCentsAsUsdAdaptive(cost) : "—"}
                         </td>
@@ -392,6 +528,18 @@ function RecentRuns({
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="k-fg3 flex items-center gap-3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
+            <span className="min-w-0 truncate">
+              Latest {formatCount(Math.min(shown, rows.length))}
+              {runsToday != null ? ` · ${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today` : ""}
+              {spendTodayCents != null ? ` · ${formatCentsAsUsdAdaptive(spendTodayCents)} spent today` : ""}
+            </span>
+            {rows.length > shown && (
+              <button type="button" onClick={onMore} className="k-btn-ghost ml-auto h-6 text-[12px]">
+                Show {formatCount(Math.min(30, rows.length - shown))} more
+              </button>
+            )}
           </div>
         </div>
       )}

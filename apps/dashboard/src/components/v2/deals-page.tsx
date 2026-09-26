@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getContactedValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
@@ -9,6 +9,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
+import { leadStatusLabel } from "@/lib/lead-status";
 import { LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -61,6 +62,13 @@ export function DealsPage() {
   const won = totals?.won ?? null;
   const pipeline = revenue.data?.totalPipelineUsd ?? null;
   const biggest = Math.max(1, ...columns.map((c) => totals?.[c.key] ?? 0));
+  // A card states its company's value: features-service's own per-organisation figure,
+  // looked up by domain (a display join, never a sum).
+  const valueByDomain = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const o of revenue.data?.organizations ?? []) if (o.orgDomain) m.set(o.orgDomain, o.expectedRevenueUsd);
+    return m;
+  }, [revenue.data]);
   return (
     <>
       <TopBar
@@ -135,6 +143,7 @@ export function DealsPage() {
               share={(totals?.[c.key] ?? 0) / biggest}
               crewFilter={crewFilter}
               missionFor={(id) => missionByCampaignId.get(id) ?? null}
+              valueFor={(domain) => (domain ? valueByDomain.get(domain) ?? null : null)}
             />
           ))}
         </div>
@@ -152,6 +161,7 @@ function DealColumn({
   share,
   crewFilter,
   missionFor,
+  valueFor,
 }: {
   brandId: string;
   orgId: string;
@@ -161,6 +171,7 @@ function DealColumn({
   share: number;
   crewFilter: string | null;
   missionFor: (campaignId: string) => Mission | null;
+  valueFor: (domain: string | null) => number | null;
 }) {
   const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
   const q = useAuthQuery(
@@ -177,13 +188,13 @@ function DealColumn({
   // shows it, joined to its cards by lead id.
   const valued = column === "contacted";
   const valueIds = valued && all ? all.map((l) => l.leadId).filter((id): id is string => !!id) : [];
-  const value = useAuthQuery(
+  const contactedValue = useAuthQuery(
     ["contactedValue", brandId, valueIds.join(",")],
     () => getContactedValue(brandId, valueIds),
     { refetchInterval: POLL_INTERVAL, enabled: valued && total !== 0 && all !== null },
   );
-  const valueByLead = new Map((value.data?.leads ?? []).map((v) => [v.leadId, v.expectedValueUsd]));
-  const columnValue = value.data?.totalExpectedValueUsd ?? null;
+  const valueByLead = new Map((contactedValue.data?.leads ?? []).map((v) => [v.leadId, v.expectedValueUsd]));
+  const columnValue = contactedValue.data?.totalExpectedValueUsd ?? null;
   const leads = all && crewFilter ? all.filter((l) => missionFor(l.campaignId)?.crew.key === crewFilter) : all;
   return (
     <section className="flex w-[272px] min-w-[240px] shrink-0 flex-col md:flex-1 md:basis-0">
@@ -209,7 +220,9 @@ function DealColumn({
           leads.map((lead) => {
             const company = leadCompany(lead);
             const m = missionFor(lead.campaignId);
-            const at = leadDateForStatus(lead, getLeadConsolidatedStatus(lead));
+            const status = getLeadConsolidatedStatus(lead);
+            const at = leadDateForStatus(lead, status);
+            const value = valueFor(leadCompanyDomain(lead));
             return (
               <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-card block p-3">
                 <div className="flex items-center gap-2">
@@ -220,7 +233,10 @@ function DealColumn({
                   )}
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
                   {valued && lead.leadId && valueByLead.get(lead.leadId) != null ? (
+                    // Contacted, not engaged: its expected value, quieter than an engaged figure.
                     <span className="k-fg2 shrink-0 text-[12px] tabular-nums">{formatUsdAdaptive(valueByLead.get(lead.leadId) as number)}</span>
+                  ) : !valued && value != null && value > 0 ? (
+                    <span className="shrink-0 text-[13px] font-medium tabular-nums">{formatUsdAdaptive(value)}</span>
                   ) : null}
                 </div>
                 {company ? (
@@ -236,6 +252,10 @@ function DealColumn({
                     </span>
                   ) : null}
                   <span className="ml-auto shrink-0 tabular-nums">{at ? timeAgo(at) : ""}</span>
+                </div>
+                <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT[column] }} />
+                  <span className="truncate">{leadStatusLabel(status)}</span>
                 </div>
               </Link>
             );

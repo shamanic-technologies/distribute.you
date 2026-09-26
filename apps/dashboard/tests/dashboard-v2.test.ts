@@ -305,8 +305,52 @@ describe("v2 Deals prices the contacted column off features-service", () => {
   it("reads the served contacted value and computes none of it", () => {
     expect(src).toContain("getContactedValue(brandId, valueIds)");
     expect(src).toContain('["contactedValue", brandId, valueIds.join(",")]');
-    expect(src).toContain("value.data?.totalExpectedValueUsd");
+    expect(src).toContain("contactedValue.data?.totalExpectedValueUsd");
     expect(src).not.toMatch(/expectedValueUsd\s*\*/);
     expect(src).not.toMatch(/\.reduce\(/);
+  });
+});
+
+describe("Keel parity, second pass", () => {
+  const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
+  const V2 = "src/components/v2/";
+
+  it("every top bar carries the bell and the palette button, and the palette listens for it", () => {
+    const ui = read(V2 + "ui.tsx");
+    expect(ui).toContain("<TopBarUniversal />");
+    expect(ui).toContain("useNeedsYourCall(brandId, 5)");
+    expect(ui).toContain("OPEN_PALETTE_EVENT");
+    expect(read(V2 + "sidebar-menus.tsx")).toContain("window.addEventListener(OPEN_PALETTE_EVENT, onOpen)");
+  });
+
+  it("key hints hide on a touch screen", () => {
+    const ui = read(V2 + "ui.tsx");
+    expect(ui.slice(ui.indexOf("export function KeyHint("))).toContain("k-keys");
+  });
+
+  it("the reply preview reads lead-service's merged history on the key the person page uses", () => {
+    const data = read(V2 + "data.ts");
+    expect(data).toContain('["leadHistory", leadRowId, brandId, "campaign"]');
+    expect(read(V2 + "today-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
+    expect(read(V2 + "work-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
+  });
+
+  it("Today states runs off runs-service and the meeting date off the served outcome", () => {
+    const today = read(V2 + "today-page.tsx");
+    expect(today).toContain("useCrewRuns(brandId, missionByCampaignId)");
+    expect(today).toContain('useLatestInBucket(brandId, "meeting_booked", 3)');
+    expect(today).toContain("outcomeByLeadId.get(lead.leadId)?.meetingBookedAt");
+  });
+
+  it("Crew runs table states how long each run took, off its own two instants", () => {
+    const crew = read(V2 + "crew-page.tsx");
+    expect(crew).toContain('"Took"');
+    expect(crew).toContain("run.completedAt");
+  });
+
+  it("a Deals card's value is the organisation's served figure, looked up, never summed", () => {
+    const deals = read(V2 + "deals-page.tsx");
+    expect(deals).toContain("valueByDomain");
+    expect(deals).not.toMatch(/reduce\(/);
   });
 });
