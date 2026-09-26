@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { TenantMenu } from "@/components/tenant-switcher";
-import { BrandLogo } from "@/components/brand-logo";
-import { backToV1Href, switchUiVersion } from "@/components/ui-version-switch";
-import { MaturityBadge } from "@/components/maturity-badge";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useMissions } from "@/components/v2/use-missions";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
-import { v1Brand, v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
 
 /**
@@ -24,6 +19,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const search = useSearchParams();
+  // No brand in the URL (the org's brand picker): no brand sidebar to draw.
+  const hasBrand = Boolean(useParams<{ brandId?: string }>().brandId);
   // A navigation closes the drawer, wherever it was started from.
   useEffect(() => setOpen(false), [pathname, search]);
 
@@ -36,11 +33,14 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
             open ? "translate-x-0 shadow-xl" : "-translate-x-full"
           }`}
         >
-          <V2Sidebar />
+          {hasBrand && <V2Sidebar />}
         </div>
         <main className="k-panel k-scroll relative my-2 ml-2 mr-2 min-w-0 flex-1 overflow-y-auto lg:ml-0">
           {children}
         </main>
+        {/* Overlays the sidebar opens (the ⌘K palette) render here, outside the drawer,
+            whose transform would otherwise trap their fixed positioning. */}
+        <div id="v2-portal" />
       </div>
     </V2NavContext.Provider>
   );
@@ -58,7 +58,6 @@ function NavItem({
   active,
   trailing,
   indent = false,
-  external = false,
 }: {
   href: string;
   label: string;
@@ -66,8 +65,6 @@ function NavItem({
   active?: boolean;
   trailing?: React.ReactNode;
   indent?: boolean;
-  /** Leaves v2 for a v1 page. Marked, so nobody mistakes it for a v2 view. */
-  external?: boolean;
 }) {
   return (
     <Link
@@ -80,11 +77,6 @@ function NavItem({
     >
       {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--fg-3)]">{icon}</span>}
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {external && (
-        <svg width="10" height="10" viewBox="0 0 10 10" className="k-fg4 shrink-0 opacity-0 group-hover:opacity-100" aria-hidden="true">
-          <path d="M3.5 2h4.5v4.5M8 2 2.5 7.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
-      )}
       {trailing}
     </Link>
   );
@@ -119,92 +111,10 @@ const ICONS = {
   card: "M2.5 4h11v8h-11zM2.5 6.5h11",
 };
 
-function TenantButton() {
-  const t = useTenantSwitcher();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-  const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex h-9 w-full items-center gap-2 rounded-[8px] px-2 text-left hover:bg-[var(--bg-hover)]"
-      >
-        <BrandLogo
-          domain={t.displayBrand?.domain ?? null}
-          logoUrl={t.displayBrand?.logoUrl}
-          size={20}
-          className="shrink-0 rounded-[5px]"
-          fallbackClassName="h-5 w-5 shrink-0"
-        />
-        <span className="min-w-0 truncate text-[13px] font-semibold">{name}</span>
-        <svg width="12" height="12" viewBox="0 0 12 12" className="k-fg3 shrink-0" aria-hidden="true">
-          <path d="M4 4.5 6 2.5l2 2M4 7.5l2 2 2-2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64">
-          <TenantMenu t={t} onDone={() => setOpen(false)} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SearchBox({ orgId, brandId }: { orgId: string; brandId: string }) {
-  const router = useRouter();
-  const ref = useRef<HTMLInputElement>(null);
-  const [q, setQ] = useState("");
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        ref.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-  return (
-    <form
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const term = q.trim();
-        router.push(`${v2Href(orgId, brandId, "people")}${term ? `?q=${encodeURIComponent(term)}` : ""}`);
-      }}
-      className="k-input flex items-center gap-2 px-2"
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" className="k-fg3 shrink-0" aria-hidden="true">
-        <path d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm6.5 1.5-3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-      <input
-        ref={ref}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search people…"
-        aria-label="Search people"
-        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--fg-3)]"
-      />
-      <span className="k-kbd">⌘K</span>
-    </form>
-  );
-}
-
 function V2Sidebar() {
   const params = useParams<{ orgId?: string; brandId?: string }>();
   const pathname = usePathname() ?? "";
   const search = useSearchParams();
-  const { user } = useUser();
   const orgId = params.orgId ?? "";
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
@@ -214,15 +124,13 @@ function V2Sidebar() {
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
-  const v1 = v1Brand(orgId, brandId);
   const tab = search.get("tab");
-  const firstOffer = missions[0]?.offerId ?? null;
 
   return (
     <aside className="flex h-full w-[240px] max-w-[85vw] shrink-0 flex-col">
       <div className="space-y-2 px-2 pt-2">
-        <TenantButton />
-        <SearchBox orgId={orgId} brandId={brandId} />
+        <TenantSwitcherV2 />
+        <SearchTrigger orgId={orgId} brandId={brandId} />
       </div>
       <nav className="k-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-3">
         <div className="space-y-px">
@@ -303,13 +211,11 @@ function V2Sidebar() {
         </Group>
 
         <Group title="Setup">
-          <NavItem external href={`${v1}/offers`} label="Offers" icon={<I d={ICONS.offer} />} />
-          {firstOffer && (
-            <NavItem external href={`${v1}/offers/${firstOffer}/audiences`} label="Targeting" icon={<I d={ICONS.target} />} />
-          )}
-          <NavItem external href={`${v1}/crm`} label="Integrations" icon={<I d={ICONS.plug} />} />
-          <NavItem external href={`${v1}/settings`} label="Brand settings" icon={<I d={ICONS.settings} />} />
-          <NavItem external href={`/orgs/${encodeURIComponent(orgId)}/billing`} label="Billing" icon={<I d={ICONS.card} />} />
+          <NavItem href={v2Href(orgId, brandId, "offers")} label="Offers" icon={<I d={ICONS.offer} />} active={section === "offers"} />
+          <NavItem href={v2Href(orgId, brandId, "targeting")} label="Targeting" icon={<I d={ICONS.target} />} active={section === "targeting"} />
+          <NavItem href={v2Href(orgId, brandId, "integrations")} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
+          <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
+          <NavItem href={v2Href(orgId, brandId, "billing")} label="Billing" icon={<I d={ICONS.card} />} active={section === "billing"} />
         </Group>
 
         {crews.length > 0 && (
@@ -346,32 +252,7 @@ function V2Sidebar() {
           </Group>
         )}
       </nav>
-      <div className="flex items-center gap-2.5 px-3 pb-3 pt-2">
-        {user?.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.imageUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
-        ) : (
-          <span className="h-7 w-7 shrink-0 rounded-full bg-[var(--bg-selected)]" />
-        )}
-        <div className="min-w-0 flex-1 leading-4">
-          <p className="truncate text-[13px] font-medium">{user?.fullName || user?.primaryEmailAddress?.emailAddress || ""}</p>
-          <p className="k-fg3 flex items-center gap-1.5 truncate text-[12px]">
-            Dashboard v2 <MaturityBadge level="beta" />
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => switchUiVersion("v1", backToV1Href(orgId, brandId || null))}
-          title="Back to v1"
-          aria-label="Back to v1"
-          className="k-btn-ghost h-7 shrink-0 gap-1 whitespace-nowrap px-1.5 text-[12px]"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M6 4 3 7l3 3M3.5 7H10a3 3 0 0 1 0 6H8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          v1
-        </button>
-      </div>
+      <AccountMenuV2 orgId={orgId} brandId={brandId} />
     </aside>
   );
 }

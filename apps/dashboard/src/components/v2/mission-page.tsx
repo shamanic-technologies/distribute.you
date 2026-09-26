@@ -15,9 +15,10 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions } from "@/components/v2/use-missions";
+import { missionTabs } from "@/components/v2/setup-pages";
 import { useLatestInBucket } from "@/components/v2/data";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StateDot, StatTile, TopBar } from "@/components/v2/ui";
-import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle, v1LeadHref } from "@/components/v2/people-bits";
+import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 
 /**
  * One mission (beta), laid out as Keel lays out one record: identity and state on top,
@@ -80,11 +81,20 @@ export function MissionPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Link href={mission.v1Href} className="k-btn">Open in v1</Link>
               <CampaignControlsTrigger brandId={brandId} campaignId={mission.row.campaign.id} totalCentsOverride={mission.row.budgetCents} />
             </div>
           </div>
         )}
+
+        {mission ? (
+          <nav className="k-line-subtle mt-4 flex gap-5 border-b" aria-label="Sections">
+            {missionTabs(orgId, brandId, mission.row.campaign.id, "overview").map((t) => (
+              <Link key={t.href} href={t.href} aria-current={t.active ? "page" : undefined} className="k-tab text-[13px]">
+                {t.label}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
 
         {hold ? (
           <div className="k-card mt-4 p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--data-amber)_35%,transparent)]">
@@ -125,7 +135,7 @@ export function MissionPage() {
                     const title = leadTitle(lead);
                     return (
                       <li key={`${kind}-${lead.id}`}>
-                        <Link href={v1LeadHref(orgId, brandId, lead)} className="k-hover flex items-center gap-3 px-4 py-2.5">
+                        <Link href={personHref(orgId, brandId, lead)} className="k-hover flex items-center gap-3 px-4 py-2.5">
                           <PersonAvatar lead={lead} size={28} />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[13px] font-medium">{leadName(lead)}</span>

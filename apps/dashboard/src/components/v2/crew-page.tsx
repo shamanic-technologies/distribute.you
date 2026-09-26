@@ -8,7 +8,7 @@ import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { isLearning } from "@/lib/learning-threshold";
 import { timeAgo } from "@/lib/friendly-datetime";
-import { v1Brand, v2Href } from "@/lib/v2/routes";
+import { v2Href } from "@/lib/v2/routes";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission, type CrewSummary } from "@/components/v2/use-missions";
@@ -77,7 +77,7 @@ export function CrewPage() {
         crumbs={[{ label: "Crew" }]}
         actions={
           <>
-            <Link href={`${v1Brand(orgId, brandId)}/offers`} className="k-btn">
+            <Link href={v2Href(orgId, brandId, "offers")} className="k-btn">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="6" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
                 <path d="M1.5 13.5c.6-2.3 2.4-3.5 4.5-3.5s3.9 1.2 4.5 3.5M12.5 5.5v4M10.5 7.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -138,7 +138,7 @@ export function CrewPage() {
               <p className="k-fg2 max-w-[260px] text-[13px]">
                 Fund another channel on one of your offers, and a new crew starts working it.
               </p>
-              <Link href={`${v1Brand(orgId, brandId)}/offers`} className="k-btn mt-2">
+              <Link href={v2Href(orgId, brandId, "offers")} className="k-btn mt-2">
                 + Open offers
               </Link>
             </div>

@@ -64,7 +64,7 @@ export function RecordsToolbar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-3 md:px-6">
-      <label className="k-input flex w-full max-w-[240px] items-center gap-2 px-2.5">
+      <label className="k-input flex w-full max-w-[240px] items-center gap-2 bg-[var(--bg-inset)] px-2.5">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="k-fg3 shrink-0" aria-hidden="true">
           <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3" />
           <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -73,11 +73,36 @@ export function RecordsToolbar({
           ref={inputRef}
           value={search}
           onChange={(e) => onSearch(e.target.value)}
+          onKeyDown={(e) => {
+            // Keel's records search: Esc leaves the field (the filter stays), and the
+            // arrows hand the keyboard to the rows so the first match is one key away.
+            if (e.key === "Escape" || e.key === "ArrowDown") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+          type="search"
           placeholder={placeholder}
           aria-label={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--fg-3)]"
+          className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--fg-3)] [&::-webkit-search-cancel-button]:hidden"
         />
-        <span className="k-kbd">/</span>
+        {search ? (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => {
+              onSearch("");
+              inputRef?.current?.focus();
+            }}
+            className="k-fg3 -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:text-[var(--fg-1)]"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : (
+          <span className="k-kbd">/</span>
+        )}
       </label>
       {problem ? <span className="text-[12px] text-[var(--data-rose)]">{problem}</span> : null}
       {right && <div className="ml-auto flex items-center gap-2">{right}</div>}
@@ -133,9 +158,19 @@ export function useRowKeys({
         s.searchRef.current?.focus();
         return;
       }
+      // ArrowDown out of the search lands on the first row (the field blurs itself).
+      if (e.key === "ArrowDown" && t === s.searchRef.current && s.count > 0) {
+        s.setCursor(0);
+        return;
+      }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || s.count === 0) return;
-      if (e.key === "j") s.setCursor(Math.min(s.count - 1, s.cursor + 1));
-      else if (e.key === "k") s.setCursor(Math.max(0, s.cursor - 1));
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        s.setCursor(Math.min(s.count - 1, s.cursor + 1));
+      } else if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        s.setCursor(Math.max(0, s.cursor - 1));
+      }
       else if (e.key === "Enter" && s.cursor >= 0) s.onOpen(s.cursor);
     };
     window.addEventListener("keydown", onKey);

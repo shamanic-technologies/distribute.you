@@ -9,7 +9,15 @@ export type V2Section =
   | "deals"
   | "work"
   | "crew"
-  | "missions";
+  | "missions"
+  | "offers"
+  | "targeting"
+  | "integrations"
+  | "settings"
+  | "billing"
+  | "api-keys"
+  | "account"
+  | "referral";
 
 export function v2Base(orgId: string, brandId: string): string {
   return `/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
@@ -30,11 +38,34 @@ export function v2SectionOf(pathname: string): V2Section | null {
   if (parts[0] !== "v2" || parts[1] !== "orgs" || parts[3] !== "brands") return null;
   const s = parts[5];
   if (!s) return "today";
-  const known: V2Section[] = ["companies", "people", "deals", "work", "crew", "missions"];
+  const known: V2Section[] = [
+    "companies",
+    "people",
+    "deals",
+    "work",
+    "crew",
+    "missions",
+    "offers",
+    "targeting",
+    "integrations",
+    "settings",
+    "billing",
+    "api-keys",
+    "account",
+    "referral",
+  ];
+  // An offer's Targeting tab is Targeting, not Offers.
+  if (s === "offers" && parts[7] === "targeting") return "targeting";
   return (known as string[]).includes(s) ? (s as V2Section) : null;
 }
 
-/** The v1 brand page a v2 section has no equivalent for yet. */
-export function v1Brand(orgId: string, brandId: string): string {
-  return `/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
+/** One person (a `leads_campaigns` row) in v2. */
+export function v2PersonHref(orgId: string, brandId: string, leadRowId: string): string {
+  return `${v2Base(orgId, brandId)}/people/${encodeURIComponent(leadRowId)}`;
+}
+
+/** One offer in v2: its settings, with its Targeting beside it. */
+export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting"): string {
+  const base = `${v2Base(orgId, brandId)}/offers/${encodeURIComponent(offerId)}`;
+  return tab ? `${base}/${tab}` : base;
 }

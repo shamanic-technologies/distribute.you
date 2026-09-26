@@ -15,7 +15,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue } from "@/components/v2/data";
-import { CompanyMark, PersonAvatar, leadName, leadTitle, v1LeadHref } from "@/components/v2/people-bits";
+import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey, companyStage } from "@/components/v2/companies-page";
 
@@ -262,7 +262,7 @@ export function CompanyPage() {
                         const m = missionByCampaignId.get(l.campaignId) ?? null;
                         return (
                           <li key={l.id}>
-                            <Link href={v1LeadHref(orgId, brandId, l)} className="k-hover flex items-center gap-2.5 rounded-[8px] px-2 py-1.5">
+                            <Link href={personHref(orgId, brandId, l)} className="k-hover flex items-center gap-2.5 rounded-[8px] px-2 py-1.5">
                               <PersonAvatar lead={l} size={24} />
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-[13px] font-medium">{leadName(l)}</span>

@@ -134,7 +134,7 @@ describe("v2 wiring", () => {
     const proxy = read("src/proxy.ts");
     expect(proxy).toContain("isBetaEmail(sessionClaims?.email)");
     expect(proxy).toContain('parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2"');
-    expect(proxy).toContain("matchV1BrandRoot(pathname)");
+    expect(proxy).toContain("v2PathForV1(pathname, req.nextUrl.search");
     expect(proxy).toContain('"/v2/orgs/:id"');
   });
 
@@ -143,8 +143,11 @@ describe("v2 wiring", () => {
     expect(layout).toContain("isBetaEmail(user?.primaryEmailAddress?.emailAddress)");
     expect(layout).toContain("This page is not available");
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
-    expect(read("src/components/v2/v2-shell.tsx")).toContain('<MaturityBadge level="beta" />');
-    expect(read("src/components/v2/v2-shell.tsx")).toContain("Back to v1");
+    // The sidebar's account menu carries the badge and the one way back to v1.
+    const menus = read("src/components/v2/sidebar-menus.tsx");
+    expect(menus).toContain('<MaturityBadge level="beta" />');
+    expect(menus).toContain("Back to v1");
+    expect(read("src/components/v2/v2-shell.tsx")).toContain("<AccountMenuV2 ");
   });
 
   it("the v1 sidebar offers the switch, beta-only and badged", () => {
@@ -154,7 +157,30 @@ describe("v2 wiring", () => {
     expect(sw).toContain('<MaturityBadge level="beta" />');
   });
 
-  const V2_ROUTES = ["", "/crew", "/missions", "/missions/[campaignId]", "/people", "/companies", "/deals", "/work"];
+  const V2_ROUTES = [
+    "",
+    "/crew",
+    "/missions",
+    "/missions/[campaignId]",
+    "/missions/[campaignId]/settings",
+    "/missions/[campaignId]/workflows",
+    "/people",
+    "/people/[leadRowId]",
+    "/companies",
+    "/deals",
+    "/work",
+    "/offers",
+    "/offers/[offerId]",
+    "/offers/[offerId]/targeting",
+    "/targeting",
+    "/integrations",
+    "/integrations/merged",
+    "/settings",
+    "/billing",
+    "/api-keys",
+    "/account",
+    "/referral",
+  ];
 
   it("every sidebar section has a route", () => {
     for (const r of V2_ROUTES) {

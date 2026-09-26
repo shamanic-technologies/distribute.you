@@ -1,10 +1,15 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { lastBrandCookieName } from "@/lib/last-brand";
+import { V2BrandPicker } from "@/components/v2/brand-picker";
 
 /**
- * v2 has no org-level page yet. The v1 org URL resolves the last-visited brand at the
- * edge and, for a v2 user, lands on that brand's v2 Dashboard.
+ * The org's v2 landing: the last brand opened in it (the same org-scoped cookie the edge
+ * reads), else a picker of the org's brands. Never v1.
  */
 export default async function V2OrgPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
-  redirect(`/orgs/${encodeURIComponent(orgId)}`);
+  const last = (await cookies()).get(lastBrandCookieName(orgId))?.value;
+  if (last) redirect(`/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(last)}`);
+  return <V2BrandPicker orgId={orgId} />;
 }

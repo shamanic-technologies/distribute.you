@@ -332,7 +332,11 @@ function scopeFigures(
   );
 }
 
-export function CampaignWorkflowsPage() {
+/**
+ * `campaignId` is for a host whose route does not name the campaign `id` (dashboard v2's
+ * `missions/[campaignId]`). Absent, the route's own `id` is read exactly as before.
+ */
+export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaignId?: string } = {}) {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -340,7 +344,7 @@ export function CampaignWorkflowsPage() {
   const isBeta = useIsBetaUser();
 
   const brandId = String(params.brandId ?? "");
-  const campaignId = String(params.id ?? "");
+  const campaignId = campaignIdProp ?? String(params.id ?? "");
 
   const { campaign, featureSlug, settled: slugSettled } = useScopedFeatureSlug(campaignId);
   // WHICH OUTCOME these rows are counted and priced by — the campaign's own LEG.

@@ -27,8 +27,6 @@ export interface Mission {
   running: boolean;
   /** The v2 mission page. */
   href: string;
-  /** The same campaign's v1 page, for the controls v2 does not rebuild. */
-  v1Href: string;
 }
 
 export interface CrewSummary {
@@ -84,7 +82,6 @@ export function useMissions(orgId: string, brandId: string) {
             offerName: offerNames.get(c.offerId) ?? null,
             running: isActiveStatus(c.status),
             href: v2MissionHref(orgId, brandId, c.id),
-            v1Href: `/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(c.offerId)}/campaigns/${encodeURIComponent(c.id)}`,
           },
         ];
       }),

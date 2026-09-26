@@ -24,7 +24,7 @@ import {
   leadCompanyDomain,
   leadName,
   leadTitle,
-  v1LeadHref,
+  personHref,
 } from "@/components/v2/people-bits";
 
 /** The tabs People offers, each one of lead-service's own engagement buckets. */
@@ -94,7 +94,7 @@ export function PeoplePage() {
 
   const openRow = (i: number) => {
     const lead = rows?.[i];
-    if (lead) router.push(v1LeadHref(orgId, brandId, lead));
+    if (lead) router.push(personHref(orgId, brandId, lead));
   };
   useRowKeys({ count: rows?.length ?? 0, cursor, setCursor, onOpen: openRow, searchRef });
 
@@ -175,7 +175,7 @@ export function PeoplePage() {
                   >
                     <td className="max-w-[240px] pl-4 pr-3 md:pl-6">
                       <Link
-                        href={v1LeadHref(orgId, brandId, lead)}
+                        href={personHref(orgId, brandId, lead)}
                         onClick={(e) => e.stopPropagation()}
                         className="flex min-w-0 items-center gap-2"
                       >

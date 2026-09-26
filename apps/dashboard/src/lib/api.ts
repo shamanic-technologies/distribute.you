@@ -5511,6 +5511,23 @@ export function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } 
   return parsed.data as unknown as { leads: Lead[] };
 }
 
+/**
+ * ONE lead row, by its `leads_campaigns` id: lead-service `GET /orgs/leads/{id}`,
+ * proxied at `/v1/leads/{id}`. The body is `{ leadDetail }`, the same row shape a list
+ * serves (full person, delivery flags, standing), so it goes through the list's own
+ * parser and a person page and a list row can never disagree about a lead.
+ */
+export async function getLeadDetail(leadRowId: string, brandId: string): Promise<Lead> {
+  const raw = await apiCall<{ leadDetail?: unknown }>(
+    `/leads/${encodeURIComponent(leadRowId)}?brandId=${encodeURIComponent(brandId)}`,
+  );
+  if (!raw || typeof raw !== "object" || !("leadDetail" in raw) || !raw.leadDetail) {
+    console.error("[dashboard] getLeadDetail: response carries no leadDetail", { raw });
+    throw new Error("[dashboard] getLeadDetail: invalid response shape");
+  }
+  return parseLeadsResponse({ leads: [raw.leadDetail] }, "getLeadDetail").leads[0];
+}
+
 // `view=basic` returns the slim lead projection (thin person + thin org, no
 // employmentHistory / extra org columns). Both readers feed the SAME
 // `EngagedLeadsPage`, which renders its table, status tabs, search and detail
