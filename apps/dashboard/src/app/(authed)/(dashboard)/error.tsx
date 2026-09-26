@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import posthog from "posthog-js";
 import { DashboardPage } from "@/components/dashboard-page";
 
 interface ErrorProps {
@@ -11,6 +12,9 @@ interface ErrorProps {
 export default function DashboardError({ error, reset }: ErrorProps) {
   useEffect(() => {
     console.error("[dashboard] page error:", error);
+    // A boundary swallows the error, so it never reaches the global handler that
+    // exception autocapture listens on. Report it explicitly.
+    posthog.captureException(error, { boundary: "dashboard", digest: error.digest });
   }, [error]);
 
   return (
