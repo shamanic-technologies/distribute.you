@@ -762,6 +762,16 @@ The prod-walk recipe elsewhere in this file is the right instrument and it has a
 
 Corollary for the funnel measurement the account-before-checkout section prescribes: it tells you a branch is dead, never WHICH. On that same day signups ran at one a day while campaigns had been zero since 09-17 — one number for a flow with two entrances and a wall in the middle. **List a flow's branches BEFORE walking it, walk each, and say which ones you walked.** Guards: `tests/no-website-signed-out.test.ts`.
 
+## Every org records the channel that FIRST brought it — a cookie on `.distribute.you`, handed to client-service at org creation
+
+`lib/first-touch.ts` (dashboard, alias-free, real unit tests) holds `FIRST_TOUCH_CAPTURE_SCRIPT`, rendered in `<head>` of the dashboard root layout AND of every landing page (`apps/landing/src/lib/first-touch-script.ts`, a byte-equal copy pinned by `tests/unit/first-touch-script.test.ts` — edit the dashboard module, then regenerate the copy). It writes `distribute_first_touch` on `.distribute.you` ONLY when absent: utm_*, external referrer HOST (never the path), landing path, the `lp_variant` A/B arm, gclid, `?via=`, and a derived `channel` (`newsletter`, `cold_email`, `paid_search`, `organic_search`, `ai_assistant`, `social`, `email`, `partner`, `referral`, `other`, `direct`). A visit with no signal is `direct`; a hand-over with no cookie is `unknown` — both are answers, distinct from an org with no row (every org older than this).
+
+- **The hand-over is SERVER-side and reads the cookie, never a request body**, so a client cannot state its own channel. Three call sites, first wins at client-service (`POST /internal/acquisitions`, `org_acquisitions`, never overwritten): the anonymous start (`/api/anon/session`, on the internal uuid, BEFORE the seed — the claim keeps the uuid, so the credit survives signup), the signup (`PostHogAuthTracker` → `/api/attribution/first-touch`, on the Clerk org + user), and `/api/onboarding/complete` as a backstop.
+- **Never fatal, never silent**: `recordAcquisition` logs a refusal and returns null — losing a signup over attribution is the expensive mistake.
+- **Staff read**: client-service `GET /internal/orgs/:orgId/acquisition` and `GET /internal/acquisitions?createdAfter=` (or the `org_acquisitions` table joined to `orgs`).
+- **Links we send must carry a tag the classifier recognises**: newsletter links already say `utm_source=newsletter`; anything we send about ourselves by cold email should say `utm_source=cold-email` (or `utm_medium=cold_email`).
+- Guards: `tests/first-touch.test.ts` + `tests/first-touch-handover.test.ts` (call sites + ordering).
+
 ## The ACCOUNT comes before the CHECKOUT, and a signed-in session recovers its org from Clerk
 
 The anonymous flow builds the whole setup before anyone has an account: there is no

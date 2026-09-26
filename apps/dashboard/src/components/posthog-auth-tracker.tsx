@@ -63,6 +63,11 @@ export function PostHogAuthTracker() {
         }).catch(() => {});
       }
 
+      // Which channel brought this org — the server reads the first-touch
+      // cookie and hands it to client-service, where the first hand-over wins.
+      // Fire-and-forget: attribution must never block the signup flow.
+      void fetch("/api/attribution/first-touch", { method: "POST" }).catch(() => {});
+
       // distribute conversion tracking — reports the signup back to
       // api.distribute.you keyed on the real Clerk email (strongest match).
       // Fire-and-forget: a failed report must never block the signup flow.
