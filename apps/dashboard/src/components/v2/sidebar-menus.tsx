@@ -82,6 +82,8 @@ export function TenantSwitcherV2() {
   const t = useTenantSwitcher();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // The popover stays INSIDE the sidebar's width: the drawer wrapper is transformed
+  // (a stacking context), so anything wider is painted under the main panel.
   const ref = useOutside(open, () => setOpen(false));
   // Close once a switch LANDS (the org id changes), never before: the menu is the
   // only surface that shows a switch running.
@@ -125,7 +127,7 @@ export function TenantSwitcherV2() {
         <Updown />
       </button>
       {open && (
-        <div role="menu" className="k-popover absolute left-0 top-full z-50 mt-1 w-[260px] p-1">
+        <div role="menu" className="k-popover absolute left-0 right-0 top-full z-50 mt-1 p-1">
           <MenuLabel>Brands{t.displayOrgName ? ` in ${t.displayOrgName}` : ""}</MenuLabel>
           <div className="k-scroll max-h-56 overflow-y-auto">
             {t.brandsLoading && t.brands.length === 0 ? (
@@ -454,7 +456,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
                 onClose();
               }
             }}
-            placeholder="Search people, companies, missions, or jump to a page…"
+            placeholder="Search records or jump to a page…"
             aria-label="Search"
             className="h-12 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--fg-3)]"
           />
