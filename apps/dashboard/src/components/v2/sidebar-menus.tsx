@@ -502,7 +502,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
                 onClose();
               }
             }}
-            placeholder="Search records or jump to a page…"
+            placeholder="Search or jump to a page…"
             aria-label="Search"
             className="h-12 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--fg-3)]"
           />
@@ -545,9 +545,9 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
           {q.trim() && peopleQ.isFetching && items.length > 0 && <p className="k-fg3 px-2.5 py-1.5 text-[12px]">Searching people…</p>}
         </div>
         <div className="k-fg3 flex h-10 items-center gap-3 border-t border-[var(--line-subtle)] px-4 text-[12px]">
-          <span className="hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">↑</span><span className="k-kbd">↓</span> to move</span>
-          <span className="hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">↵</span> to open</span>
-          <span className="hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">esc</span> to close</span>
+          <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">↑</span><span className="k-kbd">↓</span> to move</span>
+          <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">↵</span> to open</span>
+          <span className="k-keys hidden items-center gap-1 sm:inline-flex"><span className="k-kbd">esc</span> to close</span>
           <span className="ml-auto tabular-nums">
             {revenue ? `${formatCount(revenue.organizations.length)} companies` : ""}
             {revenue && buckets ? " · " : ""}
