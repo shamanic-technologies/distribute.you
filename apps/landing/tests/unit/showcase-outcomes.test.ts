@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { reseedShowcaseCards, type ShowcaseFunnels } from "@/lib/showcase-funnels";
+import { reseedShowcaseCards, type ShowcaseOutcomes } from "@/lib/showcase-outcomes";
 
 /**
- * The homepage's three named clients state counts we READ, not counts we pasted in.
+ * The homepage's named clients state outcome counts we READ, not counts we pasted in.
  *
  * Real unit tests rather than source-substring guards because the module is
  * alias-free at runtime — keep it that way.
@@ -16,24 +16,19 @@ const HOMEPAGE = readFileSync(
 );
 
 /** The producer's own shape, as production serves it. */
-const SERVED: ShowcaseFunnels = {
+const SERVED: ShowcaseOutcomes = {
   brands: [
     {
       brand: { id: "b1", name: "Doc Dinners", domain: "docdinners.com" },
       measured: true,
       unmeasuredReason: null,
-      funnels: [
-        {
-          funnelKey: "sales_meetings_from_conversation",
-          funnelName: "Sales Meeting from Conversation",
-          steps: [
-            { key: "contacted", label: "Contacted", peopleReached: 12999 },
-            { key: "start_to_conversation", label: "Positive reply", peopleReached: 27 },
-            { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 5 },
-            { key: "meeting_booked_to_meeting_attended", label: "Meeting attended", peopleReached: 4 },
-            { key: "meeting_attended_to_paid_client", label: "Paid client", peopleReached: 2 },
-          ],
-        },
+      returnPerDollar: 2.1,
+      outcomes: [
+        { key: "contacted", label: "Contacted", legKeys: [], peopleReached: 12999 },
+        { key: "conversation", label: "Positive reply", legKeys: ["conversation"], peopleReached: 27 },
+        { key: "meeting_booked", label: "Meeting booked", legKeys: ["meeting_booked"], peopleReached: 5 },
+        { key: "meeting_attended", label: "Meeting attended", legKeys: ["meeting_booked_to_meeting_attended"], peopleReached: 4 },
+        { key: "paid_client", label: "Paid client", legKeys: ["paid_client"], peopleReached: 2 },
       ],
     },
   ],
@@ -45,38 +40,31 @@ function cardFor(html: string, domain: string): string {
   return html.slice(at, html.indexOf("</a>", at));
 }
 
-function withStep(key: string, peopleReached: number | null): ShowcaseFunnels {
+function withStep(key: string, peopleReached: number | null): ShowcaseOutcomes {
   const brand = SERVED.brands[0];
   return {
     brands: [
       {
         ...brand,
-        funnels: [
-          {
-            ...brand.funnels[0],
-            steps: brand.funnels[0].steps.map((s) =>
-              s.key === key ? { ...s, peopleReached } : s,
-            ),
-          },
-        ],
+        outcomes: brand.outcomes.map((s) => (s.key === key ? { ...s, peopleReached } : s)),
       },
     ],
   };
 }
 
-describe("showcase funnel reseed", () => {
+describe("showcase outcome reseed", () => {
   it("writes the served count into each cell", () => {
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
     expect(card).toContain('data-step="contacted"><b data-n="0">12,999</b>');
-    expect(card).toContain('data-step="start_to_conversation"><b data-n="1">27</b>');
+    expect(card).toContain('data-step="conversation"><b data-n="1">27</b>');
   });
 
   it("joins on the producer's KEY, never on position", () => {
-    // The card draws FOUR cells for a FIVE-step funnel: it shows Closed won and skips
+    // The card draws FOUR cells for FIVE served outcomes: it shows Closed won and skips
     // Meeting attended. An index join would put 4 (attended) under Closed won, which
     // renders perfectly and is a different number entirely.
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(card).toContain('data-step="meeting_attended_to_paid_client"><b data-n="3">2</b>');
+    expect(card).toContain('data-step="paid_client"><b data-n="3">2</b>');
     expect(card).not.toContain('<b data-n="3">4</b>');
   });
 
@@ -87,23 +75,23 @@ describe("showcase funnel reseed", () => {
 
   it("hides a step measured at zero, and reveals one that has landed", () => {
     const zero = cardFor(
-      reseedShowcaseCards(HOMEPAGE, withStep("meeting_attended_to_paid_client", 0)),
+      reseedShowcaseCards(HOMEPAGE, withStep("paid_client", 0)),
       "docdinners.com",
     );
-    expect(zero).toContain('data-step="meeting_attended_to_paid_client" data-zero>');
+    expect(zero).toContain('data-step="paid_client" data-zero>');
     // The shipped page has that cell at zero; a served 2 must take the marker OFF.
     const landed = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(landed).toContain('data-step="meeting_attended_to_paid_client"><b');
+    expect(landed).toContain('data-step="paid_client"><b');
   });
 
   it("leaves a step the producer could not measure exactly as the page ships it", () => {
     // null is "we have no figure", never zero — writing 0 would say nobody reached the
     // step, which the card then HIDES, deleting a real number from the page.
     const card = cardFor(
-      reseedShowcaseCards(HOMEPAGE, withStep("start_to_conversation", null)),
+      reseedShowcaseCards(HOMEPAGE, withStep("conversation", null)),
       "docdinners.com",
     );
-    expect(card).toContain('data-step="start_to_conversation"><b data-n="1">20</b>');
+    expect(card).toContain('data-step="conversation"><b data-n="1">20</b>');
     expect(card).toContain('data-steps="12999,20,5,2"');
   });
 

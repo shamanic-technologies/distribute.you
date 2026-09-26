@@ -19,8 +19,8 @@ import {
   reseedProofCards,
   reseedShowcaseCards,
   pickedBrands,
-  type ShowcaseFunnels,
-} from "@/lib/showcase-funnels";
+  type ShowcaseOutcomes,
+} from "@/lib/showcase-outcomes";
 
 // Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
@@ -435,29 +435,29 @@ async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
  * printed, since `0.0x` on a comparison page would state a result no client got.
  */
 /**
- * The three named clients' funnel counts, read at render.
+ * The named clients' outcome counts, read at render.
  *
  * Through the gateway rather than the producer directly: features-service's CORS
  * allowlist still names a retired brand's domains, and the gateway is the one public
  * surface this landing talks to. Bounded like every other build-time read here — a
  * cold endpoint must never hold the prerender.
  */
-async function fetchShowcaseFunnels(): Promise<ShowcaseFunnels | null> {
+async function fetchShowcaseOutcomes(): Promise<ShowcaseOutcomes | null> {
   const apiUrl = resolvePublicApiUrl();
-  const res = await fetch(`${apiUrl}/v1/public/features/showcase-funnels`, {
+  const res = await fetch(`${apiUrl}/v1/public/features/showcase-outcomes`, {
     headers: { Accept: "application/json" },
     next: { revalidate: 300 },
     signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
   });
   if (!res.ok) {
-    throw new Error(`[landing] /v1/public/features/showcase-funnels failed: ${res.status}`);
+    throw new Error(`[landing] /v1/public/features/showcase-outcomes failed: ${res.status}`);
   }
-  const data = (await res.json()) as ShowcaseFunnels;
+  const data = (await res.json()) as ShowcaseOutcomes;
   if (!Array.isArray(data?.brands) || data.brands.length === 0) return null;
   for (const brand of data.brands) {
     if (!brand.measured) {
       console.warn(
-        `[landing] showcase funnel not measurable for ${brand?.brand?.domain ?? "an unnamed brand"} (${brand.unmeasuredReason ?? "no reason given"}), keeping the shipped figures`,
+        `[landing] showcase outcomes not measurable for ${brand?.brand?.domain ?? "an unnamed brand"} (${brand.unmeasuredReason ?? "no reason given"}), keeping the shipped figures`,
       );
     }
   }
@@ -472,7 +472,7 @@ async function fetchShowcaseFunnels(): Promise<ShowcaseFunnels | null> {
  * — because blanking a client's card, or standing a zero in for a number nobody told
  * us, is worse than showing a figure a few hours old. It is logged loud either way.
  */
-async function withShowcaseFunnels(html: string): Promise<string> {
+async function withShowcaseOutcomes(html: string): Promise<string> {
   // The homepage states the same clients' counts on TWO surfaces — the live cards in
   // the hero and the named proof cards further down — so both ride ONE read. A second
   // fetch would be a second answer, and the page would be free to state two different
@@ -481,7 +481,7 @@ async function withShowcaseFunnels(html: string): Promise<string> {
   const wanted = html.includes('data-brand="') || html.includes("data-proof-brand=");
   if (!wanted) return html;
   try {
-    const data = await fetchShowcaseFunnels();
+    const data = await fetchShowcaseOutcomes();
     if (!data) return html;
     // The producer PICKS which clients the page names — the most recently begun ones carrying an
     // outcome for the hero, the highest-returning ones for the proof section. Each group answers its
@@ -502,7 +502,7 @@ async function withShowcaseFunnels(html: string): Promise<string> {
     if (!topReturn) out = reseedProofCards(out, data);
     return out;
   } catch (error) {
-    console.error("[landing] showcase funnel counts unavailable, keeping the shipped figures", error);
+    console.error("[landing] showcase outcome counts unavailable, keeping the shipped figures", error);
     return html;
   }
 }
@@ -687,7 +687,7 @@ async function negotiatedResponse(
   }
 
   const html = await withFounderCount(
-    await withShowcaseFunnels(await withHotLeadStats(decorated)),
+    await withShowcaseOutcomes(await withHotLeadStats(decorated)),
   );
 
   if (negotiated === "markdown") {

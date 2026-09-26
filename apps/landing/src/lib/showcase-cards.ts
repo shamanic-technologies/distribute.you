@@ -14,10 +14,10 @@
  *
  * ── THE PAGE STILL OWNS THE WORDS ───────────────────────────────────────────────────
  *
- * The producer calls a rung `start_to_conversation` and labels it "Positive reply"; the
- * page says "Positive replies". That wording is the customer's vocabulary and ours to
- * choose, so {@link STEP_LABEL} is the page's own and the producer's label is only the
- * fallback for a rung this file has never heard of. Same rule as when the cards were
+ * The producer keys a step `conversation` and labels it "Positive reply"; the page says
+ * "Positive replies". That wording is the customer's vocabulary and ours to choose, so
+ * {@link STEP_LABEL} is the page's own and the producer's label is only the fallback
+ * for a step this file has never heard of. Same rule as when the cards were
  * frozen markup — only the FIGURE ever crossed the wire.
  *
  * ── A ZERO IS DRAWN AND HIDDEN, NEVER DROPPED ───────────────────────────────────────
@@ -35,40 +35,39 @@
  */
 import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
 import { personFor } from "@/lib/showcase-people";
-import type { ShowcaseBrand, ShowcaseFunnel, ShowcaseStep } from "@/lib/showcase-funnels";
+import type { ShowcaseBrand, ShowcaseOutcome } from "@/lib/showcase-outcomes";
 
 /** The publishable logo.dev token the page already ships in its own markup. */
 const LOGO_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-/** The outreach base — a rung of no funnel, and the one every funnel converts from. */
+/** The outreach base: reached by no leg, and the one every first step converts from. */
 const CONTACTED = "contacted";
 
 /**
- * THE PAGE'S OWN WORD FOR EACH RUNG, plural for a count and singular for a price.
+ * THE PAGE'S OWN WORD FOR EACH OUTCOME, plural for a count and singular for a price.
  *
- * Keyed on the producer's stable leg key, never on its label: the label is buyer-facing
+ * Keyed on the producer's stable step key, never on its label: the label is buyer-facing
  * wording on ITS side and may be reworded, and a join on words is a join that silently
- * stops matching. A rung absent from here falls back to the producer's own label, so a
- * funnel this page has never drawn still renders rather than going blank.
+ * stops matching. A step absent from here falls back to the producer's own label, so an
+ * outcome this page has never drawn still renders rather than going blank.
  */
 const STEP_LABEL: Readonly<Record<string, { plural: string; singular: string }>> = {
   contacted: { plural: "Contacted", singular: "contact" },
-  start_to_conversation: { plural: "Positive replies", singular: "positive reply" },
-  start_to_website_visit: { plural: "Website visits", singular: "website visit" },
-  conversation_to_meeting_booked: { plural: "Meetings booked", singular: "meeting booked" },
-  meeting_booked_to_meeting_attended: { plural: "Meetings attended", singular: "meeting attended" },
-  meeting_attended_to_paid_client: { plural: "Closed won", singular: "closed deal" },
-  website_visit_to_form_submitted: { plural: "Form submissions", singular: "form submission" },
-  form_submitted_to_paid_client: { plural: "Closed won", singular: "closed deal" },
-  website_visit_to_signup: { plural: "Signups", singular: "signup" },
-  signup_to_paid_client: { plural: "Closed won", singular: "closed deal" },
+  conversation: { plural: "Positive replies", singular: "positive reply" },
+  website_visit: { plural: "Website visits", singular: "website visit" },
+  meeting_booked: { plural: "Meetings booked", singular: "meeting booked" },
+  meeting_attended: { plural: "Meetings attended", singular: "meeting attended" },
+  form_submitted: { plural: "Form submissions", singular: "form submission" },
+  signup: { plural: "Signups", singular: "signup" },
+  purchase: { plural: "Purchases", singular: "purchase" },
+  paid_client: { plural: "Closed won", singular: "closed deal" },
 };
 
-function pluralLabel(step: ShowcaseStep): string {
+function pluralLabel(step: ShowcaseOutcome): string {
   return STEP_LABEL[step.key]?.plural ?? step.label;
 }
 
-function singularLabel(step: ShowcaseStep): string {
+function singularLabel(step: ShowcaseOutcome): string {
   return STEP_LABEL[step.key]?.singular ?? step.label.toLowerCase();
 }
 
@@ -96,49 +95,35 @@ function logoUrl(domain: string, size: number): string {
   return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_TOKEN}&size=${size}&format=png`;
 }
 
-/**
- * The one funnel a card is about.
- *
- * A client may sell through several and a card names ONE outcome, so drawing the first
- * would state a funnel nobody asked about the day a client adds a second. The pick is the
- * funnel carrying a stated return — that is the figure the proof card leads with — and
- * the first otherwise, which is what every client has today.
- */
-export function cardFunnel(brand: ShowcaseBrand): ShowcaseFunnel | null {
-  const funnels = brand.funnels ?? [];
-  if (funnels.length === 0) return null;
-  return funnels.find((f) => typeof f.returnPerDollar === "number") ?? funnels[0];
-}
-
-/** The rungs the producer actually measured, in the funnel's own order. */
-function measuredSteps(funnel: ShowcaseFunnel | null): ShowcaseStep[] {
-  return (funnel?.steps ?? []).filter((s) => typeof s.peopleReached === "number");
+/** The outcomes the producer actually measured, in its own order. */
+function measuredSteps(brand: ShowcaseBrand): ShowcaseOutcome[] {
+  return (brand.outcomes ?? []).filter((s) => typeof s.peopleReached === "number");
 }
 
 /**
- * A CLIENT IS NAMED ONLY IF THE FUNNEL ITS CARD DRAWS SHOWS SOMETHING PAST OUTREACH.
+ * A CLIENT IS NAMED ONLY IF THE OUTCOMES ITS CARD DRAWS SHOW SOMETHING PAST OUTREACH.
  *
  * The producer gates its pick on an outcome count read off its fleet snapshot, which can count an
- * outcome on a funnel or channel the card does not draw — so a client arrives whose drawn funnel is
- * contacted-and-zeros (measured 2026-09-24: livingvital.ch, 183 contacted, every rung 0). A card
+ * outcome on a channel the card does not draw — so a client can arrive whose drawn outcomes are
+ * contacted-and-zeros (measured 2026-09-24: livingvital.ch, 183 contacted, every step 0). A card
  * that names a customer and shows nothing is worse than a shorter row. This is the owner's rule
- * applied to the served figures: at least one person reached a rung after contacted.
+ * applied to the served figures: at least one person reached a step after contacted.
  */
 export function hasDrawnOutcome(brand: ShowcaseBrand): boolean {
-  return measuredSteps(cardFunnel(brand)).some(
+  return measuredSteps(brand).some(
     (step) => step.key !== CONTACTED && (step.peopleReached as number) > 0
   );
 }
 
 /**
- * The rung a card prices.
+ * The outcome a card prices.
  *
- * The FIRST conversion after the outreach base — the outcome the channel is bought for,
- * and the one all three hand-written cards named. Deterministic rather than a pick: it is
- * the funnel's own first arrow, not the cheapest or the best of anything.
+ * The FIRST step after the outreach base — the outcome the channel is bought for, and
+ * the one all three hand-written cards named. Deterministic rather than a pick: it is the
+ * producer's first outcome in its own order, not the cheapest or the best of anything.
  */
-export function pricedStep(funnel: ShowcaseFunnel | null): ShowcaseStep | null {
-  for (const step of funnel?.steps ?? []) {
+export function pricedStep(brand: ShowcaseBrand): ShowcaseOutcome | null {
+  for (const step of brand.outcomes ?? []) {
     if (step.key === CONTACTED) continue;
     if (typeof step.costPerReachUsd === "number") return step;
   }
@@ -146,7 +131,7 @@ export function pricedStep(funnel: ShowcaseFunnel | null): ShowcaseStep | null {
 }
 
 /**
- * One hero card: the client, its logo, and its funnel walked rung by rung.
+ * One hero card: the client, its logo, and its outcomes walked step by step.
  *
  * Every attribute `main.js` reads is reproduced exactly — `data-live` to enter the nudge
  * rotation, `data-steps` as the counters it climbs, `data-n` as the cell index it paints,
@@ -157,7 +142,7 @@ export function renderShowcaseCard(brand: ShowcaseBrand): string | null {
   const domain = brand.brand?.domain;
   const name = brand.brand?.name;
   if (!domain || !name) return null;
-  const steps = measuredSteps(cardFunnel(brand)).slice(0, 4);
+  const steps = measuredSteps(brand).slice(0, 4);
   if (steps.length === 0) return null;
 
   const counts = steps.map((s) => s.peopleReached as number);
@@ -179,7 +164,7 @@ export function renderShowcaseCard(brand: ShowcaseBrand): string | null {
 
 /**
  * One proof card: who they are, what they got back, what one outcome cost them, and the
- * funnel behind it.
+ * outcomes behind it.
  *
  * The person leads when we have met them and the COMPANY leads when we have not — never
  * an invented name against a stock face. See `showcase-people.ts` for why an unnamed
@@ -189,8 +174,7 @@ export function renderProofCard(brand: ShowcaseBrand): string | null {
   const domain = brand.brand?.domain;
   const name = brand.brand?.name;
   if (!domain || !name) return null;
-  const funnel = cardFunnel(brand);
-  const roi = typeof funnel?.returnPerDollar === "number" ? funnel.returnPerDollar : null;
+  const roi = typeof brand.returnPerDollar === "number" ? brand.returnPerDollar : null;
   if (roi === null) return null;
 
   const shaped = formatReturnMultiple(roi);
@@ -199,7 +183,7 @@ export function renderProofCard(brand: ShowcaseBrand): string | null {
     ? `<div class="proof-top"><img class="face" src="${person.photo}" alt=""><div><div class="name">${esc(person.name)}</div><div class="meta">${esc(person.role)}</div></div></div>`
     : `<div class="proof-top"><img class="face" src="${logoUrl(domain, 128)}" alt=""><div><div class="name">${esc(name)}</div><div class="meta">${esc(domain)}</div></div></div>`;
 
-  const priced = pricedStep(funnel);
+  const priced = pricedStep(brand);
   const costLine = priced
     ? `\n        <div class="proof-line" data-proof-cost-step="${esc(priced.key)}"><span>Cost per ${esc(singularLabel(priced))}</span><b>${formatCostUsd(priced.costPerReachUsd as number)}</b></div>`
     : "";
@@ -208,7 +192,7 @@ export function renderProofCard(brand: ShowcaseBrand): string | null {
   // card hides it instead, because `main.js` climbs those counters and has to be able to
   // reveal the cell; nothing animates here, so an empty rung would just sit there stating
   // a zero about a client.
-  const rungs = measuredSteps(funnel)
+  const rungs = measuredSteps(brand)
     .filter((step) => (step.peopleReached as number) > 0)
     .slice(0, 3)
     .map(
@@ -217,7 +201,7 @@ export function renderProofCard(brand: ShowcaseBrand): string | null {
     )
     .join("");
 
-  return `<article class="proof-card rv" data-proof-brand="${esc(domain)}" data-proof-funnel="${esc(funnel?.funnelKey ?? "")}">
+  return `<article class="proof-card rv" data-proof-brand="${esc(domain)}">
         ${top}
         <div class="proof-roi"><span class="big" data-count="${shaped.text}" data-decimals="${shaped.decimals}">0<small>x</small></span><span class="lbl">return on<br>paid budget</span></div>${costLine}
         <div class="proof-funnel">${rungs}</div>

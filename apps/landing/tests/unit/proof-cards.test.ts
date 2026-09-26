@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { reseedProofCards, type ShowcaseFunnels } from "../../src/lib/showcase-funnels";
+import { reseedProofCards, type ShowcaseOutcomes } from "../../src/lib/showcase-outcomes";
 import { formatCostUsd, formatReturnMultiple } from "../../src/lib/landing-format";
 
 const HTML = readFileSync(join(process.cwd(), "public/landing/index-v2.html"), "utf8");
-const LIB = readFileSync(join(process.cwd(), "src/lib/showcase-funnels.ts"), "utf8");
+const LIB = readFileSync(join(process.cwd(), "src/lib/showcase-outcomes.ts"), "utf8");
 const STATIC_HTML = readFileSync(join(process.cwd(), "src/lib/static-html.ts"), "utf8");
 
 /** One proof card, in the shape the page ships it. */
@@ -14,18 +14,16 @@ function card(
   cells: Array<[step: string, figure: string, label: string]>,
   roi = "2.2",
   cost = "$1,159",
-  funnelKey: string | null = "sales_meetings_from_conversation",
-  costStep = "start_to_conversation"
+  costStep = "conversation"
 ): string {
-  const funnel = cells
+  const steps = cells
     .map(([step, figure, label]) => `<span data-proof-step="${step}"><b>${figure}</b>${label}</span>`)
     .join("");
-  const funnelAttr = funnelKey === null ? "" : ` data-proof-funnel="${funnelKey}"`;
   return (
-    `<article class="proof-card rv" data-proof-brand="${domain}"${funnelAttr}>` +
+    `<article class="proof-card rv" data-proof-brand="${domain}">` +
     `<div class="proof-roi"><span class="big" data-count="${roi}" data-decimals="1">0<small>x</small></span></div>` +
     `<div class="proof-line" data-proof-cost-step="${costStep}"><span>Cost per positive reply</span><b>${cost}</b></div>` +
-    `<div class="proof-funnel">${funnel}</div>` +
+    `<div class="proof-funnel">${steps}</div>` +
     `</article>`
   );
 }
@@ -34,26 +32,19 @@ function payload(
   domain: string,
   steps: Array<[key: string, peopleReached: number | null, costPerReachUsd?: number | null]>,
   measured = true,
-  returnPerDollar: number | null = null,
-  funnelKey = "sales_meetings_from_conversation"
-): ShowcaseFunnels {
+  returnPerDollar: number | null = null
+): ShowcaseOutcomes {
   return {
     brands: [
       {
         brand: { id: "b-1", name: "A brand", domain },
-        funnels: [
-          {
-            funnelKey,
-            funnelName: "Sales meetings from conversation",
-            returnPerDollar,
-            steps: steps.map(([key, peopleReached, costPerReachUsd]) => ({
-              key,
-              label: key,
-              peopleReached,
-              costPerReachUsd: costPerReachUsd ?? null,
-            })),
-          },
-        ],
+        outcomes: steps.map(([key, peopleReached, costPerReachUsd]) => ({
+          key,
+          label: key,
+          peopleReached,
+          costPerReachUsd: costPerReachUsd ?? null,
+        })),
+        returnPerDollar,
         measured,
         unmeasuredReason: measured ? null : "no_lead_membership",
       },
@@ -70,19 +61,19 @@ describe("reseedProofCards", () => {
   });
 
   it("joins by STEP KEY, never by position", () => {
-    // The producer is free to state its rungs in any order; a card draws its own
-    // subset of them. An index join would put one rung's count under another's label.
+    // The producer is free to state its steps in any order; a card draws its own
+    // subset of them. An index join would put one step's count under another's label.
     const html = card("docdinners.com", [
       ["contacted", "12,307", "contacted"],
-      ["start_to_conversation", "20", "positive replies"],
-      ["conversation_to_meeting_booked", "3", "meetings booked"],
+      ["conversation", "20", "positive replies"],
+      ["meeting_booked", "3", "meetings booked"],
     ]);
     const out = reseedProofCards(
       html,
       payload("docdinners.com", [
-        ["conversation_to_meeting_booked", 7],
+        ["meeting_booked", 7],
         ["contacted", 12552],
-        ["start_to_conversation", 31],
+        ["conversation", 31],
       ])
     );
     expect(out).toContain("<b>12,552</b>contacted");
@@ -90,9 +81,9 @@ describe("reseedProofCards", () => {
     expect(out).toContain("<b>7</b>meetings booked");
   });
 
-  it("keeps the label the page ships, never the producer's own word for the rung", () => {
-    const html = card("docdinners.com", [["start_to_conversation", "20", "positive replies"]]);
-    const out = reseedProofCards(html, payload("docdinners.com", [["start_to_conversation", 31]]));
+  it("keeps the label the page ships, never the producer's own word for the step", () => {
+    const html = card("docdinners.com", [["conversation", "20", "positive replies"]]);
+    const out = reseedProofCards(html, payload("docdinners.com", [["conversation", 31]]));
     expect(out).toContain("<b>31</b>positive replies");
     expect(out).not.toContain("start_to_conversation</span>");
   });
@@ -105,7 +96,7 @@ describe("reseedProofCards", () => {
   it("leaves a cell alone when the read does not answer for its step", () => {
     const html = card("docdinners.com", [
       ["contacted", "12,307", "contacted"],
-      ["conversation_to_meeting_booked", "3", "meetings booked"],
+      ["meeting_booked", "3", "meetings booked"],
     ]);
     const out = reseedProofCards(html, payload("docdinners.com", [["contacted", 12552]]));
     expect(out).toContain("<b>12,552</b>contacted");
@@ -120,10 +111,10 @@ describe("reseedProofCards", () => {
   });
 
   it("writes a real zero, because 0 is measured", () => {
-    const html = card("docdinners.com", [["conversation_to_meeting_booked", "3", "meetings booked"]]);
+    const html = card("docdinners.com", [["meeting_booked", "3", "meetings booked"]]);
     const out = reseedProofCards(
       html,
-      payload("docdinners.com", [["conversation_to_meeting_booked", 0]])
+      payload("docdinners.com", [["meeting_booked", 0]])
     );
     expect(out).toContain("<b>0</b>meetings booked");
   });
@@ -161,8 +152,8 @@ describe("reseedProofCards", () => {
     expect(out).toContain('data-count="12" data-decimals="0"');
   });
 
-  it("prices the ONE rung the card names, joined by that rung's own key", () => {
-    // Doc Dinners' card names the POSITIVE-REPLY rung: it shipped pointing at the
+  it("prices the ONE step the card names, joined by that step's own key", () => {
+    // Doc Dinners' card names the POSITIVE-REPLY step: it shipped pointing at the
     // meeting-booked key once (#4180 renamed the label without moving the key) and
     // stated $1,501 where the positive reply had cost $225. This test mirrors the
     // shipped shape, so the fixture must carry the same key the page carries.
@@ -172,28 +163,27 @@ describe("reseedProofCards", () => {
       payload(
         "docdinners.com",
         [
-          ["conversation_to_meeting_booked", 3, 1223.62],
-          ["start_to_conversation", 20, 183.543],
+          ["meeting_booked", 3, 1223.62],
+          ["conversation", 20, 183.543],
         ],
         true,
         2.1
       )
     );
     expect(out).toContain("<b>$184</b>");
-    // the sibling rung's price is served and must NOT land on this line
+    // the sibling step's price is served and must NOT land on this line
     expect(out).not.toContain("$1,224");
   });
 
   it("keeps a decimal on a price under $10, exactly as the page shipped it", () => {
-    const html = card("opsfolio.com", [], "9.3", "$3.4", "form_magnet", "start_to_website_visit");
+    const html = card("opsfolio.com", [], "9.3", "$3.4", "website_visit");
     const out = reseedProofCards(
       html,
       payload(
         "opsfolio.com",
-        [["start_to_website_visit", 148, 4.148716216216216]],
+        [["website_visit", 148, 4.148716216216216]],
         true,
-        7.509853259718874,
-        "form_magnet"
+        7.509853259718874
       )
     );
     expect(out).toContain("<b>$4.1</b>");
@@ -207,51 +197,25 @@ describe("reseedProofCards", () => {
   });
 
   it("leaves the price alone on a null cost — never a $0", () => {
-    // A rung nobody reached carries a measured 0 count beside a null price. A $0
+    // A step nobody reached carries a measured 0 count beside a null price. A $0
     // there would read as this client's customers having been free.
-    const html = card("docdinners.com", [["conversation_to_meeting_booked", "3", "meetings"]], "2.2", "$1,159");
+    const html = card("docdinners.com", [["meeting_booked", "3", "meetings"]], "2.2", "$1,159");
     const out = reseedProofCards(
       html,
-      payload("docdinners.com", [["conversation_to_meeting_booked", 0, null]], true, 2.1)
+      payload("docdinners.com", [["meeting_booked", 0, null]], true, 2.1)
     );
     expect(out).toContain("<b>0</b>meetings");
     expect(out).toContain("<b>$1,159</b>");
     expect(out).not.toContain("$0");
   });
 
-  it("reads the funnel the CARD names, never the brand's first", () => {
-    // A brand may sell through several; the card names one outcome, so taking
-    // funnels[0] is right today by accident and wrong the day one adds a second.
-    const html = card("docdinners.com", [], "2.2", "$1,159");
-    const data = payload("docdinners.com", [["start_to_conversation", 20, 183.543]], true, 2.1);
-    data.brands[0].funnels.unshift({
-      funnelKey: "form_magnet",
-      funnelName: "Form magnet",
-      returnPerDollar: 99,
-      steps: [{ key: "start_to_conversation", label: "x", peopleReached: 1, costPerReachUsd: 7 }],
-    });
-    const out = reseedProofCards(html, data);
-    expect(out).toContain('data-count="2.1"');
-    expect(out).toContain("<b>$184</b>");
-    // the decoy funnel prices the SAME key at $7 and must NOT win
-    expect(out).not.toContain("<b>$7</b>");
-  });
-
-  it("leaves the money alone when the card names a funnel the brand does not sell", () => {
-    const html = card("docdinners.com", [], "2.2", "$1,159", "a_funnel_nobody_sells");
-    const out = reseedProofCards(
-      html,
-      payload("docdinners.com", [["conversation_to_meeting_booked", 3, 1223.62]], true, 2.1)
-    );
-    expect(out).toContain('data-count="2.2"');
-    expect(out).toContain("<b>$1,159</b>");
-  });
-
-  it("still reseeds the counts on a card carrying no funnel key at all", () => {
-    const html = card("docdinners.com", [["contacted", "12,307", "contacted"]], "2.2", "$1,159", null);
+  it("states the brand's own return, across everything it ran", () => {
+    // The outcome read carries ONE realized return per client, the figure their own
+    // dashboard states. No per-path return is chosen or blended here.
+    const html = card("docdinners.com", [["contacted", "12,307", "contacted"]], "2.2", "$1,159");
     const out = reseedProofCards(html, payload("docdinners.com", [["contacted", 12552]], true, 2.1));
     expect(out).toContain("<b>12,552</b>contacted");
-    expect(out).toContain('data-count="2.2"');
+    expect(out).toContain('data-count="2.1"');
   });
 
   it("returns the page untouched when the read carries no brand at all", () => {
@@ -275,30 +239,22 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
     for (const domain of proof) expect(HTML).toContain(`data-brand="${domain}"`);
   });
 
-  it("keys every card by the funnel it states, so the return is joined and not guessed", () => {
-    const funnels = [...PROOF.matchAll(/data-proof-funnel="([a-z_]+)"/g)].map((m) => m[1]);
-    expect(funnels).toEqual([
-      "sales_meetings_from_conversation",
-      "form_magnet",
-      "sales_meetings_from_conversation",
-    ]);
+  it("names no sales funnel: a card is keyed by brand and by step only", () => {
+    expect(PROOF).not.toContain("data-proof-funnel");
+    expect(HTML).not.toMatch(/data-(proof-)?(cost-)?step="[a-z]+_to_[a-z_]+"/);
   });
 
-  it("keys every cost line by the ONE rung its own words name", () => {
+  it("keys every cost line by the ONE step its own words name", () => {
     const priced = [...PROOF.matchAll(/data-proof-cost-step="([a-z_]+)"/g)].map((m) => m[1]);
-    // Both cards labelled "Cost per positive reply" must key the rung their words
-    // name. Doc Dinners shipped pointing at the meeting-booked rung once and stated
+    // Both cards labelled "Cost per positive reply" must key the step their words
+    // name. Doc Dinners shipped pointing at the meeting-booked step once and stated
     // $1,501 where the positive reply had cost $225.
-    expect(priced).toEqual([
-      "start_to_conversation",
-      "start_to_website_visit",
-      "start_to_conversation",
-    ]);
-    // Every card prices exactly one rung; a second unkeyed cost line would freeze.
+    expect(priced).toEqual(["conversation", "website_visit", "conversation"]);
+    // Every card prices exactly one step; a second unkeyed cost line would freeze.
     expect((PROOF.match(/<div class="proof-line"><span>Cost per/g) ?? []).length).toBe(0);
   });
 
-  it("keys every funnel cell by a step, so none can be joined by position", () => {
+  it("keys every outcome cell by a step, so none can be joined by position", () => {
     const cells = PROOF.match(/<span data-proof-step="[a-z_]+"><b>/g) ?? [];
     expect(cells).toHaveLength(7);
     // A bare cell would silently keep its frozen literal forever.
@@ -307,14 +263,14 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
 
   it("reseeds both surfaces from ONE read", () => {
     const body = STATIC_HTML.slice(
-      STATIC_HTML.indexOf("async function withShowcaseFunnels("),
+      STATIC_HTML.indexOf("async function withShowcaseOutcomes("),
       STATIC_HTML.indexOf("async function fetchFleetReturn(")
     );
     // The INVARIANT is one read behind both surfaces, not the shape of the call. It used to
     // pin the nested `reseedProofCards(reseedShowcaseCards(...))` literal, which went red the
     // day the producer started picking WHICH clients the page names and each surface gained
     // its own branch — a guard freezing the instrument alongside the rule.
-    expect((body.match(/await fetchShowcaseFunnels\(\)/g) ?? []).length).toBe(1);
+    expect((body.match(/await fetchShowcaseOutcomes\(\)/g) ?? []).length).toBe(1);
     // Both surfaces are still covered by that one read, whichever branch each one takes: the
     // producer's pick when it answered, the shipped clients' figures reseeded when it did not.
     expect(body).toContain("renderShowcaseSelection(");

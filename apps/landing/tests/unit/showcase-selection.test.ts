@@ -6,7 +6,8 @@
  * output, so asserting the module is asserting the page.
  *
  * The fixtures are production-shaped — the payload probed off
- * `/v1/public/features/showcase-funnels` on 2026-09-22, with the grouped picks the
+ * production on 2026-09-22, in the `/v1/public/features/showcase-outcomes` shape (one
+ * entry per step), with the grouped picks the
  * producer states — so a reader that drifts from the wire fails here rather than on the
  * apex page.
  */
@@ -14,7 +15,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  cardFunnel,
   hasDrawnOutcome,
   PODIUM_ORDER,
   podium,
@@ -27,25 +27,19 @@ import {
   renderShowcaseSelection,
   pickedBrands,
   type ShowcaseBrand,
-} from "@/lib/showcase-funnels";
+} from "@/lib/showcase-outcomes";
 import { personFor, SHOWCASE_PEOPLE } from "@/lib/showcase-people";
 
 /** Doc Dinners, as production served it on 2026-09-22. */
 const docDinners: ShowcaseBrand = {
   brand: { id: "75d7e3e8", name: "Doc Dinners", domain: "docdinners.com" },
-  funnels: [
-    {
-      funnelKey: "sales_meetings_from_conversation",
-      funnelName: "Sales Meeting from Positive Reply",
-      returnPerDollar: 1.6145003659534165,
-      steps: [
-        { key: "contacted", label: "Contacted", peopleReached: 16951, costPerReachUsd: 0.30145 },
-        { key: "start_to_conversation", label: "Positive reply", peopleReached: 22, costPerReachUsd: 232.27 },
-        { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 3, costPerReachUsd: 1703.31 },
-        { key: "meeting_booked_to_meeting_attended", label: "Meeting attended", peopleReached: 0, costPerReachUsd: null },
-        { key: "meeting_attended_to_paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
-      ],
-    },
+  returnPerDollar: 1.6145003659534165,
+  outcomes: [
+    { key: "contacted", label: "Contacted", peopleReached: 16951, costPerReachUsd: 0.30145 },
+    { key: "conversation", label: "Positive reply", peopleReached: 22, costPerReachUsd: 232.27 },
+    { key: "meeting_booked", label: "Meeting booked", peopleReached: 3, costPerReachUsd: 1703.31 },
+    { key: "meeting_attended", label: "Meeting attended", peopleReached: 0, costPerReachUsd: null },
+    { key: "paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
   ],
   measured: true,
   unmeasuredReason: null,
@@ -54,18 +48,12 @@ const docDinners: ShowcaseBrand = {
 /** Opsfolio, the fleet's highest return on the same read. */
 const opsfolio: ShowcaseBrand = {
   brand: { id: "6e21bb6c", name: "Opsfolio", domain: "opsfolio.com" },
-  funnels: [
-    {
-      funnelKey: "form_magnet",
-      funnelName: "Form Magnet",
-      returnPerDollar: 55.64163966755881,
-      steps: [
-        { key: "contacted", label: "Contacted", peopleReached: 2808, costPerReachUsd: 0.1264 },
-        { key: "start_to_website_visit", label: "Website visit", peopleReached: 160, costPerReachUsd: 2.2184375 },
-        { key: "website_visit_to_form_submitted", label: "Form submitted", peopleReached: 0, costPerReachUsd: null },
-        { key: "form_submitted_to_paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
-      ],
-    },
+  returnPerDollar: 55.64163966755881,
+  outcomes: [
+    { key: "contacted", label: "Contacted", peopleReached: 2808, costPerReachUsd: 0.1264 },
+    { key: "website_visit", label: "Website visit", peopleReached: 160, costPerReachUsd: 2.2184375 },
+    { key: "form_submitted", label: "Form submitted", peopleReached: 0, costPerReachUsd: null },
+    { key: "paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
   ],
   measured: true,
   unmeasuredReason: null,
@@ -74,17 +62,11 @@ const opsfolio: ShowcaseBrand = {
 /** A client nobody has photographed — the case the dynamic pick makes ordinary. */
 const labcritics: ShowcaseBrand = {
   brand: { id: "9f0", name: "Labcritics", domain: "labcritics.com" },
-  funnels: [
-    {
-      funnelKey: "sales_meetings_from_conversation",
-      funnelName: "Sales Meeting from Positive Reply",
-      returnPerDollar: 43.42,
-      steps: [
-        { key: "contacted", label: "Contacted", peopleReached: 1204, costPerReachUsd: 0.11 },
-        { key: "start_to_conversation", label: "Positive reply", peopleReached: 9, costPerReachUsd: 14.7 },
-        { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
-      ],
-    },
+  returnPerDollar: 43.42,
+  outcomes: [
+    { key: "contacted", label: "Contacted", peopleReached: 1204, costPerReachUsd: 0.11 },
+    { key: "conversation", label: "Positive reply", peopleReached: 9, costPerReachUsd: 14.7 },
+    { key: "meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
   ],
   measured: true,
   unmeasuredReason: null,
@@ -144,37 +126,32 @@ describe("a hero card", () => {
     expect(card).toContain("<em data-status>Sending</em>");
   });
 
-  it("hides a rung nobody reached rather than dropping it", () => {
+  it("hides a step nobody reached rather than dropping it", () => {
     // main.js reveals the cell the first time its counter lands, so the cell has to be in
     // the DOM carrying `data-zero` — removing it leaves the counter climbing with nowhere
     // to render and the step never comes back.
-    expect(card).toContain('data-step="meeting_booked_to_meeting_attended" data-zero');
+    expect(card).toContain('data-step="meeting_attended" data-zero');
     expect(card).not.toContain('data-step="contacted" data-zero');
   });
 
   it("says the page's own words, not the producer's", () => {
-    // The producer labels the rung "Positive reply"; the page says "Positive replies".
+    // The producer labels the step "Positive reply"; the page says "Positive replies".
     expect(card).toContain("<small>Positive replies</small>");
     expect(card).not.toContain("Positive reply");
   });
 
-  it("leaves out a rung the producer could not measure", () => {
+  it("leaves out a step the producer could not measure", () => {
     const unmeasured: ShowcaseBrand = {
       ...docDinners,
-      funnels: [
-        {
-          ...docDinners.funnels[0],
-          steps: [
-            { key: "contacted", label: "Contacted", peopleReached: 500, costPerReachUsd: 1 },
-            { key: "start_to_conversation", label: "Positive reply", peopleReached: null, costPerReachUsd: null },
-          ],
-        },
+      outcomes: [
+        { key: "contacted", label: "Contacted", peopleReached: 500, costPerReachUsd: 1 },
+        { key: "conversation", label: "Positive reply", peopleReached: null, costPerReachUsd: null },
       ],
     };
     const rendered = renderShowcaseCard(unmeasured)!;
     // A zero here would read as a fact about the client instead of a gap in our reading.
     expect(rendered).toContain('data-steps="500"');
-    expect(rendered).not.toContain("start_to_conversation");
+    expect(rendered).not.toContain("conversation");
   });
 });
 
@@ -196,17 +173,17 @@ describe("a proof card", () => {
     expect(card).not.toMatch(/Founder|CEO|Cofounder/);
   });
 
-  it("prices the funnel's first conversion, in the page's own words", () => {
-    expect(pricedStep(cardFunnel(docDinners))!.key).toBe("start_to_conversation");
+  it("prices the first outcome after outreach, in the page's own words", () => {
+    expect(pricedStep(docDinners)!.key).toBe("conversation");
     expect(renderProofCard(docDinners)!).toContain(
-      '<div class="proof-line" data-proof-cost-step="start_to_conversation"><span>Cost per positive reply</span><b>$232</b></div>'
+      '<div class="proof-line" data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$232</b></div>'
     );
     expect(renderProofCard(opsfolio)!).toContain(
       '<span>Cost per website visit</span><b>$2.2</b>'
     );
   });
 
-  it("states no rung nobody reached", () => {
+  it("states no step nobody reached", () => {
     const card = renderProofCard(opsfolio)!;
     expect(card).toContain("<b>2,808</b>contacted");
     expect(card).toContain("<b>160</b>website visits");
@@ -217,7 +194,7 @@ describe("a proof card", () => {
   it("renders nothing for a client with no stated return", () => {
     const noReturn: ShowcaseBrand = {
       ...opsfolio,
-      funnels: [{ ...opsfolio.funnels[0], returnPerDollar: null }],
+      returnPerDollar: null,
     };
     // The card's headline IS the return, so there is no honest card without one.
     expect(renderProofCard(noReturn)).toBeNull();
@@ -240,7 +217,7 @@ describe("rendering the pick into the page", () => {
         <a class="show-card yours" href="https://dashboard.distribute.you/start">YOURS</a>
       </div>
       <div class="proof-grid">
-      <article class="proof-card rv" data-proof-brand="old.com" data-proof-funnel="x">OLD</article>
+      <article class="proof-card rv" data-proof-brand="old.com">OLD</article>
       </div>`;
 
   it("replaces the client cards and keeps Your company last", () => {
@@ -294,17 +271,11 @@ describe("regressions from the first ship of the pick (#4353)", () => {
   /** livingvital.ch as production served it on 2026-09-24: picked, and nothing past outreach. */
   const livingVital: ShowcaseBrand = {
     brand: { id: "lv", name: "Living Vital", domain: "livingvital.ch" },
-    funnels: [
-      {
-        funnelKey: "sales_meetings_from_conversation",
-        funnelName: "Sales Meeting from Positive Reply",
-        returnPerDollar: 0,
-        steps: [
-          { key: "contacted", label: "Contacted", peopleReached: 183, costPerReachUsd: 0.3 },
-          { key: "start_to_conversation", label: "Positive reply", peopleReached: 0, costPerReachUsd: null },
-          { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
-        ],
-      },
+    returnPerDollar: 0,
+    outcomes: [
+      { key: "contacted", label: "Contacted", peopleReached: 183, costPerReachUsd: 0.3 },
+      { key: "conversation", label: "Positive reply", peopleReached: 0, costPerReachUsd: null },
+      { key: "meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
     ],
     measured: true,
     unmeasuredReason: null,
@@ -318,7 +289,7 @@ describe("regressions from the first ship of the pick (#4353)", () => {
     expect(page.match(/<\/article>/g)!.length - 3 + 2).toBe(out.match(/<\/article>/g)!.length);
   });
 
-  it("a client whose drawn funnel shows nothing past outreach is never named", () => {
+  it("a client whose drawn outcomes show nothing past outreach is never named", () => {
     expect(hasDrawnOutcome(livingVital)).toBe(false);
     expect(hasDrawnOutcome(docDinners)).toBe(true);
     const out = renderShowcaseSelection(page, [livingVital, docDinners]);

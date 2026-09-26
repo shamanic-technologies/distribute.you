@@ -103,6 +103,12 @@
   border-radius: 4px; background: var(--bg-raised); color: var(--fg-3); font-size: 10px;
   font-family: var(--font-geist-mono), ui-monospace, monospace; box-shadow: inset 0 0 0 1px var(--line);
 }
+/* A key hint is for a keyboard. On a touch screen it names keys nobody has, and in
+   the palette it took the room its own placeholder needed at 320px. `.k-keys` wraps a
+   hint that is more than a key ("↑ ↓ to move"), so the words go with the keys. */
+@media (hover: none) and (pointer: coarse) {
+  .v2-root .k-kbd, .v2-root .k-keys { display: none; }
+}
 .v2-root .k-input {
   height: 28px; border-radius: 8px; background: var(--bg-raised); color: var(--fg-1); font-size: 13px;
   box-shadow: inset 0 0 0 1px var(--line); outline: none;

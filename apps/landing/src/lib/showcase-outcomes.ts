@@ -2,8 +2,7 @@ import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
 import { hasDrawnOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
 
 /**
- * The homepage's three named clients state funnel counts we READ, not counts we
- * pasted in.
+ * The homepage's named clients state outcome counts we READ, not counts we pasted in.
  *
  * They used to be literals, captured out of production by hand on 2026-09-06 and
  * frozen in the page. That was defensible while the page lived behind a password;
@@ -14,42 +13,47 @@ import { hasDrawnOutcome, podium, renderProofCard, renderShowcaseCard } from "@/
  *
  * The reseed happens at RENDER, server-side, exactly like the fleet's hot-lead
  * figures beside it: one read per rendered page rather than one per visitor, no API
- * origin in the browser, and no CORS question (features-service's allowlist still
- * names a retired brand's domains, so the page could not call it directly even if we
- * wanted it to). The in-session nudge in `v2/main.js` then climbs from a real base
- * instead of a stale one.
+ * origin in the browser, and no CORS question. The in-session nudge in `v2/main.js`
+ * then climbs from a real base instead of a stale one.
  *
- * ⚠️ Cells are joined to steps by the producer's own KEY, never by position. The two
- * orders genuinely differ: a card draws four cells for a five-step funnel — Doc
- * Dinners shows Closed won and skips Meeting attended — so an index join would put
- * the count of people who attended a meeting under the label for deals won. It would
- * render, it would look plausible, and it would be a different number entirely.
+ * The read is `/public/stats/showcase-outcomes`: per client, one entry per STEP its
+ * legs reach (`contacted` for the outreach base), merged across everything it ran,
+ * plus the client's own realized return. No field names a sales funnel.
  *
- * ⚠️ And the LABELS stay in the HTML. The producer calls the reply step
- * `start_to_conversation` and we say "Positive replies"; that wording is the
- * customer's vocabulary and ours to choose, so only the FIGURE crosses the wire.
+ * ⚠️ Cells are joined to outcomes by the producer's own step KEY, never by position.
+ * A card draws a subset of a client's outcomes, so an index join would put one
+ * step's count under another's label. It would render, it would look plausible,
+ * and it would be a different number entirely.
+ *
+ * ⚠️ And the LABELS stay in the HTML. The producer labels the reply step "Positive
+ * reply" and we say "Positive replies"; that wording is the customer's vocabulary
+ * and ours to choose, so only the FIGURE crosses the wire.
  */
 
-/** One step of one funnel, as the producer states it. */
-export interface ShowcaseStep {
+/** One outcome a named client reached, as the producer states it. */
+export interface ShowcaseOutcome {
+  /** A step key (`conversation`, `website_visit`, ...) or `contacted` for the outreach base. */
   key: string;
   label: string;
+  /** The legs landing on this step, in the producer's words. Read for the record only. */
+  legKeys?: string[];
   /** People who reached it. `null` means the producer could not measure it. */
   peopleReached: number | null;
   /**
-   * What reaching this rung cost the client, in dollars. `null` is "we have no
-   * figure" and sits beside a MEASURED `0` count on a rung nobody reached — the two
+   * What reaching this step cost the client, in dollars. `null` is "we have no
+   * figure" and sits beside a MEASURED `0` count on a step nobody reached — the two
    * say different things, which is what lets a card blank one and print the other.
    * A `$0` there would read as this client's customers having been free.
    */
   costPerReachUsd?: number | null;
 }
 
-export interface ShowcaseFunnel {
-  funnelKey: string;
-  funnelName: string;
+export interface ShowcaseBrand {
+  brand: { id: string; name: string; domain: string };
+  /** In the producer's order: `contacted` first, then every step the client's legs reach. */
+  outcomes: ShowcaseOutcome[];
   /**
-   * What the client got back on the budget they paid, on this funnel.
+   * What the client got back on the budget they paid, across everything they ran.
    *
    * The REALIZED return their own dashboard states — expected pipeline over
    * committed spend — never the forward projection published elsewhere under the
@@ -57,24 +61,18 @@ export interface ShowcaseFunnel {
    * the other would put a number on the homepage no client ever saw.
    */
   returnPerDollar?: number | null;
-  steps: ShowcaseStep[];
-}
-
-export interface ShowcaseBrand {
-  brand: { id: string; name: string; domain: string };
-  funnels: ShowcaseFunnel[];
   measured: boolean;
   unmeasuredReason: string | null;
 }
 
-export interface ShowcaseFunnels {
+export interface ShowcaseOutcomes {
   brands: ShowcaseBrand[];
   /**
    * THE PRODUCER'S TWO PICKS.
    *
-   * Absent means features-service is still on its earlier contract — figures, no pick — and the page
-   * then keeps the three clients it ships with and reseeds only their figures, exactly as it did
-   * before the pick existed. That fallback is the SHIPPED page, not a fabricated one.
+   * Absent means the producer served figures and no pick, and the page then keeps the three
+   * clients it ships with and reseeds only their figures. That fallback is the SHIPPED page,
+   * not a fabricated one.
    */
   groups?: {
     /** Most recently begun clients carrying at least one outcome, newest first. */
@@ -107,41 +105,25 @@ export interface ShowcaseGroup {
   qualifyingCount?: number;
 }
 
-/** Every step the producer states for a domain, flattened and keyed. */
+/** Every outcome count the producer states for a client, keyed by step. */
 function countsByStep(brand: ShowcaseBrand): Map<string, number> {
   const out = new Map<string, number>();
-  for (const funnel of brand.funnels ?? []) {
-    for (const step of funnel.steps ?? []) {
-      // A step the producer could not measure is LEFT ALONE below, never written as
-      // a zero — "we have no figure" and "nobody reached it" are different answers,
-      // and the card hides a real zero rather than stating it.
-      if (typeof step.peopleReached === "number") out.set(step.key, step.peopleReached);
-    }
+  for (const outcome of brand.outcomes ?? []) {
+    // An outcome the producer could not measure is LEFT ALONE below, never written as
+    // a zero — "we have no figure" and "nobody reached it" are different answers,
+    // and the card hides a real zero rather than stating it.
+    if (typeof outcome.peopleReached === "number") out.set(outcome.key, outcome.peopleReached);
   }
   return out;
 }
 
-/**
- * The funnel a card states it is about.
- *
- * A brand may sell through several, and a card names ONE outcome, so the funnel is
- * read off the card's own key rather than taken as the brand's first — that default
- * is right today by accident (every showcase brand sells one) and silently wrong the
- * day one of them adds a second.
- */
-function funnelNamedBy(card: string, brand: ShowcaseBrand): ShowcaseFunnel | null {
-  const named = /data-proof-funnel="([a-z_]+)"/.exec(card)?.[1];
-  if (!named) return null;
-  return (brand.funnels ?? []).find((funnel) => funnel.funnelKey === named) ?? null;
-}
-
-/** Every rung the producer priced on that funnel, keyed. */
-function costsByStep(funnel: ShowcaseFunnel | null): Map<string, number> {
+/** Every outcome the producer priced for a client, keyed by step. */
+function costsByStep(brand: ShowcaseBrand): Map<string, number> {
   const out = new Map<string, number>();
-  for (const step of funnel?.steps ?? []) {
-    // Same rule as the counts: a rung we have no figure for is LEFT ALONE, never
+  for (const outcome of brand.outcomes ?? []) {
+    // Same rule as the counts: an outcome we have no figure for is LEFT ALONE, never
     // written as a zero.
-    if (typeof step.costPerReachUsd === "number") out.set(step.key, step.costPerReachUsd);
+    if (typeof outcome.costPerReachUsd === "number") out.set(outcome.key, outcome.costPerReachUsd);
   }
   return out;
 }
@@ -189,12 +171,11 @@ function reseedCard(card: string, counts: Map<string, number>): string {
  * card or standing a zero in for a number we simply were not told.
  */
 /**
- * Rewrite one proof card's funnel cells from the counts the producer states.
+ * Rewrite one proof card's outcome cells from the counts the producer states.
  *
  * Only the FIGURE is touched. The label beside it ("positive replies") is the
- * customer's vocabulary and ours to choose — the producer calls that rung
- * `start_to_conversation` — so the wire decides the number and the page decides
- * the words, exactly as it does for the showcase cards above.
+ * customer's vocabulary and ours to choose, so the wire decides the number and
+ * the page decides the words, exactly as it does for the showcase cards above.
  */
 function reseedProofCard(
   card: string,
@@ -215,11 +196,11 @@ function reseedProofCard(
     }
   );
 
-  // The card names ONE rung in its own words ("Cost per positive reply") and carries
-  // that rung's key beside it, so the price is joined by key like every count above.
-  // The producer prices every rung on one formula, base included, which is what lets
-  // one card ask for a booked meeting and its neighbour for a website visit with no
-  // branch here for either.
+  // The card names ONE outcome in its own words ("Cost per positive reply") and carries
+  // that step's key beside it, so the price is joined by key like every count above.
+  // The producer prices every outcome on one formula, base included, which is what
+  // lets one card ask for a booked meeting and its neighbour for a website visit with
+  // no branch here for either.
   out = out.replace(
     /(<div class="proof-line" data-proof-cost-step="([a-z_]+)"><span>[^<]*<\/span><b>)([^<]*)(<\/b>)/,
     (whole, open: string, key: string, current: string, close: string) => {
@@ -256,7 +237,7 @@ function reseedProofCard(
  * thing every figure on this page is not; a `null` from the producer means "not
  * measured" and leaves the shipped figure alone.
  */
-export function reseedProofCards(html: string, data: ShowcaseFunnels): string {
+export function reseedProofCards(html: string, data: ShowcaseOutcomes): string {
   const byDomain = new Map<string, ShowcaseBrand>();
   for (const brand of data.brands ?? []) {
     if (brand?.brand?.domain) byDomain.set(brand.brand.domain, brand);
@@ -269,17 +250,15 @@ export function reseedProofCards(html: string, data: ShowcaseFunnels): string {
       const brand = byDomain.get(domain);
       if (!brand) return card;
       const counts = countsByStep(brand);
-      const funnel = funnelNamedBy(card, brand);
-      const costs = costsByStep(funnel);
-      const roi =
-        funnel && typeof funnel.returnPerDollar === "number" ? funnel.returnPerDollar : null;
+      const costs = costsByStep(brand);
+      const roi = typeof brand.returnPerDollar === "number" ? brand.returnPerDollar : null;
       if (counts.size === 0 && costs.size === 0 && roi === null) return card;
       return reseedProofCard(card, counts, costs, roi);
     }
   );
 }
 
-export function reseedShowcaseCards(html: string, data: ShowcaseFunnels): string {
+export function reseedShowcaseCards(html: string, data: ShowcaseOutcomes): string {
   const byDomain = new Map<string, ShowcaseBrand>();
   for (const brand of data.brands ?? []) {
     if (brand?.brand?.domain) byDomain.set(brand.brand.domain, brand);
@@ -331,7 +310,7 @@ export function pickedBrands(group: ShowcaseGroup | undefined, label: string): S
   const brands = served.filter(hasDrawnOutcome);
   if (brands.length < served.length) {
     console.warn(
-      `[landing] showcase group "${label}" dropped ${served.length - brands.length} client(s) whose drawn funnel shows nothing past outreach`
+      `[landing] showcase group "${label}" dropped ${served.length - brands.length} client(s) whose drawn outcomes show nothing past outreach`
     );
   }
   // Nobody left to name: the section keeps its shipped clients, reseeded, like an unanswered group.
