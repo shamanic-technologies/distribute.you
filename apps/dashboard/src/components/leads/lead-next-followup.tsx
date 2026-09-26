@@ -1,9 +1,22 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { canFollowUpNow, followupLine, leadFollowup } from "@/lib/lead-followup";
+import { getCampaign } from "@/lib/api";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { channelSlugLabel } from "@/lib/campaign-title";
+import {
+  canFollowUpNow,
+  followupNotice,
+  leadFollowup,
+  type FollowupFix,
+} from "@/lib/lead-followup";
 import type { LeadHistory } from "@/lib/lead-history";
+import { tenantBasePath } from "@/lib/offer-path";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useFollowUpNow } from "@/lib/use-lead-followup";
 
@@ -38,12 +51,34 @@ export function LeadNextFollowup({
   // refusal.
   const [asked, setAsked] = useState(false);
 
-  const line = asked && !isError ? "Next follow-up due now" : followupLine(followup);
+  const notice = followupNotice(followup);
+  const line = asked && !isError ? "Next follow-up due now" : notice.line;
+  const channels = useAcquisitionChannels();
+  const channelName = (slug: string | null) =>
+    slug ? (acquisitionChannelForFeatureSlug(slug, channels)?.name ?? channelSlugLabel(slug)) : null;
+  const answeredBy =
+    followup.state === "scheduled" && followup.answerer?.state === "answered"
+      ? channelName(followup.answerer.answeredByFeatureSlug)
+      : null;
 
   return (
     <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200 pt-3">
       <div className="min-w-0">
-        <p className="truncate text-xs text-gray-500">{line}</p>
+        <p
+          className={`text-xs ${notice.tone === "warning" ? "font-medium text-amber-700" : "truncate text-gray-500"}`}
+        >
+          {line}
+          {answeredBy && <span className="text-gray-400"> by {answeredBy}</span>}
+        </p>
+        {notice.detail && <p className="text-[11px] text-gray-500">{notice.detail}</p>}
+        {notice.fix && (
+          <FollowupFixLink
+            fix={notice.fix}
+            campaignId={history.campaignId}
+            brandId={history.brandId}
+            channelName={notice.fix.kind === "start" ? channelName(notice.fix.featureSlug) : null}
+          />
+        )}
         {/* WHY the sequence ended, in the producer's own words. A bare "no further
             follow-ups" reads as something broken; "they booked a meeting" does not. */}
         {followup.state === "stopped" && followup.reason && (
@@ -73,5 +108,48 @@ export function LeadNextFollowup({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Where the customer fixes a follow-up nobody will answer: the offer's own Settings,
+ * where each channel carries its start switch. The customer decides; nothing here starts,
+ * funds or spends anything.
+ *
+ * The link is built from the CAMPAIGN's own offer (the key every campaign surface already
+ * polls), never the route: a brand-scoped reader has no offer in its URL. No offer we can
+ * name means no link rather than one that 404s.
+ */
+function FollowupFixLink({
+  fix,
+  campaignId,
+  brandId,
+  channelName,
+}: {
+  fix: FollowupFix;
+  campaignId: string;
+  brandId: string;
+  channelName: string | null;
+}) {
+  const params = useParams<{ orgId?: string }>();
+  const orgId = params?.orgId ?? null;
+  const { data } = useAuthQuery(["campaign", campaignId], () => getCampaign(campaignId), {
+    enabled: Boolean(orgId),
+  });
+  const offerId = data?.campaign.offerId ?? null;
+  if (!orgId || !offerId) return null;
+  const label =
+    fix.kind === "restart"
+      ? "Turn it back on in offer settings"
+      : channelName
+        ? `Start ${channelName} in offer settings`
+        : "Start the channel that answers them";
+  return (
+    <Link
+      href={`${tenantBasePath(orgId, brandId, offerId)}/settings`}
+      className="text-[11px] font-medium text-brand-600 hover:underline"
+    >
+      {label}
+    </Link>
   );
 }

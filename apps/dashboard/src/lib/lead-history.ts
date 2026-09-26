@@ -154,6 +154,26 @@ const EventSchema = z
     dueAt: z.string().nullable().optional(),
     followupCount: z.number().optional(),
     stoppedReason: z.string().nullable().optional(),
+    // Present ONLY on a scheduled follow-up (lead-service v0.82.0): who will actually
+    // claim and answer it, as campaign-service states it. Optional so an older payload
+    // still parses; its vocabularies are plain strings because they may grow.
+    answerer: z
+      .object({
+        state: z.string(),
+        answeredBy: z
+          .object({
+            campaignId: z.string(),
+            featureSlug: z.string().nullable(),
+            status: z.string().optional(),
+          })
+          .passthrough()
+          .nullable(),
+        absence: z.string().nullable(),
+        startableFeatureSlugs: z.array(z.string()),
+        reason: z.string().nullable().optional(),
+      })
+      .passthrough()
+      .optional(),
   })
   // The producer serves more per type than any one surface renders, and it may add
   // more. Passthrough so a field lands the day it ships instead of being stripped here

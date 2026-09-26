@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { timeUntil } from "../src/lib/friendly-datetime";
-import { canFollowUpNow, followupLine, leadFollowup } from "../src/lib/lead-followup";
+import { canFollowUpNow, followupLine, followupNotice, leadFollowup } from "../src/lib/lead-followup";
 import type { LeadHistory } from "../src/lib/lead-history";
 
 const NOW = new Date("2026-09-05T12:00:00.000Z");
@@ -39,6 +39,7 @@ describe("leadFollowup", () => {
       state: "scheduled",
       dueAt: "2026-09-08T09:00:00.000Z",
       followupCount: 2,
+      answerer: null,
     });
   });
 
@@ -84,7 +85,7 @@ describe("leadFollowup", () => {
       leadFollowup(
         history([{ id: "a", type: "followup", state: "scheduled", dueAt: "2026-09-06T09:00:00Z" }]),
       ),
-    ).toEqual({ state: "scheduled", dueAt: "2026-09-06T09:00:00Z", followupCount: 0 });
+    ).toEqual({ state: "scheduled", dueAt: "2026-09-06T09:00:00Z", followupCount: 0, answerer: null });
   });
 });
 
@@ -92,7 +93,7 @@ describe("followupLine", () => {
   it("states how long until a future follow-up", () => {
     expect(
       followupLine(
-        { state: "scheduled", dueAt: "2026-09-08T12:00:00.000Z", followupCount: 1 },
+        { state: "scheduled", dueAt: "2026-09-08T12:00:00.000Z", followupCount: 1, answerer: null },
         NOW,
       ),
     ).toBe("Next follow-up in 3 days");
@@ -101,7 +102,7 @@ describe("followupLine", () => {
   it("reads due now for a date already passed, never a negative count", () => {
     expect(
       followupLine(
-        { state: "scheduled", dueAt: "2026-09-01T12:00:00.000Z", followupCount: 4 },
+        { state: "scheduled", dueAt: "2026-09-01T12:00:00.000Z", followupCount: 4, answerer: null },
         NOW,
       ),
     ).toBe("Next follow-up due now");
@@ -120,7 +121,7 @@ describe("followupLine", () => {
 
 describe("canFollowUpNow", () => {
   it("offers the control while a schedule exists or is simply unset", () => {
-    expect(canFollowUpNow({ state: "scheduled", dueAt: "2026-09-08T12:00:00Z", followupCount: 0 })).toBe(true);
+    expect(canFollowUpNow({ state: "scheduled", dueAt: "2026-09-08T12:00:00Z", followupCount: 0, answerer: null })).toBe(true);
     expect(canFollowUpNow({ state: "not_set" })).toBe(true);
   });
 
@@ -190,5 +191,136 @@ describe("the surface that renders it", () => {
   it("renders a refusal rather than swallowing it", () => {
     expect(section).toContain("isError");
     expect(section).toContain("error?.message");
+  });
+});
+
+// Shapes copied from lead-service's history contract (v0.82.0, `answerer` on a scheduled
+// follow-up). The five prospects this exists for sat under "due now" with nobody able to
+// claim them.
+function scheduledWith(answerer: Record<string, unknown> | undefined) {
+  return leadFollowup(
+    history([
+      {
+        id: "f",
+        type: "followup",
+        state: "scheduled",
+        dueAt: "2026-09-01T12:00:00.000Z",
+        followupCount: 0,
+        ...(answerer ? { answerer } : {}),
+      },
+    ]),
+  );
+}
+
+const ANSWERED = {
+  state: "answered",
+  answeredBy: {
+    campaignId: "c-2",
+    legKey: "conversation->meeting_booked",
+    status: "ongoing",
+    featureSlug: "ai-meeting-booking",
+    acquisitionChannel: "ai-meeting-booking",
+    workflowSlug: "w",
+  },
+  absence: null,
+  startableFeatureSlugs: [],
+  candidate: null,
+  candidateAnswersCampaignId: null,
+  reason: null,
+};
+const unanswered = (absence: string, startable: string[] = []) => ({
+  state: "unanswered",
+  answeredBy: null,
+  absence,
+  startableFeatureSlugs: startable,
+  candidate: null,
+  candidateAnswersCampaignId: null,
+  reason: null,
+});
+
+describe("followupNotice (who will answer)", () => {
+  it("keeps the due date when a campaign will answer", () => {
+    const f = scheduledWith(ANSWERED);
+    expect(f.state === "scheduled" && f.answerer?.answeredByFeatureSlug).toBe("ai-meeting-booking");
+    const n = followupNotice(f, NOW);
+    expect(n.line).toBe("Next follow-up due now");
+    expect(n.tone).toBe("neutral");
+    expect(n.fix).toBeNull();
+    expect(canFollowUpNow(f)).toBe(true);
+  });
+
+  it("reads an older payload with no answerer exactly as before", () => {
+    const f = scheduledWith(undefined);
+    expect(followupNotice(f, NOW).line).toBe("Next follow-up due now");
+    expect(canFollowUpNow(f)).toBe(true);
+  });
+
+  it("says nobody will answer, never due now, and points at starting the channel", () => {
+    const f = scheduledWith(unanswered("no_answering_campaign", ["ai-meeting-booking"]));
+    const n = followupNotice(f, NOW);
+    expect(n.line).toBe("Nobody will answer this person");
+    expect(n.line).not.toContain("due now");
+    expect(n.detail).toBe("No campaign on this offer answers interested replies yet.");
+    expect(n.fix).toEqual({ kind: "start", featureSlug: "ai-meeting-booking" });
+    expect(canFollowUpNow(f)).toBe(false);
+  });
+
+  it("offers a restart when the answering campaign is paused", () => {
+    const n = followupNotice(scheduledWith(unanswered("answering_campaign_stopped", ["ai-meeting-booking"])), NOW);
+    expect(n.fix).toEqual({ kind: "restart" });
+    expect(n.detail).toContain("paused");
+  });
+
+  it("offers no start link for an absence starting a channel cannot fix", () => {
+    for (const absence of [
+      "answering_campaign_serves_another",
+      "no_leg_continues",
+      "campaign_states_no_leg",
+      "campaign_states_no_offer",
+      "campaign_states_no_brand",
+    ]) {
+      const n = followupNotice(scheduledWith(unanswered(absence)), NOW);
+      expect(n.line).toBe("Nobody will answer this person");
+      expect(n.detail).toBeTruthy();
+      expect(n.detail).not.toContain(absence);
+      expect(n.fix).toBeNull();
+    }
+  });
+
+  it("never prints a raw code for an absence it does not know yet", () => {
+    const n = followupNotice(scheduledWith(unanswered("some_future_reason")), NOW);
+    expect(n.line).toBe("Nobody will answer this person");
+    expect(n.detail).toBeNull();
+  });
+
+  it("says we could not check when the answer is unknown, never due now and never nobody", () => {
+    const f = scheduledWith({ ...unanswered(""), state: "unknown", absence: null, reason: "campaign-service answered 502" });
+    const n = followupNotice(f, NOW);
+    expect(n.line).toBe("We could not check who will answer this person");
+    expect(n.line).not.toContain("due now");
+    expect(n.line).not.toContain("Nobody");
+    expect(n.detail).not.toContain("502");
+    expect(canFollowUpNow(f)).toBe(false);
+  });
+
+  it("leaves a stopped follow-up rendering exactly as it did", () => {
+    const n = followupNotice({ state: "stopped", reason: "they booked" }, NOW);
+    expect(n).toEqual({ line: "No further follow-ups", detail: null, tone: "neutral", fix: null });
+  });
+
+  it("carries no em-dash in any customer-facing line", () => {
+    const src = readFileSync(join(__dirname, "..", "src", "lib", "lead-followup.ts"), "utf8");
+    const strings = src.match(/"[^"\n]*"/g) ?? [];
+    for (const str of strings) expect(str).not.toContain("\u2014");
+  });
+
+  it("links the fix to the CAMPAIGN's own offer settings, and writes nothing", () => {
+    const section = readFileSync(join(__dirname, "..", "src", "components", "leads", "lead-next-followup.tsx"), "utf8");
+    expect(section).toContain("followupNotice(followup)");
+    expect(section).toContain("data?.campaign.offerId");
+    expect(section).toContain("/settings`}");
+    const fixLink = section.slice(section.indexOf("function FollowupFixLink("));
+    expect(fixLink).not.toContain("useMutation");
+    expect(fixLink).not.toContain("setCampaignStatus");
   });
 });
