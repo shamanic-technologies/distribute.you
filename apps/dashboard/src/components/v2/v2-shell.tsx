@@ -10,6 +10,7 @@ import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
+import { boardColumnTotals } from "@/lib/leads-server-page";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
@@ -132,6 +133,10 @@ function V2Sidebar() {
   const { missions, crews } = useMissions(orgId, brandId);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
+  // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
+  // Close won), read off the same column totals the page states, so the two agree.
+  const boardTotals = boardColumnTotals(standings);
+  const dealsInPlay = boardTotals ? boardTotals.contacted + boardTotals.sales_interest + boardTotals.won : null;
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
@@ -201,7 +206,7 @@ function V2Sidebar() {
                 href={v2Href(orgId, brandId, "deals")}
                 label="Deals"
                 active={section === "deals"}
-                trailing={<Count n={standings ? standings.counts.sales_interest + standings.counts.customer : null} />}
+                trailing={<Count n={dealsInPlay} />}
               />
             </>
           )}
