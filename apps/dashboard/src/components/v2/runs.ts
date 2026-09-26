@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { getBrandRunsByCampaign, listBrandRunLedger, type CampaignRunGroup, type RunRow } from "@/lib/api";
+import { getBrandRunsByCampaign, getRunOutcomes, listBrandRunLedger, type CampaignRunGroup, type RunOutcomeGroup, type RunRow } from "@/lib/api";
 import type { Mission } from "@/components/v2/use-missions";
 
 /**
@@ -136,4 +136,58 @@ export function runState(run: RunRow): RunState {
   if (run.status === "failed" || run.status === "error") return "failed";
   if (run.completedAt || run.status === "completed") return "done";
   return "running";
+}
+
+export interface CrewOutcomes {
+  /** Entry runs over the last 30 days, as runs-service states them for the crew. */
+  month: RunOutcomeGroup | null;
+  /** Entry runs today (for the median run, as Keel states it). */
+  today: RunOutcomeGroup | null;
+}
+
+/**
+ * How each crew's runs ENDED and how long they took, from runs-service's own run-outcomes
+ * read. A crew is several stored campaigns (a family), so each crew is asked with its whole
+ * family in ONE request grouped by feature: the success rate and the median are the
+ * producer's, over exactly that crew's runs. Nothing is merged or divided here.
+ */
+export function useCrewOutcomes(
+  brandId: string,
+  missionByCampaignId: Map<string, Mission>,
+): { byCrew: Map<string, CrewOutcomes>; settled: boolean } {
+  const families = useMemo(() => {
+    const out = new Map<string, string[]>();
+    for (const [campaignId, m] of missionByCampaignId) out.set(m.crew.key, [...(out.get(m.crew.key) ?? []), campaignId]);
+    return [...out.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [missionByCampaignId]);
+  const signature = families.map(([k, ids]) => `${k}:${ids.length}`).join("|");
+  const today = localDayStart(0);
+  const month = localDayStart(30);
+  const q = useAuthQuery(
+    ["v2RunOutcomes", brandId, today, signature],
+    () =>
+      Promise.all(
+        families.map(async ([key, ids]) => {
+          const [m, t] = await Promise.all([
+            getRunOutcomes({ brandId, groupBy: "featureSlug", campaignIds: ids, startedAfter: month }),
+            getRunOutcomes({ brandId, groupBy: "featureSlug", campaignIds: ids, startedAfter: today }),
+          ]);
+          // A family is one channel, so one group; a stray null-feature group is never the crew's.
+          const pick = (gs: RunOutcomeGroup[]) => gs.find((g) => g.dimensions.featureSlug) ?? null;
+          return [key, { month: pick(m), today: pick(t) }] as const;
+        }),
+      ),
+    { enabled: !!brandId && families.length > 0, refetchInterval: 60_000 },
+  );
+  const byCrew = useMemo(() => new Map<string, CrewOutcomes>(q.data ?? []), [q.data]);
+  return { byCrew, settled: q.data !== undefined || q.isError };
+}
+
+/** "1m 52s", "48s", "2h 5m": a served duration in the way Keel prints it. */
+export function formatRunDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
 }

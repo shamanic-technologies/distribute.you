@@ -348,9 +348,20 @@ describe("Keel parity, second pass", () => {
     expect(crew).toContain("run.completedAt");
   });
 
-  it("a Deals card's value is the organisation's served figure, looked up, never summed", () => {
+  it("Deals column and card values are features-service's deals-value, read, never summed", () => {
     const deals = read(V2 + "deals-page.tsx");
-    expect(deals).toContain("valueByDomain");
+    expect(deals).toContain('["dealsValue", brandId]');
+    expect(deals).toContain("served.byLead.get(lead.leadId)");
+    expect(deals).not.toContain("valueByDomain");
     expect(deals).not.toMatch(/reduce\(/);
+  });
+
+  it("Crew success rate and median run are runs-service's run-outcomes, one crew family per request", () => {
+    const runs = read(V2 + "runs.ts");
+    expect(runs).toContain('groupBy: "featureSlug", campaignIds: ids');
+    const crew = read(V2 + "crew-page.tsx");
+    expect(crew).toContain("outcomes?.month?.successRate");
+    expect(crew).toContain("outcomes?.today?.medianDurationMs");
+    expect(crew).not.toMatch(/completedCount\s*\//);
   });
 });
