@@ -18,6 +18,8 @@
 // Only relative value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias).
 
+import { campaignStartRefusalMessage } from "./payment-declined";
+
 /**
  * What a channel of a funnel is DOING, for one offer.
  *
@@ -160,6 +162,15 @@ export class ChannelStartRefusal extends Error {
  * import and stays unit-testable.
  */
 export function channelWriteErrorMessage(err: unknown, kind: "start" | "pause"): string {
+  // campaign-service's own sentence when it refused the start for a person (a declined
+  // payment, or billing it could not read), verbatim: it says what to do, we do not.
+  const upstreamStatus = (err as { status?: unknown } | null)?.status;
+  const upstreamBody = (err as { body?: unknown } | null)?.body;
+  const upstream = campaignStartRefusalMessage(
+    typeof upstreamStatus === "number" ? upstreamStatus : null,
+    upstreamBody && typeof upstreamBody === "object" ? (upstreamBody as Record<string, unknown>) : null,
+  );
+  if (upstream) return upstream;
   const refusal = (err as { channelStartRefusal?: unknown } | null)?.channelStartRefusal;
   if (refusal === true) {
     const message = (err as { message?: unknown }).message;

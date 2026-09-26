@@ -19,6 +19,7 @@ const row = (over: Partial<ControlRow>): ControlRow => ({
   savedCents: 0,
   offerId: over.offerId ?? null,
   legKey: null,
+  paymentDeclined: false,
 });
 
 describe("scopeIsPaused", () => {
