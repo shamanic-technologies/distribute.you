@@ -26,6 +26,17 @@ const SUPPORT_PHONE = "33680478702";
  */
 export const SUPPORT_FAB_CLEARANCE = "pr-20";
 
+/**
+ * The support chat link, prefilled with who is asking. One home: the FAB and the v2
+ * account menu's Help both open it, so a chat arrives identified the same way.
+ */
+export function supportWhatsAppHref(email: string, org: string): string {
+  const intro = email
+    ? `Hi! I'm ${email}${org ? ` (${org})` : ""} and I have a question:`
+    : "Hi! I have a question about distribute.you:";
+  return `https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent(intro)}`;
+}
+
 function WhatsAppGlyph() {
   return (
     <svg viewBox="0 0 32 32" fill="#ffffff" aria-hidden="true" className="h-6 w-6 sm:h-[30px] sm:w-[30px]">
@@ -53,10 +64,7 @@ export function SupportButton({ raised = false }: { raised?: boolean }) {
     "";
   const org = organization?.name ?? "";
 
-  const intro = email
-    ? `Hi! I'm ${email}${org ? ` (${org})` : ""} and I have a question:`
-    : "Hi! I have a question about distribute.you:";
-  const href = `https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent(intro)}`;
+  const href = supportWhatsAppHref(email, org);
 
   // The dashboard SupportButton is mounted on both the dashboard shell and the
   // onboarding shell (same component) — split the two by pathname so we can see

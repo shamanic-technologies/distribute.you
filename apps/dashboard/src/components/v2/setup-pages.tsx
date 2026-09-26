@@ -396,7 +396,7 @@ export function V2AccountFrame({ label, children }: { label: string; children: R
 }
 
 /**
- * Invite a friend: Explee's referral page, with our invite link and our promises. Every
+ * Refer a friend: Explee's referral page, with our invite link and our promises. Every
  * value is billing's (the code, the promises, the total still to come) and the words are
  * the ones the v1 sidebar card and the Billing rows read, so they cannot disagree.
  */
@@ -423,7 +423,7 @@ export function V2ReferralPage() {
   };
   return (
     <V2Page
-      crumbs={[{ label: "Account" }, { label: "Invite a friend" }]}
+      crumbs={[{ label: "Account" }, { label: "Refer a friend" }]}
       title={`Give $${REFERRAL_CREDIT_USD}, get $${REFERRAL_CREDIT_USD}`}
       sub={`Whoever signs up through your link gets $${REFERRAL_CREDIT_USD} in free credits, which unlock as their payments reach that amount. The moment theirs unlock, $${REFERRAL_CREDIT_USD} opens for you too. There is no limit.`}
       width="max-w-[760px]"
