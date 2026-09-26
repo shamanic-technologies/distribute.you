@@ -415,6 +415,18 @@ the guard or to weaken the invariant. The tell is a guard whose failure message
 names a location rather than a behaviour, on a file where you added the same
 construct the guard already permits somewhere else.
 
+## Dashboard v2 (beta) lives under `/v2`, on v1's data layer, and a COOKIE read at the edge decides which one a beta user lands on
+
+`src/app/(authed)/v2/**` is a second customer dashboard built beside v1 in prod (Keel's frame, Explee's dashboard), beta-gated on the email allowlist with a visible beta badge. Step 1 shipped the shell, the switch and the Dashboard (#4421); Crew, Mission, People/Companies, Today and Work pages are later steps.
+
+- **It forks NOTHING in the data layer.** The v2 layout mounts the same providers (`QueryProvider`, `OrgContextProvider`, `FeaturesProvider`, `BillingGuardProvider`) and every read uses v1's query keys (`["brandRevenue", brandId]`, `useCampaignRows(..., ALL_OFFERS)`, the Leads page's own first page), so a figure reads the same in both and the second one opened paints from the cache. Do not add a v2 `api.ts`.
+- **Vocabulary**: a CREW is one leg x one acquisition channel with a proper name (`lib/v2/crews.ts`, alias-free, stable per (channel slug, landing step); an unlisted pair is named by its channel, never an invented name). A MISSION is crew x offer = a campaign identity, so it needs no backend. Audiences are rows inside a mission, never part of its identity.
+- **The switch is the `distribute-ui` cookie (`lib/ui-version.ts`, alias-free).** `proxy.ts` honours it ONLY for a beta email (`sessionClaims.email`) and redirects only the two LANDING shapes (bare `/orgs/:o` with a last brand, and the exact brand root `/orgs/:o/brands/:b`) to `/v2/orgs/:o/brands/:b`. Every deeper v1 page stays reachable, because v2's sidebar links to them for each section it has not rebuilt yet; bouncing those would make them unreachable. The cookie is a preference, never an authorisation.
+- **URL parsing**: Clerk `organizationPatterns` carry the `/v2/orgs/:id` twins; `brandIdFromPathname` (and the pre-paint tint script) and `useTenantSwitcher` strip a leading `/v2`. The unanchored `/\/orgs\/([^/]+)/` regexes (query provider bucket, org gate, OrgActivator, api client) already match a v2 URL. A NEW anchored path parser must strip the prefix too (`stripV2Prefix`).
+- **Non-beta**: never redirected; any `/v2` URL renders the not-available state and fires no read. `/v2` and `/v2/orgs/:o` redirect to the v1 org URL, which the edge carries on.
+- **Not served yet, so absent rather than computed**: a delivery rate, per-mission sends and reply rate, crew run metrics. Those are producer asks.
+- Guards: `tests/dashboard-v2.test.ts`.
+
 ## The Claude config console edits a REPO, not a machine — and markdown is the only thing it writes
 
 `/audit/config` (`audit/config/page.tsx`, rules in `lib/config-files.ts`, GitHub in `lib/github-config.ts`) reads and edits the global CLAUDE.md, RTK.md, the 26 skills, the hooks and each repo's own CLAUDE.md. The config Claude Code actually loads lives on a laptop under `~/.claude` and `~/.agents/skills`, which are SYMLINKS into a clone of `shamanic-technologies/agent-config`; admin is a container on the Hetzner box and cannot see that laptop. So every read and write goes through the GitHub Contents API against the repo, and a save is a commit. **That indirection is the design, not a limitation to route around** — do not add a filesystem path, and do not try to reach the machine.
