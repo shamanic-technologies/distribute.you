@@ -9,8 +9,8 @@ import {
 } from "../src/lib/start-proof";
 
 // Fixtures are copied off the SERVED prod bodies (features-service v0.170.2,
-// 2026-09-18): a showcase funnel's first rung is `contacted`, and the three
-// consenting clients read 1.62x, 51.06x and 3.06x.
+// 2026-09-18), in the `/public/stats/showcase-outcomes` shape: a client's first
+// outcome is `contacted`, and the three consenting clients read 1.62x, 51.06x and 3.06x.
 
 describe("hotLeadStats: the homepage hero's derivation over the ranked brands", () => {
   const brand = (replies: number, clicks: number, cents: number) => ({
@@ -35,57 +35,46 @@ const SHOWCASE: ShowcaseBrand[] = [
     brand: { id: "1", name: "Doc Dinners", domain: "docdinners.com" },
     measured: true,
     unmeasuredReason: null,
-    funnels: [
-      {
-        returnPerDollar: 1.6237,
-        steps: [
-          { key: "contacted", label: "Contacted", peopleReached: 15595, costPerReachUsd: 0.306 },
-          { key: "start_to_conversation", label: "Positive reply", peopleReached: 20, costPerReachUsd: 238.65 },
-          { key: "conversation_to_meeting_booked", label: "Meeting booked", peopleReached: 3, costPerReachUsd: 1591 },
-          { key: "meeting_booked_to_meeting_attended", label: "Meeting attended", peopleReached: 0, costPerReachUsd: null },
-          { key: "meeting_attended_to_paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
-        ],
-      },
+    returnPerDollar: 1.6237,
+    outcomes: [
+      { key: "contacted", label: "Contacted", peopleReached: 15595, costPerReachUsd: 0.306 },
+      { key: "conversation", label: "Positive reply", peopleReached: 20, costPerReachUsd: 238.65 },
+      { key: "meeting_booked", label: "Meeting booked", peopleReached: 3, costPerReachUsd: 1591 },
+      { key: "meeting_attended", label: "Meeting attended", peopleReached: 0, costPerReachUsd: null },
+      { key: "paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
     ],
   },
   {
     brand: { id: "2", name: "Opsfolio", domain: "opsfolio.com" },
     measured: true,
     unmeasuredReason: null,
-    funnels: [
-      {
-        returnPerDollar: 51.06,
-        steps: [
-          { key: "contacted", label: "Contacted", peopleReached: 2808, costPerReachUsd: 0.1 },
-          { key: "start_to_website_visit", label: "Website visit", peopleReached: 147, costPerReachUsd: 2.4 },
-        ],
-      },
+    returnPerDollar: 51.06,
+    outcomes: [
+      { key: "contacted", label: "Contacted", peopleReached: 2808, costPerReachUsd: 0.1 },
+      { key: "website_visit", label: "Website visit", peopleReached: 147, costPerReachUsd: 2.4 },
     ],
   },
   {
     brand: { id: "3", name: "Shockwave", domain: "shockwavecenters.com" },
     measured: true,
     unmeasuredReason: null,
-    funnels: [
-      {
-        returnPerDollar: 3.0555,
-        steps: [
-          { key: "contacted", label: "Contacted", peopleReached: 3497, costPerReachUsd: 0.2 },
-          { key: "start_to_conversation", label: "Positive reply", peopleReached: 4, costPerReachUsd: 118 },
-        ],
-      },
+    returnPerDollar: 3.0555,
+    outcomes: [
+      { key: "contacted", label: "Contacted", peopleReached: 3497, costPerReachUsd: 0.2 },
+      { key: "conversation", label: "Positive reply", peopleReached: 4, costPerReachUsd: 118 },
     ],
   },
   {
     brand: { id: "4", name: "Nobody Consented", domain: "unnamed.example" },
     measured: true,
     unmeasuredReason: null,
-    funnels: [{ returnPerDollar: 99, steps: [] }],
+    returnPerDollar: 99,
+    outcomes: [],
   },
 ];
 
 describe("proofCardsFor: the top three named clients by return, whatever the fleet median", () => {
-  it("orders by return across EVERY path, not the picked ones, and names the outcome reached", () => {
+  it("orders by the client's own return and names the outcome reached", () => {
     const cards = proofCardsFor(SHOWCASE);
     expect(cards.map((c) => [c.domain, c.returnPerDollar, c.outcomeLabel])).toEqual([
       ["opsfolio.com", 51.06, "Website visit"],
@@ -113,10 +102,10 @@ describe("proofCardsFor: the top three named clients by return, whatever the fle
       { label: "Meeting booked", peopleReached: 3 },
     ]);
   });
-  it("skips an unmeasured brand and a funnel with no return", () => {
+  it("skips an unmeasured brand and a brand with no return", () => {
     const unmeasured: ShowcaseBrand[] = [
       { ...SHOWCASE[0], measured: false },
-      { ...SHOWCASE[2], funnels: [{ ...SHOWCASE[2].funnels[0], returnPerDollar: null }] },
+      { ...SHOWCASE[2], returnPerDollar: null },
     ];
     expect(proofCardsFor(unmeasured)).toEqual([]);
   });

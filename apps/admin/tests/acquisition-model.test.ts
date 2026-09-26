@@ -5,28 +5,17 @@ import {
   channelFamilyLabel,
   channelOperatorLabel,
   legLabel,
-  funnelCatalogueFrom,
-  stepCostsForPair,
+  legCatalogueFrom,
   summariseCells,
-  unmeasuredReasonLabel,
-  unpricedStepLabel,
+  unpricedReasonLabel,
 } from "../src/lib/acquisition-model";
-import type { PublicChannel, PublicChannelFunnelPair } from "@/lib/api";
+import type { PublicChannel, PublicChannelOutcomeEconomicsEntry } from "@/lib/api";
 
-const STEP_CONVERSATION = { key: "conversation", label: "Conversation", description: "" };
+const STEP_CONVERSATION = { key: "conversation", label: "Positive reply", description: "" };
+const STEP_WEBSITE_VISIT = { key: "website_visit", label: "Website visit", description: "" };
 const STEP_MEETING_ATTENDED = { key: "meeting_attended", label: "Meeting attended", description: "" };
 const STEP_PAID_CLIENT = { key: "paid_client", label: "Paid client", description: "" };
-
-const REPLY_MEETING = {
-  key: "sales_meetings_from_conversation",
-  name: "Sales Meeting from Positive Reply",
-  steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
-};
-const FORM_MAGNET = {
-  key: "form_magnet",
-  name: "Form Magnet",
-  steps: ["Website visit", "Form filled", "Paid client"],
-};
+const STEPS = [STEP_CONVERSATION, STEP_WEBSITE_VISIT, STEP_MEETING_ATTENDED, STEP_PAID_CLIENT];
 
 function channel(over: Partial<PublicChannel> & { slug: string; name: string }): PublicChannel {
   return {
@@ -36,58 +25,44 @@ function channel(over: Partial<PublicChannel> & { slug: string; name: string }):
     family: "outbound_one_to_one",
     terms: { dailyOperatingCostCents: 800, minimumCommitmentDays: 30, maxDaysToFirstProduction: 14 },
     operatedBy: "platform",
-    stepTransitions: [{ from: null, to: STEP_CONVERSATION }],
-    salesFunnels: [REPLY_MEETING],
+    stepTransitions: [{ legKey: "start_to_conversation", from: null, to: STEP_CONVERSATION }],
     ...over,
   } as PublicChannel;
 }
 
-function measuredPair(
+/** One economics entry, shaped like a real `/public/channel-outcome-economics` row. */
+function entry(
   channelSlug: string,
-  funnel: { key: string; name: string; steps: string[] },
-): PublicChannelFunnelPair {
+  outcomes: PublicChannelOutcomeEconomicsEntry["outcomes"],
+  returnPerDollar: number | null = null,
+): PublicChannelOutcomeEconomicsEntry {
   return {
     channelSlug,
     channelName: channelSlug,
-    funnelKey: funnel.key,
-    funnelName: funnel.name,
-    funnelSteps: funnel.steps,
-    result: {
-      measured: true,
-      economics: {
-        steps: [
-          { step: funnel.steps[0], milestone: false, costPerStepUsd: 216.48, unpricedReason: null },
-          { step: funnel.steps[1], milestone: true, costPerStepUsd: null, unpricedReason: "rate_not_declared" },
-        ],
-        costPerSaleUsd: 2429.8,
-        costPerSaleUnpricedReason: null,
-        returnPerDollar: 0.74,
-        lifetimeRevenueUsd: 1807.55,
-        evidence: {
-          totalSpentUsd: 6927.45,
-          conversationsProduced: 32,
-          websiteVisitsProduced: 857,
-          brandCount: 27,
-        },
-      },
-    },
-  } as PublicChannelFunnelPair;
+    outcomes,
+    returnPerDollar,
+    returnPathLegKeys: returnPerDollar === null ? null : ["start_to_conversation"],
+  };
 }
 
-function unmeasuredPair(
-  channelSlug: string,
-  funnel: { key: string; name: string; steps: string[] },
-  reason: string,
-): PublicChannelFunnelPair {
-  return {
-    channelSlug,
-    channelName: channelSlug,
-    funnelKey: funnel.key,
-    funnelName: funnel.name,
-    funnelSteps: funnel.steps,
-    result: { measured: false, reason },
-  } as PublicChannelFunnelPair;
-}
+const PRICED_REPLY = {
+  step: STEP_CONVERSATION,
+  landedByChannel: true,
+  costPerOutcomeUsd: 263.22,
+  unpricedReason: null,
+};
+const PRICED_PAID = {
+  step: STEP_PAID_CLIENT,
+  landedByChannel: false,
+  costPerOutcomeUsd: 3928.68,
+  unpricedReason: null,
+};
+const UNPRICED_ATTENDED = {
+  step: STEP_MEETING_ATTENDED,
+  landedByChannel: false,
+  costPerOutcomeUsd: null,
+  unpricedReason: "rate_not_declared",
+};
 
 describe("channelFamilyLabel", () => {
   it("labels the families the catalogue publishes today", () => {
@@ -106,7 +81,7 @@ describe("channelFamilyLabel", () => {
 
 describe("legLabel", () => {
   it("reads an entry leg as producing its step, not as converting one", () => {
-    expect(legLabel({ from: null, to: STEP_CONVERSATION })).toBe("Produces Conversation");
+    expect(legLabel({ from: null, to: STEP_CONVERSATION })).toBe("Produces Positive reply");
   });
 
   it("names both ends of an internal leg", () => {
@@ -134,127 +109,126 @@ describe("a channel that converts an INTERNAL leg", () => {
       slug: "founder-led-closing",
       name: "Founder Led Closing",
       operatedBy: "customer",
-      stepTransitions: [{ from: STEP_MEETING_ATTENDED, to: STEP_PAID_CLIENT }],
-      salesFunnels: [REPLY_MEETING],
+      stepTransitions: [
+        { legKey: "meeting_attended_to_paid_client", from: STEP_MEETING_ATTENDED, to: STEP_PAID_CLIENT },
+      ],
     });
-    const funnels = funnelCatalogueFrom([closer]);
-    const rows = buildMatrixRows([closer], funnels, []);
+    const rows = buildMatrixRows([closer], STEPS, []);
     expect(rows[0].entryOnly).toBe(false);
     expect(rows[0].legLabels).toEqual(["Meeting attended to Paid client"]);
     expect(rows[0].operatedBy).toBe("customer");
   });
 });
 
-describe("unmeasuredReasonLabel / unpricedStepLabel", () => {
+describe("unpricedReasonLabel", () => {
   it("states each reason the producer can send", () => {
-    for (const reason of ["no_spend_recorded", "no_entry_step_produced", "no_economics_declared"]) {
-      const label = unmeasuredReasonLabel(reason);
-      expect(label).not.toBe(reason);
-      expect(label.length).toBeGreaterThan(10);
-    }
-    for (const reason of ["rate_not_declared", "rate_is_zero"]) {
-      const label = unpricedStepLabel(reason);
+    for (const reason of [
+      "no_spend_recorded",
+      "no_entry_step_produced",
+      "no_economics_declared",
+      "rate_not_declared",
+      "rate_is_zero",
+    ]) {
+      const label = unpricedReasonLabel(reason);
       expect(label).not.toBe(reason);
       expect(label.length).toBeGreaterThan(10);
     }
   });
 
   it("falls back to the raw token for a reason we have not met", () => {
-    expect(unmeasuredReasonLabel("brand_new_reason")).toBe("brand_new_reason");
-    expect(unpricedStepLabel("brand_new_reason")).toBe("brand_new_reason");
+    expect(unpricedReasonLabel("brand_new_reason")).toBe("brand_new_reason");
+    expect(unpricedReasonLabel(null)).toBe("Not priced");
   });
 });
 
-describe("funnelCatalogueFrom", () => {
-  it("dedupes a funnel across the channels that can sell it", () => {
-    const funnels = funnelCatalogueFrom([
-      channel({ slug: "a", name: "A", salesFunnels: [REPLY_MEETING, FORM_MAGNET] }),
-      channel({ slug: "b", name: "B", salesFunnels: [REPLY_MEETING] }),
+describe("legCatalogueFrom", () => {
+  it("dedupes a leg across the channels that perform it", () => {
+    const legs = legCatalogueFrom([
+      channel({
+        slug: "a",
+        name: "A",
+        stepTransitions: [
+          { legKey: "start_to_conversation", from: null, to: STEP_CONVERSATION },
+          { legKey: "start_to_website_visit", from: null, to: STEP_WEBSITE_VISIT },
+        ],
+      }),
+      channel({ slug: "b", name: "B" }),
     ]);
-    expect(funnels).toHaveLength(2);
-    const reply = funnels.find((f) => f.key === REPLY_MEETING.key)!;
-    expect(reply.channelCount).toBe(2);
-    expect(reply.steps).toEqual(REPLY_MEETING.steps);
-    expect(reply.entryStep).toBe("Positive reply");
-    expect(funnels.find((f) => f.key === FORM_MAGNET.key)!.channelCount).toBe(1);
+    expect(legs).toHaveLength(2);
+    expect(legs.find((l) => l.key === "start_to_conversation")!.channelCount).toBe(2);
+    expect(legs.find((l) => l.key === "start_to_website_visit")!.channelCount).toBe(1);
   });
 
-  it("orders by channel count desc, then name", () => {
-    const funnels = funnelCatalogueFrom([
-      channel({ slug: "a", name: "A", salesFunnels: [FORM_MAGNET] }),
-      channel({ slug: "b", name: "B", salesFunnels: [REPLY_MEETING] }),
-      channel({ slug: "c", name: "C", salesFunnels: [REPLY_MEETING] }),
+  it("lists entry legs first, then by channel count", () => {
+    const legs = legCatalogueFrom([
+      channel({
+        slug: "a",
+        name: "A",
+        stepTransitions: [
+          { legKey: "meeting_attended_to_paid_client", from: STEP_MEETING_ATTENDED, to: STEP_PAID_CLIENT },
+        ],
+      }),
+      channel({
+        slug: "b",
+        name: "B",
+        stepTransitions: [
+          { legKey: "meeting_attended_to_paid_client", from: STEP_MEETING_ATTENDED, to: STEP_PAID_CLIENT },
+        ],
+      }),
+      channel({ slug: "c", name: "C" }),
     ]);
-    expect(funnels.map((f) => f.key)).toEqual([REPLY_MEETING.key, FORM_MAGNET.key]);
+    expect(legs.map((l) => l.key)).toEqual(["start_to_conversation", "meeting_attended_to_paid_client"]);
+    expect(legs[0].entry).toBe(true);
+    expect(legs[1].entry).toBe(false);
   });
 
-  it("lists no funnel when nothing can sell one", () => {
-    expect(funnelCatalogueFrom([channel({ slug: "a", name: "A", salesFunnels: [] })])).toEqual([]);
+  it("lists no leg when no channel performs one", () => {
+    expect(legCatalogueFrom([channel({ slug: "a", name: "A", stepTransitions: [] })])).toEqual([]);
   });
 });
 
 describe("buildMatrixRows", () => {
   const channels = [
-    channel({ slug: "email", name: "Email", displayOrder: 1, salesFunnels: [REPLY_MEETING, FORM_MAGNET] }),
-    channel({ slug: "call", name: "Call", displayOrder: 2, salesFunnels: [REPLY_MEETING] }),
+    channel({ slug: "email", name: "Email", displayOrder: 1 }),
+    channel({ slug: "call", name: "Call", displayOrder: 2 }),
   ];
-  const funnels = funnelCatalogueFrom(channels);
 
-  it("marks a funnel the channel cannot sell as not sellable", () => {
-    const rows = buildMatrixRows(channels, funnels, []);
+  it("marks an outcome the channel's legs never reach as not reached", () => {
+    const rows = buildMatrixRows(channels, STEPS, [entry("call", [PRICED_REPLY])]);
     const call = rows.find((r) => r.slug === "call")!;
-    const formIndex = funnels.findIndex((f) => f.key === FORM_MAGNET.key);
-    expect(call.cells[formIndex]).toEqual({ kind: "not_sellable" });
+    expect(call.cells[1]).toEqual({ kind: "not_reached" });
   });
 
-  it("carries the measured economics through", () => {
-    const rows = buildMatrixRows(channels, funnels, [measuredPair("email", REPLY_MEETING)]);
-    const replyIndex = funnels.findIndex((f) => f.key === REPLY_MEETING.key);
-    const cell = rows.find((r) => r.slug === "email")!.cells[replyIndex];
-    expect(cell.kind).toBe("measured");
-    if (cell.kind !== "measured") throw new Error("unreachable");
-    expect(cell.returnPerDollar).toBe(0.74);
-    expect(cell.costPerSaleUsd).toBe(2429.8);
-    expect(cell.lifetimeRevenueUsd).toBe(1807.55);
-    expect(cell.steps).toHaveLength(2);
-    expect(cell.steps[1]).toEqual({
-      step: "Meeting booked",
-      milestone: true,
-      costPerStepUsd: null,
-      unpricedReason: "rate_not_declared",
+  it("carries the served price and who lands it, verbatim", () => {
+    const rows = buildMatrixRows(channels, STEPS, [entry("email", [PRICED_REPLY, PRICED_PAID], 0.64)]);
+    const email = rows.find((r) => r.slug === "email")!;
+    expect(email.cells[0]).toEqual({ kind: "priced", costPerOutcomeUsd: 263.22, landedByChannel: true });
+    expect(email.cells[3]).toEqual({ kind: "priced", costPerOutcomeUsd: 3928.68, landedByChannel: false });
+    expect(email.bestReturnPerDollar).toBe(0.64);
+    expect(email.reachedOutcomeCount).toBe(2);
+  });
+
+  it("carries the producer's own reason when an outcome is not priced", () => {
+    const rows = buildMatrixRows(channels, STEPS, [entry("call", [UNPRICED_ATTENDED])]);
+    expect(rows.find((r) => r.slug === "call")!.cells[2]).toEqual({
+      kind: "unpriced",
+      reason: "rate_not_declared",
+      landedByChannel: false,
     });
   });
 
-  it("carries the producer's own reason when a pair is not measured", () => {
-    const rows = buildMatrixRows(channels, funnels, [
-      unmeasuredPair("call", REPLY_MEETING, "no_spend_recorded"),
-    ]);
-    const replyIndex = funnels.findIndex((f) => f.key === REPLY_MEETING.key);
-    expect(rows.find((r) => r.slug === "call")!.cells[replyIndex]).toEqual({
-      kind: "unmeasured",
-      reason: "no_spend_recorded",
-    });
-  });
-
-  it("says UNKNOWN, never not-sellable, when a sellable pair has no served row", () => {
-    const rows = buildMatrixRows(channels, funnels, []);
-    const replyIndex = funnels.findIndex((f) => f.key === REPLY_MEETING.key);
-    expect(rows.find((r) => r.slug === "email")!.cells[replyIndex]).toEqual({ kind: "unknown" });
-  });
-
-  it("keeps a channel that can sell nothing, with every cell not sellable", () => {
-    const orphan = channel({ slug: "orphan", name: "Orphan", displayOrder: 3, salesFunnels: [] });
-    const rows = buildMatrixRows([...channels, orphan], funnels, []);
-    const row = rows.find((r) => r.slug === "orphan")!;
-    expect(row).toBeDefined();
-    expect(row.sellableFunnelCount).toBe(0);
-    expect(row.cells.every((c) => c.kind === "not_sellable")).toBe(true);
+  it("says UNKNOWN, never not reached, when the read has no entry for the channel", () => {
+    const rows = buildMatrixRows(channels, STEPS, []);
+    const email = rows.find((r) => r.slug === "email")!;
+    expect(email.cells.every((c) => c.kind === "unknown")).toBe(true);
+    expect(email.reachedOutcomeCount).toBeNull();
+    expect(email.bestReturnPerDollar).toBeNull();
   });
 
   it("orders rows by the catalogue's own display order", () => {
     const rows = buildMatrixRows(
       [channel({ slug: "b", name: "B", displayOrder: 9 }), channel({ slug: "a", name: "A", displayOrder: 2 })],
-      funnels,
+      STEPS,
       [],
     );
     expect(rows.map((r) => r.slug)).toEqual(["a", "b"]);
@@ -263,62 +237,35 @@ describe("buildMatrixRows", () => {
   it("carries the commercial terms verbatim", () => {
     const rows = buildMatrixRows(
       [channel({ slug: "call", name: "Call", terms: { dailyOperatingCostCents: 24000, minimumCommitmentDays: 30, maxDaysToFirstProduction: 5 } })],
-      funnels,
+      STEPS,
       [],
     );
     expect(rows[0].dailyOperatingCostCents).toBe(24000);
     expect(rows[0].maxDaysToFirstProduction).toBe(5);
-    expect(rows[0].legLabels).toEqual(["Produces Conversation"]);
+    expect(rows[0].legLabels).toEqual(["Produces Positive reply"]);
     expect(rows[0].entryOnly).toBe(true);
-  });
-});
-
-describe("stepCostsForPair", () => {
-  it("returns the per-step prices of a measured cell, order preserved", () => {
-    const funnels = funnelCatalogueFrom([channel({ slug: "email", name: "Email" })]);
-    const rows = buildMatrixRows(
-      [channel({ slug: "email", name: "Email" })],
-      funnels,
-      [measuredPair("email", REPLY_MEETING)],
-    );
-    const steps = stepCostsForPair(rows[0].cells[0]);
-    expect(steps.map((s) => s.step)).toEqual(["Positive reply", "Meeting booked"]);
-    expect(steps[0].costPerStepUsd).toBe(216.48);
-    expect(steps[1].costPerStepUsd).toBeNull();
-  });
-
-  it("returns nothing for a cell that is not measured", () => {
-    expect(stepCostsForPair({ kind: "not_sellable" })).toEqual([]);
-    expect(stepCostsForPair({ kind: "unknown" })).toEqual([]);
-    expect(stepCostsForPair({ kind: "unmeasured", reason: "no_spend_recorded" })).toEqual([]);
   });
 });
 
 describe("summariseCells", () => {
   const channels = [
-    channel({ slug: "email", name: "Email", displayOrder: 1, salesFunnels: [REPLY_MEETING, FORM_MAGNET] }),
-    channel({ slug: "call", name: "Call", displayOrder: 2, salesFunnels: [REPLY_MEETING] }),
+    channel({ slug: "email", name: "Email", displayOrder: 1 }),
+    channel({ slug: "call", name: "Call", displayOrder: 2 }),
+    channel({ slug: "ads", name: "Ads", displayOrder: 3 }),
   ];
-  const funnels = funnelCatalogueFrom(channels);
 
-  it("counts only the pairs that can be sold", () => {
-    const rows = buildMatrixRows(channels, funnels, [
-      measuredPair("email", REPLY_MEETING),
-      unmeasuredPair("call", REPLY_MEETING, "no_spend_recorded"),
+  it("counts the reached outcomes, and how many are priced", () => {
+    const rows = buildMatrixRows(channels, STEPS, [
+      entry("email", [PRICED_REPLY, PRICED_PAID]),
+      entry("call", [UNPRICED_ATTENDED]),
     ]);
-    // 3 sellable cells: email x both funnels, call x reply. Call x form is not.
-    expect(summariseCells(rows)).toEqual({
-      sellable: 3,
-      measured: 1,
-      unmeasured: 1,
-      unknown: 1,
-    });
+    // email: 2 priced; call: 1 unpriced; ads: 4 unknown (no entry at all).
+    expect(summariseCells(rows)).toEqual({ reached: 3, priced: 2, unpriced: 1, unknown: 4 });
   });
 
-  it("counts nothing when no pair can be sold", () => {
-    const orphan = [channel({ slug: "orphan", name: "Orphan", salesFunnels: [] })];
-    const rows = buildMatrixRows(orphan, funnels, []);
-    expect(summariseCells(rows)).toEqual({ sellable: 0, measured: 0, unmeasured: 0, unknown: 0 });
+  it("counts nothing when no channel reaches anything", () => {
+    const rows = buildMatrixRows(channels, STEPS, channels.map((c) => entry(c.slug, [])));
+    expect(summariseCells(rows)).toEqual({ reached: 0, priced: 0, unpriced: 0, unknown: 0 });
   });
 });
 
@@ -335,6 +282,11 @@ describe("MODEL_OBJECTS", () => {
   it("names each object exactly once", () => {
     const names = MODEL_OBJECTS.map((o) => o.name);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("names no sales funnel: the model is outcomes and legs", () => {
+    const copy = MODEL_OBJECTS.map((o) => `${o.name} ${o.what} ${o.owner} ${o.key} ${o.relatesTo}`).join(" ");
+    expect(copy.toLowerCase()).not.toContain("funnel");
   });
 
   it("carries no em-dash: this is copy a person reads", () => {

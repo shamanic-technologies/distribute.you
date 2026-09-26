@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getPublicChannelCatalogue, getPublicChannelFunnelEconomics } from "@/lib/api";
+import { getPublicChannelCatalogue, getPublicChannelOutcomeEconomics } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { fmtRoi, fmtUsd } from "@/lib/feature-stats-format";
@@ -11,10 +11,9 @@ import {
   buildMatrixRows,
   channelFamilyLabel,
   channelOperatorLabel,
-  funnelCatalogueFrom,
+  legCatalogueFrom,
   summariseCells,
-  unmeasuredReasonLabel,
-  unpricedStepLabel,
+  unpricedReasonLabel,
   type MatrixCell,
 } from "@/lib/acquisition-model";
 
@@ -30,11 +29,11 @@ function wholeUsd(cents: number | null): string {
 /**
  * The model.
  *
- * One page for the question "what are all these objects, and which of them can
- * actually be sold together". The top band is documentation (nobody publishes a
- * map of the fleet). Everything below it is READ from features-service, so a
- * channel or a funnel that ships upstream appears here the same day rather than
- * whenever someone remembers to update a copy.
+ * One page for the question "what are all these objects, and which outcome can
+ * each channel reach". The top band is documentation (nobody publishes a map of
+ * the fleet). Everything below it is READ from features-service, so a channel or
+ * a leg that ships upstream appears here the same day rather than whenever
+ * someone remembers to update a copy.
  */
 export default function ModelPage() {
   const catalogue = useQuery({
@@ -44,16 +43,17 @@ export default function ModelPage() {
   });
 
   const economics = useQuery({
-    queryKey: ["publicChannelFunnelEconomics"],
-    queryFn: getPublicChannelFunnelEconomics,
+    queryKey: ["publicChannelOutcomeEconomics"],
+    queryFn: getPublicChannelOutcomeEconomics,
     ...pollOptionsSlower,
   });
 
   const channels = useMemo(() => catalogue.data?.channels ?? [], [catalogue.data]);
-  const funnels = useMemo(() => funnelCatalogueFrom(channels), [channels]);
+  const steps = useMemo(() => catalogue.data?.steps ?? [], [catalogue.data]);
+  const legs = useMemo(() => legCatalogueFrom(channels), [channels]);
   const rows = useMemo(
-    () => buildMatrixRows(channels, funnels, economics.data?.pairs ?? []),
-    [channels, funnels, economics.data],
+    () => buildMatrixRows(channels, steps, economics.data?.channels ?? []),
+    [channels, steps, economics.data],
   );
 
   const [family, setFamily] = useState<string | null>(null);
@@ -75,10 +75,10 @@ export default function ModelPage() {
       <header>
         <h1 className="text-xl font-semibold text-gray-900">The model</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-3xl">
-          Everything a customer buys is one pair: a sales funnel, bought through an acquisition
-          channel. A channel states the first signal it can produce, a funnel states the signal it
-          starts on, and the pairs that can be sold fall out of the two. The first table is
-          documentation; everything under it is read live from features-service.
+          Everything a customer buys is an outcome: a step a lead reaches, like a positive reply or a
+          paid client. A channel performs legs, each moving a lead from one step to the next, and the
+          outcomes it can reach fall out of its legs. The first table is documentation; everything
+          under it is read live from features-service.
         </p>
       </header>
 
@@ -122,8 +122,8 @@ export default function ModelPage() {
           <div>
             <h2 className="text-base font-semibold text-gray-900">Steps</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Every step a funnel can pass through. A channel states which one it moves a lead
-              FROM and which one it moves it TO, and that leg is what joins it to a funnel.
+              Every step a lead can reach. A customer buys one of them as an outcome, and a channel
+              states which step it moves a lead FROM and which one it moves it TO.
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -153,10 +153,10 @@ export default function ModelPage() {
 
         <div className="space-y-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Sales funnels</h2>
+            <h2 className="text-base font-semibold text-gray-900">Legs</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Every funnel on sale, and the signal it starts on. A funnel no channel can start is not
-              listed, because nothing can sell it.
+              Every leg a channel performs. A leg no channel performs is not listed, because nothing
+              can buy it.
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -166,20 +166,19 @@ export default function ModelPage() {
                   <Skeleton key={i} className="h-4 w-full rounded" />
                 ))}
               </div>
-            ) : funnels.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-gray-400">No funnel is on sale.</p>
+            ) : legs.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">No channel performs a leg.</p>
             ) : (
               <ul className="divide-y divide-gray-50">
-                {funnels.map((funnel) => (
-                  <li key={funnel.key} className="px-4 py-3">
+                {legs.map((leg) => (
+                  <li key={leg.key} className="px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
-                      <p className="text-sm font-medium text-gray-900">{funnel.name}</p>
+                      <p className="text-sm font-medium text-gray-900">{leg.label}</p>
                       <p className="text-xs text-gray-400 shrink-0">
-                        {funnel.channelCount} channel{funnel.channelCount === 1 ? "" : "s"}
+                        {leg.channelCount} channel{leg.channelCount === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{funnel.steps.join("  →  ")}</p>
-                    <p className="text-[11px] text-gray-400 font-mono mt-1">{funnel.key}</p>
+                    <p className="text-[11px] text-gray-400 font-mono mt-1">{leg.key}</p>
                   </li>
                 ))}
               </ul>
@@ -241,7 +240,7 @@ export default function ModelPage() {
                 <th className="px-4 py-2 font-medium text-right">Producing within</th>
                 <th className="px-4 py-2 font-medium">Leg</th>
                 <th className="px-4 py-2 font-medium">Run by</th>
-                <th className="px-4 py-2 font-medium text-right">Funnels</th>
+                <th className="px-4 py-2 font-medium text-right">Outcomes</th>
               </tr>
             </thead>
             <tbody>
@@ -286,7 +285,9 @@ export default function ModelPage() {
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {channelOperatorLabel(row.operatedBy)}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600">{row.sellableFunnelCount}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">
+                      {row.reachedOutcomeCount === null ? "—" : row.reachedOutcomeCount}
+                    </td>
                   </tr>
                 ))
               )}
@@ -295,20 +296,20 @@ export default function ModelPage() {
         </div>
       </section>
 
-      {/* 4. what can be sold together, and what it is worth */}
+      {/* 4. which outcome each channel reaches, and what it costs */}
       <section className="space-y-3">
         <div>
-          <h2 className="text-base font-semibold text-gray-900">Which pairs can be sold</h2>
+          <h2 className="text-base font-semibold text-gray-900">What each channel can buy</h2>
           <p className="mt-1 text-sm text-gray-500 max-w-3xl">
-            One row per channel, one column per funnel. A measured pair states its return per dollar
-            and what one sale costs through it; a pair we cannot price says which ingredient is
-            missing rather than showing a figure nobody should read.
+            One row per channel, one column per step. A priced cell states what one of that outcome
+            costs through the channel&apos;s cheapest path; an outcome we cannot price says which
+            ingredient is missing rather than showing a figure nobody should read. Both columns are
+            projections, never a client&apos;s realized result.
           </p>
-          {!catalogueLoading && !economicsLoading && summary.sellable > 0 && (
+          {!catalogueLoading && !economicsLoading && summary.reached > 0 && (
             <p className="mt-2 text-sm text-gray-600">
-              {summary.sellable} pair{summary.sellable === 1 ? "" : "s"} can be sold today, and{" "}
-              {summary.measured === 0 ? "none of them are" : `${summary.measured} of them are`}{" "}
-              measured.
+              {summary.reached} outcome{summary.reached === 1 ? "" : "s"} can be bought today, and{" "}
+              {summary.priced === 0 ? "none of them are" : `${summary.priced} of them are`} priced.
             </p>
           )}
         </div>
@@ -317,9 +318,10 @@ export default function ModelPage() {
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
                 <th className="px-4 py-2 font-medium">Channel</th>
-                {funnels.map((funnel) => (
-                  <th key={funnel.key} className="px-4 py-2 font-medium text-right">
-                    {funnel.name}
+                <th className="px-4 py-2 font-medium text-right">Best return</th>
+                {steps.map((step) => (
+                  <th key={step.key} className="px-4 py-2 font-medium text-right">
+                    {step.label}
                   </th>
                 ))}
               </tr>
@@ -328,7 +330,7 @@ export default function ModelPage() {
               {catalogueLoading || economicsLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
-                    <td className="px-4 py-3" colSpan={funnels.length + 1}>
+                    <td className="px-4 py-3" colSpan={steps.length + 2}>
                       <Skeleton className="h-4 w-full rounded" />
                     </td>
                   </tr>
@@ -337,7 +339,7 @@ export default function ModelPage() {
                 <tr>
                   <td
                     className="px-4 py-8 text-center text-sm text-gray-400"
-                    colSpan={Math.max(funnels.length + 1, 2)}
+                    colSpan={Math.max(steps.length + 2, 2)}
                   >
                     {catalogue.isError
                       ? "Couldn't read the channel catalogue."
@@ -351,9 +353,12 @@ export default function ModelPage() {
                       <p className="font-medium text-gray-900">{row.name}</p>
                       <p className="text-[11px] text-gray-400 font-mono">{row.slug}</p>
                     </td>
+                    <td className="px-4 py-3 text-right align-top font-medium text-gray-900">
+                      {fmtRoi(row.bestReturnPerDollar)}
+                    </td>
                     {row.cells.map((cell, i) => (
-                      <td key={funnels[i].key} className="px-4 py-3 text-right align-top">
-                        <PairCell cell={cell} />
+                      <td key={steps[i].key} className="px-4 py-3 text-right align-top">
+                        <OutcomeCell cell={cell} />
                       </td>
                     ))}
                   </tr>
@@ -363,8 +368,9 @@ export default function ModelPage() {
           </table>
         </div>
         <p className="text-xs text-gray-400">
-          A blank cell means the channel produces no signal this funnel starts on, so the pair does
-          not exist. Hover a cell that states no figure to read why.
+          A dot means none of the channel&apos;s legs lead to that step. A grey price is reached by a
+          later leg another channel or a person performs, not by this channel itself. Hover a cell
+          that states no figure to read why.
         </p>
       </section>
     </div>
@@ -373,48 +379,35 @@ export default function ModelPage() {
 
 /**
  * One cell of the matrix. Each of the four states says a different thing, and
- * they must not collapse into one dash: "cannot be sold", "nobody has spent
- * here", "the economics read has no row for it" and "here is the price" are
- * four different answers.
+ * they must not collapse into one dash: "not reached", "the economics read has
+ * no entry for this channel", "reached but not priced" and "here is the price"
+ * are four different answers.
  */
-function PairCell({ cell }: { cell: MatrixCell }) {
-  if (cell.kind === "not_sellable") {
+function OutcomeCell({ cell }: { cell: MatrixCell }) {
+  if (cell.kind === "not_reached") {
     return (
-      <span className="text-gray-300" title="This channel produces no signal this funnel starts on.">
+      <span className="text-gray-300" title="None of this channel's legs lead to this step.">
         ·
       </span>
     );
   }
   if (cell.kind === "unknown") {
     return (
-      <span
-        className="text-xs text-gray-400"
-        title="The economics read carries no row for this pair."
-      >
+      <span className="text-xs text-gray-400" title="The economics read carries no entry for this channel.">
         Not answered
       </span>
     );
   }
-  if (cell.kind === "unmeasured") {
+  if (cell.kind === "unpriced") {
     return (
-      <span className="text-xs text-gray-400" title={unmeasuredReasonLabel(cell.reason)}>
-        Not measured
+      <span className="text-xs text-gray-400" title={unpricedReasonLabel(cell.reason)}>
+        Not priced
       </span>
     );
   }
-  const unpriced = cell.steps.find((s) => s.costPerStepUsd === null);
   return (
-    <div>
-      <p className="font-medium text-gray-900">{fmtRoi(cell.returnPerDollar)}</p>
-      <p className="text-[11px] text-gray-400">{fmtUsd(cell.costPerSaleUsd)} per sale</p>
-      {unpriced && (
-        <p
-          className="text-[11px] text-gray-400 mt-0.5"
-          title={unpricedStepLabel(unpriced.unpricedReason)}
-        >
-          {unpriced.step} unpriced
-        </p>
-      )}
-    </div>
+    <span className={cell.landedByChannel ? "font-medium text-gray-900" : "text-gray-500"}>
+      {fmtUsd(cell.costPerOutcomeUsd)}
+    </span>
   );
 }

@@ -13,9 +13,18 @@ const LIB = readFileSync(join(__dirname, "../src/lib/acquisition-model.ts"), "ut
 describe("the model page reads the catalogue, it does not keep one", () => {
   it("reads both published endpoints", () => {
     expect(PAGE).toContain("getPublicChannelCatalogue");
-    expect(PAGE).toContain("getPublicChannelFunnelEconomics");
+    expect(PAGE).toContain("getPublicChannelOutcomeEconomics");
     expect(API).toContain("/public/channels");
-    expect(API).toContain("/public/channel-funnel-economics");
+    expect(API).toContain("/public/channel-outcome-economics");
+  });
+
+  it("reads no funnel-keyed field or route off features-service", () => {
+    // Wave C4: no service stores a sales funnel. The outcome and leg reads replace them.
+    for (const src of [PAGE, LIB, API]) {
+      expect(src).not.toContain("channel-funnel-economics");
+      expect(src).not.toContain("salesFunnels");
+    }
+    for (const src of [PAGE, LIB]) expect(src.toLowerCase()).not.toContain("funnel");
   });
 
   it("hardcodes no channel slug and no funnel key", () => {
@@ -36,9 +45,9 @@ describe("the model page reads the catalogue, it does not keep one", () => {
     }
   });
 
-  it("derives the funnel list and the matrix from the wire", () => {
-    expect(PAGE).toContain("funnelCatalogueFrom(channels)");
-    expect(PAGE).toContain("buildMatrixRows(channels, funnels");
+  it("derives the leg list and the matrix from the wire", () => {
+    expect(PAGE).toContain("legCatalogueFrom(channels)");
+    expect(PAGE).toContain("buildMatrixRows(channels, steps");
   });
 
   it("reveals on SETTLE, so a failed read cannot skeleton the page forever", () => {
@@ -46,21 +55,21 @@ describe("the model page reads the catalogue, it does not keep one", () => {
     expect(PAGE).toContain("economics.isPending && !economics.isError");
   });
 
-  it("states every one of the four pair states apart", () => {
+  it("states every one of the four cell states apart", () => {
     // Collapsing them into one dash would answer four different questions with
-    // one word: cannot be sold / nobody spent / no row served / here is the price.
-    expect(PAGE).toContain('cell.kind === "not_sellable"');
+    // one word: not reached / no entry served / not priced / here is the price.
+    expect(PAGE).toContain('cell.kind === "not_reached"');
     expect(PAGE).toContain('cell.kind === "unknown"');
-    expect(PAGE).toContain('cell.kind === "unmeasured"');
-    expect(PAGE).toContain("unmeasuredReasonLabel(cell.reason)");
+    expect(PAGE).toContain('cell.kind === "unpriced"');
+    expect(PAGE).toContain("unpricedReasonLabel(cell.reason)");
   });
 
   it("renders served money through the shared formatters, deriving nothing", () => {
-    expect(PAGE).toContain("fmtRoi(cell.returnPerDollar)");
-    expect(PAGE).toContain("fmtUsd(cell.costPerSaleUsd)");
+    expect(PAGE).toContain("fmtRoi(row.bestReturnPerDollar)");
+    expect(PAGE).toContain("fmtUsd(cell.costPerOutcomeUsd)");
     // No browser-side arithmetic on a displayed stat.
-    expect(PAGE).not.toMatch(/returnPerDollar\s*[*/+-]/);
-    expect(PAGE).not.toMatch(/costPerSaleUsd\s*[*/+-]/);
+    expect(PAGE).not.toMatch(/ReturnPerDollar\s*[*/+-]/);
+    expect(PAGE).not.toMatch(/costPerOutcomeUsd\s*[*/+-]/);
   });
 
   it("carries no em-dash outside the honest not-measured dash", () => {
@@ -80,7 +89,7 @@ describe("the reader tracks the DEPLOYED catalogue contract", () => {
   // repointed. Pin the names the wire actually carries.
   const reader = API.slice(
     API.indexOf("const PublicChannelStepSchema"),
-    API.indexOf("export async function getPublicChannelFunnelEconomics"),
+    API.indexOf("export async function getPublicChannelOutcomeEconomics"),
   );
 
   it("reads the step vocabulary under the name the wire uses", () => {
@@ -121,8 +130,8 @@ describe("the reader keeps the growing vocabularies open", () => {
   it("does not close the family or step enums", () => {
     // Both sets are expected to grow (a channel converting a step in the MIDDLE
     // of a funnel has no token yet); a closed enum would throw on that catalogue.
-    const block = API.slice(API.indexOf("const PublicProducibleStepSchema"));
-    const reader = block.slice(0, block.indexOf("export async function getPublicChannelFunnelEconomics"));
+    const block = API.slice(API.indexOf("const PublicChannelStepSchema"));
+    const reader = block.slice(0, block.indexOf("export async function getPublicChannelOutcomeEconomics"));
     expect(reader).not.toContain("z.enum");
   });
 });
