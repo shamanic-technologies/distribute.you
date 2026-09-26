@@ -6,8 +6,8 @@ import { useParams, usePathname, useRouter, useSearchParams } from "next/navigat
 import { useUser } from "@clerk/nextjs";
 import { TenantMenu } from "@/components/tenant-switcher";
 import { BrandLogo } from "@/components/brand-logo";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { backToV1Href, switchUiVersion } from "@/components/ui-version-switch";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { useMissions } from "@/components/v2/use-missions";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
@@ -360,9 +360,12 @@ function V2Sidebar() {
           onClick={() => switchUiVersion("v1", backToV1Href(orgId, brandId || null))}
           title="Back to v1"
           aria-label="Back to v1"
-          className="k-btn-ghost h-7 shrink-0 whitespace-nowrap px-2 text-[12px]"
+          className="k-btn-ghost h-7 shrink-0 gap-1 whitespace-nowrap px-1.5 text-[12px]"
         >
-          Back to v1
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 4 3 7l3 3M3.5 7H10a3 3 0 0 1 0 6H8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          v1
         </button>
       </div>
     </aside>

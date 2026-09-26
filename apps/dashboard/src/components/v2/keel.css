@@ -122,3 +122,6 @@
 @media (prefers-reduced-motion: reduce) { .v2-root .k-dot-pulse::after { animation: none; } }
 .v2-root .k-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
 .v2-root .k-scroll::-webkit-scrollbar-thumb { background: #1010122e; border-radius: 9999px; border: 3px solid transparent; background-clip: content-box; }
+.v2-root .k-indeterminate { animation: k-indet 1.6s cubic-bezier(.65, 0, .35, 1) infinite; }
+@keyframes k-indet { 0% { transform: translateX(-100%) } 100% { transform: translateX(300%) } }
+@media (prefers-reduced-motion: reduce) { .v2-root .k-indeterminate { animation: none; } }

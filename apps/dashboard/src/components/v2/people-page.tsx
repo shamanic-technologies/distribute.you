@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
+import { fetchLeadsCsv, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { leadStatusLabel } from "@/lib/lead-status";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
-import { friendlyDateTime } from "@/lib/friendly-datetime";
-import { leadsSearchParam, leadsSearchProblem, LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
+import { timeAgo } from "@/lib/friendly-datetime";
+import { leadsExportQuery, leadsSearchParam, leadsSearchProblem, LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
+import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { v2Href } from "@/lib/v2/routes";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -36,8 +37,6 @@ export const PEOPLE_TABS: { key: string; label: string; bucket: LeadBucket }[] =
   { key: "sales", label: "Close won", bucket: "sale" },
 ];
 
-const TH = "k-label px-3 py-2.5 text-left font-medium";
-
 /**
  * People (beta): Keel's people table over lead-service's own pages. The tab is a bucket,
  * the order is lead-service's activity order, the search runs on the producer over the
@@ -52,16 +51,19 @@ export function PeoplePage() {
   const [draft, setDraft] = useState(params.get("q") ?? "");
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [page, setPage] = useState(0);
+  const [cursor, setCursor] = useState(-1);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     const t = setTimeout(() => setSearch(draft), 300);
     return () => clearTimeout(t);
   }, [draft]);
   useEffect(() => setPage(0), [tab.key, search]);
+  useEffect(() => setCursor(-1), [tab.key, search, page]);
 
   const problem = leadsSearchProblem(search);
   const wire = problem ? "" : (leadsSearchParam(search) ?? "");
   const counts = useBucketCounts(brandId).data;
-  const { missionByCampaignId } = useMissions(orgId, brandId);
+  const { missionByCampaignId, crews } = useMissions(orgId, brandId);
   const pageQ = useAuthQuery(
     ["leadsPage", brandLeadScopeKey(brandId), "v2-people", tab.bucket, wire, page],
     () =>
@@ -90,126 +92,147 @@ export function PeoplePage() {
     router.replace(`${v2Href(orgId, brandId, "people")}?${next.toString()}`);
   };
 
+  const openRow = (i: number) => {
+    const lead = rows?.[i];
+    if (lead) router.push(v1LeadHref(orgId, brandId, lead));
+  };
+  useRowKeys({ count: rows?.length ?? 0, cursor, setCursor, onOpen: openRow, searchRef });
+
   return (
     <>
       <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} actions={<MaturityBadge level="beta" />} />
-      <div className="px-4 pb-16 pt-5 md:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-[20px] font-medium tracking-[-0.01em]">
-            People
-            {counts ? <span className="k-fg3 ml-2 font-normal tabular-nums">{formatCount(counts.counts.contacted)}</span> : null}
-          </h1>
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Search people or companies"
-            className="k-input w-full max-w-[320px]"
-            aria-label="Search people"
+      <RecordsTabs
+        tabs={PEOPLE_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? counts.counts[t.bucket] : null }))}
+        active={tab.key}
+        onPick={go}
+        right={
+          counts ? (
+            <>
+              <span className="flex items-center gap-1">
+                {crews.slice(0, 5).map((c) => (
+                  <CrewMark key={c.crew.key} color={c.crew.color} glyph={c.crew.glyph} size={14} />
+                ))}
+              </span>
+              <span>
+                {formatCount(counts.counts.contacted)} reached by your crew
+              </span>
+              <span className="k-fg4">·</span>
+              <span>{formatCount(counts.counts.positive_reply)} wrote back with interest</span>
+            </>
+          ) : null
+        }
+      />
+      <RecordsToolbar
+        search={draft}
+        onSearch={setDraft}
+        placeholder="Search people or companies"
+        problem={problem}
+        inputRef={searchRef}
+        right={
+          <ExportButton
+            filename={`people-${brandId}.csv`}
+            csv={() => fetchLeadsCsv({ brandId }, leadsExportQuery({ search: wire }))}
+            disabled={counts?.counts.contacted === 0}
           />
-        </div>
-        {problem ? <p className="mt-2 text-[12px] text-[var(--data-rose)]">{problem}</p> : null}
-
-        <nav className="k-scroll mt-4 flex gap-1 overflow-x-auto border-b border-[var(--line-subtle)]">
-          {PEOPLE_TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => go(t.key)}
-              aria-current={t.key === tab.key ? "page" : undefined}
-              className="k-tab shrink-0"
-            >
-              {t.label}
-              {counts ? <span className="k-fg3 ml-1.5 tabular-nums">{formatCount(counts.counts[t.bucket])}</span> : null}
-            </button>
-          ))}
-        </nav>
-
-        <div className="k-card mt-4 overflow-hidden">
-          <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[820px] text-[13px]">
-              <thead>
-                <tr className="border-b border-[var(--line-subtle)]">
-                  <th className={`${TH} pl-4`}>Name</th>
-                  <th className={TH}>Company</th>
-                  <th className={TH}>Crew</th>
-                  <th className={TH}>Status</th>
-                  <th className={`${TH} pr-4 text-right`}>Last activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows === null ? (
-                  pageQ.isError ? (
-                    <tr><td colSpan={5}><EmptyNote>We could not load these people. Retrying.</EmptyNote></td></tr>
-                  ) : (
-                    Array.from({ length: 8 }, (_, i) => (
-                      <tr key={i} className="k-row"><td colSpan={5} className="px-4 py-2.5"><Shimmer className="h-6 w-full" /></td></tr>
-                    ))
-                  )
-                ) : rows.length === 0 ? (
-                  <tr><td colSpan={5}><EmptyNote>Nobody here yet.</EmptyNote></td></tr>
-                ) : (
-                  rows.map((lead) => {
-                    const status = getLeadConsolidatedStatus(lead);
-                    const at = leadDateForStatus(lead, status);
-                    const m = missionByCampaignId.get(lead.campaignId) ?? null;
-                    const company = leadCompany(lead);
-                    const title = leadTitle(lead);
-                    return (
-                      <tr key={lead.id} className="k-row">
-                        <td className="py-2 pl-4 pr-3">
-                          <Link href={v1LeadHref(orgId, brandId, lead)} className="flex min-w-0 items-center gap-2.5">
-                            <PersonAvatar lead={lead} size={24} />
-                            <span className="min-w-0">
-                              <span className="block truncate font-medium">{leadName(lead)}</span>
-                              {title ? <span className="k-fg3 block max-w-[280px] truncate text-[12px]">{title}</span> : null}
-                            </span>
-                          </Link>
-                        </td>
-                        <td className="px-3">
-                          {company ? (
-                            <Link
-                              href={`${v2Href(orgId, brandId, "people")}?q=${encodeURIComponent(company)}`}
-                              className="inline-flex max-w-[220px] items-center gap-1.5 hover:underline"
-                            >
-                              <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={16} />
-                              <span className="truncate">{company}</span>
-                            </Link>
-                          ) : (
-                            <span className="k-fg4">{"—"}</span>
-                          )}
-                        </td>
-                        <td className="px-3">
-                          {m ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <CrewMark color={m.crew.color} glyph={m.crew.glyph} /> {m.crew.name}
-                            </span>
-                          ) : (
-                            <span className="k-fg4">{"—"}</span>
-                          )}
-                        </td>
-                        <td className="px-3"><span className="k-chip">{leadStatusLabel(status)}</span></td>
-                        <td className="k-fg2 whitespace-nowrap px-3 pr-4 text-right tabular-nums">
-                          {at ? friendlyDateTime(at) : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-            <span className="k-fg3 tabular-nums">
-              {total != null ? `${formatCount(total)} ${total === 1 ? "person" : "people"}` : " "}
-            </span>
-            <span className="flex items-center gap-2">
-              <button type="button" className="k-btn" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</button>
-              <span className="k-fg3 tabular-nums">{page + 1} / {pages}</span>
-              <button type="button" className="k-btn" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Next</button>
-            </span>
-          </div>
-        </div>
+        }
+      />
+      <div className="k-scroll overflow-x-auto">
+        <table className="w-full min-w-[900px] text-[13px]">
+          <thead>
+            <tr>
+              <th className={`${REC_TH} pl-4 md:pl-6`}>Person</th>
+              <th className={REC_TH}>Company</th>
+              <th className={REC_TH}>Role</th>
+              <th className={REC_TH}>Known by</th>
+              <th className={REC_TH}>Stage</th>
+              <th className={`${REC_TH} pr-4 md:pr-6`}>Last touch</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows === null ? (
+              pageQ.isError ? (
+                <tr><td colSpan={6}><EmptyNote>We could not load these people. Retrying.</EmptyNote></td></tr>
+              ) : (
+                Array.from({ length: 12 }, (_, i) => (
+                  <tr key={i} className="k-row h-10"><td colSpan={6} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
+                ))
+              )
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6}><EmptyNote>Nobody here yet.</EmptyNote></td></tr>
+            ) : (
+              rows.map((lead, i) => {
+                const status = getLeadConsolidatedStatus(lead);
+                const at = leadDateForStatus(lead, status);
+                const m = missionByCampaignId.get(lead.campaignId) ?? null;
+                const company = leadCompany(lead);
+                const title = leadTitle(lead);
+                return (
+                  <tr
+                    key={lead.id}
+                    onClick={() => openRow(i)}
+                    onMouseEnter={() => setCursor(i)}
+                    className={`k-row h-10 cursor-pointer ${i === cursor ? "k-selected" : ""}`}
+                  >
+                    <td className="max-w-[240px] pl-4 pr-3 md:pl-6">
+                      <Link
+                        href={v1LeadHref(orgId, brandId, lead)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex min-w-0 items-center gap-2"
+                      >
+                        <PersonAvatar lead={lead} size={20} />
+                        <span className="truncate font-medium">{leadName(lead)}</span>
+                      </Link>
+                    </td>
+                    <td className="max-w-[220px] px-3">
+                      {company ? (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
+                          <span className="truncate">{company}</span>
+                        </span>
+                      ) : (
+                        <span className="k-fg4">{"—"}</span>
+                      )}
+                    </td>
+                    <td className="max-w-[220px] px-3">
+                      {title ? <span className="k-fg2 block truncate">{title}</span> : <span className="k-fg4">{"—"}</span>}
+                    </td>
+                    <td className="px-3">
+                      {m ? (
+                        <span className="inline-flex items-center gap-1.5 font-medium">
+                          <CrewMark color={m.crew.color} glyph={m.crew.glyph} /> {m.crew.name}
+                        </span>
+                      ) : (
+                        <span className="k-fg4">{"—"}</span>
+                      )}
+                    </td>
+                    <td className="px-3"><span className="k-chip">{leadStatusLabel(status)}</span></td>
+                    <td className="k-fg2 whitespace-nowrap px-3 pr-4 tabular-nums md:pr-6">
+                      {at ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <svg width="12" height="12" viewBox="0 0 16 16" className="k-fg3" aria-hidden="true">
+                            <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+                            <path d="M8 4.8V8l2 1.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                          </svg>
+                          {timeAgo(at)}
+                        </span>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
+      <RecordsFooter
+        left={total != null ? `${formatCount(total)} ${total === 1 ? "person" : "people"} · page ${page + 1} of ${pages}` : " "}
+        right={
+          <span className="flex items-center gap-1.5">
+            <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</button>
+            <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Next</button>
+          </span>
+        }
+      />
     </>
   );
 }

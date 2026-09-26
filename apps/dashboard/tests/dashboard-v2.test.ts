@@ -65,7 +65,11 @@ describe("crews", () => {
   });
 
   it("names an unlisted pair by its channel, never an invented name", () => {
-    expect(crewFor("google-ads", "website_visit", "Google Ads").name).toBe("Google Ads");
+    expect(crewFor("some-new-channel", "website_visit", "Some channel").name).toBe("Some channel");
+    // Every channel we fund today has a teammate's name, whatever leg it lands on.
+    expect(crewFor("ai-meeting-booking", "meeting_booked", "AI meeting booking").name).toBe("Pilot");
+    expect(crewFor("pr-cold-email-outreach", null, "PR cold email").name).toBe("Scribe");
+    expect(crewFor("pr-expert-quote-outreach", null, "PR quote").name).toBe("Quill");
     expect(crewFor("x", null, "X").key).toBe("x|unplaced");
     expect(crewInitial("scout")).toBe("S");
   });
@@ -120,6 +124,9 @@ const V2_FILES = [
   "src/components/v2/deals-page.tsx",
   "src/components/v2/work-page.tsx",
   "src/components/v2/ui.tsx",
+  "src/components/v2/company-page.tsx",
+  "src/components/v2/records.tsx",
+  "src/components/v2/runs.ts",
 ];
 
 describe("v2 wiring", () => {
@@ -192,5 +199,18 @@ describe("v2 wiring", () => {
       const stripped = code.replace(/"—"/g, "");
       expect(stripped, f).not.toContain("—");
     }
+  });
+
+  it("crew cards and Work read runs-service, filed under the crew, never counted from a lead list", () => {
+    const runs = read("src/components/v2/runs.ts");
+    expect(runs).toContain("getBrandRunsByCampaign(brandId, { startedAfter: start })");
+    expect(runs).toContain("missionByCampaignId.get(g.campaignId)?.crew.key");
+    expect(read("src/components/v2/crew-page.tsx")).toContain("useCrewRuns(brandId, missionByCampaignId)");
+    expect(read("src/components/v2/work-page.tsx")).toContain("useRunsTodayList(brandId, 200)");
+  });
+
+  it("every company row opens its own record page", () => {
+    expect(read("src/components/v2/companies-page.tsx")).toContain("companyHref(orgId, brandId, o)");
+    expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/companies/[companyKey]/page.tsx")).toContain("<CompanyPage />");
   });
 });
