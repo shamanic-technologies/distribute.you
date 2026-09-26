@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { getLeadConsolidatedStatus, listLeadsPage, type Lead } from "@/lib/api";
@@ -33,6 +33,8 @@ interface TimelineEntry {
   lead: Lead;
   what: string;
   mission: Mission | null;
+  /** Keel splits a record's timeline by who acted: the crew, or the people. */
+  by: "crew" | "people";
 }
 
 /**
@@ -78,11 +80,11 @@ export function CompanyPage() {
     for (const l of people) {
       const m = missionByCampaignId.get(l.campaignId) ?? null;
       const n = leadName(l);
-      if (l.firstRepliedAt) out.push({ at: l.firstRepliedAt, lead: l, what: `${n} replied`, mission: m });
-      if (l.firstClickedAt) out.push({ at: l.firstClickedAt, lead: l, what: `${n} visited your website`, mission: m });
-      if (l.firstDeliveredAt) out.push({ at: l.firstDeliveredAt, lead: l, what: `First email delivered to ${n}`, mission: m });
-      else if (l.firstSentAt) out.push({ at: l.firstSentAt, lead: l, what: `First email sent to ${n}`, mission: m });
-      if (l.firstBouncedAt) out.push({ at: l.firstBouncedAt, lead: l, what: `The email to ${n} bounced`, mission: m });
+      if (l.firstRepliedAt) out.push({ at: l.firstRepliedAt, lead: l, what: `${n} replied`, mission: m, by: "people" });
+      if (l.firstClickedAt) out.push({ at: l.firstClickedAt, lead: l, what: `${n} visited your website`, mission: m, by: "people" });
+      if (l.firstDeliveredAt) out.push({ at: l.firstDeliveredAt, lead: l, what: `First email delivered to ${n}`, mission: m, by: "crew" });
+      else if (l.firstSentAt) out.push({ at: l.firstSentAt, lead: l, what: `First email sent to ${n}`, mission: m, by: "crew" });
+      if (l.firstBouncedAt) out.push({ at: l.firstBouncedAt, lead: l, what: `The email to ${n} bounced`, mission: m, by: "crew" });
     }
     return out.sort((a, b) => b.at.localeCompare(a.at));
   }, [people, missionByCampaignId]);
@@ -104,14 +106,18 @@ export function CompanyPage() {
   const reachedIndex = stage ? FLOW.findIndex((f) => f.tag === stage || (stage === "meetingAttended" && f.tag === "meeting")) : -1;
   const person = org?.topPerson ? `${org.topPerson.firstName ?? ""} ${org.topPerson.lastName ?? ""}`.trim() : "";
 
+  const [tlFilter, setTlFilter] = useState<"all" | "crew" | "people">("all");
+  const [copied, setCopied] = useState(false);
+  // The company's own facts, off the organisation lead-service stores on its people.
+  const facts = useMemo(() => people.find((l) => l.lead?.organization)?.lead?.organization ?? null, [people]);
   const groups = useMemo(() => {
     const byDay = new Map<string, TimelineEntry[]>();
-    for (const e of timeline) {
+    for (const e of timeline.filter((x) => tlFilter === "all" || x.by === tlFilter)) {
       const d = friendlyDate(e.at);
       byDay.set(d, [...(byDay.get(d) ?? []), e]);
     }
     return [...byDay.entries()];
-  }, [timeline]);
+  }, [timeline, tlFilter]);
 
   return (
     <>
@@ -161,12 +167,53 @@ export function CompanyPage() {
                     {stage && <span className="k-chip">{TAG_LABEL[stage] ?? stage}</span>}
                   </div>
                   <p className="k-fg2 mt-0.5 text-[13px]">
-                    {org.orgDomain ? (
-                      <a href={`https://${org.orgDomain}`} target="_blank" rel="noreferrer" className="k-mono hover:underline">{org.orgDomain}</a>
-                    ) : null}
-                    {person ? <span>{org.orgDomain ? " · " : ""}Best contact {person}</span> : null}
+                    {[
+                      org.orgDomain ? (
+                        <a key="d" href={`https://${org.orgDomain}`} target="_blank" rel="noreferrer" className="k-mono hover:underline">{org.orgDomain}</a>
+                      ) : null,
+                      facts?.industry ? <span key="i">{facts.industry.charAt(0).toUpperCase() + facts.industry.slice(1)}</span> : null,
+                      facts?.estimatedNumEmployees ? <span key="e">{formatCount(facts.estimatedNumEmployees)} people</span> : null,
+                      facts?.city || facts?.country ? <span key="l">{[facts.city, facts.state, facts.country].filter(Boolean).join(", ")}</span> : null,
+                    ]
+                      .filter(Boolean)
+                      .map((n, i) => (
+                        <span key={i}>
+                          {i > 0 ? " · " : ""}
+                          {n}
+                        </span>
+                      ))}
                   </p>
                 </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {person ? (
+                  <span className="k-btn h-7 cursor-default gap-1.5 text-[12px]">
+                    {org.topPerson?.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={org.topPerson.photoUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+                    ) : null}
+                    <span className="k-fg3">Best contact</span>
+                    <span>{person}</span>
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  aria-label="Copy link"
+                  title={copied ? "Copied" : "Copy link"}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(window.location.href).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    });
+                  }}
+                  className="k-btn h-7 w-7 justify-center px-0"
+                >
+                  {copied ? (
+                    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5l6-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11.5l-1 1a2.5 2.5 0 0 1-3.5-3.5l1-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -216,7 +263,31 @@ export function CompanyPage() {
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="min-w-0">
-                <SectionTitle count={peopleQ.data ? timeline.length : null}>Timeline</SectionTitle>
+                <SectionTitle
+                  count={peopleQ.data ? timeline.length : null}
+                  right={
+                    peopleQ.data ? (
+                      <span className="k-inset inline-flex rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+                        {(["all", "crew", "people"] as const).map((f) => {
+                          const n = f === "all" ? timeline.length : timeline.filter((x) => x.by === f).length;
+                          return (
+                            <button
+                              key={f}
+                              type="button"
+                              aria-pressed={tlFilter === f}
+                              onClick={() => setTlFilter(f)}
+                              className={tlFilter === f ? "k-btn h-6 px-2 text-[12px]" : "k-btn-ghost h-6 px-2 text-[12px]"}
+                            >
+                              {f === "all" ? "All" : f === "crew" ? "Crew" : "People"} <span className="k-fg3 tabular-nums">{n}</span>
+                            </button>
+                          );
+                        })}
+                      </span>
+                    ) : null
+                  }
+                >
+                  Timeline
+                </SectionTitle>
                 {!peopleQ.data ? (
                   peopleQ.isError ? <EmptyNote>We could not load this company&apos;s people.</EmptyNote> : <Shimmer className="h-40 rounded-xl" />
                 ) : timeline.length === 0 ? (
