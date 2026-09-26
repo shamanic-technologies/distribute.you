@@ -329,7 +329,7 @@ describe("the card says what it is in two lines and one tag", () => {
   it("leads with the ORG and puts the person under it behind Via", () => {
     // The same shape a campaign wears everywhere else: what this is on top, where it
     // came from underneath, quieter.
-    const body = sliceFrom(board, "function CardBody(", 3600);
+    const body = board.slice(board.indexOf("function CardBody("), board.indexOf("export function LeadBoard("));
     expect(body).toContain("<CompanyLogo");
     expect(body).toContain("card.orgName ?? card.name");
     expect(body).toContain(">Via<");
@@ -346,7 +346,7 @@ describe("the card says what it is in two lines and one tag", () => {
     // A card reading "Positive reply" under a heading reading "Positive reply" spends
     // its one tag saying nothing a reader did not already have. So Positive reply
     // reads "Website visit" and Leads reads "Delivered" / "Sent" / "Bounced".
-    const body = sliceFrom(board, "function CardBody(", 3600);
+    const body = board.slice(board.indexOf("function CardBody("), board.indexOf("export function LeadBoard("));
     expect(body).toContain("replyKindOption(card.replyKind)");
     expect(body).toContain("label: card.statusLabel, pill: card.statusPill");
     expect(body).toContain("${tag.pill}");
@@ -369,7 +369,7 @@ describe("the card says what it is in two lines and one tag", () => {
     // A tag with no age is the one thing a triage board cannot be read for. It sits
     // beside the tag rather than pinned right, because it qualifies the tag — and it
     // took the place of the `...` menu rather than costing the card another row.
-    const body = sliceFrom(board, "function CardBody(", 3600);
+    const body = board.slice(board.indexOf("function CardBody("), board.indexOf("export function LeadBoard("));
     expect(body).toContain("timeAgo(card.statusAt)");
     expect(body).toContain("text-gray-400");
     expect(body).not.toContain("aria-label={`Move ${card.name}");
@@ -385,7 +385,7 @@ describe("the card says what it is in two lines and one tag", () => {
   });
 
   it("says nothing rather than dating a status it holds no instant for", () => {
-    const body = sliceFrom(board, "function CardBody(", 3600);
+    const body = board.slice(board.indexOf("function CardBody("), board.indexOf("export function LeadBoard("));
     expect(body).toContain("{card.statusAt && (");
   });
 });
