@@ -15,11 +15,17 @@ export interface Crumb {
   href?: string;
 }
 
-/** The 48px bar at the top of the panel: breadcrumbs left, actions right. */
+/**
+ * The 48px bar at the top of the panel: breadcrumbs left, actions right.
+ *
+ * Opaque, never `backdrop-blur`: a `backdrop-filter` makes this bar the containing block
+ * of every `position: fixed` descendant, so a modal opened from an action here (the
+ * campaign controls) was laid out inside the 48px bar instead of the viewport.
+ */
 export function TopBar({ crumbs, actions }: { crumbs: Crumb[]; actions?: React.ReactNode }) {
   const openNav = useOpenV2Nav();
   return (
-    <div className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 bg-[var(--bg-surface)]/90 px-4 backdrop-blur md:px-6">
+    <div className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 bg-[var(--bg-surface)] px-4 md:px-6">
       <button
         type="button"
         onClick={openNav}
@@ -195,7 +201,7 @@ export function StateDot({ running, label }: { running: boolean; label?: string 
   return (
     <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
       {running ? (
-        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--accent)] text-[var(--accent)]" />
+        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
       ) : (
         <span className="h-2 w-2 rounded-full border-[1.5px] border-[var(--fg-2)]" />
       )}

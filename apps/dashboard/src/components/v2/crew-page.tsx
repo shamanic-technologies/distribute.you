@@ -104,7 +104,7 @@ export function CrewPage() {
           </div>
           {settled && (
             <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-              <span className={`h-1.5 w-1.5 rounded-full ${runningCrews ? "k-dot-pulse bg-[var(--accent)] text-[var(--accent)]" : "bg-[var(--fg-4)]"}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${runningCrews ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
               {runningCrews} {runningCrews === 1 ? "crew" : "crews"} running now
             </span>
           )}
@@ -378,7 +378,7 @@ function RecentRuns({
                           <span className="inline-flex items-center gap-1.5 text-[12px]">
                             <span
                               className="h-1.5 w-1.5 rounded-full"
-                              style={{ background: st === "failed" ? "var(--data-rose)" : st === "running" ? "var(--accent)" : "var(--data-teal)" }}
+                              style={{ background: st === "failed" ? "var(--data-rose)" : st === "running" ? "var(--run)" : "var(--data-teal)" }}
                             />
                             {st === "failed" ? "Failed" : st === "running" ? "Running" : "Done"}
                           </span>

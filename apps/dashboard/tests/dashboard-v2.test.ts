@@ -214,3 +214,38 @@ describe("v2 wiring", () => {
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/companies/[companyKey]/page.tsx")).toContain("<CompanyPage />");
   });
 });
+
+describe("v2 step 3: honest counts, green running, modals outside the bar", () => {
+  const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
+
+  it("needs-your-call is the positive-reply bucket inside the sales-interest standing", () => {
+    const data = read("src/components/v2/data.ts");
+    const body = data.slice(data.indexOf("export function useNeedsYourCall"), data.indexOf("export function useLatestInBucket"));
+    expect(body).toContain('bucket: "positive_reply"');
+    expect(body).toContain('standing: "sales_interest"');
+  });
+
+  it("no surface counts the sales_interest standing as people who want to talk", () => {
+    for (const f of ["today-page.tsx", "work-page.tsx", "v2-shell.tsx"]) {
+      const src = read(`src/components/v2/${f}`);
+      expect(src).toContain("useNeedsYourCall(");
+      expect(src).not.toMatch(/want(s)? to talk/);
+      expect(src).not.toContain('column: "sales_interest"');
+    }
+    expect(read("src/components/v2/deals-page.tsx")).not.toContain("expected across");
+  });
+
+  it("the top bar carries no backdrop-filter (it would trap every fixed modal inside it)", () => {
+    const ui = read("src/components/v2/ui.tsx");
+    const bar = ui.slice(ui.indexOf("export function TopBar"), ui.indexOf("/** A Keel stat tile"));
+    expect(bar).not.toContain("backdrop-blur");
+  });
+
+  it("every running indicator is green (--run), never the brand accent", () => {
+    expect(read("src/components/v2/keel.css")).toMatch(/--run: #16a34a/);
+    for (const f of ["ui.tsx", "v2-shell.tsx", "today-page.tsx", "work-page.tsx", "crew-page.tsx"]) {
+      const src = read(`src/components/v2/${f}`);
+      expect(src).not.toMatch(/k-dot-pulse[^"]*var\(--accent\)/);
+    }
+  });
+});

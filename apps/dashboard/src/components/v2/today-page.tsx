@@ -5,10 +5,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import type { Lead } from "@/lib/api";
-import { listLeadsPage } from "@/lib/api";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
-import { leadsColumnPageQuery } from "@/lib/leads-server-page";
 import { formatCount, formatUsdAdaptive, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { timeAgo } from "@/lib/friendly-datetime";
@@ -34,7 +30,7 @@ import {
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import {
-  brandLeadScopeKey,
+  useNeedsYourCall,
   useBrandInfo,
   useBrandRevenue,
   useLatestInBucket,
@@ -78,15 +74,12 @@ export function TodayPage() {
   const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
   const running = missions.filter((m) => m.running);
   const learning = scopeIsLearning(missions.map((m) => m.row));
-  const interested = standings?.counts.sales_interest ?? null;
+  const interestedStanding = standings?.counts.sales_interest ?? null;
 
-  // Needs your call: people who said they are interested and whom nobody has closed or
-  // disqualified yet — lead-service's `sales_interest` standing, newest first.
-  const callQ = useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "column", "sales_interest", "", 5],
-    () => listLeadsPage({ brandId }, leadsColumnPageQuery({ column: "sales_interest", search: "", shown: 5 })),
-    { refetchInterval: POLL_INTERVAL },
-  );
+  // Needs your call: people who REPLIED with interest and whom nobody has closed or
+  // disqualified yet. `total` is lead-service's count of that set.
+  const callQ = useNeedsYourCall(brandId, 5);
+  const needsCall = callQ.data?.total ?? null;
   const visits = useLatestInBucket(brandId, "website_visit", 8);
   const replies = useLatestInBucket(brandId, "positive_reply", 8);
 
@@ -122,11 +115,11 @@ export function TodayPage() {
                     {formatCount(outreachToday)} {outreachToday === 1 ? "outreach" : "outreaches"}
                   </span>{" "}
                   today.
-                  {interested != null && interested > 0 && (
+                  {needsCall != null && needsCall > 0 && (
                     <>
                       {" "}
-                      <Link href={v2Href(orgId, brandId, "deals")} className="k-fg hover:underline">
-                        {formatCount(interested)} {interested === 1 ? "person wants" : "people want"} to talk.
+                      <Link href={v2Href(orgId, brandId, "work")} className="k-fg hover:underline">
+                        {formatCount(needsCall)} {needsCall === 1 ? "person replied" : "people replied"} with interest.
                       </Link>
                     </>
                   )}
@@ -192,10 +185,10 @@ export function TodayPage() {
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section>
                 <SectionTitle
-                  count={interested}
+                  count={needsCall}
                   right={
                     <Link href={v2Href(orgId, brandId, "deals")} className="hover:text-[var(--fg-1)]">
-                      All deals →
+                      {interestedStanding != null ? `All ${formatCount(interestedStanding)} interested →` : "All deals →"}
                     </Link>
                   }
                 >
@@ -206,7 +199,7 @@ export function TodayPage() {
                     [0, 1].map((i) => <Shimmer key={i} className="h-36 w-full rounded-xl" />)
                   ) : (callQ.data?.leads ?? []).length === 0 ? (
                     <div className="k-card">
-                      <EmptyNote>Nobody is waiting on you. Interested people land here the moment they reply.</EmptyNote>
+                      <EmptyNote>Nobody is waiting on you. People who reply with interest land here.</EmptyNote>
                     </div>
                   ) : (
                     (callQ.data?.leads ?? []).map((lead, i) => (
@@ -248,7 +241,7 @@ export function TodayPage() {
                   <SectionTitle
                     right={
                       <span className="flex items-center gap-1.5">
-                        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--accent)] text-[var(--accent)]" />
+                        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
                         Live
                       </span>
                     }
