@@ -1,5 +1,6 @@
 "use client";
 
+import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -131,6 +132,7 @@ export default function V2DashboardPage() {
       </div>
 
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 md:px-8 md:py-8">
+        <ScopePaymentDeclinedBand brandId={brandId} />
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate font-display text-[28px] leading-9 tracking-tight text-gray-900">

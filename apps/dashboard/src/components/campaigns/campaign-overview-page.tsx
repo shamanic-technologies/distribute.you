@@ -1,5 +1,6 @@
 "use client";
 
+import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -655,6 +656,7 @@ export function CampaignOverviewPage() {
           else on the page. It renders on the SAME two branches as the learning band
           because both are statements about a campaign that is not delivering yet, and
           a customer who reaches the empty state needs the reason most of all. */}
+      <ScopePaymentDeclinedBand brandId={brandId} campaignId={campaignId} />
       {campaign ? (
         <CampaignHoldBand
           campaignId={campaign.id}
@@ -682,6 +684,7 @@ export function CampaignOverviewPage() {
           else on the page. It renders on the SAME two branches as the learning band
           because both are statements about a campaign that is not delivering yet, and
           a customer who reaches the empty state needs the reason most of all. */}
+      <ScopePaymentDeclinedBand brandId={brandId} campaignId={campaignId} />
       {campaign ? (
         <CampaignHoldBand
           campaignId={campaign.id}

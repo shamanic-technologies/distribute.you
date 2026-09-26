@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_DECLINED_LABEL, PAYMENT_DECLINED_STYLE } from "@/lib/payment-declined";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { useMutation } from "@tanstack/react-query";
@@ -159,6 +160,11 @@ type FunnelState = {
    * after onboarding has no campaign and nothing can address it until one is made.
    */
   campaignIdByChannel: Record<string, string | null>;
+  /**
+   * Channels whose campaign billing stopped over a declined card (not a person), so a
+   * restart is refused until the payment is fixed. See `lib/payment-declined.ts`.
+   */
+  declinedByChannel: Record<string, boolean>;
   /** What billing has stored per channel, in cents. Zero = not funded. */
   savedCentsByChannel: Record<string, number>;
   /**
@@ -192,6 +198,7 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
       runningByChannel: {},
       savedRunningByChannel: {},
       campaignIdByChannel: {},
+      declinedByChannel: {},
       savedCentsByChannel: {},
       savedBudgetCents: 0,
       error: null,
@@ -459,11 +466,13 @@ export function BrandSalesFunnelsCard({
         );
         const savedRunningByChannel: Record<string, boolean> = {};
         const campaignIdByChannel: Record<string, string | null> = {};
+        const declinedByChannel: Record<string, boolean> = {};
         for (const row of rows) {
           const slug = row.scope?.featureSlug;
           if (!slug) continue;
           savedRunningByChannel[slug] = (savedRunningByChannel[slug] ?? false) || row.running;
           campaignIdByChannel[slug] = campaignIdByChannel[slug] ?? row.campaignId;
+          if (row.paymentDeclined) declinedByChannel[slug] = true;
         }
         // A switch the user has already flipped outranks the server, and so does the
         // card they have open: a form that rewrites itself mid-edit is worse than a
@@ -473,6 +482,7 @@ export function BrandSalesFunnelsCard({
           ...next[def.key],
           savedRunningByChannel,
           campaignIdByChannel,
+          declinedByChannel,
           runningByChannel: keepDraft ? next[def.key].runningByChannel : savedRunningByChannel,
         };
       }
@@ -1058,6 +1068,9 @@ export function BrandSalesFunnelsCard({
     // Whether campaign-service holds a campaign for ANY channel of this funnel, which
     // is what separates "stopped" from "never launched" on the closed card.
     const funnelHasAnyCampaign = Object.values(state.campaignIdByChannel).some((id) => id !== null);
+    // Paused by billing over a declined card rather than by a person, which the
+    // closed card states instead of a plain "Paused".
+    const funnelDeclined = Object.values(state.declinedByChannel).some(Boolean);
     const statusSummary = channelStatusSummary(
       statusMovesFor(def).map((m) => ({ channelName: m.channelName, kind: m.kind })),
     );
@@ -1172,9 +1185,17 @@ export function BrandSalesFunnelsCard({
             // (campaign-service stopped provisioning from a ceiling on 2026-09-06), and
             // calling that "Paused" sends the customer looking for a switch that was
             // never flipped. Open the card and the switch is there.
-            <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
-              {funnelHasAnyCampaign ? "Paused" : "Not started"}
-            </span>
+            funnelDeclined ? (
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-xs font-medium ${PAYMENT_DECLINED_STYLE}`}
+              >
+                {PAYMENT_DECLINED_LABEL}
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
+                {funnelHasAnyCampaign ? "Paused" : "Not started"}
+              </span>
+            )
           ) : (
             <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
               Not funded
