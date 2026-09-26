@@ -25,6 +25,8 @@
   --accent-soft: var(--color-brand-50);
   --accent-text: var(--color-brand-700);
   --data-teal: #0e9f86;
+  /* Every RUNNING indicator in v2 is green, whatever the brand's accent. */
+  --run: #16a34a;
   --data-amber: #c7870a;
   --data-violet: #6e5cf0;
   --data-rose: #e03a6a;

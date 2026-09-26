@@ -11,7 +11,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { useMissions } from "@/components/v2/use-missions";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
-import { useBucketCounts, useBrandRevenue, useStandingCounts } from "@/components/v2/data";
+import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { v1Brand, v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
@@ -212,6 +212,7 @@ function V2Sidebar() {
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   const revenue = useBrandRevenue(brandId).data;
+  const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
   const v1 = v1Brand(orgId, brandId);
   const tab = search.get("tab");
@@ -231,9 +232,12 @@ function V2Sidebar() {
             icon={<I d={ICONS.today} />}
             active={section === "today"}
             trailing={
-              standings && standings.counts.sales_interest > 0 ? (
-                <span className="ml-auto rounded-[5px] bg-[var(--bg-selected)] px-1.5 text-[11px] font-medium tabular-nums text-[var(--fg-2)]">
-                  {standings.counts.sales_interest}
+              needsCall != null && needsCall > 0 ? (
+                <span
+                  title="Replied with interest, not yet closed"
+                  className="ml-auto rounded-[5px] bg-[var(--bg-selected)] px-1.5 text-[11px] font-medium tabular-nums text-[var(--fg-2)]"
+                >
+                  {formatCount(needsCall)}
                 </span>
               ) : undefined
             }
@@ -318,7 +322,7 @@ function V2Sidebar() {
                 icon={<CrewMark color={c.crew.color} glyph={c.crew.glyph} />}
                 trailing={
                   c.running > 0 ? (
-                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)] text-[var(--accent)]" aria-label="Running" />
+                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Running" />
                   ) : (
                     <span className="ml-auto mr-1 h-2 w-2 shrink-0 rounded-full border-[1.5px] border-[var(--fg-2)]" aria-label="Paused" />
                   )

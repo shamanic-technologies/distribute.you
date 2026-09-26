@@ -58,6 +58,29 @@ export function useStandingCounts(brandId: string) {
 }
 
 /**
+ * NEEDS YOUR CALL: the people who REPLIED with interest and whom nobody has closed,
+ * disqualified or opted out yet — the `positive_reply` bucket read inside the
+ * `sales_interest` standing. `total` is lead-service's own count of that set.
+ *
+ * NOT the `sales_interest` standing alone: that standing also holds everyone who only
+ * visited the website (86 of 87 on the brand that surfaced this), so counting it as
+ * "wants to talk" stated 87 conversations for a brand with two replies ever.
+ */
+export function useNeedsYourCall(brandId: string, limit: number) {
+  return useAuthQuery(
+    ["leadsPage", brandLeadScopeKey(brandId), "v2-needs-call", limit],
+    () =>
+      listLeadsPage(
+        { brandId },
+        { view: "basic", bucket: "positive_reply", standing: "sales_interest", sort: "activity", limit: String(limit) },
+        undefined,
+        { includeCampaigns: false },
+      ),
+    { refetchInterval: POLL_INTERVAL },
+  );
+}
+
+/**
  * The latest leads in one bucket, newest first on lead-service's own activity order.
  * `limit` rides the key so two surfaces asking different sizes never share an entry.
  */

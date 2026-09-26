@@ -3,18 +3,15 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { listLeadsPage, type Lead, type RunRow } from "@/lib/api";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import type { Lead, RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { friendlyTime, timeAgo } from "@/lib/friendly-datetime";
-import { leadsColumnPageQuery } from "@/lib/leads-server-page";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { brandLeadScopeKey, useStandingCounts } from "@/components/v2/data";
+import { useNeedsYourCall } from "@/components/v2/data";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, v1LeadHref } from "@/components/v2/people-bits";
@@ -38,12 +35,8 @@ interface DoneGroup {
 export function WorkPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { missions, crews, settled, missionByCampaignId } = useMissions(orgId, brandId);
-  const interested = useStandingCounts(brandId).data?.counts.sales_interest ?? null;
-  const callQ = useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "column", "sales_interest", "", 10],
-    () => listLeadsPage({ brandId }, leadsColumnPageQuery({ column: "sales_interest", search: "", shown: 10 })),
-    { refetchInterval: POLL_INTERVAL },
-  );
+  const callQ = useNeedsYourCall(brandId, 10);
+  const interested = callQ.data?.total ?? null;
   const today = useRunsTodayList(brandId, 200);
   const { byCrew, settled: rollupSettled } = useCrewRuns(brandId, missionByCampaignId);
   const [crewFilter, setCrewFilter] = useState<string | null>(null);
@@ -104,7 +97,7 @@ export function WorkPage() {
           </div>
           {settled && (
             <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-              <span className={`h-1.5 w-1.5 rounded-full ${runningCrews ? "k-dot-pulse bg-[var(--accent)] text-[var(--accent)]" : "bg-[var(--fg-4)]"}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${runningCrews ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
               {runningCrews} {runningCrews === 1 ? "crew" : "crews"} running now
             </span>
           )}
@@ -144,7 +137,7 @@ export function WorkPage() {
           </Column>
           <Column
             title="Running"
-            icon={<span className="k-dot-pulse h-2 w-2 rounded-full bg-[var(--accent)] text-[var(--accent)]" />}
+            icon={<span className="k-dot-pulse h-2 w-2 rounded-full bg-[var(--run)] text-[var(--run)]" />}
             count={runs ? running.length : null}
             meta="started today"
           >
@@ -160,7 +153,7 @@ export function WorkPage() {
             title="Needs your call"
             icon={<span className="h-3 w-3 rounded-full border-[1.5px] border-[var(--fg-1)]" />}
             count={interested}
-            meta="interested"
+            meta="replied with interest"
           >
             {callQ.data === undefined ? (
               callQ.isError ? <EmptyNote>We could not load these.</EmptyNote> : <Skeleton />
@@ -266,13 +259,13 @@ function RunCard({ run, m }: { run: RunRow; m: Mission | null }) {
         <span className="font-medium">{m?.crew.name ?? "Crew"}</span>
         <span className="k-fg3 truncate">· {m?.offerName ?? ""}</span>
         <span className="k-mono ml-auto inline-flex shrink-0 items-center gap-1 text-[11px] text-[var(--fg-2)]">
-          <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--accent)] text-[var(--accent)]" />
+          <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
           {timeAgo(run.startedAt)}
         </span>
       </div>
       <p className="mt-1.5 text-[13px] font-medium">{runTaskLabel(run)}</p>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
-        <div className="k-indeterminate h-full w-1/3 rounded-full bg-[var(--accent)]" />
+        <div className="k-indeterminate h-full w-1/3 rounded-full bg-[var(--run)]" />
       </div>
     </Link>
   );
@@ -286,7 +279,7 @@ function LeadCard({ lead, m, href }: { lead: Lead; m: Mission | null; href: stri
       <div className="flex items-center gap-2 text-[12px]">
         {m ? <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} /> : null}
         <span className="font-medium">{m?.crew.name ?? "Crew"}</span>
-        <span className="k-fg3">· Interested reply</span>
+        <span className="k-fg3">· Replied with interest</span>
         <span className="k-mono k-fg3 ml-auto shrink-0 text-[11px]">{at ? timeAgo(at) : ""}</span>
       </div>
       <p className="mt-1.5 flex items-center gap-2 text-[13px] font-medium">

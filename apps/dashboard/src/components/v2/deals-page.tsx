@@ -14,9 +14,18 @@ import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { brandLeadScopeKey, useBrandRevenue, useStandingCounts } from "@/components/v2/data";
+import { brandLeadScopeKey, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, v1LeadHref } from "@/components/v2/people-bits";
+
+/**
+ * v2 names the `sales_interest` column for what it holds. v1's board calls it
+ * "Positive reply", but the standing also holds everyone who only VISITED the website
+ * (86 of 87 on the brand that surfaced this), so the word overstated replies.
+ */
+const V2_COLUMN_LABEL: Partial<Record<LeadBoardColumnKey, string>> = {
+  sales_interest: "Interested",
+};
 
 /** Keel's stage dot per column. Semantic only: green is a win, rose is a stop. */
 const COLUMN_DOT: Record<LeadBoardColumnKey, string> = {
@@ -45,6 +54,7 @@ export function DealsPage() {
     (c) => !(c.hideWhenEmpty && (totals?.[c.key] ?? 0) === 0),
   );
   const interested = totals?.sales_interest ?? null;
+  const replied = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const won = totals?.won ?? null;
   const pipeline = revenue.data?.totalPipelineUsd ?? null;
   const biggest = Math.max(1, ...columns.map((c) => totals?.[c.key] ?? 0));
@@ -65,15 +75,19 @@ export function DealsPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {pipeline != null && interested != null
-                ? `${formatUsdAdaptive(pipeline)} expected across ${formatCount(interested)} interested`
-                : "Deals"}
+              {pipeline != null ? `${formatUsdAdaptive(pipeline)} in expected pipeline` : "Deals"}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              {won != null ? (
+              {won != null && interested != null ? (
                 <>
-                  <span className="inline-block h-2 w-2 rounded-[2px] bg-[var(--data-teal)] align-middle" />{" "}
-                  <span className="k-fg font-medium tabular-nums">{formatCount(won)}</span> won so far. One card per person, in the column where they stand.
+                  <span className="k-fg font-medium tabular-nums">{formatCount(interested)}</span> interested (a website visit or a positive reply)
+                  {replied != null ? (
+                    <>
+                      , <span className="k-fg font-medium tabular-nums">{formatCount(replied)}</span> of them replied
+                    </>
+                  ) : null}
+                  . <span className="inline-block h-2 w-2 rounded-[2px] bg-[var(--data-teal)] align-middle" />{" "}
+                  <span className="k-fg font-medium tabular-nums">{formatCount(won)}</span> won.
                 </>
               ) : (
                 " "
@@ -111,7 +125,7 @@ export function DealsPage() {
               brandId={brandId}
               orgId={orgId}
               column={c.key}
-              label={c.label}
+              label={V2_COLUMN_LABEL[c.key] ?? c.label}
               total={totals?.[c.key] ?? null}
               share={(totals?.[c.key] ?? 0) / biggest}
               crewFilter={crewFilter}
