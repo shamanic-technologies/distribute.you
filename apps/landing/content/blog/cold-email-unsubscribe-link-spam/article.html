@@ -1,0 +1,149 @@
+<h2 id="the-bet">The bet</h2>
+
+<p>Every cold email we sent ended with a small grey line: <em>Don't want to hear from me again? unsubscribe</em>, the last word a link. It looked like the safe choice. Everyone says the law wants it, the inbox providers want it, and a polite opt-out cannot hurt.</p>
+
+<p>We also put the one-click unsubscribe header (RFC 8058, the <code>List-Unsubscribe</code> pair) on every email, so the recipient's mail app could show its own unsubscribe button. Two opt-outs on every message. We assumed both were free.</p>
+
+<h2 id="the-test">The test</h2>
+
+<p>On 24 September 2026 we ran three placement tests in one morning. Each sent the same ordinary cold email from real sending addresses to Google Workspace inboxes we own, one message per sender and inbox, each run inside a quarter of an hour. The only thing that changed from one message to the next was the opt-out: a visible link, the header, both, neither, or a plain line asking for a reply. The footer each pair got was fixed in advance from its position in the grid, so nothing about the sender or the inbox decided it.</p>
+
+<p>400 messages went out from 30 sending addresses. We then read each receiving inbox and its spam folder.</p>
+
+<h2 id="the-answer">The answer</h2>
+
+<p><strong>The visible unsubscribe link was the spam trigger.</strong> With the link in the body, <strong>79 of 196</strong> messages that arrived went to spam (40%). Without it, <strong>0 of 200</strong> did, whatever else the footer carried.</p>
+
+<figure>
+<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Share of emails landing in spam, every run pooled (lower is better): No visible link 0% (0 of 200 in spam), Visible unsubscribe link 40% (79 of 196 in spam, 4 never arrived)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Share of emails landing in spam, every run pooled (lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">No visible link</text>
+<rect x="170" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="186" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="170" y="95" font-size="11" fill="#94a3b8">0 of 200 in spam</text>
+<text x="0" y="126" font-size="14" fill="#475569">Visible unsubscribe link</text>
+<rect x="170" y="108" width="212" height="26" rx="5" fill="#dc2626"/>
+<text x="392" y="127" font-size="16" font-weight="700" fill="#0f172a">40%</text>
+<text x="170" y="147" font-size="11" fill="#94a3b8">79 of 196 in spam, 4 never arrived</text>
+</svg>
+</figure>
+
+<p>The one-click header, the opt-out we had assumed was the risky technical one, cost nothing.</p>
+
+<h2 id="run-one">Run one: the footer, or nothing</h2>
+
+<p>The footer we shipped, visible link plus header, sent 15 of 48 to spam (31%). The same email with no opt-out of any kind: 0 of 50. The body alone, without even a signature: 0 of 50. So the problem sat in the footer, not in the words above it.</p>
+
+<figure>
+<svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Run one: spam share by footer (lower is better): No opt-out at all 0% (0 of 50 in spam), Body only, no signature 0% (0 of 50 in spam), Visible link + header 31% (15 of 48 in spam, 2 never arrived)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Run one: spam share by footer (lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">No opt-out at all</text>
+<rect x="170" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="186" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="170" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
+<text x="0" y="126" font-size="14" fill="#475569">Body only, no signature</text>
+<rect x="170" y="108" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="186" y="127" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="170" y="147" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
+<text x="0" y="178" font-size="14" fill="#475569">Visible link + header</text>
+<rect x="170" y="160" width="164" height="26" rx="5" fill="#fca5a5"/>
+<text x="344" y="179" font-size="16" font-weight="700" fill="#0f172a">31%</text>
+<text x="170" y="199" font-size="11" fill="#94a3b8">15 of 48 in spam, 10 senders, 15 inboxes, 2 never arrived</text>
+</svg>
+</figure>
+
+<h2 id="run-two">Run two: the link, or the header</h2>
+
+<p>Ten other sending addresses, the same inboxes. We split the footer in two. The visible link without the header sent 20 of 49 to spam (41%). The header without the link: 0 of 50. Both together: 15 of 49 (31%).</p>
+
+<figure>
+<svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Run two: spam share by footer (lower is better): Header only 0% (0 of 50 in spam), Visible link + header 31% (15 of 49 in spam, 1 never arrived), Visible link, no header 41% (20 of 49 in spam, 1 never arrived)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Run two: spam share by footer (lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Header only</text>
+<rect x="160" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="176" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="160" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
+<text x="0" y="126" font-size="14" fill="#475569">Visible link + header</text>
+<rect x="160" y="108" width="167" height="26" rx="5" fill="#fca5a5"/>
+<text x="337" y="127" font-size="16" font-weight="700" fill="#0f172a">31%</text>
+<text x="160" y="147" font-size="11" fill="#94a3b8">15 of 49 in spam, 10 senders, 15 inboxes, 1 never arrived</text>
+<text x="0" y="178" font-size="14" fill="#475569">Visible link, no header</text>
+<rect x="160" y="160" width="221" height="26" rx="5" fill="#dc2626"/>
+<text x="391" y="179" font-size="16" font-weight="700" fill="#0f172a">41%</text>
+<text x="160" y="199" font-size="11" fill="#94a3b8">20 of 49 in spam, 10 senders, 15 inboxes, 1 never arrived</text>
+</svg>
+</figure>
+
+<p>The link does the damage on its own. The header does none on its own.</p>
+
+<h2 id="run-three">Run three: the fix, as deployed</h2>
+
+<p>We replaced the link with one plain line, <em>Not relevant? Reply "stop" and I won't email you again.</em>, and kept the header. Once it was live we tested the deployed footer against the old one, ten other sending addresses, same minutes. Old footer: 29 of 50 in spam (58%). New footer: 0 of 50.</p>
+
+<figure>
+<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Run three: old footer against the new one (lower is better): Header + &quot;Reply stop&quot; line 0% (0 of 50 in spam), Visible link + header 58% (29 of 50 in spam)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Run three: old footer against the new one (lower is better)</text>
+<text x="0" y="74" font-size="14" fill="#475569">Header + &quot;Reply stop&quot; line</text>
+<rect x="192" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="208" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="192" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 10 inboxes</text>
+<text x="0" y="126" font-size="14" fill="#475569">Visible link + header</text>
+<rect x="192" y="108" width="295" height="26" rx="5" fill="#dc2626"/>
+<text x="497" y="127" font-size="16" font-weight="700" fill="#0f172a">58%</text>
+<text x="192" y="147" font-size="11" fill="#94a3b8">29 of 50 in spam, 10 senders, 10 inboxes</text>
+</svg>
+</figure>
+
+<h2 id="the-rule">The rule we ship now</h2>
+
+<p><strong>Keep the one-click header. Replace the visible link with a line asking for a reply. Honour every reply that asks you to stop.</strong></p>
+
+<p>A reply of "stop" is read by a classifier and recorded as an opt-out against the person, across every campaign they are in, and any human reply already ends the sequence. The header keeps the provider's own unsubscribe button working for anyone who prefers it. We rewrote the footer on every sequence still waiting to go out, not only on new ones.</p>
+
+<h2 id="the-law">What the law actually asks for</h2>
+
+<p>Most people believe the link is a legal must. None of the laws below asks for one. They ask for a working way to opt out, and several name a reply by email as one. Country by country, with the source for each:</p>
+
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Where</th><th>What the rule asks for</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>United States, CAN-SPAM</td><td>"A return email address or another easy Internet-based way" to opt out, honoured within 10 business days and working for at least 30 days after sending. A valid physical postal address in the message. No exception for business-to-business email.</td><td><a href="https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business">FTC compliance guide</a></td></tr>
+<tr><td>Canada, CASL</td><td>Consent before you send. The unsubscribe mechanism must "specify an electronic address, or link to a page on the World Wide Web", and take effect within 10 business days.</td><td><a href="https://laws-lois.justice.gc.ca/eng/acts/E-1.6/page-2.html">CASL, section 11</a></td></tr>
+<tr><td>United Kingdom, PECR</td><td>Email to corporate subscribers is allowed without consent. You must say who you are and "provide a valid contact address so they can opt out or unsubscribe".</td><td><a href="https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/electronic-and-telephone-marketing/electronic-mail-marketing/">ICO guidance</a></td></tr>
+<tr><td>France</td><td>Business-to-business prospecting is allowed without prior consent when the message concerns the recipient's job. The recipient must be able to object "par un moyen simple", a simple means.</td><td><a href="https://www.cnil.fr/fr/la-prospection-commerciale-par-courrier-electronique">CNIL</a></td></tr>
+<tr><td>Australia, Spam Act</td><td>Consent before you send. Every message needs a functional unsubscribe, which the regulator illustrates with a reply to the email, honoured within 5 business days.</td><td><a href="https://www.acma.gov.au/avoid-sending-spam">ACMA</a></td></tr>
+<tr><td>Germany, UWG section 7</td><td>Email advertising needs prior express consent, businesses included. The footer is not the question there: cold email itself is restricted.</td><td><a href="https://www.gesetze-im-internet.de/uwg_2004/__7.html">UWG section 7</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>These laws also carry rules that have nothing to do with the footer (consent, identifying yourself, an honest subject). This is a summary of what each source says about opting out, read on 2026-09-26, not legal advice.</p>
+
+<h2 id="the-providers">Where the link requirement comes from</h2>
+
+<p>The link people remember is a provider policy for bulk senders, not a law.</p>
+
+<ul>
+<li><strong>Gmail</strong> (February 2024): above 5,000 messages a day to personal Gmail accounts, marketing messages need one-click unsubscribe and "a clearly visible unsubscribe link in the message body". <a href="https://support.google.com/a/answer/81126">Source</a>.</li>
+<li><strong>Yahoo</strong> (February 2024): bulk senders need the one-click header and a visible link, honoured within 2 days. <a href="https://senders.yahooinc.com/best-practices/">Source</a>.</li>
+<li><strong>Outlook</strong> (May 2025): above 5,000 emails a day, SPF, DKIM and DMARC are required; an unsubscribe link is a recommendation. <a href="https://techcommunity.microsoft.com/blog/microsoftdefenderforoffice365blog/strengthening-email-ecosystem-outlook%E2%80%99s-new-requirements-for-high%E2%80%90volume-senders/4399730">Source</a>.</li>
+</ul>
+
+<p>Sending newsletters by the thousand to Gmail and Yahoo addresses? Keep the link, they ask for it. Cold email written one to one to business inboxes is not that sender, and there the link bought us spam and nothing else.</p>
+
+<h2 id="the-limits">What this test cannot tell you</h2>
+
+<ul>
+<li>The receiving inboxes were Google Workspace mailboxes we own. Consumer Gmail and Outlook filter differently and were not in the test.</li>
+<li>Our visible link pointed at our own opt-out domain. We cannot say whether any visible link does this or only a link to that domain. The header pointed at the same domain and cost nothing.</li>
+<li>Three runs, one morning, one email text. It settled our decision; it is not a law of nature.</li>
+</ul>
+
+<h2 id="method">Method</h2>
+
+<p>Three runs on 24 September 2026, sent over our own SMTP from 30 sending addresses (10 per run) to Google Workspace inboxes we own (15 in runs one and two, 10 in run three), one message per sender and inbox, one subject and body per run. Each pair's footer was set by its position, (sender + inbox) modulo the number of footers, so every sender and inbox saw every footer. 400 messages were sent and 396 arrived; the 4 that never did are left out of every share and named under each bar. Placement was read from INBOX and spam on 2026-09-26, by the committed script in <code>apps/landing/scripts/blog-data/footer</code>.</p>
+
+<h2 id="about-us">About distribute.you</h2>
+
+<p>distribute.you runs cold email for you: the sending mailboxes, the tests like this one, the templates and the audiences, and the numbers on what it cost you. From $1/day, first $30 free. <a href="https://distribute.you">distribute.you</a></p>

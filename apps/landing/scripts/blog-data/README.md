@@ -70,3 +70,21 @@ The correction reaches our own `/c/` redirect and nothing else. That redirect on
 carrying traffic in late August, so the provider's own tracking accounts for nearly every
 click either page prices; `volume.clicksBySource` splits the two and the Method paragraph
 states the share rather than leaving a reader to assume the bulk was scrubbed.
+
+## The opt-out footer article
+
+`content/blog/cold-email-unsubscribe-link-spam` is rendered from `footer/`, not from the
+fact tables above: its data is three placement tests sent on 2026-09-24 to our own Google
+Workspace inboxes, so the result lives in those mailboxes, not in a table.
+
+```sh
+# re-read the receiving mailboxes (only until ~2026-10-24: Gmail empties spam after 30 days)
+apps/landing/scripts/blog-data/footer/extract-footer.sh "$PWD/apps/landing/scripts/blog-data/footer/placement.snapshot.json"
+node apps/landing/scripts/blog-data/footer/derive-footer.mjs apps/landing/scripts/blog-data/footer/placement.snapshot.json > /tmp/footer-facts.json
+node apps/landing/scripts/blog-data/footer/render-footer-article.mjs /tmp/footer-facts.json apps/landing/content/blog
+```
+
+The design file naming the sending and receiving addresses stays on the box
+(`/root/blog-data/footer-design.json`); this repository is public and those are live
+sending addresses. The committed snapshot carries indices only, and is the record once the
+spam folders have been emptied.
