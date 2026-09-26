@@ -2,8 +2,8 @@
 //
 // A campaign IS (offer x leg x acquisition channel), and billing keys a ceiling on
 // exactly that address (`GET /brands/:id/campaign-budgets`), so a campaign really does
-// have money of its own. This module only ever PICKS a row out of that answer; the one
-// thing it adds up is a channel's total across the brand, which is the grain billing
+// have money of its own. This module PICKS the rows that fund a campaign out of that
+// answer, by billing's own rule (below); the other thing it adds up is a channel's total across the brand, which is the grain billing
 // judges the channel's floor on and which this app needs only to check a form before
 // billing does.
 //
@@ -70,20 +70,28 @@ export function campaignBudgetScope(
 }
 
 /**
- * The ceiling billing stores at this address, or undefined.
+ * The stored ceilings that ARE this campaign's money, by billing's own rule
+ * (billing-service `campaignCeilingRows`, shared there by the read and the write).
  *
- * A ceiling stated before billing carried the offer names none; for a brand selling one
- * offer that row IS this campaign's money, so it answers when no row names the offer.
+ * A ceiling stated before billing carried the offer names none, and one stated
+ * before legs existed names no leg. Such a row funds this campaign when no OTHER
+ * offer (brand-wide) or other leg (on this channel) is named, because then it can
+ * only be this campaign's money. Ignoring the leg-less row is what made a campaign
+ * billing was pacing at $5/day read $0 on every surface here.
  */
-function findCeiling(
+function ceilingRows(
   scope: { offerId: string | null; legKey: string; featureSlug: string },
   budgets: CampaignBudgetSet,
-): CampaignCeiling | undefined {
-  const sameAddress = (c: CampaignCeiling) =>
-    c.legKey === scope.legKey && c.featureSlug === scope.featureSlug;
-  return (
-    budgets.campaigns.find((c) => sameAddress(c) && c.offerId === scope.offerId) ??
-    budgets.campaigns.find((c) => sameAddress(c) && c.offerId === null)
+): CampaignCeiling[] {
+  const onChannel = budgets.campaigns.filter((c) => c.featureSlug === scope.featureSlug);
+  const otherOfferNamed = budgets.campaigns.some(
+    (c) => c.offerId !== null && c.offerId !== scope.offerId,
+  );
+  const otherLegNamed = onChannel.some((c) => c.legKey !== null && c.legKey !== scope.legKey);
+  return onChannel.filter(
+    (c) =>
+      (c.offerId === scope.offerId || (c.offerId === null && !otherOfferNamed)) &&
+      (c.legKey === scope.legKey || (c.legKey === null && !otherLegNamed)),
   );
 }
 
@@ -93,7 +101,7 @@ export function campaignSavedCents(
   budgets: CampaignBudgetSet | undefined,
 ): number {
   if (!budgets) return 0;
-  return findCeiling(scope, budgets)?.dailyBudgetCents ?? 0;
+  return ceilingRows(scope, budgets).reduce((sum, c) => sum + c.dailyBudgetCents, 0);
 }
 
 /**

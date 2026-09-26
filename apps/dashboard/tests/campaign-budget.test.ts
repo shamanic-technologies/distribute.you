@@ -95,10 +95,11 @@ describe("campaignSavedCents", () => {
     expect(campaignSavedCents(scope, set(ceiling({ offerId: null, dailyBudgetCents: 900 })))).toBe(900);
   });
 
-  it("prefers the offer's own row over one naming no offer", () => {
+  it("adds a row naming no offer to the offer's own one when no other offer is named, as billing does", () => {
+    // billing-service campaignCeilingRows + sumCeilings: both rows fund this campaign.
     expect(
       campaignSavedCents(scope, set(ceiling({ offerId: null, dailyBudgetCents: 900 }), ceiling())),
-    ).toBe(3000);
+    ).toBe(3900);
   });
 
   it("is zero when the address is funded for other offers only", () => {
@@ -194,5 +195,46 @@ describe("runningAfterBudget — a campaign funded at nothing is paused", () => 
     // Every form blocks its own Save on an unparseable budget; pausing a campaign
     // mid-keystroke would be a verdict on a value nobody has finished writing.
     expect(runningAfterBudget({ running: true, nextCents: null, savedCents: 1000 })).toBe(true);
+  });
+});
+
+describe("a ceiling that names no leg (stated before legs existed)", () => {
+  const scope = { offerId: "o1", legKey: "start_to_conversation", featureSlug: "sales-cold-email-outreach" };
+  const legless = (cents: number): CampaignCeiling => ({
+    offerId: "o1",
+    legKey: null,
+    featureSlug: "sales-cold-email-outreach",
+    dailyBudgetCents: cents,
+  });
+
+  it("funds the campaign when no other leg is named on the channel (the prod case: $5 read as $0)", () => {
+    expect(campaignSavedCents(scope, { campaigns: [legless(500)] })).toBe(500);
+  });
+
+  it("does not fund it once another leg on the channel is named, as billing rules", () => {
+    const budgets: CampaignBudgetSet = {
+      campaigns: [
+        legless(500),
+        { offerId: "o1", legKey: "conversation_to_meeting_booked", featureSlug: "sales-cold-email-outreach", dailyBudgetCents: 300 },
+      ],
+    };
+    expect(campaignSavedCents(scope, budgets)).toBe(0);
+  });
+
+  it("adds the leg-less row to the one naming the leg, as billing sums them", () => {
+    const budgets: CampaignBudgetSet = {
+      campaigns: [legless(200), { ...legless(300), legKey: "start_to_conversation" }],
+    };
+    expect(campaignSavedCents(scope, budgets)).toBe(500);
+  });
+
+  it("an offer-less row stops counting once another offer is named anywhere on the brand", () => {
+    const budgets: CampaignBudgetSet = {
+      campaigns: [
+        { offerId: null, legKey: "start_to_conversation", featureSlug: "sales-cold-email-outreach", dailyBudgetCents: 500 },
+        { offerId: "o2", legKey: "start_to_conversation", featureSlug: "google-ads", dailyBudgetCents: 500 },
+      ],
+    };
+    expect(campaignSavedCents(scope, budgets)).toBe(0);
   });
 });

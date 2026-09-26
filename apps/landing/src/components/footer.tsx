@@ -39,10 +39,10 @@ function Column({ title, links }: { title: string; links: { label: string; href:
   return (
     <div>
       <h4 className="mb-3.5 text-[18px] tracking-[-0.02em] text-[#0a0a0a]">{title}</h4>
-      <ul className="grid gap-2">
+      <ul className="grid gap-0.5">
         {links.map((l) => (
           <li key={l.href}>
-            <a href={l.href} className="text-sm text-[#6b6b6b] transition hover:text-[#0a0a0a]">
+            <a href={l.href} className="inline-block py-1 text-sm text-[#6b6b6b] transition hover:text-[#0a0a0a]">
               {l.label}
             </a>
           </li>
