@@ -1,6 +1,6 @@
 "use client";
 
-import { PAYMENT_DECLINED_LABEL, PAYMENT_DECLINED_STYLE } from "@/lib/payment-declined";
+import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE, strongestPaymentHold } from "@/lib/payment-declined";
 import { useMemo, useState } from "react";
 import { getBrandCampaignBudgets, listCampaignsByBrand } from "@/lib/api";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -104,9 +104,9 @@ export function CampaignControlsTrigger({
   }
 
   const rollup = rollupStatus(rows);
-  // Nothing runs AND the reason is the declined payment: a pause the customer did
-  // not choose and cannot undo by flipping a switch, so the pill names it.
-  const declined = rollup === "paused" && rows.some((r) => r.paymentDeclined);
+  // Nothing runs AND the reason is payment: a pause the customer did not choose and
+  // cannot undo by flipping a switch, so the pill names it.
+  const hold = rollup === "paused" ? strongestPaymentHold(rows.map((r) => r.paymentHold)) : null;
   const totalCents =
     totalCentsOverride !== undefined ? totalCentsOverride : scopeTotalCents(rows);
 
@@ -132,10 +132,10 @@ export function CampaignControlsTrigger({
         </span>
         <span
           className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
-            declined ? PAYMENT_DECLINED_STYLE : ROLLUP_STYLE[rollup]
+            hold ? PAYMENT_HOLD_STYLE : ROLLUP_STYLE[rollup]
           }`}
         >
-          {declined ? PAYMENT_DECLINED_LABEL : ROLLUP_LABEL[rollup]}
+          {hold ? PAYMENT_HOLD_LABEL[hold] : ROLLUP_LABEL[rollup]}
         </span>
         {/* Persistent, not hover-only: a control discoverable only by accident is
             not discoverable on a touch screen at all. */}

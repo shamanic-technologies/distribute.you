@@ -73,7 +73,7 @@ export function MissionPage() {
               <div className="min-w-0">
                 <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <StateDot running={mission.running && !hold} label={hold ? "Held" : undefined} />
+                  <StateDot running={mission.running && !hold} label={hold ? "Held" : undefined} hold={mission.paymentHold} />
                   {mission.leg ? <span className="k-chip">{mission.leg.label}</span> : null}
                 </div>
               </div>

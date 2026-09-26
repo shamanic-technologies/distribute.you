@@ -507,7 +507,7 @@ function MissionLine({ m }: { m: Mission }) {
         <p className="k-fg3 truncate text-[12px]">{m.leg?.label ?? "—"}</p>
       </div>
       <div className="shrink-0 text-right">
-        <StateDot running={m.running} />
+        <StateDot running={m.running} hold={m.paymentHold} />
         <p className="k-mono k-fg3 text-[11px]">
           {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : "—"} spent
         </p>

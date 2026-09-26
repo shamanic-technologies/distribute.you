@@ -17,6 +17,7 @@ import {
 } from "@/components/campaigns/campaigns-table";
 import { crewFor, type CrewIdentity } from "@/lib/v2/crews";
 import { v2MissionHref } from "@/lib/v2/routes";
+import { paymentHoldKind, type PaymentHoldKind } from "@/lib/payment-declined";
 
 export interface Mission {
   row: CampaignRow;
@@ -25,6 +26,11 @@ export interface Mission {
   offerId: string;
   offerName: string | null;
   running: boolean;
+  /**
+   * Stopped by billing over payment (declined card, or no card), not by a person.
+   * Null when it is running or a person paused it. campaign-service's own reason.
+   */
+  paymentHold: PaymentHoldKind | null;
   /** The v2 mission page. */
   href: string;
 }
@@ -81,6 +87,7 @@ export function useMissions(orgId: string, brandId: string) {
             offerId: c.offerId,
             offerName: offerNames.get(c.offerId) ?? null,
             running: isActiveStatus(c.status),
+            paymentHold: paymentHoldKind(c),
             href: v2MissionHref(orgId, brandId, c.id),
           },
         ];

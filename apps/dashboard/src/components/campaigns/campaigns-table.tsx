@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  isPaymentDeclinedStop,
-  PAYMENT_DECLINED_LABEL,
-  PAYMENT_DECLINED_STYLE,
-} from "@/lib/payment-declined";
+import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE, paymentHoldKind } from "@/lib/payment-declined";
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -173,14 +169,15 @@ function statusLabel(status: string): string {
  * to explain away a live campaign that never gets a turn.
  */
 export function StatusPill({ status, stopReason }: { status: string; stopReason?: string | null }) {
-  // A campaign billing stopped over a declined card is NOT one somebody paused:
-  // starting it is refused until the payment is fixed, so it says so.
-  if (isPaymentDeclinedStop({ status, stopReason })) {
+  // A campaign billing stopped over payment (declined card, or no card) is NOT one
+  // somebody paused: starting it is refused until the payment is fixed, so it says so.
+  const hold = paymentHoldKind({ status, stopReason });
+  if (hold) {
     return (
       <span
-        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${PAYMENT_DECLINED_STYLE}`}
+        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${PAYMENT_HOLD_STYLE}`}
       >
-        {PAYMENT_DECLINED_LABEL}
+        {PAYMENT_HOLD_LABEL[hold]}
       </span>
     );
   }
