@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrandOffers } from "@/lib/api";
+import { listBrandOffers, listCampaignsByBrand } from "@/lib/api";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -16,6 +16,7 @@ import {
   type CampaignRow,
 } from "@/components/campaigns/campaigns-table";
 import { crewFor, type CrewIdentity } from "@/lib/v2/crews";
+import { v2MissionHref } from "@/lib/v2/routes";
 
 export interface Mission {
   row: CampaignRow;
@@ -24,8 +25,10 @@ export interface Mission {
   offerId: string;
   offerName: string | null;
   running: boolean;
-  /** The v1 campaign page — the mission page is a later v2 step. */
+  /** The v2 mission page. */
   href: string;
+  /** The same campaign's v1 page, for the controls v2 does not rebuild. */
+  v1Href: string;
 }
 
 export interface CrewSummary {
@@ -80,12 +83,35 @@ export function useMissions(orgId: string, brandId: string) {
             offerId: c.offerId,
             offerName: offerNames.get(c.offerId) ?? null,
             running: isActiveStatus(c.status),
-            href: `/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(c.offerId)}/campaigns/${encodeURIComponent(c.id)}`,
+            href: v2MissionHref(orgId, brandId, c.id),
+            v1Href: `/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(c.offerId)}/campaigns/${encodeURIComponent(c.id)}`,
           },
         ];
       }),
     [rows, channels, legCatalogue, offerNames, orgId, brandId],
   );
+
+  // Every stored campaign row → its mission. A campaign as the customer knows it is
+  // many stored rows (a new one per workflow switch, the ancestors kept), and a lead is
+  // served under whichever row was live then, so a lead's campaign id is often an
+  // ANCESTOR of the mission's live row. The identity (offer x leg x channel) is what
+  // joins them — the same collapse `useCampaignRows` makes. Same key, no extra request.
+  const allQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId), {
+    enabled: !!brandId,
+  });
+  const missionByCampaignId = useMemo(() => {
+    const identity = (c: { offerId?: string | null; legKey?: string | null; featureSlug?: string | null }) =>
+      `${c.offerId ?? ""}|${c.legKey ?? ""}|${c.featureSlug ?? ""}`;
+    const byIdentity = new Map<string, Mission>();
+    for (const m of missions) byIdentity.set(identity(m.row.campaign), m);
+    const out = new Map<string, Mission>();
+    for (const c of allQ.data?.campaigns ?? []) {
+      const m = byIdentity.get(identity(c));
+      if (m) out.set(c.id, m);
+    }
+    for (const m of missions) out.set(m.row.campaign.id, m);
+    return out;
+  }, [missions, allQ.data]);
 
   const crews = useMemo<CrewSummary[]>(() => {
     const byKey = new Map<string, CrewSummary>();
@@ -98,5 +124,5 @@ export function useMissions(orgId: string, brandId: string) {
     return [...byKey.values()].sort((a, b) => a.crew.name.localeCompare(b.crew.name));
   }, [missions]);
 
-  return { missions, crews, settled };
+  return { missions, crews, settled, missionByCampaignId };
 }

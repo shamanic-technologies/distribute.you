@@ -1,0 +1,124 @@
+/*
+ * Dashboard v2 (beta) design tokens and primitives, ported 1:1 from Keel's light
+ * theme (layout, density, type scale, elevations) with OUR accent: the brand ramp
+ * (`--color-brand-*`), which the brand tint already rotates. Everything is scoped under
+ * `.v2-root`, which only the v2 layout renders, so v1 cannot change.
+ */
+.v2-root {
+  --bg-canvas: #f3f3f4;
+  --bg-surface: #fafafa;
+  --bg-raised: #ffffff;
+  --bg-inset: #f5f5f6;
+  --bg-hover: #1010120a;
+  --bg-active: #10101212;
+  --bg-selected: #1010120f;
+  --bg-strong: #18181b;
+  --bg-strong-hover: #27272b;
+  --fg-1: #101012;
+  --fg-2: #5e5e66;
+  --fg-3: #74747c;
+  --fg-4: #a9a9b0;
+  --line-subtle: #10101211;
+  --line: #10101217;
+  --line-strong: #10101224;
+  --accent: var(--color-brand-600);
+  --accent-soft: var(--color-brand-50);
+  --accent-text: var(--color-brand-700);
+  --data-teal: #0e9f86;
+  --data-amber: #c7870a;
+  --data-violet: #6e5cf0;
+  --data-rose: #e03a6a;
+  --data-sky: #1d8be0;
+  --data-lime: #5c9a1b;
+  --data-track: #10101214;
+  --elev-panel: 0 0 0 1px var(--line-subtle), 0 1px 2px #0000000a;
+  --elev-control: 0 1px 1px #0000000d;
+  --elev-popover: 0 0 0 1px #10101214, 0 2px 6px -1px #00000014, 0 12px 28px -6px #00000024;
+  font-family: var(--font-geist-sans), "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--fg-1);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+.v2-root ::selection { background: color-mix(in oklab, var(--accent) 22%, transparent); }
+
+.v2-root .k-mono { font-family: var(--font-geist-mono), "DM Mono", ui-monospace, monospace; }
+.v2-root .k-label {
+  font-family: var(--font-geist-mono), "DM Mono", ui-monospace, monospace;
+  font-size: 10.5px; font-weight: 500; line-height: 14px;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-3);
+}
+.v2-root .k-fg { color: var(--fg-1); }
+.v2-root .k-fg2 { color: var(--fg-2); }
+.v2-root .k-fg3 { color: var(--fg-3); }
+.v2-root .k-fg4 { color: var(--fg-4); }
+.v2-root .k-accent { color: var(--accent); }
+.v2-root .k-accent-text { color: var(--accent-text); }
+.v2-root .k-canvas { background: var(--bg-canvas); }
+.v2-root .k-surface { background: var(--bg-surface); }
+.v2-root .k-raised { background: var(--bg-raised); }
+.v2-root .k-inset { background: var(--bg-inset); }
+.v2-root .k-selected { background: var(--bg-selected); }
+.v2-root .k-hover:hover { background: var(--bg-hover); }
+.v2-root .k-line { border-color: var(--line); }
+.v2-root .k-line-subtle { border-color: var(--line-subtle); }
+.v2-root .k-panel { background: var(--bg-surface); border-radius: 12px; box-shadow: var(--elev-panel); }
+.v2-root .k-card { background: var(--bg-raised); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line-subtle); }
+.v2-root a.k-card, .v2-root button.k-card { transition: box-shadow 150ms; }
+.v2-root a.k-card:hover, .v2-root button.k-card:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.v2-root .k-card-accent { background: var(--bg-raised); border-radius: 12px; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
+.v2-root .k-popover { background: var(--bg-raised); border-radius: 12px; box-shadow: var(--elev-popover); }
+.v2-root .k-control { border-radius: 8px; }
+.v2-root .k-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+  border-radius: 8px; background: var(--bg-raised); color: var(--fg-1); font-size: 13px; font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--line), var(--elev-control); transition: background 120ms;
+}
+.v2-root .k-btn:hover { background: var(--bg-inset); }
+.v2-root .k-btn-strong {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+  border-radius: 8px; background: var(--bg-strong); color: #fafafa; font-size: 13px; font-weight: 500;
+  transition: background 120ms;
+}
+.v2-root .k-btn-strong:hover { background: var(--bg-strong-hover); }
+.v2-root .k-btn-accent {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+  border-radius: 8px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 500;
+}
+.v2-root .k-btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px;
+  border-radius: 8px; color: var(--fg-2); font-size: 13px;
+}
+.v2-root .k-btn-ghost:hover { background: var(--bg-hover); color: var(--fg-1); }
+.v2-root .k-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 6px;
+  border-radius: 6px; background: var(--bg-inset); color: var(--fg-2); font-size: 12px;
+  box-shadow: inset 0 0 0 1px var(--line-subtle); white-space: nowrap;
+}
+.v2-root .k-kbd {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: 4px; background: var(--bg-raised); color: var(--fg-3); font-size: 10px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace; box-shadow: inset 0 0 0 1px var(--line);
+}
+.v2-root .k-input {
+  height: 28px; border-radius: 8px; background: var(--bg-raised); color: var(--fg-1); font-size: 13px;
+  box-shadow: inset 0 0 0 1px var(--line); outline: none;
+}
+.v2-root .k-input:focus-within { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 60%, transparent); }
+.v2-root .k-tab { position: relative; height: 40px; display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); }
+.v2-root .k-tab[aria-current="page"] { color: var(--fg-1); }
+.v2-root .k-tab[aria-current="page"]::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1.5px; background: var(--fg-1);
+}
+.v2-root .k-row { border-bottom: 1px solid var(--line-subtle); }
+.v2-root .k-row:hover { background: var(--bg-hover); }
+.v2-root .k-dot-pulse { position: relative; }
+.v2-root .k-dot-pulse::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 9999px; background: currentColor; opacity: 0.25;
+  animation: k-pulse 2.4s cubic-bezier(.23, 1, .32, 1) infinite;
+}
+@keyframes k-pulse { 0% { transform: scale(0.6); opacity: 0.35 } 100% { transform: scale(1.6); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .v2-root .k-dot-pulse::after { animation: none; } }
+.v2-root .k-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.v2-root .k-scroll::-webkit-scrollbar-thumb { background: #1010122e; border-radius: 9999px; border: 3px solid transparent; background-clip: content-box; }
