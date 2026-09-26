@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useId } from "react";
+import { useParams } from "next/navigation";
 import { useOpenV2Nav } from "@/components/v2/nav-context";
+import { useNeedsYourCall } from "@/components/v2/data";
+import { v2Href } from "@/lib/v2/routes";
+
+/** Opens the ⌘K palette from anywhere (`SearchTrigger` owns it and listens for this). */
+export const OPEN_PALETTE_EVENT = "v2:open-palette";
+export function openPalette() {
+  window.dispatchEvent(new Event(OPEN_PALETTE_EVENT));
+}
 
 /** Keel's primitives, drawn with the tokens in `keel.css`. Presentation only. */
 
@@ -58,8 +67,46 @@ export function TopBar({ crumbs, actions }: { crumbs: Crumb[]; actions?: React.R
           );
         })}
       </nav>
-      <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {actions}
+        <TopBarUniversal />
+      </div>
     </div>
+  );
+}
+
+/**
+ * Keel's two universal controls, on every page: the bell and the ⌘K button. The bell
+ * is the people waiting on a person (interested replies nobody has closed yet), so its
+ * dot is a served count, and it opens Work where they are answered.
+ */
+function TopBarUniversal() {
+  const { orgId, brandId } = useParams<{ orgId?: string; brandId?: string }>();
+  return (
+    <>
+      {orgId && brandId ? <Bell orgId={orgId} brandId={brandId} /> : null}
+      <button type="button" onClick={openPalette} aria-label="Open command palette" className="k-keys k-btn-ghost hidden h-8 gap-0.5 px-1.5 md:inline-flex">
+        <span className="k-kbd">⌘</span>
+        <span className="k-kbd">K</span>
+      </button>
+    </>
+  );
+}
+
+function Bell({ orgId, brandId }: { orgId: string; brandId: string }) {
+  const needs = useNeedsYourCall(brandId, 5).data?.total ?? null;
+  return (
+        <Link
+          href={v2Href(orgId, brandId, "work")}
+          aria-label={needs ? `${needs} need your call` : "Nothing needs your call"}
+          title={needs ? `${needs} need your call` : "Nothing needs your call"}
+          className="k-btn-ghost relative h-8 w-8 justify-center px-0"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3l1-1ZM6.5 13.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+          </svg>
+          {needs ? <span className="absolute right-[7px] top-[6px] h-[7px] w-[7px] rounded-full bg-[#f5690b] ring-2 ring-[var(--bg-surface)]" /> : null}
+        </Link>
   );
 }
 
@@ -212,4 +259,94 @@ export function StateDot({ running, label }: { running: boolean; label?: string 
 
 export function EmptyNote({ children }: { children: React.ReactNode }) {
   return <p className="k-fg3 px-4 py-8 text-center text-[13px]">{children}</p>;
+}
+
+/**
+ * Keel's coverage gauge: a half ring of ticks, the reached ones filled, with a marker
+ * on the value that matters (a target, or break-even). Draws what it is handed.
+ */
+export function TickGauge({
+  value,
+  max,
+  marker,
+  className = "",
+}: {
+  value: number | null;
+  max: number;
+  marker?: number;
+  className?: string;
+}) {
+  const ticks = 22;
+  const cx = 60;
+  const cy = 56;
+  const r1 = 40;
+  const r2 = 50;
+  const reached = value == null ? 0 : Math.round(Math.min(1, Math.max(0, value / max)) * ticks);
+  const at = (f: number, r: number) => {
+    const a = Math.PI * (1 - f);
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)] as const;
+  };
+  return (
+    <svg viewBox="0 0 120 62" className={`w-full max-w-[124px] ${className}`} aria-hidden="true">
+      {Array.from({ length: ticks + 1 }, (_, i) => {
+        const f = i / ticks;
+        const [x1, y1] = at(f, r1);
+        const [x2, y2] = at(f, r2);
+        return (
+          <line
+            key={i}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            stroke={i < reached ? "var(--data-teal)" : "var(--data-track)"}
+          />
+        );
+      })}
+      {marker != null && marker <= max ? (
+        (() => {
+          const [x1, y1] = at(marker / max, r1 - 4);
+          const [x2, y2] = at(marker / max, r2 + 4);
+          return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--fg-1)" strokeWidth="1.6" strokeLinecap="round" />;
+        })()
+      ) : null}
+    </svg>
+  );
+}
+
+/** Keel's stacked "crew today" meter: one segment per crew, in its colour, of a ceiling. */
+export function StackMeter({
+  parts,
+  max,
+  className = "",
+}: {
+  parts: { key: string; value: number; color: string }[];
+  max: number | null;
+  className?: string;
+}) {
+  const total = parts.reduce((s, p) => s + p.value, 0);
+  const scale = max && max > 0 ? Math.max(max, total) : total || 1;
+  return (
+    <div className={`flex h-2 gap-[2px] overflow-hidden rounded-full bg-[var(--data-track)] ${className}`}>
+      {parts
+        .filter((p) => p.value > 0)
+        .map((p) => (
+          <span key={p.key} className="h-full first:rounded-l-full" style={{ width: `${(p.value / scale) * 100}%`, background: p.color }} />
+        ))}
+    </div>
+  );
+}
+
+/** A keyboard hint the way Keel prints them: keys, then what they do. */
+export function KeyHint({ keys, label }: { keys: string[]; label: string }) {
+  return (
+    <span className="k-keys k-fg3 inline-flex items-center gap-1 text-[12px]">
+      {keys.map((k) => (
+        <span key={k} className="k-kbd">{k}</span>
+      ))}
+      <span className="ml-0.5">{label}</span>
+    </span>
+  );
 }

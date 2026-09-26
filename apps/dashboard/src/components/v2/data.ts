@@ -1,15 +1,18 @@
 "use client";
 
+import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
   getBrandRevenue,
   getLeadBucketCounts,
+  getLeadHistory,
   getLeadStandingCounts,
   keepLastGoodFeatureRevenue,
   listLeadsPage,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
+import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions } from "@/lib/query-options";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -103,3 +106,22 @@ export function useLatestInBucket(
     { refetchInterval: POLL_INTERVAL },
   );
 }
+
+/** The latest message the person SENT us, off lead-service's merged history. */
+export function useTheirLastWords(leadRowId: string, brandId: string) {
+  const q = useAuthQuery(
+    ["leadHistory", leadRowId, brandId, "campaign"],
+    () => getLeadHistory(leadRowId, { brandId, scope: "campaign" }),
+    { enabled: !!leadRowId && !!brandId },
+  );
+  const inbound = useMemo(() => {
+    let latest: LeadHistoryEvent | null = null;
+    for (const e of q.data?.events ?? []) {
+      if (e.type !== "message" || e.direction !== "inbound") continue;
+      if (!latest || (e.at ?? "") >= (latest.at ?? "")) latest = e;
+    }
+    return latest;
+  }, [q.data]);
+  return { inbound, settled: q.data !== undefined || q.isError };
+}
+

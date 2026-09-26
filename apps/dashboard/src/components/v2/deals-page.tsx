@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
@@ -9,6 +9,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
+import { leadStatusLabel } from "@/lib/lead-status";
 import { LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -61,6 +62,13 @@ export function DealsPage() {
   const won = totals?.won ?? null;
   const pipeline = revenue.data?.totalPipelineUsd ?? null;
   const biggest = Math.max(1, ...columns.map((c) => totals?.[c.key] ?? 0));
+  // A card states its company's value: features-service's own per-organisation figure,
+  // looked up by domain (a display join, never a sum).
+  const valueByDomain = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const o of revenue.data?.organizations ?? []) if (o.orgDomain) m.set(o.orgDomain, o.expectedRevenueUsd);
+    return m;
+  }, [revenue.data]);
   return (
     <>
       <TopBar
@@ -135,6 +143,7 @@ export function DealsPage() {
               share={(totals?.[c.key] ?? 0) / biggest}
               crewFilter={crewFilter}
               missionFor={(id) => missionByCampaignId.get(id) ?? null}
+              valueFor={(domain) => (domain ? valueByDomain.get(domain) ?? null : null)}
             />
           ))}
         </div>
@@ -152,6 +161,7 @@ function DealColumn({
   share,
   crewFilter,
   missionFor,
+  valueFor,
 }: {
   brandId: string;
   orgId: string;
@@ -161,6 +171,7 @@ function DealColumn({
   share: number;
   crewFilter: string | null;
   missionFor: (campaignId: string) => Mission | null;
+  valueFor: (domain: string | null) => number | null;
 }) {
   const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
   const q = useAuthQuery(
@@ -192,7 +203,9 @@ function DealColumn({
           leads.map((lead) => {
             const company = leadCompany(lead);
             const m = missionFor(lead.campaignId);
-            const at = leadDateForStatus(lead, getLeadConsolidatedStatus(lead));
+            const status = getLeadConsolidatedStatus(lead);
+            const at = leadDateForStatus(lead, status);
+            const value = valueFor(leadCompanyDomain(lead));
             return (
               <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-card block p-3">
                 <div className="flex items-center gap-2">
@@ -202,6 +215,9 @@ function DealColumn({
                     <PersonAvatar lead={lead} size={18} />
                   )}
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
+                  {value != null && value > 0 ? (
+                    <span className="shrink-0 text-[13px] font-medium tabular-nums">{formatUsdAdaptive(value)}</span>
+                  ) : null}
                 </div>
                 {company ? (
                   <div className="k-fg2 mt-1.5 flex items-center gap-1.5 text-[12px]">
@@ -216,6 +232,10 @@ function DealColumn({
                     </span>
                   ) : null}
                   <span className="ml-auto shrink-0 tabular-nums">{at ? timeAgo(at) : ""}</span>
+                </div>
+                <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT[column] }} />
+                  <span className="truncate">{leadStatusLabel(status)}</span>
                 </div>
               </Link>
             );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Lead, RunRow } from "@/lib/api";
@@ -11,7 +11,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { useNeedsYourCall } from "@/components/v2/data";
+import { useNeedsYourCall, useTheirLastWords } from "@/components/v2/data";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
@@ -40,6 +40,8 @@ export function WorkPage() {
   const today = useRunsTodayList(brandId, 200);
   const { byCrew, settled: rollupSettled } = useCrewRuns(brandId, missionByCampaignId);
   const [crewFilter, setCrewFilter] = useState<string | null>(null);
+  const [view, setView] = useState<"board" | "list">("board");
+  const [type, setType] = useState<"all" | "waiting" | "running" | "call" | "done">("all");
 
   let runsToday = 0;
   let spendToday = 0;
@@ -75,6 +77,8 @@ export function WorkPage() {
   const waiting = missions.filter((m) => keep(m));
   const needsCall = (callQ.data?.leads ?? []).filter((l) => keep(missionByCampaignId.get(l.campaignId) ?? null));
   const runningCrews = crews.filter((c) => c.running > 0).length;
+  const oldestCall = needsCall.reduce<string | null>((o, l) => (l.firstRepliedAt && (!o || l.firstRepliedAt < o) ? l.firstRepliedAt : o), null);
+  const show = (t: typeof type) => type === "all" || type === t;
 
   return (
     <>
@@ -124,18 +128,60 @@ export function WorkPage() {
               Show every crew
             </button>
           )}
+          <span className="mx-1 h-4 w-px bg-[var(--line)]" />
+          <label className="k-btn relative h-7 pr-7 text-[12px]">
+            <span className="k-fg2">Type</span>
+            <span>{TYPE_LABEL[type]}</span>
+            <svg width="10" height="10" viewBox="0 0 12 12" className="k-fg3 pointer-events-none absolute right-2.5" aria-hidden="true">
+              <path d="M3 4.5 6 7.5l3-3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            <select
+              aria-label="Type"
+              value={type}
+              onChange={(e) => setType(e.target.value as typeof type)}
+              className="absolute inset-0 cursor-pointer opacity-0"
+            >
+              {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </label>
+          <span className="k-inset ml-auto inline-flex rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+            {(["board", "list"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={view === v ? "k-btn h-6 px-2 text-[12px]" : "k-btn-ghost h-6 px-2 text-[12px]"}
+              >
+                {v === "board" ? "Board" : "List"}
+              </button>
+            ))}
+          </span>
         </div>
 
+        {view === "list" ? (
+          <WorkList
+            waiting={show("waiting") ? waiting : []}
+            running={show("running") ? running : []}
+            calls={show("call") ? needsCall : []}
+            done={show("done") ? doneShown : []}
+            missionOf={missionOf}
+            missionForLead={(l) => missionByCampaignId.get(l.campaignId) ?? null}
+            personHrefFor={(l) => personHref(orgId, brandId, l)}
+          />
+        ) : (
         <div className="k-scroll mt-4 flex gap-4 overflow-x-auto pb-2">
-          <Column
+          {show("waiting") && <Column
             title="Waiting"
             icon={<span className="h-3 w-3 rounded-full border-[1.5px] border-dashed border-[var(--fg-3)]" />}
             count={null}
             meta="not sending now"
           >
             {!settled ? <Skeleton /> : waiting.length === 0 ? <EmptyNote>No mission.</EmptyNote> : <WaitingList missions={waiting} />}
-          </Column>
-          <Column
+          </Column>}
+          {show("running") && <Column
             title="Running"
             icon={<span className="k-dot-pulse h-2 w-2 rounded-full bg-[var(--run)] text-[var(--run)]" />}
             count={runs ? running.length : null}
@@ -148,12 +194,12 @@ export function WorkPage() {
             ) : (
               running.slice(0, 20).map((r) => <RunCard key={r.id} run={r} m={missionOf(r)} />)
             )}
-          </Column>
-          <Column
+          </Column>}
+          {show("call") && <Column
             title="Needs your call"
             icon={<span className="h-3 w-3 rounded-full border-[1.5px] border-[var(--fg-1)]" />}
             count={interested}
-            meta="replied with interest"
+            meta={oldestCall ? `since ${friendlyTime(oldestCall)}` : "replied with interest"}
           >
             {callQ.data === undefined ? (
               callQ.isError ? <EmptyNote>We could not load these.</EmptyNote> : <Skeleton />
@@ -161,11 +207,11 @@ export function WorkPage() {
               <EmptyNote>Nobody is waiting on you.</EmptyNote>
             ) : (
               needsCall.map((l) => (
-                <LeadCard key={l.id} lead={l} m={missionByCampaignId.get(l.campaignId) ?? null} href={personHref(orgId, brandId, l)} />
+                <LeadCard key={l.id} brandId={brandId} lead={l} m={missionByCampaignId.get(l.campaignId) ?? null} href={personHref(orgId, brandId, l)} />
               ))
             )}
-          </Column>
-          <Column
+          </Column>}
+          {show("done") && <Column
             title="Done today"
             icon={
               <svg width="13" height="13" viewBox="0 0 14 14" className="text-[var(--data-teal)]" aria-hidden="true">
@@ -183,8 +229,9 @@ export function WorkPage() {
             ) : (
               doneShown.map((g) => <DoneCard key={g.key} g={g} />)
             )}
-          </Column>
+          </Column>}
         </div>
+        )}
       </div>
     </>
   );
@@ -251,7 +298,20 @@ function WaitingCard({ m }: { m: Mission }) {
   );
 }
 
+/** Keel's "Running for 02:03": the clock since the run's own start, ticking. */
+function useElapsed(since: string): string {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const s = Math.max(0, Math.floor((now - new Date(since).getTime()) / 1000));
+  if (s >= 3600) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
 function RunCard({ run, m }: { run: RunRow; m: Mission | null }) {
+  const elapsed = useElapsed(run.startedAt);
   return (
     <Link href={m?.href ?? "#"} className="k-card block p-3">
       <div className="flex items-center gap-2 text-[12px]">
@@ -260,22 +320,29 @@ function RunCard({ run, m }: { run: RunRow; m: Mission | null }) {
         <span className="k-fg3 truncate">· {m?.offerName ?? ""}</span>
         <span className="k-mono ml-auto inline-flex shrink-0 items-center gap-1 text-[11px] text-[var(--fg-2)]">
           <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
-          {timeAgo(run.startedAt)}
+          <span className="sr-only">Running for</span>
+          <span className="tabular-nums">{elapsed}</span>
         </span>
       </div>
       <p className="mt-1.5 text-[13px] font-medium">{runTaskLabel(run)}</p>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
         <div className="k-indeterminate h-full w-1/3 rounded-full bg-[var(--run)]" />
       </div>
+      <p className="k-fg3 mt-1.5 flex justify-between text-[11px]">
+        <span className="truncate">{m?.leg?.label ?? "In flight"}</span>
+        <span className="k-mono shrink-0 tabular-nums">{Number(run.ownCostInUsdCents) > 0 ? formatCentsAsUsdAdaptive(Number(run.ownCostInUsdCents)) : ""}</span>
+      </p>
     </Link>
   );
 }
 
-function LeadCard({ lead, m, href }: { lead: Lead; m: Mission | null; href: string }) {
+function LeadCard({ brandId, lead, m, href }: { brandId: string; lead: Lead; m: Mission | null; href: string }) {
   const company = leadCompany(lead);
   const at = lead.firstRepliedAt ?? null;
+  const { inbound, settled } = useTheirLastWords(lead.id, brandId);
+  const body = inbound?.bodyText?.trim() ?? "";
   return (
-    <Link href={href} className="k-card block p-3">
+    <div className="k-card block p-3">
       <div className="flex items-center gap-2 text-[12px]">
         {m ? <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} /> : null}
         <span className="font-medium">{m?.crew.name ?? "Crew"}</span>
@@ -292,10 +359,133 @@ function LeadCard({ lead, m, href }: { lead: Lead; m: Mission | null; href: stri
           <span className="truncate">{company}</span>
         </div>
       ) : null}
-      <div className="mt-2.5 flex gap-1.5">
-        <span className="k-btn-strong h-6 px-2 text-[12px]">Open conversation</span>
+      <Link href={href} className="k-inset mt-2 block rounded-[8px] p-2 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+        {!settled ? (
+          <Shimmer className="h-8 w-full" />
+        ) : inbound ? (
+          <>
+            {inbound.subject ? <p className="truncate text-[12px] font-medium">{inbound.subject}</p> : null}
+            <p className="k-fg2 line-clamp-2 text-[12px] leading-[17px]">
+              {body || (inbound.bodyStatus === "unavailable" ? "We hold this reply and could not read it." : "The reply says nothing.")}
+            </p>
+          </>
+        ) : (
+          <p className="k-fg3 text-[12px]">Open the conversation to read the reply.</p>
+        )}
+      </Link>
+      <div className="mt-2.5 flex items-center gap-1.5">
+        <Link href={href} className="k-btn-strong h-6 px-2 text-[12px]">Open conversation</Link>
+        <a href={`mailto:${lead.email}`} className="k-btn h-6 px-2 text-[12px]">Email</a>
       </div>
-    </Link>
+    </div>
+  );
+}
+
+const TYPE_LABEL = { all: "All", waiting: "Waiting", running: "Running", call: "Needs your call", done: "Done today" } as const;
+
+/** Keel's List view: the same cards, one row each, newest first. */
+function WorkList({
+  waiting,
+  running,
+  calls,
+  done,
+  missionOf,
+  missionForLead,
+  personHrefFor,
+}: {
+  waiting: Mission[];
+  running: RunRow[];
+  calls: Lead[];
+  done: DoneGroup[];
+  missionOf: (r: RunRow) => Mission | null;
+  missionForLead: (l: Lead) => Mission | null;
+  personHrefFor: (l: Lead) => string;
+}) {
+  type Row = { key: string; state: string; dot: string; m: Mission | null; what: string; where: string; at: string | null; href: string };
+  const rows: Row[] = [
+    ...calls.map((l) => ({
+      key: `c-${l.id}`,
+      state: "Needs your call",
+      dot: "var(--fg-1)",
+      m: missionForLead(l),
+      what: `Follow up with ${leadName(l)}`,
+      where: leadCompany(l) ?? l.email,
+      at: l.firstRepliedAt ?? null,
+      href: personHrefFor(l),
+    })),
+    ...running.map((r) => ({
+      key: `r-${r.id}`,
+      state: "Running",
+      dot: "var(--run)",
+      m: missionOf(r),
+      what: runTaskLabel(r),
+      where: missionOf(r)?.offerName ?? "—",
+      at: r.startedAt,
+      href: missionOf(r)?.href ?? "#",
+    })),
+    ...waiting
+      .filter((m) => !m.running)
+      .map((m) => ({
+        key: `w-${m.row.campaign.id}`,
+        state: "Paused",
+        dot: "var(--fg-4)",
+        m,
+        what: m.leg?.label ?? "Mission",
+        where: m.offerName ?? "—",
+        at: null,
+        href: m.href,
+      })),
+    ...done.map((g) => ({
+      key: `d-${g.key}`,
+      state: `Done ${g.count}×`,
+      dot: "var(--data-teal)",
+      m: g.mission,
+      what: g.label,
+      where: g.mission?.offerName ?? "—",
+      at: g.lastAt,
+      href: g.mission?.href ?? "#",
+    })),
+  ];
+  return (
+    <div className="k-card mt-4 overflow-hidden">
+      <div className="k-scroll overflow-x-auto">
+        <table className="w-full min-w-[680px] text-[13px]">
+          <thead>
+            <tr className="border-b border-[var(--line-subtle)]">
+              {["State", "Crew", "What", "Where", "When"].map((h) => (
+                <th key={h} className={`k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4 ${h === "When" ? "text-right" : ""}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={5}><EmptyNote>Nothing here.</EmptyNote></td></tr>
+            ) : (
+              rows.map((r) => (
+                <tr key={r.key} className="k-row">
+                  <td className="whitespace-nowrap py-2 pl-4 pr-3">
+                    <span className="inline-flex items-center gap-1.5 text-[12px]">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: r.dot }} />
+                      {r.state}
+                    </span>
+                  </td>
+                  <td className="px-3">
+                    {r.m ? (
+                      <span className="inline-flex items-center gap-1.5 font-medium">
+                        <CrewMark color={r.m.crew.color} glyph={r.m.crew.glyph} size={14} /> {r.m.crew.name}
+                      </span>
+                    ) : <span className="k-fg4">{"—"}</span>}
+                  </td>
+                  <td className="max-w-[280px] px-3"><Link href={r.href} className="block truncate hover:underline">{r.what}</Link></td>
+                  <td className="k-fg2 max-w-[200px] truncate px-3">{r.where}</td>
+                  <td className="k-mono k-fg3 whitespace-nowrap px-3 pr-4 text-right text-[12px]">{r.at ? timeAgo(r.at) : "—"}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

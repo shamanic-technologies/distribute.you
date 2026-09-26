@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
@@ -10,6 +10,8 @@ import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
+import { CompanyMark } from "@/components/v2/people-bits";
+import { companyHref } from "@/components/v2/companies-page";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -124,6 +126,11 @@ function V2Sidebar() {
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
+  // Keel's Favorites: the three companies worth most, on features-service's own figure.
+  const topCompanies = useMemo(
+    () => [...(revenue?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd).slice(0, 3),
+    [revenue],
+  );
   const tab = search.get("tab");
 
   return (
@@ -235,6 +242,24 @@ function V2Sidebar() {
                 }
               />
             ))}
+          </Group>
+        )}
+
+        {topCompanies.length > 0 && (
+          <Group title="Top companies">
+            {topCompanies.map((o) => {
+              const href = companyHref(orgId, brandId, o);
+              const name = o.orgName ?? o.orgDomain ?? "Company";
+              return href ? (
+                <NavItem
+                  key={href}
+                  href={href}
+                  label={name}
+                  active={decodeURIComponent(pathname).endsWith(`/companies/${o.orgDomain ?? o.orgId}`)}
+                  icon={<CompanyMark name={name} domain={o.orgDomain ?? null} size={16} />}
+                />
+              ) : null;
+            })}
           </Group>
         )}
 

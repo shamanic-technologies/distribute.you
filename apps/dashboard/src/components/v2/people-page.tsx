@@ -137,7 +137,7 @@ export function PeoplePage() {
         }
       />
       <div className="k-scroll overflow-x-auto">
-        <table className="w-full min-w-[900px] text-[13px]">
+        <table className="w-full min-w-[1000px] text-[13px]">
           <thead>
             <tr>
               <th className={`${REC_TH} pl-4 md:pl-6`}>Person</th>
@@ -145,20 +145,21 @@ export function PeoplePage() {
               <th className={REC_TH}>Role</th>
               <th className={REC_TH}>Known by</th>
               <th className={REC_TH}>Stage</th>
-              <th className={`${REC_TH} pr-4 md:pr-6`}>Last touch</th>
+              <th className={REC_TH}>Last touch</th>
+              <th className={`${REC_TH} w-[120px] pr-4 md:pr-6`}><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             {rows === null ? (
               pageQ.isError ? (
-                <tr><td colSpan={6}><EmptyNote>We could not load these people. Retrying.</EmptyNote></td></tr>
+                <tr><td colSpan={7}><EmptyNote>We could not load these people. Retrying.</EmptyNote></td></tr>
               ) : (
                 Array.from({ length: 12 }, (_, i) => (
-                  <tr key={i} className="k-row h-10"><td colSpan={6} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
+                  <tr key={i} className="k-row h-10"><td colSpan={7} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
                 ))
               )
             ) : rows.length === 0 ? (
-              <tr><td colSpan={6}><EmptyNote>Nobody here yet.</EmptyNote></td></tr>
+              <tr><td colSpan={7}><EmptyNote>Nobody here yet.</EmptyNote></td></tr>
             ) : (
               rows.map((lead, i) => {
                 const status = getLeadConsolidatedStatus(lead);
@@ -171,7 +172,7 @@ export function PeoplePage() {
                     key={lead.id}
                     onClick={() => openRow(i)}
                     onMouseEnter={() => setCursor(i)}
-                    className={`k-row h-10 cursor-pointer ${i === cursor ? "k-selected" : ""}`}
+                    className={`group k-row h-10 cursor-pointer ${i === cursor ? "k-selected" : ""}`}
                   >
                     <td className="max-w-[240px] pl-4 pr-3 md:pl-6">
                       <Link
@@ -206,7 +207,7 @@ export function PeoplePage() {
                       )}
                     </td>
                     <td className="px-3"><span className="k-chip">{leadStatusLabel(status)}</span></td>
-                    <td className="k-fg2 whitespace-nowrap px-3 pr-4 tabular-nums md:pr-6">
+                    <td className="k-fg2 whitespace-nowrap px-3 tabular-nums">
                       {at ? (
                         <span className="inline-flex items-center gap-1.5">
                           <svg width="12" height="12" viewBox="0 0 16 16" className="k-fg3" aria-hidden="true">
@@ -216,6 +217,26 @@ export function PeoplePage() {
                           {timeAgo(at)}
                         </span>
                       ) : "—"}
+                    </td>
+                    <td className="pr-4 text-right md:pr-6">
+                      <span className={`inline-flex items-center gap-1 ${i === cursor ? "" : "opacity-0 group-hover:opacity-100"}`}>
+                        <a
+                          href={`mailto:${lead.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="k-btn h-6 px-2 text-[12px]"
+                          aria-label={`Email ${leadName(lead)}`}
+                        >
+                          Email
+                        </a>
+                        <Link
+                          href={personHref(orgId, brandId, lead)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Open ${leadName(lead)}`}
+                          className="k-btn-ghost h-6 w-6 justify-center px-0"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        </Link>
+                      </span>
                     </td>
                   </tr>
                 );

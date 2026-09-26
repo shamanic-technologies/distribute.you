@@ -18,6 +18,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
 import { CrewMark } from "@/components/v2/crew-mark";
+import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { useMissions } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
@@ -589,8 +590,13 @@ export function SearchTrigger({ orgId, brandId }: { orgId: string; brandId: stri
         }
       }
     };
+    const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener(OPEN_PALETTE_EVENT, onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(OPEN_PALETTE_EVENT, onOpen);
+    };
   }, [orgId, brandId, router]);
   return (
     <>
