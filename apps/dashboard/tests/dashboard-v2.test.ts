@@ -107,6 +107,21 @@ describe("series windows", () => {
   });
 });
 
+const V2_FILES = [
+  "src/components/v2/v2-shell.tsx",
+  "src/components/v2/v2-client-layout.tsx",
+  "src/components/v2/today-page.tsx",
+  "src/components/v2/crew-page.tsx",
+  "src/components/v2/missions-page.tsx",
+  "src/components/v2/missions-table.tsx",
+  "src/components/v2/mission-page.tsx",
+  "src/components/v2/people-page.tsx",
+  "src/components/v2/companies-page.tsx",
+  "src/components/v2/deals-page.tsx",
+  "src/components/v2/work-page.tsx",
+  "src/components/v2/ui.tsx",
+];
+
 describe("v2 wiring", () => {
   it("the edge honours the choice only for a beta email, and keeps Clerk synced under /v2", () => {
     const proxy = read("src/proxy.ts");
@@ -117,10 +132,12 @@ describe("v2 wiring", () => {
   });
 
   it("the v2 tree is gated on the beta allowlist and wears the beta badge", () => {
-    const layout = read("src/app/(authed)/v2/layout.tsx");
+    const layout = read("src/components/v2/v2-client-layout.tsx");
     expect(layout).toContain("isBetaEmail(user?.primaryEmailAddress?.emailAddress)");
     expect(layout).toContain("This page is not available");
+    expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
     expect(read("src/components/v2/v2-shell.tsx")).toContain('<MaturityBadge level="beta" />');
+    expect(read("src/components/v2/v2-shell.tsx")).toContain("Back to v1");
   });
 
   it("the v1 sidebar offers the switch, beta-only and badged", () => {
@@ -130,24 +147,46 @@ describe("v2 wiring", () => {
     expect(sw).toContain('<MaturityBadge level="beta" />');
   });
 
-  it("the Dashboard reads v1's keys and computes no metric", () => {
-    const page = read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/page.tsx");
-    expect(page).toContain('["brandRevenue", brandId]');
-    expect(page).not.toMatch(/\.reduce\(/);
-    const replies = read("src/components/v2/last-replies.tsx");
-    expect(replies).toContain('["leadsPage", `brand:${brandId}`, "positive-replies", "", 0]');
-    expect(existsSync(resolve(ROOT, "src/components/v2/use-missions.ts"))).toBe(true);
+  const V2_ROUTES = ["", "/crew", "/missions", "/missions/[campaignId]", "/people", "/companies", "/deals", "/work"];
+
+  it("every sidebar section has a route", () => {
+    for (const r of V2_ROUTES) {
+      expect(existsSync(resolve(ROOT, `src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]${r}/page.tsx`)), r).toBe(true);
+    }
+  });
+
+  it("reads v1's own query keys, so v2 and v1 share one cache", () => {
+    const data = read("src/components/v2/data.ts");
+    expect(data).toContain('["brandRevenue", brandId]');
+    expect(data).toContain('["leadBucketCounts", brandLeadScopeKey(brandId), ""]');
+    expect(data).toContain('["leadStandingCounts", brandLeadScopeKey(brandId), ""]');
     expect(read("src/components/v2/use-missions.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
+    expect(read("src/components/v2/mission-hold.tsx")).toContain('["campaignHold", campaignId]');
+  });
+
+  it("the Deals board sizes each column from the producer's standing counts", () => {
+    const deals = read("src/components/v2/deals-page.tsx");
+    expect(deals).toContain("boardColumnTotals(useStandingCounts(brandId).data)");
+    expect(deals).toContain("leadsColumnPageQuery({ column, search: \"\", shown })");
+  });
+
+  it("People pages and searches on the producer, never over loaded rows", () => {
+    const people = read("src/components/v2/people-page.tsx");
+    expect(people).toContain("offset: String(page * LEADS_PAGE_SIZE)");
+    expect(people).toContain("leadsSearchProblem(search)");
+    expect(people).not.toMatch(/\.filter\(\(l(ead)?\) =>/);
+  });
+
+  it("the v2 pages compute no ratio in the browser", () => {
+    for (const f of V2_FILES) {
+      const code = read(f);
+      expect(code, f).not.toMatch(/Usd\s*\/\s*[a-zA-Z(]/);
+      expect(code, f).not.toMatch(/Cents\s*\/\s*(?!100\b)[a-zA-Z(]/);
+    }
   });
 
   it("no em-dash in v2 copy", () => {
-    for (const f of [
-      "src/components/v2/v2-shell.tsx",
-      "src/components/v2/missions-table.tsx",
-      "src/components/v2/last-replies.tsx",
-      "src/components/v2/performance-card.tsx",
-      "src/app/(authed)/v2/layout.tsx",
-    ]) {
+    for (const f of V2_FILES) {
       const code = read(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
       // "—" is allowed only as the absent-value marker in a `"—"` string literal.
       const stripped = code.replace(/"—"/g, "");

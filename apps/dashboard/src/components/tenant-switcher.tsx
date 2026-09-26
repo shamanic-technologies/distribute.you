@@ -140,7 +140,7 @@ function Submenu({ title, children }: { title: string; children: React.ReactNode
  * chip so the two can never diverge — the only difference is where the caller
  * anchors it.
  */
-function TenantMenu({
+export function TenantMenu({
   t,
   onDone,
 }: {
