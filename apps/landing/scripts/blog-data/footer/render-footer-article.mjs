@@ -33,13 +33,15 @@ const tallyAt = (path) => {
 };
 
 // The arms are named in the reader's words, never the test's.
+// Every label states BOTH variables, the visible link and the header, so no row reads as
+// the only one that has a header. The signature is named only where it changes.
 const ARM_LABEL = {
-  link_header: "Visible link + header",
-  no_footer: "No opt-out at all",
-  body_only: "Body only, no signature",
-  link_only: "Visible link, no header",
-  header_only: "Header only",
-  reply_stop: "Header + \"Reply stop\" line",
+  link_header: "Link + header",
+  no_footer: "No link, no header",
+  body_only: "No link, no header, no signature",
+  link_only: "Link, no header",
+  header_only: "Header, no link",
+  reply_stop: "Header + \"Reply stop\", no link",
 };
 
 const countLine = (t, extra) =>
@@ -84,8 +86,8 @@ const HANDLERS = {
   raw: (p) => String(get(p.trim())),
   runchart: runChart,
   summary: (title) => chart(title.trim(), [
-    { label: "Visible unsubscribe link", tally: facts.visibleLink },
-    { label: "No visible link", tally: facts.noVisibleLink },
+    { label: "With the visible link", tally: facts.visibleLink },
+    { label: "Without the visible link", tally: facts.noVisibleLink },
   ]),
 };
 

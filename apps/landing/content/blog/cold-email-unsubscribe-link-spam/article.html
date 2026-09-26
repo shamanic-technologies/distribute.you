@@ -15,16 +15,16 @@
 <p><strong>The visible unsubscribe link was the spam trigger.</strong> With the link in the body, <strong>79 of 196</strong> messages that arrived went to spam (40%). Without it, <strong>0 of 200</strong> did, whatever else the footer carried.</p>
 
 <figure>
-<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Share of emails landing in spam, every run pooled (lower is better): No visible link 0% (0 of 200 in spam), Visible unsubscribe link 40% (79 of 196 in spam, 4 never arrived)" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Share of emails landing in spam, every run pooled (lower is better): Without the visible link 0% (0 of 200 in spam), With the visible link 40% (79 of 196 in spam, 4 never arrived)" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Share of emails landing in spam, every run pooled (lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">No visible link</text>
-<rect x="170" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
-<text x="186" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">0 of 200 in spam</text>
-<text x="0" y="126" font-size="14" fill="#475569">Visible unsubscribe link</text>
-<rect x="170" y="108" width="212" height="26" rx="5" fill="#dc2626"/>
-<text x="392" y="127" font-size="16" font-weight="700" fill="#0f172a">40%</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">79 of 196 in spam, 4 never arrived</text>
+<text x="0" y="74" font-size="14" fill="#475569">Without the visible link</text>
+<rect x="166" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="182" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="166" y="95" font-size="11" fill="#94a3b8">0 of 200 in spam</text>
+<text x="0" y="126" font-size="14" fill="#475569">With the visible link</text>
+<rect x="166" y="108" width="214" height="26" rx="5" fill="#dc2626"/>
+<text x="390" y="127" font-size="16" font-weight="700" fill="#0f172a">40%</text>
+<text x="166" y="147" font-size="11" fill="#94a3b8">79 of 196 in spam, 4 never arrived</text>
 </svg>
 </figure>
 
@@ -32,23 +32,23 @@
 
 <h2 id="run-one">Run one: the footer, or nothing</h2>
 
-<p>The footer we shipped, visible link plus header, sent 15 of 48 to spam (31%). The same email with no opt-out of any kind: 0 of 50. The body alone, without even a signature: 0 of 50. So the problem sat in the footer, not in the words above it.</p>
+<p>The footer we shipped, visible link plus header, sent 15 of 48 to spam (31%). The same email with no link and no header: 0 of 50. Without the signature too: 0 of 50. So the problem sat in the footer, not in the words above it.</p>
 
 <figure>
-<svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Run one: spam share by footer (lower is better): No opt-out at all 0% (0 of 50 in spam), Body only, no signature 0% (0 of 50 in spam), Visible link + header 31% (15 of 48 in spam, 2 never arrived)" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Run one: spam share by footer (lower is better): No link, no header 0% (0 of 50 in spam), No link, no header, no signature 0% (0 of 50 in spam), Link + header 31% (15 of 48 in spam, 2 never arrived)" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Run one: spam share by footer (lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">No opt-out at all</text>
-<rect x="170" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
-<text x="186" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
-<text x="170" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
-<text x="0" y="126" font-size="14" fill="#475569">Body only, no signature</text>
-<rect x="170" y="108" width="6" height="26" rx="5" fill="#2563eb"/>
-<text x="186" y="127" font-size="16" font-weight="700" fill="#0f172a">0%</text>
-<text x="170" y="147" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
-<text x="0" y="178" font-size="14" fill="#475569">Visible link + header</text>
-<rect x="170" y="160" width="164" height="26" rx="5" fill="#fca5a5"/>
-<text x="344" y="179" font-size="16" font-weight="700" fill="#0f172a">31%</text>
-<text x="170" y="199" font-size="11" fill="#94a3b8">15 of 48 in spam, 10 senders, 15 inboxes, 2 never arrived</text>
+<text x="0" y="74" font-size="14" fill="#475569">No link, no header</text>
+<rect x="225" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="241" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="225" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
+<text x="0" y="126" font-size="14" fill="#475569">No link, no header, no signature</text>
+<rect x="225" y="108" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="241" y="127" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="225" y="147" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
+<text x="0" y="178" font-size="14" fill="#475569">Link + header</text>
+<rect x="225" y="160" width="147" height="26" rx="5" fill="#fca5a5"/>
+<text x="382" y="179" font-size="16" font-weight="700" fill="#0f172a">31%</text>
+<text x="225" y="199" font-size="11" fill="#94a3b8">15 of 48 in spam, 10 senders, 15 inboxes, 2 never arrived</text>
 </svg>
 </figure>
 
@@ -57,20 +57,20 @@
 <p>Ten other sending addresses, the same inboxes. We split the footer in two. The visible link without the header sent 20 of 49 to spam (41%). The header without the link: 0 of 50. Both together: 15 of 49 (31%).</p>
 
 <figure>
-<svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Run two: spam share by footer (lower is better): Header only 0% (0 of 50 in spam), Visible link + header 31% (15 of 49 in spam, 1 never arrived), Visible link, no header 41% (20 of 49 in spam, 1 never arrived)" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Run two: spam share by footer (lower is better): Header, no link 0% (0 of 50 in spam), Link + header 31% (15 of 49 in spam, 1 never arrived), Link, no header 41% (20 of 49 in spam, 1 never arrived)" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Run two: spam share by footer (lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">Header only</text>
-<rect x="160" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
-<text x="176" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
-<text x="160" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
-<text x="0" y="126" font-size="14" fill="#475569">Visible link + header</text>
-<rect x="160" y="108" width="167" height="26" rx="5" fill="#fca5a5"/>
-<text x="337" y="127" font-size="16" font-weight="700" fill="#0f172a">31%</text>
-<text x="160" y="147" font-size="11" fill="#94a3b8">15 of 49 in spam, 10 senders, 15 inboxes, 1 never arrived</text>
-<text x="0" y="178" font-size="14" fill="#475569">Visible link, no header</text>
-<rect x="160" y="160" width="221" height="26" rx="5" fill="#dc2626"/>
-<text x="391" y="179" font-size="16" font-weight="700" fill="#0f172a">41%</text>
-<text x="160" y="199" font-size="11" fill="#94a3b8">20 of 49 in spam, 10 senders, 15 inboxes, 1 never arrived</text>
+<text x="0" y="74" font-size="14" fill="#475569">Header, no link</text>
+<rect x="150" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="166" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 15 inboxes</text>
+<text x="0" y="126" font-size="14" fill="#475569">Link + header</text>
+<rect x="150" y="108" width="171" height="26" rx="5" fill="#fca5a5"/>
+<text x="331" y="127" font-size="16" font-weight="700" fill="#0f172a">31%</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">15 of 49 in spam, 10 senders, 15 inboxes, 1 never arrived</text>
+<text x="0" y="178" font-size="14" fill="#475569">Link, no header</text>
+<rect x="150" y="160" width="226" height="26" rx="5" fill="#dc2626"/>
+<text x="386" y="179" font-size="16" font-weight="700" fill="#0f172a">41%</text>
+<text x="150" y="199" font-size="11" fill="#94a3b8">20 of 49 in spam, 10 senders, 15 inboxes, 1 never arrived</text>
 </svg>
 </figure>
 
@@ -81,16 +81,16 @@
 <p>We replaced the link with one plain line, <em>Not relevant? Reply "stop" and I won't email you again.</em>, and kept the header. Once it was live we tested the deployed footer against the old one, ten other sending addresses, same minutes. Old footer: 29 of 50 in spam (58%). New footer: 0 of 50.</p>
 
 <figure>
-<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Run three: old footer against the new one (lower is better): Header + &quot;Reply stop&quot; line 0% (0 of 50 in spam), Visible link + header 58% (29 of 50 in spam)" font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Run three: old footer against the new one (lower is better): Header + &quot;Reply stop&quot;, no link 0% (0 of 50 in spam), Link + header 58% (29 of 50 in spam)" font-family="Inter, system-ui, sans-serif">
 <text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Run three: old footer against the new one (lower is better)</text>
-<text x="0" y="74" font-size="14" fill="#475569">Header + &quot;Reply stop&quot; line</text>
-<rect x="192" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
-<text x="208" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
-<text x="192" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 10 inboxes</text>
-<text x="0" y="126" font-size="14" fill="#475569">Visible link + header</text>
-<rect x="192" y="108" width="295" height="26" rx="5" fill="#dc2626"/>
-<text x="497" y="127" font-size="16" font-weight="700" fill="#0f172a">58%</text>
-<text x="192" y="147" font-size="11" fill="#94a3b8">29 of 50 in spam, 10 senders, 10 inboxes</text>
+<text x="0" y="74" font-size="14" fill="#475569">Header + &quot;Reply stop&quot;, no link</text>
+<rect x="216" y="56" width="6" height="26" rx="5" fill="#2563eb"/>
+<text x="232" y="75" font-size="16" font-weight="700" fill="#0f172a">0%</text>
+<text x="216" y="95" font-size="11" fill="#94a3b8">0 of 50 in spam, 10 senders, 10 inboxes</text>
+<text x="0" y="126" font-size="14" fill="#475569">Link + header</text>
+<rect x="216" y="108" width="281" height="26" rx="5" fill="#dc2626"/>
+<text x="507" y="127" font-size="16" font-weight="700" fill="#0f172a">58%</text>
+<text x="216" y="147" font-size="11" fill="#94a3b8">29 of 50 in spam, 10 senders, 10 inboxes</text>
 </svg>
 </figure>
 
