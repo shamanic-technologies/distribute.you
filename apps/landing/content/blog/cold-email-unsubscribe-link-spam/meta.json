@@ -1,0 +1,9 @@
+{
+  "slug": "cold-email-unsubscribe-link-spam",
+  "title": "Does the unsubscribe link send cold email to spam? We tested every footer",
+  "excerpt": "Same email, same senders, same inboxes, same minute: only the opt-out changed. The visible unsubscribe link was what Gmail sent to spam, the one-click header cost nothing. Plus what the law in six countries actually asks for, and it is not a link.",
+  "tags": ["cold email", "deliverability", "unsubscribe", "spam", "CAN-SPAM", "Gmail"],
+  "publishedAt": "2026-09-26T06:00:00.000Z",
+  "coverImagePath": "/blog/cold-email-unsubscribe-link-spam/hero.png",
+  "source": "manual"
+}
