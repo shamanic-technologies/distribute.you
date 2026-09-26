@@ -1719,23 +1719,17 @@ const BrandConversionRatesSchema = z
     brandId: z.string(),
     minMeasuredFromReached: z.number(),
     contactedRecipients: z.number(),
-    // The flat list of legs, once the producer serves it that way.
-    legs: z.array(EffectiveLegRateSchema).optional(),
-    // HISTORY: the producer's older grouping, under its historical names, read only to
-    // be flattened below. Delete once features-service serves `legs` everywhere.
-    funnels: z.array(z.object({ arrows: z.array(EffectiveLegRateSchema) })).optional(),
+    // Every leg of the brand, flat. The producer's older grouping of them is not read.
+    legs: z.array(EffectiveLegRateSchema),
   })
   .transform((body) => {
     const legs: EffectiveLegRate[] = [];
     const seen = new Set<string>();
-    const groups = body.legs ? [{ arrows: body.legs }] : body.funnels ?? [];
-    for (const group of groups) {
-      for (const leg of group.arrows) {
-        const id = `${leg.fromStep}\u0000${leg.toStep}`;
-        if (seen.has(id)) continue;
-        seen.add(id);
-        legs.push(leg);
-      }
+    for (const leg of body.legs) {
+      const id = `${leg.fromStep}\u0000${leg.toStep}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      legs.push(leg);
     }
     return {
       brandId: body.brandId,

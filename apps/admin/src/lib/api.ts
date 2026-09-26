@@ -7024,10 +7024,6 @@ const PublicChannelSchema = z.object({
     maxDaysToFirstProduction: z.coerce.number(),
   }),
   stepTransitions: z.array(PublicStepTransitionSchema),
-  /** DERIVED upstream from the legs, so the two can never disagree. */
-  salesFunnels: z.array(
-    z.object({ key: z.string(), name: z.string(), steps: z.array(z.string()) }),
-  ),
 });
 const PublicChannelCatalogueSchema = z.object({
   channels: z.array(PublicChannelSchema),
@@ -7082,60 +7078,47 @@ export async function getPublicChannelCatalogue(): Promise<PublicChannelCatalogu
   return parsed.data;
 }
 
-const PublicPairStepSchema = z.object({
-  step: z.string(),
-  /** True for the step the funnel is NAMED after. */
-  milestone: z.boolean(),
-  /** Null, never 0, when the leg cannot be priced. */
-  costPerStepUsd: z.coerce.number().nullable(),
+/**
+ * One outcome a channel's legs reach, priced at the CHEAPEST path that reaches it (features-service
+ * picks; nothing here compares). `costPerOutcomeUsd` is null, never 0, when no path can price it,
+ * and `unpricedReason` then names the missing ingredient.
+ */
+const PublicChannelOutcomeSchema = z.object({
+  step: PublicChannelStepSchema,
+  /** True when the channel itself LANDS a lead on this step; false when a later leg does. */
+  landedByChannel: z.boolean(),
+  costPerOutcomeUsd: z.coerce.number().nullable(),
   unpricedReason: z.string().nullable(),
 });
-const PublicChannelFunnelPairSchema = z.object({
+const PublicChannelOutcomeEconomicsEntrySchema = z.object({
   channelSlug: z.string(),
   channelName: z.string(),
-  funnelKey: z.string(),
-  funnelName: z.string(),
-  funnelSteps: z.array(z.string()),
-  result: z.discriminatedUnion("measured", [
-    z.object({
-      measured: z.literal(true),
-      economics: z.object({
-        steps: z.array(PublicPairStepSchema),
-        costPerSaleUsd: z.coerce.number().nullable(),
-        costPerSaleUnpricedReason: z.string().nullable(),
-        returnPerDollar: z.coerce.number().nullable(),
-        lifetimeRevenueUsd: z.coerce.number().nullable(),
-        evidence: z.object({
-          totalSpentUsd: z.coerce.number(),
-          conversationsProduced: z.coerce.number(),
-          websiteVisitsProduced: z.coerce.number(),
-          brandCount: z.coerce.number(),
-        }),
-      }),
-    }),
-    z.object({
-      measured: z.literal(false),
-      /** WHICH ingredient is missing, named by the producer. */
-      reason: z.string(),
-    }),
-  ]),
+  outcomes: z.array(PublicChannelOutcomeSchema),
+  /** PROJECTED return per dollar on the channel's best-returning path. Null when none is priced. */
+  returnPerDollar: z.coerce.number().nullable(),
+  /** The legs of that best path, in order. */
+  returnPathLegKeys: z.array(z.string()).nullable(),
 });
-const PublicChannelFunnelEconomicsSchema = z.object({
+const PublicChannelOutcomeEconomicsSchema = z.object({
   channelSlug: z.string().nullable(),
-  pairs: z.array(PublicChannelFunnelPairSchema),
+  channels: z.array(PublicChannelOutcomeEconomicsEntrySchema),
 });
-export type PublicChannelFunnelPair = z.infer<typeof PublicChannelFunnelPairSchema>;
-export type PublicChannelFunnelEconomics = z.infer<typeof PublicChannelFunnelEconomicsSchema>;
+export type PublicChannelOutcome = z.infer<typeof PublicChannelOutcomeSchema>;
+export type PublicChannelOutcomeEconomicsEntry = z.infer<typeof PublicChannelOutcomeEconomicsEntrySchema>;
+export type PublicChannelOutcomeEconomics = z.infer<typeof PublicChannelOutcomeEconomicsSchema>;
 
-/** Every pair in the catalogue. Omitting the channel is what returns them all. */
-export async function getPublicChannelFunnelEconomics(): Promise<PublicChannelFunnelEconomics> {
-  const raw = await apiCall<unknown>(`/public/channel-funnel-economics`);
-  const parsed = PublicChannelFunnelEconomicsSchema.safeParse(raw);
+/**
+ * Every channel's projected price per outcome. Omitting the channel is what returns them all.
+ * PROJECTED, never the realized return a client reads on their dashboard.
+ */
+export async function getPublicChannelOutcomeEconomics(): Promise<PublicChannelOutcomeEconomics> {
+  const raw = await apiCall<unknown>(`/public/channel-outcome-economics`);
+  const parsed = PublicChannelOutcomeEconomicsSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[admin] getPublicChannelFunnelEconomics: response shape mismatch", {
+    console.error("[admin] getPublicChannelOutcomeEconomics: response shape mismatch", {
       issues: parsed.error.issues,
     });
-    throw new Error("[admin] getPublicChannelFunnelEconomics: invalid response shape");
+    throw new Error("[admin] getPublicChannelOutcomeEconomics: invalid response shape");
   }
   return parsed.data;
 }

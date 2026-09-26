@@ -29,12 +29,6 @@ const FILES = walk(SRC).map((path) => ({ rel: relative(SRC, path), src: readFile
 const WIRE_NAME_FILES: Record<string, string> = {
   // features-service's revenue body names its step walk `funnelSteps`; parsed into `stepWalk`.
   "lib/revenue-parse.ts": "funnelSteps",
-  // features-service's conversion-rates body groups legs under its older names; flattened.
-  "lib/api.ts": "funnels",
-  // the showcase read's historical field name `funnels`, read in one place.
-  "lib/start-proof.ts": "funnels",
-  // the producer's route path `features/showcase-funnels`.
-  "app/api/public/catalogue/route.ts": "showcase-funnels",
 };
 
 describe("no sales funnel in apps/dashboard/src", () => {

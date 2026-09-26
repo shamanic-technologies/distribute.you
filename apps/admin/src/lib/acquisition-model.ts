@@ -1,20 +1,23 @@
 /**
  * The acquisition model, as the fleet actually declares it.
  *
- * Everything a customer buys is one pair: a SALES FUNNEL (the sequence of steps
- * from a first signal to a paid client) bought through an ACQUISITION CHANNEL
- * (where we go to produce that first signal). features-service publishes both
- * halves and the join between them: a channel states the steps it can PRODUCE,
- * a funnel states the step it STARTS on, and the sellable pairs fall out of
- * that. So this module holds NO catalogue of its own — it shapes what the wire
- * says into rows a table can render, and a channel or funnel that ships
- * upstream appears here the same day.
+ * Everything a customer buys is an OUTCOME (a step a lead reaches: a positive reply, a
+ * website visit, a paid client), reached through LEGS (one step to the next), each
+ * performed by an ACQUISITION CHANNEL. features-service publishes the channels, the legs
+ * they perform and the projected price of every outcome their legs reach, so this module
+ * holds NO catalogue of its own: it shapes what the wire says into rows a table can
+ * render, and a channel or a leg that ships upstream appears here the same day.
  *
  * Alias-free on purpose (the only import is type-only and erased at build), so
  * this file carries real unit tests rather than source-substring guards.
  */
 
-import type { PublicChannel, PublicChannelFunnelPair, PublicStepTransition } from "./api";
+import type {
+  PublicChannel,
+  PublicChannelOutcomeEconomicsEntry,
+  PublicChannelStep,
+  PublicStepTransition,
+} from "./api";
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -53,8 +56,8 @@ export function channelOperatorLabel(operator: string | null | undefined): strin
 }
 
 /**
- * The leg in words: what a channel moves a lead FROM and TO. `from: null` means the lead was not on
- * the funnel at all, which is every entry channel, so it reads as producing the step rather than as
+ * The leg in words: what a channel moves a lead FROM and TO. `from: null` means the lead was on no
+ * step at all, which is every entry channel, so it reads as producing the step rather than as
  * converting one.
  */
 export function legLabel(transition: PublicStepTransition): string {
@@ -64,108 +67,88 @@ export function legLabel(transition: PublicStepTransition): string {
 }
 
 /**
- * Why a pair carries no measured economics. features-service names the missing
- * INGREDIENT rather than returning an empty figure, so the table states the
- * reason instead of a dash a reader has to interpret.
+ * Why an outcome carries no price. features-service names the missing INGREDIENT
+ * rather than returning an empty figure, so the table states the reason instead
+ * of a dash a reader has to interpret. An unknown token is rendered verbatim.
  */
-const UNMEASURED_REASON_LABEL: Record<string, string> = {
-  no_spend_recorded: "Nothing spent through this pair yet",
-  no_entry_step_produced: "The entry step has never been produced here",
-  no_economics_declared: "No brand has declared this funnel's economics",
+const UNPRICED_REASON_LABEL: Record<string, string> = {
+  no_spend_recorded: "Nothing spent through this channel yet",
+  no_entry_step_produced: "The first step has never been produced here",
+  no_economics_declared: "No brand has declared the economics this outcome is priced on",
+  rate_not_declared: "No brand has declared a conversion rate on the way to it",
+  rate_is_zero: "A declared rate on the way to it is zero",
 };
 
-export function unmeasuredReasonLabel(reason: string | null | undefined): string {
-  if (!reason) return "Not measured";
-  return UNMEASURED_REASON_LABEL[reason] ?? reason;
-}
-
-/** Why ONE step of an otherwise measured pair carries no price. */
-const UNPRICED_STEP_LABEL: Record<string, string> = {
-  rate_not_declared: "No brand has declared this leg's conversion rate",
-  rate_is_zero: "The declared rate for this leg is zero",
-};
-
-export function unpricedStepLabel(reason: string | null | undefined): string {
+export function unpricedReasonLabel(reason: string | null | undefined): string {
   if (!reason) return "Not priced";
-  return UNPRICED_STEP_LABEL[reason] ?? reason;
+  return UNPRICED_REASON_LABEL[reason] ?? reason;
 }
 
 // ---------------------------------------------------------------------------
-// Funnels, derived from the channels that can sell them
+// Legs, read off the channels that perform them
 // ---------------------------------------------------------------------------
 
-export type FunnelSummary = {
+export type LegSummary = {
   key: string;
-  name: string;
-  /** The whole step sequence, worded as brand-service words it. */
-  steps: string[];
-  /** The step the funnel STARTS on. This is what a channel has to produce. */
-  entryStep: string | null;
-  /** How many published channels may be sold through it. */
+  /** The leg in words, `legLabel`'s reading. */
+  label: string;
+  /** True for a leg that starts from nothing: it opens a lead's path. */
+  entry: boolean;
+  /** How many published channels perform it. */
   channelCount: number;
 };
 
 /**
- * The funnel catalogue, read off the channels rather than kept here. A funnel
- * nothing can sell has no row, which is the honest reading: a funnel with no
- * channel able to produce its entry step is not on sale.
+ * The leg catalogue, read off the channels rather than kept here. A leg no
+ * channel performs has no row: nothing can buy it.
  *
- * Ordered by how many channels can sell it (widest first), then by name, so the
- * table is stable across polls.
+ * Ordered entry legs first, then by how many channels perform it (widest first),
+ * then by words, so the list is stable across polls.
  */
-export function funnelCatalogueFrom(channels: PublicChannel[]): FunnelSummary[] {
-  const byKey = new Map<string, FunnelSummary>();
+export function legCatalogueFrom(channels: PublicChannel[]): LegSummary[] {
+  const byKey = new Map<string, LegSummary>();
   for (const channel of channels) {
-    for (const funnel of channel.salesFunnels ?? []) {
-      const existing = byKey.get(funnel.key);
+    const seen = new Set<string>();
+    for (const transition of channel.stepTransitions ?? []) {
+      const key = transition.legKey ?? `${transition.from?.key ?? "start"}_to_${transition.to.key}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const existing = byKey.get(key);
       if (existing) {
         existing.channelCount += 1;
         continue;
       }
-      const steps = funnel.steps ?? [];
-      byKey.set(funnel.key, {
-        key: funnel.key,
-        name: funnel.name,
-        steps,
-        entryStep: steps[0] ?? null,
+      byKey.set(key, {
+        key,
+        label: legLabel(transition),
+        entry: transition.from === null,
         channelCount: 1,
       });
     }
   }
   return [...byKey.values()].sort(
-    (a, b) => b.channelCount - a.channelCount || a.name.localeCompare(b.name),
+    (a, b) =>
+      Number(b.entry) - Number(a.entry) ||
+      b.channelCount - a.channelCount ||
+      a.label.localeCompare(b.label),
   );
 }
 
 // ---------------------------------------------------------------------------
-// The funnel x channel matrix
+// The outcome x channel matrix
 // ---------------------------------------------------------------------------
 
-export type StepCost = {
-  step: string;
-  /** True for the step the funnel is NAMED after. */
-  milestone: boolean;
-  costPerStepUsd: number | null;
-  unpricedReason: string | null;
-};
-
 export type MatrixCell =
-  /** This channel cannot produce anything this funnel starts on. */
-  | { kind: "not_sellable" }
-  /** Sellable, and features-service has priced it. */
-  | {
-      kind: "measured";
-      returnPerDollar: number | null;
-      costPerSaleUsd: number | null;
-      lifetimeRevenueUsd: number | null;
-      steps: StepCost[];
-    }
-  /** Sellable, and features-service says which ingredient is missing. */
-  | { kind: "unmeasured"; reason: string }
+  /** No leg this channel's paths walk lands on this outcome. */
+  | { kind: "not_reached" }
+  /** Reached, and features-service has priced it (PROJECTED, cheapest path). */
+  | { kind: "priced"; costPerOutcomeUsd: number; landedByChannel: boolean }
+  /** Reached, and features-service says which ingredient is missing. */
+  | { kind: "unpriced"; reason: string | null; landedByChannel: boolean }
   /**
-   * Sellable, and the economics read carries no row for it. Deliberately its
-   * OWN state: reading a missing row as "not sellable" would state something
-   * the catalogue contradicts one column over.
+   * The economics read carries no entry for this channel at all. Deliberately
+   * its OWN state: reading a missing entry as "not reached" would state
+   * something the channel table one band up contradicts.
    */
   | { kind: "unknown" };
 
@@ -179,56 +162,51 @@ export type MatrixRow = {
   operatedBy: string;
   /** One entry per leg this channel performs, in the catalogue's own order. */
   legLabels: string[];
-  /** True when every leg starts from nothing, i.e. the channel only ever opens a funnel. */
+  /** True when every leg starts from nothing, i.e. the channel only ever opens a path. */
   entryOnly: boolean;
-  sellableFunnelCount: number;
-  /** One entry per funnel of the catalogue, in catalogue order. */
+  /** How many outcomes its paths reach, as served. Null when the economics read has no entry. */
+  reachedOutcomeCount: number | null;
+  /** PROJECTED return per dollar on the channel's best-returning path, verbatim. */
+  bestReturnPerDollar: number | null;
+  /** One entry per step of the catalogue, in catalogue order. */
   cells: MatrixCell[];
 };
 
-function cellFromPair(pair: PublicChannelFunnelPair): MatrixCell {
-  const result = pair.result;
-  if (result.measured) {
-    return {
-      kind: "measured",
-      returnPerDollar: result.economics.returnPerDollar,
-      costPerSaleUsd: result.economics.costPerSaleUsd,
-      lifetimeRevenueUsd: result.economics.lifetimeRevenueUsd,
-      steps: result.economics.steps.map((step) => ({
-        step: step.step,
-        milestone: step.milestone,
-        costPerStepUsd: step.costPerStepUsd,
-        unpricedReason: step.unpricedReason,
-      })),
-    };
-  }
-  return { kind: "unmeasured", reason: result.reason };
-}
-
 /**
- * One row per published channel, one cell per funnel of the catalogue.
+ * One row per published channel, one cell per step of the catalogue.
  *
- * A channel keeps its row whatever it can sell — a channel able to sell nothing
- * is a real state of the catalogue and hiding it would make the page disagree
+ * A channel keeps its row whatever it reaches: a channel able to reach nothing
+ * is a real state of the catalogue, and hiding it would make the page disagree
  * with the channel table above it.
  */
 export function buildMatrixRows(
   channels: PublicChannel[],
-  funnels: FunnelSummary[],
-  pairs: PublicChannelFunnelPair[],
+  steps: PublicChannelStep[],
+  economics: PublicChannelOutcomeEconomicsEntry[],
 ): MatrixRow[] {
-  const pairByKey = new Map<string, PublicChannelFunnelPair>();
-  for (const pair of pairs) pairByKey.set(`${pair.channelSlug}|${pair.funnelKey}`, pair);
+  const bySlug = new Map<string, PublicChannelOutcomeEconomicsEntry>();
+  for (const entry of economics) bySlug.set(entry.channelSlug, entry);
 
   return [...channels]
     .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.name.localeCompare(b.name))
     .map((channel) => {
-      const sellable = new Set((channel.salesFunnels ?? []).map((f) => f.key));
-      const cells = funnels.map<MatrixCell>((funnel) => {
-        if (!sellable.has(funnel.key)) return { kind: "not_sellable" };
-        const pair = pairByKey.get(`${channel.slug}|${funnel.key}`);
-        if (!pair) return { kind: "unknown" };
-        return cellFromPair(pair);
+      const entry = bySlug.get(channel.slug);
+      const byStep = new Map((entry?.outcomes ?? []).map((o) => [o.step.key, o]));
+      const cells = steps.map<MatrixCell>((step) => {
+        if (!entry) return { kind: "unknown" };
+        const outcome = byStep.get(step.key);
+        if (!outcome) return { kind: "not_reached" };
+        return typeof outcome.costPerOutcomeUsd === "number"
+          ? {
+              kind: "priced",
+              costPerOutcomeUsd: outcome.costPerOutcomeUsd,
+              landedByChannel: outcome.landedByChannel,
+            }
+          : {
+              kind: "unpriced",
+              reason: outcome.unpricedReason,
+              landedByChannel: outcome.landedByChannel,
+            };
       });
       return {
         slug: channel.slug,
@@ -240,45 +218,42 @@ export function buildMatrixRows(
         operatedBy: channel.operatedBy,
         legLabels: (channel.stepTransitions ?? []).map(legLabel),
         entryOnly: (channel.stepTransitions ?? []).every((t) => t.from === null),
-        sellableFunnelCount: sellable.size,
+        reachedOutcomeCount: entry ? entry.outcomes.length : null,
+        bestReturnPerDollar: entry?.returnPerDollar ?? null,
         cells,
       };
     });
 }
 
 export type MatrixSummary = {
-  /** Pairs that CAN be sold: every cell that is not `not_sellable`. */
-  sellable: number;
-  measured: number;
-  unmeasured: number;
+  /** Outcomes some channel reaches: every cell that is not `not_reached` or `unknown`. */
+  reached: number;
+  priced: number;
+  unpriced: number;
   unknown: number;
 };
 
 /**
- * How many pairs exist and how many we can actually price.
+ * How many (channel, outcome) cells exist and how many we can actually price.
  *
  * A count of the cells on screen, not a metric derived from served figures, so
  * it stays on the right side of "the dashboard renders, it never computes".
- * Worth stating: at 33 channels the matrix is mostly the same grey word, and a
- * reader deserves to know at a glance that the emptiness IS the answer.
  */
 export function summariseCells(rows: MatrixRow[]): MatrixSummary {
-  const summary: MatrixSummary = { sellable: 0, measured: 0, unmeasured: 0, unknown: 0 };
+  const summary: MatrixSummary = { reached: 0, priced: 0, unpriced: 0, unknown: 0 };
   for (const row of rows) {
     for (const cell of row.cells) {
-      if (cell.kind === "not_sellable") continue;
-      summary.sellable += 1;
-      if (cell.kind === "measured") summary.measured += 1;
-      else if (cell.kind === "unmeasured") summary.unmeasured += 1;
-      else summary.unknown += 1;
+      if (cell.kind === "not_reached") continue;
+      if (cell.kind === "unknown") {
+        summary.unknown += 1;
+        continue;
+      }
+      summary.reached += 1;
+      if (cell.kind === "priced") summary.priced += 1;
+      else summary.unpriced += 1;
     }
   }
   return summary;
-}
-
-/** The per-step prices of one pair, or an empty list when it is not measured. */
-export function stepCostsForPair(cell: MatrixCell): StepCost[] {
-  return cell.kind === "measured" ? cell.steps : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -326,45 +301,38 @@ export const MODEL_OBJECTS: ModelObject[] = [
     relatesTo: "Belongs to one brand.",
   },
   {
-    name: "Sales funnel",
-    what: "The funnel of steps from a first signal to a paid client, with a conversion rate on every arrow.",
-    owner: "brand-service declares it per brand; features-service publishes the catalogue",
-    key: "funnelKey",
-    relatesTo: "A brand declares the funnels it sells through, and prices each one.",
-  },
-  {
-    name: "Funnel step",
-    what: "One stage of a funnel. The step a funnel is named after is its milestone.",
-    owner: "brand-service words it, features-service prices it",
-    key: "the step's own words",
-    relatesTo: "Sits inside one funnel, between two conversion rates.",
-  },
-  {
-    name: "Producible step",
-    what: "A kind of first signal a channel knows how to produce. This is what joins a channel to a funnel.",
-    owner: "features-service",
+    name: "Step",
+    what: "One stage a lead can reach: a positive reply, a website visit, a booked meeting, a paid client.",
+    owner: "features-service publishes the vocabulary",
     key: "step key",
-    relatesTo: "A channel produces some; a funnel starts on one.",
+    relatesTo: "An outcome is the step a customer buys.",
+  },
+  {
+    name: "Leg",
+    what: "One move from a step to the next, or from nothing to a first step. This is what joins a channel to an outcome.",
+    owner: "features-service",
+    key: "legKey",
+    relatesTo: "A channel performs some; a brand states a conversion rate on each.",
   },
   {
     name: "Acquisition channel",
     what: "Where we go to produce that first signal. A channel IS a feature slug in this fleet.",
     owner: "features-service",
     key: "featureSlug",
-    relatesTo: "Sells the funnels whose entry step it can produce.",
+    relatesTo: "Performs legs, and so reaches the outcomes those legs land on.",
   },
   {
     name: "Campaign",
-    what: "What actually runs: one offer, sold through one funnel, on one channel.",
+    what: "What actually runs: one offer, bought for one leg, on one channel.",
     owner: "campaign-service",
-    key: "offerId x funnelKey x featureSlug",
+    key: "offerId x legKey x featureSlug",
     relatesTo: "Belongs to a brand, and is what every lead and every cost is filed under.",
   },
   {
     name: "Daily budget",
     what: "The ceiling a customer sets on what a campaign may spend in a day. Zero means stopped.",
     owner: "billing-service",
-    key: "org x brand x funnel x channel x offer",
+    key: "org x brand x offer x leg x channel",
     relatesTo: "Funds exactly one campaign.",
   },
   {

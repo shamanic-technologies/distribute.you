@@ -60,30 +60,28 @@ export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
 // ─────────────────────────────────────────────────────────────────────────
 // The named clients: the homepage's three proof cards, off the same read.
 //
-// features-service publishes the step counts and the realized return of the clients
-// who agreed to be named (one entry per path they ran, under the producer's own
-// historical field name `funnels`, read here and nowhere else). The card leads with
+// features-service publishes the outcome counts and the realized return of the clients
+// who agreed to be named (`/public/stats/showcase-outcomes`: one entry per step their
+// legs reach, merged across every leg they ran). The card leads with
 // the PERSON behind the number, and the person is not on the wire (brand-service holds a domain and a
 // name, not a founder's face), so the three are stated here, keyed on the domain
 // the producer serves. A brand the producer serves that this map does not name
 // draws no card: a client's figures never appear without their consent.
 
-export interface ShowcaseStep {
+/** One outcome a named client reached: a step, or `contacted` for the outreach base. */
+export interface ShowcaseOutcome {
   key: string;
   label: string;
   peopleReached: number | null;
   costPerReachUsd?: number | null;
 }
 
-/** One path a named client ran: its realized return and the steps it reached. */
-export interface ShowcasePath {
-  returnPerDollar?: number | null;
-  steps: ShowcaseStep[];
-}
-
 export interface ShowcaseBrand {
   brand: { id: string; name: string; domain: string };
-  funnels: ShowcasePath[];
+  /** In the producer's order: `contacted` first, then every step the brand's legs reach. */
+  outcomes: ShowcaseOutcome[];
+  /** The brand's own REALIZED return across everything it ran. */
+  returnPerDollar?: number | null;
   measured: boolean;
   unmeasuredReason: string | null;
 }
@@ -115,7 +113,7 @@ export const SHOWCASE_PEOPLE: Record<string, ShowcasePerson> = {
 
 /** One proof card: a person, their return, the outcome it reached, the counts. */
 export interface ProofCard {
-  /** Stable per card: the domain plus the path's position in the producer's list. */
+  /** Stable per card: one card per named client, so the domain. */
   id: string;
   domain: string;
   person: ShowcasePerson;
@@ -131,7 +129,7 @@ export interface ProofCard {
 export const MAX_PROOF_CARDS = 3;
 
 /**
- * The TOP THREE named clients by return, whatever path they ran.
+ * The TOP THREE named clients by return, whatever they bought.
  *
  * Owner-decided (2026-09-18): the cards are the best returns we can name, not
  * the clients who happened to run what the visitor picked; each card names the
@@ -156,27 +154,24 @@ export function proofCardsFor(
   for (const b of brands) {
     const person = people[b.brand?.domain];
     if (!person || !b.measured) continue;
-    (b.funnels ?? []).forEach((path, i) => {
-      const ret = path.returnPerDollar;
-      if (typeof ret !== "number" || !Number.isFinite(ret) || ret <= 0) return;
-      const steps = path.steps ?? [];
-      const first = steps[1] ?? null;
-      const reached = steps.filter((s) => typeof s.peopleReached === "number" && s.peopleReached > 0);
-      cards.push({
-        id: `${b.brand.domain}:${i}`,
-        domain: b.brand.domain,
-        person,
-        outcomeLabel: reached.length > 1 ? reached[reached.length - 1].label : null,
-        returnPerDollar: ret,
-        firstStep: first
-          ? {
-              label: first.label,
-              costPerReachUsd:
-                typeof first.costPerReachUsd === "number" ? first.costPerReachUsd : null,
-            }
-          : null,
-        counts: reached.map((s) => ({ label: s.label, peopleReached: s.peopleReached as number })),
-      });
+    const ret = b.returnPerDollar;
+    if (typeof ret !== "number" || !Number.isFinite(ret) || ret <= 0) continue;
+    const outcomes = b.outcomes ?? [];
+    const first = outcomes[1] ?? null;
+    const reached = outcomes.filter((s) => typeof s.peopleReached === "number" && s.peopleReached > 0);
+    cards.push({
+      id: b.brand.domain,
+      domain: b.brand.domain,
+      person,
+      outcomeLabel: reached.length > 1 ? reached[reached.length - 1].label : null,
+      returnPerDollar: ret,
+      firstStep: first
+        ? {
+            label: first.label,
+            costPerReachUsd: typeof first.costPerReachUsd === "number" ? first.costPerReachUsd : null,
+          }
+        : null,
+      counts: reached.map((s) => ({ label: s.label, peopleReached: s.peopleReached as number })),
     });
   }
   cards.sort((a, b) => b.returnPerDollar - a.returnPerDollar);

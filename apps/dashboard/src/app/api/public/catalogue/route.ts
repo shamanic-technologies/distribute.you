@@ -122,8 +122,8 @@ async function readProof(): Promise<StartProofPayload> {
       "return-on-spend",
       `features/return-on-spend?featureSlug=${CHANNEL_SLUG}&minSpendUsd=${MIN_SPEND_USD}`,
     ),
-    // The producer's route keeps its historical name; nothing here reads it as a funnel.
-    readSoft<{ brands?: ShowcaseBrand[] }>("showcase", "features/showcase-funnels"),
+    // Per OUTCOME: every step each named client reached, merged across what it ran.
+    readSoft<{ brands?: ShowcaseBrand[] }>("showcase", "features/showcase-outcomes"),
   ]);
 
   const median = fleetReturn?.measured ? fleetReturn.medianReturnPerDollar : null;
