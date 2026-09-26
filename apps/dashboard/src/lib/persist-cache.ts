@@ -209,6 +209,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // from the per-feature entry above and get their own roots.
   "offerRevenue",
   "brandRevenue",
+  // What the contacted-but-not-engaged leads are worth (v2 Deals), a separate figure.
+  "contactedValue",
   "featureRevenueByCampaign",
   "brandOfferMoney",
   "featurePipelineActivity",

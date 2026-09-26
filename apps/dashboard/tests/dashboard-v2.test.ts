@@ -300,6 +300,17 @@ describe("v2 Deals states who we contacted", () => {
   });
 });
 
+describe("v2 Deals prices the contacted column off features-service", () => {
+  const src = read("src/components/v2/deals-page.tsx");
+  it("reads the served contacted value and computes none of it", () => {
+    expect(src).toContain("getContactedValue(brandId, valueIds)");
+    expect(src).toContain('["contactedValue", brandId, valueIds.join(",")]');
+    expect(src).toContain("contactedValue.data?.totalExpectedValueUsd");
+    expect(src).not.toMatch(/expectedValueUsd\s*\*/);
+    expect(src).not.toMatch(/\.reduce\(/);
+  });
+});
+
 describe("Keel parity, second pass", () => {
   const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
   const V2 = "src/components/v2/";
