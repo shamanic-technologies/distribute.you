@@ -4119,6 +4119,84 @@ export async function getContactedValue(brandId: string, leadIds: string[]): Pro
 }
 
 /**
+ * What each Deals-board column holds — features-service `GET /brands/:brandId/deals-value`.
+ * A SEPARATE figure (in no pipeline, ROI or cost total). A column is lead-service's standing;
+ * Interested is priced at each person's expected value, Won at the stated sale else the
+ * brand's client value, company-deduped for the column total. `valueUsd: null` always comes
+ * with the producer's `unvaluedReason`, never a zero. Vocabularies are read as plain strings:
+ * the producer owns them and may widen them.
+ */
+const DealsValueSchema = z.object({
+  brandId: z.string(),
+  lifetimeRevenueUsd: z.number().nullable(),
+  columns: z.array(
+    z.object({
+      standing: z.string(),
+      valueUsd: z.number().nullable(),
+      unvaluedReason: z.string().nullable(),
+      basis: z.string().nullable(),
+      leadCount: z.number().nullable(),
+      organizationCount: z.number().nullable(),
+      unpricedLeadCount: z.number().nullable(),
+      leads: z.array(
+        z.object({
+          leadId: z.string(),
+          valueUsd: z.number().nullable(),
+          valueSource: z.string().nullable().optional(),
+          zeroValueReason: z.string().nullable().optional(),
+        }),
+      ),
+    }),
+  ),
+});
+export type DealsValue = z.infer<typeof DealsValueSchema>;
+
+export async function getDealsValue(brandId: string): Promise<DealsValue> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/deals-value`);
+  const parsed = DealsValueSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getDealsValue] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getDealsValue: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * How the runs of each group ENDED and how long they took — runs-service
+ * `GET /v1/stats/run-outcomes` (gateway `/v1/runs/stats/run-outcomes`). Entry runs only
+ * (the producer's default scope): one row per run an agent started, not per service call.
+ * `successRate` is completed / ended, null when none ended; `medianDurationMs` is over
+ * completed runs, null when none completed. Both served, never derived here.
+ */
+const RunOutcomeGroupSchema = z.object({
+  dimensions: z.record(z.string(), z.string().nullable()),
+  runCount: z.number(),
+  completedCount: z.number(),
+  failedCount: z.number(),
+  runningCount: z.number(),
+  successRate: z.number().nullable(),
+  medianDurationMs: z.number().nullable(),
+});
+export type RunOutcomeGroup = z.infer<typeof RunOutcomeGroupSchema>;
+
+export async function getRunOutcomes(params: {
+  brandId: string;
+  groupBy: string;
+  campaignIds?: string[];
+  startedAfter: string;
+}): Promise<RunOutcomeGroup[]> {
+  const query = new URLSearchParams({ brandId: params.brandId, groupBy: params.groupBy, startedAfter: params.startedAfter });
+  if (params.campaignIds && params.campaignIds.length > 0) query.set("campaignIds", params.campaignIds.slice(0, 500).join(","));
+  const raw = await apiCall<unknown>(`/runs/stats/run-outcomes?${query}`);
+  const parsed = z.object({ groups: z.array(RunOutcomeGroupSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getRunOutcomes] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getRunOutcomes: invalid response shape");
+  }
+  return parsed.data.groups;
+}
+
+/**
  * What a BRAND returned — across every acquisition channel it runs.
  *
  * The offer read above, one level further up, and NOT the sum of it: a brand holds

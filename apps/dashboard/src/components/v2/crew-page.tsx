@@ -12,7 +12,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission, type CrewSummary } from "@/components/v2/use-missions";
-import { useCrewRuns, useRecentRuns, runState, runTaskLabel, type CrewRuns } from "@/components/v2/runs";
+import { formatRunDuration, useCrewOutcomes, useCrewRuns, useRecentRuns, runState, runTaskLabel, type CrewOutcomes, type CrewRuns } from "@/components/v2/runs";
 import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
@@ -50,6 +50,7 @@ export function CrewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { missions, crews, settled, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
+  const { byCrew: outcomesByCrew, settled: outcomesSettled } = useCrewOutcomes(brandId, missionByCampaignId);
   const recent = useRecentRuns(brandId, 60);
   const revenue = useBrandRevenue(brandId);
   const { cents: ceiling } = useRunningDailyBudgetCents(brandId, { enabled: revenue.enabled });
@@ -137,6 +138,8 @@ export function CrewPage() {
                   crew={c}
                   missions={missions.filter((m) => m.crew.key === c.crew.key)}
                   runs={byCrew.get(c.crew.key) ?? null}
+                  outcomes={outcomesByCrew.get(c.crew.key) ?? null}
+                  outcomesSettled={outcomesSettled}
                   runsSettled={runsSettled}
                   lastRun={lastRunByCrew.get(c.crew.key) ?? null}
                   workHref={v2Href(orgId, brandId, "work")}
@@ -183,6 +186,8 @@ function CrewCard({
   crew,
   missions,
   runs,
+  outcomes,
+  outcomesSettled,
   runsSettled,
   lastRun,
   workHref,
@@ -191,6 +196,8 @@ function CrewCard({
   crew: CrewSummary;
   missions: Mission[];
   runs: CrewRuns | null;
+  outcomes: CrewOutcomes | null;
+  outcomesSettled: boolean;
   runsSettled: boolean;
   lastRun: RunRow | null;
   workHref: string;
@@ -317,12 +324,20 @@ function CrewCard({
         </div>
         <div className="border-b border-[var(--line-subtle)] p-3">
           <div className="flex items-baseline justify-between gap-2">
-            <p className="k-label">Last run</p>
-            <p className="k-fg3 text-[11px]">7 days</p>
+            <p className="k-label">Success</p>
+            <p className="k-fg3 text-[11px]">30 days</p>
           </div>
-          <p className="mt-1.5 text-[20px] font-medium leading-6 tabular-nums">
-            {!runsSettled ? "–" : runs?.lastRunAt ? timeAgo(runs.lastRunAt) : "None"}
-          </p>
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <SuccessRing rate={outcomes?.month?.successRate ?? null} color={crew.crew.color} />
+              <span className="text-[20px] font-medium leading-6 tabular-nums">
+                {!outcomesSettled ? "–" : outcomes?.month?.successRate != null ? `${Math.round(outcomes.month.successRate * 100)}%` : "—"}
+              </span>
+            </span>
+            <span className="k-fg3 text-[11px] tabular-nums">
+              {outcomes?.month ? `${formatCount(outcomes.month.failedCount)} failed` : ""}
+            </span>
+          </div>
         </div>
         <div className="border-r border-[var(--line-subtle)] p-3">
           <div className="flex items-baseline justify-between gap-2">
@@ -344,16 +359,17 @@ function CrewCard({
         </div>
         <div className="p-3">
           <div className="flex items-baseline justify-between gap-2">
-            <p className="k-label">Result</p>
-            <p className="k-fg3 truncate text-[11px]">all time</p>
+            <p className="k-label">Median run</p>
+            <p className="k-fg3 text-[11px]">today</p>
           </div>
           <p className="mt-1.5 text-[20px] font-medium leading-6 tabular-nums">
-            {resultCount != null ? formatCount(resultCount) : "–"}
-            {priced && priced.count != null && (
-              <span className="k-fg3 ml-1.5 text-[12px] font-normal">
-                {isLearning(priced.count) ? "learning" : priced.costCents != null ? `${formatCentsAsUsdAdaptive(priced.costCents)} each` : ""}
-              </span>
-            )}
+            {!outcomesSettled ? "–" : outcomes?.today?.medianDurationMs != null ? formatRunDuration(outcomes.today.medianDurationMs) : "—"}
+          </p>
+          <p className="k-fg3 mt-0.5 truncate text-[11px]">
+            {resultCount != null ? `${formatCount(resultCount)} result${resultCount === 1 ? "" : "s"} all time` : outcomes?.today ? "" : "no finished run today"}
+            {priced && priced.count != null && resultCount != null
+              ? isLearning(priced.count) ? " · learning" : priced.costCents != null ? ` · ${formatCentsAsUsdAdaptive(priced.costCents)} each` : ""
+              : ""}
           </p>
         </div>
       </div>
@@ -544,5 +560,19 @@ function RecentRuns({
         </div>
       )}
     </div>
+  );
+}
+
+/** Keel's success ring: the share of finished runs that completed, in the crew's colour. */
+function SuccessRing({ rate, color }: { rate: number | null; color: string }) {
+  const r = 8;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" className="shrink-0 -rotate-90">
+      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--data-track)" strokeWidth="3" />
+      {rate != null && (
+        <circle cx="11" cy="11" r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${Math.max(0.01, rate) * c} ${c}`} />
+      )}
+    </svg>
   );
 }

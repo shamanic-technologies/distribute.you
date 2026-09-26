@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getContactedValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
+import { getContactedValue, getDealsValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadStatusLabel } from "@/lib/lead-status";
-import { LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
+import { STANDINGS_BY_COLUMN, LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -62,13 +62,28 @@ export function DealsPage() {
   const won = totals?.won ?? null;
   const pipeline = revenue.data?.totalPipelineUsd ?? null;
   const biggest = Math.max(1, ...columns.map((c) => totals?.[c.key] ?? 0));
-  // A card states its company's value: features-service's own per-organisation figure,
-  // looked up by domain (a display join, never a sum).
-  const valueByDomain = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const o of revenue.data?.organizations ?? []) if (o.orgDomain) m.set(o.orgDomain, o.expectedRevenueUsd);
-    return m;
-  }, [revenue.data]);
+  // What each column holds, priced by features-service (a separate figure, not in the
+  // pipeline or the ROI). A column is one standing; its value and each card's value are
+  // read, never summed here.
+  const dealsValue = useAuthQuery(["dealsValue", brandId], () => getDealsValue(brandId), {
+    refetchInterval: POLL_INTERVAL,
+    enabled: !!brandId,
+  });
+  const servedFor = useMemo(() => {
+    const byStanding = new Map((dealsValue.data?.columns ?? []).map((c) => [c.standing, c]));
+    return (column: LeadBoardColumnKey): ServedColumnValue | null => {
+      const standings = STANDINGS_BY_COLUMN[column];
+      if (column === "contacted" || standings.length !== 1) return null;
+      const c = byStanding.get(standings[0]);
+      if (!c) return null;
+      return {
+        valueUsd: c.valueUsd,
+        unvaluedReason: c.unvaluedReason,
+        basis: c.basis,
+        byLead: new Map(c.leads.map((l) => [l.leadId, l.valueUsd])),
+      };
+    };
+  }, [dealsValue.data]);
   return (
     <>
       <TopBar
@@ -143,7 +158,7 @@ export function DealsPage() {
               share={(totals?.[c.key] ?? 0) / biggest}
               crewFilter={crewFilter}
               missionFor={(id) => missionByCampaignId.get(id) ?? null}
-              valueFor={(domain) => (domain ? valueByDomain.get(domain) ?? null : null)}
+              served={servedFor(c.key)}
             />
           ))}
         </div>
@@ -161,7 +176,7 @@ function DealColumn({
   share,
   crewFilter,
   missionFor,
-  valueFor,
+  served,
 }: {
   brandId: string;
   orgId: string;
@@ -171,7 +186,7 @@ function DealColumn({
   share: number;
   crewFilter: string | null;
   missionFor: (campaignId: string) => Mission | null;
-  valueFor: (domain: string | null) => number | null;
+  served: ServedColumnValue | null;
 }) {
   const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
   const q = useAuthQuery(
@@ -206,6 +221,17 @@ function DealColumn({
           <span className="k-fg2 ml-auto text-[12px] tabular-nums" title="Expected value of these leads, from your conversion rates and client value. Not counted in your pipeline.">
             {formatUsdAdaptive(columnValue)} expected
           </span>
+        ) : served?.valueUsd != null ? (
+          <span
+            className="k-fg ml-auto text-[13px] font-medium tabular-nums"
+            title={
+              served.basis === "won_value"
+                ? "What was won: the amount stated on each sale, else your value of a client. One company counts once."
+                : "What these people are worth in expectation, the way your pipeline prices them. One company counts once."
+            }
+          >
+            {formatUsdAdaptive(served.valueUsd)}
+          </span>
         ) : null}
       </header>
       <div className="mb-3 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
@@ -222,7 +248,7 @@ function DealColumn({
             const m = missionFor(lead.campaignId);
             const status = getLeadConsolidatedStatus(lead);
             const at = leadDateForStatus(lead, status);
-            const value = valueFor(leadCompanyDomain(lead));
+            const value = served && lead.leadId ? served.byLead.get(lead.leadId) ?? null : null;
             return (
               <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-card block p-3">
                 <div className="flex items-center gap-2">
@@ -269,4 +295,12 @@ function DealColumn({
       </div>
     </section>
   );
+}
+
+/** One column's served value, and each of its cards' values by lead id. */
+interface ServedColumnValue {
+  valueUsd: number | null;
+  unvaluedReason: string | null;
+  basis: string | null;
+  byLead: Map<string, number | null>;
 }
