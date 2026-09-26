@@ -9,8 +9,8 @@
  * nothing new from any service.
  *
  * Names are OURS, stable per (channel, landing step), and there are only as many as
- * we have crews. A pair not listed here is named by its channel, which is true,
- * rather than by a made-up name nobody chose.
+ * we have crews. A pair not listed takes its CHANNEL's crew name (one per channel), and only a
+ * channel we have never named falls back to the channel's own words.
  *
  * Alias-free so it carries real unit tests.
  */
@@ -36,6 +36,19 @@ const CREW_NAMES: Record<string, { name: string; color: string; glyph: CrewGlyph
   "sales-crm-email-outreach|website_visit": { name: "Beacon", color: "var(--data-amber)", glyph: "triangle" },
 };
 
+/**
+ * A channel whose crew is named whatever step it lands on: the channels performing a
+ * single leg, or whose leg is not stated on older campaign rows. Every channel we fund
+ * gets a teammate's name, so no crew reads as a product label beside Scout and Herald.
+ */
+const CHANNEL_NAMES: Record<string, { name: string; color: string; glyph: CrewGlyph }> = {
+  "ai-meeting-booking": { name: "Pilot", color: "var(--data-lime)", glyph: "triangle" },
+  "pr-cold-email-outreach": { name: "Scribe", color: "var(--data-amber)", glyph: "diamond" },
+  "pr-expert-quote-outreach": { name: "Quill", color: "var(--data-sky)", glyph: "hex" },
+  "pr-expert-quote-opportunities": { name: "Ledger", color: "var(--data-violet)", glyph: "ring" },
+  "google-ads": { name: "Signal", color: "var(--data-amber)", glyph: "triangle" },
+};
+
 const FALLBACK = { color: "var(--fg-3)", glyph: "square" as CrewGlyph };
 
 export function crewKey(channelSlug: string, landingStep: string | null): string {
@@ -52,7 +65,7 @@ export function crewFor(
   channelName: string,
 ): CrewIdentity {
   const key = crewKey(channelSlug, landingStep);
-  const named = CREW_NAMES[key];
+  const named = CREW_NAMES[key] ?? CHANNEL_NAMES[channelSlug];
   return named
     ? { key, name: named.name, color: named.color, glyph: named.glyph }
     : { key, name: channelName, ...FALLBACK };

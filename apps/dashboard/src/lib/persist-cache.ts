@@ -179,6 +179,12 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadsPage",
   "leadBucketCounts",
   "leadStandingCounts",
+  // Dashboard v2: runs-service's per-campaign roll-up over a window (the crew
+  // cards' runs, spend and last-run) and the latest runs themselves (Work, a
+  // mission's timeline). Small, persisted so the cards paint from disk.
+  "v2RunsByCampaign",
+  "v2RunsWeek",
+  "v2RecentRuns",
   "leadHistory",
   // Per-lead generated email content — the leads detail-panel fetch, click-gated, so
   // re-opening a lead paints its last-known email from disk.

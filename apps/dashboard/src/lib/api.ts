@@ -8715,3 +8715,75 @@ export async function computeDomainAiVisibility(
   return parsed.data;
 }
 
+
+// ─── Runs (dashboard v2 crew + work) ───────────────────────────────────────
+//
+// runs-service is the ledger of every step a campaign's workflow took. v2 reads
+// it two ways, both served whole: the per-campaign roll-up over a window (a run
+// count, the spend those runs carried, when the last one started) and the list of
+// runs themselves, newest first. Nothing here counts or divides.
+
+const CampaignRunGroupSchema = z.object({
+  dimensions: z.object({ campaignId: z.string().nullable() }).passthrough(),
+  totalCostInUsdCents: z.string(),
+  runCount: z.number(),
+  maxStartedAt: z.string().nullish(),
+});
+
+export interface CampaignRunGroup {
+  campaignId: string | null;
+  runCount: number;
+  totalCostInUsdCents: number;
+  maxStartedAt: string | null;
+}
+
+export async function getBrandRunsByCampaign(
+  brandId: string,
+  window: { startedAfter: string; startedBefore?: string },
+): Promise<CampaignRunGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "campaignId", startedAfter: window.startedAfter });
+  if (window.startedBefore) query.set("startedBefore", window.startedBefore);
+  const raw = await apiCall<unknown>(`/runs/stats/costs?${query}`);
+  const parsed = z.object({ groups: z.array(CampaignRunGroupSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandRunsByCampaign: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getBrandRunsByCampaign: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    campaignId: g.dimensions.campaignId ?? null,
+    runCount: g.runCount,
+    totalCostInUsdCents: Number(g.totalCostInUsdCents),
+    maxStartedAt: g.maxStartedAt ?? null,
+  }));
+}
+
+const RunRowSchema = z.object({
+  id: z.string(),
+  campaignId: z.string().nullable(),
+  workflowSlug: z.string().nullable(),
+  featureSlug: z.string().nullable(),
+  serviceName: z.string(),
+  taskName: z.string(),
+  status: z.string(),
+  startedAt: z.string(),
+  completedAt: z.string().nullable(),
+  ownCostInUsdCents: z.string(),
+});
+
+export type RunRow = z.infer<typeof RunRowSchema>;
+
+export async function listBrandRunLedger(
+  brandId: string,
+  opts: { limit: number; startedAfter?: string; status?: string },
+): Promise<RunRow[]> {
+  const query = new URLSearchParams({ brandId, limit: String(opts.limit) });
+  if (opts.startedAfter) query.set("startedAfter", opts.startedAfter);
+  if (opts.status) query.set("status", opts.status);
+  const raw = await apiCall<unknown>(`/runs?${query}`);
+  const parsed = z.object({ runs: z.array(RunRowSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listBrandRunLedger: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] listBrandRunLedger: invalid response shape");
+  }
+  return parsed.data.runs;
+}
