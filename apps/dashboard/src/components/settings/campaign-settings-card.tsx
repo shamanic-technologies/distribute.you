@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  campaignStartRefusalMessage,
+  isPaymentDeclinedStop,
+  PAYMENT_DECLINED_LABEL,
+} from "@/lib/payment-declined";
+import { PaymentDeclinedNotice } from "@/components/billing/payment-declined-notice";
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -94,7 +100,11 @@ export function budgetClampMessage(fromUsd: number, toUsd: number): string {
  * the message would put a JSON blob in front of a customer.
  */
 export function campaignBudgetErrorMessage(err: unknown): string {
-  return controlWriteErrorMessage(err instanceof ApiError ? err.status : null, "budget");
+  // A refused RESTART carries campaign-service's own sentence (a declined payment,
+  // or billing it could not read): rendered verbatim rather than as a budget error.
+  const refusal =
+    err instanceof ApiError ? campaignStartRefusalMessage(err.status, err.body) : null;
+  return refusal ?? controlWriteErrorMessage(err instanceof ApiError ? err.status : null, "budget");
 }
 
 export function CampaignSettingsCard({
@@ -141,6 +151,9 @@ export function CampaignSettingsCard({
   // pill and the controls modal read. A second list of running-words is how two
   // surfaces come to disagree about whether one campaign is live.
   const savedRunning = campaign ? isRunningStatus(campaign.status) : false;
+  // Stopped by billing over a declined card rather than by a person: a restart is
+  // refused until the payment is fixed, so the card says so up front.
+  const declined = campaign ? isPaymentDeclinedStop(campaign) : false;
 
   // SEEDED from the queries and RE-SEEDED whenever the payload is a different
   // object than the one they were built from — never a once-per-mount latch,
@@ -314,11 +327,12 @@ export function CampaignSettingsCard({
 
   return (
     <div className="space-y-4">
+      {declined && <PaymentDeclinedNotice />}
       <section className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="mb-1 text-sm font-semibold text-gray-900">
-              {effectiveRunning ? "Running" : "Paused"}
+              {effectiveRunning ? "Running" : declined ? PAYMENT_DECLINED_LABEL : "Paused"}
             </h3>
             <p className="text-sm text-gray-500">
               {zeroed

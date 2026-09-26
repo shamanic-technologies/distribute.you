@@ -1,5 +1,6 @@
 "use client";
 
+import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -434,6 +435,7 @@ export default function BrandOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
+      <ScopePaymentDeclinedBand brandId={brandId} offerId={offerId} />
       <ScopeLearningBand phase={data?.learningPhase ?? null} brandId={brandId} offerId={offerId} />
         {/* No section header on this branch to sit beside, so the line stands
             on its own here — everywhere else it rides the Outreach heading. */}
@@ -455,6 +457,7 @@ export default function BrandOverviewPage() {
     <LearningToneProvider tone="primary">
     <DashboardPage width="wide" className="space-y-4">
       <RewardTaskBand task={rewardTask} settingsHref={`${basePath}/settings`} />
+      <ScopePaymentDeclinedBand brandId={brandId} offerId={offerId} />
       <ScopeLearningBand phase={data?.learningPhase ?? null} brandId={brandId} offerId={offerId} />
       {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
           charts the return instead. */}

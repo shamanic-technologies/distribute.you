@@ -76,6 +76,8 @@ export interface ControlCampaign extends CampaignBudgetRow {
    * modal that funds it is one campaign described twice.
    */
   legKey?: string | null;
+  /** Why campaign-service stopped it, when it says. See `lib/payment-declined.ts`. */
+  stopReason?: string | null;
   /**
    * When campaign-service created this row. Read only to pick which row of a
    * campaign a RESTART targets when none of them is running: the most recent one
@@ -141,6 +143,12 @@ export interface ControlRow {
   runningCampaignIds: string[];
   /** Is it running right now, per campaign-service's own word. */
   running: boolean;
+  /**
+   * Stopped because billing could not charge the org's card, not by a person.
+   * Starting it is refused until the customer pays and fixes the card, so the
+   * row says so instead of offering a restart that reads like any other.
+   */
+  paymentDeclined: boolean;
   /**
    * The (funnel, channel) its money is keyed on, or null for a campaign that
    * predates the funnels. Such a row can still be stopped and restarted — the
@@ -294,6 +302,7 @@ export function buildControlRows(
       // "Paused" for the same offer, the same funnel and the same channel, with
       // neither true and nothing ever going to run.
       running: false,
+      paymentDeclined: false,
       scope,
       savedCents,
       offerId: o.offerId,
@@ -311,6 +320,11 @@ export function buildControlRows(
         campaignId: representative.id,
         runningCampaignIds,
         running: runningCampaignIds.length > 0,
+        // The representative is the row a restart would address, so its reason is
+        // the one that decides whether that restart will be refused. Spelled here
+        // rather than imported: `payment-declined.ts` imports this module.
+        paymentDeclined:
+          runningCampaignIds.length === 0 && representative.stopReason === "payment_declined",
         scope,
         savedCents: scope
           ? campaignSavedCents(scope, representative.offerId ?? undefined, budgets)

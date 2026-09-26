@@ -933,6 +933,14 @@ export interface Campaign {
   clickDestinationUrl: string | null;
   endDate: string | null;
   toResumeAt: string | null;
+  /**
+   * WHY campaign-service stopped it: `manual` (a person), `org_teardown`, or
+   * `payment_declined` (billing could not charge the org's card, and every start
+   * is refused until the customer pays and fixes the card). Null on a running
+   * campaign and on one stopped before the reason was recorded. Read as a plain
+   * string: the vocabulary is campaign-service's and may grow.
+   */
+  stopReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
