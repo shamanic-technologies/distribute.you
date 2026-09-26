@@ -160,6 +160,8 @@ describe("v2 wiring", () => {
     expect(menus).toContain("supportWhatsAppHref(email,");
     // Team is a v2 page on Clerk's own members, read-only.
     expect(read("src/components/v2/team-page.tsx")).toContain("useOrganization({ memberships:");
+    // Staff join every org through god-mode: never list them as the customer's team.
+    expect(read("src/components/v2/team-page.tsx")).toContain("!isAdminEmail(m.publicUserData?.identifier)");
   });
 
   it("the v1 sidebar offers the switch, beta-only and badged", () => {
