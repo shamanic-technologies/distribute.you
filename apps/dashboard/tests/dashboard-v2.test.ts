@@ -379,3 +379,26 @@ describe("v2 sidebar Deals badge agrees with the Deals board", () => {
     expect(shell).not.toContain("standings.counts.sales_interest + standings.counts.customer");
   });
 });
+
+describe("sending block (features-service outcomes.sending)", () => {
+  it("parses the brand's sending block and keeps a missing one null", async () => {
+    const { RevenueSendingSchema } = await import("../src/lib/revenue-parse");
+    const body = {
+      recipientsSent: 250, recipientsDelivered: 240, recipientsBounced: 6, recipientsAwaitingDelivery: 4,
+      recipientsReplied: 3, recipientsRepliedPositive: 1,
+      deliveryRatePct: 96, bounceRatePct: 2.4, replyRatePct: 1.2, positiveReplyRatePct: 0.4,
+    };
+    expect(RevenueSendingSchema.parse(body).deliveryRatePct).toBe(96);
+    expect(RevenueSendingSchema.parse({ ...body, recipientsSent: 0, deliveryRatePct: null }).deliveryRatePct).toBeNull();
+  });
+
+  it("the v2 surfaces print the served rates and divide nothing", () => {
+    const page = read("src/components/v2/missions-page.tsx");
+    expect(page).toContain("data.sending.deliveryRatePct");
+    expect(page).toContain("recipientsBounced");
+    const table = read("src/components/v2/missions-table.tsx");
+    expect(table).toContain("g?.sentCount");
+    expect(table).toContain("g?.replyRatePct");
+    expect(read("src/lib/api.ts")).toContain("replyRatePct: g.outcomes?.sending?.replyRatePct");
+  });
+});

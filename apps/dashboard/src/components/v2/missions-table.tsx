@@ -32,6 +32,8 @@ function costPerResult(m: Mission): { value: string; unit: string } | null {
 }
 
 const n = (v: number | null | undefined) => (v == null ? "—" : formatCount(v));
+/** A served rate. One decimal under 10% (0.7% and 0.2% are different answers), whole above. */
+const pct = (v: number | null | undefined) => (v == null ? "—" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
 const TH = "k-label px-3 py-2.5 text-left font-medium";
 
 /**
@@ -54,11 +56,13 @@ export function MissionsTable({
   return (
     <div className="k-card overflow-hidden">
       <div className="k-scroll overflow-x-auto">
-        <table className="w-full min-w-[860px] text-[13px]">
+        <table className="w-full min-w-[1020px] text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
               <th className={`${TH} pl-4`}>Mission</th>
               <th className={TH}>State</th>
+              <th className={`${TH} text-right`}>Leads emailed</th>
+              <th className={`${TH} text-right`}>Reply rate</th>
               <th className={`${TH} text-right`}>Visits</th>
               <th className={`${TH} text-right`}>Pos. replies</th>
               <th className={`${TH} text-right`}>Cost / result</th>
@@ -71,14 +75,14 @@ export function MissionsTable({
             {!settled ? (
               [0, 1, 2].map((i) => (
                 <tr key={i} className="k-row">
-                  <td colSpan={8} className="px-4 py-3">
+                  <td colSpan={10} className="px-4 py-3">
                     <Shimmer className="h-6 w-full" />
                   </td>
                 </tr>
               ))
             ) : missions.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={10}>
                   <EmptyNote>No mission yet. A mission starts when a crew is funded for one of your offers.</EmptyNote>
                 </td>
               </tr>
@@ -108,6 +112,8 @@ export function MissionsTable({
                     <td className="px-3">
                       <StateDot running={m.running} hold={m.paymentHold} />
                     </td>
+                    <td className="px-3 text-right tabular-nums">{n(g?.sentCount)}</td>
+                    <td className="px-3 text-right tabular-nums">{pct(g?.replyRatePct)}</td>
                     <td className="px-3 text-right tabular-nums">{n(g?.websiteClicks)}</td>
                     <td className="px-3 text-right tabular-nums">{n(g?.positiveReplies)}</td>
                     <td className="px-3 text-right tabular-nums">
