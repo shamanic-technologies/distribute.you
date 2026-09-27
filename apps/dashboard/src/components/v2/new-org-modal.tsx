@@ -831,7 +831,7 @@ export function NewOrgModal({
               </Field>
               {recommended != null && (
                 <p className="k-fg2 text-[13px]">
-                  Recommended: {fmtUsd(recommended)} a day, about {leg.recommendedPerDay} {leg.recommendedPerDay === 1 ? leg.unit : leg.unitPlural} a day at today&apos;s price.
+                  {`Recommended: ${fmtUsd(recommended)} a day, about ${leg.recommendedPerDay} ${leg.recommendedPerDay === 1 ? leg.unit : leg.unitPlural} a day at today's price.`}
                 </p>
               )}
             </div>
