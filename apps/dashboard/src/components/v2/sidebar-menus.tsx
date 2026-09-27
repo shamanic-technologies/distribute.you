@@ -118,7 +118,6 @@ export function TenantSwitcherV2() {
         open={newOrgOpen}
         onClose={() => setNewOrgOpen(false)}
         existingOrgNames={t.memberships.map((m) => m.organization.name)}
-        returnOrgId={t.orgId ?? null}
       />
       <button
         type="button"
