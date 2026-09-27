@@ -71,7 +71,7 @@ export interface WorkflowGrainBlock {
 export interface WorkflowLadderRowShape {
   audienceId: string | null;
   workflow: { workflowDynastySlug: string };
-  estimatesByGrain: Partial<Record<"crossOrg" | "brand" | "campaign" | "audience", WorkflowGrainBlock>>;
+  estimatesByGrain: Partial<Record<"crossOrg" | "brand" | "offer" | "campaign" | "audience", WorkflowGrainBlock>>;
   measured: boolean;
   rank?: number | null;
 }

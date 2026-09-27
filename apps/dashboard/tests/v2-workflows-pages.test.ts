@@ -137,10 +137,12 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
     expect(page).not.toContain(">Our pick<");
   });
 
-  it("adds an Offer column read off the offer-grain grouped revenue", () => {
+  it("reads the Offer column off the SAME ladder as Brand, never the realized grouped revenue (features-service#1172)", () => {
     expect(list).toContain(">Offer</th>");
-    expect(list).toContain('["offerWorkflowRevenue", brandId, spec.featureSlug, offerId]');
-    expect(list).toContain("getOfferRevenueByWorkflow(");
+    expect(list).toContain("grainFigures(ladder?.estimatesByGrain.offer)?.costPerOutcomeUsd");
+    // The mature-cohort grouped revenue is a different basis: beside a ladder grain it printed a
+    // different number for the same scope on a one-offer brand.
+    expect(list).not.toContain("getOfferRevenueByWorkflow(");
   });
 
   it("states measured and projected in ONE cell, each named, never as a bare 'Est. return'", () => {

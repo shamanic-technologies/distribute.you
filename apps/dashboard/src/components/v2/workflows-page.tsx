@@ -11,9 +11,6 @@ import { grainFigures, scopeLadderRows } from "@/lib/workflow-grains";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
-import { getOfferRevenueByWorkflow } from "@/lib/api";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import {
@@ -166,19 +163,6 @@ function MissionSection({
   const prefetch = useRoutePrefetch();
   const [expanded, setExpanded] = useState(false);
   const r = useMissionWorkflowRanking(brandId, spec, true);
-  // The OFFER grain: the producer folds the campaigns selling this mission's offer per
-  // workflow. Served as a realized cost per outcome, read verbatim. A 404 (no campaign
-  // of the brand sells the offer on this channel) leaves the column on dashes.
-  const offerId = spec.mission.offerId;
-  const offerQ = useAuthQuery(
-    ["offerWorkflowRevenue", brandId, spec.featureSlug, offerId],
-    () => getOfferRevenueByWorkflow(spec.featureSlug, brandId, offerId),
-    { ...pollOptions, retry: false },
-  );
-  const offerBySlug = useMemo(
-    () => new Map((offerQ.data ?? []).map((g) => [g.workflowDynastySlug, g])),
-    [offerQ.data],
-  );
   const bySlug = useMemo(
     () => new Map(scopeLadderRows(r.allLadderRows, null).map((row) => [row.workflow.workflowDynastySlug, row])),
     [r.allLadderRows],
@@ -243,9 +227,10 @@ function MissionSection({
                     const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
                     const global = grainFigures(ladder?.estimatesByGrain.crossOrg)?.costPerOutcomeUsd ?? null;
                     const brand = grainFigures(ladder?.estimatesByGrain.brand)?.costPerOutcomeUsd ?? null;
-                    const offerGroup = offerBySlug.get(w.row.workflowDynastySlug);
-                    const offerCents = offerGroup ? (r.pair === "visit" ? offerGroup.cpcCents : offerGroup.cpprCents) : null;
-                    const offer = offerCents == null ? null : offerCents / 100;
+                    // The OFFER grain rides the SAME ladder as Global and Brand, on the brand's
+                    // basis, so a difference between the Brand and Offer columns is only ever a
+                    // difference in scope (features-service#1172).
+                    const offer = grainFigures(ladder?.estimatesByGrain.offer)?.costPerOutcomeUsd ?? null;
                     const href = hrefFor(w.row.workflowDynastySlug);
                     const model = workflowModelMark(w.row.contentModel);
                     const template = workflowTemplateLabel(w.row.contentPromptType);
