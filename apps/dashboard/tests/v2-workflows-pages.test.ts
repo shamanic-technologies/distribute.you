@@ -81,7 +81,8 @@ describe("the Actual cost basis is STAFF-only", () => {
   it("the toggle renders for staff only, with the Staff label, and defaults to User cost", () => {
     expect(over).toContain("const isStaff = useIsAdminUser();");
     expect(over).toContain('useState<"user" | "actual">("user")');
-    expect(over).toContain("{isStaff && (");
+    // The switch rides the section title's right slot: `right={isStaff && (...)}`.
+    expect(over).toContain("isStaff && (");
     expect(over).toContain('<MaturityBadge level="staff" />');
   });
 
@@ -93,5 +94,36 @@ describe("the Actual cost basis is STAFF-only", () => {
   it("a day with no known vendor cost is left out, never filled with the billed figure", () => {
     expect(over).toContain("points.filter((p) => p.spend != null)");
     expect(read("src/lib/api.ts")).toContain("cumulativeSpendUsd: z.coerce.number().nullable()");
+  });
+});
+
+describe("the ranking is asked per MISSION, and the pages speak v2", () => {
+  const data = read("src/components/v2/workflows-data.ts");
+  const list = read("src/components/v2/workflows-page.tsx");
+  const page = read("src/components/v2/workflow-page.tsx");
+
+  it("the ladder is asked with the mission's campaign, on the campaign Workflows page's own key", () => {
+    // A leg-keyed ranking with no campaign 409s on a brand selling several offers.
+    expect(data).toContain('["workflowRankLadder", brandId, legKey ?? "none", campaignId ?? "none"]');
+    expect(data).toContain("leg: legKey, campaignId }");
+    expect(read("src/components/workflows/campaign-workflows-page.tsx")).toContain('["workflowRankLadder", brandId, legKey ?? "none", campaignId]');
+  });
+
+  it("a workflow link names the mission, and an older crew-only link still resolves on a single mission", () => {
+    expect(read("src/lib/v2/routes.ts")).toContain("&mission=${encodeURIComponent(mission)}");
+    expect(list).toContain("crewParam(spec), spec.campaignId)");
+    expect(page).toContain("!missionRaw && crewSpecs.length === 1");
+  });
+
+  it("neither page imports v1 layout or v1 greys", () => {
+    for (const src of [list, page]) {
+      expect(src).not.toMatch(/WorkflowRankPanel|WorkflowStackLine|InfoTooltip|V2Page/);
+      expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|bg-black\//);
+    }
+  });
+
+  it("layers portal to the v2 layer and close on Esc", () => {
+    expect(page).toContain('document.getElementById("v2-portal")');
+    expect(page).toContain('e.key === "Escape"');
   });
 });
