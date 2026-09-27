@@ -26,7 +26,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const search = useSearchParams();
   // No brand in the URL (the org's brand picker): no brand sidebar to draw.
-  const brandId = useParams<{ brandId?: string }>().brandId;
+  const params = useParams<{ orgId?: string; brandId?: string }>();
+  const brandId = params.brandId;
   const hasBrand = Boolean(brandId);
   // A navigation closes the drawer, wherever it was started from.
   useEffect(() => setOpen(false), [pathname, search]);
@@ -40,7 +41,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
             open ? "translate-x-0 shadow-xl" : "-translate-x-full"
           }`}
         >
-          {hasBrand && <V2Sidebar />}
+          {hasBrand ? <V2Sidebar /> : params.orgId ? <V2OrgSidebar orgId={params.orgId} /> : null}
         </div>
         <main className="k-panel k-scroll relative my-2 ml-2 mr-2 min-w-0 flex-1 overflow-y-auto lg:ml-0">
           {/* Every brand page states it when billing has stopped the brand's missions
@@ -125,6 +126,23 @@ const ICONS = {
   card: "M2.5 4h11v8h-11zM2.5 6.5h11",
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
+
+/**
+ * The org's page before it has a brand (or while none is picked): no brand nav to draw,
+ * but the frame still says where you are and who is signed in, so the person can switch
+ * org, add a brand from the switcher, or sign out.
+ */
+function V2OrgSidebar({ orgId }: { orgId: string }) {
+  return (
+    <aside className="flex h-full w-[240px] max-w-[85vw] shrink-0 flex-col">
+      <div className="px-2 pt-2">
+        <TenantSwitcherV2 />
+      </div>
+      <div className="min-h-0 flex-1" />
+      <AccountMenuV2 orgId={orgId} brandId="" />
+    </aside>
+  );
+}
 
 function V2Sidebar() {
   const params = useParams<{ orgId?: string; brandId?: string }>();

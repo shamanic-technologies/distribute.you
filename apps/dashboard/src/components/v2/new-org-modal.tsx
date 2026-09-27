@@ -117,6 +117,7 @@ export function NewOrgModal({
   onClose,
   existingOrgNames,
   existingOrgId,
+  existingBrand,
 }: {
   open: boolean;
   onClose: () => void;
@@ -126,6 +127,12 @@ export function NewOrgModal({
    * on that org, and everything after it is the same.
    */
   existingOrgId?: string | null;
+  /**
+   * Resume a brand whose setup stopped before the campaign launched (the org is still
+   * not set up): the modal opens on the brand step with that brand already there, and
+   * Continue reads its site and carries on.
+   */
+  existingBrand?: { id: string; domain: string | null; name: string | null } | null;
 }) {
   const router = useRouter();
   const { user } = useUser();
@@ -142,10 +149,10 @@ export function NewOrgModal({
   const [orgName, setOrgName] = useState("");
   const [orgId, setOrgId] = useState<string | null>(existingOrgId ?? null);
   // Brand
-  const [hasWebsite, setHasWebsite] = useState(true);
-  const [website, setWebsite] = useState("");
-  const [brandName, setBrandName] = useState("");
-  const [brandId, setBrandId] = useState<string | null>(null);
+  const [hasWebsite, setHasWebsite] = useState(existingBrand ? Boolean(existingBrand.domain) : true);
+  const [website, setWebsite] = useState(existingBrand?.domain ?? "");
+  const [brandName, setBrandName] = useState(existingBrand?.name ?? "");
+  const [brandId, setBrandId] = useState<string | null>(existingBrand?.id ?? null);
   // Offers
   const [offerText, setOfferText] = useState("");
   const [offerProposals, setOfferProposals] = useState<OfferProposal[]>([]);
@@ -172,6 +179,8 @@ export function NewOrgModal({
 
   // Background prefills, keyed on the brand they were read for.
   const prefillRef = useRef<Promise<void> | null>(null);
+  const prefilledFor = useRef<string | null>(null);
+  const prefillFields = useRef<Promise<void> | null>(null);
   const editedRef = useRef<{ offer: boolean; audience: boolean; levers: boolean }>({ offer: false, audience: false, levers: false });
 
   // Seed the org name once, from the person's own name.
@@ -228,6 +237,9 @@ export function NewOrgModal({
    * its screen is two steps away.
    */
   function startPrefill(id: string): Promise<void> {
+    // Once per brand: going Back and Continue again must not pay for the same reads twice.
+    if (prefilledFor.current === id && prefillFields.current) return prefillFields.current;
+    prefilledFor.current = id;
     const fieldsRead = extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest", urlStrategy: "landing" }).catch((e) => {
       console.error("[new-org] field prefill failed:", e);
       return null;
@@ -253,6 +265,7 @@ export function NewOrgModal({
       if (icpText && !editedRef.current.audience) setAudienceText((cur) => cur || icpText);
     });
     prefillRef.current = Promise.all([fieldsApplied, icpApplied]).then(() => undefined);
+    prefillFields.current = fieldsApplied;
     return fieldsApplied;
   }
 
@@ -326,10 +339,13 @@ export function NewOrgModal({
     void run(async () => {
       // A brand with no website is created on the next screen, from what it sells: that
       // text is the only thing its fields can be read from.
-      if (hasWebsite && !brandId) {
-        const url = /^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`;
-        const { brandId: id } = await upsertBrand(url);
-        setBrandId(id);
+      if (hasWebsite) {
+        let id = brandId;
+        if (!id) {
+          const url = /^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`;
+          ({ brandId: id } = await upsertBrand(url));
+          setBrandId(id);
+        }
         // Wait for the site read so "What you sell" opens already drafted (owner-asked:
         // a loader here beats a field that fills in under the person's eyes).
         setReadingSite(true);
@@ -351,6 +367,9 @@ export function NewOrgModal({
       if (!id) {
         ({ brandId: id } = await createBrandWithoutWebsite(brandName.trim(), text));
         setBrandId(id);
+        void startPrefill(id);
+      } else {
+        // A resumed brand with no website: its reads never ran in this modal.
         void startPrefill(id);
       }
       const { offers, mainOfferIndex } = await proposeBrandOffers(id, text);

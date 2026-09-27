@@ -17,11 +17,18 @@ import { StorefrontIcon } from "@phosphor-icons/react/dist/csr/Storefront";
  * this page even while the org is not set up, instead of the full-page onboarding.
  * The `["brands"]` key v1 polls.
  */
-export function V2BrandPicker({ orgId }: { orgId: string }) {
+export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean }) {
   const q = useAuthQuery(["brands"], () => listBrands());
   const brands = q.data?.brands ?? null;
   const [adding, setAdding] = useState(false);
-  const modal = adding && <NewOrgModal open onClose={() => setAdding(false)} existingOrgNames={[]} existingOrgId={orgId} />;
+  // An org not set up yet: its brand pages are behind the edge's first-run gate (the old
+  // onboarding), so a brand is RESUMED in the v2 modal rather than opened.
+  const [resuming, setResuming] = useState<{ id: string; domain: string | null; name: string | null } | null>(null);
+  const modal = adding ? (
+    <NewOrgModal open onClose={() => setAdding(false)} existingOrgNames={[]} existingOrgId={orgId} />
+  ) : resuming ? (
+    <NewOrgModal open onClose={() => setResuming(null)} existingOrgNames={[]} existingOrgId={orgId} existingBrand={resuming} />
+  ) : null;
 
   if (brands !== null && brands.length === 0) {
     return (
@@ -64,12 +71,29 @@ export function V2BrandPicker({ orgId }: { orgId: string }) {
           {brands === null ? (
             <div className="p-4">{q.isError ? <p className="k-fg3 text-[13px]">We could not read your brands.</p> : <Shimmer className="h-10 w-full" />}</div>
           ) : (
-            brands.map((b) => (
-              <Link key={b.id} href={v2Base(orgId, b.id)} className="k-hover flex items-center gap-3 px-4 py-3 text-[13px]">
-                <BrandLogo domain={b.domain ?? null} size={20} className="shrink-0 rounded-[5px]" fallbackClassName="h-5 w-5 shrink-0" />
-                <span className="font-medium">{b.name || b.domain || "Brand"}</span>
-              </Link>
-            ))
+            brands.map((b) => {
+              const inner = (
+                <>
+                  <BrandLogo domain={b.domain ?? null} size={20} className="shrink-0 rounded-[5px]" fallbackClassName="h-5 w-5 shrink-0" />
+                  <span className="font-medium">{b.name || b.domain || "Brand"}</span>
+                  {!setUp && <span className="k-fg3 ml-auto text-[12px]">Finish setup</span>}
+                </>
+              );
+              return setUp ? (
+                <Link key={b.id} href={v2Base(orgId, b.id)} className="k-hover flex items-center gap-3 px-4 py-3 text-[13px]">
+                  {inner}
+                </Link>
+              ) : (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setResuming({ id: b.id, domain: b.domain ?? null, name: b.name ?? null })}
+                  className="k-hover flex w-full items-center gap-3 px-4 py-3 text-left text-[13px]"
+                >
+                  {inner}
+                </button>
+              );
+            })
           )}
         </div>
       </div>
