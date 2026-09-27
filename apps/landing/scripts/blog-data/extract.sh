@@ -107,6 +107,7 @@ run content_generation_service "
 SELECT g.campaign_id AS platform_campaign_id,
        g.lead_id,
        g.model,
+       g.prompt_type,
        g.workflow_slug,
        coalesce((s.value->>'step')::int, 1) AS step,
        g.subject,
