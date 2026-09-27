@@ -60,6 +60,8 @@ const nextConfig: NextConfig = {
       { source: "/performance/brands", destination: "/performance", permanent: true, missing: offLab },
       { source: "/performance/models", destination: "/performance", permanent: true, missing: offLab },
       { source: "/performance/prompts", destination: "/performance", permanent: true, missing: offLab },
+      // Blog slug shortened to its keyword after publication.
+      { source: "/blog/cold-email-open-tracking-pixel", destination: "/blog/cold-email-open-tracking", permanent: true, missing: offLab },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },
       { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false, missing: offLab },
     ];

@@ -91,7 +91,7 @@ spam folders have been emptied.
 
 ## The open-tracking article
 
-`content/blog/cold-email-open-tracking-pixel` is rendered from `pixel/`: one aggregate row per
+`content/blog/cold-email-open-tracking` is rendered from `pixel/`: one aggregate row per
 arm (pixel on, pixel off), read from instantly-service's own database. The snapshot carries
 counts only.
 

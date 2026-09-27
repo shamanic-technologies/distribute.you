@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROW, BAR_END, chartHeight, gutterFor } from "../chart-geometry.mjs";
 
-const SLUG = "cold-email-open-tracking-pixel";
+const SLUG = "cold-email-open-tracking";
 const [factsPath, contentDir] = process.argv.slice(2);
 if (!factsPath || !contentDir) throw new Error("usage: render-pixel-article.mjs <facts.json> <content-dir>");
 const facts = JSON.parse(readFileSync(factsPath, "utf8"));
