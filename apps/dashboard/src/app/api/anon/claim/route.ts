@@ -102,7 +102,11 @@ export async function POST(req: NextRequest) {
     // has an account and an org full of their work, and losing the signup over
     // a credit settle would be the expensive mistake. Billing makes a retry
     // safe and an unseeded org is unaffected by the call either way.
-    const settled = await settleWelcomeOnSignup(session.orgId);
+    //
+    // The welcome is once per PERSON (billing-service #507), so billing is told
+    // who signed up: the internal user uuid client-service wrote in this very
+    // claim. Absent, the settle still runs without it (logged loud inside).
+    const settled = await settleWelcomeOnSignup(session.orgId, outcome.userId);
 
     return cleared(
       req,
