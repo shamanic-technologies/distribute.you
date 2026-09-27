@@ -109,6 +109,8 @@ const MODEL_LABEL = {
   "glm-5.3-flash": "GLM 5.3 Flash",
   "deepseek-v4-pro": "DeepSeek V4 Pro",
   "deepseek-v4-flash": "DeepSeek V4 Flash",
+  "deepseek-flash": "DeepSeek V4 Flash",
+  "gemini-3.8-flash": "Gemini 3.8 Flash",
   "claude-sonnet-4-6": "Claude Sonnet 4.6",
   "claude-fable-5-1": "Claude Fable 5.1",
   "gpt-6-astra": "GPT-6 Astra",

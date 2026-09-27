@@ -11,8 +11,10 @@
 //    better return. Herald's outcome is a positive reply, Scout's a website visit (priced on the
 //    emails that carried a link, since a visit cannot come from an email without one).
 //  - A RATE is outcomes per 10,000 emails (Herald) or per 1,000 link-carrying emails (Scout).
-//  - A winner is only CROWNED past the strict floors the articles use for their best workflow;
-//    below them the page names a LEADER and says the counts are too thin to call.
+//  - The WINNER is always the first bar: the cheapest price, or the highest rate. Owner rule
+//    (2026-09-27): a thin bar is ranked where its value puts it, never sunk below the rest, and if
+//    it comes first it wins. `crowned` only says whether the winner also clears the strict floors
+//    the articles use for their best workflow; when it does not, the page says its counts are thin.
 //  - Every outcome figure leaves out the emails too young to have earned their outcome: the
 //    MATURATION window, measured in derive.mjs from our own send-to-outcome latencies. Every chart
 //    carries a `note` saying so, in the words a reader sees under it.
@@ -133,13 +135,13 @@ const OUTCOMES = {
 const counts = (o, row) => `${n(row[o.count])} ${row[o.count] === 1 ? o.noun : o.nounPlural} · ${n(row.emails)} ${o.emailsNoun}`;
 const rateText = (o, v) => `${v.toFixed(1)} ${o.rateShort}`;
 
-// A bar is THIN below the same floors that crown a winner, so the chart and the headline agree:
-// a cheap price on one lucky reply sits below the winner, marked, never above it.
+// A bar is THIN below the strict floors: drawn at its rank, marked, and weighed with its counts.
 const costThinStrict = (o, r) => r.emails < STRICT.minEmails || r[o.count] < o.strictOutcomes;
-// Costs: eligible bars cheapest first, then the thin ones; a row with no outcome has no price.
+// Costs: cheapest first, thin or not; a row with no outcome has no price.
+const byCost = (o) => (a, b) => a[o.cost] - b[o.cost] || b[o.count] - a[o.count];
 function costBars(o, rows, label = (b) => b, { ordinal = false } = {}) {
   const priced = rows.filter((r) => r[o.cost] !== null);
-  const ordered = ordinal ? priced : [...priced].sort((a, b) => Number(costThinStrict(o, a)) - Number(costThinStrict(o, b)) || a[o.cost] - b[o.cost]);
+  const ordered = ordinal ? priced : [...priced].sort(byCost(o));
   return ordered.map((r) => ({
     label: label(r.bucket),
     value: r[o.cost],
@@ -151,30 +153,31 @@ function costBars(o, rows, label = (b) => b, { ordinal = false } = {}) {
 // Rates: a zero is a measured zero and is drawn; a bucket under the email floor is thin.
 function rateBars(o, rows, label = (b) => b, { ordinal = false } = {}) {
   const drawn = rows.filter((r) => r.emails >= facts.floors.minEmails);
-  const ordered = ordinal ? drawn : [...drawn].sort((a, b) => b[o.rate] - a[o.rate]);
+  const ordered = ordinal ? drawn : [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
   return ordered.map((r) => ({
     label: label(r.bucket),
     value: r[o.rate],
     display: rateText(o, r[o.rate]),
     note: counts(o, r),
-    thin: r.emails < STRICT.minEmails,
+    thin: r.emails < STRICT.minEmails || r[o.count] < o.strictOutcomes,
   }));
 }
 
-// The winner on cost: crowned only past the strict floors; otherwise the cheapest priced row is a
-// LEADER, and the sentence says the counts are too thin to call it.
+// The winner is the first bar of the chart, thin or not: the cheapest price on cost, the highest
+// rate on rate. `crowned` says whether it also clears the strict floors.
 function costWinner(o, rows) {
-  const strict = rows.filter((r) => r[o.cost] !== null && r.emails >= STRICT.minEmails && r[o.count] >= o.strictOutcomes);
-  if (strict.length) return { row: [...strict].sort((a, b) => a[o.cost] - b[o.cost])[0], crowned: true };
   const priced = rows.filter((r) => r[o.cost] !== null);
   if (!priced.length) return null;
-  return { row: [...priced].sort((a, b) => a[o.cost] - b[o.cost])[0], crowned: false };
+  const row = [...priced].sort(byCost(o))[0];
+  return { row, crowned: !costThinStrict(o, row) };
 }
 function rateWinner(o, rows) {
-  const strict = rows.filter((r) => r.emails >= STRICT.minEmails);
-  if (!strict.length) return null;
-  return { row: [...strict].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails)[0], crowned: strict.some((r) => r[o.count] > 0) };
+  const drawn = rows.filter((r) => r.emails >= facts.floors.minEmails && r[o.count] > 0);
+  if (!drawn.length) return null;
+  const row = [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails)[0];
+  return { row, crowned: row.emails >= STRICT.minEmails && row[o.count] >= o.strictOutcomes };
 }
+const thinClause = (o, row) => `, on thin counts (${counts(o, row)})`;
 
 function monthLine(o, series, kind) {
   if (!series) return [];
@@ -251,9 +254,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       status: w ? "measured" : "not_enough_data",
       headline: !w
         ? `No ${dimNoun} has produced a ${o.noun} yet.`
-        : w.crowned
-          ? `${label(w.row.bucket)} wins at ${usd(w.row[o.cost])} per ${o.noun}.`
-          : `${label(w.row.bucket)} leads at ${usd(w.row[o.cost])} per ${o.noun}, on too few ${o.nounPlural} to call.`,
+        : `${label(w.row.bucket)} wins at ${usd(w.row[o.cost])} per ${o.noun}${w.crowned ? "" : thinClause(o, w.row)}.`,
       winner: w ? label(w.row.bucket) : null,
       result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
@@ -264,7 +265,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : `Nothing priced yet.`,
         ...(moved ? [`Over time: ${moved}.`] : []),
-        w && !w.crowned ? `We crown a winner past ${n(STRICT.minEmails)} ${o.emailsNoun} and ${o.strictOutcomes} ${o.nounPlural}; nothing clears that yet.` : null,
+        w && !w.crowned ? `The winner is thin: under ${n(STRICT.minEmails)} ${o.emailsNoun} or ${o.strictOutcomes} ${o.nounPlural}. Weigh it with its counts.` : null,
       ].filter(Boolean),
     });
   }
@@ -281,8 +282,8 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       question: `Which ${dimNoun} gets the most ${o.nounPlural}?`,
       status: w ? "measured" : "not_enough_data",
       headline: !w
-        ? `No ${dimNoun} has sent ${n(STRICT.minEmails)} ${o.emailsNoun} yet.`
-        : `${label(w.row.bucket)} leads with ${w.row[o.rate].toFixed(1)} ${o.nounPlural} ${o.rateUnit}.`,
+        ? `No ${dimNoun} has earned a ${o.noun} yet.`
+        : `${label(w.row.bucket)} wins with ${w.row[o.rate].toFixed(1)} ${o.nounPlural} ${o.rateUnit}${w.crowned ? "" : thinClause(o, w.row)}.`,
       winner: w ? label(w.row.bucket) : null,
       result: w ? { display: w.row[o.rate].toFixed(1), unit: `${o.nounPlural} ${o.rateUnit}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
@@ -293,7 +294,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}.` : null,
         ...(moved ? [`Over time: ${moved}.`] : []),
-        `Only a ${dimNoun} past ${n(STRICT.minEmails)} ${o.emailsNoun} can lead; a smaller one is drawn and marked thin.`,
+        `A ${dimNoun} under ${n(STRICT.minEmails)} ${o.emailsNoun} or ${o.strictOutcomes} ${o.nounPlural} is ranked where its rate puts it and marked thin.`,
       ].filter(Boolean),
     });
   }
