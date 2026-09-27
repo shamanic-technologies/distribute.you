@@ -66,7 +66,7 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
   winner: { label: "Winner", dot: "bg-[var(--data-teal)]" },
-  thin: { label: "Winner, thin counts", dot: "bg-[var(--data-amber)]" },
+  thin: { label: "No winner", dot: "bg-[var(--data-amber)]" },
   "no-data": { label: "Not enough data", dot: "border-[1.5px] border-[var(--fg-3)]" },
 };
 
@@ -223,7 +223,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
             {study.winner ?? <span className="k-fg4">{"—"}</span>}
           </p>
           <p className="k-fg3 mt-0.5 truncate text-[11px]">
-            {state === "winner" ? "clears our bar" : state === "thin" ? "on thin counts" : "nothing to compare"}
+            {state === "winner" ? "first bar" : "nothing to compare"}
           </p>
         </div>
         <div className="min-w-0 p-3">
@@ -266,7 +266,7 @@ export function V2ResearchPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {RESEARCH.studies.length} questions, {called} with a clear winner
+              {RESEARCH.studies.length} questions, {called} with a winner
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               What works in cold email, measured on every campaign we ran for every client, {monthText(RESEARCH.window.from)} to{" "}
@@ -301,7 +301,7 @@ export function V2ResearchPage() {
           <StatTile label="Workflows compared">
             <Figure value={v.workflows.toLocaleString("en-US")} />
           </StatTile>
-          <StatTile label="Clear winners" note={`of ${RESEARCH.studies.length}`}>
+          <StatTile label="Winners" note={`of ${RESEARCH.studies.length}`}>
             <div className="flex items-end justify-between gap-2">
               <Figure value={called} />
               <div className="flex min-w-0 flex-wrap justify-end gap-[3px]" aria-hidden="true">

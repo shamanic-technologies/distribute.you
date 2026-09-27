@@ -51,7 +51,7 @@ describe("research.json is coherent", () => {
         else expect(pts[i].value, s.id).toBeLessThanOrEqual(pts[i - 1].value);
       }
       expect(s.crowned, s.id).toBe(!pts[0].thin);
-      if (pts[0].thin) expect(s.headline, s.id).toContain("on thin counts");
+      expect(s.headline, s.id).not.toMatch(/thin/i);
     }
   });
 
