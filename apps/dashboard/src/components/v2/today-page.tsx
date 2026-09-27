@@ -53,6 +53,9 @@ import {
 } from "@/components/v2/people-bits";
 
 const SPARK_DAYS = 14;
+/** Meetings shown on Today, and how many are read to pick them by booking date. */
+const MEETINGS_SHOWN = 3;
+const MEETINGS_READ_LIMIT = 100;
 
 function greeting(now: Date): string {
   const h = now.getHours();
@@ -101,12 +104,23 @@ export function TodayPage() {
   const [cursor, setCursor] = useState(0);
   const visits = useLatestInBucket(brandId, "website_visit", 8);
   const replies = useLatestInBucket(brandId, "positive_reply", 8);
-  const meetings = useLatestInBucket(brandId, "meeting_booked", 3);
+  // lead-service orders a bucket by activity only, so the meetings are read wide
+  // and ordered here on the date each meeting was booked, newest first.
+  const meetingsQ = useLatestInBucket(brandId, "meeting_booked", MEETINGS_READ_LIMIT);
   const outcomeByLeadId = useMemo(() => {
     const m = new Map<string, LeadOutcome>();
     for (const l of data?.leadOutcomes ?? []) m.set(l.leadId, l);
     return m;
   }, [data]);
+  const meetingAt = (lead: Lead) => (lead.leadId ? outcomeByLeadId.get(lead.leadId)?.meetingBookedAt ?? null : null);
+  const latestMeetings = useMemo(() => {
+    // Wait for the dates too, or the list paints in activity order and then reshuffles.
+    if (!meetingsQ.data || (data === undefined && !rev.isError)) return undefined;
+    return [...meetingsQ.data.leads]
+      .sort((a, b) => (meetingAt(b) ?? "").localeCompare(meetingAt(a) ?? ""))
+      .slice(0, MEETINGS_SHOWN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meetingsQ.data, outcomeByLeadId, data, rev.isError]);
 
   // Keel's J / K / Enter on the cards that need a call.
   useEffect(() => {
@@ -297,17 +311,17 @@ export function TodayPage() {
                     Meetings
                   </SectionTitle>
                   <div className="k-card">
-                    {meetings.data === undefined ? (
+                    {latestMeetings === undefined ? (
                       <div className="p-4"><Shimmer className="h-16 w-full" /></div>
-                    ) : meetings.data.leads.length === 0 ? (
+                    ) : latestMeetings.length === 0 ? (
                       <EmptyNote>No meeting booked yet. Booked meetings land here.</EmptyNote>
                     ) : (
                       <ul className="divide-y divide-[var(--line-subtle)]">
-                        {meetings.data.leads.map((lead) => (
+                        {latestMeetings.map((lead) => (
                           <MeetingLine
                             key={lead.id}
                             lead={lead}
-                            at={lead.leadId ? outcomeByLeadId.get(lead.leadId)?.meetingBookedAt ?? null : null}
+                            at={meetingAt(lead)}
                             mission={missionByCampaignId.get(lead.campaignId) ?? null}
                             href={personHref(orgId, brandId, lead)}
                           />
