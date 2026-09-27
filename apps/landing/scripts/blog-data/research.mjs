@@ -16,8 +16,8 @@
 //  - ROI is read as COST PER OUTCOME: every crew buys one outcome, so the cheaper outcome is the
 //    better return. Herald's outcome is a positive reply, Scout's a website visit (priced on the
 //    emails that carried a link, since a visit cannot come from an email without one).
-//  - A RATE is a PERCENT of emails for positive replies (Herald, two decimals: 0.18%), or website
-//    visits per 1,000 link-carrying emails (Scout). Owner rule (2026-09-27): never "N per 10,000".
+//  - A RATE is a PERCENT, two decimals (0.18%): of emails for positive replies (Herald), of
+//    link-carrying emails for website visits (Scout). Owner rule (2026-09-27): never "N per 10,000".
 //  - The WINNER is always the top bar: the cheapest price, or the highest rate. Owner rule
 //    (2026-09-27): a thin bar is ranked where its value puts it, never sunk below the rest, and if
 //    it comes first it wins. `crowned` only says whether the winner also clears the strict floors
@@ -136,14 +136,16 @@ const OUTCOMES = {
     rateUnit: "per 1,000 emails with a link",
     rateShort: "/1k",
     per: 1000,
+    pct: true,
     strictOutcomes: STRICT.minClicks,
     emailsNoun: "emails with a link",
   },
 };
 
 const counts = (o, row) => `${n(row[o.count])} ${row[o.count] === 1 ? o.noun : o.nounPlural} · ${n(row.emails)} ${o.emailsNoun}`;
-// Positive replies read as a percent of emails (v is per 10,000, so /100), two decimals.
-const rateText = (o, v) => (o.pct ? `${(v / 100).toFixed(2)}%` : `${v.toFixed(1)} ${o.rateShort}`);
+// Rates read as a percent, two decimals. v is per `o.per` emails, so divide by per/100.
+const pctOf = (o, v) => v / (o.per / 100);
+const rateText = (o, v) => (o.pct ? `${pctOf(o, v).toFixed(2)}%` : `${v.toFixed(1)} ${o.rateShort}`);
 const rateLabel = (o) => (o.pct ? `${o.noun} rate` : `${o.nounPlural} ${o.rateUnit}`);
 const rateSentence = (o, v) => (o.pct ? `a ${rateText(o, v)} ${o.noun} rate` : `${v.toFixed(1)} ${o.nounPlural} ${o.rateUnit}`);
 
@@ -238,7 +240,7 @@ function monthsChart(o, series, kind, subject, lowerIsBetter) {
   };
 }
 const costTitle = (o) => `Cost per ${o.noun} (USD, lower is better)`;
-const rateTitle = (o) => (o.pct ? `${o.noun.charAt(0).toUpperCase()}${o.noun.slice(1)} rate, % of emails (higher is better)` : `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} ${o.rateUnit} (higher is better)`);
+const rateTitle = (o) => (o.pct ? `${o.noun.charAt(0).toUpperCase()}${o.noun.slice(1)} rate, % of ${o.emailsNoun} (higher is better)` : `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} ${o.rateUnit} (higher is better)`);
 
 // A sentence on how the winner's curve moved, from its first to its last drawn month.
 function movement(points) {
@@ -407,7 +409,7 @@ for (const key of ["reply", "visit"]) {
       question: `How many follow-ups get the most ${o.nounPlural}?`,
       status: ratePts.length ? "measured" : "not_enough_data",
       headline: lastUseful
-        ? `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} keep coming through ${lastUseful.label.replace("+ ", "")}: the last one adds ${o.pct ? `${(lastUseful.gain / 100).toFixed(2)} points` : `${lastUseful.gain} per 1,000 people`}.`
+        ? `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} keep coming through ${lastUseful.label.replace("+ ", "")}: the last one adds ${o.pct ? `${pctOf(o, lastUseful.gain).toFixed(2)} points` : `${lastUseful.gain} per 1,000 people`}.`
         : ratePts.length ? `Follow-ups add no ${o.nounPlural} past the first email.` : `No sequences yet.`,
       winner: lastUseful ? lastUseful.label : ratePts[0]?.label ?? null,
       result: ratePts.length ? { display: o.pct ? ratePts[ratePts.length - 1].display : ratePts[ratePts.length - 1].value.toFixed(1), unit: o.pct ? `of people got a ${o.noun}, all follow-ups` : `${o.nounPlural} per 1,000 people, all follow-ups`, sample: ratePts[ratePts.length - 1].note } : null,
@@ -417,7 +419,7 @@ for (const key of ["reply", "visit"]) {
       ],
       conclusion: [
         `Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.`,
-        ...gains.map((g) => `${g.label}: ${g.gain >= 0 ? "+" : ""}${o.pct ? `${(g.gain / 100).toFixed(2)} points` : `${g.gain} ${o.rateShort}`}.`),
+        ...gains.map((g) => `${g.label}: ${g.gain >= 0 ? "+" : ""}${o.pct ? `${pctOf(o, g.gain).toFixed(2)} points` : `${g.gain} ${o.rateShort}`}.`),
       ],
     });
   }
