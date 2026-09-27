@@ -6135,6 +6135,18 @@ const FLEET_POINT = z.object({
 });
 
 /**
+ * The query both fleet return reads send. A `legKey` narrows BOTH legs of the curve (spend
+ * and value) to the campaigns performing that leg (features-service#1188), so a workflow
+ * viewed under one crew states that crew's history, never the dynasty's across every leg.
+ * Absent, the answer is the whole fleet, unchanged.
+ */
+function fleetReturnQuery(featureSlug: string, workflowDynastySlug: string, legKey?: string): URLSearchParams {
+  const query = new URLSearchParams({ featureSlug, workflowDynastySlug });
+  if (legKey) query.set("leg", legKey);
+  return query;
+}
+
+/**
  * ONE workflow across EVERY client org, day by day: cumulative billed spend, cumulative
  * pipeline value and their ratio (features-service#1151 via api-service#1005). An
  * aggregate: no org is named. Null `roiHistory` = the producer could not read the dated
@@ -6143,9 +6155,10 @@ const FLEET_POINT = z.object({
 export async function getFleetWorkflowReturnHistory(
   featureSlug: string,
   workflowDynastySlug: string,
+  legKey?: string,
   token?: string,
 ): Promise<FleetReturnPoint[] | null> {
-  const query = new URLSearchParams({ featureSlug, workflowDynastySlug });
+  const query = fleetReturnQuery(featureSlug, workflowDynastySlug, legKey);
   const raw = await apiCall<unknown>(`/public/features/workflow-return-history?${query.toString()}`, { token });
   const parsed = z
     .object({ roiHistory: z.object({ daily: z.array(FLEET_POINT) }).passthrough().nullable() })
@@ -6165,9 +6178,10 @@ export async function getFleetWorkflowReturnHistory(
 export async function getFleetWorkflowActualCostHistory(
   featureSlug: string,
   workflowDynastySlug: string,
+  legKey?: string,
   token?: string,
 ): Promise<ActualCostHistory | null> {
-  const query = new URLSearchParams({ featureSlug, workflowDynastySlug });
+  const query = fleetReturnQuery(featureSlug, workflowDynastySlug, legKey);
   const raw = await apiCall<unknown>(`/features/workflow-return-history/actual-cost?${query.toString()}`, { token });
   const parsed = z
     .object({
