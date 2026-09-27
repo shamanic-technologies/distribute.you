@@ -45,6 +45,9 @@ import { useMissions } from "@/components/v2/use-missions";
 import type { CrewGlyph } from "@/lib/v2/crews";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v2/ui";
+import { MaturityBadge } from "@/components/maturity-badge";
+import type { Maturity } from "@/lib/feature-gates";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 
 /**
  * The v2 Setup pages and the account pages behind the user menu.
@@ -62,6 +65,23 @@ function useIds() {
   return { orgId: p.orgId, brandId: p.brandId, offerId: p.offerId ?? null, campaignId: p.campaignId ?? null };
 }
 
+/** One tab of a v2 page. `badge` marks a gated tab (beta, staff) beside its label. */
+export interface V2Tab {
+  label: string;
+  href: string;
+  active: boolean;
+  badge?: Maturity;
+}
+
+export function V2TabLink({ tab }: { tab: V2Tab }) {
+  return (
+    <Link href={tab.href} aria-current={tab.active ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
+      {tab.label}
+      {tab.badge && <MaturityBadge level={tab.badge} />}
+    </Link>
+  );
+}
+
 /** The page frame: Keel's top bar, a title, then the body at a reading width. */
 export function V2Page({
   crumbs,
@@ -76,7 +96,7 @@ export function V2Page({
   title?: React.ReactNode;
   sub?: React.ReactNode;
   actions?: React.ReactNode;
-  tabs?: { label: string; href: string; active: boolean }[];
+  tabs?: V2Tab[];
   width?: string;
   children: React.ReactNode;
 }) {
@@ -96,9 +116,7 @@ export function V2Page({
         {tabs && tabs.length > 0 && (
           <nav className="k-line-subtle mb-5 flex gap-5 border-b" aria-label="Sections">
             {tabs.map((t) => (
-              <Link key={t.href} href={t.href} aria-current={t.active ? "page" : undefined} className="k-tab text-[13px]">
-                {t.label}
-              </Link>
+              <V2TabLink key={t.href} tab={t} />
             ))}
           </nav>
         )}
@@ -249,18 +267,31 @@ function useMissionCrumbs() {
   return { orgId, brandId, campaignId, mission, settled, name };
 }
 
-export function missionTabs(orgId: string, brandId: string, campaignId: string, active: "overview" | "settings" | "workflows") {
+/**
+ * A mission's tabs. Workflows is BETA: offered only to a reader on the beta list, and
+ * it carries the badge so that reader can tell it is not general yet. The page body
+ * gates on the same list, so a typed URL reaches nothing more than the tab would.
+ */
+export function missionTabs(
+  orgId: string,
+  brandId: string,
+  campaignId: string,
+  active: "overview" | "settings" | "workflows",
+  isBeta: boolean,
+): V2Tab[] {
   const base = v2MissionHref(orgId, brandId, campaignId);
-  return [
+  const tabs: V2Tab[] = [
     { label: "Overview", href: base, active: active === "overview" },
     { label: "Settings", href: `${base}/settings`, active: active === "settings" },
-    { label: "Workflows", href: `${base}/workflows`, active: active === "workflows" },
   ];
+  if (isBeta) tabs.push({ label: "Workflows", href: `${base}/workflows`, active: active === "workflows", badge: "beta" });
+  return tabs;
 }
 
 /** Whether a mission runs, what it may spend, and what its emails promise. */
 export function V2MissionSettingsPage() {
   const { orgId, brandId, campaignId, mission, settled, name } = useMissionCrumbs();
+  const isBeta = useIsBetaUser();
   const { data, isPending, isError } = useAuthQuery(["campaign", campaignId ?? "none"], () => getCampaign(campaignId as string), {
     enabled: !!campaignId,
   });
@@ -271,7 +302,7 @@ export function V2MissionSettingsPage() {
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Settings" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "settings")}
+      tabs={missionTabs(orgId, brandId, campaignId, "settings", isBeta)}
     >
       {!offerId ? (
         settled && !isPending ? (
@@ -306,16 +337,17 @@ function MissionTitle({ crewColor, glyph, name, running, hold }: { crewColor: st
 /** Every workflow the mission can run, ranked the way campaign-service picks. */
 export function V2MissionWorkflowsPage() {
   const { orgId, brandId, campaignId, mission, name } = useMissionCrumbs();
+  const isBeta = useIsBetaUser();
   if (!campaignId) return null;
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Workflows" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "workflows")}
+      tabs={missionTabs(orgId, brandId, campaignId, "workflows", isBeta)}
       width="max-w-none"
     >
       <div className="v2-embed -mx-4 md:-mx-6">
-        <CampaignWorkflowsPage campaignId={mission?.row.campaign.id ?? campaignId} />
+        <CampaignWorkflowsPage campaignId={mission?.row.campaign.id ?? campaignId} panel="drawer" />
       </div>
     </V2Page>
   );

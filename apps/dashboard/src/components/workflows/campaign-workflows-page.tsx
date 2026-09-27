@@ -173,7 +173,6 @@ import {
 import {
   runningFromObservedPicks,
   observedAudienceIds,
-  lastPickAt,
 } from "@/lib/observed-picks";
 import {
   rankWorkflowRows,
@@ -259,12 +258,6 @@ const PROJECTED_COUNT_TIP =
 const RUNNING_TIP =
   "The workflow that actually ran last, read from the record of what we sent. We pick it, and we change it when another one is producing outcomes more cheaply.";
 
-const RAN_TIP =
-  "We sent through this audience in the most recent runs. A campaign works several audiences at once, so more than one is marked.";
-
-const BEST_TIP =
-  "Your cheapest audience on this campaign, on its own cost per outcome across every workflow it has run.";
-
 const CAMPAIGN_SCOPE_TIP =
   "Everything this campaign has produced, across every audience it runs.";
 
@@ -283,7 +276,7 @@ function fmtUsd(value: number | null): string {
  * page reads its OWN column here, so its estimate, its sentence and its position all
  * describe the same body of evidence.
  */
-function ladderRowsForScope(
+export function ladderRowsForScope(
   ladder: WorkflowRankLadder | undefined,
   audienceId: string | null,
 ): WorkflowLadderRow[] {
@@ -336,7 +329,15 @@ function scopeFigures(
  * `campaignId` is for a host whose route does not name the campaign `id` (dashboard v2's
  * `missions/[campaignId]`). Absent, the route's own `id` is read exactly as before.
  */
-export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaignId?: string } = {}) {
+export function CampaignWorkflowsPage({
+  campaignId: campaignIdProp,
+  panel = "overlay",
+}: {
+  campaignId?: string;
+  /** `drawer` for a host that scrolls (dashboard v2): the row panel pins to the viewport,
+   *  full height, instead of covering a box only as tall as the grid. */
+  panel?: "overlay" | "drawer";
+} = {}) {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -458,9 +459,6 @@ export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaign
     () => observedAudienceIds(ladderQ.data?.observedPicks),
     [ladderQ.data?.observedPicks],
   );
-
-  // When that last pick ran, so the tag can say how fresh it is rather than implying now.
-  const ranAt = useMemo(() => lastPickAt(ladderQ.data?.observedPicks), [ladderQ.data?.observedPicks]);
 
   // THE WORKFLOWS THIS PAGE DOES NOT OFFER — the ones whose model tier this leg's rule
   // excludes, which campaign-service can therefore never select. Kept when the workflow
@@ -705,17 +703,7 @@ export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaign
         )}
 
         {!pending && revenueOk && rows.length > 0 && (
-          <div className="flex flex-col gap-4 md:flex-row md:items-start">
-            <ScopeSidebar
-              audiences={audienceColumns}
-              scope={scope}
-              ranAudienceIds={ranAudienceIds}
-              ranAt={ranAt}
-              brandDomain={brandQ.data?.brand.domain ?? null}
-              brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
-              onSelect={setScope}
-            />
-
+          <div>
             <div className="min-w-0 flex-1">
               {scope === null ? (
                 <WorkflowMatrix
@@ -729,6 +717,17 @@ export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaign
                   onSelectScope={setScope}
                 />
               ) : (
+                <>
+                <button
+                  type="button"
+                  onClick={() => setScope(null)}
+                  className="mb-3 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Every audience
+                </button>
                 <ScopeTable
                   ranked={scopeRanked}
                   audienceId={scope}
@@ -740,6 +739,7 @@ export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaign
                   openSlug={openSlug}
                   onOpen={setOpen}
                 />
+                </>
               )}
             </div>
           </div>
@@ -764,7 +764,11 @@ export function CampaignWorkflowsPage({ campaignId: campaignIdProp }: { campaign
           brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
           legStepLabel={ladderQ.data?.leg?.toStep.label ?? null}
           onClose={() => setOpen(null)}
+          variant={panel}
         />
+      )}
+      {openRanked && featureSlug && panel === "drawer" && (
+        <div aria-hidden className="fixed inset-0 z-30 bg-black/10" onClick={() => setOpen(null)} />
       )}
     </div>
   );
@@ -776,106 +780,9 @@ interface AudienceColumn {
   avatarUrl: string | null;
 }
 
-/**
- * THE SECOND-LEVEL SIDEBAR: the campaign, then every audience in the producer's order.
- *
- * `audiences[0]` carries `Current best` because `/audience-stats` ranks them ascending on
- * their own cost per outcome — that is the producer's answer, restated, not a pick made
- * here. It is a SCROLLING rail rather than a full column on a phone, where a 12-entry
- * sidebar above the grid would push the grid off the first screen.
- */
-/**
- * EXPORTED so a render probe can mount it — this surface's defects are geometric (a
- * rotated label clipping, a column tint landing on the wrong column) and no source
- * assertion can see one. Two were found that way and neither was visible to `tsc` or to
- * the 4090-test suite. Nothing in the app imports these three.
- */
-export function ScopeSidebar({
-  audiences,
-  scope,
-  ranAudienceIds,
-  ranAt,
-  brandDomain,
-  brandLogoUrl,
-  onSelect,
-}: {
-  audiences: readonly AudienceColumn[];
-  scope: string | null;
-  /** Every audience the producer's served pick window saw a send for. */
-  ranAudienceIds: ReadonlySet<string>;
-  /** When the most recent pick ran, so the pill says how fresh it is. */
-  ranAt: string | null;
-  brandDomain: string | null;
-  brandLogoUrl: string | null;
-  onSelect: (id: string | null) => void;
-}) {
-  return (
-    <nav className="w-full shrink-0 rounded-xl border border-gray-200 bg-white p-2 md:w-56 md:max-h-[70vh] md:overflow-y-auto">
-      <button
-        type="button"
-        onClick={() => onSelect(null)}
-        className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition ${
-          scope === null
-            ? "bg-brand-50 font-medium text-brand-700"
-            : "text-gray-600 hover:bg-gray-50"
-        }`}
-      >
-        <GrainMark
-          grain="campaign"
-          brandDomain={brandDomain}
-          brandLogoUrl={brandLogoUrl}
-          size={18}
-        />
-        <span className="truncate">Campaign</span>
-        <InfoTooltip tip={CAMPAIGN_SCOPE_TIP} placement="top" />
-      </button>
-
-      {audiences.length > 0 && (
-        <p className="mt-2 flex items-center gap-1 px-2 pb-1 text-[11px] font-medium tracking-wide text-gray-400 uppercase">
-          Audiences
-          <InfoTooltip tip={RAN_TIP} placement="top" />
-        </p>
-      )}
-
-      {audiences.map((a, i) => {
-        const active = scope === a.audienceId;
-        const ran = ranAudienceIds.has(a.audienceId);
-        return (
-          <button
-            key={a.audienceId}
-            type="button"
-            onClick={() => onSelect(a.audienceId)}
-            className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition ${
-              active
-                ? "bg-brand-50 font-medium text-brand-700"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} size={18} />
-            <span className="min-w-0 flex-1 truncate">{a.name}</span>
-            {ran && (
-              <span
-                aria-label="Running"
-                title={
-                  ranAt
-                    ? `We sent through this audience in the most recent runs (last ${ranAt})`
-                    : "We sent through this audience in the most recent runs"
-                }
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"
-              />
-            )}
-            {i === 0 && (
-              <span className="inline-flex shrink-0 items-center rounded-full border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600">
-                Best
-                <InfoTooltip tip={BEST_TIP} placement="top" />
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
+// There is NO second-level sidebar of audiences beside the grid any more. Every audience
+// is already a column header here, and clicking one opens its own ranking; a rail listing
+// the same audiences a second time was one list drawn twice on one screen.
 
 /**
  * THE GRID. Rows in the producer's `rank` order, columns in the producer's audience
@@ -1075,8 +982,8 @@ function ObliqueHeader({
           name has no length limit: at `h-[140px]` with no cap, nine of twelve real
           audience names were silently CUT at the top of the scroll container (measured
           `top: 29` against a container top of 75). An ellipsis says there is more; a
-          clip says nothing. The full name is on the `title`, in the sidebar, and on the
-          page the column opens. */}
+          clip says nothing. The full name is on the `title` and on the page the column
+          opens. */}
       <span className={`max-w-[130px] truncate ${best ? "font-medium text-brand-700" : ""}`}>
         {label}
       </span>

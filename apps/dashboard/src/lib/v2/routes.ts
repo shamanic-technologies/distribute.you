@@ -10,6 +10,7 @@ export type V2Section =
   | "work"
   | "crew"
   | "missions"
+  | "workflows"
   | "offers"
   | "targeting"
   | "integrations"
@@ -33,6 +34,11 @@ export function v2MissionHref(orgId: string, brandId: string, campaignId: string
   return `${v2Base(orgId, brandId)}/missions/${encodeURIComponent(campaignId)}`;
 }
 
+/** One workflow dynasty's page, priced for one crew (`<channel slug>|<leg key>`). */
+export function v2WorkflowHref(orgId: string, brandId: string, dynastySlug: string, crew: string): string {
+  return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?crew=${encodeURIComponent(crew)}`;
+}
+
 /** Which section a v2 pathname is on. */
 export function v2SectionOf(pathname: string): V2Section | null {
   const parts = pathname.split("/").filter(Boolean);
@@ -46,6 +52,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "work",
     "crew",
     "missions",
+    "workflows",
     "offers",
     "targeting",
     "integrations",

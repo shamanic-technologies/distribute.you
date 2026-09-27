@@ -82,6 +82,18 @@ const LADDER_TIP =
 const CAMPAIGN_TIP =
   "What this workflow produced for the campaign you are looking at. It is the same figure as its row in the table.";
 
+const BRAND_TIP =
+  "What this workflow produced for this brand, across every campaign it ran for.";
+
+/** The panel's outer box per placement — see `variant`. */
+const PANEL_ROOT: Record<"overlay" | "drawer" | "inline", string> = {
+  overlay:
+    "absolute inset-0 md:left-auto md:w-[34rem] md:max-w-[94vw] bg-gray-50 border-gray-200 md:border-l md:shadow-2xl overflow-y-auto z-20 pb-24",
+  drawer:
+    "fixed inset-y-0 right-0 z-40 w-full md:w-[34rem] md:max-w-[94vw] bg-gray-50 border-gray-200 md:border-l md:shadow-2xl overflow-y-auto pb-24",
+  inline: "",
+};
+
 const FLEET_TIP =
   "What this workflow costs across every client we run it for. It is a different question from your own cost. It counts the spend the workflow incurs, including anything we later refunded, because what a workflow costs to produce an outcome does not depend on who was billed.";
 
@@ -366,7 +378,9 @@ export interface WorkflowRankPanelProps {
   ranked: RankedWorkflow<CampaignWorkflowRow>;
   featureSlug: string;
   brandId: string;
-  campaignId: string;
+  /** Null on a BRAND-level host (dashboard v2's Workflows page): every figure is then
+   *  the brand's, and the campaign grain is not drawn because there is no campaign. */
+  campaignId: string | null;
   pair: WorkflowOutcomePair;
   /** The step the campaign's leg lands on, in the producer's key. */
   outcomeStepKey: string | null;
@@ -386,6 +400,14 @@ export interface WorkflowRankPanelProps {
   /** The leg's own step, in the producer's words — what every figure here is about. */
   legStepLabel: string | null;
   onClose: () => void;
+  /**
+   * HOW it sits on the page. `overlay` covers its host's positioned box (v1's campaign
+   * page, whose host is exactly the viewport's height). `drawer` is pinned to the
+   * VIEWPORT, full height, for a host that scrolls (dashboard v2, where the host grows
+   * with the grid and an `absolute inset-0` panel was only as tall as the table). `inline`
+   * is no panel at all: the same cards as a page column, with no close control.
+   */
+  variant?: "overlay" | "drawer" | "inline";
 }
 
 export function WorkflowRankPanel({
@@ -405,14 +427,18 @@ export function WorkflowRankPanel({
   legStepLabel,
   paused,
   onClose,
+  variant = "overlay",
 }: WorkflowRankPanelProps) {
   const row = ranked.row;
   const dynastySlug = row.workflowDynastySlug;
-  const ready = Boolean(featureSlug && brandId && campaignId && dynastySlug);
+  const ready = Boolean(featureSlug && brandId && dynastySlug);
+  const scopeLabel = campaignId ? "campaign" : "brand";
 
-  // The drill-down body: the whole un-grouped answer, narrowed to this workflow.
+  // The drill-down body: the whole un-grouped answer, narrowed to this workflow — the
+  // campaign's when there is one, the brand's otherwise. The key is the one the v2
+  // workflow page's own charts read, so the two share one request.
   const revenueQ = useAuthQuery(
-    ["workflowRevenue", brandId, campaignId, dynastySlug],
+    ["workflowRevenue", brandId, campaignId ?? "brand", dynastySlug],
     () => getWorkflowRevenue(featureSlug, brandId, campaignId, dynastySlug),
     { ...pollOptions, enabled: ready },
   );
@@ -493,8 +519,12 @@ export function WorkflowRankPanel({
   const hasRoiHistory = Boolean(revenue?.roiHistory?.daily?.length);
   const hasFleet = fleetRows.some((r) => r.value != null);
 
+  const grainOrder = campaignId ? GRAIN_ORDER : GRAIN_ORDER.filter((g) => g.key !== "campaign");
+  const inline = variant === "inline";
+
   return (
-    <div className="absolute inset-0 md:left-auto md:w-[34rem] md:max-w-[94vw] bg-gray-50 border-gray-200 md:border-l md:shadow-2xl overflow-y-auto z-20 pb-24">
+    <div className={PANEL_ROOT[variant]}>
+      {!inline && (
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-4">
         <button
           onClick={onClose}
@@ -519,8 +549,9 @@ export function WorkflowRankPanel({
           </svg>
         </button>
       </div>
+      )}
 
-      <div className="p-4 md:p-6">
+      <div className={inline ? "" : "p-4 md:p-6"}>
         <Card title="Rank and why">
           <div className="flex flex-wrap items-center gap-2">
             {/* `bg-gray-900` has NO `html.dark` remap, so it paints a near-black blob on the
@@ -570,7 +601,7 @@ export function WorkflowRankPanel({
             </p>
           ) : (
             <div className="space-y-3">
-              {GRAIN_ORDER.map((g) => (
+              {grainOrder.map((g) => (
                 <GrainBlock
                   key={g.key}
                   grain={g.key}
@@ -597,7 +628,7 @@ export function WorkflowRankPanel({
           </Card>
         )}
 
-        <Card title="On this campaign" tip={CAMPAIGN_TIP}>
+        <Card title={`On this ${scopeLabel}`} tip={campaignId ? CAMPAIGN_TIP : BRAND_TIP}>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Figure label={outcomeNoun} value={fmtCount(workflowOutcomeCount(row))} />
             <div>
@@ -627,7 +658,8 @@ export function WorkflowRankPanel({
           </div>
         )}
 
-        {hasRoiHistory && (
+        {/* Inline, the host page draws cost, value and return over time itself. */}
+        {hasRoiHistory && !inline && (
           <div className="mb-4">
             <RoiTrendCard
               history={revenue?.roiHistory ?? null}

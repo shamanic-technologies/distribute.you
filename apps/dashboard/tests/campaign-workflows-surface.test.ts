@@ -374,20 +374,23 @@ describe("THE PER-AUDIENCE LIST reads scopeRank, the position that ascends on it
   });
 });
 
-describe("THE SIDEBAR is the campaign then the producer's audience order", () => {
-  it("puts the campaign first and never re-sorts the audiences", () => {
-    const at = TABLE.indexOf("function ScopeSidebar(");
-    const body = TABLE.slice(at, TABLE.indexOf("function WorkflowMatrix(", at));
-    expect(body).toContain("Campaign");
-    expect(body).toContain("audiences.map((a, i)");
-    expect(body).not.toContain(".sort(");
+describe("there is NO second sidebar of audiences beside the grid", () => {
+  it("the rail is gone: every audience is already a column header", () => {
+    expect(TABLE).not.toContain("function ScopeSidebar(");
+    expect(TABLE).not.toContain("<ScopeSidebar");
   });
 
-  it("gives every audience its face, and the first one Best", () => {
-    const at = TABLE.indexOf("function ScopeSidebar(");
-    const body = TABLE.slice(at, TABLE.indexOf("function WorkflowMatrix(", at));
-    expect(body).toContain("<AudienceAvatar");
-    expect(body).toContain("i === 0 &&");
+  it("an audience's own ranking has a way back to every audience", () => {
+    const at = TABLE.indexOf("<ScopeTable");
+    const before = TABLE.slice(TABLE.lastIndexOf("<button", at), at);
+    expect(before).toContain("onClick={() => setScope(null)}");
+    expect(before).toContain("Every audience");
+  });
+
+  it("a v2 host opens the row panel as a full-height drawer pinned to the viewport", () => {
+    expect(TABLE).toContain("variant={panel}");
+    expect(read("src/components/v2/setup-pages.tsx")).toContain('panel="drawer"');
+    expect(PANEL).toContain('"fixed inset-y-0 right-0 z-40');
   });
 });
 
@@ -439,7 +442,7 @@ describe("the panel opens from a row and from the URL", () => {
     for (const title of [
       'title="Rank and why"',
       'title="How we priced it"',
-      'title="On this campaign"',
+      "title={`On this ${scopeLabel}`}",
       'title="Against every client we run it for"',
     ]) {
       expect(PANEL, title).toContain(title);
@@ -452,7 +455,7 @@ describe("the panel opens from a row and from the URL", () => {
     expect(PANEL).toContain("hasOutcomeSeries");
     expect(PANEL).toContain("hasRoiHistory");
     expect(PANEL).toContain("{hasOutcomeSeries && (");
-    expect(PANEL).toContain("{hasRoiHistory && (");
+    expect(PANEL).toContain("{hasRoiHistory && !inline && (");
   });
 
   it("marks the grain the NUMBERS came from, not the provenance LABEL", () => {
@@ -540,12 +543,13 @@ describe("every money read is CAMPAIGN-scoped and net", () => {
 
   it("the grouped reader carries the campaign and asks for net", () => {
     const body = sliceFn(API, "export async function getFeatureRevenueByWorkflow(");
-    expect(body).toContain("{ brandId, campaignId, groupBy: \"workflow\" }");
+    expect(body).toContain('{ brandId, groupBy: "workflow" }');
+    expect(body).toContain('if (campaignId) query.set("campaignId", campaignId)');
     expect(body).toContain('query.set("pricing", "net")');
   });
 
   it("the panel's drill-down is the campaign's own body", () => {
-    expect(PANEL).toContain('["workflowRevenue", brandId, campaignId, dynastySlug]');
+    expect(PANEL).toContain('["workflowRevenue", brandId, campaignId ?? "brand", dynastySlug]');
   });
 });
 
@@ -812,22 +816,18 @@ describe("what is RUNNING is read from the ledger, not from the campaign row", (
     expect(TABLE).not.toContain("last.audienceId");
   });
 
-  it("both surfaces that carry columns are handed the set", () => {
-    const sidebar = TABLE.slice(TABLE.indexOf("<ScopeSidebar"), TABLE.indexOf("<WorkflowMatrix"));
-    expect(sidebar).toContain("ranAudienceIds={ranAudienceIds}");
+  it("the grid is handed the set", () => {
     const matrix = TABLE.slice(TABLE.indexOf("<WorkflowMatrix"));
     expect(matrix.slice(0, 500)).toContain("ranAudienceIds={ranAudienceIds}");
   });
 
   it("the column mark is drawn in both places", () => {
     expect(TABLE).toContain("ran={ranAudienceIds.has(a.audienceId)}");
-    expect(TABLE).toContain("const ran = ranAudienceIds.has(a.audienceId);");
   });
 
   it("the cheapest-column pill no longer calls itself current", () => {
     // "Current best" conflated the price with the fact; a real current mark exists now.
     expect(TABLE).not.toContain("CURRENT_BEST_TIP");
-    expect(TABLE).toContain("const BEST_TIP =");
   });
 
   it("the reader declares the block, so zod cannot strip it", () => {

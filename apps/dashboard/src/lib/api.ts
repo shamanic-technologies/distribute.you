@@ -4504,10 +4504,12 @@ const FeatureRevenueByWorkflowSchema = z.object({
 export async function getFeatureRevenueByWorkflow(
   featureSlug: string,
   brandId: string,
-  campaignId: string,
+  /** Null groups the BRAND's money by workflow rather than one campaign's. */
+  campaignId: string | null,
   token?: string,
 ): Promise<WorkflowRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, campaignId, groupBy: "workflow" });
+  const query = new URLSearchParams({ brandId, groupBy: "workflow" });
+  if (campaignId) query.set("campaignId", campaignId);
   query.set("pricing", "net");
   return readWorkflowGroups(featureSlug, query, "getFeatureRevenueByWorkflow", token);
 }
@@ -4616,11 +4618,14 @@ async function readWorkflowGroups(
 export async function getWorkflowRevenue(
   featureSlug: string,
   brandId: string,
-  campaignId: string,
+  /** Null reads the BRAND's figures for the workflow (features-service narrows the
+   *  brand-scoped body to one dynasty exactly as it does a campaign's). */
+  campaignId: string | null,
   workflowDynastySlug: string,
   token?: string,
 ): Promise<RevenueOverview> {
-  const query = new URLSearchParams({ brandId, campaignId, workflow: workflowDynastySlug });
+  const query = new URLSearchParams({ brandId, workflow: workflowDynastySlug });
+  if (campaignId) query.set("campaignId", campaignId);
   query.set("pricing", "net");
   const raw = await apiCall<unknown>(
     `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
@@ -5920,6 +5925,43 @@ export interface Email {
 
 export async function listBrandEmails(brandId: string, token?: string): Promise<{ emails: Email[] }> {
   return apiCall<{ emails: Email[] }>(`/emails?brandId=${brandId}`, { token });
+}
+
+/**
+ * The emails ONE workflow run wrote. content-generation files each generation under the
+ * `x-run-id` it was called with, which is the workflow's own `execute-workflow` run —
+ * verified in prod 2026-09-27 — so a run from the ledger opens its emails by id.
+ */
+export async function listRunEmails(brandId: string, runId: string, token?: string): Promise<Email[]> {
+  const query = new URLSearchParams({ brandId, runId });
+  const raw = await apiCall<unknown>(`/emails?${query}`, { token });
+  const parsed = z.object({ emails: z.array(z.object({ id: z.string() }).passthrough()) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listRunEmails: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] listRunEmails: invalid response shape");
+  }
+  return parsed.data.emails as unknown as Email[];
+}
+
+/** A prompt template as content-generation serves it, read by its `type`. */
+export interface PlatformPrompt {
+  id: string;
+  type: string;
+  prompt: string;
+  updatedAt: string;
+}
+
+export async function getPlatformPrompt(type: string, token?: string): Promise<PlatformPrompt> {
+  const raw = await apiCall<unknown>(`/content/platform-prompts?type=${encodeURIComponent(type)}`, { token });
+  const parsed = z
+    .object({ id: z.string(), type: z.string(), prompt: z.string(), updatedAt: z.string() })
+    .passthrough()
+    .safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getPlatformPrompt: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getPlatformPrompt: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** The generated email for ONE lead — initial body + follow-up `sequence` steps —
@@ -8906,9 +8948,19 @@ export type RunRow = z.infer<typeof RunRowSchema>;
 
 export async function listBrandRunLedger(
   brandId: string,
-  opts: { limit: number; startedAfter?: string; status?: string; campaignIds?: string[] },
+  opts: {
+    limit: number;
+    startedAfter?: string;
+    status?: string;
+    campaignIds?: string[];
+    /** One VERSIONED workflow slug — runs-service stores the version, not the dynasty. */
+    workflowSlug?: string;
+    taskName?: string;
+  },
 ): Promise<RunRow[]> {
   const query = new URLSearchParams({ brandId, limit: String(opts.limit) });
+  if (opts.workflowSlug) query.set("workflowSlug", opts.workflowSlug);
+  if (opts.taskName) query.set("taskName", opts.taskName);
   if (opts.startedAfter) query.set("startedAfter", opts.startedAfter);
   if (opts.campaignIds) query.set("campaignIds", opts.campaignIds.join(","));
   if (opts.status) query.set("status", opts.status);
