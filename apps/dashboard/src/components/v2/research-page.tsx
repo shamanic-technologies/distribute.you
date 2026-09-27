@@ -199,9 +199,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
           <p className="mt-1.5 truncate text-[14px] font-medium leading-6" title={study.winner ?? undefined}>
             {study.winner ?? <span className="k-fg4">{"—"}</span>}
           </p>
-          <p className="k-fg3 mt-0.5 truncate text-[11px]">
-            {state === "winner" ? "first bar" : "nothing to compare"}
-          </p>
+          {state !== "winner" && <p className="k-fg3 mt-0.5 truncate text-[11px]">nothing to compare</p>}
         </div>
         <div className="min-w-0 p-3">
           <p className="k-label">Result</p>
@@ -562,7 +560,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label mt-5">How we measured</p>
             <p className="k-fg2 mt-2 text-[12px] leading-5">
               ROI is read as the cost per outcome: every crew buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
-              emails that carried a link. The winner is always the first bar. A bar under {floors.crown.minEmails.toLocaleString("en-US")} emails or{" "}
+              emails that carried a link. A bar under {floors.crown.minEmails.toLocaleString("en-US")} emails or{" "}
               {floors.crown.minReplies} positive replies ({floors.crown.minClicks} visits) is ranked where its value puts it and marked thin.
             </p>
             <p className="k-fg2 mt-2 text-[12px] leading-5">
