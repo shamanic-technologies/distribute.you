@@ -7608,10 +7608,23 @@ export interface CheckoutSession {
   session_id: string;
 }
 
-export interface EmbeddedCheckoutSession {
-  client_secret: string;
-  session_id: string;
-}
+/**
+ * An in-page prepaid top-up. Stripe orgs get Stripe's embedded checkout (no `mode`,
+ * byte-identical to before); an org paying through Revolut gets Revolut's widget, with
+ * the same field names as card_setup's `embedded_widget` (billing-service #526).
+ */
+export type EmbeddedCheckoutSession =
+  | { mode?: undefined; client_secret: string; session_id: string }
+  | {
+      mode: "embedded_widget";
+      script_url: string;
+      environment: "prod" | "sandbox";
+      token: string;
+      save_payment_method_for: "merchant" | "customer";
+      amount: number;
+      currency: string;
+      session_id: string;
+    };
 
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });

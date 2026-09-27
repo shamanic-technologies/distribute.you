@@ -456,12 +456,40 @@ export function NewOrgModal({
   const custom = parseCustomAmountCents(customAmount);
   const prepaidCents = custom && "cents" in custom ? custom.cents : presetCents;
 
+  // Orgs set up here pay through Revolut (owner-decided 2026-09-27). Declared once, right
+  // before the first card or top-up call, for a new org and a resumed one alike; an org
+  // already holding a card elsewhere keeps paying there.
+  const revolutDeclared = useRef<string | null>(null);
+  async function declareRevolut() {
+    if (!orgId || revolutDeclared.current === orgId) return;
+    const orgToken = await session?.getToken({ organizationId: orgId, skipCache: true });
+    if (!orgToken) throw new Error("Your session expired. Sign in again to finish.");
+    const res = await fetch("/api/orgs/revolut", { method: "POST", headers: { Authorization: `Bearer ${orgToken}` } });
+    if (!res.ok) throw new Error("We could not prepare the payment. Try again.");
+    revolutDeclared.current = orgId;
+  }
+
   function startCheckout() {
     if (custom && "problem" in custom) return setError(custom.problem);
     if (!prepaidCents) return setError("Choose an amount.");
     void run(async () => {
-      const { client_secret } = await createEmbeddedCheckoutSession(prepaidCents);
-      setCheckoutSecret(client_secret);
+      await declareRevolut();
+      const checkout = await createEmbeddedCheckoutSession(prepaidCents);
+      if (checkout.mode === "embedded_widget") {
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: checkout.token,
+          environment: checkout.environment,
+          savePaymentMethodFor: checkout.save_payment_method_for,
+          name: personName ?? undefined,
+          email: user?.primaryEmailAddress?.emailAddress ?? undefined,
+          onSuccess: () => void launch(),
+          onCancel: () => {},
+          onError: (message) => setError(message),
+        });
+        return;
+      }
+      setCheckoutSecret(checkout.client_secret);
     });
   }
 
@@ -470,6 +498,7 @@ export function NewOrgModal({
   // amounts sent here only switch it on.
   function startCardCapture() {
     void run(async () => {
+      await declareRevolut();
       const setup = await createEmbeddedCardSetup();
       if (setup.mode === "embedded_checkout") {
         setCardSecret(setup.client_secret);
