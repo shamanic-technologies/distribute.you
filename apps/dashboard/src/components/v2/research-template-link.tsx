@@ -53,3 +53,50 @@ export function ResearchTemplateChip({
     <span className="k-chip">{label}</span>
   );
 }
+
+/**
+ * The model chip, same rule. The workflow names an ALIAS (`pro`, `flash`), which chat-service
+ * repoints over time, so the alias is never mapped to a model here: the link follows the model
+ * Research MEASURED for this workflow (the one that wrote most of its emails).
+ */
+export function ResearchModelChip({
+  orgId,
+  brandId,
+  channel,
+  step,
+  dynasty,
+  label,
+}: {
+  orgId: string;
+  brandId: string;
+  channel: string | null;
+  step: string | null;
+  dynasty: string;
+  label: string;
+}) {
+  const staff = useIsAdminUser();
+  const [href, setHref] = useState<string | null>(null);
+  useEffect(() => {
+    if (!staff) return;
+    let live = true;
+    import("@/lib/research/research")
+      .then(async (r) => {
+        const crew = r.researchCrewFor(channel, step);
+        if (!crew) return;
+        const catalog = await r.loadResearchCatalog();
+        const model = r.researchWorkflow(catalog, crew, dynasty)?.model;
+        if (live && model?.linked) setHref(r.researchCatalogHref(v2Href(orgId, brandId, "research"), crew, "models", model.key));
+      })
+      .catch((err) => console.error("[research] model link", err));
+    return () => {
+      live = false;
+    };
+  }, [staff, dynasty, channel, step, orgId, brandId]);
+  return href ? (
+    <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open the model Research measured for this workflow">
+      {label} →
+    </Link>
+  ) : (
+    <span className="k-chip">{label}</span>
+  );
+}

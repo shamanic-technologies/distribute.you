@@ -25,7 +25,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { CrewMark } from "@/components/v2/crew-mark";
-import { ResearchTemplateChip } from "@/components/v2/research-template-link";
+import { ResearchModelChip, ResearchTemplateChip } from "@/components/v2/research-template-link";
 import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { useMissions } from "@/components/v2/use-missions";
@@ -156,7 +156,16 @@ export function V2WorkflowPage() {
               <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="k-chip tabular-nums">{ranked.rank == null ? "Not ranked" : `#${ranked.rank} for this mission`}</span>
-                {model && <span className="k-chip">{model.label}</span>}
+                {model && (
+                  <ResearchModelChip
+                    orgId={orgId}
+                    brandId={brandId}
+                    channel={spec.featureSlug}
+                    step={spec.mission.leg?.toKey ?? null}
+                    dynasty={dynasty}
+                    label={model.label}
+                  />
+                )}
                 {template && (
                   <ResearchTemplateChip
                     orgId={orgId}

@@ -104,6 +104,7 @@
           "lowerIsBetter": true,
           "points": [
             {
+              "key": "glm-5.2",
               "label": "GLM 5.2",
               "value": 31.77,
               "display": "$32",
@@ -111,6 +112,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
               "value": 188.53,
               "display": "$189",
@@ -118,6 +120,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
               "value": 309.52,
               "display": "$310",
@@ -125,6 +128,7 @@
               "thin": true
             },
             {
+              "key": "deepseek-v4-pro",
               "label": "DeepSeek V4 Pro",
               "value": 325,
               "display": "$325",
@@ -188,6 +192,7 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "key": "glm-5.2",
               "label": "GLM 5.2",
               "value": 18.3,
               "display": "0.18%",
@@ -195,6 +200,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
               "value": 3.8,
               "display": "0.04%",
@@ -202,6 +208,7 @@
               "thin": false
             },
             {
+              "key": "deepseek-v4-pro",
               "label": "DeepSeek V4 Pro",
               "value": 2.7,
               "display": "0.03%",
@@ -209,6 +216,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
               "value": 2.5,
               "display": "0.03%",
@@ -216,6 +224,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3-flash",
               "label": "Gemini 3 Flash",
               "value": 0,
               "display": "0.00%",
@@ -223,6 +232,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.5-flash",
               "label": "Gemini 3.5 Flash",
               "value": 0,
               "display": "0.00%",
@@ -230,6 +240,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.6-flash",
               "label": "Gemini 3.6 Flash",
               "value": 0,
               "display": "0.00%",
@@ -237,6 +248,7 @@
               "thin": true
             },
             {
+              "key": "deepseek-v4-flash",
               "label": "DeepSeek V4 Flash",
               "value": 0,
               "display": "0.00%",
@@ -244,6 +256,7 @@
               "thin": true
             },
             {
+              "key": "glm-5.3-flash",
               "label": "GLM 5.3 Flash",
               "value": 0,
               "display": "0.00%",
@@ -251,6 +264,7 @@
               "thin": true
             },
             {
+              "key": "glm-5.3",
               "label": "GLM 5.3",
               "value": 0,
               "display": "0.00%",
@@ -258,6 +272,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.7-flash",
               "label": "Gemini 3.7 Flash",
               "value": 0,
               "display": "0.00%",
@@ -1718,6 +1733,7 @@
           "lowerIsBetter": true,
           "points": [
             {
+              "key": "deepseek-v4-pro",
               "label": "DeepSeek V4 Pro",
               "value": 0.81,
               "display": "$0.81",
@@ -1725,6 +1741,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3-flash",
               "label": "Gemini 3 Flash",
               "value": 1.41,
               "display": "$1.41",
@@ -1732,6 +1749,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.5-flash",
               "label": "Gemini 3.5 Flash",
               "value": 1.49,
               "display": "$1.49",
@@ -1739,6 +1757,7 @@
               "thin": false
             },
             {
+              "key": "deepseek-v4-flash",
               "label": "DeepSeek V4 Flash",
               "value": 1.62,
               "display": "$1.62",
@@ -1746,6 +1765,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
               "value": 4.21,
               "display": "$4.21",
@@ -1753,6 +1773,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
               "value": 5.11,
               "display": "$5.11",
@@ -1760,6 +1781,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.8-flash",
               "label": "Gemini 3.8 Flash",
               "value": 5.18,
               "display": "$5.18",
@@ -1767,6 +1789,7 @@
               "thin": true
             },
             {
+              "key": "glm-5.3-flash",
               "label": "GLM 5.3 Flash",
               "value": 5.71,
               "display": "$5.71",
@@ -1774,6 +1797,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.6-flash",
               "label": "Gemini 3.6 Flash",
               "value": 11.7,
               "display": "$12",
@@ -1852,6 +1876,7 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "key": "deepseek-v4-flash",
               "label": "DeepSeek V4 Flash",
               "value": 41.1,
               "display": "4.11%",
@@ -1859,6 +1884,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3-flash",
               "label": "Gemini 3 Flash",
               "value": 26,
               "display": "2.60%",
@@ -1866,6 +1892,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.5-flash",
               "label": "Gemini 3.5 Flash",
               "value": 25.7,
               "display": "2.57%",
@@ -1873,6 +1900,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
               "value": 18.4,
               "display": "1.84%",
@@ -1880,6 +1908,7 @@
               "thin": false
             },
             {
+              "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
               "value": 12.3,
               "display": "1.23%",
@@ -1887,6 +1916,7 @@
               "thin": false
             },
             {
+              "key": "glm-5.3-flash",
               "label": "GLM 5.3 Flash",
               "value": 12.2,
               "display": "1.22%",
@@ -1894,6 +1924,7 @@
               "thin": true
             },
             {
+              "key": "gemini-3.6-flash",
               "label": "Gemini 3.6 Flash",
               "value": 10.2,
               "display": "1.02%",
@@ -3205,15 +3236,18 @@
   "catalogCounts": {
     "herald": {
       "workflows": 33,
-      "templates": 30
+      "templates": 30,
+      "models": 11
     },
     "scout": {
       "workflows": 15,
-      "templates": 14
+      "templates": 14,
+      "models": 9
     },
     "pilot": {
       "workflows": 0,
-      "templates": 0
+      "templates": 0,
+      "models": 0
     }
   }
 }
