@@ -9293,6 +9293,137 @@ const RunRowSchema = z.object({
 
 export type RunRow = z.infer<typeof RunRowSchema>;
 
+/**
+ * ONE run, as runs-service serves it by id: its own fields, its cost rolled up over
+ * everything it spawned, and those spawned runs (the steps it took). Read through the
+ * gateway, org-scoped there. Fields the page does not read ride along untouched.
+ */
+const RunDetailCostSchema = z
+  .object({
+    costName: z.string(),
+    totalCostInUsdCents: z.coerce.string(),
+    quantity: z.coerce.number().nullish(),
+  })
+  .passthrough();
+
+const RunDetailSchema = z
+  .object({
+    id: z.string(),
+    serviceName: z.string(),
+    taskName: z.string(),
+    status: z.string(),
+    startedAt: z.string(),
+    completedAt: z.string().nullable(),
+    campaignId: z.string().nullish(),
+    workflowSlug: z.string().nullish(),
+    featureSlug: z.string().nullish(),
+    audienceId: z.string().nullish(),
+    totalCostInUsdCents: z.coerce.string(),
+    costs: z.array(RunDetailCostSchema).default([]),
+    descendantRuns: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            parentRunId: z.string().nullish(),
+            serviceName: z.string(),
+            taskName: z.string(),
+            status: z.string(),
+            startedAt: z.string().nullish(),
+            completedAt: z.string().nullish(),
+            ownCostInUsdCents: z.coerce.string(),
+            costs: z.array(RunDetailCostSchema).default([]),
+          })
+          .passthrough(),
+      )
+      .default([]),
+  })
+  .passthrough();
+
+export type RunDetail = z.infer<typeof RunDetailSchema>;
+
+export async function getRunDetail(runId: string): Promise<RunDetail> {
+  const raw = await apiCall<unknown>(`/runs/${encodeURIComponent(runId)}`);
+  const parsed = RunDetailSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getRunDetail: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getRunDetail: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * What ONE run wrote, as content-generation stores it: the generation row itself, which
+ * states the model that actually ran (not the workflow's current alias), the prompt
+ * template, the audience and the lead it was written for. Read through `/emails?runId=`.
+ */
+export interface RunGeneration {
+  id: string;
+  subject: string | null;
+  model: string | null;
+  promptType: string | null;
+  audienceId: string | null;
+  leadId: string | null;
+  workflowSlug: string | null;
+  campaignId: string | null;
+  leadFirstName: string | null;
+  leadLastName: string | null;
+  leadCompany: string | null;
+  leadTitle: string | null;
+  createdAt: string | null;
+  sequence: EmailSequenceStep[] | null;
+}
+
+const RunGenerationSchema = z.object({
+  id: z.string(),
+  subject: z.string().nullish(),
+  model: z.string().nullish(),
+  promptType: z.string().nullish(),
+  audienceId: z.string().nullish(),
+  leadId: z.string().nullish(),
+  workflowSlug: z.string().nullish(),
+  campaignId: z.string().nullish(),
+  leadFirstName: z.string().nullish(),
+  leadLastName: z.string().nullish(),
+  leadCompany: z.string().nullish(),
+  leadTitle: z.string().nullish(),
+  createdAt: z.string().nullish(),
+  sequence: z
+    .array(z.object({ step: z.number(), bodyHtml: z.string().nullish(), bodyText: z.string().nullish(), daysSinceLastStep: z.number().nullish() }))
+    .nullish(),
+});
+
+export async function listRunGenerations(brandId: string, runId: string): Promise<RunGeneration[]> {
+  const query = new URLSearchParams({ brandId, runId });
+  const raw = await apiCall<unknown>(`/emails?${query}`);
+  const parsed = z.object({ emails: z.array(RunGenerationSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listRunGenerations: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] listRunGenerations: invalid response shape");
+  }
+  return parsed.data.emails.map((e) => ({
+    id: e.id,
+    subject: e.subject ?? null,
+    model: e.model ?? null,
+    promptType: e.promptType ?? null,
+    audienceId: e.audienceId ?? null,
+    leadId: e.leadId ?? null,
+    workflowSlug: e.workflowSlug ?? null,
+    campaignId: e.campaignId ?? null,
+    leadFirstName: e.leadFirstName ?? null,
+    leadLastName: e.leadLastName ?? null,
+    leadCompany: e.leadCompany ?? null,
+    leadTitle: e.leadTitle ?? null,
+    createdAt: e.createdAt ?? null,
+    sequence: (e.sequence ?? null)?.map((s) => ({
+      step: s.step,
+      bodyHtml: s.bodyHtml ?? "",
+      bodyText: s.bodyText ?? "",
+      daysSinceLastStep: s.daysSinceLastStep ?? 0,
+    })) ?? null,
+  }));
+}
+
 export async function listBrandRunLedger(
   brandId: string,
   opts: {

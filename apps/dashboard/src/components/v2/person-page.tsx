@@ -9,12 +9,10 @@ import { pollOptions } from "@/lib/query-options";
 import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
 import { leadWentCold, wentColdReason, WENT_COLD_LABEL } from "@/lib/lead-cold";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
-import { v2Href } from "@/lib/v2/routes";
+import { v2Href, v2RunHref } from "@/lib/v2/routes";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { CloseWonForm } from "@/components/leads/close-won-form";
-import { CrewMark } from "@/components/v2/crew-mark";
-import { useMissions } from "@/components/v2/use-missions";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
 
@@ -46,7 +44,6 @@ function standingState(lead: Lead): string | null {
  */
 export function PersonPage() {
   const { orgId, brandId, leadRowId } = useParams<{ orgId: string; brandId: string; leadRowId: string }>();
-  const { missionByCampaignId } = useMissions(orgId, brandId);
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
   const historyQ = useAuthQuery(
     ["leadHistory", leadRowId, brandId, "campaign"],
@@ -61,7 +58,6 @@ export function PersonPage() {
   const company = lead ? leadCompany(lead) : null;
   const domain = lead ? leadCompanyDomain(lead) : null;
   const title = lead ? leadTitle(lead) : null;
-  const mission = lead ? missionByCampaignId.get(lead.campaignId) ?? null : null;
   const state = lead ? standingState(lead) : null;
   const cold = lead ? leadWentCold((lead as unknown as { standing?: unknown }).standing) : null;
   const lastAt = lead ? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)) : null;
@@ -135,7 +131,12 @@ export function PersonPage() {
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0">
                 {historyQ.data ? (
-                  <LeadHistoryTimeline history={historyQ.data} heading="Conversation and activity" showNextFollowup />
+                  <LeadHistoryTimeline
+                    history={historyQ.data}
+                    heading="Conversation and activity"
+                    showNextFollowup
+                    runHref={(runId) => `${v2RunHref(orgId, brandId, runId)}?person=${encodeURIComponent(leadRowId)}`}
+                  />
                 ) : (
                   <div className="k-card p-4">
                     {historyQ.isError ? (
@@ -165,19 +166,6 @@ export function PersonPage() {
                         ) : null
                       }
                     />
-                    <Row
-                      k="Mission"
-                      v={
-                        mission ? (
-                          <Link href={mission.href} className="inline-flex items-center gap-1.5 hover:underline">
-                            <CrewMark color={mission.crew.color} glyph={mission.crew.glyph} />
-                            {mission.crew.name}
-                            {mission.offerName ? ` · ${mission.offerName}` : ""}
-                          </Link>
-                        ) : null
-                      }
-                    />
-                    <Row k="Audience" v={lead.audience?.name ?? null} />
                     <Row k="First contacted" v={lead.firstContactedAt ? friendlyDate(lead.firstContactedAt) : null} />
                     <Row k="Last activity" v={lastAt ? timeAgo(lastAt) : null} />
                     <Row
