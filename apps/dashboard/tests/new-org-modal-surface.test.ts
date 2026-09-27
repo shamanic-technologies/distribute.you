@@ -151,3 +151,23 @@ describe("the brand step waits for the site read", () => {
     expect(modal).toContain("Reading your website to draft what you sell");
   });
 });
+
+describe("an org that is not set up yet", () => {
+  const orgPage = readFileSync(join(__dirname, "../src/app/(authed)/v2/orgs/[orgId]/page.tsx"), "utf8");
+  const picker = readFileSync(join(__dirname, "../src/components/v2/brand-picker.tsx"), "utf8");
+  const shell = readFileSync(join(__dirname, "../src/components/v2/v2-shell.tsx"), "utf8");
+  it("never redirects to a brand page (the edge gate would send it to the old onboarding)", () => {
+    expect(orgPage).toContain("if (last && setUp) redirect(");
+    expect(orgPage).toContain("onboardingComplete === true");
+  });
+  it("resumes a brand in the v2 modal instead of opening it", () => {
+    expect(picker).toContain("existingBrand={resuming}");
+    expect(picker).toContain("setUp ? (");
+  });
+  it("still draws a frame: tenant switcher + account menu with no brand", () => {
+    expect(shell).toContain("<V2OrgSidebar orgId={params.orgId} />");
+    const org = shell.slice(shell.indexOf("function V2OrgSidebar("), shell.indexOf("function V2Sidebar("));
+    expect(org).toContain("<TenantSwitcherV2 />");
+    expect(org).toContain('<AccountMenuV2 orgId={orgId} brandId="" />');
+  });
+});

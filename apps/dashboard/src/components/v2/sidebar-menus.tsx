@@ -283,13 +283,17 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   // Research is staff-only for now: the entry is drawn for the staff list alone, and the page
   // checks the same list, so a typed URL shows nothing either.
   const staff = isAdminEmail(email);
-  const links: { href: string; label: string; icon: string; pill?: string; staff?: boolean }[] = [
-    { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
-    { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
-    { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
-    ...(staff ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, staff: true }] : []),
-    { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
-  ];
+  // Every account page lives under a brand; an org with no brand yet (its first brand
+  // not added) gets the menu without them: who is signed in, help, sign out.
+  const links: { href: string; label: string; icon: string; pill?: string; staff?: boolean }[] = brandId
+    ? [
+        { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
+        { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
+        { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
+        ...(staff ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, staff: true }] : []),
+        { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
+      ]
+    : [];
   const avatar = (size: number) =>
     user?.imageUrl && user.hasImage ? (
       // eslint-disable-next-line @next/next/no-img-element
@@ -301,9 +305,13 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
     <div ref={ref} className="relative px-2 pb-2 pt-1">
       {open && (
         <div role="menu" className="k-popover absolute bottom-full left-2 right-2 z-50 mb-1 p-1">
-          <Link href={`${base}/account`} role="menuitem" onClick={close} className="k-fg3 block truncate rounded-[8px] px-2 py-1.5 text-[13px] hover:bg-[var(--bg-hover)]" title="Profile">
-            {email || name}
-          </Link>
+          {brandId ? (
+            <Link href={`${base}/account`} role="menuitem" onClick={close} className="k-fg3 block truncate rounded-[8px] px-2 py-1.5 text-[13px] hover:bg-[var(--bg-hover)]" title="Profile">
+              {email || name}
+            </Link>
+          ) : (
+            <span className="k-fg3 block truncate px-2 py-1.5 text-[13px]">{email || name}</span>
+          )}
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           {links.map((l) => (
             <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close} prefetch={l.staff ? true : undefined}>
