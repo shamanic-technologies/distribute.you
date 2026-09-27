@@ -9,10 +9,10 @@ import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
   editWorkflowPrompt,
-  getWorkflowActualCostHistory,
   getBrand,
+  getFleetWorkflowActualCostHistory,
+  getFleetWorkflowReturnHistory,
   getPlatformPrompt,
-  getWorkflowRevenue,
   listAudiences,
   listBrandRunLedger,
   listRunEmails,
@@ -138,7 +138,7 @@ export function V2WorkflowPage() {
               legStepLabel={ranking.ladder?.leg?.toStep.label ?? null}
               onClose={() => {}}
             />
-            <OverTime featureSlug={spec.featureSlug} brandId={brandId} dynasty={dynasty} />
+            <OverTime featureSlug={spec.featureSlug} dynasty={dynasty} />
           </div>
           <div className="min-w-0 space-y-4">
             <PromptCard
@@ -164,34 +164,35 @@ export function V2WorkflowPage() {
 // ─── Cost, value and return over time ──────────────────────────────────────
 
 /**
- * Three curves over time for this workflow at brand grain: cumulative cost, cumulative
- * pipeline value, and their ratio, each as the producer states it. Nothing is divided
- * here; a day the producer states no figure for is left out of that chart.
+ * Three curves over time for this workflow across ALL client orgs (the fleet): cumulative
+ * cost, cumulative pipeline value, and their ratio, each as features-service states it.
+ * The fleet is the grain where a workflow has a history (on one brand it is 0 to 2 days),
+ * and it is the grain the table's Global column speaks. No org is named. Nothing is
+ * divided here; a day the producer states no figure for is left out of that chart.
  *
- * USER COST (default, everyone on the beta list) reads features-service's `roiHistory`
- * (`pricing=net`): what the client is billed. ACTUAL COST (STAFF only) reads the same
- * curve costed at what the vendors charged us before our markup. It reveals our margin,
- * so the switch is offered to the staff list alone and the gateway refuses anyone else.
- * The value curve is the same on both bases; only cost and return move.
+ * USER COST (default, everyone on the beta list) is what clients were billed, net.
+ * ACTUAL COST (STAFF only) is the same curve costed at what the vendors charged us before
+ * our markup. It reveals our margin, so the switch is offered to the staff list alone and
+ * the gateway refuses anyone else. The value curve is the same on both bases.
  */
-function OverTime({ featureSlug, brandId, dynasty }: { featureSlug: string; brandId: string; dynasty: string }) {
+function OverTime({ featureSlug, dynasty }: { featureSlug: string; dynasty: string }) {
   const isStaff = useIsAdminUser();
   const [basis, setBasis] = useState<"user" | "actual">("user");
   const actual = isStaff && basis === "actual";
   const q = useAuthQuery(
-    ["workflowRevenue", brandId, "brand", dynasty],
-    () => getWorkflowRevenue(featureSlug, brandId, null, dynasty),
+    ["fleetWorkflowReturn", featureSlug, dynasty],
+    () => getFleetWorkflowReturnHistory(featureSlug, dynasty),
     pollOptions,
   );
   const actualQ = useAuthQuery(
-    ["workflowActualCost", brandId, dynasty],
-    () => getWorkflowActualCostHistory(featureSlug, brandId, dynasty),
+    ["fleetWorkflowActualCost", featureSlug, dynasty],
+    () => getFleetWorkflowActualCostHistory(featureSlug, dynasty),
     { ...pollOptions, enabled: actual, retry: false },
   );
   const src = actual ? actualQ : q;
   const pending = src.isPending && !src.isError;
   const daily: { date: string; cumulativeSpendUsd: number | null; cumulativePipelineUsd: number; roiMultiple: number | null }[] =
-    actual ? (actualQ.data?.daily ?? []) : (q.data?.roiHistory?.daily ?? []);
+    actual ? (actualQ.data?.daily ?? []) : (q.data ?? []);
   const points = daily.map((d) => ({
     date: d.date,
     spend: d.cumulativeSpendUsd,
@@ -202,10 +203,12 @@ function OverTime({ featureSlug, brandId, dynasty }: { featureSlug: string; bran
   const roiPoints = points.filter((p) => p.roi != null);
   const unpriced = actual ? actualQ.data?.unpricedBilledCostUsd ?? 0 : 0;
   const unpricedFrom = actual ? actualQ.data?.unpricedFromDate ?? null : null;
-  const unreadable = actual && !actualQ.isPending && !actualQ.isError && actualQ.data === null;
+  const unreadable = actual
+    ? !actualQ.isPending && !actualQ.isError && actualQ.data === null
+    : !q.isPending && !q.isError && q.data === null;
   const costNote = actual
-    ? "What the vendors charged us to run it for this brand, before our margin, added up day by day."
-    : "What this brand has been billed for it, added up day by day.";
+    ? "What the vendors charged us to run it for all clients, before our margin, added up day by day."
+    : "What all clients have been billed for it, added up day by day.";
 
   return (
     <div className="mt-4 space-y-4">
@@ -227,7 +230,12 @@ function OverTime({ featureSlug, brandId, dynasty }: { featureSlug: string; bran
           <MaturityBadge level="staff" />
         </div>
       )}
-      {unreadable && <p className="text-xs text-gray-500">We could not read the actual cost for this workflow just now.</p>}
+      <p className="text-xs text-gray-500">All clients combined.</p>
+      {unreadable && (
+        <p className="text-xs text-gray-500">
+          We could not read the {actual ? "actual cost" : "billed cost"} for this workflow just now.
+        </p>
+      )}
       {unpriced > 0 && (
         <p className="text-xs text-gray-500">
           {formatUsdAdaptive(unpriced)} of billed spend
@@ -245,7 +253,7 @@ function OverTime({ featureSlug, brandId, dynasty }: { featureSlug: string; bran
       />
       <ChartCard
         title="Value generated"
-        note="The pipeline value its outcomes are worth, added up day by day."
+        note="The pipeline value its outcomes are worth for all clients, added up day by day."
         pending={pending}
         failed={src.isError}
         data={points}
@@ -296,7 +304,7 @@ function ChartCard({
         ) : failed ? (
           <p className="pt-10 text-center text-xs text-gray-500">We could not read this curve just now.</p>
         ) : data.length === 0 ? (
-          <p className="pt-10 text-center text-xs text-gray-500">No dated history for this workflow on this brand yet.</p>
+          <p className="pt-10 text-center text-xs text-gray-500">No dated history for this workflow yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
