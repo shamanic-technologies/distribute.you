@@ -171,3 +171,12 @@ describe("an org that is not set up yet", () => {
     expect(org).toContain('<AccountMenuV2 orgId={orgId} brandId="" />');
   });
 });
+
+describe("leg prices are read on the chosen offer", () => {
+  it("waits for the offer and names it on the read", () => {
+    const eff = modal.slice(modal.indexOf("// Leg prices and the channel floor"), modal.indexOf("// ── Steps ──"));
+    expect(eff).toContain("if (!brandId || !orgId || !offerId) return;");
+    expect(eff).toContain("offerId, leg: leg.key");
+    expect(eff).toContain("[brandId, orgId, offerId]");
+  });
+});

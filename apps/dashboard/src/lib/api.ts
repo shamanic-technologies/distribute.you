@@ -7152,11 +7152,17 @@ export async function getWorkflowProjectionLadder(
     /** DEPRECATED — see `goal`. */
     objective?: SalesObjective | string;
     audienceId?: string;
+    /**
+     * Price the leg for ONE offer of the brand, with no campaign yet (features-service
+     * #1185). A brand selling several offers is refused without it or a campaign.
+     */
+    offerId?: string | null;
   },
   token?: string,
 ): Promise<WorkflowProjectionLadderResponse> {
   const query = new URLSearchParams();
   query.set("brandId", params.brandId);
+  if (params.offerId) query.set("offerId", params.offerId);
   // leg WINS over goal/objective at the producer, so a caller that states one gets its
   // own leg priced whatever else it sends.
   if (params.leg) query.set("leg", params.leg);
