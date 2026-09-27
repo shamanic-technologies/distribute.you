@@ -1,0 +1,16 @@
+{
+  "slug": "cold-email-open-tracking",
+  "title": "Open Tracking Impact on Cold Email Reply Rates (140k Emails)",
+  "excerpt": "We switched off the open-tracking pixel on our cold emails in June 2026. Across 140,000 emails, people replied more often without it. The data, the caveats, and the rule we ship now.",
+  "tags": [
+    "cold email",
+    "open tracking",
+    "cold email open tracking",
+    "reply rate",
+    "deliverability",
+    "tracking pixel"
+  ],
+  "publishedAt": "2026-09-27T06:00:00.000Z",
+  "coverImagePath": "/blog/cold-email-open-tracking/hero.png",
+  "source": "manual"
+}

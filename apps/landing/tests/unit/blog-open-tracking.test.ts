@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = join(__dirname, "../..");
-const dir = join(root, "content/blog/cold-email-open-tracking-pixel");
+const dir = join(root, "content/blog/cold-email-open-tracking");
 const html = readFileSync(join(dir, "article.html"), "utf8");
 const template = readFileSync(join(dir, "article.template.html"), "utf8");
 const meta = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
@@ -23,7 +23,15 @@ describe("the open-tracking article", () => {
   it("states the headline figures derived from the committed snapshot", () => {
     expect(prose).toContain(`${pct(facts.replied.off)} of people replied, against ${pct(facts.replied.on)} with it: ${signed(facts.replied.liftPct)} replies`);
     expect(prose).toContain(signed(facts.repliedDelivered.liftPct));
-    expect(meta.title).toContain(facts.total.emailsRounded.toLocaleString("en-US"));
+    expect(meta.title).toContain(`${facts.total.emailsRounded / 1000}k`);
+  });
+
+  it("carries an SEO title and slug: keyword first, short, no stop words", () => {
+    expect(meta.title.length).toBeLessThanOrEqual(60);
+    expect(meta.title).toMatch(/^Open Tracking .*Cold Email/);
+    expect(meta.slug).toBe("cold-email-open-tracking");
+    expect(meta.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect(meta.slug.split("-").length).toBeLessThanOrEqual(5);
   });
 
   it("carries no typed figure in the results sections", () => {
