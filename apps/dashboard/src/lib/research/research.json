@@ -89,8 +89,8 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "GLM 5.2 wins at $32 per positive reply.",
-      "winner": "GLM 5.2",
+      "headline": "GLM 5.2 Pro wins at $32 per positive reply.",
+      "winner": "GLM 5.2 Pro",
       "result": {
         "display": "$32",
         "unit": "per positive reply",
@@ -105,7 +105,7 @@
           "points": [
             {
               "key": "glm-5.2",
-              "label": "GLM 5.2",
+              "label": "GLM 5.2 Pro",
               "value": 31.77,
               "display": "$32",
               "note": "1 positive reply · 547 emails",
@@ -140,7 +140,7 @@
         },
         {
           "kind": "months",
-          "title": "GLM 5.2: cost per positive reply by month",
+          "title": "GLM 5.2 Pro: cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
             {
@@ -152,7 +152,7 @@
             }
           ],
           "cumulative": {
-            "title": "GLM 5.2: average since inception",
+            "title": "GLM 5.2 Pro: average since inception",
             "points": [
               {
                 "label": "Sep",
@@ -167,7 +167,7 @@
         }
       ],
       "conclusion": [
-        "GLM 5.2: 1 positive reply · 547 emails, $32 spent."
+        "GLM 5.2 Pro: 1 positive reply · 547 emails, $32 spent."
       ]
     },
     {
@@ -177,8 +177,8 @@
       "goal": "rate",
       "question": "Which LLM gets the most positive replies?",
       "status": "measured",
-      "headline": "GLM 5.2 wins with a 0.18% positive reply rate.",
-      "winner": "GLM 5.2",
+      "headline": "GLM 5.2 Pro wins with a 0.18% positive reply rate.",
+      "winner": "GLM 5.2 Pro",
       "result": {
         "display": "0.18%",
         "unit": "positive reply rate",
@@ -193,7 +193,7 @@
           "points": [
             {
               "key": "glm-5.2",
-              "label": "GLM 5.2",
+              "label": "GLM 5.2 Pro",
               "value": 18.3,
               "display": "0.18%",
               "note": "1 positive reply · 547 emails",
@@ -265,7 +265,7 @@
             },
             {
               "key": "glm-5.3",
-              "label": "GLM 5.3",
+              "label": "GLM 5.3 Pro",
               "value": 0,
               "display": "0.00%",
               "note": "0 positive replies · 199 emails",
@@ -284,7 +284,7 @@
         },
         {
           "kind": "months",
-          "title": "GLM 5.2: positive reply rate by month",
+          "title": "GLM 5.2 Pro: positive reply rate by month",
           "lowerIsBetter": false,
           "points": [
             {
@@ -303,7 +303,7 @@
             }
           ],
           "cumulative": {
-            "title": "GLM 5.2: average since inception",
+            "title": "GLM 5.2 Pro: average since inception",
             "points": [
               {
                 "label": "Aug",
@@ -325,7 +325,7 @@
         }
       ],
       "conclusion": [
-        "GLM 5.2: 1 positive reply · 547 emails.",
+        "GLM 5.2 Pro: 1 positive reply · 547 emails.",
         "Over time: 0.00% in Aug, 0.31% in Sep.",
         "A LLM under 1,000 emails or 10 positive replies is ranked where its rate puts it and marked thin."
       ]
@@ -338,7 +338,7 @@
       "question": "What does a positive reply cost on average?",
       "status": "measured",
       "headline": "$225 per positive reply on average since inception, across all our emails.",
-      "winner": "GLM 5.2",
+      "winner": "GLM 5.2 Pro",
       "result": {
         "display": "$225",
         "unit": "per positive reply, average since inception",
@@ -445,7 +445,7 @@
         },
         {
           "kind": "months",
-          "title": "GLM 5.2 (cheapest LLM): cost per positive reply by month",
+          "title": "GLM 5.2 Pro (cheapest LLM): cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
             {
@@ -457,7 +457,7 @@
             }
           ],
           "cumulative": {
-            "title": "GLM 5.2 (cheapest LLM): average since inception",
+            "title": "GLM 5.2 Pro (cheapest LLM): average since inception",
             "points": [
               {
                 "label": "Sep",
@@ -473,7 +473,7 @@
       ],
       "conclusion": [
         "The average divides everything spent since the first email by every positive reply since; the monthly bars are context, not the answer.",
-        "GLM 5.2 (cheapest LLM): $32 per positive reply on average since inception."
+        "GLM 5.2 Pro (cheapest LLM): $32 per positive reply on average since inception."
       ]
     },
     {
@@ -1238,8 +1238,8 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "GLM 5.2 · Blind discovery v26 wins at $36 per positive reply.",
-      "winner": "GLM 5.2 · Blind discovery v26",
+      "headline": "GLM 5.2 Pro · Blind discovery v26 wins at $36 per positive reply.",
+      "winner": "GLM 5.2 Pro · Blind discovery v26",
       "result": {
         "display": "$36",
         "unit": "per positive reply",
@@ -1254,7 +1254,7 @@
           "points": [
             {
               "key": "sales-cold-email-outreach-nobelium",
-              "label": "GLM 5.2 · Blind discovery v26",
+              "label": "GLM 5.2 Pro · Blind discovery v26",
               "value": 36.06,
               "display": "$36",
               "note": "1 positive reply · 621 emails",
@@ -1345,7 +1345,7 @@
         },
         {
           "kind": "months",
-          "title": "GLM 5.2 · Blind discovery v26: cost per positive reply by month",
+          "title": "GLM 5.2 Pro · Blind discovery v26: cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
             {
@@ -1357,7 +1357,7 @@
             }
           ],
           "cumulative": {
-            "title": "GLM 5.2 · Blind discovery v26: average since inception",
+            "title": "GLM 5.2 Pro · Blind discovery v26: average since inception",
             "points": [
               {
                 "label": "Sep",
@@ -1372,7 +1372,7 @@
         }
       ],
       "conclusion": [
-        "GLM 5.2 · Blind discovery v26: 1 positive reply · 621 emails, $36 spent."
+        "GLM 5.2 Pro · Blind discovery v26: 1 positive reply · 621 emails, $36 spent."
       ]
     },
     {
@@ -1382,8 +1382,8 @@
       "goal": "rate",
       "question": "Which workflow gets the most positive replies?",
       "status": "measured",
-      "headline": "GLM 5.2 · Blind discovery v26 wins with a 0.16% positive reply rate.",
-      "winner": "GLM 5.2 · Blind discovery v26",
+      "headline": "GLM 5.2 Pro · Blind discovery v26 wins with a 0.16% positive reply rate.",
+      "winner": "GLM 5.2 Pro · Blind discovery v26",
       "result": {
         "display": "0.16%",
         "unit": "positive reply rate",
@@ -1398,7 +1398,7 @@
           "points": [
             {
               "key": "sales-cold-email-outreach-nobelium",
-              "label": "GLM 5.2 · Blind discovery v26",
+              "label": "GLM 5.2 Pro · Blind discovery v26",
               "value": 16.1,
               "display": "0.16%",
               "note": "1 positive reply · 621 emails",
@@ -1665,7 +1665,7 @@
         },
         {
           "kind": "months",
-          "title": "GLM 5.2 · Blind discovery v26: positive reply rate by month",
+          "title": "GLM 5.2 Pro · Blind discovery v26: positive reply rate by month",
           "lowerIsBetter": false,
           "points": [
             {
@@ -1684,7 +1684,7 @@
             }
           ],
           "cumulative": {
-            "title": "GLM 5.2 · Blind discovery v26: average since inception",
+            "title": "GLM 5.2 Pro · Blind discovery v26: average since inception",
             "points": [
               {
                 "label": "Aug",
@@ -1706,7 +1706,7 @@
         }
       ],
       "conclusion": [
-        "GLM 5.2 · Blind discovery v26: 1 positive reply · 621 emails.",
+        "GLM 5.2 Pro · Blind discovery v26: 1 positive reply · 621 emails.",
         "Over time: 0.00% in Aug, 0.29% in Sep.",
         "A workflow under 1,000 emails or 10 positive replies is ranked where its rate puts it and marked thin."
       ]
