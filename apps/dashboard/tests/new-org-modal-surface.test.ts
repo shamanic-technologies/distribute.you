@@ -217,3 +217,13 @@ describe("the six offer questions", () => {
     expect(modal).toContain('case "levers": return leverIndex < LEVER_QUESTIONS.length - 1');
   });
 });
+
+describe("the payment mode is recorded before the launch", () => {
+  it("sets prepaid for a free-credit start and the chosen mode otherwise, before anything else in launch", () => {
+    const body = modal.slice(modal.indexOf("  function launch() {"), modal.indexOf("if (!open) return null;"));
+    const set = body.indexOf('await setPaymentMode(startOnFreeCredit.current ? "prepaid" : payMode)');
+    expect(set).toBeGreaterThan(-1);
+    expect(set).toBeLessThan(body.indexOf("await confirmAudienceSegments("));
+    expect(modal).toContain("startOnFreeCredit.current = true;");
+  });
+});

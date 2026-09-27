@@ -47,6 +47,7 @@ import {
   proposeBrandOffers,
   saveCampaignBudget,
   saveOfferUserFields,
+  setPaymentMode,
   setApiActiveOrgOverride,
   suggestBrandIcp,
   upsertBrand,
@@ -620,11 +621,18 @@ export function NewOrgModal({
     launch();
   }
 
+  // Starting on free credit is PREPAID by definition: the org spends what it holds.
+  const startOnFreeCredit = useRef(false);
+
   function launch() {
     go("launching");
     void run(async () => {
       const id = brandId!;
       const chosenOffer = offerId!;
+      // Record the payment mode FIRST: a new org is postpaid by default, and a postpaid
+      // org with no card is stopped at once (no_chargeable_card), which is what made a
+      // free-credit start stop immediately. Prepaid runs without a card.
+      await setPaymentMode(startOnFreeCredit.current ? "prepaid" : payMode);
       await confirmAudienceSegments(id, chosenOffer, audienceText.trim(), segments.filter((_, i) => pickedSegments.has(i)));
       await saveCampaignBudget(id, { offerId: chosenOffer, legKey, featureSlug: NEW_ORG_CHANNEL_SLUG }, budgetUsd * 100);
       const workflowSlug = legPrices[legKey]?.workflow;
@@ -831,7 +839,7 @@ export function NewOrgModal({
               </Field>
               {recommended != null && (
                 <p className="k-fg2 text-[13px]">
-                  Recommended: {fmtUsd(recommended)} a day, about {leg.recommendedPerDay} {leg.recommendedPerDay === 1 ? leg.unit : leg.unitPlural} a day at today&apos;s price.
+                  {`Recommended: ${fmtUsd(recommended)} a day, about ${leg.recommendedPerDay} ${leg.recommendedPerDay === 1 ? leg.unit : leg.unitPlural} a day at today's price.`}
                 </p>
               )}
             </div>
@@ -908,7 +916,15 @@ export function NewOrgModal({
             )}
             <div className="ml-auto flex items-center gap-2">
               {step === "payment" && skipAllowed && (
-                <button type="button" className="k-btn" onClick={launch} disabled={busy}>
+                <button
+                  type="button"
+                  className="k-btn"
+                  onClick={() => {
+                    startOnFreeCredit.current = true;
+                    launch();
+                  }}
+                  disabled={busy}
+                >
                   Start with free credit
                 </button>
               )}

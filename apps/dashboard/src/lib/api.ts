@@ -7631,6 +7631,18 @@ export type EmbeddedCheckoutSession =
       session_id: string;
     };
 
+/**
+ * Record how the org pays (billing-service `PUT /v1/accounts/payment_mode`). A new org
+ * is POSTPAID by default, and a postpaid org with no card is stopped at once
+ * (`no_chargeable_card`); a PREPAID org spends only what it holds and runs without a card.
+ */
+export async function setPaymentMode(
+  payment_mode: "prepaid" | "postpaid",
+  token?: string,
+): Promise<{ org_id: string; payment_mode: "prepaid" | "postpaid" }> {
+  return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode } });
+}
+
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
