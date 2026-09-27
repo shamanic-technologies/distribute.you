@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
+  ApiError,
+  editWorkflowPrompt,
   getBrand,
   getPlatformPrompt,
   getWorkflowRevenue,
@@ -28,7 +31,8 @@ import { formatRoi } from "@/lib/format-roi";
 import { friendlyDateTime } from "@/lib/friendly-datetime";
 import { audienceRowsFor, scopeLadderRows } from "@/lib/workflow-grains";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { v2Href } from "@/lib/v2/routes";
+import { useIsAdminUser } from "@/lib/use-admin-user";
+import { v2Href, v2WorkflowHref } from "@/lib/v2/routes";
 
 /** How many of a dynasty's most recent versions the run history reads. */
 const RUN_VERSIONS = 4;
@@ -50,6 +54,7 @@ export function V2WorkflowPage() {
   const crewRaw = useSearchParams().get("crew") ?? "";
   const [featureSlug, legKey] = crewRaw.split("|");
   const isBeta = useIsBetaUser();
+  const router = useRouter();
   const { specs } = useBrandCrewSpecs(orgId, brandId);
   const spec = featureSlug && legKey ? { featureSlug, legKey } : null;
   const crew = specs.find((s) => s.featureSlug === featureSlug && s.legKey === legKey)?.crew ?? null;
@@ -135,7 +140,13 @@ export function V2WorkflowPage() {
             <OverTime featureSlug={spec.featureSlug} brandId={brandId} dynasty={dynasty} />
           </div>
           <div className="min-w-0 space-y-4">
-            <PromptCard promptType={ranked.row.contentPromptType} />
+            <PromptCard
+              promptType={ranked.row.contentPromptType}
+              dynasty={dynasty}
+              workflowName={name}
+              featureSlug={spec.featureSlug}
+              onForked={(slug) => router.push(v2WorkflowHref(orgId, brandId, slug, crewRaw))}
+            />
             <RunsCard
               orgId={orgId}
               brandId={brandId}
@@ -264,18 +275,83 @@ function ChartCard({
 
 // ─── Prompt ─────────────────────────────────────────────────────────────────
 
+const UPGRADE_WARNING =
+  "Every campaign on this workflow, for every brand, writes with the edited prompt from its next run. The current prompt is kept as it is; the edit becomes a new template.";
+const FORK_WARNING =
+  "A new workflow is created that writes with the edited prompt. It joins this channel's catalogue for every brand and can be picked for any campaign. The original is untouched.";
+
 /**
  * The prompt template the workflow writes with, read by the type its DAG names.
- * Read-only: editing it (Fork or Upgrade) changes emails for every brand using the
- * workflow, so it will be a STAFF control, shipped once the backend can do it safely.
+ *
+ * Everyone on the beta list can READ it. EDITING is staff-only: a fork or an upgrade
+ * changes what every brand's campaigns can send, so the control is offered only to the
+ * staff list (and the gateway refuses anyone else whatever the page shows). The two
+ * actions are workflow-service's (#454); a refusal is shown in its own words.
  */
-function PromptCard({ promptType }: { promptType: string | null }) {
+function PromptCard({
+  promptType,
+  dynasty,
+  workflowName,
+  featureSlug,
+  onForked,
+}: {
+  promptType: string | null;
+  dynasty: string;
+  workflowName: string;
+  featureSlug: string;
+  onForked: (newDynasty: string) => void;
+}) {
+  const isStaff = useIsAdminUser();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<"upgrade" | "fork" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const q = useAuthQuery(["platformPrompt", promptType ?? "none"], () => getPlatformPrompt(promptType as string), {
     ...pollOptions,
     enabled: open && Boolean(promptType),
     retry: false,
   });
+  const original = q.data?.prompt ?? "";
+  const editing = draft !== null;
+  const changed = editing && draft !== original;
+
+  const close = () => {
+    if (busy) return;
+    setOpen(false);
+    setDraft(null);
+    setConfirm(null);
+    setError(null);
+  };
+
+  const run = async (action: "upgrade" | "fork") => {
+    if (draft === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await editWorkflowPrompt(dynasty, action, draft);
+      await queryClient.invalidateQueries({ queryKey: ["workflows", featureSlug] });
+      setConfirm(null);
+      setDraft(null);
+      setOpen(false);
+      if (res.action === "forked") onForked(res.workflow.workflowDynastySlug);
+      else setNotice(`Upgraded to version ${res.workflow.version}. It now writes with ${res.promptTemplate.type}.`);
+    } catch (err) {
+      console.error("[dashboard] prompt edit failed", err);
+      const producer = err instanceof ApiError && typeof err.body?.error === "string" ? (err.body.error as string) : null;
+      setConfirm(null);
+      setError(
+        err instanceof ApiError && err.status === 403
+          ? "Only staff can edit a prompt."
+          : (producer ?? "We could not save this edit. Nothing was changed."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
@@ -289,19 +365,27 @@ function PromptCard({ promptType }: { promptType: string | null }) {
           </button>
         )}
       </div>
+      {notice && <p className="mt-3 text-xs text-green-700">{notice}</p>}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/30 p-4 md:p-8" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/30 p-4 md:p-8" onClick={close}>
           <div
             role="dialog"
             aria-label="Prompt"
             className="flex w-full max-w-5xl flex-col rounded-xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-              <p className="font-mono text-sm text-gray-900">{promptType}</p>
-              <button type="button" onClick={() => setOpen(false)} className="text-sm text-gray-500 hover:text-gray-900">
-                Close
-              </button>
+            <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3">
+              <p className="min-w-0 truncate font-mono text-sm text-gray-900">{promptType}</p>
+              <div className="flex shrink-0 items-center gap-2">
+                {isStaff && !editing && q.data && (
+                  <button type="button" onClick={() => setDraft(original)} className="k-btn h-8 gap-1.5 px-3 text-[13px]">
+                    Edit <MaturityBadge level="staff" />
+                  </button>
+                )}
+                <button type="button" onClick={close} className="text-sm text-gray-500 hover:text-gray-900">
+                  Close
+                </button>
+              </div>
             </div>
             <div className="min-h-0 flex-1 p-5">
               {q.isPending && !q.isError ? (
@@ -310,13 +394,48 @@ function PromptCard({ promptType }: { promptType: string | null }) {
                 <p className="text-sm text-gray-500">We could not read this prompt just now.</p>
               ) : (
                 <textarea
-                  readOnly
-                  value={q.data?.prompt ?? ""}
-                  className="h-full w-full resize-none rounded-lg border border-gray-200 bg-gray-50 p-4 font-mono text-[13px] leading-relaxed text-gray-800"
+                  readOnly={!editing}
+                  value={editing ? draft : original}
+                  onChange={(e) => setDraft(e.target.value)}
+                  className={`h-full w-full resize-none rounded-lg border p-4 font-mono text-[13px] leading-relaxed text-gray-800 ${
+                    editing ? "border-brand-300 bg-white" : "border-gray-200 bg-gray-50"
+                  }`}
                 />
               )}
             </div>
+            {editing && (
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3">
+                {error && <p className="mr-auto text-sm text-red-600">{error}</p>}
+                <button type="button" disabled={busy} onClick={() => { setDraft(null); setError(null); }} className="k-btn h-8 px-3 text-[13px]">
+                  Cancel
+                </button>
+                <button type="button" disabled={!changed || busy} onClick={() => setConfirm("fork")} className="k-btn h-8 px-3 text-[13px] disabled:opacity-40">
+                  Fork
+                </button>
+                <button type="button" disabled={!changed || busy} onClick={() => setConfirm("upgrade")} className="k-btn-accent h-8 px-3 text-[13px] disabled:opacity-40">
+                  Upgrade
+                </button>
+              </div>
+            )}
           </div>
+          {confirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={(e) => { e.stopPropagation(); if (!busy) setConfirm(null); }}>
+              <div role="alertdialog" aria-label="Confirm" className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <p className="text-base font-medium text-gray-900">
+                  {confirm === "upgrade" ? `Upgrade ${workflowName}?` : `Fork ${workflowName}?`}
+                </p>
+                <p className="mt-2 text-sm text-gray-600">{confirm === "upgrade" ? UPGRADE_WARNING : FORK_WARNING}</p>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button type="button" disabled={busy} onClick={() => setConfirm(null)} className="k-btn h-8 px-3 text-[13px]">
+                    Cancel
+                  </button>
+                  <button type="button" disabled={busy} onClick={() => run(confirm)} className={`k-btn-accent h-8 px-3 text-[13px] ${busy ? "cursor-wait" : ""}`}>
+                    {busy ? (confirm === "upgrade" ? "Upgrading..." : "Forking...") : confirm === "upgrade" ? "Upgrade" : "Fork"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

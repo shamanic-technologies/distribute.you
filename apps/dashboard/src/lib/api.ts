@@ -5951,6 +5951,47 @@ export interface PlatformPrompt {
   updatedAt: string;
 }
 
+/** What a staff prompt edit produced, as workflow-service states it (#454). */
+export interface WorkflowPromptEditResult {
+  action: "upgraded" | "forked";
+  /** The NEW row: a new dynasty on fork, a new version of the same one on upgrade. */
+  workflow: { id: string; workflowDynastySlug: string; version: number; contentPromptType?: string | null };
+  promptTemplate: { previousType: string | null; type: string };
+}
+
+/**
+ * STAFF ONLY. Upgrade or fork a workflow dynasty's active version with an edited prompt.
+ * The existing template is never modified: the edit becomes a new template type that
+ * only the upgraded or forked workflow uses. The gateway refuses a non-staff caller.
+ */
+export async function editWorkflowPrompt(
+  workflowDynastySlug: string,
+  action: "upgrade" | "fork",
+  prompt: string,
+  token?: string,
+): Promise<WorkflowPromptEditResult> {
+  const raw = await apiCall<unknown>(`/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/prompt-edit`, {
+    token,
+    method: "POST",
+    body: { action, prompt },
+  });
+  const parsed = z
+    .object({
+      action: z.enum(["upgraded", "forked"]),
+      workflow: z
+        .object({ id: z.string(), workflowDynastySlug: z.string(), version: z.coerce.number(), contentPromptType: z.string().nullish() })
+        .passthrough(),
+      promptTemplate: z.object({ previousType: z.string().nullable(), type: z.string() }).passthrough(),
+    })
+    .passthrough()
+    .safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] editWorkflowPrompt: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] editWorkflowPrompt: invalid response shape");
+  }
+  return parsed.data as WorkflowPromptEditResult;
+}
+
 export async function getPlatformPrompt(type: string, token?: string): Promise<PlatformPrompt> {
   const raw = await apiCall<unknown>(`/content/platform-prompts?type=${encodeURIComponent(type)}`, { token });
   const parsed = z
