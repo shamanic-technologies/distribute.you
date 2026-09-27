@@ -3624,16 +3624,21 @@ export async function extractBrandFields(
      * Every key must also appear in `fields` or brand-service 400s.
      */
     regenerateFieldKeys?: string[];
+    /**
+     * Read the fields for ONE offer. A brand selling several offers refuses a
+     * brand-scoped read (409 SEVERAL_OFFERS): each offer has its own value proposition.
+     */
+    offerId?: string;
   },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache, urlStrategy, mode, regenerateFieldKeys } = opts ?? {};
+  const { token, resetCache, urlStrategy, mode, regenerateFieldKeys, offerId } = opts ?? {};
   // `mode` (brand-service): omitted/"extract" = site-grounded (returns "Unknown" when
   // absent); "suggest" = a generative Hormozi + top-3-expert persona that infers a
   // best-effort value where the source is silent and never returns "Unknown". Onboarding
   // passes "suggest" for the user-facing offer levers + services (USER_PROFILE_FIELDS).
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy, mode, regenerateFieldKeys } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy, mode, regenerateFieldKeys, ...(offerId ? { offerId } : {}) } },
   );
 }
 

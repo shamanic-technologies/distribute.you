@@ -200,3 +200,20 @@ describe("orgs set up in the modal pay through Revolut", () => {
     expect(route).toContain("declareRevolutAcquirer(identity.orgId");
   });
 });
+
+describe("a resumed brand that already has its offers", () => {
+  it("picks among them instead of re-asking what it sells, and reads the levers per offer", () => {
+    const brand = modal.slice(modal.indexOf("function submitBrand("), modal.indexOf("function submitOfferText("));
+    expect(brand).toContain("await listBrandOffers(id)");
+    expect(brand.indexOf("await listBrandOffers(id)")).toBeLessThan(brand.indexOf("await startPrefill(id)"));
+    expect(modal).toContain('offerId: chosenOfferId })');
+  });
+});
+
+describe("the six offer questions", () => {
+  it("are asked one per screen", () => {
+    expect(modal).toContain("LEVER_QUESTIONS[leverIndex]");
+    expect(modal).not.toContain("LEVER_QUESTIONS.map((q) => (\n                <Field");
+    expect(modal).toContain('case "levers": return leverIndex < LEVER_QUESTIONS.length - 1');
+  });
+});
