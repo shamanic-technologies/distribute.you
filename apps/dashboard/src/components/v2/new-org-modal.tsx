@@ -98,7 +98,7 @@ function fmtUsd(usd: number): string {
 
 const STEP_TITLE: Record<NewOrgStep, string> = {
   org: "Name your organization",
-  brand: "Your first brand",
+  brand: "Your brand",
   offerText: "What do you sell?",
   offerPick: "Start with one offer",
   audienceText: "Who do you sell to?",
@@ -114,10 +114,16 @@ export function NewOrgModal({
   open,
   onClose,
   existingOrgNames,
+  existingOrgId,
 }: {
   open: boolean;
   onClose: () => void;
   existingOrgNames: readonly string[];
+  /**
+   * "Add a brand" to an org that already exists: the modal starts at the brand step,
+   * on that org, and everything after it is the same.
+   */
+  existingOrgId?: string | null;
 }) {
   const router = useRouter();
   const { user } = useUser();
@@ -125,13 +131,13 @@ export function NewOrgModal({
   const { createOrganization, setActive } = useOrganizationList();
   const personName = user?.fullName ?? ([user?.firstName, user?.lastName].filter(Boolean).join(" ") || null);
 
-  const [step, setStep] = useState<NewOrgStep>("org");
+  const [step, setStep] = useState<NewOrgStep>(existingOrgId ? "brand" : "org");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Org
   const [orgName, setOrgName] = useState("");
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(existingOrgId ?? null);
   // Brand
   const [hasWebsite, setHasWebsite] = useState(true);
   const [website, setWebsite] = useState("");
@@ -514,10 +520,14 @@ export function NewOrgModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-[#1010121f] px-3 pt-[8vh]">
-      <div role="dialog" aria-modal="true" aria-label="New organization" className="k-popover flex max-h-[84vh] w-full max-w-[560px] flex-col overflow-hidden">
+      <div role="dialog" aria-modal="true" aria-label={existingOrgId ? "Add a brand" : "New organization"} className="k-popover flex max-h-[84vh] w-full max-w-[560px] flex-col overflow-hidden">
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          <span className="k-label">New organization</span>
-          {stepIndex >= 0 && <span className="k-fg3 k-mono text-[12px] tabular-nums">{stepIndex + 1} / 8</span>}
+          <span className="k-label">{existingOrgId ? "Add a brand" : "New organization"}</span>
+          {stepIndex >= 0 && (
+            <span className="k-fg3 k-mono text-[12px] tabular-nums">
+              {existingOrgId ? `${stepIndex} / 7` : `${stepIndex + 1} / 8`}
+            </span>
+          )}
           <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={() => close()} disabled={step === "launching"}>
             ×
           </button>
@@ -723,7 +733,7 @@ export function NewOrgModal({
 
         {step !== "launching" && !checkoutSecret && !cardSecret && (
           <div className="flex h-14 shrink-0 items-center gap-2 border-t border-[var(--line-subtle)] px-4">
-            {step !== "org" && (
+            {step !== "org" && !(existingOrgId && step === "brand") && (
               <button type="button" className="k-btn-ghost" onClick={back} disabled={busy}>
                 Back
               </button>

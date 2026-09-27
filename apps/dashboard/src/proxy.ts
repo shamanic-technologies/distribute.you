@@ -129,12 +129,22 @@ export default clerkMiddleware(
     // Exempt: public/auth routes, the onboarding flow itself, all API routes,
     // and the `?autoCreate` brand-creation hop (the org is transiently
     // brand-less while it creates its first brand + sets the flag).
+    //
+    // Exempt too, for a v2 user only: the bare ORG page (`/orgs/:id`, `/v2/orgs/:id`).
+    // An org with no brand yet (a New organization modal someone closed) lands on the
+    // v2 org page, which offers "Add a brand" and runs the same modal from the brand
+    // step. Sending it to the full-page onboarding instead is what this replaces. Every
+    // other path of such an org is still gated, and v1 users are unchanged.
+    const v2OrgRoot =
+      parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2" &&
+      (!!matchOrgLanding(pathname) || /^\/v2\/orgs\/[^/]+\/?$/.test(pathname));
     if (
       userId &&
       !isPublicRoute(req) &&
       !isOnboardingRoute(req) &&
       !isApiRoute(req) &&
       !req.nextUrl.searchParams.has("autoCreate") &&
+      !v2OrgRoot &&
       sessionClaims?.orgMeta?.onboardingComplete !== true
     ) {
       return NextResponse.redirect(new URL(onboardingHref(), req.url));
