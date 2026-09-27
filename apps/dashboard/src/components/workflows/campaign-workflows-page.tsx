@@ -181,6 +181,8 @@ import {
 } from "@/lib/workflow-rank-why";
 import {
   hiddenWorkflowSlugs,
+  deprecatedOnLegSlugs,
+  DEPRECATED_ON_LEG_LABEL,
   hiddenWorkflowNote,
   type EligibilityLadderRow,
 } from "@/lib/workflow-eligibility";
@@ -501,6 +503,13 @@ export function CampaignWorkflowsPage({
 
   // Declared BELOW `outcomeNoun` on purpose: a memo that reads a `const` declared after it
   // is a TDZ ReferenceError at render, which `tsc` and the suite both pass over.
+  // Deprecated on this leg by the owner: DRAWN (its history is the point) with a tag,
+  // never picked by campaign-service.
+  const deprecatedSlugs = useMemo(
+    () => deprecatedOnLegSlugs((ladderQ.data?.rows ?? []) as unknown as EligibilityLadderRow[]),
+    [ladderQ.data],
+  );
+
   const hiddenNote = useMemo(
     () => hiddenWorkflowNote(hiddenSlugs.size, ladderQ.data?.leg?.toStep.label ?? null),
     [hiddenSlugs, ladderQ.data],
@@ -713,6 +722,7 @@ export function CampaignWorkflowsPage({
                   columnBest={columnBest}
                   ranAudienceIds={ranAudienceIds}
                   hiddenNote={hiddenNote}
+                  deprecatedSlugs={deprecatedSlugs}
                   onOpen={setOpen}
                   onSelectScope={setScope}
                 />
@@ -800,6 +810,7 @@ export function WorkflowMatrix({
   columnBest,
   ranAudienceIds,
   hiddenNote,
+  deprecatedSlugs,
   onOpen,
   onSelectScope,
 }: {
@@ -812,6 +823,8 @@ export function WorkflowMatrix({
   /** Why rows are missing and the `#` column skips numbers — null when nothing is
    *  hidden, because a line stating zero is noise and there is no gap to explain. */
   hiddenNote: string | null;
+  /** Dynasties the owner deprecated on this leg: drawn with a tag, never picked. */
+  deprecatedSlugs: ReadonlySet<string>;
   onOpen: (slug: string) => void;
   onSelectScope: (id: string) => void;
 }) {
@@ -904,6 +917,11 @@ export function WorkflowMatrix({
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
                         {r.row.workflowDynastyName}
                       </span>
+                      {deprecatedSlugs.has(r.dynastySlug) && (
+                        <span className="inline-flex shrink-0 items-center rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                          {DEPRECATED_ON_LEG_LABEL}
+                        </span>
+                      )}
                       {r.row.running && (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-200 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-600">
                           Running
