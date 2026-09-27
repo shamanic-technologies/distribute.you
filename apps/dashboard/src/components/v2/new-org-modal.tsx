@@ -65,7 +65,6 @@ import {
   NEW_ORG_CHANNEL_SLUG,
   NEW_ORG_LEGS,
   PREPAID_PRESETS_CENTS,
-  canSkipPayment,
   newOrgLeg,
   nextStep,
   parseCustomAmountCents,
@@ -516,9 +515,9 @@ export function NewOrgModal({
     forward();
   }
 
-  const freeCreditRaw = account?.free_credit_spendable_cents;
-  const freeCreditCents = freeCreditRaw != null && freeCreditRaw.trim() !== "" ? Number(freeCreditRaw) : null;
-  const skipAllowed = canSkipPayment(freeCreditCents);
+  // No "start with free credit": an org with no card on file cannot run a campaign
+  // (campaign-service stops it, `no_payment_method`, owner rule 2026-09-27), so free
+  // credit alone never launches. Prepaid or postpaid, a card is saved here.
   const custom = parseCustomAmountCents(customAmount);
   const prepaidCents = custom && "cents" in custom ? custom.cents : presetCents;
 
@@ -870,9 +869,6 @@ export function NewOrgModal({
                   <p className="k-fg3 text-[12px]">Credits are spent as the campaign runs, within the daily budget you set.</p>
                 </div>
               )}
-              {skipAllowed && freeCreditCents != null && (
-                <p className="k-fg2 text-[13px]">You have {fmtUsd(freeCreditCents / 100)} of free credit, so you can also start now and pay later.</p>
-              )}
             </div>
           )}
 
@@ -907,11 +903,7 @@ export function NewOrgModal({
               </button>
             )}
             <div className="ml-auto flex items-center gap-2">
-              {step === "payment" && skipAllowed && (
-                <button type="button" className="k-btn" onClick={launch} disabled={busy}>
-                  Start with free credit
-                </button>
-              )}
+              
               <button type="button" className="k-btn-strong" disabled={busy} onClick={() => primary()}>
                 {readingSite ? "Reading your site…" : busy ? "Working…" : primaryLabel()}
               </button>
