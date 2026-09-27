@@ -61,12 +61,11 @@
 <tbody>
 <tr><td>Replied (a person wrote back)</td><td>0.29% (76 of 26,393)</td><td>0.39% (92 of 23,441)</td><td>+36%</td></tr>
 <tr><td>Clicked a link</td><td>1.50% (396 of 26,393)</td><td>2.02% (474 of 23,441)</td><td>+35%</td></tr>
-<tr><td>Sent an auto-reply or out-of-office</td><td>0.30% (79 of 26,393)</td><td>0.94% (220 of 23,441)</td><td>+214%</td></tr>
 </tbody>
 </table>
 </div>
 
-<p>The question is whether the pixel quietly sent emails to spam. Clicks and auto-replies rose with replies, and both need the email to reach an inbox: nobody clicks a link in a message they never saw, and an out-of-office usually fires only for mail that landed.</p>
+<p>The question is whether the pixel quietly sent emails to spam. Clicks rose with replies, and a click needs the email to reach an inbox: nobody clicks a link in a message they never saw.</p>
 
 <h2 id="why">Why a pixel can cost you replies</h2>
 
@@ -83,7 +82,7 @@
 <h2 id="the-limits">What this data cannot tell you</h2>
 
 <ul>
-<li>This is not a controlled test. The two sides were sent in different months, and the switch came with other changes: new sending mailboxes, different lists (bounces went from 1.41% to 9.14%), and part of the later emails sent through our own pipeline. Any of these can move replies too. Read it as a direction, not a measured effect of the pixel alone.</li>
+<li>This is not a controlled test. The two sides were sent in different months, and the switch came with other changes: new sending mailboxes, different lists (bounces went from 1.41% to 9.14%), part of the later emails sent through our own pipeline, and the months without the pixel include the summer holidays. Read it as a direction, not a measured effect of the pixel alone.</li>
 <li>Replies are rare: 76 and 92 of them. The gap is unlikely to be chance (two-proportion test, p = 0.04; 0.01 without bounces), but the exact size of the lift is uncertain.</li>
 <li>Replies with interest are too few to say anything (27 against 28, p = 0.56).</li>
 </ul>

@@ -44,7 +44,7 @@ describe("the open-tracking article", () => {
 
   it("keeps only reach signals in the table", () => {
     const table = html.slice(html.indexOf("<table>"), html.indexOf("</table>"));
-    expect(table).not.toMatch(/Bounced|Unsubscribed|with interest/);
+    expect(table).not.toMatch(/Bounced|Unsubscribed|with interest|auto-reply/);
   });
 
   it("carries no typed figure in the results sections", () => {
