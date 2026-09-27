@@ -171,9 +171,10 @@ function costBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } 
     thin: costThinStrict(o, r),
   }));
 }
-// Rates: a zero is a measured zero and is drawn; a bucket under the email floor is thin.
+// Rates: every bucket is drawn, a zero included; one under the strict floors is marked thin.
+// Owner rule (2026-09-27): no volume filter, a low volume is thin, exactly as on the cost chart.
 function rateBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } = {}) {
-  const drawn = rows.filter((r) => r.emails >= facts.floors.minEmails);
+  const drawn = rows.filter((r) => r.emails > 0);
   const ordered = ordinal ? drawn : [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
   return ordered.map((r) => ({
     ...(keyed ? { key: keyOf(r.bucket) } : {}),
@@ -194,7 +195,7 @@ function costWinner(o, rows) {
   return { row, crowned: !costThinStrict(o, row) };
 }
 function rateWinner(o, rows) {
-  const drawn = rows.filter((r) => r.emails >= facts.floors.minEmails && r[o.count] > 0);
+  const drawn = rows.filter((r) => r.emails > 0 && r[o.count] > 0);
   if (!drawn.length) return null;
   const row = [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails)[0];
   return { row, crowned: row.emails >= STRICT.minEmails && row[o.count] >= o.strictOutcomes };
@@ -203,7 +204,7 @@ function rateWinner(o, rows) {
 function monthLine(o, series, kind) {
   if (!series) return [];
   return series
-    .filter((r) => (kind === "cost" ? r[o.cost] !== null : r.emails >= facts.floors.minEmails))
+    .filter((r) => (kind === "cost" ? r[o.cost] !== null : r.emails > 0))
     .map((r) => ({
       label: monthLabel(r.bucket),
       value: kind === "cost" ? r[o.cost] : r[o.rate],
@@ -221,7 +222,7 @@ function sinceInception(o, series, kind) {
   const out = [];
   for (const r of series) {
     spend += r.spend; got += r[o.count]; emails += r.emails;
-    if (kind === "cost" ? got === 0 : emails < facts.floors.minEmails) continue;
+    if (kind === "cost" ? got === 0 : emails === 0) continue;
     const value = kind === "cost" ? spend / got : (got / emails) * o.per;
     out.push({
       label: monthLabel(r.bucket),
@@ -551,7 +552,7 @@ const RUNS_SHOWN = 10;
 // Cheapest first (the study's own ROI order), then the unpriced ones by volume.
 function catalogOrder(o, rows) {
   const priced = rows.filter((r) => r[o.cost] !== null).sort(byCost(o));
-  const rest = rows.filter((r) => r[o.cost] === null && r.emails >= facts.floors.minEmails).sort((a, b) => b.emails - a.emails);
+  const rest = rows.filter((r) => r[o.cost] === null && r.emails > 0).sort((a, b) => b.emails - a.emails);
   return [...priced, ...rest];
 }
 function figures(o, r) {
@@ -561,7 +562,7 @@ function figures(o, r) {
     outcomes: n(r[o.count]),
     spend: usd(r.spend),
     cost: r[o.cost] === null ? null : usd(r[o.cost]),
-    rate: r.emails >= facts.floors.minEmails ? rateText(o, r[o.rate]) : null,
+    rate: r.emails > 0 ? rateText(o, r[o.rate]) : null,
     thin: costThinStrict(o, r),
     sample: counts(o, r),
   };

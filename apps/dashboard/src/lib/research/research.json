@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T11:31:39.592Z",
+  "generatedAt": "2026-09-27T17:13:58.263Z",
   "allOrgs": true,
   "window": {
     "from": "2026-04",
@@ -8,7 +8,7 @@
   "readOn": "2026-09-27",
   "volume": {
     "emails": 127605,
-    "orgs": 34,
+    "orgs": 36,
     "workflows": 67,
     "linkedEmails": 43559,
     "byMonth": [
@@ -104,7 +104,7 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "key": "glm-5.2",
+              "key": "glm-5.2-pro",
               "label": "GLM 5.2 Pro",
               "value": 31.77,
               "display": "$32",
@@ -192,7 +192,7 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "key": "glm-5.2",
+              "key": "glm-5.2-pro",
               "label": "GLM 5.2 Pro",
               "value": 18.3,
               "display": "0.18%",
@@ -264,7 +264,7 @@
               "thin": true
             },
             {
-              "key": "glm-5.3",
+              "key": "glm-5.3-pro",
               "label": "GLM 5.3 Pro",
               "value": 0,
               "display": "0.00%",
@@ -277,6 +277,30 @@
               "value": 0,
               "display": "0.00%",
               "note": "0 positive replies · 132 emails",
+              "thin": true
+            },
+            {
+              "key": "gemini-3.8-flash",
+              "label": "Gemini 3.8 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 82 emails",
+              "thin": true
+            },
+            {
+              "key": "gpt-6-astra",
+              "label": "GPT-6 Astra",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 56 emails",
+              "thin": true
+            },
+            {
+              "key": "claude-fable-5.1",
+              "label": "Claude Fable 5.1",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 26 emails",
               "thin": true
             }
           ],
@@ -1165,6 +1189,38 @@
               "display": "0.00%",
               "note": "0 positive replies · 380 emails",
               "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v4",
+              "label": "Blind discovery v4",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 53 emails",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v20",
+              "label": "Blind discovery v20",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 40 emails",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v26-landing",
+              "label": "Blind discovery v26 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v9-landing",
+              "label": "Blind discovery v9 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -1174,6 +1230,20 @@
           "title": "Cold email v27: positive reply rate by month",
           "lowerIsBetter": false,
           "points": [
+            {
+              "label": "May",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
+            },
+            {
+              "label": "Jun",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 70 emails",
+              "thin": true
+            },
             {
               "label": "Jul",
               "value": 19.3,
@@ -1199,6 +1269,20 @@
           "cumulative": {
             "title": "Cold email v27: average since inception",
             "points": [
+              {
+                "label": "May",
+                "value": 0,
+                "display": "0.00%",
+                "note": "0 positive replies · 1 emails to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 0,
+                "display": "0.00%",
+                "note": "0 positive replies · 71 emails to date",
+                "thin": true
+              },
               {
                 "label": "Jul",
                 "value": 18.67,
@@ -1227,7 +1311,7 @@
       ],
       "conclusion": [
         "Cold email v27: 4 positive replies · 3,950 emails.",
-        "Over time: 0.19% in Jul, 0.00% in Sep.",
+        "Over time: 0.00% in May, 0.00% in Sep.",
         "A template under 1,000 emails or 10 positive replies is ranked where its rate puts it and marked thin."
       ]
     },
@@ -1659,6 +1743,62 @@
               "display": "0.00%",
               "note": "0 positive replies · 245 emails",
               "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-dubhe",
+              "label": "GLM 5.3 Pro · Cold email v27",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 61 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-nocturne",
+              "label": "GLM 5.3 Pro · Cold email v29",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 61 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-delphi",
+              "label": "GPT-6 Astra · Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 56 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-bolero",
+              "label": "Gemini 3.1 Pro · Blind discovery v4",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 53 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-alioth",
+              "label": "Claude Fable 5.1 · Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 26 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-helm",
+              "label": "Gemini 3.1 Pro · Blind discovery v26 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-nimbus",
+              "label": "Gemini 3.1 Pro · Blind discovery v9 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -1861,12 +2001,12 @@
       "goal": "rate",
       "question": "Which LLM gets the most website visits?",
       "status": "measured",
-      "headline": "DeepSeek V4 Flash wins with a 4.11% website visit rate.",
-      "winner": "DeepSeek V4 Flash",
+      "headline": "DeepSeek V4 Pro wins with a 11.76% website visit rate.",
+      "winner": "DeepSeek V4 Pro",
       "result": {
-        "display": "4.11%",
+        "display": "11.76%",
         "unit": "website visit rate",
-        "sample": "15 website visits · 365 emails with a link"
+        "sample": "2 website visits · 17 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -1875,6 +2015,14 @@
           "title": "Website visit rate, % of emails with a link (higher is better)",
           "lowerIsBetter": false,
           "points": [
+            {
+              "key": "deepseek-v4-pro",
+              "label": "DeepSeek V4 Pro",
+              "value": 117.6,
+              "display": "11.76%",
+              "note": "2 website visits · 17 emails with a link",
+              "thin": true
+            },
             {
               "key": "deepseek-v4-flash",
               "label": "DeepSeek V4 Flash",
@@ -1898,6 +2046,14 @@
               "display": "2.57%",
               "note": "98 website visits · 3,818 emails with a link",
               "thin": false
+            },
+            {
+              "key": "gemini-3.8-flash",
+              "label": "Gemini 3.8 Flash",
+              "value": 24.4,
+              "display": "2.44%",
+              "note": "2 website visits · 82 emails with a link",
+              "thin": true
             },
             {
               "key": "gemini-3.5-flash-lite",
@@ -1930,31 +2086,69 @@
               "display": "1.02%",
               "note": "4 website visits · 393 emails with a link",
               "thin": true
+            },
+            {
+              "key": "gemini-3.7-flash",
+              "label": "Gemini 3.7 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 86 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "glm-5.2-pro",
+              "label": "GLM 5.2 Pro",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 46 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "glm-5.3-pro",
+              "label": "GLM 5.3 Pro",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 15 emails with a link",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
         },
         {
           "kind": "months",
-          "title": "DeepSeek V4 Flash: website visit rate by month",
+          "title": "DeepSeek V4 Pro: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
+              "label": "Aug",
+              "value": 111.1,
+              "display": "11.11%",
+              "note": "1 website visit · 9 emails with a link",
+              "thin": true
+            },
+            {
               "label": "Sep",
-              "value": 41.1,
-              "display": "4.11%",
-              "note": "15 website visits · 365 emails with a link",
+              "value": 125,
+              "display": "12.50%",
+              "note": "1 website visit · 8 emails with a link",
               "thin": true
             }
           ],
           "cumulative": {
-            "title": "DeepSeek V4 Flash: average since inception",
+            "title": "DeepSeek V4 Pro: average since inception",
             "points": [
               {
+                "label": "Aug",
+                "value": 111.11,
+                "display": "11.11%",
+                "note": "1 website visit · 9 emails with a link to date",
+                "thin": true
+              },
+              {
                 "label": "Sep",
-                "value": 41.1,
-                "display": "4.11%",
-                "note": "15 website visits · 365 emails with a link to date",
+                "value": 117.65,
+                "display": "11.76%",
+                "note": "2 website visits · 17 emails with a link to date",
                 "thin": true
               }
             ]
@@ -1963,7 +2157,8 @@
         }
       ],
       "conclusion": [
-        "DeepSeek V4 Flash: 15 website visits · 365 emails with a link.",
+        "DeepSeek V4 Pro: 2 website visits · 17 emails with a link.",
+        "Over time: 11.11% in Aug, 12.50% in Sep.",
         "A LLM under 1,000 emails with a link or 20 website visits is ranked where its rate puts it and marked thin."
       ]
     },
@@ -2682,6 +2877,86 @@
               "display": "0.00%",
               "note": "0 website visits · 658 emails with a link",
               "thin": true
+            },
+            {
+              "key": "cold-email-v27",
+              "label": "Cold email v27",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 7 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v5",
+              "label": "Blind discovery v5",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 5 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v14",
+              "label": "Blind discovery v14",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 4 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v8",
+              "label": "Blind discovery v8",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 3 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v29",
+              "label": "Cold email v29",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 3 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v12",
+              "label": "Blind discovery v12",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email",
+              "label": "Cold email",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v41",
+              "label": "Cold email v41",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v11",
+              "label": "Blind discovery v11",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v28",
+              "label": "Cold email v28",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -2938,20 +3213,28 @@
       "goal": "rate",
       "question": "Which workflow gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 (from Jun, #2) wins with a 4.70% website visit rate.",
-      "winner": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
+      "headline": "DeepSeek V4 Pro · Blind discovery v26 wins with a 13.33% website visit rate.",
+      "winner": "DeepSeek V4 Pro · Blind discovery v26",
       "result": {
-        "display": "4.70%",
+        "display": "13.33%",
         "unit": "website visit rate",
-        "sample": "85 website visits · 1,807 emails with a link"
+        "sample": "2 website visits · 15 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
           "title": "Website visit rate, % of emails with a link (higher is better)",
           "lowerIsBetter": false,
           "points": [
+            {
+              "key": "sales-cold-email-outreach-cerulean",
+              "label": "DeepSeek V4 Pro · Blind discovery v26",
+              "value": 133.3,
+              "display": "13.33%",
+              "note": "2 website visits · 15 emails with a link",
+              "thin": true
+            },
             {
               "key": "sales-cold-email-outreach-osprey",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
@@ -3063,67 +3346,142 @@
               "display": "0.00%",
               "note": "0 website visits · 658 emails with a link",
               "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-nobelium",
+              "label": "GLM 5.2 Pro · Blind discovery v26",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 56 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-tectonic",
+              "label": "Gemini 3.1 Pro · Cold email",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 7 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-dubhe",
+              "label": "GLM 5.3 Pro · Cold email v27",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 4 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-helium",
+              "label": "Gemini 3.1 Pro · Blind discovery v14",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 4 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-ballad",
+              "label": "Gemini 3.1 Pro · Cold email v27",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 3 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-wisteria",
+              "label": "Gemini 3.1 Pro · Blind discovery v8",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 3 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-granite",
+              "label": "Gemini 3.1 Pro · Cold email v29",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-rudder",
+              "label": "DeepSeek V4 Pro · Cold email v41",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-thule",
+              "label": "Gemini 3.1 Pro · Blind discovery v12",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-arcadia",
+              "label": "Gemini 3.1 Pro · Cold email v28",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-calcite",
+              "label": "Gemini 3.1 Pro · Blind discovery v11",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-nocturne",
+              "label": "GLM 5.3 Pro · Cold email v29",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
         },
         {
           "kind": "months",
-          "title": "Gemini 3 Flash · Cold email v19 (from Jun, #2): website visit rate by month",
+          "title": "DeepSeek V4 Pro · Blind discovery v26: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "Jun",
-              "value": 38.8,
-              "display": "3.88%",
-              "note": "24 website visits · 619 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Jul",
-              "value": 60.9,
-              "display": "6.09%",
-              "note": "58 website visits · 952 emails with a link",
-              "thin": true
-            },
-            {
               "label": "Aug",
-              "value": 11.2,
-              "display": "1.12%",
-              "note": "2 website visits · 178 emails with a link",
+              "value": 142.9,
+              "display": "14.29%",
+              "note": "1 website visit · 7 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 125,
+              "display": "12.50%",
+              "note": "1 website visit · 8 emails with a link",
               "thin": true
             }
           ],
           "cumulative": {
-            "title": "Gemini 3 Flash · Cold email v19 (from Jun, #2): average since inception",
+            "title": "DeepSeek V4 Pro · Blind discovery v26: average since inception",
             "points": [
               {
-                "label": "Jun",
-                "value": 38.77,
-                "display": "3.88%",
-                "note": "24 website visits · 619 emails with a link to date",
+                "label": "Aug",
+                "value": 142.86,
+                "display": "14.29%",
+                "note": "1 website visit · 7 emails with a link to date",
                 "thin": true
               },
               {
-                "label": "Jul",
-                "value": 52.2,
-                "display": "5.22%",
-                "note": "82 website visits · 1,571 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 48.03,
-                "display": "4.80%",
-                "note": "84 website visits · 1,749 emails with a link to date",
-                "thin": false
-              },
-              {
                 "label": "Sep",
-                "value": 47.04,
-                "display": "4.70%",
-                "note": "85 website visits · 1,807 emails with a link to date",
-                "thin": false
+                "value": 133.33,
+                "display": "13.33%",
+                "note": "2 website visits · 15 emails with a link to date",
+                "thin": true
               }
             ]
           },
@@ -3131,8 +3489,8 @@
         }
       ],
       "conclusion": [
-        "Gemini 3 Flash · Cold email v19 (from Jun, #2): 85 website visits · 1,807 emails with a link.",
-        "Over time: 3.88% in Jun, 1.12% in Aug.",
+        "DeepSeek V4 Pro · Blind discovery v26: 2 website visits · 15 emails with a link.",
+        "Over time: 14.29% in Aug, 12.50% in Sep.",
         "A workflow under 1,000 emails with a link or 20 website visits is ranked where its rate puts it and marked thin."
       ]
     },
@@ -3235,14 +3593,14 @@
   ],
   "catalogCounts": {
     "herald": {
-      "workflows": 33,
-      "templates": 30,
-      "models": 11
+      "workflows": 40,
+      "templates": 34,
+      "models": 14
     },
     "scout": {
-      "workflows": 15,
-      "templates": 14,
-      "models": 9
+      "workflows": 27,
+      "templates": 24,
+      "models": 12
     },
     "pilot": {
       "workflows": 0,
