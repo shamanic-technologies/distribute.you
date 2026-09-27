@@ -1,0 +1,91 @@
+<h2 id="the-bet">The bet</h2>
+
+<p>Open tracking works by hiding a one-pixel image in every email. When the recipient's mail app loads it, the sending tool records an open. Many cold email tools offer it, and for months we had it on.</p>
+
+<p>In late June 2026 we switched it off on new campaigns, during a deliverability cleanup. We kept the rest: same kind of offers, same sequence length, click tracking still on. Three months later we had enough sends on each side to ask a simple question. Did the emails without the pixel get more replies?</p>
+
+<h2 id="the-data">The data</h2>
+
+<p>We compared the cold email sequences we sent with the pixel against the ones we sent without it: <strong>141,738 emails to 49,834 people</strong>. One sequence goes to one person, and each person counts once however many follow-ups they received.</p>
+
+<p>With the pixel: 78,513 emails to 26,393 people, sent from 10 February 2026 to 28 June 2026. Without it: 63,225 emails to 23,441 people, the large majority sent after the switch. A reply means a person wrote back. Out-of-office messages and other auto-replies are left out.</p>
+
+<h2 id="the-answer">The answer</h2>
+
+<p><strong>Without the pixel, 0.39% of people replied, against 0.29% with it: +36% replies.</strong></p>
+
+<figure>
+<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Share of people who replied: +36% without the pixel: Open tracking on 0.29% (76 of 26,393 leads), Open tracking off 0.39% (92 of 23,441 leads)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Share of people who replied: +36% without the pixel</text>
+<text x="0" y="74" font-size="14" fill="#475569">Open tracking on</text>
+<rect x="150" y="56" width="348" height="26" rx="5" fill="#94a3b8"/>
+<text x="508" y="75" font-size="16" font-weight="700" fill="#0f172a">0.29%</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">76 of 26,393 leads</text>
+<text x="0" y="126" font-size="14" fill="#475569">Open tracking off</text>
+<rect x="150" y="108" width="468" height="26" rx="5" fill="#2563eb"/>
+<text x="628" y="127" font-size="16" font-weight="700" fill="#0f172a">0.39%</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">92 of 23,441 leads</text>
+</svg>
+</figure>
+
+<p>Part of the later traffic went to weaker lists, with more addresses that bounced. Counting only the people whose email did not bounce, the gap widens: 0.43% without the pixel against 0.29% with it, <strong>+48%</strong>.</p>
+
+<figure>
+<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Replied, bounced emails excluded: +48% without the pixel: Open tracking on 0.29% (76 of 26,021 leads), Open tracking off 0.43% (92 of 21,298 leads)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Replied, bounced emails excluded: +48% without the pixel</text>
+<text x="0" y="74" font-size="14" fill="#475569">Open tracking on</text>
+<rect x="150" y="56" width="315" height="26" rx="5" fill="#94a3b8"/>
+<text x="475" y="75" font-size="16" font-weight="700" fill="#0f172a">0.29%</text>
+<text x="150" y="95" font-size="11" fill="#94a3b8">76 of 26,021 leads</text>
+<text x="0" y="126" font-size="14" fill="#475569">Open tracking off</text>
+<rect x="150" y="108" width="468" height="26" rx="5" fill="#2563eb"/>
+<text x="628" y="127" font-size="16" font-weight="700" fill="#0f172a">0.43%</text>
+<text x="150" y="147" font-size="11" fill="#94a3b8">92 of 21,298 leads</text>
+</svg>
+</figure>
+
+<h2 id="everything-else">Everything else we measured</h2>
+
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Per person contacted</th><th>Open tracking on</th><th>Open tracking off</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>Replied (a person wrote back)</td><td>0.29% (76 of 26,393)</td><td>0.39% (92 of 23,441)</td><td>+36%</td></tr>
+<tr><td>Replied with interest</td><td>0.10% (27 of 26,393)</td><td>0.12% (28 of 23,441)</td><td>+17%</td></tr>
+<tr><td>Clicked a link</td><td>1.50% (396 of 26,393)</td><td>2.02% (474 of 23,441)</td><td>+35%</td></tr>
+<tr><td>Sent an auto-reply or out-of-office</td><td>0.30% (79 of 26,393)</td><td>0.94% (220 of 23,441)</td><td>+214%</td></tr>
+<tr><td>Unsubscribed</td><td>0.06% (15 of 26,393)</td><td>0.15% (36 of 23,441)</td><td>+170%</td></tr>
+<tr><td>Bounced</td><td>1.41% (372 of 26,393)</td><td>9.14% (2,143 of 23,441)</td><td>+549%</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Clicks, auto-replies and unsubscribes all rose with replies. Taken together they point one way: more of the emails without the pixel reached someone who saw them. Out-of-office replies usually fire only for mail that reached the inbox, and nobody unsubscribes from a message they never saw. Bounces are the exception: they depend on the list, not on what is inside the email.</p>
+
+<h2 id="why">Why a pixel can cost you replies</h2>
+
+<p>Our reading, not something this data proves on its own. A tracking pixel is a remote image, served from a tracking domain that many other senders share. That is a classic signal spam filters look at, and a one-to-one email from a real person does not usually carry one.</p>
+
+<p>The pixel also stopped telling us much. With it on, 27.8% of people "opened". Apple Mail and some corporate security tools load every image before a human looks at the message, so a large part of those opens were machines. We were carrying a pixel for a number we could not act on.</p>
+
+<h2 id="the-rule">The rule we ship now</h2>
+
+<p><strong>No open tracking on cold email. Judge a campaign on replies and clicks.</strong></p>
+
+<p>A reply is a conversation starting, and a click is a person following a link. An open rate is neither.</p>
+
+<h2 id="the-limits">What this data cannot tell you</h2>
+
+<ul>
+<li>This is not a controlled test. The two sides were sent in different months, and the switch came with other changes: new sending mailboxes, different lists (bounces went from 1.41% to 9.14%), and part of the later emails sent through our own pipeline. Any of these can move replies too. Read it as a direction, not a measured effect of the pixel alone.</li>
+<li>Replies are rare: 76 and 92 of them. The gap is unlikely to be chance (two-proportion test, p = 0.04; 0.01 without bounces), but the exact size of the lift is uncertain.</li>
+<li>Replies with interest are too few to say anything (27 against 28, p = 0.56).</li>
+</ul>
+
+<h2 id="method">Method</h2>
+
+<p>Every cold email sequence created before 13 September 2026 that sent at least one email, read from our production database on 27 September 2026. The cutoff leaves every sequence at least two weeks to draw its replies. A sequence counts as "with the pixel" when the first configuration stored for its campaign had open tracking on, and "without" when it was off or when we sent it ourselves (those never carry a pixel). 20 sequences had no stored configuration and are left out. Only observed events count; an open we infer from a click is not an open. The query and scripts are in <code>apps/landing/scripts/blog-data/pixel</code>.</p>
+
+<h2 id="about-us">About distribute.you</h2>
+
+<p>distribute.you runs cold email for you: the sending mailboxes, the tests like this one, the templates and the audiences, and the numbers on what it cost you. From $1/day, first $30 free. <a href="https://distribute.you">distribute.you</a></p>
