@@ -29,26 +29,26 @@ describe("the split rule", () => {
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
     expect(counts).toEqual({ control: 2500, assistant: 2500, concierge: 5000 });
-    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.7 })).toEqual({
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.7, enabled: true })).toEqual({
       variant: "concierge", setCookie: true, inTest: true,
     });
   });
 
   it("keeps a returning visitor on the variant their cookie names, and does not rewrite it", () => {
     const d = decideVariant({
-      cookieHeader: `a=1; ${VARIANT_COOKIE}=assistant; b=2`, userAgent: CHROME, query: q(), random: 0.99,
+      cookieHeader: `a=1; ${VARIANT_COOKIE}=assistant; b=2`, userAgent: CHROME, query: q(), random: 0.99, enabled: true,
     });
     expect(d).toEqual({ variant: "assistant", setCookie: false, inTest: true });
   });
 
   it("redraws on a cookie value that names no variant", () => {
-    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=junk`, userAgent: CHROME, query: q(), random: 0.3 });
+    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=junk`, userAgent: CHROME, query: q(), random: 0.3, enabled: true });
     expect(d).toEqual({ variant: "assistant", setCookie: true, inTest: true });
   });
 
   it("lets ?variant= force either page and pins it in the cookie", () => {
     const d = decideVariant({
-      cookieHeader: `${VARIANT_COOKIE}=assistant`, userAgent: CHROME, query: q("variant=control"), random: 0,
+      cookieHeader: `${VARIANT_COOKIE}=assistant`, userAgent: CHROME, query: q("variant=control"), random: 0, enabled: true,
     });
     expect(d).toEqual({ variant: "control", setCookie: true, inTest: true });
   });
@@ -88,7 +88,7 @@ describe("the split rule", () => {
   });
 });
 
-describe("GET / serves the split", () => {
+describe("GET / with the test off", () => {
   beforeAll(() => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline in tests"); }));
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -103,31 +103,15 @@ describe("GET / serves the split", () => {
     return { res, html: await res.text() };
   }
 
-  it("serves the assistant page at / as the homepage: indexable, canonical /", async () => {
-    const { res, html } = await get({ qs: "?variant=assistant" });
-    expect(html).toContain("asst-eyebrow");
-    expect(html).toContain('<link rel="canonical" href="https://distribute.you/">');
-    expect(html).not.toContain('content="noindex"');
-    expect(html).toContain('lp_variant:"assistant"');
-    expect(res.headers.get("set-cookie")).toContain("lp_variant=assistant");
-    expect(res.headers.get("cache-control")).toBe("private, no-store");
-  });
-
-  it("serves the concierge page at / as the homepage: indexable, canonical /", async () => {
-    const { res, html } = await get({ qs: "?variant=concierge" });
-    expect(html).toContain("Just message it.");
-    expect(html).toContain('<link rel="canonical" href="https://distribute.you/">');
-    expect(html).not.toContain('content="noindex"');
-    expect(html).toContain('lp_variant:"concierge"');
-    expect(res.headers.get("set-cookie")).toContain("lp_variant=concierge");
-  });
-
-  it("serves the current homepage to the control arm, tagged", async () => {
-    const { res, html } = await get({ cookie: "lp_variant=control" });
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span>");
-    expect(html).not.toContain("asst-eyebrow");
-    expect(html).toContain('lp_variant:"control"');
-    expect(res.headers.get("set-cookie")).toBeNull();
+  it("the test is off: every human gets the control homepage, untagged, with no cookie", async () => {
+    for (const opts of [{}, { qs: "?variant=assistant" }, { qs: "?variant=concierge" }, { cookie: "lp_variant=concierge" }]) {
+      const { res, html } = await get(opts);
+      expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span>");
+      expect(html).not.toContain("asst-eyebrow");
+      expect(html).not.toContain("landing_variant_viewed");
+      expect(res.headers.get("set-cookie")).toBeNull();
+      expect(res.headers.get("cache-control")).not.toBe("private, no-store");
+    }
   });
 
   it("gives a crawler the homepage, untagged, with no cookie", async () => {
