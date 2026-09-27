@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <!-- SAFE ZONE: every word sits inside x 200..1400 (the central 4:3 of the 16:9 canvas). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1e3a8a" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1380" cy="140" r="380" fill="url(#glow)"/>
+  <circle cx="200" cy="800" r="300" fill="url(#glow)"/>
+  <text x="800" y="150" font-size="24" letter-spacing="3" fill="#2563eb" font-weight="600" text-anchor="middle">COLD EMAIL, RUN FOR YOU</text>
+  <text x="800" y="238" font-size="68" font-weight="800" fill="#0f172a" text-anchor="middle">An AI sales assistant</text>
+  <text x="800" y="316" font-size="68" font-weight="800" fill="#0f172a" text-anchor="middle">that only pings you for a yes</text>
+  <g transform="translate(360,400)">
+    <rect x="0" y="0" width="880" height="360" rx="28" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="70" cy="76" r="30" fill="#2563eb"/>
+    <path d="M56 76 l10 10 l18 -20" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="124" y="70" font-size="28" font-weight="700" fill="#0f172a">New interested reply</text>
+    <text x="124" y="104" font-size="22" fill="#64748b">Head of Ops, 40-person agency</text>
+    <rect x="40" y="150" width="800" height="96" rx="18" fill="#eff6ff"/>
+    <text x="72" y="208" font-size="30" font-style="italic" fill="#1e3a8a">"This is timely. Could we talk on Thursday?"</text>
+    <rect x="40" y="276" width="220" height="48" rx="24" fill="#2563eb"/>
+    <text x="150" y="308" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">Reply</text>
+    <text x="290" y="308" font-size="22" fill="#64748b">The whole thread is in your inbox.</text>
+    <text x="840" y="70" font-size="18" fill="#94a3b8" text-anchor="end">Illustrative</text>
+  </g>
+</svg>

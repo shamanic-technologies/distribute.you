@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <!-- SAFE ZONE: every word sits inside x 200..1400 (the central 4:3 of the 16:9 canvas). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1e3a8a" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1380" cy="140" r="380" fill="url(#glow)"/>
+  <circle cx="200" cy="800" r="300" fill="url(#glow)"/>
+  <text x="800" y="150" font-size="24" letter-spacing="3" fill="#2563eb" font-weight="600" text-anchor="middle">COLD EMAIL, FROM YOUR AI ASSISTANT</text>
+  <text x="800" y="238" font-size="68" font-weight="800" fill="#0f172a" text-anchor="middle">Just ask how your</text>
+  <text x="800" y="316" font-size="68" font-weight="800" fill="#0f172a" text-anchor="middle">cold email is doing</text>
+  <g transform="translate(330,390)">
+    <rect x="0" y="0" width="940" height="400" rx="28" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" filter="url(#shadow)"/>
+    <rect x="360" y="40" width="540" height="72" rx="36" fill="#2563eb"/>
+    <text x="630" y="86" font-size="26" fill="#ffffff" text-anchor="middle">How are my campaigns doing?</text>
+    <rect x="40" y="146" width="620" height="210" rx="28" fill="#f1f5f9"/>
+    <text x="76" y="200" font-size="24" font-weight="700" fill="#0f172a">2 campaigns running</text>
+    <text x="76" y="244" font-size="24" fill="#334155">Clinic owners, Texas: 6 interested replies</text>
+    <text x="76" y="284" font-size="24" fill="#334155">Agencies, UK: 3 interested replies</text>
+    <text x="76" y="326" font-size="20" fill="#64748b">Illustrative example</text>
+  </g>
+</svg>
