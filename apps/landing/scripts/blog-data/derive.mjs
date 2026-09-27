@@ -13,11 +13,17 @@
 //  - SPEND is what the client is charged, per workflow, before per-account discounts; each
 //    email carries its own workflow's cost per email, so a bucket's spend is the sum over it
 //  - a bucket is PRICED only past the floors below
-import { openSync, readSync, closeSync } from "node:fs";
+import { openSync, readSync, closeSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } from "./maturation.mjs";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
+// The window's END is the moment outcomes stop being observed: a click or a reply after it does
+// not count, and the maturation window is measured back from it. extract.sh writes it.
+const WINDOW = JSON.parse(readFileSync(join(dir, "window.json"), "utf8"));
+if (!/^\d{4}-\d{2}-\d{2}$/.test(WINDOW.to || "")) throw new Error(`window.json carries no end: ${JSON.stringify(WINDOW)}`);
+const windowEndMs = toMs(`${WINDOW.to} 00:00:00`);
 
 // A bucket is THIN when a reader should weigh the counts printed beside it rather than take its
 // price as a rate. The bar is the SEND VOLUME first: ten emails says nothing, a few hundred
@@ -158,7 +164,11 @@ for (const l of leads) leadById.set(l.lead_id, l);
 const clickByKey = new Map();
 for (const c of clicks) clickByKey.set(`${c.instantly_campaign_id}|${c.lead_email}`, c);
 const replyByKey = new Map();
-for (const r of replies) replyByKey.set(`${r.instantly_campaign_id}|${r.lead_email}`, r);
+// a reply after the window's end was not observed in it, the same bound extract.sh puts on clicks
+for (const r of replies) {
+  if (r.replied_at && toMs(r.replied_at) >= windowEndMs) continue;
+  replyByKey.set(`${r.instantly_campaign_id}|${r.lead_email}`, r);
+}
 const spendByWorkflow = new Map();
 for (const s of spendRows) spendByWorkflow.set(s.workflow_slug, Number(s.cents) / 100);
 
@@ -283,6 +293,7 @@ for (const e of emails) {
     // which tracking recorded the visit: our own /c/ redirect, or the sending provider's.
     // Only the self-send hits pass through the link-scanner classification.
     clickSource: click ? click.source : null,
+    _clickAt: click && Number(click.step) === Number(e.step) ? click.clicked_at : null,
     replied: false,
     _replyAt: reply?.replied_at || null,
     _sentAt: sentAt,
@@ -300,7 +311,33 @@ for (const e of emails) {
   }
   for (const f of byPerson.values()) f.replied = true;
 }
-for (const f of facts) { delete f._replyAt; delete f._sentAt; }
+
+// ---------- maturation ----------
+// Measured from the outcomes themselves: how long after the email that earned it a click or a
+// positive reply arrives. Every figure below is computed on the MATURE emails only, those sent
+// early enough for 95 in 100 of their outcomes to have landed before the window's end.
+const maturation = (() => {
+  const samples = { reply: [], click: [] };
+  for (const f of facts) {
+    const sentMs = toMs(f._sentAt);
+    if (f.replied) samples.reply.push({ sentMs, outcomeMs: toMs(f._replyAt) });
+    if (f._clickAt) samples.click.push({ sentMs, outcomeMs: toMs(f._clickAt) });
+  }
+  const m = measureMaturation(samples, windowEndMs);
+  const cutoff = maturationCutoff(WINDOW.to, m.days);
+  return { ...m, windowEnd: WINDOW.to, cutoff, note: maturationNote(m, cutoff) };
+})();
+const allFacts = facts.length;
+// Every email SENT in the window stays countable as a total, and the pages label it as such;
+// only the prices and the rates are computed on the mature ones.
+const sentVolume = {
+  emails: facts.length,
+  people: new Set(facts.map((f) => f.leadEmail)).size,
+  orgs: new Set(facts.map((f) => f.orgId)).size,
+};
+for (let i = facts.length - 1; i >= 0; i--) if (!isMature(facts[i]._sentAt, maturation.cutoff)) facts.splice(i, 1);
+maturation.excludedEmails = allFacts - facts.length;
+for (const f of facts) { delete f._replyAt; delete f._sentAt; delete f._clickAt; }
 
 // ---------- bucketing ----------
 const round = (n, d = 0) => Number(n.toFixed(d));
@@ -429,9 +466,12 @@ const clickPeople = new Set(facts.filter((f) => f.clicked).map((f) => f.leadEmai
 
 const out = {
   generatedAt: new Date().toISOString(),
+  window: WINDOW,
+  maturation,
   floors: { minEmails: MIN_EMAILS, minClicks: MIN_CLICKS, minReplies: MIN_REPLIES,
     bestWorkflow: { minEmails: BEST_WORKFLOW_MIN_EMAILS, minClicks: BEST_WORKFLOW_MIN_CLICKS, minReplies: BEST_WORKFLOW_MIN_REPLIES } },
   volume: {
+    sent: sentVolume,
     emails: facts.length,
     people,
     orgs,
@@ -525,12 +565,28 @@ function researchFor(rows) {
     byMonth: cut(rows, (r) => r.month, monthsOf(rows)),
     modelByMonth: byMonthPer(rows, modelLabel),
     templateByMonth: byMonthPer(rows, (r) => r.template),
+    // A workflow is keyed by its slug HERE only (facts.json is never committed); research.mjs
+    // names it by what it runs, the model and the template, and never prints the slug.
+    byWorkflow: cut(rows, (r) => r.workflow),
+    workflowByMonth: byMonthPer(rows, (r) => r.workflow),
   };
+}
+// What each workflow runs: the model and the template that wrote most of its emails.
+function workflowMeta(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    if (!by.has(r.workflow)) by.set(r.workflow, []);
+    by.get(r.workflow).push(r);
+  }
+  const meta = {};
+  for (const [wf, rs] of by) meta[wf] = { model: topN(rs, 1, modelLabel)[0] || null, template: topN(rs, 1, (r) => r.template)[0] || null };
+  return meta;
 }
 out.research = {
   window: { from: facts.reduce((m, f) => (!m || f.month < m ? f.month : m), null), to: facts.reduce((m, f) => (!m || f.month > m ? f.month : m), null) },
   reply: researchFor(facts),
   visit: researchFor(linked),
+  workflowMeta: workflowMeta(facts),
 };
 
 process.stdout.write(JSON.stringify(out, null, 2));

@@ -19,6 +19,10 @@ KEY="${BLOG_DATA_KEY:-$HOME/.ssh/oracle-distribute}"
 
 mkdir -p "$OUT"
 
+# The window travels with the dumps: derive.mjs reads its END as the moment outcomes stop being
+# observed, which is what the maturation window is measured back from.
+printf '{"from":"%s","to":"%s"}\n' "$FROM" "$TO" > "$OUT/window.json"
+
 run() { # run <database> <sql> <outfile>
   ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'bash -s' > "$OUT/$3" <<EOF
 docker exec -i distribute-postgres-1 psql -U postgres -d "$1" -v ON_ERROR_STOP=1 --csv <<'SQL'

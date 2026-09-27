@@ -9,6 +9,7 @@ import { ChartLineDownIcon } from "@phosphor-icons/react/dist/csr/ChartLineDown"
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/csr/EyeSlash";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
+import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -50,6 +51,7 @@ const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof BrainIcon 
   followups: { color: "var(--data-amber)", Icon: ArrowsClockwiseIcon },
   opens: { color: "var(--data-sky)", Icon: EyeSlashIcon },
   template: { color: "var(--data-rose)", Icon: FileTextIcon },
+  workflow: { color: "var(--data-lime)", Icon: FlowArrowIcon },
 };
 
 /** What the WINNER cell is called, per topic: the cost curve's cell names the cheapest LLM. */
@@ -59,6 +61,7 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   followups: "Best depth",
   opens: "Winner",
   template: "Winner",
+  workflow: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
@@ -197,7 +200,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
   const state = studyState(study);
   const spark = study.status === "measured" ? studySpark(study) : null;
   return (
-    <Link href={href} className="k-card flex flex-col p-4">
+    <Link href={href} className="k-card flex min-w-0 flex-col p-4">
       <div className="flex items-start gap-3">
         <TopicMark topic={study.topic} />
         <div className="min-w-0 flex-1">
@@ -242,6 +245,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
         </span>
         <Arrow />
       </span>
+      {study.charts[0]?.note && <p className="k-fg4 mt-1.5 truncate text-[11px]" title={study.charts[0].note}>{study.charts[0].note}</p>}
     </Link>
   );
 }
@@ -268,6 +272,7 @@ export function V2ResearchPage() {
               What works in cold email, measured on every campaign we ran for every client, {monthText(RESEARCH.window.from)} to{" "}
               {monthText(RESEARCH.window.to)}.
             </p>
+            <p className="k-fg3 mt-1 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
           </div>
           <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
@@ -276,7 +281,7 @@ export function V2ResearchPage() {
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Emails studied" note={`${v.byMonth[0]?.label ?? ""} to ${v.byMonth[v.byMonth.length - 1]?.label ?? ""}`}>
+          <StatTile label="Emails studied" note={`${v.byMonth[0]?.label ?? ""} to ${dayText(RESEARCH.maturation.cutoff)}, old enough to count`}>
             <div className="flex items-end justify-between gap-2">
               <Figure value={v.emails.toLocaleString("en-US")} />
               <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
@@ -299,7 +304,7 @@ export function V2ResearchPage() {
           <StatTile label="Clear winners" note={`of ${RESEARCH.studies.length}`}>
             <div className="flex items-end justify-between gap-2">
               <Figure value={called} />
-              <div className="flex gap-[3px]" aria-hidden="true">
+              <div className="flex min-w-0 flex-wrap justify-end gap-[3px]" aria-hidden="true">
                 {RESEARCH.studies.map((st) => (
                   <span
                     key={st.id}
@@ -326,7 +331,7 @@ export function V2ResearchPage() {
                   {meta && <span className="k-chip font-normal">{meta.outcome}</span>}
                 </span>
               </SectionTitle>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {studies.map((st) => (
                   <StudyCard key={st.id} study={st} href={`${base}/${encodeURIComponent(st.id)}`} />
                 ))}
@@ -412,23 +417,31 @@ function MonthBars({ points, color, money }: { points: ResearchPoint[]; color: s
   );
 }
 
+/** The grey methodology line under a chart: which emails were too young to count. */
+function ChartNote({ note }: { note?: string }) {
+  return note ? <p className="k-fg3 mt-1.5 text-[12px] leading-5">{note}</p> : null;
+}
+
 /** A monthly chart: the month on its own as bars, and beside it the average since inception. */
 function MonthsRow({ chart, color }: { chart: ResearchChart; color: string }) {
   const money = chart.lowerIsBetter;
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <div className="min-w-0">
-        <SectionTitle>{chart.title}</SectionTitle>
-        <div className="k-card overflow-hidden">
-          <MonthBars points={chart.points} color={color} money={money} />
+    <div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="min-w-0">
+          <SectionTitle>{chart.title}</SectionTitle>
+          <div className="k-card overflow-hidden">
+            <MonthBars points={chart.points} color={color} money={money} />
+          </div>
+        </div>
+        <div className="min-w-0">
+          <SectionTitle>{chart.cumulative?.title ?? "Since inception"}</SectionTitle>
+          <div className="k-card overflow-hidden">
+            <LineCard points={chart.cumulative?.points ?? []} color={color} money={money} />
+          </div>
         </div>
       </div>
-      <div className="min-w-0">
-        <SectionTitle>{chart.cumulative?.title ?? "Since inception"}</SectionTitle>
-        <div className="k-card overflow-hidden">
-          <LineCard points={chart.cumulative?.points ?? []} color={color} money={money} />
-        </div>
-      </div>
+      <ChartNote note={chart.note} />
     </div>
   );
 }
@@ -555,6 +568,7 @@ export function V2ResearchStudyPage() {
                   <div className="k-card overflow-hidden">
                     <BarsChart chart={c} color={look.color} winner={study.winner} />
                   </div>
+                  <ChartNote note={c.note} />
                 </div>
               ),
             )}
@@ -583,6 +597,11 @@ export function V2ResearchStudyPage() {
               ROI is read as the cost per outcome: every crew buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
               emails that carried a link. Only a bar past {floors.crown.minEmails.toLocaleString("en-US")} emails and {floors.crown.minReplies} positive
               replies (or {floors.crown.minClicks} visits) can win; a smaller one is drawn and marked thin.
+            </p>
+            <p className="k-fg2 mt-2 text-[12px] leading-5">
+              Emails sent in the last {RESEARCH.maturation.days} days are left out of every figure: we measured how long a positive reply (
+              {RESEARCH.maturation.reply.pAt} days) and a website visit ({RESEARCH.maturation.click.pAt} days) take to arrive after the email that earned them, in
+              95 of 100 cases. {RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} recent emails wait until they are old enough to count.
             </p>
           </aside>
         </div>

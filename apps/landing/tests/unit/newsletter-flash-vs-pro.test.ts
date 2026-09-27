@@ -46,7 +46,7 @@ describe("newsletter: flash vs pro", () => {
   });
 
   it("states the article's headline figures", () => {
-    for (const figure of ["$139", "$1", "125,000", "36", "$198"]) expect(html).toContain(figure);
+    for (const figure of ["$94", "$1", "125,000", "23 A/B tests", "$164"]) expect(html).toContain(figure);
   });
 
   /**
@@ -62,7 +62,7 @@ describe("newsletter: flash vs pro", () => {
     });
 
     it("states the same headline figures as the HTML", () => {
-      for (const figure of ["$139", "125,000", "$198", "$1,461"]) {
+      for (const figure of ["$94", "125,000", "$164", "$1,265"]) {
         expect(html).toContain(figure);
         expect(text).toContain(figure);
       }

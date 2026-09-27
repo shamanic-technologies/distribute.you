@@ -47,7 +47,7 @@ articles, so a study and an article cannot state two figures for one population.
 study is fleet-wide (all orgs). To refresh it:
 
 ```sh
-apps/landing/scripts/blog-data/extract.sh 2026-04-15 <tomorrow> /tmp/research-data
+apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
 node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
 node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json > apps/dashboard/src/lib/research/research.json
 pnpm --filter @distribute/dashboard test research
@@ -58,6 +58,22 @@ LLM's and template's own month curve); `research.mjs` turns it into one study pe
 with its charts, its one-line result and its conclusion written out, so the page divides
 nothing. The open-tracking studies read `pixel/pixel.snapshot.json`. Do NOT re-render the
 two articles from a refreshed extract unless you mean to move their published figures.
+
+## Emails too young to count (the maturation window)
+
+An email sent today has not had time to earn its click or its reply, so counting it makes every
+price read too high and every rate too low. `derive.mjs` MEASURES the window from the dumps
+(`maturation.mjs`): the time from the email that earned an outcome to the outcome, at the 95th
+percentile, per outcome, on emails at least 45 days older than the window's end (a recent email can
+only show a short latency). The window is the longer of the two, rounded up to a day. Every email
+sent within it of the window's END (the extract's exclusive end, which is also where clicks and
+replies stop being counted) is dropped from the fact table before any cut, workflow or research
+block is built. The complete sent total survives as `volume.sent` and the pages label it.
+
+Measured on 27 September 2026: 95 in 100 website visits within 11.4 days, positive replies within
+9.6 days, so 12 days on the Research page; 11 days on the articles' own window. Both articles state
+it in Method and under every chart; the Research page under every chart. Run the research extract
+with TODAY as its end, not tomorrow: the end is when outcomes stop being observed.
 
 ## What the window is
 

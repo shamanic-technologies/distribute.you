@@ -63,6 +63,35 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("asks the best-workflow questions (ROI and rate) for Herald and Scout, and Pilot says it cannot yet", () => {
+    for (const crew of ["herald", "scout"] as const) {
+      const wf = studiesFor(crew).filter((s) => s.topic === "workflow");
+      expect(wf.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
+      for (const s of wf) expect(s.status, s.id).toBe("measured");
+    }
+    const pilot = studiesFor("pilot").filter((s) => s.topic === "workflow");
+    expect(pilot.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
+    for (const s of pilot) {
+      expect(s.status).toBe("not_enough_data");
+      expect(s.headline).toBe("Not enough data yet.");
+    }
+  });
+
+  it("names a workflow by what it runs, never by its codename", () => {
+    // every workflow codename in the fleet is a lowercase word joined to its version (`lithium-v6`)
+    for (const s of RESEARCH.studies.filter((st) => st.topic === "workflow")) {
+      for (const c of s.charts.filter((ch) => ch.kind === "bars")) {
+        for (const p of c.points) {
+          expect(p.label, s.id).toMatch(/ · /);
+          expect(p.label, s.id).not.toMatch(/\b[a-z]+-v\d+\b/);
+        }
+      }
+    }
+    // two workflows that run the same model and template still read as two
+    const labels = RESEARCH.studies.find((s) => s.id === "herald-workflow-rate")!.charts[0].points.map((p) => p.label);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
   it("writes no em-dash anywhere a reader sees", () => {
     expect(JSON.stringify(RESEARCH)).not.toContain("—");
   });
@@ -105,5 +134,43 @@ describe("Research is staff-only", () => {
 
   it("is a known v2 section", () => {
     expect(read("lib/v2/routes.ts")).toContain('"research"');
+  });
+});
+
+describe("the maturation window is measured and applied everywhere", () => {
+  const m = RESEARCH.maturation;
+  const dayMs = 86_400_000;
+
+  it("is the measured figure: the longer of the two outcome latencies, rounded up to a day", () => {
+    expect(m.days).toBe(Math.ceil(Math.max(m.reply.pAt, m.click.pAt)));
+    expect(m.reply.sample).toBeGreaterThan(0);
+    expect(m.click.sample).toBeGreaterThan(0);
+    expect(m.percentile).toBe(0.95);
+  });
+
+  it("leaves out exactly the emails younger than the window at the window's end", () => {
+    expect(Date.parse(`${m.windowEnd}T00:00:00Z`) - Date.parse(`${m.cutoff}T00:00:00Z`)).toBe(m.days * dayMs);
+    expect(m.excludedEmails).toBeGreaterThan(0);
+    // no month bar can sit after the cutoff's month: those emails were never counted
+    const cutoffMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m.cutoff.slice(5, 7)) - 1];
+    const last = RESEARCH.volume.byMonth.at(-1)!.label;
+    expect(last).toBe(cutoffMonth);
+  });
+
+  it("puts the rule under every chart, in the reader's words", () => {
+    expect(m.note).toContain(`last ${m.days} days`);
+    for (const s of RESEARCH.studies) {
+      for (const c of s.charts) {
+        expect(c.note, `${s.id}: ${c.title}`).toBeTruthy();
+        if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
+      }
+    }
+  });
+
+  it("draws the line under every chart and states it on the page", () => {
+    const src = read("components/v2/research-page.tsx");
+    expect(src).toContain("<ChartNote note={chart.note} />");
+    expect(src).toContain("<ChartNote note={c.note} />");
+    expect(src).toContain("{RESEARCH.maturation.note}");
   });
 });
