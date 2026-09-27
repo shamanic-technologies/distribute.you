@@ -25,10 +25,20 @@ describe("the modal acts on the org it created, not the one the URL names", () =
     expect(modal).toContain("setApiActiveOrgOverride(org.id)");
     expect((modal.match(/setApiActiveOrgOverride\(null\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
-  it("closing early hands the session back to the org the page behind is on", () => {
-    const close = modal.slice(modal.indexOf("async function close()"), modal.indexOf("async function run("));
-    expect(close).toContain("setActive({ organization: returnOrgId })");
-    expect(close).toContain("getToken({ skipCache: true })");
+  it("the api client mints a token FOR the overridden org", () => {
+    expect(api).toContain("organizationId: activeOrgOverride");
+  });
+  it("never makes the new org active before it is marked set up (the edge gate would send the person to /onboarding)", () => {
+    const setActives = [...modal.matchAll(/setActive\(\{ organization/g)].map((m) => m.index!);
+    expect(setActives).toHaveLength(1);
+    const done = modal.indexOf('"/api/onboarding/complete"');
+    expect(done).toBeGreaterThan(-1);
+    expect(setActives[0]).toBeGreaterThan(done);
+  });
+  it("marks the NEW org set up with a token minted for it", () => {
+    const launch = modal.slice(modal.indexOf("function launch()"));
+    expect(launch).toContain("getToken({ organizationId: orgId!, skipCache: true })");
+    expect(launch).toContain("Authorization: `Bearer ${orgToken}`");
   });
 });
 

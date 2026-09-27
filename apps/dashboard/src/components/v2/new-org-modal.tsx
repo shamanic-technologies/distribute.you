@@ -11,10 +11,13 @@
  * from the moment the brand exists, so the person answers one screen while the next is
  * being prepared. Rules the screens decide on live in `lib/v2/new-org-wizard.ts`.
  *
- * The page behind stays on the previous org's URL while this builds the new one, so every
- * call carries the new org through `setApiActiveOrgOverride` (see lib/api.ts), cleared
- * when the modal closes. Closing before the end switches the session back to the org the
- * page is on, so the page behind reads again.
+ * The session's active org is NOT switched while this runs: switching makes Clerk refresh
+ * the page and the edge gate would send the person to the full-page onboarding, since the
+ * new org is not set up yet. Every call carries the new org through
+ * `setApiActiveOrgOverride` instead (a token Clerk mints for that org, see lib/api.ts),
+ * and the page behind keeps its own org. Only once the org is marked set up does the
+ * session switch to it and land on the campaign. Closing early leaves nothing to undo;
+ * the half-built org stays in the list and starting over creates a new one.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -111,13 +114,10 @@ export function NewOrgModal({
   open,
   onClose,
   existingOrgNames,
-  returnOrgId,
 }: {
   open: boolean;
   onClose: () => void;
   existingOrgNames: readonly string[];
-  /** The org the page behind is on; the session goes back to it if the modal closes early. */
-  returnOrgId: string | null;
 }) {
   const router = useRouter();
   const { user } = useUser();
@@ -164,7 +164,6 @@ export function NewOrgModal({
   // Background prefills, keyed on the brand they were read for.
   const prefillRef = useRef<Promise<void> | null>(null);
   const editedRef = useRef<{ offer: boolean; audience: boolean; levers: boolean }>({ offer: false, audience: false, levers: false });
-  const finishedRef = useRef(false);
 
   // Seed the org name once, from the person's own name.
   useEffect(() => {
@@ -183,20 +182,15 @@ export function NewOrgModal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && step !== "launching") void close();
+      if (e.key === "Escape" && step !== "launching") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  async function close() {
-    if (busy && step === "launching") return;
+  function close() {
+    if (step === "launching" && busy) return;
     setApiActiveOrgOverride(null);
-    // Hand the session back to the org the page behind is on, or its reads stay held.
-    if (orgId && !finishedRef.current && returnOrgId && setActive) {
-      await setActive({ organization: returnOrgId }).catch((e) => console.error("[new-org] restore active org failed:", e));
-      await session?.getToken({ skipCache: true }).catch((e) => console.error("[new-org] token re-mint failed:", e));
-    }
     onClose();
   }
 
@@ -279,12 +273,11 @@ export function NewOrgModal({
     if (!name) return setError("Give your organization a name.");
     void run(async () => {
       if (!orgId) {
-        if (!createOrganization || !setActive) throw new Error("Your session is still loading. Try again in a moment.");
+        if (!createOrganization) throw new Error("Your session is still loading. Try again in a moment.");
+        // Created, NOT made active: see the header comment.
         const org = await createOrganization({ name });
-        await setActive({ organization: org.id });
-        await session?.getToken({ skipCache: true });
-        setOrgId(org.id);
         setApiActiveOrgOverride(org.id);
+        setOrgId(org.id);
         posthog.capture("new_org_modal_org_created", { org_id: org.id });
       }
       forward();
@@ -497,10 +490,15 @@ export function NewOrgModal({
         featureInputs,
       });
       // The edge gate reads this claim: the org is set up only now, with a campaign running.
-      const res = await fetch("/api/onboarding/complete", { method: "POST" });
-      if (!res.ok) console.error("[new-org] marking onboarding complete failed:", res.status);
+      // Mark the NEW org set up, with a token minted for it (the session is still on the
+      // previous org), BEFORE switching to it: the edge gate then lets it through.
+      const orgToken = await session?.getToken({ organizationId: orgId!, skipCache: true });
+      if (!orgToken) throw new Error("Your session expired. Sign in again to finish.");
+      const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${orgToken}` } });
+      if (!res.ok) throw new Error("We could not finish setting up the organization. Try again.");
+      if (!setActive) throw new Error("Your session is still loading. Try again in a moment.");
+      await setActive({ organization: orgId! });
       await session?.getToken({ skipCache: true });
-      finishedRef.current = true;
       posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: budgetUsd, pay_mode: payMode });
       setApiActiveOrgOverride(null);
       onClose();
@@ -520,7 +518,7 @@ export function NewOrgModal({
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
           <span className="k-label">New organization</span>
           {stepIndex >= 0 && <span className="k-fg3 k-mono text-[12px] tabular-nums">{stepIndex + 1} / 8</span>}
-          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={() => void close()} disabled={step === "launching"}>
+          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={() => close()} disabled={step === "launching"}>
             ×
           </button>
         </div>

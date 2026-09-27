@@ -134,14 +134,15 @@ async function readJsonResponse(response: Response, endpoint: string): Promise<u
 /**
  * The org a flow is acting on when it is NOT the org the URL names.
  *
- * One caller: the v2 "New organization" modal, which creates an org and then builds
- * its brand, offers and campaign while the page behind it still sits on the previous
- * org's URL. Without this every call would carry the URL's org beside a token minted
- * for the new one, and the proxy would refuse it as an org desync. It changes only the
- * header the proxy compares; the JWT stays the authority, so the proxy still fails
- * closed on any disagreement. The page behind the modal fires no org-scoped read
- * meanwhile: its URL org no longer matches the active org, so `useAuthQuery` holds
- * every one of them. Cleared the moment the modal closes or navigates.
+ * One caller: the v2 "New organization" modal, which creates an org and builds its
+ * brand, offers and campaign WITHOUT making it the session's active org. Switching the
+ * active org mid-flow makes Clerk refresh the page, and the edge first-run gate then
+ * sends the person to the full-page onboarding because the new org is not set up yet.
+ * So while the override is set, every call sends a token Clerk mints FOR that org
+ * (`getToken({ organizationId })`) and the matching `x-active-org-id`; the proxy's
+ * `auth()` honours the Bearer, so the JWT stays the authority and the desync check
+ * still fails closed. The page behind keeps its own org and keeps working.
+ * Cleared the moment the modal closes or finishes.
  */
 let activeOrgOverride: string | null = null;
 export function setApiActiveOrgOverride(orgId: string | null): void {
@@ -176,7 +177,7 @@ async function getTabSessionToken(forceRefresh = false): Promise<string | null> 
     window as unknown as {
       Clerk?: {
         session?: {
-          getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>;
+          getToken: (opts?: { skipCache?: boolean; organizationId?: string }) => Promise<string | null>;
         } | null;
       };
     }
@@ -187,6 +188,15 @@ async function getTabSessionToken(forceRefresh = false): Promise<string | null> 
     // cached token re-sends the STALE org and 409s again, deterministically —
     // the retry was a no-op for the one case it exists to fix. `skipCache` mints
     // a fresh token carrying this tab's current active org.
+    // A flow acting on an org the session has not switched to asks for a token FOR it.
+    if (activeOrgOverride) {
+      return (
+        (await clerk?.session?.getToken({
+          organizationId: activeOrgOverride,
+          ...(forceRefresh ? { skipCache: true } : {}),
+        })) ?? null
+      );
+    }
     return (await clerk?.session?.getToken(forceRefresh ? { skipCache: true } : undefined)) ?? null;
   } catch {
     return null;
