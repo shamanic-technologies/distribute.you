@@ -7328,17 +7328,17 @@ const WorkflowRankRowSchema = z.object({
   modelEligibility: z
     .object({
       /** The chat-service alias the DAG names. Null ⟺ it names none — never a guess. */
-      modelAlias: z.string().nullable(),
-      /** The tier chat-service RECORDS, never derived from the alias string: `flash-pro`
-       *  resolves to a Flash model and is CHEAP despite containing "pro". Null ⟺
-       *  unknowable on this request. */
-      modelTier: z.enum(["cheap", "strong", "frontier"]).nullable(),
-      /** FALSE ⟺ the tier is KNOWN and this leg's rule excludes it. An unknowable tier is
-       *  always TRUE: a gap in our own reading never excludes a workflow. */
+      modelAlias: z.string().nullish(),
+      /** Retiring: the verdict is moving from a model-TIER rule to a stored assignment of
+       *  workflows to legs (features-service). Read as a plain string and tolerated absent so
+       *  the producer can drop or rename it without this parse throwing the whole ladder. */
+      modelTier: z.string().nullish(),
+      /** FALSE ⟺ this workflow must not be picked on this leg. The producer owns why. */
       eligible: z.boolean(),
-      ineligibleReason: z.string().nullable(),
-      unknownTierReason: z.string().nullable(),
+      ineligibleReason: z.string().nullish(),
+      unknownTierReason: z.string().nullish(),
     })
+    .passthrough()
     .optional(),
 });
 
