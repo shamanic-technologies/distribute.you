@@ -541,6 +541,15 @@ export default function BillingPage() {
       window.location.href = setup.url;
       return;
     }
+    // Only the New organization modal asks for the in-page variant; this page never
+    // sends `ui_mode`, so reaching here means the backend answered something unasked.
+    if (setup.mode === "embedded_checkout") {
+      console.error("[billing] card setup answered embedded_checkout to a hosted request", setup);
+      setError("We could not open the card page. Please try again.");
+      setPortalLoadingSource(null);
+      setConfirmSource(null);
+      return;
+    }
 
     const { openCardWidget } = await import("@/lib/card-setup-widget");
     await openCardWidget({

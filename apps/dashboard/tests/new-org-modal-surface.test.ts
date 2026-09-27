@@ -65,3 +65,23 @@ describe("Keel, not v1", () => {
     expect(modal).toContain('document.getElementById("v2-portal")');
   });
 });
+
+describe("postpaid saves a card in the page, charging nothing, then arms auto top-up", () => {
+  const capture = modal.slice(modal.indexOf("function startCardCapture()"), modal.indexOf("async function afterCardSaved()"));
+  const after = modal.slice(modal.indexOf("async function afterCardSaved()"), modal.indexOf("function launch()"));
+  it("asks billing for the in-page variant and handles both acquirers", () => {
+    expect(api).toContain('body: { ui_mode: "embedded" }');
+    expect(capture).toContain("createEmbeddedCardSetup()");
+    expect(capture).toContain('setup.mode === "embedded_checkout"');
+    expect(capture).toContain('setup.mode === "embedded_widget"');
+  });
+  it("never arms auto top-up on a card that cannot be charged off-session", () => {
+    const blocked = after.indexOf("auto_reload_supported === false");
+    const arm = after.indexOf("configureAutoTopup(");
+    expect(blocked).toBeGreaterThan(-1);
+    expect(arm).toBeGreaterThan(blocked);
+  });
+  it("launches only after the card is confirmed and auto top-up is on", () => {
+    expect(after.indexOf("launch();")).toBeGreaterThan(after.indexOf("configureAutoTopup("));
+  });
+});

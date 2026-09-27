@@ -25,10 +25,12 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe
 import posthog from "posthog-js";
 import {
   USER_PROFILE_FIELDS,
+  configureAutoTopup,
   confirmAudienceSegments,
   confirmBrandOffers,
   createBrandWithoutWebsite,
   createCampaignWithoutBrandEnrichment,
+  createEmbeddedCardSetup,
   createEmbeddedCheckoutSession,
   extractBrandFields,
   getBillingAccount,
@@ -66,6 +68,7 @@ import {
   suggestNoWebsiteBrandName,
   suggestOrgName,
   type LeverKey,
+  type PaymentMode,
   type NewOrgLegKey,
   type NewOrgStep,
 } from "@/lib/v2/new-org-wizard";
@@ -152,6 +155,8 @@ export function NewOrgModal({
   const [budget, setBudget] = useState("");
   // Payment
   const [account, setAccount] = useState<BillingAccount | null>(null);
+  const [payMode, setPayMode] = useState<PaymentMode>("prepaid");
+  const [cardSecret, setCardSecret] = useState<string | null>(null);
   const [presetCents, setPresetCents] = useState<number | null>(PREPAID_PRESETS_CENTS[0]);
   const [customAmount, setCustomAmount] = useState("");
   const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
@@ -408,6 +413,66 @@ export function NewOrgModal({
     });
   }
 
+  // POSTPAID: save a card in the page, charging nothing, then arm auto top-up. The
+  // credit line itself is billing's (it grows with what the org has paid), so the
+  // amounts sent here only switch it on.
+  function startCardCapture() {
+    void run(async () => {
+      const setup = await createEmbeddedCardSetup();
+      if (setup.mode === "embedded_checkout") {
+        setCardSecret(setup.client_secret);
+        return;
+      }
+      if (setup.mode === "embedded_widget") {
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: setup.token,
+          environment: setup.environment,
+          savePaymentMethodFor: setup.save_payment_method_for,
+          name: setup.customer_name ?? undefined,
+          email: setup.customer_email ?? undefined,
+          onSuccess: () => void afterCardSaved(),
+          onCancel: () => {},
+          onError: (message) => setError(message),
+        });
+        return;
+      }
+      console.error("[new-org] card setup answered a hosted page to an in-page request", setup);
+      throw new Error("We could not open the card form here. Choose prepaid, or add a card from Billing later.");
+    });
+  }
+
+  async function afterCardSaved() {
+    setCardSecret(null);
+    setBusy(true);
+    setError(null);
+    try {
+      // The saved card reaches billing through the provider's webhook a moment later.
+      let acct: BillingAccount | null = null;
+      for (let i = 0; i < 10; i++) {
+        acct = await getBillingAccount().catch((e) => {
+          console.error("[new-org] billing read after card save failed:", e);
+          return null;
+        });
+        if (acct?.has_payment_method) break;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!acct?.has_payment_method) throw new Error("Your card is still being confirmed. Wait a few seconds and press Add a card again.");
+      if (acct.auto_reload_supported === false) {
+        setPayMode("prepaid");
+        throw new Error("This card cannot be charged automatically (some countries require each charge to be approved). Choose prepaid instead.");
+      }
+      await configureAutoTopup(5000, 1000);
+    } catch (e) {
+      console.error("[new-org] postpaid setup failed:", e);
+      setError(e instanceof Error ? e.message : "We could not set up postpaid. Try again.");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    launch();
+  }
+
   function launch() {
     go("launching");
     void run(async () => {
@@ -436,7 +501,7 @@ export function NewOrgModal({
       if (!res.ok) console.error("[new-org] marking onboarding complete failed:", res.status);
       await session?.getToken({ skipCache: true });
       finishedRef.current = true;
-      posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: budgetUsd, pay_mode: "prepaid" });
+      posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: budgetUsd, pay_mode: payMode });
       setApiActiveOrgOverride(null);
       onClose();
       router.push(v2MissionHref(orgId!, id, campaign.id));
@@ -598,6 +663,25 @@ export function NewOrgModal({
 
           {step === "payment" && !checkoutSecret && (
             <div className="mt-4 space-y-4">
+              <div className="k-inset inline-flex rounded-[8px] p-0.5" role="tablist" aria-label="Payment">
+                {(["prepaid", "postpaid"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="tab"
+                    aria-selected={payMode === m}
+                    onClick={() => setPayMode(m)}
+                    className={`h-7 rounded-[6px] px-3 text-[13px] ${payMode === m ? "k-raised k-fg shadow-[var(--elev-control)]" : "k-fg2"}`}
+                  >
+                    {m === "prepaid" ? "Prepaid" : "Postpaid"}
+                  </button>
+                ))}
+              </div>
+              {payMode === "postpaid" ? (
+                <p className="k-fg2 text-[13px]">
+                  Add a card, nothing is charged now. We charge it on the 1st of each month, or sooner each time your spend reaches your credit line: $50 to start, then $200 and $500 as you pay.
+                </p>
+              ) : (
               <div className="space-y-2">
                   <div className="flex flex-wrap gap-1.5">
                     {PREPAID_PRESETS_CENTS.map((c) => (
@@ -609,9 +693,18 @@ export function NewOrgModal({
                   </div>
                   <p className="k-fg3 text-[12px]">Credits are spent as the campaign runs, within the daily budget you set.</p>
                 </div>
+              )}
               {skipAllowed && freeCreditCents != null && (
                 <p className="k-fg2 text-[13px]">You have {fmtUsd(freeCreditCents / 100)} of free credit, so you can also start now and pay later.</p>
               )}
+            </div>
+          )}
+
+          {step === "payment" && cardSecret && (
+            <div className="mt-4">
+              <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: cardSecret, onComplete: () => void afterCardSaved() }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
             </div>
           )}
 
@@ -630,7 +723,7 @@ export function NewOrgModal({
           {error && <p className="mt-3 text-[13px] text-[var(--data-rose)]" role="alert">{error}</p>}
         </div>
 
-        {step !== "launching" && !checkoutSecret && (
+        {step !== "launching" && !checkoutSecret && !cardSecret && (
           <div className="flex h-14 shrink-0 items-center gap-2 border-t border-[var(--line-subtle)] px-4">
             {step !== "org" && (
               <button type="button" className="k-btn-ghost" onClick={back} disabled={busy}>
@@ -662,7 +755,7 @@ export function NewOrgModal({
   );
 
   function primaryLabel(): string {
-    if (step === "payment") return `Pay ${prepaidCents ? fmtUsd(prepaidCents / 100) : ""}`.trim();
+    if (step === "payment") return payMode === "postpaid" ? "Add a card" : `Pay ${prepaidCents ? fmtUsd(prepaidCents / 100) : ""}`.trim();
     return "Continue";
   }
 
@@ -677,7 +770,7 @@ export function NewOrgModal({
       case "levers": return submitLevers();
       case "leg": return submitLeg();
       case "budget": return submitBudget();
-      case "payment": return startCheckout();
+      case "payment": return payMode === "postpaid" ? startCardCapture() : startCheckout();
       default: return;
     }
   }
