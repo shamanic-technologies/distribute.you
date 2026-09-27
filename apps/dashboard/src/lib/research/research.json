@@ -89,7 +89,7 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "GLM 5.2 wins at $32 per positive reply, on thin counts (1 positive reply · 547 emails).",
+      "headline": "GLM 5.2 wins at $32 per positive reply.",
       "winner": "GLM 5.2",
       "result": {
         "display": "$32",
@@ -163,8 +163,7 @@
         }
       ],
       "conclusion": [
-        "GLM 5.2: 1 positive reply · 547 emails, $32 spent.",
-        "The winner is thin: under 1,000 emails or 10 positive replies. Weigh it with its counts."
+        "GLM 5.2: 1 positive reply · 547 emails, $32 spent."
       ]
     },
     {
@@ -174,7 +173,7 @@
       "goal": "rate",
       "question": "Which LLM gets the most positive replies?",
       "status": "measured",
-      "headline": "GLM 5.2 wins with 18.3 positive replies per 10,000 emails, on thin counts (1 positive reply · 547 emails).",
+      "headline": "GLM 5.2 wins with 18.3 positive replies per 10,000 emails.",
       "winner": "GLM 5.2",
       "result": {
         "display": "18.3",
@@ -725,7 +724,7 @@
       "goal": "roi",
       "question": "Which template gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "Cold email v16 wins at $52 per positive reply, on thin counts (2 positive replies · 3,936 emails).",
+      "headline": "Cold email v16 wins at $52 per positive reply.",
       "winner": "Cold email v16",
       "result": {
         "display": "$52",
@@ -877,8 +876,7 @@
       ],
       "conclusion": [
         "Cold email v16: 2 positive replies · 3,936 emails, $103 spent.",
-        "Over time: $44 in Apr, $13 in Jun.",
-        "The winner is thin: under 1,000 emails or 10 positive replies. Weigh it with its counts."
+        "Over time: $44 in Apr, $13 in Jun."
       ]
     },
     {
@@ -888,7 +886,7 @@
       "goal": "rate",
       "question": "Which template gets the most positive replies?",
       "status": "measured",
-      "headline": "Cold email v27 wins with 10.1 positive replies per 10,000 emails, on thin counts (4 positive replies · 3,950 emails).",
+      "headline": "Cold email v27 wins with 10.1 positive replies per 10,000 emails.",
       "winner": "Cold email v27",
       "result": {
         "display": "10.1",
@@ -1184,7 +1182,7 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2) wins at $17 per positive reply, on thin counts (1 positive reply · 579 emails).",
+      "headline": "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2) wins at $17 per positive reply.",
       "winner": "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2)",
       "result": {
         "display": "$17",
@@ -1314,8 +1312,7 @@
         }
       ],
       "conclusion": [
-        "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2): 1 positive reply · 579 emails, $17 spent.",
-        "The winner is thin: under 1,000 emails or 10 positive replies. Weigh it with its counts."
+        "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2): 1 positive reply · 579 emails, $17 spent."
       ]
     },
     {
@@ -1325,7 +1322,7 @@
       "goal": "rate",
       "question": "Which workflow gets the most positive replies?",
       "status": "measured",
-      "headline": "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2) wins with 17.3 positive replies per 10,000 emails, on thin counts (1 positive reply · 579 emails).",
+      "headline": "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2) wins with 17.3 positive replies per 10,000 emails.",
       "winner": "Gemini 3.1 Pro · Blind discovery v5 (from Apr, #2)",
       "result": {
         "display": "17.3",
@@ -1747,7 +1744,7 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest website visit?",
       "status": "measured",
-      "headline": "DeepSeek V4 Pro wins at $0.81 per website visit, on thin counts (2 website visits · 17 emails with a link).",
+      "headline": "DeepSeek V4 Pro wins at $0.81 per website visit.",
       "winner": "DeepSeek V4 Pro",
       "result": {
         "display": "$0.81",
@@ -1871,8 +1868,7 @@
       ],
       "conclusion": [
         "DeepSeek V4 Pro: 2 website visits · 17 emails with a link, $1.62 spent.",
-        "Over time: $0.80 in Aug, $0.82 in Sep.",
-        "The winner is thin: under 1,000 emails with a link or 20 website visits. Weigh it with its counts."
+        "Over time: $0.80 in Aug, $0.82 in Sep."
       ]
     },
     {
@@ -1882,7 +1878,7 @@
       "goal": "rate",
       "question": "Which LLM gets the most website visits?",
       "status": "measured",
-      "headline": "DeepSeek V4 Flash wins with 41.1 website visits per 1,000 emails with a link, on thin counts (15 website visits · 365 emails with a link).",
+      "headline": "DeepSeek V4 Flash wins with 41.1 website visits per 1,000 emails with a link.",
       "winner": "DeepSeek V4 Flash",
       "result": {
         "display": "41.1",
@@ -2742,7 +2738,7 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 (from Jun, #2) wins at $0.42 per website visit, on thin counts (69 website visits · 991 emails with a link).",
+      "headline": "Gemini 3 Flash · Cold email v19 (from Jun, #2) wins at $0.42 per website visit.",
       "winner": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
       "result": {
         "display": "$0.42",
@@ -3034,8 +3030,7 @@
       ],
       "conclusion": [
         "Gemini 3 Flash · Cold email v19 (from Jun, #2): 69 website visits · 991 emails with a link, $29 spent.",
-        "Over time: $0.76 in Jun, $0.26 in Aug.",
-        "The winner is thin: under 1,000 emails with a link or 20 website visits. Weigh it with its counts."
+        "Over time: $0.76 in Jun, $0.26 in Aug."
       ]
     },
     {
@@ -3045,7 +3040,7 @@
       "goal": "rate",
       "question": "Which workflow gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 (from Jun, #2) wins with 69.6 website visits per 1,000 emails with a link, on thin counts (69 website visits · 991 emails with a link).",
+      "headline": "Gemini 3 Flash · Cold email v19 (from Jun, #2) wins with 69.6 website visits per 1,000 emails with a link.",
       "winner": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
       "result": {
         "display": "69.6",

@@ -177,7 +177,6 @@ function rateWinner(o, rows) {
   const row = [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails)[0];
   return { row, crowned: row.emails >= STRICT.minEmails && row[o.count] >= o.strictOutcomes };
 }
-const thinClause = (o, row) => `, on thin counts (${counts(o, row)})`;
 
 function monthLine(o, series, kind) {
   if (!series) return [];
@@ -254,7 +253,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       status: w ? "measured" : "not_enough_data",
       headline: !w
         ? `No ${dimNoun} has produced a ${o.noun} yet.`
-        : `${label(w.row.bucket)} wins at ${usd(w.row[o.cost])} per ${o.noun}${w.crowned ? "" : thinClause(o, w.row)}.`,
+        : `${label(w.row.bucket)} wins at ${usd(w.row[o.cost])} per ${o.noun}.`,
       winner: w ? label(w.row.bucket) : null,
       result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
@@ -265,7 +264,6 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : `Nothing priced yet.`,
         ...(moved ? [`Over time: ${moved}.`] : []),
-        w && !w.crowned ? `The winner is thin: under ${n(STRICT.minEmails)} ${o.emailsNoun} or ${o.strictOutcomes} ${o.nounPlural}. Weigh it with its counts.` : null,
       ].filter(Boolean),
     });
   }
@@ -283,7 +281,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       status: w ? "measured" : "not_enough_data",
       headline: !w
         ? `No ${dimNoun} has earned a ${o.noun} yet.`
-        : `${label(w.row.bucket)} wins with ${w.row[o.rate].toFixed(1)} ${o.nounPlural} ${o.rateUnit}${w.crowned ? "" : thinClause(o, w.row)}.`,
+        : `${label(w.row.bucket)} wins with ${w.row[o.rate].toFixed(1)} ${o.nounPlural} ${o.rateUnit}.`,
       winner: w ? label(w.row.bucket) : null,
       result: w ? { display: w.row[o.rate].toFixed(1), unit: `${o.nounPlural} ${o.rateUnit}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,

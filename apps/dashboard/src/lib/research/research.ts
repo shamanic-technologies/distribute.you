@@ -123,7 +123,7 @@ export function studyById(id: string): ResearchStudy | null {
 export type StudyState = "winner" | "thin" | "no-data";
 export function studyState(study: ResearchStudy): StudyState {
   if (study.status !== "measured") return "no-data";
-  return study.crowned && study.winner ? "winner" : "thin";
+  return study.winner ? "winner" : "thin";
 }
 
 /**
