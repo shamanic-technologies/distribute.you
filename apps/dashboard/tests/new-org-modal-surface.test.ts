@@ -71,7 +71,7 @@ describe("the launch", () => {
     expect(mint).toBeGreaterThan(done);
   });
   it("ends on the new campaign's mission page", () => {
-    expect(launch).toContain("v2MissionHref(orgId!, id, campaign.id)");
+    expect(launch).toContain("v2MissionHref(orgId!, id, campaignId)");
   });
 });
 
