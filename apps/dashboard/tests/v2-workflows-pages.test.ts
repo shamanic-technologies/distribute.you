@@ -143,8 +143,15 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
     expect(list).toContain("getOfferRevenueByWorkflow(");
   });
 
-  it("states one return: no projected 'Est. return' beside the realized chart", () => {
+  it("states measured and projected in ONE cell, each named, never as a bare 'Est. return'", () => {
     expect(page).not.toContain('label="Est. return"');
+    const strip = page.slice(page.indexOf('label="Return, this mission"'), page.indexOf("<p className=\"k-fg3 mt-2 text-[12px]\">"));
+    expect(strip).toContain("formatRoi(row.roiMultiple");
+    expect(strip).toContain("formatRoi(ranked.ladder?.roiMultiple");
+    expect(strip).toContain("fmtUsd(ranked.estCostPerOutcomeUsd)");
+    const dual = page.slice(page.indexOf("function DualKpi("), page.indexOf("function Row("));
+    expect(dual).toContain(">measured<");
+    expect(dual).toContain(">projected<");
     expect(page).toContain('title="Return on spend"');
   });
 
