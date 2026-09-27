@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LEVER_QUESTIONS,
   NEW_ORG_LEGS,
+  canSkipPayment,
   newOrgLeg,
   nextStep,
   parseCustomAmountCents,
@@ -61,6 +62,14 @@ describe("parseCustomAmountCents", () => {
   it("refuses under $1 and non-numbers", () => {
     expect(parseCustomAmountCents("0.5")).toEqual({ problem: "The minimum is $1." });
     expect(parseCustomAmountCents("abc")).toEqual({ problem: "Enter an amount in dollars." });
+  });
+});
+
+describe("canSkipPayment", () => {
+  it("only with spendable free credit", () => {
+    expect(canSkipPayment(3000)).toBe(true);
+    expect(canSkipPayment(0)).toBe(false);
+    expect(canSkipPayment(null)).toBe(false);
   });
 });
 

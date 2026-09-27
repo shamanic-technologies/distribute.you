@@ -104,6 +104,15 @@ export function parseCustomAmountCents(input: string): { cents: number } | { pro
   return { cents };
 }
 
+/**
+ * Whether the payment step may be skipped. Only while the org holds free credit it
+ * can spend: an org whose first credit is still to come must fund its campaign,
+ * or the campaign would be created and never run.
+ */
+export function canSkipPayment(spendableFreeCreditCents: number | null): boolean {
+  return spendableFreeCreditCents != null && spendableFreeCreditCents > 0;
+}
+
 /** The modal's screens, in order. `offerPick` is skipped when one offer is detected. */
 export const NEW_ORG_STEPS = [
   "org",
