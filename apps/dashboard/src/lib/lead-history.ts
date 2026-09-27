@@ -141,6 +141,13 @@ const EventSchema = z
     heldBy: z.array(z.string()).optional(),
     copy: z.string().nullable().optional(),
     model: z.string().nullable().optional(),
+    /**
+     * The workflow run that GENERATED this email (lead-service). On a `generated_email`
+     * and on an outbound `message`; one generation writes the whole sequence, so every
+     * outbound message of a campaign names the same run. Null = the run is unknown,
+     * absent = not an email we generated. Opens that run's page.
+     */
+    workflowRunId: z.string().nullable().optional(),
     replyKind: z.string().optional(),
     channel: z.string().optional(),
     step: z.string().optional(),

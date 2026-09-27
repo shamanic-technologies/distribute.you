@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { EmailSignature } from "@/components/email-signature";
 import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
 import { emailBodySegments, linkDisplayText } from "@/lib/email-body-links";
@@ -31,6 +32,7 @@ export function LeadHistoryTimeline({
   heading = "Activity",
   bare = false,
   showNextFollowup = false,
+  runHref,
 }: {
   history: LeadHistory;
   heading?: string;
@@ -44,6 +46,12 @@ export function LeadHistoryTimeline({
    * schedules and the control beside it would not know which one it moves.
    */
   showNextFollowup?: boolean;
+  /**
+   * Where the run that WROTE an email opens. When given, every email lead-service ties
+   * to a run links to it, so a reader sees which workflow, model, template, audience and
+   * mission wrote it. Absent = no run page on this surface.
+   */
+  runHref?: (runId: string) => string;
 }) {
   const note = incompleteNote(history);
   // Every row the producer sent is drawn, with its words: the timeline states what
@@ -85,6 +93,7 @@ export function LeadHistoryTimeline({
           const destination = clickDestination(e);
           const isFuture = e.at != null && new Date(e.at).getTime() > nowMs;
           const prev = i > 0 ? visible[i - 1] : null;
+          const runLink = runHref && e.workflowRunId ? runHref(e.workflowRunId) : null;
           return (
             <li key={e.id} className="relative flex gap-3 pb-4 last:pb-0">
               {/* The rail, and the gap since the previous dated row. */}
@@ -99,7 +108,13 @@ export function LeadHistoryTimeline({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-800">
-                  {shape.label}
+                  {runLink ? (
+                    <Link href={runLink} className="hover:underline" title="Open the run that wrote this email">
+                      {shape.label}
+                    </Link>
+                  ) : (
+                    shape.label
+                  )}
                   {/* An ASSERTED fact says so. A reply somebody wrote down because it
                       never reached us is not a reply we can produce, and reading the
                       same is what made a recorded note look like an email. */}
@@ -112,6 +127,14 @@ export function LeadHistoryTimeline({
                     <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">
                       scheduled
                     </span>
+                  )}
+                  {runLink && (
+                    <Link
+                      href={runLink}
+                      className="ml-2 text-[11px] font-normal text-brand-600 underline-offset-2 hover:underline"
+                    >
+                      Open run
+                    </Link>
                   )}
                 </p>
                 {e.at && (

@@ -81,6 +81,11 @@ export function v2SectionOf(pathname: string): V2Section | null {
   return (known as string[]).includes(s) ? (s as V2Section) : null;
 }
 
+/** One workflow run in v2, under Work. */
+export function v2RunHref(orgId: string, brandId: string, runId: string): string {
+  return `${v2Base(orgId, brandId)}/work/runs/${encodeURIComponent(runId)}`;
+}
+
 /** One person (a `leads_campaigns` row) in v2. */
 export function v2PersonHref(orgId: string, brandId: string, leadRowId: string): string {
   return `${v2Base(orgId, brandId)}/people/${encodeURIComponent(leadRowId)}`;

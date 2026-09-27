@@ -12,6 +12,7 @@ import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useNeedsYourCall, useTheirLastWords } from "@/components/v2/data";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
+import { v2RunHref } from "@/lib/v2/routes";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 
@@ -169,6 +170,7 @@ export function WorkPage() {
             missionOf={missionOf}
             missionForLead={(l) => missionByCampaignId.get(l.campaignId) ?? null}
             personHrefFor={(l) => personHref(orgId, brandId, l)}
+            runHrefFor={(r) => v2RunHref(orgId, brandId, r.id)}
           />
         ) : (
         <div className="k-scroll mt-4 flex gap-4 overflow-x-auto pb-2">
@@ -191,7 +193,7 @@ export function WorkPage() {
             ) : running.length === 0 ? (
               <EmptyNote>Nothing in flight right now.</EmptyNote>
             ) : (
-              running.slice(0, 20).map((r) => <RunCard key={r.id} run={r} m={missionOf(r)} />)
+              running.slice(0, 20).map((r) => <RunCard key={r.id} run={r} m={missionOf(r)} href={v2RunHref(orgId, brandId, r.id)} />)
             )}
           </Column>}
           {show("call") && <Column
@@ -309,10 +311,10 @@ function useElapsed(since: string): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-function RunCard({ run, m }: { run: RunRow; m: Mission | null }) {
+function RunCard({ run, m, href }: { run: RunRow; m: Mission | null; href: string }) {
   const elapsed = useElapsed(run.startedAt);
   return (
-    <Link href={m?.href ?? "#"} className="k-card block p-3">
+    <Link href={href} className="k-card block p-3">
       <div className="flex items-center gap-2 text-[12px]">
         {m ? <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} /> : null}
         <span className="font-medium">{m?.crew.name ?? "Crew"}</span>
@@ -391,6 +393,7 @@ function WorkList({
   missionOf,
   missionForLead,
   personHrefFor,
+  runHrefFor,
 }: {
   waiting: Mission[];
   running: RunRow[];
@@ -399,6 +402,7 @@ function WorkList({
   missionOf: (r: RunRow) => Mission | null;
   missionForLead: (l: Lead) => Mission | null;
   personHrefFor: (l: Lead) => string;
+  runHrefFor: (r: RunRow) => string;
 }) {
   type Row = { key: string; state: string; dot: string; m: Mission | null; what: string; where: string; at: string | null; href: string };
   const rows: Row[] = [
@@ -420,7 +424,7 @@ function WorkList({
       what: runTaskLabel(r),
       where: missionOf(r)?.offerName ?? "—",
       at: r.startedAt,
-      href: missionOf(r)?.href ?? "#",
+      href: runHrefFor(r),
     })),
     ...waiting
       .filter((m) => !m.running)

@@ -233,6 +233,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The channel's version-to-dynasty map. Unlisted, a campaign pinned to a superseded
   // version cold-fetches it on every visit before it can even name what is running.
   "workflowDynasties",
+  // A run and what it wrote (v2 Work › Run): a finished run never changes, so paint it from disk.
+  "runDetail",
+  "runGenerations",
   "campaignWorkflowRevenue",
   // The projection ladder the Workflows table is RANKED on. Unlisted, the whole
   // ordering plus every "why" cold-fetches over the slowest features read there is.
