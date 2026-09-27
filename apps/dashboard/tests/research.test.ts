@@ -49,6 +49,20 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("pairs every monthly chart with its average since inception, ending on the winner's own result", () => {
+    for (const s of RESEARCH.studies) {
+      for (const c of s.charts.filter((ch) => ch.kind === "months")) {
+        expect(c.cumulative, s.id).toBeDefined();
+        expect(c.cumulative!.points.length, s.id).toBeGreaterThan(0);
+      }
+      // the cheapest LLM's average since inception IS the price its card states
+      if (s.topic === "llm" && s.goal === "roi" && s.result) {
+        const months = s.charts.find((c) => c.kind === "months");
+        expect(months?.cumulative?.points.at(-1)?.display, s.id).toBe(s.result.display);
+      }
+    }
+  });
+
   it("writes no em-dash anywhere a reader sees", () => {
     expect(JSON.stringify(RESEARCH)).not.toContain("—");
   });

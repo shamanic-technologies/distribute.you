@@ -55,6 +55,7 @@ const OUTCOMES = {
     rate: "repliesPerTenThousand",
     rateUnit: "per 10,000 emails",
     rateShort: "/10k",
+    per: 10000,
     strictOutcomes: STRICT.minReplies,
     emailsNoun: "emails",
   },
@@ -68,6 +69,7 @@ const OUTCOMES = {
     rate: "clicksPerThousand",
     rateUnit: "per 1,000 emails with a link",
     rateShort: "/1k",
+    per: 1000,
     strictOutcomes: STRICT.minClicks,
     emailsNoun: "emails with a link",
   },
@@ -131,6 +133,38 @@ function monthLine(o, series, kind) {
       thin: kind === "cost" ? Boolean(r[o.costThin]) : r.emails < STRICT.minEmails,
     }));
 }
+// The average SINCE INCEPTION at the end of each month: everything spent (or sent) up to that
+// month over every outcome up to it. A month with no outcome still carries its spend, so the
+// average climbs through a dry spell instead of skipping it. Written here, never in the browser.
+function sinceInception(o, series, kind) {
+  if (!series) return [];
+  let spend = 0, got = 0, emails = 0;
+  const out = [];
+  for (const r of series) {
+    spend += r.spend; got += r[o.count]; emails += r.emails;
+    if (kind === "cost" ? got === 0 : emails < facts.floors.minEmails) continue;
+    const value = kind === "cost" ? spend / got : (got / emails) * o.per;
+    out.push({
+      label: monthLabel(r.bucket),
+      value: Number(value.toFixed(2)),
+      display: kind === "cost" ? usd(value) : rateText(o, value),
+      note: `${n(got)} ${got === 1 ? o.noun : o.nounPlural} · ${n(emails)} ${o.emailsNoun} to date`,
+      thin: kind === "cost" ? got < o.strictOutcomes : emails < STRICT.minEmails,
+    });
+  }
+  return out;
+}
+// One monthly chart: the month on its own as bars, the average since inception beside it.
+function monthsChart(o, series, kind, subject, lowerIsBetter) {
+  const what = kind === "cost" ? `cost per ${o.noun}` : `${o.nounPlural} ${o.rateUnit}`;
+  return {
+    kind: "months",
+    title: `${subject}: ${what} by month`,
+    lowerIsBetter,
+    points: monthLine(o, series, kind),
+    cumulative: { title: `${subject}: average since inception`, points: sinceInception(o, series, kind) },
+  };
+}
 const costTitle = (o) => `Cost per ${o.noun} (USD, lower is better)`;
 const rateTitle = (o) => `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} ${o.rateUnit} (higher is better)`;
 
@@ -169,7 +203,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       crowned: w ? w.crowned : false,
       charts: [
         { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label) },
-        ...(w && line.length ? [{ kind: "line", title: `${label(w.row.bucket)}: cost per ${o.noun} by month`, lowerIsBetter: true, points: line }] : []),
+        ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "cost", label(w.row.bucket), true)] : []),
       ],
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : `Nothing priced yet.`,
@@ -198,7 +232,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       crowned: w ? w.crowned : false,
       charts: [
         { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label) },
-        ...(w && line.length ? [{ kind: "line", title: `${label(w.row.bucket)}: ${o.nounPlural} ${o.rateUnit} by month`, lowerIsBetter: false, points: line }] : []),
+        ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "rate", label(w.row.bucket), false)] : []),
       ],
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}.` : null,
@@ -233,8 +267,8 @@ for (const key of ["reply", "visit"]) {
       result: fleet.length ? { display: fleet[fleet.length - 1].display, unit: `per ${o.noun} in ${fleet[fleet.length - 1].label}`, sample: fleet[fleet.length - 1].note } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "line", title: `All our emails: cost per ${o.noun} by month`, lowerIsBetter: true, points: fleet },
-        ...(wl.length ? [{ kind: "line", title: `${w.row.bucket} (cheapest LLM): cost per ${o.noun} by month`, lowerIsBetter: true, points: wl }] : []),
+        monthsChart(o, R.byMonth, "cost", "All our emails", true),
+        ...(wl.length ? [monthsChart(o, R.modelByMonth[w.row.bucket], "cost", `${w.row.bucket} (cheapest LLM)`, true)] : []),
       ],
       conclusion: [
         `The first curve mixes every workflow we ran that month; the second follows only the cheapest LLM.`,

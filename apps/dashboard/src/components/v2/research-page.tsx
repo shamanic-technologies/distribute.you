@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BrainIcon } from "@phosphor-icons/react/dist/csr/Brain";
 import { ChartLineDownIcon } from "@phosphor-icons/react/dist/csr/ChartLineDown";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
@@ -26,6 +26,7 @@ import {
   studyState,
   type ResearchChart,
   type ResearchCrew,
+  type ResearchPoint,
   type ResearchStudy,
   type ResearchTopic,
   type StudyState,
@@ -154,8 +155,8 @@ function Loading() {
 
 // ─── Small charts (the card's mini viz, in the topic's colour) ─────────────
 
-function MiniBars({ chart, color, winner }: { chart: ResearchChart; color: string; winner: string | null }) {
-  const pts = chart.points.slice(0, 7);
+function MiniBars({ points, color, winner }: { points: ResearchPoint[]; color: string; winner: string | null }) {
+  const pts = points.slice(0, 7);
   const max = Math.max(...pts.map((p) => p.value), 0) || 1;
   return (
     <div className="flex h-5 items-end gap-[3px]" aria-hidden="true">
@@ -170,8 +171,8 @@ function MiniBars({ chart, color, winner }: { chart: ResearchChart; color: strin
   );
 }
 
-function MiniLine({ chart, color }: { chart: ResearchChart; color: string }) {
-  const v = chart.points.map((p) => p.value);
+function MiniLine({ points, color }: { points: ResearchPoint[]; color: string }) {
+  const v = points.map((p) => p.value);
   if (v.length < 2) return null;
   const w = 64;
   const h = 20;
@@ -226,7 +227,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
           <p className="k-label">Result</p>
           <div className="mt-1.5 flex items-end justify-between gap-2">
             <p className="text-[20px] font-medium leading-6 tabular-nums">{study.result?.display ?? <span className="k-fg4">{"—"}</span>}</p>
-            {spark && (spark.kind === "line" ? <MiniLine chart={spark} color={look.color} /> : <MiniBars chart={spark} color={look.color} winner={study.winner} />)}
+            {spark && (spark.kind === "line" ? <MiniLine points={spark.points} color={look.color} /> : <MiniBars points={spark.points} color={look.color} winner={study.winner} />)}
           </div>
           <p className="k-fg3 mt-0.5 truncate text-[11px]" title={study.result?.unit}>
             {study.result?.unit ?? "no result yet"}
@@ -372,37 +373,77 @@ function BarsChart({ chart, color, winner }: { chart: ResearchChart; color: stri
   );
 }
 
-/** A line over the months, styled like v2's other charts: fg-3 ticks, no grid, a k-popover tooltip. */
-function LineCard({ chart, color }: { chart: ResearchChart; color: string }) {
-  if (!chart.points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
-  const byLabel = new Map(chart.points.map((p) => [p.label, p]));
-  const money = chart.title.includes("USD") || chart.title.startsWith("Cost") || chart.title.includes("cost per");
+/** The tooltip every research chart shares: the month, the value, the counts behind it. */
+function pointTooltip(points: ResearchPoint[]) {
+  const byLabel = new Map(points.map((p) => [p.label, p]));
+  return function ResearchTooltip({ active, label }: { active?: boolean; label?: string | number }) {
+    const p = active ? byLabel.get(String(label)) : undefined;
+    return p ? (
+      <div className="k-popover px-2.5 py-1.5 text-[12px]">
+        <p className="k-fg3 k-mono">{p.label}</p>
+        <p className="font-medium tabular-nums">{p.display}</p>
+        <p className="k-fg3 tabular-nums">{p.note}</p>
+      </div>
+    ) : null;
+  };
+}
+const axisTick = { fontSize: 11, fill: "var(--fg-3)" };
+const tickFor = (money: boolean) => (n: number) => (money ? `$${Math.round(n)}` : String(Math.round(n * 10) / 10));
+
+/** One bar per month, v2 chart styling: fg-3 ticks, no grid, a k-popover tooltip. Thin months fade. */
+function MonthBars({ points, color, money }: { points: ResearchPoint[]; color: string; money: boolean }) {
+  if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
+  const Tip = pointTooltip(points);
   return (
     <div className="h-[180px] px-2 pb-2 pt-3">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chart.points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--fg-3)" }} tickLine={false} axisLine={false} />
-          <YAxis
-            tick={{ fontSize: 11, fill: "var(--fg-3)" }}
-            tickLine={false}
-            axisLine={false}
-            width={48}
-            tickCount={3}
-            tickFormatter={(n: number) => (money ? `$${Math.round(n)}` : String(Math.round(n * 10) / 10))}
-          />
-          <Tooltip
-            cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }}
-            content={({ active, label }) => {
-              const p = active ? byLabel.get(String(label)) : undefined;
-              return p ? (
-                <div className="k-popover px-2.5 py-1.5 text-[12px]">
-                  <p className="k-fg3 k-mono">{p.label}</p>
-                  <p className="font-medium tabular-nums">{p.display}</p>
-                  <p className="k-fg3 tabular-nums">{p.note}</p>
-                </div>
-              ) : null;
-            }}
-          />
+        <BarChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={false} />
+          <YAxis tick={axisTick} tickLine={false} axisLine={false} width={48} tickCount={3} tickFormatter={tickFor(money)} />
+          <Tooltip cursor={{ fill: "var(--data-track)" }} content={<Tip />} />
+          <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={36} isAnimationActive={false}>
+            {points.map((p) => (
+              <Cell key={p.label} fill={color} fillOpacity={p.thin ? 0.35 : 0.85} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** A monthly chart: the month on its own as bars, and beside it the average since inception. */
+function MonthsRow({ chart, color }: { chart: ResearchChart; color: string }) {
+  const money = chart.lowerIsBetter;
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="min-w-0">
+        <SectionTitle>{chart.title}</SectionTitle>
+        <div className="k-card overflow-hidden">
+          <MonthBars points={chart.points} color={color} money={money} />
+        </div>
+      </div>
+      <div className="min-w-0">
+        <SectionTitle>{chart.cumulative?.title ?? "Since inception"}</SectionTitle>
+        <div className="k-card overflow-hidden">
+          <LineCard points={chart.cumulative?.points ?? []} color={color} money={money} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A line over the months, styled like v2's other charts: fg-3 ticks, no grid, a k-popover tooltip. */
+function LineCard({ points, color, money }: { points: ResearchPoint[]; color: string; money: boolean }) {
+  if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
+  const Tip = pointTooltip(points);
+  return (
+    <div className="h-[180px] px-2 pb-2 pt-3">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={false} />
+          <YAxis tick={axisTick} tickLine={false} axisLine={false} width={48} tickCount={3} tickFormatter={tickFor(money)} />
+          <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={<Tip />} />
           <Line type="linear" dataKey="value" stroke={color} strokeWidth={1.5} dot={{ r: 2.5, fill: color, strokeWidth: 0 }} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
@@ -505,14 +546,18 @@ export function V2ResearchStudyPage() {
                 </ul>
               </div>
             </div>
-            {study.charts.map((c) => (
-              <div key={c.title}>
-                <SectionTitle>{c.title}</SectionTitle>
-                <div className="k-card overflow-hidden">
-                  {c.kind === "bars" ? <BarsChart chart={c} color={look.color} winner={study.winner} /> : <LineCard chart={c} color={look.color} />}
+            {study.charts.map((c) =>
+              c.kind === "months" ? (
+                <MonthsRow key={c.title} chart={c} color={look.color} />
+              ) : (
+                <div key={c.title}>
+                  <SectionTitle>{c.title}</SectionTitle>
+                  <div className="k-card overflow-hidden">
+                    <BarsChart chart={c} color={look.color} winner={study.winner} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
 
           <aside className="k-card h-fit p-4">

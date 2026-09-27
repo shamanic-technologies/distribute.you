@@ -27,10 +27,13 @@ export interface ResearchPoint {
 }
 
 export interface ResearchChart {
-  kind: "bars" | "line";
+  /** `bars` compares buckets; `months` is one month per bar with the average since inception beside it. */
+  kind: "bars" | "months";
   title: string;
   lowerIsBetter: boolean;
   points: ResearchPoint[];
+  /** On a `months` chart: the average from the first month to each month, written by research.mjs. */
+  cumulative?: { title: string; points: ResearchPoint[] };
 }
 
 export interface ResearchStudy {
@@ -106,7 +109,13 @@ export function studyState(study: ResearchStudy): StudyState {
   return study.crowned && study.winner ? "winner" : "thin";
 }
 
-/** The series a card draws small: the winner's own month curve when there is one, else the first chart. */
-export function studySpark(study: ResearchStudy): ResearchChart | null {
-  return study.charts.find((c) => c.kind === "line") ?? study.charts[0] ?? null;
+/**
+ * The series a card draws small: the winner's average since inception when there is one (it
+ * ends on the card's own Result), else the first chart's bars.
+ */
+export function studySpark(study: ResearchStudy): { kind: "line" | "bars"; points: ResearchPoint[] } | null {
+  const months = study.charts.find((c) => c.kind === "months" && c.cumulative?.points.length);
+  if (months?.cumulative) return { kind: "line", points: months.cumulative.points };
+  const first = study.charts[0];
+  return first ? { kind: "bars", points: first.points } : null;
 }
