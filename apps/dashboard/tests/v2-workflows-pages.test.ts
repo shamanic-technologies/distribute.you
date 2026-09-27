@@ -168,3 +168,12 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/loading.tsx")).toContain("export default function V2BrandLoading");
   });
 });
+
+describe("v2 Workflows states the LLM and the template in their own columns", () => {
+  const list = read("src/components/v2/workflows-page.tsx");
+  it("has LLM and Template headers and no combined stack line", () => {
+    expect(list).toContain("<th className={`${TH} w-40`}>LLM</th>");
+    expect(list).toContain("<th className={`${TH} w-40`}>Template</th>");
+    expect(list).not.toContain("const stack =");
+  });
+});

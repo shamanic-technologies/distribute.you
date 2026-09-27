@@ -326,3 +326,18 @@ describe("workflow and template pages (the research catalogue)", () => {
     expect(read("components/v2/research-template-link.tsx")).not.toMatch(/from "@\/lib\/research\/research"/);
   });
 });
+
+describe("the workflows catalogue names each workflow and gives its LLM and template their own columns", () => {
+  const catalog = catalogJson as unknown as Record<string, { workflows: { key: string; name: string | null }[] }>;
+  it("every workflow carries the name workflow-service states for it", () => {
+    for (const crew of Object.values(catalog)) for (const w of crew.workflows) expect(w.name, w.key).toBeTruthy();
+  });
+  it("the list renders LLM and Template columns whose cells link to the model and template pages", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+    expect(src).toContain("<th className={`${TH} w-40`}>LLM</th>");
+    expect(src).toContain("<th className={`${TH} w-40`}>Template</th>");
+    expect(src).toContain('kind="models" r={(r as ResearchWorkflow).model}');
+    expect(src).toContain('kind="templates" r={(r as ResearchWorkflow).template}');
+    expect(src).toContain("onClick={(e) => e.stopPropagation()}");
+  });
+});
