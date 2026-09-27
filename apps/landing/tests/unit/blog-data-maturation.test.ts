@@ -79,6 +79,16 @@ describe("no outcome maths includes an email younger than the window at the wind
   });
 });
 
+describe("the Research page compares workflow dynasties, never single versions", () => {
+  it("groups every workflow study by the dynasty workflow-service records, and fails loud on an unknown version", () => {
+    const src = readFileSync(join(__dirname, "../../scripts/blog-data/derive.mjs"), "utf8");
+    expect(src).toContain("byWorkflow: cut(rows, (r) => r.dynasty),");
+    expect(src).toContain("workflowByMonth: byMonthPer(rows, (r) => r.dynasty),");
+    expect(src).toContain("is not in workflows.csv: re-run extract.sh");
+    expect(readFileSync(join(__dirname, "../../scripts/blog-data/extract.sh"), "utf8")).toContain("SELECT workflow_slug, workflow_dynasty_slug");
+  });
+});
+
 describe("both articles state the rule", () => {
   for (const slug of ["cost-per-click-cold-email", "flash-vs-pro-llm-cold-email"]) {
     it(`${slug}: in its Method and under every chart`, () => {
