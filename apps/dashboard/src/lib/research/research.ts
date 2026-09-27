@@ -46,6 +46,8 @@ export interface ResearchStudy {
   winner: string | null;
   /** False when the leader sits on counts too thin to call a winner. */
   crowned: boolean;
+  /** The figure the card leads with, its unit in words, and the counts behind it. */
+  result: { display: string; unit: string; sample: string } | null;
   charts: ResearchChart[];
   conclusion: string[];
 }
@@ -54,7 +56,15 @@ export interface ResearchFile {
   generatedAt: string;
   allOrgs: true;
   window: { from: string; to: string };
-  volume: { emails: number; orgs: number; workflows: number; linkedEmails: number };
+  /** The day the data was read out of production. */
+  readOn: string;
+  volume: {
+    emails: number;
+    orgs: number;
+    workflows: number;
+    linkedEmails: number;
+    byMonth: { label: string; emails: number }[];
+  };
   floors: { minEmails: number; crown: { minEmails: number; minClicks: number; minReplies: number } };
   crews: { id: ResearchCrew; outcome: string; description: string }[];
   studies: ResearchStudy[];
@@ -87,6 +97,13 @@ export function studiesFor(crew: ResearchCrew): ResearchStudy[] {
 
 export function studyById(id: string): ResearchStudy | null {
   return RESEARCH.studies.find((s) => s.id === id) ?? null;
+}
+
+/** A study's standing as one word: a called winner, a leader on thin counts, or no data. */
+export type StudyState = "winner" | "thin" | "no-data";
+export function studyState(study: ResearchStudy): StudyState {
+  if (study.status !== "measured") return "no-data";
+  return study.crowned && study.winner ? "winner" : "thin";
 }
 
 /** The series a card draws small: the winner's own month curve when there is one, else the first chart. */
