@@ -108,6 +108,12 @@ const workflowLabel = (wf) => {
   return l;
 };
 
+// A bar's key names the page it opens. A model's bucket is its label ("Gemini 3.1 Pro"), so its
+// key is a slug; a workflow's (dynasty slug) and a template's (template id) are already ids.
+const modelKey = (label) => label.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/^-+|-+$/g, "");
+const MODEL_LABELS = new Set(Object.values(MODEL_LABEL));
+const keyOf = (bucket) => (MODEL_LABELS.has(bucket) ? modelKey(bucket) : bucket);
+
 // ---------- the two outcomes ----------
 const OUTCOMES = {
   reply: {
@@ -157,7 +163,7 @@ function costBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } 
   const priced = rows.filter((r) => r[o.cost] !== null);
   const ordered = ordinal ? priced : [...priced].sort(byCost(o));
   return ordered.map((r) => ({
-    ...(keyed ? { key: r.bucket } : {}),
+    ...(keyed ? { key: keyOf(r.bucket) } : {}),
     label: label(r.bucket),
     value: r[o.cost],
     display: usd(r[o.cost]),
@@ -170,7 +176,7 @@ function rateBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } 
   const drawn = rows.filter((r) => r.emails >= facts.floors.minEmails);
   const ordered = ordinal ? drawn : [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
   return ordered.map((r) => ({
-    ...(keyed ? { key: r.bucket } : {}),
+    ...(keyed ? { key: keyOf(r.bucket) } : {}),
     label: label(r.bucket),
     value: r[o.rate],
     display: rateText(o, r[o.rate]),
@@ -256,7 +262,7 @@ const add = (s) => studies.push(s);
 function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }) {
   const rows = R[cutKey];
   // A workflow's or a template's bar carries its key, so the page can open that one's own page.
-  const keyed = dim === "workflow" || dim === "template";
+  const keyed = dim === "workflow" || dim === "template" || dim === "llm";
   // ROI
   {
     const w = costWinner(o, rows);
@@ -518,6 +524,7 @@ const readJson = (f) => JSON.parse(readFileSync(join(dataDir, f), "utf8"));
 const templateTexts = new Map(readJson("templates.json").map((t) => [t.type, t.prompt]));
 const workflowRuns = readJson("workflow-runs.json");
 const templateRuns = readJson("template-runs.json");
+const modelRuns = readJson("model-runs.json");
 // A workflow VERSION to the workflow (dynasty) it belongs to, as workflow-service records it.
 const dynastyOf = new Map();
 for (const line of readFileSync(join(dataDir, "workflows.csv"), "utf8").trim().split("\n").slice(1)) {
@@ -573,13 +580,19 @@ for (const key of ["reply", "visit"]) {
   const tplKeys = new Set(tplRows.map((r) => r.bucket));
   const wfRows = catalogOrder(o, R.byWorkflow);
   const wfKeys = new Set(wfRows.map((r) => r.bucket));
+  const mdRows = catalogOrder(o, R.byModel);
+  const modelLabels = new Set(mdRows.map((r) => r.bucket));
+  const modelRef = (raw) => {
+    const label = raw ? MODEL_LABEL[raw] || raw : null;
+    return label ? { key: modelKey(label), label, linked: modelLabels.has(label) } : null;
+  };
   const workflows = wfRows.map((r, i) => {
     const m = meta[r.bucket] || {};
     return {
       key: r.bucket,
       label: workflowLabel(r.bucket),
       rank: r[o.cost] === null ? null : i + 1,
-      model: m.model || null,
+      model: m.model ? { key: modelKey(m.model), label: m.model, linked: modelLabels.has(m.model) } : null,
       template: m.template ? { key: m.template, label: templateLabel(m.template), linked: tplKeys.has(m.template) } : null,
       ...figures(o, r),
       charts: curves(o, R.workflowByMonth[r.bucket], workflowLabel(r.bucket)),
@@ -613,7 +626,7 @@ for (const key of ["reply", "visit"]) {
           const dynasty = x.workflowSlug ? (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) : null;
           return {
             when: whenText(x.createdAt),
-            model: MODEL_LABEL[x.model] || x.model,
+            model: modelRef(x.model),
             workflow: dynasty && wfKeys.has(dynasty) ? { key: dynasty, label: workflowLabel(dynasty) } : null,
             version: x.workflowSlug ? versionText(x.workflowSlug) : null,
             tokens: x.tokensIn == null ? null : `${n(x.tokensIn)} in · ${n(x.tokensOut ?? 0)} out`,
@@ -621,9 +634,32 @@ for (const key of ["reply", "visit"]) {
         }),
     };
   });
-  catalog[o.crew] = { workflows, templates };
+  const models = mdRows.map((r, i) => ({
+    key: modelKey(r.bucket),
+    label: r.bucket,
+    rank: r[o.cost] === null ? null : i + 1,
+    ...figures(o, r),
+    charts: curves(o, R.modelByMonth[r.bucket], r.bucket),
+    workflows: workflows.filter((w) => w.model?.label === r.bucket).map((w) => ({ key: w.key, label: w.label })),
+    // Two ids can name one model (a deprecated alias beside its successor): merged, newest first.
+    runs: modelRuns
+      .filter((x) => (MODEL_LABEL[x.model] || x.model) === r.bucket)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, RUNS_SHOWN)
+      .map((x) => {
+        const dynasty = x.workflowSlug ? (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) : null;
+        return {
+          when: whenText(x.createdAt),
+          workflow: dynasty && wfKeys.has(dynasty) ? { key: dynasty, label: workflowLabel(dynasty) } : null,
+          template: x.template ? { key: x.template, label: templateLabel(x.template), linked: tplKeys.has(x.template) } : null,
+          version: x.workflowSlug ? versionText(x.workflowSlug) : null,
+          tokens: x.tokensIn == null ? null : `${n(x.tokensIn)} in · ${n(x.tokensOut ?? 0)} out`,
+        };
+      }),
+  }));
+  catalog[o.crew] = { workflows, templates, models };
 }
-catalog.pilot = { workflows: [], templates: [] };
+catalog.pilot = { workflows: [], templates: [], models: [] };
 
 const sideDir = process.argv[3];
 if (!sideDir) throw new Error("usage: research.mjs <facts.json> <dir for research-catalog.json + research-templates.json>");
@@ -635,7 +671,7 @@ if (!sideDir) throw new Error("usage: research.mjs <facts.json> <dir for researc
 }
 // What the hub prints beside each crew: how many workflows and templates its pages list.
 const catalogCounts = Object.fromEntries(
-  Object.entries(catalog).map(([crew, c]) => [crew, { workflows: c.workflows.length, templates: c.templates.length }]),
+  Object.entries(catalog).map(([crew, c]) => [crew, { workflows: c.workflows.length, templates: c.templates.length, models: c.models.length }]),
 );
 
 const out = {

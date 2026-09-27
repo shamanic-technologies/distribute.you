@@ -11,10 +11,14 @@ import {
   loadTemplateTexts,
   peekResearchCatalog,
   peekTemplateTexts,
+  CATALOG_KINDS,
   researchCatalogHref,
+  researchModel,
   researchTemplate,
   researchWorkflow,
   type CatalogKind,
+  type ResearchModel,
+  type ResearchRef,
   type ResearchCatalog,
   type ResearchCrew,
   type ResearchFigures,
@@ -37,7 +41,24 @@ const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 const KIND_WORD: Record<CatalogKind, { one: string; many: string; title: string }> = {
   workflows: { one: "workflow", many: "workflows", title: "Workflows" },
   templates: { one: "template", many: "templates", title: "Templates" },
+  models: { one: "model", many: "models", title: "Models" },
 };
+/** Each kind wears its study topic's mark and colour. */
+const KIND_TOPIC: Record<CatalogKind, "workflow" | "template" | "llm"> = { workflows: "workflow", templates: "template", models: "llm" };
+
+/** A link to another catalogue page when that page exists in this crew, else the name alone. */
+function RefLink({ base, crew, kind, r, className = "" }: { base: string; crew: ResearchCrew; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
+  if (!r) return <span className="k-fg4">{"—"}</span>;
+  return r.linked ? (
+    <Link href={researchCatalogHref(base, crew, kind, r.key)} className={`hover:text-[var(--accent)] ${className}`} title={r.label}>
+      {r.label}
+    </Link>
+  ) : (
+    <span className={className} title={r.label}>
+      {r.label}
+    </span>
+  );
+}
 
 function outcomeOf(crew: ResearchCrew): { noun: string; plural: string; unit: string } {
   const outcome = RESEARCH.crews.find((c) => c.id === crew)?.outcome ?? "Outcome";
@@ -69,13 +90,13 @@ function useLoaded<T>(peek: () => T | null, load: () => Promise<T>): { value: T 
 /** The hub's links from a crew's section to its workflow and template pages. */
 export function CrewCatalogLinks({ base, crew }: { base: string; crew: ResearchCrew }) {
   const counts = RESEARCH.catalogCounts?.[crew];
-  if (!counts || (!counts.workflows && !counts.templates)) return null;
+  if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
   return (
     <div className="mb-3 flex flex-wrap gap-2">
-      {(["workflows", "templates"] as const).map((kind) =>
+      {CATALOG_KINDS.map((kind) =>
         counts[kind] ? (
           <Link key={kind} href={researchCatalogHref(base, crew, kind)} className="k-btn inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-[2px]" style={{ background: TOPIC_LOOK[kind === "workflows" ? "workflow" : "template"].color }} />
+            <span className="h-2 w-2 rounded-[2px]" style={{ background: TOPIC_LOOK[KIND_TOPIC[kind]].color }} />
             {KIND_WORD[kind].title}
             <span className="k-fg3 tabular-nums">{counts[kind]}</span>
             <Arrow />
@@ -126,7 +147,12 @@ export function V2ResearchCatalogView({
     );
   }
   if (!itemKey) return <CatalogList base={base} crew={crew} kind={kind} catalog={catalog} crumbs={crumbs} nav={nav} />;
-  const item = kind === "workflows" ? researchWorkflow(catalog, crew, itemKey) : researchTemplate(catalog, crew, itemKey);
+  const item =
+    kind === "workflows"
+      ? researchWorkflow(catalog, crew, itemKey)
+      : kind === "templates"
+        ? researchTemplate(catalog, crew, itemKey)
+        : researchModel(catalog, crew, itemKey);
   if (!item) {
     return (
       <>
@@ -145,11 +171,10 @@ export function V2ResearchCatalogView({
     );
   }
   const total = catalog[crew][kind].length;
-  return kind === "workflows" ? (
-    <WorkflowView base={base} crew={crew} w={item as ResearchWorkflow} total={total} crumbs={[...crumbs, { label: item.label }]} nav={nav} />
-  ) : (
-    <TemplateView base={base} crew={crew} t={item as ResearchTemplate} total={total} crumbs={[...crumbs, { label: item.label }]} nav={nav} />
-  );
+  const itemCrumbs = [...crumbs, { label: item.label }];
+  if (kind === "workflows") return <WorkflowView base={base} crew={crew} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
+  if (kind === "templates") return <TemplateView base={base} crew={crew} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
+  return <ModelView base={base} crew={crew} m={item as ResearchModel} total={total} crumbs={itemCrumbs} nav={nav} />;
 }
 
 function RowsSkeleton() {
@@ -205,10 +230,10 @@ function CatalogList({
 }) {
   const id = crewIdentity(crew);
   const o = outcomeOf(crew);
-  const rows: (ResearchWorkflow | ResearchTemplate)[] = catalog[crew][kind];
+  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog[crew][kind];
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
-  const other: CatalogKind = kind === "workflows" ? "templates" : "workflows";
+  const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
   return (
     <>
       <TopBar crumbs={crumbs} />
@@ -230,7 +255,7 @@ function CatalogList({
         </div>
 
         <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
-          {(["workflows", "templates"] as const).map((k) => (
+          {CATALOG_KINDS.map((k) => (
             <Link key={k} href={researchCatalogHref(base, crew, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
               {KIND_WORD[k].title}
               <span className="k-fg3 tabular-nums">{catalog[crew][k].length}</span>
@@ -336,7 +361,7 @@ function Header({
   title,
   chips,
 }: {
-  topic: "workflow" | "template";
+  topic: "workflow" | "template" | "llm";
   title: string;
   chips: React.ReactNode;
 }) {
@@ -363,7 +388,7 @@ function KpiStrip({ f, crew }: { f: ResearchFigures; crew: ResearchCrew }) {
   );
 }
 
-function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "template" }) {
+function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "template" | "llm" }) {
   if (!f.charts.length) {
     return (
       <div className="k-card">
@@ -463,7 +488,15 @@ function WorkflowView({
                 <CrewMark color={id.color} glyph={id.glyph} size={12} />
                 {id.name}
               </span>
-              {w.model && <span className="k-chip">{w.model}</span>}
+              {w.model &&
+                (w.model.linked ? (
+                  <Link href={researchCatalogHref(base, crew, "models", w.model.key)} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
+                    {w.model.label}
+                    <Arrow />
+                  </Link>
+                ) : (
+                  <span className="k-chip">{w.model.label}</span>
+                ))}
               {w.template &&
                 (tplHref ? (
                   <Link href={tplHref} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
@@ -521,7 +554,7 @@ function WorkflowView({
                 }
               />
               <Row k="Outcome" v={o.noun} />
-              <Row k="Model" v={w.model} />
+              <Row k="Model" v={w.model ? <RefLink base={base} crew={crew} kind="models" r={w.model} className={w.model.linked ? "text-[var(--accent)]" : ""} /> : null} />
               <Row
                 k="Template"
                 v={
@@ -654,7 +687,9 @@ function TemplateView({
                   <td className="k-mono k-fg2 px-3 text-[12px]">
                     <Dash v={r.version} />
                   </td>
-                  <td className="truncate px-3">{r.model}</td>
+                  <td className="max-w-0 truncate px-3">
+                    <RefLink base={base} crew={crew} kind="models" r={r.model} className="block truncate" />
+                  </td>
                   <td className="k-mono k-fg2 pl-3 pr-4 text-right text-[12px]">
                     <Dash v={r.tokens} />
                   </td>
@@ -700,6 +735,132 @@ function TemplateView({
               )}
               <button type="button" onClick={() => nav(researchCatalogHref(base, crew, "templates"))} className="k-btn mt-4">
                 Every template
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ModelView({
+  base,
+  crew,
+  m,
+  total,
+  crumbs,
+  nav,
+}: {
+  base: string;
+  crew: ResearchCrew;
+  m: ResearchModel;
+  total: number;
+  crumbs: { label: string; href?: string }[];
+  nav: (href: string) => void;
+}) {
+  const id = crewIdentity(crew);
+  const o = outcomeOf(crew);
+  return (
+    <>
+      <TopBar crumbs={crumbs} />
+      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+        <Header
+          topic="llm"
+          title={m.label}
+          chips={
+            <>
+              <span className="k-chip tabular-nums">{m.rank == null ? "Not priced yet" : `#${m.rank} of ${total}`}</span>
+              <span className="k-chip inline-flex items-center gap-1.5">
+                <CrewMark color={id.color} glyph={id.glyph} size={12} />
+                {id.name}
+              </span>
+              <span className="k-chip tabular-nums">
+                {m.workflows.length} {m.workflows.length === 1 ? "workflow" : "workflows"}
+              </span>
+            </>
+          }
+        />
+        <KpiStrip f={m} crew={crew} />
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-6">
+            <Charts f={m} topic="llm" />
+            <RunsTable
+              title="Last emails written"
+              note="Every client, newest first"
+              head={
+                <>
+                  <th className={`${TH} w-44`}>Time</th>
+                  <th className={TH}>Workflow</th>
+                  <th className={`${TH} w-40`}>Template</th>
+                  <th className={`${TH} w-20`}>Version</th>
+                  <th className={`${TH} w-36 text-right`}>Tokens</th>
+                </>
+              }
+              rows={m.runs.map((r, i) => (
+                <tr key={`${r.when}-${i}`} className="k-row h-10">
+                  <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
+                  <td className="max-w-0 px-3">
+                    {r.workflow ? (
+                      <Link href={researchCatalogHref(base, crew, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
+                        {r.workflow.label}
+                      </Link>
+                    ) : (
+                      <span className="k-fg4">{"—"}</span>
+                    )}
+                  </td>
+                  <td className="max-w-0 px-3">
+                    <RefLink base={base} crew={crew} kind="templates" r={r.template} className="block truncate" />
+                  </td>
+                  <td className="k-mono k-fg2 px-3 text-[12px]">
+                    <Dash v={r.version} />
+                  </td>
+                  <td className="k-mono k-fg2 pl-3 pr-4 text-right text-[12px]">
+                    <Dash v={r.tokens} />
+                  </td>
+                </tr>
+              ))}
+            />
+          </div>
+          <div className="min-w-0 space-y-4">
+            <aside className="k-card h-fit p-4">
+              <p className="k-label">Details</p>
+              <dl className="mt-3 space-y-2.5 text-[13px]">
+                <Row
+                  k="Crew"
+                  v={
+                    <span className="inline-flex items-center gap-1.5">
+                      <CrewMark color={id.color} glyph={id.glyph} />
+                      {id.name}
+                    </span>
+                  }
+                />
+                <Row k="Outcome" v={o.noun} />
+                <Row k="Invested" v={m.spend} />
+                <Row k="Sample" v={<span className="k-fg2 text-[12px]">{m.sample}</span>} />
+              </dl>
+              <MeasuredNote />
+            </aside>
+            <div className="k-card p-4">
+              <p className="k-label">Workflows that write with it</p>
+              {m.workflows.length ? (
+                <ul className="mt-2 space-y-1 text-[13px]">
+                  {m.workflows.map((w) => (
+                    <li key={w.key}>
+                      <Link href={researchCatalogHref(base, crew, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
+                        <TopicMark topic="workflow" size={18} />
+                        <span className="min-w-0 flex-1 truncate">{w.label}</span>
+                        <Arrow />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="k-fg3 mt-2 text-[12px] leading-5">No workflow wrote most of its emails with it; it ran as a secondary model.</p>
+              )}
+              <button type="button" onClick={() => nav(researchCatalogHref(base, crew, "models"))} className="k-btn mt-4">
+                Every model
               </button>
             </div>
           </div>

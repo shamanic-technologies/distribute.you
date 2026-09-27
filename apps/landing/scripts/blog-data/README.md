@@ -54,10 +54,10 @@ pnpm --filter @distribute/dashboard test research
 ```
 
 The second argument receives two side files the workflow and template pages read
-(`research-catalog.json`: one entry per workflow and per template, per crew, with its months and
+(`research-catalog.json`: one entry per workflow, per template and per model, per crew, with its months and
 its last runs; `research-templates.json`: the text of every listed template). extract.sh writes
 the three inputs they need beside the dumps (`templates.json`, `workflow-runs.json`,
-`template-runs.json`). Commit all three JSON files together.
+`template-runs.json`, `model-runs.json`). Commit all three JSON files together.
 
 `derive.mjs` adds a `research` block (per LLM, per template, per step, per month, and each
 LLM's and template's own month curve); `research.mjs` turns it into one study per question,

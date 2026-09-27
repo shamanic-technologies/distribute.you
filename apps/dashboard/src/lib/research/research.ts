@@ -90,7 +90,7 @@ export interface ResearchFile {
   crews: { id: ResearchCrew; outcome: string; description: string }[];
   studies: ResearchStudy[];
   /** How many workflows and templates each crew's pages list (the pages read the catalogue). */
-  catalogCounts: Record<ResearchCrew, { workflows: number; templates: number }>;
+  catalogCounts: Record<ResearchCrew, { workflows: number; templates: number; models: number }>;
 }
 
 /** The figures a workflow or a template is listed with, fleet-wide, all written by research.mjs. */
@@ -108,12 +108,19 @@ export interface ResearchFigures {
   charts: ResearchChart[];
 }
 
+/** A reference to another catalogue page; `linked` when that page exists in this crew. */
+export interface ResearchRef {
+  key: string;
+  label: string;
+  linked: boolean;
+}
+
 export interface ResearchWorkflow extends ResearchFigures {
   key: string;
   label: string;
-  model: string | null;
+  model: ResearchRef | null;
   /** `linked`: the template has its own page in this crew. */
-  template: { key: string; label: string; linked: boolean } | null;
+  template: ResearchRef | null;
   runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
 }
 
@@ -122,11 +129,22 @@ export interface ResearchTemplate extends ResearchFigures {
   label: string;
   hasText: boolean;
   workflows: { key: string; label: string }[];
-  runs: { when: string; model: string; workflow: { key: string; label: string } | null; version: string | null; tokens: string | null }[];
+  runs: { when: string; model: ResearchRef | null; workflow: { key: string; label: string } | null; version: string | null; tokens: string | null }[];
 }
 
-export type ResearchCatalog = Record<ResearchCrew, { workflows: ResearchWorkflow[]; templates: ResearchTemplate[] }>;
-export type CatalogKind = "workflows" | "templates";
+export interface ResearchModel extends ResearchFigures {
+  key: string;
+  label: string;
+  workflows: { key: string; label: string }[];
+  runs: { when: string; workflow: { key: string; label: string } | null; template: ResearchRef | null; version: string | null; tokens: string | null }[];
+}
+
+export type ResearchCatalog = Record<
+  ResearchCrew,
+  { workflows: ResearchWorkflow[]; templates: ResearchTemplate[]; models: ResearchModel[] }
+>;
+export type CatalogKind = "workflows" | "templates" | "models";
+export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"];
 
 export const RESEARCH = data as ResearchFile;
 
@@ -192,8 +210,9 @@ export function parseResearchPath(rest: string): ResearchView {
   if (parts.length === 0) return { view: "hub" };
   if (parts.length === 1) return { view: "study", id: parts[0] };
   const [crew, kind, key, ...extra] = parts;
-  if (!isResearchCrew(crew) || (kind !== "workflows" && kind !== "templates") || extra.length) return { view: "missing" };
-  return key ? { view: "item", crew, kind, key } : { view: "list", crew, kind };
+  if (!isResearchCrew(crew) || !(CATALOG_KINDS as string[]).includes(kind) || extra.length) return { view: "missing" };
+  const k = kind as CatalogKind;
+  return key ? { view: "item", crew, kind: k, key } : { view: "list", crew, kind: k };
 }
 
 export function researchCatalogHref(base: string, crew: ResearchCrew, kind: CatalogKind, key?: string): string {
@@ -205,6 +224,7 @@ export function pointHref(base: string, study: ResearchStudy, point: ResearchPoi
   if (!point.key) return null;
   if (study.topic === "workflow") return researchCatalogHref(base, study.crew, "workflows", point.key);
   if (study.topic === "template") return researchCatalogHref(base, study.crew, "templates", point.key);
+  if (study.topic === "llm") return researchCatalogHref(base, study.crew, "models", point.key);
   return null;
 }
 
@@ -246,6 +266,9 @@ export function researchWorkflow(c: ResearchCatalog, crew: ResearchCrew, key: st
 }
 export function researchTemplate(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchTemplate | null {
   return c[crew].templates.find((t) => t.key === key) ?? null;
+}
+export function researchModel(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchModel | null {
+  return c[crew].models.find((m) => m.key === key) ?? null;
 }
 
 /** The research crew a mission's crew is (its channel and the step its leg lands on), if any. */

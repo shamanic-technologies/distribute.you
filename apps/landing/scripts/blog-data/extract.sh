@@ -225,4 +225,16 @@ FROM (
 ) x WHERE rn <= 12
 " template-runs.json
 
+# The last 12 emails every model wrote: when, under which template and workflow version.
+runjson content_generation_service "
+SELECT coalesce(json_agg(json_build_object('model', model, 'createdAt', created_at,
+  'template', prompt_type, 'workflowSlug', workflow_slug, 'tokensIn', tokens_input, 'tokensOut', tokens_output)
+  ORDER BY created_at DESC), '[]')
+FROM (
+  SELECT g.*, row_number() OVER (PARTITION BY g.model ORDER BY g.created_at DESC) AS rn
+  FROM email_generations g
+  WHERE g.feature_slug = 'sales-cold-email-outreach' AND g.model IS NOT NULL AND g.created_at < '$TO'
+) x WHERE rn <= 12
+" model-runs.json
+
 echo "done"
