@@ -242,6 +242,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "workflowRevenue",
   "brandWorkflowRevenue",
   "workflowRuns",
+  "workflowActualCost",
   "runEmails",
   "platformPrompt",
   "fleetWorkflowCost",
