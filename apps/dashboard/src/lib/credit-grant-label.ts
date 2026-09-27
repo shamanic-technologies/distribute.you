@@ -25,6 +25,8 @@ const GRANT_LABELS: Record<string, string> = {
   referral_reward: "Referral credits",
   // Staff-issued.
   admin_grant: "Bonus credit",
+  // Once per org, at creation: pays for the reads that draft its first brand.
+  org_creation_bonus: "Organization creation bonus",
 };
 
 export function creditGrantLabel(reason: string): string {

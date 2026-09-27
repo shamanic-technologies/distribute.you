@@ -1,23 +1,25 @@
 "use client";
 
 /**
- * "New organization", dashboard v2: the whole setup of a new org in one modal over the
- * page the person is on, instead of the full-page onboarding it replaces for this entry
- * point. Org, brand, what they sell, who they sell to, the offer's six levers, what they
- * want (website visits or positive replies), the daily budget, then the money. It ends
- * on the new campaign's mission page with the campaign running.
+ * "New organization" / "Add a brand", dashboard v2. Two steps, owner-decided 2026-09-27:
+ * the "New organization" modal only NAMES and creates the org, credits its creation bonus,
+ * switches to it and lands on its page, which asks for a first brand. "Add a brand" then
+ * opens this same modal from the brand step, over the new org's dashboard: brand, what
+ * they sell, who they sell to, the offer's six levers, what they want (website visits or
+ * positive replies), the daily budget, then the money. It ends on the new campaign's
+ * mission page with the campaign running.
  *
  * Everything that can be prefilled is, and the reads that prefill run in the background
  * from the moment the brand exists, so the person answers one screen while the next is
  * being prepared. Rules the screens decide on live in `lib/v2/new-org-wizard.ts`.
  *
- * The session's active org is NOT switched while this runs: switching makes Clerk refresh
- * the page and the edge gate would send the person to the full-page onboarding, since the
- * new org is not set up yet. Every call carries the new org through
- * `setApiActiveOrgOverride` instead (a token Clerk mints for that org, see lib/api.ts),
- * and the page behind keeps its own org. Only once the org is marked set up does the
- * session switch to it and land on the campaign. Closing early leaves nothing to undo;
- * the half-built org stays in the list and starting over creates a new one.
+ * The session's active org is never switched with `setActive` before the org is set up:
+ * that refreshes the current page under a not-yet-set-up org and the edge gate would send
+ * the person to the full-page onboarding. Step one therefore NAVIGATES to the new org's
+ * root (the one page the gate lets through, Clerk's URL sync activates the org there).
+ * Calls made for an org the session is not on carry it through `setApiActiveOrgOverride`
+ * (a token Clerk mints for that org, see lib/api.ts). Only once the org is marked set up
+ * does the brand step switch to it and land on the campaign.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -278,15 +280,29 @@ export function NewOrgModal({
     const name = orgName.trim();
     if (!name) return setError("Give your organization a name.");
     void run(async () => {
-      if (!orgId) {
+      let id = orgId;
+      if (!id) {
         if (!createOrganization) throw new Error("Your session is still loading. Try again in a moment.");
-        // Created, NOT made active: see the header comment.
         const org = await createOrganization({ name });
-        setApiActiveOrgOverride(org.id);
-        setOrgId(org.id);
-        posthog.capture("new_org_modal_org_created", { org_id: org.id });
+        id = org.id;
+        setOrgId(id);
+        posthog.capture("new_org_modal_org_created", { org_id: id });
       }
-      forward();
+      // The org's creation bonus pays for the reads that draft its first brand. Asked
+      // with a token minted for the NEW org (the session is still on the previous one);
+      // billing grants it once per org, so a retry after a failure is safe.
+      const orgToken = await session?.getToken({ organizationId: id, skipCache: true });
+      if (!orgToken) throw new Error("Your session expired. Sign in again to finish.");
+      const bonus = await fetch("/api/orgs/creation-bonus", { method: "POST", headers: { Authorization: `Bearer ${orgToken}` } });
+      if (!bonus.ok) throw new Error("We could not credit the new organization. Try again.");
+      // Step one ends here: the person lands on the new org, which asks for its first
+      // brand, and that brand is set up in this same modal over the dashboard. A full
+      // navigation, NOT setActive: setActive refreshes the CURRENT page under the new,
+      // not-yet-set-up org, and the edge gate would bounce that page to the old
+      // onboarding. The org root is the one page the gate lets through for it, and
+      // Clerk's URL sync makes it the active org on that request.
+      setApiActiveOrgOverride(null);
+      window.location.assign(`/v2/orgs/${id}`);
     });
   }
 
@@ -523,10 +539,8 @@ export function NewOrgModal({
       <div role="dialog" aria-modal="true" aria-label={existingOrgId ? "Add a brand" : "New organization"} className="k-popover flex max-h-[84vh] w-full max-w-[560px] flex-col overflow-hidden">
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
           <span className="k-label">{existingOrgId ? "Add a brand" : "New organization"}</span>
-          {stepIndex >= 0 && (
-            <span className="k-fg3 k-mono text-[12px] tabular-nums">
-              {existingOrgId ? `${stepIndex} / 7` : `${stepIndex + 1} / 8`}
-            </span>
+          {existingOrgId && stepIndex >= 1 && (
+            <span className="k-fg3 k-mono text-[12px] tabular-nums">{`${stepIndex} / 7`}</span>
           )}
           <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={() => close()} disabled={step === "launching"}>
             ×
@@ -764,6 +778,7 @@ export function NewOrgModal({
 
   function primaryLabel(): string {
     if (step === "payment") return payMode === "postpaid" ? "Add a card" : `Pay ${prepaidCents ? fmtUsd(prepaidCents / 100) : ""}`.trim();
+    if (step === "org") return "Create organization";
     return "Continue";
   }
 

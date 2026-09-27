@@ -21,9 +21,20 @@ describe("the modal acts on the org it created, not the one the URL names", () =
     expect(api).toContain("export function setApiActiveOrgOverride");
     expect(api).toContain("if (activeOrgOverride) return activeOrgOverride;");
   });
-  it("the modal sets it once the org exists and clears it on close and on launch", () => {
-    expect(modal).toContain("setApiActiveOrgOverride(org.id)");
+  it("the modal sets it for the org it acts on and clears it on close, on step one and on launch", () => {
+    expect(modal).toContain("setApiActiveOrgOverride(open && orgId ? orgId : null)");
     expect((modal.match(/setApiActiveOrgOverride\(null\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+  it("step one only creates the org, credits its bonus, then NAVIGATES to its root (two steps, owner-decided)", () => {
+    const body = modal.slice(modal.indexOf("function submitOrg("), modal.indexOf("function submitBrand("));
+    const bonus = body.indexOf('"/api/orgs/creation-bonus"');
+    const nav = body.indexOf("window.location.assign(`/v2/orgs/${id}`)");
+    expect(bonus).toBeGreaterThan(-1);
+    expect(nav).toBeGreaterThan(bonus);
+    // A full navigation, never setActive: setActive would refresh the current page under
+    // a not-yet-set-up org and the edge gate would bounce it to the old onboarding.
+    expect(body).not.toContain("setActive(");
+    expect(body).toContain("organizationId: id");
   });
   it("the api client mints a token FOR the overridden org", () => {
     expect(api).toContain("organizationId: activeOrgOverride");
@@ -114,5 +125,18 @@ describe("an org with no brand stays in v2, with one way forward", () => {
     expect(menus).not.toContain('router.push("/onboarding?from=add")');
     expect(menus).toContain('setSetupFor("brand")');
     expect(menus).toContain('existingOrgId={setupFor === "brand" ? t.orgId : null}');
+  });
+});
+
+describe("the org creation bonus", () => {
+  const route = readFileSync(join(__dirname, "../src/app/(authed)/api/orgs/creation-bonus/route.ts"), "utf8");
+  it("credits the org the session is scoped to, never one the client names", () => {
+    expect(route).toContain("await auth()");
+    expect(route).not.toContain("req.json(");
+    expect(route).toContain("grantOrgCreationBonus(identity.orgId)");
+  });
+  it("only credits an org created within the hour", () => {
+    expect(route).toContain("CREATION_WINDOW_MS");
+    expect(route).toContain("org.createdAt");
   });
 });
