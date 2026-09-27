@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useParams, usePathname } from "next/navigation";
 import { Bar, BarChart, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BrainIcon } from "@phosphor-icons/react/dist/csr/Brain";
 import { ChartLineDownIcon } from "@phosphor-icons/react/dist/csr/ChartLineDown";
@@ -10,9 +9,8 @@ import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowsClockw
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/csr/EyeSlash";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
-import { isAdminEmail } from "@/lib/admin-allowlist";
 import { CrewMark } from "@/components/v2/crew-mark";
-import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Figure, SectionTitle, StatTile, TopBar } from "@/components/v2/ui";
 import { v2Href } from "@/lib/v2/routes";
 import { crewFor } from "@/lib/v2/crews";
 import {
@@ -78,11 +76,6 @@ function dayText(ymd: string): string {
   return `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
 }
 
-function useStaffGate(): { ready: boolean; staff: boolean } {
-  const { user, isLoaded } = useUser();
-  return { ready: isLoaded, staff: isAdminEmail(user?.primaryEmailAddress?.emailAddress) };
-}
-
 function crewIdentity(crew: ResearchCrew) {
   const k = CREW_KEY[crew];
   return crewFor(k.channel, k.step, crew);
@@ -134,22 +127,6 @@ function NotAvailable() {
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="k-card">
           <EmptyNote>This page is not available on your account yet.</EmptyNote>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Loading() {
-  return (
-    <>
-      <TopBar crumbs={[{ label: "Research" }]} />
-      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <Shimmer className="h-9 w-80" />
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Shimmer key={i} className="h-[200px] rounded-[12px]" />
-          ))}
         </div>
       </div>
     </>
@@ -250,12 +227,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
   );
 }
 
-export function V2ResearchPage() {
-  const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const gate = useStaffGate();
-  if (!gate.ready) return <Loading />;
-  if (!gate.staff) return <NotAvailable />;
-  const base = v2Href(orgId, brandId, "research");
+function V2ResearchHub({ base }: { base: string }) {
   const v = RESEARCH.volume;
   const called = RESEARCH.studies.filter((st) => studyState(st) === "winner").length;
   const maxMonth = Math.max(...v.byMonth.map((m) => m.emails), 1);
@@ -473,13 +445,8 @@ function Row({ k, v }: { k: string; v: React.ReactNode | null }) {
   );
 }
 
-export function V2ResearchStudyPage() {
-  const { orgId, brandId, studyId } = useParams<{ orgId: string; brandId: string; studyId: string }>();
-  const gate = useStaffGate();
-  if (!gate.ready) return <Loading />;
-  if (!gate.staff) return <NotAvailable />;
-  const base = v2Href(orgId, brandId, "research");
-  const study = studyById(decodeURIComponent(studyId));
+function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
+  const study = studyById(studyId);
   if (!study) {
     return (
       <>
@@ -608,4 +575,45 @@ export function V2ResearchStudyPage() {
       </div>
     </>
   );
+}
+
+// ─── The page ──────────────────────────────────────────────────────────────
+
+/** The nearest scrolling ancestor, so a switch of question starts at the top like a new page. */
+function scrollToTop(el: HTMLElement | null) {
+  for (let n = el?.parentElement; n; n = n.parentElement) {
+    const o = getComputedStyle(n).overflowY;
+    if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) {
+      n.scrollTop = 0;
+      return;
+    }
+  }
+  window.scrollTo(0, 0);
+}
+
+/**
+ * Research, the hub and every question, as ONE client view. The route is dynamic (Clerk), so a
+ * Next navigation between two questions is a full server round-trip for data that already sits in
+ * this bundle. Links under `/research` therefore move with the history API instead: the URL, Back
+ * and a new tab behave as links, and the switch is instant. The staff check is made on the SERVER
+ * (the page reads the session claim), so nothing waits for Clerk to load in the browser.
+ */
+export function V2Research({ staff }: { staff: boolean }) {
+  const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
+  const pathname = usePathname();
+  if (!staff) return <NotAvailable />;
+  const base = v2Href(orgId, brandId, "research");
+  const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, "") : "";
+  const studyId = rest ? decodeURIComponent(rest) : null;
+  const onClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as HTMLElement).closest("a");
+    const href = a?.getAttribute("href");
+    if (!a || !href || a.target === "_blank" || (href !== base && !href.startsWith(`${base}/`))) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (href !== pathname) window.history.pushState(null, "", href);
+    scrollToTop(e.currentTarget);
+  };
+  return <div onClickCapture={onClickCapture}>{studyId ? <V2ResearchStudy base={base} studyId={studyId} /> : <V2ResearchHub base={base} />}</div>;
 }
