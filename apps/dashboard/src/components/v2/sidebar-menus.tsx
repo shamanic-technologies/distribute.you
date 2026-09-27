@@ -16,6 +16,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
+import { isAdminEmail } from "@/lib/admin-allowlist";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { useMissions } from "@/components/v2/use-missions";
@@ -213,6 +215,7 @@ const MENU_ICON = {
   team: "M6 7.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.5c.4-2 2-3.2 4-3.2s3.6 1.2 4 3.2M10.5 3.2a2.2 2.2 0 0 1 0 4.1M12 9.9c1.2.4 2 1.4 2.2 3.1",
   key: "M6 9.5a3 3 0 1 1 2.6-1.5l4.9 4.9-1.2 1.2-1-1-1 1-1-1 1-1-2.1-2.1A3 3 0 0 1 6 9.5Z",
   billing: "M3.5 2.5h9v11l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1zM6 5.5h4M6 8h4",
+  research: "M6 2.5h4M6.5 2.5v4L3 12.3a.9.9 0 0 0 .8 1.2h8.4a.9.9 0 0 0 .8-1.2L9.5 6.5v-4M4.8 9.5h6.4",
   gift: "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z",
   help: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2",
   back: "M6 4 3 7l3 3M3.5 7H10a3 3 0 0 1 0 6H8",
@@ -247,10 +250,14 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const base = v2Base(orgId, brandId);
   const close = () => setOpen(false);
-  const links: { href: string; label: string; icon: string; pill?: string }[] = [
+  // Research is staff-only for now: the entry is drawn for the staff list alone, and the page
+  // checks the same list, so a typed URL shows nothing either.
+  const staff = isAdminEmail(email);
+  const links: { href: string; label: string; icon: string; pill?: string; staff?: boolean }[] = [
     { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
     { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
     { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
+    ...(staff ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, staff: true }] : []),
     { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
   ];
   const avatar = (size: number) =>
@@ -272,6 +279,11 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
             <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close}>
               <MI d={l.icon} />
               <span className="min-w-0 truncate">{l.label}</span>
+              {l.staff && (
+                <span className="ml-auto shrink-0">
+                  <MaturityBadge level="staff" />
+                </span>
+              )}
               {l.pill && (
                 <span className="ml-auto shrink-0 rounded-[6px] bg-[color-mix(in_oklab,var(--run)_12%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--run)]">
                   {l.pill}
