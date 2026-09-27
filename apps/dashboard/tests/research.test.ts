@@ -41,6 +41,20 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("ranks thin bars by their value and calls the first bar the winner, thin or not", () => {
+    // Owner rule 2026-09-27: never sink a thin bar below the others; the first one wins.
+    for (const s of RESEARCH.studies.filter((st) => ["llm", "template", "workflow"].includes(st.topic) && st.status === "measured")) {
+      const pts = s.charts[0].points;
+      expect(s.winner, s.id).toBe(pts[0].label);
+      for (let i = 1; i < pts.length; i++) {
+        if (s.charts[0].lowerIsBetter) expect(pts[i].value, s.id).toBeGreaterThanOrEqual(pts[i - 1].value);
+        else expect(pts[i].value, s.id).toBeLessThanOrEqual(pts[i - 1].value);
+      }
+      expect(s.crowned, s.id).toBe(!pts[0].thin);
+      if (pts[0].thin) expect(s.headline, s.id).toContain("on thin counts");
+    }
+  });
+
   it("names a winner that is a bar of the study's first chart", () => {
     for (const s of RESEARCH.studies) {
       if (!s.winner || s.topic === "cost") continue;

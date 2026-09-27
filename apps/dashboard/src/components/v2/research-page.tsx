@@ -66,7 +66,7 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
   winner: { label: "Winner", dot: "bg-[var(--data-teal)]" },
-  thin: { label: "Too early to call", dot: "bg-[var(--data-amber)]" },
+  thin: { label: "Winner, thin counts", dot: "bg-[var(--data-amber)]" },
   "no-data": { label: "Not enough data", dot: "border-[1.5px] border-[var(--fg-3)]" },
 };
 
@@ -595,8 +595,8 @@ export function V2ResearchStudyPage() {
             <p className="k-label mt-5">How we measured</p>
             <p className="k-fg2 mt-2 text-[12px] leading-5">
               ROI is read as the cost per outcome: every crew buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
-              emails that carried a link. Only a bar past {floors.crown.minEmails.toLocaleString("en-US")} emails and {floors.crown.minReplies} positive
-              replies (or {floors.crown.minClicks} visits) can win; a smaller one is drawn and marked thin.
+              emails that carried a link. The winner is always the first bar. A bar under {floors.crown.minEmails.toLocaleString("en-US")} emails or{" "}
+              {floors.crown.minReplies} positive replies ({floors.crown.minClicks} visits) is ranked where its value puts it and marked thin.
             </p>
             <p className="k-fg2 mt-2 text-[12px] leading-5">
               Emails sent in the last {RESEARCH.maturation.days} days are left out of every figure: we measured how long a positive reply (
