@@ -5966,45 +5966,72 @@ export interface ActualCostHistory {
   unpricedFromDate: string | null;
 }
 
+/** One day of a workflow's fleet curve on the billed basis (what clients were charged, net). */
+export interface FleetReturnPoint {
+  date: string;
+  cumulativeSpendUsd: number;
+  cumulativePipelineUsd: number;
+  roiMultiple: number | null;
+}
+
+const FLEET_POINT = z.object({
+  date: z.string(),
+  cumulativeSpendUsd: z.coerce.number(),
+  cumulativePipelineUsd: z.coerce.number(),
+  roiMultiple: z.coerce.number().nullable(),
+});
+
 /**
- * STAFF ONLY. The same dated cost / value / return curve as `roiHistory`, costed at what
- * the vendors charged us before our markup (features-service#1146 via api-service#1001).
- * It reveals our margin, so the gateway refuses anyone off the staff list. Null = the
- * producer could not read the dated spend.
+ * ONE workflow across EVERY client org, day by day: cumulative billed spend, cumulative
+ * pipeline value and their ratio (features-service#1151 via api-service#1005). An
+ * aggregate: no org is named. Null `roiHistory` = the producer could not read the dated
+ * spend. The workflow page's three charts render it verbatim.
  */
-export async function getWorkflowActualCostHistory(
+export async function getFleetWorkflowReturnHistory(
   featureSlug: string,
-  brandId: string,
+  workflowDynastySlug: string,
+  token?: string,
+): Promise<FleetReturnPoint[] | null> {
+  const query = new URLSearchParams({ featureSlug, workflowDynastySlug });
+  const raw = await apiCall<unknown>(`/public/features/workflow-return-history?${query.toString()}`, { token });
+  const parsed = z
+    .object({ roiHistory: z.object({ daily: z.array(FLEET_POINT) }).passthrough().nullable() })
+    .passthrough()
+    .safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFleetWorkflowReturnHistory: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getFleetWorkflowReturnHistory: invalid response shape");
+  }
+  return parsed.data.roiHistory ? parsed.data.roiHistory.daily : null;
+}
+
+/**
+ * STAFF ONLY. The same fleet curve costed at what the vendors charged us before our
+ * markup. It reveals our margin, so the gateway refuses anyone off the staff list.
+ */
+export async function getFleetWorkflowActualCostHistory(
+  featureSlug: string,
   workflowDynastySlug: string,
   token?: string,
 ): Promise<ActualCostHistory | null> {
-  const query = new URLSearchParams({ brandId, workflow: workflowDynastySlug });
-  const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(featureSlug)}/revenue/actual-cost?${query.toString()}`,
-    { token },
-  );
+  const query = new URLSearchParams({ featureSlug, workflowDynastySlug });
+  const raw = await apiCall<unknown>(`/features/workflow-return-history/actual-cost?${query.toString()}`, { token });
   const parsed = z
     .object({
       actualCostHistory: z
         .object({
-          daily: z.array(
-            z.object({
-              date: z.string(),
-              cumulativeSpendUsd: z.coerce.number().nullable(),
-              cumulativePipelineUsd: z.coerce.number(),
-              roiMultiple: z.coerce.number().nullable(),
-            }),
-          ),
+          daily: z.array(FLEET_POINT.extend({ cumulativeSpendUsd: z.coerce.number().nullable() })),
           unpricedBilledCostUsd: z.coerce.number(),
           unpricedFromDate: z.string().nullable(),
         })
+        .passthrough()
         .nullable(),
     })
     .passthrough()
     .safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getWorkflowActualCostHistory: invalid response shape", parsed.error.issues);
-    throw new Error("[dashboard] getWorkflowActualCostHistory: invalid response shape");
+    console.error("[dashboard] getFleetWorkflowActualCostHistory: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getFleetWorkflowActualCostHistory: invalid response shape");
   }
   return parsed.data.actualCostHistory;
 }
