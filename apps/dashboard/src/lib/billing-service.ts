@@ -61,6 +61,21 @@ export async function seedTrialCredit(orgId: string): Promise<void> {
 }
 
 /**
+ * Credit a NEW org its creation bonus, once. Billing owns the amount and the
+ * idempotency (a retry grants nothing twice), and lists it on the org's grants
+ * ledger. THROWS on failure: the org's first reads (scraping its site, drafting its
+ * offer) are metered, so an org without it starts at $0 and every one is refused.
+ */
+export async function grantOrgCreationBonus(orgId: string): Promise<void> {
+  const { status } = await post(
+    `/internal/accounts/by-org/${encodeURIComponent(orgId)}/org-creation-bonus`,
+  );
+  if (status < 200 || status >= 300) {
+    throw new Error(`[billing-service] org-creation-bonus failed: ${status}`);
+  }
+}
+
+/**
  * The org signed up: land its TOTAL free credit on exactly the welcome amount.
  *
  * Returns whether it landed rather than throwing, because by the time this runs

@@ -76,6 +76,27 @@ export async function createAnonymousOrg(
   return { orgId: body.orgId };
 }
 
+/**
+ * Resolve a signed-in person's Clerk org + user to client-service's INTERNAL uuids.
+ *
+ * Same upsert the gateway runs on every request, so calling it for the org the
+ * session is already on changes nothing a gateway call would not. Fail loud: a
+ * caller that needs the internal org id has no honest default.
+ */
+export async function resolveIdentity(
+  externalOrgId: string,
+  externalUserId: string,
+): Promise<{ orgId: string; userId: string }> {
+  const { status, body } = await call<{ orgId?: string; userId?: string }>("/internal/resolve", {
+    externalOrgId,
+    externalUserId,
+  });
+  if (status < 200 || status >= 300 || typeof body.orgId !== "string" || typeof body.userId !== "string") {
+    throw new Error(`[client-service] resolve failed: ${status}`);
+  }
+  return { orgId: body.orgId, userId: body.userId };
+}
+
 /** Why a claim did not happen. client-service's own vocabulary, read as a
  *  plain string: it owns this set and may widen it. */
 export type ClaimRefusal = string;
