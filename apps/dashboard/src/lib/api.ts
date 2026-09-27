@@ -5951,6 +5951,64 @@ export interface PlatformPrompt {
   updatedAt: string;
 }
 
+/** One day of a workflow's curve on the ACTUAL-cost basis (vendor cost, before markup). */
+export interface ActualCostPoint {
+  date: string;
+  /** Null = some billed spend that day has no known vendor cost. Never the billed figure. */
+  cumulativeSpendUsd: number | null;
+  cumulativePipelineUsd: number;
+  roiMultiple: number | null;
+}
+
+export interface ActualCostHistory {
+  daily: ActualCostPoint[];
+  unpricedBilledCostUsd: number;
+  unpricedFromDate: string | null;
+}
+
+/**
+ * STAFF ONLY. The same dated cost / value / return curve as `roiHistory`, costed at what
+ * the vendors charged us before our markup (features-service#1146 via api-service#1001).
+ * It reveals our margin, so the gateway refuses anyone off the staff list. Null = the
+ * producer could not read the dated spend.
+ */
+export async function getWorkflowActualCostHistory(
+  featureSlug: string,
+  brandId: string,
+  workflowDynastySlug: string,
+  token?: string,
+): Promise<ActualCostHistory | null> {
+  const query = new URLSearchParams({ brandId, workflow: workflowDynastySlug });
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/revenue/actual-cost?${query.toString()}`,
+    { token },
+  );
+  const parsed = z
+    .object({
+      actualCostHistory: z
+        .object({
+          daily: z.array(
+            z.object({
+              date: z.string(),
+              cumulativeSpendUsd: z.coerce.number().nullable(),
+              cumulativePipelineUsd: z.coerce.number(),
+              roiMultiple: z.coerce.number().nullable(),
+            }),
+          ),
+          unpricedBilledCostUsd: z.coerce.number(),
+          unpricedFromDate: z.string().nullable(),
+        })
+        .nullable(),
+    })
+    .passthrough()
+    .safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getWorkflowActualCostHistory: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getWorkflowActualCostHistory: invalid response shape");
+  }
+  return parsed.data.actualCostHistory;
+}
+
 /** What a staff prompt edit produced, as workflow-service states it (#454). */
 export interface WorkflowPromptEditResult {
   action: "upgraded" | "forked";

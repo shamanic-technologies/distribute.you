@@ -73,3 +73,25 @@ describe("editing a workflow's prompt is STAFF-only, and says who it affects", (
     expect(read("src/lib/api.ts")).toContain("/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/prompt-edit");
   });
 });
+
+describe("the Actual cost basis is STAFF-only", () => {
+  const page = read("src/components/v2/workflow-page.tsx");
+  const over = page.slice(page.indexOf("function OverTime("), page.indexOf("function ChartCard("));
+
+  it("the toggle renders for staff only, with the Staff label, and defaults to User cost", () => {
+    expect(over).toContain("const isStaff = useIsAdminUser();");
+    expect(over).toContain('useState<"user" | "actual">("user")');
+    expect(over).toContain("{isStaff && (");
+    expect(over).toContain('<MaturityBadge level="staff" />');
+  });
+
+  it("the actual read fires only for staff on the actual basis", () => {
+    expect(over).toContain('const actual = isStaff && basis === "actual";');
+    expect(over).toContain("enabled: actual");
+  });
+
+  it("a day with no known vendor cost is left out, never filled with the billed figure", () => {
+    expect(over).toContain("points.filter((p) => p.spend != null)");
+    expect(read("src/lib/api.ts")).toContain("cumulativeSpendUsd: z.coerce.number().nullable()");
+  });
+});

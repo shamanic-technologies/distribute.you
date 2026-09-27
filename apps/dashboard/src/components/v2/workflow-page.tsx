@@ -9,6 +9,7 @@ import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
   editWorkflowPrompt,
+  getWorkflowActualCostHistory,
   getBrand,
   getPlatformPrompt,
   getWorkflowRevenue,
@@ -163,38 +164,82 @@ export function V2WorkflowPage() {
 // ─── Cost, value and return over time ──────────────────────────────────────
 
 /**
- * Three curves off ONE served series: features-service's dated return curve for this
- * workflow at brand grain (`roiHistory`, `pricing=net`) — cumulative billed spend,
- * cumulative pipeline value, and their ratio as the producer computes it. Nothing is
- * divided here; a day the producer states no return for is left out of that chart.
+ * Three curves over time for this workflow at brand grain: cumulative cost, cumulative
+ * pipeline value, and their ratio, each as the producer states it. Nothing is divided
+ * here; a day the producer states no figure for is left out of that chart.
  *
- * The costs are what the client is BILLED. The actual cost (before our margin) is not
- * served yet, so there is no toggle to offer; it arrives as a staff-only switch.
+ * USER COST (default, everyone on the beta list) reads features-service's `roiHistory`
+ * (`pricing=net`): what the client is billed. ACTUAL COST (STAFF only) reads the same
+ * curve costed at what the vendors charged us before our markup. It reveals our margin,
+ * so the switch is offered to the staff list alone and the gateway refuses anyone else.
+ * The value curve is the same on both bases; only cost and return move.
  */
 function OverTime({ featureSlug, brandId, dynasty }: { featureSlug: string; brandId: string; dynasty: string }) {
+  const isStaff = useIsAdminUser();
+  const [basis, setBasis] = useState<"user" | "actual">("user");
+  const actual = isStaff && basis === "actual";
   const q = useAuthQuery(
     ["workflowRevenue", brandId, "brand", dynasty],
     () => getWorkflowRevenue(featureSlug, brandId, null, dynasty),
     pollOptions,
   );
-  const daily = q.data?.roiHistory?.daily ?? [];
-  const pending = q.isPending && !q.isError;
+  const actualQ = useAuthQuery(
+    ["workflowActualCost", brandId, dynasty],
+    () => getWorkflowActualCostHistory(featureSlug, brandId, dynasty),
+    { ...pollOptions, enabled: actual, retry: false },
+  );
+  const src = actual ? actualQ : q;
+  const pending = src.isPending && !src.isError;
+  const daily: { date: string; cumulativeSpendUsd: number | null; cumulativePipelineUsd: number; roiMultiple: number | null }[] =
+    actual ? (actualQ.data?.daily ?? []) : (q.data?.roiHistory?.daily ?? []);
   const points = daily.map((d) => ({
     date: d.date,
     spend: d.cumulativeSpendUsd,
     value: d.cumulativePipelineUsd,
     roi: d.roiMultiple,
   }));
+  const spendPoints = points.filter((p) => p.spend != null);
   const roiPoints = points.filter((p) => p.roi != null);
+  const unpriced = actual ? actualQ.data?.unpricedBilledCostUsd ?? 0 : 0;
+  const unpricedFrom = actual ? actualQ.data?.unpricedFromDate ?? null : null;
+  const unreadable = actual && !actualQ.isPending && !actualQ.isError && actualQ.data === null;
+  const costNote = actual
+    ? "What the vendors charged us to run it for this brand, before our margin, added up day by day."
+    : "What this brand has been billed for it, added up day by day.";
 
   return (
     <div className="mt-4 space-y-4">
+      {isStaff && (
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-[13px]" role="group" aria-label="Cost basis">
+            {(["user", "actual"] as const).map((b) => (
+              <button
+                key={b}
+                type="button"
+                aria-pressed={basis === b}
+                onClick={() => setBasis(b)}
+                className={`rounded-md px-3 py-1 ${basis === b ? "bg-brand-50 font-medium text-brand-700" : "text-gray-600 hover:text-gray-900"}`}
+              >
+                {b === "user" ? "User cost" : "Actual cost"}
+              </button>
+            ))}
+          </div>
+          <MaturityBadge level="staff" />
+        </div>
+      )}
+      {unreadable && <p className="text-xs text-gray-500">We could not read the actual cost for this workflow just now.</p>}
+      {unpriced > 0 && (
+        <p className="text-xs text-gray-500">
+          {formatUsdAdaptive(unpriced)} of billed spend
+          {unpricedFrom ? ` from ${unpricedFrom}` : ""} has no known vendor cost, so the actual cost and return stop there.
+        </p>
+      )}
       <ChartCard
         title="Cost to run it"
-        note="What this brand has been billed for it, added up day by day."
+        note={costNote}
         pending={pending}
-        failed={q.isError}
-        data={points}
+        failed={src.isError}
+        data={spendPoints}
         dataKey="spend"
         format={formatUsdAdaptive}
       />
@@ -202,16 +247,16 @@ function OverTime({ featureSlug, brandId, dynasty }: { featureSlug: string; bran
         title="Value generated"
         note="The pipeline value its outcomes are worth, added up day by day."
         pending={pending}
-        failed={q.isError}
+        failed={src.isError}
         data={points}
         dataKey="value"
         format={formatUsdAdaptive}
       />
       <ChartCard
         title="Return on spend"
-        note="Value generated divided by what was billed, to date."
+        note={actual ? "Value generated divided by what it actually cost us, to date." : "Value generated divided by what was billed, to date."}
         pending={pending}
-        failed={q.isError}
+        failed={src.isError}
         data={roiPoints}
         dataKey="roi"
         format={(v) => formatRoi(v, "—")}
@@ -233,7 +278,7 @@ function ChartCard({
   note: string;
   pending: boolean;
   failed: boolean;
-  data: { date: string; spend: number; value: number; roi: number | null }[];
+  data: { date: string; spend: number | null; value: number; roi: number | null }[];
   dataKey: "spend" | "value" | "roi";
   format: (v: number) => string;
 }) {
