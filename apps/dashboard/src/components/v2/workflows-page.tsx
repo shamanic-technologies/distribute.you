@@ -28,10 +28,12 @@ const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 /**
  * Every workflow the brand's missions can run, beta. One section per MISSION, because
  * the ranking is the producer's per mission: it is asked with the mission's campaign id
- * (a brand selling several offers cannot be ranked without one) and read in the order
- * served. Three columns per row: Global (what it costs across every client we run it
- * for), Brand (what it has cost this brand) and Offer (what it has cost the mission's
- * own offer). A row opens the workflow's own page.
+ * (a brand selling several offers cannot be ranked without one). Three columns per row:
+ * Offer (what it has cost the mission's own offer), Brand (what it has cost this brand)
+ * and Global (what it costs across every client we run it for), narrowest first. Rows
+ * are ordered cheapest first on Offer, then Brand, then Global (owner-decided), a
+ * missing figure last and the producer's rank breaking a full tie; the # column still
+ * states the producer's rank. A row opens the workflow's own page.
  *
  * No "our pick" tag: the producer's #1 is scored over every (mission x audience) cell,
  * so it can sit on a price none of these columns shows. The rank number already says
@@ -87,8 +89,8 @@ export function V2WorkflowsPage() {
                 : "Workflows"}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              Each mission ranks the workflows it can run, the one we would put it on next first. Global is every client we run a
-              workflow for, Brand is this brand alone, Offer is the mission&apos;s own offer.
+              Offer is the mission&apos;s own offer, Brand is this brand alone, Global is every client we run a workflow for.
+              Rows read cheapest first on Offer, then Brand, then Global; # is the rank we would put the mission on.
             </p>
           </div>
           {isBeta && settled && specs.length > 0 && (
@@ -169,12 +171,28 @@ function MissionSection({
     [r.allLadderRows],
   );
   const unit = r.pair === "visit" ? "/ visit" : "/ reply";
-  const shown = expanded ? r.ranked : r.ranked.slice(0, ROWS_SHOWN);
+  // One read of the three grains per row, then the owner's order: Offer asc, Brand asc,
+  // Global asc, a missing figure after every stated one. `sort` is stable, so a full tie
+  // keeps the producer's served order.
+  const rows = useMemo(() => {
+    const priced = r.ranked.map((w) => {
+      const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
+      return {
+        w,
+        offer: grainFigures(ladder?.estimatesByGrain.offer)?.costPerOutcomeUsd ?? null,
+        brand: grainFigures(ladder?.estimatesByGrain.brand)?.costPerOutcomeUsd ?? null,
+        global: grainFigures(ladder?.estimatesByGrain.crossOrg)?.costPerOutcomeUsd ?? null,
+      };
+    });
+    const asc = (a: number | null, b: number | null) => (a == null ? (b == null ? 0 : 1) : b == null ? -1 : a - b);
+    return [...priced].sort((a, b) => asc(a.offer, b.offer) || asc(a.brand, b.brand) || asc(a.global, b.global));
+  }, [r.ranked, bySlug]);
+  const shown = expanded ? rows : rows.slice(0, ROWS_SHOWN);
   const hrefFor = useCallback(
     (slug: string) => v2WorkflowHref(orgId, brandId, slug, crewParam(spec), spec.campaignId),
     [orgId, brandId, spec],
   );
-  const hrefs = useMemo(() => shown.map((w) => hrefFor(w.row.workflowDynastySlug)), [shown, hrefFor]);
+  const hrefs = useMemo(() => shown.map(({ w }) => hrefFor(w.row.workflowDynastySlug)), [shown, hrefFor]);
   const pending = r.pending;
   useEffect(() => {
     if (!pending) onRows(spec.campaignId, hrefs, r.ranked.length);
@@ -210,9 +228,9 @@ function MissionSection({
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className={`${TH} w-12`}>#</th>
                   <th className={TH}>Workflow</th>
-                  <th className={`${TH} w-40 text-right`}>Global</th>
-                  <th className={`${TH} w-40 text-right`}>Brand</th>
                   <th className={`${TH} w-40 text-right`}>Offer</th>
+                  <th className={`${TH} w-40 text-right`}>Brand</th>
+                  <th className={`${TH} w-40 text-right`}>Global</th>
                   <th className={`${TH} w-10`} aria-label="Open" />
                 </tr>
               </thead>
@@ -224,14 +242,10 @@ function MissionSection({
                     </td>
                   </tr>
                 ) : (
-                  shown.map((w) => {
-                    const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
-                    const global = grainFigures(ladder?.estimatesByGrain.crossOrg)?.costPerOutcomeUsd ?? null;
-                    const brand = grainFigures(ladder?.estimatesByGrain.brand)?.costPerOutcomeUsd ?? null;
-                    // The OFFER grain rides the SAME ladder as Global and Brand, on the brand's
-                    // basis, so a difference between the Brand and Offer columns is only ever a
-                    // difference in scope (features-service#1172).
-                    const offer = grainFigures(ladder?.estimatesByGrain.offer)?.costPerOutcomeUsd ?? null;
+                  // The OFFER grain rides the SAME ladder as Global and Brand, on the brand's
+                  // basis, so a difference between the Brand and Offer columns is only ever a
+                  // difference in scope (features-service#1172).
+                  shown.map(({ w, offer, brand, global }) => {
                     const href = hrefFor(w.row.workflowDynastySlug);
                     const model = workflowModelMark(w.row.contentModel);
                     const template = workflowTemplateLabel(w.row.contentPromptType);
@@ -253,9 +267,9 @@ function MissionSection({
                             {stack && <span className="k-fg3 hidden min-w-0 shrink-[2] truncate text-[12px] lg:inline">{stack}</span>}
                           </div>
                         </td>
-                        <CostCell value={global} unit={unit} />
-                        <CostCell value={brand} unit={unit} />
                         <CostCell value={offer} unit={unit} />
+                        <CostCell value={brand} unit={unit} />
+                        <CostCell value={global} unit={unit} />
                         <td className="pl-3 pr-4 text-right">
                           <Link
                             href={href}
