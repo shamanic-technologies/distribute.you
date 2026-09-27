@@ -1,0 +1,47 @@
+<p>You already talk to an AI assistant all day. It can also answer for your cold email: who you should be writing to, which campaigns are running, and what each one has produced and cost you. No new app, no settings page to hunt for. You ask, it answers.</p>
+
+<h2 id="how">How it works</h2>
+
+<p>distribute.you runs your cold email campaigns. It also exposes them through a hosted <strong>MCP server</strong>, the open protocol assistants like Claude use to call tools. Plug it in once and your assistant can read your brands, your campaigns and their results in the middle of any conversation.</p>
+
+<h2 id="setup">Setup: one command</h2>
+
+<p>Create an API key in your distribute.you dashboard (API Keys, in the account menu). Then, in Claude Code:</p>
+
+<pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">claude mcp add --transport http distribute https://mcp.distribute.you/mcp --header "Authorization: Bearer distrib.usr_YOUR_KEY"</pre>
+
+<p>In Cursor, or any client whose config takes a URL:</p>
+
+<pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">{
+  "mcpServers": {
+    "distribute": {
+      "url": "https://mcp.distribute.you/mcp",
+      "headers": {
+        "Authorization": "Bearer distrib.usr_YOUR_KEY"
+      }
+    }
+  }
+}</pre>
+
+<h2 id="ask">What you can ask it</h2>
+
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>You say</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>"Who should I be emailing for acme.com?"</td><td>Reads the website and suggests the customers to aim a campaign at.</td></tr>
+<tr><td>"Which campaigns are running?"</td><td>Lists your cold email campaigns, running or stopped.</td></tr>
+<tr><td>"How is the clinic owners campaign doing?"</td><td>Answers with what that campaign produced and what it cost you.</td></tr>
+<tr><td>"Which email styles can I use?"</td><td>Lists the workflows available, including the ones written in the style of a named industry expert.</td></tr>
+<tr><td>"Am I connected?"</td><td>Tells you which user and organization the key acts for.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The full tool list, with exact descriptions, is on <a href="https://docs.distribute.you/openapi/">our developer docs</a>. The REST API behind it is at <code>api.distribute.you/openapi.json</code> if you would rather write code.</p>
+
+<h2 id="why">Why an assistant, not a dashboard</h2>
+
+<p>A founder checks outbound in between two other things. Asking "what did my campaigns do this week?" where you already work is faster than opening another tab, and the answer comes with the numbers rather than a chart to read. The dashboard is still there when you want to look at everything at once.</p>
+
+<p><a href="https://distribute.you">distribute.you</a> is a cold email agency: we find your buyers, write and test the emails from our own domains, and send you the interested replies. From $1/day, first $30 free.</p>
