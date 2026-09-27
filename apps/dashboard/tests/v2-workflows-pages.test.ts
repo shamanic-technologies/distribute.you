@@ -45,3 +45,31 @@ describe("dashboard v2 Workflows: beta, with its own badge", () => {
     expect(gates).toContain("staff: ");
   });
 });
+
+describe("editing a workflow's prompt is STAFF-only, and says who it affects", () => {
+  const page = read("src/components/v2/workflow-page.tsx");
+  const card = page.slice(page.indexOf("function PromptCard("), page.indexOf("// ─── Past runs"));
+
+  it("the Edit control is offered to staff only, with the Staff label", () => {
+    expect(card).toContain("const isStaff = useIsAdminUser();");
+    expect(card).toContain("isStaff && !editing");
+    expect(card).toContain('<MaturityBadge level="staff" />');
+  });
+
+  it("Fork and Upgrade each confirm first, stating the blast radius", () => {
+    expect(card).toContain('onClick={() => setConfirm("fork")}');
+    expect(card).toContain('onClick={() => setConfirm("upgrade")}');
+    expect(card).toContain("UPGRADE_WARNING");
+    expect(card).toContain("FORK_WARNING");
+    expect(page).toContain("for every brand");
+  });
+
+  it("a refusal renders the producer's sentence, never the thrown message", () => {
+    expect(card).toContain("err.body?.error");
+    expect(card).not.toContain("err.message");
+  });
+
+  it("the write goes through the gateway's dynasty route", () => {
+    expect(read("src/lib/api.ts")).toContain("/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/prompt-edit");
+  });
+});
