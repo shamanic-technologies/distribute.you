@@ -132,6 +132,23 @@ async function readJsonResponse(response: Response, endpoint: string): Promise<u
 }
 
 /**
+ * The org a flow is acting on when it is NOT the org the URL names.
+ *
+ * One caller: the v2 "New organization" modal, which creates an org and then builds
+ * its brand, offers and campaign while the page behind it still sits on the previous
+ * org's URL. Without this every call would carry the URL's org beside a token minted
+ * for the new one, and the proxy would refuse it as an org desync. It changes only the
+ * header the proxy compares; the JWT stays the authority, so the proxy still fails
+ * closed on any disagreement. The page behind the modal fires no org-scoped read
+ * meanwhile: its URL org no longer matches the active org, so `useAuthQuery` holds
+ * every one of them. Cleared the moment the modal closes or navigates.
+ */
+let activeOrgOverride: string | null = null;
+export function setApiActiveOrgOverride(orgId: string | null): void {
+  activeOrgOverride = orgId;
+}
+
+/**
  * The org the UI is currently rendering, parsed from the `/orgs/<id>/...` URL.
  * Client-side only. Sent to the proxy as `x-active-org-id` so the proxy can fail
  * closed (409 `org_desync`) when it disagrees with the Clerk session JWT — never
@@ -139,6 +156,7 @@ async function readJsonResponse(response: Response, endpoint: string): Promise<u
  */
 function activeOrgIdFromPath(): string | null {
   if (typeof window === "undefined") return null;
+  if (activeOrgOverride) return activeOrgOverride;
   const match = window.location.pathname.match(/\/orgs\/([^/?#]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
@@ -1856,6 +1874,63 @@ export async function createBrandOffer(
   return parsed.data;
 }
 
+// ── Offer proposals: the "New organization" modal's offers step ────────────
+// brand-service splits a free-text "what do you sell?" into the distinct offers it
+// describes (one when it describes one), each with a short name, a sentence and an
+// icon token, and flags the likely main one through a Jev judgment. Nothing is stored
+// until the confirm, which creates them all and adopts the brand's implicit offer
+// into the chosen one, so the brand ends with exactly the confirmed offers.
+
+const OfferProposalSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  /** Phosphor icon name, kebab-case, from brand-service's closed vocabulary. */
+  icon: z.string(),
+});
+export type OfferProposal = z.infer<typeof OfferProposalSchema>;
+
+const ProposeOffersResponseSchema = z.object({
+  offers: z.array(OfferProposalSchema),
+  mainOfferIndex: z.number().int(),
+  mainOfferConfidence: z.number().nullable(),
+  /** Read as a plain string: the producer's vocabulary. */
+  mainOfferBasis: z.string(),
+});
+export type OfferProposals = z.infer<typeof ProposeOffersResponseSchema>;
+
+export async function proposeBrandOffers(brandId: string, description: string, token?: string): Promise<OfferProposals> {
+  const raw = await withTimeout(
+    apiCall<unknown>(`/brands/${brandId}/offers/proposals`, { token, method: "POST", body: { description } }),
+    120_000,
+    "proposeBrandOffers",
+  );
+  const parsed = ProposeOffersResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] proposeBrandOffers: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] proposeBrandOffers: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export async function confirmBrandOffers(
+  brandId: string,
+  offers: readonly OfferProposal[],
+  chosenIndex: number,
+  token?: string,
+): Promise<{ chosenOfferId: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/confirm`, {
+    token,
+    method: "POST",
+    body: { offers: offers.map((o) => ({ name: o.name, description: o.description, icon: o.icon })), chosenIndex },
+  });
+  const parsed = z.object({ chosenOfferId: z.string() }).passthrough().safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] confirmBrandOffers: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] confirmBrandOffers: invalid response shape");
+  }
+  return { chosenOfferId: parsed.data.chosenOfferId };
+}
+
 /** PATCH /brands/:brandId/offers/:offerId — rename. The only mutable field. */
 export async function renameBrandOffer(
   brandId: string,
@@ -2899,6 +2974,72 @@ export async function suggestAudiences(
   if (!parsed.success) {
     console.error("[dashboard] suggestAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] suggestAudiences: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Audience split: the "New organization" modal's audiences step ───────────
+// human-service splits a confirmed "who do you sell to?" into at most 6 segments that
+// do not overlap, along axes a people search can filter on, persisting nothing; the
+// confirm creates the kept ones as ACTIVE audiences under the brand and offer. No
+// search and no count runs on either call: the Apollo filters are built later.
+
+const AudienceSegmentProposalSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  /** Phosphor icon name, kebab-case, from human-service's closed vocabulary. */
+  icon: z.string(),
+  iconConfidence: z.number(),
+});
+export type AudienceSegmentProposal = z.infer<typeof AudienceSegmentProposalSchema>;
+
+const SplitAudiencesResponseSchema = z.object({
+  /** Read as plain strings: the axis vocabulary is the producer's and may grow. */
+  axes: z.array(z.string()),
+  segments: z.array(AudienceSegmentProposalSchema),
+});
+
+export async function proposeAudienceSegments(
+  brandId: string,
+  targetAudience: string,
+  token?: string,
+): Promise<{ axes: string[]; segments: AudienceSegmentProposal[] }> {
+  const raw = await withTimeout(
+    apiCall<unknown>(`/orgs/audiences/split`, { token, method: "POST", body: { brandId, targetAudience } }),
+    SUGGEST_TIMEOUT_MS,
+    "proposeAudienceSegments",
+  );
+  const parsed = SplitAudiencesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] proposeAudienceSegments: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] proposeAudienceSegments: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export async function confirmAudienceSegments(
+  brandId: string,
+  offerId: string,
+  targetAudience: string,
+  segments: ReadonlyArray<Pick<AudienceSegmentProposal, "name" | "description">>,
+  token?: string,
+): Promise<{ audiences: Array<{ id: string; name: string }> }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/split/confirm`, {
+    token,
+    method: "POST",
+    body: {
+      brandId,
+      offerId,
+      targetAudience,
+      segments: segments.map((s) => ({ name: s.name, description: s.description })),
+    },
+  });
+  const parsed = z
+    .object({ audiences: z.array(z.object({ id: z.string(), name: z.string() }).passthrough()) })
+    .safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] confirmAudienceSegments: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] confirmAudienceSegments: invalid response shape");
   }
   return parsed.data;
 }
@@ -7396,6 +7537,13 @@ export interface BillingAccount {
   // the balance/usage/next-charge numbers above are ALREADY net of it. null = no discount.
   // Absent on older billing deploys.
   usage_discount_pct?: number | null;
+  /**
+   * Free credit this org can still spend, in decimal cents: billing's own
+   * max(0, min(gifted, balance)). Decides whether a flow may let the org start without
+   * paying. Optional because an older billing deploy states none, which reads as none.
+   * Not recomputed here.
+   */
+  free_credit_spendable_cents?: string;
   created_at: string;
   updated_at: string;
 }
