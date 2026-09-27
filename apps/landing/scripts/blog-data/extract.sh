@@ -125,6 +125,14 @@ WHERE g.feature_slug = 'sales-cold-email-outreach'
   AND g.created_at < '$TO'
 " generations.csv
 
+# Which DYNASTY each workflow version belongs to: the Research page compares dynasties, the
+# lineage a workflow keeps across its versions, never a single version.
+run workflow_service "
+SELECT workflow_slug, workflow_dynasty_slug
+FROM workflows
+WHERE feature_slug = 'sales-cold-email-outreach'
+" workflows.csv
+
 # Reader dimensions, from the lead enrichment record.
 run lead_service "
 SELECT l.id AS lead_id, l.country, l.seniority, l.timezone,

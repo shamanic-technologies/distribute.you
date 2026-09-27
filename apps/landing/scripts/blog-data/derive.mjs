@@ -153,6 +153,13 @@ eachRow("generations.csv", (g) => {
 });
 const leads = load("leads.csv");
 const spendRows = load("spend.csv");
+// workflow version -> its dynasty (workflow-service); the Research page compares dynasties
+const dynastyOf = new Map(load("workflows.csv").map((w) => [w.workflow_slug, w.workflow_dynasty_slug]));
+function dynastyOfVersion(slug) {
+  const d = dynastyOf.get(slug);
+  if (!d) throw new Error(`workflow ${slug} is not in workflows.csv: re-run extract.sh`);
+  return d;
+}
 const scannerRows = load("scanner-hits.csv");
 
 const stepByKey = new Map();
@@ -265,6 +272,7 @@ for (const e of emails) {
   const model = gen?.model || null;
   facts.push({
     workflow: e.workflow_slug,
+    dynasty: dynastyOfVersion(e.workflow_slug),
     orgId: e.org_id,
     person: `${e.instantly_campaign_id}|${e.lead_email}`,
     leadEmail: e.lead_email,
@@ -567,18 +575,19 @@ function researchFor(rows) {
     byMonth: cut(rows, (r) => r.month, monthsOf(rows)),
     modelByMonth: byMonthPer(rows, modelLabel),
     templateByMonth: byMonthPer(rows, (r) => r.template),
-    // A workflow is keyed by its slug HERE only (facts.json is never committed); research.mjs
-    // names it by what it runs, the model and the template, and never prints the slug.
-    byWorkflow: cut(rows, (r) => r.workflow),
-    workflowByMonth: byMonthPer(rows, (r) => r.workflow),
+    // A workflow here is a DYNASTY (every version of one lineage, pooled), keyed by its slug
+    // HERE only (facts.json is never committed); research.mjs names it by what it runs, the model
+    // and the template, and never prints the slug.
+    byWorkflow: cut(rows, (r) => r.dynasty),
+    workflowByMonth: byMonthPer(rows, (r) => r.dynasty),
   };
 }
-// What each workflow runs: the model and the template that wrote most of its emails.
+// What each dynasty runs: the model and the template that wrote most of its emails.
 function workflowMeta(rows) {
   const by = new Map();
   for (const r of rows) {
-    if (!by.has(r.workflow)) by.set(r.workflow, []);
-    by.get(r.workflow).push(r);
+    if (!by.has(r.dynasty)) by.set(r.dynasty, []);
+    by.get(r.dynasty).push(r);
   }
   const meta = {};
   for (const [wf, rs] of by) meta[wf] = { model: topN(rs, 1, modelLabel)[0] || null, template: topN(rs, 1, (r) => r.template)[0] || null };
