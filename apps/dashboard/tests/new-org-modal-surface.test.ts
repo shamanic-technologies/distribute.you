@@ -227,3 +227,13 @@ describe("the payment mode is recorded before the launch", () => {
     expect(modal).toContain("startOnFreeCredit.current = true;");
   });
 });
+
+describe("Try again replays the launch without re-sending what landed", () => {
+  it("skips audiences, budget and campaign already written, and reuses a 409 audience set", () => {
+    const body = modal.slice(modal.indexOf("  function launch() {"), modal.indexOf("if (!open) return null;"));
+    expect(body).toContain("if (!launched.current.audiences)");
+    expect(body).toContain("e instanceof ApiError && e.status === 409");
+    expect(body).toContain("if (!launched.current.budget)");
+    expect(body).toContain("launched.current.campaignId ??");
+  });
+});

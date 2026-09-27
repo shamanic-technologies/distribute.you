@@ -29,6 +29,7 @@ import { useOrganizationList, useSession, useUser } from "@clerk/nextjs";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
 import {
+  ApiError,
   USER_PROFILE_FIELDS,
   configureAutoTopup,
   confirmAudienceSegments,
@@ -623,6 +624,10 @@ export function NewOrgModal({
 
   // Starting on free credit is PREPAID by definition: the org spends what it holds.
   const startOnFreeCredit = useRef(false);
+  // "Try again" replays the launch, so every write it makes is done ONCE: what already
+  // landed on an earlier attempt is skipped, never re-sent (a re-sent audience set is
+  // refused as a duplicate and the retry could never get past it).
+  const launched = useRef<{ audiences: boolean; budget: boolean; campaignId: string | null }>({ audiences: false, budget: false, campaignId: null });
 
   function launch() {
     go("launching");
@@ -633,8 +638,21 @@ export function NewOrgModal({
       // org with no card is stopped at once (no_chargeable_card), which is what made a
       // free-credit start stop immediately. Prepaid runs without a card.
       await setPaymentMode(startOnFreeCredit.current ? "prepaid" : payMode);
-      await confirmAudienceSegments(id, chosenOffer, audienceText.trim(), segments.filter((_, i) => pickedSegments.has(i)));
-      await saveCampaignBudget(id, { offerId: chosenOffer, legKey, featureSlug: NEW_ORG_CHANNEL_SLUG }, budgetUsd * 100);
+      if (!launched.current.audiences) {
+        try {
+          await confirmAudienceSegments(id, chosenOffer, audienceText.trim(), segments.filter((_, i) => pickedSegments.has(i)));
+        } catch (e) {
+          // 409: this offer already holds these audiences, created by an earlier attempt
+          // (names are unique per brand and offer). They are what we meant to create.
+          if (!(e instanceof ApiError && e.status === 409)) throw e;
+          console.warn("[new-org] audiences already exist for this offer, reusing them:", e.message);
+        }
+        launched.current.audiences = true;
+      }
+      if (!launched.current.budget) {
+        await saveCampaignBudget(id, { offerId: chosenOffer, legKey, featureSlug: NEW_ORG_CHANNEL_SLUG }, budgetUsd * 100);
+        launched.current.budget = true;
+      }
       const workflowSlug = legPrices[legKey]?.workflow;
       if (!workflowSlug) throw new Error(`No workflow is ready for ${leg.unitPlural} yet, so the campaign cannot start.`);
       const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [id], chosenOffer);
@@ -642,15 +660,20 @@ export function NewOrgModal({
       for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
       const url = hasWebsite ? (/^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`) : null;
       const offerName = offerProposals[pickedOfferIndex]?.name ?? "Offer";
-      const { campaign } = await createCampaignWithoutBrandEnrichment({
-        name: `${offerName} (${leg.label}, Cold email)`,
-        workflowSlug,
-        ...(url ? { brandUrls: [url] } : { brandIds: [id] }),
-        offerId: chosenOffer,
-        legKey,
-        featureSlug: NEW_ORG_CHANNEL_SLUG,
-        featureInputs,
-      });
+      const campaignId =
+        launched.current.campaignId ??
+        (
+          await createCampaignWithoutBrandEnrichment({
+            name: `${offerName} (${leg.label}, Cold email)`,
+            workflowSlug,
+            ...(url ? { brandUrls: [url] } : { brandIds: [id] }),
+            offerId: chosenOffer,
+            legKey,
+            featureSlug: NEW_ORG_CHANNEL_SLUG,
+            featureInputs,
+          })
+        ).campaign.id;
+      launched.current.campaignId = campaignId;
       // The edge gate reads this claim: the org is set up only now, with a campaign running.
       // Mark the NEW org set up, with a token minted for it (the session is still on the
       // previous org), BEFORE switching to it: the edge gate then lets it through.
@@ -664,7 +687,7 @@ export function NewOrgModal({
       posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: budgetUsd, pay_mode: payMode });
       setApiActiveOrgOverride(null);
       onClose();
-      router.push(v2MissionHref(orgId!, id, campaign.id));
+      router.push(v2MissionHref(orgId!, id, campaignId));
     });
   }
 
