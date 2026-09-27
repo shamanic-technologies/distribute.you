@@ -41,7 +41,7 @@
     <rect x="80" y="180" width="110" height="10" rx="5" fill="#cbd5e1"/>
     <rect x="80" y="198" width="150" height="10" rx="5" fill="#2563eb"/>
     <path d="M236 206 L236 256 L249 244 L258 265 L268 261 L259 240 L277 240 Z" fill="#0f172a" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
-    <text x="330" y="150" font-size="88" font-weight="800" fill="#0f172a">$4</text>
+    <text x="330" y="150" font-size="88" font-weight="800" fill="#0f172a">$3</text>
     <text x="330" y="190" font-size="20" fill="#64748b">per click,</text>
     <text x="330" y="216" font-size="20" fill="#64748b">all workflows tested</text>
     <text x="330" y="250" font-size="18" fill="#2563eb" font-weight="600">16 clicks per 1,000 emails</text>
@@ -52,7 +52,7 @@
     <rect x="0" y="0" width="570" height="330" rx="28" fill="#0f172a" filter="url(#shadow)"/>
     <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">THE WORKFLOW THAT WON</text>
     <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$1</text>
-    <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 25 workflows</text>
+    <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 23 workflows</text>
     <text x="40" y="292" font-size="17" fill="#94a3b8">Leads, writing, sending and the team, all in the price.</text>
   </g>
 

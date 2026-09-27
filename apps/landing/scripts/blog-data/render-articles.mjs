@@ -154,7 +154,9 @@ function barChart(spec) {
   });
   if (a.note) parts.push(`<text x="0" y="${height - 8}" font-size="13" fill="#64748b">${esc(a.note)}</text>`);
   parts.push("</svg>");
-  return `<figure>\n${parts.join("\n")}\n</figure>`;
+  // Every chart prices outcomes, so every chart says which emails were too young to count. It
+  // sits OUTSIDE the svg: the newsletter re-lays the svg's own bytes, and a caption is page copy.
+  return `<figure>\n${parts.join("\n")}\n${maturationCaption()}\n</figure>`;
 }
 
 function table(spec) {
@@ -185,6 +187,19 @@ function table(spec) {
   ].join("\n");
 }
 
+function maturationCaption() {
+  const note = get("maturation.note");
+  return `<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">${esc(note)}</figcaption>`;
+}
+
+// A day as the page writes one: `2026-09-12` reads "12 September 2026".
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function date(path) {
+  const v = String(get(path.trim())).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`not a date: ${path}`);
+  return `${Number(v.slice(8, 10))} ${MONTH_NAMES[Number(v.slice(5, 7)) - 1]} ${v.slice(0, 4)}`;
+}
+
 // One bucket of one cut, named rather than indexed: a cut can gain or lose a bucket
 // as the data moves, and an index would then quietly read a different row.
 function pick(spec) {
@@ -202,6 +217,7 @@ const HANDLERS = {
   n: (p) => commas(get(p.trim())),
   usd: (p) => usd(get(p.trim())),
   raw: (p) => String(get(p.trim())),
+  date,
   chart: barChart,
   table,
 };

@@ -42,11 +42,11 @@ const section = (id: string) => {
 };
 
 // The headline figures, read once so every assertion below pins the same ones.
-const BEST_PRO_CPPR = "$139";
-const PRO_CPPR = "$198";
+const BEST_PRO_CPPR = "$94";
+const PRO_CPPR = "$164";
 const BEST_FLASH_CPWV = "$1";
 const FLASH_CPWV = "$2";
-const PRO_CPWV = "$6";
+const PRO_CPWV = "$5";
 
 describe("flash-or-pro article: copy rules", () => {
   it("carries no em-dash anywhere (body, meta, hero)", () => {
@@ -106,13 +106,13 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
     expect(hero).toContain(`per positive reply, tier ${PRO_CPPR}`);
     expect(hero).toContain("Best workflow, the click");
     expect(hero).toContain("Best workflow, the reply");
-    expect(hero).toContain("125,000 emails, 25 A/B tests");
+    expect(hero).toContain("125,000 emails, 23 A/B tests");
     expect(hero).toContain("FLASH TIER");
     expect(hero).toContain("PRO TIER");
   });
 
   it("the title and the excerpt carry the A/B framing and the best-workflow figures", () => {
-    expect(String(meta.title)).toContain("ran 25 A/B tests");
+    expect(String(meta.title)).toContain("ran 23 A/B tests");
     expect(String(meta.title)).toContain("125,000 emails");
     expect(String(meta.excerpt)).toContain(BEST_PRO_CPPR);
     expect(String(meta.excerpt)).toContain(BEST_FLASH_CPWV);
@@ -121,7 +121,7 @@ describe("flash-or-pro article: the headline is the best workflow, not the tier 
 
   it("the A/B section names the winner of each outcome and the gap distribute.you hands its clients", () => {
     const spread = section("the-spread");
-    expect(spread).toContain("25 A/B tests, one winner per outcome");
+    expect(spread).toContain("23 A/B tests, one winner per outcome");
     // Owner rule (2026-09-10): no per-workflow chart at all, named or numbered.
     // The page states the best workflow per outcome and the tier it beats, nothing finer.
     expect(spread).not.toContain("<svg");
@@ -267,7 +267,7 @@ describe("flash-or-pro article: what others measured, and where we stand", () =>
 
 describe("flash-or-pro article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "35,283", "89,310", "$8,438"]) {
+    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "33,521", "77,195", "$6,682"]) {
       expect(html).toContain(figure);
     }
   });
@@ -282,7 +282,7 @@ describe("flash-or-pro article: dataset coherence", () => {
   it("the two tier counts sit inside the window's total", () => {
     // The remainder is the Frontier tier plus the emails whose generation record names no
     // model; neither is charted, so neither is stated anywhere but here.
-    expect(35_080 + 88_856).toBeLessThan(124_460);
+    expect(33_521 + 77_195).toBeLessThan(111_202);
   });
 
   it("every chart row is a bar with its counts under it; no placeholder row anywhere", () => {
@@ -313,7 +313,7 @@ describe("flash-or-pro article: dataset coherence", () => {
 
   it("states the limits rather than hiding them", () => {
     expect(html).toMatch(/<strong>Limits<\/strong>: not a randomised experiment/);
-    expect(html).toContain("36 positive replies is a small count");
+    expect(html).toContain("34 positive replies is a small count");
     expect(html).toMatch(/no confidence intervals/);
   });
 

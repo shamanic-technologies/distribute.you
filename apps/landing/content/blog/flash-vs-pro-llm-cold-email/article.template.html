@@ -56,7 +56,7 @@
 
 <h3>2. Length of the email</h3>
 
-<p>Short wins the visit on Flash: under 400 characters costs {{pick|cut=flashLinked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}} against {{pick|cut=flashLinked.byFirstLength|bucket=500 to 650|field=cpc|fmt=usd}} from 500 characters up. Pro is flat across the same range and only loses the visit past 800 characters. The reply reads the other way: Pro's best reply band is 650 to 800 characters, at {{pick|cut=pro.byFirstLength|bucket=650 to 800|field=repliesPerTenThousand|fmt=raw}} per 10,000, a length Flash almost never writes.</p>
+<p>Short wins the visit on Flash: under 400 characters costs {{pick|cut=flashLinked.byFirstLength|bucket=under 400|field=cpc|fmt=usd}} against {{pick|cut=flashLinked.byFirstLength|bucket=500 to 650|field=cpc|fmt=usd}} from 500 characters up. Pro loses the visit past 800 characters, at {{pick|cut=proLinked.byFirstLength|bucket=over 800|field=cpc|fmt=usd}}. The reply reads the other way: Pro's best reply band is 650 to 800 characters, at {{pick|cut=pro.byFirstLength|bucket=650 to 800|field=repliesPerTenThousand|fmt=raw}} per 10,000, a length Flash almost never writes.</p>
 
 {{chart|cut=flashLinked.byFirstLength|metric=cpc|title=Cost per website visit by length of the first email, characters, Flash (USD, lower is better)}}
 
@@ -76,7 +76,7 @@
 
 <h3>4. Subject length</h3>
 
-<p>A subject of 30 characters or fewer buys the Flash visit for {{pick|cut=flashLinked.bySubject|bucket=21 to 30|field=cpc|fmt=usd}}; past 40 characters it costs {{pick|cut=flashLinked.bySubject|bucket=over 40|field=cpc|fmt=usd}}. Pro is flat at {{pick|cut=proLinked.bySubject|bucket=21 to 30|field=cpc|fmt=usd}} across every band it can price. The reply does not care much either way: Pro's replies are spread evenly from 21 characters up.</p>
+<p>A subject of 30 characters or fewer buys the Flash visit for {{pick|cut=flashLinked.bySubject|bucket=21 to 30|field=cpc|fmt=usd}}; past 40 characters it costs {{pick|cut=flashLinked.bySubject|bucket=over 40|field=cpc|fmt=usd}}. Pro is {{pick|cut=proLinked.bySubject|bucket=21 to 30|field=cpc|fmt=usd}} to {{pick|cut=proLinked.bySubject|bucket=20 or fewer|field=cpc|fmt=usd}} across every band it can price. The reply does not care much either way: Pro's replies are spread evenly from 21 characters up.</p>
 
 {{chart|cut=flashLinked.bySubject|metric=cpc|title=Cost per website visit by subject length, characters, Flash (USD, lower is better)}}
 
@@ -96,7 +96,7 @@
 
 <h3>6. Size of the company</h3>
 
-<p>Big companies click cheap: over 1,000 people, a Flash visit is {{pick|cut=flashLinked.bySize|bucket=1000+|field=cpc|fmt=usd}}. The one to ten person company is the dearest visit on both tiers and Pro's best reply rate, {{pick|cut=pro.bySize|bucket=1-10|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 against {{pick|cut=pro.bySize|bucket=11-50|field=repliesPerTenThousand|fmt=raw}} one size band up.</p>
+<p>Big companies click cheap: over 1,000 people, a Flash visit is {{pick|cut=flashLinked.bySize|bucket=1000+|field=cpc|fmt=usd}}. The one to ten person company is the dearest Flash visit, {{pick|cut=flashLinked.bySize|bucket=1-10|field=cpc|fmt=usd}}, and Pro's best reply rate, {{pick|cut=pro.bySize|bucket=1-10|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 against {{pick|cut=pro.bySize|bucket=11-50|field=repliesPerTenThousand|fmt=raw}} one size band up.</p>
 
 {{chart|cut=flashLinked.bySize|metric=cpc|title=Cost per website visit by size of the reader's company, employees, Flash (USD, lower is better)}}
 
@@ -126,7 +126,7 @@
 
 <h3>9. Local time of delivery</h3>
 
-<p>Flash clicks cheapest late, {{pick|cut=flashLinked.byHour|bucket=20-23|field=cpc|fmt=usd}} between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at {{pick|cut=flashLinked.byHour|bucket=6-8|field=cpc|fmt=usd}}. Pro is cheapest in the small hours at {{pick|cut=proLinked.byHour|bucket=0-5|field=cpc|fmt=usd}}. The reply likes the morning: 6am to 8am and 9am to 11am are the two best windows of the day, both at {{pick|cut=pro.byHour|bucket=6-8|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000.</p>
+<p>Flash clicks cheapest late, {{pick|cut=flashLinked.byHour|bucket=20-23|field=cpc|fmt=usd}} between 8pm and midnight in the reader's own time zone, and dearest in the 6am to 8am rush at {{pick|cut=flashLinked.byHour|bucket=6-8|field=cpc|fmt=usd}}. Pro is cheapest in the small hours at {{pick|cut=proLinked.byHour|bucket=0-5|field=cpc|fmt=usd}}. The reply likes the morning: 6am to 8am and 9am to 11am are the two best windows of the day, at {{pick|cut=pro.byHour|bucket=6-8|field=repliesPerTenThousand|fmt=raw}} and {{pick|cut=pro.byHour|bucket=9-11|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000.</p>
 
 {{chart|cut=flashLinked.byHour|metric=cpc|min=1000|title=Cost per website visit by local time of delivery, Flash (USD, lower is better)}}
 
@@ -136,7 +136,7 @@
 
 <h3>10. Day of the week</h3>
 
-<p>Saturday and Sunday are the cheapest Flash visits at {{pick|cut=flashLinked.byWeekday|bucket=Saturday|field=cpc|fmt=usd}}; Monday is the dearest weekday on Flash and among the cheapest on Pro. Monday carries the working week, at {{pick|cut=pro.byWeekday|bucket=Monday|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000; the only day above it is Saturday, at {{pick|cut=pro.byWeekday|bucket=Saturday|field=repliesPerTenThousand|fmt=raw}}.</p>
+<p>Sunday is the cheapest Flash visit at {{pick|cut=flashLinked.byWeekday|bucket=Sunday|field=cpc|fmt=usd}} and Thursday the dearest at {{pick|cut=flashLinked.byWeekday|bucket=Thursday|field=cpc|fmt=usd}}; on Pro, Monday is the cheapest day at {{pick|cut=proLinked.byWeekday|bucket=Monday|field=cpc|fmt=usd}}. Monday carries the working week, at {{pick|cut=pro.byWeekday|bucket=Monday|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000; the only day above it is Saturday, at {{pick|cut=pro.byWeekday|bucket=Saturday|field=repliesPerTenThousand|fmt=raw}}.</p>
 
 {{chart|cut=flashLinked.byWeekday|metric=cpc|title=Cost per website visit by day of the week, Flash (USD, lower is better)}}
 
@@ -213,8 +213,9 @@
 
 <ul>
 <li><strong>Scope</strong>: sales cold email outreach only. Journalist outreach, PR pitches and every other channel we run are excluded.</li>
-<li><strong>Window</strong>: 15 April to 11 September 2026, every client account. Production data from the distribute.you platform, read on 12 September 2026.</li>
-<li><strong>Volume</strong>: {{n volume.emails}} emails to {{n volume.people}} people across {{n volume.orgs}} clients, {{usd volume.spend}} of platform spend, {{n volume.clicks}} website visits and {{n volume.replies}} positive replies. Of those emails, {{n volume.linked.emails}} carried a link to the client's site; they cost {{usd volume.linked.spend}} and {{n volume.linked.clicks}} people clicked. {{n volume.workflows}} workflows ran with tracked spend (a workflow is one prompt and one model), {{n best.workflowsPastFloor}} of them past 1,000 emails.</li>
+<li><strong>Window</strong>: 15 April to 11 September 2026, every client account. Production data from the distribute.you platform, read on {{date generatedAt}}, counting only the clicks and replies that had happened by {{date maturation.windowEnd}}.</li>
+<li><strong>Emails too young to count</strong>: an email sent today has not had time to earn its click or its reply, so counting it makes every price read too high. We measured how long an outcome takes to arrive after the email that earned it: 95 in 100 website visits within {{raw maturation.click.pAt}} days, 95 in 100 positive replies within {{raw maturation.reply.pAt}} days, measured on emails at least {{raw maturation.lookbackDays}} days old so a slow one had time to show. The emails sent in the last {{raw maturation.days}} days of the window, from {{date maturation.cutoff}} on ({{n maturation.excludedEmails}} of them), are left out of every figure on this page, their clicks and replies with them.</li>
+<li><strong>Volume</strong>: {{n volume.sent.emails}} emails sent to {{n volume.sent.people}} people across {{n volume.sent.orgs}} clients. Every price and rate on this page is read on the {{n volume.emails}} old enough to count, to {{n volume.people}} people across {{n volume.orgs}} clients: {{usd volume.spend}} of platform spend, {{n volume.clicks}} website visits and {{n volume.replies}} positive replies. Of those emails, {{n volume.linked.emails}} carried a link to the client's site; they cost {{usd volume.linked.spend}} and {{n volume.linked.clicks}} people clicked. {{n volume.workflows}} workflows ran with tracked spend (a workflow is one prompt and one model), {{n best.workflowsPastFloor}} of them past 1,000 emails.</li>
 <li><strong>Tiers</strong>: Flash, the cheapest model of a family (Gemini Flash, Claude Haiku, DeepSeek V4 Flash, GLM Flash, Kimi K2.6). Pro, the middle (Gemini Pro, Claude Opus, DeepSeek V4 Pro, GLM 5.3, Kimi K3). Frontier, the most expensive (Claude Fable, Astra), not yet run in production beyond a handful of emails. The model is read per email from the generation record.</li>
 <li><strong>Spend</strong>: everything the workflow cost before per-account discounts: lead sourcing, enrichment, sending and tokens. Not tokens alone. Each email carries its own workflow's cost per email, so a bucket's spend is the sum over the emails in it.</li>
 <li><strong>Pricing</strong>: every dollar here is what the client is charged, all in: lead sourcing, email verification, one email written for each recipient, the mailboxes and domains, sending, follow-ups, the team running it and our margin. There is no subscription and no retainer on top.</li>

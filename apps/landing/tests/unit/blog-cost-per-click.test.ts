@@ -99,10 +99,10 @@ describe("cost-per-click article: editorial rules", () => {
     // Owner-decided 2026-09-10: the intro states the scope (39 A/B-tested workflows) and the
     // difference between the all-workflows price and the price on the workflow clients run.
     expect(String(meta.title)).not.toMatch(/\d+ (workflows?|clients?)/i);
-    expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>25 workflows<\/strong> we A\/B tested/);
+    expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>23 workflows<\/strong> we A\/B tested/);
     expect(story).toContain("Our clients only ever get the winner");
     expect(story).not.toMatch(/\b34 clients?\b/);
-    expect(method).toContain("25 of them past 1,000 emails");
+    expect(method).toContain("23 of them past 1,000 emails");
     expect(method).toContain("34 clients");
   });
 
@@ -113,6 +113,7 @@ describe("cost-per-click article: editorial rules", () => {
       const text = section
         .replace(/<svg[\s\S]*?<\/svg>/g, "")
         .replace(/<table>[\s\S]*?<\/table>/g, "")
+        .replace(/<figcaption[\s\S]*?<\/figcaption>/g, "")
         .replace(/<[^>]+>/g, " ")
         .replace(/&[a-z]+;/g, " ");
       const words = text.trim().split(/\s+/).filter(Boolean);
@@ -125,12 +126,12 @@ describe("cost-per-click article: editorial rules", () => {
     // story; the exclusion of the 92,170 link-less emails lives once, in Method.
     expect(story).not.toContain('id="the-link"');
     expect(story).not.toContain("unsubscribe");
-    expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$4<\/strong> across every workflow we tested/);
+    expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$3<\/strong> across every workflow we tested/);
     expect(story).toContain("buys one for <strong>$1</strong>");
     // Owner-decided 2026-09-10: one client price, the best workflow alone; no range, no four-workflow chart.
     expect(story).not.toContain("$2 to $3");
     expect(story).not.toContain("four best workflows");
-    expect(method).toContain("42,640 emails to 20,731 people carried a link");
+    expect(method).toContain("38,785 emails to 18,499 people carried a link");
   });
 
   it("the charts are inline SVGs that scale with the column and carry a text alternative", () => {
@@ -164,10 +165,10 @@ describe("cost-per-click article: editorial rules", () => {
 
 describe("cost-per-click article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of ["$4", "$1", "$2", "$6", "$8,438", "$2,550", "681", "42,640"]) {
+    for (const figure of ["$3", "$1", "$2", "$5", "$6,682", "$2,104", "623", "38,785"]) {
       expect(html).toContain(figure);
     }
-    expect(hero).toContain(">$4<");
+    expect(hero).toContain(">$3<");
     expect(hero).toContain(">$1<");
     expect(hero).not.toContain("$2 to $3");
     expect(hero).toContain("16 clicks per 1,000 emails");
@@ -240,7 +241,7 @@ describe("cost-per-click article: dataset coherence", () => {
 
   it("states the limits rather than hiding them", () => {
     expect(method).toMatch(/<strong>Limits<\/strong>: not a randomised experiment/);
-    expect(method).toContain("681 clicks is a small count");
+    expect(method).toContain("623 clicks is a small count");
     expect(method).toMatch(/no confidence intervals/);
     // Production shows zero overlap between the people who clicked and the people who
     // unsubscribed, so the page states only that link-less emails are excluded.

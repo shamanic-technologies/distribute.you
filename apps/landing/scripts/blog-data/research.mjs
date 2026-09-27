@@ -13,6 +13,11 @@
 //  - A RATE is outcomes per 10,000 emails (Herald) or per 1,000 link-carrying emails (Scout).
 //  - A winner is only CROWNED past the strict floors the articles use for their best workflow;
 //    below them the page names a LEADER and says the counts are too thin to call.
+//  - Every outcome figure leaves out the emails too young to have earned their outcome: the
+//    MATURATION window, measured in derive.mjs from our own send-to-outcome latencies. Every chart
+//    carries a `note` saying so, in the words a reader sees under it.
+//  - A WORKFLOW is named by what it runs (its model and its template, and the month it first sent
+//    when two share both), never by its codename: nobody outside the team knows the names.
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -27,10 +32,16 @@ const pixel = JSON.parse(
   execFileSync("node", [join(here, "pixel/derive-pixel.mjs"), join(here, "pixel/pixel.snapshot.json")], { encoding: "utf8" }),
 );
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const STRICT = facts.floors.bestWorkflow;
+const M = facts.maturation;
+if (!M || !Number.isInteger(M.days) || !M.note) throw new Error("facts.json carries no maturation window: re-run derive.mjs");
+// The open-tracking study is read from its own snapshot, with its own cutoff before the read.
+const pixelHeldDays = Math.round((Date.parse(`${pixel.readAt}T00:00:00Z`) - Date.parse(`${pixel.cutoff}T00:00:00Z`)) / 86_400_000);
+if (pixelHeldDays < M.days) throw new Error(`the open-tracking snapshot leaves ${pixelHeldDays} days, under the ${M.days}-day maturation window: re-extract it`);
+const PIXEL_NOTE = `Emails sent in the ${pixelHeldDays} days before the read are left out (from ${MONTHS[Number(pixel.cutoff.slice(5, 7)) - 1]} ${Number(pixel.cutoff.slice(8, 10))} on), more than the ${M.days} days 95 in 100 replies and clicks need to arrive.`;
 const n = (v) => Number(v).toLocaleString("en-US");
 const usd = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(2)}` : `$${Math.round(v).toLocaleString("en-US")}`);
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // The window sits inside one year, so a month reads alone; a second year would need it stated.
 const monthLabel = (ym) => MONTHS[Number(ym.slice(5, 7)) - 1];
 
@@ -42,6 +53,50 @@ function templateLabel(id) {
   const words = base.charAt(0).toUpperCase() + base.slice(1);
   return `${words}${m[2] ? ` v${m[2]}` : ""}${m[3] ? " (landing)" : ""}`;
 }
+
+// A workflow reads as what it runs. Two workflows can run the same model and template (a new
+// version of the workflow keeps both), so the month it first sent tells them apart, and a number
+// only when that is shared too. Built once over every workflow, so a label is the same in both crews.
+const WORKFLOW_LABEL = (() => {
+  const meta = facts.research.workflowMeta;
+  const firstMonth = {};
+  for (const key of ["reply", "visit"]) {
+    for (const [wf, rows] of Object.entries(facts.research[key].workflowByMonth)) {
+      const m = rows[0]?.bucket;
+      if (m && (!firstMonth[wf] || m < firstMonth[wf])) firstMonth[wf] = m;
+    }
+  }
+  const base = (wf) => {
+    const x = meta[wf] || {};
+    return `${x.model || "Model not recorded"} · ${x.template ? templateLabel(x.template) : "template not recorded"}`;
+  };
+  const groups = new Map();
+  for (const wf of Object.keys(meta)) {
+    const b = base(wf);
+    if (!groups.has(b)) groups.set(b, []);
+    groups.get(b).push(wf);
+  }
+  const out = {};
+  for (const [b, wfs] of groups) {
+    if (wfs.length === 1) { out[wfs[0]] = b; continue; }
+    const byMonth = new Map();
+    for (const wf of wfs) {
+      const m = firstMonth[wf] ? monthLabel(firstMonth[wf]) : "undated";
+      if (!byMonth.has(m)) byMonth.set(m, []);
+      byMonth.get(m).push(wf);
+    }
+    for (const [m, same] of byMonth) {
+      same.sort();
+      same.forEach((wf, i) => { out[wf] = `${b} (from ${m}${same.length > 1 ? `, #${i + 1}` : ""})`; });
+    }
+  }
+  return out;
+})();
+const workflowLabel = (wf) => {
+  const l = WORKFLOW_LABEL[wf];
+  if (!l) throw new Error(`no label for a workflow in the research block`);
+  return l;
+};
 
 // ---------- the two outcomes ----------
 const OUTCOMES = {
@@ -163,6 +218,7 @@ function monthsChart(o, series, kind, subject, lowerIsBetter) {
     lowerIsBetter,
     points: monthLine(o, series, kind),
     cumulative: { title: `${subject}: average since inception`, points: sinceInception(o, series, kind) },
+    note: M.note,
   };
 }
 const costTitle = (o) => `Cost per ${o.noun} (USD, lower is better)`;
@@ -202,7 +258,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label) },
+        { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label), note: M.note },
         ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "cost", label(w.row.bucket), true)] : []),
       ],
       conclusion: [
@@ -231,7 +287,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       result: w ? { display: w.row[o.rate].toFixed(1), unit: `${o.nounPlural} ${o.rateUnit}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label) },
+        { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label), note: M.note },
         ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "rate", label(w.row.bucket), false)] : []),
       ],
       conclusion: [
@@ -318,8 +374,8 @@ for (const key of ["reply", "visit"]) {
       result: bestRoi ? { display: bestRoi.display, unit: `per ${o.noun}, ${bestRoi.label.toLowerCase()}`, sample: bestRoi.note } : null,
       crowned: bestRoi ? !bestRoi.thin : false,
       charts: [
-        { kind: "bars", title: `Cost per ${o.noun} if the sequence stopped here (USD, lower is better)`, lowerIsBetter: true, points: roiPts },
-        { kind: "bars", title: `Each email on its own: cost per ${o.noun} (USD, lower is better)`, lowerIsBetter: true, points: stepCost },
+        { kind: "bars", title: `Cost per ${o.noun} if the sequence stopped here (USD, lower is better)`, lowerIsBetter: true, points: roiPts, note: M.note },
+        { kind: "bars", title: `Each email on its own: cost per ${o.noun} (USD, lower is better)`, lowerIsBetter: true, points: stepCost, note: M.note },
       ],
       conclusion: [
         `Each depth adds up the spend and the ${o.nounPlural} of every email up to it.`,
@@ -340,7 +396,7 @@ for (const key of ["reply", "visit"]) {
       result: ratePts.length ? { display: ratePts[ratePts.length - 1].value.toFixed(1), unit: `${o.nounPlural} per ${per === 10000 ? "10,000" : "1,000"} people, all follow-ups`, sample: ratePts[ratePts.length - 1].note } : null,
       crowned: people >= STRICT.minEmails,
       charts: [
-        { kind: "bars", title: `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per ${per === 10000 ? "10,000" : "1,000"} people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts },
+        { kind: "bars", title: `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per ${per === 10000 ? "10,000" : "1,000"} people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts, note: M.note },
       ],
       conclusion: [
         `Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.`,
@@ -382,7 +438,7 @@ for (const key of ["reply", "visit"]) {
       winner: metric.significant ? (metric.off.pct >= metric.on.pct ? "Tracking off" : "Tracking on") : null,
       result: armResult(metric),
       crowned: metric.significant,
-      charts: [{ kind: "bars", title: `People who ${what} (%, higher is better)`, lowerIsBetter: false, points: [arm(metric, "off"), arm(metric, "on")] }],
+      charts: [{ kind: "bars", title: `People who ${what} (%, higher is better)`, lowerIsBetter: false, points: [arm(metric, "off"), arm(metric, "on")], note: PIXEL_NOTE }],
       conclusion: [
         `An email costs the same with or without the pixel, so the cheaper ${o.noun} is the arm with more of them per person.`,
         periods,
@@ -400,8 +456,8 @@ for (const key of ["reply", "visit"]) {
       result: armResult(rateMetric),
       crowned: rateMetric.significant,
       charts: [
-        { kind: "bars", title: key === "reply" ? `People who replied, any reply (%, higher is better)` : `People who visited the website (%, higher is better)`, lowerIsBetter: false, points: [arm(rateMetric, "off"), arm(rateMetric, "on")] },
-        ...(key === "reply" ? [{ kind: "bars", title: `Bounced (%, lower is better)`, lowerIsBetter: true, points: [arm(pixel.bounced, "off"), arm(pixel.bounced, "on")] }] : []),
+        { kind: "bars", title: key === "reply" ? `People who replied, any reply (%, higher is better)` : `People who visited the website (%, higher is better)`, lowerIsBetter: false, points: [arm(rateMetric, "off"), arm(rateMetric, "on")], note: PIXEL_NOTE },
+        ...(key === "reply" ? [{ kind: "bars", title: `Bounced (%, lower is better)`, lowerIsBetter: true, points: [arm(pixel.bounced, "off"), arm(pixel.bounced, "on")], note: PIXEL_NOTE }] : []),
       ],
       conclusion: [
         key === "reply" ? `Auto-replies and out-of-office messages are not counted as replies.` : `A visit is the first tracked click a person made.`,
@@ -411,6 +467,10 @@ for (const key of ["reply", "visit"]) {
   }
 
   dimensionStudies(key, o, R, { dim: "template", dimNoun: "template", cutKey: "byTemplate", byMonthKey: "templateByMonth", label: templateLabel });
+
+  // The best workflow: one model and one template together, which is what a campaign actually
+  // runs. The same floors crown it as every other study.
+  dimensionStudies(key, o, R, { dim: "workflow", dimNoun: "workflow", cutKey: "byWorkflow", byMonthKey: "workflowByMonth", label: workflowLabel });
 }
 
 // Pilot runs on one workflow (one model, one template) since early September: every comparison
@@ -423,6 +483,12 @@ for (const [topic, question] of [
   ["cost", "What does a booked meeting cost, month by month?"],
 ]) {
   add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: topic === "cost" ? "roi" : "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
+}
+for (const [goal, question] of [
+  ["roi", "Which workflow books a meeting for the least?"],
+  ["rate", "Which workflow books the most meetings from a positive reply?"],
+]) {
+  add({ id: `pilot-workflow-${goal}`, crew: "pilot", topic: "workflow", goal, question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
 }
 
 const out = {
@@ -439,6 +505,17 @@ const out = {
     byMonth: facts.research.reply.byMonth.map((r) => ({ label: monthLabel(r.bucket), emails: r.emails })),
   },
   floors: { minEmails: facts.floors.minEmails, crown: STRICT },
+  // Measured in derive.mjs: how long after the email that earned it a reply or a click arrives.
+  maturation: {
+    days: M.days,
+    percentile: M.percentile,
+    cutoff: M.cutoff,
+    windowEnd: M.windowEnd,
+    reply: M.reply,
+    click: M.click,
+    excludedEmails: M.excludedEmails,
+    note: M.note,
+  },
   crews: [
     { id: "herald", outcome: "Positive reply", description: "Cold email that gets a prospect to answer with interest." },
     { id: "scout", outcome: "Website visit", description: "Cold email that brings a prospect to the website." },

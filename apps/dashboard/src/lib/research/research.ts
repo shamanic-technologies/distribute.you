@@ -13,7 +13,7 @@
 import data from "./research.json";
 
 export type ResearchCrew = "herald" | "scout" | "pilot";
-export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template";
+export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -34,6 +34,8 @@ export interface ResearchChart {
   points: ResearchPoint[];
   /** On a `months` chart: the average from the first month to each month, written by research.mjs. */
   cumulative?: { title: string; points: ResearchPoint[] };
+  /** The grey methodology line under the chart: which emails were too young to count. */
+  note?: string;
 }
 
 export interface ResearchStudy {
@@ -69,6 +71,20 @@ export interface ResearchFile {
     byMonth: { label: string; emails: number }[];
   };
   floors: { minEmails: number; crown: { minEmails: number; minClicks: number; minReplies: number } };
+  /**
+   * The maturation window, measured from our own send-to-outcome latencies: emails sent within
+   * `days` of the window's end (from `cutoff` on) are left out of every outcome figure.
+   */
+  maturation: {
+    days: number;
+    percentile: number;
+    cutoff: string;
+    windowEnd: string;
+    reply: { sample: number; p50: number; pAt: number };
+    click: { sample: number; p50: number; pAt: number };
+    excludedEmails: number;
+    note: string;
+  };
   crews: { id: ResearchCrew; outcome: string; description: string }[];
   studies: ResearchStudy[];
 }
@@ -92,6 +108,7 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   followups: "Follow-ups",
   opens: "Open tracking",
   template: "Template",
+  workflow: "Workflow",
 };
 
 export function studiesFor(crew: ResearchCrew): ResearchStudy[] {
