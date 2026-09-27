@@ -135,6 +135,7 @@ export function NewOrgModal({
 
   const [step, setStep] = useState<NewOrgStep>(existingOrgId ? "brand" : "org");
   const [busy, setBusy] = useState(false);
+  const [readingSite, setReadingSite] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Org
@@ -220,18 +221,22 @@ export function NewOrgModal({
   const back = () => go(previousStep(step, { offerCount: offerProposals.length }));
 
   // ── Prefill: everything readable off the brand, started the moment it exists ──
-  function startPrefill(id: string) {
-    prefillRef.current = (async () => {
-      const [fields, icp] = await Promise.all([
-        extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest", urlStrategy: "landing" }).catch((e) => {
-          console.error("[new-org] field prefill failed:", e);
-          return null;
-        }),
-        suggestBrandIcp(id).catch((e) => {
-          console.error("[new-org] ICP prefill failed:", e);
-          return null;
-        }),
-      ]);
+  /**
+   * Starts every prefill read for the brand and returns the one the NEXT screen needs
+   * (what they sell, read off the site), so the brand step can wait on it behind a
+   * loader and land on a filled field. The ICP read keeps running in the background;
+   * its screen is two steps away.
+   */
+  function startPrefill(id: string): Promise<void> {
+    const fieldsRead = extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest", urlStrategy: "landing" }).catch((e) => {
+      console.error("[new-org] field prefill failed:", e);
+      return null;
+    });
+    const icpRead = suggestBrandIcp(id).catch((e) => {
+      console.error("[new-org] ICP prefill failed:", e);
+      return null;
+    });
+    const fieldsApplied = fieldsRead.then((fields) => {
       const f = fields?.fields ?? {};
       const services = asText(f.services?.value);
       if (services && !editedRef.current.offer) setOfferText((cur) => cur || services);
@@ -242,9 +247,13 @@ export function NewOrgModal({
           return next;
         });
       }
+    });
+    const icpApplied = icpRead.then((icp) => {
       const icpText = icp?.icp ?? "";
       if (icpText && !editedRef.current.audience) setAudienceText((cur) => cur || icpText);
-    })();
+    });
+    prefillRef.current = Promise.all([fieldsApplied, icpApplied]).then(() => undefined);
+    return fieldsApplied;
   }
 
   // Leg prices and the channel floor, read once the brand exists.
@@ -321,7 +330,14 @@ export function NewOrgModal({
         const url = /^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`;
         const { brandId: id } = await upsertBrand(url);
         setBrandId(id);
-        startPrefill(id);
+        // Wait for the site read so "What you sell" opens already drafted (owner-asked:
+        // a loader here beats a field that fills in under the person's eyes).
+        setReadingSite(true);
+        try {
+          await startPrefill(id);
+        } finally {
+          setReadingSite(false);
+        }
       }
       forward();
     });
@@ -335,7 +351,7 @@ export function NewOrgModal({
       if (!id) {
         ({ brandId: id } = await createBrandWithoutWebsite(brandName.trim(), text));
         setBrandId(id);
-        startPrefill(id);
+        void startPrefill(id);
       }
       const { offers, mainOfferIndex } = await proposeBrandOffers(id, text);
       if (offers.length === 0) throw new Error("We could not read an offer in this text. Add a sentence about what a customer buys.");
@@ -568,7 +584,13 @@ export function NewOrgModal({
                   <input className="k-input w-full px-2.5" value={brandName} onChange={(e) => setBrandName(e.target.value)} autoFocus />
                 </Field>
               )}
-              {!brandId && (
+              {readingSite && (
+                <p className="k-fg2 flex items-center gap-2 text-[13px]" role="status" aria-live="polite">
+                  <span aria-hidden className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading your website to draft what you sell…
+                </p>
+              )}
+              {!brandId && !readingSite && (
                 <button type="button" className="k-btn-ghost -ml-2 h-7 text-[12px]" onClick={() => setHasWebsite((v) => !v)}>
                   {hasWebsite ? "This brand has no website" : "This brand has a website"}
                 </button>
@@ -759,7 +781,7 @@ export function NewOrgModal({
                 </button>
               )}
               <button type="button" className="k-btn-strong" disabled={busy} onClick={() => primary()}>
-                {busy ? "Working…" : primaryLabel()}
+                {readingSite ? "Reading your site…" : busy ? "Working…" : primaryLabel()}
               </button>
             </div>
           </div>
