@@ -17,6 +17,18 @@
 // TTL and warned that lowering the interval was dangerous; both were stale.
 export const POLL_INTERVAL = 5_000;
 
+/**
+ * The poll interval for one query at one moment: every 5s, EXCEPT a read that has
+ * failed and holds no data. React Query resets such a query to `pending` on every
+ * refetch, so polling it flips its surface skeleton, error, skeleton each tick: the
+ * page blinks. It stops polling and retries on the next window focus or navigation.
+ * A read that has data keeps polling whatever its last fetch did (keepPreviousData
+ * holds the last answer on screen, so a failed refetch repaints nothing).
+ */
+export function pollIntervalFor(query: { state: { status: string; data: unknown } }): number | false {
+  return query.state.status === "error" && query.state.data === undefined ? false : POLL_INTERVAL;
+}
+
 export const pollOptions = {
-  refetchInterval: POLL_INTERVAL,
+  refetchInterval: pollIntervalFor,
 } as const;
