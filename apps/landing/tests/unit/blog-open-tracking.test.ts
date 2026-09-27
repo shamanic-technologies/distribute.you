@@ -34,6 +34,19 @@ describe("the open-tracking article", () => {
     expect(meta.slug.split("-").length).toBeLessThanOrEqual(5);
   });
 
+  it("opens on a key-takeaway card reusable as a post, with served lifts", () => {
+    const first = html.indexOf("Key takeaway");
+    expect(first).toBeGreaterThan(-1);
+    expect(first).toBeLessThan(html.indexOf('id="the-bet"'));
+    expect(html.slice(first, html.indexOf('id="the-bet"'))).toContain(`${signed(facts.replied.liftPct)} replies`);
+    expect(html).toContain("background:#eff6ff;border:1px solid #bfdbfe");
+  });
+
+  it("keeps only reach signals in the table", () => {
+    const table = html.slice(html.indexOf("<table>"), html.indexOf("</table>"));
+    expect(table).not.toMatch(/Bounced|Unsubscribed|with interest/);
+  });
+
   it("carries no typed figure in the results sections", () => {
     const results = template.slice(template.indexOf('id="the-answer"'), template.indexOf('id="why"'));
     expect(results.replace(/\{\{[^}]*\}\}/g, "")).not.toMatch(/\d+(\.\d+)?%|\d+ of \d+/);
