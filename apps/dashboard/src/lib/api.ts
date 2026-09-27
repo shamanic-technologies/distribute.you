@@ -8133,6 +8133,12 @@ export async function createEmbeddedCheckoutSession(
 export type CardSetup = CardSetupSettlement &
   (
   | { object: "card_setup"; mode: "hosted_redirect"; url: string }
+  /**
+   * An in-page card save that charges nothing (stripe-service v0.53.0, relayed by
+   * billing v0.81.7), asked for with `ui_mode: "embedded"`. Mounted with Stripe's
+   * embedded checkout; completion arrives on `onComplete`, never a redirect.
+   */
+  | { object: "card_setup"; mode: "embedded_checkout"; client_secret: string }
   | {
       object: "card_setup";
       mode: "embedded_widget";
@@ -8182,6 +8188,21 @@ export interface CardSetupSettlement {
  * one who came here to replace it, so refusing them the page is the one thing
  * that makes the debt uncollectable. Collection stays with the sweeps.
  */
+/**
+ * An in-page card save, charging nothing, for the "New organization" modal's postpaid
+ * option: a redirect would lose the modal. A Stripe org answers `embedded_checkout`,
+ * a second-acquirer org its `embedded_widget`, so the caller switches on `mode`. Like
+ * every card session, billing first tries to collect an outstanding negative balance
+ * (never blocking); a brand-new org owes nothing.
+ */
+export async function createEmbeddedCardSetup(token?: string): Promise<CardSetup> {
+  return apiCall<CardSetup>("/billing/accounts/card_setup", {
+    token,
+    method: "POST",
+    body: { ui_mode: "embedded" },
+  });
+}
+
 export async function createPortalSession(
   returnUrl: string,
   token?: string
