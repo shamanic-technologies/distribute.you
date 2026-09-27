@@ -140,3 +140,14 @@ describe("the org creation bonus", () => {
     expect(route).toContain("org.createdAt");
   });
 });
+
+describe("the brand step waits for the site read", () => {
+  it("awaits the fields prefill behind a loader before opening 'What you sell'", () => {
+    const body = modal.slice(modal.indexOf("function submitBrand("), modal.indexOf("function submitOfferText("));
+    const wait = body.indexOf("await startPrefill(id)");
+    expect(wait).toBeGreaterThan(-1);
+    expect(body.indexOf("setReadingSite(true)")).toBeLessThan(wait);
+    expect(body.indexOf("forward()")).toBeGreaterThan(wait);
+    expect(modal).toContain("Reading your website to draft what you sell");
+  });
+});
