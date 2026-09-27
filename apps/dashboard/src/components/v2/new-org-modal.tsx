@@ -41,6 +41,7 @@ import {
   getBillingAccount,
   getPublicCatalogue,
   getWorkflowProjectionLadder,
+  listBrandOffers,
   prefillFeatureInputs,
   proposeAudienceSegments,
   proposeBrandOffers,
@@ -158,6 +159,11 @@ export function NewOrgModal({
   const [offerProposals, setOfferProposals] = useState<OfferProposal[]>([]);
   const [pickedOfferIndex, setPickedOfferIndex] = useState(0);
   const [offerId, setOfferId] = useState<string | null>(null);
+  // A resumed brand that already holds its offers (its setup stopped after they were
+  // confirmed): picked from as they are, never proposed again.
+  const [existingOffers, setExistingOffers] = useState<{ offerId: string; name: string }[] | null>(null);
+  // The six offer questions, one screen each.
+  const [leverIndex, setLeverIndex] = useState(0);
   // Audiences
   const [audienceText, setAudienceText] = useState("");
   const [segments, setSegments] = useState<AudienceSegmentProposal[]>([]);
@@ -227,9 +233,45 @@ export function NewOrgModal({
 
   const go = (s: NewOrgStep) => setStep(s);
   const forward = () => go(nextStep(step, { offerCount: offerProposals.length }));
-  const back = () => go(previousStep(step, { offerCount: offerProposals.length }));
+  const back = () => {
+    // The six levers walk back one question at a time before leaving the step.
+    if (step === "levers" && leverIndex > 0) return setLeverIndex((i) => i - 1);
+    // A resumed brand's existing offers: no "What you sell" screen to go back to.
+    if (existingOffers && step === "offerPick") return go("brand");
+    if (existingOffers && step === "audienceText") return go(existingOffers.length > 1 ? "offerPick" : "brand");
+    go(previousStep(step, { offerCount: offerProposals.length }));
+  };
 
   // ── Prefill: everything readable off the brand, started the moment it exists ──
+  /** The ICP draft alone (a resumed brand whose offers already exist skips the site read). */
+  function startIcpPrefill(id: string): Promise<void> {
+    return suggestBrandIcp(id)
+      .catch((e) => {
+        console.error("[new-org] ICP prefill failed:", e);
+        return null;
+      })
+      .then((icp) => {
+        const icpText = icp?.icp ?? "";
+        if (icpText && !editedRef.current.audience) setAudienceText((cur) => cur || icpText);
+      });
+  }
+
+  /** The six levers, read for ONE offer (a several-offer brand has no brand-level answer). */
+  function prefillLeversForOffer(id: string, chosenOfferId: string): Promise<void> {
+    const leverFields = USER_PROFILE_FIELDS.filter((f) => LEVER_QUESTIONS.some((q) => q.key === f.key));
+    return extractBrandFields([id], leverFields, { mode: "suggest", urlStrategy: "landing", offerId: chosenOfferId })
+      .then((fields) => {
+        const f = fields?.fields ?? {};
+        if (editedRef.current.levers) return;
+        setLevers((cur) => {
+          const next = { ...cur };
+          for (const q of LEVER_QUESTIONS) if (!next[q.key]) next[q.key] = asText(f[q.key]?.value);
+          return next;
+        });
+      })
+      .catch((e) => console.error("[new-org] offer lever prefill failed:", e));
+  }
+
   /**
    * Starts every prefill read for the brand and returns the one the NEXT screen needs
    * (what they sell, read off the site), so the brand step can wait on it behind a
@@ -348,6 +390,23 @@ export function NewOrgModal({
           ({ brandId: id } = await upsertBrand(url));
           setBrandId(id);
         }
+        // A brand that already holds its offers is not asked what it sells again: a
+        // brand-scoped site read is refused for it (one answer per offer), and its offers
+        // are already named. It picks one of them; the levers are read for that offer.
+        const { offers } = await listBrandOffers(id);
+        if (offers.length > 0) {
+          setExistingOffers(offers.map((o) => ({ offerId: o.offerId, name: o.name })));
+          void startIcpPrefill(id);
+          if (offers.length === 1) {
+            setOfferId(offers[0].offerId);
+            void prefillLeversForOffer(id, offers[0].offerId);
+            go("audienceText");
+          } else {
+            setPickedOfferIndex(0);
+            go("offerPick");
+          }
+          return;
+        }
         // Wait for the site read so "What you sell" opens already drafted (owner-asked:
         // a loader here beats a field that fills in under the person's eyes).
         setReadingSite(true);
@@ -390,6 +449,13 @@ export function NewOrgModal({
   }
 
   function submitOfferPick() {
+    if (existingOffers) {
+      const chosen = existingOffers[pickedOfferIndex]?.offerId;
+      if (!chosen) return setError("Pick an offer.");
+      setOfferId(chosen);
+      void prefillLeversForOffer(brandId!, chosen);
+      return go("audienceText");
+    }
     void run(async () => {
       const { chosenOfferId: chosen } = await confirmBrandOffers(brandId!, offerProposals, pickedOfferIndex);
       setOfferId(chosen);
@@ -665,10 +731,21 @@ export function NewOrgModal({
 
           {step === "offerPick" && (
             <div className="mt-4 space-y-1.5">
-              <p className="k-fg2 text-[13px]">We found {offerProposals.length} offers. Pick one to start with; the others stay on your brand for later.</p>
-              {offerProposals.map((o, i) => (
-                <PickRow key={i} icon={<OfferIcon token={o.icon} />} title={o.name} sub={o.description} checked={i === pickedOfferIndex} kind="radio" onClick={() => setPickedOfferIndex(i)} />
-              ))}
+              {existingOffers ? (
+                <>
+                  <p className="k-fg2 text-[13px]">This brand already has {existingOffers.length} offers. Pick one to start with.</p>
+                  {existingOffers.map((o, i) => (
+                    <PickRow key={o.offerId} title={o.name} sub="" checked={i === pickedOfferIndex} kind="radio" onClick={() => setPickedOfferIndex(i)} />
+                  ))}
+                </>
+              ) : (
+                <>
+                  <p className="k-fg2 text-[13px]">We found {offerProposals.length} offers. Pick one to start with; the others stay on your brand for later.</p>
+                  {offerProposals.map((o, i) => (
+                    <PickRow key={i} icon={<OfferIcon token={o.icon} />} title={o.name} sub={o.description} checked={i === pickedOfferIndex} kind="radio" onClick={() => setPickedOfferIndex(i)} />
+                  ))}
+                </>
+              )}
             </div>
           )}
 
@@ -713,18 +790,23 @@ export function NewOrgModal({
 
           {step === "levers" && (
             <div className="mt-4 space-y-4">
-              {LEVER_QUESTIONS.map((q) => (
-                <Field key={q.key} label={q.label} hint={q.hint}>
-                  <textarea
-                    className="k-input min-h-[64px] w-full resize-y px-2.5 py-2 leading-5"
-                    value={levers[q.key]}
-                    onChange={(e) => {
-                      editedRef.current.levers = true;
-                      setLevers((cur) => ({ ...cur, [q.key]: e.target.value }));
-                    }}
-                  />
-                </Field>
-              ))}
+              {(() => {
+                // One question per screen (owner-asked); Continue walks the six.
+                const q = LEVER_QUESTIONS[leverIndex];
+                return (
+                  <Field key={q.key} label={`${q.label} (${leverIndex + 1} of ${LEVER_QUESTIONS.length})`} hint={q.hint}>
+                    <textarea
+                      className="k-input min-h-[140px] w-full resize-y px-2.5 py-2 leading-5"
+                      value={levers[q.key]}
+                      onChange={(e) => {
+                        editedRef.current.levers = true;
+                        setLevers((cur) => ({ ...cur, [q.key]: e.target.value }));
+                      }}
+                      autoFocus
+                    />
+                  </Field>
+                );
+              })()}
             </div>
           )}
 
@@ -862,7 +944,7 @@ export function NewOrgModal({
       case "offerPick": return submitOfferPick();
       case "audienceText": return submitAudienceText();
       case "audiencePick": return submitAudiencePick();
-      case "levers": return submitLevers();
+      case "levers": return leverIndex < LEVER_QUESTIONS.length - 1 ? setLeverIndex((i) => i + 1) : submitLevers();
       case "leg": return submitLeg();
       case "budget": return submitBudget();
       case "payment": return payMode === "postpaid" ? startCardCapture() : startCheckout();
