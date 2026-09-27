@@ -133,6 +133,16 @@ FROM workflows
 WHERE feature_slug = 'sales-cold-email-outreach'
 " workflows.csv
 
+# Which LEG each campaign performs (campaign-service's leg_key). The Research page computes every
+# figure over ONE leg of ONE channel: Herald reads start_to_conversation, Scout reads
+# start_to_website_visit. A campaign stating no leg (the rows from before legs existed) belongs to
+# neither crew. The articles ignore this file: they are fleet-wide on purpose.
+run campaign_service "
+SELECT id AS platform_campaign_id, coalesce(leg_key, '') AS leg_key
+FROM campaigns
+WHERE feature_slug = 'sales-cold-email-outreach'
+" campaign-legs.csv
+
 # Reader dimensions, from the lead enrichment record.
 run lead_service "
 SELECT l.id AS lead_id, l.country, l.seniority, l.timezone,
@@ -153,6 +163,21 @@ WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
 GROUP BY 1
 " spend.csv
 
+# The same charge, per workflow version, per CAMPAIGN (so per leg) and per DAY, for the Research
+# page: it prices a (workflow version, leg) on its own spend, windowed on the same days as the
+# emails it divides (derive.mjs cuts both at the maturation cutoff).
+run runs_service "
+SELECT r.workflow_slug, r.campaign_id AS platform_campaign_id,
+       (rc.created_at AT TIME ZONE 'UTC')::date AS day,
+       sum(rc.total_cost_in_usd_cents) AS cents
+FROM runs_costs rc
+JOIN runs r ON r.id = rc.run_id
+WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
+  AND r.feature_slug = 'sales-cold-email-outreach'
+  AND rc.created_at >= '$FROM' AND rc.created_at < '$TO'
+GROUP BY 1, 2, 3
+" spend-legs.csv
+
 # The link-scanner verdict on the clicks our OWN /c/ redirect recorded. Bronze holds every
 # hit and promotes none; the sweep classifies each one and only a `human` verdict becomes the
 # silver event the articles count. So this is what the correction DEMOTED, and the articles
@@ -168,6 +193,10 @@ WHERE kind = 'click'
 " scanner-hits.csv
 
 # ---------- Research catalogue (workflow and template pages) ----------
+# Every "last runs" list is per LEG: the campaign-to-leg map lives in another database, so it
+# rides into each query as a VALUES list built from campaign-legs.csv.
+LEGS_VALUES="$(awk -F, 'NR>1 && $2!="" {printf "%s(%c%s%c,%c%s%c)", (n++?",":""), 39, $1, 39, 39, $2, 39}' "$OUT/campaign-legs.csv")"
+[ -n "$LEGS_VALUES" ] || { echo "campaign-legs.csv carries no leg" >&2; exit 1; }
 # Each is ONE JSON value (json_agg), so text carrying commas, quotes and newlines needs no CSV.
 runjson() { # runjson <database> <sql> <outfile>
   ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'bash -s' > "$OUT/$3" <<EOF
@@ -190,10 +219,11 @@ WHERE type ~ '^(cold-email|blind-discovery-email)'
 # actual cost). No org, no lead: the page states fleet-wide facts only.
 runjson runs_service "
 WITH RECURSIVE top AS (
-  SELECT id, workflow_slug, status, started_at, completed_at FROM (
-    SELECT r.id, r.workflow_slug, r.status, r.started_at, r.completed_at,
-           row_number() OVER (PARTITION BY r.workflow_slug ORDER BY r.started_at DESC) AS rn
+  SELECT id, workflow_slug, leg, status, started_at, completed_at FROM (
+    SELECT r.id, r.workflow_slug, l.leg, r.status, r.started_at, r.completed_at,
+           row_number() OVER (PARTITION BY r.workflow_slug, l.leg ORDER BY r.started_at DESC) AS rn
     FROM runs r
+    JOIN (VALUES $LEGS_VALUES) AS l(campaign_id, leg) ON l.campaign_id = r.campaign_id::text
     WHERE r.task_name = 'execute-workflow' AND r.feature_slug = 'sales-cold-email-outreach'
       AND r.workflow_slug IS NOT NULL AND r.started_at < '$TO'
   ) x WHERE rn <= 12
@@ -202,37 +232,39 @@ WITH RECURSIVE top AS (
   UNION ALL
   SELECT t.root, c.id FROM tree t JOIN runs c ON c.parent_run_id = t.id
 ), priced AS (
-  SELECT top.workflow_slug, top.status, top.started_at, top.completed_at,
+  SELECT top.workflow_slug, top.leg, top.status, top.started_at, top.completed_at,
          coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.status = 'actual'), 0) AS cents
   FROM top JOIN tree ON tree.root = top.id
   LEFT JOIN runs_costs rc ON rc.run_id = tree.id
-  GROUP BY 1, 2, 3, 4
+  GROUP BY 1, 2, 3, 4, 5
 )
-SELECT coalesce(json_agg(json_build_object('workflowSlug', workflow_slug, 'status', status,
+SELECT coalesce(json_agg(json_build_object('workflowSlug', workflow_slug, 'leg', leg, 'status', status,
   'startedAt', started_at, 'completedAt', completed_at, 'cents', round(cents, 2)) ORDER BY started_at DESC), '[]')
 FROM priced
 " workflow-runs.json
 
 # The last 12 emails every template wrote: when, with which model, under which workflow version.
 runjson content_generation_service "
-SELECT coalesce(json_agg(json_build_object('template', prompt_type, 'createdAt', created_at,
+SELECT coalesce(json_agg(json_build_object('template', prompt_type, 'leg', leg, 'createdAt', created_at,
   'model', model, 'workflowSlug', workflow_slug, 'tokensIn', tokens_input, 'tokensOut', tokens_output)
   ORDER BY created_at DESC), '[]')
 FROM (
-  SELECT g.*, row_number() OVER (PARTITION BY g.prompt_type ORDER BY g.created_at DESC) AS rn
+  SELECT g.*, l.leg, row_number() OVER (PARTITION BY g.prompt_type, l.leg ORDER BY g.created_at DESC) AS rn
   FROM email_generations g
+  JOIN (VALUES $LEGS_VALUES) AS l(campaign_id, leg) ON l.campaign_id = g.campaign_id::text
   WHERE g.feature_slug = 'sales-cold-email-outreach' AND g.prompt_type IS NOT NULL AND g.created_at < '$TO'
 ) x WHERE rn <= 12
 " template-runs.json
 
 # The last 12 emails every model wrote: when, under which template and workflow version.
 runjson content_generation_service "
-SELECT coalesce(json_agg(json_build_object('model', model, 'createdAt', created_at,
+SELECT coalesce(json_agg(json_build_object('model', model, 'leg', leg, 'createdAt', created_at,
   'template', prompt_type, 'workflowSlug', workflow_slug, 'tokensIn', tokens_input, 'tokensOut', tokens_output)
   ORDER BY created_at DESC), '[]')
 FROM (
-  SELECT g.*, row_number() OVER (PARTITION BY g.model ORDER BY g.created_at DESC) AS rn
+  SELECT g.*, l.leg, row_number() OVER (PARTITION BY g.model, l.leg ORDER BY g.created_at DESC) AS rn
   FROM email_generations g
+  JOIN (VALUES $LEGS_VALUES) AS l(campaign_id, leg) ON l.campaign_id = g.campaign_id::text
   WHERE g.feature_slug = 'sales-cold-email-outreach' AND g.model IS NOT NULL AND g.created_at < '$TO'
 ) x WHERE rn <= 12
 " model-runs.json
