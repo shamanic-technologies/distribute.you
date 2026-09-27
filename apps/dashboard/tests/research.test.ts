@@ -120,10 +120,22 @@ describe("Research is staff-only", () => {
     expect(src).toContain('<MaturityBadge level="staff" />');
   });
 
-  it("checks the same list on both pages, so a typed URL shows nothing", () => {
+  it("checks the same list on the server for both routes, so a typed URL shows nothing", () => {
+    for (const route of ["research/page.tsx", "research/[studyId]/page.tsx"]) {
+      const page = read(`app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${route}`);
+      expect(page).toContain("isAdminEmail(sessionClaims?.email)");
+      expect(page).not.toContain('"use client"');
+    }
+    expect(read("components/v2/research-page.tsx")).toContain("if (!staff) return <NotAvailable />;");
+  });
+
+  it("paints at once: no wait on Clerk, questions switch without a server round-trip, the menu entry is prefetched", () => {
     const src = read("components/v2/research-page.tsx");
-    expect(src).toContain("isAdminEmail(user?.primaryEmailAddress?.emailAddress)");
-    expect(src.match(/if \(!gate\.staff\) return <NotAvailable \/>;/g)?.length).toBe(2);
+    expect(src).not.toContain("useUser");
+    expect(src).not.toContain("<Loading");
+    expect(src).toContain("window.history.pushState(null, \"\", href)");
+    expect(src).toContain("onClickCapture={onClickCapture}");
+    expect(read("components/v2/sidebar-menus.tsx")).toContain("prefetch={l.staff ? true : undefined}");
   });
 
   it("computes nothing: no division, no sort in the page", () => {

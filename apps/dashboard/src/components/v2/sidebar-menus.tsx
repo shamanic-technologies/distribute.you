@@ -276,7 +276,7 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
           </Link>
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           {links.map((l) => (
-            <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close}>
+            <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close} prefetch={l.staff ? true : undefined}>
               <MI d={l.icon} />
               <span className="min-w-0 truncate">{l.label}</span>
               {l.staff && (
