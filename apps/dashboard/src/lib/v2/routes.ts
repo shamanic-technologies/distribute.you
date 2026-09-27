@@ -35,9 +35,20 @@ export function v2MissionHref(orgId: string, brandId: string, campaignId: string
   return `${v2Base(orgId, brandId)}/missions/${encodeURIComponent(campaignId)}`;
 }
 
-/** One workflow dynasty's page, priced for one crew (`<channel slug>|<leg key>`). */
-export function v2WorkflowHref(orgId: string, brandId: string, dynastySlug: string, crew: string): string {
-  return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?crew=${encodeURIComponent(crew)}`;
+/**
+ * One workflow dynasty's page, priced for one crew (`<channel slug>|<leg key>`) on one
+ * mission (its campaign id). The mission is what the ranking is asked through; a link
+ * naming only the crew still resolves when the brand runs one mission for that crew.
+ */
+export function v2WorkflowHref(
+  orgId: string,
+  brandId: string,
+  dynastySlug: string,
+  crew: string,
+  mission?: string | null,
+): string {
+  const m = mission ? `&mission=${encodeURIComponent(mission)}` : "";
+  return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?crew=${encodeURIComponent(crew)}${m}`;
 }
 
 /** Which section a v2 pathname is on. */

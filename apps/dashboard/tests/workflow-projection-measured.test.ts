@@ -167,6 +167,9 @@ describe("the filter runs at the ONE reader boundary", () => {
       // whose schema declares `measured` REQUIRED, so a row is never PROBED for the
       // flag — which is what this guard is actually about. Its panel and its ordering
       // module read that same declared field.
+      // Dashboard v2's workflow page, off the same ladder: it says "nothing spent yet"
+      // instead of a grain breakdown for an explore row. Reads the declared field.
+      "components/v2/workflow-page.tsx",
       "components/workflows/campaign-workflows-page.tsx",
       "components/workflows/workflow-rank-panel.tsx",
       // A FOURTH producer's field under the same name: features-service's brand
