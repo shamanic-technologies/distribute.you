@@ -140,14 +140,21 @@ describe("v2 wiring", () => {
     expect(proxy).toContain('"/v2/orgs/:id"');
   });
 
-  it("the v2 tree is GA: no allowlist gate, no beta badge anywhere", () => {
+  it("the v2 tree is GA: no allowlist gate, and a badge only on the named gated surfaces", () => {
     const layout = read("src/components/v2/v2-client-layout.tsx");
     expect(layout).not.toContain("isBetaEmail");
     expect(layout).not.toContain("This page is not available");
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
+    // The Workflows surfaces are the one beta area inside v2 (owner-asked): the sidebar
+    // entry, the mission tab, and the two pages. Everything else stays badge-free.
+    const GATED = new Set(["workflows-page.tsx", "workflow-page.tsx", "v2-shell.tsx", "setup-pages.tsx"]);
     for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
+      if (GATED.has(f)) continue;
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");
     }
+    const shell = read("src/components/v2/v2-shell.tsx");
+    expect(shell.match(/<MaturityBadge /g)?.length).toBe(1);
+    expect(shell.slice(shell.indexOf("{isBeta && ("), shell.indexOf("<MaturityBadge "))).toContain('label="Workflows"');
     // The account menu carries the one way back to v1.
     const menus = read("src/components/v2/sidebar-menus.tsx");
     expect(menus).toContain("Back to v1");

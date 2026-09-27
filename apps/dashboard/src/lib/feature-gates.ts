@@ -15,7 +15,9 @@
  */
 
 /** Maturity levels a badge can state. `alpha` is admin-only; the dashboard ships beta and GA. */
-export type Maturity = "alpha" | "beta";
+/** `staff` = gated to the staff email list (never customers), labelled so a staff
+ *  reader can tell it apart from a beta surface customers on the beta list also see. */
+export type Maturity = "alpha" | "beta" | "staff";
 
 /**
  * Brand-page features that are GA — always rendered, no gate, no badge.
@@ -32,4 +34,5 @@ export const GA_BRAND_FEATURES: ReadonlySet<string> = new Set([
 export const MATURITY_STYLES: Record<Maturity, string> = {
   alpha: "bg-amber-400 text-amber-950",
   beta: "bg-violet-500 text-white",
+  staff: "bg-teal-600 text-white",
 };

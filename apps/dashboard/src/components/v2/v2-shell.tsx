@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useMissions } from "@/components/v2/use-missions";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -121,6 +123,7 @@ const ICONS = {
   plug: "M6 2.5v3m4-3v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0zM8 11v2.5",
   settings: "M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5.2-1.1.9.6-1 1.8-1.1-.3a4.5 4.5 0 0 1-1.3.8l-.2 1.2H7.5l-.2-1.2a4.5 4.5 0 0 1-1.3-.8l-1.1.3-1-1.8.9-.6a4.5 4.5 0 0 1 0-1.8l-.9-.6 1-1.8 1.1.3c.4-.3.8-.6 1.3-.8l.2-1.2h2l.2 1.2c.5.2.9.5 1.3.8l1.1-.3 1 1.8-.9.6a4.5 4.5 0 0 1 0 1.8Z",
   card: "M2.5 4h11v8h-11zM2.5 6.5h11",
+  workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
 function V2Sidebar() {
@@ -131,6 +134,7 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { missions, crews } = useMissions(orgId, brandId);
+  const isBeta = useIsBetaUser();
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -213,6 +217,17 @@ function V2Sidebar() {
           <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
           <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
           <NavItem href={v2Href(orgId, brandId, "missions")} label="Missions" icon={<I d={ICONS.missions} />} active={section === "missions"} />
+          {/* BETA: offered to a reader on the beta list only, badge on the entry itself so
+              that reader can tell it is not general yet. The page body gates on the same list. */}
+          {isBeta && (
+            <NavItem
+              href={v2Href(orgId, brandId, "workflows")}
+              label="Workflows"
+              icon={<I d={ICONS.workflows} />}
+              active={section === "workflows"}
+              trailing={<MaturityBadge level="beta" />}
+            />
+          )}
         </div>
 
         <Group title="Mailbox">
