@@ -218,7 +218,7 @@ export function V2WorkflowPage() {
               brandDomain={brandQ.data?.brand.domain ?? null}
               brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
             />
-            <OverTime featureSlug={spec.featureSlug} dynasty={dynasty} />
+            <OverTime featureSlug={spec.featureSlug} legKey={spec.legKey} dynasty={dynasty} />
             <RunsCard orgId={orgId} brandId={brandId} dynasty={dynasty} versions={ranking.versionsByDynasty.get(dynasty) ?? []} />
           </div>
           <div className="min-w-0 space-y-4">
@@ -504,8 +504,12 @@ function AudiencesCard({
 // ─── Cost, value and return over time ──────────────────────────────────────
 
 /**
- * Three curves over time for this workflow across ALL client orgs (the fleet): cumulative
- * cost, cumulative pipeline value, and their ratio, each as features-service states it.
+ * Three curves over time for this workflow across ALL client orgs (the fleet), on THIS
+ * crew's leg only: cumulative cost, cumulative pipeline value, and their ratio, each as
+ * features-service states it. The leg narrows both spend and value to the campaigns that
+ * perform it, so a reply-led crew never shows a visit-led campaign's value (prod
+ * 2026-09-27: $1,080 of maelstrom's $1,089 came from a start_to_website_visit campaign
+ * while the page was open on start_to_conversation).
  * The fleet is the grain where a workflow has a history (on one brand it is 0 to 2 days),
  * and it is the grain the table's Global column speaks. No org is named. Nothing is
  * divided here; a day the producer states no figure for is left out of that chart.
@@ -515,18 +519,18 @@ function AudiencesCard({
  * our markup. It reveals our margin, so the switch is offered to the staff list alone and
  * the gateway refuses anyone else. The value curve is the same on both bases.
  */
-function OverTime({ featureSlug, dynasty }: { featureSlug: string; dynasty: string }) {
+function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKey: string; dynasty: string }) {
   const isStaff = useIsAdminUser();
   const [basis, setBasis] = useState<"user" | "actual">("user");
   const actual = isStaff && basis === "actual";
   const q = useAuthQuery(
-    ["fleetWorkflowReturn", featureSlug, dynasty],
-    () => getFleetWorkflowReturnHistory(featureSlug, dynasty),
+    ["fleetWorkflowReturn", featureSlug, dynasty, legKey],
+    () => getFleetWorkflowReturnHistory(featureSlug, dynasty, legKey),
     pollOptions,
   );
   const actualQ = useAuthQuery(
-    ["fleetWorkflowActualCost", featureSlug, dynasty],
-    () => getFleetWorkflowActualCostHistory(featureSlug, dynasty),
+    ["fleetWorkflowActualCost", featureSlug, dynasty, legKey],
+    () => getFleetWorkflowActualCostHistory(featureSlug, dynasty, legKey),
     { ...pollOptions, enabled: actual, retry: false },
   );
   const src = actual ? actualQ : q;
@@ -571,7 +575,7 @@ function OverTime({ featureSlug, dynasty }: { featureSlug: string; dynasty: stri
           )
         }
       >
-        Over time <span className="k-fg3 font-normal">· all clients combined</span>
+        Over time <span className="k-fg3 font-normal">· all clients on this crew</span>
       </SectionTitle>
       {unreadable && (
         <p className="k-fg3 mb-2 text-[12px]">We could not read the {actual ? "actual cost" : "billed cost"} for this workflow just now.</p>
