@@ -350,8 +350,11 @@ describe("Keel parity, second pass", () => {
   it("Today states runs off runs-service and the meeting date off the served outcome", () => {
     const today = read(V2 + "today-page.tsx");
     expect(today).toContain("useCrewRuns(brandId, missionByCampaignId)");
-    expect(today).toContain('useLatestInBucket(brandId, "meeting_booked", 3)');
+    // Meetings are read wide and ordered on their booking date, newest first.
+    expect(today).toContain('useLatestInBucket(brandId, "meeting_booked", MEETINGS_READ_LIMIT)');
     expect(today).toContain("outcomeByLeadId.get(lead.leadId)?.meetingBookedAt");
+    expect(today).toContain('.sort((a, b) => (meetingAt(b) ?? "").localeCompare(meetingAt(a) ?? ""))');
+    expect(today).toContain(".slice(0, MEETINGS_SHOWN)");
   });
 
   it("Crew runs table states how long each run took, off its own two instants", () => {
