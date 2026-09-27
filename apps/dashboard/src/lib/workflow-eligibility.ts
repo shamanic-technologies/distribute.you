@@ -52,9 +52,9 @@
 export interface RowModelEligibility {
   /** The chat-service alias, or null when the DAG names none. */
   modelAlias?: string | null;
-  /** The tier chat-service RECORDS for that alias. Null = unknowable on this request. */
-  modelTier?: "cheap" | "strong" | "frontier" | null;
-  /** FALSE ⟺ the tier is KNOWN and this leg's rule excludes it. */
+  /** Retiring (the verdict moves to a stored leg assignment); read as a plain string. */
+  modelTier?: string | null;
+  /** FALSE ⟺ this workflow must not be picked on this leg. */
   eligible: boolean;
   /** Why it is excluded, in the producer's own words. Present ⟺ `eligible` is false. */
   ineligibleReason?: string | null;

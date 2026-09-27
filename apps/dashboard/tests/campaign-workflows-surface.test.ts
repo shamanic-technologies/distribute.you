@@ -1001,11 +1001,11 @@ describe("no em dash in anything a customer reads", () => {
   });
 
   it("READS the producer's eligibility verdict rather than deriving one", () => {
-    // The tier rule is features-service's statement. A second copy here is a second
-    // thing to drift, and the alias cannot be read as a tier: `flash-pro` resolves to a
-    // Flash model and is CHEAP despite containing "pro".
+    // The verdict is features-service's statement (a stored leg assignment now, no longer
+    // a model-tier rule). A second copy here is a second thing to drift, and the retiring
+    // tier field is read as a plain string so the producer can drop it without a throw.
     expect(API).toContain("modelEligibility: z");
-    expect(API).toContain('z.enum(["cheap", "strong", "frontier"])');
+    expect(API).toContain("modelTier: z.string().nullish()");
     const lib = read("src/lib/workflow-eligibility.ts");
     expect(lib).not.toMatch(/includes\(\s*["'`]pro["'`]\s*\)/);
     expect(lib).not.toContain("website_visit");
