@@ -49,9 +49,15 @@ study is fleet-wide (all orgs). To refresh it:
 ```sh
 apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
 node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
-node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json > apps/dashboard/src/lib/research/research.json
+node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json apps/dashboard/src/lib/research > /tmp/research.json && mv /tmp/research.json apps/dashboard/src/lib/research/research.json
 pnpm --filter @distribute/dashboard test research
 ```
+
+The second argument receives two side files the workflow and template pages read
+(`research-catalog.json`: one entry per workflow and per template, per crew, with its months and
+its last runs; `research-templates.json`: the text of every listed template). extract.sh writes
+the three inputs they need beside the dumps (`templates.json`, `workflow-runs.json`,
+`template-runs.json`). Commit all three JSON files together.
 
 `derive.mjs` adds a `research` block (per LLM, per template, per step, per month, and each
 LLM's and template's own month curve); `research.mjs` turns it into one study per question,

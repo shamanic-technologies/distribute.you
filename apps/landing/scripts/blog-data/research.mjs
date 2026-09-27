@@ -4,7 +4,13 @@
 // population. Every study is fleet-wide (all orgs). The page divides nothing: every value, every
 // label and every sentence it shows is written here.
 //
-//   node research.mjs /tmp/research-data/facts.json > apps/dashboard/src/lib/research/research.json
+//   node research.mjs /tmp/research-data/facts.json apps/dashboard/src/lib/research \
+//     > apps/dashboard/src/lib/research/research.json
+//
+// The second argument is the directory that receives the two side files the workflow and
+// template pages read: research-catalog.json (one entry per workflow and per template, per crew)
+// and research-templates.json (the text of every listed template). They stay out of
+// research.json so the hub does not carry them; the page loads them right after it paints.
 //
 // Definitions (stated on the page under "How we measured"):
 //  - ROI is read as COST PER OUTCOME: every crew buys one outcome, so the cheaper outcome is the
@@ -21,10 +27,11 @@
 //    carries a `note` saying so, in the words a reader sees under it.
 //  - A WORKFLOW is named by what it runs (its model and its template, and the month it first sent
 //    when two share both), never by its codename: nobody outside the team knows the names.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { MODEL_LABEL } from "./model-label.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const factsPath = process.argv[2];
@@ -146,10 +153,11 @@ const rateSentence = (o, v) => (o.pct ? `a ${rateText(o, v)} ${o.noun} rate` : `
 const costThinStrict = (o, r) => r.emails < STRICT.minEmails || r[o.count] < o.strictOutcomes;
 // Costs: cheapest first, thin or not; a row with no outcome has no price.
 const byCost = (o) => (a, b) => a[o.cost] - b[o.cost] || b[o.count] - a[o.count];
-function costBars(o, rows, label = (b) => b, { ordinal = false } = {}) {
+function costBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } = {}) {
   const priced = rows.filter((r) => r[o.cost] !== null);
   const ordered = ordinal ? priced : [...priced].sort(byCost(o));
   return ordered.map((r) => ({
+    ...(keyed ? { key: r.bucket } : {}),
     label: label(r.bucket),
     value: r[o.cost],
     display: usd(r[o.cost]),
@@ -158,10 +166,11 @@ function costBars(o, rows, label = (b) => b, { ordinal = false } = {}) {
   }));
 }
 // Rates: a zero is a measured zero and is drawn; a bucket under the email floor is thin.
-function rateBars(o, rows, label = (b) => b, { ordinal = false } = {}) {
+function rateBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } = {}) {
   const drawn = rows.filter((r) => r.emails >= facts.floors.minEmails);
   const ordered = ordinal ? drawn : [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
   return ordered.map((r) => ({
+    ...(keyed ? { key: r.bucket } : {}),
     label: label(r.bucket),
     value: r[o.rate],
     display: rateText(o, r[o.rate]),
@@ -246,6 +255,8 @@ const add = (s) => studies.push(s);
 
 function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }) {
   const rows = R[cutKey];
+  // A workflow's or a template's bar carries its key, so the page can open that one's own page.
+  const keyed = dim === "workflow" || dim === "template";
   // ROI
   {
     const w = costWinner(o, rows);
@@ -265,7 +276,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label), note: M.note },
+        { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label, { keyed }), note: M.note },
         ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "cost", label(w.row.bucket), true)] : []),
       ],
       conclusion: [
@@ -293,7 +304,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       result: w ? { display: o.pct ? rateText(o, w.row[o.rate]) : w.row[o.rate].toFixed(1), unit: rateLabel(o), sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label), note: M.note },
+        { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label, { keyed }), note: M.note },
         ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "rate", label(w.row.bucket), false)] : []),
       ],
       conclusion: [
@@ -499,6 +510,134 @@ for (const [goal, question] of [
   add({ id: `pilot-workflow-${goal}`, crew: "pilot", topic: "workflow", goal, question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
 }
 
+// ---------- catalogue: one page per workflow and per template, per crew ----------
+// Read beside facts.json (extract.sh writes them into the same directory). Every row here is
+// fleet-wide and names no client and no lead.
+const dataDir = dirname(factsPath);
+const readJson = (f) => JSON.parse(readFileSync(join(dataDir, f), "utf8"));
+const templateTexts = new Map(readJson("templates.json").map((t) => [t.type, t.prompt]));
+const workflowRuns = readJson("workflow-runs.json");
+const templateRuns = readJson("template-runs.json");
+// A workflow VERSION to the workflow (dynasty) it belongs to, as workflow-service records it.
+const dynastyOf = new Map();
+for (const line of readFileSync(join(dataDir, "workflows.csv"), "utf8").trim().split("\n").slice(1)) {
+  const [slug, dynasty] = line.split(",");
+  dynastyOf.set(slug, dynasty || slug);
+}
+const versionText = (slug) => `v${/-v(\d+)$/.exec(slug)?.[1] ?? "1"}`;
+const pad = (x) => String(x).padStart(2, "0");
+// "Sep 26, 05:51 UTC": the page prints this as written.
+function whenText(iso) {
+  const d = new Date(iso);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+function durationText(a, b) {
+  if (!a || !b) return null;
+  const s = Math.round((Date.parse(b) - Date.parse(a)) / 1000);
+  return s < 120 ? `${s}s` : `${Math.round(s / 60)} min`;
+}
+const RUNS_SHOWN = 10;
+
+// Cheapest first (the study's own ROI order), then the unpriced ones by volume.
+function catalogOrder(o, rows) {
+  const priced = rows.filter((r) => r[o.cost] !== null).sort(byCost(o));
+  const rest = rows.filter((r) => r[o.cost] === null && r.emails >= facts.floors.minEmails).sort((a, b) => b.emails - a.emails);
+  return [...priced, ...rest];
+}
+function figures(o, r) {
+  return {
+    emails: n(r.emails),
+    emailsNoun: o.emailsNoun,
+    outcomes: n(r[o.count]),
+    spend: usd(r.spend),
+    cost: r[o.cost] === null ? null : usd(r[o.cost]),
+    rate: r.emails >= facts.floors.minEmails ? rateText(o, r[o.rate]) : null,
+    thin: costThinStrict(o, r),
+    sample: counts(o, r),
+  };
+}
+function curves(o, series, subject) {
+  const out = [];
+  if (monthLine(o, series, "cost").length) out.push(monthsChart(o, series, "cost", subject, true));
+  if (monthLine(o, series, "rate").length) out.push(monthsChart(o, series, "rate", subject, false));
+  return out;
+}
+
+const catalog = {};
+const textsListed = new Set();
+for (const key of ["reply", "visit"]) {
+  const o = OUTCOMES[key];
+  const R = facts.research[key];
+  const meta = facts.research.workflowMeta;
+  const tplRows = catalogOrder(o, R.byTemplate);
+  const tplKeys = new Set(tplRows.map((r) => r.bucket));
+  const wfRows = catalogOrder(o, R.byWorkflow);
+  const wfKeys = new Set(wfRows.map((r) => r.bucket));
+  const workflows = wfRows.map((r, i) => {
+    const m = meta[r.bucket] || {};
+    return {
+      key: r.bucket,
+      label: workflowLabel(r.bucket),
+      rank: r[o.cost] === null ? null : i + 1,
+      model: m.model || null,
+      template: m.template ? { key: m.template, label: templateLabel(m.template), linked: tplKeys.has(m.template) } : null,
+      ...figures(o, r),
+      charts: curves(o, R.workflowByMonth[r.bucket], workflowLabel(r.bucket)),
+      runs: workflowRuns
+        .filter((x) => (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) === r.bucket)
+        .slice(0, RUNS_SHOWN)
+        .map((x) => ({
+          when: whenText(x.startedAt),
+          version: versionText(x.workflowSlug),
+          status: x.status,
+          duration: durationText(x.startedAt, x.completedAt),
+          // A run whose every cost was cancelled was not charged: null, never "$0.00".
+          cost: Number(x.cents) > 0 ? usd(Number(x.cents) / 100) : null,
+        })),
+    };
+  });
+  const templates = tplRows.map((r, i) => {
+    textsListed.add(r.bucket);
+    return {
+      key: r.bucket,
+      label: templateLabel(r.bucket),
+      rank: r[o.cost] === null ? null : i + 1,
+      hasText: templateTexts.has(r.bucket),
+      ...figures(o, r),
+      charts: curves(o, R.templateByMonth[r.bucket], templateLabel(r.bucket)),
+      workflows: workflows.filter((w) => w.template?.key === r.bucket).map((w) => ({ key: w.key, label: w.label })),
+      runs: templateRuns
+        .filter((x) => x.template === r.bucket)
+        .slice(0, RUNS_SHOWN)
+        .map((x) => {
+          const dynasty = x.workflowSlug ? (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) : null;
+          return {
+            when: whenText(x.createdAt),
+            model: MODEL_LABEL[x.model] || x.model,
+            workflow: dynasty && wfKeys.has(dynasty) ? { key: dynasty, label: workflowLabel(dynasty) } : null,
+            version: x.workflowSlug ? versionText(x.workflowSlug) : null,
+            tokens: x.tokensIn == null ? null : `${n(x.tokensIn)} in · ${n(x.tokensOut ?? 0)} out`,
+          };
+        }),
+    };
+  });
+  catalog[o.crew] = { workflows, templates };
+}
+catalog.pilot = { workflows: [], templates: [] };
+
+const sideDir = process.argv[3];
+if (!sideDir) throw new Error("usage: research.mjs <facts.json> <dir for research-catalog.json + research-templates.json>");
+{
+  const texts = {};
+  for (const k of [...textsListed].sort()) if (templateTexts.has(k)) texts[k] = templateTexts.get(k);
+  writeFileSync(join(sideDir, "research-catalog.json"), `${JSON.stringify(catalog)}\n`);
+  writeFileSync(join(sideDir, "research-templates.json"), `${JSON.stringify(texts)}\n`);
+}
+// What the hub prints beside each crew: how many workflows and templates its pages list.
+const catalogCounts = Object.fromEntries(
+  Object.entries(catalog).map(([crew, c]) => [crew, { workflows: c.workflows.length, templates: c.templates.length }]),
+);
+
 const out = {
   generatedAt: facts.generatedAt,
   allOrgs: true,
@@ -530,5 +669,6 @@ const out = {
     { id: "pilot", outcome: "Meeting booked", description: "Turns a positive reply into a booked meeting." },
   ],
   studies,
+  catalogCounts,
 };
 process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);

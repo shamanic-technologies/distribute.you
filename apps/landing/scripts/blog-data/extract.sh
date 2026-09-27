@@ -167,4 +167,62 @@ WHERE kind = 'click'
   AND received_at >= '$FROM' AND received_at < '$TO'
 " scanner-hits.csv
 
+# ---------- Research catalogue (workflow and template pages) ----------
+# Each is ONE JSON value (json_agg), so text carrying commas, quotes and newlines needs no CSV.
+runjson() { # runjson <database> <sql> <outfile>
+  ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'bash -s' > "$OUT/$3" <<EOF
+docker exec -i distribute-postgres-1 psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -At <<'SQL'
+$2
+SQL
+EOF
+  echo "  $3: $(wc -c < "$OUT/$3") bytes"
+}
+
+# The text of every cold-email template, as content-generation stores it. A versioned id never
+# changes, so the text shown beside a template's figures is the one that wrote those emails.
+runjson content_generation_service "
+SELECT coalesce(json_agg(json_build_object('type', type, 'prompt', prompt) ORDER BY type), '[]')
+FROM prompts
+WHERE type ~ '^(cold-email|blind-discovery-email)'
+" templates.json
+
+# The last 12 executions of every workflow version, with what each cost (every descendant run's
+# actual cost). No org, no lead: the page states fleet-wide facts only.
+runjson runs_service "
+WITH RECURSIVE top AS (
+  SELECT id, workflow_slug, status, started_at, completed_at FROM (
+    SELECT r.id, r.workflow_slug, r.status, r.started_at, r.completed_at,
+           row_number() OVER (PARTITION BY r.workflow_slug ORDER BY r.started_at DESC) AS rn
+    FROM runs r
+    WHERE r.task_name = 'execute-workflow' AND r.feature_slug = 'sales-cold-email-outreach'
+      AND r.workflow_slug IS NOT NULL AND r.started_at < '$TO'
+  ) x WHERE rn <= 12
+), tree AS (
+  SELECT id AS root, id FROM top
+  UNION ALL
+  SELECT t.root, c.id FROM tree t JOIN runs c ON c.parent_run_id = t.id
+), priced AS (
+  SELECT top.workflow_slug, top.status, top.started_at, top.completed_at,
+         coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.status = 'actual'), 0) AS cents
+  FROM top JOIN tree ON tree.root = top.id
+  LEFT JOIN runs_costs rc ON rc.run_id = tree.id
+  GROUP BY 1, 2, 3, 4
+)
+SELECT coalesce(json_agg(json_build_object('workflowSlug', workflow_slug, 'status', status,
+  'startedAt', started_at, 'completedAt', completed_at, 'cents', round(cents, 2)) ORDER BY started_at DESC), '[]')
+FROM priced
+" workflow-runs.json
+
+# The last 12 emails every template wrote: when, with which model, under which workflow version.
+runjson content_generation_service "
+SELECT coalesce(json_agg(json_build_object('template', prompt_type, 'createdAt', created_at,
+  'model', model, 'workflowSlug', workflow_slug, 'tokensIn', tokens_input, 'tokensOut', tokens_output)
+  ORDER BY created_at DESC), '[]')
+FROM (
+  SELECT g.*, row_number() OVER (PARTITION BY g.prompt_type ORDER BY g.created_at DESC) AS rn
+  FROM email_generations g
+  WHERE g.feature_slug = 'sales-cold-email-outreach' AND g.prompt_type IS NOT NULL AND g.created_at < '$TO'
+) x WHERE rn <= 12
+" template-runs.json
+
 echo "done"

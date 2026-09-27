@@ -740,6 +740,7 @@
           "lowerIsBetter": true,
           "points": [
             {
+              "key": "cold-email-v16",
               "label": "Cold email v16",
               "value": 51.54,
               "display": "$52",
@@ -747,6 +748,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v15",
               "label": "Blind discovery v15",
               "value": 77.33,
               "display": "$77",
@@ -754,6 +756,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v27",
               "label": "Cold email v27",
               "value": 119.08,
               "display": "$119",
@@ -761,6 +764,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v5",
               "label": "Blind discovery v5",
               "value": 119.1,
               "display": "$119",
@@ -768,6 +772,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v28",
               "label": "Cold email v28",
               "value": 134.58,
               "display": "$135",
@@ -775,6 +780,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v26",
               "label": "Blind discovery v26",
               "value": 143.79,
               "display": "$144",
@@ -782,6 +788,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
               "value": 144.16,
               "display": "$144",
@@ -789,6 +796,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v33",
               "label": "Cold email v33",
               "value": 154.04,
               "display": "$154",
@@ -796,6 +804,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v17",
               "label": "Blind discovery v17",
               "value": 155.18,
               "display": "$155",
@@ -803,6 +812,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v16",
               "label": "Blind discovery v16",
               "value": 429.38,
               "display": "$429",
@@ -902,6 +912,7 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "key": "cold-email-v27",
               "label": "Cold email v27",
               "value": 10.1,
               "display": "0.10%",
@@ -909,6 +920,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v28",
               "label": "Cold email v28",
               "value": 8.3,
               "display": "0.08%",
@@ -916,6 +928,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v26",
               "label": "Blind discovery v26",
               "value": 7,
               "display": "0.07%",
@@ -923,6 +936,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v15",
               "label": "Blind discovery v15",
               "value": 6.5,
               "display": "0.07%",
@@ -930,6 +944,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v33",
               "label": "Cold email v33",
               "value": 6.2,
               "display": "0.06%",
@@ -937,6 +952,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
               "value": 6,
               "display": "0.06%",
@@ -944,6 +960,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v16",
               "label": "Cold email v16",
               "value": 5.1,
               "display": "0.05%",
@@ -951,6 +968,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v5",
               "label": "Blind discovery v5",
               "value": 4.8,
               "display": "0.05%",
@@ -958,6 +976,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v17",
               "label": "Blind discovery v17",
               "value": 3.2,
               "display": "0.03%",
@@ -965,6 +984,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v16",
               "label": "Blind discovery v16",
               "value": 1.1,
               "display": "0.01%",
@@ -972,6 +992,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v19",
               "label": "Cold email v19",
               "value": 0,
               "display": "0.00%",
@@ -979,6 +1000,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v12",
               "label": "Cold email v12",
               "value": 0,
               "display": "0.00%",
@@ -986,6 +1008,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v35",
               "label": "Cold email v35",
               "value": 0,
               "display": "0.00%",
@@ -993,6 +1016,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v31",
               "label": "Cold email v31",
               "value": 0,
               "display": "0.00%",
@@ -1000,6 +1024,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v18",
               "label": "Blind discovery v18",
               "value": 0,
               "display": "0.00%",
@@ -1007,6 +1032,7 @@
               "thin": true
             },
             {
+              "key": "cold-email",
               "label": "Cold email",
               "value": 0,
               "display": "0.00%",
@@ -1014,6 +1040,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v36",
               "label": "Cold email v36",
               "value": 0,
               "display": "0.00%",
@@ -1021,6 +1048,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v7",
               "label": "Blind discovery v7",
               "value": 0,
               "display": "0.00%",
@@ -1028,6 +1056,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v29",
               "label": "Cold email v29",
               "value": 0,
               "display": "0.00%",
@@ -1035,6 +1064,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v6",
               "label": "Blind discovery v6",
               "value": 0,
               "display": "0.00%",
@@ -1042,6 +1072,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v10",
               "label": "Blind discovery v10",
               "value": 0,
               "display": "0.00%",
@@ -1049,6 +1080,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v12",
               "label": "Blind discovery v12",
               "value": 0,
               "display": "0.00%",
@@ -1056,6 +1088,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v11",
               "label": "Blind discovery v11",
               "value": 0,
               "display": "0.00%",
@@ -1063,6 +1096,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v13",
               "label": "Blind discovery v13",
               "value": 0,
               "display": "0.00%",
@@ -1070,6 +1104,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v14",
               "label": "Blind discovery v14",
               "value": 0,
               "display": "0.00%",
@@ -1077,6 +1112,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v18",
               "label": "Cold email v18",
               "value": 0,
               "display": "0.00%",
@@ -1084,6 +1120,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v8",
               "label": "Blind discovery v8",
               "value": 0,
               "display": "0.00%",
@@ -1091,6 +1128,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v39",
               "label": "Cold email v39",
               "value": 0,
               "display": "0.00%",
@@ -1098,6 +1136,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v38",
               "label": "Cold email v38",
               "value": 0,
               "display": "0.00%",
@@ -1105,6 +1144,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v41",
               "label": "Cold email v41",
               "value": 0,
               "display": "0.00%",
@@ -1198,6 +1238,7 @@
           "lowerIsBetter": true,
           "points": [
             {
+              "key": "sales-cold-email-outreach-nobelium",
               "label": "GLM 5.2 · Blind discovery v26",
               "value": 36.06,
               "display": "$36",
@@ -1205,6 +1246,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-tectonic",
               "label": "Gemini 3.1 Pro · Cold email",
               "value": 97.84,
               "display": "$98",
@@ -1212,6 +1254,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-ballad",
               "label": "Gemini 3.1 Pro · Cold email v27",
               "value": 98.5,
               "display": "$99",
@@ -1219,6 +1262,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-arcadia",
               "label": "Gemini 3.1 Pro · Cold email v28",
               "value": 116.55,
               "display": "$117",
@@ -1226,6 +1270,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
               "value": 119.7,
               "display": "$120",
@@ -1233,6 +1278,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
               "value": 148.61,
               "display": "$149",
@@ -1240,6 +1286,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-cirque",
               "label": "Gemini 3.1 Pro · Blind discovery v17",
               "value": 155.18,
               "display": "$155",
@@ -1247,6 +1294,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-osprey",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
               "value": 235.94,
               "display": "$236",
@@ -1254,6 +1302,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-cerulean",
               "label": "DeepSeek V4 Pro · Blind discovery v26",
               "value": 249.06,
               "display": "$249",
@@ -1261,6 +1310,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v16",
               "value": 296.24,
               "display": "$296",
@@ -1268,6 +1318,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-bronze-2",
               "label": "Gemini 3.1 Pro · Blind discovery v16",
               "value": 429.38,
               "display": "$429",
@@ -1331,6 +1382,7 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "key": "sales-cold-email-outreach-nobelium",
               "label": "GLM 5.2 · Blind discovery v26",
               "value": 16.1,
               "display": "0.16%",
@@ -1338,6 +1390,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-ballad",
               "label": "Gemini 3.1 Pro · Cold email v27",
               "value": 12.6,
               "display": "0.13%",
@@ -1345,6 +1398,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-arcadia",
               "label": "Gemini 3.1 Pro · Cold email v28",
               "value": 9.8,
               "display": "0.10%",
@@ -1352,6 +1406,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
               "value": 6.7,
               "display": "0.07%",
@@ -1359,6 +1414,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
               "value": 5.8,
               "display": "0.06%",
@@ -1366,6 +1422,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-cerulean",
               "label": "DeepSeek V4 Pro · Blind discovery v26",
               "value": 4.1,
               "display": "0.04%",
@@ -1373,6 +1430,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-cirque",
               "label": "Gemini 3.1 Pro · Blind discovery v17",
               "value": 3.2,
               "display": "0.03%",
@@ -1380,6 +1438,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-tectonic",
               "label": "Gemini 3.1 Pro · Cold email",
               "value": 2.5,
               "display": "0.03%",
@@ -1387,6 +1446,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-osprey",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
               "value": 2.3,
               "display": "0.02%",
@@ -1394,6 +1454,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v16",
               "value": 2.2,
               "display": "0.02%",
@@ -1401,6 +1462,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-bronze-2",
               "label": "Gemini 3.1 Pro · Blind discovery v16",
               "value": 1.1,
               "display": "0.01%",
@@ -1408,6 +1470,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v12",
               "value": 0,
               "display": "0.00%",
@@ -1415,6 +1478,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-pelican",
               "label": "Gemini 3.5 Flash · Cold email v19",
               "value": 0,
               "display": "0.00%",
@@ -1422,6 +1486,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-legato",
               "label": "Gemini 3.1 Pro · Cold email v19",
               "value": 0,
               "display": "0.00%",
@@ -1429,6 +1494,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-alnitak",
               "label": "Gemini 3.1 Pro · Blind discovery v18",
               "value": 0,
               "display": "0.00%",
@@ -1436,6 +1502,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-dawn",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #1)",
               "value": 0,
               "display": "0.00%",
@@ -1443,6 +1510,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-trailblazer",
               "label": "Gemini 3.1 Pro · Blind discovery v7",
               "value": 0,
               "display": "0.00%",
@@ -1450,6 +1518,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-vector",
               "label": "Gemini 3.1 Pro · Cold email v12",
               "value": 0,
               "display": "0.00%",
@@ -1457,6 +1526,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-tango",
               "label": "Gemini 3.1 Pro · Blind discovery v6",
               "value": 0,
               "display": "0.00%",
@@ -1464,6 +1534,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-moraine",
               "label": "Gemini 3.1 Pro · Blind discovery v5",
               "value": 0,
               "display": "0.00%",
@@ -1471,6 +1542,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-granite",
               "label": "Gemini 3.1 Pro · Cold email v29",
               "value": 0,
               "display": "0.00%",
@@ -1478,6 +1550,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-camellia",
               "label": "Gemini 3.1 Pro · Blind discovery v10",
               "value": 0,
               "display": "0.00%",
@@ -1485,6 +1558,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-thule",
               "label": "Gemini 3.1 Pro · Blind discovery v12",
               "value": 0,
               "display": "0.00%",
@@ -1492,6 +1566,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-colchis",
               "label": "Gemini 3.1 Pro · Blind discovery v13",
               "value": 0,
               "display": "0.00%",
@@ -1499,6 +1574,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-calcite",
               "label": "Gemini 3.1 Pro · Blind discovery v11",
               "value": 0,
               "display": "0.00%",
@@ -1506,6 +1582,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-helium",
               "label": "Gemini 3.1 Pro · Blind discovery v14",
               "value": 0,
               "display": "0.00%",
@@ -1513,6 +1590,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-rudder",
               "label": "DeepSeek V4 Pro · Cold email v41",
               "value": 0,
               "display": "0.00%",
@@ -1520,6 +1598,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-eden",
               "label": "Gemini 3.1 Pro · Cold email v18",
               "value": 0,
               "display": "0.00%",
@@ -1527,6 +1606,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-allegro",
               "label": "DeepSeek V4 Pro · Cold email v39",
               "value": 0,
               "display": "0.00%",
@@ -1534,6 +1614,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-wisteria",
               "label": "Gemini 3.1 Pro · Blind discovery v8",
               "value": 0,
               "display": "0.00%",
@@ -1541,6 +1622,7 @@
               "thin": true
             },
             {
+              "key": "sales-email-cold-outreach-pharaoh",
               "label": "Model not recorded · template not recorded",
               "value": 0,
               "display": "0.00%",
@@ -1548,6 +1630,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-lyonesse",
               "label": "DeepSeek V4 Flash · Cold email v35",
               "value": 0,
               "display": "0.00%",
@@ -1555,6 +1638,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-maelstrom",
               "label": "GLM 5.3 Flash · Cold email v35",
               "value": 0,
               "display": "0.00%",
@@ -2240,6 +2324,7 @@
           "lowerIsBetter": true,
           "points": [
             {
+              "key": "cold-email-v19",
               "label": "Cold email v19",
               "value": 1.45,
               "display": "$1.45",
@@ -2247,6 +2332,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v12",
               "label": "Cold email v12",
               "value": 2.01,
               "display": "$2.01",
@@ -2254,6 +2340,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v15",
               "label": "Blind discovery v15",
               "value": 2.82,
               "display": "$2.82",
@@ -2261,6 +2348,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v35",
               "label": "Cold email v35",
               "value": 3.43,
               "display": "$3.43",
@@ -2268,6 +2356,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v26",
               "label": "Blind discovery v26",
               "value": 4.55,
               "display": "$4.55",
@@ -2275,6 +2364,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v36",
               "label": "Cold email v36",
               "value": 4.58,
               "display": "$4.58",
@@ -2282,6 +2372,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v33",
               "label": "Cold email v33",
               "value": 5.13,
               "display": "$5.13",
@@ -2289,6 +2380,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v31",
               "label": "Cold email v31",
               "value": 5.73,
               "display": "$5.73",
@@ -2296,6 +2388,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v38",
               "label": "Cold email v38",
               "value": 7.14,
               "display": "$7.14",
@@ -2303,6 +2396,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v16",
               "label": "Blind discovery v16",
               "value": 9.83,
               "display": "$9.83",
@@ -2310,6 +2404,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
               "value": 14.6,
               "display": "$15",
@@ -2317,6 +2412,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v17",
               "label": "Blind discovery v17",
               "value": 22.77,
               "display": "$23",
@@ -2324,6 +2420,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v16",
               "label": "Cold email v16",
               "value": 37.76,
               "display": "$38",
@@ -2444,6 +2541,7 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "key": "cold-email-v36",
               "label": "Cold email v36",
               "value": 26.1,
               "display": "2.61%",
@@ -2451,6 +2549,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v19",
               "label": "Cold email v19",
               "value": 24,
               "display": "2.40%",
@@ -2458,6 +2557,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v31",
               "label": "Cold email v31",
               "value": 23.3,
               "display": "2.33%",
@@ -2465,6 +2565,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v26",
               "label": "Blind discovery v26",
               "value": 22,
               "display": "2.20%",
@@ -2472,6 +2573,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v35",
               "label": "Cold email v35",
               "value": 21.7,
               "display": "2.17%",
@@ -2479,6 +2581,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v38",
               "label": "Cold email v38",
               "value": 20.4,
               "display": "2.04%",
@@ -2486,6 +2589,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v33",
               "label": "Cold email v33",
               "value": 18.8,
               "display": "1.88%",
@@ -2493,6 +2597,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v15",
               "label": "Blind discovery v15",
               "value": 17.9,
               "display": "1.79%",
@@ -2500,6 +2605,7 @@
               "thin": false
             },
             {
+              "key": "cold-email-v12",
               "label": "Cold email v12",
               "value": 15.8,
               "display": "1.58%",
@@ -2507,6 +2613,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
               "value": 5.6,
               "display": "0.56%",
@@ -2514,6 +2621,7 @@
               "thin": true
             },
             {
+              "key": "blind-discovery-email-v16",
               "label": "Blind discovery v16",
               "value": 5,
               "display": "0.50%",
@@ -2521,6 +2629,7 @@
               "thin": false
             },
             {
+              "key": "blind-discovery-email-v17",
               "label": "Blind discovery v17",
               "value": 2.2,
               "display": "0.22%",
@@ -2528,6 +2637,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v16",
               "label": "Cold email v16",
               "value": 0.7,
               "display": "0.07%",
@@ -2535,6 +2645,7 @@
               "thin": true
             },
             {
+              "key": "cold-email-v18",
               "label": "Cold email v18",
               "value": 0,
               "display": "0.00%",
@@ -2628,6 +2739,7 @@
           "lowerIsBetter": true,
           "points": [
             {
+              "key": "sales-cold-email-outreach-cerulean",
               "label": "DeepSeek V4 Pro · Blind discovery v26",
               "value": 0.77,
               "display": "$0.77",
@@ -2635,6 +2747,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-osprey",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
               "value": 1.26,
               "display": "$1.26",
@@ -2642,6 +2755,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-lyonesse",
               "label": "DeepSeek V4 Flash · Cold email v35",
               "value": 1.62,
               "display": "$1.62",
@@ -2649,6 +2763,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-pelican",
               "label": "Gemini 3.5 Flash · Cold email v19",
               "value": 2.05,
               "display": "$2.05",
@@ -2656,6 +2771,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v12",
               "value": 2.33,
               "display": "$2.33",
@@ -2663,6 +2779,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-legato",
               "label": "Gemini 3.1 Pro · Cold email v19",
               "value": 2.81,
               "display": "$2.81",
@@ -2670,6 +2787,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-dawn",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #1)",
               "value": 3.39,
               "display": "$3.39",
@@ -2677,6 +2795,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
               "value": 3.8,
               "display": "$3.80",
@@ -2684,6 +2803,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v16",
               "value": 5.68,
               "display": "$5.68",
@@ -2691,6 +2811,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-maelstrom",
               "label": "GLM 5.3 Flash · Cold email v35",
               "value": 5.71,
               "display": "$5.71",
@@ -2698,6 +2819,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-bronze-2",
               "label": "Gemini 3.1 Pro · Blind discovery v16",
               "value": 9.83,
               "display": "$9.83",
@@ -2705,6 +2827,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-vector",
               "label": "Gemini 3.1 Pro · Cold email v12",
               "value": 10.53,
               "display": "$11",
@@ -2712,6 +2835,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
               "value": 14.93,
               "display": "$15",
@@ -2719,6 +2843,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-cirque",
               "label": "Gemini 3.1 Pro · Blind discovery v17",
               "value": 22.77,
               "display": "$23",
@@ -2797,6 +2922,7 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "key": "sales-cold-email-outreach-osprey",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #2)",
               "value": 47,
               "display": "4.70%",
@@ -2804,6 +2930,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-lyonesse",
               "label": "DeepSeek V4 Flash · Cold email v35",
               "value": 41.1,
               "display": "4.11%",
@@ -2811,6 +2938,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-dawn",
               "label": "Gemini 3 Flash · Cold email v19 (from Jun, #1)",
               "value": 24.5,
               "display": "2.45%",
@@ -2818,6 +2946,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-pelican",
               "label": "Gemini 3.5 Flash · Cold email v19",
               "value": 23.8,
               "display": "2.38%",
@@ -2825,6 +2954,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
               "value": 19.9,
               "display": "1.99%",
@@ -2832,6 +2962,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v12",
               "value": 19.3,
               "display": "1.93%",
@@ -2839,6 +2970,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-legato",
               "label": "Gemini 3.1 Pro · Cold email v19",
               "value": 16.1,
               "display": "1.61%",
@@ -2846,6 +2978,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v16",
               "value": 12.3,
               "display": "1.23%",
@@ -2853,6 +2986,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-maelstrom",
               "label": "GLM 5.3 Flash · Cold email v35",
               "value": 12.2,
               "display": "1.22%",
@@ -2860,6 +2994,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-vector",
               "label": "Gemini 3.1 Pro · Cold email v12",
               "value": 11.9,
               "display": "1.19%",
@@ -2867,6 +3002,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
               "value": 5.5,
               "display": "0.55%",
@@ -2874,6 +3010,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-bronze-2",
               "label": "Gemini 3.1 Pro · Blind discovery v16",
               "value": 5,
               "display": "0.50%",
@@ -2881,6 +3018,7 @@
               "thin": false
             },
             {
+              "key": "sales-cold-email-outreach-cirque",
               "label": "Gemini 3.1 Pro · Blind discovery v17",
               "value": 2.2,
               "display": "0.22%",
@@ -2888,6 +3026,7 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-eden",
               "label": "Gemini 3.1 Pro · Cold email v18",
               "value": 0,
               "display": "0.00%",
@@ -3062,5 +3201,19 @@
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
       ]
     }
-  ]
+  ],
+  "catalogCounts": {
+    "herald": {
+      "workflows": 33,
+      "templates": 30
+    },
+    "scout": {
+      "workflows": 15,
+      "templates": 14
+    },
+    "pilot": {
+      "workflows": 0,
+      "templates": 0
+    }
+  }
 }
