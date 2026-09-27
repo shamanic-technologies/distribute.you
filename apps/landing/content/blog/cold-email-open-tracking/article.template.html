@@ -60,7 +60,7 @@
 
 <h2 id="method">Method</h2>
 
-<p>Every cold email sequence created before {{day cutoff}} that sent at least one email, read from our production database on {{day readAt}}. The cutoff leaves every sequence at least two weeks to draw its replies. A sequence counts as "with the pixel" when the first configuration stored for its campaign had open tracking on, and "without" when it was off or when we sent it ourselves (those never carry a pixel). {{n total.unplaced}} sequences had no stored configuration and are left out. Only observed events count; an open we infer from a click is not an open. The query and scripts are in <code>apps/landing/scripts/blog-data/pixel</code>.</p>
+<p>Every cold email sequence created before {{day cutoff}} that sent at least one email, read from our production database on {{day readAt}}. The cutoff leaves every sequence at least two weeks to draw its replies. A sequence counts as "with the pixel" when the first configuration stored for its campaign had open tracking on, and "without" when it was off or when we sent it ourselves (those never carry a pixel). {{n total.unplaced}} sequences had no stored configuration and are left out. Only observed events count; an open we infer from a click is not an open. The query and the scripts that compute every figure are public on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/pixel">GitHub</a>.</p>
 
 <h2 id="about-us">About distribute.you</h2>
 
