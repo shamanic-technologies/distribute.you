@@ -11,6 +11,9 @@ import { grainFigures, scopeLadderRows } from "@/lib/workflow-grains";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptions } from "@/lib/query-options";
+import { getOfferRevenueByWorkflow } from "@/lib/api";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import {
@@ -28,8 +31,13 @@ const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
  * Every workflow the brand's missions can run, beta. One section per MISSION, because
  * the ranking is the producer's per mission: it is asked with the mission's campaign id
  * (a brand selling several offers cannot be ranked without one) and read in the order
- * served. Two columns per row: Global (what it costs across every client we run it for)
- * and Brand (what it has cost this brand). A row opens the workflow's own page.
+ * served. Three columns per row: Global (what it costs across every client we run it
+ * for), Brand (what it has cost this brand) and Offer (what it has cost the mission's
+ * own offer). A row opens the workflow's own page.
+ *
+ * No "our pick" tag: the producer's #1 is scored over every (mission x audience) cell,
+ * so it can sit on a price none of these columns shows. The rank number already says
+ * which one it is, and a tag beside a figure that is not the cheapest read as wrong.
  */
 export function V2WorkflowsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
@@ -82,7 +90,7 @@ export function V2WorkflowsPage() {
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               Each mission ranks the workflows it can run, the one we would put it on next first. Global is every client we run a
-              workflow for, Brand is this brand alone.
+              workflow for, Brand is this brand alone, Offer is the mission&apos;s own offer.
             </p>
           </div>
           {isBeta && settled && specs.length > 0 && (
@@ -158,6 +166,19 @@ function MissionSection({
   const prefetch = useRoutePrefetch();
   const [expanded, setExpanded] = useState(false);
   const r = useMissionWorkflowRanking(brandId, spec, true);
+  // The OFFER grain: the producer folds the campaigns selling this mission's offer per
+  // workflow. Served as a realized cost per outcome, read verbatim. A 404 (no campaign
+  // of the brand sells the offer on this channel) leaves the column on dashes.
+  const offerId = spec.mission.offerId;
+  const offerQ = useAuthQuery(
+    ["offerWorkflowRevenue", brandId, spec.featureSlug, offerId],
+    () => getOfferRevenueByWorkflow(spec.featureSlug, brandId, offerId),
+    { ...pollOptions, retry: false },
+  );
+  const offerBySlug = useMemo(
+    () => new Map((offerQ.data ?? []).map((g) => [g.workflowDynastySlug, g])),
+    [offerQ.data],
+  );
   const bySlug = useMemo(
     () => new Map(scopeLadderRows(r.allLadderRows, null).map((row) => [row.workflow.workflowDynastySlug, row])),
     [r.allLadderRows],
@@ -199,20 +220,21 @@ function MissionSection({
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll relative overflow-x-auto">
-            <table className="w-full min-w-[640px] text-[13px]">
+            <table className="w-full min-w-[800px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className={`${TH} w-12`}>#</th>
                   <th className={TH}>Workflow</th>
                   <th className={`${TH} w-40 text-right`}>Global</th>
                   <th className={`${TH} w-40 text-right`}>Brand</th>
+                  <th className={`${TH} w-40 text-right`}>Offer</th>
                   <th className={`${TH} w-10`} aria-label="Open" />
                 </tr>
               </thead>
               <tbody>
                 {r.ranked.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <EmptyNote>This crew offers no workflow yet.</EmptyNote>
                     </td>
                   </tr>
@@ -221,6 +243,9 @@ function MissionSection({
                     const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
                     const global = grainFigures(ladder?.estimatesByGrain.crossOrg)?.costPerOutcomeUsd ?? null;
                     const brand = grainFigures(ladder?.estimatesByGrain.brand)?.costPerOutcomeUsd ?? null;
+                    const offerGroup = offerBySlug.get(w.row.workflowDynastySlug);
+                    const offerCents = offerGroup ? (r.pair === "visit" ? offerGroup.cpcCents : offerGroup.cpprCents) : null;
+                    const offer = offerCents == null ? null : offerCents / 100;
                     const href = hrefFor(w.row.workflowDynastySlug);
                     const model = workflowModelMark(w.row.contentModel);
                     const template = workflowTemplateLabel(w.row.contentPromptType);
@@ -236,12 +261,12 @@ function MissionSection({
                         <td className="max-w-0 px-3">
                           <div className="flex min-w-0 items-center gap-2">
                             <span className="min-w-0 truncate font-medium">{w.row.workflowDynastyName}</span>
-                            {w.recommended && <span className="k-chip shrink-0">Our pick</span>}
                             {stack && <span className="k-fg3 hidden min-w-0 shrink-[2] truncate text-[12px] lg:inline">{stack}</span>}
                           </div>
                         </td>
                         <CostCell value={global} unit={unit} />
                         <CostCell value={brand} unit={unit} />
+                        <CostCell value={offer} unit={unit} />
                         <td className="pl-3 pr-4 text-right">
                           <Link
                             href={href}
