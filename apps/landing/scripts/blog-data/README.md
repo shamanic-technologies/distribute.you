@@ -88,3 +88,24 @@ The design file naming the sending and receiving addresses stays on the box
 (`/root/blog-data/footer-design.json`); this repository is public and those are live
 sending addresses. The committed snapshot carries indices only, and is the record once the
 spam folders have been emptied.
+
+## The open-tracking article
+
+`content/blog/cold-email-open-tracking-pixel` is rendered from `pixel/`: one aggregate row per
+arm (pixel on, pixel off), read from instantly-service's own database. The snapshot carries
+counts only.
+
+```sh
+# 1. re-read the two arms (exclusive cutoff, 14 days before the read so replies can land)
+apps/landing/scripts/blog-data/pixel/extract-pixel.sh 2026-09-13 "$PWD/apps/landing/scripts/blog-data/pixel/pixel.snapshot.json"
+
+# 2. derive rates, lifts and two-proportion p-values
+node apps/landing/scripts/blog-data/pixel/derive-pixel.mjs apps/landing/scripts/blog-data/pixel/pixel.snapshot.json > /tmp/pixel-facts.json
+
+# 3. render
+node apps/landing/scripts/blog-data/pixel/render-pixel-article.mjs /tmp/pixel-facts.json apps/landing/content/blog
+```
+
+An arm is decided by the campaign's FIRST stored config (`open_tracking`); a sequence we sent
+ourselves (`self:`) carries no pixel and counts as off. This is an observational comparison of
+two periods, not a controlled test, and the article says so.
