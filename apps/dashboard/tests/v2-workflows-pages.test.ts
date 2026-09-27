@@ -127,3 +127,35 @@ describe("the ranking is asked per MISSION, and the pages speak v2", () => {
     expect(page).toContain('e.key === "Escape"');
   });
 });
+
+describe("v2 workflows: one reading per figure, and runs that say who they wrote to", () => {
+  const list = read("src/components/v2/workflows-page.tsx");
+  const page = read("src/components/v2/workflow-page.tsx");
+
+  it("shows no 'Our pick' tag: the producer's #1 is scored on cells no column shows", () => {
+    expect(list).not.toContain(">Our pick<");
+    expect(page).not.toContain(">Our pick<");
+  });
+
+  it("adds an Offer column read off the offer-grain grouped revenue", () => {
+    expect(list).toContain(">Offer</th>");
+    expect(list).toContain('["offerWorkflowRevenue", brandId, spec.featureSlug, offerId]');
+    expect(list).toContain("getOfferRevenueByWorkflow(");
+  });
+
+  it("states one return: no projected 'Est. return' beside the realized chart", () => {
+    expect(page).not.toContain('label="Est. return"');
+    expect(page).toContain('title="Return on spend"');
+  });
+
+  it("names each run's lead on the drawer's own key, and a run that wrote nothing does not open", () => {
+    const line = page.slice(page.indexOf("function RunLine("), page.indexOf("function durationLabel("));
+    expect(line).toContain('["runEmails", brandId, run.id]');
+    expect(line).toContain("Nobody to write to");
+    expect(line).toContain("onClick={wroteNothing ? undefined : onOpen}");
+  });
+
+  it("has a v2 loading boundary so a row click paints at once", () => {
+    expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/loading.tsx")).toContain("export default function V2BrandLoading");
+  });
+});

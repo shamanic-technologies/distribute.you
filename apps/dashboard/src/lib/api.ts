@@ -5907,6 +5907,8 @@ export interface Email {
   leadTitle: string;
   leadCompany: string;
   leadIndustry: string;
+  /** The lead's company domain, as content-generation stores it (logo mark). */
+  leadOrganizationDomain?: string | null;
   clientCompanyName: string;
   createdAt: string;
   generationRun: {

@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
+import { POLL_INTERVAL, pollOptions } from "@/lib/query-options";
 import {
   ApiError,
   editWorkflowPrompt,
@@ -25,7 +25,8 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { CrewMark } from "@/components/v2/crew-mark";
-import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { CompanyMark } from "@/components/v2/people-bits";
 import { useMissions } from "@/components/v2/use-missions";
 import { crewParam, useBrandMissionSpecs, useMissionWorkflowRanking, type MissionSpec } from "@/components/v2/workflows-data";
 import { formatCentsAsUsdAdaptive, formatUsdAdaptive } from "@/lib/format-number";
@@ -154,7 +155,6 @@ export function V2WorkflowPage() {
               <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="k-chip tabular-nums">{ranked.rank == null ? "Not ranked" : `#${ranked.rank} for this mission`}</span>
-                {ranked.recommended && <span className="k-chip">Our pick</span>}
                 {model && <span className="k-chip">{model.label}</span>}
                 {template && <span className="k-chip">{template.label}</span>}
               </div>
@@ -165,9 +165,10 @@ export function V2WorkflowPage() {
           </Link>
         </div>
 
-        <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
+        {/* No "Est. return" here: that was the ladder's PROJECTED return, and the chart
+            below states the REALIZED return under the same word. One return per page. */}
+        <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x">
           <Kpi label={`Est. cost / ${noun.toLowerCase()}`} value={fmtUsd(ranked.estCostPerOutcomeUsd)} />
-          <Kpi label="Est. return" value={formatRoi(ranked.ladder?.roiMultiple ?? null, "—")} />
           <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
           <Kpi
             label={`Cost / ${noun.toLowerCase()}, this mission`}
@@ -901,7 +902,8 @@ function RunsCard({
           <table className="w-full min-w-[620px] text-[13px]">
             <thead>
               <tr className="border-b border-[var(--line-subtle)]">
-                <th className={`${TH} w-48`}>Time</th>
+                <th className={`${TH} w-44`}>Time</th>
+                <th className={TH}>Lead</th>
                 <th className={TH}>Mission</th>
                 <th className={`${TH} w-28`}>Status</th>
                 <th className={`${TH} w-20 text-right`}>Took</th>
@@ -912,20 +914,20 @@ function RunsCard({
               {pending ? (
                 [0, 1, 2, 3].map((i) => (
                   <tr key={i} className="k-row h-10">
-                    <td colSpan={5} className="px-4">
+                    <td colSpan={6} className="px-4">
                       <Shimmer className="h-4 w-full" />
                     </td>
                   </tr>
                 ))
               ) : failed ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EmptyNote>We could not read its runs just now.</EmptyNote>
                   </td>
                 </tr>
               ) : runs.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EmptyNote>It has not run for this brand yet.</EmptyNote>
                   </td>
                 </tr>
@@ -934,7 +936,7 @@ function RunsCard({
                   const m = run.campaignId ? missionByCampaignId.get(run.campaignId) ?? null : null;
                   const cost = Number(run.ownCostInUsdCents);
                   return (
-                    <tr key={run.id} onClick={() => setOpenRun(run)} className="k-row h-10 cursor-pointer">
+                    <RunLine key={run.id} brandId={brandId} run={run} onOpen={() => setOpenRun(run)}>
                       <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{friendlyDateTime(run.startedAt)}</td>
                       <td className="max-w-0 px-3">
                         {m ? (
@@ -958,7 +960,7 @@ function RunsCard({
                       <td className="pl-3 pr-4 text-right tabular-nums">
                         {Number.isFinite(cost) && cost > 0 ? formatCentsAsUsdAdaptive(cost) : <span className="k-fg4">—</span>}
                       </td>
-                    </tr>
+                    </RunLine>
                   );
                 })
               )}
@@ -980,6 +982,67 @@ function RunsCard({
       </div>
       {openRun && <RunDrawer brandId={brandId} run={openRun} onClose={() => setOpenRun(null)} />}
     </section>
+  );
+}
+
+/**
+ * One run's row. It reads the emails that run wrote (the SAME key the drawer reads, so
+ * opening it is instant) to name who the run wrote to: the company, then the person,
+ * the way a Work card names them. A run that served nobody wrote nothing, so it says so
+ * and does not open onto an empty drawer.
+ */
+function RunLine({
+  brandId,
+  run,
+  onOpen,
+  children,
+}: {
+  brandId: string;
+  run: RunRow;
+  onOpen: () => void;
+  children: React.ReactNode[];
+}) {
+  const q = useAuthQuery(["runEmails", brandId, run.id], () => listRunEmails(brandId, run.id), {
+    // A finished run's emails never change; only a run still going is re-read.
+    refetchInterval: run.status === "running" ? POLL_INTERVAL : false,
+  });
+  const emails = q.data ?? [];
+  const pending = q.data === undefined && !q.isFetchedAfterMount;
+  const wroteNothing = q.data !== undefined && emails.length === 0 && run.status !== "running";
+  const first = emails[0] ?? null;
+  const person = first ? [first.leadFirstName, first.leadLastName].filter(Boolean).join(" ") : "";
+  const company = first?.leadCompany || null;
+  const [time, ...rest] = children;
+  return (
+    <tr
+      onClick={wroteNothing ? undefined : onOpen}
+      className={`k-row h-10 ${wroteNothing ? "" : "cursor-pointer"}`}
+    >
+      {time}
+      <td className="max-w-0 px-3">
+        {pending ? (
+          <Shimmer className="h-4 w-32" />
+        ) : first ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            {company ? (
+              <CompanyMark name={company} domain={first.leadOrganizationDomain ?? null} size={16} />
+            ) : (
+              <Initials name={person || "?"} size={16} round />
+            )}
+            <span className="truncate">
+              <span className="font-medium">{company ?? (person || "A lead")}</span>
+              {company && person && <span className="k-fg2"> · {person}</span>}
+              {emails.length > 1 && <span className="k-fg3"> +{emails.length - 1}</span>}
+            </span>
+          </span>
+        ) : wroteNothing ? (
+          <span className="k-fg3">Nobody to write to</span>
+        ) : (
+          <span className="k-fg4">—</span>
+        )}
+      </td>
+      {rest}
+    </tr>
   );
 }
 
