@@ -10,8 +10,9 @@
 //  - ROI is read as COST PER OUTCOME: every crew buys one outcome, so the cheaper outcome is the
 //    better return. Herald's outcome is a positive reply, Scout's a website visit (priced on the
 //    emails that carried a link, since a visit cannot come from an email without one).
-//  - A RATE is outcomes per 10,000 emails (Herald) or per 1,000 link-carrying emails (Scout).
-//  - The WINNER is always the first bar: the cheapest price, or the highest rate. Owner rule
+//  - A RATE is a PERCENT of emails for positive replies (Herald, two decimals: 0.18%), or website
+//    visits per 1,000 link-carrying emails (Scout). Owner rule (2026-09-27): never "N per 10,000".
+//  - The WINNER is always the top bar: the cheapest price, or the highest rate. Owner rule
 //    (2026-09-27): a thin bar is ranked where its value puts it, never sunk below the rest, and if
 //    it comes first it wins. `crowned` only says whether the winner also clears the strict floors
 //    the articles use for their best workflow; when it does not, the page says its counts are thin.
@@ -113,6 +114,7 @@ const OUTCOMES = {
     rateUnit: "per 10,000 emails",
     rateShort: "/10k",
     per: 10000,
+    pct: true,
     strictOutcomes: STRICT.minReplies,
     emailsNoun: "emails",
   },
@@ -133,7 +135,10 @@ const OUTCOMES = {
 };
 
 const counts = (o, row) => `${n(row[o.count])} ${row[o.count] === 1 ? o.noun : o.nounPlural} · ${n(row.emails)} ${o.emailsNoun}`;
-const rateText = (o, v) => `${v.toFixed(1)} ${o.rateShort}`;
+// Positive replies read as a percent of emails (v is per 10,000, so /100), two decimals.
+const rateText = (o, v) => (o.pct ? `${(v / 100).toFixed(2)}%` : `${v.toFixed(1)} ${o.rateShort}`);
+const rateLabel = (o) => (o.pct ? `${o.noun} rate` : `${o.nounPlural} ${o.rateUnit}`);
+const rateSentence = (o, v) => (o.pct ? `a ${rateText(o, v)} ${o.noun} rate` : `${v.toFixed(1)} ${o.nounPlural} ${o.rateUnit}`);
 
 // A bar is THIN below the strict floors: drawn at its rank, marked, and weighed with its counts.
 const costThinStrict = (o, r) => r.emails < STRICT.minEmails || r[o.count] < o.strictOutcomes;
@@ -213,7 +218,7 @@ function sinceInception(o, series, kind) {
 }
 // One monthly chart: the month on its own as bars, the average since inception beside it.
 function monthsChart(o, series, kind, subject, lowerIsBetter) {
-  const what = kind === "cost" ? `cost per ${o.noun}` : `${o.nounPlural} ${o.rateUnit}`;
+  const what = kind === "cost" ? `cost per ${o.noun}` : rateLabel(o);
   return {
     kind: "months",
     title: `${subject}: ${what} by month`,
@@ -224,7 +229,7 @@ function monthsChart(o, series, kind, subject, lowerIsBetter) {
   };
 }
 const costTitle = (o) => `Cost per ${o.noun} (USD, lower is better)`;
-const rateTitle = (o) => `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} ${o.rateUnit} (higher is better)`;
+const rateTitle = (o) => (o.pct ? `${o.noun.charAt(0).toUpperCase()}${o.noun.slice(1)} rate, % of emails (higher is better)` : `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} ${o.rateUnit} (higher is better)`);
 
 // A sentence on how the winner's curve moved, from its first to its last drawn month.
 function movement(points) {
@@ -281,9 +286,9 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       status: w ? "measured" : "not_enough_data",
       headline: !w
         ? `No ${dimNoun} has earned a ${o.noun} yet.`
-        : `${label(w.row.bucket)} wins with ${w.row[o.rate].toFixed(1)} ${o.nounPlural} ${o.rateUnit}.`,
+        : `${label(w.row.bucket)} wins with ${rateSentence(o, w.row[o.rate])}.`,
       winner: w ? label(w.row.bucket) : null,
-      result: w ? { display: w.row[o.rate].toFixed(1), unit: `${o.nounPlural} ${o.rateUnit}`, sample: counts(o, w.row) } : null,
+      result: w ? { display: o.pct ? rateText(o, w.row[o.rate]) : w.row[o.rate].toFixed(1), unit: rateLabel(o), sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
         { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label), note: M.note },
@@ -304,30 +309,32 @@ for (const key of ["reply", "visit"]) {
 
   dimensionStudies(key, o, R, { dim: "llm", dimNoun: "LLM", cutKey: "byModel", byMonthKey: "modelByMonth", label: (b) => b });
 
-  // cost over time: every email of the crew by month, then the cheapest LLM's own curve
+  // cost: the AVERAGE since inception (everything spent over every outcome, all months pooled),
+  // never the last month on its own. The monthly bars stay beside it as context.
   {
-    const fleet = monthLine(o, R.byMonth.map((r) => r), "cost");
+    const avg = sinceInception(o, R.byMonth, "cost");
     const w = costWinner(o, R.byModel);
-    const wl = w ? monthLine(o, R.modelByMonth[w.row.bucket], "cost") : [];
-    const moved = movement(fleet);
+    const wavg = w ? sinceInception(o, R.modelByMonth[w.row.bucket], "cost") : [];
+    const all = avg.length ? avg[avg.length - 1] : null;
+    const best = wavg.length ? wavg[wavg.length - 1] : null;
     add({
       id: `${o.crew}-cost-over-time`,
       crew: o.crew,
       topic: "cost",
       goal: "roi",
-      question: `What does a ${o.noun} cost, month by month?`,
-      status: fleet.length ? "measured" : "not_enough_data",
-      headline: moved ? `${moved.charAt(0).toUpperCase()}${moved.slice(1)} across all our emails.` : `Not enough ${o.nounPlural} to draw a curve yet.`,
+      question: `What does a ${o.noun} cost on average?`,
+      status: all ? "measured" : "not_enough_data",
+      headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails.` : `Not enough ${o.nounPlural} to state an average yet.`,
       winner: w ? w.row.bucket : null,
-      result: fleet.length ? { display: fleet[fleet.length - 1].display, unit: `per ${o.noun} in ${fleet[fleet.length - 1].label}`, sample: fleet[fleet.length - 1].note } : null,
+      result: all ? { display: all.display, unit: `per ${o.noun}, average since inception`, sample: all.note } : null,
       crowned: w ? w.crowned : false,
       charts: [
         monthsChart(o, R.byMonth, "cost", "All our emails", true),
-        ...(wl.length ? [monthsChart(o, R.modelByMonth[w.row.bucket], "cost", `${w.row.bucket} (cheapest LLM)`, true)] : []),
+        ...(wavg.length ? [monthsChart(o, R.modelByMonth[w.row.bucket], "cost", `${w.row.bucket} (cheapest LLM)`, true)] : []),
       ],
       conclusion: [
-        `The first curve mixes every workflow we ran that month; the second follows only the cheapest LLM.`,
-        wl.length >= 2 ? `${w.row.bucket}: ${movement(wl)}.` : null,
+        `The average divides everything spent since the first email by every ${o.noun} since; the monthly bars are context, not the answer.`,
+        best ? `${w.row.bucket} (cheapest LLM): ${best.display} per ${o.noun} on average since inception.` : null,
       ].filter(Boolean),
     });
   }
@@ -389,17 +396,17 @@ for (const key of ["reply", "visit"]) {
       question: `How many follow-ups get the most ${o.nounPlural}?`,
       status: ratePts.length ? "measured" : "not_enough_data",
       headline: lastUseful
-        ? `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} keep coming through ${lastUseful.label.replace("+ ", "")}: the last one adds ${lastUseful.gain} per ${per === 10000 ? "10,000" : "1,000"} people.`
+        ? `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} keep coming through ${lastUseful.label.replace("+ ", "")}: the last one adds ${o.pct ? `${(lastUseful.gain / 100).toFixed(2)} points` : `${lastUseful.gain} per 1,000 people`}.`
         : ratePts.length ? `Follow-ups add no ${o.nounPlural} past the first email.` : `No sequences yet.`,
       winner: lastUseful ? lastUseful.label : ratePts[0]?.label ?? null,
-      result: ratePts.length ? { display: ratePts[ratePts.length - 1].value.toFixed(1), unit: `${o.nounPlural} per ${per === 10000 ? "10,000" : "1,000"} people, all follow-ups`, sample: ratePts[ratePts.length - 1].note } : null,
+      result: ratePts.length ? { display: o.pct ? ratePts[ratePts.length - 1].display : ratePts[ratePts.length - 1].value.toFixed(1), unit: o.pct ? `of people got a ${o.noun}, all follow-ups` : `${o.nounPlural} per 1,000 people, all follow-ups`, sample: ratePts[ratePts.length - 1].note } : null,
       crowned: people >= STRICT.minEmails,
       charts: [
-        { kind: "bars", title: `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per ${per === 10000 ? "10,000" : "1,000"} people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts, note: M.note },
+        { kind: "bars", title: o.pct ? `${o.noun.charAt(0).toUpperCase()}${o.noun.slice(1)} rate, % of people, adding each follow-up (higher is better)` : `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per 1,000 people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts, note: M.note },
       ],
       conclusion: [
         `Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.`,
-        ...gains.map((g) => `${g.label}: ${g.gain >= 0 ? "+" : ""}${g.gain} ${o.rateShort}.`),
+        ...gains.map((g) => `${g.label}: ${g.gain >= 0 ? "+" : ""}${o.pct ? `${(g.gain / 100).toFixed(2)} points` : `${g.gain} ${o.rateShort}`}.`),
       ],
     });
   }
@@ -479,7 +486,7 @@ for (const [topic, question] of [
   ["llm", "Which LLM books the most meetings from a positive reply?"],
   ["template", "Which template books the most meetings from a positive reply?"],
   ["followups", "How many follow-ups after a positive reply book the most meetings?"],
-  ["cost", "What does a booked meeting cost, month by month?"],
+  ["cost", "What does a booked meeting cost on average?"],
 ]) {
   add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: topic === "cost" ? "roi" : "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
 }
