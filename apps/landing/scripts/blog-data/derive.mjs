@@ -13,6 +13,11 @@
 //  - SPEND is what the client is charged, per workflow, before per-account discounts; each
 //    email carries its own workflow's cost per email, so a bucket's spend is the sum over it
 //  - a bucket is PRICED only past the floors below
+//
+// The RESEARCH block (dashboard v2) is scoped tighter than the articles: every figure is computed
+// over ONE leg of the channel (campaign-service's leg_key), and a (workflow version, leg) is priced
+// on its OWN spend, windowed on the same days as the emails it divides. The articles stay
+// fleet-wide on purpose; nothing below the research section touches their figures.
 import { openSync, readSync, closeSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } from "./maturation.mjs";
@@ -144,6 +149,12 @@ function dynastyOfVersion(slug) {
   return d;
 }
 const scannerRows = load("scanner-hits.csv");
+// platform campaign -> the leg it performs; "" (a campaign from before legs existed) is no leg
+const legOf = new Map(load("campaign-legs.csv").map((c) => [c.platform_campaign_id, c.leg_key || null]));
+const spendLegRows = load("spend-legs.csv");
+// The two legs the Research crews buy, one each.
+const HERALD_LEG = "start_to_conversation";
+const SCOUT_LEG = "start_to_website_visit";
 
 const stepByKey = new Map();
 eachRow("sequence-steps.csv", (r) => {
@@ -238,9 +249,15 @@ function localHour(sentAt, tz) {
 }
 
 const facts = [];
+// One row per email whose campaign states a leg, for the research block. It carries no cost yet:
+// the research prices each (workflow version, leg) on its own spend, once the maturation cutoff
+// is known.
+const researchRows = [];
+let researchNoDynasty = 0;
 for (const e of emails) {
   const cpe = costPerEmail.get(e.workflow_slug);
-  if (cpe === undefined) continue; // a workflow with no tracked spend cannot be priced
+  const leg = legOf.get(e.platform_campaign_id) ?? null;
+  if (cpe === undefined && !leg) continue; // a workflow with no tracked spend cannot be priced
   const person = e.lead_id ? `${e.platform_campaign_id}|${e.lead_id}` : null;
   const gen = person ? genByKey.get(person) : null;
   const stepNo = Number(e.step) || 1;
@@ -253,15 +270,15 @@ for (const e of emails) {
   const sentAt = e.sent_at;
   const d = new Date(`${sentAt.replace(" ", "T")}Z`);
   const model = gen?.model || null;
-  facts.push({
+  const row = {
     workflow: e.workflow_slug,
-    dynasty: dynastyOfVersion(e.workflow_slug),
+    dynasty: cpe !== undefined ? dynastyOfVersion(e.workflow_slug) : dynastyOf.get(e.workflow_slug) ?? null,
+    leg,
     orgId: e.org_id,
     person: `${e.instantly_campaign_id}|${e.lead_email}`,
     leadEmail: e.lead_email,
     stepNo: Number(e.step),
     transport: e.send_transport,
-    cost: cpe,
     hasLink: shape.hasLink,
     chars: shape.chars,
     paragraphs: shape.paragraphs,
@@ -290,13 +307,18 @@ for (const e of emails) {
     replied: false,
     _replyAt: reply?.replied_at || null,
     _sentAt: sentAt,
-  });
+  };
+  if (cpe !== undefined) facts.push({ ...row, cost: cpe });
+  if (leg) {
+    if (row.dynasty) researchRows.push({ ...row, platformCampaign: e.platform_campaign_id });
+    else researchNoDynasty++;
+  }
 }
 
 // attribute each positive reply to the last email sent at or before it
-{
+function attributeReplies(rows) {
   const byPerson = new Map();
-  for (const f of facts) {
+  for (const f of rows) {
     if (!f._replyAt) continue;
     if (f._sentAt > f._replyAt) continue;
     const cur = byPerson.get(f.person);
@@ -304,6 +326,8 @@ for (const e of emails) {
   }
   for (const f of byPerson.values()) f.replied = true;
 }
+attributeReplies(facts);
+attributeReplies(researchRows);
 
 // ---------- maturation ----------
 // Measured from the outcomes themselves: how long after the email that earned it a click or a
@@ -576,11 +600,82 @@ function workflowMeta(rows) {
   for (const [wf, rs] of by) meta[wf] = { model: topN(rs, 1, modelLabel)[0] || null, template: topN(rs, 1, (r) => r.template)[0] || null };
   return meta;
 }
+// The research population: mature emails of ONE leg each, priced on their own leg's spend.
+// Cost per email = what a (workflow version, leg) was charged before the maturation cutoff,
+// over the mature emails it sent in the same window, so the numerator and the denominator
+// cover the same days and the same population the figures use.
+const research = (() => {
+  const all = researchRows.length;
+  const mature = researchRows.filter((r) => isMature(r._sentAt, maturation.cutoff));
+  const spendByVersionLeg = new Map();
+  let spendNoLeg = 0;
+  for (const s of spendLegRows) {
+    if (s.day >= maturation.cutoff) continue;
+    const leg = legOf.get(s.platform_campaign_id) ?? null;
+    const cents = Number(s.cents);
+    if (!leg) { spendNoLeg += cents; continue; }
+    const k = `${s.workflow_slug}|${leg}`;
+    spendByVersionLeg.set(k, (spendByVersionLeg.get(k) || 0) + cents / 100);
+  }
+  const emailsByVersionLeg = new Map();
+  for (const r of mature) {
+    const k = `${r.workflow}|${r.leg}`;
+    emailsByVersionLeg.set(k, (emailsByVersionLeg.get(k) || 0) + 1);
+  }
+  const priced = [];
+  let noSpend = 0;
+  for (const r of mature) {
+    const k = `${r.workflow}|${r.leg}`;
+    const spend = spendByVersionLeg.get(k);
+    if (spend === undefined) { noSpend++; continue; }
+    r.cost = spend / emailsByVersionLeg.get(k);
+    delete r._replyAt; delete r._sentAt; delete r._clickAt;
+    priced.push(r);
+  }
+  const herald = priced.filter((r) => r.leg === HERALD_LEG);
+  const scoutAll = priced.filter((r) => r.leg === SCOUT_LEG);
+  const scout = scoutAll.filter((r) => r.hasLink);
+  const union = [...herald, ...scoutAll];
+  // what the leg scope moved out of each crew, measured on the article's (fleet-wide) population
+  const scope = {
+    herald: {
+      before: facts.length,
+      otherLeg: facts.filter((f) => f.leg && f.leg !== HERALD_LEG).length,
+      noLeg: facts.filter((f) => !f.leg).length,
+      after: herald.length,
+    },
+    scout: {
+      before: linked.length,
+      otherLeg: linked.filter((f) => f.leg && f.leg !== SCOUT_LEG).length,
+      noLeg: linked.filter((f) => !f.leg).length,
+      after: scout.length,
+    },
+    immature: all - mature.length,
+    droppedForNoSpend: noSpend,
+    droppedForNoDynasty: researchNoDynasty,
+    spendOnNoLeg: round(spendNoLeg / 100, 2),
+  };
+  return { herald, scout, union, scope, immature: all - mature.length };
+})();
+const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
+const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
 out.research = {
-  window: { from: facts.reduce((m, f) => (!m || f.month < m ? f.month : m), null), to: facts.reduce((m, f) => (!m || f.month > m ? f.month : m), null) },
-  reply: researchFor(facts),
-  visit: researchFor(linked),
-  workflowMeta: workflowMeta(facts),
+  window: { from: minMonth(research.union), to: maxMonth(research.union) },
+  // Herald buys a positive reply on the start_to_conversation leg; Scout a website visit on the
+  // start_to_website_visit leg, priced on the emails that carried a link.
+  reply: researchFor(research.herald),
+  visit: researchFor(research.scout),
+  // what each workflow runs, per crew: a dynasty can run a different model on each leg
+  workflowMeta: { reply: workflowMeta(research.herald), visit: workflowMeta(research.scout) },
+  volume: {
+    emails: research.union.length,
+    orgs: new Set(research.union.map((f) => f.orgId)).size,
+    workflows: new Set(research.union.map((f) => f.workflow)).size,
+    linkedEmails: research.scout.length,
+    byMonth: cut(research.union, (r) => r.month, monthsOf(research.union)).map((r) => ({ bucket: r.bucket, emails: r.emails })),
+  },
+  excludedEmails: research.immature,
+  scope: research.scope,
 };
 
 process.stdout.write(JSON.stringify(out, null, 2));

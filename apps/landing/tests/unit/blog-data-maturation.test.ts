@@ -71,8 +71,15 @@ describe("no outcome maths includes an email younger than the window at the wind
     const src = readFileSync(join(__dirname, "../../scripts/blog-data/derive.mjs"), "utf8");
     const filter = src.indexOf("if (!isMature(facts[i]._sentAt, maturation.cutoff)) facts.splice(i, 1);");
     expect(filter).toBeGreaterThan(0);
-    for (const consumer of ["function cutsFor(", "const linked = facts.filter", "workflows: bestWorkflows(facts)", "reply: researchFor(facts)"]) {
+    for (const consumer of ["function cutsFor(", "const linked = facts.filter", "workflows: bestWorkflows(facts)"]) {
       expect(src.indexOf(consumer), consumer).toBeGreaterThan(filter);
+    }
+    // the research block keeps its own rows (one leg each) and filters them the same way, before
+    // any cost per email is computed and before any study is cut
+    const researchFilter = src.indexOf("const mature = researchRows.filter((r) => isMature(r._sentAt, maturation.cutoff));");
+    expect(researchFilter).toBeGreaterThan(0);
+    for (const consumer of ["r.cost = spend / emailsByVersionLeg.get(k);", "reply: researchFor(research.herald)", "visit: researchFor(research.scout)"]) {
+      expect(src.indexOf(consumer), consumer).toBeGreaterThan(researchFilter);
     }
     // an outcome after the window's end was not observed in it
     expect(src).toContain("if (r.replied_at && toMs(r.replied_at) >= windowEndMs) continue;");
@@ -86,6 +93,28 @@ describe("the Research page compares workflow dynasties, never single versions",
     expect(src).toContain("workflowByMonth: byMonthPer(rows, (r) => r.dynasty),");
     expect(src).toContain("is not in workflows.csv: re-run extract.sh");
     expect(readFileSync(join(__dirname, "../../scripts/blog-data/extract.sh"), "utf8")).toContain("SELECT workflow_slug, workflow_dynasty_slug");
+  });
+});
+
+describe("the Research page computes every figure over ONE leg of ONE channel", () => {
+  const src = readFileSync(join(__dirname, "../../scripts/blog-data/derive.mjs"), "utf8");
+  it("Herald reads the start_to_conversation leg only, Scout the start_to_website_visit leg's link-carrying emails", () => {
+    expect(src).toContain('const HERALD_LEG = "start_to_conversation";');
+    expect(src).toContain('const SCOUT_LEG = "start_to_website_visit";');
+    expect(src).toContain("const herald = priced.filter((r) => r.leg === HERALD_LEG);");
+    expect(src).toContain("const scout = scoutAll.filter((r) => r.hasLink);");
+    // the fleet-wide populations the articles use never feed a study
+    expect(src).not.toContain("reply: researchFor(facts)");
+    expect(src).not.toContain("visit: researchFor(linked)");
+  });
+  it("prices a (workflow version, leg) on its own spend, cut at the same day as the emails it divides", () => {
+    expect(src).toContain("if (s.day >= maturation.cutoff) continue;");
+    expect(src).toContain("const k = `${s.workflow_slug}|${leg}`;");
+    const extract = readFileSync(join(__dirname, "../../scripts/blog-data/extract.sh"), "utf8");
+    expect(extract).toContain("campaign-legs.csv");
+    expect(extract).toContain("spend-legs.csv");
+    // every "last runs" list is per leg
+    expect((extract.match(/JOIN \(VALUES \$LEGS_VALUES\)/g) || []).length).toBe(3);
   });
 });
 

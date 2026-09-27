@@ -44,7 +44,13 @@ coherence and the editorial rules for both pages.
 The Research page in dashboard v2 (`/v2/.../research`) reads
 `apps/dashboard/src/lib/research/research.json`, written from the SAME fact table as the
 articles, so a study and an article cannot state two figures for one population. Every
-study is fleet-wide (all orgs). To refresh it:
+study is fleet-wide (all orgs) but scoped to ONE leg of the channel (campaign-service
+`leg_key`, via `campaign-legs.csv`): Herald reads `start_to_conversation` emails only, Scout
+the link-carrying `start_to_website_visit` emails only, and a campaign stating no leg belongs
+to neither. Each (workflow version, leg) is priced on its own spend (`spend-legs.csv`, per
+campaign and per day), cut at the maturation cutoff like the emails it divides. Labels and the
+catalogue's last-runs lists are per crew too. The articles keep the fleet-wide, all-legs
+population on purpose: the leg scope lives only in the `research` block. To refresh it:
 
 ```sh
 apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data

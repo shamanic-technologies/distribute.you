@@ -64,17 +64,17 @@ function templateLabel(id) {
   return `${words}${m[2] ? ` v${m[2]}` : ""}${m[3] ? " (landing)" : ""}`;
 }
 
-// A workflow reads as what it runs. Two workflows can run the same model and template (a new
-// version of the workflow keeps both), so the month it first sent tells them apart, and a number
-// only when that is shared too. Built once over every workflow, so a label is the same in both crews.
-const WORKFLOW_LABEL = (() => {
-  const meta = facts.research.workflowMeta;
+// A workflow reads as what it runs ON THIS CREW'S LEG: every research figure is one leg of one
+// channel, so a workflow's model and template are the ones that wrote its emails on that leg. Two
+// workflows can run the same model and template (a new version of the workflow keeps both), so
+// the month it first sent tells them apart, and a number only when that is shared too.
+function buildWorkflowLabels(key) {
+  const meta = facts.research.workflowMeta[key];
+  if (!meta) throw new Error(`facts.json carries no ${key} workflowMeta: re-run derive.mjs`);
   const firstMonth = {};
-  for (const key of ["reply", "visit"]) {
-    for (const [wf, rows] of Object.entries(facts.research[key].workflowByMonth)) {
-      const m = rows[0]?.bucket;
-      if (m && (!firstMonth[wf] || m < firstMonth[wf])) firstMonth[wf] = m;
-    }
+  for (const [wf, rows] of Object.entries(facts.research[key].workflowByMonth)) {
+    const m = rows[0]?.bucket;
+    if (m && (!firstMonth[wf] || m < firstMonth[wf])) firstMonth[wf] = m;
   }
   const base = (wf) => {
     const x = meta[wf] || {};
@@ -101,9 +101,10 @@ const WORKFLOW_LABEL = (() => {
     }
   }
   return out;
-})();
-const workflowLabel = (wf) => {
-  const l = WORKFLOW_LABEL[wf];
+}
+const WORKFLOW_LABEL = { reply: buildWorkflowLabels("reply"), visit: buildWorkflowLabels("visit") };
+const workflowLabelFor = (key) => (wf) => {
+  const l = WORKFLOW_LABEL[key][wf];
   if (!l) throw new Error(`no label for a workflow in the research block`);
   return l;
 };
@@ -118,6 +119,7 @@ const keyOf = (bucket) => (MODEL_LABELS.has(bucket) ? modelKey(bucket) : bucket)
 const OUTCOMES = {
   reply: {
     crew: "herald",
+    leg: "start_to_conversation",
     noun: "positive reply",
     nounPlural: "positive replies",
     count: "replies",
@@ -133,6 +135,7 @@ const OUTCOMES = {
   },
   visit: {
     crew: "scout",
+    leg: "start_to_website_visit",
     noun: "website visit",
     nounPlural: "website visits",
     count: "clicks",
@@ -496,7 +499,7 @@ for (const key of ["reply", "visit"]) {
 
   // The best workflow: one model and one template together, which is what a campaign actually
   // runs. The same floors crown it as every other study.
-  dimensionStudies(key, o, R, { dim: "workflow", dimNoun: "workflow", cutKey: "byWorkflow", byMonthKey: "workflowByMonth", label: workflowLabel });
+  dimensionStudies(key, o, R, { dim: "workflow", dimNoun: "workflow", cutKey: "byWorkflow", byMonthKey: "workflowByMonth", label: workflowLabelFor(key) });
 }
 
 // Pilot runs on one workflow (one model, one template) since early September: every comparison
@@ -579,7 +582,10 @@ const textsListed = new Set();
 for (const key of ["reply", "visit"]) {
   const o = OUTCOMES[key];
   const R = facts.research[key];
-  const meta = facts.research.workflowMeta;
+  const meta = facts.research.workflowMeta[key];
+  const workflowLabel = workflowLabelFor(key);
+  // the leg this crew buys: its "last runs" lists read that leg's runs only
+  const leg = OUTCOMES[key].leg;
   const tplRows = catalogOrder(o, R.byTemplate);
   const tplKeys = new Set(tplRows.map((r) => r.bucket));
   const wfRows = catalogOrder(o, R.byWorkflow);
@@ -602,7 +608,7 @@ for (const key of ["reply", "visit"]) {
       ...figures(o, r),
       charts: curves(o, R.workflowByMonth[r.bucket], workflowLabel(r.bucket)),
       runs: workflowRuns
-        .filter((x) => (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) === r.bucket)
+        .filter((x) => x.leg === leg && (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) === r.bucket)
         .slice(0, RUNS_SHOWN)
         .map((x) => ({
           when: whenText(x.startedAt),
@@ -625,7 +631,7 @@ for (const key of ["reply", "visit"]) {
       charts: curves(o, R.templateByMonth[r.bucket], templateLabel(r.bucket)),
       workflows: workflows.filter((w) => w.template?.key === r.bucket).map((w) => ({ key: w.key, label: w.label })),
       runs: templateRuns
-        .filter((x) => x.template === r.bucket)
+        .filter((x) => x.leg === leg && x.template === r.bucket)
         .slice(0, RUNS_SHOWN)
         .map((x) => {
           const dynasty = x.workflowSlug ? (dynastyOf.get(x.workflowSlug) ?? x.workflowSlug) : null;
@@ -648,7 +654,7 @@ for (const key of ["reply", "visit"]) {
     workflows: workflows.filter((w) => w.model?.label === r.bucket).map((w) => ({ key: w.key, label: w.label })),
     // Two ids can name one model (a deprecated alias beside its successor): merged, newest first.
     runs: modelRuns
-      .filter((x) => (MODEL_LABEL[x.model] || x.model) === r.bucket)
+      .filter((x) => x.leg === leg && (MODEL_LABEL[x.model] || x.model) === r.bucket)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
       .slice(0, RUNS_SHOWN)
       .map((x) => {
@@ -685,12 +691,13 @@ const out = {
   window: { from: facts.research.window.from, to: facts.research.window.to },
   readOn: facts.generatedAt.slice(0, 10),
   volume: {
-    emails: facts.volume.emails,
-    orgs: facts.volume.orgs,
-    workflows: facts.volume.workflows,
-    linkedEmails: facts.volume.linked.emails,
+    // the two crews' legs only (one leg each), never the whole channel
+    emails: facts.research.volume.emails,
+    orgs: facts.research.volume.orgs,
+    workflows: facts.research.volume.workflows,
+    linkedEmails: facts.research.volume.linkedEmails,
     // emails sent per month, for the stat tile's small bars
-    byMonth: facts.research.reply.byMonth.map((r) => ({ label: monthLabel(r.bucket), emails: r.emails })),
+    byMonth: facts.research.volume.byMonth.map((r) => ({ label: monthLabel(r.bucket), emails: r.emails })),
   },
   floors: { minEmails: facts.floors.minEmails, crown: STRICT },
   // Measured in derive.mjs: how long after the email that earned it a reply or a click arrives.
@@ -701,7 +708,7 @@ const out = {
     windowEnd: M.windowEnd,
     reply: M.reply,
     click: M.click,
-    excludedEmails: M.excludedEmails,
+    excludedEmails: facts.research.excludedEmails,
     note: M.note,
   },
   crews: [
