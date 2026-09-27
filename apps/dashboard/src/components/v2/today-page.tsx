@@ -29,7 +29,7 @@ import {
   TickGauge,
   TopBar,
 } from "@/components/v2/ui";
-import { useCrewRuns, useRecentRuns, runState, runTaskLabel } from "@/components/v2/runs";
+import { missionCampaignIds, useCrewRuns, useRecentRuns, runState, runTaskLabel } from "@/components/v2/runs";
 import type { RunRow } from "@/lib/api";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -76,7 +76,7 @@ export function TodayPage() {
   const buckets = useBucketCounts(brandId).data;
   const { missions, crews, settled: missionsSettled, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
-  const recentRuns = useRecentRuns(brandId, 60);
+  const recentRuns = useRecentRuns(brandId, missionsSettled ? missionCampaignIds(missions, missionByCampaignId) : null, 60);
   const { cents: budgetCents } = useRunningDailyBudgetCents(brandId, { enabled: rev.enabled });
 
   const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
