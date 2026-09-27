@@ -269,9 +269,11 @@ export function NewOrgModal({
     return fieldsApplied;
   }
 
-  // Leg prices and the channel floor, read once the brand exists.
+  // Leg prices and the channel floor, read once the OFFER is chosen: features-service
+  // prices a leg on an offer, and a brand being set up has neither an offer before the
+  // pick (502 "states no offer") nor a campaign after it (409 "several offers").
   useEffect(() => {
-    if (!brandId || !orgId) return;
+    if (!brandId || !orgId || !offerId) return;
     let alive = true;
     void (async () => {
       const cat = await getPublicCatalogue().catch((e) => {
@@ -283,7 +285,7 @@ export function NewOrgModal({
         if (cents != null) setFloorUsd(cents / 100);
       }
       for (const leg of NEW_ORG_LEGS) {
-        const ladder = await getWorkflowProjectionLadder({ featureSlug: NEW_ORG_CHANNEL_SLUG, brandId, leg: leg.key }).catch((e) => {
+        const ladder = await getWorkflowProjectionLadder({ featureSlug: NEW_ORG_CHANNEL_SLUG, brandId, offerId, leg: leg.key }).catch((e) => {
           console.error(`[new-org] price read failed for ${leg.key}:`, e);
           return null;
         });
@@ -295,7 +297,7 @@ export function NewOrgModal({
     return () => {
       alive = false;
     };
-  }, [brandId, orgId]);
+  }, [brandId, orgId, offerId]);
 
   // ── Steps ──
   function submitOrg() {
