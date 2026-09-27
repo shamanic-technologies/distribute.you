@@ -81,7 +81,15 @@ export async function createAnonymousOrg(
 export type ClaimRefusal = string;
 
 export type ClaimOutcome =
-  | { claimed: true; alreadyClaimed: boolean; refusal: null }
+  | {
+      claimed: true;
+      alreadyClaimed: boolean;
+      refusal: null;
+      /** The signed-in person's INTERNAL user uuid, as client-service wrote it
+       *  in the claim. `null` when the body carried none: the caller must then
+       *  proceed without it, never substitute an external id. */
+      userId: string | null;
+    }
   | { claimed: false; alreadyClaimed: false; refusal: ClaimRefusal };
 
 export interface ClaimInput {
@@ -94,6 +102,15 @@ export interface ClaimInput {
   firstName?: string;
   lastName?: string;
   orgSlug?: string;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+
+/** A real internal user id: a uuid, never the zero uuid (the gateway's "no
+ *  person" sentinel), never a Clerk id (`user_...`). */
+export function isInternalUserId(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value) && value !== ZERO_UUID;
 }
 
 /**
@@ -110,13 +127,22 @@ export interface ClaimInput {
  */
 export async function claimAnonymousOrg(input: ClaimInput): Promise<ClaimOutcome> {
   const { orgId, ...body } = input;
-  const { status, body: res } = await call<{ reason?: string; alreadyClaimed?: boolean }>(
+  const { status, body: res } = await call<{
+    reason?: string;
+    alreadyClaimed?: boolean;
+    userId?: string;
+  }>(
     `/internal/orgs/${encodeURIComponent(orgId)}/claim`,
     body,
   );
 
   if (status >= 200 && status < 300) {
-    return { claimed: true, alreadyClaimed: res.alreadyClaimed === true, refusal: null };
+    return {
+      claimed: true,
+      alreadyClaimed: res.alreadyClaimed === true,
+      refusal: null,
+      userId: isInternalUserId(res.userId) ? res.userId : null,
+    };
   }
 
   const refusal = typeof res.reason === "string" ? res.reason : `http_${status}`;

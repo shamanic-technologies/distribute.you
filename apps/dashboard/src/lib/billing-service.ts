@@ -23,13 +23,20 @@ const BILLING_SERVICE_API_KEY = process.env.BILLING_SERVICE_API_KEY;
 
 const TIMEOUT_MS = 12_000;
 
-async function post(path: string): Promise<{ status: number; body: unknown }> {
+async function post(
+  path: string,
+  extraHeaders: Record<string, string> = {},
+): Promise<{ status: number; body: unknown }> {
   if (!BILLING_SERVICE_URL || !BILLING_SERVICE_API_KEY) {
     throw new Error("[billing-service] BILLING_SERVICE_URL / BILLING_SERVICE_API_KEY not set");
   }
   const res = await fetch(`${BILLING_SERVICE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": BILLING_SERVICE_API_KEY },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": BILLING_SERVICE_API_KEY,
+      ...extraHeaders,
+    },
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   return { status: res.status, body: await res.json().catch(() => null) };
@@ -63,16 +70,42 @@ export async function seedTrialCredit(orgId: string): Promise<void> {
  *
  * An org that was never seeded is byte-for-byte unaffected by this call, so the
  * caller does not have to know which kind of signup it is looking at.
+ *
+ * THE WELCOME IS ONCE PER PERSON, not once per org (billing-service #507), so
+ * billing needs to know WHO signed up: `userId` is the person's client-service
+ * INTERNAL user uuid, sent as `x-user-id`. Never a Clerk id, never the zero
+ * uuid. When it is null the settle still runs without the header (billing then
+ * falls back to per-org) and the gap is logged loudly: a person who already
+ * holds a welcome elsewhere could get a second one, which is worth hearing
+ * about, and still never worth losing a signup over.
+ *
+ * `welcomeReceivedElsewhere` is logged, never rendered.
  */
-export async function settleWelcomeOnSignup(orgId: string): Promise<boolean> {
+export async function settleWelcomeOnSignup(
+  orgId: string,
+  userId: string | null,
+): Promise<boolean> {
+  if (!userId) {
+    console.error(
+      `[billing-service] signup settle for ${orgId} without x-user-id: internal user id unresolved, billing falls back to a per-org welcome`,
+    );
+  }
   try {
-    const { status } = await post(
+    const { status, body } = await post(
       `/internal/accounts/by-org/${encodeURIComponent(orgId)}/signup`,
+      userId ? { "x-user-id": userId } : {},
     );
     if (status < 200 || status >= 300) {
       console.error(`[billing-service] signup settle failed for ${orgId}: ${status}`);
       return false;
     }
+    const elsewhere =
+      body !== null &&
+      typeof body === "object" &&
+      (body as { welcomeReceivedElsewhere?: unknown }).welcomeReceivedElsewhere === true;
+    console.log(
+      `[billing-service] signup settled org=${orgId} user=${userId ?? "none"} welcomeReceivedElsewhere=${elsewhere}`,
+    );
     return true;
   } catch (err) {
     console.error(`[billing-service] signup settle errored for ${orgId}:`, err);
