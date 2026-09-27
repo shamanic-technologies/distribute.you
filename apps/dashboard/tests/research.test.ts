@@ -74,6 +74,21 @@ describe("Research is staff-only", () => {
     expect(src).not.toMatch(/\.sort\(/);
   });
 
+  it("speaks v2's language: Keel primitives, none of the v1 or no-go classes", () => {
+    const src = read("components/v2/research-page.tsx");
+    expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|InfoTooltip|shadow-2xl|max-w-\[1400px\]|max-w-none/);
+    for (const primitive of ["<TopBar", "<StatTile", "<SectionTitle", "k-inset", "k-label", "max-w-[1280px]"]) expect(src).toContain(primitive);
+    // the staff mark rides the nav entry, never the h1
+    expect(src).not.toContain("MaturityBadge");
+  });
+
+  it("gives every measured study the figure its card leads with", () => {
+    for (const s of RESEARCH.studies) {
+      if (s.status === "measured") expect(s.result, s.id).not.toBeNull();
+      else expect(s.result).toBeNull();
+    }
+  });
+
   it("is a known v2 section", () => {
     expect(read("lib/v2/routes.ts")).toContain('"research"');
   });

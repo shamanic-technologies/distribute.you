@@ -165,6 +165,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
           ? `${label(w.row.bucket)} wins at ${usd(w.row[o.cost])} per ${o.noun}.`
           : `${label(w.row.bucket)} leads at ${usd(w.row[o.cost])} per ${o.noun}, on too few ${o.nounPlural} to call.`,
       winner: w ? label(w.row.bucket) : null,
+      result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
         { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label) },
@@ -193,6 +194,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
         ? `No ${dimNoun} has sent ${n(STRICT.minEmails)} ${o.emailsNoun} yet.`
         : `${label(w.row.bucket)} leads with ${w.row[o.rate].toFixed(1)} ${o.nounPlural} ${o.rateUnit}.`,
       winner: w ? label(w.row.bucket) : null,
+      result: w ? { display: w.row[o.rate].toFixed(1), unit: `${o.nounPlural} ${o.rateUnit}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
         { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label) },
@@ -228,6 +230,7 @@ for (const key of ["reply", "visit"]) {
       status: fleet.length ? "measured" : "not_enough_data",
       headline: moved ? `${moved.charAt(0).toUpperCase()}${moved.slice(1)} across all our emails.` : `Not enough ${o.nounPlural} to draw a curve yet.`,
       winner: w ? w.row.bucket : null,
+      result: fleet.length ? { display: fleet[fleet.length - 1].display, unit: `per ${o.noun} in ${fleet[fleet.length - 1].label}`, sample: fleet[fleet.length - 1].note } : null,
       crowned: w ? w.crowned : false,
       charts: [
         { kind: "line", title: `All our emails: cost per ${o.noun} by month`, lowerIsBetter: true, points: fleet },
@@ -278,6 +281,7 @@ for (const key of ["reply", "visit"]) {
       status: bestRoi ? "measured" : "not_enough_data",
       headline: bestRoi ? `${bestRoi.label}: ${bestRoi.display} per ${o.noun}, the cheapest depth.` : `No ${o.noun} yet at any depth.`,
       winner: bestRoi ? bestRoi.label : null,
+      result: bestRoi ? { display: bestRoi.display, unit: `per ${o.noun}, ${bestRoi.label.toLowerCase()}`, sample: bestRoi.note } : null,
       crowned: bestRoi ? !bestRoi.thin : false,
       charts: [
         { kind: "bars", title: `Cost per ${o.noun} if the sequence stopped here (USD, lower is better)`, lowerIsBetter: true, points: roiPts },
@@ -299,6 +303,7 @@ for (const key of ["reply", "visit"]) {
         ? `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} keep coming through ${lastUseful.label.replace("+ ", "")}: the last one adds ${lastUseful.gain} per ${per === 10000 ? "10,000" : "1,000"} people.`
         : ratePts.length ? `Follow-ups add no ${o.nounPlural} past the first email.` : `No sequences yet.`,
       winner: lastUseful ? lastUseful.label : ratePts[0]?.label ?? null,
+      result: ratePts.length ? { display: ratePts[ratePts.length - 1].value.toFixed(1), unit: `${o.nounPlural} per ${per === 10000 ? "10,000" : "1,000"} people, all follow-ups`, sample: ratePts[ratePts.length - 1].note } : null,
       crowned: people >= STRICT.minEmails,
       charts: [
         { kind: "bars", title: `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per ${per === 10000 ? "10,000" : "1,000"} people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts },
@@ -328,6 +333,8 @@ for (const key of ["reply", "visit"]) {
         ? `Tracking ${lead} wins: ${m[lead].pct.toFixed(2)}% of people ${what}, against ${m[lead === "off" ? "on" : "off"].pct.toFixed(2)}% (p ${m.p}).`
         : `No clear winner: ${off.toFixed(2)}% with tracking off, ${on.toFixed(2)}% with it on (p ${m.p}, not significant).`;
     };
+    // The result cell states both arms: the page compares them, it does not pick one quietly.
+    const armResult = (m) => ({ display: `${m.off.pct.toFixed(2)}%`, unit: `with tracking off, ${m.on.pct.toFixed(2)}% on`, sample: `p ${m.p}, ${n(m.off.of + m.on.of)} people` });
     const periods = `Tracking was on from ${pixel.on.firstDay} to ${pixel.on.lastDay} and off until ${pixel.off.lastDay}: two periods, not a split test, over ${n(pixel.total.leads)} people.`;
     const what = key === "reply" ? "replied positively" : "visited the website";
     add({
@@ -339,6 +346,7 @@ for (const key of ["reply", "visit"]) {
       status: "measured",
       headline: verdict(metric, what),
       winner: metric.significant ? (metric.off.pct >= metric.on.pct ? "Tracking off" : "Tracking on") : null,
+      result: armResult(metric),
       crowned: metric.significant,
       charts: [{ kind: "bars", title: `People who ${what} (%, higher is better)`, lowerIsBetter: false, points: [arm(metric, "off"), arm(metric, "on")] }],
       conclusion: [
@@ -355,6 +363,7 @@ for (const key of ["reply", "visit"]) {
       status: "measured",
       headline: verdict(rateMetric, key === "reply" ? "replied" : "visited the website"),
       winner: rateMetric.significant ? (rateMetric.off.pct >= rateMetric.on.pct ? "Tracking off" : "Tracking on") : null,
+      result: armResult(rateMetric),
       crowned: rateMetric.significant,
       charts: [
         { kind: "bars", title: key === "reply" ? `People who replied, any reply (%, higher is better)` : `People who visited the website (%, higher is better)`, lowerIsBetter: false, points: [arm(rateMetric, "off"), arm(rateMetric, "on")] },
@@ -379,14 +388,22 @@ for (const [topic, question] of [
   ["followups", "How many follow-ups after a positive reply book the most meetings?"],
   ["cost", "What does a booked meeting cost, month by month?"],
 ]) {
-  add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: topic === "cost" ? "roi" : "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, charts: [], conclusion: [PILOT_REASON] });
+  add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: topic === "cost" ? "roi" : "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
 }
 
 const out = {
   generatedAt: facts.generatedAt,
   allOrgs: true,
   window: { from: facts.research.window.from, to: facts.research.window.to },
-  volume: { emails: facts.volume.emails, orgs: facts.volume.orgs, workflows: facts.volume.workflows, linkedEmails: facts.volume.linked.emails },
+  readOn: facts.generatedAt.slice(0, 10),
+  volume: {
+    emails: facts.volume.emails,
+    orgs: facts.volume.orgs,
+    workflows: facts.volume.workflows,
+    linkedEmails: facts.volume.linked.emails,
+    // emails sent per month, for the stat tile's small bars
+    byMonth: facts.research.reply.byMonth.map((r) => ({ label: monthLabel(r.bucket), emails: r.emails })),
+  },
   floors: { minEmails: facts.floors.minEmails, crown: STRICT },
   crews: [
     { id: "herald", outcome: "Positive reply", description: "Cold email that gets a prospect to answer with interest." },

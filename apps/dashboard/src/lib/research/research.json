@@ -5,11 +5,38 @@
     "from": "2026-04",
     "to": "2026-09"
   },
+  "readOn": "2026-09-27",
   "volume": {
     "emails": 145437,
     "orgs": 36,
     "workflows": 72,
-    "linkedEmails": 48286
+    "linkedEmails": 48286,
+    "byMonth": [
+      {
+        "label": "Apr",
+        "emails": 3435
+      },
+      {
+        "label": "May",
+        "emails": 16109
+      },
+      {
+        "label": "Jun",
+        "emails": 36192
+      },
+      {
+        "label": "Jul",
+        "emails": 34100
+      },
+      {
+        "label": "Aug",
+        "emails": 21366
+      },
+      {
+        "label": "Sep",
+        "emails": 34235
+      }
+    ]
   },
   "floors": {
     "minEmails": 100,
@@ -46,6 +73,11 @@
       "status": "measured",
       "headline": "Gemini 3.1 Pro wins at $214 per positive reply.",
       "winner": "Gemini 3.1 Pro",
+      "result": {
+        "display": "$214",
+        "unit": "per positive reply",
+        "sample": "37 positive replies · 98,982 emails"
+      },
       "crowned": true,
       "charts": [
         {
@@ -147,6 +179,11 @@
       "status": "measured",
       "headline": "Gemini 3.1 Pro leads with 3.7 positive replies per 10,000 emails.",
       "winner": "Gemini 3.1 Pro",
+      "result": {
+        "display": "3.7",
+        "unit": "positive replies per 10,000 emails",
+        "sample": "37 positive replies · 98,982 emails"
+      },
       "crowned": true,
       "charts": [
         {
@@ -319,6 +356,11 @@
       "status": "measured",
       "headline": "$104 in Apr, $700 in Sep across all our emails.",
       "winner": "Gemini 3.1 Pro",
+      "result": {
+        "display": "$700",
+        "unit": "per positive reply in Sep",
+        "sample": "6 positive replies · 34,235 emails"
+      },
       "crowned": true,
       "charts": [
         {
@@ -434,6 +476,11 @@
       "status": "measured",
       "headline": "First email only: $218 per positive reply, the cheapest depth.",
       "winner": "First email only",
+      "result": {
+        "display": "$218",
+        "unit": "per positive reply, first email only",
+        "sample": "19 positive replies · $4,140 spent"
+      },
       "crowned": true,
       "charts": [
         {
@@ -514,6 +561,11 @@
       "status": "measured",
       "headline": "Positive replies keep coming through 2 follow-ups: the last one adds 1.4 per 10,000 people.",
       "winner": "+ 2 follow-ups",
+      "result": {
+        "display": "7.5",
+        "unit": "positive replies per 10,000 people, all follow-ups",
+        "sample": "39 positive replies from 52,128 people"
+      },
       "crowned": true,
       "charts": [
         {
@@ -568,6 +620,11 @@
       "status": "measured",
       "headline": "No clear winner: 0.12% with tracking off, 0.10% with it on (p 0.56, not significant).",
       "winner": null,
+      "result": {
+        "display": "0.12%",
+        "unit": "with tracking off, 0.10% on",
+        "sample": "p 0.56, 49,834 people"
+      },
       "crowned": false,
       "charts": [
         {
@@ -606,6 +663,11 @@
       "status": "measured",
       "headline": "Tracking off wins: 0.39% of people replied, against 0.29% (p 0.04).",
       "winner": "Tracking off",
+      "result": {
+        "display": "0.39%",
+        "unit": "with tracking off, 0.29% on",
+        "sample": "p 0.04, 49,834 people"
+      },
       "crowned": true,
       "charts": [
         {
@@ -665,6 +727,11 @@
       "status": "measured",
       "headline": "Blind discovery v26 wins at $187 per positive reply.",
       "winner": "Blind discovery v26",
+      "result": {
+        "display": "$187",
+        "unit": "per positive reply",
+        "sample": "14 positive replies · 25,362 emails"
+      },
       "crowned": true,
       "charts": [
         {
@@ -794,6 +861,11 @@
       "status": "measured",
       "headline": "Cold email v27 leads with 10.1 positive replies per 10,000 emails.",
       "winner": "Cold email v27",
+      "result": {
+        "display": "10.1",
+        "unit": "positive replies per 10,000 emails",
+        "sample": "4 positive replies · 3,975 emails"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1078,6 +1150,11 @@
       "status": "measured",
       "headline": "Gemini 3 Flash wins at $1.41 per website visit.",
       "winner": "Gemini 3 Flash",
+      "result": {
+        "display": "$1.41",
+        "unit": "per website visit",
+        "sample": "227 website visits · 8,747 emails with a link"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1200,6 +1277,11 @@
       "status": "measured",
       "headline": "Gemini 3 Flash leads with 26.0 website visits per 1,000 emails with a link.",
       "winner": "Gemini 3 Flash",
+      "result": {
+        "display": "26.0",
+        "unit": "website visits per 1,000 emails with a link",
+        "sample": "227 website visits · 8,747 emails with a link"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1316,6 +1398,11 @@
       "status": "measured",
       "headline": "$11 in May, $3.51 in Sep across all our emails.",
       "winner": "Gemini 3 Flash",
+      "result": {
+        "display": "$3.51",
+        "unit": "per website visit in Sep",
+        "sample": "264 website visits · 9,501 emails with a link"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1403,6 +1490,11 @@
       "status": "measured",
       "headline": "First email only: $1.98 per website visit, the cheapest depth.",
       "winner": "First email only",
+      "result": {
+        "display": "$1.98",
+        "unit": "per website visit, first email only",
+        "sample": "646 website visits · $1,281 spent"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1476,6 +1568,11 @@
       "status": "measured",
       "headline": "Website visits keep coming through 2 follow-ups: the last one adds 4 per 1,000 people.",
       "winner": "+ 2 follow-ups",
+      "result": {
+        "display": "39.4",
+        "unit": "website visits per 1,000 people, all follow-ups",
+        "sample": "858 website visits from 21,751 people"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1522,6 +1619,11 @@
       "status": "measured",
       "headline": "Tracking off wins: 2.02% of people visited the website, against 1.50% (p < 0.001).",
       "winner": "Tracking off",
+      "result": {
+        "display": "2.02%",
+        "unit": "with tracking off, 1.50% on",
+        "sample": "p < 0.001, 49,834 people"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1560,6 +1662,11 @@
       "status": "measured",
       "headline": "Tracking off wins: 2.02% of people visited the website, against 1.50% (p < 0.001).",
       "winner": "Tracking off",
+      "result": {
+        "display": "2.02%",
+        "unit": "with tracking off, 1.50% on",
+        "sample": "p < 0.001, 49,834 people"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1598,6 +1705,11 @@
       "status": "measured",
       "headline": "Cold email v19 wins at $1.46 per website visit.",
       "winner": "Cold email v19",
+      "result": {
+        "display": "$1.46",
+        "unit": "per website visit",
+        "sample": "245 website visits · 10,115 emails with a link"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1762,6 +1874,11 @@
       "status": "measured",
       "headline": "Blind discovery v26 leads with 31.3 website visits per 1,000 emails with a link.",
       "winner": "Blind discovery v26",
+      "result": {
+        "display": "31.3",
+        "unit": "website visits per 1,000 emails with a link",
+        "sample": "104 website visits · 3,324 emails with a link"
+      },
       "crowned": true,
       "charts": [
         {
@@ -1914,6 +2031,7 @@
       "headline": "Not enough data yet.",
       "winner": null,
       "crowned": false,
+      "result": null,
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
@@ -1929,6 +2047,7 @@
       "headline": "Not enough data yet.",
       "winner": null,
       "crowned": false,
+      "result": null,
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
@@ -1944,6 +2063,7 @@
       "headline": "Not enough data yet.",
       "winner": null,
       "crowned": false,
+      "result": null,
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
@@ -1959,6 +2079,7 @@
       "headline": "Not enough data yet.",
       "winner": null,
       "crowned": false,
+      "result": null,
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
