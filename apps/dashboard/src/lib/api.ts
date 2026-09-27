@@ -8906,10 +8906,11 @@ export type RunRow = z.infer<typeof RunRowSchema>;
 
 export async function listBrandRunLedger(
   brandId: string,
-  opts: { limit: number; startedAfter?: string; status?: string },
+  opts: { limit: number; startedAfter?: string; status?: string; campaignIds?: string[] },
 ): Promise<RunRow[]> {
   const query = new URLSearchParams({ brandId, limit: String(opts.limit) });
   if (opts.startedAfter) query.set("startedAfter", opts.startedAfter);
+  if (opts.campaignIds) query.set("campaignIds", opts.campaignIds.join(","));
   if (opts.status) query.set("status", opts.status);
   const raw = await apiCall<unknown>(`/runs?${query}`);
   const parsed = z.object({ runs: z.array(RunRowSchema) }).safeParse(raw);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { RunRow } from "@/lib/api";
@@ -11,7 +11,7 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission, type CrewSummary } from "@/components/v2/use-missions";
-import { formatRunDuration, useCrewOutcomes, useCrewRuns, useRecentRuns, runState, runTaskLabel, type CrewOutcomes, type CrewRuns } from "@/components/v2/runs";
+import { formatRunDuration, useCrewOutcomes, useCrewRuns, useRecentRuns, missionCampaignIds, runState, runTaskLabel, type CrewOutcomes, type CrewRuns } from "@/components/v2/runs";
 import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
@@ -50,7 +50,7 @@ export function CrewPage() {
   const { missions, crews, settled, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
   const { byCrew: outcomesByCrew, settled: outcomesSettled } = useCrewOutcomes(brandId, missionByCampaignId);
-  const recent = useRecentRuns(brandId, 60);
+  const recent = useRecentRuns(brandId, settled ? missionCampaignIds(missions, missionByCampaignId) : null, 60);
   const revenue = useBrandRevenue(brandId);
   const { cents: ceiling } = useRunningDailyBudgetCents(brandId, { enabled: revenue.enabled });
   const runningCrews = crews.filter((c) => c.running > 0).length;
@@ -462,6 +462,20 @@ function RecentRuns({
   onMore: () => void;
 }) {
   const [filter, setFilter] = useState<string | null>(null);
+  // The sidebar and the ⌘K palette link a crew as `crew#<crew key>`: that crew is
+  // the one being asked about, so its runs are what the list opens on. A hash
+  // naming no crew of this brand leaves the list on All.
+  const crewKeys = crews.map((c) => c.crew.key).join("\n");
+  useEffect(() => {
+    const keys = new Set(crewKeys.split("\n"));
+    const fromHash = () => {
+      const raw = decodeURIComponent(window.location.hash.slice(1));
+      if (keys.has(raw)) setFilter(raw);
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
+  }, [crewKeys]);
   const rows = (runs ?? []).filter((r) => {
     if (!filter) return true;
     return missionFor(r.campaignId)?.crew.key === filter;

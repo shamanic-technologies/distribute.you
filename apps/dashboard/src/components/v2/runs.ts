@@ -48,12 +48,37 @@ export function useRunsWeek(brandId: string) {
   );
 }
 
-export function useRecentRuns(brandId: string, limit = 60) {
+/** runs-service caps `campaignIds` at 500 per request. */
+export const MAX_RUN_CAMPAIGN_IDS = 500;
+
+/**
+ * The latest runs the brand's CREWS made, newest first. A brand's run ledger also
+ * holds work no crew did (a CRM page read, a gateway request), so the read is
+ * narrowed server-side to the campaigns the missions own: filtering the page here
+ * would let 60 CRM reads fill the page and leave no crew run on it.
+ *
+ * `campaignIds` is null while the missions are still resolving (the read waits),
+ * and an empty list means the brand has no mission, so there is nothing to ask for.
+ * Live rows come first, so a family past the cap drops ancestors, never a live row.
+ */
+export function useRecentRuns(brandId: string, campaignIds: string[] | null, limit = 60) {
+  const ids = campaignIds ? campaignIds.slice(0, MAX_RUN_CAMPAIGN_IDS) : null;
+  const key = ids ? [...ids].sort().join(",") : null;
   return useAuthQuery(
-    ["v2RecentRuns", brandId, limit],
-    () => listBrandRunLedger(brandId, { limit }),
-    { enabled: !!brandId, refetchInterval: POLL_INTERVAL },
+    ["v2RecentRuns", brandId, limit, key],
+    () => (ids && ids.length > 0 ? listBrandRunLedger(brandId, { limit, campaignIds: ids }) : Promise.resolve([])),
+    { enabled: !!brandId && ids !== null, refetchInterval: POLL_INTERVAL },
   );
+}
+
+/** Every campaign id a mission owns, live rows first, then their ancestors. */
+export function missionCampaignIds(
+  missions: Mission[],
+  missionByCampaignId: Map<string, Mission>,
+): string[] {
+  const live = missions.map((m) => m.row.campaign.id);
+  const seen = new Set(live);
+  return [...live, ...[...missionByCampaignId.keys()].filter((id) => !seen.has(id))];
 }
 
 /** Today's runs themselves, newest first, bounded. `complete` is false when the cap cut it. */
