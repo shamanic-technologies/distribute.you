@@ -212,8 +212,21 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
-      const { client_secret } = await createEmbeddedCheckoutSession(effectiveAmountCents);
-      setEmbeddedSecret(client_secret);
+      const checkout = await createEmbeddedCheckoutSession(effectiveAmountCents);
+      if (checkout.mode === "embedded_widget") {
+        // An org paying through Revolut: the same top-up, in Revolut's widget.
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: checkout.token,
+          environment: checkout.environment,
+          savePaymentMethodFor: checkout.save_payment_method_for,
+          onSuccess: () => void handleEmbeddedComplete(),
+          onCancel: () => {},
+          onError: (message) => setCheckoutError(message),
+        });
+        return;
+      }
+      setEmbeddedSecret(checkout.client_secret);
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Failed to start checkout");
     } finally {

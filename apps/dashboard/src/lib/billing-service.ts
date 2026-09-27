@@ -61,6 +61,42 @@ export async function seedTrialCredit(orgId: string): Promise<void> {
 }
 
 /**
+ * Declare that an org pays through Revolut (billing relays stripe-service's pin, which
+ * also creates the org's Revolut customer). Owner-decided 2026-09-27 for orgs set up in
+ * the v2 modal. Idempotent. Returns `"pinned"`, or `"card_elsewhere"` when the org
+ * already holds a chargeable card on another acquirer (billing's 409), in which case it
+ * keeps paying where its card is. Any other failure throws.
+ */
+export async function declareRevolutAcquirer(
+  orgId: string,
+  userId: string,
+  person: { email?: string; fullName?: string },
+): Promise<"pinned" | "card_elsewhere"> {
+  if (!BILLING_SERVICE_URL || !BILLING_SERVICE_API_KEY) {
+    throw new Error("[billing-service] BILLING_SERVICE_URL / BILLING_SERVICE_API_KEY not set");
+  }
+  const res = await fetch(`${BILLING_SERVICE_URL}/v1/accounts/acquirer`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": BILLING_SERVICE_API_KEY,
+      "x-org-id": orgId,
+      "x-user-id": userId,
+      "x-run-id": crypto.randomUUID(),
+    },
+    body: JSON.stringify({
+      acquirer: "revolut",
+      ...(person.email ? { email: person.email } : {}),
+      ...(person.fullName ? { full_name: person.fullName } : {}),
+    }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (res.status === 409) return "card_elsewhere";
+  if (!res.ok) throw new Error(`[billing-service] acquirer declaration failed: ${res.status}`);
+  return "pinned";
+}
+
+/**
  * Credit a NEW org its creation bonus, once. Billing owns the amount and the
  * idempotency (a retry grants nothing twice), and lists it on the org's grants
  * ledger. THROWS on failure: the org's first reads (scraping its site, drafting its

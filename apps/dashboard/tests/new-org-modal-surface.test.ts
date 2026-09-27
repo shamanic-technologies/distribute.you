@@ -180,3 +180,23 @@ describe("leg prices are read on the chosen offer", () => {
     expect(eff).toContain("[brandId, orgId, offerId]");
   });
 });
+
+describe("orgs set up in the modal pay through Revolut", () => {
+  const route = readFileSync(join(__dirname, "../src/app/(authed)/api/orgs/revolut/route.ts"), "utf8");
+  it("declares Revolut before the first card or top-up call, prepaid and postpaid", () => {
+    for (const fn of ["function startCheckout(", "function startCardCapture("]) {
+      const body = modal.slice(modal.indexOf(fn), modal.indexOf(fn) + 900);
+      expect(body.indexOf("await declareRevolut()")).toBeGreaterThan(-1);
+      expect(body.indexOf("await declareRevolut()")).toBeLessThan(body.indexOf("await create"));
+    }
+  });
+  it("opens Revolut's widget when the prepaid top-up answers one", () => {
+    const body = modal.slice(modal.indexOf("function startCheckout("), modal.indexOf("function startCardCapture("));
+    expect(body).toContain('checkout.mode === "embedded_widget"');
+    expect(body).toContain("openCardWidget(");
+  });
+  it("declares on the org the session is scoped to", () => {
+    expect(route).toContain("await auth()");
+    expect(route).toContain("declareRevolutAcquirer(identity.orgId");
+  });
+});
