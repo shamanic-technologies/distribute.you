@@ -20,6 +20,7 @@ import { isAdminEmail } from "@/lib/admin-allowlist";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
+import { NewOrgModal } from "@/components/v2/new-org-modal";
 import { useMissions } from "@/components/v2/use-missions";
 import { brandLeadScopeKey, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
@@ -99,6 +100,8 @@ export function TenantSwitcherV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, t.orgSearch]);
 
+  // "New organization" opens the setup modal over this page, never the full-page onboarding.
+  const [newOrgOpen, setNewOrgOpen] = useState(false);
   const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
   const orgs = t.isStaff
     ? t.allOrgs.map((o) => ({ id: o.id, name: o.name, imageUrl: o.imageUrl, hasImage: o.hasImage }))
@@ -111,6 +114,12 @@ export function TenantSwitcherV2() {
 
   return (
     <div ref={ref} className="relative">
+      <NewOrgModal
+        open={newOrgOpen}
+        onClose={() => setNewOrgOpen(false)}
+        existingOrgNames={t.memberships.map((m) => m.organization.name)}
+        returnOrgId={t.orgId ?? null}
+      />
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -189,7 +198,15 @@ export function TenantSwitcherV2() {
             ))}
           </div>
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
-          <button type="button" role="menuitem" className={itemCls} onClick={() => router.push("/onboarding?new=1&from=add")}>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemCls}
+            onClick={() => {
+              setOpen(false);
+              setNewOrgOpen(true);
+            }}
+          >
             <Plus />
             New organization
           </button>

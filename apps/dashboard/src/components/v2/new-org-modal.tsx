@@ -1,0 +1,732 @@
+"use client";
+
+/**
+ * "New organization", dashboard v2: the whole setup of a new org in one modal over the
+ * page the person is on, instead of the full-page onboarding it replaces for this entry
+ * point. Org, brand, what they sell, who they sell to, the offer's six levers, what they
+ * want (website visits or positive replies), the daily budget, then the money. It ends
+ * on the new campaign's mission page with the campaign running.
+ *
+ * Everything that can be prefilled is, and the reads that prefill run in the background
+ * from the moment the brand exists, so the person answers one screen while the next is
+ * being prepared. Rules the screens decide on live in `lib/v2/new-org-wizard.ts`.
+ *
+ * The page behind stays on the previous org's URL while this builds the new one, so every
+ * call carries the new org through `setApiActiveOrgOverride` (see lib/api.ts), cleared
+ * when the modal closes. Closing before the end switches the session back to the org the
+ * page is on, so the page behind reads again.
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import { useOrganizationList, useSession, useUser } from "@clerk/nextjs";
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import posthog from "posthog-js";
+import {
+  USER_PROFILE_FIELDS,
+  confirmAudienceSegments,
+  confirmBrandOffers,
+  createBrandWithoutWebsite,
+  createCampaignWithoutBrandEnrichment,
+  createEmbeddedCheckoutSession,
+  extractBrandFields,
+  getBillingAccount,
+  getPublicCatalogue,
+  getWorkflowProjectionLadder,
+  prefillFeatureInputs,
+  proposeAudienceSegments,
+  proposeBrandOffers,
+  saveCampaignBudget,
+  saveOfferUserFields,
+  setApiActiveOrgOverride,
+  suggestBrandIcp,
+  upsertBrand,
+  type AudienceSegmentProposal,
+  type BillingAccount,
+  type OfferProposal,
+  type UserFieldKey,
+  type UserFieldValue,
+} from "@/lib/api";
+import { getStripe } from "@/lib/stripe";
+import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
+import { websiteInputProblem } from "@/lib/website-input";
+import { v2MissionHref } from "@/lib/v2/routes";
+import {
+  LEVER_QUESTIONS,
+  NEW_ORG_CHANNEL_SLUG,
+  NEW_ORG_LEGS,
+  PREPAID_PRESETS_CENTS,
+  canSkipPayment,
+  newOrgLeg,
+  nextStep,
+  parseCustomAmountCents,
+  previousStep,
+  recommendedDailyBudgetUsd,
+  suggestNoWebsiteBrandName,
+  suggestOrgName,
+  type LeverKey,
+  type NewOrgLegKey,
+  type NewOrgStep,
+} from "@/lib/v2/new-org-wizard";
+import { OfferIcon } from "@/components/v2/new-org-icons";
+
+type Draft = Record<LeverKey, string>;
+const EMPTY_LEVERS: Draft = {
+  dreamOutcome: "",
+  perceivedLikelihood: "",
+  socialProof: "",
+  riskReversal: "",
+  urgency: "",
+  scarcity: "",
+};
+
+function asText(v: unknown): string {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean).join("\n");
+  return typeof v === "string" ? v : "";
+}
+
+function fmtUsd(usd: number): string {
+  return usd < 10 ? `$${usd.toFixed(2)}` : `$${Math.round(usd).toLocaleString("en-US")}`;
+}
+
+const STEP_TITLE: Record<NewOrgStep, string> = {
+  org: "Name your organization",
+  brand: "Your first brand",
+  offerText: "What do you sell?",
+  offerPick: "Start with one offer",
+  audienceText: "Who do you sell to?",
+  audiencePick: "Your audiences",
+  levers: "Your offer, in six answers",
+  leg: "What do you want for this brand?",
+  budget: "Daily budget",
+  payment: "Fund your campaign",
+  launching: "Launching your campaign",
+};
+
+export function NewOrgModal({
+  open,
+  onClose,
+  existingOrgNames,
+  returnOrgId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  existingOrgNames: readonly string[];
+  /** The org the page behind is on; the session goes back to it if the modal closes early. */
+  returnOrgId: string | null;
+}) {
+  const router = useRouter();
+  const { user } = useUser();
+  const { session } = useSession();
+  const { createOrganization, setActive } = useOrganizationList();
+  const personName = user?.fullName ?? ([user?.firstName, user?.lastName].filter(Boolean).join(" ") || null);
+
+  const [step, setStep] = useState<NewOrgStep>("org");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Org
+  const [orgName, setOrgName] = useState("");
+  const [orgId, setOrgId] = useState<string | null>(null);
+  // Brand
+  const [hasWebsite, setHasWebsite] = useState(true);
+  const [website, setWebsite] = useState("");
+  const [brandName, setBrandName] = useState("");
+  const [brandId, setBrandId] = useState<string | null>(null);
+  // Offers
+  const [offerText, setOfferText] = useState("");
+  const [offerProposals, setOfferProposals] = useState<OfferProposal[]>([]);
+  const [pickedOfferIndex, setPickedOfferIndex] = useState(0);
+  const [offerId, setOfferId] = useState<string | null>(null);
+  // Audiences
+  const [audienceText, setAudienceText] = useState("");
+  const [segments, setSegments] = useState<AudienceSegmentProposal[]>([]);
+  const [pickedSegments, setPickedSegments] = useState<Set<number>>(new Set());
+  // Levers
+  const [levers, setLevers] = useState<Draft>(EMPTY_LEVERS);
+  // Leg + budget
+  const [legKey, setLegKey] = useState<NewOrgLegKey>("start_to_website_visit");
+  const [legPrices, setLegPrices] = useState<Partial<Record<NewOrgLegKey, { usd: number | null; workflow: string | null }>>>({});
+  const [floorUsd, setFloorUsd] = useState(1);
+  const [budget, setBudget] = useState("");
+  // Payment
+  const [account, setAccount] = useState<BillingAccount | null>(null);
+  const [presetCents, setPresetCents] = useState<number | null>(PREPAID_PRESETS_CENTS[0]);
+  const [customAmount, setCustomAmount] = useState("");
+  const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
+
+  // Background prefills, keyed on the brand they were read for.
+  const prefillRef = useRef<Promise<void> | null>(null);
+  const editedRef = useRef<{ offer: boolean; audience: boolean; levers: boolean }>({ offer: false, audience: false, levers: false });
+  const finishedRef = useRef(false);
+
+  // Seed the org name once, from the person's own name.
+  useEffect(() => {
+    if (!open) return;
+    setOrgName((cur) => cur || suggestOrgName(personName, existingOrgNames));
+    setBrandName((cur) => cur || suggestNoWebsiteBrandName(personName));
+  }, [open, personName, existingOrgNames]);
+
+  // The override lives exactly as long as the modal is acting on the new org.
+  useEffect(() => {
+    setApiActiveOrgOverride(open && orgId ? orgId : null);
+    return () => setApiActiveOrgOverride(null);
+  }, [open, orgId]);
+
+  // Esc closes, like every v2 dialog.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && step !== "launching") void close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  async function close() {
+    if (busy && step === "launching") return;
+    setApiActiveOrgOverride(null);
+    // Hand the session back to the org the page behind is on, or its reads stay held.
+    if (orgId && !finishedRef.current && returnOrgId && setActive) {
+      await setActive({ organization: returnOrgId }).catch((e) => console.error("[new-org] restore active org failed:", e));
+      await session?.getToken({ skipCache: true }).catch((e) => console.error("[new-org] token re-mint failed:", e));
+    }
+    onClose();
+  }
+
+  async function run(fn: () => Promise<void>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      console.error("[new-org] step failed:", e);
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const go = (s: NewOrgStep) => setStep(s);
+  const forward = () => go(nextStep(step, { offerCount: offerProposals.length }));
+  const back = () => go(previousStep(step, { offerCount: offerProposals.length }));
+
+  // ── Prefill: everything readable off the brand, started the moment it exists ──
+  function startPrefill(id: string) {
+    prefillRef.current = (async () => {
+      const [fields, icp] = await Promise.all([
+        extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest", urlStrategy: "landing" }).catch((e) => {
+          console.error("[new-org] field prefill failed:", e);
+          return null;
+        }),
+        suggestBrandIcp(id).catch((e) => {
+          console.error("[new-org] ICP prefill failed:", e);
+          return null;
+        }),
+      ]);
+      const f = fields?.fields ?? {};
+      const services = asText(f.services?.value);
+      if (services && !editedRef.current.offer) setOfferText((cur) => cur || services);
+      if (!editedRef.current.levers) {
+        setLevers((cur) => {
+          const next = { ...cur };
+          for (const q of LEVER_QUESTIONS) if (!next[q.key]) next[q.key] = asText(f[q.key]?.value);
+          return next;
+        });
+      }
+      const icpText = icp?.icp ?? "";
+      if (icpText && !editedRef.current.audience) setAudienceText((cur) => cur || icpText);
+    })();
+  }
+
+  // Leg prices and the channel floor, read once the brand exists.
+  useEffect(() => {
+    if (!brandId || !orgId) return;
+    let alive = true;
+    void (async () => {
+      const cat = await getPublicCatalogue().catch((e) => {
+        console.error("[new-org] catalogue read failed:", e);
+        return null;
+      });
+      if (cat && alive) {
+        const cents = channelMinimumCents(channelMinimumsFromWire(cat.channels), NEW_ORG_CHANNEL_SLUG);
+        if (cents != null) setFloorUsd(cents / 100);
+      }
+      for (const leg of NEW_ORG_LEGS) {
+        const ladder = await getWorkflowProjectionLadder({ featureSlug: NEW_ORG_CHANNEL_SLUG, brandId, leg: leg.key }).catch((e) => {
+          console.error(`[new-org] price read failed for ${leg.key}:`, e);
+          return null;
+        });
+        const rec = ladder?.recommendedWorkflowDynastySlug ?? null;
+        const row = ladder?.rows.find((r) => r.audienceId === null && r.workflow.workflowDynastySlug === rec);
+        if (alive) setLegPrices((p) => ({ ...p, [leg.key]: { usd: row?.resolved.costPerOutcomeUsd ?? null, workflow: rec } }));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [brandId, orgId]);
+
+  // ── Steps ──
+  function submitOrg() {
+    const name = orgName.trim();
+    if (!name) return setError("Give your organization a name.");
+    void run(async () => {
+      if (!orgId) {
+        if (!createOrganization || !setActive) throw new Error("Your session is still loading. Try again in a moment.");
+        const org = await createOrganization({ name });
+        await setActive({ organization: org.id });
+        await session?.getToken({ skipCache: true });
+        setOrgId(org.id);
+        setApiActiveOrgOverride(org.id);
+        posthog.capture("new_org_modal_org_created", { org_id: org.id });
+      }
+      forward();
+    });
+  }
+
+  function submitBrand() {
+    if (hasWebsite) {
+      const problem = websiteInputProblem(website);
+      if (problem) return setError(problem);
+      if (!website.trim()) return setError("Enter your website, or choose that you have none.");
+    } else if (!brandName.trim()) {
+      return setError("Give your brand a name.");
+    }
+    void run(async () => {
+      // A brand with no website is created on the next screen, from what it sells: that
+      // text is the only thing its fields can be read from.
+      if (hasWebsite && !brandId) {
+        const url = /^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`;
+        const { brandId: id } = await upsertBrand(url);
+        setBrandId(id);
+        startPrefill(id);
+      }
+      forward();
+    });
+  }
+
+  function submitOfferText() {
+    const text = offerText.trim();
+    if (!text) return setError("Tell us what you sell.");
+    void run(async () => {
+      let id = brandId;
+      if (!id) {
+        ({ brandId: id } = await createBrandWithoutWebsite(brandName.trim(), text));
+        setBrandId(id);
+        startPrefill(id);
+      }
+      const { offers, mainOfferIndex } = await proposeBrandOffers(id, text);
+      if (offers.length === 0) throw new Error("We could not read an offer in this text. Add a sentence about what a customer buys.");
+      setOfferProposals(offers);
+      const main = mainOfferIndex >= 0 && mainOfferIndex < offers.length ? mainOfferIndex : 0;
+      setPickedOfferIndex(main);
+      if (offers.length === 1) {
+        const { chosenOfferId: chosen } = await confirmBrandOffers(id, offers, 0);
+        setOfferId(chosen);
+        go("audienceText");
+      } else {
+        go("offerPick");
+      }
+    });
+  }
+
+  function submitOfferPick() {
+    void run(async () => {
+      const { chosenOfferId: chosen } = await confirmBrandOffers(brandId!, offerProposals, pickedOfferIndex);
+      setOfferId(chosen);
+      forward();
+    });
+  }
+
+  function submitAudienceText() {
+    const text = audienceText.trim();
+    if (!text) return setError("Tell us who you sell to.");
+    void run(async () => {
+      const { segments: proposed } = await proposeAudienceSegments(brandId!, text);
+      if (proposed.length === 0) throw new Error("We could not read an audience in this text. Add who buys, where, and what size of company.");
+      setSegments(proposed);
+      setPickedSegments(new Set(proposed.map((_, i) => i)));
+      forward();
+    });
+  }
+
+  function submitAudiencePick() {
+    if (pickedSegments.size === 0) return setError("Keep at least one audience.");
+    void run(async () => {
+      await prefillRef.current;
+      forward();
+    });
+  }
+
+  function submitLevers() {
+    void run(async () => {
+      const fields: Partial<Record<UserFieldKey, UserFieldValue>> = {};
+      const services = offerProposals[pickedOfferIndex]?.name;
+      if (services) fields.services = [services];
+      for (const q of LEVER_QUESTIONS) {
+        const v = levers[q.key].trim();
+        fields[q.key] = q.list ? v.split("\n").map((s) => s.trim()).filter(Boolean) : v;
+      }
+      await saveOfferUserFields(brandId!, offerId!, fields);
+      forward();
+    });
+  }
+
+  const leg = newOrgLeg(legKey);
+  const legPrice = legPrices[legKey]?.usd ?? null;
+  const recommended = recommendedDailyBudgetUsd(leg, legPrice, floorUsd);
+
+  function submitLeg() {
+    setBudget((cur) => (cur ? cur : recommended != null ? String(recommended) : ""));
+    forward();
+    void getBillingAccount()
+      .then(setAccount)
+      .catch((e) => console.error("[new-org] billing account read failed:", e));
+  }
+
+  const budgetUsd = Number(budget);
+  function submitBudget() {
+    if (!budget.trim() || !Number.isInteger(budgetUsd) || budgetUsd < 1) return setError("Enter a whole number of dollars a day.");
+    if (budgetUsd < floorUsd) return setError(`This channel runs from ${fmtUsd(floorUsd)} a day.`);
+    forward();
+  }
+
+  const freeCreditRaw = account?.free_credit_spendable_cents;
+  const freeCreditCents = freeCreditRaw != null && freeCreditRaw.trim() !== "" ? Number(freeCreditRaw) : null;
+  const skipAllowed = canSkipPayment(freeCreditCents);
+  const custom = parseCustomAmountCents(customAmount);
+  const prepaidCents = custom && "cents" in custom ? custom.cents : presetCents;
+
+  function startCheckout() {
+    if (custom && "problem" in custom) return setError(custom.problem);
+    if (!prepaidCents) return setError("Choose an amount.");
+    void run(async () => {
+      const { client_secret } = await createEmbeddedCheckoutSession(prepaidCents);
+      setCheckoutSecret(client_secret);
+    });
+  }
+
+  function launch() {
+    go("launching");
+    void run(async () => {
+      const id = brandId!;
+      const chosenOffer = offerId!;
+      await confirmAudienceSegments(id, chosenOffer, audienceText.trim(), segments.filter((_, i) => pickedSegments.has(i)));
+      await saveCampaignBudget(id, { offerId: chosenOffer, legKey, featureSlug: NEW_ORG_CHANNEL_SLUG }, budgetUsd * 100);
+      const workflowSlug = legPrices[legKey]?.workflow;
+      if (!workflowSlug) throw new Error(`No workflow is ready for ${leg.unitPlural} yet, so the campaign cannot start.`);
+      const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [id], chosenOffer);
+      const featureInputs: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
+      const url = hasWebsite ? (/^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`) : null;
+      const offerName = offerProposals[pickedOfferIndex]?.name ?? "Offer";
+      const { campaign } = await createCampaignWithoutBrandEnrichment({
+        name: `${offerName} (${leg.label}, Cold email)`,
+        workflowSlug,
+        ...(url ? { brandUrls: [url] } : { brandIds: [id] }),
+        offerId: chosenOffer,
+        legKey,
+        featureSlug: NEW_ORG_CHANNEL_SLUG,
+        featureInputs,
+      });
+      // The edge gate reads this claim: the org is set up only now, with a campaign running.
+      const res = await fetch("/api/onboarding/complete", { method: "POST" });
+      if (!res.ok) console.error("[new-org] marking onboarding complete failed:", res.status);
+      await session?.getToken({ skipCache: true });
+      finishedRef.current = true;
+      posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: budgetUsd, pay_mode: "prepaid" });
+      setApiActiveOrgOverride(null);
+      onClose();
+      router.push(v2MissionHref(orgId!, id, campaign.id));
+    });
+  }
+
+  if (!open) return null;
+  const host = document.getElementById("v2-portal") ?? document.body;
+  const stepIndex = ["org", "brand", "offerText", "audienceText", "levers", "leg", "budget", "payment"].indexOf(
+    step === "offerPick" ? "offerText" : step === "audiencePick" ? "audienceText" : step,
+  );
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-[#1010121f] px-3 pt-[8vh]">
+      <div role="dialog" aria-modal="true" aria-label="New organization" className="k-popover flex max-h-[84vh] w-full max-w-[560px] flex-col overflow-hidden">
+        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
+          <span className="k-label">New organization</span>
+          {stepIndex >= 0 && <span className="k-fg3 k-mono text-[12px] tabular-nums">{stepIndex + 1} / 8</span>}
+          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={() => void close()} disabled={step === "launching"}>
+            ×
+          </button>
+        </div>
+
+        <div className="k-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <h2 className="k-fg text-[17px] font-medium leading-6">{STEP_TITLE[step]}</h2>
+
+          {step === "org" && (
+            <Field label="Organization name">
+              <input className="k-input w-full px-2.5" value={orgName} onChange={(e) => setOrgName(e.target.value)} autoFocus disabled={!!orgId} />
+              {orgId && <p className="k-fg3 mt-1.5 text-[12px]">Created. You can rename it later in its settings.</p>}
+            </Field>
+          )}
+
+          {step === "brand" && (
+            <div className="mt-4 space-y-3">
+              {hasWebsite ? (
+                <Field label="Website">
+                  <input className="k-input w-full px-2.5" placeholder="acme.com" value={website} onChange={(e) => setWebsite(e.target.value)} autoFocus disabled={!!brandId} />
+                </Field>
+              ) : (
+                <Field label="Brand name">
+                  <input className="k-input w-full px-2.5" value={brandName} onChange={(e) => setBrandName(e.target.value)} autoFocus />
+                </Field>
+              )}
+              {!brandId && (
+                <button type="button" className="k-btn-ghost -ml-2 h-7 text-[12px]" onClick={() => setHasWebsite((v) => !v)}>
+                  {hasWebsite ? "This brand has no website" : "This brand has a website"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {step === "offerText" && (
+            <Field label="What you sell" hint="We drafted this from your website when we could. Edit it freely.">
+              <textarea
+                className="k-input min-h-[140px] w-full resize-y px-2.5 py-2 leading-5"
+                value={offerText}
+                onChange={(e) => {
+                  editedRef.current.offer = true;
+                  setOfferText(e.target.value);
+                }}
+                placeholder="What a customer buys from you, in a few sentences."
+                autoFocus
+              />
+            </Field>
+          )}
+
+          {step === "offerPick" && (
+            <div className="mt-4 space-y-1.5">
+              <p className="k-fg2 text-[13px]">We found {offerProposals.length} offers. Pick one to start with; the others stay on your brand for later.</p>
+              {offerProposals.map((o, i) => (
+                <PickRow key={i} icon={<OfferIcon token={o.icon} />} title={o.name} sub={o.description} checked={i === pickedOfferIndex} kind="radio" onClick={() => setPickedOfferIndex(i)} />
+              ))}
+            </div>
+          )}
+
+          {step === "audienceText" && (
+            <Field label="Who you sell to" hint="Drafted from your brand. Edit it freely.">
+              <textarea
+                className="k-input min-h-[120px] w-full resize-y px-2.5 py-2 leading-5"
+                value={audienceText}
+                onChange={(e) => {
+                  editedRef.current.audience = true;
+                  setAudienceText(e.target.value);
+                }}
+                placeholder="The people and companies who buy from you."
+                autoFocus
+              />
+            </Field>
+          )}
+
+          {step === "audiencePick" && (
+            <div className="mt-4 space-y-1.5">
+              <p className="k-fg2 text-[13px]">We split your target so the campaign can test which audience answers best. Keep at least one.</p>
+              {segments.map((s, i) => (
+                <PickRow
+                  key={i}
+                  icon={<OfferIcon token={s.icon} />}
+                  title={s.name}
+                  sub={s.description}
+                  checked={pickedSegments.has(i)}
+                  kind="checkbox"
+                  onClick={() =>
+                    setPickedSegments((cur) => {
+                      const next = new Set(cur);
+                      if (next.has(i)) next.delete(i);
+                      else next.add(i);
+                      return next;
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {step === "levers" && (
+            <div className="mt-4 space-y-4">
+              {LEVER_QUESTIONS.map((q) => (
+                <Field key={q.key} label={q.label} hint={q.hint}>
+                  <textarea
+                    className="k-input min-h-[64px] w-full resize-y px-2.5 py-2 leading-5"
+                    value={levers[q.key]}
+                    onChange={(e) => {
+                      editedRef.current.levers = true;
+                      setLevers((cur) => ({ ...cur, [q.key]: e.target.value }));
+                    }}
+                  />
+                </Field>
+              ))}
+            </div>
+          )}
+
+          {step === "leg" && (
+            <div className="mt-4 space-y-1.5">
+              {NEW_ORG_LEGS.map((l) => {
+                const price = legPrices[l.key];
+                const sub = price === undefined ? "Reading the current price…" : price.usd != null ? `About ${fmtUsd(price.usd)} per ${l.unit} with our best workflow right now.` : "No price measured yet.";
+                return <PickRow key={l.key} title={l.label} sub={sub} checked={legKey === l.key} kind="radio" onClick={() => setLegKey(l.key)} />;
+              })}
+            </div>
+          )}
+
+          {step === "budget" && (
+            <div className="mt-4 space-y-2">
+              <Field label="Dollars a day">
+                <div className="flex items-center gap-2">
+                  <span className="k-fg3">$</span>
+                  <input className="k-input w-28 px-2.5 text-right tabular-nums" inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value.replace(/[^\d]/g, ""))} autoFocus />
+                  <span className="k-fg3 text-[13px]">/ day</span>
+                </div>
+              </Field>
+              {recommended != null && (
+                <p className="k-fg2 text-[13px]">
+                  Recommended: {fmtUsd(recommended)} a day, about {leg.recommendedPerDay} {leg.recommendedPerDay === 1 ? leg.unit : leg.unitPlural} a day at today&apos;s price.
+                </p>
+              )}
+            </div>
+          )}
+
+          {step === "payment" && !checkoutSecret && (
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {PREPAID_PRESETS_CENTS.map((c) => (
+                      <button key={c} type="button" onClick={() => { setPresetCents(c); setCustomAmount(""); }} className={`${presetCents === c && !customAmount ? "k-btn-strong" : "k-btn"} tabular-nums`}>
+                        ${c / 100}
+                      </button>
+                    ))}
+                    <input className="k-input w-28 px-2.5 tabular-nums" placeholder="Custom" inputMode="decimal" value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); setPresetCents(null); }} />
+                  </div>
+                  <p className="k-fg3 text-[12px]">Credits are spent as the campaign runs, within the daily budget you set.</p>
+                </div>
+              {skipAllowed && freeCreditCents != null && (
+                <p className="k-fg2 text-[13px]">You have {fmtUsd(freeCreditCents / 100)} of free credit, so you can also start now and pay later.</p>
+              )}
+            </div>
+          )}
+
+          {step === "payment" && checkoutSecret && (
+            <div className="mt-4">
+              <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: checkoutSecret, onComplete: launch }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          )}
+
+          {step === "launching" && (
+            <p className="k-fg2 mt-3 text-[13px]">{error ? "The launch stopped." : "Creating your audiences, funding the campaign and starting it."}</p>
+          )}
+
+          {error && <p className="mt-3 text-[13px] text-[var(--data-rose)]" role="alert">{error}</p>}
+        </div>
+
+        {step !== "launching" && !checkoutSecret && (
+          <div className="flex h-14 shrink-0 items-center gap-2 border-t border-[var(--line-subtle)] px-4">
+            {step !== "org" && (
+              <button type="button" className="k-btn-ghost" onClick={back} disabled={busy}>
+                Back
+              </button>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              {step === "payment" && skipAllowed && (
+                <button type="button" className="k-btn" onClick={launch} disabled={busy}>
+                  Start with free credit
+                </button>
+              )}
+              <button type="button" className="k-btn-strong" disabled={busy} onClick={() => primary()}>
+                {busy ? "Working…" : primaryLabel()}
+              </button>
+            </div>
+          </div>
+        )}
+        {step === "launching" && error && (
+          <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-[var(--line-subtle)] px-4">
+            <button type="button" className="k-btn-strong" onClick={launch} disabled={busy}>
+              Try again
+            </button>
+          </div>
+        )}
+      </div>
+    </div>,
+    host,
+  );
+
+  function primaryLabel(): string {
+    if (step === "payment") return `Pay ${prepaidCents ? fmtUsd(prepaidCents / 100) : ""}`.trim();
+    return "Continue";
+  }
+
+  function primary() {
+    switch (step) {
+      case "org": return submitOrg();
+      case "brand": return submitBrand();
+      case "offerText": return submitOfferText();
+      case "offerPick": return submitOfferPick();
+      case "audienceText": return submitAudienceText();
+      case "audiencePick": return submitAudiencePick();
+      case "levers": return submitLevers();
+      case "leg": return submitLeg();
+      case "budget": return submitBudget();
+      case "payment": return startCheckout();
+      default: return;
+    }
+  }
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="mt-4 block">
+      <span className="k-label">{label}</span>
+      {hint && <span className="k-fg3 ml-2 text-[12px]">{hint}</span>}
+      <div className="mt-1.5">{children}</div>
+    </label>
+  );
+}
+
+function PickRow({
+  icon,
+  title,
+  sub,
+  checked,
+  kind,
+  onClick,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  sub: string;
+  checked: boolean;
+  kind: "radio" | "checkbox";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role={kind}
+      aria-checked={checked}
+      onClick={onClick}
+      className={`${checked ? "k-card-accent" : "k-card"} flex w-full items-center gap-3 px-3 py-2.5 text-left`}
+    >
+      {icon && <span className="shrink-0">{icon}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="k-fg block truncate text-[13px] font-medium">{title}</span>
+        <span className="k-fg2 block text-[12px] leading-[18px]">{sub}</span>
+      </span>
+      <span
+        aria-hidden="true"
+        className={`flex h-4 w-4 shrink-0 items-center justify-center ${kind === "radio" ? "rounded-full" : "rounded-[4px]"} ${checked ? "bg-[var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--line-strong)]"}`}
+      >
+        {checked && <span className={`${kind === "radio" ? "h-1.5 w-1.5 rounded-full" : "h-1.5 w-2 rounded-[1px]"} bg-white`} />}
+      </span>
+    </button>
+  );
+}
