@@ -7283,6 +7283,10 @@ const WorkflowRankRowSchema = z.object({
     /** Present ⟺ the request named a campaign. It sits between brand and audience in
      *  the producer's cascade and answers for the campaign's whole IDENTITY. */
     campaign: WorkflowRankGrainSchema.optional(),
+    /** Present ⟺ the named campaign states an offer: every campaign of this channel
+     *  selling it, priced on the BRAND grain's basis (same spend, same outcomes, same
+     *  floor), so on a one-offer brand it states the brand's figure. */
+    offer: WorkflowRankGrainSchema.optional(),
     audience: WorkflowRankGrainSchema.optional(),
   }),
   resolved: WorkflowRankResolvedSchema,
