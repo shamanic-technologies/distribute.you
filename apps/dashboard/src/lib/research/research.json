@@ -116,7 +116,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Gemini 3.1 Pro: cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
@@ -162,7 +162,54 @@
               "note": "5 positive replies · 23,427 emails",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Gemini 3.1 Pro: average since inception",
+            "points": [
+              {
+                "label": "Apr",
+                "value": 103.06,
+                "display": "$103",
+                "note": "1 positive reply · 3,081 emails to date",
+                "thin": true
+              },
+              {
+                "label": "May",
+                "value": 108.03,
+                "display": "$108",
+                "note": "8 positive replies · 19,058 emails to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 139.69,
+                "display": "$140",
+                "note": "13 positive replies · 40,831 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 144.92,
+                "display": "$145",
+                "note": "24 positive replies · 59,636 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 159.03,
+                "display": "$159",
+                "note": "32 positive replies · 75,555 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 213.56,
+                "display": "$214",
+                "note": "37 positive replies · 98,982 emails to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -292,7 +339,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Gemini 3.1 Pro: positive replies per 10,000 emails by month",
           "lowerIsBetter": false,
           "points": [
@@ -338,7 +385,54 @@
               "note": "5 positive replies · 23,427 emails",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Gemini 3.1 Pro: average since inception",
+            "points": [
+              {
+                "label": "Apr",
+                "value": 3.25,
+                "display": "3.2 /10k",
+                "note": "1 positive reply · 3,081 emails to date",
+                "thin": false
+              },
+              {
+                "label": "May",
+                "value": 4.2,
+                "display": "4.2 /10k",
+                "note": "8 positive replies · 19,058 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Jun",
+                "value": 3.18,
+                "display": "3.2 /10k",
+                "note": "13 positive replies · 40,831 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 4.02,
+                "display": "4.0 /10k",
+                "note": "24 positive replies · 59,636 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 4.24,
+                "display": "4.2 /10k",
+                "note": "32 positive replies · 75,555 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 3.74,
+                "display": "3.7 /10k",
+                "note": "37 positive replies · 98,982 emails to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -364,7 +458,7 @@
       "crowned": true,
       "charts": [
         {
-          "kind": "line",
+          "kind": "months",
           "title": "All our emails: cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
@@ -410,10 +504,57 @@
               "note": "6 positive replies · 34,235 emails",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "All our emails: average since inception",
+            "points": [
+              {
+                "label": "Apr",
+                "value": 103.59,
+                "display": "$104",
+                "note": "1 positive reply · 3,435 emails to date",
+                "thin": true
+              },
+              {
+                "label": "May",
+                "value": 108.16,
+                "display": "$108",
+                "note": "8 positive replies · 19,544 emails to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 163.12,
+                "display": "$163",
+                "note": "13 positive replies · 55,736 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 185.73,
+                "display": "$186",
+                "note": "24 positive replies · 89,836 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 190.61,
+                "display": "$191",
+                "note": "34 positive replies · 111,202 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 266.97,
+                "display": "$267",
+                "note": "40 positive replies · 145,437 emails to date",
+                "thin": false
+              }
+            ]
+          }
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Gemini 3.1 Pro (cheapest LLM): cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
@@ -459,7 +600,54 @@
               "note": "5 positive replies · 23,427 emails",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Gemini 3.1 Pro (cheapest LLM): average since inception",
+            "points": [
+              {
+                "label": "Apr",
+                "value": 103.06,
+                "display": "$103",
+                "note": "1 positive reply · 3,081 emails to date",
+                "thin": true
+              },
+              {
+                "label": "May",
+                "value": 108.03,
+                "display": "$108",
+                "note": "8 positive replies · 19,058 emails to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 139.69,
+                "display": "$140",
+                "note": "13 positive replies · 40,831 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 144.92,
+                "display": "$145",
+                "note": "24 positive replies · 59,636 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 159.03,
+                "display": "$159",
+                "note": "32 positive replies · 75,555 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 213.56,
+                "display": "$214",
+                "note": "37 positive replies · 98,982 emails to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -819,7 +1007,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Blind discovery v26: cost per positive reply by month",
           "lowerIsBetter": true,
           "points": [
@@ -844,7 +1032,33 @@
               "note": "2 positive replies · 15,268 emails",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Blind discovery v26: average since inception",
+            "points": [
+              {
+                "label": "Jul",
+                "value": 55.69,
+                "display": "$56",
+                "note": "5 positive replies · 2,765 emails to date",
+                "thin": true
+              },
+              {
+                "label": "Aug",
+                "value": 83.87,
+                "display": "$84",
+                "note": "12 positive replies · 10,094 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 186.98,
+                "display": "$187",
+                "note": "14 positive replies · 25,362 emails to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -1107,7 +1321,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Cold email v27: positive replies per 10,000 emails by month",
           "lowerIsBetter": false,
           "points": [
@@ -1132,7 +1346,33 @@
               "note": "0 positive replies · 410 emails",
               "thin": true
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Cold email v27: average since inception",
+            "points": [
+              {
+                "label": "Jul",
+                "value": 18.67,
+                "display": "18.7 /10k",
+                "note": "4 positive replies · 2,142 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 11.22,
+                "display": "11.2 /10k",
+                "note": "4 positive replies · 3,565 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 10.06,
+                "display": "10.1 /10k",
+                "note": "4 positive replies · 3,975 emails to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -1235,7 +1475,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Gemini 3 Flash: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
@@ -1260,7 +1500,33 @@
               "note": "1 website visit · 330 emails with a link",
               "thin": true
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Gemini 3 Flash: average since inception",
+            "points": [
+              {
+                "label": "Jun",
+                "value": 0.94,
+                "display": "$0.94",
+                "note": "72 website visits · 3,137 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 1.37,
+                "display": "$1.37",
+                "note": "226 website visits · 8,417 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 1.41,
+                "display": "$1.41",
+                "note": "227 website visits · 8,747 emails with a link to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -1355,7 +1621,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Gemini 3 Flash: website visits per 1,000 emails with a link by month",
           "lowerIsBetter": false,
           "points": [
@@ -1380,7 +1646,33 @@
               "note": "1 website visit · 330 emails with a link",
               "thin": true
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Gemini 3 Flash: average since inception",
+            "points": [
+              {
+                "label": "Jun",
+                "value": 22.95,
+                "display": "23.0 /1k",
+                "note": "72 website visits · 3,137 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 26.85,
+                "display": "26.9 /1k",
+                "note": "226 website visits · 8,417 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 25.95,
+                "display": "26.0 /1k",
+                "note": "227 website visits · 8,747 emails with a link to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -1406,7 +1698,7 @@
       "crowned": true,
       "charts": [
         {
-          "kind": "line",
+          "kind": "months",
           "title": "All our emails: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
@@ -1445,10 +1737,50 @@
               "note": "264 website visits · 9,501 emails with a link",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "All our emails: average since inception",
+            "points": [
+              {
+                "label": "May",
+                "value": 12.63,
+                "display": "$13",
+                "note": "30 website visits · 9,226 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Jun",
+                "value": 3.06,
+                "display": "$3.06",
+                "note": "250 website visits · 21,512 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 2.69,
+                "display": "$2.69",
+                "note": "541 website visits · 32,736 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 3.28,
+                "display": "$3.28",
+                "note": "627 website visits · 38,785 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 3.35,
+                "display": "$3.35",
+                "note": "891 website visits · 48,286 emails with a link to date",
+                "thin": false
+              }
+            ]
+          }
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Gemini 3 Flash (cheapest LLM): cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
@@ -1473,7 +1805,33 @@
               "note": "1 website visit · 330 emails with a link",
               "thin": true
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Gemini 3 Flash (cheapest LLM): average since inception",
+            "points": [
+              {
+                "label": "Jun",
+                "value": 0.94,
+                "display": "$0.94",
+                "note": "72 website visits · 3,137 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 1.37,
+                "display": "$1.37",
+                "note": "226 website visits · 8,417 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 1.41,
+                "display": "$1.41",
+                "note": "227 website visits · 8,747 emails with a link to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -1818,7 +2176,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Cold email v19: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
@@ -1857,7 +2215,47 @@
               "note": "7 website visits · 160 emails with a link",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Cold email v19: average since inception",
+            "points": [
+              {
+                "label": "May",
+                "value": 3.25,
+                "display": "$3.25",
+                "note": "11 website visits · 939 emails with a link to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 1.8,
+                "display": "$1.80",
+                "note": "128 website visits · 7,051 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Jul",
+                "value": 1.37,
+                "display": "$1.37",
+                "note": "237 website visits · 9,626 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Aug",
+                "value": 1.45,
+                "display": "$1.45",
+                "note": "238 website visits · 9,955 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 1.46,
+                "display": "$1.46",
+                "note": "245 website visits · 10,115 emails with a link to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
@@ -1987,7 +2385,7 @@
           ]
         },
         {
-          "kind": "line",
+          "kind": "months",
           "title": "Blind discovery v26: website visits per 1,000 emails with a link by month",
           "lowerIsBetter": false,
           "points": [
@@ -2012,7 +2410,33 @@
               "note": "80 website visits · 2,178 emails with a link",
               "thin": false
             }
-          ]
+          ],
+          "cumulative": {
+            "title": "Blind discovery v26: average since inception",
+            "points": [
+              {
+                "label": "Jul",
+                "value": 24.59,
+                "display": "24.6 /1k",
+                "note": "6 website visits · 244 emails with a link to date",
+                "thin": true
+              },
+              {
+                "label": "Aug",
+                "value": 20.94,
+                "display": "20.9 /1k",
+                "note": "24 website visits · 1,146 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Sep",
+                "value": 31.29,
+                "display": "31.3 /1k",
+                "note": "104 website visits · 3,324 emails with a link to date",
+                "thin": false
+              }
+            ]
+          }
         }
       ],
       "conclusion": [
