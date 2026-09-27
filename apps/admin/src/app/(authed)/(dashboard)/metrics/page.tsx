@@ -19,6 +19,13 @@ import {
 import { cmgrSummary, monthlyVisitors, weeklyVisitors } from "@/lib/signup-buckets";
 import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 import { StatCard } from "@/components/stat-card";
+import { SignupsByChannelCard } from "@/components/signups-by-channel-card";
+import {
+  FIRST_TOUCH_CAPTURE_START,
+  channelBreakdown,
+  type ChannelBreakdown,
+} from "@/lib/acquisition-breakdown";
+import { fetchOrgAcquisitions } from "@/lib/client-service-acquisitions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -200,6 +207,18 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
   // The active-users view reads the cross-org accounts snapshot client-side
   // (getAuditAccounts), so it doesn't need the PostHog/Stripe/Clerk summary.
   const stats = view === "active-users" ? null : await fetchPublicStatsSummary(view);
+  // Signups by first-touch channel, read only on the tab that shows it. A failed
+  // read is stated on the card; it must not take the whole tab down.
+  let channels: ChannelBreakdown | null = null;
+  let channelsError: string | null = null;
+  if (view === "signups") {
+    try {
+      channels = channelBreakdown(await fetchOrgAcquisitions(FIRST_TOUCH_CAPTURE_START));
+    } catch (err) {
+      console.error("[metrics] signups by channel:", err);
+      channelsError = err instanceof Error ? err.message : String(err);
+    }
+  }
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -259,6 +278,9 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
             signupEvents={stats.signupEvents}
             timeline={stats.timeline}
           />
+        )}
+        {view === "signups" && (
+          <SignupsByChannelCard breakdown={channels} since={FIRST_TOUCH_CAPTURE_START} error={channelsError} />
         )}
         {view === "active-users" && <ActiveUsersView />}
         {view === "revenue" && stats && (
