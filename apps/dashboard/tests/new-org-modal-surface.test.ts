@@ -11,7 +11,7 @@ const api = read("lib/api.ts");
 describe("v2 New organization opens the modal, never the full-page onboarding", () => {
   it("the v2 menu entry mounts NewOrgModal and no longer routes to /onboarding?new=1", () => {
     expect(menus).toContain("<NewOrgModal");
-    expect(menus).toContain("setNewOrgOpen(true)");
+    expect(menus).toContain('setSetupFor("org")');
     expect(menus).not.toContain('router.push("/onboarding?new=1&from=add")');
   });
 });
@@ -93,5 +93,26 @@ describe("postpaid saves a card in the page, charging nothing, then arms auto to
   });
   it("launches only after the card is confirmed and auto top-up is on", () => {
     expect(after.indexOf("launch();")).toBeGreaterThan(after.indexOf("configureAutoTopup("));
+  });
+});
+
+describe("an org with no brand stays in v2, with one way forward", () => {
+  const proxy = read("proxy.ts");
+  const picker = read("components/v2/brand-picker.tsx");
+  it("the edge lets a v2 user reach the bare org page even while the org is not set up", () => {
+    expect(proxy).toContain("const v2OrgRoot =");
+    const gate = proxy.slice(proxy.indexOf("const v2OrgRoot ="), proxy.indexOf("return NextResponse.redirect(new URL(onboardingHref(), req.url));", proxy.indexOf("const v2OrgRoot =")));
+    expect(gate).toContain('=== "v2"');
+    expect(gate).toContain("!v2OrgRoot &&");
+  });
+  it("the org page offers Add a brand, which runs the modal from the brand step on that org", () => {
+    expect(picker).toContain("Add a brand");
+    expect(picker).toContain("existingOrgId={orgId}");
+    expect(modal).toContain('existingOrgId ? "brand" : "org"');
+  });
+  it("New brand in the menu opens the same modal, never the full-page onboarding", () => {
+    expect(menus).not.toContain('router.push("/onboarding?from=add")');
+    expect(menus).toContain('setSetupFor("brand")');
+    expect(menus).toContain('existingOrgId={setupFor === "brand" ? t.orgId : null}');
   });
 });

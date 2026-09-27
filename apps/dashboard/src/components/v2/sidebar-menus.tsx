@@ -101,7 +101,9 @@ export function TenantSwitcherV2() {
   }, [open, t.orgSearch]);
 
   // "New organization" opens the setup modal over this page, never the full-page onboarding.
-  const [newOrgOpen, setNewOrgOpen] = useState(false);
+  // One modal, two entries: a new org (from the org step) or a new brand in this org
+  // (from the brand step). Unmounted on close, so a reopened one starts from zero.
+  const [setupFor, setSetupFor] = useState<null | "org" | "brand">(null);
   const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
   const orgs = t.isStaff
     ? t.allOrgs.map((o) => ({ id: o.id, name: o.name, imageUrl: o.imageUrl, hasImage: o.hasImage }))
@@ -114,11 +116,14 @@ export function TenantSwitcherV2() {
 
   return (
     <div ref={ref} className="relative">
-      <NewOrgModal
-        open={newOrgOpen}
-        onClose={() => setNewOrgOpen(false)}
-        existingOrgNames={t.memberships.map((m) => m.organization.name)}
-      />
+      {setupFor && (
+        <NewOrgModal
+          open
+          onClose={() => setSetupFor(null)}
+          existingOrgNames={t.memberships.map((m) => m.organization.name)}
+          existingOrgId={setupFor === "brand" ? t.orgId : null}
+        />
+      )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -161,7 +166,16 @@ export function TenantSwitcherV2() {
             )}
           </div>
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
-          <button type="button" role="menuitem" className={itemCls} onClick={() => router.push("/onboarding?from=add")}>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemCls}
+            disabled={!t.orgId}
+            onClick={() => {
+              setOpen(false);
+              setSetupFor("brand");
+            }}
+          >
             <Plus />
             New brand
           </button>
@@ -203,7 +217,7 @@ export function TenantSwitcherV2() {
             className={itemCls}
             onClick={() => {
               setOpen(false);
-              setNewOrgOpen(true);
+              setSetupFor("org");
             }}
           >
             <Plus />
