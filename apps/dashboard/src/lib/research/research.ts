@@ -17,6 +17,8 @@ export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" 
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
+  /** On a workflow or template study's bars: which one the bar is, so the row opens its page. */
+  key?: string;
   label: string;
   value: number;
   display: string;
@@ -87,7 +89,44 @@ export interface ResearchFile {
   };
   crews: { id: ResearchCrew; outcome: string; description: string }[];
   studies: ResearchStudy[];
+  /** How many workflows and templates each crew's pages list (the pages read the catalogue). */
+  catalogCounts: Record<ResearchCrew, { workflows: number; templates: number }>;
 }
+
+/** The figures a workflow or a template is listed with, fleet-wide, all written by research.mjs. */
+export interface ResearchFigures {
+  /** Its place in the ROI order (the study's own), or null when it has no priced outcome yet. */
+  rank: number | null;
+  emails: string;
+  emailsNoun: string;
+  outcomes: string;
+  spend: string;
+  cost: string | null;
+  rate: string | null;
+  thin: boolean;
+  sample: string;
+  charts: ResearchChart[];
+}
+
+export interface ResearchWorkflow extends ResearchFigures {
+  key: string;
+  label: string;
+  model: string | null;
+  /** `linked`: the template has its own page in this crew. */
+  template: { key: string; label: string; linked: boolean } | null;
+  runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
+}
+
+export interface ResearchTemplate extends ResearchFigures {
+  key: string;
+  label: string;
+  hasText: boolean;
+  workflows: { key: string; label: string }[];
+  runs: { when: string; model: string; workflow: { key: string; label: string } | null; version: string | null; tokens: string | null }[];
+}
+
+export type ResearchCatalog = Record<ResearchCrew, { workflows: ResearchWorkflow[]; templates: ResearchTemplate[] }>;
+export type CatalogKind = "workflows" | "templates";
 
 export const RESEARCH = data as ResearchFile;
 
@@ -135,4 +174,82 @@ export function studySpark(study: ResearchStudy): { kind: "line" | "bars"; point
   if (months?.cumulative) return { kind: "line", points: months.cumulative.points };
   const first = study.charts[0];
   return first ? { kind: "bars", points: first.points } : null;
+}
+
+export function isResearchCrew(v: string): v is ResearchCrew {
+  return (CREW_ORDER as string[]).includes(v);
+}
+
+/** What a path under `/research` shows. Study ids carry no slash, so they never collide. */
+export type ResearchView =
+  | { view: "hub" }
+  | { view: "study"; id: string }
+  | { view: "list"; crew: ResearchCrew; kind: CatalogKind }
+  | { view: "item"; crew: ResearchCrew; kind: CatalogKind; key: string }
+  | { view: "missing" };
+export function parseResearchPath(rest: string): ResearchView {
+  const parts = rest.split("/").filter(Boolean).map((p) => decodeURIComponent(p));
+  if (parts.length === 0) return { view: "hub" };
+  if (parts.length === 1) return { view: "study", id: parts[0] };
+  const [crew, kind, key, ...extra] = parts;
+  if (!isResearchCrew(crew) || (kind !== "workflows" && kind !== "templates") || extra.length) return { view: "missing" };
+  return key ? { view: "item", crew, kind, key } : { view: "list", crew, kind };
+}
+
+export function researchCatalogHref(base: string, crew: ResearchCrew, kind: CatalogKind, key?: string): string {
+  return `${base}/${crew}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
+}
+
+/** The page a study's bar opens: its workflow's or template's own, when the bar names one. */
+export function pointHref(base: string, study: ResearchStudy, point: ResearchPoint): string | null {
+  if (!point.key) return null;
+  if (study.topic === "workflow") return researchCatalogHref(base, study.crew, "workflows", point.key);
+  if (study.topic === "template") return researchCatalogHref(base, study.crew, "templates", point.key);
+  return null;
+}
+
+// The catalogue and the template texts are side files, loaded once right after the page paints,
+// so the hub does not carry them and a click on a workflow or template finds them in memory.
+let catalog: ResearchCatalog | null = null;
+let catalogLoad: Promise<ResearchCatalog> | null = null;
+let texts: Record<string, string> | null = null;
+let textsLoad: Promise<Record<string, string>> | null = null;
+
+export function peekResearchCatalog(): ResearchCatalog | null {
+  return catalog;
+}
+export function loadResearchCatalog(): Promise<ResearchCatalog> {
+  catalogLoad ??= import("./research-catalog.json").then((m) => {
+    catalog = (m.default ?? m) as unknown as ResearchCatalog;
+    return catalog;
+  });
+  return catalogLoad;
+}
+export function peekTemplateTexts(): Record<string, string> | null {
+  return texts;
+}
+export function loadTemplateTexts(): Promise<Record<string, string>> {
+  textsLoad ??= import("./research-templates.json").then((m) => {
+    texts = (m.default ?? m) as unknown as Record<string, string>;
+    return texts;
+  });
+  return textsLoad;
+}
+/** Starts both loads; the Research page calls it once it has painted. */
+export function preloadResearchCatalog(): void {
+  void loadResearchCatalog();
+  void loadTemplateTexts();
+}
+
+export function researchWorkflow(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchWorkflow | null {
+  return c[crew].workflows.find((w) => w.key === key) ?? null;
+}
+export function researchTemplate(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchTemplate | null {
+  return c[crew].templates.find((t) => t.key === key) ?? null;
+}
+
+/** The research crew a mission's crew is (its channel and the step its leg lands on), if any. */
+export function researchCrewFor(channel: string | null | undefined, step: string | null | undefined): ResearchCrew | null {
+  if (!channel || !step) return null;
+  return CREW_ORDER.find((c) => CREW_KEY[c].channel === channel && CREW_KEY[c].step === step) ?? null;
 }

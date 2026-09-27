@@ -1,7 +1,21 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CREW_ORDER, RESEARCH, studyById, studiesFor } from "../src/lib/research/research";
+import {
+  CREW_ORDER,
+  RESEARCH,
+  loadResearchCatalog,
+  parseResearchPath,
+  pointHref,
+  researchCatalogHref,
+  researchCrewFor,
+  researchTemplate,
+  researchWorkflow,
+  studyById,
+  studiesFor,
+} from "../src/lib/research/research";
+import catalogJson from "../src/lib/research/research-catalog.json";
+import textsJson from "../src/lib/research/research-templates.json";
 
 const ROOT = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -121,7 +135,7 @@ describe("Research is staff-only", () => {
   });
 
   it("checks the same list on the server for both routes, so a typed URL shows nothing", () => {
-    for (const route of ["research/page.tsx", "research/[studyId]/page.tsx"]) {
+    for (const route of ["research/page.tsx", "research/[...path]/page.tsx"]) {
       const page = read(`app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${route}`);
       expect(page).toContain("isAdminEmail(sessionClaims?.email)");
       expect(page).not.toContain('"use client"');
@@ -195,8 +209,103 @@ describe("the maturation window is measured and applied everywhere", () => {
 
   it("draws the line under every chart and states it on the page", () => {
     const src = read("components/v2/research-page.tsx");
-    expect(src).toContain("<ChartNote note={chart.note} />");
+    expect(read("components/v2/research-bits.tsx")).toContain("<ChartNote note={chart.note} />");
     expect(src).toContain("<ChartNote note={c.note} />");
     expect(src).toContain("{RESEARCH.maturation.note}");
+  });
+});
+
+describe("workflow and template pages (the research catalogue)", () => {
+  const catalog = catalogJson as unknown as Awaited<ReturnType<typeof loadResearchCatalog>>;
+  const texts = textsJson as Record<string, string>;
+  const base = "/v2/orgs/o/brands/b/research";
+
+  it("reads every path under /research, and never mistakes a study for a crew page", () => {
+    expect(parseResearchPath("")).toEqual({ view: "hub" });
+    expect(parseResearchPath("herald-template-roi")).toEqual({ view: "study", id: "herald-template-roi" });
+    expect(parseResearchPath("herald/workflows")).toEqual({ view: "list", crew: "herald", kind: "workflows" });
+    expect(parseResearchPath("scout/templates/cold-email-v19")).toEqual({ view: "item", crew: "scout", kind: "templates", key: "cold-email-v19" });
+    expect(parseResearchPath("nobody/workflows").view).toBe("missing");
+    expect(parseResearchPath("herald/audiences").view).toBe("missing");
+    expect(researchCatalogHref(base, "herald", "workflows", "a b")).toBe(`${base}/herald/workflows/a%20b`);
+  });
+
+  it("lists, for each crew, what the hub counts", () => {
+    for (const crew of CREW_ORDER) {
+      expect(catalog[crew].workflows.length).toBe(RESEARCH.catalogCounts[crew].workflows);
+      expect(catalog[crew].templates.length).toBe(RESEARCH.catalogCounts[crew].templates);
+    }
+    expect(catalog.herald.workflows.length).toBeGreaterThan(0);
+    expect(catalog.scout.templates.length).toBeGreaterThan(0);
+  });
+
+  it("gives every bar of a workflow or template study a page, and no other study a link", () => {
+    for (const s of RESEARCH.studies) {
+      for (const c of s.charts.filter((ch) => ch.kind === "bars")) {
+        for (const p of c.points) {
+          const href = pointHref(base, s, p);
+          if (s.topic === "workflow") {
+            expect(researchWorkflow(catalog, s.crew, p.key!), `${s.id} ${p.label}`).not.toBeNull();
+            expect(href).toBe(`${base}/${s.crew}/workflows/${encodeURIComponent(p.key!)}`);
+          } else if (s.topic === "template") {
+            expect(researchTemplate(catalog, s.crew, p.key!), `${s.id} ${p.label}`).not.toBeNull();
+            expect(href).toBe(`${base}/${s.crew}/templates/${encodeURIComponent(p.key!)}`);
+          } else {
+            expect(href).toBeNull();
+          }
+        }
+      }
+    }
+  });
+
+  it("states the same figure on a workflow page as on the study's bar", () => {
+    const study = RESEARCH.studies.find((s) => s.id === "herald-workflow-roi")!;
+    for (const p of study.charts[0].points) {
+      const w = researchWorkflow(catalog, "herald", p.key!)!;
+      expect(w.label).toBe(p.label);
+      expect(w.cost).toBe(p.display);
+    }
+    const tStudy = RESEARCH.studies.find((s) => s.id === "scout-template-roi")!;
+    for (const p of tStudy.charts[0].points) expect(researchTemplate(catalog, "scout", p.key!)!.cost).toBe(p.display);
+  });
+
+  it("links a workflow to its template's page only when that page exists, and every template carries its text", () => {
+    for (const crew of CREW_ORDER) {
+      for (const w of catalog[crew].workflows) {
+        if (w.template?.linked) expect(researchTemplate(catalog, crew, w.template.key)).not.toBeNull();
+        expect(w.label).not.toMatch(/\b[a-z]+-v\d+\b/);
+        for (const r of w.runs) expect(r.cost === null || r.cost.startsWith("$")).toBe(true);
+      }
+      for (const t of catalog[crew].templates) {
+        if (t.hasText) expect(texts[t.key]?.length, t.key).toBeGreaterThan(0);
+        for (const wf of t.workflows) expect(researchWorkflow(catalog, crew, wf.key)).not.toBeNull();
+      }
+    }
+  });
+
+  it("maps a mission's crew to its research crew", () => {
+    expect(researchCrewFor("sales-cold-email-outreach", "conversation")).toBe("herald");
+    expect(researchCrewFor("sales-cold-email-outreach", "website_visit")).toBe("scout");
+    expect(researchCrewFor("sales-cold-email-outreach", null)).toBeNull();
+  });
+
+  it("writes no em-dash and names no client in the catalogue", () => {
+    expect(JSON.stringify(catalog)).not.toContain("\u2014");
+    expect(JSON.stringify(catalog)).not.toMatch(/org_|@/);
+  });
+
+  it("wires the links: hub chips, clickable study bars, template chips, and the staff-only template link on the brand workflow page", () => {
+    const page = read("components/v2/research-page.tsx");
+    expect(page).toContain("<CrewCatalogLinks base={base} crew={crew} />");
+    expect(page).toContain("hrefFor={(p) => pointHref(base, study, p)}");
+    expect(page).toContain("preloadResearchCatalog()");
+    const cat = read("components/v2/research-catalog.tsx");
+    expect(cat).toContain('researchCatalogHref(base, crew, "templates", w.template.key)');
+    expect(cat).not.toMatch(/\.sort\(|text-gray-|InfoTooltip/);
+    const wf = read("components/v2/workflow-page.tsx");
+    expect(wf).toContain("<ResearchTemplateChip");
+    expect(read("components/v2/research-template-link.tsx")).toContain("useIsAdminUser()");
+    // the brand workflow page loads the research module on demand, never statically
+    expect(read("components/v2/research-template-link.tsx")).not.toMatch(/from "@\/lib\/research\/research"/);
   });
 });

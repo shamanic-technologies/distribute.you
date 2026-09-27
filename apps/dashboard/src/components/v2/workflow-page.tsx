@@ -25,6 +25,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { CrewMark } from "@/components/v2/crew-mark";
+import { ResearchTemplateChip } from "@/components/v2/research-template-link";
 import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { useMissions } from "@/components/v2/use-missions";
@@ -156,7 +157,16 @@ export function V2WorkflowPage() {
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="k-chip tabular-nums">{ranked.rank == null ? "Not ranked" : `#${ranked.rank} for this mission`}</span>
                 {model && <span className="k-chip">{model.label}</span>}
-                {template && <span className="k-chip">{template.label}</span>}
+                {template && (
+                  <ResearchTemplateChip
+                    orgId={orgId}
+                    brandId={brandId}
+                    channel={spec.featureSlug}
+                    step={spec.mission.leg?.toKey ?? null}
+                    templateKey={ranked.row.contentPromptType}
+                    label={template.label}
+                  />
+                )}
               </div>
             </div>
           </div>
