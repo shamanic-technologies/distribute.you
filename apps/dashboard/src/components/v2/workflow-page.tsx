@@ -296,7 +296,7 @@ function ChartCard({
         ) : failed ? (
           <p className="pt-10 text-center text-xs text-gray-500">We could not read this curve just now.</p>
         ) : data.length === 0 ? (
-          <p className="pt-10 text-center text-xs text-gray-500">Nothing has been spent on it for this brand yet.</p>
+          <p className="pt-10 text-center text-xs text-gray-500">No dated history for this workflow on this brand yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
