@@ -2292,11 +2292,33 @@ export function Onboarding() {
     return pending;
   }
 
+  // The projection alone, fetched now when the background hydrate has not
+  // delivered it yet. Same request the hydrate makes, so the two agree.
+  async function ensureProjectionLoaded(): Promise<void> {
+    if (projectionRef.current) return;
+    const id = brandIdRef.current;
+    if (!id) return;
+    projectionRef.current = await getWorkflowProjection({
+      featureSlug: SALES_FEATURE_SLUG,
+      brandId: id,
+      objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome)),
+      budgetUsd: PROJECTION_REF_BUDGET,
+    });
+    setPricingHydrationVersion((value) => value + 1);
+  }
+
   async function beginCheckoutAndLaunch() {
     setBusy(true);
     setError(null);
     setCancelNotice(null);
     try {
+      // The launch names a workflow off the projection, which the background hydrate
+      // loads only after its slow lever extraction, i.e. often AFTER this screen is
+      // on show (a claimed signup lands here straight from the account wall). A click
+      // before it landed threw "Campaign workflow setup is still missing" at the one
+      // moment the customer is paying. Fetch the projection alone rather than wait on
+      // the whole hydrate; the button already reads "Redirecting to checkout…".
+      await ensureProjectionLoaded();
       const pending = buildPendingLaunchBlob();
       const budget = pending.budgetUsd;
       const checkoutAmountCents = pending.checkoutAmountCents;
