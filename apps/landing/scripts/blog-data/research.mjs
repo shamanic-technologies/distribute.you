@@ -526,10 +526,13 @@ const workflowRuns = readJson("workflow-runs.json");
 const templateRuns = readJson("template-runs.json");
 const modelRuns = readJson("model-runs.json");
 // A workflow VERSION to the workflow (dynasty) it belongs to, as workflow-service records it.
+// And each workflow's NAME (Maelstrom, Lithium, ...) as workflow-service states it, verbatim.
 const dynastyOf = new Map();
+const nameOf = new Map();
 for (const line of readFileSync(join(dataDir, "workflows.csv"), "utf8").trim().split("\n").slice(1)) {
-  const [slug, dynasty] = line.split(",");
+  const [slug, dynasty, name] = line.split(",");
   dynastyOf.set(slug, dynasty || slug);
+  if (name && !nameOf.has(dynasty || slug)) nameOf.set(dynasty || slug, name);
 }
 const versionText = (slug) => `v${/-v(\d+)$/.exec(slug)?.[1] ?? "1"}`;
 const pad = (x) => String(x).padStart(2, "0");
@@ -591,6 +594,7 @@ for (const key of ["reply", "visit"]) {
     return {
       key: r.bucket,
       label: workflowLabel(r.bucket),
+      name: nameOf.get(r.bucket) ?? null,
       rank: r[o.cost] === null ? null : i + 1,
       model: m.model ? { key: modelKey(m.model), label: m.model, linked: modelLabels.has(m.model) } : null,
       template: m.template ? { key: m.template, label: templateLabel(m.template), linked: tplKeys.has(m.template) } : null,

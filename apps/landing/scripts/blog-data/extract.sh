@@ -128,7 +128,7 @@ WHERE g.feature_slug = 'sales-cold-email-outreach'
 # Which DYNASTY each workflow version belongs to: the Research page compares dynasties, the
 # lineage a workflow keeps across its versions, never a single version.
 run workflow_service "
-SELECT workflow_slug, workflow_dynasty_slug
+SELECT workflow_slug, workflow_dynasty_slug, workflow_dynasty_name
 FROM workflows
 WHERE feature_slug = 'sales-cold-email-outreach'
 " workflows.csv

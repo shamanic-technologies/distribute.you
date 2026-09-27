@@ -60,6 +60,11 @@ function RefLink({ base, crew, kind, r, className = "" }: { base: string; crew: 
   );
 }
 
+/** A workflow row is named by its own name (its model and template have their own columns); the rest by their label. */
+function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | ResearchModel): string {
+  return kind === "workflows" ? ((r as ResearchWorkflow).name ?? r.label) : r.label;
+}
+
 function outcomeOf(crew: ResearchCrew): { noun: string; plural: string; unit: string } {
   const outcome = RESEARCH.crews.find((c) => c.id === crew)?.outcome ?? "Outcome";
   const plural = /[^aeiou]y$/i.test(outcome) ? `${outcome.slice(0, -1)}ies` : `${outcome}s`;
@@ -171,7 +176,7 @@ export function V2ResearchCatalogView({
     );
   }
   const total = catalog[crew][kind].length;
-  const itemCrumbs = [...crumbs, { label: item.label }];
+  const itemCrumbs = [...crumbs, { label: rowName(kind, item) }];
   if (kind === "workflows") return <WorkflowView base={base} crew={crew} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
   if (kind === "templates") return <TemplateView base={base} crew={crew} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
   return <ModelView base={base} crew={crew} m={item as ResearchModel} total={total} crumbs={itemCrumbs} nav={nav} />;
@@ -277,11 +282,17 @@ function CatalogList({
           </SectionTitle>
           <div className="k-card overflow-hidden">
             <div className="k-scroll relative overflow-x-auto">
-              <table className="w-full min-w-[860px] text-[13px]">
+              <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : "min-w-[860px]"} text-[13px]`}>
                 <thead>
                   <tr className="border-b border-[var(--line-subtle)]">
                     <th className={`${TH} w-12`}>#</th>
                     <th className={TH}>{words.title.slice(0, -1)}</th>
+                    {kind === "workflows" && (
+                      <>
+                        <th className={`${TH} w-40`}>LLM</th>
+                        <th className={`${TH} w-40`}>Template</th>
+                      </>
+                    )}
                     <th className={`${TH} w-36 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
                     <th className={`${TH} w-28 text-right`}>Rate</th>
                     <th className={`${TH} w-28 text-right`}>{o.plural}</th>
@@ -293,7 +304,7 @@ function CatalogList({
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={8}>
+                      <td colSpan={kind === "workflows" ? 10 : 8}>
                         <EmptyNote>No {words.one} has written {id.name}&apos;s emails yet.</EmptyNote>
                       </td>
                     </tr>
@@ -304,10 +315,21 @@ function CatalogList({
                         <tr key={r.key} onClick={() => nav(href)} className="k-row group h-10 cursor-pointer">
                           <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
                           <td className="max-w-0 px-3">
-                            <Link href={href} className="block min-w-0 truncate font-medium" title={r.label}>
-                              {r.label}
+                            <Link href={href} className="block min-w-0 truncate font-medium" title={rowName(kind, r)}>
+                              {rowName(kind, r)}
                             </Link>
                           </td>
+                          {kind === "workflows" && (
+                            <>
+                              {/* Each cell opens that model's or template's own page; the rest of the row opens the workflow. */}
+                              <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
+                                <RefLink base={base} crew={crew} kind="models" r={(r as ResearchWorkflow).model} className="block min-w-0 truncate" />
+                              </td>
+                              <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
+                                <RefLink base={base} crew={crew} kind="templates" r={(r as ResearchWorkflow).template} className="block min-w-0 truncate" />
+                              </td>
+                            </>
+                          )}
                           <td className="px-3 text-right tabular-nums">
                             <Money value={r.cost} unit={o.unit} />
                           </td>
@@ -480,7 +502,7 @@ function WorkflowView({
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="workflow"
-          title={w.label}
+          title={w.name ?? w.label}
           chips={
             <>
               <span className="k-chip tabular-nums">{w.rank == null ? "Not priced yet" : `#${w.rank} of ${total}`}</span>

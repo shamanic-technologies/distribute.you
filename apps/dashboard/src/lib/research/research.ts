@@ -118,6 +118,8 @@ export interface ResearchRef {
 export interface ResearchWorkflow extends ResearchFigures {
   key: string;
   label: string;
+  /** The workflow's own name as workflow-service states it (Maelstrom, ...); null when it states none. */
+  name: string | null;
   model: ResearchRef | null;
   /** `linked`: the template has its own page in this crew. */
   template: ResearchRef | null;

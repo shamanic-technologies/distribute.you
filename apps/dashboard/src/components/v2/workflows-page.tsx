@@ -223,11 +223,13 @@ function MissionSection({
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll relative overflow-x-auto">
-            <table className="w-full min-w-[800px] text-[13px]">
+            <table className="w-full min-w-[1100px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className={`${TH} w-12`}>#</th>
                   <th className={TH}>Workflow</th>
+                  <th className={`${TH} w-40`}>LLM</th>
+                  <th className={`${TH} w-40`}>Template</th>
                   <th className={`${TH} w-40 text-right`}>Offer</th>
                   <th className={`${TH} w-40 text-right`}>Brand</th>
                   <th className={`${TH} w-40 text-right`}>Global</th>
@@ -237,7 +239,7 @@ function MissionSection({
               <tbody>
                 {r.ranked.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={8}>
                       <EmptyNote>This crew offers no workflow yet.</EmptyNote>
                     </td>
                   </tr>
@@ -249,7 +251,6 @@ function MissionSection({
                     const href = hrefFor(w.row.workflowDynastySlug);
                     const model = workflowModelMark(w.row.contentModel);
                     const template = workflowTemplateLabel(w.row.contentPromptType);
-                    const stack = [model?.label, template?.label].filter(Boolean).join(" · ");
                     return (
                       <tr
                         key={w.row.workflowDynastySlug}
@@ -264,8 +265,17 @@ function MissionSection({
                             {r.deprecatedSlugs.has(w.row.workflowDynastySlug) && (
                               <span className="k-chip k-fg3 shrink-0 text-[11px]">{DEPRECATED_ON_LEG_LABEL}</span>
                             )}
-                            {stack && <span className="k-fg3 hidden min-w-0 shrink-[2] truncate text-[12px] lg:inline">{stack}</span>}
                           </div>
+                        </td>
+                        <td className="max-w-0 px-3">
+                          <span className="block min-w-0 truncate" title={model?.label}>
+                            {model?.label ?? <span className="k-fg4">{"—"}</span>}
+                          </span>
+                        </td>
+                        <td className="max-w-0 px-3">
+                          <span className="block min-w-0 truncate" title={template?.label}>
+                            {template?.label ?? <span className="k-fg4">{"—"}</span>}
+                          </span>
                         </td>
                         <CostCell value={offer} unit={unit} />
                         <CostCell value={brand} unit={unit} />
