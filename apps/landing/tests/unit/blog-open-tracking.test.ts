@@ -34,6 +34,19 @@ describe("the open-tracking article", () => {
     expect(meta.slug.split("-").length).toBeLessThanOrEqual(5);
   });
 
+  it("opens on a key-takeaway card reusable as a post, with served lifts", () => {
+    const first = html.indexOf("Key takeaway");
+    expect(first).toBeGreaterThan(-1);
+    expect(first).toBeLessThan(html.indexOf('id="the-bet"'));
+    expect(html.slice(first, html.indexOf('id="the-bet"'))).toContain(`${signed(facts.replied.liftPct)} replies`);
+    expect(html).toContain("background:#eff6ff;border:1px solid #bfdbfe");
+  });
+
+  it("keeps only reach signals in the table", () => {
+    const table = html.slice(html.indexOf("<table>"), html.indexOf("</table>"));
+    expect(table).not.toMatch(/Bounced|Unsubscribed|with interest/);
+  });
+
   it("carries no typed figure in the results sections", () => {
     const results = template.slice(template.indexOf('id="the-answer"'), template.indexOf('id="why"'));
     expect(results.replace(/\{\{[^}]*\}\}/g, "")).not.toMatch(/\d+(\.\d+)?%|\d+ of \d+/);
@@ -66,6 +79,15 @@ describe("the open-tracking article", () => {
       const words = s.replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<table[\s\S]*?<\/table>/g, "").replace(/\{\{[^}]*\}\}/g, "N").replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
       expect(words, s.slice(0, 40)).toBeLessThan(120);
     }
+  });
+
+  it("links every blog article's method to its source on GitHub, never a bare repo path", async () => {
+    const { readdirSync } = await import("node:fs");
+    for (const slug of readdirSync(join(root, "content/blog"))) {
+      const body = readFileSync(join(root, "content/blog", slug, "article.html"), "utf8");
+      expect(body, slug).not.toMatch(/<code>apps\/landing\/scripts/);
+    }
+    expect(html).toContain('href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/pixel"');
   });
 
   it("publishes no address, lead or campaign id in the snapshot", () => {
