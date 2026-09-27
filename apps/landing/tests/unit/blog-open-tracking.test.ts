@@ -68,6 +68,15 @@ describe("the open-tracking article", () => {
     }
   });
 
+  it("links every blog article's method to its source on GitHub, never a bare repo path", async () => {
+    const { readdirSync } = await import("node:fs");
+    for (const slug of readdirSync(join(root, "content/blog"))) {
+      const body = readFileSync(join(root, "content/blog", slug, "article.html"), "utf8");
+      expect(body, slug).not.toMatch(/<code>apps\/landing\/scripts/);
+    }
+    expect(html).toContain('href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/pixel"');
+  });
+
   it("publishes no address, lead or campaign id in the snapshot", () => {
     const snapshot = readFileSync(join(root, "scripts/blog-data/pixel/pixel.snapshot.json"), "utf8");
     expect(snapshot).not.toContain("@");

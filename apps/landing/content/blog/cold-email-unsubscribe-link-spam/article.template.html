@@ -86,7 +86,7 @@
 
 <h2 id="method">Method</h2>
 
-<p>Three runs on 24 September 2026, sent over our own SMTP from {{n senders}} sending addresses ({{n runs.run1.senders}} per run) to Google Workspace inboxes we own ({{n runs.run1.receivers}} in runs one and two, {{n runs.run3.receivers}} in run three), one message per sender and inbox, one subject and body per run. Each pair's footer was set by its position, (sender + inbox) modulo the number of footers, so every sender and inbox saw every footer. {{n total.sent}} messages were sent and {{n total.arrived}} arrived; the {{n total.missing}} that never did are left out of every share and named under each bar. Placement was read from INBOX and spam on {{raw readAt}}, by the committed script in <code>apps/landing/scripts/blog-data/footer</code>.</p>
+<p>Three runs on 24 September 2026, sent over our own SMTP from {{n senders}} sending addresses ({{n runs.run1.senders}} per run) to Google Workspace inboxes we own ({{n runs.run1.receivers}} in runs one and two, {{n runs.run3.receivers}} in run three), one message per sender and inbox, one subject and body per run. Each pair's footer was set by its position, (sender + inbox) modulo the number of footers, so every sender and inbox saw every footer. {{n total.sent}} messages were sent and {{n total.arrived}} arrived; the {{n total.missing}} that never did are left out of every share and named under each bar. Placement was read from INBOX and spam on {{raw readAt}}, by the script we published on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/footer">GitHub</a>.</p>
 
 <h2 id="about-us">About distribute.you</h2>
 
