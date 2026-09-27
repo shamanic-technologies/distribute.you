@@ -165,16 +165,26 @@ export function V2WorkflowPage() {
           </Link>
         </div>
 
-        {/* No "Est. return" here: that was the ladder's PROJECTED return, and the chart
-            below states the REALIZED return under the same word. One return per page. */}
-        <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x">
-          <Kpi label={`Est. cost / ${noun.toLowerCase()}`} value={fmtUsd(ranked.estCostPerOutcomeUsd)} />
-          <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
-          <Kpi
-            label={`Cost / ${noun.toLowerCase()}, this mission`}
-            value={row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)}
+        {/* Keel's Commit / Best case: what this mission MEASURED leads, what the
+            ranking PROJECTS sits under it, each named, so the two are never read as
+            one figure. Both are served (grouped revenue and the ranking ladder). */}
+        <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x md:divide-y-0">
+          <DualKpi
+            label="Return, this mission"
+            measured={row.learning ? <span className="k-chip">Learning</span> : formatRoi(row.roiMultiple, "—")}
+            projected={formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
           />
+          <DualKpi
+            label={`Cost / ${noun.toLowerCase()}`}
+            measured={row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)}
+            projected={fmtUsd(ranked.estCostPerOutcomeUsd)}
+          />
+          <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
         </div>
+        <p className="k-fg3 mt-2 text-[12px]">
+          Measured is what this mission actually produced for what it spent. Projected is what the ranking expects, from your
+          conversion rates and your customer value.
+        </p>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
@@ -276,6 +286,25 @@ function Kpi({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="min-w-0 px-4 py-3">
       <p className="k-label truncate">{label}</p>
       <div className="mt-1 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+/** One figure read two ways: measured (filled dot, leads) and projected (outline dot). */
+function DualKpi({ label, measured, projected }: { label: string; measured: React.ReactNode; projected: React.ReactNode }) {
+  return (
+    <div className="min-w-0 px-4 py-3">
+      <p className="k-label truncate">{label}</p>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="h-2 w-2 shrink-0 translate-y-[-3px] rounded-full bg-[var(--fg-2)]" aria-hidden="true" />
+        <span className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{measured}</span>
+        <span className="k-fg3 text-[12px]">measured</span>
+      </div>
+      <div className="mt-0.5 flex items-baseline gap-2 text-[12px]">
+        <span className="h-2 w-2 shrink-0 rounded-full border border-[var(--fg-3)]" aria-hidden="true" />
+        <span className="k-fg2 tabular-nums">{projected}</span>
+        <span className="k-fg3">projected</span>
+      </div>
     </div>
   );
 }
