@@ -270,6 +270,22 @@
               "display": "0.00%",
               "note": "0 positive replies · 199 emails",
               "thin": true
+            },
+            {
+              "key": "gpt-6-astra",
+              "label": "GPT-6 Astra",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 56 emails",
+              "thin": true
+            },
+            {
+              "key": "claude-fable-5.1",
+              "label": "Claude Fable 5.1",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 26 emails",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -284,6 +300,13 @@
               "value": 23,
               "display": "0.23%",
               "note": "1 positive reply · 434 emails",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 2 emails",
               "thin": true
             }
           ],
@@ -311,6 +334,7 @@
       ],
       "conclusion": [
         "Gemini 3.5 Flash-Lite: 1 positive reply · 436 emails.",
+        "Over time: 0.23% in Aug, 0.00% in Sep.",
         "A LLM under 1,000 emails or 10 positive replies is ranked where its rate puts it and marked thin."
       ]
     },
@@ -1112,6 +1136,38 @@
               "display": "0.00%",
               "note": "0 positive replies · 380 emails",
               "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v4",
+              "label": "Blind discovery v4",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 53 emails",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v20",
+              "label": "Blind discovery v20",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 40 emails",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v26-landing",
+              "label": "Blind discovery v26 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
+            },
+            {
+              "key": "blind-discovery-email-v9-landing",
+              "label": "Blind discovery v9 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -1126,6 +1182,20 @@
               "value": 0,
               "display": "0.00%",
               "note": "0 positive replies · 269 emails",
+              "thin": true
+            },
+            {
+              "label": "Aug",
+              "value": 188.7,
+              "display": "1.89%",
+              "note": "1 positive reply · 53 emails",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 2 emails",
               "thin": true
             }
           ],
@@ -1160,6 +1230,7 @@
       ],
       "conclusion": [
         "Cold email v33: 1 positive reply · 324 emails.",
+        "Over time: 0.00% in Jul, 0.00% in Sep.",
         "A template under 1,000 emails or 10 positive replies is ranked where its rate puts it and marked thin."
       ]
     },
@@ -1590,6 +1661,62 @@
               "display": "0.00%",
               "note": "0 positive replies · 220 emails",
               "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-dubhe",
+              "label": "GLM 5.3 Pro · Cold email v27",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 61 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-nocturne",
+              "label": "GLM 5.3 Pro · Cold email v29",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 61 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-delphi",
+              "label": "GPT-6 Astra · Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 56 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-bolero",
+              "label": "Gemini 3.1 Pro · Blind discovery v4",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 53 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-alioth",
+              "label": "Claude Fable 5.1 · Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 26 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-helm",
+              "label": "Gemini 3.1 Pro · Blind discovery v26 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-nimbus",
+              "label": "Gemini 3.1 Pro · Blind discovery v9 (landing)",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1 emails",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -1600,16 +1727,44 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "label": "Jun",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 27 emails",
+              "thin": true
+            },
+            {
               "label": "Jul",
               "value": 0,
               "display": "0.00%",
               "note": "0 positive replies · 302 emails",
+              "thin": true
+            },
+            {
+              "label": "Aug",
+              "value": 188.7,
+              "display": "1.89%",
+              "note": "1 positive reply · 53 emails",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 2 emails",
               "thin": true
             }
           ],
           "cumulative": {
             "title": "Gemini 3 Flash · Cold email v33: average since inception",
             "points": [
+              {
+                "label": "Jun",
+                "value": 0,
+                "display": "0.00%",
+                "note": "0 positive replies · 27 emails to date",
+                "thin": true
+              },
               {
                 "label": "Jul",
                 "value": 0,
@@ -1638,6 +1793,7 @@
       ],
       "conclusion": [
         "Gemini 3 Flash · Cold email v33: 1 positive reply · 384 emails.",
+        "Over time: 0.00% in Jun, 0.00% in Sep.",
         "A workflow under 1,000 emails or 10 positive replies is ranked where its rate puts it and marked thin."
       ]
     },
@@ -1821,6 +1977,14 @@
               "thin": false
             },
             {
+              "key": "gemini-3.8-flash",
+              "label": "Gemini 3.8 Flash",
+              "value": 24.4,
+              "display": "2.44%",
+              "note": "2 website visits · 82 emails with a link",
+              "thin": true
+            },
+            {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
               "value": 21.9,
@@ -1842,6 +2006,22 @@
               "value": 14.5,
               "display": "1.45%",
               "note": "4 website visits · 276 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "gemini-3.7-flash",
+              "label": "Gemini 3.7 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 86 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "glm-5.3-flash",
+              "label": "GLM 5.3 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 25 emails with a link",
               "thin": true
             }
           ],
@@ -2514,6 +2694,14 @@
               "display": "1.07%",
               "note": "7 website visits · 653 emails with a link",
               "thin": true
+            },
+            {
+              "key": "cold-email-v16",
+              "label": "Cold email v16",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 19 emails with a link",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -2549,6 +2737,13 @@
               "value": 7.5,
               "display": "0.75%",
               "note": "2 website visits · 267 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 44.4,
+              "display": "4.44%",
+              "note": "2 website visits · 45 emails with a link",
               "thin": true
             }
           ],
@@ -2597,7 +2792,7 @@
       ],
       "conclusion": [
         "Cold email v19: 165 website visits · 4,958 emails with a link.",
-        "Over time: 1.22% in May, 0.75% in Aug.",
+        "Over time: 1.22% in May, 4.44% in Sep.",
         "A template under 1,000 emails with a link or 20 website visits is ranked where its rate puts it and marked thin."
       ]
     },
@@ -2857,6 +3052,14 @@
               "display": "1.69%",
               "note": "9 website visits · 531 emails with a link",
               "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-maelstrom",
+              "label": "GLM 5.3 Flash · Cold email v35",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 25 emails with a link",
+              "thin": true
             }
           ],
           "note": "Emails sent in the last 12 days are left out (from Sep 15 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -2993,14 +3196,14 @@
   ],
   "catalogCounts": {
     "herald": {
-      "workflows": 32,
-      "templates": 29,
-      "models": 10
+      "workflows": 39,
+      "templates": 33,
+      "models": 12
     },
     "scout": {
-      "workflows": 9,
-      "templates": 8,
-      "models": 7
+      "workflows": 10,
+      "templates": 9,
+      "models": 9
     },
     "pilot": {
       "workflows": 0,
