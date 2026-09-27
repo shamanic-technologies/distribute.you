@@ -241,6 +241,23 @@ const SignalSeriesSchema = z.object({
 // the dashboard ships ahead of features-service: until that service lands the legacy
 // `todaySpentCents`/`cpcCents` carry actual-only, and the render prefers `total*` when
 // present. `totalSpentCents` keeps its name across the rollout (value flips actual→committed).
+/**
+ * Delivery and reply of the emails a grain sent, on ONE denominator (distinct leads sent
+ * to). Every rate is SERVED; a null rate means nothing was sent, a 0 is measured.
+ */
+export const RevenueSendingSchema = z.object({
+  recipientsSent: z.number(),
+  recipientsDelivered: z.number(),
+  recipientsBounced: z.number(),
+  recipientsAwaitingDelivery: z.number(),
+  recipientsReplied: z.number(),
+  recipientsRepliedPositive: z.number(),
+  deliveryRatePct: z.number().nullable(),
+  bounceRatePct: z.number().nullable(),
+  replyRatePct: z.number().nullable(),
+  positiveReplyRatePct: z.number().nullable(),
+});
+
 const SpendSchema = z.object({
   totalSpentCents: z.coerce.number(),
   actualSpentCents: z.coerce.number().optional(),
@@ -413,6 +430,12 @@ const FeatureRevenueResponseSchema = z.object({
   // field is not silently stripped.
   featureSlug: z.string().optional(),
   spend: SpendSchema.nullable().optional(),
+  // What happened to the emails this grain sent (features-service #1143). Only the
+  // sending block is declared: the rest of `outcomes` is read elsewhere under its own
+  // names. Nullish at every level so an older body, or a grain that has none, parses.
+  outcomes: z
+    .object({ sending: RevenueSendingSchema.nullish() })
+    .nullish(),
   // features-service#416 renamed the Overview count-series (shape unchanged) and
   // added `sequences`. BOTH the new (`recipients*`) and legacy names are `.optional()`
   // so the parse succeeds on current prod features (old names) AND post-#416 (new
@@ -580,6 +603,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // longer picks a price, multiplies a threshold or divides a countdown.
     learningPhase: (d.learningPhase ?? null) as RevenueOverview["learningPhase"],
     spend: d.spend,
+    sending: d.outcomes?.sending ?? null,
     // Normalize the features-service#416 count-series renames at this single parser
     // boundary: prefer the new `recipients*` name, fall back to the legacy one, so
     // every consumer of `outreachContacted`/`opened`/`clicked`/`repliedPositive`

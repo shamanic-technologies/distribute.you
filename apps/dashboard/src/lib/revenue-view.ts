@@ -356,6 +356,21 @@ export interface Spend {
  * pipeline by the per-lead event timestamps. Nothing is spread, smoothed or modelled,
  * which is what makes the curve safe to show as a result rather than a forecast.
  */
+/** Delivery and reply of the emails a grain sent. Every rate is served. */
+export interface RevenueSending {
+  recipientsSent: number;
+  recipientsDelivered: number;
+  recipientsBounced: number;
+  recipientsAwaitingDelivery: number;
+  recipientsReplied: number;
+  recipientsRepliedPositive: number;
+  /** Null only when nothing was sent. */
+  deliveryRatePct: number | null;
+  bounceRatePct: number | null;
+  replyRatePct: number | null;
+  positiveReplyRatePct: number | null;
+}
+
 export interface RoiHistoryPoint {
   /** UTC calendar day (YYYY-MM-DD). */
   date: string;
@@ -410,6 +425,9 @@ export interface RevenueOverview {
    * pre-rollout payload (absent block) degrades the cost card gracefully.
    */
   spend?: Spend | null;
+  /** What happened to the emails this grain sent (features-service `outcomes.sending`).
+   *  Null = not served / not measured, never "nothing happened". */
+  sending?: RevenueSending | null;
   /**
    * Server-computed contacted aggregate — the single source for the Outreach stat
    * card + the 7-day graph actual. Optional: absent on a cold / pre-rollout payload

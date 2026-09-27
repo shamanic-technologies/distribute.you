@@ -4289,6 +4289,12 @@ const CampaignRevenueOutcomesSchema = z.object({
   // feedback-request campaign that produced none) beside $2,889 and 18 on one row.
   cpprCents: z.number().nullish(),
   cpcCents: z.number().nullish(),
+  // What happened to the emails this campaign identity sent (features-service #1143):
+  // distinct leads sent to, and the SERVED share of them who replied. Only the two
+  // figures the v2 missions table prints are declared.
+  sending: z
+    .object({ recipientsSent: z.number(), replyRatePct: z.number().nullable() })
+    .nullish(),
 });
 const FeatureRevenueByCampaignSchema = z.object({
   groupBy: z.string(),
@@ -4322,6 +4328,11 @@ export interface CampaignRevenueGroup {
   cpprCents?: number | null;
   /** What one website visit cost it, same rule. */
   cpcCents?: number | null;
+  /** Distinct leads this campaign identity sent at least one email to. Undefined = not
+   *  answered; never read as zero. */
+  sentCount?: number | null;
+  /** The SERVED share of those who replied, in percent. Null = nothing was sent. */
+  replyRatePct?: number | null;
 }
 
 /** GET /features/:slug/revenue?groupBy=campaignId — one lean revenue group per campaign. */
@@ -4354,6 +4365,8 @@ export async function getFeatureRevenueByCampaign(
     websiteClicks: g.outcomes?.recipientsClicked,
     cpprCents: g.outcomes?.cpprCents,
     cpcCents: g.outcomes?.cpcCents,
+    sentCount: g.outcomes?.sending?.recipientsSent,
+    replyRatePct: g.outcomes?.sending?.replyRatePct,
   }));
 }
 

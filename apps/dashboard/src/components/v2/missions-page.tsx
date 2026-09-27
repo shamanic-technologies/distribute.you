@@ -11,6 +11,8 @@ import { useBrandRevenue } from "@/components/v2/data";
 import { Figure, SectionTitle, Shimmer, SparkLine, StatTile, TopBar } from "@/components/v2/ui";
 
 const DAYS = 30;
+/** A served rate, one decimal under 10% and above 99% (98.6% vs 100% matters), whole between. */
+const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
 
 /**
  * Missions: Explee's dashboard — the four performance figures across every
@@ -28,6 +30,12 @@ export function MissionsPage() {
 
   const cards = [
     { label: "Sent", value: sent ? formatCount(sent.total) : "—", spark: sent ? dailyWindow(sent.daily, DAYS, today) : null },
+    {
+      label: "Delivered",
+      value: data?.sending?.deliveryRatePct != null ? pct(data.sending.deliveryRatePct) : "—",
+      sub: data?.sending ? `${formatCount(data.sending.recipientsBounced)} bounced` : null,
+      spark: null,
+    },
     { label: "Website visits", value: data?.clicked ? formatCount(data.clicked.total) : "—", spark: data?.clicked ? dailyWindow(data.clicked.daily, DAYS, today) : null },
     {
       label: "Positive replies",
@@ -61,10 +69,11 @@ export function MissionsPage() {
 
         <div className="mt-6">
           <SectionTitle right={<span>All missions · all time · line shows {DAYS} days</span>}>Performance</SectionTitle>
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             {cards.map((c) => (
               <StatTile key={c.label} label={c.label} note="all time">
                 {rev.pending ? <Shimmer className="h-7 w-20" /> : <Figure value={c.value} />}
+                {!rev.pending && "sub" in c && c.sub && <span className="k-fg3 mt-0.5 text-[12px]">{c.sub}</span>}
                 <SparkLine className="mt-auto h-10 pt-2" values={rev.pending ? null : c.spark} />
               </StatTile>
             ))}
