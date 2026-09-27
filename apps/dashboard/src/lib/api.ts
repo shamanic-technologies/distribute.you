@@ -7344,6 +7344,22 @@ const WorkflowRankRowSchema = z.object({
     })
     .passthrough()
     .optional(),
+  /** WHETHER THIS WORKFLOW IS ON THIS LEG — a stored assignment the owner states per
+   *  (channel, leg, workflow), features-service's answer (it replaced the model-tier rule).
+   *  `state` is `active` (a new run may pick it), `deprecated` (retired on THIS leg only,
+   *  history still served) or `unassigned` (never put on this leg). Read as a plain string
+   *  so a new state parses; `.optional()` because a goal-keyed body carries none, and an
+   *  ABSENT block states no verdict and hides nothing. */
+  legAssignment: z
+    .object({
+      state: z.string(),
+      selectable: z.boolean(),
+      reason: z.string().nullish(),
+      decidedBy: z.string().nullish(),
+      decidedAt: z.string().nullish(),
+    })
+    .passthrough()
+    .optional(),
 });
 
 /**

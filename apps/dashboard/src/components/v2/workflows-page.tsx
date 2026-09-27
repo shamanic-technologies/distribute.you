@@ -13,6 +13,7 @@ import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
+import { DEPRECATED_ON_LEG_LABEL } from "@/lib/workflow-eligibility";
 import {
   crewParam,
   useBrandMissionSpecs,
@@ -246,6 +247,9 @@ function MissionSection({
                         <td className="max-w-0 px-3">
                           <div className="flex min-w-0 items-center gap-2">
                             <span className="min-w-0 truncate font-medium">{w.row.workflowDynastyName}</span>
+                            {r.deprecatedSlugs.has(w.row.workflowDynastySlug) && (
+                              <span className="k-chip k-fg3 shrink-0 text-[11px]">{DEPRECATED_ON_LEG_LABEL}</span>
+                            )}
                             {stack && <span className="k-fg3 hidden min-w-0 shrink-[2] truncate text-[12px] lg:inline">{stack}</span>}
                           </div>
                         </td>

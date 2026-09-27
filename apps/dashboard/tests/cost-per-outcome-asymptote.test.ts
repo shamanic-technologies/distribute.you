@@ -214,8 +214,8 @@ describe("the card and the page state it once each", () => {
     expect(block).not.toContain("refetchInterval");
   });
 
-  it("the page applies the page's OWN eligibility verdict, not a second one", () => {
-    expect(PAGE).toContain("hiddenWorkflowSlugs({");
+  it("the floor skips every workflow no new run may pick on this leg", () => {
+    expect(PAGE).toContain("notSelectableWorkflowSlugs(ladder.rows as never)");
     expect(PAGE).toContain("hiddenSlugs: hidden");
   });
 

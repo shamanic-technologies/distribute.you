@@ -1,21 +1,21 @@
 /**
  * WHICH WORKFLOWS THIS PAGE DOES NOT SHOW, AND WHY.
  *
- * A campaign sells one leg, and the workflow serving it writes its email
- * with one LLM. Measured fleet-wide: the capability TIER of that model decides the
- * outcome, and the direction depends on what the leg sells — the cheap tier badly
- * underperforms on a leg selling a conversation, the strong and frontier tiers are
- * wasted money on one selling a website visit. features-service STATES that verdict per
- * row (`modelEligibility`) and deliberately does not act on it; campaign-service filters
- * its selection on it, and this page stops offering what can never run.
+ * Which workflows may run on a leg is a STORED ASSIGNMENT the owner states per (channel,
+ * leg, workflow), served by features-service on every leg-keyed ladder row
+ * (`legAssignment`: `active` | `deprecated` | `unassigned`). It replaced a rule derived
+ * from the model's price tier, which hid workflows that had already run well on a leg.
+ * campaign-service picks only `active` rows; this page draws `active` AND `deprecated`
+ * ones (a deprecated workflow keeps its history on screen, with a tag) and hides only a
+ * workflow that was NEVER put on this leg.
  *
  * ── AN EXCLUDED WORKFLOW THAT HAS ALREADY RUN IS STILL SHOWN ─────────────────────
  *
  * This is the whole reason the producer FLAGS rather than DROPS. The page's rows are the
  * union of what the channel offers and what this campaign has actually spent through, and
  * it already keeps a RETIRED lineage for exactly this reason: dropping it would delete the
- * campaign's own money from the page that exists to show it. A workflow excluded by the
- * tier rule is the same case — it may have run for months before the rule existed, and its
+ * campaign's own money from the page that exists to show it. A workflow not assigned to
+ * this leg is the same case — it may have run for months before the rule existed, and its
  * history is the answer to "what burned money here". So a row is hidden only when it is
  * excluded AND this campaign never spent through it AND the ledger recorded no pick for it.
  *
@@ -62,6 +62,17 @@ export interface RowModelEligibility {
   unknownTierReason?: string | null;
 }
 
+/** The owner's stored assignment of this workflow to this leg. Every field is the producer's. */
+export interface RowLegAssignment {
+  /** `active` | `deprecated` | `unassigned`, read as a plain string. */
+  state: string;
+  /** TRUE ⟺ a new run may pick it on this leg (`active`). */
+  selectable: boolean;
+  reason?: string | null;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+}
+
 /** ONE LADDER ROW, narrowed to what a hide decision reads. */
 export interface EligibilityLadderRow {
   workflow: { workflowDynastySlug: string };
@@ -72,6 +83,8 @@ export interface EligibilityLadderRow {
   /** ABSENT on a goal-keyed body. This page always names a leg, so in practice
    *  it is always there; absent means the producer stated nothing and nothing is hidden. */
   modelEligibility?: RowModelEligibility | null;
+  /** ABSENT on a goal-keyed body; absent states no verdict and hides nothing. */
+  legAssignment?: RowLegAssignment | null;
 }
 
 /** ONE PICK the selector made, narrowed to the dynasty it named. */
@@ -88,8 +101,9 @@ export interface EligibilityObservedPicks {
 /**
  * THE DYNASTIES THIS PAGE DOES NOT DRAW.
  *
- * A dynasty is hidden ⟺ EVERY row it has is excluded by the producer, NO row of it is
- * measured, and it appears in no recorded pick. Any one of those failing keeps it.
+ * A dynasty is hidden ⟺ EVERY row it has states it was never put on this leg
+ * (`unassigned`), NO row of it rests on this campaign's own evidence, and it appears in no
+ * recorded pick. Any one of those failing keeps it. A `deprecated` workflow is NEVER hidden.
  */
 const OWN_GRAINS = new Set(["campaign", "audience"]);
 
@@ -106,7 +120,7 @@ export function hiddenWorkflowSlugs(args: {
   if (args.observedPicks.last) ran.add(args.observedPicks.last.workflowDynastySlug);
   for (const p of args.observedPicks.recent) ran.add(p.workflowDynastySlug);
 
-  // Per dynasty: has ANY row that is eligible (or states no verdict), and has ANY row
+  // Per dynasty: has ANY row that is not `unassigned` (or states no verdict), and has ANY row
   // resolving at a grain that is THIS campaign's own. Both are reasons to keep, so both
   // are collected before deciding.
   const anyEligible = new Set<string>();
@@ -115,8 +129,8 @@ export function hiddenWorkflowSlugs(args: {
   for (const r of args.rows) {
     const slug = r.workflow.workflowDynastySlug;
     seen.add(slug);
-    // A row the producer said nothing about is not an exclusion; older bodies carry none.
-    if (!r.modelEligibility || r.modelEligibility.eligible) anyEligible.add(slug);
+    // A row the producer said nothing about is not an exclusion; goal-keyed bodies carry none.
+    if (!r.legAssignment || r.legAssignment.state !== "unassigned") anyEligible.add(slug);
     if (OWN_GRAINS.has(r.resolved.grain ?? "")) anyOwnEvidence.add(slug);
   }
 
@@ -130,15 +144,42 @@ export function hiddenWorkflowSlugs(args: {
 }
 
 /**
+ * THE DYNASTIES NO NEW RUN MAY PICK ON THIS LEG — `unassigned` or `deprecated`.
+ *
+ * Wider than `hiddenWorkflowSlugs` on purpose: a deprecated workflow is DRAWN (its history
+ * matters) but a "best price" or "top model" read must still skip it, since campaign-service
+ * never selects it and a floor taken from it would be a price nothing reaches.
+ */
+export function notSelectableWorkflowSlugs(rows: readonly EligibilityLadderRow[]): Set<string> {
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (r.legAssignment && !r.legAssignment.selectable) out.add(r.workflow.workflowDynastySlug);
+  }
+  return out;
+}
+
+/** THE DYNASTIES DEPRECATED ON THIS LEG, drawn with a tag rather than hidden. */
+export function deprecatedOnLegSlugs(rows: readonly EligibilityLadderRow[]): Set<string> {
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (r.legAssignment?.state === "deprecated") out.add(r.workflow.workflowDynastySlug);
+  }
+  return out;
+}
+
+/** The pill a deprecated-on-this-leg row wears, stated once for every surface. */
+export const DEPRECATED_ON_LEG_LABEL = "Deprecated on this leg";
+
+/**
  * THE SENTENCE UNDER THE TABLE. Null when nothing was hidden — a line stating zero is
  * noise, and a reader with nothing hidden has no gap to explain.
  *
  * It names the OUTCOME the leg sells (`leg.toStep.label`, the producer's own customer-
- * facing word) rather than a tier name: the reader picked a campaign, not a model.
+ * facing word): the reader picked a campaign, not a model.
  */
 export function hiddenWorkflowNote(count: number, outcomeNoun: string | null): string | null {
   if (count <= 0) return null;
   const what = count === 1 ? "1 workflow is" : `${count} workflows are`;
-  const sells = outcomeNoun ? ` for a campaign selling ${outcomeNoun.toLowerCase()}` : "";
-  return `${what} hidden: the model writing their emails is the wrong tier${sells}, so they are never selected to run.`;
+  const sells = outcomeNoun ? ` for ${outcomeNoun.toLowerCase()}` : "";
+  return `${what} hidden: never put on this leg${sells}, so never selected to run.`;
 }

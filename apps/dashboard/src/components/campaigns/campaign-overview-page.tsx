@@ -42,7 +42,7 @@ import { goalForLeg } from "@/lib/goal-steps";
 import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { bestWorkflowFloor } from "@/lib/cost-per-outcome-asymptote";
-import { hiddenWorkflowSlugs } from "@/lib/workflow-eligibility";
+import { notSelectableWorkflowSlugs } from "@/lib/workflow-eligibility";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
@@ -334,13 +334,10 @@ export function CampaignOverviewPage() {
   const costFloor = useMemo(() => {
     const ladder = floorLadderQ.data;
     if (!ladder) return null;
-    // The page's OWN eligibility verdict, not a second one: the producer's #1 can be a
-    // workflow this leg's model-tier rule excludes, which campaign-service can never
-    // select — so a floor taken from it would be a price nothing can reach.
-    const hidden = hiddenWorkflowSlugs({
-      rows: ladder.rows as never,
-      observedPicks: ladder.observedPicks,
-    });
+    // The producer's own leg assignment: a workflow never put on this leg, or deprecated on
+    // it, is one campaign-service can never select — so a floor taken from it would be a
+    // price nothing can reach.
+    const hidden = notSelectableWorkflowSlugs(ladder.rows as never);
     return bestWorkflowFloor({
       rows: ladder.rows,
       recommendedWorkflowDynastySlug: ladder.recommendedWorkflowDynastySlug,
@@ -353,7 +350,8 @@ export function CampaignOverviewPage() {
    *
    * Off the SAME ladder read the floor above takes, so the card costs no request: the
    * key is the one the campaign's Workflows page already polls. Through the SAME
-   * eligibility filter too — a model whose every workflow this leg's rule excludes is a
+   * eligibility filter too — a model whose every workflow is off this leg (never assigned or
+   * deprecated) is a
    * model campaign-service can never select, so offering it as a top pick would state a
    * price nothing reaches.
    *
@@ -362,10 +360,7 @@ export function CampaignOverviewPage() {
   const topModelRows = useMemo(() => {
     const ladder = floorLadderQ.data;
     if (!ladder) return undefined;
-    const hidden = hiddenWorkflowSlugs({
-      rows: ladder.rows as never,
-      observedPicks: ladder.observedPicks,
-    });
+    const hidden = notSelectableWorkflowSlugs(ladder.rows as never);
     return topModels({ rows: ladder.rows, hiddenSlugs: hidden });
   }, [floorLadderQ.data]);
 

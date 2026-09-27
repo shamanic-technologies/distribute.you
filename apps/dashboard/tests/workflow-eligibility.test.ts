@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  deprecatedOnLegSlugs,
   hiddenWorkflowNote,
+  notSelectableWorkflowSlugs,
   hiddenWorkflowSlugs,
   type EligibilityLadderRow,
   type EligibilityObservedPicks,
@@ -11,8 +13,9 @@ function row(
   opts: {
     /** The producer's cascade grain. `campaign`/`audience` = this campaign's own spend. */
     grain?: string;
+    /** false = never put on this leg (`unassigned`); true = `active`; null = no verdict. */
     eligible?: boolean | null;
-    tier?: "cheap" | "strong" | "frontier";
+    state?: "active" | "deprecated" | "unassigned";
   } = {},
 ): EligibilityLadderRow {
   const base = {
@@ -20,14 +23,15 @@ function row(
     resolved: { grain: opts.grain ?? "crossOrg" },
   };
   if (opts.eligible === null) return base;
+  const state = opts.state ?? (opts.eligible === true ? "active" : "unassigned");
   return {
     ...base,
-    modelEligibility: {
-      modelAlias: "flash",
-      modelTier: opts.tier ?? "cheap",
-      eligible: opts.eligible ?? false,
-      ineligibleReason: opts.eligible === false ? "the cheap tier does not sell a conversation" : null,
-      unknownTierReason: null,
+    legAssignment: {
+      state,
+      selectable: state === "active",
+      reason: state === "active" ? null : "not on this leg",
+      decidedBy: null,
+      decidedAt: null,
     },
   };
 }
@@ -173,7 +177,7 @@ describe("hiddenWorkflowNote", () => {
     const note = hiddenWorkflowNote(6, "Positive reply");
     expect(note).toContain("6 workflows are hidden");
     expect(note).toContain("positive reply");
-    expect(note).toContain("wrong tier");
+    expect(note).toContain("never put on this leg");
   });
 
   it("agrees with itself on one", () => {
@@ -184,5 +188,20 @@ describe("hiddenWorkflowNote", () => {
     const note = hiddenWorkflowNote(2, null);
     expect(note).toContain("2 workflows are hidden");
     expect(note).not.toContain("selling");
+  });
+});
+
+describe("deprecated on a leg", () => {
+  it("is DRAWN (never hidden) but never selectable", () => {
+    const rows = [row("maelstrom", { state: "deprecated" }), row("atoll", { eligible: true })];
+    expect(hiddenWorkflowSlugs({ rows, observedPicks: NEVER_RAN }).size).toBe(0);
+    expect([...deprecatedOnLegSlugs(rows)]).toEqual(["maelstrom"]);
+    expect([...notSelectableWorkflowSlugs(rows)]).toEqual(["maelstrom"]);
+  });
+
+  it("a workflow never put on the leg is not selectable either", () => {
+    const rows = [row("dawn", { eligible: false }), row("atoll", { eligible: true })];
+    expect([...notSelectableWorkflowSlugs(rows)]).toEqual(["dawn"]);
+    expect(deprecatedOnLegSlugs(rows).size).toBe(0);
   });
 });

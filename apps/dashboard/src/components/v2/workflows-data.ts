@@ -15,7 +15,11 @@ import {
   type CampaignWorkflowRow,
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
-import { hiddenWorkflowSlugs, type EligibilityLadderRow } from "@/lib/workflow-eligibility";
+import {
+  deprecatedOnLegSlugs,
+  hiddenWorkflowSlugs,
+  type EligibilityLadderRow,
+} from "@/lib/workflow-eligibility";
 import { rankWorkflowRows, type RankedWorkflow } from "@/lib/workflow-rank-why";
 import { legColumnPair } from "@/lib/campaign-leg-columns";
 import { legFor } from "@/lib/legs";
@@ -88,12 +92,14 @@ export interface CrewWorkflowRanking {
   ladder: WorkflowRankLadder | undefined;
   /** Every row the ladder sent, audiences included — what the panel's audience list reads. */
   allLadderRows: WorkflowLadderRowShape[];
-  /** The ranked BRAND rows, in the producer's order, with the tier-excluded ones gone. */
+  /** The ranked BRAND rows, in the producer's order, minus the ones never put on this leg. */
   ranked: RankedWorkflow<CampaignWorkflowRow>[];
   rows: CampaignWorkflowRow[];
   pair: WorkflowOutcomePair;
   outcomeNoun: string;
   outcomeStepKey: string | null;
+  /** Dynasties the owner deprecated on this leg: drawn with a tag, never picked. */
+  deprecatedSlugs: Set<string>;
   /** Every versioned slug of each dynasty, from the catalogue — runs-service files runs
    *  under the VERSION, so a dynasty's history is the union of its versions' runs. */
   versionsByDynasty: Map<string, string[]>;
@@ -143,6 +149,11 @@ export function useMissionWorkflowRanking(
         rows: (ladderQ.data?.rows ?? []) as unknown as EligibilityLadderRow[],
         observedPicks: ladderQ.data?.observedPicks,
       }),
+    [ladderQ.data],
+  );
+
+  const deprecatedSlugs = useMemo(
+    () => deprecatedOnLegSlugs((ladderQ.data?.rows ?? []) as unknown as EligibilityLadderRow[]),
     [ladderQ.data],
   );
 
@@ -208,6 +219,7 @@ export function useMissionWorkflowRanking(
     outcomeNoun,
     outcomeStepKey,
     versionsByDynasty,
+    deprecatedSlugs,
     pending: ready ? pending : true,
     ladderError: ladderSettle.failed,
   };
