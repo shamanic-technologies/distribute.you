@@ -19,7 +19,10 @@
  * Alias-free and pure so the rules carry real unit tests.
  */
 
-export const AB_TEST_ENABLED = true;
+// Off since 2026-09-27: after three days no arm had produced a signup, so `/` went
+// back to the control homepage for everyone. `/lp/assistant` and `/lp/concierge`
+// stay reachable by URL.
+export const AB_TEST_ENABLED = false;
 
 export const LANDING_VARIANTS = ["control", "assistant", "concierge"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
