@@ -138,7 +138,7 @@ const genShapeByKey = new Map();  // person|step -> shape
 eachRow("generations.csv", (g) => {
   if (!g.lead_id) return;
   const person = `${g.platform_campaign_id}|${g.lead_id}`;
-  if (!genByKey.has(person)) genByKey.set(person, { model: g.model, workflow: g.workflow_slug });
+  if (!genByKey.has(person)) genByKey.set(person, { model: g.model, workflow: g.workflow_slug, template: g.prompt_type || null });
   const sh = shapeOf(g.body_text);
   sh.subjectChars = (g.subject || "").length;
   genShapeByKey.set(`${person}|${g.step}`, sh);
@@ -266,6 +266,8 @@ for (const e of emails) {
     firstChars: firstShape ? firstShape.chars : null,
     firstParagraphs: firstShape ? firstShape.paragraphs : null,
     model,
+    // the prompt template that wrote the sequence (content-generation's prompt_type)
+    template: gen?.template || null,
     tier: tierOf(model),
     country: country || null,
     continent: country ? CONTINENT[country.toLowerCase()] || "Other" : null,
@@ -495,6 +497,40 @@ out.best = {
     return pro.length ? Math.round((pro.filter((f) => f.stepNo >= 2).length / pro.length) * 100) : null;
   })(),
   workflowsPastFloor: out.workflows.length,
+};
+
+// ---------- research ----------
+// The staff Research page (dashboard v2) reads these beside the article cuts: the same fact
+// table, so a study and an article can never state two figures for one population. Every
+// month series is per model and per template, so the page can draw how the WINNER moved.
+const modelLabel = (r) => (r.model ? MODEL_LABEL[r.model] || r.model : null);
+const monthsOf = (rows) => [...new Set(rows.map((r) => r.month))].filter(Boolean).sort();
+function byMonthPer(rows, keyFn) {
+  const groups = new Map();
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (!k) continue;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const outMap = {};
+  for (const [k, rs] of groups) outMap[k] = cut(rs, (r) => r.month, monthsOf(rs));
+  return outMap;
+}
+function researchFor(rows) {
+  return {
+    byModel: cut(rows, modelLabel),
+    byTemplate: cut(rows, (r) => r.template),
+    byStep: cut(rows, stepLabel, STEPS),
+    byMonth: cut(rows, (r) => r.month, monthsOf(rows)),
+    modelByMonth: byMonthPer(rows, modelLabel),
+    templateByMonth: byMonthPer(rows, (r) => r.template),
+  };
+}
+out.research = {
+  window: { from: facts.reduce((m, f) => (!m || f.month < m ? f.month : m), null), to: facts.reduce((m, f) => (!m || f.month > m ? f.month : m), null) },
+  reply: researchFor(facts),
+  visit: researchFor(linked),
 };
 
 process.stdout.write(JSON.stringify(out, null, 2));

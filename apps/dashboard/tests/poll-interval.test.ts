@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as queryOptions from "../src/lib/query-options";
-import { POLL_INTERVAL, pollOptions } from "../src/lib/query-options";
+import { POLL_INTERVAL, pollIntervalFor, pollOptions } from "../src/lib/query-options";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
 
@@ -19,7 +19,12 @@ describe("POLL_INTERVAL", () => {
   });
 
   it("pollOptions carries it", () => {
-    expect(pollOptions.refetchInterval).toBe(POLL_INTERVAL);
+    expect(pollOptions.refetchInterval).toBe(pollIntervalFor);
+    expect(pollIntervalFor({ state: { status: "success", data: [] } })).toBe(POLL_INTERVAL);
+    expect(pollIntervalFor({ state: { status: "error", data: [] } })).toBe(POLL_INTERVAL);
+    // A failed read with no data stops polling: each refetch would reset it to pending
+    // and flip its surface between a skeleton and an error every 5s (the v2 blink).
+    expect(pollIntervalFor({ state: { status: "error", data: undefined } })).toBe(false);
   });
 });
 

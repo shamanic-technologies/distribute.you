@@ -39,6 +39,26 @@ glyph runs past the box or lands under 9px on a phone.
 Then `pnpm --filter @distribute/landing test`, which pins the copy rules, the dataset's
 coherence and the editorial rules for both pages.
 
+## Research (dashboard v2, staff)
+
+The Research page in dashboard v2 (`/v2/.../research`) reads
+`apps/dashboard/src/lib/research/research.json`, written from the SAME fact table as the
+articles, so a study and an article cannot state two figures for one population. Every
+study is fleet-wide (all orgs). To refresh it:
+
+```sh
+apps/landing/scripts/blog-data/extract.sh 2026-04-15 <tomorrow> /tmp/research-data
+node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
+node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json > apps/dashboard/src/lib/research/research.json
+pnpm --filter @distribute/dashboard test research
+```
+
+`derive.mjs` adds a `research` block (per LLM, per template, per step, per month, and each
+LLM's and template's own month curve); `research.mjs` turns it into one study per question,
+with its charts, its one-line result and its conclusion written out, so the page divides
+nothing. The open-tracking studies read `pixel/pixel.snapshot.json`. Do NOT re-render the
+two articles from a refreshed extract unless you mean to move their published figures.
+
 ## What the window is
 
 The articles state 15 April to 11 September 2026, read on 11 September 2026, and the

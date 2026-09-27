@@ -146,8 +146,9 @@ describe("v2 wiring", () => {
     expect(layout).not.toContain("This page is not available");
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
     // The Workflows surfaces are the one beta area inside v2 (owner-asked): the sidebar
-    // entry, the mission tab, and the two pages. Everything else stays badge-free.
-    const GATED = new Set(["workflows-page.tsx", "workflow-page.tsx", "v2-shell.tsx", "setup-pages.tsx"]);
+    // entry, the mission tab, and the two pages. The account menu carries one staff tag, on
+    // Research (staff-only for now). Everything else stays badge-free.
+    const GATED = new Set(["workflows-page.tsx", "workflow-page.tsx", "v2-shell.tsx", "setup-pages.tsx", "sidebar-menus.tsx"]);
     for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
       if (GATED.has(f)) continue;
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");

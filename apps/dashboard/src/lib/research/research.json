@@ -1,0 +1,1968 @@
+{
+  "generatedAt": "2026-09-27T07:00:11.897Z",
+  "allOrgs": true,
+  "window": {
+    "from": "2026-04",
+    "to": "2026-09"
+  },
+  "volume": {
+    "emails": 145437,
+    "orgs": 36,
+    "workflows": 72,
+    "linkedEmails": 48286
+  },
+  "floors": {
+    "minEmails": 100,
+    "crown": {
+      "minEmails": 1000,
+      "minClicks": 20,
+      "minReplies": 10
+    }
+  },
+  "crews": [
+    {
+      "id": "herald",
+      "outcome": "Positive reply",
+      "description": "Cold email that gets a prospect to answer with interest."
+    },
+    {
+      "id": "scout",
+      "outcome": "Website visit",
+      "description": "Cold email that brings a prospect to the website."
+    },
+    {
+      "id": "pilot",
+      "outcome": "Meeting booked",
+      "description": "Turns a positive reply into a booked meeting."
+    }
+  ],
+  "studies": [
+    {
+      "id": "herald-llm-roi",
+      "crew": "herald",
+      "topic": "llm",
+      "goal": "roi",
+      "question": "Which LLM gets the cheapest positive reply?",
+      "status": "measured",
+      "headline": "Gemini 3.1 Pro wins at $214 per positive reply.",
+      "winner": "Gemini 3.1 Pro",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per positive reply (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Gemini 3.1 Pro",
+              "value": 213.56,
+              "display": "$214",
+              "note": "37 positive replies · 98,982 emails",
+              "thin": false
+            },
+            {
+              "label": "GLM 5.2",
+              "value": 34.38,
+              "display": "$34",
+              "note": "1 positive reply · 592 emails",
+              "thin": true
+            },
+            {
+              "label": "DeepSeek V4 Pro",
+              "value": 425.19,
+              "display": "$425",
+              "note": "1 positive reply · 4,678 emails",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3.5 Flash-Lite",
+              "value": 457.17,
+              "display": "$457",
+              "note": "1 positive reply · 5,770 emails",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Gemini 3.1 Pro: cost per positive reply by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Apr",
+              "value": 103.06,
+              "display": "$103",
+              "note": "1 positive reply · 3,081 emails",
+              "thin": false
+            },
+            {
+              "label": "May",
+              "value": 108.75,
+              "display": "$109",
+              "note": "7 positive replies · 15,977 emails",
+              "thin": false
+            },
+            {
+              "label": "Jun",
+              "value": 190.35,
+              "display": "$190",
+              "note": "5 positive replies · 21,773 emails",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 151.1,
+              "display": "$151",
+              "note": "11 positive replies · 18,805 emails",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 201.36,
+              "display": "$201",
+              "note": "8 positive replies · 15,919 emails",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 562.56,
+              "display": "$563",
+              "note": "5 positive replies · 23,427 emails",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Gemini 3.1 Pro: 37 positive replies · 98,982 emails, $7,902 spent.",
+        "Over time: $103 in Apr, $563 in Sep."
+      ]
+    },
+    {
+      "id": "herald-llm-rate",
+      "crew": "herald",
+      "topic": "llm",
+      "goal": "rate",
+      "question": "Which LLM gets the most positive replies?",
+      "status": "measured",
+      "headline": "Gemini 3.1 Pro leads with 3.7 positive replies per 10,000 emails.",
+      "winner": "Gemini 3.1 Pro",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Positive replies per 10,000 emails (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "GLM 5.2",
+              "value": 16.9,
+              "display": "16.9 /10k",
+              "note": "1 positive reply · 592 emails",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3.1 Pro",
+              "value": 3.7,
+              "display": "3.7 /10k",
+              "note": "37 positive replies · 98,982 emails",
+              "thin": false
+            },
+            {
+              "label": "DeepSeek V4 Pro",
+              "value": 2.1,
+              "display": "2.1 /10k",
+              "note": "1 positive reply · 4,678 emails",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.5 Flash-Lite",
+              "value": 1.7,
+              "display": "1.7 /10k",
+              "note": "1 positive reply · 5,770 emails",
+              "thin": false
+            },
+            {
+              "label": "DeepSeek V4 Flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 356 emails",
+              "thin": true
+            },
+            {
+              "label": "GLM 5.3",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 208 emails",
+              "thin": true
+            },
+            {
+              "label": "GLM 5.3 Flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 591 emails",
+              "thin": true
+            },
+            {
+              "label": "GPT-6 Astra",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 960 emails",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3 Flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 21,830 emails",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.5 Flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 8,725 emails",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.6 Flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 610 emails",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3.7 Flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 132 emails",
+              "thin": true
+            },
+            {
+              "label": "deepseek-flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 732 emails",
+              "thin": true
+            },
+            {
+              "label": "gemini-3.8-flash",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 708 emails",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Gemini 3.1 Pro: positive replies per 10,000 emails by month",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Apr",
+              "value": 3.2,
+              "display": "3.2 /10k",
+              "note": "1 positive reply · 3,081 emails",
+              "thin": false
+            },
+            {
+              "label": "May",
+              "value": 4.4,
+              "display": "4.4 /10k",
+              "note": "7 positive replies · 15,977 emails",
+              "thin": false
+            },
+            {
+              "label": "Jun",
+              "value": 2.3,
+              "display": "2.3 /10k",
+              "note": "5 positive replies · 21,773 emails",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 5.8,
+              "display": "5.8 /10k",
+              "note": "11 positive replies · 18,805 emails",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 5,
+              "display": "5.0 /10k",
+              "note": "8 positive replies · 15,919 emails",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 2.1,
+              "display": "2.1 /10k",
+              "note": "5 positive replies · 23,427 emails",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Gemini 3.1 Pro: 37 positive replies · 98,982 emails.",
+        "Over time: 3.2 /10k in Apr, 2.1 /10k in Sep.",
+        "Only a LLM past 1,000 emails can lead; a smaller one is drawn and marked thin."
+      ]
+    },
+    {
+      "id": "herald-cost-over-time",
+      "crew": "herald",
+      "topic": "cost",
+      "goal": "roi",
+      "question": "What does a positive reply cost, month by month?",
+      "status": "measured",
+      "headline": "$104 in Apr, $700 in Sep across all our emails.",
+      "winner": "Gemini 3.1 Pro",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "line",
+          "title": "All our emails: cost per positive reply by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Apr",
+              "value": 103.59,
+              "display": "$104",
+              "note": "1 positive reply · 3,435 emails",
+              "thin": false
+            },
+            {
+              "label": "May",
+              "value": 108.81,
+              "display": "$109",
+              "note": "7 positive replies · 16,109 emails",
+              "thin": false
+            },
+            {
+              "label": "Jun",
+              "value": 251.06,
+              "display": "$251",
+              "note": "5 positive replies · 36,192 emails",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 212.46,
+              "display": "$212",
+              "note": "11 positive replies · 34,100 emails",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 202.31,
+              "display": "$202",
+              "note": "10 positive replies · 21,366 emails",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 699.7,
+              "display": "$700",
+              "note": "6 positive replies · 34,235 emails",
+              "thin": false
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Gemini 3.1 Pro (cheapest LLM): cost per positive reply by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Apr",
+              "value": 103.06,
+              "display": "$103",
+              "note": "1 positive reply · 3,081 emails",
+              "thin": false
+            },
+            {
+              "label": "May",
+              "value": 108.75,
+              "display": "$109",
+              "note": "7 positive replies · 15,977 emails",
+              "thin": false
+            },
+            {
+              "label": "Jun",
+              "value": 190.35,
+              "display": "$190",
+              "note": "5 positive replies · 21,773 emails",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 151.1,
+              "display": "$151",
+              "note": "11 positive replies · 18,805 emails",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 201.36,
+              "display": "$201",
+              "note": "8 positive replies · 15,919 emails",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 562.56,
+              "display": "$563",
+              "note": "5 positive replies · 23,427 emails",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "The first curve mixes every workflow we ran that month; the second follows only the cheapest LLM.",
+        "Gemini 3.1 Pro: $103 in Apr, $563 in Sep."
+      ]
+    },
+    {
+      "id": "herald-followups-roi",
+      "crew": "herald",
+      "topic": "followups",
+      "goal": "roi",
+      "question": "How many follow-ups give the cheapest positive reply?",
+      "status": "measured",
+      "headline": "First email only: $218 per positive reply, the cheapest depth.",
+      "winner": "First email only",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per positive reply if the sequence stopped here (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "First email only",
+              "value": 217.91,
+              "display": "$218",
+              "note": "19 positive replies · $4,140 spent",
+              "thin": false
+            },
+            {
+              "label": "+ 1 follow-up",
+              "value": 239.62,
+              "display": "$240",
+              "note": "32 positive replies · $7,668 spent",
+              "thin": false
+            },
+            {
+              "label": "+ 2 follow-ups",
+              "value": 268.29,
+              "display": "$268",
+              "note": "39 positive replies · $10,463 spent",
+              "thin": false
+            },
+            {
+              "label": "+ 3 follow-ups",
+              "value": 268.29,
+              "display": "$268",
+              "note": "39 positive replies · $10,463 spent",
+              "thin": false
+            }
+          ]
+        },
+        {
+          "kind": "bars",
+          "title": "Each email on its own: cost per positive reply (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "First email",
+              "value": 217.91,
+              "display": "$218",
+              "note": "19 positive replies · 52,128 emails",
+              "thin": false
+            },
+            {
+              "label": "Follow-up 1",
+              "value": 271.35,
+              "display": "$271",
+              "note": "13 positive replies · 46,914 emails",
+              "thin": false
+            },
+            {
+              "label": "Follow-up 2",
+              "value": 399.33,
+              "display": "$399",
+              "note": "7 positive replies · 41,407 emails",
+              "thin": true
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Each depth adds up the spend and the positive replies of every email up to it.",
+        "The second chart prices each email alone, which is what the next follow-up would cost."
+      ]
+    },
+    {
+      "id": "herald-followups-rate",
+      "crew": "herald",
+      "topic": "followups",
+      "goal": "rate",
+      "question": "How many follow-ups get the most positive replies?",
+      "status": "measured",
+      "headline": "Positive replies keep coming through 2 follow-ups: the last one adds 1.4 per 10,000 people.",
+      "winner": "+ 2 follow-ups",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Positive replies per 10,000 people, adding each follow-up (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "First email only",
+              "value": 3.6,
+              "display": "3.6 /10k",
+              "note": "19 positive replies from 52,128 people",
+              "thin": false
+            },
+            {
+              "label": "+ 1 follow-up",
+              "value": 6.1,
+              "display": "6.1 /10k",
+              "note": "32 positive replies from 52,128 people",
+              "thin": false
+            },
+            {
+              "label": "+ 2 follow-ups",
+              "value": 7.5,
+              "display": "7.5 /10k",
+              "note": "39 positive replies from 52,128 people",
+              "thin": false
+            },
+            {
+              "label": "+ 3 follow-ups",
+              "value": 7.5,
+              "display": "7.5 /10k",
+              "note": "39 positive replies from 52,128 people",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
+        "+ 1 follow-up: +2.5 /10k.",
+        "+ 2 follow-ups: +1.4 /10k.",
+        "+ 3 follow-ups: +0 /10k."
+      ]
+    },
+    {
+      "id": "herald-opens-roi",
+      "crew": "herald",
+      "topic": "opens",
+      "goal": "roi",
+      "question": "Should we track opens for the cheapest positive reply?",
+      "status": "measured",
+      "headline": "No clear winner: 0.12% with tracking off, 0.10% with it on (p 0.56, not significant).",
+      "winner": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "People who replied positively (%, higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Tracking off",
+              "value": 0.12,
+              "display": "0.12%",
+              "note": "28 of 23,441 people",
+              "thin": false
+            },
+            {
+              "label": "Tracking on",
+              "value": 0.1,
+              "display": "0.10%",
+              "note": "27 of 26,393 people",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "An email costs the same with or without the pixel, so the cheaper positive reply is the arm with more of them per person.",
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-12: two periods, not a split test, over 49,834 people."
+      ]
+    },
+    {
+      "id": "herald-opens-rate",
+      "crew": "herald",
+      "topic": "opens",
+      "goal": "rate",
+      "question": "Should we track opens for the best reply rate?",
+      "status": "measured",
+      "headline": "Tracking off wins: 0.39% of people replied, against 0.29% (p 0.04).",
+      "winner": "Tracking off",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "People who replied, any reply (%, higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Tracking off",
+              "value": 0.39,
+              "display": "0.39%",
+              "note": "92 of 23,441 people",
+              "thin": false
+            },
+            {
+              "label": "Tracking on",
+              "value": 0.29,
+              "display": "0.29%",
+              "note": "76 of 26,393 people",
+              "thin": false
+            }
+          ]
+        },
+        {
+          "kind": "bars",
+          "title": "Bounced (%, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Tracking off",
+              "value": 9.14,
+              "display": "9.14%",
+              "note": "2,143 of 23,441 people",
+              "thin": false
+            },
+            {
+              "label": "Tracking on",
+              "value": 1.41,
+              "display": "1.41%",
+              "note": "372 of 26,393 people",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Auto-replies and out-of-office messages are not counted as replies.",
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-12: two periods, not a split test, over 49,834 people."
+      ]
+    },
+    {
+      "id": "herald-template-roi",
+      "crew": "herald",
+      "topic": "template",
+      "goal": "roi",
+      "question": "Which template gets the cheapest positive reply?",
+      "status": "measured",
+      "headline": "Blind discovery v26 wins at $187 per positive reply.",
+      "winner": "Blind discovery v26",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per positive reply (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Blind discovery v26",
+              "value": 186.98,
+              "display": "$187",
+              "note": "14 positive replies · 25,362 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v16",
+              "value": 51.54,
+              "display": "$52",
+              "note": "2 positive replies · 3,936 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v15",
+              "value": 77.33,
+              "display": "$77",
+              "note": "8 positive replies · 12,283 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v5",
+              "value": 119.19,
+              "display": "$119",
+              "note": "1 positive reply · 2,100 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v27",
+              "value": 119.7,
+              "display": "$120",
+              "note": "4 positive replies · 3,975 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v28",
+              "value": 134.78,
+              "display": "$135",
+              "note": "1 positive reply · 1,204 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v17",
+              "value": 155.18,
+              "display": "$155",
+              "note": "1 positive reply · 3,115 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v9",
+              "value": 160.64,
+              "display": "$161",
+              "note": "5 positive replies · 8,405 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v33",
+              "value": 173.92,
+              "display": "$174",
+              "note": "1 positive reply · 1,805 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v39",
+              "value": 281.05,
+              "display": "$281",
+              "note": "2 positive replies · 2,902 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v16",
+              "value": 429.38,
+              "display": "$429",
+              "note": "1 positive reply · 8,738 emails",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Blind discovery v26: cost per positive reply by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Jul",
+              "value": 55.69,
+              "display": "$56",
+              "note": "5 positive replies · 2,765 emails",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 104,
+              "display": "$104",
+              "note": "7 positive replies · 7,329 emails",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 805.61,
+              "display": "$806",
+              "note": "2 positive replies · 15,268 emails",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Blind discovery v26: 14 positive replies · 25,362 emails, $2,618 spent.",
+        "Over time: $56 in Jul, $806 in Sep."
+      ]
+    },
+    {
+      "id": "herald-template-rate",
+      "crew": "herald",
+      "topic": "template",
+      "goal": "rate",
+      "question": "Which template gets the most positive replies?",
+      "status": "measured",
+      "headline": "Cold email v27 leads with 10.1 positive replies per 10,000 emails.",
+      "winner": "Cold email v27",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Positive replies per 10,000 emails (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Cold email v27",
+              "value": 10.1,
+              "display": "10.1 /10k",
+              "note": "4 positive replies · 3,975 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v28",
+              "value": 8.3,
+              "display": "8.3 /10k",
+              "note": "1 positive reply · 1,204 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v39",
+              "value": 6.9,
+              "display": "6.9 /10k",
+              "note": "2 positive replies · 2,902 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v15",
+              "value": 6.5,
+              "display": "6.5 /10k",
+              "note": "8 positive replies · 12,283 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v9",
+              "value": 5.9,
+              "display": "5.9 /10k",
+              "note": "5 positive replies · 8,405 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v26",
+              "value": 5.5,
+              "display": "5.5 /10k",
+              "note": "14 positive replies · 25,362 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v33",
+              "value": 5.5,
+              "display": "5.5 /10k",
+              "note": "1 positive reply · 1,805 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v16",
+              "value": 5.1,
+              "display": "5.1 /10k",
+              "note": "2 positive replies · 3,936 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v5",
+              "value": 4.8,
+              "display": "4.8 /10k",
+              "note": "1 positive reply · 2,100 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v17",
+              "value": 3.2,
+              "display": "3.2 /10k",
+              "note": "1 positive reply · 3,115 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v16",
+              "value": 1.1,
+              "display": "1.1 /10k",
+              "note": "1 positive reply · 8,738 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v10",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 881 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v11",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 844 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v12",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 873 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v13",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 842 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v14",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 728 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v18",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 2,965 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v26 (landing)",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 890 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v6",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 893 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v7",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 1,396 emails",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v8",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 506 emails",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v9 (landing)",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 882 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 2,862 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v12",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 18,838 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v18",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 658 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v19",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 19,573 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v29",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 1,286 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v31",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 3,694 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v35",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 7,728 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v36",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 2,815 emails",
+              "thin": false
+            },
+            {
+              "label": "Cold email v38",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 563 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v39 (landing)",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 896 emails",
+              "thin": true
+            },
+            {
+              "label": "Cold email v41",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 420 emails",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Cold email v27: positive replies per 10,000 emails by month",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Jul",
+              "value": 19.3,
+              "display": "19.3 /10k",
+              "note": "4 positive replies · 2,071 emails",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 1,423 emails",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 0,
+              "display": "0.0 /10k",
+              "note": "0 positive replies · 410 emails",
+              "thin": true
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Cold email v27: 4 positive replies · 3,975 emails.",
+        "Over time: 19.3 /10k in Jul, 0.0 /10k in Sep.",
+        "Only a template past 1,000 emails can lead; a smaller one is drawn and marked thin."
+      ]
+    },
+    {
+      "id": "scout-llm-roi",
+      "crew": "scout",
+      "topic": "llm",
+      "goal": "roi",
+      "question": "Which LLM gets the cheapest website visit?",
+      "status": "measured",
+      "headline": "Gemini 3 Flash wins at $1.41 per website visit.",
+      "winner": "Gemini 3 Flash",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per website visit (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Gemini 3 Flash",
+              "value": 1.41,
+              "display": "$1.41",
+              "note": "227 website visits · 8,747 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.5 Flash",
+              "value": 1.49,
+              "display": "$1.49",
+              "note": "98 website visits · 3,818 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.5 Flash-Lite",
+              "value": 3.54,
+              "display": "$3.54",
+              "note": "118 website visits · 5,320 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.1 Pro",
+              "value": 4.91,
+              "display": "$4.91",
+              "note": "382 website visits · 27,816 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "DeepSeek V4 Pro",
+              "value": 1.02,
+              "display": "$1.02",
+              "note": "2 website visits · 21 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "deepseek-flash",
+              "value": 2.01,
+              "display": "$2.01",
+              "note": "24 website visits · 724 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "GLM 5.3 Flash",
+              "value": 2.3,
+              "display": "$2.30",
+              "note": "18 website visits · 591 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "DeepSeek V4 Flash",
+              "value": 2.38,
+              "display": "$2.38",
+              "note": "10 website visits · 356 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "gemini-3.8-flash",
+              "value": 5.39,
+              "display": "$5.39",
+              "note": "8 website visits · 341 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3.6 Flash",
+              "value": 11.7,
+              "display": "$12",
+              "note": "4 website visits · 393 emails with a link",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Gemini 3 Flash: cost per website visit by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Jun",
+              "value": 0.94,
+              "display": "$0.94",
+              "note": "72 website visits · 3,137 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 1.57,
+              "display": "$1.57",
+              "note": "154 website visits · 5,280 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 10.88,
+              "display": "$11",
+              "note": "1 website visit · 330 emails with a link",
+              "thin": true
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Gemini 3 Flash: 227 website visits · 8,747 emails with a link, $321 spent.",
+        "Over time: $0.94 in Jun, $11 in Aug."
+      ]
+    },
+    {
+      "id": "scout-llm-rate",
+      "crew": "scout",
+      "topic": "llm",
+      "goal": "rate",
+      "question": "Which LLM gets the most website visits?",
+      "status": "measured",
+      "headline": "Gemini 3 Flash leads with 26.0 website visits per 1,000 emails with a link.",
+      "winner": "Gemini 3 Flash",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Website visits per 1,000 emails with a link (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "deepseek-flash",
+              "value": 33.1,
+              "display": "33.1 /1k",
+              "note": "24 website visits · 724 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "GLM 5.3 Flash",
+              "value": 30.5,
+              "display": "30.5 /1k",
+              "note": "18 website visits · 591 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "DeepSeek V4 Flash",
+              "value": 28.1,
+              "display": "28.1 /1k",
+              "note": "10 website visits · 356 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3 Flash",
+              "value": 26,
+              "display": "26.0 /1k",
+              "note": "227 website visits · 8,747 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.5 Flash",
+              "value": 25.7,
+              "display": "25.7 /1k",
+              "note": "98 website visits · 3,818 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "gemini-3.8-flash",
+              "value": 23.5,
+              "display": "23.5 /1k",
+              "note": "8 website visits · 341 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Gemini 3.5 Flash-Lite",
+              "value": 22.2,
+              "display": "22.2 /1k",
+              "note": "118 website visits · 5,320 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.1 Pro",
+              "value": 13.7,
+              "display": "13.7 /1k",
+              "note": "382 website visits · 27,816 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.6 Flash",
+              "value": 10.2,
+              "display": "10.2 /1k",
+              "note": "4 website visits · 393 emails with a link",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Gemini 3 Flash: website visits per 1,000 emails with a link by month",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Jun",
+              "value": 23,
+              "display": "23.0 /1k",
+              "note": "72 website visits · 3,137 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 29.2,
+              "display": "29.2 /1k",
+              "note": "154 website visits · 5,280 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 3,
+              "display": "3.0 /1k",
+              "note": "1 website visit · 330 emails with a link",
+              "thin": true
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Gemini 3 Flash: 227 website visits · 8,747 emails with a link.",
+        "Over time: 23.0 /1k in Jun, 3.0 /1k in Aug.",
+        "Only a LLM past 1,000 emails with a link can lead; a smaller one is drawn and marked thin."
+      ]
+    },
+    {
+      "id": "scout-cost-over-time",
+      "crew": "scout",
+      "topic": "cost",
+      "goal": "roi",
+      "question": "What does a website visit cost, month by month?",
+      "status": "measured",
+      "headline": "$11 in May, $3.51 in Sep across all our emails.",
+      "winner": "Gemini 3 Flash",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "line",
+          "title": "All our emails: cost per website visit by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "May",
+              "value": 11.13,
+              "display": "$11",
+              "note": "30 website visits · 7,614 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jun",
+              "value": 1.76,
+              "display": "$1.76",
+              "note": "220 website visits · 12,286 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 2.37,
+              "display": "$2.37",
+              "note": "291 website visits · 11,224 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 6.99,
+              "display": "$6.99",
+              "note": "86 website visits · 6,049 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Sep",
+              "value": 3.51,
+              "display": "$3.51",
+              "note": "264 website visits · 9,501 emails with a link",
+              "thin": false
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Gemini 3 Flash (cheapest LLM): cost per website visit by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Jun",
+              "value": 0.94,
+              "display": "$0.94",
+              "note": "72 website visits · 3,137 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 1.57,
+              "display": "$1.57",
+              "note": "154 website visits · 5,280 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 10.88,
+              "display": "$11",
+              "note": "1 website visit · 330 emails with a link",
+              "thin": true
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "The first curve mixes every workflow we ran that month; the second follows only the cheapest LLM.",
+        "Gemini 3 Flash: $0.94 in Jun, $11 in Aug."
+      ]
+    },
+    {
+      "id": "scout-followups-roi",
+      "crew": "scout",
+      "topic": "followups",
+      "goal": "roi",
+      "question": "How many follow-ups give the cheapest website visit?",
+      "status": "measured",
+      "headline": "First email only: $1.98 per website visit, the cheapest depth.",
+      "winner": "First email only",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per website visit if the sequence stopped here (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "First email only",
+              "value": 1.98,
+              "display": "$1.98",
+              "note": "646 website visits · $1,281 spent",
+              "thin": false
+            },
+            {
+              "label": "+ 1 follow-up",
+              "value": 2.56,
+              "display": "$2.56",
+              "note": "770 website visits · $1,969 spent",
+              "thin": false
+            },
+            {
+              "label": "+ 2 follow-ups",
+              "value": 3.32,
+              "display": "$3.32",
+              "note": "858 website visits · $2,851 spent",
+              "thin": false
+            }
+          ]
+        },
+        {
+          "kind": "bars",
+          "title": "Each email on its own: cost per website visit (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "First email",
+              "value": 1.98,
+              "display": "$1.98",
+              "note": "646 website visits · 21,751 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Follow-up 1",
+              "value": 5.55,
+              "display": "$5.55",
+              "note": "124 website visits · 10,950 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Follow-up 2",
+              "value": 10.02,
+              "display": "$10",
+              "note": "88 website visits · 12,497 emails with a link",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Each depth adds up the spend and the website visits of every email up to it.",
+        "The second chart prices each email alone, which is what the next follow-up would cost."
+      ]
+    },
+    {
+      "id": "scout-followups-rate",
+      "crew": "scout",
+      "topic": "followups",
+      "goal": "rate",
+      "question": "How many follow-ups get the most website visits?",
+      "status": "measured",
+      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 4 per 1,000 people.",
+      "winner": "+ 2 follow-ups",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Website visits per 1,000 people, adding each follow-up (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "First email only",
+              "value": 29.7,
+              "display": "29.7 /1k",
+              "note": "646 website visits from 21,751 people",
+              "thin": false
+            },
+            {
+              "label": "+ 1 follow-up",
+              "value": 35.4,
+              "display": "35.4 /1k",
+              "note": "770 website visits from 21,751 people",
+              "thin": false
+            },
+            {
+              "label": "+ 2 follow-ups",
+              "value": 39.4,
+              "display": "39.4 /1k",
+              "note": "858 website visits from 21,751 people",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
+        "+ 1 follow-up: +5.7 /1k.",
+        "+ 2 follow-ups: +4 /1k."
+      ]
+    },
+    {
+      "id": "scout-opens-roi",
+      "crew": "scout",
+      "topic": "opens",
+      "goal": "roi",
+      "question": "Should we track opens for the cheapest website visit?",
+      "status": "measured",
+      "headline": "Tracking off wins: 2.02% of people visited the website, against 1.50% (p < 0.001).",
+      "winner": "Tracking off",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "People who visited the website (%, higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Tracking off",
+              "value": 2.02,
+              "display": "2.02%",
+              "note": "474 of 23,441 people",
+              "thin": false
+            },
+            {
+              "label": "Tracking on",
+              "value": 1.5,
+              "display": "1.50%",
+              "note": "396 of 26,393 people",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "An email costs the same with or without the pixel, so the cheaper website visit is the arm with more of them per person.",
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-12: two periods, not a split test, over 49,834 people."
+      ]
+    },
+    {
+      "id": "scout-opens-rate",
+      "crew": "scout",
+      "topic": "opens",
+      "goal": "rate",
+      "question": "Should we track opens for the most website visits?",
+      "status": "measured",
+      "headline": "Tracking off wins: 2.02% of people visited the website, against 1.50% (p < 0.001).",
+      "winner": "Tracking off",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "People who visited the website (%, higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Tracking off",
+              "value": 2.02,
+              "display": "2.02%",
+              "note": "474 of 23,441 people",
+              "thin": false
+            },
+            {
+              "label": "Tracking on",
+              "value": 1.5,
+              "display": "1.50%",
+              "note": "396 of 26,393 people",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "A visit is the first tracked click a person made.",
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-12: two periods, not a split test, over 49,834 people."
+      ]
+    },
+    {
+      "id": "scout-template-roi",
+      "crew": "scout",
+      "topic": "template",
+      "goal": "roi",
+      "question": "Which template gets the cheapest website visit?",
+      "status": "measured",
+      "headline": "Cold email v19 wins at $1.46 per website visit.",
+      "winner": "Cold email v19",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per website visit (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Cold email v19",
+              "value": 1.46,
+              "display": "$1.46",
+              "note": "245 website visits · 10,115 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v12",
+              "value": 2.11,
+              "display": "$2.11",
+              "note": "130 website visits · 8,267 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v15",
+              "value": 2.82,
+              "display": "$2.82",
+              "note": "41 website visits · 2,295 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v35",
+              "value": 3.01,
+              "display": "$3.01",
+              "note": "191 website visits · 7,728 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v26",
+              "value": 3.28,
+              "display": "$3.28",
+              "note": "104 website visits · 3,324 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v36",
+              "value": 4.72,
+              "display": "$4.72",
+              "note": "38 website visits · 1,484 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v31",
+              "value": 6.33,
+              "display": "$6.33",
+              "note": "83 website visits · 3,694 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v16",
+              "value": 9.83,
+              "display": "$9.83",
+              "note": "21 website visits · 4,202 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v26 (landing)",
+              "value": 3.46,
+              "display": "$3.46",
+              "note": "2 website visits · 39 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Cold email v33",
+              "value": 5.04,
+              "display": "$5.04",
+              "note": "17 website visits · 888 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Cold email v38",
+              "value": 6.84,
+              "display": "$6.84",
+              "note": "10 website visits · 483 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v9",
+              "value": 18.47,
+              "display": "$18",
+              "note": "4 website visits · 814 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v17",
+              "value": 22.77,
+              "display": "$23",
+              "note": "3 website visits · 1,371 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Cold email v16",
+              "value": 37.76,
+              "display": "$38",
+              "note": "2 website visits · 2,884 emails with a link",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Cold email v19: cost per website visit by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "May",
+              "value": 3.25,
+              "display": "$3.25",
+              "note": "11 website visits · 939 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jun",
+              "value": 1.66,
+              "display": "$1.66",
+              "note": "117 website visits · 6,112 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Jul",
+              "value": 0.86,
+              "display": "$0.86",
+              "note": "109 website visits · 2,575 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Aug",
+              "value": 20.31,
+              "display": "$20",
+              "note": "1 website visit · 329 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 1.79,
+              "display": "$1.79",
+              "note": "7 website visits · 160 emails with a link",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Cold email v19: 245 website visits · 10,115 emails with a link, $357 spent.",
+        "Over time: $3.25 in May, $1.79 in Sep."
+      ]
+    },
+    {
+      "id": "scout-template-rate",
+      "crew": "scout",
+      "topic": "template",
+      "goal": "rate",
+      "question": "Which template gets the most website visits?",
+      "status": "measured",
+      "headline": "Blind discovery v26 leads with 31.3 website visits per 1,000 emails with a link.",
+      "winner": "Blind discovery v26",
+      "crowned": true,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Website visits per 1,000 emails with a link (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Blind discovery v26",
+              "value": 31.3,
+              "display": "31.3 /1k",
+              "note": "104 website visits · 3,324 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v36",
+              "value": 25.6,
+              "display": "25.6 /1k",
+              "note": "38 website visits · 1,484 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v35",
+              "value": 24.7,
+              "display": "24.7 /1k",
+              "note": "191 website visits · 7,728 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v19",
+              "value": 24.2,
+              "display": "24.2 /1k",
+              "note": "245 website visits · 10,115 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v31",
+              "value": 22.5,
+              "display": "22.5 /1k",
+              "note": "83 website visits · 3,694 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v38",
+              "value": 20.7,
+              "display": "20.7 /1k",
+              "note": "10 website visits · 483 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Cold email v33",
+              "value": 19.1,
+              "display": "19.1 /1k",
+              "note": "17 website visits · 888 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v15",
+              "value": 17.9,
+              "display": "17.9 /1k",
+              "note": "41 website visits · 2,295 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v12",
+              "value": 15.7,
+              "display": "15.7 /1k",
+              "note": "130 website visits · 8,267 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v16",
+              "value": 5,
+              "display": "5.0 /1k",
+              "note": "21 website visits · 4,202 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Blind discovery v9",
+              "value": 4.9,
+              "display": "4.9 /1k",
+              "note": "4 website visits · 814 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Blind discovery v17",
+              "value": 2.2,
+              "display": "2.2 /1k",
+              "note": "3 website visits · 1,371 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v16",
+              "value": 0.7,
+              "display": "0.7 /1k",
+              "note": "2 website visits · 2,884 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Cold email v18",
+              "value": 0,
+              "display": "0.0 /1k",
+              "note": "0 website visits · 658 emails with a link",
+              "thin": true
+            }
+          ]
+        },
+        {
+          "kind": "line",
+          "title": "Blind discovery v26: website visits per 1,000 emails with a link by month",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Jul",
+              "value": 24.6,
+              "display": "24.6 /1k",
+              "note": "6 website visits · 244 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Aug",
+              "value": 20,
+              "display": "20.0 /1k",
+              "note": "18 website visits · 902 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 36.7,
+              "display": "36.7 /1k",
+              "note": "80 website visits · 2,178 emails with a link",
+              "thin": false
+            }
+          ]
+        }
+      ],
+      "conclusion": [
+        "Blind discovery v26: 104 website visits · 3,324 emails with a link.",
+        "Over time: 24.6 /1k in Jul, 36.7 /1k in Sep.",
+        "Only a template past 1,000 emails with a link can lead; a smaller one is drawn and marked thin."
+      ]
+    },
+    {
+      "id": "pilot-llm",
+      "crew": "pilot",
+      "topic": "llm",
+      "goal": "rate",
+      "question": "Which LLM books the most meetings from a positive reply?",
+      "status": "not_enough_data",
+      "headline": "Not enough data yet.",
+      "winner": null,
+      "crowned": false,
+      "charts": [],
+      "conclusion": [
+        "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      ]
+    },
+    {
+      "id": "pilot-template",
+      "crew": "pilot",
+      "topic": "template",
+      "goal": "rate",
+      "question": "Which template books the most meetings from a positive reply?",
+      "status": "not_enough_data",
+      "headline": "Not enough data yet.",
+      "winner": null,
+      "crowned": false,
+      "charts": [],
+      "conclusion": [
+        "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      ]
+    },
+    {
+      "id": "pilot-followups",
+      "crew": "pilot",
+      "topic": "followups",
+      "goal": "rate",
+      "question": "How many follow-ups after a positive reply book the most meetings?",
+      "status": "not_enough_data",
+      "headline": "Not enough data yet.",
+      "winner": null,
+      "crowned": false,
+      "charts": [],
+      "conclusion": [
+        "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      ]
+    },
+    {
+      "id": "pilot-cost",
+      "crew": "pilot",
+      "topic": "cost",
+      "goal": "roi",
+      "question": "What does a booked meeting cost, month by month?",
+      "status": "not_enough_data",
+      "headline": "Not enough data yet.",
+      "winner": null,
+      "crowned": false,
+      "charts": [],
+      "conclusion": [
+        "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      ]
+    }
+  ]
+}
