@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { shownFigure } from "../src/lib/maturity";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -77,8 +78,12 @@ describe("parseOfferOutcomes", () => {
     expect(() => parseOfferOutcomes({ outcomes: "nope" }, "test")).toThrow();
   });
 
-  it("refuses a body without the maturity pair: no figure without its verdict", () => {
-    expect(() => parseOfferOutcomes(CAPTURED, "test")).toThrow();
+  it("reads a body without the pair as NO verdict: the row states no figure, never the legacy one", () => {
+    // The producer declares the pair optional (a pre-deploy cached body carries none), so
+    // the parse accepts it and the surface states `—` with no tag through `shownFigure`.
+    const parsed = parseOfferOutcomes(CAPTURED, "test");
+    expect(parsed.outcomes[0].maturity ?? null).toBeNull();
+    expect(shownFigure(parsed.outcomes[0].maturity, (h) => h.costPerOutcomeUsd, "mature")).toEqual({ value: null, learning: false });
   });
 
   it("carries the served verdict through, with every half nullable", () => {
@@ -89,8 +94,8 @@ describe("parseOfferOutcomes", () => {
       isMature: false,
     };
     const parsed = parseOfferOutcomes(body, "test");
-    expect(parsed.outcomes[0].maturity.isMature).toBe(false);
-    expect(parsed.outcomes[0].maturity.mature?.costPerOutcomeUsd).toBe(22);
+    expect(parsed.outcomes[0].maturity?.isMature).toBe(false);
+    expect(parsed.outcomes[0].maturity?.mature?.costPerOutcomeUsd).toBe(22);
   });
 });
 

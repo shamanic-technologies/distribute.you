@@ -42,7 +42,8 @@ const FiguresShape = {
   valueUsd: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   unmeasuredReason: z.string().nullable(),
-  maturity: OutcomeRatioMaturitySchema,
+  // Optional as served: absent -> the row states `—`, never the legacy figure.
+  maturity: OutcomeRatioMaturitySchema.nullish(),
 };
 
 const StepRefSchema = z.object({ key: z.string(), label: z.string() });

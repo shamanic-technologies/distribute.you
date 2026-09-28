@@ -12,8 +12,11 @@ import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
 
 /**
  * The ratios of a cost-economics block, served twice (features-service#1196, lib/maturity.ts).
- * REQUIRED: the producer serves the pair on every revenue body, so a body without it is
- * shape rot and must fail loud rather than silently drop every Learning tag.
+ * OPTIONAL as the producer declares it: a body cached before the pair shipped, or a read
+ * whose maturity cut degraded, carries none. A surface then states `—` with no tag
+ * (`shownFigure` on no pair), never the legacy figure: measured in prod on the deploy that
+ * shipped the pairs, the first reads of four scopes came back from pre-deploy snapshots
+ * without them, and a required pair turned each of those pages into an error.
  */
 export const EconomicsMaturitySchema = maturityPairSchema(
   z.object({
@@ -55,8 +58,9 @@ const ScopeLegMaturitySchema = maturityPairSchema(LegOutcomeFiguresSchema).exten
   outcomeSignal: z.string().nullable(),
   source: z.string(),
 });
-/** THE SCOPE'S MATURITY: its verdict and one entry per leg (features-service `ScopeMaturity`). */
-const ScopeMaturitySchema = z.object({
+/** THE SCOPE'S MATURITY: its verdict and one entry per leg (features-service `ScopeMaturity`).
+ *  The byte-same object every read describing a scope serves (/revenue, /audience-stats). */
+export const ScopeMaturitySchema = z.object({
   isMature: z.boolean().nullable(),
   legs: z.array(ScopeLegMaturitySchema),
 });
@@ -184,7 +188,7 @@ const CostEconomicsSchema = z.object({
   // overview + grouped responses (which omit the field) still parse.
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
-  maturity: EconomicsMaturitySchema,
+  maturity: EconomicsMaturitySchema.nullish(),
 });
 // Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
 // spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
@@ -376,7 +380,7 @@ const SpendSchema = z.object({
   // (event=sale, RENAMED from purchase). Same rollout tolerance; cpSaleCents null at 0.
   salesCount: z.coerce.number().optional(),
   cpSaleCents: z.coerce.number().nullable().optional(),
-  maturity: SpendMaturitySchema,
+  maturity: SpendMaturitySchema.nullish(),
 });
 
 /**
@@ -657,7 +661,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
       costPerAcquisitionUsd: d.costEconomics.costPerAcquisitionUsd ?? null,
       expectedConversions: d.costEconomics.expectedConversions,
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
-      maturity: d.costEconomics.maturity,
+      maturity: d.costEconomics.maturity ?? null,
     },
     roiHistory: d.roiHistory ?? null,
     // Whole, verbatim. The card renders the served points and the served counts; the one

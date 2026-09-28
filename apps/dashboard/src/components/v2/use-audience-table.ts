@@ -203,6 +203,12 @@ export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaig
     listsPending,
     statsLoading,
     statsFor: (id: string) => statsByAudienceId.get(id),
+    // The CAMPAIGN's own leg figures off the envelope's scope maturity: the price its
+    // Overview states, so the two pages cannot print two prices for one campaign.
+    scopeLeg: campaignScoped
+      ? stats.data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === campaign?.legKey) ?? null
+      : null,
+    legPair,
     statusMut,
     avatarMut,
   };

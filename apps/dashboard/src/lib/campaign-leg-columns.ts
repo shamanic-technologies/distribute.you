@@ -25,6 +25,15 @@ export type LandingLeg = { toKey: string };
  */
 export type LegColumnPair = "reply" | "visit" | "signup" | "formSubmission" | "sale";
 
+/** What ONE outcome of each pair is called, byte-equal with the columns' own words. */
+export const LEG_PAIR_NOUN: Readonly<Record<LegColumnPair, string>> = {
+  reply: "positive reply",
+  visit: "website visit",
+  signup: "signup",
+  formSubmission: "form submission",
+  sale: "sale",
+};
+
 const PAIR_BY_STEP_KEY: Readonly<Record<string, LegColumnPair>> = {
   // The producer calls this step `conversation`; the customer reads "Positive reply".
   // Matching is by TOKEN for that reason — a key is not a sentence.

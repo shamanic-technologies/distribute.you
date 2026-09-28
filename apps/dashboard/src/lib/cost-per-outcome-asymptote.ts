@@ -12,8 +12,13 @@
  * producer states `recommendedWorkflowDynastySlug` and states that row's cost, and both
  * are taken as given. The one judgement is refusing a floor that is not below the curve.
  *
- * Deliberately alias-free so it carries real unit tests. Keep it that way.
+ * The price is the MATURE half of the row's served pair (`row.maturity.resolved`,
+ * features-service#1196): a row the producer says is not mature has no price to aim at, so
+ * it is passed over like a row with none, and no pair means no floor.
+ *
+ * Deliberately alias-free (one relative import) so it carries real unit tests. Keep it that way.
  */
+import { shownFigure } from "./maturity";
 
 /** How far the tail is drawn, as a multiple of the outcomes already counted. */
 const TAIL_OUTCOME_MULTIPLE = 9;
@@ -44,7 +49,20 @@ export interface LadderRowForFloor {
   audienceId: string | null;
   workflow: { workflowDynastySlug: string; workflowDynastyName: string | null };
   resolved: { costPerOutcomeUsd: number | null };
+  /** The resolved figure on both bases with the producer's verdict (features-service#1196). */
+  maturity?: {
+    resolved: {
+      flash: { costPerOutcomeUsd: number | null } | null;
+      mature: { costPerOutcomeUsd: number | null } | null;
+      isMature: boolean | null;
+    };
+  } | null;
   rank?: number | null;
+}
+
+/** A row's price to aim at: the served mature figure, none while it is still learning. */
+function floorPrice(r: LadderRowForFloor): number | null {
+  return shownFigure(r.maturity?.resolved, (h) => h.costPerOutcomeUsd, "mature").value;
 }
 
 export interface BestWorkflowFloor {
@@ -78,7 +96,7 @@ export function bestWorkflowFloor(args: {
   const campaignRows = args.rows.filter(
     (r) =>
       r.audienceId === null &&
-      r.resolved.costPerOutcomeUsd != null &&
+      floorPrice(r) != null &&
       !hidden.has(r.workflow.workflowDynastySlug),
   );
   if (campaignRows.length === 0) return null;
@@ -93,9 +111,10 @@ export function bestWorkflowFloor(args: {
     campaignRows
       .filter((r): r is LadderRowForFloor & { rank: number } => typeof r.rank === "number")
       .sort((a, b) => a.rank - b.rank)[0];
-  if (!pick || pick.resolved.costPerOutcomeUsd == null) return null;
+  const pickPrice = pick ? floorPrice(pick) : null;
+  if (!pick || pickPrice == null) return null;
   return {
-    costPerOutcomeUsd: pick.resolved.costPerOutcomeUsd,
+    costPerOutcomeUsd: pickPrice,
     workflowName: pick.workflow.workflowDynastyName,
     workflowDynastySlug: pick.workflow.workflowDynastySlug,
   };

@@ -671,6 +671,7 @@ export function CampaignOverviewPage() {
               // The producer's own word for this campaign's outcome — the same one the
               // cost curve titles itself with, so the two cannot name different things.
               outcomeLabel={data?.learningPhase?.outcomeStep?.label ?? null}
+              paused={campaignPaused}
               pending={floorLadderQ.isPending && !floorLadderQ.isError}
             />
             <ConversionRateCard

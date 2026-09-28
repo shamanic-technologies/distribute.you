@@ -153,9 +153,9 @@ export function CostPerOutcomeCard({
   /**
    * THE price, as the stat row states it: the MATURE half of this leg's served figures
    * (`maturity.legs[]`, features-service#1196), `Learning` exactly where the producer says
-   * the scope is not mature. Never the curve's last point: that is every dollar and every
-   * outcome to date, a different population, and printing it here put a second cost per
-   * outcome on the page beside the one the row above states.
+   * the scope is not mature. The curve is the same mature cohort's, so its last point agrees
+   * to the cent's rounding; the headline still reads the served figure and its verdict
+   * rather than a point of a series, so the card and the row cannot state two prices.
    */
   headline?: ShownFigure;
   /**
@@ -257,7 +257,7 @@ export function CostPerOutcomeCard({
             <p className="flex items-center justify-end gap-1 text-2xl font-bold leading-none text-gray-900">
               {headline?.value != null ? formatUsdAdaptive(headline.value) : "—"}
               <InfoTooltip
-                tip={`The price is the same one the row above states. ${MATURE_COST_NOTE} The line is every dollar and every ${step.toLowerCase()} to date.`}
+                tip={`The same price the row above states, and the line is that price day by day. ${MATURE_COST_NOTE}`}
                 placement="bottom"
               />
             </p>

@@ -281,9 +281,9 @@ export interface CostEconomics {
   /**
    * The three ratios above, served TWICE with the producer's verdict (lib/maturity.ts):
    * `mature` is what every surface states, `isMature: false` is where it reads Learning.
-   * Nothing here is re-judged in the browser.
+   * Nothing here is re-judged in the browser. Null when the body carried no pair.
    */
-  maturity: MaturityPair<EconomicsFigures>;
+  maturity: MaturityPair<EconomicsFigures> | null;
 }
 
 /** One pre-computed cost source (descending) in the spend block. The card renders only
@@ -381,8 +381,9 @@ export interface Spend {
   /**
    * The cost-per-outcome ratios above, served TWICE with the producer's verdict
    * (lib/maturity.ts). A surface states `mature`, and `Learning` where `isMature` is false.
+   * Absent or null when the body carried no pair: the surface then states `—`.
    */
-  maturity: MaturityPair<SpendFigures>;
+  maturity?: MaturityPair<SpendFigures> | null;
 }
 
 /**

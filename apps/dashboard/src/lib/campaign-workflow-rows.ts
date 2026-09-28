@@ -89,8 +89,9 @@ export interface WorkflowRevenueGroup {
   recipientsRepliesPositive: number | null;
   cpprCents: number | null;
   cpcCents: number | null;
-  /** ROI, % CAC and $ CAC served twice with this group's maturity verdict (lib/maturity.ts). */
-  economicsMaturity: MaturityPair<EconomicsFigures>;
+  /** ROI, % CAC and $ CAC served twice with this group's maturity verdict (lib/maturity.ts).
+   *  Null when the body carried no pair (a cached or degraded read): the row states `—`. */
+  economicsMaturity: MaturityPair<EconomicsFigures> | null;
   /** Cost per visit and per positive reply served twice. Null = no outcomes block served. */
   outcomesMaturity: MaturityPair<OutcomeFigures> | null;
 }

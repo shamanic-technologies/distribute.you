@@ -24,7 +24,8 @@ import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
 import { useStatBasis } from "@/lib/use-stat-basis";
-import type { StatBasis } from "@/lib/maturity";
+import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
+import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
 
 type Tab = "active" | "archived";
 
@@ -46,6 +47,35 @@ function SparkleIcon() {
 /** A price or a return withheld under the learning bar: the word takes the value's place. */
 function Withheld({ paused }: { paused: boolean }) {
   return <span className="k-chip">{paused ? "Paused" : "Learning"}</span>;
+}
+
+/** The mission's own cost per outcome, the served mature figure (Learning where it is not). */
+function MissionPrice({
+  leg,
+  noun,
+  basis,
+  paused,
+}: {
+  leg: MaturityPair<{ costPerOutcomeUsd: number | null }> | null;
+  noun: string;
+  basis: StatBasis;
+  paused: boolean;
+}) {
+  const price = shownFigure(leg, (h) => h.costPerOutcomeUsd, basis);
+  return (
+    <p className="k-fg2 mb-3 flex items-center gap-2 text-[13px]">
+      <span className="k-label">This mission</span>
+      {price.learning ? (
+        <Withheld paused={paused} />
+      ) : (
+        price.value == null ? (
+          <span className="k-fg4">—</span>
+        ) : (
+          <span className="k-fg tabular-nums">{`${formatAudienceUsd(price.value)} per ${noun}`}</span>
+        )
+      )}
+    </p>
+  );
 }
 
 /**
@@ -206,6 +236,9 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
           : "ROI, % CAC and $ CAC are projected from your conversion rates and lifetime revenue; $ Invested is what each audience has cost so far."}{" "}
         A price counts only outreach sent long enough ago for its answers to have arrived, and reads Learning until that outreach has produced enough outcomes.
       </p>
+      {/* THE MISSION'S OWN PRICE, off the envelope's scope maturity: the same served figure
+          its Overview states, so this page and that one print one price for one mission. */}
+      {t.campaignScoped && t.scopeLeg && t.legPair && <MissionPrice leg={t.scopeLeg} noun={LEG_PAIR_NOUN[t.legPair]} basis={basis} paused={t.withheldPaused} />}
       <div className="k-card overflow-hidden">
         <RecordsTabs
           tabs={[

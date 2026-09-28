@@ -280,12 +280,12 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     expect(page).toContain(
       "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
     );
-    // The stat row, the section (which owns the return chart's tag), the Top-3 card, the
-    // conversion card (its rate reads Paused where it would read Learning), and the hold
-    // band on each of the page's two return branches. The band takes it for the opposite
-    // reason to the others: a paused campaign must NOT be told it is held, because the
-    // status pill beside the heading already says it is not running.
-    expect((page.match(/paused=\{campaignPaused\}/g) ?? []).length).toBe(6);
+    // The stat row, the section (which owns the return chart's tag), the Top-3 audiences
+    // card, the Top-3 LLMs card and the conversion card (each reads Paused where it would
+    // read Learning), and the hold band on each of the page's two return branches. The band
+    // takes it for the opposite reason to the others: a paused campaign must NOT be told it
+    // is held, because the status pill beside the heading already says it is not running.
+    expect((page.match(/paused=\{campaignPaused\}/g) ?? []).length).toBe(7);
   });
 
   it("the campaign Audiences table reads the campaign it already polls", () => {
@@ -417,8 +417,8 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
 });
 
 // The two chart cards on a campaign's Overview each print a headline beside a curve. The
-// curve is every dollar and every outcome to date; the headline is THE figure, so it reads
-// the served mature one, the same the stat row states, never the curve's last point.
+// headline is THE figure, so it reads the served mature one with its verdict, the same the
+// stat row states, never a point of a series (the conversion curve is to date).
 describe("the chart headlines state the served mature figure, never the curve's last point", () => {
   const leg = (overrides: Record<string, unknown> = {}) => ({
     legKey: "start_to_conversation",
@@ -463,6 +463,17 @@ describe("the chart headlines state the served mature figure, never the curve's 
     ).toThrow();
   });
 
+  it("a body with NO pair parses and states no figure: optional as the producer declares it", async () => {
+    // Measured on the deploy that shipped the pairs: the first reads of four scopes came
+    // back from pre-deploy cached snapshots without them. Absent -> dash, never legacy.
+    const { parseFeatureRevenue } = await import("../src/lib/revenue-parse");
+    const b = body({});
+    delete (b.costEconomics as Record<string, unknown>).maturity;
+    const parsed = parseFeatureRevenue(b, "test");
+    expect(parsed.costEconomics.maturity).toBeNull();
+    expect(shownFigure(parsed.costEconomics.maturity, (h) => h.roiMultiple, "mature")).toEqual({ value: null, learning: false });
+  });
+
   it("the cost card's price is the leg's mature figure, keyed on the curve's own leg", () => {
     const section = read("components/revenue/revenue-overview-section.tsx");
     expect(section).toContain("const costLegKey = costPerOutcomeHistory?.legKey ?? null;");
@@ -481,5 +492,13 @@ describe("the chart headlines state the served mature figure, never the curve's 
     expect(shown).toEqual({ value: null, learning: true });
     const staff = shownFigure(leg({ isMature: false }) as MaturityPair<{ costPerOutcomeUsd: number | null }>, (h) => h.costPerOutcomeUsd, "flash");
     expect(staff).toEqual({ value: 68.06, learning: false });
+  });
+});
+
+describe("a ladder whose mature cut failed says so", () => {
+  it("the campaign Workflows page states it rather than showing a silent blank grid", () => {
+    const page = read("components/workflows/campaign-workflows-page.tsx");
+    expect(page).toContain("ladderQ.data?.maturity?.measured === false");
+    expect(page).toContain("We could not read the settled prices for this campaign just now");
   });
 });

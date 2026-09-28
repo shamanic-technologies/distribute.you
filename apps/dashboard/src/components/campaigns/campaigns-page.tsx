@@ -119,7 +119,7 @@ export function CampaignsPage() {
   const topChannel = useMemo(() => {
     // A campaign features-service says is still learning has no stated return to rank on.
     const top = activeRows.find(
-      (r) => !r.learning && r.revenue?.economicsMaturity.mature?.roiMultiple != null,
+      (r) => !r.learning && r.revenue?.economicsMaturity?.mature?.roiMultiple != null,
     );
     if (!top) return "—";
     const def = acquisitionChannelForFeatureSlug(top.campaign.featureSlug, channels);

@@ -442,8 +442,8 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       if (byLearning !== 0) return byLearning;
       const byRoi = a.learning
         ? 0
-        : (b.revenue?.economicsMaturity.mature?.roiMultiple ?? -1) -
-          (a.revenue?.economicsMaturity.mature?.roiMultiple ?? -1);
+        : (b.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1) -
+          (a.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1);
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
@@ -600,9 +600,9 @@ function CampaignsTableInner({
                     unreliable one. Withholding it would hide a real figure behind a word
                     about precision it does not have a precision problem with. */}
                 <td className="px-4 py-3 text-right">
-                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.economicsMaturity.mature?.roiMultiple} />}
+                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.economicsMaturity?.mature?.roiMultiple} />}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.economicsMaturity.mature?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.economicsMaturity?.mature?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group — the exact number the ROI and %CAC beside it

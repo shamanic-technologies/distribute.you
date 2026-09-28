@@ -132,7 +132,7 @@ import {
 import { WorkflowRankPanel } from "@/components/workflows/workflow-rank-panel";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { useStatBasis } from "@/lib/use-stat-basis";
-import type { StatBasis } from "@/lib/maturity";
+import { shownFigure, type StatBasis } from "@/lib/maturity";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useScopePaused } from "@/lib/use-scope-paused";
@@ -417,6 +417,16 @@ export function CampaignWorkflowsPage({
       }),
     { ...pollOptions, enabled: ready && Boolean(brandId) && Boolean(legKey) },
   );
+  // THE CAMPAIGN'S OWN PRICE: the served mature figure for its leg, off that same read's
+  // scope maturity — the byte-same object its Overview's /revenue serves, so this page and
+  // the Overview cannot print two costs per outcome for one campaign. Every cell below is
+  // a workflow's or an audience's share of it.
+  const campaignPrice = shownFigure(
+    audienceStatsQ.data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === legKey),
+    (h) => h.costPerOutcomeUsd,
+    basis,
+  );
+  const campaignPriceKnown = audienceStatsQ.data?.maturity != null;
 
   // The brand's own mark, for the panel's brand grain. `["brand", brandId]` is the key the
   // tenant switcher already polls on every brand page, so it costs no request.
@@ -678,6 +688,10 @@ export function CampaignWorkflowsPage({
 
   const empty = !pending && revenueOk && rows.length === 0;
   const rankUnavailable = !pending && revenueOk && ladderQ.isError;
+  // The producer could not cut the MATURE figures on this answer (features-service#1196:
+  // `maturity.measured` false, its reason named). Every price then reads a dash with no
+  // tag, so the page says why rather than letting a blank grid read as "nothing measured".
+  const matureUnavailable = !pending && revenueOk && ladderQ.data?.maturity?.measured === false;
   const scopeName = scope ? (audienceById.get(scope)?.name ?? "This audience") : null;
 
   return (
@@ -697,6 +711,18 @@ export function CampaignWorkflowsPage({
               ? `Ranked for ${scopeName}, cheapest first on what it has cost there.`
               : "Every estimate the ranking is made of. A row is a workflow, a column is who it was priced for."}
           </p>
+          {campaignPriceKnown && (
+            <p className="mt-1 flex items-center gap-2 text-sm text-gray-700">
+              <span className="text-gray-500">This campaign:</span>
+              {campaignPrice.learning ? (
+                <LearningTag withInfo={false} paused={paused} />
+              ) : (
+                <span className="font-medium tabular-nums">
+                  {campaignPrice.value == null ? "—" : `${formatUsdAdaptive(campaignPrice.value)} per ${columns.noun}`}
+                </span>
+              )}
+            </p>
+          )}
         </div>
 
         {pending && (
@@ -721,6 +747,13 @@ export function CampaignWorkflowsPage({
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
             We could not work out the ranking for this campaign just now, so the list is
             unordered. Everything below is still this campaign&apos;s own.
+          </div>
+        )}
+
+        {matureUnavailable && (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
+            We could not read the settled prices for this campaign just now, so the prices below
+            are blank until the next refresh.
           </div>
         )}
 

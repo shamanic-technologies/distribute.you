@@ -168,10 +168,15 @@ GROUP BY 1
 # the Research page dates a lead by it: the MATURE population is the runs started long enough
 # before the read (features-service#1196, the clock features-service applies), and every email
 # those runs sent counts with every outcome their leads produced. The articles ignore this file.
+# UTC text with no offset, the format every other dump carries (maturation.mjs `toMs`): psql
+# prints a timestamptz as `...+00`, which toMs cannot read. Runs before mid-2026 carry no
+# feature_slug (254k of them measured 2026-09-28), so the workflow slug names the feature too:
+# filtering on feature_slug alone left 88% of the generations with no run start.
 run runs_service "
-SELECT id AS run_id, started_at
+SELECT id AS run_id, to_char(started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS started_at
 FROM runs
-WHERE task_name = 'execute-workflow' AND feature_slug = 'sales-cold-email-outreach'
+WHERE task_name = 'execute-workflow'
+  AND (feature_slug = 'sales-cold-email-outreach' OR workflow_slug LIKE 'sales-cold-email-outreach%')
   AND started_at >= '$FROM'::timestamptz - interval '45 days' AND started_at < '$TO'
 " run-starts.csv
 
@@ -216,7 +221,8 @@ JOIN runs r ON r.id = rc.run_id
 LEFT JOIN v ON v.cost_name = rc.cost_name AND v.billed = rc.unit_cost_in_usd_cents
   AND rc.created_at >= v.valid_from AND (v.valid_to IS NULL OR rc.created_at < v.valid_to)
 WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
-  AND r.feature_slug = 'sales-cold-email-outreach'
+  -- the workflow slug names the feature on runs that carry no feature_slug (May-June 2026)
+  AND (r.feature_slug = 'sales-cold-email-outreach' OR r.workflow_slug LIKE 'sales-cold-email-outreach%')
   AND r.started_at >= '$FROM' AND rc.created_at < '$TO'
 GROUP BY 1, 2, 3
 " spend-legs.csv
