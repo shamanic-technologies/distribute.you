@@ -499,7 +499,7 @@ export function AccountCardWall({
           </p>
           <ul className="k-fg2 mt-2.5 grid gap-1 text-[13px] leading-5">
             {[
-              `We write to the people in ${audience.name}, one email each.`,
+              `We write to every company in your audience (${audience.name}), one email each.`,
               "We send from our own warmed domains, never yours.",
               "Interested replies land in your inbox.",
             ].map((line, i) => (
