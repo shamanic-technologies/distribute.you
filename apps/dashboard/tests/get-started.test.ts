@@ -175,6 +175,20 @@ describe("the surface", () => {
     expect(WALL).toContain("if (budgetTouched.current) onBudget(");
   });
 
+  it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
+    expect(WALL).toContain("<TrialTimer />");
+    expect(WALL).toContain("<TrialSpots />");
+  });
+
+  it("counts Explee's clock down 7:30, then a 9:59 extension, then stops", async () => {
+    const { timerPhase, spotsTakenThisHour } = await import("../src/components/v2/get-started/urgency");
+    expect(timerPhase(0, 0)).toEqual({ phase: "initial", secondsLeft: 450 });
+    expect(timerPhase(0, 450_000)).toEqual({ phase: "extended", secondsLeft: 599 });
+    expect(timerPhase(0, 1_049_000)).toEqual({ phase: "expired", secondsLeft: 0 });
+    const hour = 3_600_000 * 500_000;
+    expect(spotsTakenThisHour(hour + 59 * 60_000)).toBeGreaterThanOrEqual(spotsTakenThisHour(hour));
+  });
+
   it("leaves the current onboarding alone", () => {
     const onboarding = read("src/components/onboarding/onboarding.tsx");
     expect(onboarding).not.toContain("get-started");

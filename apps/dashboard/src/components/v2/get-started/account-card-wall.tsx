@@ -39,6 +39,7 @@ import { v2MissionHref } from "@/lib/v2/routes";
 import { GET_STARTED_SNAPSHOT_KEY, parseDailyBudget, type GetStartedSegment } from "@/lib/v2/get-started";
 import { EMPTY_PROGRESS, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
 import { CountUp } from "./motion";
+import { TrialSpots, TrialTimer } from "./urgency";
 
 const MIN_PASSWORD_LENGTH = 8;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -417,6 +418,12 @@ export function AccountCardWall({
 
           {/* Account + card */}
           <div className="p-5">
+            {stage !== "launching" && (
+              <div className="mb-4 grid gap-2">
+                <TrialTimer />
+                <TrialSpots />
+              </div>
+            )}
             <Steps stage={stage} />
             <div key={stage === "code" ? "account" : stage} className="gs-in">
 
