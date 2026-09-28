@@ -31,8 +31,8 @@ import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 import { CustomerAudiencesPage } from "@/components/audiences/customer-audiences-page";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
-import { BrandCrmPage } from "@/components/crm/brand-crm-page";
-import { CrmMergedPage } from "@/components/crm/crm-merged-page";
+import { V2CrmRawView } from "@/components/v2/integrations-crm";
+import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
@@ -390,8 +390,8 @@ export function V2MissionWorkflowsPage() {
 function integrationTabs(orgId: string, brandId: string, active: "raw" | "merged") {
   const base = `${v2Base(orgId, brandId)}/integrations`;
   return [
-    { label: "Your CRM", href: base, active: active === "raw" },
-    { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged" },
+    { label: "Your CRM", href: base, active: active === "raw", badge: "beta" as const },
+    { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged", badge: "beta" as const },
   ];
 }
 
@@ -405,7 +405,7 @@ export function V2IntegrationsPage({ view }: { view: "raw" | "merged" }) {
       tabs={integrationTabs(orgId, brandId, view)}
       width="max-w-[1280px]"
     >
-      <div className="v2-embed -mx-4 md:-mx-8">{view === "raw" ? <BrandCrmPage brandId={brandId} /> : <CrmMergedPage brandId={brandId} />}</div>
+      {view === "raw" ? <V2CrmRawView orgId={orgId} brandId={brandId} /> : <V2CrmMergedView brandId={brandId} />}
     </V2Page>
   );
 }
