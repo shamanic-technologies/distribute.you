@@ -281,53 +281,49 @@ export function GetStarted() {
     setStep("segments", "running");
     const host = hostOf(url);
 
-    const company = extractBrandFields([id], [...COMPANY_FIELDS], { mode: "suggest", urlStrategy: "landing" })
-      .then((r) => {
-        const ov = valueText(r.fields.companyOverview?.value);
-        const fs = valueLines(r.fields.companyFacts?.value).slice(0, 4);
-        setOverview(ov);
-        setFacts(fs);
-        setStep("company", ov || fs.length ? "done" : "failed");
-        return { ov, fs };
-      })
-      .catch((e) => {
-        console.error("[get-started] company read failed:", e);
-        setStep("company", "failed");
-        return { ov: "", fs: [] as string[] };
+    // ONE read at a time, deliberately. Every metered call first HOLDS its worst case
+    // against the anonymous org's small seed, so reads in parallel stack their holds and
+    // the third one is refused for credit the first two will never actually spend
+    // (measured: ~$1.30 spent, a $2.20 hold refused). The company and its competitors
+    // are one extraction for the same reason.
+    let read = { ov: "", fs: [] as string[] };
+    let list: Competitor[] = [];
+    try {
+      const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS], {
+        mode: "suggest",
+        urlStrategy: "landing",
       });
+      read = {
+        ov: valueText(r.fields.companyOverview?.value),
+        fs: valueLines(r.fields.companyFacts?.value).slice(0, 4),
+      };
+      list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
+      setOverview(read.ov);
+      setFacts(read.fs);
+      setCompetitors(list);
+      setStep("company", read.ov || read.fs.length ? "done" : "failed");
+      setStep("competitors", list.length ? "done" : "failed");
+    } catch (e) {
+      console.error("[get-started] company read failed:", e);
+      setStep("company", "failed");
+      setStep("competitors", "failed");
+    }
 
-    const rivals = extractBrandFields([id], [...COMPETITOR_FIELDS], { mode: "suggest", urlStrategy: "landing" })
-      .then((r) => {
-        const list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
-        setCompetitors(list);
-        setStep("competitors", list.length ? "done" : "failed");
-        return list;
-      })
-      .catch((e) => {
-        console.error("[get-started] competitor read failed:", e);
-        setStep("competitors", "failed");
-        return [] as Competitor[];
-      });
+    let found: GetStartedSegment[] = [];
+    try {
+      const { icp } = await suggestBrandIcp(id);
+      const { candidates } = await suggestAudiences(id, icp);
+      found = candidates
+        .filter((c) => !c.validationError)
+        .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count }));
+      setSegments(found);
+      setStep("segments", found.length ? "done" : "failed");
+      if (found.length) setSelectedSeg([...found].sort((a, b) => b.count - a.count)[0].audienceId);
+    } catch (e) {
+      console.error("[get-started] segment read failed:", e);
+      setStep("segments", "failed");
+    }
 
-    const segs = suggestBrandIcp(id)
-      .then(({ icp }) => suggestAudiences(id, icp))
-      .then(({ candidates }) => {
-        const list = candidates
-          .filter((c) => !c.validationError)
-          .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count }));
-        setSegments(list);
-        setStep("segments", list.length ? "done" : "failed");
-        if (list.length) setSelectedSeg([...list].sort((a, b) => b.count - a.count)[0].audienceId);
-        else markSampleSteps("failed");
-        return list;
-      })
-      .catch((e) => {
-        console.error("[get-started] segment read failed:", e);
-        setStep("segments", "failed");
-        return [] as GetStartedSegment[];
-      });
-
-    const [read, list, found] = await Promise.all([company, rivals, segs]);
     setSteps((cur) => {
       const next = { ...cur };
       for (const k of STEPS_NOT_LIVE) next[k] = "notLive";
