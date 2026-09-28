@@ -3,15 +3,22 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  EMAIL_CAP,
+  GET_STARTED_STEPS,
+  PREWRITTEN_EMAILS,
   STEPS_NOT_LIVE,
+  canWriteAnother,
   compactCount,
+  employeesLabel,
   hostOf,
   hotLeadsForCredit,
   nextSlide,
+  offerSourceText,
   parseCompetitors,
   parseDailyBudget,
   parseGetStartedSnapshot,
-  segmentCriteria,
+  sizeDots,
+  stageDwellMs,
   stageMove,
   valueLines,
 } from "../src/lib/v2/get-started";
@@ -62,9 +69,9 @@ describe("the rules the page decides on", () => {
     expect(parseDailyBudget("$12", 1)).toEqual({ usd: 12 });
   });
 
-  it("restores a snapshot, and starts over on anything malformed", () => {
+  it("restores a snapshot, and starts over on anything malformed or older", () => {
     const snap = {
-      version: 1,
+      version: 2,
       website: "https://acme.com",
       brandId: "b1",
       brandName: "Acme",
@@ -72,32 +79,49 @@ describe("the rules the page decides on", () => {
       overview: "Acme sells anvils.",
       facts: ["Sells anvils"],
       competitors: [{ name: "Beta", domain: "beta.com" }],
-      segments: [{ audienceId: "a1", name: "Coyotes", rationale: "They buy anvils", count: 1200 }],
+      offer: { offerId: "o1", name: "Anvils", description: "Heavy anvils" },
+      audience: { audienceId: "a1", name: "Coyotes", description: "Desert hunters" },
       budgetUsd: 10,
+      email: null,
     };
-    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({ ...snap, email: null });
+    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual(snap);
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 2 }))).toBeNull();
+    // A snapshot from before the offer and audience steps starts over.
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, budgetUsd: 2.5 }))?.budgetUsd).toBeNull();
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
   });
 
-  it("states a segment's criteria off the served people-search filters, and nothing else", () => {
-    const got = segmentCriteria({
-      person_titles: ["CTO", "VP Engineering"],
-      include_similar_titles: true,
-      organization_locations: ["Ireland", "Germany"],
-      q_organization_keyword_tags: ["medtech"],
-      organization_num_employees_ranges: ["50,500", "10001,"],
-      organization_industry_tag_ids: ["5567cd4"],
-    });
-    expect(got).toEqual([
-      { label: "Titles", values: ["CTO", "VP Engineering"] },
-      { label: "Keywords", values: ["medtech"] },
-      { label: "Company size", values: ["50 to 500 employees", "10,001+ employees"] },
-      { label: "Where", values: ["Ireland", "Germany"] },
-    ]);
-    expect(segmentCriteria(null)).toEqual([]);
-    expect(segmentCriteria({ personTitles: ["Founder"] })).toEqual([{ label: "Titles", values: ["Founder"] }]);
+  it("asks for ONE offer and ONE audience, then 100 companies and the emails", () => {
+    expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual(["company", "competitors", "offer", "audience", "companies", "email"]);
+  });
+
+  it("splits offers from the offer lines, else the overview", () => {
+    expect(offerSourceText([" Self-serve plan ", "", "Enterprise, sold by call"], "Overview")).toBe("Self-serve plan\nEnterprise, sold by call");
+    expect(offerSourceText([], " Acme sells anvils. ")).toBe("Acme sells anvils.");
+    expect(offerSourceText([], "")).toBe("");
+  });
+
+  it("writes the first emails ahead and caps the free ones", () => {
+    expect(PREWRITTEN_EMAILS).toBe(3);
+    expect(EMAIL_CAP).toBe(10);
+    expect(canWriteAnother(9)).toBe(true);
+    expect(canWriteAnother(10)).toBe(false);
+  });
+
+  it("states a company's size as served, never a guess", () => {
+    expect(employeesLabel(27)).toBe("27");
+    expect(employeesLabel(1200)).toBe("1.2K");
+    expect(employeesLabel(null)).toBeNull();
+    expect(employeesLabel(0)).toBeNull();
+    expect([1, 10, 50, 250, 1000].map(sizeDots)).toEqual([1, 2, 3, 4, 5]);
+    expect(sizeDots(null)).toBe(0);
+  });
+
+  it("holds a finished step while the next one is still prepared, and not otherwise", () => {
+    expect(stageDwellMs("running", 1600, 12000)).toBe(12000);
+    expect(stageDwellMs("choose", 1600, 12000)).toBe(1600);
+    expect(stageDwellMs("done", 1600, 12000)).toBe(1600);
   });
 
   it("walks the stage: holds a running step, hands a finished one on, jumps back to a re-run", () => {
@@ -107,8 +131,12 @@ describe("the rules the page decides on", () => {
     expect(stageMove(["done", "done", "running", "waiting", "waiting", "waiting"], 0)).toEqual({ to: 1, dwell: true });
     // Done, but the next one has not begun: stay on the result.
     expect(stageMove(["done", "done", "done", "waiting", "waiting", "waiting"], 2)).toBeNull();
-    // Another segment was picked, so step 4 runs again while 6 is on screen: jump back.
-    expect(stageMove(["done", "done", "done", "running", "running", "running"], 5)).toEqual({ to: 3, dwell: false });
+    // Another audience was picked, so step 5 runs again while 6 is on screen: jump back.
+    expect(stageMove(["done", "done", "done", "done", "running", "running"], 5)).toEqual({ to: 4, dwell: false });
+    // A pick on screen holds the stage: it is begun but not settled.
+    expect(stageMove(["done", "done", "choose", "choose", "waiting", "waiting"], 2)).toBeNull();
+    // The competitors hand over to a pick that is ready.
+    expect(stageMove(["done", "done", "choose", "running", "waiting", "waiting"], 1)).toEqual({ to: 2, dwell: true });
     // The last step stays.
     expect(stageMove(["done", "done", "done", "done", "done", "done"], 5)).toBeNull();
   });
@@ -122,7 +150,6 @@ const root = path.resolve(__dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 const FLOW = read("src/components/v2/get-started/get-started.tsx");
 const JOURNAL = read("src/components/v2/get-started/journal.tsx");
-const SEGMENT = read("src/components/v2/get-started/segment-card.tsx");
 const VT = read("src/components/v2/get-started/view-transition.ts");
 const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
 const LAUNCH = read("src/components/v2/get-started/launch.ts");
@@ -140,15 +167,48 @@ describe("the surface", () => {
     expect(WALL).toContain('fetch("/api/anon/claim"');
   });
 
-  it("says a step is not live rather than showing invented rows", () => {
-    expect(FLOW).toContain("This step is not live yet.");
-    expect(FLOW).toContain("Not live yet");
+  it("reads the real companies and the real emails, never an email address", () => {
+    expect(FLOW).toContain("getAudienceCompanies(");
+    expect(FLOW).toContain("previewColdEmail(");
+    // Each email names the picked offer and audience.
+    expect(FLOW).toContain("audience: aud.name");
+    expect(FLOW).toContain("offerId: offer?.offerId");
+    expect(FLOW).not.toMatch(/revealEmail|enrich\(|emailAddress/);
   });
 
-  it("reads the real sample and the real email, never an email address", () => {
-    expect(FLOW).toContain("getAudiencePreview(");
-    expect(FLOW).toContain("previewColdEmail(");
-    expect(FLOW).not.toMatch(/revealEmail|enrich|emailAddress/);
+  it("prepares the offer and the audience proposals from the moment the website is known, in parallel", () => {
+    const start = FLOW.slice(FLOW.indexOf("async function start("), FLOW.indexOf("const canLaunch"));
+    expect(start).toContain("await Promise.all([siteRead, prepareAudiences(id)])");
+    expect(start).toContain("...OFFER_FIELDS");
+    expect(start).toContain("await prepareOffers(id, lines, ov)");
+    expect(FLOW).toContain("proposeBrandOffers(");
+    expect(FLOW).toContain("proposeAudienceSegments(");
+  });
+
+  it("confirms exactly the ONE offer and the ONE audience picked", () => {
+    expect(FLOW).toContain("confirmBrandOffers(brandId, [picked], 0)");
+    expect(FLOW).toContain("confirmAudienceSegments(brandId, offer.offerId, icpRef.current || seg.description, [seg])");
+  });
+
+  it("loads the 100 companies page by page and writes the first emails ahead, the rest on click, capped", () => {
+    const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
+    expect(load).toContain("limit: COMPANIES_PAGE");
+    expect(load).toContain("offset = page.nextOffset");
+    expect(load).toContain("prewrite(aud, got)");
+    expect(FLOW).toContain(".slice(0, PREWRITTEN_EMAILS)");
+    expect(FLOW).toContain("if (!canWriteAnother(requested.current.size)) return;");
+    const open = FLOW.slice(FLOW.indexOf("function openRow("), FLOW.indexOf("// ── The stage"));
+    expect(open).toContain("setWallOpen(true)");
+  });
+
+  it("checks one row's person live, one row at a time, and shows only a masked domain", () => {
+    const q = FLOW.slice(FLOW.indexOf("function queueCheck("), FLOW.indexOf("function openRow("));
+    expect(q).toContain("index >= 10");
+    expect(q).toContain("checkQueue.current = checkQueue.current.then(");
+    expect(q).toContain("checkAudienceCompanyEmail(audienceId, index)");
+    const cell = FLOW.slice(FLOW.indexOf("function RowCheck("), FLOW.indexOf("function EmailsStage("));
+    expect(cell).toContain("check.maskedEmail");
+    expect(cell).toContain("motion-reduce:animate-none");
   });
 
   it("asks a timed-out email again, but never retries a refusal", () => {
@@ -163,13 +223,13 @@ describe("the surface", () => {
   });
 
   it("speaks the v2 language, not v1's", () => {
-    for (const src of [FLOW, WALL, JOURNAL, SEGMENT]) {
+    for (const src of [FLOW, WALL, JOURNAL]) {
       expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|InfoTooltip/);
     }
   });
 
   it("carries no em-dash in its copy", () => {
-    for (const src of [FLOW, WALL, LAUNCH, JOURNAL, SEGMENT]) {
+    for (const src of [FLOW, WALL, LAUNCH, JOURNAL]) {
       // The one dash allowed is Keel's missing-value marker, a `"\u2014"` literal.
       const code = src
         .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -182,8 +242,7 @@ describe("the surface", () => {
   it("moves: steps rise in, lists cascade, counts count, the email types", () => {
     expect(FLOW).toContain("<Stepper");
     expect(FLOW).toContain("<LiveStatus");
-    expect(SEGMENT).toContain("<CountUp value={count}");
-    expect(SEGMENT).toContain("conic-gradient(var(--accent)");
+    expect(FLOW).toContain("<CountUp value={rows.length}");
     expect(FLOW).toContain("<Typewriter text={mail.bodyText}");
     expect(FLOW).toMatch(/gs-pop[^"]*"[^>]*style=\{stagger\(i, 60\)\}/);
     expect(FLOW).toContain("gs-down sticky");
@@ -204,12 +263,18 @@ describe("the surface", () => {
     expect(motion).toContain("aria-label={text}");
   });
 
-  it("prices the wall's budget the way the Add-a-brand modal does, once the brand has an offer", () => {
-    expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
+  it("prices the budget on the picked offer, and launches that offer and that audience with the levers prefilled", () => {
+    expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(brandId: string, offerId: string");
     expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(GET_STARTED_LEG)");
-    // One offer resolution per brand: the price read and the launch share it.
-    expect(LAUNCH).toContain("resolveOfferOnce(input.brandId");
-    expect(WALL).toContain("recommendedBudgetForPreview(brandId, offerSource, floorUsd)");
+    expect(WALL).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorUsd)");
+    expect(WALL).toContain("{ brandId, website, offer, audienceId: audience.audienceId, budgetUsd }");
+    // No re-pick at launch: the offer is the one confirmed at step 3.
+    expect(LAUNCH).not.toContain("proposeBrandOffers");
+    // The six levers are read off the site for that offer and saved on it.
+    expect(LAUNCH).toContain('extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId })');
+    expect(LAUNCH).toContain("saveOfferUserFields(brandId, offerId, fields)");
+    // The campaign's inputs are read after the levers land.
+    expect(LAUNCH.indexOf("await levers;\n  const prefill")).toBeGreaterThan(0);
     // A default never blocks a price that lands later.
     expect(WALL).toContain("if (budgetTouched.current) onBudget(");
   });
@@ -246,29 +311,6 @@ describe("the surface", () => {
     expect(FLOW).toContain("border-dashed");
   });
 
-  it("queues every sample and email read, and a picked segment waits its turn", () => {
-    expect(FLOW).toContain("readQueue.current = readQueue.current.then(task)");
-    const effects = FLOW.slice(FLOW.indexOf("// Steps 4 and 5"), FLOW.indexOf("// The stage walks forward"));
-    expect(effects.match(/enqueue\(async/g)?.length).toBe(3);
-    expect(effects).not.toContain("void (async");
-    // The segment picker lives in the rail and on the phone's strip.
-    expect(JOURNAL).toContain("d.onSelect(s.audienceId)");
-  });
-
-  it("checks the sampled people's emails one at a time, in the queue, and shows only a masked domain", () => {
-    const effect = FLOW.slice(FLOW.indexOf("// Step 5, live"), FLOW.indexOf("// Step 6"));
-    expect(effect).toContain("enqueue(async");
-    expect(effect).toContain("getAudienceEmailChecks(id)");
-    expect(effect).toContain("while (shouldCheckNext(state, calls) && selectedRef.current === id)");
-    expect(effect).toContain("await checkNextAudienceEmail(id)");
-    // The check loop is queued BEFORE the email is written.
-    expect(FLOW.indexOf("// Step 5, live")).toBeLessThan(FLOW.indexOf("// Step 6"));
-    const cell = FLOW.slice(FLOW.indexOf("function EmailCheckCell("), FLOW.indexOf("const KIND_COLOR"));
-    expect(cell).toContain("person.maskedEmail");
-    expect(cell).toContain("Found via ${finder}");
-    expect(cell).toContain("motion-reduce:animate-none");
-  });
-
   it("explains each sentence of the email on hover, focus and tap", () => {
     const body = FLOW.slice(FLOW.indexOf("function ExplainedBody("), FLOW.indexOf("function EmailBody("));
     expect(body).toContain('if (e.pointerType === "mouse") setActive(i)');
@@ -300,7 +342,7 @@ describe("the wall", () => {
   });
 
   it("keeps the written email across the Google round trip, and reads an older snapshot without one", () => {
-    const base = { version: 1, website: "a.com", brandId: "b", brandName: null, domain: null, overview: "", facts: [], competitors: [], segments: [], budgetUsd: null };
+    const base = { version: 2, website: "a.com", brandId: "b", brandName: null, domain: null, overview: "", facts: [], competitors: [], offer: null, audience: null, budgetUsd: null };
     expect(parseGetStartedSnapshot(JSON.stringify(base))?.email).toBeNull();
     const mail = { subject: "Hi", bodyText: "Body", recipient: { firstName: "Ann", lastName: "B.", title: "CEO", companyName: "Acme" } };
     expect(parseGetStartedSnapshot(JSON.stringify({ ...base, email: mail }))?.email).toEqual(mail);
@@ -327,7 +369,7 @@ describe("the wall", () => {
     // The claim has its own flag, so the code form's finally cannot clear it.
     expect(wall).toContain("setClaiming(true)");
     const flow = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
-    expect(flow).toContain("email={(selectedSeg ? emails[selectedSeg] : undefined) ?? restoredEmail}");
+    expect(flow).toContain("email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}");
   });
 
   it("lets a code-made account sign in again with a code", () => {

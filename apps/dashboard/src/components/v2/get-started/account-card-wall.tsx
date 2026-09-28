@@ -50,7 +50,8 @@ import {
   nextSlide,
   parseDailyBudget,
   type GetStartedEmail,
-  type GetStartedSegment,
+  type GetStartedAudience,
+  type GetStartedOffer,
 } from "@/lib/v2/get-started";
 import { proofCardsFor, shuffleWithSeed, type ProofCard } from "@/lib/start-proof";
 import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
@@ -81,8 +82,9 @@ export function AccountCardWall({
   brandId,
   website,
   brandName,
-  offerSource,
-  segments,
+  offer,
+  audience,
+  note = null,
   email: writtenEmail,
   floorUsd,
   recommendedUsd,
@@ -93,8 +95,12 @@ export function AccountCardWall({
   brandId: string;
   website: string;
   brandName: string;
-  offerSource: string;
-  segments: GetStartedSegment[];
+  /** The offer picked at step 3. */
+  offer: GetStartedOffer;
+  /** The audience picked at step 4. */
+  audience: GetStartedAudience;
+  /** Why the wall opened, when it was not the visitor's own click (the free emails ran out). */
+  note?: string | null;
   /** The email the preview wrote, or null when none was written. */
   email: GetStartedEmail | null;
   floorUsd: number;
@@ -193,7 +199,7 @@ export function AccountCardWall({
         // Price the budget the way the "Add a brand" modal does, now that the brand
         // can hold an offer. Best effort: the field keeps the floor when no price exists.
         setPricing(true);
-        recommendedBudgetForPreview(brandId, offerSource, floorUsd)
+        recommendedBudgetForPreview(brandId, offer.offerId, floorUsd)
           .then((usd) => setPricedUsd(usd))
           .catch((e) => console.error("[get-started] budget price read failed:", e))
           .finally(() => setPricing(false));
@@ -405,7 +411,7 @@ export function AccountCardWall({
       await setPaymentMode(postpaid ? "postpaid" : "prepaid");
       if (postpaid) await configureAutoTopup(5000, 1000);
       const campaignId = await launchFromPreview(
-        { brandId, website, offerSource, audienceIds: segments.map((s) => s.audienceId), budgetUsd },
+        { brandId, website, offer, audienceId: audience.audienceId, budgetUsd },
         progress.current,
       );
       const token = await session?.getToken({ skipCache: true });
@@ -413,7 +419,7 @@ export function AccountCardWall({
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
-      posthog.capture("get_started_launched", { budget_usd: budgetUsd, segments: segments.length });
+      posthog.capture("get_started_launched", { budget_usd: budgetUsd });
       try {
         sessionStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {
@@ -487,12 +493,13 @@ export function AccountCardWall({
       >
         {/* What the $30 is, and what it buys. */}
         <section className="gs-panel k-popover p-5 md:col-start-1">
+          {note && <p className="k-fg2 mb-3 rounded-lg bg-[var(--accent-soft)] px-3 py-2 text-[13px] leading-5">{note}</p>}
           <p className="k-fg text-[22px] font-semibold leading-7 tracking-tight">
             <CountUp value={WALL_FREE_CREDIT_USD} format={(n) => `$${Math.round(n)}`} ms={800} /> free credit
           </p>
           <ul className="k-fg2 mt-2.5 grid gap-1 text-[13px] leading-5">
             {[
-              "We find the people in your segments and write to each one.",
+              `We write to the people in ${audience.name}, one email each.`,
               "We send from our own warmed domains, never yours.",
               "Interested replies land in your inbox.",
             ].map((line, i) => (

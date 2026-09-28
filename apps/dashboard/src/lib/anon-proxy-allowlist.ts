@@ -58,21 +58,27 @@ const RULES: Rule[] = [
   // whole no-website walk 403s one call after the brand is created.
   { method: "PUT", segments: ["brands", ":brand", "business-context"] },
   { method: "POST", segments: ["brands", ":brand", "icp", "suggest"] },
+  // Step 3 of /get-started: the brand's distinct offers, proposed from what the site
+  // says it sells, then the ONE the visitor picks confirmed on the brand. Both are
+  // path-bound to this session's brand.
+  { method: "POST", segments: ["brands", ":brand", "offers", "proposals"] },
+  { method: "POST", segments: ["brands", ":brand", "offers", "confirm"] },
 
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },
   { method: "POST", segments: ["orgs", "audiences", "suggest"] },
-  // A free sample of who one of those audiences reaches (names and titles only, never a
-  // reveal). The audience id is checked against the org at human-service (404 for a
-  // foreign one), which is what bounds it.
-  { method: "GET", segments: ["orgs", "audiences", ":seg", "preview"] },
-  // Finding and verifying the sampled people's addresses, one person per call (a billed
-  // reveal on this anonymous org; it sends nothing). Same bound as the sample: the
-  // audience id is checked against the org at human-service, and this org holds only
-  // this session's brand's audiences. No body, so nothing for `anonBodyRefusal` to
-  // bind. The address itself is never returned, only its masked domain.
-  { method: "GET", segments: ["orgs", "audiences", ":seg", "preview", "email-checks"] },
-  { method: "POST", segments: ["orgs", "audiences", ":seg", "preview", "email-checks", "next"] },
+  // Step 4: who the brand sells to, split into at most 6 audiences in words (no search,
+  // no count), then the ONE picked created under the picked offer. Both bodies name the
+  // brand, which `anonBodyRefusal` binds to the session.
+  { method: "POST", segments: ["orgs", "audiences", "split"] },
+  { method: "POST", segments: ["orgs", "audiences", "split", "confirm"] },
+  // Step 5: up to 100 companies of the picked audience with one person each (names and
+  // titles, last names masked, never an address), built page by page; and one row's
+  // person found and verified live (the first 10 rows, billed to this anonymous org,
+  // sends nothing). Same bound as the sample: human-service checks the audience
+  // against the org. No body.
+  { method: "GET", segments: ["orgs", "audiences", ":seg", "preview", "companies"] },
+  { method: "POST", segments: ["orgs", "audiences", ":seg", "preview", "companies", ":seg", "email-check"] },
 
   // ── One written preview for one sampled person, billed to this anonymous org ──
   // It WRITES and never sends: nothing it creates can go out. Its body names the
@@ -198,7 +204,11 @@ export function anonBodyRefusal({
   const path = typeof endpoint === "string" ? endpoint.split("?")[0].replace(/\/+$/, "") : "";
   const bound =
     upper === "POST" &&
-    (path === "/brands/extract-fields" || path === "/orgs/audiences/suggest" || path === "/content/preview-email");
+    (path === "/brands/extract-fields" ||
+      path === "/orgs/audiences/suggest" ||
+      path === "/orgs/audiences/split" ||
+      path === "/orgs/audiences/split/confirm" ||
+      path === "/content/preview-email");
   if (!bound) return null;
 
   const owned = typeof brandId === "string" ? brandId : "";
