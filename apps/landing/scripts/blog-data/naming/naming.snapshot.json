@@ -1,0 +1,26 @@
+{
+  "leg": "start_to_conversation",
+  "windowFrom": "2026-04-15",
+  "windowEnd": "2026-09-28",
+  "readOn": "2026-09-28",
+  "maturation": {
+    "days": 12,
+    "percent": 95,
+    "cutoff": "2026-09-16",
+    "note": "Emails sent in the last 12 days are left out (from Sep 16 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
+  },
+  "held": {
+    "emails": 53625,
+    "replies": 26,
+    "spend": 4939.15,
+    "versions": 18
+  },
+  "named": {
+    "emails": 40681,
+    "replies": 9,
+    "spend": 2450.71,
+    "versions": 16
+  },
+  "silentEmails": 0,
+  "unrecordedEmails": 6
+}

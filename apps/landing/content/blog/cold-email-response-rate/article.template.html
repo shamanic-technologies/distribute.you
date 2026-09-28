@@ -1,0 +1,56 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">A cold email that does not name the client gets more positive replies, and cheaper ones:</p>
+<ul style="margin:0;padding-left:20px">
+<li><strong>{{pct held}} positive reply rate</strong> without the name, against {{pct named}} with it</li>
+<li><strong>{{usd held.cpr}} per positive reply</strong> without the name, against {{usd named.cpr}} with it</li>
+</ul>
+</div>
+
+<h2 id="the-question">The question</h2>
+
+<p>A cold email that promotes a company can name it: the company name, a link to its website, a direct recommendation. Or it can hold the name back: no name, no link, and an offer to introduce the prospect to the team behind it.</p>
+
+<p>Naming reads as transparent. Holding back reads as a teaser. We write cold emails for our clients and have sent both kinds, so we counted which one gets more prospects to answer with interest, and which one costs less per interested answer.</p>
+
+<h2 id="the-data">The data</h2>
+
+<p>We looked at <strong>{{round total.emails}} cold emails</strong> whose only goal was a positive reply: a prospect answering with interest. Auto-replies, out-of-office messages and refusals do not count.</p>
+
+<p>Each email sits on a side by what its prompt told the writing model to do, read from the prompt itself, never from the template's name. One side names the client. The other keeps the name and the link out and offers an introduction instead.</p>
+
+<h2 id="the-answer">The answer</h2>
+
+<p><strong>Client not named wins, on rate and on cost.</strong> {{pct held}} of the emails that kept the name back got a positive reply, against {{pct named}} of the emails that named the client.</p>
+
+{{chart rate}}
+
+<p>A positive reply cost you <strong>{{usd held.cpr}}</strong> when the client was not named, against {{usd named.cpr}} when it was.</p>
+
+{{chart cost}}
+
+<h2 id="the-rule">The rule this points to</h2>
+
+<p><strong>When the goal is a reply, keep the client's name and link out of the first email and offer the introduction.</strong> The name can come once the prospect has answered and asked to hear more.</p>
+
+<p>This is about emails that ask for a reply. An email meant to bring someone to a website needs the name and the link, so it is not part of this comparison.</p>
+
+<h2 id="why">Why holding the name back can earn more replies</h2>
+
+<p>Our reading, not something this data proves on its own. A named company with a link reads like an ad, and the prospect can judge it in one click without writing back. An email that holds the name back leaves one way to learn more: reply. It also asks for less, a short introduction rather than a purchase.</p>
+
+<h2 id="the-limits">What this data cannot tell you</h2>
+
+<ul>
+<li>This is not a split test. The two sides ran for different clients, audiences and months. Read it as a direction, not as the measured effect of the name alone.</li>
+<li>Positive replies are rare: {{n held.replies}} without the name, {{n named.replies}} with it. The gap in rate is unlikely to be chance (two-proportion test, p = {{raw p.rate}}).</li>
+<li>The gap in cost is not settled (p = {{raw p.cost}}). An email without the name cost you {{cents held.perEmail}} to write and send, against {{cents named.perEmail}} with it, which narrows the price difference.</li>
+</ul>
+
+<h2 id="method">Method</h2>
+
+<p>Every cold email sent from {{day windowFrom}} by campaigns whose goal was a positive reply, read from our production database on {{day readOn}}. Emails sent in the last {{raw maturation.days}} days before the read are left out, since {{raw maturation.percent}}% of positive replies arrive within that time. Client not named: {{n held.emails}} emails, {{n held.replies}} positive replies, {{usd held.spend}} spent, {{n held.versions}} template versions. Client named: {{n named.emails}} emails, {{n named.replies}} positive replies, {{usd named.spend}} spent, {{n named.versions}} template versions. {{raw leftOut}} The cost is what the emails cost you to write and send. The scripts are on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/naming">GitHub</a>.</p>
+
+<h2 id="about-us">About distribute.you</h2>
+
+<p>distribute.you runs cold email for you: the sending mailboxes, the tests like this one, the templates and the audiences, and the numbers on what it cost you. From $1/day, first $30 free. <a href="https://distribute.you">distribute.you</a></p>

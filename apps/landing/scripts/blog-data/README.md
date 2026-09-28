@@ -157,3 +157,27 @@ node apps/landing/scripts/blog-data/pixel/render-pixel-article.mjs /tmp/pixel-fa
 An arm is decided by the campaign's FIRST stored config (`open_tracking`); a sequence we sent
 ourselves (`self:`) carries no pixel and counts as off. This is an observational comparison of
 two periods, not a controlled test, and the article says so.
+
+## The naming-the-client article
+
+`content/blog/cold-email-response-rate` states the Research page's naming study (`herald-naming-rate`
+/ `herald-naming-roi`): does a cold email that asks for a reply do better when it names the client,
+or when it keeps the name and link back? `naming/naming.mjs` holds the classification (read from
+each template version's PROMPT, never its name), the two sides and the p-values, and research.mjs
+imports it, so the article and the Research page state the same figures for one extract. The
+committed snapshot carries aggregates only.
+
+```sh
+# 1. the same extract and facts the Research page is built from (end = today)
+apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
+node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
+
+# 2. the two sides, positive-reply leg only
+node apps/landing/scripts/blog-data/naming/derive-naming.mjs /tmp/research-data/facts.json > apps/landing/scripts/blog-data/naming/naming.snapshot.json
+
+# 3. render
+node apps/landing/scripts/blog-data/naming/render-naming-article.mjs apps/landing/scripts/blog-data/naming/naming.snapshot.json apps/landing/content/blog
+```
+
+The renderer refuses a snapshot where the client-not-named side stops winning on rate or on cost,
+since the prose names the winner in words.
