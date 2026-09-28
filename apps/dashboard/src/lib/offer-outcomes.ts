@@ -8,8 +8,8 @@
  * two channels is one lead in the outcome row and one in each leg row — so no surface
  * may print a total of them.
  *
- * Alias-free on purpose (its only import is zod), so the rules below carry REAL unit
- * tests. Adding an `@/…` import turns them into resolution failures.
+ * Alias-free on purpose (its only imports are zod and the relative maturity module), so
+ * the rules below carry REAL unit tests. Adding an `@/…` import turns them into resolution failures.
  *
  * Vocabularies (step keys, `unmeasuredReason`, `countBasis`, `legSource`) are read as
  * plain STRINGS, never `z.enum`: the producer owns them and a closed set throws the
@@ -18,6 +18,21 @@
  * and `.optional()` parses every body except the one the null was written for.
  */
 import { z } from "zod";
+import { maturityPairSchema } from "./maturity";
+
+/**
+ * The two RATIOS an outcome row and a leg row state, served as a maturity pair
+ * (features-service#1196): `mature` is what every customer reads, `flash` is the staff
+ * debug view, and `isMature: false` is the ONLY thing that makes a ratio read `Learning`.
+ * Required: a producer that stops serving it must fail the parse loudly, never silently
+ * fall back to a browser-side count against a bar.
+ */
+const OutcomeRatioMaturitySchema = maturityPairSchema(
+  z.object({
+    roiMultiple: z.number().nullable(),
+    costPerOutcomeUsd: z.number().nullable(),
+  }),
+);
 
 const FiguresShape = {
   recipientsReached: z.number().nullable(),
@@ -27,6 +42,8 @@ const FiguresShape = {
   valueUsd: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   unmeasuredReason: z.string().nullable(),
+  // Optional as served: absent -> the row states `—`, never the legacy figure.
+  maturity: OutcomeRatioMaturitySchema.nullish(),
 };
 
 const StepRefSchema = z.object({ key: z.string(), label: z.string() });

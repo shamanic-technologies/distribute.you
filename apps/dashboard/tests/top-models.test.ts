@@ -19,12 +19,22 @@ function row(
     alias: string | null;
     scopeRank: number | null;
     cost: number | null;
+    /** The producer's verdict on the row (features-service#1196). Mature by default. */
+    isMature?: boolean | null;
   },
 ): TopModelLadderRow {
   return {
     audienceId: partial.audienceId ?? null,
     workflow: { workflowDynastySlug: partial.slug },
     resolved: { costPerOutcomeUsd: partial.cost },
+    // The served pair: the price shown is its MATURE half, never the legacy field.
+    maturity: {
+      resolved: {
+        flash: { costPerOutcomeUsd: partial.cost },
+        mature: { costPerOutcomeUsd: partial.cost },
+        isMature: partial.isMature === undefined ? true : partial.isMature,
+      },
+    },
     scopeRank: partial.scopeRank,
     measured: partial.measured ?? true,
     modelEligibility: partial.alias === null ? null : { modelAlias: partial.alias },
@@ -130,10 +140,31 @@ describe("topModels", () => {
   });
 });
 
+describe("the price is the served mature figure, Learning where the producer says so", () => {
+  it("a winning row that is not mature reads Learning, with no price", () => {
+    const out = topModels({ rows: [row({ slug: "rampart", alias: "flash", scopeRank: 1, cost: 1.58, isMature: false })] });
+    expect(out[0]).toMatchObject({ alias: "flash", costPerOutcomeUsd: null, learning: true });
+  });
+
+  it("staff on the flash basis read the flash half, never tagged", () => {
+    const out = topModels({
+      rows: [row({ slug: "rampart", alias: "flash", scopeRank: 1, cost: 1.58, isMature: false })],
+      basis: "flash",
+    });
+    expect(out[0]).toMatchObject({ costPerOutcomeUsd: 1.58, learning: false });
+  });
+
+  it("a row with no served pair states no price, never the legacy field", () => {
+    const bare = { ...row({ slug: "rampart", alias: "flash", scopeRank: 1, cost: 1.58 }), maturity: null };
+    expect(topModels({ rows: [bare] })[0]).toMatchObject({ costPerOutcomeUsd: null, learning: false });
+  });
+});
+
 describe("the module stays alias-free", () => {
-  it("imports nothing, so these remain real unit tests", () => {
+  it("imports only the alias-free maturity reader, so these remain real unit tests", () => {
     const src = readFileSync(join(__dirname, "../src/lib/top-models.ts"), "utf8");
-    expect(src).not.toMatch(/^import /m);
+    expect(src.match(/^import .*$/gm)).toEqual(['import { shownFigure, type StatBasis } from "./maturity";']);
+    expect(src).not.toContain("@/");
   });
 });
 

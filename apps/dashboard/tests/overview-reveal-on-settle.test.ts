@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
@@ -166,6 +167,7 @@ describe("the shared parser accepts every grain's body", () => {
     ...subject,
     headline: { totalPipelineUsd: 7000 },
     costEconomics: {
+      maturity: NULL_PAIR,
       committedCostUsd: 2668.62,
       costOfAcquisitionPct: 38.12,
       roiMultiple: 2.62,

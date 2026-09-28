@@ -19,12 +19,14 @@
 //  - A RATE is a PERCENT, two decimals (0.18%): of emails for positive replies (Herald), of
 //    link-carrying emails for website visits (Scout). Owner rule (2026-09-27): never "N per 10,000".
 //  - The WINNER is always the top bar: the cheapest price, or the highest rate. Owner rule
-//    (2026-09-27): a thin bar is ranked where its value puts it, never sunk below the rest, and if
-//    it comes first it wins. `crowned` only says whether the winner also clears the strict floors
-//    the articles use for their best workflow; when it does not, the page says its counts are thin.
-//  - Every outcome figure leaves out the emails too young to have earned their outcome: the
-//    MATURATION window, measured in derive.mjs from our own send-to-outcome latencies. Every chart
-//    carries a `note` saying so, in the words a reader sees under it.
+//    (2026-09-27): a Learning bar is ranked where its value puts it, never sunk below the rest,
+//    and if it comes first it wins. `crowned` only says whether the winner rests on enough
+//    outcomes to be more than Learning.
+//  - Every figure is on features-service's MATURITY RULE (features-service#1196), the one every
+//    price in the dashboard is on, read per leg off its channel catalogue and never measured here:
+//    only the leads whose serving run STARTED at least the leg's duration before the read count,
+//    with every outcome they produced since; a figure resting on fewer outcomes than the leg
+//    requires is marked Learning (the `thin` flag). Every chart carries a `note` saying so.
 //  - A WORKFLOW is named by what it runs (its model and its template, and the month it first sent
 //    when two share both), never by its codename: nobody outside the team knows the names.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -39,8 +41,10 @@ const factsPath = process.argv[2];
 if (!factsPath) throw new Error("usage: research.mjs <facts.json>");
 const facts = JSON.parse(readFileSync(factsPath, "utf8"));
 if (!facts.research) throw new Error("facts.json carries no research block: re-run derive.mjs");
+// The open-tracking studies read their OWN snapshot, cut at the research rule's duration: the
+// published article keeps its own (pixel.snapshot.json), which this refresh never moves.
 const pixel = JSON.parse(
-  execFileSync("node", [join(here, "pixel/derive-pixel.mjs"), join(here, "pixel/pixel.snapshot.json")], { encoding: "utf8" }),
+  execFileSync("node", [join(here, "pixel/derive-pixel.mjs"), join(here, "pixel/pixel.research.snapshot.json")], { encoding: "utf8" }),
 );
 
 // extract.sh writes every input beside facts.json: the template texts are read up here since
@@ -50,13 +54,25 @@ const readJson = (f) => JSON.parse(readFileSync(join(dataDir, f), "utf8"));
 const templateTexts = new Map(readJson("templates.json").map((t) => [t.type, t.prompt]));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const STRICT = facts.floors.bestWorkflow;
-const M = facts.maturation;
-if (!M || !Number.isInteger(M.days) || !M.note) throw new Error("facts.json carries no maturation window: re-run derive.mjs");
+// THE RULE, features-service's per leg (derive.mjs applies it; this states it).
+const M = facts.researchMaturity;
+if (!M || !M.legs?.reply || !M.legs?.visit) throw new Error("facts.json carries no researchMaturity: re-run derive.mjs");
+for (const l of [M.legs.reply, M.legs.visit]) {
+  if (!Number.isInteger(l.durationDays) || !Number.isInteger(l.outcomesRequired) || !/^\d{4}-\d{2}-\d{2}$/.test(l.cutoff || "")) {
+    throw new Error(`researchMaturity carries no usable rule for ${l.legKey}: re-run derive.mjs`);
+  }
+}
+const cutoffText = (ymd) => `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
+const sameRule = M.legs.reply.durationDays === M.legs.visit.durationDays && M.legs.reply.cutoff === M.legs.visit.cutoff;
+const RULE_DAYS = Math.max(M.legs.reply.durationDays, M.legs.visit.durationDays);
+const ruleWhen = sameRule
+  ? `at least ${M.legs.reply.durationDays} days before the read (before ${cutoffText(M.legs.reply.cutoff)})`
+  : `at least ${M.legs.reply.durationDays} days (positive replies) or ${M.legs.visit.durationDays} days (website visits) before the read`;
+const RULE_NOTE = `Only people we started writing to ${ruleWhen} count, with every positive reply and website visit they sent since. A figure needs ${M.legs.reply.outcomesRequired} positive ${M.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} (${M.legs.visit.outcomesRequired} website ${M.legs.visit.outcomesRequired === 1 ? "visit" : "visits"}) behind it; below that it reads Learning.`;
 // The open-tracking study is read from its own snapshot, with its own cutoff before the read.
-const pixelHeldDays = Math.round((Date.parse(`${pixel.readAt}T00:00:00Z`) - Date.parse(`${pixel.cutoff}T00:00:00Z`)) / 86_400_000);
-if (pixelHeldDays < M.days) throw new Error(`the open-tracking snapshot leaves ${pixelHeldDays} days, under the ${M.days}-day maturation window: re-extract it`);
-const PIXEL_NOTE = `Emails sent in the ${pixelHeldDays} days before the read are left out (from ${MONTHS[Number(pixel.cutoff.slice(5, 7)) - 1]} ${Number(pixel.cutoff.slice(8, 10))} on), more than the ${M.days} days 95 in 100 replies and clicks need to arrive.`;
+const pixelHeldDays = Math.round((Date.parse(`${pixel.readAt.slice(0, 10)}T00:00:00Z`) - Date.parse(`${pixel.cutoff}T00:00:00Z`)) / 86_400_000);
+if (pixelHeldDays < RULE_DAYS) throw new Error(`the open-tracking research snapshot leaves ${pixelHeldDays} days, under the ${RULE_DAYS}-day rule: re-extract pixel.research.snapshot.json`);
+const PIXEL_NOTE = `People we started writing to in the ${pixelHeldDays} days before the read are left out (from ${cutoffText(pixel.cutoff)} on), at least the ${RULE_DAYS} days every price here waits for replies and visits to arrive.`;
 const n = (v) => Number(v).toLocaleString("en-US");
 const usd = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(2)}` : `$${Math.round(v).toLocaleString("en-US")}`);
 // The window sits inside one year, so a month reads alone; a second year would need it stated.
@@ -131,13 +147,12 @@ const OUTCOMES = {
     nounPlural: "positive replies",
     count: "replies",
     cost: "cpr",
-    costThin: "cprThin",
     rate: "repliesPerTenThousand",
     rateUnit: "per 10,000 emails",
     rateShort: "/10k",
     per: 10000,
     pct: true,
-    strictOutcomes: STRICT.minReplies,
+    outcomesRequired: M.legs.reply.outcomesRequired,
     emailsNoun: "emails",
   },
   visit: {
@@ -147,13 +162,12 @@ const OUTCOMES = {
     nounPlural: "website visits",
     count: "clicks",
     cost: "cpc",
-    costThin: "cpcThin",
     rate: "clicksPerThousand",
     rateUnit: "per 1,000 emails with a link",
     rateShort: "/1k",
     per: 1000,
     pct: true,
-    strictOutcomes: STRICT.minClicks,
+    outcomesRequired: M.legs.visit.outcomesRequired,
     emailsNoun: "emails with a link",
   },
 };
@@ -165,8 +179,9 @@ const rateText = (o, v) => (o.pct ? `${pctOf(o, v).toFixed(2)}%` : `${v.toFixed(
 const rateLabel = (o) => (o.pct ? `${o.noun} rate` : `${o.nounPlural} ${o.rateUnit}`);
 const rateSentence = (o, v) => (o.pct ? `a ${rateText(o, v)} ${o.noun} rate` : `${v.toFixed(1)} ${o.nounPlural} ${o.rateUnit}`);
 
-// A bar is THIN below the strict floors: drawn at its rank, marked, and weighed with its counts.
-const costThinStrict = (o, r) => r.emails < STRICT.minEmails || r[o.count] < o.strictOutcomes;
+// A bar is LEARNING (the `thin` flag) when it rests on fewer outcomes than the leg requires,
+// features-service's own count: drawn at its rank, marked, and weighed with its counts.
+const learningOf = (o, r) => r[o.count] < o.outcomesRequired;
 // Costs: cheapest first, thin or not; a row with no outcome has no price.
 const byCost = (o) => (a, b) => a[o.cost] - b[o.cost] || b[o.count] - a[o.count];
 function costBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } = {}) {
@@ -178,11 +193,11 @@ function costBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } 
     value: r[o.cost],
     display: usd(r[o.cost]),
     note: counts(o, r),
-    thin: costThinStrict(o, r),
+    thin: learningOf(o, r),
   }));
 }
-// Rates: every bucket is drawn, a zero included; one under the strict floors is marked thin.
-// Owner rule (2026-09-27): no volume filter, a low volume is thin, exactly as on the cost chart.
+// Rates: every bucket is drawn, a zero included; one short of the leg's outcome count is marked
+// Learning. Owner rule (2026-09-27): no volume filter, exactly as on the cost chart.
 function rateBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } = {}) {
   const drawn = rows.filter((r) => r.emails > 0);
   const ordered = ordinal ? drawn : [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
@@ -192,23 +207,23 @@ function rateBars(o, rows, label = (b) => b, { ordinal = false, keyed = false } 
     value: r[o.rate],
     display: rateText(o, r[o.rate]),
     note: counts(o, r),
-    thin: r.emails < STRICT.minEmails || r[o.count] < o.strictOutcomes,
+    thin: learningOf(o, r),
   }));
 }
 
-// The winner is the first bar of the chart, thin or not: the cheapest price on cost, the highest
-// rate on rate. `crowned` says whether it also clears the strict floors.
+// The winner is the first bar of the chart, Learning or not: the cheapest price on cost, the
+// highest rate on rate. `crowned` says whether it rests on enough outcomes to be more than Learning.
 function costWinner(o, rows) {
   const priced = rows.filter((r) => r[o.cost] !== null);
   if (!priced.length) return null;
   const row = [...priced].sort(byCost(o))[0];
-  return { row, crowned: !costThinStrict(o, row) };
+  return { row, crowned: !learningOf(o, row) };
 }
 function rateWinner(o, rows) {
   const drawn = rows.filter((r) => r.emails > 0 && r[o.count] > 0);
   if (!drawn.length) return null;
   const row = [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails)[0];
-  return { row, crowned: row.emails >= STRICT.minEmails && row[o.count] >= o.strictOutcomes };
+  return { row, crowned: !learningOf(o, row) };
 }
 
 function monthLine(o, series, kind) {
@@ -220,7 +235,7 @@ function monthLine(o, series, kind) {
       value: kind === "cost" ? r[o.cost] : r[o.rate],
       display: kind === "cost" ? usd(r[o.cost]) : rateText(o, r[o.rate]),
       note: counts(o, r),
-      thin: kind === "cost" ? Boolean(r[o.costThin]) : r.emails < STRICT.minEmails,
+      thin: learningOf(o, r),
     }));
 }
 // The average SINCE INCEPTION at the end of each month: everything spent (or sent) up to that
@@ -239,7 +254,7 @@ function sinceInception(o, series, kind) {
       value: Number(value.toFixed(2)),
       display: kind === "cost" ? usd(value) : rateText(o, value),
       note: `${n(got)} ${got === 1 ? o.noun : o.nounPlural} · ${n(emails)} ${o.emailsNoun} to date`,
-      thin: kind === "cost" ? got < o.strictOutcomes : emails < STRICT.minEmails,
+      thin: got < o.outcomesRequired,
     });
   }
   return out;
@@ -253,7 +268,7 @@ function monthsChart(o, series, kind, subject, lowerIsBetter) {
     lowerIsBetter,
     points: monthLine(o, series, kind),
     cumulative: { title: `${subject}: average since inception`, points: sinceInception(o, series, kind) },
-    note: M.note,
+    note: RULE_NOTE,
   };
 }
 const costTitle = (o) => `Cost per ${o.noun} (USD, lower is better)`;
@@ -293,7 +308,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label, { keyed }), note: M.note },
+        { kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows, label, { keyed }), note: RULE_NOTE },
         ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "cost", label(w.row.bucket), true)] : []),
       ],
       conclusion: [
@@ -321,13 +336,13 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       result: w ? { display: o.pct ? rateText(o, w.row[o.rate]) : w.row[o.rate].toFixed(1), unit: rateLabel(o), sample: counts(o, w.row) } : null,
       crowned: w ? w.crowned : false,
       charts: [
-        { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label, { keyed }), note: M.note },
+        { kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows, label, { keyed }), note: RULE_NOTE },
         ...(w && line.length ? [monthsChart(o, R[byMonthKey][w.row.bucket], "rate", label(w.row.bucket), false)] : []),
       ],
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}.` : null,
         ...(moved ? [`Over time: ${moved}.`] : []),
-        `A ${dimNoun} under ${n(STRICT.minEmails)} ${o.emailsNoun} or ${o.strictOutcomes} ${o.nounPlural} is ranked where its rate puts it and marked thin.`,
+        `A ${dimNoun} with fewer than ${o.outcomesRequired} ${o.outcomesRequired === 1 ? o.noun : o.nounPlural} is ranked where its value puts it and marked Learning.`,
       ].filter(Boolean),
     });
   }
@@ -364,7 +379,7 @@ function namingStudies(o, R) {
       winner: a.bucket,
       result: { display: rateText(o, a[o.rate]), unit: `${WITH[a.side]}, ${rateText(o, b[o.rate])} ${WITH[b.side].replace("with the client ", "")}`, sample: `p ${pText(pv)}, ${n(held.emails + named.emails)} ${o.emailsNoun}` },
       crowned: sig,
-      charts: [{ kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows), note: M.note }],
+      charts: [{ kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows), note: RULE_NOTE }],
       conclusion: [...pools, `The p-value asks whether ${o.nounPlural} per email differ between the two sides.`],
     });
   }
@@ -390,7 +405,7 @@ function namingStudies(o, R) {
       winner: a ? a.bucket : null,
       result: a ? { display: usd(a[o.cost]), unit: `per ${o.noun} ${WITH[a.side]}${b ? `, ${usd(b[o.cost])} ${WITH[b.side].replace("with the client ", "")}` : ""}`, sample: `p ${pText(pv)}, ${n(held[o.count] + named[o.count])} ${o.nounPlural}` } : null,
       crowned: sig,
-      charts: [{ kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows), note: M.note }],
+      charts: [{ kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows), note: RULE_NOTE }],
       conclusion: [
         ...pools,
         `An email ${WITH.held} cost ${usd(held.spend / held.emails)} to write and send, ${usd(named.spend / named.emails)} ${WITH.named}.`,
@@ -451,7 +466,7 @@ for (const key of ["reply", "visit"]) {
       value: Number((d.spend / d.got).toFixed(2)),
       display: usd(d.spend / d.got),
       note: `${n(d.got)} ${d.got === 1 ? o.noun : o.nounPlural} · ${usd(d.spend)} spent`,
-      thin: d.got < o.strictOutcomes,
+      thin: d.got < o.outcomesRequired,
     }));
     const per = key === "reply" ? 10000 : 1000;
     const ratePts = people ? depth.map((d) => ({
@@ -459,7 +474,7 @@ for (const key of ["reply", "visit"]) {
       value: Number(((d.got / people) * per).toFixed(1)),
       display: rateText(o, (d.got / people) * per),
       note: `${n(d.got)} ${d.got === 1 ? o.noun : o.nounPlural} from ${n(people)} people`,
-      thin: people < STRICT.minEmails,
+      thin: d.got < o.outcomesRequired,
     })) : [];
     const stepCost = costBars(o, steps, (b) => b, { ordinal: true });
     const bestRoi = roiPts.length ? [...roiPts].sort((a, b) => a.value - b.value)[0] : null;
@@ -477,8 +492,8 @@ for (const key of ["reply", "visit"]) {
       result: bestRoi ? { display: bestRoi.display, unit: `per ${o.noun}, ${bestRoi.label.toLowerCase()}`, sample: bestRoi.note } : null,
       crowned: bestRoi ? !bestRoi.thin : false,
       charts: [
-        { kind: "bars", title: `Cost per ${o.noun} if the sequence stopped here (USD, lower is better)`, lowerIsBetter: true, points: roiPts, note: M.note },
-        { kind: "bars", title: `Each email on its own: cost per ${o.noun} (USD, lower is better)`, lowerIsBetter: true, points: stepCost, note: M.note },
+        { kind: "bars", title: `Cost per ${o.noun} if the sequence stopped here (USD, lower is better)`, lowerIsBetter: true, points: roiPts, note: RULE_NOTE },
+        { kind: "bars", title: `Each email on its own: cost per ${o.noun} (USD, lower is better)`, lowerIsBetter: true, points: stepCost, note: RULE_NOTE },
       ],
       conclusion: [
         `Each depth adds up the spend and the ${o.nounPlural} of every email up to it.`,
@@ -497,9 +512,9 @@ for (const key of ["reply", "visit"]) {
         : ratePts.length ? `Follow-ups add no ${o.nounPlural} past the first email.` : `No sequences yet.`,
       winner: lastUseful ? lastUseful.label : ratePts[0]?.label ?? null,
       result: ratePts.length ? { display: o.pct ? ratePts[ratePts.length - 1].display : ratePts[ratePts.length - 1].value.toFixed(1), unit: o.pct ? `of people got a ${o.noun}, all follow-ups` : `${o.nounPlural} per 1,000 people, all follow-ups`, sample: ratePts[ratePts.length - 1].note } : null,
-      crowned: people >= STRICT.minEmails,
+      crowned: depth.length > 0 && depth[depth.length - 1].got >= o.outcomesRequired,
       charts: [
-        { kind: "bars", title: o.pct ? `${o.noun.charAt(0).toUpperCase()}${o.noun.slice(1)} rate, % of people, adding each follow-up (higher is better)` : `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per 1,000 people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts, note: M.note },
+        { kind: "bars", title: o.pct ? `${o.noun.charAt(0).toUpperCase()}${o.noun.slice(1)} rate, % of people, adding each follow-up (higher is better)` : `${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} per 1,000 people, adding each follow-up (higher is better)`, lowerIsBetter: false, points: ratePts, note: RULE_NOTE },
       ],
       conclusion: [
         `Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.`,
@@ -653,7 +668,7 @@ function figures(o, r) {
     spend: usd(r.spend),
     cost: r[o.cost] === null ? null : usd(r[o.cost]),
     rate: r.emails > 0 ? rateText(o, r[o.rate]) : null,
-    thin: costThinStrict(o, r),
+    thin: learningOf(o, r),
     sample: counts(o, r),
   };
 }
@@ -794,17 +809,19 @@ const out = {
     // emails sent per month, for the stat tile's small bars
     byMonth: facts.research.volume.byMonth.map((r) => ({ label: monthLabel(r.bucket), emails: r.emails })),
   },
-  floors: { minEmails: facts.floors.minEmails, crown: STRICT },
-  // Measured in derive.mjs: how long after the email that earned it a reply or a click arrives.
+  // features-service's maturity rule, per leg (features-service#1196): read, never measured.
   maturation: {
-    days: M.days,
-    percentile: M.percentile,
-    cutoff: M.cutoff,
+    rule: "run_start",
+    days: RULE_DAYS,
+    cutoff: [M.legs.reply.cutoff, M.legs.visit.cutoff].sort()[0],
     windowEnd: M.windowEnd,
-    reply: M.reply,
-    click: M.click,
-    excludedEmails: facts.research.excludedEmails,
-    note: M.note,
+    legs: {
+      reply: { durationDays: M.legs.reply.durationDays, outcomesRequired: M.legs.reply.outcomesRequired, cutoff: M.legs.reply.cutoff },
+      visit: { durationDays: M.legs.visit.durationDays, outcomesRequired: M.legs.visit.outcomesRequired, cutoff: M.legs.visit.cutoff },
+    },
+    excludedEmails: M.excludedEmails,
+    noRunStart: M.noRunStart,
+    note: RULE_NOTE,
   },
   crews: [
     { id: "herald", outcome: "Positive reply", description: "Cold email that gets a prospect to answer with interest." },

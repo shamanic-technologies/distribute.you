@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { parseFeatureRevenue, parseRevenueWithLeads } from "../src/lib/revenue-parse";
 import { MAX_PERSISTED_ENTRY_BYTES } from "../src/lib/persist-cache";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 /**
  * `/revenue` carries a per-lead array that is 99.6% of its bytes and that NO browser
@@ -68,6 +69,7 @@ function body(leads: unknown[], attributedOutcomes: string[] = ALL_ATTRIBUTED) {
     featureSlug: "sales-cold-email-outreach",
     headline: { totalPipelineUsd: 7250 },
     costEconomics: {
+      maturity: NULL_PAIR,
       committedCostUsd: 2952,
       costOfAcquisitionPct: 41,
       roiMultiple: 2.5,

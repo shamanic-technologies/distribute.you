@@ -6,7 +6,9 @@ import { useParams } from "next/navigation";
 import type { RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { isLearning } from "@/lib/learning-threshold";
+import { shownFigure, type ShownFigure, type StatBasis } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -17,18 +19,22 @@ import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
 import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-modal";
 
-/** The result a mission's leg lands on, read off its own served group. */
-export function missionResult(m: Mission): { count: number | null; noun: string; costCents: number | null } {
+/**
+ * The result a mission's leg lands on, read off its own served group: the count, and what
+ * one cost as the MATURE half of the served pair (Learning where the producer says so).
+ */
+export function missionResult(m: Mission, basis: StatBasis): { count: number | null; noun: string; cost: ShownFigure } {
   const g = m.row.revenue;
+  const none: ShownFigure = { value: null, learning: false };
   if (m.leg?.toKey === "conversation") {
     const n = g?.positiveReplies ?? null;
-    return { count: n, noun: n === 1 ? "positive reply" : "positive replies", costCents: g?.cpprCents ?? null };
+    return { count: n, noun: n === 1 ? "positive reply" : "positive replies", cost: shownFigure(g?.outcomesMaturity, (h) => h.cpprCents, basis) };
   }
   if (m.leg?.toKey === "website_visit") {
     const n = g?.websiteClicks ?? null;
-    return { count: n, noun: n === 1 ? "website visit" : "website visits", costCents: g?.cpcCents ?? null };
+    return { count: n, noun: n === 1 ? "website visit" : "website visits", cost: shownFigure(g?.outcomesMaturity, (h) => h.cpcCents, basis) };
   }
-  return { count: null, noun: "results", costCents: null };
+  return { count: null, noun: "results", cost: none };
 }
 
 /** What a crew's RUNNING missions may spend today: the rule every v1 daily total uses. */
@@ -80,6 +86,7 @@ export function CrewPage() {
         crumbs={[{ label: "Crew" }]}
         actions={
           <>
+            <StatBasisSwitch />
             <Link href={v2Href(orgId, brandId, "offers")} className="k-btn">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="6" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
@@ -203,6 +210,7 @@ function CrewCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const { basis } = useStatBasis();
   const running = crew.running > 0;
   const offerIds = [...new Set(missions.map((m) => m.offerId))];
   const scope =
@@ -213,7 +221,7 @@ function CrewCard({
         : {};
   const ceiling = crewCeilingCents(missions);
   const leg = missions[0]?.leg?.label ?? null;
-  const results = missions.map(missionResult);
+  const results = missions.map((m) => missionResult(m, basis));
   const counted = results.filter((r) => r.count != null);
   const resultCount = counted.length ? counted.reduce((s, r) => s + (r.count ?? 0), 0) : null;
   const priced = missions.length === 1 ? results[0] : null;
@@ -365,8 +373,8 @@ function CrewCard({
           </p>
           <p className="k-fg3 mt-0.5 truncate text-[11px]">
             {resultCount != null ? `${formatCount(resultCount)} result${resultCount === 1 ? "" : "s"} all time` : outcomes?.today ? "" : "no finished run today"}
-            {priced && priced.count != null && resultCount != null
-              ? isLearning(priced.count) ? " · learning" : priced.costCents != null ? ` · ${formatCentsAsUsdAdaptive(priced.costCents)} each` : ""
+            {priced && resultCount != null
+              ? priced.cost.learning ? " · learning" : priced.cost.value != null ? ` · ${formatCentsAsUsdAdaptive(priced.cost.value)} each` : ""
               : ""}
           </p>
         </div>
@@ -387,7 +395,7 @@ function CrewCard({
 
       <ul className="mt-1 border-t border-[var(--line-subtle)] pt-1">
         {missions.map((m) => {
-          const r = missionResult(m);
+          const r = missionResult(m, basis);
           return (
             <li key={m.row.campaign.id}>
               <Link href={m.href} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">

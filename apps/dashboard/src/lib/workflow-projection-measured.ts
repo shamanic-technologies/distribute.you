@@ -25,6 +25,14 @@
  * force `resolved` to widen and every `estimatesByGrain[row.resolved.grain]` read to
  * branch on a case no surface may render anyway.
  *
+ * A RETIRED row (`retired: true`, features-service since 2026-09-25) is dropped for the
+ * same reason, from the other side: it is a workflow lineage with no active version
+ * left that this brand or campaign still spent on, served so the per-workflow rows add
+ * up to the scope's own total. Its `resolved` block is ALL NULL (grain included) and the
+ * producer states it is unrankable and never recommended, so no display surface can read
+ * a figure off it. Left in, it failed this reader's schema outright on every brand that
+ * ever spent on a retired workflow: Offer Settings could not start a channel there.
+ *
  * Alias-free (no `@/` import, no zod) so it carries REAL unit tests — vitest resolves
  * no `@` alias in this repo. Keep it that way.
  */
@@ -46,5 +54,14 @@ export function isMeasuredProjectionRow(row: unknown): boolean {
  * being handed a silently-corrected empty array.
  */
 export function measuredProjectionRows(rows: unknown): unknown {
-  return Array.isArray(rows) ? rows.filter(isMeasuredProjectionRow) : rows;
+  return Array.isArray(rows) ? rows.filter((r) => isMeasuredProjectionRow(r) && !isRetiredProjectionRow(r)) : rows;
+}
+
+/**
+ * TRUE only for a row the producer explicitly marked `retired: true`: a lineage with no
+ * active version, evidence only, every figure null. Absent on every other row.
+ */
+export function isRetiredProjectionRow(row: unknown): boolean {
+  if (typeof row !== "object" || row === null) return false;
+  return (row as { retired?: unknown }).retired === true;
 }

@@ -8,7 +8,9 @@ import { CampaignControlsTrigger } from "@/components/campaigns/campaign-control
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
-import { isLearning } from "@/lib/learning-threshold";
+import { shownFigure } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { v2Href } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -33,6 +35,7 @@ export function MissionPage() {
   const hold = useMissionHold(id, mission?.running ?? false);
   const visits = useLatestInBucket(brandId, "website_visit", 20, id);
   const replies = useLatestInBucket(brandId, "positive_reply", 20, id);
+  const { basis } = useStatBasis();
 
   const results = useMemo(() => {
     const out: { lead: Lead; kind: string; at: string }[] = [];
@@ -54,7 +57,9 @@ export function MissionPage() {
   const g = mission?.row.revenue ?? null;
   const replyLed = mission?.leg?.toKey === "conversation";
   const resultCount = replyLed ? g?.positiveReplies : g?.websiteClicks;
-  const resultCost = replyLed ? g?.cpprCents : g?.cpcCents;
+  // The MATURE half of the served pairs, Learning exactly where the producer says so.
+  const resultCost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
+  const roi = shownFigure(g?.economicsMaturity, (h) => h.roiMultiple, basis);
   const name = mission ? `${mission.crew.name} · ${mission.offerName ?? "Offer"}` : "";
   const siblings = mission ? missions.filter((m) => m.crew.key === mission.crew.key && m !== mission) : [];
 
@@ -62,6 +67,7 @@ export function MissionPage() {
     <>
       <TopBar
         crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name || " " }]}
+        actions={<StatBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         {!mission ? (
@@ -105,14 +111,14 @@ export function MissionPage() {
           </StatTile>
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
             <Figure
-              value={resultCount != null && isLearning(resultCount) ? "Learning" : resultCost == null ? "—" : formatCentsAsUsdAdaptive(resultCost)}
+              value={resultCost.learning ? "Learning" : resultCost.value == null ? "—" : formatCentsAsUsdAdaptive(resultCost.value)}
             />
           </StatTile>
           <StatTile label="Spent">
             <Figure value={g?.committedCostUsd == null ? "—" : formatUsdAdaptive(g.committedCostUsd)} />
           </StatTile>
           <StatTile label="Return">
-            <Figure value={mission?.row.learning ? "Learning" : formatRoi(g?.roiMultiple ?? null, "—")} />
+            <Figure value={roi.learning ? "Learning" : formatRoi(roi.value, "—")} />
           </StatTile>
         </div>
 

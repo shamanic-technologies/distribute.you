@@ -56,6 +56,7 @@ import {
   valueText,
   websiteUrl,
   type Competitor,
+  type GetStartedEmail,
   type GetStartedSegment,
   type GetStartedSnapshot,
   type GetStartedStepKey,
@@ -124,6 +125,8 @@ export function GetStarted() {
   const enqueue = (task: () => Promise<void>) => {
     readQueue.current = readQueue.current.then(task).catch((e) => console.error("[get-started] queued read failed:", e));
   };
+  // The email written before a Google round trip, so the wall can show it again.
+  const [restoredEmail, setRestoredEmail] = useState<GetStartedEmail | null>(null);
 
   const ran = useRef(false);
 
@@ -167,6 +170,7 @@ export function GetStarted() {
     setSegments(s.segments);
     setRestoredBudget(s.budgetUsd);
     setStageIdx(s.segments.length ? 2 : 0);
+    if (s.email) setRestoredEmail(s.email);
     if (s.segments.length) setSelectedSeg([...s.segments].sort((a, b) => b.count - a.count)[0].audienceId);
     setStarted(true);
     ran.current = true;
@@ -261,6 +265,8 @@ export function GetStarted() {
         }));
         setEmails((cur) => ({ ...cur, [id]: mail }));
         if (selectedRef.current === id) setStep("email", "done");
+        const snap = parseGetStartedSnapshot(sessionStorage.getItem(GET_STARTED_SNAPSHOT_KEY));
+        if (snap) saveSnapshot({ ...snap, email: { subject: mail.subject, bodyText: mail.bodyText, recipient: mail.recipient } });
       } catch (e) {
         console.error("[get-started] email preview failed:", e);
         if (selectedRef.current !== id) return;
@@ -589,6 +595,7 @@ export function GetStarted() {
           brandName={brandName ?? domain ?? website}
           offerSource={overview}
           segments={segments}
+          email={(selectedSeg ? emails[selectedSeg] : undefined) ?? restoredEmail}
           floorUsd={floorUsd}
           recommendedUsd={restoredBudget ?? recommendedUsd}
           budgetChosen={restoredBudget != null}

@@ -18,13 +18,15 @@ import type {
   WorkflowCatalogueRow,
   WorkflowDynastyMembership,
   WorkflowRevenueGroup,
-  FleetWorkflowCost,
+  FleetRead,
 } from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
 import type { ReplyKind } from "./reply-kind";
 import type { OptOutChannel } from "./opt-out-channel";
-import { parseFeatureRevenue } from "./revenue-parse";
+import { EconomicsMaturitySchema, ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
+import { maturityPairSchema, type MaturityPair } from "./maturity";
+import type { EconomicsFigures, OutcomeFigures, ScopeMaturity } from "./revenue-view";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
@@ -4047,11 +4049,36 @@ export interface FeatureAudienceStatsRow {
     /** REAL cost per sale = spend ÷ sales. Null when 0/absent (not the website_purchase
      *  / combined-sales goal, or emails not served). Never a false $0. */
     cpsaleCents?: number | null;
+    /**
+     * The five costs, OBSERVED (never floored: null at 0 outcomes), served twice with this
+     * row's maturity verdict (lib/maturity.ts). The legacy fields above stay the floored
+     * RANKING figures; a surface STATES the mature half and reads Learning on `isMature`.
+     */
+    maturity?: MaturityPair<AudienceCostFigures> | null;
   };
   /** PROJECTED return for this audience, on the brand's own economics. See
    *  {@link AudienceProjection}. Optional only for rollout tolerance — features-service
    *  v0.127.0 requires it on every row. */
-  projection?: AudienceProjection;
+  projection?: AudienceProjection & {
+    /** The three projections served twice with this row's maturity verdict. */
+    maturity?: MaturityPair<AudienceProjectionFigures> | null;
+  };
+}
+
+/** One half of an audience row's `metrics.maturity` pair. */
+export interface AudienceCostFigures {
+  cpcCents: number | null;
+  cpprCents: number | null;
+  cpfsCents: number | null;
+  cpsCents: number | null;
+  cpsaleCents: number | null;
+}
+
+/** One half of an audience row's `projection.maturity` pair. */
+export interface AudienceProjectionFigures {
+  returnPerDollar: number | null;
+  costOfAcquisitionPct: number | null;
+  costPerPaidClientUsd: number | null;
 }
 
 /**
@@ -4102,6 +4129,9 @@ export interface FeatureAudienceStatsResponse {
      *  surfaced so a consumer can never pair a return with an LTR it did not use. */
     lifetimeRevenueUsd: number | null;
   };
+  /** THE SCOPE'S MATURITY (features-service#1196): the same object the scope's /revenue
+   *  serves, so a campaign's own price on its Audiences page is its Overview's figure. */
+  maturity?: ScopeMaturity | null;
 }
 
 const AudienceProjectionSchema = z.object({
@@ -4110,6 +4140,23 @@ const AudienceProjectionSchema = z.object({
   costOfAcquisitionPct: z.coerce.number().nullable().optional(),
   lifetimeRevenueUsd: z.coerce.number().nullable().optional(),
 });
+
+const AudienceCostMaturitySchema = maturityPairSchema(
+  z.object({
+    cpcCents: z.coerce.number().nullable(),
+    cpprCents: z.coerce.number().nullable(),
+    cpfsCents: z.coerce.number().nullable(),
+    cpsCents: z.coerce.number().nullable(),
+    cpsaleCents: z.coerce.number().nullable(),
+  }),
+);
+const AudienceProjectionMaturitySchema = maturityPairSchema(
+  z.object({
+    returnPerDollar: z.coerce.number().nullable(),
+    costOfAcquisitionPct: z.coerce.number().nullable(),
+    costPerPaidClientUsd: z.coerce.number().nullable(),
+  }),
+);
 
 const FeatureAudienceStatsRowSchema = z.object({
   audienceId: z.string(),
@@ -4139,8 +4186,10 @@ const FeatureAudienceStatsRowSchema = z.object({
     cpfsCents: z.number().nullable().optional(),
     cpsCents: z.number().nullable().optional(),
     cpsaleCents: z.coerce.number().nullable().optional(),
+    // Optional as the producer declares it; absent -> `—`, never the legacy figure.
+    maturity: AudienceCostMaturitySchema.nullish(),
   }),
-  projection: AudienceProjectionSchema.optional(),
+  projection: AudienceProjectionSchema.extend({ maturity: AudienceProjectionMaturitySchema.nullish() }).optional(),
 });
 
 const FeatureAudienceStatsResponseSchema = z.object({
@@ -4165,6 +4214,8 @@ const FeatureAudienceStatsResponseSchema = z.object({
   brandProjection: AudienceProjectionSchema.extend({
     lifetimeRevenueUsd: z.coerce.number().nullable(),
   }).optional(),
+  // Optional as served; absent -> the scope line states no figure.
+  maturity: ScopeMaturitySchema.nullish(),
 });
 
 /** GET /features — list all features */
@@ -4567,7 +4618,15 @@ const CampaignRevenueCostEconomicsSchema = z.object({
   roiMultiple: z.number().nullable(),
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
+  // The three ratios above, served twice with the group's own maturity verdict
+  // (lib/maturity.ts). Every row states `mature`, and Learning where `isMature` is false.
+  // Optional as served (see EconomicsMaturitySchema); absent -> `—`.
+  maturity: EconomicsMaturitySchema.nullish(),
 });
+/** A group's cost per outcome, served twice with the group's own maturity verdict. */
+const OutcomesMaturitySchema = maturityPairSchema(
+  z.object({ cpcCents: z.number().nullable(), cpprCents: z.number().nullable() }),
+);
 /**
  * The VOLUME half of a campaign group: how much real outcome evidence its money rests on.
  *
@@ -4594,6 +4653,8 @@ const CampaignRevenueOutcomesSchema = z.object({
   // feedback-request campaign that produced none) beside $2,889 and 18 on one row.
   cpprCents: z.number().nullish(),
   cpcCents: z.number().nullish(),
+  // The two costs above, served twice with this group's maturity verdict.
+  maturity: OutcomesMaturitySchema.nullish(),
   // What happened to the emails this campaign identity sent (features-service #1143):
   // distinct leads sent to, and the SERVED share of them who replied. Only the two
   // figures the v2 missions table prints are declared.
@@ -4638,6 +4699,11 @@ export interface CampaignRevenueGroup {
   sentCount?: number | null;
   /** The SERVED share of those who replied, in percent. Null = nothing was sent. */
   replyRatePct?: number | null;
+  /** ROI, % CAC and $ CAC served twice with this campaign's maturity verdict. */
+  economicsMaturity: MaturityPair<EconomicsFigures> | null;
+  /** Cost per visit and per positive reply, served twice. Null when the producer served no
+   *  outcomes block for this group (nothing wired for its channel). */
+  outcomesMaturity: MaturityPair<OutcomeFigures> | null;
 }
 
 /** GET /features/:slug/revenue?groupBy=campaignId — one lean revenue group per campaign. */
@@ -4672,6 +4738,8 @@ export async function getFeatureRevenueByCampaign(
     cpcCents: g.outcomes?.cpcCents,
     sentCount: g.outcomes?.sending?.recipientsSent,
     replyRatePct: g.outcomes?.sending?.replyRatePct,
+    economicsMaturity: g.costEconomics.maturity ?? null,
+    outcomesMaturity: g.outcomes?.maturity ?? null,
   }));
 }
 
@@ -4776,6 +4844,7 @@ const WorkflowRevenueOutcomesSchema = z.object({
   recipientsRepliesPositive: z.number().nullish(),
   cpprCents: z.number().nullish(),
   cpcCents: z.number().nullish(),
+  maturity: OutcomesMaturitySchema.nullish(),
 });
 const FeatureRevenueByWorkflowSchema = z.object({
   groupBy: z.string(),
@@ -4924,6 +4993,8 @@ async function readWorkflowGroups(
     recipientsRepliesPositive: g.outcomes?.recipientsRepliesPositive ?? null,
     cpprCents: g.outcomes?.cpprCents ?? null,
     cpcCents: g.outcomes?.cpcCents ?? null,
+    economicsMaturity: g.costEconomics.maturity ?? null,
+    outcomesMaturity: g.outcomes?.maturity ?? null,
   }));
 }
 
@@ -5018,6 +5089,34 @@ export async function listChannelWorkflowDynasties(
  * same question as the charged figures beside it, and the surface says so rather
  * than charting the two as one series.
  */
+/**
+ * ONE GRAIN's observed figures for the leg, on one half of the maturity pair
+ * (features-service#1196). OBSERVED, never floored: `costPerOutcomeUsd` is null at zero
+ * outcomes and `conversionRatePct` null at zero contacted. `spentUsd` is null only on the
+ * staff actual-cost body, where the grain's vendor cost is unknown.
+ */
+const LegOutcomeFiguresSchema = z.object({
+  spentUsd: z.number().nullable(),
+  contacted: z.number(),
+  outcomes: z.number(),
+  costPerOutcomeUsd: z.number().nullable(),
+  conversionRatePct: z.number().nullable(),
+});
+export type LegOutcomeFigures = z.infer<typeof LegOutcomeFiguresSchema>;
+
+/** One fleet row's maturity pair, on its objective's own leg (features-service#1196). */
+const FleetLegMaturitySchema = z.object({
+  // Nullable as served (`LegMaturityFigures.legKey`), though a fleet read always names one.
+  legKey: z.string().nullable(),
+  durationDays: z.number(),
+  outcomesRequired: z.number(),
+  outcomeSignal: z.string().nullable(),
+  source: z.string(),
+  flash: LegOutcomeFiguresSchema.nullable(),
+  mature: LegOutcomeFiguresSchema.nullable(),
+  isMature: z.boolean().nullable(),
+});
+
 const FleetWorkflowCostSchema = z.object({
   objective: z.string(),
   workflows: z.array(
@@ -5030,15 +5129,32 @@ const FleetWorkflowCostSchema = z.object({
       // loudly rather than read `undefined` forever and blank a column.
       observedPositiveReplies: z.number(),
       observedClicks: z.number(),
+      /** REQUIRED key, null on a projected objective. The drawer states this workflow's
+       *  mature figure off it, never the legacy one. */
+      maturity: FleetLegMaturitySchema.nullable(),
     }),
   ),
+  /** THE FLEET's best and median, served over the workflows that are MATURE on this leg.
+   *  The browser takes no median and picks no best. REQUIRED key, null on a projected
+   *  objective. */
+  fleet: z
+    .object({
+      legKey: z.string(),
+      basis: z.string(),
+      matureWorkflowCount: z.number(),
+      best: z
+        .object({ workflowDynastySlug: z.string(), costPerOutcomeUsd: z.number().nullable() })
+        .nullable(),
+      median: z.object({ costPerOutcomeUsd: z.number().nullable() }).nullable(),
+    })
+    .nullable(),
 });
 
 export async function getFleetWorkflowCost(
   featureSlug: string,
   objective: string,
   token?: string,
-): Promise<FleetWorkflowCost[]> {
+): Promise<FleetRead> {
   const query = new URLSearchParams({ featureSlug, objective });
   const raw = await apiCall<unknown>(
     `/public/features/workflow-cost-per-outcome?${query.toString()}`,
@@ -5051,14 +5167,18 @@ export async function getFleetWorkflowCost(
     });
     throw new Error("[dashboard] getFleetWorkflowCost: invalid response shape");
   }
-  return parsed.data.workflows.map((w) => ({
-    workflowDynastySlug: w.workflowDynastySlug,
-    workflowDynastyName: w.workflowDynastyName,
-    spentUsd: w.spentUsd,
-    costPerOutcomeUsd: w.costPerOutcomeUsd,
-    observedPositiveReplies: w.observedPositiveReplies,
-    observedClicks: w.observedClicks,
-  }));
+  return {
+    workflows: parsed.data.workflows.map((w) => ({
+      workflowDynastySlug: w.workflowDynastySlug,
+      workflowDynastyName: w.workflowDynastyName,
+      spentUsd: w.spentUsd,
+      costPerOutcomeUsd: w.costPerOutcomeUsd,
+      observedPositiveReplies: w.observedPositiveReplies,
+      observedClicks: w.observedClicks,
+      maturity: w.maturity,
+    })),
+    fleet: parsed.data.fleet,
+  };
 }
 
 // ─── Per-offer revenue, at the OFFER grain ───────────────────────────────────
@@ -5100,6 +5220,9 @@ export interface OfferRevenueGroup {
   committedCostUsd: number | null;
   costOfAcquisitionPct: number | null;
   roiMultiple: number | null;
+  /** ROI, % CAC and $ CAC served twice with this OFFER's maturity verdict (lib/maturity.ts).
+   *  Null when the body carried no pair. */
+  economicsMaturity: MaturityPair<EconomicsFigures> | null;
 }
 
 /**
@@ -5132,6 +5255,7 @@ export async function getBrandOfferMoney(
     committedCostUsd: o.costEconomics.committedCostUsd ?? null,
     costOfAcquisitionPct: o.costEconomics.costOfAcquisitionPct,
     roiMultiple: o.costEconomics.roiMultiple,
+    economicsMaturity: o.costEconomics.maturity ?? null,
   }));
 }
 
@@ -7413,6 +7537,7 @@ const WorkflowRankEvidenceSchema = z.object({
   observedPositiveReplies: z.number(),
 });
 
+
 const WorkflowRankGrainSchema = z.object({
   /** Which accounting question THIS grain answers — `charged` is the customer's own
    *  billed money, `incurred` the fleet benchmark where comped spend counts in full.
@@ -7448,6 +7573,23 @@ const WorkflowRankGrainSchema = z.object({
     roiMultiple: z.number().nullable(),
     cacPct: z.number().nullable(),
   }),
+  /** THE MATURITY PAIR of this grain (features-service#1196), served on a LEG-keyed read.
+   *  `mature` is the runs old enough for their outcomes to have arrived and every outcome
+   *  of the leads they served; `isMature` is that grain's own verdict (its mature outcomes
+   *  against the leg's count). The dashboard states the mature half and tags `Learning`
+   *  exactly where `isMature` is false. Optional in the schema only because a goal-keyed
+   *  body carries none, and a cached leg-keyed body may too (`assertLegMaturity` reports it). */
+  basis: z.string().optional(),
+  flash: LegOutcomeFiguresSchema.nullable().optional(),
+  mature: LegOutcomeFiguresSchema.nullable().optional(),
+  isMature: z.boolean().nullable().optional(),
+});
+
+/** The row's RESOLVED figure, on one half of its maturity pair. */
+const RankResolvedFiguresSchema = z.object({
+  grain: z.string().nullable(),
+  costPerOutcomeUsd: z.number().nullable(),
+  conversionRatePct: z.number().nullable(),
 });
 
 /**
@@ -7497,6 +7639,19 @@ const WorkflowRankRowSchema = z.object({
     audience: WorkflowRankGrainSchema.optional(),
   }),
   resolved: WorkflowRankResolvedSchema,
+  /** THE ROW's maturity (features-service#1196), on a LEG-keyed read. `resolved` and every
+   *  legacy block field are on `basis`; `resolved` here carries both halves of the row's
+   *  resolved figure and ITS verdict, which is what a cell states and tags. `isMature` at
+   *  the top is the WORKFLOW's verdict on the fleet of its leg. Required on every leg-keyed
+   *  read by `assertLegMaturity`; optional here because a goal-keyed body carries none. */
+  maturity: z
+    .object({
+      basis: z.string(),
+      isMature: z.boolean().nullable(),
+      matureOutcomes: z.number().nullable(),
+      resolved: maturityPairSchema(RankResolvedFiguresSchema),
+    })
+    .optional(),
   /** REQUIRED — the flag is the whole reason this reader exists. */
   measured: z.boolean(),
   /** THE PRODUCER'S OWN POSITION, and the reason nothing here re-derives one.
@@ -7602,6 +7757,21 @@ const WorkflowRankLadderSchema = z.object({
     })
     .nullish(),
   rows: z.array(WorkflowRankRowSchema),
+  /** THE LEG's maturity rule as the producer applied it to this body (features-service
+   *  #1196): how old a run must be for its outcomes to count, how many outcomes make a
+   *  scope mature, and the cutoff it used. Required on a leg-keyed read. */
+  maturity: z
+    .object({
+      legKey: z.string(),
+      durationDays: z.number(),
+      outcomesRequired: z.number(),
+      outcomeSignal: z.string().nullable(),
+      source: z.string(),
+      cutoffIso: z.string().nullable(),
+      measured: z.boolean(),
+      unmeasuredReason: z.string().nullable(),
+    })
+    .optional(),
   /** The producer's own pick: the argmin of `resolved.costPerOutcomeUsd` over the
    *  MEASURED rows. Nothing here re-derives it. */
   recommendedWorkflowDynastySlug: z.string().nullable(),
@@ -7674,7 +7844,35 @@ export async function getWorkflowRankLadder(
     });
     throw new Error("[dashboard] getWorkflowRankLadder: invalid response shape");
   }
+  if (params.leg) assertLegMaturity(parsed.data, "getWorkflowRankLadder");
   return parsed.data;
+}
+
+/**
+ * A LEG-keyed ladder is expected to carry its maturity pairs, and a body without them is
+ * REPORTED loudly rather than refused. The producer declares every pair optional: a body
+ * cached before the pairs shipped (a pre-deploy Gold cell, measured on the very deploy
+ * that shipped them) or a read whose mature cut degraded carries none. Refusing it turned
+ * the whole page into an error; reading it states `—` with no tag in every cell
+ * (`cellFigure` on no pair), never the legacy figure, and a body whose top-level maturity
+ * says it could not measure is stated on the page in words.
+ */
+export function assertLegMaturity(ladder: WorkflowRankLadder, label: string): void {
+  const missing: string[] = [];
+  if (!ladder.maturity) missing.push("maturity");
+  for (const row of ladder.rows) {
+    const where = `${row.workflow.workflowDynastySlug}|${row.audienceId ?? "campaign"}`;
+    if (!row.maturity) missing.push(`rows[${where}].maturity`);
+    for (const [grain, block] of Object.entries(row.estimatesByGrain)) {
+      if (block && block.isMature === undefined) missing.push(`rows[${where}].estimatesByGrain.${grain}.isMature`);
+    }
+  }
+  if (missing.length > 0) {
+    console.error(`[dashboard] ${label}: leg-keyed ladder is missing its maturity pairs; those cells read "—"`, {
+      missing: missing.slice(0, 20),
+      count: missing.length,
+    });
+  }
 }
 
 // Create / Upgrade / Fork workflow via AI

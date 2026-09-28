@@ -61,10 +61,9 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain('label: "Positive replies"');
     expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
-    // The zero-reply floor now lives in features-service (max(committed net spend, the
-    // expected cost from the brand's best model), the same cascade it applies per audience),
-    // so the card renders the server field VERBATIM and matches the Strategy page.
-    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
+    // The card renders the MATURE half of the served pair VERBATIM (features-service#1196),
+    // the same figure the campaign Workflows tab and Audiences state.
+    expect(cards).toContain("costValue: formatCostCents(replyCost.value)");
     // The reply pair is the ONLY outcome pair left, so nothing gates it on a tracker.
     expect(cards).not.toContain("trackerButton");
     expect(cards).not.toContain("showAction");
@@ -72,19 +71,19 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('costLabel: "CPPR"');
   });
 
-  it("tells the reader a zero-outcome cost is the expected price, not a restatement of Total spent", () => {
-    // The old tooltip promised "it shows the committed spend so far (= Total spent)" —
-    // which described the client-side floor and put the SAME number under two labels one
-    // card apart. features-service now serves the floored figure, so the copy has to say
-    // what the reader is actually looking at.
+  it("tells the reader the cost counts only outreach old enough to have been answered", () => {
+    // Every cost on the row is the MATURE half of the served pair, so the copy says what
+    // that is, and names no duration: the duration is the producer's, published per leg.
     expect(cards).not.toContain("it shows the committed spend so far (= Total spent)");
-    expect(cards).toContain("const EXPECTED_COST_NOTE =");
-    expect(cards).toContain(
-      "Until the first one lands it shows what it is expected to cost, or your spend so far once that is higher.",
+    expect(cards).not.toContain("EXPECTED_COST_NOTE");
+    // One shared constant (lib/maturity.ts), imported here and by the two chart cards.
+    expect(cards).toContain('import { MATURE_COST_NOTE, MATURITY_LEARNING_NOTE, shownFigure } from "@/lib/maturity"');
+    expect(read("../src/lib/maturity.ts")).toContain(
+      "It only counts outreach sent long enough ago for the answers to have arrived",
     );
     // ONE constant behind every cost tooltip on the row (website visit, both positive-reply
     // cards) so they cannot drift into describing two rules.
-    expect(cards.match(/EXPECTED_COST_NOTE\}/g) ?? []).toHaveLength(3);
+    expect(cards.match(/MATURE_COST_NOTE\}/g) ?? []).toHaveLength(3);
   });
 
   it("renders the server cost verbatim with no client fallback to total spend", () => {
@@ -95,10 +94,7 @@ describe("OutreachStatCards copy", () => {
     // so re-adding it would reintroduce the bug on the one branch no fixture covers.
     expect(cards).not.toContain("costSoFarFloorCents(");
     expect(cards).not.toContain("totalSpentCents");
-    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
-    // The helper itself stays — the per-audience surfaces still hold a passthrough guard.
-    const floor = read("../src/lib/cost-so-far-floor.ts");
-    expect(floor).toContain("export function costSoFarFloorCents(");
+    expect(cards).toContain("formatCostCents(replyCost.value)");
   });
 
   it("derives the outcome card from the goal-steps single source (no borrowed card for 1-step goals)", () => {
@@ -173,10 +169,13 @@ describe("OutreachStatCards copy", () => {
     // `costPerAcquisitionUsd` — the field served on the DEFAULT un-lensed read — and
     // NOT the lens-only `costPerConversionUsd`, which is absent on this response and
     // left the card on a dash. It must never be divided out of the other two either.
-    expect(cards).toContain("formatRoi(economics?.roiMultiple)");
-    expect(cards).toContain("formatUsd(economics?.costPerAcquisitionUsd)");
-    expect(cards).not.toContain("formatUsd(economics?.costPerConversionUsd)");
-    expect(cards).toContain("formatPct(economics?.costOfAcquisitionPct)");
+    // The MATURE half of each served pair (features-service#1196).
+    expect(cards).toContain("formatRoi(roi.value)");
+    expect(cards).toContain("formatUsd(cacUsd.value)");
+    expect(cards).toContain('shownFigure(economics?.maturity, (h) => h.costPerAcquisitionUsd, "mature")');
+    expect(cards).not.toContain("h.costPerConversionUsd");
+    expect(cards).not.toContain("economics?.costPerConversionUsd");
+    expect(cards).toContain("formatPct(cacPct.value)");
     expect(cards).toContain("formatUsd(totalPipelineUsd)");
     // The brand page is the one that turns the two modes on.
     expect(page).toContain("showEconomics");

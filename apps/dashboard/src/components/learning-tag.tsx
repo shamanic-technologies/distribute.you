@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import { LEARNING_NOTE, PAUSED_NOTE } from "@/lib/learning-threshold";
+import { MATURITY_LEARNING_NOTE, PAUSED_NOTE } from "@/lib/maturity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
 /**
@@ -30,7 +30,8 @@ export function LearningToneProvider({
 }
 
 /**
- * Stands in for a cost per outcome that has too few outcomes behind it to state.
+ * Stands in for a ratio features-service says is not mature yet (`isMature: false` on the
+ * served pair, lib/maturity.ts). The dashboard never decides that itself.
  *
  * It takes the VALUE's place rather than sitting beside one, because printing a
  * dollar figure and a caveat together is read as a price with a footnote — the whole
@@ -78,7 +79,7 @@ export function LearningTag({
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
     >
       {paused ? "Paused" : "Learning"}
-      {withInfo && <InfoTooltip tip={paused ? PAUSED_NOTE : LEARNING_NOTE} placement="top" />}
+      {withInfo && <InfoTooltip tip={paused ? PAUSED_NOTE : MATURITY_LEARNING_NOTE} placement="top" />}
     </span>
   );
 }

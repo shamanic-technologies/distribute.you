@@ -24,7 +24,8 @@ export interface ResearchPoint {
   display: string;
   /** The counts behind the value, printed beside it so a reader can weigh it. */
   note: string;
-  /** Too few emails or outcomes to read as a rate: drawn, and marked. */
+  /** LEARNING under features-service's per-leg rule: fewer outcomes than the leg requires.
+   *  Drawn at its rank, and marked. (The field keeps its historical name.) */
   thin: boolean;
 }
 
@@ -82,19 +83,25 @@ export interface ResearchFile {
     linkedEmails: number;
     byMonth: { label: string; emails: number }[];
   };
-  floors: { minEmails: number; crown: { minEmails: number; minClicks: number; minReplies: number } };
   /**
-   * The maturation window, measured from our own send-to-outcome latencies: emails sent within
-   * `days` of the window's end (from `cutoff` on) are left out of every outcome figure.
+   * features-service's MATURITY RULE, per leg (features-service#1196), the one every price in the
+   * dashboard is on, read off its channel catalogue and never measured here: only the leads whose
+   * serving run STARTED at least `durationDays` before the read (before `cutoff`) count, with every
+   * outcome they produced since, and a figure resting on fewer than `outcomesRequired` outcomes is
+   * Learning.
    */
   maturation: {
+    rule: "run_start";
+    /** The longest duration of the two legs, in days. */
     days: number;
-    percentile: number;
+    /** The earliest cutoff of the two legs: runs started on or after it wait. */
     cutoff: string;
     windowEnd: string;
-    reply: { sample: number; p50: number; pAt: number };
-    click: { sample: number; p50: number; pAt: number };
+    legs: Record<"reply" | "visit", { durationDays: number; outcomesRequired: number; cutoff: string }>;
+    /** Emails from runs too recent to count yet. */
     excludedEmails: number;
+    /** Emails no record ties to a serving run: in the cohort, as features-service counts them. */
+    noRunStart: number;
     note: string;
   };
   crews: { id: ResearchCrew; outcome: string; description: string }[];

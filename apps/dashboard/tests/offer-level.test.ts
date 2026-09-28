@@ -182,7 +182,8 @@ describe("the offer readers", () => {
     // put a single channel's money under the offer's name.
     expect(table).toContain("getBrandOfferMoney");
     expect(table).not.toContain("getFeatureRevenueByOffer");
-    expect(table).toContain("revenue?.roiMultiple");
+    // the MATURE half of the offer's served economics pair (features-service#1196)
+    expect(table).toContain("revenue?.economicsMaturity");
     expect(table).toContain("fmtUsd(revenue?.committedCostUsd)");
     // Committed spend is the exact number ROI and % CAC divide by, so a row cannot
     // contradict its own return — and nothing here recomputes either of them.

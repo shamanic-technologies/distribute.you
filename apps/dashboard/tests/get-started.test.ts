@@ -6,6 +6,8 @@ import {
   STEPS_NOT_LIVE,
   compactCount,
   hostOf,
+  hotLeadsForCredit,
+  nextSlide,
   parseCompetitors,
   parseDailyBudget,
   parseGetStartedSnapshot,
@@ -73,7 +75,7 @@ describe("the rules the page decides on", () => {
       segments: [{ audienceId: "a1", name: "Coyotes", rationale: "They buy anvils", count: 1200 }],
       budgetUsd: 10,
     };
-    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual(snap);
+    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({ ...snap, email: null });
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 2 }))).toBeNull();
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, budgetUsd: 2.5 }))?.budgetUsd).toBeNull();
@@ -256,5 +258,51 @@ describe("the surface", () => {
   it("leaves the current onboarding alone", () => {
     const onboarding = read("src/components/onboarding/onboarding.tsx");
     expect(onboarding).not.toContain("get-started");
+  });
+});
+
+describe("the wall", () => {
+  it("prices the $30 off a served median, or states nothing", () => {
+    expect(hotLeadsForCredit(4.2)).toBe(7);
+    expect(hotLeadsForCredit(40)).toBeNull();
+    expect(hotLeadsForCredit(null)).toBeNull();
+    expect(hotLeadsForCredit(0)).toBeNull();
+    expect(hotLeadsForCredit(Number.NaN)).toBeNull();
+  });
+
+  it("turns the client carousel with a wrap", () => {
+    expect(nextSlide(0, 3)).toBe(1);
+    expect(nextSlide(2, 3)).toBe(0);
+    expect(nextSlide(0, 0)).toBe(0);
+  });
+
+  it("keeps the written email across the Google round trip, and reads an older snapshot without one", () => {
+    const base = { version: 1, website: "a.com", brandId: "b", brandName: null, domain: null, overview: "", facts: [], competitors: [], segments: [], budgetUsd: null };
+    expect(parseGetStartedSnapshot(JSON.stringify(base))?.email).toBeNull();
+    const mail = { subject: "Hi", bodyText: "Body", recipient: { firstName: "Ann", lastName: "B.", title: "CEO", companyName: "Acme" } };
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...base, email: mail }))?.email).toEqual(mail);
+  });
+
+  it("opens over the blurred results, with the email sharp and the proof real", () => {
+    const wall = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"), "utf8");
+    expect(wall).toContain("backdrop-blur-");
+    expect(wall).toContain("<EmailCard mail={writtenEmail} />");
+    // Only named, consenting clients: the same selection the homepage proof uses.
+    expect(wall).toContain("proofCardsFor(proof.showcase)");
+    // The $30 figure is the served median divided, or absent.
+    expect(wall).toContain("hotLeadsForCredit(proof?.hotLeads?.medianCostUsd)");
+    // Email code, no password to type.
+    expect(wall).not.toContain('type="password"');
+    expect(wall).toContain('strategy: "email_code"');
+    // The card form opens by itself once the account exists.
+    expect(wall).toContain("cardOpened.current = true;");
+    const flow = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
+    expect(flow).toContain("email={(selectedSeg ? emails[selectedSeg] : undefined) ?? restoredEmail}");
+  });
+
+  it("lets a code-made account sign in again with a code", () => {
+    const signIn = fs.readFileSync(path.resolve(__dirname, "../src/app/(authed)/sign-in/[[...sign-in]]/page.tsx"), "utf8");
+    expect(signIn).toContain("Email me a code instead");
+    expect(signIn).toContain('attemptFirstFactor({ strategy: "email_code", code })');
   });
 });

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 import { formatConversionPct } from "../src/components/revenue/conversion-rate-card";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 const SRC = join(__dirname, "..", "src");
 const CARD = readFileSync(join(SRC, "components/revenue/conversion-rate-card.tsx"), "utf8");
@@ -69,6 +70,7 @@ function body(extra: Record<string, unknown> = {}) {
     featureSlug: "sales-cold-email-outreach",
     headline: { totalPipelineUsd: 2916.99 },
     costEconomics: {
+      maturity: NULL_PAIR,
       committedCostUsd: 247.19,
       costOfAcquisitionPct: 8.5,
       roiMultiple: 11.8,
@@ -84,14 +86,14 @@ function body(extra: Record<string, unknown> = {}) {
 
 describe("the reader declares what the producer sends", () => {
   it("parses the block whole, verbatim", () => {
-    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }));
+    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }), "test");
     expect(parsed.conversionRateHistory).toEqual(HISTORY);
   });
 
   it("tolerates BOTH absences — the block is absent on some reads and null on others", () => {
-    expect(parseFeatureRevenue(body()).conversionRateHistory).toBeNull();
+    expect(parseFeatureRevenue(body(), "test").conversionRateHistory).toBeNull();
     expect(
-      parseFeatureRevenue(body({ conversionRateHistory: null })).conversionRateHistory,
+      parseFeatureRevenue(body({ conversionRateHistory: null }), "test").conversionRateHistory,
     ).toBeNull();
   });
 
@@ -99,6 +101,7 @@ describe("the reader declares what the producer sends", () => {
     expect(() =>
       parseFeatureRevenue(
         body({ conversionRateHistory: { ...HISTORY, scopeConversionRatePct: undefined } }),
+        "test",
       ),
     ).toThrow();
   });
@@ -108,7 +111,7 @@ describe("a null point and a zero point are different statements", () => {
   it("drops the no-denominator day and KEEPS the measured zero", () => {
     // Charting the null at 0 would say nobody converted on a day nobody was reached.
     // Dropping the zero would hide the one reading a reader most wants early on.
-    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }));
+    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }), "test");
     const withNoDenominator = {
       ...HISTORY,
       // The producer's own null day: nobody reached yet, so there is no rate to state.
@@ -122,7 +125,7 @@ describe("a null point and a zero point are different statements", () => {
         ...HISTORY.daily,
       ],
     };
-    const parsedNull = parseFeatureRevenue(body({ conversionRateHistory: withNoDenominator }));
+    const parsedNull = parseFeatureRevenue(body({ conversionRateHistory: withNoDenominator }), "test");
     const plottable = (parsedNull.conversionRateHistory?.daily ?? []).filter(
       (d) => d.conversionRatePct != null,
     );
@@ -148,7 +151,7 @@ describe("the headline reconciles with the rung the same body serves", () => {
     // The curve's last point covers the DATED population; with nothing undated on this
     // campaign it equals the scope figure exactly, and the scope figure equals the
     // `funnelSteps` rung for the same leg. Three ways round, one number.
-    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }));
+    const parsed = parseFeatureRevenue(body({ conversionRateHistory: HISTORY }), "test");
     const h = parsed.conversionRateHistory!;
     expect(h.scopeConversionRatePct).toBe(PROD_RUNG_PCT);
     expect(h.daily[h.daily.length - 1].conversionRatePct).toBe(PROD_RUNG_PCT);
@@ -157,8 +160,12 @@ describe("the headline reconciles with the rung the same body serves", () => {
 });
 
 describe("the card divides nothing and invents nothing", () => {
-  it("prints the SERVED scope rate rather than dividing two of the producer's fields", () => {
-    expect(CARD).toContain("scopeConversionRatePct");
+  it("prints the SERVED mature rate rather than dividing two of the producer's fields", () => {
+    // features-service#1196: the headline is the MATURE half of the scope's conversion,
+    // Learning exactly where the producer says the scope is not mature.
+    expect(CARD).toContain('shownFigure(history?.maturity, (h) => h.conversionRatePct, "mature")');
+    expect(CARD).toContain("headline.learning ?");
+    expect(CARD).toContain("<LearningTag paused={paused} />");
     expect(CARD).not.toMatch(/cumulativeOutcomes\s*\/\s*cumulativeContacted/);
     expect(CARD).not.toMatch(/datedOutcomes\s*\//);
   });
@@ -172,9 +179,11 @@ describe("the card divides nothing and invents nothing", () => {
     expect(CARD).toContain("Projected, since launch");
   });
 
-  it("states the undated gap rather than reconciling the curve onto the headline", () => {
-    expect(CARD).toContain("undatedContacted");
-    expect(CARD).toContain("undatedOutcomes");
+  it("says the line and the figure count two populations rather than reconciling them", () => {
+    // The line is every person and outcome to date; the figure is the mature cohort. The
+    // tip states both, with the one shared sentence that describes a mature figure.
+    expect(CARD).toContain("MATURE_COST_NOTE");
+    expect(CARD).toContain("The line is every person and outcome to date");
   });
 });
 

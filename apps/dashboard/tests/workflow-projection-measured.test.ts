@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   isMeasuredProjectionRow,
+  isRetiredProjectionRow,
   measuredProjectionRows,
 } from "../src/lib/workflow-projection-measured";
 
@@ -204,5 +205,40 @@ describe("the filter runs at the ONE reader boundary", () => {
       // ranked among the measured ones and its sentence says the figure is a floor.
       "lib/workflow-rank-why.ts",
     ]);
+  });
+});
+
+// A RETIRED row, copied verbatim off production (brand a179bbd9, leg start_to_conversation,
+// 2026-09-28): a lineage with no active version, evidence only, every figure null.
+const retired = {
+  audienceId: null,
+  workflow: { workflowDynastySlug: "sales-cold-email-outreach-camellia", workflowDynastyName: "Sales Cold Email Outreach Camellia" },
+  resolved: {
+    grain: null,
+    costBasis: null,
+    costPerClickUsd: null,
+    costPerOutcomeUsd: null,
+    costPerPaidClientUsd: null,
+    costPerMeetingBookedUsd: null,
+    roiMultiple: null,
+    cacPct: null,
+    conversionRatePct: null,
+  },
+  measured: true,
+  retired: true,
+  rank: 21,
+  scopeRank: 21,
+};
+
+describe("a RETIRED row is dropped at the same boundary: it carries no figure to read", () => {
+  it("is recognised only on an explicit true", () => {
+    expect(isRetiredProjectionRow(retired)).toBe(true);
+    expect(isRetiredProjectionRow(measured)).toBe(false);
+    expect(isRetiredProjectionRow({ retired: "true" })).toBe(false);
+    expect(isRetiredProjectionRow(null)).toBe(false);
+  });
+
+  it("leaves the readable rows exactly, though the producer states it as measured", () => {
+    expect(measuredProjectionRows([measured, retired, legacy])).toEqual([measured, legacy]);
   });
 });

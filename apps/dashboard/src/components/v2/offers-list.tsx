@@ -18,7 +18,9 @@ import {
 } from "@/lib/api";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
-import { offerLearningFor, useOfferLearning } from "@/lib/use-offer-learning";
+import { shownFigure, type StatBasis } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { usePausedByOffer } from "@/lib/use-scope-paused";
 import { scopePausedFor } from "@/lib/scope-paused";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
@@ -36,11 +38,12 @@ import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components
  * dedupe and paint from disk: `["brandOffers", brandId]` for the names and marks,
  * `["brandOfferMoney", brandId]` for each offer's money across every channel it is sold
  * through (features-service, `pricing=net`), and the campaign rows behind
- * `useOfferLearning` / `usePausedByOffer`. Nothing is summed or divided here: the rows
- * deliberately do not add up to the brand, and the brand's own figures are its own read.
+ * `usePausedByOffer`. Nothing is summed, divided or judged here: the rows deliberately
+ * do not add up to the brand, and the brand's own figures are its own read.
  *
- * The two RATIOS read `Learning` together while every campaign selling the offer is
- * still learning (`Paused` when every one is stopped); the two money TOTALS never do.
+ * The two RATIOS are the MATURE half of the offer's served pair and read `Learning`
+ * together exactly where the producer says the offer is not mature (`Paused` when every
+ * campaign selling it is stopped); the two money TOTALS never do.
  */
 
 const TH = "k-label px-3 py-2.5 text-left font-medium";
@@ -48,6 +51,9 @@ const TH = "k-label px-3 py-2.5 text-left font-medium";
 export interface OfferListRow {
   offer: Offer;
   revenue: OfferRevenueGroup | null;
+  /** The ratios on the reader's basis (lib/maturity.ts); `learning` is the producer's verdict. */
+  roi: number | null;
+  cacPct: number | null;
   learning: boolean;
   paused: boolean;
   /** The offer is sold by at least one campaign. Absent from the rows ⟹ nothing sells it yet. */
@@ -65,8 +71,15 @@ export function orderOfferRows(rows: OfferListRow[]): OfferListRow[] {
     const byLearning = Number(a.learning) - Number(b.learning);
     if (byLearning !== 0) return byLearning;
     if (a.learning) return 0;
-    return (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+    return (b.roi ?? -1) - (a.roi ?? -1);
   });
+}
+
+/** One offer's two ratios on the reader's basis, with the producer's Learning verdict. */
+export function offerRatios(revenue: OfferRevenueGroup | null, basis: StatBasis): { roi: number | null; cacPct: number | null; learning: boolean } {
+  const roi = shownFigure(revenue?.economicsMaturity, (h) => h.roiMultiple, basis);
+  const cac = shownFigure(revenue?.economicsMaturity, (h) => h.costOfAcquisitionPct, basis);
+  return { roi: roi.value, cacPct: cac.value, learning: roi.learning };
 }
 
 const usd = (v: number | null | undefined) => (v == null ? "—" : formatUsdAdaptive(v));
@@ -160,7 +173,7 @@ export function V2OffersList() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const revenueEnabled = isRevenueFeature(featureSlug);
 
-  const { learningByOfferId, settled: learningSettled } = useOfferLearning(brandId, featureSlug);
+  const { basis } = useStatBasis();
   const { pausedByOfferId, settled: pausedSettled } = usePausedByOffer(brandId);
 
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
@@ -175,15 +188,18 @@ export function V2OffersList() {
     const byId = new Map<string, OfferRevenueGroup>();
     for (const g of groupsQ.data ?? []) byId.set(g.offerId, g);
     return orderOfferRows(
-      (offersQ.data?.offers ?? []).map((o) => ({
-        offer: o,
-        revenue: byId.get(o.offerId) ?? null,
-        learning: offerLearningFor(learningByOfferId, o.offerId, learningSettled),
-        paused: scopePausedFor(pausedByOfferId, o.offerId, pausedSettled),
-        sold: pausedSettled && pausedByOfferId.has(o.offerId),
-      })),
+      (offersQ.data?.offers ?? []).map((o) => {
+        const revenue = byId.get(o.offerId) ?? null;
+        return {
+          offer: o,
+          revenue,
+          ...offerRatios(revenue, basis),
+          paused: scopePausedFor(pausedByOfferId, o.offerId, pausedSettled),
+          sold: pausedSettled && pausedByOfferId.has(o.offerId),
+        };
+      }),
     );
-  }, [offersQ.data, groupsQ.data, learningByOfferId, learningSettled, pausedByOfferId, pausedSettled]);
+  }, [offersQ.data, groupsQ.data, basis, pausedByOfferId, pausedSettled]);
 
   // Reveal on SETTLE (resolved OR errored): a failed money read shows dashes, never an
   // eternal skeleton. A disabled money read (no revenue feature) counts as settled.
@@ -209,9 +225,12 @@ export function V2OffersList() {
       <TopBar
         crumbs={[{ label: "Setup" }, { label: "Offers" }]}
         actions={
-          <button type="button" onClick={() => setCreating(true)} className="k-btn-strong">
-            New offer
-          </button>
+          <>
+            <StatBasisSwitch />
+            <button type="button" onClick={() => setCreating(true)} className="k-btn-strong">
+              New offer
+            </button>
+          </>
         }
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
@@ -270,7 +289,7 @@ export function V2OffersList() {
                       </td>
                     </tr>
                   ) : (
-                    rows.map(({ offer, revenue, learning, paused, sold }, i) => {
+                    rows.map(({ offer, revenue, roi, cacPct, learning, paused, sold }, i) => {
                       const href = hrefFor(offer.offerId);
                       return (
                         <tr
@@ -292,16 +311,16 @@ export function V2OffersList() {
                           <td className="pl-3 pr-4 text-right tabular-nums md:pr-3">
                             {learning ? (
                               <Withheld paused={paused} />
-                            ) : revenue?.roiMultiple == null ? (
+                            ) : roi == null ? (
                               <Dash />
                             ) : (
-                              <span className={`font-medium ${roiIsGood(revenue.roiMultiple) ? "text-[var(--data-teal)]" : ""}`}>
-                                {formatRoi(revenue.roiMultiple)}
+                              <span className={`font-medium ${roiIsGood(roi) ? "text-[var(--data-teal)]" : ""}`}>
+                                {formatRoi(roi)}
                               </span>
                             )}
                           </td>
                           <td className="hidden px-3 text-right tabular-nums md:table-cell">
-                            {learning ? <Withheld paused={paused} /> : revenue?.costOfAcquisitionPct == null ? <Dash /> : pct(revenue.costOfAcquisitionPct)}
+                            {learning ? <Withheld paused={paused} /> : cacPct == null ? <Dash /> : pct(cacPct)}
                           </td>
                           <td className="hidden px-3 text-right tabular-nums md:table-cell">
                             {revenue?.totalPipelineUsd == null ? <Dash /> : usd(revenue.totalPipelineUsd)}
@@ -325,7 +344,7 @@ export function V2OffersList() {
             </div>
             <div className="k-fg3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
               <span>
-                Revenue is expected pipeline, not money collected. Invested is net spend, billed plus reserved. ROI and % CAC read Learning until an offer&apos;s campaigns have ten outcomes.
+                Revenue is expected pipeline, not money collected. Invested is net spend, billed plus reserved. ROI and % CAC count only outreach sent long enough ago for its answers to have arrived, and read Learning until that outreach has produced enough outcomes.
               </span>
               <span className="ml-auto hidden items-center gap-1 md:inline-flex">
                 <span className="k-kbd">J</span>

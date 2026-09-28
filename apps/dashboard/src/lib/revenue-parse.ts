@@ -7,7 +7,63 @@
 // authed side; empty section on the report side), never a render crash.
 
 import { z } from "zod";
+import { maturityPairSchema } from "./maturity";
 import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
+
+/**
+ * The ratios of a cost-economics block, served twice (features-service#1196, lib/maturity.ts).
+ * OPTIONAL as the producer declares it: a body cached before the pair shipped, or a read
+ * whose maturity cut degraded, carries none. A surface then states `—` with no tag
+ * (`shownFigure` on no pair), never the legacy figure: measured in prod on the deploy that
+ * shipped the pairs, the first reads of four scopes came back from pre-deploy snapshots
+ * without them, and a required pair turned each of those pages into an error.
+ */
+export const EconomicsMaturitySchema = maturityPairSchema(
+  z.object({
+    roiMultiple: z.number().nullable(),
+    costOfAcquisitionPct: z.number().nullable(),
+    costPerAcquisitionUsd: z.number().nullable(),
+  }),
+);
+/** The cost-per-outcome ratios of a spend block, served twice. `*Cents` coerce like the block's own. */
+const SpendMaturitySchema = maturityPairSchema(
+  z.object({
+    totalCpcCents: z.coerce.number().nullable(),
+    cpprCents: z.coerce.number().nullable(),
+    cpsCents: z.coerce.number().nullable(),
+    cpsmCents: z.coerce.number().nullable(),
+    cpfsCents: z.coerce.number().nullable(),
+    cpSaleCents: z.coerce.number().nullable(),
+  }),
+);
+
+/**
+ * ONE leg of a scope on both bases, with the leg's own rule beside its figures
+ * (features-service#1196, `LegMaturityFigures`). OBSERVED accounting: a cost is null at 0
+ * outcomes, never a floor. The producer pins `mature.costPerOutcomeUsd` equal to the
+ * spend block's own mature ratio for the same leg, so a surface reading either states
+ * one number.
+ */
+const LegOutcomeFiguresSchema = z.object({
+  spentUsd: z.coerce.number(),
+  contacted: z.coerce.number(),
+  outcomes: z.coerce.number(),
+  costPerOutcomeUsd: z.coerce.number().nullable(),
+  conversionRatePct: z.coerce.number().nullable(),
+});
+const ScopeLegMaturitySchema = maturityPairSchema(LegOutcomeFiguresSchema).extend({
+  legKey: z.string().nullable(),
+  durationDays: z.number(),
+  outcomesRequired: z.number(),
+  outcomeSignal: z.string().nullable(),
+  source: z.string(),
+});
+/** THE SCOPE'S MATURITY: its verdict and one entry per leg (features-service `ScopeMaturity`).
+ *  The byte-same object every read describing a scope serves (/revenue, /audience-stats). */
+export const ScopeMaturitySchema = z.object({
+  isMature: z.boolean().nullable(),
+  legs: z.array(ScopeLegMaturitySchema),
+});
 
 const RevenueTopPersonSchema = z.object({
   firstName: z.string().nullable(),
@@ -132,6 +188,7 @@ const CostEconomicsSchema = z.object({
   // overview + grouped responses (which omit the field) still parse.
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
+  maturity: EconomicsMaturitySchema.nullish(),
 });
 // Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
 // spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
@@ -205,6 +262,18 @@ const ConversionRateHistorySchema = z.object({
   undatedOutcomes: z.coerce.number(),
   /** The WHOLE scope's rate, served so no browser divides two of the producer's fields. */
   scopeConversionRatePct: z.coerce.number().nullable(),
+  /**
+   * The scope's conversion on BOTH bases, beside its verdict (features-service#1196). The
+   * headline states `mature`. Optional as served: absent where the scope's maturity could
+   * not be read, which renders a dash and no tag.
+   */
+  maturity: maturityPairSchema(
+    z.object({
+      contacted: z.coerce.number(),
+      outcomes: z.coerce.number(),
+      conversionRatePct: z.coerce.number().nullable(),
+    }),
+  ).optional(),
 });
 
 const RoiHistorySchema = z.object({
@@ -311,6 +380,7 @@ const SpendSchema = z.object({
   // (event=sale, RENAMED from purchase). Same rollout tolerance; cpSaleCents null at 0.
   salesCount: z.coerce.number().optional(),
   cpSaleCents: z.coerce.number().nullable().optional(),
+  maturity: SpendMaturitySchema.nullish(),
 });
 
 /**
@@ -477,6 +547,10 @@ const FeatureRevenueResponseSchema = z.object({
   costPerOutcomeHistory: CostPerOutcomeHistorySchema.nullish(),
   // Same gate, same two absences, same reason as the two curves above it.
   conversionRateHistory: ConversionRateHistorySchema.nullish(),
+  // THE SCOPE'S MATURITY (features-service#1196): its verdict and each leg's figures on
+  // both bases. Optional and nullable as served — null where the lead population was never
+  // read (no funnel wired), absent on the lensed and grouped bodies.
+  maturity: ScopeMaturitySchema.nullish(),
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
@@ -593,6 +667,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
       costPerAcquisitionUsd: d.costEconomics.costPerAcquisitionUsd ?? null,
       expectedConversions: d.costEconomics.expectedConversions,
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
+      maturity: d.costEconomics.maturity ?? null,
     },
     roiHistory: d.roiHistory ?? null,
     // Whole, verbatim. The card renders the served points and the served counts; the one
@@ -604,6 +679,8 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     // differently-sized populations — the undated legs sit in the totals and on no
     // day — and stop agreeing with the figure printed inches above it.
     conversionRateHistory: d.conversionRateHistory ?? null,
+    // Whole, verbatim: the scope's verdict and each leg's mature and flash figures.
+    maturity: d.maturity ?? null,
     stepWalk: d.funnelSteps ?? null,
     // Passed through whole. The band renders these figures verbatim: the browser no
     // longer picks a price, multiplies a threshold or divides a countdown.

@@ -43,8 +43,7 @@ export function useScopePaused(
 /**
  * The same verdict for every OFFER of a brand at once, for the Offers table.
  *
- * A row cannot call a hook, so the map is built once at brand grain and read per row —
- * the shape `useOfferLearning` already uses for the learning half of the same cell. It
+ * A row cannot call a hook, so the map is built once at brand grain and read per row. It
  * spans every channel (`ALL_OFFERS` in the campaigns-table sense) by construction:
  * `buildControlRows` with no offer filter keeps every acquisition-channel campaign the
  * brand has.

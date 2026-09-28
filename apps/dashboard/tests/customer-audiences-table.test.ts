@@ -44,7 +44,7 @@ describe("Audiences page", () => {
     expect(src).toContain("Cost per signup");
     expect(src).toContain('col="cps"');
     expect(src).toContain('col="signups"');
-    expect(src).toContain("stats.metrics.cpsCents");
+    expect(src).toContain('cost("cps")');
     expect(src).toContain("stats.evidence.signups");
     // form_submissions goal → "Cost per form submission" + "Form submissions" lead too.
     expect(src).toContain("const showFormSubmissionCols");
@@ -62,8 +62,11 @@ describe("Audiences page", () => {
     expect(src).toContain("const tieBreakCol");
     expect(src).toContain('showSignupCols && sortCol === "cps"');
     expect(src).toContain('showFormSubmissionCols && sortCol === "cpfs"');
-    expect(src).toContain("if (!tieBreakCol) return 0;");
-    expect(src).toContain("sortValue(tieBreakCol, a");
+    // The ordering rule is the SHARED audience model's, handed the tie-break column.
+    expect(src).toContain("tieBreakCol,\n          statsFor:");
+    const model = fs.readFileSync(path.join(__dirname, "../src/lib/audience-table-model.ts"), "utf-8");
+    expect(model).toContain("if (!tieBreakCol) return 0;");
+    expect(model).toContain("audienceSortValue(tieBreakCol, a");
   });
 
   it("hides the signup + form-submission outcome columns until the conversion tracker is set up", () => {
@@ -97,7 +100,7 @@ describe("Audiences page", () => {
     expect(src).toContain("statsByAudienceId");
     expect(src).toContain("stats.evidence.contacted");
     expect(src).toContain("stats.evidence.websiteClicks");
-    expect(src).toContain("stats.metrics.cpcCents");
+    expect(src).toContain('cost("cpc")');
   });
 
   it("toggles lifecycle status via the gateway (pause / resume / archive / restore)", () => {

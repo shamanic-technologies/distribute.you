@@ -12,7 +12,9 @@ import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { cumulativeWindow, dailyWindow, utcDay } from "@/lib/v2/series";
 import { v2Href } from "@/lib/v2/routes";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
-import { scopeIsLearning } from "@/lib/learning-threshold";
+import { shownFigure } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import {
@@ -84,7 +86,11 @@ export function TodayPage() {
 
   const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
   const running = missions.filter((m) => m.running);
-  const learning = scopeIsLearning(missions.map((m) => m.row));
+  const { basis } = useStatBasis();
+  // The brand's return is the MATURE half of the served pair, and it reads Learning
+  // exactly where the producer says the brand is not mature (lib/maturity.ts).
+  const shownRoi = shownFigure(data?.costEconomics.maturity, (h) => h.roiMultiple, basis);
+  const learning = shownRoi.learning;
   const interestedStanding = standings?.counts.sales_interest ?? null;
 
   // Runs today, per crew: runs-service's own roll-up filed under each crew.
@@ -142,7 +148,7 @@ export function TodayPage() {
   const first = user?.firstName ?? null;
   const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const timeLine = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const roi = data?.costEconomics.roiMultiple ?? null;
+  const roi = shownRoi.value;
   const gaugeMax = Math.max(3, Math.ceil((roi ?? 0) + 0.5));
 
   return (
@@ -151,6 +157,7 @@ export function TodayPage() {
         crumbs={[{ label: "Today" }]}
         actions={
           <>
+            <StatBasisSwitch />
             {rev.enabled && <CampaignControlsTrigger brandId={brandId} />}
           </>
         }

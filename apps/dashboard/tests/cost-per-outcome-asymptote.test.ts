@@ -22,15 +22,40 @@ const PROD_FLOOR = 3.03;
 function row(
   slug: string,
   cost: number | null,
-  extra: Partial<LadderRowForFloor> = {},
+  extra: Partial<LadderRowForFloor> & { isMature?: boolean | null } = {},
 ): LadderRowForFloor {
+  const { isMature, ...rest } = extra;
   return {
     audienceId: null,
     workflow: { workflowDynastySlug: slug, workflowDynastyName: slug.toUpperCase() },
     resolved: { costPerOutcomeUsd: cost },
-    ...extra,
+    // The served pair (features-service#1196): the floor aims at its MATURE half.
+    maturity: {
+      resolved: {
+        flash: { costPerOutcomeUsd: cost },
+        mature: { costPerOutcomeUsd: cost },
+        isMature: isMature === undefined ? true : isMature,
+      },
+    },
+    ...rest,
   };
 }
+
+describe("the floor aims at a served MATURE price only", () => {
+  it("passes over a recommended row still learning, to the best-ranked priced one", () => {
+    const floor = bestWorkflowFloor({
+      rows: [row("maelstrom", 3.03, { rank: 1, isMature: false }), row("rampart", 5.18, { rank: 2 })],
+      recommendedWorkflowDynastySlug: "maelstrom",
+    });
+    expect(floor?.workflowDynastySlug).toBe("rampart");
+    expect(floor?.costPerOutcomeUsd).toBe(5.18);
+  });
+
+  it("states no floor from a row carrying no served pair", () => {
+    const bare = { ...row("maelstrom", 3.03, { rank: 1 }), maturity: null };
+    expect(bestWorkflowFloor({ rows: [bare], recommendedWorkflowDynastySlug: "maelstrom" })).toBeNull();
+  });
+});
 
 describe("the floor is READ, never ranked here", () => {
   it("takes the recommended workflow's campaign-grain price verbatim", () => {

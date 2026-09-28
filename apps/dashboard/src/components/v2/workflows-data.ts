@@ -26,10 +26,10 @@ import { rankWorkflowRows, type RankedWorkflow } from "@/lib/workflow-rank-why";
 import { legColumnPair } from "@/lib/campaign-leg-columns";
 import { legFor } from "@/lib/legs";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { isLearning } from "@/lib/learning-threshold";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import type { WorkflowLadderRowShape } from "@/lib/workflow-grains";
 import { ladderRowsForScope } from "@/components/workflows/campaign-workflows-page";
+import { useStatBasis } from "@/lib/use-stat-basis";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import type { CrewIdentity } from "@/lib/v2/crews";
 
@@ -132,6 +132,8 @@ export function useMissionWorkflowRanking(
   // from the staff vendor-cost twins: same rows, same rank, money at vendor cost. Their roots
   // are never persisted to disk (persist-cache SENSITIVE_QUERY_ROOTS).
   const { actual } = useCostBasis();
+  // Mature for every reader; a staff reader can flip the page to flash (debug).
+  const { basis } = useStatBasis();
   const groupsQ = useAuthQuery(
     [actual ? "campaignWorkflowRevenueActual" : "campaignWorkflowRevenue", brandId, campaignId ?? "none"],
     () =>
@@ -173,7 +175,6 @@ export function useMissionWorkflowRanking(
         groups: groupsQ.data ?? [],
         running: { dynastySlug: null, dynastyName: null },
         pair,
-        isLearning,
       }).filter((r) => !hidden.has(r.workflowDynastySlug)),
     [catalogueQ.data, groupsQ.data, pair, hidden],
   );
@@ -186,14 +187,14 @@ export function useMissionWorkflowRanking(
     () =>
       rankWorkflowRows<CampaignWorkflowRow>({
         rows,
-        ladder: ladderRowsForScope(ladderQ.data, null),
+        ladder: ladderRowsForScope(ladderQ.data, null, basis),
         recommended: ladderQ.data?.recommendedWorkflowDynastySlug ?? null,
         outcomeStepKey,
         outcomeNoun,
         outcomeNounPlural,
         formatUsd: formatUsdAdaptive,
       }),
-    [rows, ladderQ.data, outcomeStepKey, outcomeNoun, outcomeNounPlural],
+    [rows, ladderQ.data, outcomeStepKey, outcomeNoun, outcomeNounPlural, basis],
   );
 
   const allLadderRows = useMemo(

@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
-import { isLearning } from "@/lib/learning-threshold";
+import { shownFigure, type StatBasis } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
@@ -13,22 +14,19 @@ import type { Mission } from "@/components/v2/use-missions";
 /**
  * What one result cost this mission, READ off the producer's own group for the step
  * the mission's leg lands on: a reply-led crew is priced per positive reply, a
- * visit-led one per website visit. Selecting which served field to show is display;
- * nothing is divided here. Under ten of that result the price reads `Learning`, the
- * bar every v1 price uses.
+ * visit-led one per website visit. The figure is the MATURE half of the served pair,
+ * and it reads `Learning` exactly where the producer says the mission is not mature
+ * (lib/maturity.ts). Selecting which served field to show is display; nothing is
+ * divided or counted here.
  */
-function costPerResult(m: Mission): { value: string; unit: string } | null {
-  const g = m.row.revenue;
-  if (!g) return null;
-  if (m.leg?.toKey === "conversation") {
-    if (isLearning(g.positiveReplies)) return { value: "Learning", unit: "" };
-    return g.cpprCents == null ? null : { value: formatCentsAsUsdAdaptive(g.cpprCents), unit: "/ reply" };
-  }
-  if (m.leg?.toKey === "website_visit") {
-    if (isLearning(g.websiteClicks)) return { value: "Learning", unit: "" };
-    return g.cpcCents == null ? null : { value: formatCentsAsUsdAdaptive(g.cpcCents), unit: "/ visit" };
-  }
-  return null;
+function costPerResult(m: Mission, basis: StatBasis): { value: string; unit: string } | null {
+  const pair = m.row.revenue?.outcomesMaturity;
+  if (!pair) return null;
+  const replyLed = m.leg?.toKey === "conversation";
+  if (!replyLed && m.leg?.toKey !== "website_visit") return null;
+  const shown = shownFigure(pair, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
+  if (shown.learning) return { value: "Learning", unit: "" };
+  return shown.value == null ? null : { value: formatCentsAsUsdAdaptive(shown.value), unit: replyLed ? "/ reply" : "/ visit" };
 }
 
 const n = (v: number | null | undefined) => (v == null ? "—" : formatCount(v));
@@ -53,6 +51,7 @@ export function MissionsTable({
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
+  const { basis } = useStatBasis();
   return (
     <div className="k-card overflow-hidden">
       <div className="k-scroll overflow-x-auto">
@@ -89,7 +88,8 @@ export function MissionsTable({
             ) : (
               missions.map((m) => {
                 const g = m.row.revenue;
-                const cost = costPerResult(m);
+                const cost = costPerResult(m, basis);
+                const roi = shownFigure(g?.economicsMaturity, (h) => h.roiMultiple, basis);
                 return (
                   <tr
                     key={m.row.campaign.id}
@@ -133,7 +133,7 @@ export function MissionsTable({
                       {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : "—"}
                     </td>
                     <td className="px-3 text-right tabular-nums">
-                      {m.row.learning ? <span className="k-chip">Learning</span> : formatRoi(g?.roiMultiple)}
+                      {roi.learning ? <span className="k-chip">Learning</span> : formatRoi(roi.value)}
                     </td>
                     <td className="py-2 pl-3 pr-4" onClick={(e) => e.stopPropagation()}>
                       <CampaignControlsTrigger

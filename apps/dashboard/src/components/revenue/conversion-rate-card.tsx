@@ -11,6 +11,8 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { LearningTag } from "@/components/learning-tag";
+import { MATURE_COST_NOTE, shownFigure } from "@/lib/maturity";
 import type { ConversionRateHistory } from "@/lib/revenue-view";
 
 /**
@@ -115,30 +117,32 @@ function ConversionTooltip({
 
 export function ConversionRateCard({
   history,
+  paused = false,
   pending = false,
 }: {
   /** Served whole. `undefined` while the read is in flight; `null` when the producer
    *  answered that it cannot build one for this scope. */
   history?: ConversionRateHistory | null;
+  /** The campaign is stopped, so a withheld rate reads `Paused` rather than `Learning`. */
+  paused?: boolean;
   pending?: boolean;
 }) {
   const data = useMemo(() => buildPoints(history), [history]);
 
   const step = history?.outcomeStep?.label ?? null;
   const title = step ? `Conversion to ${step.toLowerCase()}` : "Conversion rate";
-  const headline = history?.scopeConversionRatePct ?? null;
-  // The curve covers the DATED population alone, so it equals the headline exactly when
-  // nothing is undated and legitimately differs otherwise. Stated, never reconciled away.
-  const undated = (history?.undatedContacted ?? 0) + (history?.undatedOutcomes ?? 0);
+  // The headline is the MATURE half of the scope's served conversion (features-service#1196),
+  // `Learning` exactly where the producer says the scope is not mature. The line keeps every
+  // person and outcome to date, which is a different population, and the tip says so.
+  const headline = shownFigure(history?.maturity, (h) => h.conversionRatePct, "mature");
   const projected = history != null && history.outcomeObserved === false;
 
   const tip = [
-    "How often the people this campaign reached went on to convert, since its first day. Cumulative, so each point is the whole run to that date rather than that day alone.",
+    "How often the people this campaign reached went on to convert.",
+    `The figure is the rate on its own. ${MATURE_COST_NOTE}`,
+    "The line is every person and outcome to date, cumulative, so each point is the whole run to that date rather than that day alone.",
     projected
       ? "The outcome count is walked forward through your own conversion rates from the signal we can observe, so this curve is a projection rather than a raw count."
-      : null,
-    undated > 0
-      ? "The line covers the people and outcomes carrying a date. The headline covers the whole campaign, so the two differ by whatever has no date on it."
       : null,
   ]
     .filter(Boolean)
@@ -159,9 +163,12 @@ export function ConversionRateCard({
         <div className="shrink-0 text-right">
           {pending ? (
             <Skeleton className="h-8 w-20" />
+          ) : headline.learning ? (
+            // The tag takes the value's place: the producer says this rate cannot be stated yet.
+            <LearningTag paused={paused} />
           ) : (
             <p className="text-2xl font-bold leading-none text-gray-900">
-              {headline != null ? formatConversionPct(headline) : "—"}
+              {headline.value != null ? formatConversionPct(headline.value) : "—"}
             </p>
           )}
         </div>

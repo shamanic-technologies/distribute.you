@@ -15,7 +15,7 @@ import {
   fmtUsd,
 } from "@/components/campaigns/campaigns-table";
 import { LearningTag } from "@/components/learning-tag";
-import { offerLearningFor, useOfferLearning } from "@/lib/use-offer-learning";
+import { shownFigure, type ShownFigure } from "@/lib/maturity";
 import { usePausedByOffer } from "@/lib/use-scope-paused";
 import { scopePausedFor } from "@/lib/scope-paused";
 import { Skeleton } from "@/components/skeleton";
@@ -60,15 +60,14 @@ interface OfferRow {
   offer: Offer;
   revenue: OfferRevenueGroup | null;
   /**
-   * Whether this offer's two RATIOS rest on too little evidence to state.
-   *
-   * An offer is a scope sold by campaigns, so it is learning while every campaign
-   * selling it is — the same rule the cards above this table already follow, one grain
-   * down. `$ Revenue` and `$ Invested` are never gated by it: one is a TOTAL that grows
-   * with each outcome rather than being decided by whichever one landed, the other is
-   * money already spent, and neither divides by an outcome count.
+   * The offer's two RATIOS, the MATURE half of the pair features-service serves on the
+   * offer's group, `Learning` exactly where it says the offer is not mature. Nothing here
+   * counts outcomes against a bar. `$ Revenue` and `$ Invested` are never gated: one is a
+   * TOTAL that grows with each outcome, the other is money already spent, and neither
+   * divides by an outcome count.
    */
-  learning: boolean;
+  roi: ShownFigure;
+  cacPct: ShownFigure;
   /**
    * Whether every campaign selling this offer is STOPPED, in which case the withheld
    * ratios read `Paused` rather than `Learning`: nothing is landing, so the tag would
@@ -95,17 +94,9 @@ export function OffersTable({
   const prefetch = useRoutePrefetch();
   const revenueEnabled = isRevenueFeature(featureSlug);
 
-  // Whether each offer's ratios rest on enough evidence to state. Read through the same
-  // campaign rows the offer's own surfaces are judged on, on keys this page already
-  // polls, so a row can never state a return that every campaign selling it is declining
-  // to state.
-  const { learningByOfferId, settled: learningSettled } = useOfferLearning(
-    brandId,
-    featureSlug,
-  );
-  // ...and whether each one is stopped, off the SAME rows the pill on that offer's own
-  // header is built from. A row cannot call a hook, so the verdict is a map built once at
-  // brand grain and read per row — the shape `useOfferLearning` already uses beside it.
+  // Whether each offer is stopped, off the SAME rows the pill on that offer's own header
+  // is built from. A row cannot call a hook, so the verdict is a map built once at brand
+  // grain and read per row.
   const { pausedByOfferId, settled: pausedSettled } = usePausedByOffer(brandId);
 
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
@@ -132,22 +123,27 @@ export function OffersTable({
   // one order and sorts by another reads as unordered. An offer with no return yet
   // has nothing to rank on, so it sits last rather than at zero.
   const rows = useMemo<OfferRow[]>(() => {
-    const joined = offers.map((o) => ({
-      offer: o,
-      revenue: groupsById.get(o.offerId) ?? null,
-      learning: offerLearningFor(learningByOfferId, o.offerId, learningSettled),
-      paused: scopePausedFor(pausedByOfferId, o.offerId, pausedSettled),
-    }));
+    const joined = offers.map((o) => {
+      const revenue = groupsById.get(o.offerId) ?? null;
+      const pair = revenue?.economicsMaturity;
+      return {
+        offer: o,
+        revenue,
+        roi: shownFigure(pair, (h) => h.roiMultiple, "mature"),
+        cacPct: shownFigure(pair, (h) => h.costOfAcquisitionPct, "mature"),
+        paused: scopePausedFor(pausedByOfferId, o.offerId, pausedSettled),
+      };
+    });
     return joined.sort((a, b) => {
       // A row that is not stating its return has no rank under it — ordering a table by
       // a number it is deliberately not showing reads as unordered. Learning offers sit
       // below the measured ones and keep their relative order among themselves.
-      const byLearning = Number(a.learning) - Number(b.learning);
+      const byLearning = Number(a.roi.learning) - Number(b.roi.learning);
       if (byLearning !== 0) return byLearning;
-      if (a.learning) return 0;
-      return (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+      if (a.roi.learning) return 0;
+      return (b.roi.value ?? -1) - (a.roi.value ?? -1);
     });
-  }, [offers, groupsById, learningByOfferId, learningSettled, pausedByOfferId, pausedSettled]);
+  }, [offers, groupsById, pausedByOfferId, pausedSettled]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate.
   const settled =
@@ -191,7 +187,7 @@ export function OffersTable({
               </td>
             </tr>
           ) : (
-            rows.map(({ offer, revenue, learning, paused }) => (
+            rows.map(({ offer, revenue, roi, cacPct, paused }) => (
               <tr
                 key={offer.offerId}
                 onClick={() => router.push(`${basePath}/offers/${offer.offerId}`)}
@@ -219,9 +215,9 @@ export function OffersTable({
                     could not stand behind. The two money columns after them are totals,
                     not prices, and keep their figures. */}
                 <td className="px-4 py-3 text-right">
-                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.roiMultiple} />}
+                  {roi.learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={roi.value} />}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{cacPct.learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(cacPct.value)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group the ROI and % CAC beside it divide by, so a

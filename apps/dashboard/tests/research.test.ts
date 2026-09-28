@@ -208,28 +208,50 @@ describe("Research is GA", () => {
   });
 });
 
-describe("the maturation window is measured and applied everywhere", () => {
+describe("the maturity rule is features-service's, read per leg and applied everywhere", () => {
+  // features-service#1196: the Research page applies the rule every price in the dashboard is
+  // on, read off the channel catalogue (extract.sh -> maturity.json), never measured here.
   const m = RESEARCH.maturation;
   const dayMs = 86_400_000;
 
-  it("is the measured figure: the longer of the two outcome latencies, rounded up to a day", () => {
-    expect(m.days).toBe(Math.ceil(Math.max(m.reply.pAt, m.click.pAt)));
-    expect(m.reply.sample).toBeGreaterThan(0);
-    expect(m.click.sample).toBeGreaterThan(0);
-    expect(m.percentile).toBe(0.95);
+  it("is the served rule: a run-start clock, a duration and an outcome count per leg", () => {
+    expect(m.rule).toBe("run_start");
+    for (const l of [m.legs.reply, m.legs.visit]) {
+      expect(Number.isInteger(l.durationDays)).toBe(true);
+      expect(Number.isInteger(l.outcomesRequired)).toBe(true);
+      expect(l.outcomesRequired).toBeGreaterThan(0);
+    }
+    expect(m.days).toBe(Math.max(m.legs.reply.durationDays, m.legs.visit.durationDays));
   });
 
-  it("leaves out exactly the emails younger than the window at the window's end", () => {
-    expect(Date.parse(`${m.windowEnd}T00:00:00Z`) - Date.parse(`${m.cutoff}T00:00:00Z`)).toBe(m.days * dayMs);
+  it("measures nothing itself: no latency sample, no percentile of its own", () => {
+    expect(m).not.toHaveProperty("percentile");
+    expect(m).not.toHaveProperty("reply");
+    expect(m).not.toHaveProperty("click");
+  });
+
+  it("cuts each leg at its own duration before the read, and states the earliest cut", () => {
+    for (const l of [m.legs.reply, m.legs.visit]) {
+      expect(Date.parse(`${m.windowEnd}T00:00:00Z`) - Date.parse(`${l.cutoff}T00:00:00Z`)).toBe(l.durationDays * dayMs);
+    }
+    expect(m.cutoff).toBe([m.legs.reply.cutoff, m.legs.visit.cutoff].sort()[0]);
     expect(m.excludedEmails).toBeGreaterThan(0);
-    // no month bar can sit after the cutoff's month: those emails were never counted
-    const cutoffMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m.cutoff.slice(5, 7)) - 1];
-    const last = RESEARCH.volume.byMonth.at(-1)!.label;
-    expect(last).toBe(cutoffMonth);
+  });
+
+  it("marks Learning exactly where a bar rests on fewer outcomes than its leg requires", () => {
+    const counted = (note: string) => Number((note.match(/^([\d,]+) /)?.[1] ?? "").replace(/,/g, ""));
+    for (const s of RESEARCH.studies.filter((st) => ["llm", "template", "workflow"].includes(st.topic) && st.status === "measured")) {
+      const required = s.crew === "herald" ? m.legs.reply.outcomesRequired : m.legs.visit.outcomesRequired;
+      for (const p of s.charts[0].points) {
+        const got = counted(p.note);
+        if (Number.isFinite(got) && /(positive repl|website visit)/.test(p.note)) expect(p.thin, `${s.id}: ${p.label}`).toBe(got < required);
+      }
+    }
   });
 
   it("puts the rule under every chart, in the reader's words", () => {
-    expect(m.note).toContain(`last ${m.days} days`);
+    expect(m.note).toContain(`${m.legs.reply.durationDays} days`);
+    expect(m.note).toContain("Learning");
     for (const s of RESEARCH.studies) {
       for (const c of s.charts) {
         expect(c.note, `${s.id}: ${c.title}`).toBeTruthy();
@@ -243,6 +265,9 @@ describe("the maturation window is measured and applied everywhere", () => {
     expect(read("components/v2/research-bits.tsx")).toContain("<ChartNote note={chart.note} />");
     expect(src).toContain("<ChartNote note={c.note} />");
     expect(src).toContain("{RESEARCH.maturation.note}");
+    // the page reads the rule's own figures, never a measured latency
+    expect(src).toContain("RESEARCH.maturation.legs.reply.durationDays");
+    expect(src).not.toMatch(/maturation\.(reply|click)\.pAt/);
   });
 });
 

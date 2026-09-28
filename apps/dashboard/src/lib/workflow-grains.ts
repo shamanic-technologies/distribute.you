@@ -27,9 +27,19 @@
  * what makes that visible — the panel lists those rows cheapest-first, so the figure the
  * rank stands on is the top line rather than a number nobody can find.
  *
+ * ── EVERY FIGURE IS ONE HALF OF A SERVED PAIR ─────────────────────────────────────
+ *
+ * Since features-service#1196 every grain block carries its MATURITY PAIR: `mature` (the
+ * runs old enough for their outcomes to have arrived, and every outcome of the leads they
+ * served) and `flash` (everything to date), plus `isMature`, that grain's own verdict.
+ * A reader is shown the mature half and `Learning` exactly where `isMature` is false; the
+ * flash half is the staff debug view. Nothing here counts outcomes against a bar.
+ *
  * Alias-free (no `@/` import, no zod) so it carries REAL unit tests — vitest resolves no
  * `@` alias in this repo. Keep it that way.
  */
+
+import type { StatBasis } from "./maturity";
 
 /** The grains a READER compares. `audience` is deliberately absent: an audience is not a
  *  column, it is a row of the panel's own list. */
@@ -45,15 +55,29 @@ export const WORKFLOW_GRAINS: readonly WorkflowGrain[] = ["campaign", "brand", "
 // instead, so the campaign is a COLUMN rather than a tab and the other two grains are
 // read in the panel, which already lists all of them at once. Do not re-add a tab.
 
-/** What ONE grain states about the leg, exactly as served. */
+/** What ONE grain states about the leg on the reader's basis, exactly as served. */
 export interface WorkflowLegOutcome {
+  /** Null while `learning`: the producer said this grain is not mature yet. */
   costPerOutcomeUsd: number | null;
   outcomeCount: number | null;
   /** FALSE means the count was walked through the brand's leg rates rather than
-   *  observed — a projection, and it says so on screen rather than reading as people. */
+   *  observed. A maturity pair is always OBSERVED, so every figure read here is. */
   outcomeObserved: boolean;
   /** Null only on the staff actual-cost body, where the grain's vendor cost is unknown. */
   spentUsd: number | null;
+  /** People the runs behind this half reached. */
+  contacted: number | null;
+  /** TRUE only where the producer says this grain is not mature, on the mature basis. */
+  learning: boolean;
+}
+
+/** One half of a grain's maturity pair, as served (OBSERVED, never floored). */
+export interface GrainPairFigures {
+  spentUsd: number | null;
+  contacted: number;
+  outcomes: number;
+  costPerOutcomeUsd: number | null;
+  conversionRatePct: number | null;
 }
 
 /** A grain block, as narrowly as this module reads one. */
@@ -67,6 +91,11 @@ export interface WorkflowGrainBlock {
     roiMultiple: number | null;
     cacPct: number | null;
   } | null;
+  /** The grain's maturity pair (features-service#1196). Absent only on a goal-keyed body. */
+  basis?: string;
+  flash?: GrainPairFigures | null;
+  mature?: GrainPairFigures | null;
+  isMature?: boolean | null;
 }
 
 export interface WorkflowLadderRowShape {
@@ -78,19 +107,45 @@ export interface WorkflowLadderRowShape {
 }
 
 /**
- * ONE grain's figures, or null when the grain has nothing.
+ * ONE grain's figures on the reader's basis, or null when the grain has nothing.
  *
  * NULL and ZERO are different answers and both occur: a grain absent from the cascade
  * never spent here, while a grain present with `outcomeCount: 0` spent and produced
  * nothing. The first renders a dash, the second renders the zero it measured.
+ *
+ * The figures are the served half of the grain's MATURITY PAIR. On the mature basis a
+ * grain the producer says is not mature comes back `learning` with no price (its count
+ * and spend still stand: they are totals, not ratios). A block carrying no pair states
+ * nothing: its legacy figure has no verdict beside it.
  */
 export function grainFigures(
   block: WorkflowGrainBlock | undefined,
+  basis: StatBasis = "mature",
 ): WorkflowLegOutcome | null {
   if (!block) return null;
-  const leg = block.legOutcome;
-  if (!leg) return null;
-  return leg;
+  if (block.isMature === undefined) return null;
+  const half = basis === "flash" ? block.flash : block.mature;
+  const learning = basis === "mature" && block.isMature === false;
+  if (!half) {
+    return learning
+      ? {
+          costPerOutcomeUsd: null,
+          outcomeCount: null,
+          outcomeObserved: true,
+          spentUsd: null,
+          contacted: null,
+          learning,
+        }
+      : null;
+  }
+  return {
+    costPerOutcomeUsd: learning ? null : half.costPerOutcomeUsd,
+    outcomeCount: half.outcomes,
+    outcomeObserved: true,
+    spentUsd: half.spentUsd,
+    contacted: half.contacted,
+    learning,
+  };
 }
 
 /** The grains this workflow actually has evidence at, in cascade order (coarse first). */
@@ -121,16 +176,18 @@ export interface WorkflowAudienceRow {
 export function audienceRowsFor(
   rows: readonly WorkflowLadderRowShape[],
   dynastySlug: string,
+  basis: StatBasis = "mature",
 ): WorkflowAudienceRow[] {
   const out: WorkflowAudienceRow[] = [];
   for (const r of rows) {
     if (r.audienceId === null) continue;
     if (r.workflow.workflowDynastySlug !== dynastySlug) continue;
-    const block = r.estimatesByGrain.audience;
+    const figures = grainFigures(r.estimatesByGrain.audience, basis);
     out.push({
       audienceId: r.audienceId,
-      figures: grainFigures(block),
-      contacted: block ? block.evidence.observedContacted : null,
+      figures,
+      // The reach behind the SAME half the price is on, so the line describes one body.
+      contacted: figures?.contacted ?? null,
     });
   }
   return out.sort((a, b) => {

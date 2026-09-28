@@ -230,6 +230,13 @@ export function stageMove(phases: StepPhase[], at: number): { to: number; dwell:
 /** Explee's three steps after the preview: what the account turns on. Not run here. */
 export const NEXT_STEPS = ["Send emails", "Book meetings", "Learn and double down"] as const;
 
+/** The written email, as the wall shows it again at the moment of paying. */
+export interface GetStartedEmail {
+  subject: string;
+  bodyText: string;
+  recipient: { firstName: string; lastName: string; title: string; companyName: string };
+}
+
 export interface GetStartedSnapshot {
   version: 1;
   website: string;
@@ -242,6 +249,8 @@ export interface GetStartedSnapshot {
   segments: GetStartedSegment[];
   /** Whole dollars a day, or null when none was chosen. */
   budgetUsd: number | null;
+  /** The email written during the preview, so the wall still shows it after the Google round trip. Optional: an older snapshot has none. */
+  email?: GetStartedEmail | null;
 }
 
 function validCriteria(raw: unknown): SegmentCriterion[] | undefined {
@@ -293,7 +302,50 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     competitors,
     segments,
     budgetUsd: typeof s.budgetUsd === "number" && Number.isInteger(s.budgetUsd) && s.budgetUsd > 0 ? s.budgetUsd : null,
+    email: parseSnapshotEmail(s.email),
   };
+}
+
+function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
+  if (!v || typeof v !== "object") return null;
+  const e = v as Record<string, unknown>;
+  const r = (e.recipient ?? {}) as Record<string, unknown>;
+  const str = (x: unknown) => (typeof x === "string" ? x : null);
+  const subject = str(e.subject);
+  const bodyText = str(e.bodyText);
+  if (!subject || !bodyText) return null;
+  return {
+    subject,
+    bodyText,
+    recipient: {
+      firstName: str(r.firstName) ?? "",
+      lastName: str(r.lastName) ?? "",
+      title: str(r.title) ?? "",
+      companyName: str(r.companyName) ?? "",
+    },
+  };
+}
+
+// ── The wall ──────────────────────────────────────────────────────────────────
+
+/** The free credit every new account starts on, in dollars. */
+export const WALL_FREE_CREDIT_USD = 30;
+
+/**
+ * What the free credit buys, as a whole count of hot leads: the credit divided by
+ * the price the fleet's clients pay for one (a SERVED median, the homepage's figure).
+ * Null when no price is held or it buys none: the block is then left out rather than
+ * stating a number we do not have.
+ */
+export function hotLeadsForCredit(medianCostUsd: number | null | undefined, creditUsd = WALL_FREE_CREDIT_USD): number | null {
+  if (typeof medianCostUsd !== "number" || !Number.isFinite(medianCostUsd) || medianCostUsd <= 0) return null;
+  const n = Math.floor(creditUsd / medianCostUsd);
+  return n >= 1 ? n : null;
+}
+
+/** The next slide of a carousel, wrapping. */
+export function nextSlide(i: number, count: number): number {
+  return count > 0 ? (i + 1) % count : 0;
 }
 
 /**
