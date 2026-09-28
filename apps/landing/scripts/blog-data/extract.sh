@@ -147,11 +147,23 @@ WHERE feature_slug = 'sales-cold-email-outreach'
 # Reader dimensions, from the lead enrichment record.
 run lead_service "
 SELECT l.id AS lead_id, l.country, l.seniority, l.timezone,
-       o.industry, o.estimated_num_employees
+       o.industry, o.estimated_num_employees, l.first_name
 FROM leads l
 LEFT JOIN leads_organizations lo ON lo.lead_id = l.id AND lo.current = true
 LEFT JOIN organizations o ON o.id = lo.organization_id
 " leads.csv
+
+# The positive replies lead-service records off the client's CRM (a prospect who answered by
+# phone, LinkedIn or in person), attributed to our outreach and not withdrawn: features-service
+# counts them as positive replies beside the inbox-classified ones, so the Research page's Herald
+# figures do too. Keyed on the (org, lead) since the event names no campaign.
+run lead_service "
+SELECT org_id, matched_lead_id AS lead_id,
+       to_char(received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS replied_at
+FROM conversion_events
+WHERE event = 'positive_reply' AND caused_by_outreach = true
+  AND withdrawn_at IS NULL AND matched_lead_id IS NOT NULL
+" crm-positive-replies.csv
 
 # What the client was charged, per workflow, before per-account discounts.
 run runs_service "

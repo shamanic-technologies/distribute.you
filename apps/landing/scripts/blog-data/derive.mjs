@@ -22,6 +22,7 @@ import { openSync, readSync, closeSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } from "./maturation.mjs";
 import { MODEL_LABEL } from "./model-label.mjs";
+import { layoutOf, openingOf, LAYOUT, OPENING } from "./first-email-shape.mjs";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
@@ -129,8 +130,14 @@ function shapeOf(body) {
 const emails = load("emails.csv");
 const clicks = load("clicks.csv");
 const replies = load("positive-replies.csv");
+const leads = load("leads.csv");
+const leadById = new Map();
+for (const l of leads) leadById.set(l.lead_id, l);
 const genByKey = new Map();       // person -> { model, workflow }
 const genShapeByKey = new Map();  // person|step -> shape
+// person -> how the FIRST email was laid out and how it opened (first-email-shape.mjs), read on
+// the generated text itself: the Research page's layout and opening studies
+const firstClassByKey = new Map();
 eachRow("generations.csv", (g) => {
   if (!g.lead_id) return;
   const person = `${g.platform_campaign_id}|${g.lead_id}`;
@@ -138,8 +145,13 @@ eachRow("generations.csv", (g) => {
   const sh = shapeOf(g.body_text);
   sh.subjectChars = (g.subject || "").length;
   genShapeByKey.set(`${person}|${g.step}`, sh);
+  if (Number(g.step) === 1 && !firstClassByKey.has(person)) {
+    firstClassByKey.set(person, {
+      layout: layoutOf(g.body_text),
+      opening: openingOf(g.body_text, leadById.get(g.lead_id)?.first_name),
+    });
+  }
 });
-const leads = load("leads.csv");
 const spendRows = load("spend.csv");
 // workflow version -> its dynasty (workflow-service); the Research page compares dynasties
 const dynastyOf = new Map(load("workflows.csv").map((w) => [w.workflow_slug, w.workflow_dynasty_slug]));
@@ -187,8 +199,6 @@ eachRow("sequence-steps.csv", (r) => {
   sh.subjectChars = (r.subject || "").length;
   stepByKey.set(`${r.instantly_campaign_id}|${r.step}`, sh);
 });
-const leadById = new Map();
-for (const l of leads) leadById.set(l.lead_id, l);
 const clickByKey = new Map();
 for (const c of clicks) clickByKey.set(`${c.instantly_campaign_id}|${c.lead_email}`, c);
 const replyByKey = new Map();
@@ -300,6 +310,7 @@ for (const e of emails) {
     dynasty: cpe !== undefined ? dynastyOfVersion(e.workflow_slug) : dynastyOf.get(e.workflow_slug) ?? null,
     leg,
     orgId: e.org_id,
+    leadId: e.lead_id || null,
     person: `${e.instantly_campaign_id}|${e.lead_email}`,
     leadEmail: e.lead_email,
     stepNo: Number(e.step),
@@ -310,6 +321,9 @@ for (const e of emails) {
     subjectChars: shape.subjectChars || 0,
     firstChars: firstShape ? firstShape.chars : null,
     firstParagraphs: firstShape ? firstShape.paragraphs : null,
+    // the whole sequence is filed under how its FIRST email looked (null: no step-1 text on record)
+    firstLayout: person ? firstClassByKey.get(person)?.layout ?? null : null,
+    firstOpening: person ? firstClassByKey.get(person)?.opening ?? null : null,
     model,
     // the prompt template that wrote the sequence (content-generation's prompt_type)
     template: gen?.template || null,
@@ -356,6 +370,39 @@ function attributeReplies(rows) {
 }
 attributeReplies(facts);
 attributeReplies(researchRows);
+
+// The Research page counts a positive reply the way features-service does: the inbox-classified
+// ones above AND the ones lead-service records off the client's CRM (attributed to our outreach,
+// not withdrawn). A CRM event names an (org, lead), not a campaign, so it lands on the last email
+// that lead was sent at or before it, and only when none of that lead's sequences already replied
+// positively (one person, one positive reply). The articles stay on the inbox count.
+const crmReplies = { events: 0, added: 0, alreadyCounted: 0, noEmailBefore: 0 };
+{
+  const rowsByLead = new Map();
+  for (const r of researchRows) {
+    if (!r.leadId) continue;
+    const k = `${r.orgId}|${r.leadId}`;
+    if (!rowsByLead.has(k)) rowsByLead.set(k, []);
+    rowsByLead.get(k).push(r);
+  }
+  const firstByLead = new Map();
+  for (const c of load("crm-positive-replies.csv")) {
+    if (!c.replied_at || toMs(c.replied_at) >= windowEndMs) continue;
+    const k = `${c.org_id}|${c.lead_id}`;
+    if (!firstByLead.has(k) || c.replied_at < firstByLead.get(k)) firstByLead.set(k, c.replied_at);
+  }
+  for (const [k, at] of firstByLead) {
+    const rows = rowsByLead.get(k);
+    if (!rows) continue;
+    crmReplies.events++;
+    if (rows.some((r) => r.replied)) { crmReplies.alreadyCounted++; continue; }
+    let last = null;
+    for (const r of rows) if (r._sentAt <= at && (!last || r._sentAt > last._sentAt)) last = r;
+    if (!last) { crmReplies.noEmailBefore++; continue; }
+    last.replied = true;
+    crmReplies.added++;
+  }
+}
 
 // ---------- maturation ----------
 // Measured from the outcomes themselves: how long after the email that earned it a click or a
@@ -615,6 +662,18 @@ function researchFor(rows) {
     // and the template, and never prints the slug.
     byWorkflow: cut(rows, (r) => r.dynasty),
     workflowByMonth: byMonthPer(rows, (r) => r.dynasty),
+    // Every email of a sequence, filed under how its FIRST email was laid out / opened: the
+    // outcome is the sequence's, whichever email earned it. Also per tier (Flash, Pro).
+    byLayout: cut(rows, (r) => r.firstLayout),
+    byOpening: cut(rows, (r) => r.firstOpening),
+    layoutByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), (r) => r.firstLayout)])),
+    openingByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), (r) => r.firstOpening)])),
+    firstShape: {
+      noLayout: rows.filter((r) => !r.firstLayout).length,
+      noOpening: rows.filter((r) => !r.firstOpening).length,
+      // the most recent month a first email in this population was written in
+      lastMonth: rows.filter((r) => r.firstLayout).reduce((m, r) => (!m || r.month > m ? r.month : m), null),
+    },
   };
 }
 // What each dynasty runs: the model and the template that wrote most of its emails.
@@ -741,6 +800,8 @@ out.research = {
   },
   excludedEmails: research.immature,
   scope: research.scope,
+  crmReplies,
+  shapeLabels: { layout: LAYOUT, opening: OPENING },
 };
 
 // THE RULE the research figures are on, stated beside them: features-service's per-leg maturity,
