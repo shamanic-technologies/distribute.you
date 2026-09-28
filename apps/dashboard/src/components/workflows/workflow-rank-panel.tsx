@@ -60,11 +60,14 @@ import {
 import { getWorkflowRevenue, getFleetWorkflowCost } from "@/lib/api";
 import {
   fleetComparison,
-  workflowOutcomeCostCents,
+  workflowOutcomeCost,
   workflowOutcomeCount,
+  workflowRoi,
   type CampaignWorkflowRow,
   type WorkflowOutcomePair,
 } from "@/lib/campaign-workflow-rows";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import type { StatBasis } from "@/lib/maturity";
 import {
   type RankedWorkflow,
   type WorkflowLadderGrain,
@@ -244,6 +247,8 @@ function GrainBlock({
   grain,
   brandDomain,
   brandLogoUrl,
+  basis,
+  paused,
 }: {
   label: string;
   blurb: string;
@@ -253,8 +258,14 @@ function GrainBlock({
   grain: WorkflowGrain;
   brandDomain: string | null;
   brandLogoUrl: string | null;
+  basis: StatBasis;
+  paused: boolean;
 }) {
-  const figures = grainFigures(block);
+  // Every figure in the block is the served half of THIS grain's maturity pair, and the
+  // grain's own verdict decides Learning. Spend, reach and the count are totals and stay;
+  // the two prices and the return are ratios and wait for the verdict.
+  const figures = grainFigures(block, basis);
+  const learning = figures?.learning ?? false;
   return (
     <div
       className={`rounded-lg border p-3 ${used ? "border-brand-200 bg-brand-50" : "border-gray-200 bg-gray-50"}`}
@@ -285,8 +296,8 @@ function GrainBlock({
         <>
           <p className="mt-1 text-xs text-gray-500">{blurb}</p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <Figure label="Spent" value={fmtUsd(block.evidence.spentUsd)} />
-            <Figure label="People reached" value={fmtCount(block.evidence.observedContacted)} />
+            <Figure label="Spent" value={fmtUsd(figures?.spentUsd ?? null)} />
+            <Figure label="People reached" value={fmtCount(figures?.contacted ?? null)} />
             {/* THE FIGURE THE RANKING IS MADE OF. It replaced a "cost per person reached"
                 that nothing ranks on and that no reader could reconcile with the estimate
                 above — the whole point of this card is to show where that number came
@@ -294,7 +305,13 @@ function GrainBlock({
             <div>
               <span className="text-gray-500">Cost per {outcomeNoun.toLowerCase()}</span>
               <p className="font-medium text-gray-900">
-                {figures == null ? "—" : fmtUsd(figures.costPerOutcomeUsd)}
+                {learning ? (
+                  <LearningTag withInfo={false} paused={paused} />
+                ) : figures == null ? (
+                  "—"
+                ) : (
+                  fmtUsd(figures.costPerOutcomeUsd)
+                )}
               </p>
             </div>
             <div>
@@ -308,7 +325,7 @@ function GrainBlock({
                 {figures == null ? "—" : fmtCount(figures.outcomeCount)}
               </p>
             </div>
-            {block.projected && (
+            {block.projected && !learning && (
               <>
                 <Figure
                   label="Return on spend"
@@ -343,10 +360,12 @@ function AudienceGrainList({
   rows,
   audienceById,
   outcomeNoun,
+  paused,
 }: {
   rows: readonly WorkflowAudienceRow[];
   audienceById: Map<string, { name: string; avatarUrl: string | null }>;
   outcomeNoun: string;
+  paused: boolean;
 }) {
   return (
     <div className="divide-y divide-gray-100">
@@ -365,7 +384,13 @@ function AudienceGrainList({
               </p>
             </div>
             <span className="shrink-0 text-sm font-medium text-gray-900">
-              {r.figures == null ? "—" : fmtUsd(r.figures.costPerOutcomeUsd)}
+              {r.figures?.learning ? (
+                <LearningTag withInfo={false} paused={paused} />
+              ) : r.figures == null ? (
+                "—"
+              ) : (
+                fmtUsd(r.figures.costPerOutcomeUsd)
+              )}
             </span>
           </div>
         );
@@ -432,6 +457,11 @@ export function WorkflowRankPanel({
   const row = ranked.row;
   const dynastySlug = row.workflowDynastySlug;
   const ready = Boolean(featureSlug && brandId && dynastySlug);
+  // Every MEASURED ratio below is the half of the served maturity pair the reader is
+  // shown, with the producer's Learning verdict (lib/maturity.ts). Nothing is counted here.
+  const { basis } = useStatBasis();
+  const rowCost = workflowOutcomeCost(row, basis);
+  const rowRoi = workflowRoi(row, basis);
   const scopeLabel = campaignId ? "campaign" : "brand";
 
   // The drill-down body: the whole un-grouped answer, narrowed to this workflow — the
@@ -483,28 +513,37 @@ export function WorkflowRankPanel({
   const siblingRows = useMemo(
     () =>
       siblings
-        .filter((r) => !r.learning && workflowOutcomeCostCents(r) != null)
-        .map((r) => {
+        .map((r) => ({ r, cost: workflowOutcomeCost(r, basis) }))
+        .filter(({ cost }) => !cost.learning && cost.value != null)
+        .map(({ r, cost }) => {
           // The model is what two sibling rows routinely differ BY, so a price
           // comparison that does not name it hides the variable it is about.
           const m = workflowModelMark(r.contentModel);
           return {
             key: r.workflowDynastySlug,
             label: m ? `${r.workflowDynastyName} · ${m.label}` : r.workflowDynastyName,
-            value: workflowOutcomeCostCents(r),
+            value: cost.value,
             highlight: r.workflowDynastySlug === dynastySlug,
           };
         }),
-    [siblings, dynastySlug],
+    [siblings, dynastySlug, basis],
   );
 
+  // This workflow's own pair and the fleet's SERVED best and median (over mature
+  // workflows): the browser ranks nothing and takes no median.
   const fleet = useMemo(
-    () => fleetComparison(dynastySlug, fleetQ.data ?? []),
-    [dynastySlug, fleetQ.data],
+    () => fleetComparison(dynastySlug, fleetQ.data, basis),
+    [dynastySlug, fleetQ.data, basis],
   );
   const fleetRows = useMemo(
     () => [
-      { key: "mine", label: row.workflowDynastyName, value: fleet.mine, highlight: true, note: "Not measured" },
+      {
+        key: "mine",
+        label: row.workflowDynastyName,
+        value: fleet.mine.value,
+        highlight: true,
+        note: fleet.mine.learning ? "Learning" : "Not measured",
+      },
       { key: "best", label: "Best workflow on this channel", value: fleet.best, note: "Not measured" },
       { key: "median", label: "Median workflow on this channel", value: fleet.median, note: "Not measured" },
     ],
@@ -574,13 +613,30 @@ export function WorkflowRankPanel({
           </div>
           <p className="mt-3 text-sm text-gray-700">{ranked.why}</p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <Figure
-              label={`Estimated cost per ${outcomeNoun.toLowerCase()}`}
-              value={fmtUsd(ranked.estCostPerOutcomeUsd)}
-            />
+            {/* Both rest on the row's resolved figure, so the producer's verdict on it
+                decides both: Learning replaces the two together, never one beside a price. */}
+            <div>
+              <span className="text-gray-500">{`Estimated cost per ${outcomeNoun.toLowerCase()}`}</span>
+              <p className="font-medium text-gray-900">
+                {ranked.estLearning ? (
+                  <LearningTag withInfo={false} paused={paused} />
+                ) : (
+                  fmtUsd(ranked.estCostPerOutcomeUsd)
+                )}
+              </p>
+            </div>
             {/* The ladder's OWN return, served. An unmeasured row states none at all —
                 an explore allowance is a cost floor, not a result to divide into. */}
-            <Figure label="Return on spend" value={formatRoi(ladder?.roiMultiple ?? null)} />
+            <div>
+              <span className="text-gray-500">Return on spend</span>
+              <p className="font-medium text-gray-900">
+                {ranked.estLearning ? (
+                  <LearningTag withInfo={false} paused={paused} />
+                ) : (
+                  formatRoi(ladder?.roiMultiple ?? null)
+                )}
+              </p>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
             <WorkflowModelCell contentModel={row.contentModel} />
@@ -610,6 +666,8 @@ export function WorkflowRankPanel({
                   block={ladderRow?.estimatesByGrain[g.key]}
                   used={usedGrain === g.key}
                   outcomeNoun={outcomeNoun}
+                  basis={basis}
+                  paused={paused}
                   brandDomain={brandDomain}
                   brandLogoUrl={brandLogoUrl}
                 />
@@ -624,6 +682,7 @@ export function WorkflowRankPanel({
               rows={audienceRows}
               audienceById={audienceById}
               outcomeNoun={outcomeNoun}
+              paused={paused}
             />
           </Card>
         )}
@@ -633,13 +692,13 @@ export function WorkflowRankPanel({
             <Figure label={outcomeNoun} value={fmtCount(workflowOutcomeCount(row))} />
             <div>
               <span className="text-gray-500">Cost per {outcomeNoun.toLowerCase()}</span>
-              {row.learning ? (
+              {rowCost.learning ? (
                 <p className="mt-0.5">
                   <LearningTag paused={paused} />
                 </p>
               ) : (
                 <p className="font-medium text-gray-900">
-                  {fmtCents(workflowOutcomeCostCents(row))}
+                  {fmtCents(rowCost.value)}
                 </p>
               )}
             </div>
@@ -664,7 +723,7 @@ export function WorkflowRankPanel({
             <RoiTrendCard
               history={revenue?.roiHistory ?? null}
               pending={bodyPending}
-              learning={Boolean(row.learning)}
+              learning={rowRoi.learning}
               paused={paused}
             />
           </div>

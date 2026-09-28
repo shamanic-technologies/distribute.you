@@ -99,6 +99,11 @@ export interface WorkflowLadderGrainBlock {
     outcomeObserved: boolean;
     spentUsd: number | null;
   } | null;
+  /** The grain's maturity pair (features-service#1196). A sentence quotes the OUTCOME
+   *  count of the half the reader is shown, so it describes the figure on screen. */
+  flash?: { outcomes: number; spentUsd: number | null } | null;
+  mature?: { outcomes: number; spentUsd: number | null } | null;
+  isMature?: boolean | null;
 }
 
 /** One ladder row, narrowed to what a rank and a sentence need. */
@@ -107,7 +112,15 @@ export interface WorkflowLadderRow {
   measured: boolean;
   grain: WorkflowLadderGrain | null;
   costBasis: WorkflowLadderCostBasis | null;
+  /** On a MEASURED row: the served half of the row's resolved maturity pair on the
+   *  reader's basis (null while `learning`). On an unmeasured row: the explore
+   *  allowance, a floor that is only ever rendered as "from $X". */
   costPerOutcomeUsd: number | null;
+  /** TRUE only where the producer says this row's resolved figure is not mature. */
+  learning?: boolean;
+  /** Which half of every grain's pair the sentence quotes. Mature unless a staff reader
+   *  flipped the page to flash. */
+  basis?: "mature" | "flash";
   /** The resolved return, served. Null on an unmeasured row and where economics are absent. */
   roiMultiple: number | null;
   estimatesByGrain: {
@@ -152,8 +165,10 @@ export interface RankedWorkflow<T> {
    *  per-audience list is ordered and numbered on, because it ascends on the figure
    *  that list displays where `rank` does not. */
   scopeRank: number | null;
-  /** `resolved.costPerOutcomeUsd`, verbatim. Null = the ladder states none. */
+  /** The served resolved figure on the reader's basis. Null = the ladder states none. */
   estCostPerOutcomeUsd: number | null;
+  /** TRUE where the producer says the resolved figure is not mature: `Learning`. */
+  estLearning: boolean;
   /** False for an explore row and for a row the ladder does not carry. */
   measured: boolean;
   /** This is the producer's own pick (`recommendedWorkflowDynastySlug`). */
@@ -171,10 +186,16 @@ export interface RankedWorkflow<T> {
 export function observedOutcomeAt(
   grain: WorkflowLadderGrainBlock | undefined,
   outcomeStepKey: string | null | undefined,
+  basis: "mature" | "flash" = "mature",
 ): number | null {
   if (!grain) return null;
   const field = outcomeStepKey ? OBSERVED_BY_STEP_KEY[outcomeStepKey] : undefined;
   if (!field) return null;
+  // A grain carrying its maturity pair states the count behind the half on screen.
+  if (grain.isMature !== undefined) {
+    const half = basis === "flash" ? grain.flash : grain.mature;
+    return half ? half.outcomes : null;
+  }
   const value = grain.evidence[field];
   return typeof value === "number" ? value : null;
 }
@@ -244,6 +265,13 @@ export function workflowRankWhy(
   // Plural stated, never derived: an English pluraliser is a rule we would be inventing,
   // and it produced "positive replys" the first time the noun was not a regular one.
   const plural = opts.outcomeNounPlural.toLowerCase();
+
+  // The producer says the price this row would state is not mature: the outreach old
+  // enough for its answers to have arrived has not produced enough of them. No price is
+  // quoted, and no count of ours is compared with anything.
+  if (ladder.learning) {
+    return `${lead}Still learning: the outreach old enough to judge has not produced enough ${plural} yet to price.`.trim();
+  }
   const priced =
     ladder.costPerOutcomeUsd == null ? null : opts.formatUsd(ladder.costPerOutcomeUsd);
 
@@ -259,7 +287,11 @@ export function workflowRankWhy(
     // them, which is the one sentence on the row a reader would act on.
     ladder.grain === "campaign"
   ) {
-    const observed = observedOutcomeAt(blockFor(ladder, ladder.grain), opts.outcomeStepKey);
+    const observed = observedOutcomeAt(
+      blockFor(ladder, ladder.grain),
+      opts.outcomeStepKey,
+      ladder.basis ?? "mature",
+    );
     const whose =
       ladder.grain === "audience"
         ? "One of your audiences"
@@ -373,6 +405,7 @@ export function rankWorkflowRows<T extends { workflowDynastySlug: string; runnin
       rank: ladder?.rank ?? null,
       scopeRank: ladder?.scopeRank ?? null,
       estCostPerOutcomeUsd: ladder?.costPerOutcomeUsd ?? null,
+      estLearning: ladder?.learning ?? false,
       measured: ladder?.measured ?? false,
       recommended,
       why: workflowRankWhy(ladder, {

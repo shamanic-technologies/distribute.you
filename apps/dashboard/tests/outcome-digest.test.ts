@@ -6,6 +6,7 @@ import {
   sendOutcomeDigestEmails,
   type DigestFetch,
 } from "../src/lib/outcome-digest";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -97,7 +98,7 @@ describe("daily outcome digest", () => {
     return {
       featureSlug: "sales-cold-email-outreach",
       headline: { totalPipelineUsd: 12500 },
-      costEconomics: { committedCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
+      costEconomics: { maturity: NULL_PAIR, committedCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
       // The digest only fires when the return went UP on the day, so every fixture
       // that expects a send carries an improving curve. Both figures are served —
       // the email prints these two points and computes nothing.
@@ -408,6 +409,7 @@ describe("daily outcome digest", () => {
           featureSlug: "sales-cold-email-outreach",
           headline: { totalPipelineUsd: 0 },
           costEconomics: {
+            maturity: NULL_PAIR,
             committedCostUsd: 0,
             costOfAcquisitionPct: null,
             roiMultiple: null,

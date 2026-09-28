@@ -32,14 +32,29 @@
  * write a single email here, and offering it as a top pick would state a price nothing
  * reaches. Same reason the cost curve's floor is taken after that filter.
  *
- * Alias-free (no imports at all) so it carries real unit tests. Keep it that way.
+ * ── THE PRICE IS THE SERVED MATURE FIGURE, AND ITS `Learning` IS THE PRODUCER'S ──────
+ *
+ * The winning row's price is the mature half of its served pair (`row.maturity.resolved`,
+ * features-service#1196), and a row the producer says is not mature reads `Learning`
+ * rather than a thin figure. No pair means no price, never the legacy field.
+ *
+ * Alias-free (one relative import) so it carries real unit tests. Keep it that way.
  */
+import { shownFigure, type StatBasis } from "./maturity";
 
 /** The shape this module reads off a ladder row — structural, so the reader owns the type. */
 export interface TopModelLadderRow {
   audienceId: string | null;
   workflow: { workflowDynastySlug: string };
   resolved: { costPerOutcomeUsd?: number | null };
+  /** The resolved figure on both bases with the producer's verdict (features-service#1196). */
+  maturity?: {
+    resolved: {
+      flash: { costPerOutcomeUsd: number | null } | null;
+      mature: { costPerOutcomeUsd: number | null } | null;
+      isMature: boolean | null;
+    };
+  } | null;
   scopeRank?: number | null;
   measured?: boolean;
   modelEligibility?: { modelAlias?: string | null } | null;
@@ -51,8 +66,10 @@ export interface TopModelRow {
   alias: string;
   /** The producer's own position of the winning row within the campaign column. */
   scopeRank: number;
-  /** That row's own cost per outcome, in dollars. Null when the row states none. */
+  /** That row's own cost per outcome, in dollars, on the reader's basis. Null when none. */
   costPerOutcomeUsd: number | null;
+  /** The producer says the winning row is not mature yet: the price reads `Learning`. */
+  learning: boolean;
   /** The dynasty the winning row belongs to — for a `title`, never rendered as a name. */
   workflowDynastySlug: string;
   /** How many of the campaign's workflows name this alias, the winner included. */
@@ -77,8 +94,12 @@ export function topModels(args: {
   hiddenSlugs?: ReadonlySet<string>;
   /** How many to return. The card asks for three. */
   limit?: number;
+  /** Which half of the served pair a reader is shown; every customer reads `mature`. */
+  basis?: StatBasis;
 }): TopModelRow[] {
   const hidden = args.hiddenSlugs ?? new Set<string>();
+  const price = (row: TopModelLadderRow) =>
+    shownFigure(row.maturity?.resolved, (h) => h.costPerOutcomeUsd, args.basis ?? "mature");
   const best = new Map<string, TopModelRow>();
 
   for (const row of args.rows) {
@@ -93,10 +114,12 @@ export function topModels(args: {
 
     const current = best.get(alias);
     if (current === undefined) {
+      const shown = price(row);
       best.set(alias, {
         alias,
         scopeRank,
-        costPerOutcomeUsd: row.resolved.costPerOutcomeUsd ?? null,
+        costPerOutcomeUsd: shown.value,
+        learning: shown.learning,
         workflowDynastySlug: slug,
         workflowCount: 1,
       });
@@ -107,7 +130,9 @@ export function topModels(args: {
     if (scopeRank < current.scopeRank) {
       current.scopeRank = scopeRank;
       // The price travels WITH the position: both come off the row that won.
-      current.costPerOutcomeUsd = row.resolved.costPerOutcomeUsd ?? null;
+      const shown = price(row);
+      current.costPerOutcomeUsd = shown.value;
+      current.learning = shown.learning;
       current.workflowDynastySlug = slug;
     }
   }

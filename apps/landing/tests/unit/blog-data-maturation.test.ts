@@ -74,10 +74,16 @@ describe("no outcome maths includes an email younger than the window at the wind
     for (const consumer of ["function cutsFor(", "const linked = facts.filter", "workflows: bestWorkflows(facts)"]) {
       expect(src.indexOf(consumer), consumer).toBeGreaterThan(filter);
     }
-    // the research block keeps its own rows (one leg each) and filters them the same way, before
-    // any cost per email is computed and before any study is cut
-    const researchFilter = src.indexOf("const mature = researchRows.filter((r) => isMature(r._sentAt, maturation.cutoff));");
+    // the research block keeps its own rows (one leg each) and filters them on features-service's
+    // rule (features-service#1196): the run that served the lead STARTED at least the leg's
+    // published duration before the end, read from /public/channels, never re-measured here.
+    // Before any cost per email is computed and before any study is cut.
+    expect(src).toContain("const researchCutoff = (leg) => maturationCutoff(WINDOW.to, LEG_MATURITY.get(leg).durationDays);");
+    const researchFilter = src.indexOf("const mature = researchRows.filter((r) => {");
     expect(researchFilter).toBeGreaterThan(0);
+    expect(src.slice(researchFilter, researchFilter + 900)).toContain("if (day >= researchCutoff(r.leg)) { young++; return false; }");
+    // the research rows never pass through the articles' measured window
+    expect(src).not.toContain("researchRows.filter((r) => isMature(r._sentAt");
     for (const consumer of ["r.cost = spend / emailsByVersionLeg.get(k);", "reply: researchFor(research.herald)", "visit: researchFor(research.scout)"]) {
       expect(src.indexOf(consumer), consumer).toBeGreaterThan(researchFilter);
     }

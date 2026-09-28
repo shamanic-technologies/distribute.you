@@ -343,8 +343,14 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * groups after it was already persisted, and the CRM page crashed on
  * `Cannot read properties of undefined (reading 'name')` for any browser holding
  * the older snapshot.
+ *
+ * "3": every money read gained its REQUIRED maturity pair (features-service#1196):
+ * `costEconomics.maturity`, `spend.maturity`, `outcomes.maturity`, the audience rows'
+ * `metrics.maturity` / `projection.maturity`, the offer outcomes' `maturity`, and the
+ * fleet read's shape (`{ workflows, fleet }`). Components dereference them, so an older
+ * snapshot would throw on first paint.
  */
-const PERSIST_CACHE_VERSION = "2";
+const PERSIST_CACHE_VERSION = "3";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;

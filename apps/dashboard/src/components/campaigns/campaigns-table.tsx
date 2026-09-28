@@ -16,15 +16,14 @@ import {
   type Campaign,
   type CampaignRevenueGroup,
 } from "@/lib/api";
-import { stepsFor } from "@/lib/goal-steps";
-import { isLearning } from "@/lib/learning-threshold";
+import { pairIsLearning } from "@/lib/maturity";
 import { LearningTag } from "@/components/learning-tag";
 import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { legFor, type LegCatalogue } from "@/lib/legs";
+import { legFor } from "@/lib/legs";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
@@ -217,51 +216,16 @@ export interface CampaignRow {
   /** billing's ceiling for THIS campaign, in cents. Null = billing had no answer. */
   budgetCents: number | null;
   /**
-   * Whether this row's three PROJECTIONS rest on too little evidence to state.
-   *
-   * ROI, % CAC and the expected revenue are all derived from the outcomes the campaign
-   * has produced so far, so under ten of them they are decided by whichever one landed
-   * and swing by whole multiples on the next. Same bar as every other per-outcome figure
-   * in the dashboard (`lib/learning-threshold.ts`).
+   * Whether this row's ratios (ROI, % CAC) are still LEARNING: the producer's own verdict
+   * on this campaign's mature cohort (`costEconomics.maturity.isMature: false`,
+   * lib/maturity.ts). Nothing here counts outcomes against a bar: the duration and the
+   * count are the producer's, per leg, and a second judge is how one campaign came to
+   * state four different costs per positive reply on four screens.
    *
    * `$ Invested` and `$ Budget` are NEVER gated by it: one is money already spent and the
-   * other a ceiling the customer set, and neither is derived from an outcome count.
+   * other a ceiling the customer set, and neither is a ratio.
    */
   learning: boolean;
-  /**
-   * The measured outcomes behind this row, verbatim off the producer's group.
-   *
-   * `undefined` = the producer did not answer the volume half, which is not zero. The
-   * Campaigns page reads it to pick which campaign the learning band describes — the
-   * one CLOSEST to the bar, since the scope clears the moment any one campaign does.
-   */
-  signal: number | null | undefined;
-}
-
-/**
- * The outcome a campaign's projections rest on: the step of its leg that is actually
- * MEASURED — a positive reply or a website visit.
- *
- * Not a tracked step (a booked meeting, a signup): those need the brand's
- * conversion tracker to be live and are legitimately 0 for most campaigns, so gating on
- * them would print `Learning` forever on a campaign that is measurably working.
- *
- * Read verbatim off the group features-service already serves — the browser counts
- * nothing. `undefined` (the producer did not answer the volume half, or this row has no
- * group) is NOT zero: the caller treats it as "cannot tell" and leaves the row exactly as
- * it reads today.
- */
-function campaignSignalCount(
-  campaign: Campaign,
-  group: CampaignRevenueGroup | null,
-  catalogue: LegCatalogue,
-): number | null | undefined {
-  if (!group) return undefined;
-  const steps = stepsFor(null, legFor(catalogue, campaign.legKey));
-  const has = (key: string) => steps.some((step) => step.key === key);
-  if (has("positive_replies")) return group.positiveReplies;
-  if (has("website_visits")) return group.websiteClicks;
-  return undefined;
 }
 
 /**
@@ -313,7 +277,6 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () =>
     getBrandCampaignBudgets(brandId),
   );
-  const catalogue = useLegCatalogue();
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
   // The table is the campaigns a brand HAS on THIS feature — one line per campaign,
@@ -460,14 +423,12 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const rows = useMemo<CampaignRow[]>(() => {
     const joined = listedCampaigns.map((c) => {
       const revenue = groupsById.get(c.id) ?? null;
-      const signal = campaignSignalCount(c, revenue, catalogue);
       return {
         campaign: c,
         revenue,
         budgetCents: campaignBudgetCents(c, budgets, channels),
-        // A count the producer did not answer cannot say the row is thin.
-        learning: signal === undefined ? false : isLearning(signal),
-        signal,
+        // No group, or a producer that cannot judge (`isMature: null`), is not Learning.
+        learning: pairIsLearning(revenue?.economicsMaturity),
       };
     });
     return joined.sort((a, b) => {
@@ -481,11 +442,12 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       if (byLearning !== 0) return byLearning;
       const byRoi = a.learning
         ? 0
-        : (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+        : (b.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1) -
+          (a.revenue?.economicsMaturity?.mature?.roiMultiple ?? -1);
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
-  }, [listedCampaigns, groupsById, budgets, channels, catalogue]);
+  }, [listedCampaigns, groupsById, budgets, channels]);
 
   // The rows that are RUNNING, for the surfaces whose question is about live
   // campaigns rather than about the brand's campaigns: the Campaigns page's "#1
@@ -638,9 +600,9 @@ function CampaignsTableInner({
                     unreliable one. Withholding it would hide a real figure behind a word
                     about precision it does not have a precision problem with. */}
                 <td className="px-4 py-3 text-right">
-                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.roiMultiple} />}
+                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.economicsMaturity?.mature?.roiMultiple} />}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.economicsMaturity?.mature?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group — the exact number the ROI and %CAC beside it

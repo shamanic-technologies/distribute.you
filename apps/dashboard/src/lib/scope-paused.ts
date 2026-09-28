@@ -33,8 +33,7 @@ export function scopeIsPaused(rows: readonly { running: boolean }[]): boolean {
  * The same verdict per OFFER, for a table that lists several at once.
  *
  * Hooks are not loopable, so a row cannot ask for its own scope — the map is built once
- * from the brand's rows and read per row, the same shape `useOfferLearning` uses for the
- * learning half of the same cell.
+ * from the brand's rows and read per row.
  *
  * A campaign carrying no offer belongs to none and is left out rather than folded into
  * whichever offer the reader happens to be looking at — the rule `buildControlRows`

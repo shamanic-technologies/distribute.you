@@ -186,7 +186,7 @@ describe("the three grain TABS are gone, and the matrix replaced them", () => {
     ]) {
       expect(TABLE, gone).not.toContain(gone);
     }
-    expect(TABLE).toContain("buildMatrixCellIndex(matrixRows)");
+    expect(TABLE).toContain("buildMatrixCellIndex(matrixRows, basis)");
     expect(TABLE).toContain("(ladderQ.data?.rows ?? []) as unknown as MatrixLadderRow[]");
   });
 
@@ -342,7 +342,7 @@ describe("THE PER-AUDIENCE LIST reads scopeRank, the position that ascends on it
   });
 
   it("the ladder it ranks on is that scope's own column", () => {
-    expect(TABLE).toContain("ladderRowsForScope(ladderQ.data, scope)");
+    expect(TABLE).toContain("ladderRowsForScope(ladderQ.data, scope, basis)");
   });
 
   it("an unknown scope in the URL is NOT a scope", () => {
@@ -582,7 +582,7 @@ describe("nothing is computed in the browser", () => {
     // `legOutcome` is the producer's per-grain block for the leg the request named —
     // the cost, the count and the spend behind them. The page picks a block and renders
     // its fields; it computes none of them.
-    expect(TABLE).toContain("scopeFigures(bySlug.get(r.row.workflowDynastySlug) ?? null, audienceId)");
+    expect(TABLE).toContain("scopeFigures(bySlug.get(r.row.workflowDynastySlug) ?? null, audienceId, basis)");
     expect(TABLE).toContain("grainFigures(");
     expect(TABLE).toContain("fmtUsd(figures.costPerOutcomeUsd)");
     expect(TABLE).toContain("fmtCount(figures.outcomeCount)");
@@ -609,8 +609,12 @@ describe("a figure the producer could not measure reads as absent, never zero", 
 });
 
 describe("the learning bar is the repo's ONE bar", () => {
-  it("the page imports it rather than restating a threshold", () => {
-    expect(TABLE).toContain('import { isLearning } from "@/lib/learning-threshold"');
+  it("the page states the producer's verdict and restates no threshold", () => {
+    // features-service#1196: Learning is served per grain and per resolved figure.
+    expect(TABLE).not.toContain("learning-threshold");
+    expect(TABLE).not.toContain("isLearning(");
+    expect(TABLE).toContain("figures.learning ?");
+    expect(TABLE).toContain("ranked.estLearning ?");
     expect(TABLE).not.toMatch(/>=?\s*10\b/);
   });
 

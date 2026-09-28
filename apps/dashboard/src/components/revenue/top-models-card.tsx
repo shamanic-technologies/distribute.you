@@ -6,6 +6,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import type { TopModelRow } from "@/lib/top-models";
+import { LearningTag } from "@/components/learning-tag";
 
 /**
  * THE THREE LLMs WRITING THIS CAMPAIGN'S EMAILS FOR THE LEAST MONEY.
@@ -30,6 +31,7 @@ import type { TopModelRow } from "@/lib/top-models";
 export function TopModelsCard({
   models,
   outcomeLabel,
+  paused = false,
   pending = false,
 }: {
   /** Already ordered and capped by `topModels`. */
@@ -40,6 +42,8 @@ export function TopModelsCard({
    * noun this card picked.
    */
   outcomeLabel?: string | null;
+  /** The campaign is stopped, so a withheld price reads `Paused` rather than `Learning`. */
+  paused?: boolean;
   pending?: boolean;
 }) {
   const label = outcomeLabel ? `Cost per ${outcomeLabel.toLowerCase()}` : "Cost per outcome";
@@ -100,9 +104,14 @@ export function TopModelsCard({
                   </span>
                 )}
               </span>
-              <span className="text-sm font-medium text-gray-800 tabular-nums">
-                {row.costPerOutcomeUsd != null ? formatUsdAdaptive(row.costPerOutcomeUsd) : "-"}
-              </span>
+              {row.learning ? (
+                // The producer says this model's best workflow is not mature yet here.
+                <LearningTag withInfo={false} paused={paused} />
+              ) : (
+                <span className="text-sm font-medium text-gray-800 tabular-nums">
+                  {row.costPerOutcomeUsd != null ? formatUsdAdaptive(row.costPerOutcomeUsd) : "-"}
+                </span>
+              )}
             </div>
           );
         })

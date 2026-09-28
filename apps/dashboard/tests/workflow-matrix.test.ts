@@ -32,13 +32,30 @@ function cell(
   audienceId: string | null,
   cost: number | null,
   grain: MatrixGrain | null,
-  opts: { measured?: boolean; rank?: number | null; scopeRank?: number | null } = {},
+  opts: {
+    measured?: boolean;
+    rank?: number | null;
+    scopeRank?: number | null;
+    isMature?: boolean | null;
+    flashCost?: number | null;
+  } = {},
 ): MatrixLadderRow {
+  const measured = opts.measured ?? true;
   return {
     audienceId,
     workflow: { workflowDynastySlug: slug },
     resolved: { grain, costPerOutcomeUsd: cost },
-    measured: opts.measured ?? true,
+    // The served pair (features-service#1196). An unmeasured row carries null halves.
+    maturity: {
+      resolved: measured
+        ? {
+            flash: { grain, costPerOutcomeUsd: opts.flashCost ?? cost },
+            mature: { grain, costPerOutcomeUsd: cost },
+            isMature: opts.isMature ?? true,
+          }
+        : { flash: null, mature: null, isMature: null },
+    },
+    measured,
     rank: opts.rank ?? null,
     scopeRank: opts.scopeRank ?? null,
   };
@@ -185,7 +202,29 @@ describe("a CELL is a served figure, addressed by (workflow, column)", () => {
       grain: "audience",
       measured: true,
       scopeRank: 1,
+      learning: false,
     });
+  });
+
+  it("states Learning, and no figure, where the producer says the cell is not mature", () => {
+    const idx = buildMatrixCellIndex([cell("w", "a1", 42, "audience", { isMature: false, scopeRank: 1 })]);
+    const c = idx.get(matrixCellKey("w", "a1"))!;
+    expect(c.learning).toBe(true);
+    expect(c.costPerOutcomeUsd).toBeNull();
+    // it still says whose evidence it would rest on
+    expect(c.grain).toBe("audience");
+  });
+
+  it("states the FLASH half on the staff basis, never tagged", () => {
+    const idx = buildMatrixCellIndex([cell("w", "a1", 42, "audience", { isMature: false, flashCost: 17 })], "flash");
+    expect(idx.get(matrixCellKey("w", "a1"))).toMatchObject({ costPerOutcomeUsd: 17, learning: false });
+  });
+
+  it("a row with no pair states nothing: the legacy figure has no verdict beside it", () => {
+    const bare: MatrixLadderRow = { ...cell("w", null, 42, "campaign"), maturity: undefined };
+    const c = buildMatrixCellIndex([bare]).get(matrixCellKey("w", null))!;
+    expect(c.costPerOutcomeUsd).toBeNull();
+    expect(c.learning).toBe(false);
   });
 
   it("a pair the ladder does not carry is ABSENT, never a fabricated zero", () => {

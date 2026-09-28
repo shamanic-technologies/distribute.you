@@ -9,8 +9,9 @@ import path from "path";
 import { describe, it, expect } from "vitest";
 import {
   buildCampaignWorkflowRows,
-  workflowOutcomeCostCents,
+  workflowOutcomeCost,
   workflowOutcomeCount,
+  workflowRoi,
   workflowOutcomePairFor,
   collapseWorkflowCatalogue,
   runningDynastyFor,
@@ -18,15 +19,24 @@ import {
   leadWorkflowIdentity,
   fleetComparison,
   type CampaignWorkflowRow,
-  type FleetWorkflowCost,
+  type FleetRead,
   type WorkflowCatalogueRow,
   type WorkflowDynastyMembership,
   type WorkflowRevenueGroup,
 } from "../src/lib/campaign-workflow-rows";
 
-const LEARNING_BAR = 10;
-const isLearning = (n: number | null | undefined) =>
-  typeof n !== "number" || n < LEARNING_BAR;
+// The served maturity pairs (features-service#1196). The row states the MATURE half and is
+// Learning exactly where the producer says `isMature: false`; nothing here counts outcomes.
+const matureEconomics = (roiMultiple: number | null, isMature: boolean | null = true) => ({
+  flash: { roiMultiple, costOfAcquisitionPct: 25, costPerAcquisitionUsd: null },
+  mature: { roiMultiple, costOfAcquisitionPct: 25, costPerAcquisitionUsd: null },
+  isMature,
+});
+const matureOutcomes = (cpprCents: number | null, cpcCents: number | null, isMature: boolean | null = true) => ({
+  flash: { cpprCents, cpcCents },
+  mature: { cpprCents, cpcCents },
+  isMature,
+});
 
 function cat(over: Partial<WorkflowCatalogueRow> = {}): WorkflowCatalogueRow {
   return {
@@ -57,6 +67,8 @@ function grp(over: Partial<WorkflowRevenueGroup> = {}): WorkflowRevenueGroup {
     recipientsRepliesPositive: 12,
     cpprCents: 200,
     cpcCents: 100,
+    economicsMaturity: matureEconomics(4),
+    outcomesMaturity: matureOutcomes(200, 100),
     ...over,
   };
 }
@@ -79,6 +91,8 @@ function row(over: Partial<CampaignWorkflowRow> = {}): CampaignWorkflowRow {
     audienceType: "cold-outreach",
     contentModel: null,
     contentPromptType: null,
+    economicsMaturity: null,
+    outcomesMaturity: null,
     ...over,
   };
 }
@@ -134,7 +148,6 @@ describe("buildCampaignWorkflowRows", () => {
       groups: [grp({ workflowDynastySlug: "chan-retired", workflowDynastyName: "Retired" })],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
-      isLearning,
     });
     expect(rows.map((r) => r.workflowDynastySlug)).toEqual(["chan-offered"]);
   });
@@ -148,7 +161,6 @@ describe("buildCampaignWorkflowRows", () => {
       groups: [grp()],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
-      isLearning,
     });
     expect(rows).toEqual([]);
   });
@@ -159,7 +171,6 @@ describe("buildCampaignWorkflowRows", () => {
       groups: [],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
-      isLearning,
     });
     expect(rows[0].cpprCents).toBeNull();
     expect(rows[0].committedCostUsd).toBeNull();
@@ -169,23 +180,39 @@ describe("buildCampaignWorkflowRows", () => {
     expect(rows[0].learning).toBe(false);
   });
 
-  it("states LEARNING under the bar and not at or above it", () => {
-    const thin = buildCampaignWorkflowRows({
+  it("states LEARNING exactly where the producer says the group is not mature", () => {
+    const build = (isMature: boolean | null) =>
+      buildCampaignWorkflowRows({
+        catalogue: [cat()],
+        // A count far past any bar changes nothing: the verdict is served, never counted.
+        groups: [grp({ recipientsRepliesPositive: 500, economicsMaturity: matureEconomics(4, isMature) })],
+        running: { dynastySlug: null, dynastyName: null },
+        pair: "reply",
+      })[0];
+    expect(build(false).learning).toBe(true);
+    expect(build(true).learning).toBe(false);
+    // "cannot judge" is not Learning
+    expect(build(null).learning).toBe(false);
+  });
+
+  it("states the MATURE figures, and nothing where the producer says Learning", () => {
+    const [measured] = buildCampaignWorkflowRows({
       catalogue: [cat()],
-      groups: [grp({ recipientsRepliesPositive: 9 })],
+      groups: [grp({ economicsMaturity: matureEconomics(3.5), outcomesMaturity: matureOutcomes(4200, 900) })],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
-      isLearning,
     });
-    expect(thin[0].learning).toBe(true);
-    const measured = buildCampaignWorkflowRows({
+    expect(workflowOutcomeCost(measured, "mature")).toEqual({ value: 4200, learning: false });
+    expect(workflowRoi(measured, "mature")).toEqual({ value: 3.5, learning: false });
+    const [thin] = buildCampaignWorkflowRows({
       catalogue: [cat()],
-      groups: [grp({ recipientsRepliesPositive: 10 })],
+      groups: [grp({ outcomesMaturity: matureOutcomes(4200, 900, false) })],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
-      isLearning,
     });
-    expect(measured[0].learning).toBe(false);
+    expect(workflowOutcomeCost(thin, "mature")).toEqual({ value: null, learning: true });
+    // the staff flash view states the flash half, never tagged
+    expect(workflowOutcomeCost(thin, "flash")).toEqual({ value: 4200, learning: false });
   });
 
   it("falls back to the slug when the catalogue names no dynasty", () => {
@@ -194,7 +221,6 @@ describe("buildCampaignWorkflowRows", () => {
       groups: [grp({ workflowDynastyName: null })],
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
-      isLearning,
     });
     expect(rows[0].workflowDynastyName).toBe("chan-legato");
   });
@@ -305,7 +331,6 @@ describe("a SUPERSEDED version is named by the channel's dynasty map, and by not
       groups: [prodGroup],
       running,
       pair: "reply",
-      isLearning,
     });
     expect(scoped.filter((r) => r.running).map((r) => r.workflowDynastySlug)).toEqual([RUDDER]);
     // And with NO groups in hand at all, which is what the map exists for: the two
@@ -365,7 +390,6 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
       groups: [retired],
       running,
       pair: "reply",
-      isLearning,
     });
     const row = rows.find((r) => r.workflowDynastySlug === "chan-tectonic")!;
     expect(row.running).toBe(true);
@@ -385,7 +409,6 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
       groups: [],
       running: { dynastySlug: "chan-legato", dynastyName: "Legato" },
       pair: "reply",
-      isLearning,
     });
     expect(rows.filter((r) => r.workflowDynastySlug === "chan-legato")).toHaveLength(1);
     expect(rows[0].running).toBe(true);
@@ -393,35 +416,55 @@ describe("the RUNNING workflow always gets a row, even once its lineage is retir
 });
 
 describe("fleetComparison", () => {
-  const fleet: FleetWorkflowCost[] = [
-    { workflowDynastySlug: "a", workflowDynastyName: "A", spentUsd: 10, costPerOutcomeUsd: 100, observedPositiveReplies: 1, observedClicks: 1 },
-    { workflowDynastySlug: "b", workflowDynastyName: "B", spentUsd: 10, costPerOutcomeUsd: 300, observedPositiveReplies: 1, observedClicks: 1 },
-    { workflowDynastySlug: "c", workflowDynastyName: "C", spentUsd: 10, costPerOutcomeUsd: 200, observedPositiveReplies: 1, observedClicks: 1 },
-  ];
-
-  it("takes the MEDIAN, never the mean — one absurd rate must not move it", () => {
-    const skewed = [...fleet, { workflowDynastySlug: "d", workflowDynastyName: "D", spentUsd: 1, costPerOutcomeUsd: 100000, observedPositiveReplies: 0, observedClicks: 0 }];
-    expect(fleetComparison("a", skewed).median).toBe(250);
+  // The fleet's best and median are SERVED (features-service, over MATURE workflows only):
+  // the browser takes no median and picks no best.
+  const fw = (slug: string, cost: number | null, isMature: boolean | null = true) => ({
+    workflowDynastySlug: slug,
+    workflowDynastyName: slug.toUpperCase(),
+    spentUsd: 10,
+    costPerOutcomeUsd: cost,
+    observedPositiveReplies: 1,
+    observedClicks: 1,
+    maturity: { flash: { costPerOutcomeUsd: cost }, mature: { costPerOutcomeUsd: cost }, isMature },
   });
+  const read: FleetRead = {
+    workflows: [fw("a", 100), fw("b", 300), fw("c", 200), fw("d", 100000, false)],
+    fleet: {
+      legKey: "start_to_conversation",
+      basis: "mature",
+      matureWorkflowCount: 3,
+      best: { workflowDynastySlug: "a", costPerOutcomeUsd: 100 },
+      median: { costPerOutcomeUsd: 200 },
+    },
+  };
 
-  it("reports this workflow's own rate and the fleet's best", () => {
-    const out = fleetComparison("c", fleet);
-    expect(out.mine).toBe(200);
+  it("states the SERVED best and median, never one it computed", () => {
+    const out = fleetComparison("c", read, "mature");
+    expect(out.mine).toEqual({ value: 200, learning: false });
     expect(out.best).toBe(100);
     expect(out.median).toBe(200);
   });
 
-  it("answers NULL rather than zero when the fleet has no priced row", () => {
-    const out = fleetComparison("a", [
-      { workflowDynastySlug: "a", workflowDynastyName: "A", spentUsd: 0, costPerOutcomeUsd: null, observedPositiveReplies: 0, observedClicks: 0 },
-    ]);
-    expect(out.mine).toBeNull();
+  it("states this workflow Learning where the producer says it is not mature", () => {
+    expect(fleetComparison("d", read, "mature").mine).toEqual({ value: null, learning: true });
+  });
+
+  it("answers NULL rather than zero when the fleet block is null", () => {
+    const out = fleetComparison("a", { workflows: [fw("a", null, null)], fleet: null }, "mature");
+    expect(out.mine).toEqual({ value: null, learning: false });
     expect(out.median).toBeNull();
     expect(out.best).toBeNull();
   });
 
   it("answers NULL for a workflow the fleet does not carry, without inventing one", () => {
-    expect(fleetComparison("missing", fleet).mine).toBeNull();
+    expect(fleetComparison("missing", read, "mature").mine.value).toBeNull();
+  });
+
+  it("states no mature best or median beside a FLASH figure", () => {
+    const out = fleetComparison("d", read, "flash");
+    expect(out.mine).toEqual({ value: 100000, learning: false });
+    expect(out.best).toBeNull();
+    expect(out.median).toBeNull();
   });
 });
 
@@ -448,46 +491,45 @@ describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
   it("counts and prices a VISIT-led campaign on its visits, never its replies", () => {
     const [row] = buildCampaignWorkflowRows({
       catalogue: [cat()],
-      groups: [grp({ recipientsRepliesPositive: 0, cpprCents: null, recipientsClicked: 412, cpcCents: 130 })],
+      groups: [
+        grp({
+          recipientsRepliesPositive: 0,
+          cpprCents: null,
+          recipientsClicked: 412,
+          cpcCents: 130,
+          outcomesMaturity: matureOutcomes(null, 130),
+        }),
+      ],
       running: { dynastySlug: null, dynastyName: null },
       pair: "visit",
-      isLearning,
     });
     expect(row.outcomePair).toBe("visit");
     expect(workflowOutcomeCount(row)).toBe(412);
-    expect(workflowOutcomeCostCents(row)).toBe(130);
+    expect(workflowOutcomeCost(row, "mature").value).toBe(130);
     // The reply figures are still carried verbatim — nothing is dropped, the row simply
     // states which of the two it is judged on.
     expect(row.positiveReplies).toBe(0);
   });
 
-  it("reads the LEARNING bar against the pair's own count", () => {
-    // 412 visits and zero replies: measured on a visit-led campaign, thin on a
-    // reply-led one. The bar cannot be read against a count the row is not about.
-    const groups = [grp({ recipientsRepliesPositive: 0, recipientsClicked: 412, cpcCents: 130 })];
-    const visit = buildCampaignWorkflowRows({
-      catalogue: [cat()],
-      groups,
-      running: { dynastySlug: null, dynastyName: null },
-      pair: "visit",
-      isLearning,
-    })[0];
-    const reply = buildCampaignWorkflowRows({
-      catalogue: [cat()],
-      groups,
-      running: { dynastySlug: null, dynastyName: null },
-      pair: "reply",
-      isLearning,
-    })[0];
-    expect(visit.learning).toBe(false);
-    expect(reply.learning).toBe(true);
+  it("reads the Learning verdict off the group, whichever pair the row states", () => {
+    // The producer judges the group on ITS leg; the page never re-judges it per pair.
+    const groups = [grp({ recipientsRepliesPositive: 0, recipientsClicked: 412, cpcCents: 130, economicsMaturity: matureEconomics(2, true) })];
+    for (const pair of ["visit", "reply"] as const) {
+      const r = buildCampaignWorkflowRows({
+        catalogue: [cat()],
+        groups,
+        running: { dynastySlug: null, dynastyName: null },
+        pair,
+      })[0];
+      expect(r.learning).toBe(false);
+    }
   });
 
   it("measures a VISIT-led scope on its VISITS, never on its replies", () => {
     // Plenty of replies and no visit at all is NOT measured on a campaign that buys
     // visits — the pair decides which count the row stands on.
     const visitRows = [
-      row({ workflowDynastySlug: "cheap", outcomePair: "visit", websiteClicks: 300, cpcCents: 120 }),
+      row({ workflowDynastySlug: "cheap", outcomePair: "visit", websiteClicks: 300, cpcCents: 120, outcomesMaturity: matureOutcomes(null, 120) }),
       row({
         workflowDynastySlug: "repliesOnly",
         outcomePair: "visit",
@@ -496,12 +538,13 @@ describe("the outcome pair is the campaign's own LEG, not its funnel", () => {
         websiteClicks: 0,
         outreach: 12,
         learning: true,
+        outcomesMaturity: matureOutcomes(100, null),
       }),
     ];
     expect(workflowOutcomeCount(visitRows[0])).toBe(300);
-    expect(workflowOutcomeCostCents(visitRows[0])).toBe(120);
+    expect(workflowOutcomeCost(visitRows[0], "mature").value).toBe(120);
     expect(workflowOutcomeCount(visitRows[1])).toBe(0);
-    expect(workflowOutcomeCostCents(visitRows[1])).toBeNull();
+    expect(workflowOutcomeCost(visitRows[1], "mature").value).toBeNull();
   });
 });
 

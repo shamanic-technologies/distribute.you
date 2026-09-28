@@ -8,6 +8,30 @@
 //
 // Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
 // from components reused in the public-report bundle.
+import type { MaturityPair } from "./maturity";
+
+/** The three ratios of a cost-economics block, as one half of its served maturity pair. */
+export interface EconomicsFigures {
+  roiMultiple: number | null;
+  costOfAcquisitionPct: number | null;
+  costPerAcquisitionUsd: number | null;
+}
+
+/** A grouped read's cost per visit and per positive reply, as one half of its maturity pair. */
+export interface OutcomeFigures {
+  cpcCents: number | null;
+  cpprCents: number | null;
+}
+
+/** The cost-per-outcome ratios of a spend block, as one half of its served maturity pair. */
+export interface SpendFigures {
+  totalCpcCents: number | null;
+  cpprCents: number | null;
+  cpsCents: number | null;
+  cpsmCents: number | null;
+  cpfsCents: number | null;
+  cpSaleCents: number | null;
+}
 
 /**
  * One step of the walk: how many reached it, what reaching it cost, and what share of
@@ -255,6 +279,12 @@ export interface CostEconomics {
   expectedConversions?: number | null;
   /** Lens-only: `committedCostUsd / expectedConversions`; null when expectedConversions is 0. */
   costPerConversionUsd?: number | null;
+  /**
+   * The three ratios above, served TWICE with the producer's verdict (lib/maturity.ts):
+   * `mature` is what every surface states, `isMature: false` is where it reads Learning.
+   * Nothing here is re-judged in the browser. Null when the body carried no pair.
+   */
+  maturity: MaturityPair<EconomicsFigures> | null;
 }
 
 /** One pre-computed cost source (descending) in the spend block. The card renders only
@@ -349,6 +379,12 @@ export interface Spend {
   /** REAL cost per sale, USD cents = committed spend ÷ `salesCount`.
    *  null when `salesCount` is 0 → the cost card renders "—". */
   cpSaleCents?: number | null;
+  /**
+   * The cost-per-outcome ratios above, served TWICE with the producer's verdict
+   * (lib/maturity.ts). A surface states `mature`, and `Learning` where `isMature` is false.
+   * Absent or null when the body carried no pair: the surface then states `—`.
+   */
+  maturity?: MaturityPair<SpendFigures> | null;
 }
 
 /**
@@ -549,6 +585,48 @@ export interface RevenueOverview {
    * no curve", never "it converts nothing" — the MEASURED zero lives on a point.
    */
   conversionRateHistory?: ConversionRateHistory | null;
+  /**
+   * THE SCOPE'S MATURITY (features-service#1196): the verdict every pair on this body
+   * repeats, and one entry per leg with that leg's figures on both bases. Null where the
+   * producer never read the lead population.
+   */
+  maturity?: ScopeMaturity | null;
+}
+
+/** The figures of ONE scope on ONE basis for one leg — observed accounting. */
+export interface LegOutcomeFigures {
+  /** Committed spend on the request's pricing. */
+  spentUsd: number;
+  /** Distinct leads reached. */
+  contacted: number;
+  /** Distinct leads that reached the leg's own outcome signal. */
+  outcomes: number;
+  /** `spentUsd / outcomes`. Null at 0 outcomes or 0 spend, never a floor. */
+  costPerOutcomeUsd: number | null;
+  /** `100 × outcomes / contacted`. Null only at 0 contacted. */
+  conversionRatePct: number | null;
+}
+
+/** One leg of a scope, both bases and the leg's own rule. */
+export interface ScopeLegMaturity extends MaturityPair<LegOutcomeFigures> {
+  legKey: string | null;
+  durationDays: number;
+  outcomesRequired: number;
+  outcomeSignal: string | null;
+  source: string;
+}
+
+/** The scope's verdict and its legs. */
+export interface ScopeMaturity {
+  isMature: boolean | null;
+  legs: ScopeLegMaturity[];
+}
+
+/** One basis of a scope's conversion (features-service#1196). */
+export interface ConversionRateFigures {
+  contacted: number;
+  outcomes: number;
+  conversionRatePct: number | null;
 }
 
 /** One UTC day of the curve. BOTH legs are cumulative since the scope's first day. */
@@ -629,9 +707,11 @@ export interface ConversionRateHistory {
    */
   undatedContacted: number;
   undatedOutcomes: number;
-  /** The WHOLE scope's rate — the headline. Served precisely so no browser divides two
-   *  of the producer's fields to obtain it. Null when there is no denominator at all. */
+  /** The WHOLE scope's rate to date. Served precisely so no browser divides two of the
+   *  producer's fields to obtain it. Null when there is no denominator at all. */
   scopeConversionRatePct: number | null;
+  /** The scope's conversion on both bases and its verdict. The headline states `mature`. */
+  maturity?: MaturityPair<ConversionRateFigures>;
 }
 
 /**

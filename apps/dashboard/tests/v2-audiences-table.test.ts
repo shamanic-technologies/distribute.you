@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   audienceColumns,
-  audienceCostIsLearning,
+  audienceFigure,
   formatAudienceCents,
   sortAudiences,
   type AudienceColumnFlags,
@@ -24,12 +24,36 @@ const OFF: AudienceColumnFlags = {
 };
 
 const audience = (id: string, name: string): AudienceWire => ({ id, name, status: "active" }) as unknown as AudienceWire;
-const stats = (replies: number, cppr: number | null, spent = 1000): FeatureAudienceStatsRow =>
+// A row carrying its served maturity pairs (features-service#1196). The verdict is the
+// producer's: `isMature` decides Learning, never a count against a bar.
+const stats = (
+  replies: number,
+  cppr: number | null,
+  isMature: boolean | null = true,
+  spent = 1000,
+): FeatureAudienceStatsRow =>
   ({
     audienceId: "",
     audience: { id: "" },
     evidence: { positiveReplies: replies, websiteClicks: 0, contacted: 10, totalCostInUsdCents: spent },
-    metrics: { cpprCents: cppr, cpcCents: null },
+    // the legacy floored ranking figures: never stated, never sorted on
+    metrics: {
+      cpprCents: 1,
+      cpcCents: null,
+      maturity: {
+        flash: { cpcCents: null, cpprCents: cppr, cpfsCents: null, cpsCents: null, cpsaleCents: null },
+        mature: { cpcCents: null, cpprCents: cppr, cpfsCents: null, cpsCents: null, cpsaleCents: null },
+        isMature,
+      },
+    },
+    projection: {
+      returnPerDollar: 99,
+      maturity: {
+        flash: { returnPerDollar: 1.5, costOfAcquisitionPct: 60, costPerPaidClientUsd: 300 },
+        mature: { returnPerDollar: 2.5, costOfAcquisitionPct: 40, costPerPaidClientUsd: 200 },
+        isMature,
+      },
+    },
   }) as unknown as FeatureAudienceStatsRow;
 
 describe("audience table model", () => {
@@ -43,19 +67,26 @@ describe("audience table model", () => {
     expect(cols).toEqual(["replies", "cppr", "invested", "outreach", "remaining", "size"]);
   });
 
-  it("a thin price is learning; no stats row is not", () => {
-    expect(audienceCostIsLearning("cppr", stats(3, 500))).toBe(true);
-    expect(audienceCostIsLearning("cppr", stats(12, 500))).toBe(false);
-    expect(audienceCostIsLearning("cppr", undefined)).toBe(false);
-    expect(audienceCostIsLearning("outreach", stats(0, null))).toBe(false);
+  it("Learning is the producer's verdict on the row; no stats row is not Learning", () => {
+    // 500 replies change nothing: nothing is counted against a bar here.
+    expect(audienceFigure("cppr", stats(500, 700, false), "mature")).toEqual({ value: null, learning: true });
+    expect(audienceFigure("cppr", stats(3, 700, true), "mature")).toEqual({ value: 700, learning: false });
+    expect(audienceFigure("cppr", undefined, "mature")).toEqual({ value: null, learning: false });
+    expect(audienceFigure("outreach", stats(0, null), "mature")).toEqual({ value: null, learning: false });
+  });
+
+  it("states the MATURE money off the projection pair, never the legacy projection", () => {
+    expect(audienceFigure("roi", stats(3, 700), "mature").value).toBe(2.5);
+    expect(audienceFigure("cacPct", stats(3, 700), "mature").value).toBe(40);
+    expect(audienceFigure("cacUsd", stats(3, 700), "flash").value).toBe(300);
   });
 
   it("learning rows sink below measured ones, ordered by the count they divide by", () => {
     const s: Record<string, FeatureAudienceStatsRow> = {
       a: stats(12, 900),
-      b: stats(3, 100),
+      b: stats(3, 100, false),
       c: stats(15, 400),
-      d: stats(7, 50),
+      d: stats(7, 50, false),
     };
     const rows = ["a", "b", "c", "d"].map((id) => audience(id, id));
     const out = sortAudiences(rows, {
@@ -63,7 +94,7 @@ describe("audience table model", () => {
       sortDir: "asc",
       tieBreakCol: null,
       statsFor: (id) => s[id],
-      moneyLearning: () => false,
+      basis: "mature",
     });
     expect(out.map((r) => r.id)).toEqual(["c", "a", "d", "b"]);
   });
@@ -104,7 +135,8 @@ describe("v2 audience table surface", () => {
     expect(hook).toContain('"all-statuses",');
     expect(hook).toContain("setAudienceStatus(i.id, i.status)");
     expect(hook).toContain('invalidateQueries({ queryKey: ["audiences", brandId] })');
-    expect(hook).toContain("useAudienceLearning(brandId, soleFeatureSlug, offerId)");
+    // Learning is read off each row's served pair, so no second per-campaign fan-out.
+    expect(hook).not.toContain("useAudienceLearning");
   });
 
   it("the drawer's portal host is read after mount, never at render (a deep link would land outside .v2-root)", () => {

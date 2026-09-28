@@ -48,12 +48,13 @@ study is fleet-wide (all orgs) but scoped to ONE leg of the channel (campaign-se
 `leg_key`, via `campaign-legs.csv`): Herald reads `start_to_conversation` emails only, Scout
 the link-carrying `start_to_website_visit` emails only, and a campaign stating no leg belongs
 to neither. Each (workflow version, leg) is priced on its own spend (`spend-legs.csv`, per
-campaign and per day), cut at the maturation cutoff like the emails it divides. Labels and the
+campaign and per day), cut at its leg's cutoff like the emails it divides. Labels and the
 catalogue's last-runs lists are per crew too. The articles keep the fleet-wide, all-legs
 population on purpose: the leg scope lives only in the `research` block. To refresh it:
 
 ```sh
 apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
+apps/landing/scripts/blog-data/pixel/extract-pixel.sh <today minus 21 days> "$PWD/apps/landing/scripts/blog-data/pixel/pixel.research.snapshot.json"
 node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
 node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json apps/dashboard/src/lib/research > /tmp/research.json && mv /tmp/research.json apps/dashboard/src/lib/research/research.json
 pnpm --filter @distribute/dashboard test research
@@ -68,24 +69,35 @@ the three inputs they need beside the dumps (`templates.json`, `workflow-runs.js
 `derive.mjs` adds a `research` block (per LLM, per template, per step, per month, and each
 LLM's and template's own month curve); `research.mjs` turns it into one study per question,
 with its charts, its one-line result and its conclusion written out, so the page divides
-nothing. The open-tracking studies read `pixel/pixel.snapshot.json`. Do NOT re-render the
+nothing. The open-tracking studies read `pixel/pixel.research.snapshot.json`, cut at least the
+rule's duration before the read (research.mjs refuses a snapshot cut any later); the article
+keeps its own `pixel.snapshot.json`. Do NOT re-render the
 two articles from a refreshed extract unless you mean to move their published figures.
 
-## Emails too young to count (the maturation window)
+## Emails too young to count (two rules, one per surface)
 
 An email sent today has not had time to earn its click or its reply, so counting it makes every
-price read too high and every rate too low. `derive.mjs` MEASURES the window from the dumps
-(`maturation.mjs`): the time from the email that earned an outcome to the outcome, at the 95th
-percentile, per outcome, on emails at least 45 days older than the window's end (a recent email can
-only show a short latency). The window is the longer of the two, rounded up to a day. Every email
-sent within it of the window's END (the extract's exclusive end, which is also where clicks and
-replies stop being counted) is dropped from the fact table before any cut, workflow or research
-block is built. The complete sent total survives as `volume.sent` and the pages label it.
+price read too high and every rate too low. The two surfaces hold different rules on purpose.
 
-Measured on 27 September 2026: 95 in 100 website visits within 11.4 days, positive replies within
-9.6 days, so 12 days on the Research page; 11 days on the articles' own window. Both articles state
-it in Method and under every chart; the Research page under every chart. Run the research extract
-with TODAY as its end, not tomorrow: the end is when outcomes stop being observed.
+**The Research page applies features-service's rule, never its own** (features-service#1196).
+extract.sh reads `/public/channels` from inside the features-service container into
+`maturity.json`: per leg, `durationDays` (21 on the two cold-email entry legs) and
+`outcomesRequired` (1 positive reply, 10 website visits). The clock is when the RUN started
+(`generations.csv` carries each email's run id, `run-starts.csv` when that run started): an email
+counts when its run started at least `durationDays` before the extract's end, with every outcome
+it earned since, and a leg's spend is cut at the same date by its own run start. A bucket with
+fewer mature outcomes than `outcomesRequired` reads Learning and is still drawn and ranked.
+`derive.mjs` writes the rule it applied as `facts.researchMaturity`; research.mjs states it under
+every chart. An email whose run start is unknown stays in (the producer's own rule for a missing
+serve date).
+
+**The articles keep the window they were published on**: `maturation.mjs` measures the time from
+the email that earned an outcome to the outcome, at the 95th percentile per outcome, and drops
+every email sent within it of the window's end (11 days on the articles). `facts.maturation`
+carries it; the Research page does not read it.
+
+Run the research extract with TODAY as its end, not tomorrow: the end is when outcomes stop being
+observed.
 
 ## What the window is
 

@@ -19,19 +19,35 @@ import {
   type WorkflowLadderRowShape,
 } from "../src/lib/workflow-grains";
 
-function block(p: Partial<WorkflowGrainBlock> & { cost?: number | null; count?: number | null } = {}): WorkflowGrainBlock {
+/** A grain block carrying its served maturity pair (features-service#1196). */
+function block(
+  p: Partial<WorkflowGrainBlock> & {
+    cost?: number | null;
+    count?: number;
+    isMature?: boolean | null;
+    flashCost?: number | null;
+    noPair?: boolean;
+  } = {},
+): WorkflowGrainBlock {
+  const half = (cost: number | null) => ({
+    spentUsd: 100,
+    contacted: 500,
+    outcomes: p.count ?? 4,
+    costPerOutcomeUsd: cost,
+    conversionRatePct: 0.8,
+  });
+  const cost = p.cost === undefined ? 25 : p.cost;
   return {
     costBasis: p.costBasis ?? "charged",
     evidence: p.evidence ?? { spentUsd: 100, observedContacted: 500 },
-    legOutcome:
-      p.legOutcome !== undefined
-        ? p.legOutcome
-        : {
-            costPerOutcomeUsd: p.cost ?? 25,
-            outcomeCount: p.count ?? 4,
-            outcomeObserved: true,
-            spentUsd: 100,
-          },
+    ...(p.noPair
+      ? {}
+      : {
+          basis: "mature",
+          flash: half(p.flashCost === undefined ? cost : p.flashCost),
+          mature: half(cost),
+          isMature: p.isMature === undefined ? true : p.isMature,
+        }),
   };
 }
 
@@ -100,34 +116,44 @@ describe("one SCOPE's rows — the campaign column, or one audience's", () => {
 });
 
 describe("a grain's figures are READ, and absent is not zero", () => {
-  it("returns the served block verbatim", () => {
+  it("returns the served MATURE half verbatim", () => {
     expect(grainFigures(block({ cost: 164.75, count: 13 }))).toEqual({
       costPerOutcomeUsd: 164.75,
       outcomeCount: 13,
       outcomeObserved: true,
       spentUsd: 100,
+      contacted: 500,
+      learning: false,
     });
+  });
+
+  it("states Learning, and no price, where the producer says the grain is not mature", () => {
+    const f = grainFigures(block({ cost: 30, count: 2, isMature: false }));
+    expect(f?.learning).toBe(true);
+    expect(f?.costPerOutcomeUsd).toBeNull();
+    // the totals still stand: they are not ratios
+    expect(f?.outcomeCount).toBe(2);
+    expect(f?.spentUsd).toBe(100);
+  });
+
+  it("states the FLASH half on the staff basis, never tagged", () => {
+    const f = grainFigures(block({ cost: 30, flashCost: 12, isMature: false }), "flash");
+    expect(f).toMatchObject({ costPerOutcomeUsd: 12, learning: false });
   });
 
   it("an ABSENT grain answers null — it never spent here", () => {
     expect(grainFigures(undefined)).toBeNull();
   });
 
-  it("a grain with no leg block answers null rather than inventing one", () => {
-    expect(grainFigures(block({ legOutcome: null }))).toBeNull();
+  it("a grain carrying no pair answers null: its legacy figure has no verdict beside it", () => {
+    expect(grainFigures(block({ noPair: true }))).toBeNull();
   });
 
-  it("a measured ZERO is kept — it spent here and produced nothing", () => {
-    const f = grainFigures(block({ cost: 45.15, count: 0 }));
+  it("a measured ZERO is kept, and never floored onto spend", () => {
+    const f = grainFigures(block({ cost: null, count: 0 }));
     expect(f?.outcomeCount).toBe(0);
-    expect(f?.costPerOutcomeUsd).toBe(45.15);
-  });
-
-  it("keeps a PROJECTED count flagged, so it is never read as people", () => {
-    const f = grainFigures(
-      block({ legOutcome: { costPerOutcomeUsd: 9, outcomeCount: 2.6, outcomeObserved: false, spentUsd: 20 } }),
-    );
-    expect(f?.outcomeObserved).toBe(false);
+    expect(f?.costPerOutcomeUsd).toBeNull();
+    expect(f?.spentUsd).toBe(100);
   });
 });
 
@@ -147,7 +173,7 @@ describe("the audience rows — every one of them, cheapest first", () => {
     row("lithium", null, { brand: block({ cost: 164.75, count: 13 }) }),
     row("lithium", "aud-dear", { audience: block({ cost: 90 }) }),
     row("lithium", "aud-cheap", { audience: block({ cost: 20.35 }) }),
-    row("lithium", "aud-unpriced", { audience: block({ legOutcome: null }) }),
+    row("lithium", "aud-unpriced", { audience: block({ noPair: true }) }),
     row("other", "aud-cheap", { audience: block({ cost: 1 }) }),
   ];
 

@@ -131,7 +131,8 @@ import {
 } from "@/components/workflows/workflow-cells";
 import { WorkflowRankPanel } from "@/components/workflows/workflow-rank-panel";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { isLearning } from "@/lib/learning-threshold";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { shownFigure, type StatBasis } from "@/lib/maturity";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useScopePaused } from "@/lib/use-scope-paused";
@@ -156,6 +157,7 @@ import {
 } from "@/lib/workflow-grains";
 import {
   buildMatrixCellIndex,
+  cellFigure,
   matrixWorkflowOrder,
   matrixCellKey,
   columnBestCells,
@@ -281,17 +283,24 @@ function fmtUsd(value: number | null): string {
 export function ladderRowsForScope(
   ladder: WorkflowRankLadder | undefined,
   audienceId: string | null,
+  basis: StatBasis = "mature",
 ): WorkflowLadderRow[] {
   if (!ladder) return [];
   return scopeLadderRows(ladder.rows as unknown as WorkflowLadderRowShape[], audienceId).map(
     (r) => {
       const row = r as unknown as WorkflowRankLadder["rows"][number];
+      // A MEASURED row states the served half of its resolved maturity pair (the same
+      // read the grid's cell makes, so the list and the grid cannot disagree). An
+      // unmeasured row has no pair: it keeps the explore allowance, rendered "from $X".
+      const shown = cellFigure(row as unknown as MatrixLadderRow, basis);
       return {
         workflowDynastySlug: row.workflow.workflowDynastySlug,
         measured: row.measured,
-        grain: row.resolved.grain,
+        grain: row.measured ? shown.grain : row.resolved.grain,
         costBasis: row.resolved.costBasis ?? null,
-        costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
+        costPerOutcomeUsd: row.measured ? shown.costPerOutcomeUsd : row.resolved.costPerOutcomeUsd,
+        learning: row.measured ? shown.learning : false,
+        basis,
         roiMultiple: row.resolved.roiMultiple,
         estimatesByGrain: row.estimatesByGrain,
         rank: row.rank ?? null,
@@ -320,10 +329,12 @@ function campaignColumnRowFor(
 function scopeFigures(
   row: WorkflowLadderRowShape | null,
   audienceId: string | null,
+  basis: StatBasis,
 ): WorkflowLegOutcome | null {
   if (!row) return null;
   return grainFigures(
     audienceId ? row.estimatesByGrain.audience : row.estimatesByGrain.campaign,
+    basis,
   );
 }
 
@@ -345,6 +356,9 @@ export function CampaignWorkflowsPage({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isBeta = useIsBetaUser();
+  // Every figure below is the MATURE half of a served pair for every reader; a staff
+  // reader can flip the page to FLASH (today's raw figures) to debug. Never a rule of ours.
+  const { basis } = useStatBasis();
 
   const brandId = String(params.brandId ?? "");
   const campaignId = campaignIdProp ?? String(params.id ?? "");
@@ -403,6 +417,16 @@ export function CampaignWorkflowsPage({
       }),
     { ...pollOptions, enabled: ready && Boolean(brandId) && Boolean(legKey) },
   );
+  // THE CAMPAIGN'S OWN PRICE: the served mature figure for its leg, off that same read's
+  // scope maturity — the byte-same object its Overview's /revenue serves, so this page and
+  // the Overview cannot print two costs per outcome for one campaign. Every cell below is
+  // a workflow's or an audience's share of it.
+  const campaignPrice = shownFigure(
+    audienceStatsQ.data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === legKey),
+    (h) => h.costPerOutcomeUsd,
+    basis,
+  );
+  const campaignPriceKnown = audienceStatsQ.data?.maturity != null;
 
   // The brand's own mark, for the panel's brand grain. `["brand", brandId]` is the key the
   // tenant switcher already polls on every brand page, so it costs no request.
@@ -486,7 +510,6 @@ export function CampaignWorkflowsPage({
         groups: campaignRevQ.data ?? [],
         running,
         pair,
-        isLearning,
       }).filter((r) => !hiddenSlugs.has(r.workflowDynastySlug)),
     [catalogueQ.data, campaignRevQ.data, running, pair, hiddenSlugs],
   );
@@ -559,7 +582,7 @@ export function CampaignWorkflowsPage({
   }, [audienceStatsQ.data, knownScopes, audienceById]);
 
   const matrixOrder = useMemo(() => matrixWorkflowOrder(matrixRows), [matrixRows]);
-  const cellIndex = useMemo(() => buildMatrixCellIndex(matrixRows), [matrixRows]);
+  const cellIndex = useMemo(() => buildMatrixCellIndex(matrixRows, basis), [matrixRows, basis]);
   // ONE LIT CELL PER COLUMN: the workflow each audience would be put on, read off the
   // lowest `scopeRank` among the rows this page draws. A single global mark answered
   // "where is the cheapest price on this grid" and left the other twelve columns saying
@@ -593,8 +616,8 @@ export function CampaignWorkflowsPage({
   // THE PER-AUDIENCE LIST, ordered on the producer's `scopeRank` — the position that
   // ascends on the figure this list shows.
   const scopeLadder = useMemo(
-    () => ladderRowsForScope(ladderQ.data, scope),
-    [ladderQ.data, scope],
+    () => ladderRowsForScope(ladderQ.data, scope, basis),
+    [ladderQ.data, scope, basis],
   );
   const scopeRanked = useMemo(
     () =>
@@ -626,7 +649,7 @@ export function CampaignWorkflowsPage({
     if (!openRow) return null;
     const [only] = rankWorkflowRows<CampaignWorkflowRow>({
       rows: [openRow],
-      ladder: ladderRowsForScope(ladderQ.data, null),
+      ladder: ladderRowsForScope(ladderQ.data, null, basis),
       recommended: ladderQ.data?.recommendedWorkflowDynastySlug ?? null,
       outcomeStepKey,
       outcomeNoun,
@@ -634,7 +657,7 @@ export function CampaignWorkflowsPage({
       formatUsd: formatUsdAdaptive,
     });
     return only ?? null;
-  }, [openRow, ladderQ.data, outcomeStepKey, outcomeNoun]);
+  }, [openRow, ladderQ.data, outcomeStepKey, outcomeNoun, outcomeNounPlural, basis]);
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -665,6 +688,10 @@ export function CampaignWorkflowsPage({
 
   const empty = !pending && revenueOk && rows.length === 0;
   const rankUnavailable = !pending && revenueOk && ladderQ.isError;
+  // The producer could not cut the MATURE figures on this answer (features-service#1196:
+  // `maturity.measured` false, its reason named). Every price then reads a dash with no
+  // tag, so the page says why rather than letting a blank grid read as "nothing measured".
+  const matureUnavailable = !pending && revenueOk && ladderQ.data?.maturity?.measured === false;
   const scopeName = scope ? (audienceById.get(scope)?.name ?? "This audience") : null;
 
   return (
@@ -684,6 +711,18 @@ export function CampaignWorkflowsPage({
               ? `Ranked for ${scopeName}, cheapest first on what it has cost there.`
               : "Every estimate the ranking is made of. A row is a workflow, a column is who it was priced for."}
           </p>
+          {campaignPriceKnown && (
+            <p className="mt-1 flex items-center gap-2 text-sm text-gray-700">
+              <span className="text-gray-500">This campaign:</span>
+              {campaignPrice.learning ? (
+                <LearningTag withInfo={false} paused={paused} />
+              ) : (
+                <span className="font-medium tabular-nums">
+                  {campaignPrice.value == null ? "—" : `${formatUsdAdaptive(campaignPrice.value)} per ${columns.noun}`}
+                </span>
+              )}
+            </p>
+          )}
         </div>
 
         {pending && (
@@ -711,6 +750,13 @@ export function CampaignWorkflowsPage({
           </div>
         )}
 
+        {matureUnavailable && (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
+            We could not read the settled prices for this campaign just now, so the prices below
+            are blank until the next refresh.
+          </div>
+        )}
+
         {!pending && revenueOk && rows.length > 0 && (
           <div>
             <div className="min-w-0 flex-1">
@@ -723,6 +769,7 @@ export function CampaignWorkflowsPage({
                   ranAudienceIds={ranAudienceIds}
                   hiddenNote={hiddenNote}
                   deprecatedSlugs={deprecatedSlugs}
+                  paused={paused}
                   onOpen={setOpen}
                   onSelectScope={setScope}
                 />
@@ -768,7 +815,7 @@ export function CampaignWorkflowsPage({
           siblings={rows}
           paused={paused}
           ladderRow={campaignColumnRowFor(allLadderRows, openRanked.row.workflowDynastySlug)}
-          audienceRows={audienceRowsFor(allLadderRows, openRanked.row.workflowDynastySlug)}
+          audienceRows={audienceRowsFor(allLadderRows, openRanked.row.workflowDynastySlug, basis)}
           audienceById={audienceById}
           brandDomain={brandQ.data?.brand.domain ?? null}
           brandLogoUrl={brandQ.data?.brand.logoUrl ?? null}
@@ -811,6 +858,7 @@ export function WorkflowMatrix({
   ranAudienceIds,
   hiddenNote,
   deprecatedSlugs,
+  paused,
   onOpen,
   onSelectScope,
 }: {
@@ -825,6 +873,8 @@ export function WorkflowMatrix({
   hiddenNote: string | null;
   /** Dynasties the owner deprecated on this leg: drawn with a tag, never picked. */
   deprecatedSlugs: ReadonlySet<string>;
+  /** The campaign is stopped: a withheld figure reads `Paused` rather than `Learning`. */
+  paused: boolean;
   onOpen: (slug: string) => void;
   onSelectScope: (id: string) => void;
 }) {
@@ -942,6 +992,7 @@ export function WorkflowMatrix({
                   <MatrixCellTd
                     cell={cells.get(matrixCellKey(r.dynastySlug, null))}
                     best={isColumnBestCell(columnBest, r.dynastySlug, null)}
+                    paused={paused}
                   />
                   {audiences.map((a, i) => (
                     <MatrixCellTd
@@ -949,6 +1000,7 @@ export function WorkflowMatrix({
                       cell={cells.get(matrixCellKey(r.dynastySlug, a.audienceId))}
                       best={isColumnBestCell(columnBest, r.dynastySlug, a.audienceId)}
                       column={i === 0}
+                      paused={paused}
                     />
                   ))}
                   <td aria-hidden className="w-[160px] min-w-[160px] p-0" />
@@ -961,7 +1013,9 @@ export function WorkflowMatrix({
       <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500">
         The highlighted cell in each column is the workflow we would put that audience on.
         A figure in full colour is what that column actually produced; a faded one repeats
-        a price from a wider pool, because nothing has been measured there yet. A dot
+        a price from a wider pool, because nothing has been measured there yet. Every price
+        counts only outreach sent long enough ago for its answers to have arrived, and
+        Learning means that outreach has not produced enough of them yet. A dot
         beside a column name means we sent through that audience in the most recent runs;
         a campaign works several at once, so several are marked.
         {hiddenNote ? ` ${hiddenNote}` : ""}
@@ -1066,13 +1120,28 @@ function MatrixCellTd({
   cell,
   best,
   column,
+  paused,
 }: {
   cell: MatrixCell | undefined;
   best: boolean;
   column?: boolean;
+  paused: boolean;
 }) {
   const own = cellRestsOnOwnEvidence(cell);
   const columnTint = column && !best ? "bg-gray-50" : "";
+  // The producer said this cell's figure is not mature: the tag takes the figure's place,
+  // never sits beside one. A lit cell keeps its frame, so the column's pick stays visible.
+  if (cell?.learning) {
+    return (
+      <td
+        className={`w-[76px] min-w-[76px] px-1 py-2.5 text-center ${
+          best ? "border border-brand-300 bg-brand-100" : columnTint
+        }`}
+      >
+        <LearningTag withInfo={false} paused={paused} />
+      </td>
+    );
+  }
   if (!cell || cell.costPerOutcomeUsd == null) {
     return (
       <td
@@ -1154,6 +1223,7 @@ export function ScopeTable({
     [ranked],
   );
 
+  const { basis } = useStatBasis();
   const bySlug = useMemo(() => {
     const m = new Map<string, WorkflowLadderRowShape>();
     for (const r of scopeLadderRows(ladderRows, audienceId)) {
@@ -1208,7 +1278,7 @@ export function ScopeTable({
                 key={r.row.workflowDynastySlug}
                 ranked={r}
                 bestPosition={bestPosition}
-                figures={scopeFigures(bySlug.get(r.row.workflowDynastySlug) ?? null, audienceId)}
+                figures={scopeFigures(bySlug.get(r.row.workflowDynastySlug) ?? null, audienceId, basis)}
                 audienceName={audienceName}
                 audienceAvatarUrl={audienceAvatarUrl}
                 paused={paused}
@@ -1309,7 +1379,9 @@ function ScopeRow({
         <WorkflowTemplateCell contentPromptType={row.contentPromptType} />
       </td>
       <td className="px-4 py-3 text-gray-800 whitespace-nowrap">
-        {ranked.estCostPerOutcomeUsd == null ? (
+        {ranked.estLearning ? (
+          <LearningTag paused={paused} />
+        ) : ranked.estCostPerOutcomeUsd == null ? (
           "—"
         ) : ranked.measured ? (
           fmtUsd(ranked.estCostPerOutcomeUsd)
@@ -1335,7 +1407,7 @@ function ScopeRow({
       <td className="hidden px-4 py-3 text-gray-800 whitespace-nowrap md:table-cell">
         {figures == null ? (
           "—"
-        ) : isLearning(figures.outcomeCount) ? (
+        ) : figures.learning ? (
           <LearningTag paused={paused} />
         ) : (
           <span className="inline-flex items-center gap-1.5">

@@ -6,6 +6,7 @@ import {
   PLACEHOLDER_POINT_COUNT,
   placeholderCostCurve,
 } from "../src/lib/cost-per-outcome-placeholder";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 const SRC = join(__dirname, "..", "src");
 const CARD = readFileSync(join(SRC, "components/revenue/cost-per-outcome-card.tsx"), "utf8");
@@ -292,6 +293,7 @@ function revenueBody(extra: Record<string, unknown> = {}) {
     featureSlug: "sales-cold-email-outreach",
     headline: { totalPipelineUsd: 2916.99 },
     costEconomics: {
+      maturity: NULL_PAIR,
       committedCostUsd: 247.19,
       costOfAcquisitionPct: 8.5,
       roiMultiple: 11.8,

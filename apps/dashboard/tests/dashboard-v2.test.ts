@@ -152,7 +152,9 @@ describe("v2 wiring", () => {
     // page) and the workflow page's prompt Edit,
     // the generic tab-badge renderer in setup-pages, and the beta Integrations section of
     // Brand settings (the CRM connect, beta on the email allowlist).
-    const GATED = new Set(["workflow-page.tsx", "cost-basis-switch.tsx", "setup-pages.tsx", "brand-settings-page.tsx"]);
+    // The staff Mature/Flash switch (stat-basis-switch) is the same kind of staff control as
+    // the cost basis switch, and wears the same staff tag.
+    const GATED = new Set(["workflow-page.tsx", "cost-basis-switch.tsx", "stat-basis-switch.tsx", "setup-pages.tsx", "brand-settings-page.tsx"]);
     for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
       if (GATED.has(f)) continue;
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");

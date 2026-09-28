@@ -33,10 +33,8 @@ import { useScopePaused } from "@/lib/use-scope-paused";
 import { OffersTable } from "@/components/offers/offers-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { useCampaignRows } from "@/components/campaigns/campaigns-table";
-import { scopeIsLearning } from "@/lib/learning-threshold";
+import { pairIsLearning } from "@/lib/maturity";
 import { LearningToneProvider } from "@/components/learning-tag";
-import { useAudienceLearning } from "@/lib/use-audience-learning";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { DashboardPage } from "@/components/dashboard-page";
 import { DashboardPageSkeleton } from "@/components/dashboard-page-skeleton";
@@ -105,15 +103,7 @@ export default function BrandOverviewPage() {
   const { holding: landingHolding } = useLandingDrilldown({ orgId, brandId, offerId });
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
-  // Whether this scope's RATIOS rest on enough evidence to state: a scope's money is its
-  // campaigns' money combined, so one measured campaign is enough and none is not. Read
-  // through the same hook the Campaigns table below uses, on the same keys, so it costs
-  // no network — and the cards above cannot state a return every row beneath them is
-  // declining to state. Gates ROI / $ CAC / % CAC and the return line; Pipeline revenue
-  // is a total and keeps its figure.
-  const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
-  const economicsLearning = scopeIsLearning(campaignRows);
-  // ...and whether this scope is STOPPED, which outranks it. A `Learning` tag says a
+  // Whether this scope is STOPPED, which outranks the Learning verdict. A `Learning` tag says a
   // figure is withheld because too few outcomes have landed; where nothing runs, none can
   // land, so it promises a number that cannot arrive until the customer restarts
   // something. `Paused` is the honest word, and it is the one the pill in this page's own
@@ -121,17 +111,9 @@ export default function BrandOverviewPage() {
   // it cannot disagree. Scoped by the route, like every other read here: the brand's
   // campaigns at brand level, this offer's at offer level.
   //
-  // WHICH figures are withheld is unchanged: that stays keyed on the outcome counts, so
-  // restarting restores exactly the tags this page had.
+  // WHICH figures are withheld is unchanged: that stays the producer's own maturity
+  // verdict, so restarting restores exactly the tags this page had.
   const { paused: scopePaused } = useScopePaused(brandId, { offerId, enabled });
-  // ...and the same question one audience at a time, for the Top-3 card: an audience
-  // states its return once one of the scope's campaigns has priced IT. Same map the
-  // Audiences table reads, so the card and the table cannot disagree about a row.
-  const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(
-    brandId,
-    featureSlug,
-    offerId,
-  );
   const timezone = useMemo(() => browserTimezone(), []);
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
@@ -460,7 +442,9 @@ export default function BrandOverviewPage() {
           charts the return instead. */}
       <RevenueOverviewSection
         headerAction={ControlsLine}
-        economicsLearning={economicsLearning}
+        // The producer's own verdict on this brand's (offer's) mature cohort
+        // (lib/maturity.ts), off the body this page already reads.
+        economicsLearning={pairIsLearning(data?.costEconomics.maturity)}
         paused={scopePaused}
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
@@ -495,8 +479,6 @@ export default function BrandOverviewPage() {
         costBottomCard={
           offerId ? (
             <TopAudiencesCard
-            learningByAudienceId={learningByAudienceId}
-            learningSettled={audienceLearningSettled}
             paused={scopePaused}
               data={audienceStatsRevealed ? audienceStatsData : undefined}
               audiences={audienceStatsRevealed ? activeAudiences : undefined}
@@ -518,7 +500,6 @@ export default function BrandOverviewPage() {
             economics={revenueRevealed ? data?.costEconomics : null}
             totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}
             showEconomics
-            economicsLearning={economicsLearning}
             paused={scopePaused}
             showStepMetrics={false}
           />

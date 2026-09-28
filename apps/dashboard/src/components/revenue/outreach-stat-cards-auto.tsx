@@ -12,15 +12,12 @@ import {
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { positiveReplySharePct, websiteVisitSharePct } from "@/lib/step-share";
 import { useCampaignLeg } from "@/lib/use-leg-catalogue";
-import { useCampaignRows } from "@/components/campaigns/campaigns-table";
-import { scopeIsLearning } from "@/lib/learning-threshold";
 import { isRunningStatus } from "@/lib/campaign-controls";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -84,7 +81,6 @@ export function OutreachStatCardsAuto({
     settled: scopeSettled,
   } = useScopedFeatureSlug(campaignId);
   const campaignScoped = Boolean(campaignId);
-  const soleFeatureSlug = useSoleFeatureSlug();
   const channels = useAcquisitionChannels();
   // Under a campaign the gate is the channel CATALOGUE, not the brand's revenue-feature
   // set: that set decides which features get a revenue page on a brand-scoped surface,
@@ -162,17 +158,6 @@ export function OutreachStatCardsAuto({
     },
   );
 
-  // Whether the SCOPE this row answers for is still learning — every campaign selling it
-  // is. Only the ratios below are gated by it, and only where they render (a campaign-
-  // scoped row shows its leg's steps instead). Read through the same hook the Campaigns
-  // table uses, on the same query keys, so it costs no network and a page cannot state a
-  // return the campaigns beneath it are all declining to state.
-  // The brand/offer learning gate, on the feature the brand-level list has always been
-  // pinned to. An offer-scoped list spans channels anyway, and a campaign-scoped row
-  // states its leg's steps rather than these ratios.
-  const { rows: campaignRows } = useCampaignRows(brandId, soleFeatureSlug, offerId);
-  const economicsLearning = scopeIsLearning(campaignRows);
-
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
   // Hidden only once we KNOW there is nothing to show. While the campaign read is in
@@ -204,7 +189,6 @@ export function OutreachStatCardsAuto({
       // same split the brand Overview takes. A campaign performs one, so its own steps
       // are what it buys.
       showEconomics={!campaignId}
-      economicsLearning={economicsLearning}
       showStepMetrics={!!campaignId}
       paused={withheldPaused}
       outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
