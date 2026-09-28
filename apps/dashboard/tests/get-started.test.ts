@@ -140,6 +140,41 @@ describe("the surface", () => {
     }
   });
 
+  it("moves: steps rise in, lists cascade, counts count, the email types", () => {
+    expect(FLOW).toContain("<Stepper");
+    expect(FLOW).toContain("<LiveStatus");
+    expect(FLOW).toContain("<CountUp value={s.count}");
+    expect(FLOW).toContain("<Typewriter text={mail.bodyText}");
+    expect(FLOW).toContain("<GrowBar");
+    expect(FLOW).toMatch(/gs-pop[^"]*"[^>]*style=\{stagger\(i, 60\)\}/);
+    expect(FLOW).toContain("gs-down sticky");
+    expect(WALL).toContain("gs-panel k-popover");
+    expect(WALL).toContain("gs-scrim");
+  });
+
+  it("shows the end state at once under reduced motion", () => {
+    const css = read("src/components/v2/keel.css");
+    const block = css.slice(css.indexOf("/get-started motion"));
+    expect(block).toContain("prefers-reduced-motion: reduce");
+    // A block pasted inside another comment silently disappears: every opener closes.
+    expect(css.split("/*").length).toBe(css.split("*/").length);
+    for (const cls of ["gs-in", "gs-pop", "gs-down", "gs-scrim", "gs-panel", "gs-glow"]) expect(block).toContain(`.v2-root .${cls}`);
+    const motion = read("src/components/v2/get-started/motion.tsx");
+    expect(motion).toContain("(prefers-reduced-motion: reduce)");
+    // The typed email is readable in full from the first frame.
+    expect(motion).toContain("aria-label={text}");
+  });
+
+  it("prices the wall's budget the way the Add-a-brand modal does, once the brand has an offer", () => {
+    expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
+    expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(GET_STARTED_LEG)");
+    // One offer resolution per brand: the price read and the launch share it.
+    expect(LAUNCH).toContain("resolveOfferOnce(input.brandId");
+    expect(WALL).toContain("recommendedBudgetForPreview(brandId, offerSource, floorUsd)");
+    // A default never blocks a price that lands later.
+    expect(WALL).toContain("if (budgetTouched.current) onBudget(");
+  });
+
   it("leaves the current onboarding alone", () => {
     const onboarding = read("src/components/onboarding/onboarding.tsx");
     expect(onboarding).not.toContain("get-started");
