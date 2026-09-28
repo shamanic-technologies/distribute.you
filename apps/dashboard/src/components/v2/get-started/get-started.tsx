@@ -159,7 +159,7 @@ export function GetStarted() {
       setStarted(false);
       setSteps(initialSteps());
       setInputError(session.message);
-      setExits(refusalExits({ reason: session.reason, domain: session.domain ?? hostOf(url), brandUrl: url }));
+      setExits(refusalExits({ reason: session.reason, domain: hostOf(url), brandUrl: url }));
       return;
     }
 
