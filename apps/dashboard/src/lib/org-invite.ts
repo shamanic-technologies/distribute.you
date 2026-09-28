@@ -9,17 +9,12 @@
  * Alias-free on purpose so every rule here carries real unit tests.
  */
 
-export const INVITE_ROLES = ["org:admin", "org:member"] as const;
-export type InviteRole = (typeof INVITE_ROLES)[number];
-
-export const INVITE_ROLE_LABEL: Record<InviteRole, string> = {
-  "org:admin": "Admin",
-  "org:member": "Member",
-};
-
-export function isInviteRole(value: unknown): value is InviteRole {
-  return typeof value === "string" && (INVITE_ROLES as readonly string[]).includes(value);
-}
+/**
+ * Everyone invited is an Admin: there is one role on a team today (owner-decided
+ * 2026-09-28, "vire le concept de member pour now"). Stated once, here, so the day a
+ * second role comes back it is added in one place.
+ */
+export const INVITE_ROLE = "org:admin";
 
 // Shape only: whether the address can receive mail is Clerk's answer.
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
