@@ -44,7 +44,6 @@ import {
 import { workflowOutcomeCostCents, workflowOutcomeCount } from "@/lib/campaign-workflow-rows";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useIsAdminUser } from "@/lib/use-admin-user";
 import { v2Href, v2WorkflowHref } from "@/lib/v2/routes";
 
@@ -80,7 +79,6 @@ export function V2WorkflowPage() {
   const crewRaw = search.get("crew") ?? "";
   const missionRaw = search.get("mission");
   const [featureSlug, legKey] = crewRaw.split("|");
-  const isBeta = useIsBetaUser();
   const router = useRouter();
   const { specs, settled, missionByCampaignId } = useBrandMissionSpecs(orgId, brandId);
 
@@ -94,12 +92,12 @@ export function V2WorkflowPage() {
       ? crewSpecs[0]
       : null;
 
-  const ranking = useMissionWorkflowRanking(brandId, spec, isBeta);
+  const ranking = useMissionWorkflowRanking(brandId, spec, true);
   const ranked = ranking.ranked.find((r) => r.row.workflowDynastySlug === dynasty) ?? null;
   const name = ranked?.row.workflowDynastyName ?? dynasty;
 
-  const brandQ = useAuthQuery(["brand", brandId], () => getBrand(brandId), { ...pollOptions, enabled: isBeta });
-  const audiencesQ = useAuthQuery(["audiences", brandId], () => listAudiences(brandId), { ...pollOptions, enabled: isBeta });
+  const brandQ = useAuthQuery(["brand", brandId], () => getBrand(brandId), pollOptions);
+  const audiencesQ = useAuthQuery(["audiences", brandId], () => listAudiences(brandId), pollOptions);
   const audienceById = useMemo(() => {
     const m = new Map<string, { name: string; avatarUrl: string | null }>();
     for (const a of audiencesQ.data?.audiences ?? []) m.set(a.id, { name: a.name, avatarUrl: a.avatarUrl ?? null });
@@ -111,9 +109,7 @@ export function V2WorkflowPage() {
   const missionLabel = spec ? `${spec.crew.name}${spec.mission.offerName ? ` · ${spec.mission.offerName}` : ""}` : null;
 
   let body: React.ReactNode;
-  if (!isBeta) {
-    body = <Notice>This page is still in beta and is not open on your account yet.</Notice>;
-  } else if (!featureSlug || !legKey) {
+  if (!featureSlug || !legKey) {
     body = <Notice>This link names no crew, so there is no outcome to price this workflow on.</Notice>;
   } else if (!settled) {
     body = <PageSkeleton />;

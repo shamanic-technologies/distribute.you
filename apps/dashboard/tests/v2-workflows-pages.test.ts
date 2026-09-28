@@ -5,32 +5,34 @@ import { resolve } from "node:path";
 const ROOT = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
-describe("dashboard v2 Workflows: beta, with its own badge", () => {
-  it("the mission Workflows tab is offered only to the beta list, badged", () => {
+describe("dashboard v2 Workflows: GA, no gate and no badge", () => {
+  it("the mission Workflows tab is offered to every reader, untagged", () => {
     const setup = read("src/components/v2/setup-pages.tsx");
     const fn = setup.slice(setup.indexOf("export function missionTabs("), setup.indexOf("export function V2MissionSettingsPage("));
-    expect(fn).toContain("if (isBeta) tabs.push(");
-    expect(fn).toContain('badge: "beta"');
-    expect(read("src/components/v2/mission-page.tsx")).toContain('"overview", isBeta)');
+    expect(fn).toContain('label: "Workflows"');
+    expect(fn).not.toContain("isBeta");
+    expect(fn).not.toContain("badge:");
+    expect(read("src/components/v2/mission-page.tsx")).toContain('"overview")');
   });
 
-  it("the sidebar entry sits under Missions, beta-gated and badged", () => {
+  it("the sidebar entry sits under Missions, ungated and untagged", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
     const missions = shell.indexOf('label="Missions"');
     const entry = shell.indexOf('label="Workflows"');
     expect(missions).toBeGreaterThan(-1);
     expect(entry).toBeGreaterThan(missions);
-    expect(shell.slice(shell.lastIndexOf("{isBeta && (", entry), entry)).toContain("<NavItem");
+    expect(shell).not.toContain("isBeta");
+    expect(shell).not.toContain("MaturityBadge");
   });
 
-  it("both pages exist and gate their bodies on the same list", () => {
+  it("both pages exist and open to every reader", () => {
     const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/workflows";
     expect(existsSync(resolve(ROOT, `${base}/page.tsx`))).toBe(true);
     expect(existsSync(resolve(ROOT, `${base}/[workflowSlug]/page.tsx`))).toBe(true);
     for (const f of ["src/components/v2/workflows-page.tsx", "src/components/v2/workflow-page.tsx"]) {
       const src = read(f);
-      expect(src, f).toContain("useIsBetaUser()");
-      expect(src, f).toContain("This page is still in beta");
+      expect(src, f).not.toContain("useIsBetaUser");
+      expect(src, f).not.toContain("This page is still in beta");
     }
   });
 

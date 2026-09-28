@@ -73,7 +73,7 @@ export function Footer({ disclaimer }: FooterProps) {
               distribute.you
             </a>
             <p className="mt-3 max-w-[260px] text-sm text-[#6b6b6b]">
-              The AI-native cold email agency
+              Done-for-you revenue automation
             </p>
           </div>
           <Column title="Product" links={PRODUCT} />

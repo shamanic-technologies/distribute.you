@@ -47,7 +47,6 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v2/ui";
 import { MaturityBadge } from "@/components/maturity-badge";
 import type { Maturity } from "@/lib/feature-gates";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 
 /**
  * The v2 Setup pages and the account pages behind the user menu.
@@ -279,22 +278,19 @@ export function missionTabs(
   brandId: string,
   campaignId: string,
   active: "overview" | "audiences" | "settings" | "workflows",
-  isBeta: boolean,
 ): V2Tab[] {
   const base = v2MissionHref(orgId, brandId, campaignId);
-  const tabs: V2Tab[] = [
+  return [
     { label: "Overview", href: base, active: active === "overview" },
     { label: "Audiences", href: `${base}/audiences`, active: active === "audiences" },
     { label: "Settings", href: `${base}/settings`, active: active === "settings" },
+    { label: "Workflows", href: `${base}/workflows`, active: active === "workflows" },
   ];
-  if (isBeta) tabs.push({ label: "Workflows", href: `${base}/workflows`, active: active === "workflows", badge: "beta" });
-  return tabs;
 }
 
 /** Whether a mission runs, what it may spend, and what its emails promise. */
 export function V2MissionSettingsPage() {
   const { orgId, brandId, campaignId, mission, settled, name } = useMissionCrumbs();
-  const isBeta = useIsBetaUser();
   const { data, isPending, isError } = useAuthQuery(["campaign", campaignId ?? "none"], () => getCampaign(campaignId as string), {
     enabled: !!campaignId,
   });
@@ -305,7 +301,7 @@ export function V2MissionSettingsPage() {
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Settings" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "settings", isBeta)}
+      tabs={missionTabs(orgId, brandId, campaignId, "settings")}
     >
       {!offerId ? (
         settled && !isPending ? (
@@ -347,14 +343,13 @@ function MissionTitle({ crewColor, glyph, name, running, hold }: { crewColor: st
  */
 export function V2MissionAudiencesPage() {
   const { orgId, brandId, campaignId, mission, settled, name } = useMissionCrumbs();
-  const isBeta = useIsBetaUser();
   if (!campaignId) return null;
   const offerId = mission?.offerId ?? null;
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Audiences" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "audiences", isBeta)}
+      tabs={missionTabs(orgId, brandId, campaignId, "audiences")}
       width="max-w-[1280px]"
     >
       {!offerId ? (
@@ -375,13 +370,12 @@ export function V2MissionAudiencesPage() {
 /** Every workflow the mission can run, ranked the way campaign-service picks. */
 export function V2MissionWorkflowsPage() {
   const { orgId, brandId, campaignId, mission, name } = useMissionCrumbs();
-  const isBeta = useIsBetaUser();
   if (!campaignId) return null;
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Workflows" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "workflows", isBeta)}
+      tabs={missionTabs(orgId, brandId, campaignId, "workflows")}
       width="max-w-none"
     >
       <div className="v2-embed -mx-4 md:-mx-6">
