@@ -192,6 +192,16 @@ describe("the surface", () => {
     expect(FLOW).toContain("confirmAudienceSegments(brandId, offer.offerId, icpRef.current || seg.description, [seg])");
   });
 
+  it("creates every proposed audience once the offer is picked, so their searches build while the visitor reads", () => {
+    expect(FLOW).toContain("prebuild.current = confirmAudienceSegments(brandId, offerId, icpRef.current || segs[0].description, segs)");
+    // A pick made while that confirm is in flight waits for it rather than creating the audience twice.
+    const pick = FLOW.slice(FLOW.indexOf("async function pickAudience("), FLOW.indexOf("function chooseAudience("));
+    expect(pick).toContain("await prebuild.current;");
+    // The wait for the search to build is shown, and bounded.
+    expect(FLOW).toContain('page.reason === "not_built_yet" && waits < 80');
+    expect(FLOW).toContain("<BuildingNote building={building} />");
+  });
+
   it("loads the 100 companies page by page and writes the first emails ahead, the rest on click, capped", () => {
     const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
     // A small first page (fast), the rest only as far as the visitor scrolls (each company costs a credit).
