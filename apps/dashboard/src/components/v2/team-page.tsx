@@ -4,12 +4,7 @@ import { useOrganization, useSession } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { OrgAvatar } from "@/components/org-avatar";
-import {
-  INVITE_ROLES,
-  INVITE_ROLE_LABEL,
-  isInvitableEmail,
-  type InviteRole,
-} from "@/lib/org-invite";
+import { isInvitableEmail } from "@/lib/org-invite";
 import { resolveBrandTint } from "@/lib/brand-tint";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { isAdminEmail } from "@/lib/admin-allowlist";
@@ -142,7 +137,6 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
   // it (name, logo, colours) before they have an account to read it with.
   const { displayBrand } = useTenantSwitcher();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<InviteRole>("org:admin");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState("");
@@ -162,7 +156,6 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
         body: JSON.stringify({
           orgId,
           emailAddress: email,
-          role,
           brand: displayBrand?.name
             ? {
                 name: displayBrand.name,
@@ -193,7 +186,7 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
   return (
     <form onSubmit={submit} className="k-card mb-4 p-4">
       <p className="text-[13px] font-medium">Invite a teammate</p>
-      <p className="k-fg3 mt-0.5 text-[12px]">They get an email with a link to join this organization.</p>
+      <p className="k-fg3 mt-0.5 text-[12px]">They get an email with a link to join this organization as an admin.</p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input
           type="email"
@@ -207,18 +200,6 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
           aria-label="Email address"
           className="k-input min-w-0 flex-1 px-2.5"
         />
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as InviteRole)}
-          aria-label="Role"
-          className="k-input px-2"
-        >
-          {INVITE_ROLES.map((r) => (
-            <option key={r} value={r}>
-              {INVITE_ROLE_LABEL[r]}
-            </option>
-          ))}
-        </select>
         <button
           type="submit"
           disabled={!valid || sending}
