@@ -149,7 +149,86 @@ export interface GetStartedSegment {
   name: string;
   rationale: string;
   count: number;
+  /** What the people search filters on, read off the served filters. Absent on an older snapshot. */
+  criteria?: SegmentCriterion[];
 }
+
+// ── Segment criteria, read off the people-search filters the producer served ──
+
+export interface SegmentCriterion {
+  label: string;
+  values: string[];
+}
+
+/**
+ * The filters a segment's people search runs on (apollo-service's native snake_case,
+ * camelCase accepted), stated in words. Only the keys below are read: an id list or a
+ * flag a person cannot read is skipped rather than guessed at. Nothing is invented; a
+ * segment whose filters carry none of these states no criteria.
+ */
+const CRITERIA_KEYS: { label: string; keys: string[]; format?: (v: string) => string | null }[] = [
+  { label: "Titles", keys: ["person_titles", "personTitles"] },
+  { label: "Seniority", keys: ["person_seniorities", "personSeniorities"], format: (v) => v.replace(/_/g, " ") },
+  { label: "Industries", keys: ["organization_industries", "organizationIndustries"] },
+  { label: "Keywords", keys: ["q_organization_keyword_tags", "qOrganizationKeywordTags", "q_keywords", "qKeywords"] },
+  { label: "Company size", keys: ["organization_num_employees_ranges", "organizationNumEmployeesRanges"], format: employeeRange },
+  { label: "Where", keys: ["organization_locations", "organizationLocations", "person_locations", "personLocations"] },
+];
+
+/** "50,500" reads "50 to 500 employees"; "10001," reads "10,001+ employees". */
+function employeeRange(v: string): string | null {
+  const m = v.match(/^\s*(\d*)\s*,\s*(\d*)\s*$/);
+  if (!m || (!m[1] && !m[2])) return null;
+  const n = (x: string) => Number(x).toLocaleString("en-US");
+  if (m[1] && m[2]) return `${n(m[1])} to ${n(m[2])} employees`;
+  return m[1] ? `${n(m[1])}+ employees` : `Up to ${n(m[2])} employees`;
+}
+
+export function segmentCriteria(filters: unknown): SegmentCriterion[] {
+  if (!filters || typeof filters !== "object" || Array.isArray(filters)) return [];
+  const rec = filters as Record<string, unknown>;
+  const out: SegmentCriterion[] = [];
+  for (const c of CRITERIA_KEYS) {
+    const seen = new Set<string>();
+    const values: string[] = [];
+    for (const k of c.keys) {
+      const raw = rec[k];
+      const list = typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
+      for (const item of list) {
+        if (typeof item !== "string") continue;
+        const v = (c.format ? c.format(item) : item.trim()) ?? "";
+        if (!v || seen.has(v.toLowerCase())) continue;
+        seen.add(v.toLowerCase());
+        values.push(v);
+      }
+    }
+    if (values.length) out.push({ label: c.label, values });
+  }
+  return out;
+}
+
+// ── The stage: which step is on screen ────────────────────────────────────────
+
+export type StepPhase = "waiting" | "running" | "done" | "failed" | "notLive";
+
+export const settledPhase = (p: StepPhase) => p === "done" || p === "failed" || p === "notLive";
+
+/**
+ * Where the stage goes next, given every step's phase (in order) and the step on
+ * screen. A step that starts running BEFORE the one on screen (another segment was
+ * picked) is jumped to at once. A step on screen that has settled hands over to the
+ * next one after a short dwell, so each result is seen before it moves to the rail,
+ * but only once the next step has begun. Otherwise the stage holds.
+ */
+export function stageMove(phases: StepPhase[], at: number): { to: number; dwell: boolean } | null {
+  const running = phases.indexOf("running");
+  if (running >= 0 && running < at) return { to: running, dwell: false };
+  if (at < phases.length - 1 && settledPhase(phases[at]) && phases[at + 1] !== "waiting") return { to: at + 1, dwell: true };
+  return null;
+}
+
+/** Explee's three steps after the preview: what the account turns on. Not run here. */
+export const NEXT_STEPS = ["Send emails", "Book meetings", "Learn and double down"] as const;
 
 export interface GetStartedSnapshot {
   version: 1;
@@ -163,6 +242,14 @@ export interface GetStartedSnapshot {
   segments: GetStartedSegment[];
   /** Whole dollars a day, or null when none was chosen. */
   budgetUsd: number | null;
+}
+
+function validCriteria(raw: unknown): SegmentCriterion[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.filter(
+    (c): c is SegmentCriterion =>
+      !!c && typeof c === "object" && typeof (c as SegmentCriterion).label === "string" && Array.isArray((c as SegmentCriterion).values) && (c as SegmentCriterion).values.every((v) => typeof v === "string"),
+  );
 }
 
 /** Read a stored snapshot; anything malformed is null (the flow starts over). */
@@ -193,6 +280,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
           typeof (g as GetStartedSegment).name === "string" &&
           typeof (g as GetStartedSegment).count === "number",
       )
+      .map((g) => ({ ...g, criteria: validCriteria(g.criteria) }))
     : [];
   return {
     version: 1,
