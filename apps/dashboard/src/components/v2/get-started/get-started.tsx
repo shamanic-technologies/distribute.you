@@ -22,7 +22,9 @@ import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
 import {
   ApiError,
+  checkNextAudienceEmail,
   extractBrandFields,
+  getAudienceEmailChecks,
   getAudiencePreview,
   getPublicCatalogueSignedOut,
   getWorkflowProjectionLadder,
@@ -31,6 +33,7 @@ import {
   suggestAudiences,
   suggestBrandIcp,
   upsertBrand,
+  type AudienceEmailChecks,
   type AudiencePreview,
   type PreviewEmail,
 } from "@/lib/api";
@@ -46,8 +49,14 @@ import {
   GET_STARTED_STEPS,
   NEXT_STEPS,
   STEPS_NOT_LIVE,
+  emailCheckNote,
+  emailPieces,
+  highlightKindLabel,
   hostOf,
   parseCompetitors,
+  providerLabel,
+  shouldCheckNext,
+  verdictLabel,
   parseGetStartedSnapshot,
   segmentCriteria,
   settledPhase,
@@ -107,6 +116,10 @@ export function GetStarted() {
   const [selectedSeg, setSelectedSeg] = useState<string | null>(null);
   const [previews, setPreviews] = useState<Record<string, AudiencePreview>>({});
   const [emails, setEmails] = useState<Record<string, PreviewEmail>>({});
+  // Step 5, live: each sampled person's email, found and verified one by one.
+  const [checks, setChecks] = useState<Record<string, AudienceEmailChecks>>({});
+  const [checkingIdx, setCheckingIdx] = useState<Record<string, number | null>>({});
+  const [checkNotes, setCheckNotes] = useState<Record<string, string>>({});
   const [emailNote, setEmailNote] = useState<string | null>(null);
   const [offerId, setOfferId] = useState<string | null>(null);
   const inFlight = useRef(new Set<string>());
@@ -227,12 +240,63 @@ export function GetStarted() {
       setSteps((cur) => ({
         ...cur,
         companies: ok && got!.companies.length ? "done" : "failed",
-        people: ok && got!.people.length ? "done" : "failed",
+        // Stays running while the sampled people's emails are found and verified.
+        people: ok && got!.people.length ? "running" : "failed",
         email: ok && got!.people.length ? cur.email : STEPS_NOT_LIVE.has("email") ? cur.email : "failed",
       }));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeg, previews]);
+
+  // Step 5, live: the sampled people's emails, found and verified ONE person per call
+  // (a billed reveal on this session's org, ~6s each) until human-service says done.
+  // Queued like every other read; a segment picked meanwhile stops the loop, and
+  // picking this one again resumes it where the producer left off.
+  useEffect(() => {
+    if (!selectedSeg) return;
+    const prev = previews[selectedSeg];
+    if (prev?.status !== "ready" || !prev.people.length) return;
+    const known = checks[selectedSeg];
+    if ((known && (known.done || known.status !== "ready")) || checkNotes[selectedSeg] || inFlight.current.has(`c:${selectedSeg}`)) return;
+    const id = selectedSeg;
+    inFlight.current.add(`c:${id}`);
+    setStep("people", "running");
+    enqueue(async () => {
+      try {
+        if (selectedRef.current !== id) return;
+        let state = await getAudienceEmailChecks(id);
+        setChecks((cur) => ({ ...cur, [id]: state }));
+        let calls = 0;
+        while (shouldCheckNext(state, calls) && selectedRef.current === id) {
+          const next = state.people.find((x) => x.status === "pending") ?? null;
+          setCheckingIdx((cur) => ({ ...cur, [id]: next?.index ?? null }));
+          state = await checkNextAudienceEmail(id);
+          calls += 1;
+          setChecks((cur) => ({ ...cur, [id]: state }));
+        }
+        if (selectedRef.current !== id) return;
+        if (!state.done && state.status === "ready") {
+          console.error("[get-started] email checks did not settle", { audienceId: id, calls, summary: state.summary });
+          setCheckNotes((cur) => ({ ...cur, [id]: "Some emails could not be checked." }));
+        }
+        setStep("people", "done");
+      } catch (e) {
+        console.error("[get-started] email check failed:", e);
+        setCheckNotes((cur) => ({
+          ...cur,
+          [id]:
+            e instanceof ApiError && e.status === 402
+              ? "Your free preview credit is used up, so we stopped checking emails."
+              : "We could not check the emails just now.",
+        }));
+        if (selectedRef.current === id) setStep("people", "done");
+      } finally {
+        setCheckingIdx((cur) => ({ ...cur, [id]: null }));
+        inFlight.current.delete(`c:${id}`);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSeg, previews, checks, checkNotes]);
 
   // Step 6: one email written for one of the sampled people, billed to this
   // session's anonymous org. The same brand + person returns the stored email.
@@ -324,7 +388,7 @@ export function GetStarted() {
         setSteps((cur) => ({
           ...cur,
           companies: ready && prev.companies.length ? "done" : "failed",
-          people: ready && prev.people.length ? "done" : "failed",
+          people: !ready || !prev.people.length ? "failed" : checksSettled(checks[id]) || checkNotes[id] ? "done" : "running",
           email: mail ? "done" : STEPS_NOT_LIVE.has("email") ? cur.email : ready && prev.people.length ? "running" : "failed",
         }));
       } else {
@@ -524,7 +588,13 @@ export function GetStarted() {
       return STEPS_NOT_LIVE.has("people") ? (
         <NotLiveCard index={5} title="Decision makers" body="The people we would write to at those companies, by name and role, will be listed here. This step is not live yet." />
       ) : (
-        <PeopleCard state={steps.people} preview={selectedSeg ? previews[selectedSeg] : undefined} />
+        <PeopleCard
+          state={steps.people}
+          preview={selectedSeg ? previews[selectedSeg] : undefined}
+          checks={selectedSeg ? checks[selectedSeg] : undefined}
+          checkingIdx={selectedSeg ? checkingIdx[selectedSeg] ?? null : null}
+          checkNote={selectedSeg ? checkNotes[selectedSeg] ?? null : null}
+        />
       );
     return STEPS_NOT_LIVE.has("email") ? (
       <NotLiveCard index={6} title="Your first email" body="One email written for one of those people will appear here, ready to send. This step is not live yet." />
@@ -1087,11 +1157,28 @@ function CompaniesCard({ state, preview, segmentName }: { state: StepState; prev
   );
 }
 
-function PeopleCard({ state, preview }: { state: StepState; preview: AudiencePreview | undefined }) {
+function checksSettled(c: AudienceEmailChecks | undefined): boolean {
+  return !!c && (c.done || c.status !== "ready");
+}
+
+export function PeopleCard({
+  state,
+  preview,
+  checks,
+  checkingIdx,
+  checkNote,
+}: {
+  state: StepState;
+  preview: AudiencePreview | undefined;
+  checks: AudienceEmailChecks | undefined;
+  checkingIdx: number | null;
+  checkNote: string | null;
+}) {
   const people = preview?.status === "ready" ? preview.people : [];
   return (
     <StepCard index={5} title="Decision makers" state={state} meta={<StateWord state={state} doneLabel={`${people.length} shown`} />}>
-      {state === "running" || state === "waiting" ? (
+      {people.length > 0 && <EmailChecks checks={checks} checkingIdx={checkingIdx} note={checkNote} running={state === "running"} />}
+      {(state === "running" || state === "waiting") && people.length === 0 ? (
         <Rows n={5} />
       ) : people.length === 0 ? (
         <p className="k-fg3 text-[13px]">{sampleNote(preview)}</p>
@@ -1123,14 +1210,190 @@ function PeopleCard({ state, preview }: { state: StepState; preview: AudiencePre
               })}
             </tbody>
           </table>
-          <p className="k-fg3 mt-2 text-[12px]">Last names are masked until your account is set up. We never show an email here.</p>
+          <p className="k-fg3 mt-2 text-[12px]">Last names are masked until your account is set up. We never show an email address here, only its domain.</p>
         </div>
       )}
     </StepCard>
   );
 }
 
-function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail | undefined; note: string | null }) {
+/**
+ * The sampled people's emails, found and verified live. Every state drawn is one
+ * human-service returned (or the one reveal running right now); the address itself
+ * never reaches the page, only its masked domain.
+ */
+function EmailChecks({
+  checks,
+  checkingIdx,
+  note,
+  running,
+}: {
+  checks: AudienceEmailChecks | undefined;
+  checkingIdx: number | null;
+  note: string | null;
+  running: boolean;
+}) {
+  const list = checks?.status === "ready" ? checks.people : [];
+  const sum = checks?.summary;
+  return (
+    <div className="k-inset mb-3 rounded-lg px-3 py-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="k-fg text-[13px] font-medium">Emails, found and verified live</p>
+        {sum && sum.checked > 0 && (
+          <p className="k-fg3 text-[12px] tabular-nums">
+            {sum.found} of {sum.checked} found, {sum.deliverable} deliverable
+          </p>
+        )}
+      </div>
+      {!checks ? (
+        note ? (
+          <p className="k-fg3 mt-1.5 text-[12px]">{note}</p>
+        ) : (
+          <div className="mt-2">
+            <Rows n={3} />
+          </div>
+        )
+      ) : checks.status !== "ready" ? (
+        <p className="k-fg3 mt-1.5 text-[12px]">{emailCheckNote(checks.reason)}</p>
+      ) : (
+        <ul className="mt-2 grid gap-1.5">
+          {list.map((x) => {
+            const name = [x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ") || "\u2014";
+            const checking = x.status === "checking" || (running && checkingIdx === x.index && x.status === "pending");
+            return (
+              <li key={x.index} className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3" data-check-status={checking ? "checking" : x.status}>
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <Initials name={name} size={20} round />
+                  <span className="min-w-0 truncate text-[13px]">
+                    <span className="k-fg">{name}</span>
+                    {x.company && <span className="k-fg3">, {x.company}</span>}
+                  </span>
+                </span>
+                <EmailCheckCell person={x} checking={checking} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {checks && note && <p className="k-fg3 mt-1.5 text-[12px]">{note}</p>}
+    </div>
+  );
+}
+
+function EmailCheckCell({ person, checking }: { person: AudienceEmailChecks["people"][number]; checking: boolean }) {
+  const finder = providerLabel(person.finder);
+  const verifier = providerLabel(person.verifier);
+  if (checking)
+    return (
+      <span className="k-fg2 flex shrink-0 items-center gap-1.5 pl-7 text-[12px] sm:pl-0">
+        <span aria-hidden className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
+        Finding and verifying
+      </span>
+    );
+  if (person.status === "found")
+    return (
+      <span className="gs-pop flex shrink-0 flex-col pl-7 text-[12px] sm:items-end sm:pl-0">
+        <span className="k-fg font-mono">{person.maskedEmail ?? "\u2014"}</span>
+        <span className="k-fg3">
+          {finder ? `Found via ${finder}` : "Found"}
+          {verifier && `, verified by ${verifier}: `}
+          {verifier && (
+            <span style={{ color: person.deliverable ? "var(--run)" : "var(--data-amber)" }}>{verdictLabel(person.verdict) ?? "no verdict"}</span>
+          )}
+        </span>
+      </span>
+    );
+  if (person.status === "not_found")
+    return <span className="gs-in k-fg3 shrink-0 pl-7 text-[12px] sm:pl-0">{finder ? `Not found via ${finder}` : "Not found"}</span>;
+  return <span className="k-fg4 shrink-0 pl-7 text-[12px] sm:pl-0">Waiting</span>;
+}
+
+const KIND_COLOR: Record<string, string> = {
+  prospect: "var(--data-sky)",
+  brand: "var(--accent)",
+  audience: "var(--data-violet)",
+  instruction: "var(--data-amber)",
+};
+
+/**
+ * The written email with each explained sentence marked. Hovering (mouse), focusing or
+ * tapping a sentence shows why it was written and from what input, in a panel under
+ * the body, so it reads the same on a phone as on a desktop. Every reason is the one
+ * the writing model reported and content-generation checked.
+ */
+function ExplainedBody({ mail }: { mail: PreviewEmail }) {
+  const pieces = useMemo(() => emailPieces(mail.bodyText, mail.highlights), [mail.bodyText, mail.highlights]);
+  const [active, setActive] = useState<number | null>(null);
+  const shown = active != null ? pieces[active]?.highlight ?? null : null;
+  return (
+    <div className="gs-in">
+      <p className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6">
+        {pieces.map((p, i) =>
+          p.highlight ? (
+            <span
+              key={i}
+              role="button"
+              tabIndex={0}
+              aria-pressed={active === i}
+              aria-label={`${p.text} Why: ${p.highlight.reason}`}
+              onPointerEnter={(e) => {
+                if (e.pointerType === "mouse") setActive(i);
+              }}
+              onFocus={() => setActive(i)}
+              // A tap focuses THEN clicks, so a toggle here would close what focus just
+              // opened. Click opens; another sentence replaces it.
+              onClick={() => setActive(i)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setActive((cur) => (cur === i ? null : i));
+                }
+              }}
+              className="cursor-pointer rounded-[3px] outline-none transition-colors"
+              style={{
+                textDecorationLine: "underline",
+                textDecorationStyle: "dotted",
+                textDecorationColor: KIND_COLOR[p.highlight.kind] ?? "var(--fg-3)",
+                textUnderlineOffset: 3,
+                background: active === i ? `color-mix(in oklab, ${KIND_COLOR[p.highlight.kind] ?? "var(--fg-3)"} 16%, transparent)` : undefined,
+              }}
+            >
+              {p.text}
+            </span>
+          ) : (
+            <span key={i}>{p.text}</span>
+          ),
+        )}
+      </p>
+      <div className="border-t border-[var(--line-subtle)] px-3 py-2.5" aria-live="polite">
+        {shown ? (
+          <div key={active} className="gs-in text-[12px] leading-5">
+            <p className="flex flex-wrap items-center gap-x-2">
+              <span className="font-medium" style={{ color: KIND_COLOR[shown.kind] ?? "var(--fg-2)" }}>
+                {highlightKindLabel(shown.kind)}
+              </span>
+              <span className="k-fg3">{shown.sourceLabel}</span>
+            </p>
+            <p className="k-fg mt-0.5">{shown.reason}</p>
+            {shown.sourceValue && <p className="k-fg3 mt-0.5 line-clamp-3">Source: {shown.sourceValue}</p>}
+          </div>
+        ) : (
+          <p className="k-fg3 text-[12px]">Hover or tap an underlined sentence to see why it was written, and from what.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmailBody({ mail }: { mail: PreviewEmail }) {
+  const explained = (mail.highlights?.length ?? 0) > 0;
+  const [typed, setTyped] = useState(false);
+  useEffect(() => setTyped(false), [mail.id]);
+  if (explained && typed) return <ExplainedBody mail={mail} />;
+  return <Typewriter text={mail.bodyText} className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6" onDone={explained ? () => setTyped(true) : undefined} />;
+}
+
+export function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail | undefined; note: string | null }) {
   return (
     <StepCard index={6} title="Your first email" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
@@ -1152,7 +1415,7 @@ function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail
             <span className="k-label w-12 shrink-0 pt-0.5">Subject</span>
             <span className="k-fg font-medium">{mail.subject}</span>
           </div>
-          <Typewriter text={mail.bodyText} className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6" />
+          <EmailBody mail={mail} />
         </div>
       )}
     </StepCard>

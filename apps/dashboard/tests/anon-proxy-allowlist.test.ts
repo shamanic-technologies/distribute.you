@@ -149,7 +149,10 @@ describe("the file itself", () => {
     // the signed-out onboarding v2 and creates nothing that can be sent.
     const rules = src
       .slice(src.indexOf("const RULES"), src.indexOf("export interface AllowInput"))
-      .replace('"preview-email"', "");
+      .replace('"preview-email"', "")
+      // The reviewed email CHECKS of the sampled people: they reveal and verify an address
+      // on this anonymous org and return only its masked domain. Nothing is sent.
+      .replaceAll('"email-checks"', "");
     for (const banned of ["campaign", "lead", "instantly", "billing", "credit", "stripe", "email"]) {
       expect(rules.toLowerCase(), banned).not.toContain(banned);
     }
@@ -196,6 +199,14 @@ describe("the onboarding v2 preview reads", () => {
   it("permits the audience sample and the preview email", () => {
     expect(allow("GET", "/orgs/audiences/9b1c/preview").allowed).toBe(true);
     expect(allow("POST", "/content/preview-email").allowed).toBe(true);
+    expect(allow("GET", "/orgs/audiences/9b1c/preview/email-checks").allowed).toBe(true);
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks/next").allowed).toBe(true);
+    // Only those two shapes: no other verb, no deeper path.
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks").allowed).toBe(false);
+    expect(allow("GET", "/orgs/audiences/9b1c/preview/email-checks/next").allowed).toBe(false);
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks/next/x").allowed).toBe(false);
+    // No body, so nothing for the body binding to refuse.
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/orgs/audiences/9b1c/preview/email-checks/next", body: undefined, brandId: BRAND })).toBeNull();
   });
 
   it("binds the preview email's brand to the session", () => {

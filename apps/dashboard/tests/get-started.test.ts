@@ -249,10 +249,33 @@ describe("the surface", () => {
   it("queues every sample and email read, and a picked segment waits its turn", () => {
     expect(FLOW).toContain("readQueue.current = readQueue.current.then(task)");
     const effects = FLOW.slice(FLOW.indexOf("// Steps 4 and 5"), FLOW.indexOf("// The stage walks forward"));
-    expect(effects.match(/enqueue\(async/g)?.length).toBe(2);
+    expect(effects.match(/enqueue\(async/g)?.length).toBe(3);
     expect(effects).not.toContain("void (async");
     // The segment picker lives in the rail and on the phone's strip.
     expect(JOURNAL).toContain("d.onSelect(s.audienceId)");
+  });
+
+  it("checks the sampled people's emails one at a time, in the queue, and shows only a masked domain", () => {
+    const effect = FLOW.slice(FLOW.indexOf("// Step 5, live"), FLOW.indexOf("// Step 6"));
+    expect(effect).toContain("enqueue(async");
+    expect(effect).toContain("getAudienceEmailChecks(id)");
+    expect(effect).toContain("while (shouldCheckNext(state, calls) && selectedRef.current === id)");
+    expect(effect).toContain("await checkNextAudienceEmail(id)");
+    // The check loop is queued BEFORE the email is written.
+    expect(FLOW.indexOf("// Step 5, live")).toBeLessThan(FLOW.indexOf("// Step 6"));
+    const cell = FLOW.slice(FLOW.indexOf("function EmailCheckCell("), FLOW.indexOf("const KIND_COLOR"));
+    expect(cell).toContain("person.maskedEmail");
+    expect(cell).toContain("Found via ${finder}");
+    expect(cell).toContain("motion-reduce:animate-none");
+  });
+
+  it("explains each sentence of the email on hover, focus and tap", () => {
+    const body = FLOW.slice(FLOW.indexOf("function ExplainedBody("), FLOW.indexOf("function EmailBody("));
+    expect(body).toContain('if (e.pointerType === "mouse") setActive(i)');
+    expect(body).toContain("onClick={() => setActive(");
+    expect(body).toContain("onFocus={() => setActive(i)}");
+    expect(body).toContain("shown.reason");
+    expect(FLOW).toContain("<EmailBody mail={mail} />");
   });
 
   it("leaves the current onboarding alone", () => {

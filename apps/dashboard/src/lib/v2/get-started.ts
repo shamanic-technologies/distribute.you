@@ -360,3 +360,90 @@ export function parseDailyBudget(input: string, floorUsd: number): { usd: number
   if (n < floorUsd) return { problem: `Cold email runs from $${Math.ceil(floorUsd)} a day.` };
   return { usd: n };
 }
+
+// ── Step 5: each sampled person's email, found and verified live ────────────────
+// human-service reveals ONE person per call and returns the whole state. These rules
+// only NAME what it returned: nothing here decides that an address was found.
+
+/** A provider's name as a person reads it. Unknown names are shown as given, capitalised. */
+export function providerLabel(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const known: Record<string, string> = { apollo: "Apollo", bounceverify: "BounceVerify" };
+  return known[name.toLowerCase()] ?? name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** The verifier's verdict in plain words. */
+export function verdictLabel(verdict: string | null | undefined): string | null {
+  if (!verdict) return null;
+  const known: Record<string, string> = {
+    valid: "valid",
+    catch_all: "catch-all domain",
+    invalid: "invalid",
+    risky: "risky",
+    unknown: "could not be judged",
+  };
+  return known[verdict] ?? verdict.replace(/_/g, " ");
+}
+
+/**
+ * Whether the page should ask human-service for the next person. Stops on `done`, on
+ * an unavailable preview, and after as many calls as there are people plus one, so a
+ * producer that never says done cannot make the page spend forever.
+ */
+export function shouldCheckNext(state: { status: string; done: boolean; people: unknown[] }, callsMade: number): boolean {
+  if (state.done || state.status !== "ready") return false;
+  return callsMade < state.people.length + 1;
+}
+
+/** Why no email could be checked for this segment, in words. */
+export function emailCheckNote(reason: string | null | undefined): string {
+  if (reason === "not_built_yet") return "This segment is still being prepared, so no email was checked yet.";
+  if (reason === "no_reveal_handle" || reason === "provider_not_previewable")
+    return "The people in this sample cannot be looked up before your account is set up.";
+  return "No email could be checked for this sample.";
+}
+
+export interface EmailHighlight {
+  text: string;
+  start: number;
+  end: number;
+  kind: string;
+  sourceLabel: string;
+  sourceValue: string | null;
+  reason: string;
+}
+
+export type EmailPiece = { text: string; highlight: EmailHighlight | null };
+
+/**
+ * Splits the email body into plain runs and the sentences the writer explained. A
+ * highlight is used only when its offsets still point at its own text, and never when
+ * it overlaps one already placed: the producer checks this too, and a stored email can
+ * outlive the check. Joining the pieces always gives back `body` exactly.
+ */
+export function emailPieces(body: string, highlights: EmailHighlight[] | null | undefined): EmailPiece[] {
+  const usable = (highlights ?? [])
+    .filter((h) => h.start >= 0 && h.end > h.start && h.end <= body.length && body.slice(h.start, h.end) === h.text)
+    .sort((a, b) => a.start - b.start);
+  const pieces: EmailPiece[] = [];
+  let at = 0;
+  for (const h of usable) {
+    if (h.start < at) continue;
+    if (h.start > at) pieces.push({ text: body.slice(at, h.start), highlight: null });
+    pieces.push({ text: h.text, highlight: h });
+    at = h.end;
+  }
+  if (at < body.length) pieces.push({ text: body.slice(at), highlight: null });
+  return pieces;
+}
+
+/** Where a sentence's reason comes from, as a short tag. */
+export function highlightKindLabel(kind: string): string {
+  const known: Record<string, string> = {
+    prospect: "About them",
+    brand: "From your site",
+    audience: "From the segment",
+    instruction: "Writing rule",
+  };
+  return known[kind] ?? kind;
+}
