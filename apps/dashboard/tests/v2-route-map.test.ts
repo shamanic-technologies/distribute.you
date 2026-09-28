@@ -24,7 +24,7 @@ describe("v2PathForV1: every v1 brand page has a v2 twin", () => {
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1`, "", `${V}/missions/c1`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/settings`, "", `${V}/missions/c1/settings`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/leads`, "", `${V}/missions/c1`],
-    [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/audiences`, "", `${V}/offers/of1/targeting`],
+    [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/audiences`, "", `${V}/missions/c1/audiences`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/workflows`, "", `${V}/missions/c1/workflows`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/workflows/lithium`, "", `${V}/missions/c1/workflows?workflow=lithium`],
     [`/orgs/${O}/billing`, "?success=true", `${V}/billing?success=true`],

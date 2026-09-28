@@ -146,7 +146,7 @@ export function v2PathForV1(
   const mission = `${base}/missions/${enc(d)}`;
   if (rest.length === 4) return withQuery(mission);
   if (e === "settings" && rest.length === 5) return withQuery(`${mission}/settings`);
-  if (e === "audiences" && rest.length === 5) return withQuery(`${offer}/targeting`);
+  if (e === "audiences" && rest.length === 5) return withQuery(`${mission}/audiences`);
   if (e === "leads" && rest.length === 5) return withQuery(mission);
   if (e === "workflows" && rest.length === 5) return withQuery(`${mission}/workflows`);
   if (e === "workflows" && rest.length === 6) {
