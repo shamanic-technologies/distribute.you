@@ -58,9 +58,12 @@ export function useMissions(orgId: string, brandId: string) {
   const { rows, settled } = useCampaignRows(brandId, featureSlug, ALL_OFFERS);
   const channels = useAcquisitionChannels();
   const legCatalogue = useLegCatalogue();
-  const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
-    enabled: !!brandId,
-  });
+  // With archived offers: a stopped mission of an archived offer keeps its offer's name.
+  const offersQ = useAuthQuery(
+    ["brandOffers", brandId, "withArchived"],
+    () => listBrandOffers(brandId, undefined, { includeArchived: true }),
+    { enabled: !!brandId },
+  );
   const offerNames = useMemo(() => {
     const m = new Map<string, string | null>();
     for (const o of offersQ.data?.offers ?? []) m.set(o.offerId, o.name ?? null);

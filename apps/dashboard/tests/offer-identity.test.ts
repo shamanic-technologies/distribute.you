@@ -102,8 +102,8 @@ describe("every surface that CAN resolve an offer's image passes it", () => {
     expect(leads).toContain("<OfferMark size=\"sm\" imageUrl={offerImageOf(lead)} />");
   });
 
-  it("the lookup rides the key the tenant switcher ALREADY polls, so it costs no request", () => {
-    expect(read("lib/use-offer-images.ts")).toContain('["brandOffers", brandId ?? "none"]');
+  it("the lookup is ONE brand-wide list read (with archived offers, so a lead under an archived offer keeps its mark)", () => {
+    expect(read("lib/use-offer-images.ts")).toContain('["brandOffers", brandId ?? "none", "withArchived"]');
     // Never a per-offer by-id fan-out: a leads table naming forty offers is not forty requests.
     expect(read("lib/use-offer-images.ts")).not.toContain("getBrandOffer");
   });

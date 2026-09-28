@@ -1,4 +1,5 @@
 import { browserHasAnonSession } from "./anon-session-cookie";
+import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
 import { z } from "zod";
 import {
@@ -1795,8 +1796,9 @@ export async function getBrandConversionRates(
 // really about the proposition — audiences, leads, campaigns — hangs off
 // the offer.
 //
-// brand-service owns the level. There is no `active` flag and no DELETE route, so
-// nothing here invents either.
+// brand-service owns the level. There is no DELETE route: an offer the owner no
+// longer sells is ARCHIVED (brand-service v0.82.3), which hides it from the default
+// list and deletes nothing.
 const OfferSchema = z.object({
   offerId: z.string(),
   brandId: z.string(),
@@ -1812,21 +1814,40 @@ const OfferSchema = z.object({
   // a reader that REQUIRES it throws on any body predating the field. Absent and null
   // read the same here — the mark has nothing to draw either way.
   imageUrl: z.string().nullish(),
+  // `archived` = the owner retired it: hidden from the default list, nothing deleted.
+  // `.nullish()` for the same reason as `imageUrl`: absent reads as active.
+  status: z.enum(["active", "archived"]).nullish(),
+  archivedAt: z.string().nullish(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
 export type Offer = z.infer<typeof OfferSchema>;
 
+/** True when the owner archived this offer. An offer read before the field existed is active. */
+export function isOfferArchived(offer: Pick<Offer, "status">): boolean {
+  return offer.status === "archived";
+}
+
 const ListBrandOffersResponseSchema = z.object({ offers: z.array(OfferSchema) });
 const BrandOfferResponseSchema = z.object({ offer: OfferSchema });
 
-/** GET /brands/:brandId/offers — every proposition this brand sells. */
+/**
+ * GET /brands/:brandId/offers — every proposition this brand sells.
+ *
+ * ARCHIVED offers are left out unless `includeArchived`. Query keys: the default list is
+ * `["brandOffers", brandId]`; the list WITH archived offers is
+ * `["brandOffers", brandId, "withArchived"]`, so invalidating the prefix refreshes both.
+ * A surface that names an offer by id for HISTORY (missions, leads marks) reads the
+ * with-archived list, or an archived offer's past work loses its name.
+ */
 export async function listBrandOffers(
   brandId: string,
   token?: string,
+  opts: { includeArchived?: boolean } = {},
 ): Promise<{ offers: Offer[] }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers`, { token });
+  const qs = opts.includeArchived ? "?includeArchived=true" : "";
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers${qs}`, { token });
   const parsed = ListBrandOffersResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] listBrandOffers: response shape mismatch", {
@@ -1941,7 +1962,42 @@ export async function confirmBrandOffers(
   return { chosenOfferId: parsed.data.chosenOfferId };
 }
 
-/** PATCH /brands/:brandId/offers/:offerId — rename. The only mutable field. */
+/**
+ * POST /brands/:brandId/offers/:offerId/archive | /unarchive — retire an offer the owner
+ * no longer sells, or bring it back. Nothing is deleted either way.
+ *
+ * Archive is refused 409 with `reason: "offer_has_ongoing_campaign"` while a campaign on
+ * the offer is running; `offerArchiveErrorMessage` turns that into a sentence.
+ */
+export async function setBrandOfferArchived(
+  brandId: string,
+  offerId: string,
+  archived: boolean,
+  token?: string,
+): Promise<{ offer: Offer }> {
+  const raw = await apiCall<unknown>(
+    `/brands/${brandId}/offers/${offerId}/${archived ? "archive" : "unarchive"}`,
+    { token, method: "POST", body: {} },
+  );
+  const parsed = BrandOfferResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setBrandOfferArchived: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] setBrandOfferArchived: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** A failed archive or unarchive, as a sentence for the owner (see `offer-archive.ts`). */
+export function offerArchiveErrorMessage(err: unknown, archiving: boolean): string {
+  return err instanceof ApiError
+    ? offerArchiveRefusalSentence(err.status, err.body, archiving)
+    : offerArchiveRefusalSentence(null, null, archiving);
+}
+
+/** PATCH /brands/:brandId/offers/:offerId — rename. */
 export async function renameBrandOffer(
   brandId: string,
   offerId: string,
