@@ -247,6 +247,17 @@ function DealColumn({
             const status = getLeadConsolidatedStatus(lead);
             const at = leadDateForStatus(lead, status);
             const value = served && lead.leadId ? served.byLead.get(lead.leadId) ?? null : null;
+            const expected = valued && lead.leadId ? valueByLead.get(lead.leadId) ?? null : null;
+            // Keel's forecast tag under the amount: which figure the amount is. A contacted
+            // lead's value is NOT in the pipeline, so it says "Expected", never "Pipeline".
+            const valueTag =
+              expected != null
+                ? "Expected"
+                : !valued && value != null && value > 0
+                  ? served?.basis === "won_value"
+                    ? "Won"
+                    : "Pipeline"
+                  : null;
             return (
               <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-card block p-3">
                 <div className="flex items-center gap-2">
@@ -256,17 +267,32 @@ function DealColumn({
                     <PersonAvatar lead={lead} size={18} />
                   )}
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
-                  {valued && lead.leadId && valueByLead.get(lead.leadId) != null ? (
+                  {expected != null ? (
                     // Contacted, not engaged: its expected value, quieter than an engaged figure.
-                    <span className="k-fg2 shrink-0 text-[12px] tabular-nums">{formatUsdAdaptive(valueByLead.get(lead.leadId) as number)}</span>
+                    <span className="k-fg2 shrink-0 text-[12px] tabular-nums">{formatUsdAdaptive(expected)}</span>
                   ) : !valued && value != null && value > 0 ? (
                     <span className="shrink-0 text-[13px] font-medium tabular-nums">{formatUsdAdaptive(value)}</span>
                   ) : null}
                 </div>
-                {company ? (
+                {company || valueTag ? (
                   <div className="k-fg2 mt-1.5 flex items-center gap-1.5 text-[12px]">
-                    <PersonAvatar lead={lead} size={14} />
-                    <span className="truncate">{leadName(lead)}</span>
+                    {company ? (
+                      <>
+                        <PersonAvatar lead={lead} size={14} />
+                        <span className="min-w-0 flex-1 truncate">{leadName(lead)}</span>
+                      </>
+                    ) : (
+                      <span className="flex-1" />
+                    )}
+                    {valueTag ? (
+                      <span className="k-fg3 inline-flex shrink-0 items-center gap-1 text-[12px]">
+                        <span
+                          className="h-2 w-2 rounded-[2px]"
+                          style={{ background: valueTag === "Won" ? "var(--data-teal)" : "var(--fg-4)" }}
+                        />
+                        {valueTag}
+                      </span>
+                    ) : null}
                   </div>
                 ) : null}
                 <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
