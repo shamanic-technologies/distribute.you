@@ -24,6 +24,7 @@ import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from
 import { v2Base, v2Href, v2MissionHref, v2OfferHref } from "@/lib/v2/routes";
 import { V2OffersList } from "@/components/v2/offers-list";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
+import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferCampaignsCard } from "@/components/settings/offer-campaigns-card";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
@@ -131,7 +132,12 @@ export function V2OffersPage() {
 }
 
 function useOfferName(brandId: string, offerId: string | null) {
-  const q = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
+  // With archived offers: an archived offer's own page still has a title.
+  const q = useAuthQuery(
+    ["brandOffers", brandId, "withArchived"],
+    () => listBrandOffers(brandId, undefined, { includeArchived: true }),
+    { enabled: !!brandId },
+  );
   return q.data?.offers.find((o) => o.offerId === offerId)?.name ?? null;
 }
 
@@ -178,6 +184,9 @@ export function V2OfferPage() {
           )}
         </div>
       )}
+      <div className="mt-8">
+        <OfferArchiveCard brandId={brandId} offerId={offerId} />
+      </div>
     </V2Page>
   );
 }

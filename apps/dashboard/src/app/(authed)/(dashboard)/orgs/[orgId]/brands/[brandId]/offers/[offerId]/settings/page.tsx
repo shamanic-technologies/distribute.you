@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { DashboardPage } from "@/components/dashboard-page";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
+import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferCampaignsCard } from "@/components/settings/offer-campaigns-card";
 import { listCampaignsByBrand } from "@/lib/api";
 import { coldEmailCampaignForOffer } from "@/lib/offer-levers-home";
@@ -94,6 +95,9 @@ export default function OfferSettingsPage() {
         </div>
       )}
 
+      <div className="mt-10">
+        <OfferArchiveCard brandId={brandId} offerId={offerId} />
+      </div>
     </DashboardPage>
   );
 }

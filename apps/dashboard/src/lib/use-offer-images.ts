@@ -13,15 +13,17 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * `{offerId, name}` with no image, and one offer wearing two marks on one screen
  * is the coherence bug this repo keeps recording).
  *
- * The read is byte-equal to the one the tenant switcher already makes on every
- * brand page (`["brandOffers", brandId]`, `enabled: !!brandId`), so it dedupes to
- * NO request — the lookup is free. Never a per-offer by-id fan-out: a leads table
+ * One brand-wide list read, INCLUDING archived offers (`["brandOffers", brandId,
+ * "withArchived"]`, the key the missions list shares): a lead served under an offer the
+ * owner has since archived keeps its mark. The switcher's default list leaves archived
+ * offers out, so it cannot serve this. Never a per-offer by-id fan-out: a leads table
  * naming forty offers must not be forty requests.
  */
 export function useOfferImages(brandId: string | null | undefined) {
+  // With archived offers: a lead served under an offer since archived keeps its mark.
   const { data } = useAuthQuery(
-    ["brandOffers", brandId ?? "none"],
-    () => listBrandOffers(brandId!),
+    ["brandOffers", brandId ?? "none", "withArchived"],
+    () => listBrandOffers(brandId!, undefined, { includeArchived: true }),
     { enabled: !!brandId },
   );
   return useMemo(() => offerImageLookup(data?.offers), [data]);
