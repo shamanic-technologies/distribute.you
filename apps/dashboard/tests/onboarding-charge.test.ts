@@ -138,8 +138,11 @@ describe("onboarding wires the plan, not a second formula", () => {
   it("hands the gift deduction to billing so Stripe itemises it", () => {
     // One decision, one layer: billing applies the gift as a Stripe discount on the
     // FULL budget, so the hosted page shows the budget, the -$30 line and the total.
-    const at = src.indexOf("async function beginCheckoutAndLaunch(");
-    const block = src.slice(at, src.indexOf("window.location.href = session.url;", at));
+    // The session is built in ONE helper, shared by the click and the bonus
+    // screen's ahead-of-time preparation.
+    const at = src.indexOf("async function createLaunchCheckoutUrl(");
+    expect(at).toBeGreaterThan(-1);
+    const block = src.slice(at, src.indexOf("return session.url;", at));
     expect(block).toContain("apply_welcome_gift: true");
     expect(block).toContain("topup_amount_cents: pending.topupAmountCents");
     expect(block).not.toContain("topup_amount_cents: checkoutAmountCents");

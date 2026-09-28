@@ -153,6 +153,7 @@ ${s.noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" 
 <meta name="twitter:title" content="${esc(s.title)}">
 <meta name="twitter:description" content="${esc(s.description)}">
 <meta name="twitter:image" content="${SITE}/opengraph-image">
+<link rel="preconnect" href="https://dashboard.distribute.you">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
