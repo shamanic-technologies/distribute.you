@@ -1,0 +1,1538 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/project/tidycal.com",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "company": {
+      "id": "6f65f3c9-23da-4a94-9841-b0f49829e7f8",
+      "domain": "tidycal.com",
+      "name": "TidyCal",
+      "description": "TidyCal is a calendar management and booking solution that lets users create a shareable booking page, accept payments, and sync calendars in one place. It enables instant booking websites, payment processing via Stripe or PayPal, recurring subscriptions, and automated client reminders.",
+      "logo_url": "https://media.licdn.com/dms/image/v2/D4D0BAQHrjfRUgQcQhw/company-logo_200_200/B4DZc5tqkIGYAM-/0/1749019961965/tidycal_logo?e=2147483647&v=beta&t=rSoYeCHU1fgbk-hrL5MdH4mbB3wq8nR-93uZdvZhUd0",
+      "founded": null,
+      "size_on_linkedin": 5,
+      "industry": "SaaS / Scheduling & Booking",
+      "geo_city": "Austin",
+      "geo_country": "US",
+      "traffic": null,
+      "traffic_growth": null,
+      "traffic_history": null,
+      "funding_stage": null,
+      "is_saas": null,
+      "is_b2b": null,
+      "is_tech": null,
+      "product_summary": "Online meeting scheduling booking tool",
+      "determinants": "[\"Online meeting scheduling booking tool\", \"$29 one-time lifetime license, no subscription\", \"Built/distributed by AppSumo, 150k+ users onboarded\", \"Free tier: unlimited bookings, 1 calendar, Zoom/Meet links\"]",
+      "search_queries": "[\"scheduling link tool\", \"meeting scheduler software\", \"online booking calendar\"]",
+      "competitors": "[{\"domain\": \"timekit.io\"}, {\"domain\": \"calflow.co\"}, {\"domain\": \"meetmecalendar.com\"}, {\"domain\": \"startbooking.com\"}, {\"domain\": \"bookcall.io\"}, {\"domain\": \"kalendra.cloud\"}, {\"domain\": \"guavatex.com\"}, {\"domain\": \"picktimeapp.com\"}, {\"domain\": \"studiodate.com\"}, {\"domain\": \"simplyschedule.me\"}, {\"domain\": \"app.capappointments.com\"}, {\"domain\": \"bookingscontrol.co.uk\"}, {\"domain\": \"appointify.com\"}, {\"domain\": \"resursbokning.com\"}]",
+      "created_at": "2026-08-08T21:08:56.161887+00:00",
+      "updated_at": "2026-08-08T21:09:15.777225+00:00",
+      "explee_id": "tidycal.com",
+      "domains_json": [
+        {
+          "domain": "try-tidycal.io",
+          "available": true
+        },
+        {
+          "domain": "tidycal-team.dev",
+          "available": true
+        },
+        {
+          "domain": "gotidycal.io",
+          "available": true
+        },
+        {
+          "domain": "hellotidycal.com",
+          "available": true
+        },
+        {
+          "domain": "meettidycal.app",
+          "available": true
+        },
+        {
+          "domain": "hello-tidycal.dev",
+          "available": true
+        },
+        {
+          "domain": "tidycal-hq.com",
+          "available": true
+        },
+        {
+          "domain": "try-tidycal.com",
+          "available": true
+        },
+        {
+          "domain": "withtidycal.co",
+          "available": true
+        },
+        {
+          "domain": "gettidycal.io",
+          "available": true
+        },
+        {
+          "domain": "tidycalhq.co",
+          "available": true
+        },
+        {
+          "domain": "meet-tidycal.app",
+          "available": true
+        }
+      ],
+      "deleted_at": null,
+      "decision_maker": null,
+      "target_geo": null,
+      "gen_version": "control",
+      "gen_version_at": "2026-08-08T21:09:07.185323+00:00",
+      "employees": [
+        {
+          "name": "Matt Bean",
+          "title": "General Manager & Head of Product",
+          "photo_url": "https://media.licdn.com/dms/image/v2/D5603AQE8xo8DFTiZ1w/profile-displayphoto-scale_200_200/B56Zp9YD2CKAAc-/0/1763040052739?e=2147483647&v=beta&t=K0eoP-Oa-LkpRtbG7RMs71rNSRWpwlisB8PbJor3cOc"
+        },
+        {
+          "name": "Luka Belik",
+          "title": "Customer Experience Manager",
+          "photo_url": "https://media.licdn.com/dms/image/v2/D4D03AQFxGRjDK5sZaQ/profile-displayphoto-scale_200_200/B4DZ20.2bIHoAY-/0/1776857873479?e=2147483647&v=beta&t=95hXAuHgt88fu1k19NEOUTAc9RVZ2mrXplyQJwyfDkU"
+        },
+        {
+          "name": "Rhiana Constable",
+          "title": "Maths & Physics Tutor",
+          "photo_url": "https://media.licdn.com/dms/image/v2/D4E03AQEBFQC2lBkXSg/profile-displayphoto-scale_200_200/B4EZjYMkMaIMAk-/0/1755973830285?e=2147483647&v=beta&t=0IAjZ642j877IrOgJQcH5t3DPii1dIwqdQn_1rA49-A"
+        },
+        {
+          "name": "Srba Milenkovic",
+          "title": "Senior Product Specialist",
+          "photo_url": "https://media.licdn.com/dms/image/v2/D4D03AQGq0QNZz4bjDg/profile-displayphoto-scale_200_200/B4DZ4oqoK7G4Ag-/0/1778798727032?e=2147483647&v=beta&t=pqITuQm6AvN3gO_BL2cv1qHxnkhQxFl-fRj1movl6jI"
+        },
+        {
+          "name": "Stefania Manunza",
+          "title": "Insegnante di italiano",
+          "photo_url": "https://media.licdn.com/dms/image/v2/D4D03AQFqC-ihzaXtZw/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718278432363?e=2147483647&v=beta&t=4vsSXl-nhOAa4YS4P_cu0Mz98tduVCgUl1bepUcNcXs"
+        }
+      ],
+      "keywords": [],
+      "domain_aliases": [
+        "cooke.info",
+        "meetwithaha.com",
+        "futurepacenow.com",
+        "jobsearch.games",
+        "werkflaeche.de",
+        "meetwithdonya.com",
+        "meetwithterri.com",
+        "setupcharles.com",
+        "notarynate.com",
+        "talktotylernow.com",
+        "scheduleacall.top",
+        "chatwithjodib.com",
+        "holisticharborfinancial.com",
+        "chatwithbrantley.com",
+        "citaconcarlos.com",
+        "meetingwithcarlos.com",
+        "peniston-bird.co.uk",
+        "natheanalytics.com",
+        "callwithsabrina.com",
+        "vfpartyyacht.com",
+        "ericscalendar.com",
+        "ashmetry.com",
+        "bookjohnfitz.com",
+        "meetwithflavio.com",
+        "talktokayvon.com",
+        "5starskin.com",
+        "reunioncontal.com",
+        "soa.fm",
+        "nicksteiner.org",
+        "veroniquefortin.com",
+        "coffeewithleo.com",
+        "jonesinnovations.com",
+        "callwithcornelia.com",
+        "nocodehero.io",
+        "meetwithnaji.com",
+        "meetupwitherik.com",
+        "meetmelinda.com",
+        "callwithcrysti.com",
+        "talktosam.org",
+        "meetwithricky.com",
+        "wisemindempowerment.com",
+        "coacherika.ca",
+        "stressreliefstrategysession.com",
+        "bookwithbailey.com",
+        "envy-vacay.com",
+        "adamcallen.com",
+        "maliaphelpswaller.com",
+        "heijster.date",
+        "opsforfounders.com",
+        "meetwithmurray.com",
+        "rebeccaleepetsitter.com",
+        "meetwithshanee.com",
+        "meetingwithtal.com",
+        "higherelevationresources.com",
+        "discoverilc.com",
+        "bookwithangie.com",
+        "zoomeia.digital",
+        "patryknowicki.com",
+        "schedulerick.com",
+        "gmb45.com",
+        "hkspropertyadvocates.com.au",
+        "moneyhabits.com.au",
+        "zoomconnelson.digital",
+        "masteryourstrategy.com",
+        "15minuteconsult.com",
+        "libsyncoaching.com",
+        "callwithjohn.net",
+        "callrealtoredgar.com",
+        "kt-help.com",
+        "sollove.com",
+        "fulltimegd.com",
+        "thestackling.com",
+        "schedulebevin.com",
+        "meetwithk.com",
+        "meetwithaldo.com",
+        "velvetopus.com",
+        "callwithbrock.com",
+        "resonating.life",
+        "meetwithkenny.com",
+        "grantanderton.com",
+        "garymeeting.com",
+        "certifiedscalingupcoach.com",
+        "scheduleoso.com",
+        "speaktopete.com",
+        "meetwithstephan.com",
+        "ginameeting.com",
+        "agendarzoom.digital",
+        "wauw.studio",
+        "sparkedcoaching.ca",
+        "xosemiguel.com",
+        "engagewithgloria.com",
+        "christopherscalendar.com",
+        "donscalendar.com",
+        "partnerwithcelia.com",
+        "bookrackhouse.com",
+        "tarkon.pro",
+        "bookwithdavid.com",
+        "reachchris.com",
+        "neverthinkaboutmarketingagain.com",
+        "meetchad.info",
+        "gcvocalcoaching.com",
+        "nedanderton.com",
+        "meetwithkatie.com",
+        "cody.events",
+        "rebeccaleepetsitter.org",
+        "patryknowicki.pl",
+        "chatwithnate.com",
+        "bookgus.com",
+        "haveachatwithpaul.com",
+        "freestorycheck.com",
+        "bookhazen.com",
+        "bookvirtualmeeting.com",
+        "clarenickson.com",
+        "videogames.agency",
+        "celiascalendar.com",
+        "notary.box",
+        "talk2dawn.com",
+        "beratungsgespraech.com",
+        "callwithdena.live",
+        "meetingswithmike.com",
+        "transitionsthrive.com",
+        "xn--beratungsgesprch-8nb.com",
+        "timewithb-saa.com",
+        "podcastcpr.com",
+        "uhurucoaching.ca",
+        "workwithcelia.com",
+        "sellmydress.ca",
+        "bookacallwithellen.com",
+        "loansmadeawesome.com",
+        "klekfm.biz",
+        "influenceconsult.com",
+        "viajaconmanu.es",
+        "pro2callbrett.com",
+        "farahimalili.com",
+        "homestudiossd.com",
+        "pixiepulse.quest",
+        "connectwithronda.com",
+        "49gmb.com",
+        "darian.contact",
+        "bookwithcoast.com",
+        "artbyangeltaylor.com",
+        "phonethique.fr",
+        "listwithreid.com",
+        "intimology.com.au",
+        "epiquechris.com",
+        "callcoachjesse.com",
+        "swingstudiojxn.com",
+        "callmatthias.com",
+        "ledgerflowbooks.com",
+        "agendarllamada.digital",
+        "hksproperty.com",
+        "chatwithlaci.com",
+        "foxvalleymobilenotaries.net",
+        "scheduledan.com",
+        "meetandy.info",
+        "thrivefamilysolutions.com",
+        "connectwithjeremy.com",
+        "bryantlowens.com",
+        "influenceconsult.org",
+        "stopgrowingbroke.biz",
+        "raymasalas.com",
+        "connectwithdaniel.com",
+        "thestuartritchie.com",
+        "jaelex.com",
+        "thefinancialliteracy.org",
+        "connectwithblaney.com",
+        "salesgeniusguest.com",
+        "meetingwithcole.com",
+        "jwilsonloans.com",
+        "talkwithcelia.com",
+        "homeloansmadeawesome.com",
+        "miameeting.com",
+        "chatwithblaney.com",
+        "meetwithdrew.com",
+        "carlaescot.com",
+        "makeshajones.com",
+        "finbil.dk",
+        "barbara-paris.com",
+        "growwithjordan.info",
+        "reservemydriver.com",
+        "procoachhelp.com",
+        "successwithcelia.com"
+      ]
+    },
+    "determinants": [
+      "Online meeting scheduling booking tool",
+      "$29 one-time lifetime license, no subscription",
+      "Built/distributed by AppSumo, 150k+ users onboarded",
+      "Free tier: unlimited bookings, 1 calendar, Zoom/Meet links"
+    ],
+    "competitors": [
+      {
+        "domain": "timekit.io"
+      },
+      {
+        "domain": "calflow.co"
+      },
+      {
+        "domain": "meetmecalendar.com"
+      },
+      {
+        "domain": "startbooking.com"
+      },
+      {
+        "domain": "bookcall.io"
+      },
+      {
+        "domain": "kalendra.cloud"
+      },
+      {
+        "domain": "guavatex.com"
+      },
+      {
+        "domain": "picktimeapp.com"
+      },
+      {
+        "domain": "studiodate.com"
+      },
+      {
+        "domain": "simplyschedule.me"
+      },
+      {
+        "domain": "app.capappointments.com"
+      },
+      {
+        "domain": "bookingscontrol.co.uk"
+      },
+      {
+        "domain": "appointify.com"
+      },
+      {
+        "domain": "resursbokning.com"
+      }
+    ],
+    "search_queries": [
+      "scheduling link tool",
+      "meeting scheduler software",
+      "online booking calendar"
+    ],
+    "segments": [
+      {
+        "label": "Solo professionals",
+        "icon": "briefcase",
+        "use_case": "Share **booking links**, sync **personal calendars**, avoid back-and-forth scheduling",
+        "pain": "Scheduling wastes time and misses leads",
+        "criteria": [
+          "Runs solo practice",
+          "Client meetings by appointment",
+          "Needs simple scheduling"
+        ],
+        "negative_criterias": [
+          "Large support team",
+          "On-site service work"
+        ],
+        "keywords": "freelancer booking, consultant scheduling, solo coach, appointment link, calendar sync",
+        "example_clients": [
+          "independent marketing consultant",
+          "freelance designer",
+          "business coach",
+          "solo recruiter",
+          "fractional CFO"
+        ],
+        "percentage": 28,
+        "estimated_companies": 70000,
+        "buyer_type": "individual",
+        "id": "ockt8c",
+        "decision_maker": "we look for the independent professional who personally owns their client bookings and calendar",
+        "target_geo": "United States"
+      },
+      {
+        "label": "Coaches and consultants",
+        "icon": "graduation-cap",
+        "use_case": "Offer **discovery calls**, route **paid sessions**, reduce no-shows",
+        "pain": "Prospects drop off during scheduling",
+        "criteria": [
+          "High-touch client calls",
+          "Premium expertise sold",
+          "Inbound lead generation"
+        ],
+        "negative_criterias": [
+          "Purely product-led business",
+          "No client meetings"
+        ],
+        "keywords": "business coach, consultant booking, discovery call, paid consult, client intake",
+        "example_clients": [
+          "local business coach",
+          "independent HR consultant",
+          "career advisor",
+          "strategy consultant",
+          "brand consultant"
+        ],
+        "percentage": 18,
+        "estimated_companies": 30000,
+        "buyer_type": "company",
+        "id": "6tjak8",
+        "decision_maker": "we look for coaches and consultants who own their own client intake and discovery-call funnel",
+        "target_geo": "United States"
+      },
+      {
+        "label": "Agencies and studios",
+        "icon": "layers",
+        "use_case": "Book **client calls**, coordinate **team calendars**, keep projects moving",
+        "pain": "Team scheduling slows client onboarding",
+        "criteria": [
+          "Client services business",
+          "Multiple staff calendars",
+          "Sales to delivery handoff"
+        ],
+        "negative_criterias": [
+          "Single service provider",
+          "Retail storefront model"
+        ],
+        "keywords": "agency booking, studio scheduling, team calendars, client calls, onboarding meetings",
+        "example_clients": [
+          "local digital agency",
+          "brand studio",
+          "video production studio",
+          "web design agency",
+          "creative consultancy"
+        ],
+        "percentage": 16,
+        "estimated_companies": 18000,
+        "buyer_type": "company",
+        "id": "qb4h6h",
+        "decision_maker": "we look for agency owners or account/operations leads responsible for client onboarding and team scheduling",
+        "target_geo": "United States"
+      },
+      {
+        "label": "Education providers",
+        "icon": "book-open",
+        "use_case": "Schedule **student sessions**, manage **office hours**, simplify enrollments",
+        "pain": "Students struggle to find open times",
+        "criteria": [
+          "Teaching or tutoring service",
+          "Recurring learner meetings",
+          "Small administrative team"
+        ],
+        "negative_criterias": [
+          "Public school district",
+          "Fully self-paced course"
+        ],
+        "keywords": "tutor booking, student sessions, office hours, education scheduling, lesson calendar",
+        "example_clients": [
+          "independent tutoring center",
+          "language school",
+          "music teacher studio",
+          "test prep coach",
+          "adult education provider"
+        ],
+        "percentage": 14,
+        "estimated_companies": 12000,
+        "buyer_type": "company",
+        "id": "ilwo3d",
+        "decision_maker": "we look for program or student-services coordinators who manage tutoring sessions, office hours and enrollment scheduling",
+        "target_geo": "United States"
+      },
+      {
+        "label": "Health practitioners",
+        "icon": "heart-pulse",
+        "use_case": "Accept **consultations**, sync **availability**, cut appointment friction",
+        "pain": "Patients cancel or book the wrong slot",
+        "criteria": [
+          "Appointment-based practice",
+          "Small clinic operation",
+          "Limited front desk staff"
+        ],
+        "negative_criterias": [
+          "Large hospital system",
+          "Walk-in only care"
+        ],
+        "keywords": "clinic booking, practitioner scheduling, patient appointments, consultation link, health calendar",
+        "example_clients": [
+          "physiotherapy clinic",
+          "chiropractic practice",
+          "dietitian practice",
+          "therapy practice",
+          "wellness clinic"
+        ],
+        "percentage": 12,
+        "estimated_companies": 9000,
+        "buyer_type": "company",
+        "id": "m6ikz7",
+        "decision_maker": "we look for practice owners or front-desk/clinic managers responsible for patient appointment booking",
+        "target_geo": "United States"
+      },
+      {
+        "label": "Sales teams",
+        "icon": "target",
+        "use_case": "Book **demo meetings**, speed **lead response**, improve close rates",
+        "pain": "Leads lose momentum before the first call",
+        "criteria": [
+          "Inbound sales motion",
+          "Needs fast scheduling",
+          "Small revenue team"
+        ],
+        "negative_criterias": [
+          "Enterprise sales stack",
+          "No human-led demos"
+        ],
+        "keywords": "sales demo, lead booking, discovery meeting, inbound leads, demo calendar",
+        "example_clients": [
+          "local B2B software firm",
+          "regional MSP",
+          "insurance broker",
+          "small SaaS startup",
+          "financial services firm"
+        ],
+        "percentage": 12,
+        "estimated_companies": 10000,
+        "buyer_type": "company",
+        "id": "2su4tu",
+        "decision_maker": "we look for sales leaders who own inbound lead response and demo booking workflows",
+        "target_geo": "United States"
+      }
+    ],
+    "segment_runs": {
+      "ockt8c": null,
+      "6tjak8": {
+        "status": "done",
+        "live_status": "done"
+      },
+      "qb4h6h": null,
+      "ilwo3d": null,
+      "m6ikz7": null,
+      "2su4tu": null
+    },
+    "domains": [
+      {
+        "domain": "try-tidycal.io",
+        "available": true
+      },
+      {
+        "domain": "tidycal-team.dev",
+        "available": true
+      },
+      {
+        "domain": "gotidycal.io",
+        "available": true
+      },
+      {
+        "domain": "hellotidycal.com",
+        "available": true
+      },
+      {
+        "domain": "meettidycal.app",
+        "available": true
+      },
+      {
+        "domain": "hello-tidycal.dev",
+        "available": true
+      },
+      {
+        "domain": "tidycal-hq.com",
+        "available": true
+      },
+      {
+        "domain": "try-tidycal.com",
+        "available": true
+      },
+      {
+        "domain": "withtidycal.co",
+        "available": true
+      },
+      {
+        "domain": "gettidycal.io",
+        "available": true
+      },
+      {
+        "domain": "tidycalhq.co",
+        "available": true
+      },
+      {
+        "domain": "meet-tidycal.app",
+        "available": true
+      }
+    ],
+    "pipeline_log": [
+      {
+        "id": 5340465,
+        "type": "step_update",
+        "ts": "2026-08-08T21:08:52.927387+00:00",
+        "step": "fetch",
+        "status": "running",
+        "message": "Looking up tidycal.com..."
+      },
+      {
+        "id": 5340478,
+        "type": "step_update",
+        "ts": "2026-08-08T21:08:56.189441+00:00",
+        "step": "fetch",
+        "status": "done",
+        "message": "Found: TidyCal",
+        "company_name": "TidyCal",
+        "logo_url": "https://media.licdn.com/dms/image/v2/D4D0BAQHrjfRUgQcQhw/company-logo_200_200/B4DZc5tqkIGYAM-/0/1749019961965/tidycal_logo?e=2147483647&v=beta&t=rSoYeCHU1fgbk-hrL5MdH4mbB3wq8nR-93uZdvZhUd0",
+        "domain": "tidycal.com",
+        "explee_id": "tidycal.com",
+        "description": "TidyCal is a calendar management and booking solution that lets users create a shareable booking page, accept payments, and sync calendars in one place. It enables instant booking websites, payment processing via Stripe or PayPal, recurring subscriptions, and automated client reminders.",
+        "founded": null,
+        "size_on_linkedin": 5,
+        "geo_city": "Austin",
+        "geo_country": "US",
+        "traffic": null,
+        "traffic_growth": null,
+        "traffic_history": null,
+        "funding_stage": null,
+        "employees": null,
+        "keywords": [
+          "booking page",
+          "calendar management",
+          "payment processing",
+          "recurring subscriptions",
+          "calendar sync",
+          "scheduling",
+          "session bundles",
+          "client reminders",
+          "appointment booking",
+          "online payments"
+        ],
+        "elapsed_ms": 3262
+      },
+      {
+        "id": 5340479,
+        "type": "step_update",
+        "ts": "2026-08-08T21:08:56.195251+00:00",
+        "step": "determinants",
+        "status": "running",
+        "message": "Analyzing company identity...",
+        "wait_ms": 5
+      },
+      {
+        "id": 5340480,
+        "type": "step_update",
+        "ts": "2026-08-08T21:08:56.201991+00:00",
+        "step": "search_queries",
+        "status": "running",
+        "message": "Generating search queries...",
+        "wait_ms": 12
+      },
+      {
+        "id": 5340511,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:02.221705+00:00",
+        "step": "determinants",
+        "status": "done",
+        "message": "4 determinants",
+        "determinants": "1. Online meeting scheduling booking tool\n\n2.1 $29 one-time lifetime license, no subscription\n2.2 Built/distributed by AppSumo, 150k+ users onboarded\n2.3 Free tier: unlimited bookings, 1 calendar, Zoom/Meet links",
+        "elapsed_ms": 6026
+      },
+      {
+        "id": 5340512,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:02.230050+00:00",
+        "step": "search_queries",
+        "status": "done",
+        "message": "3 queries",
+        "queries": [
+          "scheduling link tool",
+          "meeting scheduler software",
+          "online booking calendar"
+        ],
+        "elapsed_ms": 6028
+      },
+      {
+        "id": 5340513,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:02.233855+00:00",
+        "step": "competitors",
+        "status": "running",
+        "message": "Finding similar companies...",
+        "wait_ms": 3
+      },
+      {
+        "id": 5340541,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:07.160248+00:00",
+        "step": "competitors",
+        "status": "done",
+        "message": "14 found",
+        "competitors": [
+          {
+            "domain": "timekit.io"
+          },
+          {
+            "domain": "calflow.co"
+          },
+          {
+            "domain": "meetmecalendar.com"
+          },
+          {
+            "domain": "startbooking.com"
+          },
+          {
+            "domain": "bookcall.io"
+          },
+          {
+            "domain": "kalendra.cloud"
+          },
+          {
+            "domain": "guavatex.com"
+          },
+          {
+            "domain": "picktimeapp.com"
+          },
+          {
+            "domain": "studiodate.com"
+          },
+          {
+            "domain": "simplyschedule.me"
+          },
+          {
+            "domain": "app.capappointments.com"
+          },
+          {
+            "domain": "bookingscontrol.co.uk"
+          },
+          {
+            "domain": "appointify.com"
+          },
+          {
+            "domain": "resursbokning.com"
+          }
+        ],
+        "elapsed_ms": 4926
+      },
+      {
+        "id": 5340542,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:07.173154+00:00",
+        "step": "segments",
+        "status": "running",
+        "message": "Generating ICP segments...",
+        "wait_ms": 12
+      },
+      {
+        "id": 5340543,
+        "type": "gen_version",
+        "ts": "2026-08-08T21:09:07.189366+00:00",
+        "step": "segments",
+        "gen_version": "control"
+      },
+      {
+        "id": 5340544,
+        "type": "segment_ready",
+        "ts": "2026-08-08T21:09:08.374987+00:00",
+        "step": "segments",
+        "message": "Segment 1 ready: Solo professionals",
+        "segment": {
+          "label": "Solo professionals",
+          "icon": "briefcase",
+          "use_case": "Share **booking links**, sync **personal calendars**, avoid back-and-forth scheduling",
+          "pain": "Scheduling wastes time and misses leads",
+          "criteria": [
+            "Runs solo practice",
+            "Client meetings by appointment",
+            "Needs simple scheduling"
+          ],
+          "negative_criterias": [
+            "Large support team",
+            "On-site service work"
+          ],
+          "keywords": "freelancer booking, consultant scheduling, solo coach, appointment link, calendar sync",
+          "example_clients": [
+            "independent marketing consultant",
+            "freelance designer",
+            "business coach",
+            "solo recruiter",
+            "fractional CFO"
+          ],
+          "percentage": 28,
+          "estimated_companies": 70000,
+          "buyer_type": "individual",
+          "id": "ockt8c"
+        },
+        "index": 0
+      },
+      {
+        "id": 5340545,
+        "type": "segment_ready",
+        "ts": "2026-08-08T21:09:09.180796+00:00",
+        "step": "segments",
+        "message": "Segment 2 ready: Coaches and consultants",
+        "segment": {
+          "label": "Coaches and consultants",
+          "icon": "graduation-cap",
+          "use_case": "Offer **discovery calls**, route **paid sessions**, reduce no-shows",
+          "pain": "Prospects drop off during scheduling",
+          "criteria": [
+            "High-touch client calls",
+            "Premium expertise sold",
+            "Inbound lead generation"
+          ],
+          "negative_criterias": [
+            "Purely product-led business",
+            "No client meetings"
+          ],
+          "keywords": "business coach, consultant booking, discovery call, paid consult, client intake",
+          "example_clients": [
+            "local business coach",
+            "independent HR consultant",
+            "career advisor",
+            "strategy consultant",
+            "brand consultant"
+          ],
+          "percentage": 18,
+          "estimated_companies": 30000,
+          "buyer_type": "company",
+          "id": "6tjak8"
+        },
+        "index": 1
+      },
+      {
+        "id": 5340548,
+        "type": "segment_ready",
+        "ts": "2026-08-08T21:09:09.788298+00:00",
+        "step": "segments",
+        "message": "Segment 3 ready: Agencies and studios",
+        "segment": {
+          "label": "Agencies and studios",
+          "icon": "layers",
+          "use_case": "Book **client calls**, coordinate **team calendars**, keep projects moving",
+          "pain": "Team scheduling slows client onboarding",
+          "criteria": [
+            "Client services business",
+            "Multiple staff calendars",
+            "Sales to delivery handoff"
+          ],
+          "negative_criterias": [
+            "Single service provider",
+            "Retail storefront model"
+          ],
+          "keywords": "agency booking, studio scheduling, team calendars, client calls, onboarding meetings",
+          "example_clients": [
+            "local digital agency",
+            "brand studio",
+            "video production studio",
+            "web design agency",
+            "creative consultancy"
+          ],
+          "percentage": 16,
+          "estimated_companies": 18000,
+          "buyer_type": "company",
+          "id": "qb4h6h"
+        },
+        "index": 2
+      },
+      {
+        "id": 5340551,
+        "type": "segment_ready",
+        "ts": "2026-08-08T21:09:10.425868+00:00",
+        "step": "segments",
+        "message": "Segment 4 ready: Education providers",
+        "segment": {
+          "label": "Education providers",
+          "icon": "book-open",
+          "use_case": "Schedule **student sessions**, manage **office hours**, simplify enrollments",
+          "pain": "Students struggle to find open times",
+          "criteria": [
+            "Teaching or tutoring service",
+            "Recurring learner meetings",
+            "Small administrative team"
+          ],
+          "negative_criterias": [
+            "Public school district",
+            "Fully self-paced course"
+          ],
+          "keywords": "tutor booking, student sessions, office hours, education scheduling, lesson calendar",
+          "example_clients": [
+            "independent tutoring center",
+            "language school",
+            "music teacher studio",
+            "test prep coach",
+            "adult education provider"
+          ],
+          "percentage": 14,
+          "estimated_companies": 12000,
+          "buyer_type": "company",
+          "id": "ilwo3d"
+        },
+        "index": 3
+      },
+      {
+        "id": 5340554,
+        "type": "segment_ready",
+        "ts": "2026-08-08T21:09:11.189378+00:00",
+        "step": "segments",
+        "message": "Segment 5 ready: Health practitioners",
+        "segment": {
+          "label": "Health practitioners",
+          "icon": "heart-pulse",
+          "use_case": "Accept **consultations**, sync **availability**, cut appointment friction",
+          "pain": "Patients cancel or book the wrong slot",
+          "criteria": [
+            "Appointment-based practice",
+            "Small clinic operation",
+            "Limited front desk staff"
+          ],
+          "negative_criterias": [
+            "Large hospital system",
+            "Walk-in only care"
+          ],
+          "keywords": "clinic booking, practitioner scheduling, patient appointments, consultation link, health calendar",
+          "example_clients": [
+            "physiotherapy clinic",
+            "chiropractic practice",
+            "dietitian practice",
+            "therapy practice",
+            "wellness clinic"
+          ],
+          "percentage": 12,
+          "estimated_companies": 9000,
+          "buyer_type": "company",
+          "id": "m6ikz7"
+        },
+        "index": 4
+      },
+      {
+        "id": 5340555,
+        "type": "segment_ready",
+        "ts": "2026-08-08T21:09:11.998878+00:00",
+        "step": "segments",
+        "message": "Segment 6 ready: Sales teams",
+        "segment": {
+          "label": "Sales teams",
+          "icon": "target",
+          "use_case": "Book **demo meetings**, speed **lead response**, improve close rates",
+          "pain": "Leads lose momentum before the first call",
+          "criteria": [
+            "Inbound sales motion",
+            "Needs fast scheduling",
+            "Small revenue team"
+          ],
+          "negative_criterias": [
+            "Enterprise sales stack",
+            "No human-led demos"
+          ],
+          "keywords": "sales demo, lead booking, discovery meeting, inbound leads, demo calendar",
+          "example_clients": [
+            "local B2B software firm",
+            "regional MSP",
+            "insurance broker",
+            "small SaaS startup",
+            "financial services firm"
+          ],
+          "percentage": 12,
+          "estimated_companies": 10000,
+          "buyer_type": "company",
+          "id": "2su4tu"
+        },
+        "index": 5
+      },
+      {
+        "id": 5340556,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:12.030118+00:00",
+        "step": "segments",
+        "status": "done",
+        "message": "6 segments",
+        "segments": [
+          {
+            "label": "Solo professionals",
+            "icon": "briefcase",
+            "use_case": "Share **booking links**, sync **personal calendars**, avoid back-and-forth scheduling",
+            "pain": "Scheduling wastes time and misses leads",
+            "criteria": [
+              "Runs solo practice",
+              "Client meetings by appointment",
+              "Needs simple scheduling"
+            ],
+            "negative_criterias": [
+              "Large support team",
+              "On-site service work"
+            ],
+            "keywords": "freelancer booking, consultant scheduling, solo coach, appointment link, calendar sync",
+            "example_clients": [
+              "independent marketing consultant",
+              "freelance designer",
+              "business coach",
+              "solo recruiter",
+              "fractional CFO"
+            ],
+            "percentage": 28,
+            "estimated_companies": 70000,
+            "buyer_type": "individual",
+            "id": "ockt8c"
+          },
+          {
+            "label": "Coaches and consultants",
+            "icon": "graduation-cap",
+            "use_case": "Offer **discovery calls**, route **paid sessions**, reduce no-shows",
+            "pain": "Prospects drop off during scheduling",
+            "criteria": [
+              "High-touch client calls",
+              "Premium expertise sold",
+              "Inbound lead generation"
+            ],
+            "negative_criterias": [
+              "Purely product-led business",
+              "No client meetings"
+            ],
+            "keywords": "business coach, consultant booking, discovery call, paid consult, client intake",
+            "example_clients": [
+              "local business coach",
+              "independent HR consultant",
+              "career advisor",
+              "strategy consultant",
+              "brand consultant"
+            ],
+            "percentage": 18,
+            "estimated_companies": 30000,
+            "buyer_type": "company",
+            "id": "6tjak8"
+          },
+          {
+            "label": "Agencies and studios",
+            "icon": "layers",
+            "use_case": "Book **client calls**, coordinate **team calendars**, keep projects moving",
+            "pain": "Team scheduling slows client onboarding",
+            "criteria": [
+              "Client services business",
+              "Multiple staff calendars",
+              "Sales to delivery handoff"
+            ],
+            "negative_criterias": [
+              "Single service provider",
+              "Retail storefront model"
+            ],
+            "keywords": "agency booking, studio scheduling, team calendars, client calls, onboarding meetings",
+            "example_clients": [
+              "local digital agency",
+              "brand studio",
+              "video production studio",
+              "web design agency",
+              "creative consultancy"
+            ],
+            "percentage": 16,
+            "estimated_companies": 18000,
+            "buyer_type": "company",
+            "id": "qb4h6h"
+          },
+          {
+            "label": "Education providers",
+            "icon": "book-open",
+            "use_case": "Schedule **student sessions**, manage **office hours**, simplify enrollments",
+            "pain": "Students struggle to find open times",
+            "criteria": [
+              "Teaching or tutoring service",
+              "Recurring learner meetings",
+              "Small administrative team"
+            ],
+            "negative_criterias": [
+              "Public school district",
+              "Fully self-paced course"
+            ],
+            "keywords": "tutor booking, student sessions, office hours, education scheduling, lesson calendar",
+            "example_clients": [
+              "independent tutoring center",
+              "language school",
+              "music teacher studio",
+              "test prep coach",
+              "adult education provider"
+            ],
+            "percentage": 14,
+            "estimated_companies": 12000,
+            "buyer_type": "company",
+            "id": "ilwo3d"
+          },
+          {
+            "label": "Health practitioners",
+            "icon": "heart-pulse",
+            "use_case": "Accept **consultations**, sync **availability**, cut appointment friction",
+            "pain": "Patients cancel or book the wrong slot",
+            "criteria": [
+              "Appointment-based practice",
+              "Small clinic operation",
+              "Limited front desk staff"
+            ],
+            "negative_criterias": [
+              "Large hospital system",
+              "Walk-in only care"
+            ],
+            "keywords": "clinic booking, practitioner scheduling, patient appointments, consultation link, health calendar",
+            "example_clients": [
+              "physiotherapy clinic",
+              "chiropractic practice",
+              "dietitian practice",
+              "therapy practice",
+              "wellness clinic"
+            ],
+            "percentage": 12,
+            "estimated_companies": 9000,
+            "buyer_type": "company",
+            "id": "m6ikz7"
+          },
+          {
+            "label": "Sales teams",
+            "icon": "target",
+            "use_case": "Book **demo meetings**, speed **lead response**, improve close rates",
+            "pain": "Leads lose momentum before the first call",
+            "criteria": [
+              "Inbound sales motion",
+              "Needs fast scheduling",
+              "Small revenue team"
+            ],
+            "negative_criterias": [
+              "Enterprise sales stack",
+              "No human-led demos"
+            ],
+            "keywords": "sales demo, lead booking, discovery meeting, inbound leads, demo calendar",
+            "example_clients": [
+              "local B2B software firm",
+              "regional MSP",
+              "insurance broker",
+              "small SaaS startup",
+              "financial services firm"
+            ],
+            "percentage": 12,
+            "estimated_companies": 10000,
+            "buyer_type": "company",
+            "id": "2su4tu"
+          }
+        ],
+        "count": 6,
+        "elapsed_ms": 4856
+      },
+      {
+        "id": 5340557,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:12.040435+00:00",
+        "step": "targeting",
+        "status": "running",
+        "message": "Inferring decision maker and target geo per segment...",
+        "wait_ms": 10
+      },
+      {
+        "id": 5340558,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:12.045299+00:00",
+        "step": "infra",
+        "status": "running",
+        "message": "Generating outreach domains...",
+        "wait_ms": 15
+      },
+      {
+        "id": 5340559,
+        "type": "infra_progress",
+        "ts": "2026-08-08T21:09:12.055722+00:00",
+        "step": "infra",
+        "message": "Generating domain candidates..."
+      },
+      {
+        "id": 5340562,
+        "type": "infra_progress",
+        "ts": "2026-08-08T21:09:13.693902+00:00",
+        "step": "infra",
+        "message": "Checking 12 domains..."
+      },
+      {
+        "id": 5340563,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.726780+00:00",
+        "step": "infra",
+        "domain": "try-tidycal.io",
+        "available": true
+      },
+      {
+        "id": 5340564,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.736000+00:00",
+        "step": "infra",
+        "domain": "tidycal-team.dev",
+        "available": true
+      },
+      {
+        "id": 5340565,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.744340+00:00",
+        "step": "infra",
+        "domain": "gotidycal.io",
+        "available": true
+      },
+      {
+        "id": 5340566,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.749833+00:00",
+        "step": "infra",
+        "domain": "hellotidycal.com",
+        "available": true
+      },
+      {
+        "id": 5340567,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.754682+00:00",
+        "step": "infra",
+        "domain": "meettidycal.app",
+        "available": true
+      },
+      {
+        "id": 5340568,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.759457+00:00",
+        "step": "infra",
+        "domain": "hello-tidycal.dev",
+        "available": true
+      },
+      {
+        "id": 5340569,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.764464+00:00",
+        "step": "infra",
+        "domain": "tidycal-hq.com",
+        "available": true
+      },
+      {
+        "id": 5340570,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:13.768161+00:00",
+        "step": "infra",
+        "domain": "try-tidycal.com",
+        "available": true
+      },
+      {
+        "id": 5340581,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:15.733314+00:00",
+        "step": "infra",
+        "domain": "withtidycal.co",
+        "available": true
+      },
+      {
+        "id": 5340582,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:15.739947+00:00",
+        "step": "infra",
+        "domain": "gettidycal.io",
+        "available": true
+      },
+      {
+        "id": 5340583,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:15.754453+00:00",
+        "step": "infra",
+        "domain": "tidycalhq.co",
+        "available": true
+      },
+      {
+        "id": 5340584,
+        "type": "domain_ready",
+        "ts": "2026-08-08T21:09:15.767934+00:00",
+        "step": "infra",
+        "domain": "meet-tidycal.app",
+        "available": true
+      },
+      {
+        "id": 5340585,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:15.783989+00:00",
+        "step": "infra",
+        "status": "done",
+        "message": "12 available domains",
+        "domains": [
+          {
+            "domain": "try-tidycal.io",
+            "available": true
+          },
+          {
+            "domain": "tidycal-team.dev",
+            "available": true
+          },
+          {
+            "domain": "gotidycal.io",
+            "available": true
+          },
+          {
+            "domain": "hellotidycal.com",
+            "available": true
+          },
+          {
+            "domain": "meettidycal.app",
+            "available": true
+          },
+          {
+            "domain": "hello-tidycal.dev",
+            "available": true
+          },
+          {
+            "domain": "tidycal-hq.com",
+            "available": true
+          },
+          {
+            "domain": "try-tidycal.com",
+            "available": true
+          },
+          {
+            "domain": "withtidycal.co",
+            "available": true
+          },
+          {
+            "domain": "gettidycal.io",
+            "available": true
+          },
+          {
+            "domain": "tidycalhq.co",
+            "available": true
+          },
+          {
+            "domain": "meet-tidycal.app",
+            "available": true
+          }
+        ],
+        "count": 12,
+        "elapsed_ms": 3738
+      },
+      {
+        "id": 5340594,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:17.971620+00:00",
+        "step": "targeting",
+        "status": "done",
+        "message": "6 segments with targeting hints",
+        "targeting": {
+          "ockt8c": {
+            "decision_maker": "we look for the independent professional who personally owns their client bookings and calendar",
+            "target_geo": "United States"
+          },
+          "6tjak8": {
+            "decision_maker": "we look for coaches and consultants who own their own client intake and discovery-call funnel",
+            "target_geo": "United States"
+          },
+          "qb4h6h": {
+            "decision_maker": "we look for agency owners or account/operations leads responsible for client onboarding and team scheduling",
+            "target_geo": "United States"
+          },
+          "ilwo3d": {
+            "decision_maker": "we look for program or student-services coordinators who manage tutoring sessions, office hours and enrollment scheduling",
+            "target_geo": "United States"
+          },
+          "m6ikz7": {
+            "decision_maker": "we look for practice owners or front-desk/clinic managers responsible for patient appointment booking",
+            "target_geo": "United States"
+          },
+          "2su4tu": {
+            "decision_maker": "we look for sales leaders who own inbound lead response and demo booking workflows",
+            "target_geo": "United States"
+          }
+        },
+        "elapsed_ms": 5931
+      },
+      {
+        "id": 5340595,
+        "type": "start",
+        "ts": "2026-08-08T21:09:18.009791+00:00",
+        "task": "# Research Task\n\n## Company Context\nName: TidyCal\nDomain: tidycal.com\nDeterminants: Online meeting scheduling booking tool, $29 one-time lifetime license, no subscription, Built/distributed by AppSumo"
+      },
+      {
+        "id": 5340603,
+        "type": "tool_call",
+        "ts": "2026-08-08T21:09:23.749851+00:00",
+        "tool": "search_companies",
+        "input": {
+          "query": "business coaching and consulting practice",
+          "filters": {
+            "geo_include": [
+              "US"
+            ],
+            "is_b2b": true,
+            "size": {
+              "max": 50
+            }
+          }
+        },
+        "description": "search_companies(query=\"business coaching and consulting practice\", filters={\"geo_include\": [\"US\"], \"is_b2b\": true, \"siz",
+        "intent": ""
+      },
+      {
+        "id": 5340604,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:23.755983+00:00",
+        "step": "companies",
+        "status": "running",
+        "wait_ms": 5784
+      },
+      {
+        "id": 5340633,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:30.979235+00:00",
+        "step": "companies",
+        "status": "done",
+        "count": 193,
+        "timings": {
+          "total_ms": 7213,
+          "lav_ms": 966,
+          "sql_ms": 5714,
+          "dedup_ms": 9,
+          "ai_enrich_ms": 0,
+          "build_ms": 11,
+          "parse_ms": 2,
+          "save_ms": 508,
+          "count_ms": 4,
+          "found": 200,
+          "inserted": 193,
+          "spans": {
+            "generate_sql": 0,
+            "lav_search": 966,
+            "clickhouse_query": 5710,
+            "deduplication": 9
+          }
+        },
+        "elapsed_ms": 7223
+      },
+      {
+        "id": 5340634,
+        "type": "preview_updated",
+        "ts": "2026-08-08T21:09:30.989411+00:00"
+      },
+      {
+        "id": 5340635,
+        "type": "tool_result",
+        "ts": "2026-08-08T21:09:30.996325+00:00",
+        "tool_id": "toolu_01CJjX3EebedPpj1rtcXeRKu",
+        "output": "{\"status\": \"ok\", \"companies_found\": 193, \"lav_definitions_matched\": 440, \"sample\": [{\"domain\": \"aaa.com\", \"name\": \"ASM Consulting\", \"description_short\": \"Business consulting firm specializing in strategic advisory and operational optimization for mid-to-large enterprises, focusing on market analysis and digital transformation.\", \"geo_country\": \"MX\", \"geo_hq_city\": \"mexico city\", \"size\": 15, \"size_range\": \"11-50\", \"traffic\": 22776160, \"traffic_growth\": 22.0, \"industry\": \"Accounting\", \"linkedin_id"
+      },
+      {
+        "id": 5340658,
+        "type": "tool_call",
+        "ts": "2026-08-08T21:09:35.559863+00:00",
+        "tool": "search_people",
+        "input": {
+          "job_titles": [
+            "Business Coach",
+            "Consultant",
+            "Owner",
+            "Founder",
+            "Principal Consultant",
+            "HR Consultant",
+            "Career Advisor",
+            "Strategy Consultant",
+            "Brand Consultant"
+          ],
+          "geo": [
+            "US"
+          ],
+          "people_per_company": 3
+        },
+        "description": "search_people(job_titles=[\"Business Coach\", \"Consultant\", \"Owner\", \"Founder\", \"Princi, geo=[\"US\"], people_per_company=3)",
+        "intent": ""
+      },
+      {
+        "id": 5340659,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:35.565256+00:00",
+        "step": "people",
+        "status": "running",
+        "wait_ms": 4586
+      },
+      {
+        "id": 5340667,
+        "type": "step_update",
+        "ts": "2026-08-08T21:09:42.542103+00:00",
+        "step": "people",
+        "status": "done",
+        "count": 912,
+        "timings": {
+          "total_ms": 6966,
+          "lav_ms": 1669,
+          "sql_ms": 1197,
+          "dedup_ms": 51,
+          "ai_enrich_ms": 0,
+          "build_ms": 1578,
+          "parse_ms": 13,
+          "save_ms": 2452,
+          "count_ms": 5,
+          "found": 1000,
+          "inserted": 912,
+          "spans": {
+            "generate_sql": 1576,
+            "lav_search": 1669,
+            "clickhouse_query": 1172,
+            "deduplication": 51
+          }
+        },
+        "elapsed_ms": 6976
+      },
+      {
+        "id": 5340668,
+        "type": "preview_updated",
+        "ts": "2026-08-08T21:09:42.548848+00:00"
+      },
+      {
+        "id": 5340669,
+        "type": "tool_result",
+        "ts": "2026-08-08T21:09:42.563172+00:00",
+        "tool_id": "toolu_01GsajXTreJan17LZBiRF3Du",
+        "output": "{\"status\": \"ok\", \"people_found\": 912, \"companies_with_people\": 759, \"sample\": [{\"first_name\": \"Akash\", \"last_name\": \"Goel\", \"title\": \"Research Assistant (Consultant)\", \"profile_url\": \"https://www.linkedin.com/in/akash-goel-034949154\", \"profile_photo_url\": \"https://media.licdn.com/dms/image/v2/D5603AQFM6X3RxHmhJg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1726016699065?e=2147483647&v=beta&t=qeTgYeRYtDZC5uZua40F61BtduUMZcKRVqFEVX9p9b4\", \"headline\": \"Product Marketing"
+      },
+      {
+        "id": 5340670,
+        "type": "text",
+        "ts": "2026-08-08T21:09:49.330462+00:00",
+        "content": "## Summary\n\n**Step 1 – Companies:** Searched US-based small/solo consulting and coaching firms (B2B, size ≤50 employees). Found 193 matching companies, including business coaching practices, HR/strategy/leadership consulting firms, and solo consultancies — a good match for TidyCal's ICP of independent coaches/consultants who own their own client-intake funnel.\n\n**Step 2 – People:** Identified 912 decision-makers across 759 companies with titles like Founder, Business Coach, Consultant, Firm Owner/Certified Business Coach, Independent Consultant, and Organizational Coach — these are the solo practitioners/owners who directly manage their own discovery-call and booking funnels.\n\n**Sample matches:**\n- Ryan Stevens – Founder, Organizational Coach & Speaker/Consultant – cATalyzing Coaching & Consulting\n- Warren Fiihr – Firm Owner/Certified Business Coach – ActionCOACH Sugarland\n- Marc Kelley – Independent Consultant – Strategic Solutions\n- Vipra Arora – Consultant (Talent & OD Practitioner) – Strategic Solutions\n\nThese profiles fit TidyCal's target segment well: solo/small coaching and consulting businesses in the US that rely on inbound leads and need a low-friction scheduling tool to reduce discovery-call drop-off and route paid sessions. Results are ready for outbound outreach."
+      },
+      {
+        "id": 5340671,
+        "type": "done",
+        "ts": "2026-08-08T21:09:49.335605+00:00",
+        "reason": "no_tool_calls"
+      },
+      {
+        "id": 5340672,
+        "type": "finished",
+        "ts": "2026-08-08T21:09:49.338981+00:00",
+        "status": "done"
+      },
+      {
+        "id": 5340673,
+        "type": "finished",
+        "ts": "2026-08-08T21:09:49.352462+00:00",
+        "status": "done"
+      }
+    ]
+  }
+}

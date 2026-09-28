@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.gojiberry.ai/accounts/subscription",
+    "query": "?timezone=Asia%2FAlmaty"
+  },
+  "requestBody": null,
+  "response": {
+    "hasSubscription": false,
+    "billingCurrency": "usd",
+    "subscription": null
+  }
+}

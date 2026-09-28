@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://explee.com/api/agent/dee5d635-6811-40f2-baf3-6f5d6e747370/draft_shown",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "ok": true
+  }
+}

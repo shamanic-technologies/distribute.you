@@ -1,0 +1,32 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://visitor.api.gojiberry.ai/bp/ronNNFd1b6B/settings",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "success": true,
+    "data": {
+      "tracking_script_id": "ronNNFd1b6B",
+      "workspace_uuid": "60b7aa2a-a519-4b7b-9b78-39243894d150",
+      "active": false,
+      "settings": {
+        "features": {
+          "formTracking": true,
+          "clickTracking": true,
+          "downloadTracking": true,
+          "errorCapture": false
+        },
+        "integrations": {
+          "ga": null
+        },
+        "countryAllowed": true,
+        "urlFilters": {
+          "blacklist": [],
+          "whitelist": []
+        }
+      }
+    }
+  }
+}

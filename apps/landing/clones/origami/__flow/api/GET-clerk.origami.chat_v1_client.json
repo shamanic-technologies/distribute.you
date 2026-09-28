@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://clerk.origami.chat/v1/client",
+    "query": "?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0"
+  },
+  "requestBody": null,
+  "response": {
+    "response": {
+      "object": "client",
+      "id": "client_3Jx6jD8RtimamlL405tytNlVAFy",
+      "sessions": [],
+      "sign_in": null,
+      "sign_up": null,
+      "last_active_session_id": null,
+      "last_authentication_strategy": null,
+      "cookie_expires_at": "[redacted]",
+      "captcha_bypass": false,
+      "created_at": 1790590504949,
+      "updated_at": 1790590504949
+    },
+    "client": null
+  }
+}

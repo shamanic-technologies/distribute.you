@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/app-auto-gtm/unread-counts",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "by_segment": {},
+    "by_project": {}
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://auth.explee.com/api/experience/verification/verification-code/verify",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "verificationId": "yoi1s7rgnn60ueref8j2g"
+  }
+}

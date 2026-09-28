@@ -1,0 +1,64 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://explee.com/api/draft/generate",
+    "query": null
+  },
+  "requestBody": {
+    "segment_id": "6tjak8",
+    "person_profile_url": "https://linkedin.com/in/robert-bryan-08465429",
+    "company_domain": "ohm-advisors.com",
+    "first_name": "Robert",
+    "last_name": "Bryan",
+    "title": "Owner",
+    "company_name": "ohm-advisors.com",
+    "company_description": ""
+  },
+  "response": {
+    "draft_id": "",
+    "cached": false,
+    "subject": "Firm discovery call booking",
+    "body": "Hi Robert,\n\nYour firm's work across government and school projects caught my eye.\n\nI'm with TidyCal. We build booking pages that let consultants take discovery calls and paid sessions in one place, with reminders to cut no-shows.\n\nWorth trying on your intake flow?\n\nIf you want, reply and I'll share a simple setup you can test.\n\nBest,",
+    "highlights": [
+      {
+        "text": "Your firm's work across government and school projects caught my eye.",
+        "kind": "research",
+        "title": "Lead's government and school work",
+        "explanation": "Uses the research showing OHM Advisors is a multidisciplinary architecture and planning firm serving government and schools.",
+        "sources": [
+          "company_description",
+          "company_industry"
+        ]
+      },
+      {
+        "text": "I'm with TidyCal.",
+        "kind": "instructions",
+        "title": "Sender identification",
+        "explanation": "",
+        "sources": [
+          "Write like a busy founder tapping out a phone message."
+        ]
+      },
+      {
+        "text": "Worth trying on your intake flow?",
+        "kind": "instructions",
+        "title": "Low-friction question close",
+        "explanation": "",
+        "sources": [
+          "Close with a low-friction reply-based CTA. Never push a cold call or a \"15-minute call\", and never use a gimmick like \"reply with <keyword>\"."
+        ]
+      },
+      {
+        "text": "reply and I'll share a simple setup you can test.",
+        "kind": "instructions",
+        "title": "Reply-based CTA",
+        "explanation": "",
+        "sources": [
+          "Close with a low-friction reply-based CTA. Never push a cold call or a \"15-minute call\", and never use a gimmick like \"reply with <keyword>\"."
+        ]
+      }
+    ],
+    "language_used": "English",
+    "language_reason": ""
+  }
+}

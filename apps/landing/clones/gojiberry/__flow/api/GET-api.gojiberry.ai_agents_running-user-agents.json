@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.gojiberry.ai/agents/running-user-agents",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "success": true,
+    "tasks": [],
+    "message": "Found 0 running tasks (filtered by userId: 61227)"
+  }
+}

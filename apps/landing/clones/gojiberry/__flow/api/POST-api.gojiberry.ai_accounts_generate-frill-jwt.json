@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.gojiberry.ai/accounts/generate-frill-jwt",
+    "query": null
+  },
+  "requestBody": {},
+  "response": {
+    "jwt": "[redacted]"
+  }
+}

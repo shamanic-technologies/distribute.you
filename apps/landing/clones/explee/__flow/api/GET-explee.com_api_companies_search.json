@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/companies/search",
+    "query": "?q=tidycal.com"
+  },
+  "requestBody": null,
+  "response": [
+    {
+      "name": "TidyCal",
+      "domain": "tidycal.com",
+      "desc": "Calendar tool that automatically generates meeting links and syncs multiple calendars. Free tier available; premium features require one-time purchase. Used by 150k+ professionals.",
+      "explee_id": "71239155"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/human-pass",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "mode": "off",
+    "has_pass": false
+  }
+}
