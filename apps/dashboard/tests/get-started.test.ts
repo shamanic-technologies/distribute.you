@@ -192,7 +192,10 @@ describe("the surface", () => {
 
   it("loads the 100 companies page by page and writes the first emails ahead, the rest on click, capped", () => {
     const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
-    expect(load).toContain("limit: COMPANIES_PAGE");
+    // A small first page (fast), the rest only as far as the visitor scrolls (each company costs a credit).
+    expect(load).toContain("offset === 0 ? FIRST_PAGE : NEXT_PAGE");
+    expect(load).toContain("while (offset < (wanted.current.get(id) ?? FIRST_PAGE))");
+    expect(FLOW).toContain("<MoreSentinel onMore={onMore}");
     expect(load).toContain("offset = page.nextOffset");
     expect(load).toContain("prewrite(aud, got)");
     expect(FLOW).toContain(".slice(0, PREWRITTEN_EMAILS)");

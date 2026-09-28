@@ -103,8 +103,13 @@ const STAGE_HOLD_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 1
 const DEFAULT_DWELL_MS = 1600;
 const DEFAULT_HOLD_MS = 12_000;
 
-/** Rows asked per page of the 100 companies: small, so the first ones land fast. */
-const COMPANIES_PAGE = 25;
+/**
+ * The 100 companies are built page by page, and each company not already cached costs
+ * the anonymous org an Apollo credit (~12 cents). So the first page is small (it lands
+ * in about 3 s) and the rest is built only as the visitor scrolls to it.
+ */
+const FIRST_PAGE = 10;
+const NEXT_PAGE = 30;
 
 const rowKey = (audienceId: string, index: number) => `${audienceId}:${index}`;
 
@@ -147,6 +152,10 @@ export function GetStarted() {
   const [rowsDone, setRowsDone] = useState<Record<string, boolean>>({});
   const [rowsNote, setRowsNote] = useState<Record<string, string>>({});
   const loading = useRef(new Set<string>());
+  const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
+  // How many rows the visitor has asked to see, per audience (grows as they scroll).
+  const wanted = useRef(new Map<string, number>());
+  const rowCount = useRef(new Map<string, number>());
   // Step 6: one email per row, the first ones ahead, the rest on click, capped.
   const [emails, setEmails] = useState<Record<string, PreviewEmail>>({});
   const [writing, setWriting] = useState<Record<string, boolean>>({});
@@ -354,20 +363,29 @@ export function GetStarted() {
   // ── Step 5: the companies, page by page ──────────────────────────────────
 
   useEffect(() => {
-    if (!audience || rowsDone[audience.audienceId] || loading.current.has(audience.audienceId)) return;
-    void loadCompanies(audience);
+    if (audience) wantRows(audience, FIRST_PAGE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audience?.audienceId]);
+
+  /** Asks for at least `n` rows of an audience; the loader builds up to that and stops. */
+  function wantRows(aud: GetStartedAudience, n: number) {
+    const id = aud.audienceId;
+    wanted.current.set(id, Math.max(n, wanted.current.get(id) ?? 0));
+    if (rowsDone[id] || loading.current.has(id)) return;
+    void loadCompanies(aud);
+  }
 
   async function loadCompanies(aud: GetStartedAudience) {
     const id = aud.audienceId;
     loading.current.add(id);
-    let offset = rows[id]?.length ?? 0;
+    setLoadingMore((cur) => ({ ...cur, [id]: true }));
+    let offset = rowCount.current.get(id) ?? 0;
     let waits = 0;
     let first = offset === 0;
     try {
-      for (;;) {
-        const page = await getAudienceCompanies(id, { offset, limit: COMPANIES_PAGE });
+      while (offset < (wanted.current.get(id) ?? FIRST_PAGE)) {
+        const limit = Math.min(offset === 0 ? FIRST_PAGE : NEXT_PAGE, 100 - offset);
+        const page = await getAudienceCompanies(id, { offset, limit });
         if (page.status === "unavailable" && page.reason === "not_built_yet" && waits < 15) {
           waits += 1;
           await new Promise((r) => setTimeout(r, 4000));
@@ -376,13 +394,14 @@ export function GetStarted() {
         if (page.status !== "ready") {
           setRowsNote((cur) => ({ ...cur, [id]: companiesNote(page.reason) }));
           setRowsDone((cur) => ({ ...cur, [id]: true }));
-          if (audienceRef.current?.audienceId === id && offset === 0) {
+          if (audienceRef.current?.audienceId === id && first) {
             setStep("companies", "failed");
             setStep("email", "failed");
           }
           return;
         }
         const got = page.rows;
+        rowCount.current.set(id, offset + got.length);
         setRows((cur) => ({ ...cur, [id]: mergeRows(cur[id] ?? [], got) }));
         if (first && got.length) {
           first = false;
@@ -391,26 +410,31 @@ export function GetStarted() {
             prewrite(aud, got);
           }
         }
-        if (page.done || page.nextOffset == null || got.length === 0) break;
+        if (page.done || page.nextOffset == null || got.length === 0) {
+          setRowsDone((cur) => ({ ...cur, [id]: true }));
+          break;
+        }
         offset = page.nextOffset;
       }
-      setRowsDone((cur) => ({ ...cur, [id]: true }));
       if (audienceRef.current?.audienceId === id && first && offset === 0) {
         setStep("companies", "failed");
         setStep("email", "failed");
       }
     } catch (e) {
       console.error("[get-started] companies read failed:", e);
+      const outOfCredit = e instanceof ApiError && (e.status === 402 || (e.status === 502 && e.body?.upstreamStatus === 402));
       setRowsNote((cur) => ({
         ...cur,
-        [id]: e instanceof ApiError && e.status === 402 ? "Your free preview credit is used up, so we stopped finding companies." : "We could not find more companies just now.",
+        [id]: outOfCredit ? "Your free preview credit is used up, so we stopped finding companies." : "We could not find more companies just now.",
       }));
+      setRowsDone((cur) => ({ ...cur, [id]: true }));
       if (audienceRef.current?.audienceId === id && first) {
         setStep("companies", "failed");
         setStep("email", "failed");
       }
     } finally {
       loading.current.delete(id);
+      setLoadingMore((cur) => ({ ...cur, [id]: false }));
     }
   }
 
@@ -720,6 +744,8 @@ export function GetStarted() {
           audienceName={audience?.name ?? null}
           rows={audRows}
           done={audience ? !!rowsDone[audience.audienceId] : false}
+          loadingMore={audience ? !!loadingMore[audience.audienceId] : false}
+          onMore={() => audience && wantRows(audience, (rowCount.current.get(audience.audienceId) ?? 0) + NEXT_PAGE)}
           note={audience ? rowsNote[audience.audienceId] ?? null : null}
           emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
           onOpen={openRow}
@@ -1420,6 +1446,8 @@ function CompaniesStage({
   audienceName,
   rows,
   done,
+  loadingMore,
+  onMore,
   note,
   emailState,
   onOpen,
@@ -1428,6 +1456,8 @@ function CompaniesStage({
   audienceName: string | null;
   rows: AudienceCompanyRow[];
   done: boolean;
+  loadingMore: boolean;
+  onMore: () => void;
   note: string | null;
   emailState: (index: number) => RowEmailState;
   onOpen: (index: number) => void;
@@ -1439,7 +1469,7 @@ function CompaniesStage({
         <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">{audienceName ? `Companies in ${audienceName}` : "Companies that match"}</h2>
         <span className="ml-auto shrink-0">
           <StateWord
-            state={state === "done" && !done ? "running" : state}
+            state={state === "done" && loadingMore ? "running" : state}
             doneLabel={<><CountUp value={rows.length} format={(n) => String(Math.round(n))} ms={600} /> found</>}
           />
         </span>
@@ -1476,7 +1506,7 @@ function CompaniesStage({
                     <tr
                       key={r.index}
                       className="gs-in k-row cursor-pointer border-b border-[var(--line-subtle)] last:border-0"
-                      style={stagger(i % COMPANIES_PAGE, 30)}
+                      style={stagger(i % NEXT_PAGE, 30)}
                       onClick={() => onOpen(r.index)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -1498,6 +1528,7 @@ function CompaniesStage({
                       </td>
                       <td className="k-fg2 px-3 py-2">
                         {r.company.description ? <span className="line-clamp-2 max-w-[280px] text-[12.5px] leading-5">{r.company.description}</span> : <span className="k-fg4">{"—"}</span>}
+                        {r.company.industry && <span className="k-fg3 mt-0.5 block max-w-[280px] truncate text-[11.5px] capitalize">{r.company.industry}</span>}
                       </td>
                       <td className="k-fg2 px-3 py-2">
                         <span className="block max-w-[170px] truncate">{r.company.location ?? r.company.country ?? <span className="k-fg4">{"—"}</span>}</span>
@@ -1524,24 +1555,54 @@ function CompaniesStage({
                     </tr>
                   );
                 })}
-                {!done && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-2.5">
-                      <Shimmer className="h-5" />
-                    </td>
-                  </tr>
-                )}
+                {loadingMore &&
+                  [0, 1, 2].map((i) => (
+                    <tr key={`more-${i}`}>
+                      <td colSpan={6} className="px-4 py-2.5">
+                        <Shimmer className="h-5" />
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
-          <p className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
-            {done ? `${rows.length} companies, one person each.` : `${rows.length} companies so far, finding more.`} Click a row to read the email we would send. Last names stay masked until your account is set up.
-            {note && done ? ` ${note}` : ""}
-          </p>
+          {!done && <MoreSentinel onMore={onMore} busy={loadingMore} />}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--line-subtle)] px-4 py-2.5">
+            <p className="k-fg3 min-w-0 flex-1 text-[12px] tabular-nums">
+              {done ? `${rows.length} companies, one person each.` : `${rows.length} of up to 100 companies so far.`} Click a row to read the email we would send. Last names stay masked until your account is set up.
+              {note && done ? ` ${note}` : ""}
+            </p>
+            {!done && (
+              <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" disabled={loadingMore} onClick={onMore}>
+                {loadingMore ? "Finding more" : "Show more"}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </section>
   );
+}
+
+/**
+ * Builds the next page when the bottom of the table scrolls into view: the rest of
+ * the 100 is built only as the visitor reaches it, so an Apollo credit is only spent
+ * on a company somebody looks at.
+ */
+function MoreSentinel({ onMore, busy }: { onMore: () => void; busy: boolean }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const cb = useRef(onMore);
+  cb.current = onMore;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || busy || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) cb.current();
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [busy]);
+  return <div ref={ref} aria-hidden="true" className="h-px" />;
 }
 
 /** One row's person, found and verified live: a masked domain, never the address. */

@@ -3203,6 +3203,11 @@ const AudienceCompanyRowSchema = z.object({
     industry: z.string().nullable(),
     linkedinUrl: z.string().nullable(),
     foundedYear: z.number().nullable(),
+    // Additive, declared optional so an older body still parses.
+    annualRevenue: z.string().nullable().optional(),
+    totalFunding: z.string().nullable().optional(),
+    latestFundingStage: z.string().nullable().optional(),
+    keywords: z.array(z.string()).optional(),
   }),
   person: z.object({
     firstName: z.string().nullable(),
