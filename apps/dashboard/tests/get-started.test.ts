@@ -296,6 +296,13 @@ describe("the wall", () => {
     expect(wall).toContain('strategy: "email_code"');
     // The card form opens by itself once the account exists.
     expect(wall).toContain("cardOpened.current = true;");
+    // The stage's view transitions stand down while the wall is up: their snapshots
+    // paint in the top layer, above the wall.
+    expect(wall).toContain("document.documentElement.classList.add(WALL_OPEN_CLASS)");
+    const vt = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/view-transition.ts"), "utf8");
+    expect(vt).toContain("classList.contains(WALL_OPEN_CLASS)");
+    // The claim has its own flag, so the code form's finally cannot clear it.
+    expect(wall).toContain("setClaiming(true)");
     const flow = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     expect(flow).toContain("email={(selectedSeg ? emails[selectedSeg] : undefined) ?? restoredEmail}");
   });

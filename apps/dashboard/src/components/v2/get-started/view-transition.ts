@@ -19,7 +19,9 @@ type Doc = Document & { startViewTransition?: (cb: () => void) => Transition };
 export function withStageTransition(update: () => void): void {
   const doc = typeof document === "undefined" ? null : (document as Doc);
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!doc?.startViewTransition || reduced || doc.visibilityState !== "visible") {
+  // Behind the wall the change just happens: a transition's snapshot would paint above it.
+  const walled = doc?.documentElement.classList.contains(WALL_OPEN_CLASS) ?? false;
+  if (!doc?.startViewTransition || reduced || walled || doc.visibilityState !== "visible") {
     update();
     return;
   }
@@ -38,6 +40,9 @@ export function withStageTransition(update: () => void): void {
     update();
   }
 }
+
+/** Set on <html> while the account wall is open; the stage runs no transition then. */
+export const WALL_OPEN_CLASS = "gs-wall-open";
 
 /** The shared name of a step's stage card and its rail entry. */
 export const stepViewName = (key: string) => `gs-step-${key}`;
