@@ -2470,6 +2470,15 @@ export function Onboarding() {
   }
   const preparedCheckoutRef = useRef<{ key: string; url: Promise<string> } | null>(null);
 
+  // The budget screen is one step before the $30 one: load the projection there
+  // (a plain read, nothing created), so preparing the Stripe session on the next
+  // screen waits on nothing but billing and Stripe.
+  useEffect(() => {
+    if (step !== "pricing") return;
+    ensureProjectionLoaded().catch((e) => console.error("[dashboard] onboarding projection prefetch failed:", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   useEffect(() => {
     if (step !== "bonus") return;
     let cancelled = false;
