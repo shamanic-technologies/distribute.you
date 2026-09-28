@@ -3179,6 +3179,97 @@ const AudienceSchema = z.object({
 
 const AudienceResponseSchema = z.object({ audience: AudienceSchema });
 
+// ── Audience preview: a free sample of who an audience reaches ────────────────
+// human-service `GET /orgs/audiences/{id}/preview` (v0.46.12): up to ~10 real
+// companies and ~20 real people from ONE free provider search, never an email or a
+// phone, taken once and stored so a reload costs nothing. `status` and `reason` are
+// the producer's vocabulary, read as plain strings so a new value parses.
+
+const AudiencePreviewSchema = z.object({
+  audienceId: z.string(),
+  status: z.string(),
+  reason: z.string().nullable(),
+  matchCount: z.number().nullable(),
+  companies: z.array(z.object({ name: z.string(), peopleInSample: z.number() })),
+  people: z.array(
+    z.object({
+      firstName: z.string().nullable(),
+      lastNameObfuscated: z.string().nullable(),
+      title: z.string().nullable(),
+      company: z.string().nullable(),
+    }),
+  ),
+  generatedAt: z.string().nullable(),
+});
+export type AudiencePreview = z.infer<typeof AudiencePreviewSchema>;
+
+export async function getAudiencePreview(audienceId: string, token?: string): Promise<AudiencePreview> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview`, { token });
+  const parsed = AudiencePreviewSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getAudiencePreview: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getAudiencePreview: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── One cold email, written before any campaign exists ────────────────────────
+// content-generation-service `POST /preview-email` (v0.35.6): the product's real
+// writing (same template, brand intel and model as live campaigns) for a brand of the
+// calling org and a sample recipient. Billed to the calling org (402 when it cannot
+// afford it); creates nothing sendable; the same inputs return the stored email.
+
+const PreviewEmailSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  brandName: z.string(),
+  recipient: z.object({
+    firstName: z.string(),
+    lastName: z.string(),
+    title: z.string(),
+    companyName: z.string(),
+  }).passthrough(),
+  subject: z.string(),
+  bodyText: z.string(),
+  bodyHtml: z.string(),
+  model: z.string(),
+  cached: z.boolean(),
+  createdAt: z.string(),
+});
+export type PreviewEmail = z.infer<typeof PreviewEmailSchema>;
+
+export interface PreviewEmailRecipient {
+  firstName: string;
+  lastName: string;
+  title: string;
+  companyName: string;
+  companyDomain?: string;
+}
+
+export async function previewColdEmail(
+  input: { brandId: string; recipient: PreviewEmailRecipient; audience?: string; offerId?: string | null },
+  token?: string,
+): Promise<PreviewEmail> {
+  const raw = await apiCall<unknown>(`/content/preview-email`, {
+    token,
+    method: "POST",
+    body: {
+      brandId: input.brandId,
+      recipient: input.recipient,
+      ...(input.audience ? { audience: input.audience } : {}),
+      ...(input.offerId ? { offerId: input.offerId } : {}),
+    },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  const parsed = PreviewEmailSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] previewColdEmail: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] previewColdEmail: invalid response shape");
+  }
+  return parsed.data;
+}
+
+
 /**
  * PATCH /orgs/audiences/:audienceId/status — change an audience's lifecycle status
  * (mutates only status). Used to ACTIVATE a suggested candidate ("suggested" →

@@ -145,7 +145,11 @@ describe("the file itself", () => {
     // Read the RULES block alone: the doc comment above it legitimately
     // explains which families are absent, and a whole-file check would fail on
     // its own rationale.
-    const rules = src.slice(src.indexOf("const RULES"), src.indexOf("export interface AllowInput"));
+    // `content/preview-email` is the one reviewed exception: it WRITES a preview for
+    // the signed-out onboarding v2 and creates nothing that can be sent.
+    const rules = src
+      .slice(src.indexOf("const RULES"), src.indexOf("export interface AllowInput"))
+      .replace('"preview-email"', "");
     for (const banned of ["campaign", "lead", "instantly", "billing", "credit", "stripe", "email"]) {
       expect(rules.toLowerCase(), banned).not.toContain(banned);
     }
@@ -185,5 +189,24 @@ describe("the brand a BODY names is bound to the session too", () => {
   it("leaves routes that name no brand in their body alone", () => {
     expect(anonBodyRefusal({ method: "POST", endpoint: "/brands", body: body({ url: "x" }), brandId: "" })).toBeNull();
     expect(anonBodyRefusal({ method: "GET", endpoint: "/orgs/audiences?brandId=x", body: undefined, brandId: BRAND })).toBeNull();
+  });
+});
+
+describe("the onboarding v2 preview reads", () => {
+  it("permits the audience sample and the preview email", () => {
+    expect(allow("GET", "/orgs/audiences/9b1c/preview").allowed).toBe(true);
+    expect(allow("POST", "/content/preview-email").allowed).toBe(true);
+  });
+
+  it("binds the preview email's brand to the session", () => {
+    const b = (brandId: string) => JSON.stringify({ brandId, recipient: { firstName: "A" } });
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/content/preview-email", body: b(BRAND), brandId: BRAND })).toBeNull();
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/content/preview-email", body: b(OTHER), brandId: BRAND })).toBe("wrong-brand");
+  });
+
+  it("still refuses everything else under those paths", () => {
+    expect(allow("POST", "/orgs/audiences/9b1c/preview").allowed).toBe(false);
+    expect(allow("POST", "/orgs/audiences/9b1c/status").allowed).toBe(false);
+    expect(allow("POST", "/content/generate").allowed).toBe(false);
   });
 });

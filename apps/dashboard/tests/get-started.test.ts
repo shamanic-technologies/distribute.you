@@ -77,8 +77,8 @@ describe("the rules the page decides on", () => {
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, budgetUsd: 2.5 }))?.budgetUsd).toBeNull();
   });
 
-  it("states the three steps whose backend is not live yet", () => {
-    expect([...STEPS_NOT_LIVE].sort()).toEqual(["companies", "email", "people"]);
+  it("has every step live now that both producers reached the gateway", () => {
+    expect([...STEPS_NOT_LIVE]).toEqual([]);
   });
 });
 
@@ -106,6 +106,17 @@ describe("the surface", () => {
     expect(FLOW).toContain("Not live yet");
   });
 
+  it("reads the real sample and the real email, never an email address", () => {
+    expect(FLOW).toContain("getAudiencePreview(");
+    expect(FLOW).toContain("previewColdEmail(");
+    expect(FLOW).not.toMatch(/revealEmail|enrich|emailAddress/);
+  });
+
+  it("asks a timed-out email again, but never retries a refusal", () => {
+    const body = FLOW.slice(FLOW.indexOf("async function writeWithRetry"), FLOW.indexOf("function sampleNote("));
+    expect(body).toContain("e.status >= 400 && e.status < 500");
+  });
+
   it("asks the account and the card on one screen", () => {
     expect(WALL).toContain("createEmbeddedCardSetup(");
     expect(WALL).toContain("signUp.create(");
@@ -120,7 +131,11 @@ describe("the surface", () => {
 
   it("carries no em-dash in its copy", () => {
     for (const src of [FLOW, WALL, LAUNCH]) {
-      const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      // The one dash allowed is Keel's missing-value marker, a `"\u2014"` literal.
+      const code = src
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "")
+        .replace(/"\u2014"/g, "");
       expect(code).not.toContain("—");
     }
   });
