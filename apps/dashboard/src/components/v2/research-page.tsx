@@ -199,7 +199,7 @@ function V2ResearchHub({ base }: { base: string }) {
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Emails studied" note={`${v.byMonth[0]?.label ?? ""} to ${dayText(RESEARCH.maturation.cutoff)}, old enough to count`}>
+          <StatTile label="Emails studied" note={`People first written to from ${v.byMonth[0]?.label ?? ""} to ${dayText(RESEARCH.maturation.cutoff)}, old enough to count`}>
             <div className="flex items-end justify-between gap-2">
               <Figure value={v.emails.toLocaleString("en-US")} />
               <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
