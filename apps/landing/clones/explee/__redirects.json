@@ -1,0 +1,10 @@
+{
+  "/callback": {
+    "status": 307,
+    "location": "https://lab-explee.distribute.you/app"
+  },
+  "/app": {
+    "status": 307,
+    "location": "https://lab-explee.distribute.you/app-auto-gtm"
+  }
+}

@@ -6,6 +6,8 @@ import {
   CLONE_ROUTE_PREFIX,
   ACTIONS_FILE,
   REDIRECTS_FILE,
+  RESPONSES_FILE,
+  type RecordedResponse,
   SITES_DIR,
   cloneFor,
   cloneTargetForHost,
@@ -108,6 +110,28 @@ async function recordedRedirect(root: string, pathname: string): Promise<{ statu
   return record;
 }
 
+/**
+ * An answer the competitor's own API gave during a flow walked by hand, replayed so the
+ * app on the clone keeps working (their analysis JSON, the agent's event stream, a
+ * drafted email). Nothing is executed: only a recorded `METHOD path` answers, anything
+ * else is the ordinary 404.
+ */
+async function recordedResponse(root: string, method: string, pathname: string): Promise<Response | null> {
+  let records: Record<string, RecordedResponse>;
+  try {
+    records = JSON.parse(await readFile(path.join(root, RESPONSES_FILE), "utf8"));
+  } catch {
+    return null;
+  }
+  const record = records[`${method} ${pathname.replace(/\/+$/, "") || "/"}`];
+  if (!record) return null;
+  const body = record.bodyBase64 !== undefined ? Buffer.from(record.bodyBase64, "base64") : Buffer.from(record.body ?? "", "utf8");
+  return new Response(record.status === 204 ? null : new Uint8Array(body), {
+    status: record.status,
+    headers: { "content-type": record.contentType, "x-robots-tag": "noindex, nofollow", "cache-control": "no-store" },
+  });
+}
+
 async function readClone(
   root: string,
   pathname: string,
@@ -116,7 +140,7 @@ async function readClone(
 ): Promise<{ body: Buffer; file: string } | null> {
   // The landing root holds its sites and the redirect records; neither is a page of it.
   const first = pathname.split("/").filter(Boolean)[0] ?? "";
-  if (first === SITES_DIR || first === REDIRECTS_FILE || first === ACTIONS_FILE) return null;
+  if (first === SITES_DIR || first === REDIRECTS_FILE || first === ACTIONS_FILE || first === RESPONSES_FILE) return null;
 
   // A query-bearing URL is stored beside its plain form, because the origin generates a
   // different response per query (`/_next/image?w=96` and `?w=48` are two pictures). The
@@ -190,6 +214,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
   const found = await readClone(root, pathname, url.search, request.headers.get("accept"));
   if (found === null) {
+    const replayed = await recordedResponse(root, "GET", pathname);
+    if (replayed !== null) return replayed;
     const redirect = await recordedRedirect(root, pathname);
     if (redirect !== null) {
       return new Response(null, {
@@ -231,7 +257,9 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         string,
         { status: number; headers: Record<string, string>; body: string }
       >;
-      const recorded = actions[actionId];
+      // A page-scoped record (`<id> <pathname>`, written by har-to-flow) wins over an id-only one.
+      const pagePath = originPathFor(new URL(request.url).pathname, CLONE_ROUTE_PREFIX, slug).replace(/\/+$/, "") || "/";
+      const recorded = actions[`${actionId} ${pagePath}`] ?? actions[actionId];
       if (recorded) {
         return new Response(recorded.body, {
           status: recorded.status,
@@ -241,6 +269,23 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     } catch {
       // no recorded actions for this root — an ordinary miss
     }
+  }
+  if (root !== null && !actionId) {
+    const pathname = originPathFor(new URL(request.url).pathname, CLONE_ROUTE_PREFIX, slug);
+    const replayed = await recordedResponse(root, "POST", pathname);
+    if (replayed !== null) return replayed;
+  }
+  return new Response("Not found in this clone.", { status: 404, headers: NOT_FOUND_HEADERS });
+}
+
+/** A PUT the competitor's API answered during the walk (an identity provider's step), replayed. */
+export async function PUT(request: Request, context: { params: Promise<{ slug: string; path?: string[] }> }) {
+  const { slug } = await context.params;
+  const root = await rootFor(slug, request.headers.get("host"));
+  if (root !== null) {
+    const pathname = originPathFor(new URL(request.url).pathname, CLONE_ROUTE_PREFIX, slug);
+    const replayed = await recordedResponse(root, "PUT", pathname);
+    if (replayed !== null) return replayed;
   }
   return new Response("Not found in this clone.", { status: 404, headers: NOT_FOUND_HEADERS });
 }

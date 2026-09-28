@@ -1,0 +1,17 @@
+{
+  "GET /api/auth/me": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"user\":null}"
+  },
+  "GET /api/version": {
+    "status": 200,
+    "contentType": "application/json",
+    "body": "{\"buildId\":\"7I_XMN8y0q0OyxbAl6J0k\"}"
+  },
+  "POST /api/auth/sso/resolve": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"ssoRequired\":false,\"organizationName\":null}"
+  }
+}

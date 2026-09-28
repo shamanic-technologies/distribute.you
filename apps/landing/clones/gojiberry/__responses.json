@@ -1,0 +1,6 @@
+{
+  "POST /cdn-cgi/rum": {
+    "status": 204,
+    "contentType": "text/plain"
+  }
+}

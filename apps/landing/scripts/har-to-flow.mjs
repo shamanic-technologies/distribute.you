@@ -30,7 +30,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { labHostFor, rootFor } from "./capture-onboarding.mjs";
+import { ACTIONS_FILE, REDIRECTS_FILE, labHostFor, rewriteOrigins, rootFor } from "./capture-onboarding.mjs";
+import { QUERY_MARKER, queryHash } from "./clone-site.mjs";
+
+export const RESPONSES_FILE = "__responses.json";
 import { diskPathFor, extensionForContentType } from "./clone-site.mjs";
 
 const [, , slug, captureDir] = process.argv;
@@ -73,7 +76,136 @@ async function writeDeep(target, body) {
 }
 
 const har = JSON.parse(await readFile(path.join(captureDir, "flow.har"), "utf8"));
+
+// ─── Replay: what keeps the walked flow CLICKABLE on the clone ─────────────────────────
+// Per root (the landing, or one of its sites): recorded API answers, Next server-action
+// answers, and redirect hops, all merged into what earlier passes stored, never over it.
+const replay = new Map(); // root -> { responses, actions, redirects }
+const rscPages = new Set();
+const replayFor = (root) => {
+  if (!replay.has(root)) replay.set(root, { responses: {}, actions: {}, redirects: {} });
+  return replay.get(root);
+};
+const header = (list, name) => list.find((h) => h.name.toLowerCase() === name)?.value ?? null;
+/** Beacons that only need a 2xx so the page does not log an error. */
+const BEACON = /\/cdn-cgi\/rum|\/api\/track|\/api\/capi|\/ingest\//;
+
+for (const e of har.log.entries) {
+  const url = new URL(e.request.url);
+  const root = rootFor(entry, url.origin);
+  if (root === null) continue;
+  const method = e.request.method;
+  const res = e.response;
+  const content = res.content ?? {};
+  const mime = (content.mimeType ?? "").split(";")[0].trim();
+  const key = `${method} ${url.pathname.replace(/\/+$/, "") || "/"}`;
+  const bucket = replayFor(root);
+
+  if (res.status >= 300 && res.status < 400) {
+    const location = header(res.headers, "location");
+    const pathKey = url.pathname.replace(/\/+$/, "") || "/";
+    if (method === "GET" && location && !bucket.redirects[pathKey]) {
+      bucket.redirects[pathKey] = { status: res.status, location: rewriteOrigins(new URL(location, url).toString(), slug, entry, "any") };
+    }
+    continue;
+  }
+  if (res.status < 200 || res.status >= 300) continue;
+
+  const actionId = header(e.request.headers, "next-action");
+  if (method === "POST" && actionId) {
+    // Keyed by id AND page: one action id answers differently per page it is called from
+    // (explee's project action rendered the project when replayed on the home page).
+    const scoped = `${actionId} ${url.pathname.replace(/\/+$/, "") || "/"}`;
+    if (!bucket.actions[scoped] && content.text) {
+      bucket.actions[scoped] = { status: res.status, headers: { "content-type": content.mimeType || "text/x-component" }, body: content.text };
+    }
+    continue;
+  }
+
+  // A Next router payload asked with other params beside `_rsc` (`?src=cabinet&_rsc=`) is
+  // also stored under the `_rsc`-only name, which is the one a click from the landing asks.
+  if (method === "GET" && mime === "text/x-component" && content.text) {
+    const rsc = url.searchParams.get("_rsc");
+    if (rsc !== null) {
+      // Stored where the reader's `_rsc` fallback looks: beside the page's `index.html`,
+      // with an `.rsc` extension so it is served as `text/x-component`.
+      const clean = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+      const stem = clean === "" ? "index" : `${clean}/index`;
+      const target = path.join(cloneRoot, root, `${stem}.${QUERY_MARKER}${queryHash(`?_rsc=${rsc}`)}.rsc`);
+      if (!existsSync(target)) await writeDeep(target, Buffer.from(content.text, content.encoding === "base64" ? "base64" : "utf8"));
+      if (root === "") rscPages.add(url.pathname.replace(/\/+$/, "") || "/");
+    }
+    continue;
+  }
+
+  if (BEACON.test(url.pathname)) {
+    bucket.responses[key] ??= { status: 204, contentType: "text/plain" };
+    continue;
+  }
+  const isData = mime === "application/json" || mime === "text/event-stream" || mime === "text/plain" || mime === "application/octet-stream";
+  if (!isData || (method === "GET" && mime === "application/octet-stream" && url.pathname.includes("."))) continue;
+  if (bucket.responses[key] && (bucket.responses[key].body || bucket.responses[key].bodyBase64)) continue;
+  if (!content.text) continue;
+  if (mime === "application/json" && content.encoding !== "base64") {
+    // Replayed intact except for anything credential-shaped (a live Stripe client secret,
+    // a session token): the flow stays clickable, and nothing of theirs that authenticates is stored.
+    const parsed = safeJson(content.text);
+    bucket.responses[key] = { status: res.status, contentType: content.mimeType || mime, body: typeof parsed === "string" ? parsed : JSON.stringify(redact(parsed)) };
+    continue;
+  }
+  bucket.responses[key] =
+    content.encoding === "base64"
+      ? { status: res.status, contentType: content.mimeType || mime, bodyBase64: content.text }
+      : { status: res.status, contentType: content.mimeType || mime, body: content.text };
+}
+
+// A page the walk reached by CLIENT navigation has a router payload in the HAR and no
+// document, so a reload of it (or the router giving up on a payload) 404s. Fetched from
+// the origin now, with every chunk it names that the clone does not hold yet.
+const UA = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" };
+let fetchedDocs = 0;
+for (const pagePath of rscPages) {
+  const doc = path.join(cloneRoot, diskPathFor(pagePath, "", ".html"));
+  if (existsSync(doc)) continue;
+  const res = await fetch(`${entry.origin}${pagePath}`, { headers: { ...UA, accept: "text/html" } });
+  if (!res.ok) {
+    console.error(`[har-to-flow] ${pagePath}: origin answered ${res.status}, document not stored`);
+    continue;
+  }
+  const html = await res.text();
+  for (const ref of new Set(html.match(/\/_next\/static\/[^"'\s\\]+/g) ?? [])) {
+    const plain = path.join(cloneRoot, diskPathFor(ref.split("?")[0]));
+    if (existsSync(plain)) continue;
+    const asset = await fetch(`${entry.origin}${ref}`, { headers: UA });
+    if (asset.ok) await writeDeep(plain, Buffer.from(await asset.arrayBuffer()));
+  }
+  await writeDeep(doc, rewriteOrigins(html, slug, entry, null));
+  fetchedDocs++;
+}
+
+async function mergeJson(file, additions) {
+  let current = {};
+  try {
+    current = JSON.parse(await readFile(file, "utf8"));
+  } catch {
+    // first write
+  }
+  const merged = { ...additions, ...current };
+  if (Object.keys(merged).length > 0) await writeDeep(file, `${JSON.stringify(merged, null, 2)}\n`);
+  return Object.keys(merged).length - Object.keys(current).length;
+}
+const replayCounts = {};
+for (const [root, bucket] of replay) {
+  const dir = path.join(cloneRoot, root);
+  replayCounts[root || "/"] = {
+    responses: await mergeJson(path.join(dir, RESPONSES_FILE), bucket.responses),
+    actions: await mergeJson(path.join(dir, ACTIONS_FILE), bucket.actions),
+    redirects: await mergeJson(path.join(dir, REDIRECTS_FILE), bucket.redirects),
+  };
+}
+
 let assets = 0;
+const writtenDocs = new Set();
 const apiSeen = new Set();
 let apis = 0;
 
@@ -106,10 +238,33 @@ for (const e of har.log.entries) {
     continue;
   }
 
-  if (!ownHosts.has(url.host) || e.request.method !== "GET" || mime === "text/html" || mime === "application/json") continue;
+  // The landing's documents from the walk REPLACE the stored ones: the chunks the walk
+  // loaded belong to today's build, and a page from an older build asks for chunks the
+  // clone does not hold, so the app half-boots. A site's pages stay as the earlier pass
+  // stored them (some are snapshots of widgets that refuse to render off their domain).
+  if (ownHosts.has(url.host) && e.request.method === "GET" && mime === "text/html") {
+    const docRoot = rootFor(entry, url.origin);
+    // The FIRST load of a page wins: it is the one an anonymous visitor gets. A later load
+    // in the same walk carries the session and resumes the project instead.
+    if (docRoot === "" && !url.search && !writtenDocs.has(url.pathname)) {
+      writtenDocs.add(url.pathname);
+      const doc = path.join(cloneRoot, diskPathFor(url.pathname, "", ".html"));
+      await writeDeep(doc, rewriteOrigins(body.toString("utf8"), slug, entry, null));
+      assets++;
+    }
+    continue;
+  }
+  if (!ownHosts.has(url.host) || e.request.method !== "GET") continue;
+  if (["application/json", "text/event-stream", "text/x-component", "text/plain"].includes(mime)) continue;
   const root = rootFor(entry, url.origin);
   if (root === null) continue;
   const target = path.join(cloneRoot, root, diskPathFor(url.pathname, url.search, extensionForContentType(mime)));
+  // A Next chunk is named by the hash of its content, so its `?dpl=<deployment>` tail
+  // changes nothing but the deployment it was asked from. Stored once more under its
+  // plain path, the reader's plain-form fallback serves it to a page from ANY build.
+  const onlyDpl = [...url.searchParams.keys()].join() === "dpl";
+  const plain = onlyDpl ? path.join(cloneRoot, root, diskPathFor(url.pathname, "", extensionForContentType(mime))) : null;
+  if (plain && !existsSync(plain)) await writeDeep(plain, body);
   if (existsSync(target)) continue;
   await writeDeep(target, body);
   assets++;
@@ -170,4 +325,4 @@ await writeDeep(
     .join("")}</ul></body></html>`,
 );
 
-console.log(JSON.stringify({ slug, steps: steps.length, apis, assets }));
+console.log(JSON.stringify({ slug, steps: steps.length, apis, assets, replay: replayCounts, fetchedDocs }));

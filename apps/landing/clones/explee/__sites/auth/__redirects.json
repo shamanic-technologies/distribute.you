@@ -2,5 +2,17 @@
   "/oidc/auth": {
     "status": 303,
     "location": "https://lab-explee-auth.distribute.you/sign-in?app_id=yb37qgq72o4s2o8kao78v"
+  },
+  "/oidc/auth/gfnXdbR2QB4P5M-fm2Bog": {
+    "status": 303,
+    "location": "https://lab-explee-auth.distribute.you/consent?app_id=yb37qgq72o4s2o8kao78v"
+  },
+  "/consent": {
+    "status": 302,
+    "location": "https://lab-explee-auth.distribute.you/oidc/auth/NaSvml7ukf7I5RHZKv5jO"
+  },
+  "/oidc/auth/NaSvml7ukf7I5RHZKv5jO": {
+    "status": 303,
+    "location": "https://lab-explee.distribute.you/callback?code=oxzjq7tafFP9HbBcOWlzGPDDbSYNNR7LWMTy8Er2tTd&state=f6rW9Zx2CBjWCblE65qPnZL_8MkQW3z0NCVKoKs-cwe_AykO6H9HavYeo4ww_4ivTKiSIyjMn4pgLOyFxjEy2g&iss=https%3A%2F%2Fauth.explee.com%2Foidc"
   }
 }
