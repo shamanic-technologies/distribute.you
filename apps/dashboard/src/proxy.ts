@@ -29,6 +29,11 @@ const isPublicRoute = createRouteMatcher([
   // creates the account or signs it in) and signed IN (the account accepts it), so it
   // is public but NOT an auth route: an auth route bounces a signed-in visitor away.
   "/invite(.*)",
+  // A team's shareable invite link, and the join it finishes. `/api/join` is public
+  // because a brand-new account is a PENDING session (no org yet), which the gate
+  // below would bounce to the choose-organization task; the route checks its own auth.
+  "/join(.*)",
+  "/api/join",
   // The sell-first half of onboarding. It runs BEFORE signup by design: a
   // visitor picks the outcomes they want to buy, and only then makes an account. Behind the auth gate it
   // would be a screen nobody in the market can reach.

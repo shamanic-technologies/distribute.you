@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { PostHogAuthTracker } from "@/components/posthog-auth-tracker";
 import { ConversionPing } from "@/components/conversion-ping";
 import { StaleBuildNotice } from "@/components/stale-build-notice";
+import { JoinClaimer } from "@/components/team/join-claimer";
 import { TenantIdentityProvider } from "@/components/tenant-identity-provider";
 import {
   TENANT_IDENTITY_COOKIE,
@@ -52,6 +53,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         <PostHogAuthTracker />
         <ConversionPing />
         <StaleBuildNotice />
+        <JoinClaimer />
         {children}
       </TenantIdentityProvider>
     </ClerkProvider>

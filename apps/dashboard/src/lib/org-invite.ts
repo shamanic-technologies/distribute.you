@@ -47,24 +47,19 @@ const ALLOWED_ORIGINS = new Set([
  * A caller-supplied origin is only honoured when it is one of ours, so an invite can
  * never be pointed at somebody else's site.
  */
+/** One of our dashboard origins, else prod: a link we mint never points at somebody else's site. */
+export function dashboardOrigin(origin: string | null | undefined): string {
+  return origin && ALLOWED_ORIGINS.has(origin) ? origin : DASHBOARD_ORIGIN;
+}
+
 export function inviteRedirectUrl(
   origin: string | null | undefined,
   orgId: string,
   brand?: InviteBrand | null,
 ): string {
-  const base = origin && ALLOWED_ORIGINS.has(origin) ? origin : DASHBOARD_ORIGIN;
-  const q = new URLSearchParams({ org: orgId });
-  if (brand) {
-    q.set("bn", brand.name);
-    if (brand.domain) q.set("bd", brand.domain);
-    if (brand.logoUrl) q.set("bl", brand.logoUrl);
-    if (brand.tint) {
-      q.set("th", String(brand.tint.hue));
-      q.set("tc", String(brand.tint.chromaScale));
-      q.set("td", String(brand.tint.hueDelta));
-    }
-  }
-  return `${base}/invite?${q.toString()}`;
+  const base = dashboardOrigin(origin);
+  const q = brandQuery(brand);
+  return `${base}/invite?org=${encodeURIComponent(orgId)}${q ? `&${q}` : ""}`;
 }
 
 /**
@@ -154,4 +149,72 @@ export type InviteTicketStatus = "sign_up" | "sign_in" | "complete";
 /** Clerk's `__clerk_status`, read as one of the three values it documents, or null. */
 export function parseInviteStatus(raw: string | null): InviteTicketStatus | null {
   return raw === "sign_up" || raw === "sign_in" || raw === "complete" ? raw : null;
+}
+
+// ── Invite LINK: one shareable link per org, no email, anyone holding it joins as Admin ──
+//
+// Owner-decided 2026-09-28: simple on purpose. No expiry, no single use; the guard is
+// that every existing admin is emailed when somebody joins, and the link can be revoked
+// (which invalidates it at once, since the code is compared on every join).
+//
+// The token is `<orgId>.<code>`: the org id tells the join route which org's stored code
+// to compare against, the code is the secret. Stored on the Clerk org's
+// privateMetadata, which the browser cannot read.
+
+/** Read on the way back from sign-up / sign-in so the join survives any auth route. */
+export const JOIN_COOKIE = "distribute_join";
+const JOIN_COOKIE_MAX_AGE_S = 24 * 60 * 60;
+
+const ORG_ID_SHAPE = /^org_[A-Za-z0-9]+$/;
+const CODE_SHAPE = /^[A-Za-z0-9_-]{16,64}$/;
+
+export function joinToken(orgId: string, code: string): string {
+  return `${orgId}.${code}`;
+}
+
+export function parseJoinToken(raw: string | null | undefined): { orgId: string; code: string } | null {
+  if (!raw) return null;
+  const dot = raw.indexOf(".");
+  if (dot < 0) return null;
+  const orgId = raw.slice(0, dot);
+  const code = raw.slice(dot + 1);
+  return ORG_ID_SHAPE.test(orgId) && CODE_SHAPE.test(code) ? { orgId, code } : null;
+}
+
+/** The link an admin copies. The brand rides along so the page can greet with it, like an email invite. */
+export function joinLinkUrl(origin: string, orgId: string, code: string, brand?: InviteBrand | null): string {
+  const q = brandQuery(brand);
+  return `${origin}/join/${encodeURIComponent(joinToken(orgId, code))}${q ? `?${q}` : ""}`;
+}
+
+export function brandQuery(brand?: InviteBrand | null): string {
+  if (!brand) return "";
+  const q = new URLSearchParams({ bn: brand.name });
+  if (brand.domain) q.set("bd", brand.domain);
+  if (brand.logoUrl) q.set("bl", brand.logoUrl);
+  if (brand.tint) {
+    q.set("th", String(brand.tint.hue));
+    q.set("tc", String(brand.tint.chromaScale));
+    q.set("td", String(brand.tint.hueDelta));
+  }
+  return q.toString();
+}
+
+export function joinCookieAssignment(token: string): string {
+  return `${JOIN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${JOIN_COOKIE_MAX_AGE_S}; samesite=lax`;
+}
+
+export function clearJoinCookieAssignment(): string {
+  return `${JOIN_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
+export function readJoinCookie(cookieHeader: string): string | null {
+  for (const part of cookieHeader.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === JOIN_COOKIE) {
+      const token = decodeURIComponent(v.join("="));
+      return parseJoinToken(token) ? token : null;
+    }
+  }
+  return null;
 }
