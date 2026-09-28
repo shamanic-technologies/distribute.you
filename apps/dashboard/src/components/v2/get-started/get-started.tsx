@@ -148,6 +148,12 @@ export function GetStarted() {
   const [audienceBusy, setAudienceBusy] = useState<number | null>(null);
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const createdAudiences = useRef(new Map<string, GetStartedAudience>());
+  // Every proposed audience is created in ONE confirm as soon as the offer is picked:
+  // human-service then builds each one's people search (~90 s) while the visitor reads
+  // the proposals, so the picked one's companies are ready sooner. The launch sends
+  // only the picked one (the others go back to suggested).
+  const prebuild = useRef<Promise<void> | null>(null);
+  const [building, setBuilding] = useState<Record<string, boolean>>({});
   // Step 5: up to 100 companies per picked audience, page by page.
   const [rows, setRows] = useState<Record<string, AudienceCompanyRow[]>>({});
   const [rowsDone, setRowsDone] = useState<Record<string, boolean>>({});
@@ -315,11 +321,31 @@ export function GetStarted() {
     }
   }
 
-  /** Step 4: create the ONE audience picked under the offer, then its companies load. */
+  useEffect(() => {
+    if (!brandId || !offer || audienceProposals.length === 0 || prebuild.current) return;
+    const segs = audienceProposals;
+    const offerId = offer.offerId;
+    prebuild.current = confirmAudienceSegments(brandId, offerId, icpRef.current || segs[0].description, segs)
+      .then(({ audiences }) => {
+        segs.forEach((seg, i) => {
+          const made = audiences.find((a) => a.name === seg.name) ?? audiences[i];
+          if (made) createdAudiences.current.set(seg.name, { audienceId: made.id, name: seg.name, description: seg.description });
+        });
+      })
+      .catch((e) => console.error("[get-started] audience prebuild failed:", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId, offer?.offerId, audienceProposals]);
+
+  /** Step 4: the ONE audience picked (created with the others above), then its companies load. */
   async function pickAudience(i: number) {
     if (!brandId || !offer || audienceBusy != null) return;
     const seg = audienceProposals[i];
     if (!seg) return;
+    if (prebuild.current && !createdAudiences.current.has(seg.name)) {
+      setAudienceBusy(i);
+      await prebuild.current;
+      setAudienceBusy(null);
+    }
     const known = createdAudiences.current.get(seg.name);
     if (known) {
       chooseAudience(known);
@@ -389,11 +415,15 @@ export function GetStarted() {
       while (offset < (wanted.current.get(id) ?? FIRST_PAGE)) {
         const limit = Math.min(offset === 0 ? FIRST_PAGE : NEXT_PAGE, 100 - offset);
         const page = await getAudienceCompanies(id, { offset, limit });
-        if (page.status === "unavailable" && page.reason === "not_built_yet" && waits < 15) {
+        // human-service is still building this audience's people search (~90 s after
+        // it was created): asked again every 3 s, for up to 4 minutes, with the wait shown.
+        if (page.status === "unavailable" && page.reason === "not_built_yet" && waits < 80) {
           waits += 1;
-          await new Promise((r) => setTimeout(r, 4000));
+          setBuilding((cur) => (cur[id] ? cur : { ...cur, [id]: true }));
+          await new Promise((r) => setTimeout(r, 3000));
           continue;
         }
+        setBuilding((cur) => (cur[id] ? { ...cur, [id]: false } : cur));
         if (page.status !== "ready") {
           setRowsNote((cur) => ({ ...cur, [id]: companiesNote(page.reason) }));
           setRowsDone((cur) => ({ ...cur, [id]: true }));
@@ -760,6 +790,7 @@ export function GetStarted() {
           rows={audRows}
           done={audience ? !!rowsDone[audience.audienceId] : false}
           loadingMore={audience ? !!loadingMore[audience.audienceId] : false}
+          building={audience ? !!building[audience.audienceId] : false}
           onMore={() => audience && wantRows(audience, (rowCount.current.get(audience.audienceId) ?? 0) + NEXT_PAGE)}
           note={audience ? rowsNote[audience.audienceId] ?? null : null}
           emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
@@ -1477,6 +1508,7 @@ function CompaniesStage({
   rows,
   done,
   loadingMore,
+  building,
   onMore,
   note,
   emailState,
@@ -1487,6 +1519,7 @@ function CompaniesStage({
   rows: AudienceCompanyRow[];
   done: boolean;
   loadingMore: boolean;
+  building: boolean;
   onMore: () => void;
   note: string | null;
   emailState: (index: number) => RowEmailState;
@@ -1511,7 +1544,7 @@ function CompaniesStage({
           </div>
         ) : (
           <div className="k-card p-4">
-            <p className="k-fg3 mb-3 text-[12px]">Finding companies that match, and the right person at each.</p>
+            <BuildingNote building={building} />
             <Rows n={8} />
           </div>
         )
@@ -1611,6 +1644,24 @@ function CompaniesStage({
         </div>
       )}
     </section>
+  );
+}
+
+/** What the empty table is waiting on, with the time it has taken so far. */
+function BuildingNote({ building }: { building: boolean }) {
+  const secs = useElapsed(building ? "building" : "finding");
+  return (
+    <p className="k-fg3 mb-3 flex items-center gap-2 text-[12px]">
+      <span className="k-dot-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" />
+      <span className="min-w-0 flex-1">
+        {building
+          ? "Building the search for this audience. The first time takes about a minute and a half."
+          : "Finding companies that match, and the right person at each."}
+      </span>
+      <span className="k-mono tabular-nums" aria-hidden="true">
+        {formatElapsed(secs)}
+      </span>
+    </p>
   );
 }
 
