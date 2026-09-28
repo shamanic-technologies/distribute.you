@@ -164,6 +164,8 @@ describe("v2 wiring", () => {
   });
 
   it("the account menu follows Explee's user menu: Team, API Keys, Billing, Refer a friend, Help, Sign out", () => {
+    // Billing lives in this menu and ONLY here: the sidebar does not repeat it.
+    expect(read("src/components/v2/v2-shell.tsx")).not.toContain('label="Billing"');
     const menus = read("src/components/v2/sidebar-menus.tsx");
     const order = ['label: "Team"', 'label: "API Keys"', 'label: "Billing"', 'label: "Refer a friend"', "Help\n", "Sign out"];
     const at = order.map((o) => menus.indexOf(o, menus.indexOf("export function AccountMenuV2")));
