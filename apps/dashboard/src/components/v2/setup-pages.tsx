@@ -275,11 +275,12 @@ export function missionTabs(
   orgId: string,
   brandId: string,
   campaignId: string,
-  active: "overview" | "settings" | "workflows",
+  active: "overview" | "audiences" | "settings" | "workflows",
 ): V2Tab[] {
   const base = v2MissionHref(orgId, brandId, campaignId);
   return [
     { label: "Overview", href: base, active: active === "overview" },
+    { label: "Audiences", href: `${base}/audiences`, active: active === "audiences" },
     { label: "Settings", href: `${base}/settings`, active: active === "settings" },
     { label: "Workflows", href: `${base}/workflows`, active: active === "workflows" },
   ];
@@ -327,6 +328,40 @@ function MissionTitle({ crewColor, glyph, name, running, hold }: { crewColor: st
       <span className="truncate">{name}</span>
       <StateDot running={running} hold={hold} />
     </span>
+  );
+}
+
+/**
+ * Who this mission writes to, and what each audience costs it. A READ view: the
+ * audiences belong to the OFFER and a mission runs every active one of them, so a
+ * change made here moves every mission of that offer. The table says so in its own
+ * header, and the offer's Targeting tab stays where they are managed. The offer is
+ * passed in because this route carries no offer segment, and without it the table
+ * would list every audience of the brand.
+ */
+export function V2MissionAudiencesPage() {
+  const { orgId, brandId, campaignId, mission, settled, name } = useMissionCrumbs();
+  if (!campaignId) return null;
+  const offerId = mission?.offerId ?? null;
+  return (
+    <V2Page
+      crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Audiences" }]}
+      title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
+      tabs={missionTabs(orgId, brandId, campaignId, "audiences")}
+      width="max-w-[1280px]"
+    >
+      {!offerId ? (
+        settled ? (
+          <div className="k-card"><EmptyNote>This mission names no offer, so it has no audiences here.</EmptyNote></div>
+        ) : (
+          <Shimmer className="h-40 w-full rounded-xl" />
+        )
+      ) : (
+        <div className="v2-embed -mx-4 md:-mx-8">
+          <CustomerAudiencesPage campaignId={mission?.row.campaign.id ?? campaignId} offerId={offerId} />
+        </div>
+      )}
+    </V2Page>
   );
 }
 
