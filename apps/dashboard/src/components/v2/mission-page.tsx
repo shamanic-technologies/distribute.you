@@ -15,7 +15,6 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions } from "@/components/v2/use-missions";
 import { V2TabLink, missionTabs } from "@/components/v2/setup-pages";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useLatestInBucket } from "@/components/v2/data";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StateDot, StatTile, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
@@ -28,7 +27,6 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, le
  */
 export function MissionPage() {
   const { orgId, brandId, campaignId } = useParams<{ orgId: string; brandId: string; campaignId: string }>();
-  const isBeta = useIsBetaUser();
   const { missions, settled, missionByCampaignId } = useMissions(orgId, brandId);
   const mission = missionByCampaignId.get(campaignId) ?? null;
   const id = mission?.row.campaign.id ?? campaignId;
@@ -88,7 +86,7 @@ export function MissionPage() {
 
         {mission ? (
           <nav className="k-line-subtle mt-4 flex gap-5 border-b" aria-label="Sections">
-            {missionTabs(orgId, brandId, mission.row.campaign.id, "overview", isBeta).map((t) => (
+            {missionTabs(orgId, brandId, mission.row.campaign.id, "overview").map((t) => (
               <V2TabLink key={t.href} tab={t} />
             ))}
           </nav>

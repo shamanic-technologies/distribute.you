@@ -10,7 +10,6 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { grainFigures, scopeLadderRows } from "@/lib/workflow-grains";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import { DEPRECATED_ON_LEG_LABEL } from "@/lib/workflow-eligibility";
@@ -41,7 +40,6 @@ const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
  */
 export function V2WorkflowsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const isBeta = useIsBetaUser();
   const router = useRouter();
   const { specs, settled } = useBrandMissionSpecs(orgId, brandId);
 
@@ -82,7 +80,7 @@ export function V2WorkflowsPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {isBeta && settled && specs.length > 0
+              {settled && specs.length > 0
                 ? `${specs.length} ${specs.length === 1 ? "mission" : "missions"}, ${
                     ranked ? `${workflowTotal} workflows ranked` : "ranking their workflows"
                   }`
@@ -93,7 +91,7 @@ export function V2WorkflowsPage() {
               Rows read cheapest first on Offer, then Brand, then Global; # is the rank we would put the mission on.
             </p>
           </div>
-          {isBeta && settled && specs.length > 0 && (
+          {settled && specs.length > 0 && (
             <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
               <span className={`h-1.5 w-1.5 rounded-full ${running ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
               {running} {running === 1 ? "mission" : "missions"} running now
@@ -101,11 +99,7 @@ export function V2WorkflowsPage() {
           )}
         </div>
 
-        {!isBeta ? (
-          <div className="k-card mt-6">
-            <EmptyNote>This page is still in beta and is not open on your account yet.</EmptyNote>
-          </div>
-        ) : !settled ? (
+        {!settled ? (
           <div className="mt-6">
             <SectionSkeleton />
           </div>
