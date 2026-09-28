@@ -1,15 +1,23 @@
 "use client";
 
-import { useOrganization } from "@clerk/nextjs";
+import { useOrganization, useSession } from "@clerk/nextjs";
+import { useParams } from "next/navigation";
+import { useState } from "react";
 import { OrgAvatar } from "@/components/org-avatar";
+import {
+  INVITE_ROLES,
+  INVITE_ROLE_LABEL,
+  isInvitableEmail,
+  type InviteRole,
+} from "@/lib/org-invite";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { V2Page } from "@/components/v2/setup-pages";
 
 /**
  * Team: Explee's Team page (the first item of its user menu), with our data. The
- * organization and its members are Clerk's own, read-only here: inviting a teammate
- * and deleting the organization are writes the dashboard does not offer anywhere yet,
- * so they are left out rather than drawn as controls that do nothing.
+ * organization and its members are Clerk's own. An admin can invite a teammate by
+ * email (Clerk mails the link, `/invite` turns it into an account inside this org)
+ * and revoke an invitation still pending. Deleting the organization is not offered.
  *
  * Staff are hidden: god-mode makes every staff account a real member of every org it
  * opens, so listing them would show the customer people who are not on their team.
@@ -18,7 +26,11 @@ import { V2Page } from "@/components/v2/setup-pages";
 const ROLE_LABEL: Record<string, string> = { "org:admin": "Admin", "org:member": "Member" };
 
 export function V2TeamPage() {
-  const { organization, isLoaded, memberships } = useOrganization({ memberships: { pageSize: 50, keepPreviousData: true } });
+  const { organization, isLoaded, memberships, invitations, membership } = useOrganization({
+    memberships: { pageSize: 50, keepPreviousData: true },
+    invitations: { pageSize: 50, keepPreviousData: true, status: ["pending"] },
+  });
+  const isAdmin = membership?.role === "org:admin";
   const all = memberships?.data ?? [];
   const rows = all.filter((m) => !isAdminEmail(m.publicUserData?.identifier));
   const total = (memberships?.count ?? all.length) - (all.length - rows.length);
@@ -34,6 +46,7 @@ export function V2TeamPage() {
           </div>
         </div>
       )}
+      {isAdmin && <InviteCard onInvited={() => invitations?.revalidate?.()} />}
       <div className="k-card overflow-hidden">
         <div className="flex items-center gap-2 border-b border-[var(--line-subtle)] px-4 py-3">
           <p className="text-[13px] font-medium">Members</p>
@@ -86,6 +99,176 @@ export function V2TeamPage() {
           </tbody>
         </table>
       </div>
+      {isAdmin && (invitations?.data?.length ?? 0) > 0 && (
+        <div className="k-card mt-4 overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-[var(--line-subtle)] px-4 py-3">
+            <p className="text-[13px] font-medium">Pending invitations</p>
+            <span className="k-chip tabular-nums">{invitations?.count ?? 0}</span>
+          </div>
+          <table className="w-full table-fixed text-[13px]">
+            <tbody>
+              {(invitations?.data ?? []).map((inv) => (
+                <PendingInvitationRow
+                  key={inv.id}
+                  email={inv.emailAddress}
+                  role={inv.role}
+                  sentAt={inv.createdAt}
+                  onRevoke={async () => {
+                    await inv.revoke();
+                    await invitations?.revalidate?.();
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </V2Page>
+  );
+}
+
+/**
+ * Invite by email. The org the invitation goes to is the one in the URL, and the
+ * request carries a token Clerk minted FOR that org, so the route's `auth().orgId`
+ * is the org on screen whatever another tab has made active.
+ */
+function InviteCard({ onInvited }: { onInvited: () => void }) {
+  const params = useParams<{ orgId: string }>();
+  const orgId = params?.orgId ?? null;
+  const { session } = useSession();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<InviteRole>("org:admin");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState("");
+  const valid = isInvitableEmail(email);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!valid || sending || !orgId || !session) return;
+    setSending(true);
+    setError("");
+    setSent("");
+    try {
+      const token = await session.getToken({ organizationId: orgId });
+      const res = await fetch("/api/orgs/invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ orgId, emailAddress: email, role }),
+      });
+      const body = (await res.json().catch(() => null)) as { error?: string; emailAddress?: string } | null;
+      if (!res.ok) {
+        console.error("[team] invite failed", res.status, body);
+        setError(body?.error ?? "Could not send the invitation. Try again.");
+        return;
+      }
+      setSent(`Invitation sent to ${body?.emailAddress ?? email}.`);
+      setEmail("");
+      onInvited();
+    } catch (err) {
+      console.error("[team] invite failed", err);
+      setError("Could not send the invitation. Try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="k-card mb-4 p-4">
+      <p className="text-[13px] font-medium">Invite a teammate</p>
+      <p className="k-fg3 mt-0.5 text-[12px]">They get an email with a link to join this organization.</p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setSent("");
+            setError("");
+          }}
+          placeholder="name@company.com"
+          aria-label="Email address"
+          className="k-input min-w-0 flex-1 px-2.5"
+        />
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as InviteRole)}
+          aria-label="Role"
+          className="k-input px-2"
+        >
+          {INVITE_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {INVITE_ROLE_LABEL[r]}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          disabled={!valid || sending}
+          aria-busy={sending}
+          className={`k-btn-accent justify-center ${sending ? "cursor-wait" : !valid ? "cursor-not-allowed opacity-50" : ""}`}
+        >
+          {sending ? "Sending..." : "Send invite"}
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="mt-2 text-[12px] text-red-600">
+          {error}
+        </p>
+      )}
+      {sent && (
+        <p role="status" className="mt-2 text-[12px] text-green-700">
+          {sent}
+        </p>
+      )}
+    </form>
+  );
+}
+
+function PendingInvitationRow({
+  email,
+  role,
+  sentAt,
+  onRevoke,
+}: {
+  email: string;
+  role: string;
+  sentAt: Date;
+  onRevoke: () => Promise<void>;
+}) {
+  const [revoking, setRevoking] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return (
+    <tr className="k-row">
+      <td className="px-4 py-2.5">
+        <span className="block truncate font-medium">{email}</span>
+        {failed && <span className="block text-[12px] text-red-600">Could not revoke. Try again.</span>}
+      </td>
+      <td className="w-[96px] px-4 py-2.5">{ROLE_LABEL[role] ?? role}</td>
+      <td className="k-fg3 hidden w-[120px] px-4 py-2.5 sm:table-cell">
+        Sent {new Date(sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+      </td>
+      <td className="w-[96px] px-4 py-2.5 text-right">
+        <button
+          type="button"
+          disabled={revoking}
+          aria-busy={revoking}
+          onClick={async () => {
+            setRevoking(true);
+            setFailed(false);
+            try {
+              await onRevoke();
+            } catch (err) {
+              console.error("[team] revoke failed", err);
+              setFailed(true);
+              setRevoking(false);
+            }
+          }}
+          className={`text-[12px] font-medium text-red-600 ${revoking ? "cursor-wait" : "hover:underline"}`}
+        >
+          {revoking ? "Revoking..." : "Revoke"}
+        </button>
+      </td>
+    </tr>
   );
 }
