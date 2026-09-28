@@ -269,14 +269,10 @@ function InviteFlow() {
                 ×
               </span>
               <span className="inline-flex min-w-0 items-center gap-2">
-                {/* A black-and-white brand's logo is usually white on its own dark
-                    background, so it sits on that background here too. */}
-                <span
-                  className={`inline-flex shrink-0 rounded-md ${brand.mono ? "p-1" : ""}`}
-                  style={brand.mono ? { background: brand.mono } : undefined}
-                >
-                  <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={brand.mono ? 22 : 28} className="rounded" fallbackClassName="text-gray-400" />
-                </span>
+                {/* The logo sits on the page as is. A tile in the brand's dominant colour
+                    was tried and hid Olive's logo, which IS that colour (a black olive on
+                    transparent): the dominant colour of a logo is not its background. */}
+                <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={28} className="rounded-md" fallbackClassName="text-gray-400" />
                 <span className="truncate text-lg font-semibold text-gray-900">{brand.name}</span>
               </span>
             </>
