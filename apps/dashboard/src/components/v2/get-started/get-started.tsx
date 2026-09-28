@@ -21,13 +21,18 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
 import {
+  ApiError,
   extractBrandFields,
+  getAudiencePreview,
   getPublicCatalogueSignedOut,
   getWorkflowProjectionLadder,
   listBrandOffers,
+  previewColdEmail,
   suggestAudiences,
   suggestBrandIcp,
   upsertBrand,
+  type AudiencePreview,
+  type PreviewEmail,
 } from "@/lib/api";
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
@@ -81,6 +86,14 @@ export function GetStarted() {
   const [floorUsd, setFloorUsd] = useState(1);
   const [recommendedUsd, setRecommendedUsd] = useState<number | null>(null);
   const [wallOpen, setWallOpen] = useState(false);
+  // Steps 4 to 6 read ONE segment at a time: its free sample, then an email to one of
+  // its people. The largest segment is read first; clicking another reads that one.
+  const [selectedSeg, setSelectedSeg] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<Record<string, AudiencePreview>>({});
+  const [emails, setEmails] = useState<Record<string, PreviewEmail>>({});
+  const [emailNote, setEmailNote] = useState<string | null>(null);
+  const [offerId, setOfferId] = useState<string | null>(null);
+  const inFlight = useRef(new Set<string>());
   const [restoredBudget, setRestoredBudget] = useState<number | null>(null);
 
   const ran = useRef(false);
@@ -124,6 +137,7 @@ export function GetStarted() {
     setCompetitors(s.competitors);
     setSegments(s.segments);
     setRestoredBudget(s.budgetUsd);
+    if (s.segments.length) setSelectedSeg([...s.segments].sort((a, b) => b.count - a.count)[0].audienceId);
     setStarted(true);
     ran.current = true;
     setSteps({
@@ -137,6 +151,88 @@ export function GetStarted() {
   }
 
   const setStep = (k: GetStartedStepKey, v: StepState) => setSteps((cur) => ({ ...cur, [k]: v }));
+
+  function markSampleSteps(v: StepState) {
+    setSteps((cur) => {
+      const next = { ...cur };
+      for (const k of ["companies", "people", "email"] as const) if (!STEPS_NOT_LIVE.has(k)) next[k] = v;
+      return next;
+    });
+  }
+
+  // Steps 4 and 5: the selected segment's free sample (companies + people, no email).
+  // A sample the producer cannot take YET (its filters are still being built) is asked
+  // again a few times; an empty one is final.
+  useEffect(() => {
+    if (!selectedSeg || STEPS_NOT_LIVE.has("companies") || previews[selectedSeg] || inFlight.current.has(`p:${selectedSeg}`)) return;
+    const id = selectedSeg;
+    inFlight.current.add(`p:${id}`);
+    setSteps((cur) => ({ ...cur, companies: "running", people: "running", email: STEPS_NOT_LIVE.has("email") ? cur.email : "running" }));
+    void (async () => {
+      let got: AudiencePreview | null = null;
+      for (let i = 0; i < 12; i++) {
+        try {
+          got = await getAudiencePreview(id);
+        } catch (e) {
+          console.error("[get-started] audience preview failed:", e);
+          got = null;
+          break;
+        }
+        if (!(got.status === "unavailable" && got.reason === "not_built_yet")) break;
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      inFlight.current.delete(`p:${id}`);
+      if (got) setPreviews((cur) => ({ ...cur, [id]: got! }));
+      const ok = got?.status === "ready";
+      setSteps((cur) => ({
+        ...cur,
+        companies: ok && got!.companies.length ? "done" : "failed",
+        people: ok && got!.people.length ? "done" : "failed",
+        email: ok && got!.people.length ? cur.email : STEPS_NOT_LIVE.has("email") ? cur.email : "failed",
+      }));
+    })();
+  }, [selectedSeg, previews]);
+
+  // Step 6: one email written for one of the sampled people, billed to this
+  // session's anonymous org. The same brand + person returns the stored email.
+  useEffect(() => {
+    if (!selectedSeg || !brandId || STEPS_NOT_LIVE.has("email") || emails[selectedSeg] || inFlight.current.has(`e:${selectedSeg}`)) return;
+    const prev = previews[selectedSeg];
+    const person = prev?.status === "ready" ? prev.people.find((x) => x.firstName && x.title && x.company) : undefined;
+    if (!person) return;
+    const id = selectedSeg;
+    const seg = segments.find((x) => x.audienceId === id);
+    inFlight.current.add(`e:${id}`);
+    setEmailNote(null);
+    setStep("email", "running");
+    void (async () => {
+      try {
+        const mail = await writeWithRetry(() => previewColdEmail({
+          brandId,
+          recipient: {
+            firstName: person.firstName!,
+            lastName: person.lastNameObfuscated || person.firstName!.slice(0, 1),
+            title: person.title!,
+            companyName: person.company!,
+          },
+          audience: seg?.name,
+          offerId,
+        }));
+        setEmails((cur) => ({ ...cur, [id]: mail }));
+        setStep("email", "done");
+      } catch (e) {
+        console.error("[get-started] email preview failed:", e);
+        setEmailNote(
+          e instanceof ApiError && e.status === 402
+            ? "Your free preview credit is used up, so we stopped before writing the email. It will be written once your account is set up."
+            : "We could not write the email just now.",
+        );
+        setStep("email", "failed");
+      } finally {
+        inFlight.current.delete(`e:${id}`);
+      }
+    })();
+  }, [selectedSeg, previews, emails, brandId, offerId, segments]);
 
   async function start(raw: string) {
     if (ran.current) return;
@@ -221,6 +317,8 @@ export function GetStarted() {
           .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count }));
         setSegments(list);
         setStep("segments", list.length ? "done" : "failed");
+        if (list.length) setSelectedSeg([...list].sort((a, b) => b.count - a.count)[0].audienceId);
+        else markSampleSteps("failed");
         return list;
       })
       .catch((e) => {
@@ -235,6 +333,7 @@ export function GetStarted() {
       for (const k of STEPS_NOT_LIVE) next[k] = "notLive";
       return next;
     });
+    if (found.length === 0) markSampleSteps("failed");
     posthog.capture("get_started_preview_ready", { segments: found.length, competitors: list.length });
 
     saveSnapshot({
@@ -255,6 +354,7 @@ export function GetStarted() {
     try {
       const { offers } = await listBrandOffers(id);
       const offerId = offers[0]?.offerId;
+      if (offerId) setOfferId(offerId);
       if (offerId) {
         const ladder = await getWorkflowProjectionLadder({ featureSlug: NEW_ORG_CHANNEL_SLUG, brandId: id, offerId, leg: GET_STARTED_LEG });
         const rec = ladder.recommendedWorkflowDynastySlug;
@@ -316,10 +416,22 @@ export function GetStarted() {
         <div className="mt-8 grid gap-4">
           <CompanyCard state={steps.company} name={brandName} domain={domain} website={website} overview={overview} facts={facts} />
           <CompetitorsCard state={steps.competitors} competitors={competitors} />
-          <SegmentsCard state={steps.segments} segments={segments} />
-          <NotLiveCard index={4} title="Companies that match" body="Real companies for each segment will be listed here with their size and location. This step is not live yet." />
-          <NotLiveCard index={5} title="Decision makers" body="The people we would write to at those companies, by name and role, will be listed here. This step is not live yet." />
-          <NotLiveCard index={6} title="Your first email" body="One email written for one of those people will appear here, ready to send. This step is not live yet." />
+          <SegmentsCard state={steps.segments} segments={segments} selected={selectedSeg} onSelect={setSelectedSeg} />
+          {STEPS_NOT_LIVE.has("companies") ? (
+            <NotLiveCard index={4} title="Companies that match" body="Real companies for each segment will be listed here. This step is not live yet." />
+          ) : (
+            <CompaniesCard state={steps.companies} preview={selectedSeg ? previews[selectedSeg] : undefined} segmentName={segments.find((x) => x.audienceId === selectedSeg)?.name ?? null} />
+          )}
+          {STEPS_NOT_LIVE.has("people") ? (
+            <NotLiveCard index={5} title="Decision makers" body="The people we would write to at those companies, by name and role, will be listed here. This step is not live yet." />
+          ) : (
+            <PeopleCard state={steps.people} preview={selectedSeg ? previews[selectedSeg] : undefined} />
+          )}
+          {STEPS_NOT_LIVE.has("email") ? (
+            <NotLiveCard index={6} title="Your first email" body="One email written for one of those people will appear here, ready to send. This step is not live yet." />
+          ) : (
+            <EmailCard state={steps.email} mail={selectedSeg ? emails[selectedSeg] : undefined} note={emailNote} />
+          )}
         </div>
 
         {canLaunch && (
@@ -575,7 +687,17 @@ function CompetitorsCard({ state, competitors }: { state: StepState; competitors
   );
 }
 
-function SegmentsCard({ state, segments }: { state: StepState; segments: GetStartedSegment[] }) {
+function SegmentsCard({
+  state,
+  segments,
+  selected,
+  onSelect,
+}: {
+  state: StepState;
+  segments: GetStartedSegment[];
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
   return (
     <StepCard index={3} title="Segments to write to" meta={<StateWord state={state} doneLabel={`${segments.length} segments`} />}>
       {state === "running" || state === "waiting" ? (
@@ -585,15 +707,143 @@ function SegmentsCard({ state, segments }: { state: StepState; segments: GetStar
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {segments.map((s) => (
-            <div key={s.audienceId} className="k-inset rounded-lg p-3">
+            <button
+              key={s.audienceId}
+              type="button"
+              onClick={() => onSelect(s.audienceId)}
+              aria-pressed={selected === s.audienceId}
+              className={`k-inset rounded-lg p-3 text-left ${selected === s.audienceId ? "k-selected ring-1 ring-[var(--accent)]" : "k-hover"}`}
+            >
               <div className="flex items-baseline gap-2">
                 <p className="k-fg min-w-0 flex-1 truncate text-[13px] font-medium">{s.name}</p>
                 <span className="k-fg tabular-nums text-[13px] font-medium">{compactCount(s.count)}</span>
               </div>
               <p className="k-fg3 text-[11px]">people match</p>
               {s.rationale && <p className="k-fg2 mt-2 text-[12px] leading-5">{s.rationale}</p>}
-            </div>
+            </button>
           ))}
+        </div>
+      )}
+    </StepCard>
+  );
+}
+
+/**
+ * The first email for a brand takes ~110 s (brand-service reads the site, then the
+ * model writes), and the Cloudflare edge in front of the gateway closes a request at
+ * ~100 s while content-generation keeps going and stores the email. A repeat of the
+ * same call returns the stored email in milliseconds, so anything that is not an
+ * answer from the producer (a timeout, a gateway error) is asked again. A 4xx is an
+ * answer and is never retried.
+ */
+async function writeWithRetry<T>(call: () => Promise<T>): Promise<T> {
+  let last: unknown = null;
+  for (let i = 0; i < 6; i++) {
+    try {
+      return await call();
+    } catch (e) {
+      last = e;
+      if (e instanceof ApiError && e.status >= 400 && e.status < 500) throw e;
+      console.warn(`[get-started] email still being written (attempt ${i + 1}):`, e);
+      await new Promise((r) => setTimeout(r, 15000));
+    }
+  }
+  throw last;
+}
+
+function sampleNote(preview: AudiencePreview | undefined): string {
+  if (!preview) return "We could not take a sample of this segment just now.";
+  if (preview.status === "empty") return "The search found nobody in this segment. Pick another one above.";
+  if (preview.reason === "not_built_yet") return "This segment is still being prepared. Pick another one above, or come back in a minute.";
+  return "This segment cannot be sampled for free. Pick another one above.";
+}
+
+function CompaniesCard({ state, preview, segmentName }: { state: StepState; preview: AudiencePreview | undefined; segmentName: string | null }) {
+  const companies = preview?.status === "ready" ? preview.companies : [];
+  return (
+    <StepCard
+      index={4}
+      title={segmentName ? `Companies in ${segmentName}` : "Companies that match"}
+      meta={<StateWord state={state} doneLabel={`${companies.length} shown`} />}
+    >
+      {state === "running" || state === "waiting" ? (
+        <Rows n={4} />
+      ) : companies.length === 0 ? (
+        <p className="k-fg3 text-[13px]">{sampleNote(preview)}</p>
+      ) : (
+        <>
+          <ul className="grid gap-1.5 sm:grid-cols-2">
+            {companies.map((c) => (
+              <li key={c.name} className="k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5">
+                <span className="k-fg truncate text-[13px]">{c.name}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="k-fg3 mt-2 text-[12px]">A first page of real matches, not the whole list.</p>
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+function PeopleCard({ state, preview }: { state: StepState; preview: AudiencePreview | undefined }) {
+  const people = preview?.status === "ready" ? preview.people : [];
+  return (
+    <StepCard index={5} title="Decision makers" meta={<StateWord state={state} doneLabel={`${people.length} shown`} />}>
+      {state === "running" || state === "waiting" ? (
+        <Rows n={5} />
+      ) : people.length === 0 ? (
+        <p className="k-fg3 text-[13px]">{sampleNote(preview)}</p>
+      ) : (
+        <div className="k-scroll overflow-x-auto">
+          <table className="w-full min-w-[520px] text-[13px]">
+            <thead>
+              <tr className="border-b border-[var(--line-subtle)]">
+                <th className="k-label px-2 py-2 text-left font-normal">Name</th>
+                <th className="k-label px-2 py-2 text-left font-normal">Title</th>
+                <th className="k-label px-2 py-2 text-left font-normal">Company</th>
+              </tr>
+            </thead>
+            <tbody>
+              {people.map((x, i) => (
+                <tr key={`${x.firstName}-${x.company}-${i}`} className="k-row border-b border-[var(--line-subtle)] last:border-0">
+                  <td className="k-fg px-2 py-2">{[x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ") || "—"}</td>
+                  <td className="k-fg2 px-2 py-2">{x.title ?? "—"}</td>
+                  <td className="k-fg2 px-2 py-2">{x.company ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="k-fg3 mt-2 text-[12px]">Last names are masked until your account is set up. We never show an email here.</p>
+        </div>
+      )}
+    </StepCard>
+  );
+}
+
+function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail | undefined; note: string | null }) {
+  return (
+    <StepCard index={6} title="Your first email" meta={<StateWord state={state} />}>
+      {state === "running" || state === "waiting" ? (
+        <>
+          <p className="k-fg3 mb-3 text-[12px]">We read your site the way a campaign does, then write. The first email takes about a minute and a half.</p>
+          <Rows n={6} />
+        </>
+      ) : !mail ? (
+        <p className="k-fg3 text-[13px]">{note ?? "We need at least one person in the sample to write to."}</p>
+      ) : (
+        <div className="k-inset rounded-lg">
+          <div className="flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]">
+            <span className="k-label w-12 shrink-0 pt-0.5">To</span>
+            <span className="k-fg2">
+              {[mail.recipient.firstName, mail.recipient.lastName].join(" ")}, {mail.recipient.title} at {mail.recipient.companyName}
+            </span>
+          </div>
+          <div className="flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]">
+            <span className="k-label w-12 shrink-0 pt-0.5">Subject</span>
+            <span className="k-fg font-medium">{mail.subject}</span>
+          </div>
+          <p className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6">{mail.bodyText}</p>
         </div>
       )}
     </StepCard>

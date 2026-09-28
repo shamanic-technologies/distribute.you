@@ -22,11 +22,13 @@ export const GET_STARTED_STEPS = [
 export type GetStartedStepKey = (typeof GET_STARTED_STEPS)[number]["key"];
 
 /**
- * Steps whose backend is not live yet. The page STATES that on the step rather
- * than showing invented rows (owner rule: never fake data). A step leaves this set
- * the day its producer ships and the page reads it.
+ * Steps whose backend is not live. The page STATES that on the step rather than
+ * showing invented rows (owner rule: never fake data). Empty since human-service's
+ * audience preview (v0.46.12) and content-generation's preview email (v0.35.6)
+ * reached the gateway (api-service v0.112.23); kept so a step whose producer is
+ * withdrawn goes back to saying so in one line.
  */
-export const STEPS_NOT_LIVE: ReadonlySet<GetStartedStepKey> = new Set(["companies", "people", "email"]);
+export const STEPS_NOT_LIVE: ReadonlySet<GetStartedStepKey> = new Set<GetStartedStepKey>([]);
 
 /** What we ask brand-service to read off the site for step 1. Keys are our own. */
 export const COMPANY_FIELDS = [

@@ -102,6 +102,12 @@ async function proxyRequest(
       // the brand-scoped routes that read the header agree by construction.
       "x-brand-id": session.brandId,
     };
+    // A run id the browser minted for this one call (a UUID, never anything else):
+    // some producers require one to parent their run to.
+    const runId = req.headers.get("x-run-id");
+    if (runId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(runId)) {
+      headers["x-run-id"] = runId;
+    }
 
     const body =
       req.method !== "GET" && req.method !== "HEAD" ? await req.text() : undefined;

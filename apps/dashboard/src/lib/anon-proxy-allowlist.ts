@@ -62,6 +62,15 @@ const RULES: Rule[] = [
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },
   { method: "POST", segments: ["orgs", "audiences", "suggest"] },
+  // A free sample of who one of those audiences reaches (names and titles only, never a
+  // reveal). The audience id is checked against the org at human-service (404 for a
+  // foreign one), which is what bounds it.
+  { method: "GET", segments: ["orgs", "audiences", ":seg", "preview"] },
+
+  // ── One written preview for one sampled person, billed to this anonymous org ──
+  // It WRITES and never sends: nothing it creates can go out. Its body names the
+  // brand, which `anonBodyRefusal` binds to the session.
+  { method: "POST", segments: ["content", "preview-email"] },
 
   // ── What the projection screen reads. All reads. ─────────────────────
   { method: "GET", segments: ["features", ":seg"] },
@@ -181,7 +190,8 @@ export function anonBodyRefusal({
   const upper = typeof method === "string" ? method.toUpperCase() : "";
   const path = typeof endpoint === "string" ? endpoint.split("?")[0].replace(/\/+$/, "") : "";
   const bound =
-    upper === "POST" && (path === "/brands/extract-fields" || path === "/orgs/audiences/suggest");
+    upper === "POST" &&
+    (path === "/brands/extract-fields" || path === "/orgs/audiences/suggest" || path === "/content/preview-email");
   if (!bound) return null;
 
   const owned = typeof brandId === "string" ? brandId : "";
