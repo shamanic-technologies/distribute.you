@@ -1,0 +1,26 @@
+{
+  "POST /cdn-cgi/rum": {
+    "status": 204,
+    "contentType": "text/plain"
+  },
+  "POST /api/experience/verification/verification-code": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"verificationId\":\"yoi1s7rgnn60ueref8j2g\"}"
+  },
+  "POST /api/experience/verification/verification-code/verify": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"verificationId\":\"yoi1s7rgnn60ueref8j2g\"}"
+  },
+  "POST /api/experience/identification": {
+    "status": 201,
+    "contentType": "text/plain; charset=utf-8",
+    "body": "Created"
+  },
+  "POST /api/experience/submit": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"redirectTo\":\"https://auth.explee.com/oidc/auth/gfnXdbR2QB4P5M-fm2Bog\"}"
+  }
+}

@@ -136,7 +136,10 @@ export function pickRscVariant(candidates: readonly string[], plainName: string)
   const ext = dot === -1 ? "" : plainName.slice(dot);
   const prefix = `${stem}.${QUERY_MARKER}`;
   const matches = candidates.filter((name) => name.startsWith(prefix) && name.endsWith(ext)).sort();
-  return matches[0] ?? null;
+  if (matches.length > 0) return matches[0];
+  // An extensionless page maps to `index.html`, while its router payload is stored as
+  // `index.__q<hash>.rsc` so it is served as `text/x-component`.
+  return candidates.filter((name) => name.startsWith(prefix) && name.endsWith(".rsc")).sort()[0] ?? null;
 }
 
 /** True when `candidate` resolves inside `root`. The second gate, after the segment check. */
@@ -148,6 +151,9 @@ export function withinRoot(root: string, candidate: string): boolean {
 
 const CONTENT_TYPES = new Map<string, string>([
   [".html", "text/html; charset=utf-8"],
+  // A Next router payload recorded for an extensionless page (`/x?_rsc=`), stored by
+  // scripts/har-to-flow.mjs. The router refuses any other content type and hard-reloads.
+  [".rsc", "text/x-component"],
   [".css", "text/css; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
   [".mjs", "text/javascript; charset=utf-8"],

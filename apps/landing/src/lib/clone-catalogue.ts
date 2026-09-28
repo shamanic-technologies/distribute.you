@@ -116,6 +116,22 @@ export const REDIRECTS_FILE = "__redirects.json";
 /** Recorded Next server-action answers, keyed by action id. Mirrors `ACTIONS_FILE` in scripts/capture-onboarding.mjs. */
 export const ACTIONS_FILE = "__actions.json";
 
+/**
+ * Recorded answers of a competitor's own API, replayed so a flow walked by hand stays
+ * clickable on the clone. Keyed `"<METHOD> <pathname>"` (query ignored), one file per
+ * root, written by scripts/har-to-flow.mjs. Consulted only when no stored file matched.
+ * Mirrors `RESPONSES_FILE` in scripts/har-to-flow.mjs.
+ */
+export const RESPONSES_FILE = "__responses.json";
+
+export type RecordedResponse = {
+  readonly status: number;
+  readonly contentType: string;
+  /** utf8 body; `bodyBase64` instead for a binary answer. */
+  readonly body?: string;
+  readonly bodyBase64?: string;
+};
+
 export const CLONES: readonly Clone[] = [
   { slug: "explee", source: "https://explee.com/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },
   { slug: "revid", source: "https://www.revid.ai/", capturedAt: "2026-09-24", brandised: false, localisedHosts: [] },

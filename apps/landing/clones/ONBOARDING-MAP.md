@@ -7,6 +7,8 @@ their app loaded are stored under `clones/<slug>/__flow/` and served at
 `https://lab-<slug>.distribute.you/__flow/` (same password as the other clones).
 Rebuild with `node scripts/har-to-flow.mjs <slug> <capture-dir>`.
 
+**Explee is clickable on `lab-explee.distribute.you`:** type `tidycal.com` in the hero and the six steps replay from the recorded answers, down to the card screen. Any other domain goes nowhere (their analysis runs on their side).
+
 ## When they ask for the website, the account and the card
 
 | Screen | Explee | Gojiberry | Origami | distribute.you (today) |

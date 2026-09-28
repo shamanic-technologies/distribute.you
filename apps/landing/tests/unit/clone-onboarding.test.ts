@@ -8,11 +8,12 @@ import {
   CLONES,
   CLONE_ONBOARDING,
   REDIRECTS_FILE,
+  RESPONSES_FILE,
   SITES_DIR,
   cloneSlugForHost,
   cloneTargetForHost,
 } from "@/lib/clone-catalogue";
-import { clonePathFor } from "@/lib/clone-files";
+import { clonePathFor, contentTypeFor, pickRscVariant } from "@/lib/clone-files";
 // The capture script: plain ESM, CLI guarded on argv, so importing it runs nothing.
 import {
   ACTIONS_FILE as SCRIPT_ACTIONS_FILE,
@@ -281,4 +282,45 @@ describe("onboarding walked past the wall (__flow)", () => {
       }
     });
   }
+});
+
+describe("a walked flow stays clickable on the clone (explee)", () => {
+  const root = path.join(CLONES_DIR, "explee");
+  const responses = JSON.parse(readFileSync(path.join(root, RESPONSES_FILE), "utf8")) as Record<
+    string,
+    { status: number; contentType: string; body?: string; bodyBase64?: string }
+  >;
+
+  it("replays the project, the agent's event stream and the drafted email", () => {
+    expect(responses["GET /api/project/tidycal.com"]?.body).toContain('"segments"');
+    const stream = Object.entries(responses).find(([k]) => /^GET \/api\/agent\/[^/]+\/stream$/.test(k));
+    expect(stream?.[1].contentType).toMatch(/^text\/event-stream/);
+    expect(responses["POST /api/draft/generate"]?.body).toContain('"subject"');
+  });
+
+  it("stores no live payment secret or token in a replayed answer", () => {
+    for (const record of Object.values(responses)) {
+      const body = record.body ?? "";
+      expect(body).not.toMatch(/(pi|seti|cs)_[A-Za-z0-9]+_secret_[A-Za-z0-9]+/);
+      expect(body).not.toMatch(/eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,}/);
+    }
+  });
+
+  it("has the project page as a document and as a router payload served as text/x-component", () => {
+    const dir = path.join(root, "auto-gtm/company/tidycal.com/explore");
+    expect(existsSync(path.join(dir, "index.html"))).toBe(true);
+    const names = readdirSync(dir);
+    const picked = pickRscVariant(names, "index.html");
+    expect(picked).toMatch(/\.rsc$/);
+    expect(contentTypeFor(picked as string)).toBe("text/x-component");
+  });
+
+  it("scopes a replayed server action to the page it was recorded on", () => {
+    const actions = JSON.parse(readFileSync(path.join(root, ACTIONS_FILE), "utf8")) as Record<string, unknown>;
+    const scoped = Object.keys(actions).filter((k) => k.includes(" "));
+    expect(scoped.some((k) => k.endsWith(" /auto-gtm/company/tidycal.com/explore"))).toBe(true);
+    // The project page's action must not answer on the home page: replayed there, it rendered the project.
+    const projectAction = scoped.find((k) => k.endsWith("/explore"))?.split(" ")[0];
+    expect(actions[projectAction as string]).toBeUndefined();
+  });
 });
