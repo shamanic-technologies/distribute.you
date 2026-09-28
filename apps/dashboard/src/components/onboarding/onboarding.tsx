@@ -65,6 +65,7 @@ import {
   prefillFeatureInputs,
   prefillToStringMap,
   configureAutoTopup,
+  setPaymentMode,
   ApiError,
   createCheckoutSession,
   getBillingAccount,
@@ -2126,7 +2127,16 @@ export function Onboarding() {
     // NO audience is activated here. Onboarding collects the customer's own words
     // for who they sell to (saved on the brand as `targetAudience`); the audiences
     // themselves are built by hand after payment, so there is nothing to commit.
-    await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+    // A card some countries only let us charge with each payment approved (India, RBI)
+    // cannot top up by itself, and billing refuses to arm auto-reload on it. Refusing
+    // here used to fail the whole launch for a customer who had done everything right,
+    // so that org runs prepaid on its credit instead, the same rule the v2 flows apply.
+    const account = await getBillingAccount();
+    if (account.auto_reload_supported === false) {
+      await setPaymentMode("prepaid");
+    } else {
+      await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+    }
     setLaunchStep(1);
     // The OFFER everything this launch creates is about. A campaign is
     // (offer x leg x channel) and billing keys its ceiling on the same address, so a
