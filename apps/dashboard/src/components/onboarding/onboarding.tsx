@@ -65,6 +65,7 @@ import {
   prefillFeatureInputs,
   prefillToStringMap,
   configureAutoTopup,
+  ApiError,
   createCheckoutSession,
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
@@ -2345,19 +2346,41 @@ export function Onboarding() {
 
       // Nothing left to charge once the gift covers the budget: take the card
       // imprint and no money. Same success URL, so the launch resumes identically.
-      const session = await createCheckoutSession(
-        charges
-          ? {
-              topup_amount_cents: checkoutAmountCents,
-              success_url: successUrl.toString(),
-              cancel_url: cancelUrl.toString(),
+      const setupSession = () =>
+        createCheckoutSession({
+          mode: "setup",
+          success_url: successUrl.toString(),
+          cancel_url: cancelUrl.toString(),
+        });
+      // When money moves, billing owns the gift deduction: we send the FULL budget
+      // and billing applies the gift as a Stripe discount, so the hosted page reads
+      // "$68", "Welcome credit -$30", "$38" instead of a bare "$38" nobody can
+      // explain (a real signup abandoned on exactly that page). The deduction is ONE
+      // decision in ONE layer: `checkoutAmountCents` stays what the buyer pays, for
+      // tracking, and is never what we send here.
+      const session = !charges
+        ? await setupSession()
+        : await createCheckoutSession({
+            topup_amount_cents: pending.topupAmountCents,
+            apply_welcome_gift: true,
+            success_url: successUrl.toString(),
+            cancel_url: cancelUrl.toString(),
+          }).catch(async (err: unknown) => {
+            const code =
+              err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;
+            // Billing's own gift covers the whole budget: nothing to charge.
+            if (code === "welcome_gift_covers_budget") return setupSession();
+            // This org has paid before, so the gift is not taken off again: the
+            // full budget is what is owed.
+            if (code === "welcome_discount_not_first_payment") {
+              return createCheckoutSession({
+                topup_amount_cents: pending.topupAmountCents,
+                success_url: successUrl.toString(),
+                cancel_url: cancelUrl.toString(),
+              });
             }
-          : {
-              mode: "setup",
-              success_url: successUrl.toString(),
-              cancel_url: cancelUrl.toString(),
-            },
-      );
+            throw err;
+          });
       window.location.href = session.url;
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });

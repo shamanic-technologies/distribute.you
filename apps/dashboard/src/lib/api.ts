@@ -7611,6 +7611,10 @@ export interface BillingBalance {
 export interface CheckoutSession {
   url: string;
   session_id: string;
+  /** Present only when `apply_welcome_gift` was sent: what the gift took off. */
+  welcome_discount_cents?: number;
+  /** Present only when `apply_welcome_gift` was sent: what the buyer is asked to pay. */
+  amount_due_cents?: number;
 }
 
 /**
@@ -8165,7 +8169,19 @@ export async function getBillingPayments(token?: string): Promise<{ payments: Pa
 
 export async function createCheckoutSession(
   params:
-    | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
+    | {
+        topup_amount_cents: number;
+        mode?: "payment";
+        /**
+         * Hand the welcome-gift deduction to billing (billing-service v0.81.15): send
+         * the FULL budget as `topup_amount_cents` and billing applies the gift as a
+         * Stripe discount, so the hosted page reads budget, "Welcome credit -$30",
+         * total. Never combine with an amount the gift was already taken off.
+         */
+        apply_welcome_gift?: boolean;
+        success_url: string;
+        cancel_url: string;
+      }
     | { mode: "setup"; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
