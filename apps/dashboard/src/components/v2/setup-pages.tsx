@@ -29,7 +29,7 @@ import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
 import { OfferCampaignsCard } from "@/components/settings/offer-campaigns-card";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
-import { CustomerAudiencesPage } from "@/components/audiences/customer-audiences-page";
+import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { BrandCrmPage } from "@/components/crm/brand-crm-page";
 import { CrmMergedPage } from "@/components/crm/crm-merged-page";
@@ -39,7 +39,6 @@ import { BrandConversionTrackingCard } from "@/components/settings/brand-convers
 import { BrandSalesRepCard } from "@/components/settings/brand-sales-rep-card";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { BrandConversionRatesCard } from "@/components/settings/brand-conversion-rates-card";
-import { LearningToneProvider } from "@/components/learning-tag";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
 import type { CrewGlyph } from "@/lib/v2/crews";
@@ -216,11 +215,7 @@ export function V2TargetingPage() {
       tabs={offerTabs(orgId, brandId, offerId, "targeting")}
       width="max-w-[1280px]"
     >
-      <div className="v2-embed -mx-4 md:-mx-8">
-        <LearningToneProvider tone="primary">
-          <CustomerAudiencesPage />
-        </LearningToneProvider>
-      </div>
+      <V2AudiencesTable offerId={offerId} />
     </V2Page>
   );
 }
@@ -359,9 +354,7 @@ export function V2MissionAudiencesPage() {
           <Shimmer className="h-40 w-full rounded-xl" />
         )
       ) : (
-        <div className="v2-embed -mx-4 md:-mx-8">
-          <CustomerAudiencesPage campaignId={mission?.row.campaign.id ?? campaignId} offerId={offerId} />
-        </div>
+        <V2AudiencesTable campaignId={mission?.row.campaign.id ?? campaignId} offerId={offerId} />
       )}
     </V2Page>
   );
