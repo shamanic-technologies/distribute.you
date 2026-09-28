@@ -1479,6 +1479,15 @@ function SizeCell({ count }: { count: number | null }) {
   );
 }
 
+/** The same states as a mark alone, for the narrow people list (the word is its label). */
+function EmailMark({ state }: { state: RowEmailState }) {
+  if (state === "writing")
+    return <span role="img" aria-label="Writing" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--fg-3)] border-t-transparent motion-reduce:animate-none" />;
+  if (state === "written") return <span role="img" aria-label="Written" className="gs-pop inline-block h-2 w-2 rounded-full bg-[var(--data-teal)]" />;
+  if (state === "failed") return <span role="img" aria-label="Not written" className="inline-block h-2 w-2 rounded-full bg-[var(--data-amber)]" />;
+  return null;
+}
+
 function EmailDot({ state }: { state: RowEmailState }) {
   if (state === "writing")
     return (
@@ -1751,7 +1760,7 @@ function EmailsStage({
         </div>
       ) : (
         <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <ul className="k-card k-scroll grid max-h-[560px] content-start overflow-y-auto p-1.5" aria-label="People">
+          <ul className="k-card k-scroll grid max-h-[560px] content-start overflow-y-auto overflow-x-hidden p-1.5" aria-label="People">
             {rows.map((r, i) => {
               const name = [r.person.firstName, r.person.lastNameObfuscated].filter(Boolean).join(" ") || r.company.name;
               const on = r.index === selected;
@@ -1773,8 +1782,8 @@ function EmailsStage({
                         <RowCheck check={check(r.index)} />
                       </span>
                     </span>
-                    <span className="shrink-0 pt-0.5">
-                      <EmailDot state={emailState(r.index)} />
+                    <span className="flex h-5 w-3 shrink-0 items-center justify-center">
+                      <EmailMark state={emailState(r.index)} />
                     </span>
                   </button>
                 </li>
@@ -1805,7 +1814,9 @@ function EmailsStage({
               <div className="px-4 py-4">
                 <p className="k-fg3 mb-3 flex items-center gap-2 text-[12px]">
                   <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
-                  Writing this email. The first one takes about a minute and a half; the next ones are faster.
+                  {rows.some((r) => emailState(r.index) === "written")
+                    ? "Writing this email. It takes about half a minute."
+                    : "Writing this email. The first one takes about a minute and a half; the next ones are faster."}
                 </p>
                 <Rows n={6} />
               </div>
