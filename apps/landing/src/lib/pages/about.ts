@@ -1,17 +1,17 @@
 import { SITE, breadcrumb, docPage } from "../v2-shell";
 
 const DESCRIPTION =
-  "distribute.you is an AI-native cold email agency. You give us a website and a daily budget, we run the campaign from domains we own, and you see what each sales meeting cost you.";
+  "distribute.you does done-for-you revenue automation. You give us a website and a daily budget, we find your buyers, contact them by cold email from domains we own and book your meetings, and you see what each one cost you.";
 
 /** `/about`: what we sell, who runs it and how it is paid for. */
 export function renderAboutPage(): string {
   return docPage({
-    title: "About distribute.you: the cold email agency that shows you the cost",
+    title: "About distribute.you: done-for-you revenue automation that shows you the cost",
     description: DESCRIPTION,
     path: "/about",
     eyebrow: "About",
     h1: "We run the acquisition,<br>and we show you the cost.",
-    lead: "distribute.you is an AI-native cold email agency. You give us a website and a daily budget. We pick the buyers, write the emails, send them from our own domains, answer every interested reply until a meeting is booked, and show you what each one cost.",
+    lead: "distribute.you does done-for-you revenue automation. You give us a website and a daily budget. We pick the buyers, write the emails, send them from our own domains, answer every interested reply until a meeting is booked, and show you what each one cost.",
     jsonLd: [
       {
         "@context": "https://schema.org",

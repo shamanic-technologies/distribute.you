@@ -2,7 +2,7 @@ import { PROD_URLS } from "@/lib/env-urls";
 
 export const SITE_NAME = "distribute.you";
 export const SITE_URL = PROD_URLS.landing;
-export const SITE_TITLE = "distribute.you: the AI-native cold email agency";
+export const SITE_TITLE = "distribute.you: done-for-you revenue automation";
 export const SITE_DESCRIPTION =
   "Paste your website and set a daily budget. We find the buyers, write and A/B test the cold emails, send them from domains we own, answer interested leads until the meeting is booked, and show you what each one cost. First $30 free.";
 export const TWITTER_HANDLE = "@distribute_you";

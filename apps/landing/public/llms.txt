@@ -1,6 +1,7 @@
 # distribute.you
 
-> distribute.you is a productized cold email agency. You give us a website and
+> distribute.you does done-for-you revenue automation: it finds your buyers,
+> contacts them and books the meetings. You give us a website and
 > a daily budget; we pick the buyers, write the emails, A/B test the templates,
 > the AI models and the audiences, send from domains we own and warm, read every
 > reply, and pass the interested ones to you. What you get back is a

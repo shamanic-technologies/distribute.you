@@ -39,8 +39,7 @@ import {
 
 /**
  * Research: what we measured across every org's campaigns, one card per question, grouped by
- * crew. Staff-only for now (the menu entry and both pages check the staff list); it states
- * fleet-wide results only, so it can open to customers as it stands.
+ * crew. Open to every reader: it states fleet-wide results only.
  *
  * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is the Crew card grid
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
@@ -74,19 +73,6 @@ function StudyStateDot({ state }: { state: StudyState }) {
       <span className={`h-1.5 w-1.5 rounded-full ${look.dot}`} />
       {look.label}
     </span>
-  );
-}
-
-function NotAvailable() {
-  return (
-    <>
-      <TopBar crumbs={[{ label: "Research" }]} />
-      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <div className="k-card">
-          <EmptyNote>This page is not available on your account yet.</EmptyNote>
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -484,19 +470,17 @@ function scrollToTop(el: HTMLElement | null) {
  * Research, the hub and every question, as ONE client view. The route is dynamic (Clerk), so a
  * Next navigation between two questions is a full server round-trip for data that already sits in
  * this bundle. Links under `/research` therefore move with the history API instead: the URL, Back
- * and a new tab behave as links, and the switch is instant. The staff check is made on the SERVER
- * (the page reads the session claim), so nothing waits for Clerk to load in the browser.
+ * and a new tab behave as links, and the switch is instant.
  */
-export function V2Research({ staff }: { staff: boolean }) {
+export function V2Research() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement | null>(null);
   // The workflow and template pages read two side files: start them once the page has painted,
   // so a click finds them in memory.
   useEffect(() => {
-    if (staff) preloadResearchCatalog();
-  }, [staff]);
-  if (!staff) return <NotAvailable />;
+    preloadResearchCatalog();
+  }, []);
   const base = v2Href(orgId, brandId, "research");
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, "") : "";
   const view = parseResearchPath(rest);

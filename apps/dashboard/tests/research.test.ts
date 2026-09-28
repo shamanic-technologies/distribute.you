@@ -145,22 +145,22 @@ describe("research.json is coherent", () => {
   });
 });
 
-describe("Research is staff-only", () => {
-  it("draws the menu entry for the staff list alone, above Refer a friend, with a staff tag", () => {
+describe("Research is GA", () => {
+  it("draws the menu entry for every reader, above Refer a friend, with no tag", () => {
     const src = read("components/v2/sidebar-menus.tsx");
-    expect(src).toContain("const staff = isAdminEmail(email);");
-    expect(src).toContain('...(staff ? [{ href: `${base}/research`, label: "Research"');
+    expect(src).toContain('{ href: `${base}/research`, label: "Research"');
     expect(src.indexOf('label: "Research"')).toBeLessThan(src.indexOf('label: "Refer a friend", icon'));
-    expect(src).toContain('<MaturityBadge level="staff" />');
+    expect(src).not.toContain("isAdminEmail");
+    expect(src).not.toContain("MaturityBadge");
   });
 
-  it("checks the same list on the server for both routes, so a typed URL shows nothing", () => {
+  it("both routes render the page for every reader, with no staff check", () => {
     for (const route of ["research/page.tsx", "research/[...path]/page.tsx"]) {
       const page = read(`app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${route}`);
-      expect(page).toContain("isAdminEmail(sessionClaims?.email)");
-      expect(page).not.toContain('"use client"');
+      expect(page).not.toContain("isAdminEmail");
+      expect(page).toContain("<V2Research />");
     }
-    expect(read("components/v2/research-page.tsx")).toContain("if (!staff) return <NotAvailable />;");
+    expect(read("components/v2/research-page.tsx")).not.toContain("NotAvailable");
   });
 
   it("paints at once: no wait on Clerk, questions switch without a server round-trip, the menu entry is prefetched", () => {
@@ -169,7 +169,7 @@ describe("Research is staff-only", () => {
     expect(src).not.toContain("<Loading");
     expect(src).toContain("window.history.pushState(null, \"\", href)");
     expect(src).toContain("onClickCapture={onClickCapture}");
-    expect(read("components/v2/sidebar-menus.tsx")).toContain("prefetch={l.staff ? true : undefined}");
+    expect(read("components/v2/sidebar-menus.tsx")).toContain("prefetch={l.prefetch ? true : undefined}");
   });
 
   it("computes nothing: no division, no sort in the page", () => {
@@ -327,7 +327,7 @@ describe("workflow and template pages (the research catalogue)", () => {
     expect(JSON.stringify(catalog)).not.toMatch(/org_|@/);
   });
 
-  it("wires the links: hub chips, clickable study bars, template chips, and the staff-only template link on the brand workflow page", () => {
+  it("wires the links: hub chips, clickable study bars, template chips, and the template link on the brand workflow page", () => {
     const page = read("components/v2/research-page.tsx");
     expect(page).toContain("<CrewCatalogLinks base={base} crew={crew} />");
     expect(page).toContain("hrefFor={(p) => pointHref(base, study, p)}");
@@ -337,7 +337,7 @@ describe("workflow and template pages (the research catalogue)", () => {
     expect(cat).not.toMatch(/\.sort\(|text-gray-|InfoTooltip/);
     const wf = read("components/v2/workflow-page.tsx");
     expect(wf).toContain("<ResearchTemplateChip");
-    expect(read("components/v2/research-template-link.tsx")).toContain("useIsAdminUser()");
+    expect(read("components/v2/research-template-link.tsx")).not.toContain("useIsAdminUser");
     expect(wf).toContain("<ResearchModelChip");
     // a workflow's alias is never mapped to a model: the chip follows the model Research measured
     expect(read("components/v2/research-template-link.tsx")).toContain("researchWorkflow(catalog, crew, dynasty)?.model");

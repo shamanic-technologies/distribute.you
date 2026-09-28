@@ -16,8 +16,6 @@ import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
-import { isAdminEmail } from "@/lib/admin-allowlist";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrgModal } from "@/components/v2/new-org-modal";
@@ -280,17 +278,14 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const base = v2Base(orgId, brandId);
   const close = () => setOpen(false);
-  // Research is staff-only for now: the entry is drawn for the staff list alone, and the page
-  // checks the same list, so a typed URL shows nothing either.
-  const staff = isAdminEmail(email);
   // Every account page lives under a brand; an org with no brand yet (its first brand
   // not added) gets the menu without them: who is signed in, help, sign out.
-  const links: { href: string; label: string; icon: string; pill?: string; staff?: boolean }[] = brandId
+  const links: { href: string; label: string; icon: string; pill?: string; prefetch?: boolean }[] = brandId
     ? [
         { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
         { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
         { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
-        ...(staff ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, staff: true }] : []),
+        { href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true },
         { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
       ]
     : [];
@@ -314,14 +309,9 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
           )}
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           {links.map((l) => (
-            <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close} prefetch={l.staff ? true : undefined}>
+            <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close} prefetch={l.prefetch ? true : undefined}>
               <MI d={l.icon} />
               <span className="min-w-0 truncate">{l.label}</span>
-              {l.staff && (
-                <span className="ml-auto shrink-0">
-                  <MaturityBadge level="staff" />
-                </span>
-              )}
               {l.pill && (
                 <span className="ml-auto shrink-0 rounded-[6px] bg-[color-mix(in_oklab,var(--run)_12%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--run)]">
                   {l.pill}

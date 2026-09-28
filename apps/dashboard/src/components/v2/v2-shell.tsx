@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useMissions } from "@/components/v2/use-missions";
-import { useIsBetaUser } from "@/lib/use-beta-user";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -152,7 +150,6 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { missions, crews } = useMissions(orgId, brandId);
-  const isBeta = useIsBetaUser();
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -235,17 +232,12 @@ function V2Sidebar() {
           <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
           <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
           <NavItem href={v2Href(orgId, brandId, "missions")} label="Missions" icon={<I d={ICONS.missions} />} active={section === "missions"} />
-          {/* BETA: offered to a reader on the beta list only, badge on the entry itself so
-              that reader can tell it is not general yet. The page body gates on the same list. */}
-          {isBeta && (
-            <NavItem
-              href={v2Href(orgId, brandId, "workflows")}
-              label="Workflows"
-              icon={<I d={ICONS.workflows} />}
-              active={section === "workflows"}
-              trailing={<MaturityBadge level="beta" />}
-            />
-          )}
+          <NavItem
+            href={v2Href(orgId, brandId, "workflows")}
+            label="Workflows"
+            icon={<I d={ICONS.workflows} />}
+            active={section === "workflows"}
+          />
         </div>
 
         <Group title="Mailbox">
