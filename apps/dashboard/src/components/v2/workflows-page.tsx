@@ -6,6 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, KeyHint, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRowKeys } from "@/components/v2/records";
+import { ActualCostPendingNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { grainFigures, scopeLadderRows } from "@/lib/workflow-grains";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
@@ -71,11 +73,12 @@ export function V2WorkflowsPage() {
 
   const running = specs.filter((s) => s.mission.running).length;
   const ranked = specs.every((s) => totalByMission[s.campaignId] !== undefined);
+  const { actual } = useCostBasis();
   const workflowTotal = specs.reduce((n, s) => n + (totalByMission[s.campaignId] ?? 0), 0);
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Workflows" }]} />
+      <TopBar crumbs={[{ label: "Workflows" }]} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -99,6 +102,7 @@ export function V2WorkflowsPage() {
           )}
         </div>
 
+        {actual && <ActualCostPendingNote what="the Offer, Brand and Global costs are" />}
         {!settled ? (
           <div className="mt-6">
             <SectionSkeleton />
@@ -312,9 +316,12 @@ function MissionSection({
 }
 
 function CostCell({ value, unit }: { value: number | null; unit: string }) {
+  // On the Actual cost basis the ranking's figures are not served at vendor cost yet: "—",
+  // never the billed amount under the actual label.
+  const { actual } = useCostBasis();
   return (
     <td className="px-3 text-right tabular-nums">
-      {value == null ? (
+      {actual || value == null ? (
         <span className="k-fg4">—</span>
       ) : (
         <>

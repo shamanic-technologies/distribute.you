@@ -81,15 +81,18 @@ describe("the Actual cost basis is STAFF-only", () => {
   const over = page.slice(page.indexOf("function OverTime("), page.indexOf("function ChartCard("));
 
   it("the toggle renders for staff only, with the Staff label, and defaults to User cost", () => {
-    expect(over).toContain("const isStaff = useIsAdminUser();");
-    expect(over).toContain('useState<"user" | "actual">("user")');
-    // The switch rides the section title's right slot: `right={isStaff && (...)}`.
-    expect(over).toContain("isStaff && (");
-    expect(over).toContain('<MaturityBadge level="staff" />');
+    // ONE switch for every cost page, in the top bar (components/v2/cost-basis-switch.tsx).
+    const sw = read("src/components/v2/cost-basis-switch.tsx");
+    expect(sw).toContain("if (!isStaff) return null;");
+    expect(sw).toContain('<MaturityBadge level="staff" />');
+    const hook = read("src/lib/v2/use-cost-basis.ts");
+    expect(hook).toContain('const basis: CostBasis = isStaff ? stored : "user";');
+    expect(hook).toContain('const readServer = (): CostBasis => "user";');
+    expect(page).toContain("actions={<CostBasisSwitch />}");
   });
 
   it("the actual read fires only for staff on the actual basis", () => {
-    expect(over).toContain('const actual = isStaff && basis === "actual";');
+    expect(over).toContain("const { actual } = useCostBasis();");
     expect(over).toContain("enabled: actual");
   });
 

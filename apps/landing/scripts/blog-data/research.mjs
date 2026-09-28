@@ -616,6 +616,15 @@ for (const line of readFileSync(join(dataDir, "workflows.csv"), "utf8").trim().s
   dynastyOf.set(slug, dynasty || slug);
   if (name && !nameOf.has(dynasty || slug)) nameOf.set(dynasty || slug, name);
 }
+const COST_BASIS = facts.research.costBasis ?? "user";
+if (COST_BASIS === "actual" && workflowRuns.some((x) => x.vendorCents === undefined)) {
+  throw new Error("workflow-runs.json carries no vendorCents: re-run extract.sh");
+}
+function runCost(x) {
+  if (!(Number(x.cents) > 0)) return null;
+  if (COST_BASIS === "user") return usd(Number(x.cents) / 100);
+  return Number(x.unpricedCents) > 0 ? null : usd(Number(x.vendorCents) / 100);
+}
 const versionText = (slug) => `v${/-v(\d+)$/.exec(slug)?.[1] ?? "1"}`;
 const pad = (x) => String(x).padStart(2, "0");
 // "Sep 26, 05:51 UTC": the page prints this as written.
@@ -693,8 +702,10 @@ for (const key of ["reply", "visit"]) {
           version: versionText(x.workflowSlug),
           status: x.status,
           duration: durationText(x.startedAt, x.completedAt),
-          // A run whose every cost was cancelled was not charged: null, never "$0.00".
-          cost: Number(x.cents) > 0 ? usd(Number(x.cents) / 100) : null,
+          // A run whose every cost was cancelled was not charged: null, never "$0.00". On the actual
+          // basis a run carrying billed spend no vendor cost is on record for states none: the
+          // priced part alone would read as the whole run.
+          cost: runCost(x),
         })),
     };
   });
@@ -766,6 +777,12 @@ const catalogCounts = Object.fromEntries(
 const out = {
   generatedAt: facts.generatedAt,
   allOrgs: true,
+  // user: what clients were billed. actual (staff only, never bundled for the browser): what the
+  // vendors charged us before our markup, with the billed spend no vendor cost prices stated apart.
+  costBasis: COST_BASIS,
+  unpricedBilledUsd: COST_BASIS === "actual" ? facts.research.scope.unpricedBilledUsd : 0,
+  // actual basis only: the emails left out because their workflow version's spend is unpriced
+  unpricedEmails: COST_BASIS === "actual" ? facts.research.scope.droppedForNoVendorCost : 0,
   window: { from: facts.research.window.from, to: facts.research.window.to },
   readOn: facts.generatedAt.slice(0, 10),
   volume: {

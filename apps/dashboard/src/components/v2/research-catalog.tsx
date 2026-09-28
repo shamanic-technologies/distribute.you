@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { useResearch } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, TOPIC_LOOK, TopicMark, crewIdentity, dayText } from "@/components/v2/research-bits";
 import {
   RESEARCH,
-  loadResearchCatalog,
   loadTemplateTexts,
-  peekResearchCatalog,
   peekTemplateTexts,
   CATALOG_KINDS,
   researchCatalogHref,
@@ -127,7 +127,8 @@ export function V2ResearchCatalogView({
   itemKey: string | null;
   nav: (href: string) => void;
 }) {
-  const { value: catalog, failed } = useLoaded(peekResearchCatalog, loadResearchCatalog);
+  const source = useResearch();
+  const { value: catalog, failed } = useLoaded(source.peekCatalog, source.loadCatalog);
   const id = crewIdentity(crew);
   const listHref = researchCatalogHref(base, crew, kind);
   const crumbs = [
@@ -138,7 +139,7 @@ export function V2ResearchCatalogView({
   if (!catalog) {
     return (
       <>
-        <TopBar crumbs={crumbs} />
+        <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           {failed ? (
             <div className="k-card">
@@ -161,7 +162,7 @@ export function V2ResearchCatalogView({
   if (!item) {
     return (
       <>
-        <TopBar crumbs={[...crumbs, { label: "Not found" }]} />
+        <TopBar crumbs={[...crumbs, { label: "Not found" }]} actions={<CostBasisSwitch />} />
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           <div className="k-card">
             <EmptyNote>
@@ -241,7 +242,7 @@ function CatalogList({
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
   return (
     <>
-      <TopBar crumbs={crumbs} />
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -498,7 +499,7 @@ function WorkflowView({
   const tplHref = w.template?.linked ? researchCatalogHref(base, crew, "templates", w.template.key) : null;
   return (
     <>
-      <TopBar crumbs={crumbs} />
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="workflow"
@@ -658,7 +659,7 @@ function TemplateView({
   const o = outcomeOf(crew);
   return (
     <>
-      <TopBar crumbs={crumbs} />
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="template"
@@ -785,7 +786,7 @@ function ModelView({
   const o = outcomeOf(crew);
   return (
     <>
-      <TopBar crumbs={crumbs} />
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="llm"
