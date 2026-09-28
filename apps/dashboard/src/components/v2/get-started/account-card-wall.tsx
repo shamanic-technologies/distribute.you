@@ -37,7 +37,9 @@ import {
 } from "@/lib/clerk-error";
 import { v2MissionHref } from "@/lib/v2/routes";
 import { GET_STARTED_SNAPSHOT_KEY, parseDailyBudget, type GetStartedSegment } from "@/lib/v2/get-started";
-import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
+import { EMPTY_PROGRESS, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
+import { CountUp } from "./motion";
+import { TrialSpots, TrialTimer } from "./urgency";
 
 const MIN_PASSWORD_LENGTH = 8;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,6 +54,7 @@ export function AccountCardWall({
   segments,
   floorUsd,
   recommendedUsd,
+  budgetChosen = false,
   onBudget,
   onClose,
 }: {
@@ -62,6 +65,8 @@ export function AccountCardWall({
   segments: GetStartedSegment[];
   floorUsd: number;
   recommendedUsd: number | null;
+  /** The budget was typed by the person earlier (restored after a round trip): a price that lands later must not replace it. */
+  budgetChosen?: boolean;
   onBudget: (usd: number) => void;
   onClose: () => void;
 }) {
@@ -75,7 +80,13 @@ export function AccountCardWall({
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
-  const [budget, setBudget] = useState(recommendedUsd != null ? String(recommendedUsd) : "");
+  // The price read once the brand has an owner (and therefore an offer) wins over the
+  // one the preview could read signed out, which is none for a brand with no offer yet.
+  const [pricedUsd, setPricedUsd] = useState<number | null>(null);
+  const [pricing, setPricing] = useState(false);
+  const recommendation = pricedUsd ?? recommendedUsd;
+  // No price held yet: the channel's own floor, the smallest budget it runs on.
+  const [budget, setBudget] = useState(String(recommendation ?? Math.ceil(floorUsd)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cardSecret, setCardSecret] = useState<string | null>(null);
@@ -85,10 +96,10 @@ export function AccountCardWall({
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
 
   // A recommendation that lands after the wall opened fills an untouched field.
-  const budgetTouched = useRef(false);
+  const budgetTouched = useRef(budgetChosen);
   useEffect(() => {
-    if (!budgetTouched.current && recommendedUsd != null) setBudget(String(recommendedUsd));
-  }, [recommendedUsd]);
+    if (!budgetTouched.current) setBudget(String(recommendation ?? Math.ceil(floorUsd)));
+  }, [recommendation, floorUsd]);
 
   // Esc closes while nothing is in flight.
   useEffect(() => {
@@ -119,6 +130,13 @@ export function AccountCardWall({
         const acct = await getBillingAccount();
         setAccount(acct);
         setStage("card");
+        // Price the budget the way the "Add a brand" modal does, now that the brand
+        // can hold an offer. Best effort: the field keeps the floor when no price exists.
+        setPricing(true);
+        recommendedBudgetForPreview(brandId, offerSource, floorUsd)
+          .then((usd) => setPricedUsd(usd))
+          .catch((e) => console.error("[get-started] budget price read failed:", e))
+          .finally(() => setPricing(false));
       } catch (e) {
         claimed.current = false;
         setError(e instanceof Error ? e.message : "We could not finish setting up your account.");
@@ -126,6 +144,7 @@ export function AccountCardWall({
         setBusy(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoaded, isSignedIn, orgId, session]);
 
   const parsedBudget = parseDailyBudget(budget, floorUsd);
@@ -140,7 +159,7 @@ export function AccountCardWall({
       setError(parsedBudget.problem);
       return false;
     }
-    onBudget(parsedBudget.usd);
+    if (budgetTouched.current) onBudget(parsedBudget.usd);
     return true;
   }
 
@@ -323,8 +342,8 @@ export function AccountCardWall({
     : null;
 
   return createPortal(
-    <div className="v2-root fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-[#1010121f] px-3 py-[6vh]">
-      <div role="dialog" aria-modal="true" aria-label="Start outreach" className="k-popover w-full max-w-[880px] overflow-hidden">
+    <div className="v2-root gs-scrim fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-[#1010121f] px-3 py-[6vh]">
+      <div role="dialog" aria-modal="true" aria-label="Start outreach" className="gs-panel k-popover w-full max-w-[880px] overflow-hidden">
         <div className="flex h-11 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
           <span className="k-label">Start outreach</span>
           <button
@@ -341,11 +360,20 @@ export function AccountCardWall({
         <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {/* What they get */}
           <div className="border-b border-[var(--line-subtle)] p-5 md:border-b-0 md:border-r">
-            <p className="k-fg text-[20px] font-medium leading-7">$30 of free credit</p>
+            <p className="k-fg text-[20px] font-medium leading-7">
+              <CountUp value={30} format={(n) => `$${Math.round(n)}`} ms={800} /> of free credit
+            </p>
             <ul className="k-fg2 mt-3 grid gap-1.5 text-[13px] leading-5">
-              <li>We find the people in your segments and write to them from our own warmed domains.</li>
-              <li>Each email is written for the person it goes to.</li>
-              <li>Interested replies are forwarded to your inbox.</li>
+              {[
+                "We find the people in your segments and write to them from our own warmed domains.",
+                "Each email is written for the person it goes to.",
+                "Interested replies are forwarded to your inbox.",
+              ].map((line, i) => (
+                <li key={line} className="gs-in flex gap-2" style={{ animationDelay: `${160 + i * 80}ms` }}>
+                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+                  {line}
+                </li>
+              ))}
             </ul>
 
             <dl className="k-inset mt-5 grid gap-2 rounded-lg p-3 text-[13px]">
@@ -374,6 +402,12 @@ export function AccountCardWall({
                     aria-label="Daily budget in dollars"
                   />
                   <span className="k-fg3 text-[12px]">a day</span>
+                  {recommendation != null && Number(budget) === recommendation && (
+                    <span key={recommendation} className="gs-pop k-chip">
+                      Recommended
+                    </span>
+                  )}
+                  {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
                 </dd>
               </div>
             </dl>
@@ -384,7 +418,14 @@ export function AccountCardWall({
 
           {/* Account + card */}
           <div className="p-5">
+            {stage !== "launching" && (
+              <div className="mb-4 grid gap-2">
+                <TrialTimer />
+                <TrialSpots />
+              </div>
+            )}
             <Steps stage={stage} />
+            <div key={stage === "code" ? "account" : stage} className="gs-in">
 
             {(stage === "account" || stage === "code") && !isSignedIn && (
               <>
@@ -470,11 +511,17 @@ export function AccountCardWall({
             )}
 
             {stage === "launching" && (
-              <p className="k-fg2 mt-4 text-[13px]">Creating your audiences, funding the campaign and starting it...</p>
+              <div className="mt-4 grid gap-2">
+                <p className="k-fg2 text-[13px]">Creating your audiences, funding the campaign and starting it...</p>
+                <span className="block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+                  <span className="k-indeterminate block h-full w-1/3 rounded-full bg-[var(--accent)]" />
+                </span>
+              </div>
             )}
 
+            </div>
             {error && (
-              <p className="mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
+              <p key={error} className="gs-in mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
                 {error}
               </p>
             )}
@@ -502,16 +549,31 @@ function Consent({ brandName, checked, onChange }: { brandName: string; checked:
 }
 
 function Steps({ stage }: { stage: Stage }) {
-  const at = stage === "account" || stage === "code" ? 0 : stage === "claim" ? 1 : 2;
+  const at = stage === "account" || stage === "code" || stage === "claim" ? 0 : stage === "card" ? 1 : 2;
   const items = ["Account", "Card", "Start"];
   return (
-    <ol className="flex items-center gap-2" aria-label="Setup">
-      {items.map((label, i) => (
-        <li key={label} className="flex items-center gap-2">
-          {i > 0 && <span className="h-px w-4 bg-[var(--line)]" />}
-          <span className={`text-[12px] ${i === at ? "k-fg font-medium" : i < at ? "k-fg2" : "k-fg3"}`}>{`${i + 1}. ${label}`}</span>
-        </li>
-      ))}
-    </ol>
+    <div>
+      <ol className="flex items-center gap-2" aria-label="Setup">
+        {items.map((label, i) => (
+          <li key={label} className="flex items-center gap-2" aria-current={i === at ? "step" : undefined}>
+            {i > 0 && <span className="h-px w-4 bg-[var(--line)]" />}
+            <span className={`inline-flex items-center gap-1.5 text-[12px] ${i === at ? "k-fg font-medium" : i < at ? "k-fg2" : "k-fg3"}`}>
+              <span
+                key={i < at ? "done" : "todo"}
+                className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] tabular-nums ${
+                  i < at ? "gs-pop bg-[var(--bg-strong)] text-white" : i === at ? "bg-[var(--accent)] text-white" : "border border-[var(--line-strong)]"
+                }`}
+              >
+                {i + 1}
+              </span>
+              {label}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <span className="mt-3 block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+        <span className="gs-fill block h-full rounded-full bg-[var(--accent)]" style={{ width: `${((at + 1) / items.length) * 100}%` }} />
+      </span>
+    </div>
   );
 }

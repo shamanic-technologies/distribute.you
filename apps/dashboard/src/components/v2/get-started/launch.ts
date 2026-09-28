@@ -19,7 +19,7 @@ import {
   saveCampaignBudget,
   setAudienceStatus,
 } from "@/lib/api";
-import { NEW_ORG_CHANNEL_SLUG, newOrgLeg, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
+import { NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
 
 export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
 
@@ -56,12 +56,50 @@ async function resolveOffer(brandId: string, source: string): Promise<{ offerId:
 }
 
 /**
+ * ONE offer resolution per brand in this tab. The wall resolves it as soon as the
+ * account exists (to price the budget) and the launch resolves it again; two
+ * concurrent resolutions of a brand with no offer would each confirm a proposal and
+ * leave it with two offers. A failure is forgotten, so a retry asks again.
+ */
+const offerByBrand = new Map<string, Promise<{ offerId: string; name: string }>>();
+function resolveOfferOnce(brandId: string, source: string): Promise<{ offerId: string; name: string }> {
+  const held = offerByBrand.get(brandId);
+  if (held) return held;
+  const p = resolveOffer(brandId, source).catch((e) => {
+    offerByBrand.delete(brandId);
+    throw e;
+  });
+  offerByBrand.set(brandId, p);
+  return p;
+}
+
+/**
+ * The daily budget the v2 "Add a brand" modal would recommend for this brand:
+ * features-service's recommended workflow for the brand's offer on this leg, its
+ * campaign-grain cost per outcome, turned into a daily figure by the leg's own rule,
+ * never under the channel floor. A brand is only given its offer once somebody owns
+ * it, so this runs after the claim. `null` when no price is held yet.
+ */
+export async function recommendedBudgetForPreview(brandId: string, source: string, floorUsd: number): Promise<number | null> {
+  const offer = await resolveOfferOnce(brandId, source);
+  const ladder = await getWorkflowProjectionLadder({
+    featureSlug: NEW_ORG_CHANNEL_SLUG,
+    brandId,
+    offerId: offer.offerId,
+    leg: GET_STARTED_LEG,
+  });
+  const rec = ladder.recommendedWorkflowDynastySlug;
+  const row = ladder.rows.find((r) => r.audienceId === null && r.workflow.workflowDynastySlug === rec);
+  return recommendedDailyBudgetUsd(newOrgLeg(GET_STARTED_LEG), row?.resolved.costPerOutcomeUsd ?? null, floorUsd);
+}
+
+/**
  * Runs the launch, mutating `progress` as each write lands so a retry resumes.
  * Returns the created campaign's id.
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
   const leg = newOrgLeg(GET_STARTED_LEG);
-  const offer = await resolveOffer(input.brandId, input.offerSource);
+  const offer = await resolveOfferOnce(input.brandId, input.offerSource);
   progress.offerId = offer.offerId;
 
   if (!progress.audiences) {

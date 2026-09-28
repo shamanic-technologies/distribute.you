@@ -57,7 +57,8 @@ import {
   type GetStartedSnapshot,
   type GetStartedStepKey,
 } from "@/lib/v2/get-started";
-import { Shimmer } from "@/components/v2/ui";
+import { Initials, Shimmer } from "@/components/v2/ui";
+import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
 import { GET_STARTED_LEG } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
@@ -281,53 +282,49 @@ export function GetStarted() {
     setStep("segments", "running");
     const host = hostOf(url);
 
-    const company = extractBrandFields([id], [...COMPANY_FIELDS], { mode: "suggest", urlStrategy: "landing" })
-      .then((r) => {
-        const ov = valueText(r.fields.companyOverview?.value);
-        const fs = valueLines(r.fields.companyFacts?.value).slice(0, 4);
-        setOverview(ov);
-        setFacts(fs);
-        setStep("company", ov || fs.length ? "done" : "failed");
-        return { ov, fs };
-      })
-      .catch((e) => {
-        console.error("[get-started] company read failed:", e);
-        setStep("company", "failed");
-        return { ov: "", fs: [] as string[] };
+    // ONE read at a time, deliberately. Every metered call first HOLDS its worst case
+    // against the anonymous org's small seed, so reads in parallel stack their holds and
+    // the third one is refused for credit the first two will never actually spend
+    // (measured: ~$1.30 spent, a $2.20 hold refused). The company and its competitors
+    // are one extraction for the same reason.
+    let read = { ov: "", fs: [] as string[] };
+    let list: Competitor[] = [];
+    try {
+      const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS], {
+        mode: "suggest",
+        urlStrategy: "landing",
       });
+      read = {
+        ov: valueText(r.fields.companyOverview?.value),
+        fs: valueLines(r.fields.companyFacts?.value).slice(0, 4),
+      };
+      list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
+      setOverview(read.ov);
+      setFacts(read.fs);
+      setCompetitors(list);
+      setStep("company", read.ov || read.fs.length ? "done" : "failed");
+      setStep("competitors", list.length ? "done" : "failed");
+    } catch (e) {
+      console.error("[get-started] company read failed:", e);
+      setStep("company", "failed");
+      setStep("competitors", "failed");
+    }
 
-    const rivals = extractBrandFields([id], [...COMPETITOR_FIELDS], { mode: "suggest", urlStrategy: "landing" })
-      .then((r) => {
-        const list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
-        setCompetitors(list);
-        setStep("competitors", list.length ? "done" : "failed");
-        return list;
-      })
-      .catch((e) => {
-        console.error("[get-started] competitor read failed:", e);
-        setStep("competitors", "failed");
-        return [] as Competitor[];
-      });
+    let found: GetStartedSegment[] = [];
+    try {
+      const { icp } = await suggestBrandIcp(id);
+      const { candidates } = await suggestAudiences(id, icp);
+      found = candidates
+        .filter((c) => !c.validationError)
+        .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count }));
+      setSegments(found);
+      setStep("segments", found.length ? "done" : "failed");
+      if (found.length) setSelectedSeg([...found].sort((a, b) => b.count - a.count)[0].audienceId);
+    } catch (e) {
+      console.error("[get-started] segment read failed:", e);
+      setStep("segments", "failed");
+    }
 
-    const segs = suggestBrandIcp(id)
-      .then(({ icp }) => suggestAudiences(id, icp))
-      .then(({ candidates }) => {
-        const list = candidates
-          .filter((c) => !c.validationError)
-          .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count }));
-        setSegments(list);
-        setStep("segments", list.length ? "done" : "failed");
-        if (list.length) setSelectedSeg([...list].sort((a, b) => b.count - a.count)[0].audienceId);
-        else markSampleSteps("failed");
-        return list;
-      })
-      .catch((e) => {
-        console.error("[get-started] segment read failed:", e);
-        setStep("segments", "failed");
-        return [] as GetStartedSegment[];
-      });
-
-    const [read, list, found] = await Promise.all([company, rivals, segs]);
     setSteps((cur) => {
       const next = { ...cur };
       for (const k of STEPS_NOT_LIVE) next[k] = "notLive";
@@ -397,23 +394,29 @@ export function GetStarted() {
   return (
     <div className="k-canvas min-h-[100dvh]">
       {canLaunch && (
-        <div className="sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)]">
-          <div className="mx-auto flex max-w-[1100px] items-center gap-4 px-6 py-3">
+        <div className="gs-down sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)]">
+          <div className="mx-auto flex max-w-[1100px] items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+            <span className="gs-pop hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[16px]" style={{ animationDelay: "200ms" }} aria-hidden="true">
+              $
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="k-fg text-[14px] font-medium">$30 of free credit to start</p>
-              <p className="k-fg3 text-[12px]">No charge today. We write and send the emails, you get the replies.</p>
+              <p className="k-fg text-[14px] font-medium">
+                <CountUp value={30} format={(n) => `$${Math.round(n)}`} ms={700} /> of free credit to start
+              </p>
+              <p className="k-fg3 hidden text-[12px] sm:block">No charge today. We write and send the emails, you get the replies.</p>
             </div>
-            <button type="button" className="k-btn-accent h-8 px-3" onClick={() => setWallOpen(true)}>
+            <button type="button" className="k-btn-accent gs-glow h-8 px-3" onClick={() => setWallOpen(true)}>
               Start outreach
             </button>
           </div>
         </div>
       )}
 
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
+      <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
         <Stepper steps={steps} current={current} />
+        <LiveStatus current={current} domain={domain} />
 
-        <div className="mt-8 grid gap-4">
+        <div className="mt-6 grid gap-4">
           <CompanyCard state={steps.company} name={brandName} domain={domain} website={website} overview={overview} facts={facts} />
           <CompetitorsCard state={steps.competitors} competitors={competitors} />
           <SegmentsCard state={steps.segments} segments={segments} selected={selectedSeg} onSelect={setSelectedSeg} />
@@ -435,7 +438,7 @@ export function GetStarted() {
         </div>
 
         {canLaunch && (
-          <div className="mt-6 flex justify-end">
+          <div className="gs-in mt-6 flex justify-end">
             <button type="button" className="k-btn-accent h-9 px-4" onClick={() => setWallOpen(true)}>
               Start outreach with $30 free
             </button>
@@ -452,6 +455,7 @@ export function GetStarted() {
           segments={segments}
           floorUsd={floorUsd}
           recommendedUsd={restoredBudget ?? recommendedUsd}
+          budgetChosen={restoredBudget != null}
           onBudget={(usd) => {
             const snap = parseGetStartedSnapshot(sessionStorage.getItem(GET_STARTED_SNAPSHOT_KEY));
             if (snap) saveSnapshot({ ...snap, budgetUsd: usd });
@@ -485,13 +489,16 @@ function Hero({
   return (
     <div className="k-canvas flex min-h-[100dvh] items-center justify-center px-6">
       <div className="w-full max-w-[560px]">
-        <p className="k-label">distribute.you</p>
-        <h1 className="k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]">See who we would sell to for you.</h1>
-        <p className="k-fg2 mt-2 text-[14px] leading-6">
+        <p className="k-label gs-in">distribute.you</p>
+        <h1 className="gs-in k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]" style={{ animationDelay: "60ms" }}>
+          See who we would sell to for you.
+        </h1>
+        <p className="gs-in k-fg2 mt-2 text-[14px] leading-6" style={{ animationDelay: "120ms" }}>
           Type your website. In about a minute we read your company, find your competitors and size the segments worth writing to. No account needed.
         </p>
         <form
-          className="k-card mt-6 flex items-center gap-2 p-2"
+          className="gs-in k-card mt-6 flex items-center gap-2 p-2"
+          style={{ animationDelay: "180ms" }}
           onSubmit={(e) => {
             e.preventDefault();
             onSubmit();
@@ -510,8 +517,16 @@ function Hero({
             Start
           </button>
         </form>
+        <ol className="gs-in mt-5 grid grid-cols-3 gap-2" style={{ animationDelay: "240ms" }} aria-label="What you will see">
+          {["Your company", "Your segments", "Your first email"].map((label, i) => (
+            <li key={label} className="k-fg3 flex items-center gap-2 text-[12px]">
+              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--line-strong)] text-[10px] tabular-nums">{i + 1}</span>
+              {label}
+            </li>
+          ))}
+        </ol>
         {error && (
-          <p className="mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
+          <p className="gs-in mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
             {error}
           </p>
         )}
@@ -536,22 +551,34 @@ function Hero({
   );
 }
 
+const settled = (s: StepState) => s === "done" || s === "failed" || s === "notLive";
+
+/**
+ * Explee's stepper: numbered marks joined by rails that fill as each step lands, and
+ * the step being worked on named in a raised pill. Only that one is named, so the row
+ * fits a phone.
+ */
 function Stepper({ steps, current }: { steps: Record<GetStartedStepKey, StepState>; current: number }) {
   return (
-    <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label="Progress">
+    <ol className="flex items-center" aria-label="Progress">
       {GET_STARTED_STEPS.map((s, i) => {
         const st = steps[s.key];
         const active = i === current;
+        const prevSettled = i > 0 && settled(steps[GET_STARTED_STEPS[i - 1].key]);
         return (
-          <li key={s.key} className="flex items-center gap-2">
-            {i > 0 && <span className="hidden h-px w-6 bg-[var(--line)] sm:block" />}
+          <li key={s.key} className={`flex items-center ${i > 0 ? "flex-1" : ""}`} aria-current={active ? "step" : undefined}>
+            {i > 0 && (
+              <span className="relative mx-1.5 h-px min-w-2 flex-1 overflow-hidden bg-[var(--line)] sm:mx-2" aria-hidden="true">
+                <span className="gs-fill absolute inset-y-0 left-0 bg-[var(--bg-strong)]" style={{ width: prevSettled ? "100%" : "0%" }} />
+              </span>
+            )}
             <span
-              className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] ${
-                active ? "k-card k-fg font-medium" : st === "done" ? "k-fg2" : "k-fg3"
+              className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full text-[12px] ${
+                active ? "k-card gs-glow k-fg px-2.5 font-medium" : settled(st) ? "k-fg2" : "k-fg3"
               }`}
             >
               <StepMark index={i + 1} state={st} />
-              <span className={active ? "" : "hidden md:inline"}>{s.label}</span>
+              {active ? <span key={s.key} className="gs-in whitespace-nowrap">{s.label}</span> : <span className="sr-only">{s.label}</span>}
             </span>
           </li>
         );
@@ -561,40 +588,89 @@ function Stepper({ steps, current }: { steps: Record<GetStartedStepKey, StepStat
 }
 
 function StepMark({ index, state }: { index: number; state: StepState }) {
-  if (state === "running") return <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Running" />;
+  if (state === "running")
+    return (
+      <span key="running" className="gs-pop inline-flex h-4 w-4 items-center justify-center" aria-label="Running">
+        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
+      </span>
+    );
   if (state === "done")
     return (
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg-strong)] text-[10px] text-white tabular-nums">{index}</span>
+      <span key="done" className="gs-pop inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg-strong)] text-[10px] text-white tabular-nums">
+        {index}
+      </span>
     );
   return (
     <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--line-strong)] text-[10px] tabular-nums">{index}</span>
   );
 }
 
+const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
+  company: (d) => `Reading ${d ?? "your site"} and finding your competitors`,
+  competitors: () => "Finding your competitors",
+  segments: () => "Sizing the segments worth writing to",
+  companies: () => "Taking a free sample of real companies in this segment",
+  people: () => "Finding the decision makers at those companies",
+  email: () => "Writing your first email. This one takes about a minute and a half.",
+};
+
+/** What is being worked on right now, and for how long. Every line names a real step. */
+function LiveStatus({ current, domain }: { current: number; domain: string | null }) {
+  const key = current >= 0 ? GET_STARTED_STEPS[current].key : null;
+  const secs = useElapsed(key);
+  return (
+    <p key={key ?? "ready"} className="gs-in mt-4 flex min-h-5 items-center gap-2 text-[13px]">
+      {key ? (
+        <span className="k-dot-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" />
+      ) : (
+        <span className="gs-pop h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-teal)]" />
+      )}
+      <span className="k-fg2 min-w-0" aria-live="polite">
+        {key ? STATUS[key](domain) : "Your preview is ready."}
+      </span>
+      {key && (
+        <span className="k-mono k-fg3 text-[12px] tabular-nums" aria-hidden="true">
+          {formatElapsed(secs)}
+        </span>
+      )}
+    </p>
+  );
+}
+
 function StepCard({
   index,
   title,
+  state,
   meta,
   children,
 }: {
   index: number;
   title: string;
+  state: StepState;
   meta?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="k-card p-4">
+    <section className={`gs-fade k-card relative overflow-hidden p-4 ${state === "waiting" ? "translate-y-0.5 opacity-50" : "opacity-100"}`}>
+      {state === "running" && (
+        <span className="absolute inset-x-0 top-0 h-0.5 overflow-hidden" aria-hidden="true">
+          <span className="k-indeterminate block h-full w-1/3 rounded-full bg-[var(--accent)]" />
+        </span>
+      )}
       <div className="flex items-center gap-2">
         <span className="k-label">{`Step ${index}`}</span>
-        <h2 className="k-fg text-[14px] font-medium">{title}</h2>
-        {meta && <span className="ml-auto">{meta}</span>}
+        <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">{title}</h2>
+        {meta && <span className="ml-auto shrink-0">{meta}</span>}
       </div>
-      <div className="mt-3">{children}</div>
+      {/* Keyed on the state so the content rises in the moment it lands. */}
+      <div key={state} className="gs-in mt-3">
+        {children}
+      </div>
     </section>
   );
 }
 
-function StateWord({ state, doneLabel }: { state: StepState; doneLabel?: string }) {
+function StateWord({ state, doneLabel }: { state: StepState; doneLabel?: React.ReactNode }) {
   if (state === "running")
     return (
       <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
@@ -602,10 +678,16 @@ function StateWord({ state, doneLabel }: { state: StepState; doneLabel?: string 
         Working
       </span>
     );
-  if (state === "done") return <span className="k-fg3 text-[12px] tabular-nums">{doneLabel ?? "Done"}</span>;
+  if (state === "done")
+    return (
+      <span key="done" className="gs-pop k-fg3 inline-flex items-center gap-1.5 text-[12px] tabular-nums">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
+        {doneLabel ?? "Done"}
+      </span>
+    );
   if (state === "failed") return <span className="text-[12px] text-[var(--data-amber)]">Nothing found</span>;
   if (state === "notLive") return <span className="k-chip">Not live yet</span>;
-  return null;
+  return <span className="k-fg4 text-[12px]">Waiting</span>;
 }
 
 function Rows({ n }: { n: number }) {
@@ -615,6 +697,20 @@ function Rows({ n }: { n: number }) {
         <Shimmer key={i} className="h-5" />
       ))}
     </div>
+  );
+}
+
+/** A bar that grows from nothing to `pct` once it is on screen. */
+function GrowBar({ pct }: { pct: number }) {
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setW(Math.max(2, Math.min(100, pct))));
+    return () => cancelAnimationFrame(id);
+  }, [pct]);
+  return (
+    <span className="block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+      <span className="gs-fill block h-full rounded-full bg-[var(--accent)]" style={{ width: `${w}%` }} />
+    </span>
   );
 }
 
@@ -634,9 +730,11 @@ function CompanyCard({
   facts: string[];
 }) {
   return (
-    <StepCard index={1} title="Your company" meta={<StateWord state={state} />}>
+    <StepCard index={1} title="Your company" state={state} meta={<StateWord state={state} />}>
       <div className="flex items-center gap-3">
-        <BrandLogo domain={domain} size={28} className="rounded-md" />
+        <span className="gs-pop inline-flex">
+          <BrandLogo domain={domain} size={28} className="rounded-md" />
+        </span>
         <div className="min-w-0">
           <p className="k-fg truncate text-[14px] font-medium">{name ?? domain ?? website}</p>
           {domain && <p className="k-fg3 k-mono truncate text-[12px]">{domain}</p>}
@@ -653,8 +751,9 @@ function CompanyCard({
           {overview && <p className="k-fg2 mt-3 text-[13px] leading-5">{overview}</p>}
           {facts.length > 0 && (
             <div className="k-inset mt-3 grid gap-1.5 rounded-lg p-3">
-              {facts.map((f) => (
-                <p key={f} className="k-fg2 text-[12px] leading-5">
+              {facts.map((f, i) => (
+                <p key={f} className="gs-in k-fg2 flex gap-2 text-[12px] leading-5" style={stagger(i + 1, 90)}>
+                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
                   {f}
                 </p>
               ))}
@@ -668,15 +767,20 @@ function CompanyCard({
 
 function CompetitorsCard({ state, competitors }: { state: StepState; competitors: Competitor[] }) {
   return (
-    <StepCard index={2} title="Competitors" meta={<StateWord state={state} doneLabel={`${competitors.length} found`} />}>
+    <StepCard
+      index={2}
+      title="Competitors"
+      state={state}
+      meta={<StateWord state={state} doneLabel={<><CountUp value={competitors.length} format={(n) => String(Math.round(n))} ms={600} /> found</>} />}
+    >
       {state === "running" || state === "waiting" ? (
         <Rows n={3} />
       ) : competitors.length === 0 ? (
         <p className="k-fg3 text-[13px]">We found no direct competitor on your site. This does not change what we send.</p>
       ) : (
-        <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-          {competitors.map((c) => (
-            <li key={c.domain ?? c.name} className="k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5">
+        <ul className="grid grid-cols-2 gap-1.5 lg:grid-cols-3">
+          {competitors.map((c, i) => (
+            <li key={c.domain ?? c.name} className="gs-pop k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5" style={stagger(i, 60)}>
               <BrandLogo domain={c.domain} size={16} className="rounded-sm" />
               <span className="k-fg2 truncate text-[13px]">{c.domain ?? c.name}</span>
             </li>
@@ -698,27 +802,39 @@ function SegmentsCard({
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
+  const max = Math.max(1, ...segments.map((s) => s.count));
   return (
-    <StepCard index={3} title="Segments to write to" meta={<StateWord state={state} doneLabel={`${segments.length} segments`} />}>
+    <StepCard
+      index={3}
+      title="Segments to write to"
+      state={state}
+      meta={<StateWord state={state} doneLabel={segments.length === 1 ? "1 segment" : `${segments.length} segments`} />}
+    >
       {state === "running" || state === "waiting" ? (
         <Rows n={4} />
       ) : segments.length === 0 ? (
         <p className="k-fg3 text-[13px]">We could not size a segment for your company. Try again in a moment.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {segments.map((s) => (
+          {segments.map((s, i) => (
             <button
               key={s.audienceId}
               type="button"
               onClick={() => onSelect(s.audienceId)}
               aria-pressed={selected === s.audienceId}
-              className={`k-inset rounded-lg p-3 text-left ${selected === s.audienceId ? "k-selected ring-1 ring-[var(--accent)]" : "k-hover"}`}
+              style={stagger(i, 80)}
+              className={`gs-in k-inset rounded-lg p-3 text-left transition-shadow duration-200 ${selected === s.audienceId ? "k-selected ring-1 ring-[var(--accent)]" : "k-hover"}`}
             >
               <div className="flex items-baseline gap-2">
                 <p className="k-fg min-w-0 flex-1 truncate text-[13px] font-medium">{s.name}</p>
-                <span className="k-fg tabular-nums text-[13px] font-medium">{compactCount(s.count)}</span>
+                <span className="k-fg text-[13px] font-medium">
+                  <CountUp value={s.count} format={compactCount} ms={1100} />
+                </span>
               </div>
-              <p className="k-fg3 text-[11px]">people match</p>
+              <div className="mt-1.5">
+                <GrowBar pct={(s.count / max) * 100} />
+              </div>
+              <p className="k-fg3 mt-1 text-[11px]">people match</p>
               {s.rationale && <p className="k-fg2 mt-2 text-[12px] leading-5">{s.rationale}</p>}
             </button>
           ))}
@@ -760,10 +876,12 @@ function sampleNote(preview: AudiencePreview | undefined): string {
 
 function CompaniesCard({ state, preview, segmentName }: { state: StepState; preview: AudiencePreview | undefined; segmentName: string | null }) {
   const companies = preview?.status === "ready" ? preview.companies : [];
+  const matches = preview?.status === "ready" ? preview.matchCount : null;
   return (
     <StepCard
       index={4}
       title={segmentName ? `Companies in ${segmentName}` : "Companies that match"}
+      state={state}
       meta={<StateWord state={state} doneLabel={`${companies.length} shown`} />}
     >
       {state === "running" || state === "waiting" ? (
@@ -773,13 +891,25 @@ function CompaniesCard({ state, preview, segmentName }: { state: StepState; prev
       ) : (
         <>
           <ul className="grid gap-1.5 sm:grid-cols-2">
-            {companies.map((c) => (
-              <li key={c.name} className="k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5">
-                <span className="k-fg truncate text-[13px]">{c.name}</span>
+            {companies.map((c, i) => (
+              <li key={c.name} className="gs-in k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5" style={stagger(i, 45)}>
+                <Initials name={c.name} size={20} />
+                <span className="k-fg min-w-0 flex-1 truncate text-[13px]">{c.name}</span>
+                {c.peopleInSample > 0 && (
+                  <span className="k-fg3 shrink-0 text-[11px] tabular-nums">{c.peopleInSample === 1 ? "1 person" : `${c.peopleInSample} people`}</span>
+                )}
               </li>
             ))}
           </ul>
-          <p className="k-fg3 mt-2 text-[12px]">A first page of real matches, not the whole list.</p>
+          <p className="k-fg3 mt-2 text-[12px]">
+            {matches != null && matches > companies.length ? (
+              <>
+                A first page of real matches, out of <CountUp value={matches} format={(n) => Math.round(n).toLocaleString("en-US")} ms={1100} /> people in this segment.
+              </>
+            ) : (
+              "A first page of real matches, not the whole list."
+            )}
+          </p>
         </>
       )}
     </StepCard>
@@ -789,7 +919,7 @@ function CompaniesCard({ state, preview, segmentName }: { state: StepState; prev
 function PeopleCard({ state, preview }: { state: StepState; preview: AudiencePreview | undefined }) {
   const people = preview?.status === "ready" ? preview.people : [];
   return (
-    <StepCard index={5} title="Decision makers" meta={<StateWord state={state} doneLabel={`${people.length} shown`} />}>
+    <StepCard index={5} title="Decision makers" state={state} meta={<StateWord state={state} doneLabel={`${people.length} shown`} />}>
       {state === "running" || state === "waiting" ? (
         <Rows n={5} />
       ) : people.length === 0 ? (
@@ -805,13 +935,21 @@ function PeopleCard({ state, preview }: { state: StepState; preview: AudiencePre
               </tr>
             </thead>
             <tbody>
-              {people.map((x, i) => (
-                <tr key={`${x.firstName}-${x.company}-${i}`} className="k-row border-b border-[var(--line-subtle)] last:border-0">
-                  <td className="k-fg px-2 py-2">{[x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ") || "—"}</td>
-                  <td className="k-fg2 px-2 py-2">{x.title ?? "—"}</td>
-                  <td className="k-fg2 px-2 py-2">{x.company ?? "—"}</td>
-                </tr>
-              ))}
+              {people.map((x, i) => {
+                const name = [x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ");
+                return (
+                  <tr key={`${x.firstName}-${x.company}-${i}`} className="gs-in k-row border-b border-[var(--line-subtle)] last:border-0" style={stagger(i, 50)}>
+                    <td className="k-fg px-2 py-2">
+                      <span className="flex items-center gap-2">
+                        {name ? <Initials name={name} size={20} round /> : null}
+                        {name || <span className="k-fg4">{"—"}</span>}
+                      </span>
+                    </td>
+                    <td className="k-fg2 px-2 py-2">{x.title ?? <span className="k-fg4">{"—"}</span>}</td>
+                    <td className="k-fg2 px-2 py-2">{x.company ?? <span className="k-fg4">{"—"}</span>}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <p className="k-fg3 mt-2 text-[12px]">Last names are masked until your account is set up. We never show an email here.</p>
@@ -823,7 +961,7 @@ function PeopleCard({ state, preview }: { state: StepState; preview: AudiencePre
 
 function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail | undefined; note: string | null }) {
   return (
-    <StepCard index={6} title="Your first email" meta={<StateWord state={state} />}>
+    <StepCard index={6} title="Your first email" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
         <>
           <p className="k-fg3 mb-3 text-[12px]">We read your site the way a campaign does, then write. The first email takes about a minute and a half.</p>
@@ -833,17 +971,17 @@ function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail
         <p className="k-fg3 text-[13px]">{note ?? "We need at least one person in the sample to write to."}</p>
       ) : (
         <div className="k-inset rounded-lg">
-          <div className="flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]">
+          <div className="gs-in flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]">
             <span className="k-label w-12 shrink-0 pt-0.5">To</span>
             <span className="k-fg2">
               {[mail.recipient.firstName, mail.recipient.lastName].join(" ")}, {mail.recipient.title} at {mail.recipient.companyName}
             </span>
           </div>
-          <div className="flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]">
+          <div className="gs-in flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]" style={{ animationDelay: "120ms" }}>
             <span className="k-label w-12 shrink-0 pt-0.5">Subject</span>
             <span className="k-fg font-medium">{mail.subject}</span>
           </div>
-          <p className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6">{mail.bodyText}</p>
+          <Typewriter text={mail.bodyText} className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6" />
         </div>
       )}
     </StepCard>
@@ -852,9 +990,8 @@ function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail
 
 function NotLiveCard({ index, title, body }: { index: number; title: string; body: string }) {
   return (
-    <StepCard index={index} title={title} meta={<StateWord state="notLive" />}>
+    <StepCard index={index} title={title} state="notLive" meta={<StateWord state="notLive" />}>
       <p className="k-fg3 text-[13px] leading-5">{body}</p>
     </StepCard>
   );
 }
-
