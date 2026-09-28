@@ -176,11 +176,13 @@ describe("the surface", () => {
     expect(FLOW).not.toMatch(/revealEmail|enrich\(|emailAddress/);
   });
 
-  it("prepares the offer and the audience proposals from the moment the website is known, in parallel", () => {
+  it("prepares the offer and the audience proposals in the background, in parallel, before the stage reaches them", () => {
     const start = FLOW.slice(FLOW.indexOf("async function start("), FLOW.indexOf("const canLaunch"));
-    expect(start).toContain("await Promise.all([siteRead, prepareAudiences(id)])");
     expect(start).toContain("...OFFER_FIELDS");
-    expect(start).toContain("await prepareOffers(id, lines, ov)");
+    // The ICP is drafted from what the read stored (an empty profile is refused), so the
+    // audience read starts after the site read, in parallel with the offer split.
+    expect(start.indexOf("await siteRead;")).toBeLessThan(start.indexOf("prepareAudiences(id)"));
+    expect(start).toContain("await Promise.all([prepareOffers(id, offerSource.current.lines, offerSource.current.ov), prepareAudiences(id)])");
     expect(FLOW).toContain("proposeBrandOffers(");
     expect(FLOW).toContain("proposeAudienceSegments(");
   });

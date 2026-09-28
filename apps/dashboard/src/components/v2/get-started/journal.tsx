@@ -45,7 +45,12 @@ export interface JournalData {
   onFocus: (key: GetStartedStepKey) => void;
 }
 
-const inRail = (d: JournalData, key: GetStartedStepKey) => settledPhase(d.steps[key]) && d.staged !== key;
+/** A finished step behind the stage. A step ahead of it is not drawn, even settled (a failed read ahead is said when the stage gets there). */
+const inRail = (d: JournalData, key: GetStartedStepKey) => {
+  const at = GET_STARTED_STEPS.findIndex((s) => s.key === d.staged);
+  const idx = GET_STARTED_STEPS.findIndex((s) => s.key === key);
+  return settledPhase(d.steps[key]) && d.staged !== key && (idx < at || d.steps[key] === "done");
+};
 
 export function JournalRail(d: JournalData) {
   const shown = GET_STARTED_STEPS.map((s, i) => ({ ...s, index: i + 1 })).filter((s) => inRail(d, s.key));
