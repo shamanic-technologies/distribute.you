@@ -2,9 +2,9 @@
 
 import { useOrganization, useSession } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { OrgAvatar } from "@/components/org-avatar";
-import { isInvitableEmail } from "@/lib/org-invite";
+import { dashboardOrigin, isInvitableEmail, joinLinkUrl, sanitizeInviteBrand } from "@/lib/org-invite";
 import { resolveBrandTint } from "@/lib/brand-tint";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { isAdminEmail } from "@/lib/admin-allowlist";
@@ -43,6 +43,7 @@ export function V2TeamPage() {
           </div>
         </div>
       )}
+      {isAdmin && <InviteLinkCard />}
       {isAdmin && <InviteCard onInvited={() => invitations?.revalidate?.()} />}
       <div className="k-card overflow-hidden">
         <div className="flex items-center gap-2 border-b border-[var(--line-subtle)] px-4 py-3">
@@ -268,5 +269,119 @@ function PendingInvitationRow({
         </button>
       </td>
     </tr>
+  );
+}
+
+/**
+ * The team's shareable invite link: anyone who opens it and signs in joins as an
+ * Admin. No expiry, by decision; every other admin is emailed when somebody joins, and
+ * Revoke kills the link at once (creating a new one mints a new code).
+ */
+function InviteLinkCard() {
+  const params = useParams<{ orgId: string }>();
+  const orgId = params?.orgId ?? null;
+  const { session } = useSession();
+  const { displayBrand } = useTenantSwitcher();
+  const [code, setCode] = useState<string | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const call = async (method: "GET" | "POST" | "DELETE") => {
+    if (!orgId || !session) return;
+    const token = await session.getToken({ organizationId: orgId });
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    const res = await fetch(
+      method === "GET" ? `/api/orgs/invite-link?orgId=${encodeURIComponent(orgId)}` : "/api/orgs/invite-link",
+      method === "GET" ? { headers } : { method, headers, body: JSON.stringify({ orgId }) },
+    );
+    const body = (await res.json().catch(() => null)) as { code?: string | null; error?: string } | null;
+    if (!res.ok) {
+      console.error("[team] invite link", method, res.status, body);
+      throw new Error(body?.error ?? "Could not update the invite link. Try again.");
+    }
+    setCode(body?.code ?? null);
+  };
+
+  useEffect(() => {
+    if (code !== undefined || !orgId || !session) return;
+    call("GET").catch((err: Error) => {
+      setError(err.message);
+      setCode(null);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, session, code]);
+
+  const run = async (method: "POST" | "DELETE") => {
+    setBusy(true);
+    setError("");
+    setCopied(false);
+    try {
+      await call(method);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const brand = displayBrand?.name
+    ? sanitizeInviteBrand({
+        name: displayBrand.name,
+        domain: displayBrand.domain,
+        logoUrl: displayBrand.logoUrl ?? null,
+        tint: resolveBrandTint(displayBrand.colors),
+      })
+    : null;
+  const url = code && orgId ? joinLinkUrl(dashboardOrigin(window.location.origin), orgId, code, brand) : null;
+
+  return (
+    <div className="k-card mb-4 p-4">
+      <p className="text-[13px] font-medium">Invite link</p>
+      <p className="k-fg3 mt-0.5 text-[12px]">
+        Anyone with this link can join as an admin. Every admin gets an email when someone joins.
+      </p>
+      {code === undefined ? (
+        <div className="mt-3 h-7 w-full animate-pulse rounded bg-[var(--bg-inset)]" />
+      ) : url ? (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input readOnly value={url} aria-label="Invite link" onFocus={(e) => e.currentTarget.select()} className="k-input min-w-0 flex-1 px-2.5" />
+          <button
+            type="button"
+            className="k-btn-accent justify-center"
+            onClick={async () => {
+              await navigator.clipboard.writeText(url);
+              setCopied(true);
+            }}
+          >
+            {copied ? "Copied" : "Copy link"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            aria-busy={busy}
+            onClick={() => run("DELETE")}
+            className={`k-btn justify-center text-red-600 ${busy ? "cursor-wait" : ""}`}
+          >
+            {busy ? "Revoking..." : "Revoke"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          aria-busy={busy}
+          onClick={() => run("POST")}
+          className={`k-btn-accent mt-3 ${busy ? "cursor-wait" : ""}`}
+        >
+          {busy ? "Creating..." : "Create invite link"}
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-[12px] text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

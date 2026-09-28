@@ -59,7 +59,7 @@ describe("Email template deployment at startup", () => {
     });
   }
 
-  it("should deploy exactly 13 templates", () => {
+  it("should deploy exactly 14 templates", () => {
     const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
@@ -69,12 +69,13 @@ describe("Email template deployment at startup", () => {
     // sender is gone is dead config — and it fails SILENTLY, since the stored row
     // survives whether or not anyone still writes it.
     //
-    // 12 are declared inline here. The 13th, the staff digest, is imported from
+    // 13 are declared inline here (the 13th is `team_member_joined`, sent when
+    // somebody joins through a team invite link). The 14th, the staff digest, is imported from
     // the module that SENDS it — that module re-registers it before every send,
     // because a boot-time registration on a serverless cold start is not a
     // guarantee that the write ever reached the template store.
     const inline = arr.match(/name: "/g);
-    expect(inline).toHaveLength(12);
+    expect(inline).toHaveLength(13);
     expect(arr).toContain("STAFF_DIGEST_TEMPLATE_DEF");
     expect(content).toContain('from "@/lib/staff-digest"');
   });

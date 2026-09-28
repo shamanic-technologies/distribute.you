@@ -1,126 +1,100 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
-  INVITE_COOKIE,
-  INVITE_PARAM,
-  REFERRAL_CREDIT_USD,
-  inviteLinkForCode,
-  inviteCodeFromSearch,
-  inviteCodeFromCookie,
-  inviteCookieWrite,
-  inviteCookieClear,
-  isTerminalClaimRejection,
-} from "../src/lib/invite-link";
+  JOIN_COOKIE,
+  clearJoinCookieAssignment,
+  joinCookieAssignment,
+  joinLinkUrl,
+  joinToken,
+  parseJoinToken,
+  readJoinCookie,
+} from "../src/lib/org-invite";
+import { inviteCodeMatches, readInviteLink } from "../src/lib/org-invite-link-store";
 
-// `invite-link.ts` is alias-free, so these are real unit tests rather than
-// source-substring guards. Keep it that way.
+const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
+const CODE = "abcdefghijklmnopqrstuvwx";
 
-describe("inviteLinkForCode", () => {
-  it("points at the marketing site carrying the code", () => {
-    expect(inviteLinkForCode("acme")).toBe("https://distribute.you?invite=acme");
+describe("invite link token", () => {
+  it("round-trips org + code and rejects anything else", () => {
+    expect(parseJoinToken(joinToken("org_abc123", CODE))).toEqual({ orgId: "org_abc123", code: CODE });
+    expect(parseJoinToken("org_abc123")).toBeNull();
+    expect(parseJoinToken("user_x." + CODE)).toBeNull();
+    expect(parseJoinToken("org_abc123.short")).toBeNull();
+    expect(parseJoinToken(null)).toBeNull();
   });
 
-  it("percent-encodes a code that needs it", () => {
-    expect(inviteLinkForCode("a~b.c_d-e")).toBe(
-      "https://distribute.you?invite=a~b.c_d-e",
+  it("builds a link on our origin, with the brand in the query", () => {
+    const url = new URL(
+      joinLinkUrl("https://dashboard.distribute.you", "org_abc123", CODE, { name: "Olive", domain: "olive.exchange", logoUrl: null, tint: null }),
     );
+    expect(url.pathname).toBe(`/join/org_abc123.${CODE}`);
+    expect(url.searchParams.get("bn")).toBe("Olive");
   });
 
-  it("returns null rather than a link with no code", () => {
-    // A link with no code is not a referral link, so the card must render
-    // nothing instead of a copyable URL that credits nobody.
-    expect(inviteLinkForCode("")).toBeNull();
-    expect(inviteLinkForCode("   ")).toBeNull();
-    expect(inviteLinkForCode(null)).toBeNull();
-    expect(inviteLinkForCode(undefined)).toBeNull();
-  });
-
-  it("refuses a code that cannot be an org slug", () => {
-    expect(inviteLinkForCode("has space")).toBeNull();
-    expect(inviteLinkForCode("has/slash")).toBeNull();
-    expect(inviteLinkForCode("a".repeat(129))).toBeNull();
+  it("the cookie carries the token through any auth route and clears", () => {
+    const token = joinToken("org_abc123", CODE);
+    const set = joinCookieAssignment(token);
+    expect(set.startsWith(`${JOIN_COOKIE}=`)).toBe(true);
+    expect(readJoinCookie(`a=1; ${set.split(";")[0]}; b=2`)).toBe(token);
+    expect(readJoinCookie(`${JOIN_COOKIE}=garbage`)).toBeNull();
+    expect(clearJoinCookieAssignment()).toContain("max-age=0");
   });
 });
 
-describe("inviteCodeFromSearch", () => {
-  it("reads the code off the query string", () => {
-    expect(inviteCodeFromSearch("?invite=acme")).toBe("acme");
-    expect(inviteCodeFromSearch("?utm_source=x&invite=acme&z=1")).toBe("acme");
-  });
-
-  it("decodes a percent-encoded code", () => {
-    expect(inviteCodeFromSearch("?invite=a%2Eb")).toBe("a.b");
-  });
-
-  it("returns null when the parameter is absent or unusable", () => {
-    expect(inviteCodeFromSearch("")).toBeNull();
-    expect(inviteCodeFromSearch("?via=partner")).toBeNull();
-    expect(inviteCodeFromSearch("?invite=")).toBeNull();
-    expect(inviteCodeFromSearch("?invite=%20%20")).toBeNull();
-    expect(inviteCodeFromSearch("?invite=has%20space")).toBeNull();
+describe("stored invite link", () => {
+  const meta = { inviteLink: { code: CODE, createdAt: "2026-09-28T00:00:00Z", createdBy: "user_1" } };
+  it("matches only the stored code, and nothing once revoked", () => {
+    const stored = readInviteLink(meta);
+    expect(inviteCodeMatches(stored, CODE)).toBe(true);
+    expect(inviteCodeMatches(stored, CODE.slice(1) + "z")).toBe(false);
+    expect(inviteCodeMatches(readInviteLink({ inviteLink: null }), CODE)).toBe(false);
+    expect(inviteCodeMatches(readInviteLink(undefined), CODE)).toBe(false);
   });
 });
 
-describe("the cookie round trip", () => {
-  it("survives write then read", () => {
-    const written = inviteCookieWrite("acme");
-    expect(inviteCodeFromCookie(written)).toBe("acme");
+describe("invite link call sites", () => {
+  const manage = read("src/app/(authed)/api/orgs/invite-link/route.ts");
+  const joinRoute = read("src/app/(authed)/api/join/route.ts");
+  const claimer = read("src/components/team/join-claimer.tsx");
+  const layout = read("src/app/(authed)/layout.tsx");
+  const proxy = read("src/proxy.ts");
+  const team = read("src/components/v2/team-page.tsx");
+  const boot = read("src/instrumentation.ts");
+
+  it("only an admin of the org on screen manages the link; revoke clears it", () => {
+    expect(manage).toContain("orgIdFromClient !== orgId");
+    expect(manage).toContain('orgRole !== "org:admin"');
+    expect(manage).toContain("privateMetadata: { inviteLink: null }");
   });
 
-  it("reads the code out of a cookie jar holding other cookies", () => {
-    expect(
-      inviteCodeFromCookie("partnero_via=KHV3; distribute_invite=acme; theme=dark"),
-    ).toBe("acme");
+  it("the join checks the stored code, joins as admin, and emails the other admins", () => {
+    expect(joinRoute).toContain("treatPendingAsSignedOut: false");
+    expect(joinRoute).toContain("inviteCodeMatches(readInviteLink(org.privateMetadata), parsed.code)");
+    expect(joinRoute).toContain("status: 410");
+    expect(joinRoute).toContain("role: INVITE_ROLE");
+    expect(joinRoute).toContain("sendTeamMemberJoinedEmails(");
+    expect(joinRoute).toContain("!isAdminEmail(email)");
+    expect(boot).toContain('name: "team_member_joined"');
   });
 
-  it("is not confused by a cookie whose name merely ends in the same word", () => {
-    expect(inviteCodeFromCookie("x_distribute_invite=wrong")).toBeNull();
+  it("the claim runs on every authed page and activates the joined org", () => {
+    expect(layout).toContain("<JoinClaimer />");
+    expect(claimer).toContain("readJoinCookie(document.cookie)");
+    expect(claimer).toContain("clerk.setActive({ organization: body.orgId })");
   });
 
-  it("returns null for an absent or empty cookie", () => {
-    expect(inviteCodeFromCookie("")).toBeNull();
-    expect(inviteCodeFromCookie("theme=dark")).toBeNull();
-    expect(inviteCodeFromCookie("distribute_invite=")).toBeNull();
+  it("/join and /api/join are public, not auth routes", () => {
+    const pub = proxy.slice(proxy.indexOf("const isPublicRoute"), proxy.indexOf("const isAuthRoute"));
+    const authR = proxy.slice(proxy.indexOf("const isAuthRoute"), proxy.indexOf("const isSessionTaskRoute"));
+    expect(pub).toContain('"/join(.*)"');
+    expect(pub).toContain('"/api/join"');
+    expect(authR).not.toContain("/join");
   });
 
-  it("clears by expiring, not by writing an empty code that reads back", () => {
-    const cleared = inviteCookieClear();
-    expect(cleared).toContain("max-age=0");
-    expect(inviteCodeFromCookie(cleared)).toBeNull();
-  });
-
-  it("carries the documented name and parameter", () => {
-    expect(INVITE_COOKIE).toBe("distribute_invite");
-    expect(INVITE_PARAM).toBe("invite");
-    expect(inviteCookieWrite("acme")).toContain("SameSite=Lax");
-    expect(inviteCookieWrite("acme")).toContain("path=/");
-  });
-});
-
-describe("isTerminalClaimRejection", () => {
-  it("drops the code only when the answer can never change", () => {
-    expect(isTerminalClaimRejection(400)).toBe(true);
-    expect(isTerminalClaimRejection(404)).toBe(true);
-  });
-
-  it("KEEPS the code on a 409, because the invite cap is being lifted", () => {
-    // Re-claiming the same pair is idempotent downstream and answers 200, so the
-    // only 409 that exists is "this inviter is capped". The cap is going away, so
-    // dropping the code here would permanently cost two orgs $500 each for
-    // signing up during the gap.
-    expect(isTerminalClaimRejection(409)).toBe(false);
-  });
-
-  it("KEEPS the code on anything else that may succeed later", () => {
-    // 401/403 in particular mean the Clerk session has not settled, not that the
-    // code is bad.
-    for (const status of [401, 403, 408, 429, 500, 502, 503, 504]) {
-      expect(isTerminalClaimRejection(status)).toBe(false);
-    }
-  });
-});
-
-describe("the offer", () => {
-  it("is $500 a side", () => {
-    expect(REFERRAL_CREDIT_USD).toBe(500);
+  it("the Team page offers the link to admins with copy and revoke", () => {
+    expect(team).toContain("{isAdmin && <InviteLinkCard />}");
+    expect(team).toContain('run("DELETE")');
+    expect(team).toContain("navigator.clipboard.writeText(url)");
   });
 });
