@@ -138,6 +138,24 @@ export const EMAIL_TEMPLATES = [
       </p>`),
     textBody: `You're live. Your first {{outcomeNoun}} are on the way.\n\nYour campaign just went live. From here it runs on its own: we reach out, screen the replies, and pass you the prospects worth your time.\n\nWatch your {{outcomeNoun}} land from the dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
   },
+  // Sent to every other admin when somebody joins through the org's invite link
+  // (lib/team-joined-email.ts). The link has no expiry, so this email IS its guard:
+  // it names who joined and where to revoke the link.
+  {
+    name: "team_member_joined",
+    subject: "{{joinerEmail}} joined {{orgName}} on distribute.you",
+    htmlBody: emailLayout(`
+      <p style="color:${EMAIL_TEXT};font-size:16px;line-height:1.65;margin:0 0 18px;">
+        <strong>{{joinerEmail}}</strong> just joined <strong>{{orgName}}</strong> as an admin, through your team's invite link.
+      </p>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
+        If you do not know this person, remove them and revoke the link from the Team page.
+      </p>
+      <p style="margin:0;">
+        <a href="{{teamUrl}}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
+      </p>`),
+    textBody: `{{joinerEmail}} just joined {{orgName}} as an admin, through your team's invite link.\n\nIf you do not know this person, remove them and revoke the link from the Team page.\n\nOpen your dashboard: {{teamUrl}}`,
+  },
   // ── Admin notifications (plain, no layout) ──
   {
     name: "signup_notification",
