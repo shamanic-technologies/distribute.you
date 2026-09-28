@@ -21,7 +21,8 @@ describe("dashboard v2 mission Audiences tab", () => {
   it("the page scopes the table to the campaign AND its offer", () => {
     const page = setup.slice(setup.indexOf("export function V2MissionAudiencesPage("), setup.indexOf("export function V2MissionWorkflowsPage("));
     expect(page).toContain('missionTabs(orgId, brandId, campaignId, "audiences")');
-    const call = page.slice(page.indexOf("<CustomerAudiencesPage"));
+    // v2 draws the table in its own anatomy (`V2AudiencesTable`), over v1's data layer.
+    const call = page.slice(page.indexOf("<V2AudiencesTable"));
     expect(call).toContain("campaignId={");
     expect(call).toContain("offerId={offerId}");
   });
