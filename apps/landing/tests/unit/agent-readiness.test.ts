@@ -263,7 +263,8 @@ describe("llms.txt", () => {
 
   it("keeps the positioning honest", () => {
     const lower = llms.toLowerCase();
-    expect(lower).toContain("cold email agency");
+    expect(lower).toContain("distribute.you does done-for-you revenue automation");
+    expect(lower).not.toMatch(/distribute\.you is a[^.]*cold email agency/);
     // "cold email tool" appears once, in the Do-NOT list, naming what we are not.
     expect(lower).not.toMatch(/distribute\.you is a[^.]*cold email tool/);
     expect(lower.split("cold email tool").length - 1).toBe(1);
