@@ -1353,6 +1353,22 @@ export function Onboarding() {
       setStep("url");
       return;
     }
+    // A CLAIMED return lands straight on the budget. Everything the visitor built
+    // is already in the snapshot and in brand-service, so replaying the loading
+    // screen (a fresh brand upsert AND a fresh read of the whole site, ~8 s) bought
+    // nothing but a wait on the one screen before the money. Only the background
+    // warm-up is re-run, for the projection and the economics the budget and the
+    // checkout read (the checkout also fetches the projection itself if needed).
+    if (resumeTargetRef.current === "pricing" && searchParams.get("claimed") === "1" && restored.services.length > 0) {
+      resumeTargetRef.current = null;
+      fetchDoneRef.current = true;
+      if (organization?.id) document.cookie = onboardingBrandCookieAssignment(organization.id, restored.brandId);
+      hydrationPromiseRef.current = hydrateOnboardingInBackground(restored.brandId).catch((e) => {
+        console.error("[dashboard] onboarding claimed-return hydrate failed:", e);
+      });
+      setStep("pricing");
+      return;
+    }
     void runResume(resumeTargetRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1658,7 +1674,7 @@ export function Onboarding() {
   // On a RESUME (refresh after the brand was already created) the org + brand already
   // exist: force org reuse so we never spin up a duplicate org, and the idempotent
   // upsertBrand below returns the same brandId.
-  async function createBrandAndFetchServices(opts?: { isResume?: boolean; urlOverride?: string }): Promise<void> {
+  async function createBrandAndFetchServices(opts?: { isResume?: boolean; urlOverride?: string; background?: boolean }): Promise<void> {
     const isResume = opts?.isResume ?? false;
     // `urlOverride` — the cross-session param-resume seeds the brand URL and calls
     // runResume in the SAME tick, so `url` state is still stale in this closure;
@@ -1685,6 +1701,16 @@ export function Onboarding() {
     // server's own words and they continue to signup rather than being stopped.
     if (!user) {
       const outcome = await startAnonSession(brandUrl);
+      if (!outcome.started && opts?.background) {
+        // Started ahead of the visitor (see startPrebuild): they are still reading
+        // the intro, so the refusal is held and stated when they reach the build,
+        // exactly where the foreground path states it.
+        prebuildRefusalRef.current = {
+          message: outcome.message,
+          exits: refusalExits({ reason: outcome.reason, domain: domain ?? hostname, brandUrl }),
+        };
+        return;
+      }
       if (!outcome.started) {
         setError(outcome.message);
         setBusy(false);
@@ -1804,7 +1830,67 @@ export function Onboarding() {
   // the landing carried one (the seeding effect above), so the setup starts at
   // once and the visitor watches work happen; without one, or with one the
   // website rule refuses, the URL step asks — never the welcome pitch again.
+  // The build, started AHEAD of the visitor. Reading the site takes ~10-15 s and
+  // the visitor spends about that long on the three intro screens, so it starts
+  // on their first click ("Start", a human act, never on mount: scanners load the
+  // landing's links and must not mint an org and an extraction each). When they
+  // reach the build it is usually finished and the loading screen never shows.
+  // Signed-out with a website only: a visitor who gave no website is asked for
+  // it at the URL step, the one moment it becomes known (owner-decided).
+  const prebuildRef = useRef<{ url: string; promise: Promise<void> } | null>(null);
+  const prebuildRefusalRef = useRef<{ message: string; exits: RefusalExits } | null>(null);
+
+  function startPrebuild() {
+    if (user || noWebsiteMode || prebuildRef.current || brandIdRef.current) return;
+    if (!url.trim() || !domain || websiteProblem !== null) return;
+    setClickDestinationUrl((prev) => prev || subpageDestinationFromUrl(url));
+    resetLoadingProgress();
+    posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain, prebuild: true });
+    captureSetupMilestone("started");
+    const promise = createBrandAndFetchServices({ background: true });
+    // Handled when the visitor reaches the build (finishPrebuild); until then a
+    // rejection must not surface as an unhandled one.
+    promise.catch(() => {});
+    prebuildRef.current = { url, promise };
+  }
+
+  async function finishPrebuild(promise: Promise<void>) {
+    setError(null);
+    // Only when there is still something to wait for: a finished build goes
+    // straight to the services, with no loading screen at all.
+    if (!fetchDoneRef.current) setStep("loading");
+    try {
+      await promise;
+      const refusal = prebuildRefusalRef.current;
+      if (refusal) {
+        prebuildRef.current = null;
+        prebuildRefusalRef.current = null;
+        setError(refusal.message);
+        setRefusal(refusal.exits);
+        setStep("url");
+        return;
+      }
+      maybeAdvancePastLoading();
+    } catch (err) {
+      prebuildRef.current = null;
+      if (isInsufficientCredit(err)) {
+        creditRetryRef.current = () => startAnalyze();
+        return;
+      }
+      posthog.capture("onboarding_workspace_create_failed", { flow: "beta", domain, prebuild: true });
+      timers.current.forEach(clearTimeout);
+      console.error("[dashboard] onboarding setup failed:", err);
+      setError(displaySetupError(err));
+      setStep("url");
+    }
+  }
+
   function continueAfterPicks() {
+    const pre = prebuildRef.current;
+    if (pre && pre.url === url) {
+      void finishPrebuild(pre.promise);
+      return;
+    }
     // A resumed brand (`?brandId=`, or a refresh after the build) was already
     // analyzed: re-running the setup would bill the extraction twice.
     if (brandIdRef.current && services.length > 0) {
@@ -2308,6 +2394,107 @@ export function Onboarding() {
     setPricingHydrationVersion((value) => value + 1);
   }
 
+  // The hosted Stripe page, created for a given launch blob. Split out so the
+  // bonus screen can create it AHEAD of the click (see the prepare effect below):
+  // the round-trip through billing and Stripe is ~2-15 s, and the click is the
+  // one moment in the flow a person is least willing to wait.
+  async function createLaunchCheckoutUrl(pending: PendingCheckoutLaunch): Promise<string> {
+    const budget = pending.budgetUsd;
+    const checkoutAmountCents = pending.checkoutAmountCents;
+
+    const charges = checkoutAmountCents > 0;
+
+    const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
+    successUrl.searchParams.set("success", "true");
+    successUrl.searchParams.set("launch_checkout", "success");
+    if (charges) {
+      // Google Ads PURCHASE conversion value = the 1-day budget the user picked
+      // (dollars). Read on the checkout RETURN (payment succeeded) by
+      // AdsPurchaseTracker. Reflects the recurring per-day commitment, not the
+      // one-off charge amount.
+      //
+      // Set ONLY when money actually moves. A budget covered by the welcome gift
+      // returns through the same success URL having paid nothing, and the tracker
+      // reads this param as the conversion value — so leaving it on would report a
+      // purchase to Google Ads for a $0 card imprint, at the full budget.
+      successUrl.searchParams.set("daily_budget", String(budget));
+    }
+    const cancelUrl = new URL(`${window.location.origin}${window.location.pathname}`);
+    cancelUrl.searchParams.set("launch_checkout", "cancelled");
+
+    // Nothing left to charge once the gift covers the budget: take the card
+    // imprint and no money. Same success URL, so the launch resumes identically.
+    const setupSession = () =>
+      createCheckoutSession({
+        mode: "setup",
+        success_url: successUrl.toString(),
+        cancel_url: cancelUrl.toString(),
+      });
+    // When money moves, billing owns the gift deduction: we send the FULL budget
+    // and billing applies the gift as a Stripe discount, so the hosted page reads
+    // "$68", "Welcome credit -$30", "$38" instead of a bare "$38" nobody can
+    // explain (a real signup abandoned on exactly that page). The deduction is ONE
+    // decision in ONE layer: `checkoutAmountCents` stays what the buyer pays, for
+    // tracking, and is never what we send here.
+    const session = !charges
+      ? await setupSession()
+      : await createCheckoutSession({
+          topup_amount_cents: pending.topupAmountCents,
+          apply_welcome_gift: true,
+          success_url: successUrl.toString(),
+          cancel_url: cancelUrl.toString(),
+        }).catch(async (err: unknown) => {
+          const code =
+            err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;
+          // Billing's own gift covers the whole budget: nothing to charge.
+          if (code === "welcome_gift_covers_budget") return setupSession();
+          // This org has paid before, so the gift is not taken off again: the
+          // full budget is what is owed.
+          if (code === "welcome_discount_not_first_payment") {
+            return createCheckoutSession({
+              topup_amount_cents: pending.topupAmountCents,
+              success_url: successUrl.toString(),
+              cancel_url: cancelUrl.toString(),
+            });
+          }
+          throw err;
+        });
+    return session.url;
+  }
+
+  // What a prepared session was created FOR. Anything that changes what Stripe
+  // shows (the budget, the amount charged) changes the key, so a stale session
+  // is never the one a click opens.
+  function checkoutKey(pending: PendingCheckoutLaunch): string {
+    return JSON.stringify([pending.budgetUsd, pending.topupAmountCents, pending.checkoutAmountCents]);
+  }
+  const preparedCheckoutRef = useRef<{ key: string; url: Promise<string> } | null>(null);
+
+  useEffect(() => {
+    if (step !== "bonus") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await ensureProjectionLoaded();
+        if (cancelled) return;
+        const pending = buildPendingLaunchBlob();
+        const key = checkoutKey(pending);
+        if (preparedCheckoutRef.current?.key === key) return;
+        const url = createLaunchCheckoutUrl(pending);
+        // A failed preparation is not the customer's problem yet: the click
+        // creates the session itself and states any failure there.
+        url.catch((e) => console.error("[dashboard] onboarding checkout prepare failed:", e));
+        preparedCheckoutRef.current = { key, url };
+      } catch (e) {
+        console.error("[dashboard] onboarding checkout prepare failed:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, campaignBudgets]);
+
   async function beginCheckoutAndLaunch() {
     setBusy(true);
     setError(null);
@@ -2321,67 +2508,12 @@ export function Onboarding() {
       // the whole hydrate; the button already reads "Redirecting to checkout…".
       await ensureProjectionLoaded();
       const pending = buildPendingLaunchBlob();
-      const budget = pending.budgetUsd;
-      const checkoutAmountCents = pending.checkoutAmountCents;
-
-      const charges = checkoutAmountCents > 0;
-
-      const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
-      successUrl.searchParams.set("success", "true");
-      successUrl.searchParams.set("launch_checkout", "success");
-      if (charges) {
-        // Google Ads PURCHASE conversion value = the 1-day budget the user picked
-        // (dollars). Read on the checkout RETURN (payment succeeded) by
-        // AdsPurchaseTracker. Reflects the recurring per-day commitment, not the
-        // one-off charge amount.
-        //
-        // Set ONLY when money actually moves. A budget covered by the welcome gift
-        // returns through the same success URL having paid nothing, and the tracker
-        // reads this param as the conversion value — so leaving it on would report a
-        // purchase to Google Ads for a $0 card imprint, at the full budget.
-        successUrl.searchParams.set("daily_budget", String(budget));
-      }
-      const cancelUrl = new URL(`${window.location.origin}${window.location.pathname}`);
-      cancelUrl.searchParams.set("launch_checkout", "cancelled");
-
-      // Nothing left to charge once the gift covers the budget: take the card
-      // imprint and no money. Same success URL, so the launch resumes identically.
-      const setupSession = () =>
-        createCheckoutSession({
-          mode: "setup",
-          success_url: successUrl.toString(),
-          cancel_url: cancelUrl.toString(),
-        });
-      // When money moves, billing owns the gift deduction: we send the FULL budget
-      // and billing applies the gift as a Stripe discount, so the hosted page reads
-      // "$68", "Welcome credit -$30", "$38" instead of a bare "$38" nobody can
-      // explain (a real signup abandoned on exactly that page). The deduction is ONE
-      // decision in ONE layer: `checkoutAmountCents` stays what the buyer pays, for
-      // tracking, and is never what we send here.
-      const session = !charges
-        ? await setupSession()
-        : await createCheckoutSession({
-            topup_amount_cents: pending.topupAmountCents,
-            apply_welcome_gift: true,
-            success_url: successUrl.toString(),
-            cancel_url: cancelUrl.toString(),
-          }).catch(async (err: unknown) => {
-            const code =
-              err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;
-            // Billing's own gift covers the whole budget: nothing to charge.
-            if (code === "welcome_gift_covers_budget") return setupSession();
-            // This org has paid before, so the gift is not taken off again: the
-            // full budget is what is owed.
-            if (code === "welcome_discount_not_first_payment") {
-              return createCheckoutSession({
-                topup_amount_cents: pending.topupAmountCents,
-                success_url: successUrl.toString(),
-                cancel_url: cancelUrl.toString(),
-              });
-            }
-            throw err;
-          });
-      window.location.href = session.url;
+      const prepared = preparedCheckoutRef.current;
+      const url =
+        prepared && prepared.key === checkoutKey(pending)
+          ? await prepared.url.catch(() => createLaunchCheckoutUrl(pending))
+          : await createLaunchCheckoutUrl(pending);
+      window.location.href = url;
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
       // Never `err.message`: the shared api client sets it to the whole downstream body,
@@ -2391,6 +2523,7 @@ export function Onboarding() {
       setBusy(false);
     }
   }
+
 
   // Payment succeeded. Restore the wizard state and stash the pending blob, then
   // route to the FIRST post-payment step (phone) — the launch itself is deferred
@@ -2907,7 +3040,10 @@ export function Onboarding() {
         catalogueError={startCatalogueError}
         outcomes={startOutcomes}
         onOutcomesChange={setStartOutcomes}
-        onScreenChange={(next: StartScreen) => setStep(next)}
+        onScreenChange={(next: StartScreen) => {
+          if (step === "welcome" && next === "outcome") startPrebuild();
+          setStep(next);
+        }}
         onContinue={continueAfterPicks}
         brandHost={domain}
         notice={step === "outcome" ? error : null}

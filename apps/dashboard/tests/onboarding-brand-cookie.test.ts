@@ -89,9 +89,11 @@ describe("onboarding in-progress brand cookie (wiring)", () => {
     expect(proxySrc).toContain('return "/onboarding";');
   });
 
-  it("remembers the brand at BOTH creation sites (website and no-website)", () => {
+  it("remembers the brand at BOTH creation sites (website and no-website) and on the claimed return", () => {
+    // The claimed return skips the loading-screen replay (it lands straight on the
+    // budget), so it writes the cookie itself instead of through a creation site.
     const writes = onboardingSrc.match(/onboardingBrandCookieAssignment\(/g) ?? [];
-    expect(writes.length).toBe(2);
+    expect(writes.length).toBe(3);
     expect(onboardingSrc).toContain("document.cookie = onboardingBrandCookieAssignment(");
   });
 

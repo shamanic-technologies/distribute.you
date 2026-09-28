@@ -52,7 +52,7 @@ describe("Onboarding direct checkout launch", () => {
     // Billing owns the gift deduction: the FULL budget goes out with the opt-in, so
     // Stripe shows the discount line. Sending the already-discounted figure too would
     // take the gift off twice.
-    expect(content).toContain("topup_amount_cents: pending.topupAmountCents,\n            apply_welcome_gift: true,");
+    expect(content).toContain("topup_amount_cents: pending.topupAmountCents,\n          apply_welcome_gift: true,");
     expect(content).not.toContain("topup_amount_cents: checkoutAmountCents");
     // The reload is the FULL budget; only the FIRST charge carries the welcome discount.
     expect(content).toContain("topupAmountCents: Math.round(budget * 100),");
@@ -80,7 +80,9 @@ describe("Onboarding direct checkout launch", () => {
     expect(beginStart).toBeGreaterThan(-1);
     expect(beginEnd).toBeGreaterThan(beginStart);
     const beginCheckoutAndLaunch = content.slice(beginStart, beginEnd);
-    expect(beginCheckoutAndLaunch).toContain("createCheckoutSession");
+    // The Stripe session is created by one shared helper (also used to prepare it
+    // ahead of the click on the bonus screen).
+    expect(beginCheckoutAndLaunch).toContain("createLaunchCheckoutUrl(");
     expect(beginCheckoutAndLaunch).not.toContain("waitForOnboardingHydration");
     expect(beginCheckoutAndLaunch).not.toContain("saveBrandUserFields");
     expect(beginCheckoutAndLaunch).not.toContain("saveBrandDailyBudget");
