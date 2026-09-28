@@ -25,6 +25,10 @@ const isPublicRoute = createRouteMatcher([
   "/forgot-password(.*)",
   "/sso-callback(.*)",
   "/claim(.*)",
+  // Where an organization invitation email lands. Reachable signed OUT (the ticket
+  // creates the account or signs it in) and signed IN (the account accepts it), so it
+  // is public but NOT an auth route: an auth route bounces a signed-in visitor away.
+  "/invite(.*)",
   // The sell-first half of onboarding. It runs BEFORE signup by design: a
   // visitor picks the outcomes they want to buy, and only then makes an account. Behind the auth gate it
   // would be a screen nobody in the market can reach.
