@@ -32,12 +32,6 @@ import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
-import { BrandDomainCard } from "@/components/settings/brand-domain-card";
-import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
-import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
-import { BrandSalesRepCard } from "@/components/settings/brand-sales-rep-card";
-import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
-import { BrandConversionRatesCard } from "@/components/settings/brand-conversion-rates-card";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
 import type { CrewGlyph } from "@/lib/v2/crews";
@@ -387,43 +381,6 @@ export function V2IntegrationsPage({ view }: { view: "raw" | "merged" }) {
       width="max-w-[1280px]"
     >
       {view === "raw" ? <V2CrmRawView orgId={orgId} brandId={brandId} /> : <V2CrmMergedView brandId={brandId} />}
-    </V2Page>
-  );
-}
-
-export function V2BrandSettingsPage() {
-  const { brandId } = useIds();
-  return (
-    <V2Page crumbs={[{ label: "Setup" }, { label: "Brand settings" }]} title="Brand settings">
-      <section id="identity" className="mb-8 scroll-mt-24">
-        <h2 className="mb-3 text-[14px] font-medium">Identity</h2>
-        <div className="k-card">
-          <BrandIdentityCard brandId={brandId} />
-        </div>
-      </section>
-      <BrandDomainCard brandId={brandId} />
-      <section id="sales-rep" className="mb-8 scroll-mt-24">
-        <h2 className="mb-3 text-[14px] font-medium">Sales rep</h2>
-        <div className="k-card">
-          <BrandSalesRepCard brandId={brandId} />
-        </div>
-      </section>
-      <BrandIntegrationsCard brandId={brandId} />
-      <section id="conversion-rates" className="mb-8 scroll-mt-24">
-        <h2 className="mb-1 text-[14px] font-medium">Conversion rates</h2>
-        <p className="k-fg2 mb-3 text-[13px]">
-          We use what we measure on your own leads once enough have reached a step, your value until then, and the median of our clients when you have not given one.
-        </p>
-        <div className="k-card">
-          <BrandConversionRatesCard brandId={brandId} />
-        </div>
-      </section>
-      <section id="conversion-tracking" className="mb-8 scroll-mt-24">
-        <h2 className="mb-3 text-[14px] font-medium">Conversion tracking</h2>
-        <div className="k-card">
-          <BrandConversionTrackingCard brandId={brandId} />
-        </div>
-      </section>
     </V2Page>
   );
 }

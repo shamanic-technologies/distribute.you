@@ -41,7 +41,11 @@ function validateWebsite(
   return { ok: true, url: parsed.toString(), host: bareHost(parsed.hostname) };
 }
 
-export function BrandDomainCard({ brandId }: { brandId: string }) {
+/**
+ * `bare` drops the section heading, the explanation and the card frame, for a host
+ * (dashboard v2 Brand settings) that states those itself beside the form.
+ */
+export function BrandDomainCard({ brandId, bare = false }: { brandId: string; bare?: boolean }) {
   const queryClient = useQueryClient();
   const params = useParams<{ orgId?: string }>();
   const orgId = params?.orgId ?? null;
@@ -106,16 +110,17 @@ export function BrandDomainCard({ brandId }: { brandId: string }) {
   // Domain already set → identity is fixed, nothing to configure here.
   if (brandDomain !== null) return null;
 
-  return (
-    <section className="mb-10">
-      <h2 className="mb-3 text-lg font-semibold text-gray-900">Brand Domain</h2>
-      <div className="rounded-xl border border-gray-200 bg-white">
+  const form = (
         <div className="p-5">
-          <h3 className="mb-1 text-sm font-semibold text-gray-900">Set your brand domain</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Your brand doesn&apos;t have a website yet. Add your domain to unlock click
-            destinations and website-based goals. This can only be set once, so make sure it&apos;s right.
-          </p>
+          {!bare && (
+            <>
+              <h3 className="mb-1 text-sm font-semibold text-gray-900">Set your brand domain</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Your brand doesn&apos;t have a website yet. Add your domain to unlock click
+                destinations and website-based goals. This can only be set once, so make sure it&apos;s right.
+              </p>
+            </>
+          )}
 
           <div className="max-w-sm">
             <label className="block text-xs text-gray-500 mb-1">Website URL</label>
@@ -180,7 +185,13 @@ export function BrandDomainCard({ brandId }: { brandId: string }) {
             onSave={handleSave}
           />
         </div>
-      </div>
+  );
+
+  if (bare) return form;
+  return (
+    <section className="mb-10">
+      <h2 className="mb-3 text-lg font-semibold text-gray-900">Brand Domain</h2>
+      <div className="rounded-xl border border-gray-200 bg-white">{form}</div>
     </section>
   );
 }
