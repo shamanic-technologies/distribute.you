@@ -47,6 +47,9 @@ const isPublicRoute = createRouteMatcher([
   // EXACT, not a prefix: `/onboarding/claim` needs the account to exist and stays
   // behind the gate. A `(.*)` here would open it.
   "/onboarding",
+  // Onboarding v2, signed out like the build half above (it runs on the same
+  // anonymous session and allowlist). EXACT: nothing lives under it.
+  "/get-started",
   "/api/public(.*)",
   "/api/anon(.*)",
   "/api/cron(.*)",

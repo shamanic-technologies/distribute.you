@@ -1,0 +1,132 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+import {
+  STEPS_NOT_LIVE,
+  compactCount,
+  hostOf,
+  parseCompetitors,
+  parseDailyBudget,
+  parseGetStartedSnapshot,
+  valueLines,
+} from "../src/lib/v2/get-started";
+
+/**
+ * Onboarding v2 (`/get-started`). `lib/v2/get-started.ts` is alias-free, so the
+ * first half is real unit tests; the second half pins the surface.
+ */
+
+describe("the rules the page decides on", () => {
+  it("reads competitors with their domains, dropping duplicates and the brand itself", () => {
+    const got = parseCompetitors(
+      ["Calendly (calendly.com)", "SavvyCal (https://www.savvycal.com)", "calendly.com", "TidyCal (tidycal.com)", "Doodle"],
+      "tidycal.com",
+    );
+    expect(got).toEqual([
+      { name: "Calendly", domain: "calendly.com" },
+      { name: "SavvyCal", domain: "savvycal.com" },
+      { name: "Doodle", domain: null },
+    ]);
+  });
+
+  it("reads a competitor list however the model shaped it", () => {
+    expect(parseCompetitors("- Acme (acme.io)\n- Beta (beta.com)", null).map((c) => c.domain)).toEqual(["acme.io", "beta.com"]);
+    expect(parseCompetitors([{ name: "Gamma", domain: "gamma.app" }], null)).toEqual([{ name: "Gamma", domain: "gamma.app" }]);
+  });
+
+  it("drops the model's Unknown rather than printing it", () => {
+    expect(valueLines("Unknown")).toEqual([]);
+  });
+
+  it("prints a segment size the way Explee does", () => {
+    expect(compactCount(840)).toBe("840");
+    expect(compactCount(12_400)).toBe("12.4K");
+    expect(compactCount(3_100_000)).toBe("3.1M");
+  });
+
+  it("takes the host of whatever was typed", () => {
+    expect(hostOf("https://www.Acme.com/pricing")).toBe("acme.com");
+    expect(hostOf("acme.com")).toBe("acme.com");
+    expect(hostOf("")).toBeNull();
+  });
+
+  it("refuses a budget under the channel floor or not in whole dollars", () => {
+    expect(parseDailyBudget("", 1)).toEqual({ problem: "Enter a daily budget." });
+    expect(parseDailyBudget("2.5", 1)).toEqual({ problem: "Enter a whole number of dollars a day." });
+    expect(parseDailyBudget("3", 5)).toEqual({ problem: "Cold email runs from $5 a day." });
+    expect(parseDailyBudget("$12", 1)).toEqual({ usd: 12 });
+  });
+
+  it("restores a snapshot, and starts over on anything malformed", () => {
+    const snap = {
+      version: 1,
+      website: "https://acme.com",
+      brandId: "b1",
+      brandName: "Acme",
+      domain: "acme.com",
+      overview: "Acme sells anvils.",
+      facts: ["Sells anvils"],
+      competitors: [{ name: "Beta", domain: "beta.com" }],
+      segments: [{ audienceId: "a1", name: "Coyotes", rationale: "They buy anvils", count: 1200 }],
+      budgetUsd: 10,
+    };
+    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual(snap);
+    expect(parseGetStartedSnapshot("{nope")).toBeNull();
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 2 }))).toBeNull();
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, budgetUsd: 2.5 }))?.budgetUsd).toBeNull();
+  });
+
+  it("states the three steps whose backend is not live yet", () => {
+    expect([...STEPS_NOT_LIVE].sort()).toEqual(["companies", "email", "people"]);
+  });
+});
+
+const root = path.resolve(__dirname, "..");
+const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+const FLOW = read("src/components/v2/get-started/get-started.tsx");
+const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
+const LAUNCH = read("src/components/v2/get-started/launch.ts");
+
+describe("the surface", () => {
+  it("is public, exactly, so a signed-out founder reaches it", () => {
+    const proxy = read("src/proxy.ts");
+    expect(proxy).toContain('"/get-started",');
+    expect(proxy).not.toContain('"/get-started(.*)"');
+  });
+
+  it("runs every signed-out read on the anonymous session", () => {
+    expect(FLOW).toContain("startAnonSession(");
+    // The claim re-points the anonymous org at the account, as /onboarding/claim does.
+    expect(WALL).toContain('fetch("/api/anon/claim"');
+  });
+
+  it("says a step is not live rather than showing invented rows", () => {
+    expect(FLOW).toContain("This step is not live yet.");
+    expect(FLOW).toContain("Not live yet");
+  });
+
+  it("asks the account and the card on one screen", () => {
+    expect(WALL).toContain("createEmbeddedCardSetup(");
+    expect(WALL).toContain("signUp.create(");
+    expect(WALL).toContain('id="clerk-captcha"');
+  });
+
+  it("speaks the v2 language, not v1's", () => {
+    for (const src of [FLOW, WALL]) {
+      expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|InfoTooltip/);
+    }
+  });
+
+  it("carries no em-dash in its copy", () => {
+    for (const src of [FLOW, WALL, LAUNCH]) {
+      const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      expect(code).not.toContain("—");
+    }
+  });
+
+  it("leaves the current onboarding alone", () => {
+    const onboarding = read("src/components/onboarding/onboarding.tsx");
+    expect(onboarding).not.toContain("get-started");
+  });
+});

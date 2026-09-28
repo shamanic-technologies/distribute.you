@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { anonCallAllowed } from "../src/lib/anon-proxy-allowlist";
+import { anonBodyRefusal, anonCallAllowed } from "../src/lib/anon-proxy-allowlist";
 
 /**
  * Real unit tests: `anon-proxy-allowlist.ts` is alias-free. Keep it that way.
@@ -153,5 +153,37 @@ describe("the file itself", () => {
 
   it("stays alias-free so these are real unit tests", () => {
     expect(src).not.toMatch(/from\s+"@\//);
+  });
+});
+
+describe("the brand a BODY names is bound to the session too", () => {
+  const body = (o: unknown) => JSON.stringify(o);
+  const refuse = (endpoint: string, b: string | undefined, brandId = BRAND) =>
+    anonBodyRefusal({ method: "POST", endpoint, body: b, brandId });
+
+  it("lets the session read its own brand's fields and audiences", () => {
+    expect(refuse("/brands/extract-fields", body({ brandIds: [BRAND], fields: [] }))).toBeNull();
+    expect(refuse("/orgs/audiences/suggest", body({ brandId: BRAND, nlPrompt: "x" }))).toBeNull();
+  });
+
+  it("refuses a body naming another brand, or mixing one in", () => {
+    expect(refuse("/brands/extract-fields", body({ brandIds: [OTHER] }))).toBe("wrong-brand");
+    expect(refuse("/brands/extract-fields", body({ brandIds: [BRAND, OTHER] }))).toBe("wrong-brand");
+    expect(refuse("/orgs/audiences/suggest", body({ brandId: OTHER }))).toBe("wrong-brand");
+  });
+
+  it("refuses an empty, missing or unreadable body on a bound route", () => {
+    expect(refuse("/brands/extract-fields", body({ brandIds: [] }))).toBe("not-allowlisted");
+    expect(refuse("/brands/extract-fields", undefined)).toBe("not-allowlisted");
+    expect(refuse("/brands/extract-fields", "{not json")).toBe("not-allowlisted");
+  });
+
+  it("refuses everything bound while the session owns no brand", () => {
+    expect(refuse("/brands/extract-fields", body({ brandIds: [BRAND] }), "")).toBe("wrong-brand");
+  });
+
+  it("leaves routes that name no brand in their body alone", () => {
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/brands", body: body({ url: "x" }), brandId: "" })).toBeNull();
+    expect(anonBodyRefusal({ method: "GET", endpoint: "/orgs/audiences?brandId=x", body: undefined, brandId: BRAND })).toBeNull();
   });
 });
