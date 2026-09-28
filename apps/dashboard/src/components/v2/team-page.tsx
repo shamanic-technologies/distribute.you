@@ -10,6 +10,8 @@ import {
   isInvitableEmail,
   type InviteRole,
 } from "@/lib/org-invite";
+import { resolveBrandTint } from "@/lib/brand-tint";
+import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { V2Page } from "@/components/v2/setup-pages";
 
@@ -136,6 +138,9 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
   const params = useParams<{ orgId: string }>();
   const orgId = params?.orgId ?? null;
   const { session } = useSession();
+  // The brand on screen travels with the invitation, so the invitee is greeted with
+  // it (name, logo, colours) before they have an account to read it with.
+  const { displayBrand } = useTenantSwitcher();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InviteRole>("org:admin");
   const [sending, setSending] = useState(false);
@@ -154,7 +159,19 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
       const res = await fetch("/api/orgs/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ orgId, emailAddress: email, role }),
+        body: JSON.stringify({
+          orgId,
+          emailAddress: email,
+          role,
+          brand: displayBrand?.name
+            ? {
+                name: displayBrand.name,
+                domain: displayBrand.domain,
+                logoUrl: displayBrand.logoUrl ?? null,
+                tint: resolveBrandTint(displayBrand.colors),
+              }
+            : null,
+        }),
       });
       const body = (await res.json().catch(() => null)) as { error?: string; emailAddress?: string } | null;
       if (!res.ok) {

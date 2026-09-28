@@ -5,6 +5,7 @@ import {
   isInvitableEmail,
   isInviteRole,
   normalizeInviteEmail,
+  sanitizeInviteBrand,
 } from "@/lib/org-invite";
 
 /**
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   if (!orgId) return NextResponse.json({ error: "No active organization" }, { status: 400 });
 
   const body = (await req.json().catch(() => null)) as
-    | { orgId?: unknown; emailAddress?: unknown; role?: unknown }
+    | { orgId?: unknown; emailAddress?: unknown; role?: unknown; brand?: unknown }
     | null;
   if (!body || body.orgId !== orgId) {
     return NextResponse.json({ error: "This page is open on another organization. Reload it and try again." }, { status: 409 });
@@ -57,7 +58,8 @@ export async function POST(req: Request) {
       inviterUserId: userId,
       emailAddress,
       role: body.role,
-      redirectUrl: inviteRedirectUrl(req.headers.get("origin"), orgId),
+      // The brand rides the link so the invite page can greet with it; display only.
+      redirectUrl: inviteRedirectUrl(req.headers.get("origin"), orgId, sanitizeInviteBrand(body.brand)),
     });
     console.log(`[org-invitations] invited ${emailAddress} as ${body.role} to org=${orgId} by user=${userId}`);
     return NextResponse.json({ id: invitation.id, emailAddress, role: body.role });

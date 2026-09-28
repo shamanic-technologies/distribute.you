@@ -47,9 +47,101 @@ const ALLOWED_ORIGINS = new Set([
  * A caller-supplied origin is only honoured when it is one of ours, so an invite can
  * never be pointed at somebody else's site.
  */
-export function inviteRedirectUrl(origin: string | null | undefined, orgId: string): string {
+export function inviteRedirectUrl(
+  origin: string | null | undefined,
+  orgId: string,
+  brand?: InviteBrand | null,
+): string {
   const base = origin && ALLOWED_ORIGINS.has(origin) ? origin : DASHBOARD_ORIGIN;
-  return `${base}/invite?org=${encodeURIComponent(orgId)}`;
+  const q = new URLSearchParams({ org: orgId });
+  if (brand) {
+    q.set("bn", brand.name);
+    if (brand.domain) q.set("bd", brand.domain);
+    if (brand.logoUrl) q.set("bl", brand.logoUrl);
+    if (brand.tint) {
+      q.set("th", String(brand.tint.hue));
+      q.set("tc", String(brand.tint.chromaScale));
+      q.set("td", String(brand.tint.hueDelta));
+    }
+  }
+  return `${base}/invite?${q.toString()}`;
+}
+
+/**
+ * The brand the invitation is about, carried in the link so the invite page can
+ * greet the invitee with it before they have an account (nothing about the org is
+ * readable signed out). Display only: every field is validated on the way in AND on
+ * the way out, rendered as text or as an https image, and a bad field is dropped
+ * rather than shown.
+ */
+export interface InviteBrand {
+  name: string;
+  domain: string | null;
+  logoUrl: string | null;
+  /** The brand's resolved accent, the three numbers `BrandTint` writes on <html>. */
+  tint: { hue: number; chromaScale: number; hueDelta: number } | null;
+}
+
+const DOMAIN_SHAPE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+const MAX_NAME = 80;
+const MAX_LOGO_URL = 400;
+
+function cleanName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.trim();
+  return name && name.length <= MAX_NAME ? name : null;
+}
+
+function cleanDomain(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const d = raw.trim().toLowerCase();
+  return d.length <= 253 && DOMAIN_SHAPE.test(d) ? d : null;
+}
+
+function cleanLogoUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.length > MAX_LOGO_URL) return null;
+  try {
+    return new URL(raw).protocol === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanTint(hue: unknown, chromaScale: unknown, hueDelta: unknown): InviteBrand["tint"] {
+  const h = Number(hue);
+  const c = Number(chromaScale);
+  const d = Number(hueDelta);
+  if (typeof hue === "string" && hue.trim() === "") return null;
+  if (![h, c, d].every(Number.isFinite)) return null;
+  if (h < 0 || h > 360 || c <= 0 || c > 4 || Math.abs(d) > 360) return null;
+  return { hue: h, chromaScale: c, hueDelta: d };
+}
+
+/** A brand as the inviter's page describes it, or null when it has no usable name. */
+export function sanitizeInviteBrand(raw: unknown): InviteBrand | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const b = raw as Record<string, unknown>;
+  const name = cleanName(b.name);
+  if (!name) return null;
+  const tint = b.tint && typeof b.tint === "object" ? (b.tint as Record<string, unknown>) : null;
+  return {
+    name,
+    domain: cleanDomain(b.domain),
+    logoUrl: cleanLogoUrl(b.logoUrl),
+    tint: tint ? cleanTint(tint.hue, tint.chromaScale, tint.hueDelta) : null,
+  };
+}
+
+/** The brand back out of the invite link's query string. */
+export function parseInviteBrand(params: { get(name: string): string | null }): InviteBrand | null {
+  const name = cleanName(params.get("bn"));
+  if (!name) return null;
+  return {
+    name,
+    domain: cleanDomain(params.get("bd")),
+    logoUrl: cleanLogoUrl(params.get("bl")),
+    tint: params.get("th") === null ? null : cleanTint(params.get("th"), params.get("tc"), params.get("td")),
+  };
 }
 
 /** Where a member lands once the invitation is accepted: the org itself, which resolves its last brand. */
