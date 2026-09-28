@@ -4469,7 +4469,9 @@ const CampaignRevenueCostEconomicsSchema = z.object({
   // actual means actual and committed means committed, so rendering billed spend under
   // a committed label would reprint the very contradiction this replaced. Absent →
   // null → the cell reads "—".
-  committedCostUsd: z.number().optional(),
+  // Nullable too: on the staff ACTUAL-cost read a group whose spend has no known vendor
+  // cost states null (never the billed figure).
+  committedCostUsd: z.number().nullish(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   expectedConversions: z.number().nullish(),
@@ -4781,15 +4783,34 @@ export async function getOfferRevenueByWorkflow(
   return readWorkflowGroups(featureSlug, query, "getOfferRevenueByWorkflow", token);
 }
 
+/**
+ * STAFF ONLY. The same per-workflow groups as `getFeatureRevenueByWorkflow` (same scope, same
+ * partition, same value leg) with every spend figure at VENDOR cost, before our markup
+ * (features-service #1193, gateway `/features/:slug/revenue/actual-cost`). A group whose spend
+ * has no known vendor cost reads null money, never the billed figure. The route refuses
+ * `pricing`: the vendor basis has no net/gross.
+ */
+export async function getFeatureRevenueByWorkflowActual(
+  featureSlug: string,
+  brandId: string,
+  campaignId: string | null,
+  token?: string,
+): Promise<WorkflowRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "workflow" });
+  if (campaignId) query.set("campaignId", campaignId);
+  return readWorkflowGroups(featureSlug, query, "getFeatureRevenueByWorkflowActual", token, "revenue/actual-cost");
+}
+
 /** One parse for every grain: a second copy is a second place for the shape to drift. */
 async function readWorkflowGroups(
   featureSlug: string,
   query: URLSearchParams,
   caller: string,
   token?: string,
+  path: "revenue" | "revenue/actual-cost" = "revenue",
 ): Promise<WorkflowRevenueGroup[]> {
   const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    `/features/${encodeURIComponent(featureSlug)}/${path}?${query.toString()}`,
     { token },
   );
   const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
@@ -7291,8 +7312,11 @@ export async function getWorkflowProjectionLadder(
  * `leg` is what makes the answer the CAMPAIGN's: a campaign performs ONE leg. It WINS
  * over `goal` — so a caller states the narrowest thing it knows and nothing else.
  */
+// Money fields are nullable for ONE reader: the staff ACTUAL-cost twin of this body
+// (features-service #1193) states null where the grain's spend has no known vendor cost,
+// never the billed figure. The billed read always carries a number.
 const WorkflowRankEvidenceSchema = z.object({
-  spentUsd: z.number(),
+  spentUsd: z.number().nullable(),
   observedContacted: z.number(),
   observedClicks: z.number(),
   observedPositiveReplies: z.number(),
@@ -7307,9 +7331,9 @@ const WorkflowRankGrainSchema = z.object({
   /** Floor-filled unit costs — NEVER null (spend / max(observed, 1)), so a grain that
    *  observed nothing still states what it cost rather than a zero. */
   unitCosts: z.object({
-    costPerClickUsd: z.number(),
-    costPerPositiveReplyUsd: z.number(),
-    costPerContactedUsd: z.number(),
+    costPerClickUsd: z.number().nullable(),
+    costPerPositiveReplyUsd: z.number().nullable(),
+    costPerContactedUsd: z.number().nullable(),
   }),
   /** The grain's own PROJECTED outcome count — routinely fractional on a multi-step
    *  path, which is why no surface renders it as a count of people. */
@@ -7323,7 +7347,7 @@ const WorkflowRankGrainSchema = z.object({
       costPerOutcomeUsd: z.number().nullable(),
       outcomeCount: z.number().nullable(),
       outcomeObserved: z.boolean(),
-      spentUsd: z.number(),
+      spentUsd: z.number().nullable(),
     })
     .nullish(),
   projected: z.object({
@@ -7352,7 +7376,8 @@ const WorkflowRankResolvedSchema = z.object({
       z.literal("audience"),
     ])
     .nullable(),
-  costBasis: z.union([z.literal("charged"), z.literal("incurred")]).nullable(),
+  // Absent on the staff actual-cost body (the vendor basis is one basis).
+  costBasis: z.union([z.literal("charged"), z.literal("incurred")]).nullish(),
   costPerClickUsd: z.number().nullable(),
   costPerOutcomeUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
@@ -7489,6 +7514,8 @@ const WorkflowRankLadderSchema = z.object({
   /** The producer's own pick: the argmin of `resolved.costPerOutcomeUsd` over the
    *  MEASURED rows. Nothing here re-derives it. */
   recommendedWorkflowDynastySlug: z.string().nullable(),
+  /** Staff actual-cost body only: billed spend in scope with no known vendor cost. */
+  unpricedBilledCostUsd: z.number().nullish(),
   recommendedBudgetUsd: z.number().nullable(),
   /** FALSE ⟺ this channel has measured nothing for this brand at all; the reason then
    *  names what is missing, and an empty ranking must never read as "no workflows". */
@@ -7514,12 +7541,17 @@ const WorkflowRankLadderSchema = z.object({
 });
 
 export type WorkflowRankLadder = z.infer<typeof WorkflowRankLadderSchema>;
+/** The gateway's staff path suffix for the actual-cost ladder (api-service, see its PR). */
+const ACTUAL_LADDER_SUFFIX = "/actual-cost";
 export type WorkflowRankLadderRow = z.infer<typeof WorkflowRankRowSchema>;
 
 export async function getWorkflowRankLadder(
   params: {
     featureSlug: string;
     brandId: string;
+    /** STAFF ONLY: the same body with every money figure at vendor cost (features-service
+     *  #1193). Rank and order are the billed ones; the route refuses `pricing`. */
+    actual?: boolean;
     /** The campaign's own leg. */
     leg?: string | null;
     /** Adds the CAMPAIGN grain to every row's cascade, so one read answers for every
@@ -7538,9 +7570,9 @@ export async function getWorkflowRankLadder(
     if (params.campaignId) query.set("campaignId", params.campaignId);
   }
   // net — the basis every money surface in this app reads, and what the org pays.
-  query.set("pricing", "net");
+  if (!params.actual) query.set("pricing", "net");
   const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
+    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection${params.actual ? ACTUAL_LADDER_SUFFIX : ""}?${query.toString()}`,
     { token },
   );
   const parsed = WorkflowRankLadderSchema.safeParse(raw);
@@ -9394,6 +9426,38 @@ const RunRowSchema = z.object({
 });
 
 export type RunRow = z.infer<typeof RunRowSchema>;
+
+const VendorRunRowSchema = RunRowSchema.extend({
+  /** Billed cost of the run's whole subtree (a workflow run's own rows are empty: its cost
+   *  lives on the runs it spawned). */
+  totalCostInUsdCents: z.coerce.string(),
+  /** The same subtree at vendor cost, over the rows whose vendor cost is known. */
+  vendorTotalCostInUsdCents: z.coerce.string(),
+  /** Cost names with billed rows of no known vendor cost; empty = the vendor figure is the whole run. */
+  unpricedCostNames: z.array(z.string()),
+}).passthrough();
+export type VendorRunRow = z.infer<typeof VendorRunRowSchema>;
+
+/**
+ * STAFF ONLY. The same run list as `listBrandRunLedger`, each run carrying its subtree cost
+ * billed AND at vendor cost (runs-service #252/#256, gateway `/runs/vendor`, which scopes it to
+ * the org the gateway resolves).
+ */
+export async function listBrandRunLedgerVendor(
+  brandId: string,
+  opts: { limit: number; workflowSlug?: string; taskName?: string },
+): Promise<VendorRunRow[]> {
+  const query = new URLSearchParams({ brandId, limit: String(opts.limit) });
+  if (opts.workflowSlug) query.set("workflowSlug", opts.workflowSlug);
+  if (opts.taskName) query.set("taskName", opts.taskName);
+  const raw = await apiCall<unknown>(`/runs/vendor?${query}`);
+  const parsed = z.object({ runs: z.array(VendorRunRowSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listBrandRunLedgerVendor: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] listBrandRunLedgerVendor: invalid response shape");
+  }
+  return parsed.data.runs;
+}
 
 /**
  * ONE run, as runs-service serves it by id: its own fields, its cost rolled up over

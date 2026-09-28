@@ -2,6 +2,7 @@
 
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
+import { formatUsdAdaptive } from "@/lib/format-number";
 
 /**
  * The staff switch between what clients are billed (User cost, the default) and what the
@@ -31,13 +32,15 @@ export function CostBasisSwitch() {
 }
 
 /**
- * The one line a page prints when Actual cost is picked and some of its figures are not served
- * on that basis yet: those figures are left blank rather than silently stating the billed amount.
+ * The one line a page prints on the Actual cost basis: what the figures are, and how much billed
+ * spend has no vendor cost on record (a figure resting on it is left blank, never the billed amount).
  */
-export function ActualCostPendingNote({ what }: { what: string }) {
+export function ActualCostNote({ unpricedUsd }: { unpricedUsd: number | null | undefined }) {
   return (
     <p className="k-card mt-4 px-4 py-2.5 text-[12px] k-fg2">
-      Actual cost: {what} not served at vendor cost yet, so they are left blank rather than showing the billed amount.
+      Actual cost: what the vendors charged us, before our margin.
+      {unpricedUsd != null && unpricedUsd > 0 &&
+        ` ${formatUsdAdaptive(unpricedUsd)} of billed spend here has no vendor cost on record yet, so a figure resting on it is left blank rather than showing the billed amount.`}
     </p>
   );
 }
