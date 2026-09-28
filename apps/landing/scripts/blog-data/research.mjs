@@ -415,6 +415,65 @@ function namingStudies(o, R) {
   }
 }
 
+// ---------- how the first email is laid out, and how it opens ----------
+// Every email of a sequence is filed under its FIRST email's layout / opening (derive.mjs, rule in
+// first-email-shape.mjs), so a bucket's cost is the whole sequence's spend over every outcome it
+// earned. One chart over all emails, then one per tier: the model picked both on its own, and a
+// Flash model and a Pro model may not pick alike.
+const SHAPE = {
+  layout: {
+    question: (o) => `Does the layout of the first email change what a ${o.noun} costs?`,
+    how: `A blank line between two blocks of text is a paragraph break; a single line break is not; no break at all is one block.`,
+    cutKey: "byLayout",
+    tierKey: "layoutByTier",
+    missing: "noLayout",
+    missingText: "whose first email text is not on record",
+  },
+  opening: {
+    question: (o) => `Does the way the first email opens change what a ${o.noun} costs?`,
+    how: `A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it ("Marie, most clinics..."), counts as the first name alone.`,
+    cutKey: "byOpening",
+    tierKey: "openingByTier",
+    missing: "noOpening",
+    missingText: "whose first email text is not on record",
+  },
+};
+function shapeStudies(key, o, R, dim) {
+  const d = SHAPE[dim];
+  const rows = R[d.cutKey];
+  const w = costWinner(o, rows);
+  const tiers = ["Flash", "Pro"].map((t) => ({ t, rows: R[d.tierKey][t] || [] })).filter((x) => x.rows.some((r) => r.emails > 0));
+  const tierWin = tiers.map(({ t, rows: tr }) => ({ t, w: costWinner(o, tr) })).filter((x) => x.w);
+  const missing = R.firstShape[d.missing];
+  const last = R.firstShape.lastMonth;
+  const crm = key === "reply" ? facts.research.crmReplies : null;
+  add({
+    id: `${o.crew}-${dim}-roi`,
+    crew: o.crew,
+    topic: dim,
+    goal: "roi",
+    question: d.question(o),
+    status: w ? "measured" : "not_enough_data",
+    headline: w ? `${w.row.bucket} wins at ${usd(w.row[o.cost])} per ${o.noun}.` : `No ${o.noun} yet in any bucket.`,
+    winner: w ? w.row.bucket : null,
+    result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
+    crowned: w ? w.crowned : false,
+    charts: [
+      { kind: "bars", title: `All tiers: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: costBars(o, rows), note: RULE_NOTE },
+      ...tiers.map(({ t, rows: tr }) => ({ kind: "bars", title: `${t} tier: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: costBars(o, tr), note: RULE_NOTE })),
+    ],
+    conclusion: [
+      w ? `${w.row.bucket}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : null,
+      ...tierWin.map(({ t, w: tw }) => `${t} tier: ${tw.row.bucket} is cheapest at ${usd(tw.row[o.cost])} per ${o.noun} (${counts(o, tw.row)}).`),
+      `Every email of a sequence is filed under how its first email looked, and the sequence's ${o.nounPlural} with it. ${d.how} Read by rule on the text we generated, no model asked.`,
+      `The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before${last ? `, the last in ${monthLabel(last)}` : ""}.`,
+      ...(missing > 0 ? [`${n(missing)} ${o.emailsNoun} ${d.missingText} are left out.`] : []),
+      ...(crm && crm.added > 0 ? [`${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} include ${n(crm.added)} the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.`] : []),
+      `The buckets ran for different clients, audiences and months: this is not a split test.`,
+    ].filter(Boolean),
+  });
+}
+
 for (const key of ["reply", "visit"]) {
   const o = OUTCOMES[key];
   const R = facts.research[key];
@@ -592,6 +651,8 @@ for (const key of ["reply", "visit"]) {
 
   dimensionStudies(key, o, R, { dim: "template", dimNoun: "template", cutKey: "byTemplate", byMonthKey: "templateByMonth", label: templateLabel });
   if (key === "reply") namingStudies(o, R);
+  shapeStudies(key, o, R, "layout");
+  shapeStudies(key, o, R, "opening");
 
   // The best workflow: one model and one template together, which is what a campaign actually
   // runs. The same floors crown it as every other study.

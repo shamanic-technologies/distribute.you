@@ -8,6 +8,8 @@ import { EyeSlashIcon } from "@phosphor-icons/react/dist/csr/EyeSlash";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
 import { IdentificationBadgeIcon } from "@phosphor-icons/react/dist/csr/IdentificationBadge";
+import { ParagraphIcon } from "@phosphor-icons/react/dist/csr/Paragraph";
+import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
 import { crewFor } from "@/lib/v2/crews";
 import { CREW_KEY, type ResearchChart, type ResearchCrew, type ResearchPoint, type ResearchTopic } from "@/lib/research/research";
@@ -27,6 +29,9 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   workflow: { color: "var(--data-lime)", Icon: FlowArrowIcon },
   // a template question too (which prompt), so it wears the template colour with its own mark
   naming: { color: "var(--data-rose)", Icon: IdentificationBadgeIcon },
+  // how the first email is written (its shape, its first words): the same prompt family as a template
+  layout: { color: "var(--data-rose)", Icon: ParagraphIcon },
+  opening: { color: "var(--data-rose)", Icon: HandWavingIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

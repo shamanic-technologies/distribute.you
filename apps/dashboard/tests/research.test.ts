@@ -45,6 +45,27 @@ describe("research.json is coherent", () => {
     expect(studiesFor("pilot").length).toBeGreaterThan(0);
   });
 
+  it("asks whether the first email's layout and opening change the cost, per leg, all tiers then per tier", () => {
+    for (const crew of ["herald", "scout"] as const) {
+      for (const dim of ["layout", "opening"] as const) {
+        const s = studiesFor(crew).find((st) => st.id === `${crew}-${dim}-roi`);
+        expect(s, `${crew}-${dim}`).toBeTruthy();
+        if (!s) continue;
+        expect(s.topic).toBe(dim);
+        expect(s.charts[0].title.startsWith("All tiers:")).toBe(true);
+        expect(s.charts.slice(1).every((c) => /^(Flash|Pro) tier:/.test(c.title))).toBe(true);
+        // every bar states its outcome count and email count beside it
+        for (const c of s.charts) for (const p of c.points) expect(p.note, s.id).toMatch(/·/);
+        const labels = dim === "layout"
+          ? ["One block, no line break", "Line breaks, no blank line", "Paragraphs with a blank line"]
+          : ["Greeting + first name", "First name alone", "No greeting"];
+        for (const p of s.charts[0].points) expect(labels, s.id).toContain(p.label);
+        if (s.winner) expect(s.winner).toBe(s.charts[0].points[0].label);
+        expect(s.conclusion.join(" ")).toContain("Sep 28, 2026");
+      }
+    }
+  });
+
   it("draws something for every measured study, and nothing is invented for one that is not", () => {
     for (const s of RESEARCH.studies) {
       if (s.status === "measured") {
