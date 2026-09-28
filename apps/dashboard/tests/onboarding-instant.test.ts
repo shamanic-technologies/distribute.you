@@ -48,5 +48,7 @@ describe("onboarding paints every screen at once", () => {
     expect(SRC).toContain("preparedCheckoutRef.current = { key, url };");
     const click = SRC.slice(SRC.indexOf("async function beginCheckoutAndLaunch()"), SRC.indexOf("async function resumeCheckoutLaunch()"));
     expect(click).toContain("prepared.key === checkoutKey(pending)");
+    // The projection the session needs is loaded one screen earlier.
+    expect(SRC).toContain('if (step !== "pricing") return;\n    ensureProjectionLoaded()');
   });
 });
