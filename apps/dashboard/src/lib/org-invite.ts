@@ -71,8 +71,8 @@ export interface InviteBrand {
   /** The brand's resolved accent, the three numbers `BrandTint` writes on <html>. */
   tint: { hue: number; chromaScale: number; hueDelta: number } | null;
   /**
-   * Set for a black-and-white brand: its dominant colour (`#000000`). The page then
-   * wears black and white instead of our blue, and the logo sits on this colour.
+   * Set for a black-and-white brand (its dominant colour, `#000000`): the page then
+   * wears black and white instead of our blue.
    */
   mono?: string | null;
 }
