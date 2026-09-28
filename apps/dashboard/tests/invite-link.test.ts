@@ -120,7 +120,7 @@ describe("black-and-white brands", () => {
 });
 
 describe("joining while already signed in", () => {
-  const page = read("src/app/(authed)/join/[token]/page.tsx");
+  const page = read("src/app/(authed)/join/[token]/join-page.tsx");
   const claimer = read("src/components/team/join-claimer.tsx");
   it("the /join page claims by itself and states a failure instead of spinning", () => {
     expect(page).toContain("claimJoin(token, clerk, router)");
@@ -132,5 +132,18 @@ describe("joining while already signed in", () => {
     expect(claimer).toContain("await clerk.user?.reload();");
     expect(claimer).toContain("window.location.assign(dest)");
     expect(claimer).toContain("[isSignedIn, clerk, router, pathname]");
+  });
+});
+
+describe("invite link preview", () => {
+  const shell = read("src/app/(authed)/join/[token]/page.tsx");
+  const og = read("src/app/api/public/og/join/route.tsx");
+  it("the link unfurls as the team it joins, not as the dashboard", () => {
+    expect(shell).toContain("export async function generateMetadata");
+    expect(shell).toContain("Join the ${brand.name} team on distribute.you");
+    expect(shell).toContain("/api/public/og/join");
+    expect(shell).not.toContain('"use client"');
+    expect(og).toContain("new ImageResponse(");
+    expect(og).toContain("parseInviteBrand(");
   });
 });
