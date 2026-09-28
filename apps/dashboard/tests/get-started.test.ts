@@ -11,6 +11,8 @@ import {
   parseCompetitors,
   parseDailyBudget,
   parseGetStartedSnapshot,
+  segmentCriteria,
+  stageMove,
   valueLines,
 } from "../src/lib/v2/get-started";
 
@@ -79,6 +81,38 @@ describe("the rules the page decides on", () => {
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, budgetUsd: 2.5 }))?.budgetUsd).toBeNull();
   });
 
+  it("states a segment's criteria off the served people-search filters, and nothing else", () => {
+    const got = segmentCriteria({
+      person_titles: ["CTO", "VP Engineering"],
+      include_similar_titles: true,
+      organization_locations: ["Ireland", "Germany"],
+      q_organization_keyword_tags: ["medtech"],
+      organization_num_employees_ranges: ["50,500", "10001,"],
+      organization_industry_tag_ids: ["5567cd4"],
+    });
+    expect(got).toEqual([
+      { label: "Titles", values: ["CTO", "VP Engineering"] },
+      { label: "Keywords", values: ["medtech"] },
+      { label: "Company size", values: ["50 to 500 employees", "10,001+ employees"] },
+      { label: "Where", values: ["Ireland", "Germany"] },
+    ]);
+    expect(segmentCriteria(null)).toEqual([]);
+    expect(segmentCriteria({ personTitles: ["Founder"] })).toEqual([{ label: "Titles", values: ["Founder"] }]);
+  });
+
+  it("walks the stage: holds a running step, hands a finished one on, jumps back to a re-run", () => {
+    // Running on screen: hold.
+    expect(stageMove(["running", "running", "running", "waiting", "waiting", "waiting"], 0)).toBeNull();
+    // Done, the next one has begun: move on after a dwell.
+    expect(stageMove(["done", "done", "running", "waiting", "waiting", "waiting"], 0)).toEqual({ to: 1, dwell: true });
+    // Done, but the next one has not begun: stay on the result.
+    expect(stageMove(["done", "done", "done", "waiting", "waiting", "waiting"], 2)).toBeNull();
+    // Another segment was picked, so step 4 runs again while 6 is on screen: jump back.
+    expect(stageMove(["done", "done", "done", "running", "running", "running"], 5)).toEqual({ to: 3, dwell: false });
+    // The last step stays.
+    expect(stageMove(["done", "done", "done", "done", "done", "done"], 5)).toBeNull();
+  });
+
   it("has every step live now that both producers reached the gateway", () => {
     expect([...STEPS_NOT_LIVE]).toEqual([]);
   });
@@ -87,6 +121,9 @@ describe("the rules the page decides on", () => {
 const root = path.resolve(__dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 const FLOW = read("src/components/v2/get-started/get-started.tsx");
+const JOURNAL = read("src/components/v2/get-started/journal.tsx");
+const SEGMENT = read("src/components/v2/get-started/segment-card.tsx");
+const VT = read("src/components/v2/get-started/view-transition.ts");
 const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
 const LAUNCH = read("src/components/v2/get-started/launch.ts");
 
@@ -126,13 +163,13 @@ describe("the surface", () => {
   });
 
   it("speaks the v2 language, not v1's", () => {
-    for (const src of [FLOW, WALL]) {
+    for (const src of [FLOW, WALL, JOURNAL, SEGMENT]) {
       expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|InfoTooltip/);
     }
   });
 
   it("carries no em-dash in its copy", () => {
-    for (const src of [FLOW, WALL, LAUNCH]) {
+    for (const src of [FLOW, WALL, LAUNCH, JOURNAL, SEGMENT]) {
       // The one dash allowed is Keel's missing-value marker, a `"\u2014"` literal.
       const code = src
         .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -145,9 +182,9 @@ describe("the surface", () => {
   it("moves: steps rise in, lists cascade, counts count, the email types", () => {
     expect(FLOW).toContain("<Stepper");
     expect(FLOW).toContain("<LiveStatus");
-    expect(FLOW).toContain("<CountUp value={s.count}");
+    expect(SEGMENT).toContain("<CountUp value={count}");
+    expect(SEGMENT).toContain("conic-gradient(var(--accent)");
     expect(FLOW).toContain("<Typewriter text={mail.bodyText}");
-    expect(FLOW).toContain("<GrowBar");
     expect(FLOW).toMatch(/gs-pop[^"]*"[^>]*style=\{stagger\(i, 60\)\}/);
     expect(FLOW).toContain("gs-down sticky");
     expect(WALL).toContain("gs-panel k-popover");
@@ -189,6 +226,33 @@ describe("the surface", () => {
     expect(timerPhase(0, 1_049_000)).toEqual({ phase: "expired", secondsLeft: 0 });
     const hour = 3_600_000 * 500_000;
     expect(spotsTakenThisHour(hour + 59 * 60_000)).toBeGreaterThanOrEqual(spotsTakenThisHour(hour));
+  });
+
+  it("is a journal and a stage: one step on screen, the finished ones in the rail", () => {
+    expect(FLOW).toContain("<JournalRail {...journal} />");
+    expect(FLOW).toContain("<JournalStrip {...journal} />");
+    // The stage card and the rail entry share a transition name, so one flies into the other.
+    expect(FLOW).toContain("viewTransitionName: stepViewName(stagedKey)");
+    expect(JOURNAL).toContain("viewTransitionName: stepViewName(s.key)");
+    // A rail entry is never drawn for the step on the stage (a duplicate name aborts the transition).
+    expect(JOURNAL).toContain("d.staged !== key");
+    expect(VT).toContain("prefers-reduced-motion: reduce");
+    expect(VT).toContain("startViewTransition");
+  });
+
+  it("draws Explee's steps 7 to 9, dotted until the email is written", () => {
+    expect(FLOW).toContain("NEXT_STEPS.map(");
+    expect(FLOW).toContain('nextLit={steps.email === "done"}');
+    expect(FLOW).toContain("border-dashed");
+  });
+
+  it("queues every sample and email read, and a picked segment waits its turn", () => {
+    expect(FLOW).toContain("readQueue.current = readQueue.current.then(task)");
+    const effects = FLOW.slice(FLOW.indexOf("// Steps 4 and 5"), FLOW.indexOf("// The stage walks forward"));
+    expect(effects.match(/enqueue\(async/g)?.length).toBe(2);
+    expect(effects).not.toContain("void (async");
+    // The segment picker lives in the rail and on the phone's strip.
+    expect(JOURNAL).toContain("d.onSelect(s.audienceId)");
   });
 
   it("leaves the current onboarding alone", () => {

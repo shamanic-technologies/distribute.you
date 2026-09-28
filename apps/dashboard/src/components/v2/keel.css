@@ -163,6 +163,18 @@
   .v2-root .gs-fill, .v2-root .gs-fade, .v2-root .gs-tick { transition: none; }
   .v2-root .gs-caret::after { display: none; }
 }
+/* The stage hands a finished step to the journal rail (View Transitions, see
+   get-started/view-transition.ts): only the named step moves, the page does not
+   cross-fade, and the card is clipped as it shrinks so its content never stretches. */
+html.gs-vt::view-transition-old(root), html.gs-vt::view-transition-new(root) { animation: none; }
+html.gs-vt::view-transition-group(*) { animation-duration: 560ms; animation-timing-function: cubic-bezier(.23, 1, .32, 1); }
+html.gs-vt::view-transition-image-pair(*) { overflow: clip; border-radius: 12px; }
+html.gs-vt::view-transition-old(*), html.gs-vt::view-transition-new(*) { height: 100%; object-fit: none; object-position: top left; }
+html.gs-vt::view-transition-old(*) { animation: gs-vt-out 560ms cubic-bezier(.23, 1, .32, 1) both; }
+html.gs-vt::view-transition-new(*) { animation: gs-vt-in 560ms cubic-bezier(.23, 1, .32, 1) both; }
+@keyframes gs-vt-out { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes gs-vt-in { 0%, 40% { opacity: 0; } 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { html.gs-vt::view-transition-group(*), html.gs-vt::view-transition-old(*), html.gs-vt::view-transition-new(*) { animation: none; } }
 
 /*
  * ─── v1 components inside v2 (`.v2-embed`) ───────────────────────────────────

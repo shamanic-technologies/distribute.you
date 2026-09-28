@@ -44,11 +44,14 @@ import {
   COMPETITOR_FIELDS,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
+  NEXT_STEPS,
   STEPS_NOT_LIVE,
-  compactCount,
   hostOf,
   parseCompetitors,
   parseGetStartedSnapshot,
+  segmentCriteria,
+  settledPhase,
+  stageMove,
   valueLines,
   valueText,
   websiteUrl,
@@ -57,14 +60,25 @@ import {
   type GetStartedSegment,
   type GetStartedSnapshot,
   type GetStartedStepKey,
+  type StepPhase,
 } from "@/lib/v2/get-started";
 import { Initials, Shimmer } from "@/components/v2/ui";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
 import { GET_STARTED_LEG } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
+import { JournalRail, JournalStrip, type JournalData } from "./journal";
+import { SegmentCard } from "./segment-card";
+import { stepViewName, withStageTransition } from "./view-transition";
 
-type StepState = "waiting" | "running" | "done" | "failed" | "notLive";
+type StepState = StepPhase;
+
+/**
+ * How long a finished step stays on the stage before it flies into the rail. The
+ * segments are the richest result and the one to pick from, so they hold longer.
+ */
+const STAGE_DWELL_MS: Partial<Record<GetStartedStepKey, number>> = { segments: 5000 };
+const DEFAULT_DWELL_MS = 1600;
 
 const LEG = newOrgLeg(GET_STARTED_LEG);
 
@@ -97,6 +111,20 @@ export function GetStarted() {
   const [offerId, setOfferId] = useState<string | null>(null);
   const inFlight = useRef(new Set<string>());
   const [restoredBudget, setRestoredBudget] = useState<number | null>(null);
+  // The stage shows ONE step: the one the walk is on (`stageIdx`), or one the person
+  // opened from the rail or the stepper (`focus`, cleared when the walk moves on).
+  const [stageIdx, setStageIdx] = useState(0);
+  const [focus, setFocus] = useState<GetStartedStepKey | null>(null);
+  const selectedRef = useRef<string | null>(null);
+  selectedRef.current = selectedSeg;
+
+  // Every signed-out read after the first ones runs through ONE queue: each metered call
+  // holds its worst case against the anonymous seed, so two at once can be refused for
+  // credit neither will spend. A segment picked while an email is being written waits.
+  const readQueue = useRef<Promise<void>>(Promise.resolve());
+  const enqueue = (task: () => Promise<void>) => {
+    readQueue.current = readQueue.current.then(task).catch((e) => console.error("[get-started] queued read failed:", e));
+  };
   // The email written before a Google round trip, so the wall can show it again.
   const [restoredEmail, setRestoredEmail] = useState<GetStartedEmail | null>(null);
 
@@ -141,6 +169,7 @@ export function GetStarted() {
     setCompetitors(s.competitors);
     setSegments(s.segments);
     setRestoredBudget(s.budgetUsd);
+    setStageIdx(s.segments.length ? 2 : 0);
     if (s.email) setRestoredEmail(s.email);
     if (s.segments.length) setSelectedSeg([...s.segments].sort((a, b) => b.count - a.count)[0].audienceId);
     setStarted(true);
@@ -173,7 +202,12 @@ export function GetStarted() {
     const id = selectedSeg;
     inFlight.current.add(`p:${id}`);
     setSteps((cur) => ({ ...cur, companies: "running", people: "running", email: STEPS_NOT_LIVE.has("email") ? cur.email : "running" }));
-    void (async () => {
+    enqueue(async () => {
+      // Picked away while it waited in the queue: read what is picked now instead.
+      if (selectedRef.current !== id) {
+        inFlight.current.delete(`p:${id}`);
+        return;
+      }
       let got: AudiencePreview | null = null;
       for (let i = 0; i < 12; i++) {
         try {
@@ -188,6 +222,7 @@ export function GetStarted() {
       }
       inFlight.current.delete(`p:${id}`);
       if (got) setPreviews((cur) => ({ ...cur, [id]: got! }));
+      if (selectedRef.current !== id) return;
       const ok = got?.status === "ready";
       setSteps((cur) => ({
         ...cur,
@@ -195,7 +230,8 @@ export function GetStarted() {
         people: ok && got!.people.length ? "done" : "failed",
         email: ok && got!.people.length ? cur.email : STEPS_NOT_LIVE.has("email") ? cur.email : "failed",
       }));
-    })();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeg, previews]);
 
   // Step 6: one email written for one of the sampled people, billed to this
@@ -210,7 +246,11 @@ export function GetStarted() {
     inFlight.current.add(`e:${id}`);
     setEmailNote(null);
     setStep("email", "running");
-    void (async () => {
+    enqueue(async () => {
+      if (selectedRef.current !== id) {
+        inFlight.current.delete(`e:${id}`);
+        return;
+      }
       try {
         const mail = await writeWithRetry(() => previewColdEmail({
           brandId,
@@ -224,11 +264,12 @@ export function GetStarted() {
           offerId,
         }));
         setEmails((cur) => ({ ...cur, [id]: mail }));
-        setStep("email", "done");
+        if (selectedRef.current === id) setStep("email", "done");
         const snap = parseGetStartedSnapshot(sessionStorage.getItem(GET_STARTED_SNAPSHOT_KEY));
         if (snap) saveSnapshot({ ...snap, email: { subject: mail.subject, bodyText: mail.bodyText, recipient: mail.recipient } });
       } catch (e) {
         console.error("[get-started] email preview failed:", e);
+        if (selectedRef.current !== id) return;
         setEmailNote(
           e instanceof ApiError && e.status === 402
             ? "Your free preview credit is used up, so we stopped before writing the email. It will be written once your account is set up."
@@ -238,8 +279,60 @@ export function GetStarted() {
       } finally {
         inFlight.current.delete(`e:${id}`);
       }
-    })();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeg, previews, emails, brandId, offerId, segments]);
+
+  // The stage walks forward on its own: a finished step is held for a moment, then
+  // flies into the rail as the next one takes the stage.
+  const phases = GET_STARTED_STEPS.map((s) => steps[s.key]);
+  const phaseKey = phases.join(",");
+  useEffect(() => {
+    const mv = stageMove(phases, stageIdx);
+    if (!mv) return;
+    const t = setTimeout(
+      () =>
+        withStageTransition(() => {
+          setStageIdx(mv.to);
+          setFocus(null);
+        }),
+      mv.dwell ? (STAGE_DWELL_MS[GET_STARTED_STEPS[stageIdx].key] ?? DEFAULT_DWELL_MS) : 0,
+    );
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phaseKey, stageIdx]);
+
+  /** Opens a finished step on the stage; the walk takes over again when it moves on. */
+  function openStep(key: GetStartedStepKey) {
+    const idx = GET_STARTED_STEPS.findIndex((s) => s.key === key);
+    withStageTransition(() => setFocus(idx === stageIdx ? null : key));
+  }
+
+  /**
+   * Picks a segment: its sample (steps 4 to 6) takes the stage. A segment read before
+   * shows what was read; a new one is queued behind whatever read is running.
+   */
+  function selectSegment(id: string) {
+    const prev = previews[id];
+    const mail = emails[id];
+    const ready = prev?.status === "ready";
+    withStageTransition(() => {
+      setSelectedSeg(id);
+      setFocus(null);
+      setStageIdx(3);
+      if (prev) {
+        setSteps((cur) => ({
+          ...cur,
+          companies: ready && prev.companies.length ? "done" : "failed",
+          people: ready && prev.people.length ? "done" : "failed",
+          email: mail ? "done" : STEPS_NOT_LIVE.has("email") ? cur.email : ready && prev.people.length ? "running" : "failed",
+        }));
+      } else {
+        markSampleSteps("running");
+      }
+    });
+    posthog.capture("get_started_segment_selected");
+  }
 
   async function start(raw: string) {
     if (ran.current) return;
@@ -322,7 +415,7 @@ export function GetStarted() {
       const { candidates } = await suggestAudiences(id, icp);
       found = candidates
         .filter((c) => !c.validationError)
-        .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count }));
+        .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count, criteria: segmentCriteria(c.filters) }));
       setSegments(found);
       setStep("segments", found.length ? "done" : "failed");
       if (found.length) setSelectedSeg([...found].sort((a, b) => b.count - a.count)[0].audienceId);
@@ -354,6 +447,8 @@ export function GetStarted() {
 
     // What the recommended budget buys, priced on the brand's offer. Best effort: the
     // wall opens with an empty field and the floor stated when no price is held.
+    // Queued, so the first sample read (picked above) waits behind it.
+    enqueue(async () => {
     try {
       const { offers } = await listBrandOffers(id);
       const offerId = offers[0]?.offerId;
@@ -367,6 +462,7 @@ export function GetStarted() {
     } catch (e) {
       console.error("[get-started] price read failed:", e);
     }
+    });
   }
 
   function saveSnapshot(s: GetStartedSnapshot) {
@@ -397,11 +493,51 @@ export function GetStarted() {
     );
   }
 
+  const stagedKey: GetStartedStepKey = focus ?? GET_STARTED_STEPS[stageIdx].key;
+  const selectedSegment = segments.find((x) => x.audienceId === selectedSeg) ?? null;
+  const journal: JournalData = {
+    steps,
+    staged: stagedKey,
+    name: brandName,
+    domain,
+    overview,
+    competitors,
+    segments,
+    selected: selectedSeg,
+    preview: selectedSeg ? previews[selectedSeg] : undefined,
+    mail: selectedSeg ? emails[selectedSeg] : undefined,
+    onSelect: selectSegment,
+    onFocus: openStep,
+  };
+
+  function stageFor(key: GetStartedStepKey): React.ReactNode {
+    if (key === "company") return <CompanyCard state={steps.company} name={brandName} domain={domain} website={website} overview={overview} facts={facts} />;
+    if (key === "competitors") return <CompetitorsCard state={steps.competitors} competitors={competitors} />;
+    if (key === "segments") return <SegmentsStage state={steps.segments} segments={segments} selected={selectedSeg} previews={previews} onSelect={selectSegment} />;
+    if (key === "companies")
+      return STEPS_NOT_LIVE.has("companies") ? (
+        <NotLiveCard index={4} title="Companies that match" body="Real companies for each segment will be listed here. This step is not live yet." />
+      ) : (
+        <CompaniesCard state={steps.companies} preview={selectedSeg ? previews[selectedSeg] : undefined} segmentName={selectedSegment?.name ?? null} />
+      );
+    if (key === "people")
+      return STEPS_NOT_LIVE.has("people") ? (
+        <NotLiveCard index={5} title="Decision makers" body="The people we would write to at those companies, by name and role, will be listed here. This step is not live yet." />
+      ) : (
+        <PeopleCard state={steps.people} preview={selectedSeg ? previews[selectedSeg] : undefined} />
+      );
+    return STEPS_NOT_LIVE.has("email") ? (
+      <NotLiveCard index={6} title="Your first email" body="One email written for one of those people will appear here, ready to send. This step is not live yet." />
+    ) : (
+      <EmailCard state={steps.email} mail={selectedSeg ? emails[selectedSeg] : undefined} note={emailNote} />
+    );
+  }
+
   return (
-    <div className="k-canvas min-h-[100dvh]">
+    <div className="k-canvas min-h-[100dvh] lg:flex lg:h-[100dvh] lg:flex-col">
       {canLaunch && (
-        <div className="gs-down sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)]">
-          <div className="mx-auto flex max-w-[1100px] items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+        <div className="gs-down sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)] lg:static">
+          <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
             <span className="gs-pop hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[16px]" style={{ animationDelay: "200ms" }} aria-hidden="true">
               $
             </span>
@@ -418,38 +554,38 @@ export function GetStarted() {
         </div>
       )}
 
-      <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
-        <Stepper steps={steps} current={current} />
-        <LiveStatus current={current} domain={domain} />
+      <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[296px_minmax(0,1fr)]">
+        <JournalRail {...journal} />
+        <main className="k-scroll lg:min-h-0 lg:overflow-y-auto">
+          <div className="mx-auto max-w-[920px] px-4 py-6 sm:px-6 sm:py-8">
+            <Stepper steps={steps} staged={stagedKey} onOpen={openStep} nextLit={steps.email === "done"} />
+            <LiveStatus current={current} domain={domain} />
+            <div className="mt-4">
+              <JournalStrip {...journal} />
+            </div>
 
-        <div className="mt-6 grid gap-4">
-          <CompanyCard state={steps.company} name={brandName} domain={domain} website={website} overview={overview} facts={facts} />
-          <CompetitorsCard state={steps.competitors} competitors={competitors} />
-          <SegmentsCard state={steps.segments} segments={segments} selected={selectedSeg} onSelect={setSelectedSeg} />
-          {STEPS_NOT_LIVE.has("companies") ? (
-            <NotLiveCard index={4} title="Companies that match" body="Real companies for each segment will be listed here. This step is not live yet." />
-          ) : (
-            <CompaniesCard state={steps.companies} preview={selectedSeg ? previews[selectedSeg] : undefined} segmentName={segments.find((x) => x.audienceId === selectedSeg)?.name ?? null} />
-          )}
-          {STEPS_NOT_LIVE.has("people") ? (
-            <NotLiveCard index={5} title="Decision makers" body="The people we would write to at those companies, by name and role, will be listed here. This step is not live yet." />
-          ) : (
-            <PeopleCard state={steps.people} preview={selectedSeg ? previews[selectedSeg] : undefined} />
-          )}
-          {STEPS_NOT_LIVE.has("email") ? (
-            <NotLiveCard index={6} title="Your first email" body="One email written for one of those people will appear here, ready to send. This step is not live yet." />
-          ) : (
-            <EmailCard state={steps.email} mail={selectedSeg ? emails[selectedSeg] : undefined} note={emailNote} />
-          )}
-        </div>
+            {focus && (
+              <div className="gs-in mt-4 flex items-center gap-2 text-[12px]">
+                <span className="k-fg3">You are looking back at a finished step.</span>
+                <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => withStageTransition(() => setFocus(null))}>
+                  Back to the live step
+                </button>
+              </div>
+            )}
 
-        {canLaunch && (
-          <div className="gs-in mt-6 flex justify-end">
-            <button type="button" className="k-btn-accent h-9 px-4" onClick={() => setWallOpen(true)}>
-              Start outreach with $30 free
-            </button>
+            <div key={stagedKey} className="gs-in mt-4" style={{ viewTransitionName: stepViewName(stagedKey) }}>
+              {stageFor(stagedKey)}
+            </div>
+
+            {canLaunch && stagedKey === "email" && (
+              <div className="gs-in mt-6 flex justify-end" style={{ animationDelay: "200ms" }}>
+                <button type="button" className="k-btn-accent h-9 px-4" onClick={() => setWallOpen(true)}>
+                  Start outreach with $30 free
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </main>
       </div>
 
       {wallOpen && brandId && (
@@ -558,47 +694,89 @@ function Hero({
   );
 }
 
-const settled = (s: StepState) => s === "done" || s === "failed" || s === "notLive";
+const settled = settledPhase;
 
 /**
- * Explee's stepper: numbered marks joined by rails that fill as each step lands, and
- * the step being worked on named in a raised pill. Only that one is named, so the row
- * fits a phone.
+ * Explee's stepper: numbered marks joined by rails that fill as each step lands, the
+ * step on the stage named in a raised pill, then "what happens next": the three steps
+ * the account turns on, drawn dotted until the preview's email is written, then lit.
+ * A finished step's mark opens it on the stage.
  */
-function Stepper({ steps, current }: { steps: Record<GetStartedStepKey, StepState>; current: number }) {
+function Stepper({
+  steps,
+  staged,
+  onOpen,
+  nextLit,
+}: {
+  steps: Record<GetStartedStepKey, StepState>;
+  staged: GetStartedStepKey;
+  onOpen: (key: GetStartedStepKey) => void;
+  nextLit: boolean;
+}) {
   return (
-    <ol className="flex items-center" aria-label="Progress">
-      {GET_STARTED_STEPS.map((s, i) => {
-        const st = steps[s.key];
-        const active = i === current;
-        const prevSettled = i > 0 && settled(steps[GET_STARTED_STEPS[i - 1].key]);
-        return (
-          <li key={s.key} className={`flex items-center ${i > 0 ? "flex-1" : ""}`} aria-current={active ? "step" : undefined}>
-            {i > 0 && (
-              <span className="relative mx-1.5 h-px min-w-2 flex-1 overflow-hidden bg-[var(--line)] sm:mx-2" aria-hidden="true">
-                <span className="gs-fill absolute inset-y-0 left-0 bg-[var(--bg-strong)]" style={{ width: prevSettled ? "100%" : "0%" }} />
-              </span>
-            )}
-            <span
-              className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full text-[12px] ${
-                active ? "k-card gs-glow k-fg px-2.5 font-medium" : settled(st) ? "k-fg2" : "k-fg3"
-              }`}
-            >
+    <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:gap-5">
+      <ol className="flex min-w-0 flex-1 items-center" aria-label="Progress">
+        {GET_STARTED_STEPS.map((s, i) => {
+          const st = steps[s.key];
+          const active = s.key === staged;
+          const prevSettled = i > 0 && settled(steps[GET_STARTED_STEPS[i - 1].key]);
+          const openable = settled(st) && !active;
+          const mark = (
+            <>
               <StepMark index={i + 1} state={st} />
               {active ? <span key={s.key} className="gs-in whitespace-nowrap">{s.label}</span> : <span className="sr-only">{s.label}</span>}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+            </>
+          );
+          const cls = `inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full text-[12px] ${
+            active ? "k-card gs-glow k-fg px-2.5 font-medium" : settled(st) ? "k-fg2" : "k-fg3"
+          }`;
+          return (
+            <li key={s.key} className={`flex items-center ${i > 0 ? "flex-1" : ""}`} aria-current={active ? "step" : undefined}>
+              {i > 0 && (
+                <span className="relative mx-1.5 h-px min-w-2 flex-1 overflow-hidden bg-[var(--line)] sm:mx-2" aria-hidden="true">
+                  <span className="gs-fill absolute inset-y-0 left-0 bg-[var(--bg-strong)]" style={{ width: prevSettled ? "100%" : "0%" }} />
+                </span>
+              )}
+              {openable ? (
+                <button type="button" className={`${cls} k-hover`} onClick={() => onOpen(s.key)} title={`Open: ${s.label}`}>
+                  {mark}
+                </button>
+              ) : (
+                <span className={cls}>{mark}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      <div className="shrink-0" aria-label="What happens next">
+        <p className="k-label mb-1.5 xl:text-center">What happens next</p>
+        <ol className="flex flex-wrap items-start gap-x-4 gap-y-1.5">
+          {NEXT_STEPS.map((label, i) => (
+            <li key={label} className="flex items-center gap-1.5 xl:flex-col xl:gap-1" style={nextLit ? stagger(i, 160) : undefined}>
+              <span
+                key={nextLit ? "lit" : "ghost"}
+                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] tabular-nums ${
+                  nextLit ? "gs-pop border border-[var(--fg-2)] text-[var(--fg-1)]" : "border border-dashed border-[var(--line-strong)] text-[var(--fg-4)]"
+                }`}
+                style={nextLit ? stagger(i, 160) : undefined}
+              >
+                {GET_STARTED_STEPS.length + i + 1}
+              </span>
+              <span className={`whitespace-nowrap text-[11.5px] ${nextLit ? "k-fg2" : "k-fg4"}`}>{label}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }
 
 function StepMark({ index, state }: { index: number; state: StepState }) {
   if (state === "running")
     return (
-      <span key="running" className="gs-pop inline-flex h-4 w-4 items-center justify-center" aria-label="Running">
-        <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
+      <span key="running" className="gs-pop relative inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--run)] text-[10px] tabular-nums text-[var(--run)]" aria-label="Running">
+        {index}
+        <span className="k-dot-pulse absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" aria-hidden="true" />
       </span>
     );
   if (state === "done")
@@ -707,20 +885,6 @@ function Rows({ n }: { n: number }) {
   );
 }
 
-/** A bar that grows from nothing to `pct` once it is on screen. */
-function GrowBar({ pct }: { pct: number }) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setW(Math.max(2, Math.min(100, pct))));
-    return () => cancelAnimationFrame(id);
-  }, [pct]);
-  return (
-    <span className="block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
-      <span className="gs-fill block h-full rounded-full bg-[var(--accent)]" style={{ width: `${w}%` }} />
-    </span>
-  );
-}
-
 function CompanyCard({
   state,
   name,
@@ -798,56 +962,56 @@ function CompetitorsCard({ state, competitors }: { state: StepState; competitors
   );
 }
 
-function SegmentsCard({
+/** Step 3 on the stage: every segment as a card with its size ring; picking one samples it. */
+function SegmentsStage({
   state,
   segments,
   selected,
+  previews,
   onSelect,
 }: {
   state: StepState;
   segments: GetStartedSegment[];
   selected: string | null;
+  previews: Record<string, AudiencePreview>;
   onSelect: (id: string) => void;
 }) {
   const max = Math.max(1, ...segments.map((s) => s.count));
+  const total = segments.reduce((n, s) => n + s.count, 0);
   return (
-    <StepCard
-      index={3}
-      title="Segments to write to"
-      state={state}
-      meta={<StateWord state={state} doneLabel={segments.length === 1 ? "1 segment" : `${segments.length} segments`} />}
-    >
+    <section className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <span className="k-label">Step 3</span>
+        <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">Segments to write to</h2>
+        <span className="ml-auto shrink-0">
+          <StateWord state={state} doneLabel={segments.length === 1 ? "1 segment" : `${segments.length} segments`} />
+        </span>
+      </div>
       {state === "running" || state === "waiting" ? (
-        <Rows n={4} />
-      ) : segments.length === 0 ? (
-        <p className="k-fg3 text-[13px]">We could not size a segment for your company. Try again in a moment.</p>
-      ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {segments.map((s, i) => (
-            <button
-              key={s.audienceId}
-              type="button"
-              onClick={() => onSelect(s.audienceId)}
-              aria-pressed={selected === s.audienceId}
-              style={stagger(i, 80)}
-              className={`gs-in k-inset rounded-lg p-3 text-left transition-shadow duration-200 ${selected === s.audienceId ? "k-selected ring-1 ring-[var(--accent)]" : "k-hover"}`}
-            >
-              <div className="flex items-baseline gap-2">
-                <p className="k-fg min-w-0 flex-1 truncate text-[13px] font-medium">{s.name}</p>
-                <span className="k-fg text-[13px] font-medium">
-                  <CountUp value={s.count} format={compactCount} ms={1100} />
-                </span>
-              </div>
-              <div className="mt-1.5">
-                <GrowBar pct={(s.count / max) * 100} />
-              </div>
-              <p className="k-fg3 mt-1 text-[11px]">people match</p>
-              {s.rationale && <p className="k-fg2 mt-2 text-[12px] leading-5">{s.rationale}</p>}
-            </button>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="k-card p-4">
+              <Rows n={4} />
+            </div>
           ))}
         </div>
+      ) : segments.length === 0 ? (
+        <div className="k-card p-4">
+          <p className="k-fg3 text-[13px]">We could not size a segment for your company. Try again in a moment.</p>
+        </div>
+      ) : (
+        <>
+          <p className="k-fg2 text-[13px]">
+            <CountUp value={total} format={(n) => Math.round(n).toLocaleString("en-US")} ms={1100} /> people across your segments. Pick one to see who is in it.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {segments.map((s, i) => (
+              <SegmentCard key={s.audienceId} segment={s} index={i} max={max} selected={selected === s.audienceId} preview={previews[s.audienceId]} onSelect={() => onSelect(s.audienceId)} />
+            ))}
+          </div>
+        </>
       )}
-    </StepCard>
+    </section>
   );
 }
 
