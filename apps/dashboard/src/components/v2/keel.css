@@ -133,3 +133,121 @@
 .v2-root .k-indeterminate { animation: k-indet 1.6s cubic-bezier(.65, 0, .35, 1) infinite; }
 @keyframes k-indet { 0% { transform: translateX(-100%) } 100% { transform: translateX(300%) } }
 @media (prefers-reduced-motion: reduce) { .v2-root .k-indeterminate { animation: none; } }
+
+/*
+ * ─── v1 components inside v2 (`.v2-embed`) ───────────────────────────────────
+ * The Setup and account pages embed v1's OWN business components (the forms, the
+ * writes), because two editors of one value drift. This layer is what makes them read
+ * as v2: it maps the v1 utility vocabulary onto the Keel tokens, the same way the
+ * `html.dark` layer in globals.css remaps it for dark. Scoped to `.v2-embed`, so v1
+ * itself cannot change, and native v2 markup never uses these classes (see the v2 UX
+ * skill's no-go list), so nothing native is touched either. Semantic colours (green =
+ * good, red = error, amber = held) are left alone on purpose.
+ */
+.v2-root .v2-embed { font-size: 13px; line-height: 20px; color: var(--fg-1); }
+
+/* Type: the v1 scale steps down to Keel's (13px body, 12px meta, 14px card heading). */
+.v2-root .v2-embed .text-sm { font-size: 13px; line-height: 20px; }
+.v2-root .v2-embed .text-xs { font-size: 12px; line-height: 16px; }
+.v2-root .v2-embed .text-base { font-size: 14px; line-height: 20px; }
+.v2-root .v2-embed .text-lg { font-size: 14px; line-height: 20px; }
+.v2-root .v2-embed .text-xl { font-size: 18px; line-height: 24px; }
+.v2-root .v2-embed .text-2xl { font-size: 24px; line-height: 30px; letter-spacing: -0.02em; }
+.v2-root .v2-embed .text-3xl { font-size: 24px; line-height: 30px; letter-spacing: -0.02em; }
+.v2-root .v2-embed .font-semibold,
+.v2-root .v2-embed .font-bold { font-weight: 500; }
+.v2-root .v2-embed .font-display { font-family: inherit; }
+.v2-root .v2-embed h1,
+.v2-root .v2-embed h2,
+.v2-root .v2-embed h3 { font-weight: 500; letter-spacing: -0.01em; }
+
+/* Ink: v1 greys onto the four Keel foregrounds. */
+.v2-root .v2-embed .text-gray-900,
+.v2-root .v2-embed .text-gray-800 { color: var(--fg-1); }
+.v2-root .v2-embed .text-gray-700,
+.v2-root .v2-embed .text-gray-600 { color: var(--fg-2); }
+.v2-root .v2-embed .text-gray-500,
+.v2-root .v2-embed .text-gray-400 { color: var(--fg-3); }
+.v2-root .v2-embed .text-gray-300 { color: var(--fg-4); }
+.v2-root .v2-embed .hover\:text-gray-700:hover,
+.v2-root .v2-embed .hover\:text-gray-600:hover { color: var(--fg-1); }
+.v2-root .v2-embed .text-brand-600,
+.v2-root .v2-embed .text-brand-500 { color: var(--accent); }
+.v2-root .v2-embed .text-brand-700 { color: var(--accent-text); }
+
+/* Surfaces and lines. */
+.v2-root .v2-embed .bg-white { background-color: var(--bg-raised); }
+.v2-root .v2-embed .bg-gray-50,
+.v2-root .v2-embed .bg-gray-100 { background-color: var(--bg-inset); }
+.v2-root .v2-embed .hover\:bg-gray-50:hover,
+.v2-root .v2-embed .hover\:bg-gray-100:hover { background-color: var(--bg-hover); }
+.v2-root .v2-embed .border-gray-100 { border-color: var(--line-subtle); }
+.v2-root .v2-embed .border-gray-200 { border-color: var(--line-subtle); }
+.v2-root .v2-embed .border-gray-300 { border-color: var(--line); }
+.v2-root .v2-embed .divide-gray-100 > :not(:last-child),
+.v2-root .v2-embed .divide-gray-50 > :not(:last-child),
+.v2-root .v2-embed .divide-y > :not(:last-child) { border-color: var(--line-subtle); }
+
+/* Cards: a v1 card is a Keel card (12px, a hairline, no drop shadow). A v1 card that
+   already sits in a v2 `k-card` loses its own frame, or it draws a box in a box. */
+.v2-root .v2-embed .rounded-xl { border-radius: 12px; }
+.v2-root .v2-embed .rounded-xl.border { box-shadow: none; }
+.v2-root .v2-embed .k-card > .rounded-xl.border:only-child,
+.v2-root .v2-embed .k-card > section.rounded-xl:only-child { border-color: transparent; background: transparent; }
+.v2-root .v2-embed .shadow-xl,
+.v2-root .v2-embed .shadow-lg { box-shadow: var(--elev-popover); }
+.v2-root .v2-embed .rounded-lg,
+.v2-root .v2-embed .rounded-md { border-radius: 8px; }
+
+/* Controls: fields and buttons at Keel's 8px radius, 13px, hairline, accent focus. */
+.v2-root .v2-embed input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.v2-root .v2-embed select,
+.v2-root .v2-embed textarea {
+  border-radius: 8px; font-size: 13px; color: var(--fg-1); background-color: var(--bg-raised);
+}
+.v2-root .v2-embed input.border-gray-300,
+.v2-root .v2-embed input.border-gray-200,
+.v2-root .v2-embed select.border-gray-300,
+.v2-root .v2-embed select.border-gray-200,
+.v2-root .v2-embed textarea.border-gray-300,
+.v2-root .v2-embed textarea.border-gray-200 { border-color: var(--line); }
+.v2-root .v2-embed input:focus,
+.v2-root .v2-embed select:focus,
+.v2-root .v2-embed textarea:focus {
+  outline: none; border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+  --tw-ring-color: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.v2-root .v2-embed ::placeholder { color: var(--fg-4); }
+/* A v1 primary button is Keel's strong button: dark, not the brand fill. The accent is
+   for selection and links in v2, never for the action a page asks for. */
+.v2-root .v2-embed button.bg-brand-600,
+.v2-root .v2-embed button.bg-brand-500,
+.v2-root .v2-embed a.bg-brand-600,
+.v2-root .v2-embed a.bg-brand-500 {
+  background-color: var(--bg-strong); color: #fafafa; border-radius: 8px; font-weight: 500;
+}
+.v2-root .v2-embed button.bg-brand-600:hover:not(:disabled),
+.v2-root .v2-embed button.bg-brand-500:hover:not(:disabled),
+.v2-root .v2-embed a.bg-brand-600:hover,
+.v2-root .v2-embed a.bg-brand-500:hover { background-color: var(--bg-strong-hover); }
+.v2-root .v2-embed button.bg-gray-900 { background-color: var(--bg-strong); }
+/* A secondary v1 button (white, grey hairline) is Keel's plain button. */
+.v2-root .v2-embed button.bg-white.border,
+.v2-root .v2-embed a.bg-white.border { border-color: var(--line); box-shadow: var(--elev-control); }
+
+/* Tables: headers read as Keel labels, rows as Keel rows. */
+.v2-root .v2-embed thead,
+.v2-root .v2-embed thead tr { background: transparent; }
+.v2-root .v2-embed th,
+.v2-root .v2-embed th[class] {
+  font-family: var(--font-geist-mono), "DM Mono", ui-monospace, monospace;
+  font-size: 10.5px; font-weight: 500; line-height: 14px;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-3);
+}
+.v2-root .v2-embed td { font-size: 13px; font-variant-numeric: tabular-nums; }
+.v2-root .v2-embed tbody tr:hover { background: var(--bg-hover); }
+
+/* Selection fills and outlines from the brand ramp stay the accent, softened. */
+.v2-root .v2-embed .bg-brand-50 { background-color: var(--accent-soft); }
+.v2-root .v2-embed .border-brand-200,
+.v2-root .v2-embed .border-brand-300 { border-color: color-mix(in oklab, var(--accent) 35%, transparent); }

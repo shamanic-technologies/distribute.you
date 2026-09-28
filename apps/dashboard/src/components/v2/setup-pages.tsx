@@ -119,7 +119,9 @@ export function V2Page({
             ))}
           </nav>
         )}
-        {children}
+        {/* `v2-embed` gives the v1 components these pages embed the Keel look
+            (keel.css). Native v2 markup uses none of the classes it maps. */}
+        <div className="v2-embed">{children}</div>
       </div>
     </>
   );
