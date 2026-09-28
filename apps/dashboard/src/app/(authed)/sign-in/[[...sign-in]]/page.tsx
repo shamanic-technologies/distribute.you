@@ -88,6 +88,11 @@ export default function SignInPage() {
   const [resendNotice, setResendNotice] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  // Which factor the code screen is answering. An account made on /get-started has
+  // no password its owner knows, so it signs in with an emailed code as the FIRST
+  // factor; a password sign-in answers the code as the SECOND.
+  const [codeFactor, setCodeFactor] = useState<"first" | "second">("second");
+  const [emailAddressId, setEmailAddressId] = useState<string | null>(null);
 
   // Tick the resend cooldown down to zero.
   useEffect(() => {
@@ -222,6 +227,40 @@ export default function SignInPage() {
     }
   };
 
+  const handleEmailCodeSignIn = async () => {
+    if (!isLoaded || !signIn || submitting) return;
+    setError("");
+    setEmailNotFound(false);
+    if (!email.trim()) {
+      setError("Enter your email first, then ask for a code.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      posthog.capture("signin_email_code_started");
+      const created = await signIn.create({ identifier: email.trim() });
+      const factor = created.supportedFirstFactors?.find(
+        (f): f is Extract<typeof f, { strategy: "email_code" }> => f.strategy === "email_code"
+      );
+      if (!factor) {
+        setError("This account cannot sign in with a code. Use your password or Google.");
+        return;
+      }
+      await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: factor.emailAddressId });
+      setEmailAddressId(factor.emailAddressId);
+      setCodeFactor("first");
+      setSecondFactorPending(true);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      posthog.capture("signin_email_failed", authFailureProps(err, { stage: "email_code" }));
+      console.error("Email code sign in error:", err);
+      if (clerkErrorCode(err) === "form_identifier_not_found") setEmailNotFound(true);
+      else setError(clerkErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSecondFactor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signIn || submitting) return;
@@ -230,6 +269,20 @@ export default function SignInPage() {
     setResendNotice("");
     setSubmitting(true);
     try {
+      if (codeFactor === "first") {
+        const first = await signIn.attemptFirstFactor({ strategy: "email_code", code });
+        if (first.status === "needs_second_factor") {
+          // The instance may still ask for its second factor: mail it and stay here.
+          await signIn.prepareSecondFactor({ strategy: "email_code" });
+          setCodeFactor("second");
+          setCode("");
+          setResendCooldown(RESEND_COOLDOWN_SECONDS);
+          setResendNotice(`One more code sent to ${email}`);
+          return;
+        }
+        await advanceSignIn(signIn, setActive, first, "first_factor_code");
+        return;
+      }
       const result = await signIn.attemptSecondFactor({
         strategy: "email_code",
         code,
@@ -255,7 +308,11 @@ export default function SignInPage() {
     setResendNotice("");
     setResending(true);
     try {
-      await signIn.prepareSecondFactor({ strategy: "email_code" });
+      if (codeFactor === "first" && emailAddressId) {
+        await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId });
+      } else {
+        await signIn.prepareSecondFactor({ strategy: "email_code" });
+      }
       setCode("");
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
       setResendNotice(`New code sent to ${email}`);
@@ -600,7 +657,20 @@ export default function SignInPage() {
                 style={inputStyle}
                 required
               />
-              <div className="text-right">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleEmailCodeSignIn()}
+                  disabled={submitting}
+                  className="transition-opacity hover:opacity-75"
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    color: "oklch(42% 0.2 264)",
+                  }}
+                >
+                  Email me a code instead
+                </button>
                 <Link
                   href="/forgot-password"
                   className="transition-opacity hover:opacity-75"

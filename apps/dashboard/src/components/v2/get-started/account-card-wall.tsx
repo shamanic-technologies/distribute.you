@@ -1,16 +1,23 @@
 "use client";
 
 /**
- * The one wall of `/get-started`: the account and the card, on ONE screen, the way
- * Explee asks for them together once the founder has seen the output.
+ * The one wall of `/get-started`: the account and the card, on ONE screen, opened as a
+ * layer OVER the results the founder just watched (blurred behind it), the way Explee
+ * opens its paywall. The product stays in view while they pay.
  *
- * The screen walks four states in place, never navigating away (the Google button is
- * the one exception, and it comes straight back here with `?resume=1`):
- *   1. account  — email + password (then the emailed code), or Google;
+ * Left: what the $30 is, what it buys (a SERVED fleet price, or nothing), the email we
+ * wrote kept sharp ("this one goes out when you start"), and a rotating card per named
+ * client who agreed to be shown. Right: the countdown and spots strips (owner-decided,
+ * copied from Explee), then the form.
+ *
+ * The form walks four states in place, never navigating away (the Google button is the
+ * one exception, and it comes straight back here with `?resume=1`):
+ *   1. account  — work email, then the emailed 6-digit code (no password to invent), or Google;
  *   2. claim    — the anonymous org they built is re-pointed at the account they just
  *                 made (`/api/anon/claim`, the same hinge `/onboarding/claim` runs);
- *   3. card     — a card saved in the page, charging nothing: the $30 free credit is
- *                 spent first, then the card is charged at most the daily budget;
+ *   3. card     — the card form opens in the same column by itself, charging nothing:
+ *                 the $30 free credit is spent first, then the card is charged at most
+ *                 the daily budget;
  *   4. launch   — the preview becomes a running campaign (`launch.ts`), and the page
  *                 lands on its mission.
  */
@@ -36,15 +43,38 @@ import {
   VERIFICATION_CODE_LENGTH,
 } from "@/lib/clerk-error";
 import { v2MissionHref } from "@/lib/v2/routes";
-import { GET_STARTED_SNAPSHOT_KEY, parseDailyBudget, type GetStartedSegment } from "@/lib/v2/get-started";
+import {
+  GET_STARTED_SNAPSHOT_KEY,
+  WALL_FREE_CREDIT_USD,
+  hotLeadsForCredit,
+  nextSlide,
+  parseDailyBudget,
+  type GetStartedEmail,
+  type GetStartedSegment,
+} from "@/lib/v2/get-started";
+import { proofCardsFor, shuffleWithSeed, type ProofCard } from "@/lib/start-proof";
+import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
 import { EMPTY_PROGRESS, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
-import { CountUp } from "./motion";
+import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
 
-const MIN_PASSWORD_LENGTH = 8;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** How long a sign-up may wait on the bot check before we say a box needs ticking. */
+const CAPTCHA_PROMPT_DELAY_MS = 2500;
+const RESEND_COOLDOWN_SECONDS = 30;
+const SLIDE_MS = 6000;
 
 type Stage = "account" | "code" | "claim" | "card" | "launching";
+
+/**
+ * The instance requires a password on every account. Nobody types one here: the
+ * account is proven by the emailed code, and signing in later is by a code too.
+ */
+function generatedPassword(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return `${Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("")}Aa1!`;
+}
 
 export function AccountCardWall({
   brandId,
@@ -52,6 +82,7 @@ export function AccountCardWall({
   brandName,
   offerSource,
   segments,
+  email: writtenEmail,
   floorUsd,
   recommendedUsd,
   budgetChosen = false,
@@ -63,6 +94,8 @@ export function AccountCardWall({
   brandName: string;
   offerSource: string;
   segments: GetStartedSegment[];
+  /** The email the preview wrote, or null when none was written. */
+  email: GetStartedEmail | null;
   floorUsd: number;
   recommendedUsd: number | null;
   /** The budget was typed by the person earlier (restored after a round trip): a price that lands later must not replace it. */
@@ -74,10 +107,10 @@ export function AccountCardWall({
   const { session } = useSession();
   const { user } = useUser();
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
+  const { catalogue } = useStartCatalogue();
 
   const [stage, setStage] = useState<Stage>("account");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
   // The price read once the brand has an owner (and therefore an offer) wins over the
@@ -88,11 +121,15 @@ export function AccountCardWall({
   // No price held yet: the channel's own floor, the smallest budget it runs on.
   const [budget, setBudget] = useState(String(recommendation ?? Math.ceil(floorUsd)));
   const [busy, setBusy] = useState(false);
+  const [captchaWaiting, setCaptchaWaiting] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cardSecret, setCardSecret] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
 
   const claimed = useRef(false);
+  const cardOpened = useRef(false);
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
 
   // A recommendation that lands after the wall opened fills an untouched field.
@@ -109,6 +146,21 @@ export function AccountCardWall({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [busy, stage, onClose]);
+
+  // The page behind does not scroll while the wall is up.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
 
   // Once signed in, claim the anonymous org. Clerk needs both the user and the org it
   // auto-creates at signup before the claim can name the org to point at.
@@ -147,6 +199,16 @@ export function AccountCardWall({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoaded, isSignedIn, orgId, session]);
 
+  // The card form opens by itself once the account exists: no extra click between
+  // the code and the card. Only when the terms were already accepted (a Google return
+  // comes back with the box unticked, and then the button asks for it).
+  useEffect(() => {
+    if (stage !== "card" || cardOpened.current || busy || !consent || !account) return;
+    cardOpened.current = true;
+    void addCard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, busy, consent, account]);
+
   const parsedBudget = parseDailyBudget(budget, floorUsd);
   const budgetUsd = "usd" in parsedBudget ? parsedBudget.usd : null;
 
@@ -170,16 +232,22 @@ export function AccountCardWall({
     if (!checkReady()) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
+    // A managed bot check can ask for a tick. Say so rather than leave a spinner.
+    const waiting = setTimeout(() => setCaptchaWaiting(true), CAPTCHA_PROMPT_DELAY_MS);
     try {
       posthog.capture("get_started_signup_email_started");
-      await signUp.create({ emailAddress: email.trim(), password });
+      await signUp.create({ emailAddress: email.trim(), password: generatedPassword() });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setStage("code");
+      setResendIn(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
       posthog.capture("get_started_signup_failed", authFailureProps(err, { stage: "create" }));
       console.error("[get-started] sign up failed:", err);
       setError(clerkErrorMessage(err));
     } finally {
+      clearTimeout(waiting);
+      setCaptchaWaiting(false);
       setBusy(false);
     }
   }
@@ -189,6 +257,7 @@ export function AccountCardWall({
     if (!signUpLoaded || !signUp || busy) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status !== "complete") {
@@ -204,6 +273,20 @@ export function AccountCardWall({
       setError(err instanceof Error && !("errors" in (err as object)) ? err.message : clerkErrorMessage(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function resendCode() {
+    if (!signUpLoaded || !signUp || busy || resendIn > 0) return;
+    setError(null);
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setResendIn(RESEND_COOLDOWN_SECONDS);
+      setCode("");
+      setNotice(`New code sent to ${email.trim()}. Only the newest one works.`);
+    } catch (err) {
+      console.error("[get-started] resend failed:", err);
+      setError(clerkErrorMessage(err));
     }
   }
 
@@ -337,121 +420,157 @@ export function AccountCardWall({
     }
   }
 
-  const freeCents = account?.free_credit_spendable_cents != null && account.free_credit_spendable_cents.trim() !== ""
-    ? Number(account.free_credit_spendable_cents)
-    : null;
+  const proof = catalogue?.proof ?? null;
+  const hotLeads = hotLeadsForCredit(proof?.hotLeads?.medianCostUsd);
+  const medianReturn = proof?.medianReturnPerDollar ?? null;
+
+  const budgetRow = (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="k-label w-24 shrink-0">Daily budget</span>
+      <span className="flex items-center gap-1.5">
+        <span className="k-fg2 text-[13px]">$</span>
+        <input
+          className="k-input h-7 w-16 px-2 text-right tabular-nums"
+          inputMode="numeric"
+          value={budget}
+          onChange={(e) => {
+            budgetTouched.current = true;
+            setBudget(e.target.value);
+            setError(null);
+          }}
+          disabled={stage === "launching"}
+          aria-label="Daily budget in dollars"
+        />
+        <span className="k-fg3 text-[12px]">a day</span>
+      </span>
+      {recommendation != null && Number(budget) === recommendation && (
+        <span key={recommendation} className="gs-pop k-chip">
+          Recommended
+        </span>
+      )}
+      {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
+    </div>
+  );
 
   return createPortal(
-    <div className="v2-root gs-scrim fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-[#1010121f] px-3 py-[6vh]">
-      <div role="dialog" aria-modal="true" aria-label="Start outreach" className="gs-panel k-popover w-full max-w-[880px] overflow-hidden">
-        <div className="flex h-11 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          <span className="k-label">Start outreach</span>
-          <button
-            type="button"
-            aria-label="Close"
-            className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0"
-            onClick={onClose}
-            disabled={busy || stage === "launching"}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          {/* What they get */}
-          <div className="border-b border-[var(--line-subtle)] p-5 md:border-b-0 md:border-r">
-            <p className="k-fg text-[20px] font-medium leading-7">
-              <CountUp value={30} format={(n) => `$${Math.round(n)}`} ms={800} /> of free credit
-            </p>
-            <ul className="k-fg2 mt-3 grid gap-1.5 text-[13px] leading-5">
-              {[
-                "We find the people in your segments and write to them from our own warmed domains.",
-                "Each email is written for the person it goes to.",
-                "Interested replies are forwarded to your inbox.",
-              ].map((line, i) => (
-                <li key={line} className="gs-in flex gap-2" style={{ animationDelay: `${160 + i * 80}ms` }}>
-                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-                  {line}
-                </li>
-              ))}
-            </ul>
-
-            <dl className="k-inset mt-5 grid gap-2 rounded-lg p-3 text-[13px]">
-              <div className="flex gap-2">
-                <dt className="k-label w-24 shrink-0 pt-0.5">Company</dt>
-                <dd className="k-fg min-w-0 truncate">{brandName}</dd>
+    <div
+      className="v2-root gs-scrim fixed inset-0 z-[60] overflow-y-auto bg-[color-mix(in_oklab,var(--bg-canvas)_35%,transparent)] backdrop-blur-[6px]"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !busy && stage !== "launching") onClose();
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        className="k-btn fixed right-3 top-3 z-10 h-8 w-8 justify-center p-0 text-[16px]"
+        onClick={onClose}
+        disabled={busy || stage === "launching"}
+      >
+        ×
+      </button>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Start outreach"
+        className="mx-auto grid w-full max-w-[1040px] gap-3 px-3 pb-10 pt-14 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:px-6 md:pt-[6vh]"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget && !busy && stage !== "launching") onClose();
+        }}
+      >
+        {/* What the $30 is, and what it buys. */}
+        <section className="gs-panel k-popover p-5 md:col-start-1">
+          <p className="k-fg text-[22px] font-semibold leading-7 tracking-tight">
+            <CountUp value={WALL_FREE_CREDIT_USD} format={(n) => `$${Math.round(n)}`} ms={800} /> free credit
+          </p>
+          <ul className="k-fg2 mt-2.5 grid gap-1 text-[13px] leading-5">
+            {[
+              "We find the people in your segments and write to each one.",
+              "We send from our own warmed domains, never yours.",
+              "Interested replies land in your inbox.",
+            ].map((line, i) => (
+              <li key={line} className="gs-in flex gap-2" style={{ animationDelay: `${160 + i * 80}ms` }}>
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+                {line}
+              </li>
+            ))}
+          </ul>
+          {(hotLeads != null || medianReturn != null) && (
+            <>
+              <p className="k-fg mt-4 text-[13px] font-medium">{`Here is what your $${WALL_FREE_CREDIT_USD} gets you`}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {hotLeads != null && (
+                  <BuysTile label="Hot leads" note="Replies or visits">
+                    ~<CountUp value={hotLeads} format={(n) => String(Math.round(n))} ms={900} />
+                  </BuysTile>
+                )}
+                {medianReturn != null && (
+                  <BuysTile label="Median ROI" note="Of our clients">
+                    <CountUp value={medianReturn} format={(n) => formatReturn(n)} ms={900} />
+                  </BuysTile>
+                )}
               </div>
-              <div className="flex gap-2">
-                <dt className="k-label w-24 shrink-0 pt-0.5">Segments</dt>
-                <dd className="k-fg2 tabular-nums">{segments.length}</dd>
-              </div>
-              <div className="flex items-center gap-2">
-                <dt className="k-label w-24 shrink-0">Daily budget</dt>
-                <dd className="flex items-center gap-1.5">
-                  <span className="k-fg2">$</span>
-                  <input
-                    className="k-input h-7 w-20 px-2 text-right tabular-nums"
-                    inputMode="numeric"
-                    value={budget}
-                    onChange={(e) => {
-                      budgetTouched.current = true;
-                      setBudget(e.target.value);
-                      setError(null);
-                    }}
-                    disabled={stage === "launching"}
-                    aria-label="Daily budget in dollars"
-                  />
-                  <span className="k-fg3 text-[12px]">a day</span>
-                  {recommendation != null && Number(budget) === recommendation && (
-                    <span key={recommendation} className="gs-pop k-chip">
-                      Recommended
-                    </span>
-                  )}
-                  {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
-                </dd>
-              </div>
-            </dl>
-            <p className="k-fg3 mt-2 text-[12px] leading-5">
-              {`We spend your $30 of free credit first. After that your card is charged for what the campaign spends, never more than your daily budget. Pause or stop anytime.`}
-            </p>
-          </div>
+              {hotLeads != null && proof?.hotLeads && (
+                <p className="k-fg3 mt-2 text-[12px] leading-5">
+                  {`At the median our clients pay, $${proof.hotLeads.medianCostUsd.toFixed(2)} per hot lead. An estimate, not a promise.`}
+                </p>
+              )}
+            </>
+          )}
+        </section>
 
-          {/* Account + card */}
-          <div className="p-5">
-            {stage !== "launching" && (
-              <div className="mb-4 grid gap-2">
-                <TrialTimer />
-                <TrialSpots />
-              </div>
-            )}
-            <Steps stage={stage} />
-            <div key={stage === "code" ? "account" : stage} className="gs-in">
-
+        {/* The form. On a phone it comes right after the $30. */}
+        <section className="gs-panel k-popover p-5 md:col-start-2 md:row-span-3 md:row-start-1" style={{ animationDelay: "80ms" }}>
+          {stage !== "launching" && (
+            <div className="mb-4 grid gap-2">
+              <TrialTimer />
+              <TrialSpots />
+            </div>
+          )}
+          <Steps stage={stage} />
+          <div key={stage === "code" ? "account" : stage} className="gs-in">
             {(stage === "account" || stage === "code") && !isSignedIn && (
               <>
                 {stage === "account" ? (
                   <form className="mt-4 grid gap-3" onSubmit={(e) => void submitAccount(e)}>
-                    <button type="button" className="k-btn h-9 justify-center" onClick={() => void google()} disabled={busy}>
-                      Continue with Google
-                    </button>
-                    <p className="k-fg3 text-center text-[12px]">or</p>
                     <label className="grid gap-1">
                       <span className="k-label">Work email</span>
-                      <input className="k-input h-9 px-2.5" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                      <input
+                        className="k-input h-9 px-2.5"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
                     </label>
-                    <label className="grid gap-1">
-                      <span className="k-label">Password</span>
-                      <input className="k-input h-9 px-2.5" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                      <span className="k-fg3 text-[12px]">{`At least ${MIN_PASSWORD_LENGTH} characters.`}</span>
-                    </label>
+                    <div className="k-inset grid gap-2 rounded-lg p-3">
+                      {budgetRow}
+                      <p className="k-fg3 text-[12px] leading-5">
+                        {`You will not be charged yet. We spend your $${WALL_FREE_CREDIT_USD} first, then your card pays what the campaign spends, never more than your daily budget. Pause anytime.`}
+                      </p>
+                    </div>
                     <Consent brandName={brandName} checked={consent} onChange={setConsent} />
                     <div id="clerk-captcha" />
+                    {captchaWaiting && (
+                      <p className="gs-in k-fg2 text-[12px]" role="status">
+                        Check the box above to finish creating your account.
+                      </p>
+                    )}
                     <button
                       type="submit"
-                      className="k-btn-accent h-9 justify-center"
-                      disabled={busy || !EMAIL_SHAPE.test(email.trim()) || password.length < MIN_PASSWORD_LENGTH}
+                      className="k-btn-accent gs-glow h-9 justify-center"
+                      disabled={busy || !EMAIL_SHAPE.test(email.trim())}
                     >
-                      {busy ? "Creating your account..." : "Create account"}
+                      {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : "Email me a code"}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
+                      <span className="k-fg3 text-[12px]">or</span>
+                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
+                    </div>
+                    <button type="button" className="k-btn h-9 justify-center gap-2" onClick={() => void google()} disabled={busy}>
+                      <GoogleMark />
+                      Continue with Google
                     </button>
                     <p className="k-fg3 text-[12px]">
                       Already have an account?{" "}
@@ -462,11 +581,14 @@ export function AccountCardWall({
                   </form>
                 ) : (
                   <form className="mt-4 grid gap-3" onSubmit={(e) => void submitCode(e)}>
-                    <p className="k-fg2 text-[13px]">{`We sent a code to ${email}.`}</p>
+                    <p className="k-fg2 text-[13px] leading-5">
+                      {`We sent a 6-digit code to `}
+                      <span className="k-fg font-medium">{email.trim()}</span>.
+                    </p>
                     <label className="grid gap-1">
                       <span className="k-label">Code</span>
                       <input
-                        className="k-input h-9 px-2.5 tracking-[0.3em] tabular-nums"
+                        className="k-input h-10 px-2.5 text-[18px] tracking-[0.4em] tabular-nums"
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={VERIFICATION_CODE_LENGTH}
@@ -476,34 +598,65 @@ export function AccountCardWall({
                       />
                     </label>
                     <button type="submit" className="k-btn-accent h-9 justify-center" disabled={busy || code.length !== VERIFICATION_CODE_LENGTH}>
-                      {busy ? "Checking..." : "Verify"}
+                      {busy ? "Checking..." : "Verify and add card"}
                     </button>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                      <button
+                        type="button"
+                        className="k-btn-ghost h-6 px-1.5"
+                        onClick={() => {
+                          setStage("account");
+                          setCode("");
+                          setError(null);
+                          setNotice(null);
+                        }}
+                        disabled={busy}
+                      >
+                        Change email
+                      </button>
+                      <button type="button" className="k-btn-ghost h-6 px-1.5 tabular-nums" onClick={() => void resendCode()} disabled={busy || resendIn > 0}>
+                        {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
+                      </button>
+                    </div>
+                    {notice && <p className="k-fg2 text-[12px]" role="status">{notice}</p>}
+                    <p className="k-fg3 text-[12px] leading-5">No password to remember. Next time, sign in with a code sent to this email.</p>
                   </form>
                 )}
               </>
             )}
 
-            {stage === "claim" && <p className="k-fg2 mt-4 text-[13px]">{busy ? "Setting up your account..." : "Your account is ready."}</p>}
+            {stage === "claim" && (
+              <div className="mt-4 grid gap-2">
+                <p className="k-fg2 text-[13px]">{busy ? "Setting up your account..." : "Your account is ready."}</p>
+                {busy && (
+                  <span className="block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+                    <span className="k-indeterminate block h-full w-1/3 rounded-full bg-[var(--accent)]" />
+                  </span>
+                )}
+              </div>
+            )}
 
             {stage === "card" && !cardSecret && (
               <div className="mt-4 grid gap-3">
-                <p className="k-fg2 text-[13px] leading-5">
-                  {account?.has_payment_method
-                    ? "Your card is on file."
-                    : "Add a card to confirm you are real. Nothing is charged today."}
+                <p className="k-fg text-[13px] font-medium">
+                  {account?.has_payment_method ? "Your card is on file." : "You will not be charged yet"}
                 </p>
-                {freeCents != null && freeCents > 0 && (
-                  <p className="k-fg3 text-[12px] tabular-nums">{`Free credit on your account: $${Math.round(freeCents / 100)}`}</p>
+                {!account?.has_payment_method && (
+                  <p className="k-fg2 -mt-2 text-[13px] leading-5">
+                    {`The card only confirms you are real. Once your $${WALL_FREE_CREDIT_USD} runs out, it pays what the campaign spends, never more than your daily budget.`}
+                  </p>
                 )}
+                <div className="k-inset rounded-lg p-3">{budgetRow}</div>
                 <Consent brandName={brandName} checked={consent} onChange={setConsent} />
-                <button type="button" className="k-btn-accent h-9 justify-center" onClick={() => void addCard()} disabled={busy}>
-                  {busy ? "Opening..." : account?.has_payment_method ? "Start outreach" : "Add card and start"}
+                <button type="button" className="k-btn-accent gs-glow h-9 justify-center" onClick={() => void addCard()} disabled={busy}>
+                  {busy ? "Opening the card form..." : account?.has_payment_method ? "Start outreach" : "Add card and start"}
                 </button>
               </div>
             )}
 
             {stage === "card" && cardSecret && (
-              <div className="mt-4">
+              <div className="mt-4 grid gap-2">
+                <p className="k-fg text-[13px] font-medium">You will not be charged yet</p>
                 <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: cardSecret, onComplete: () => void afterCardSaved() }}>
                   <EmbeddedCheckout />
                 </EmbeddedCheckoutProvider>
@@ -518,18 +671,150 @@ export function AccountCardWall({
                 </span>
               </div>
             )}
-
-            </div>
-            {error && (
-              <p key={error} className="gs-in mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
-                {error}
-              </p>
-            )}
           </div>
-        </div>
+          {error && (
+            <p key={error} className="gs-in mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
+              {error}
+            </p>
+          )}
+        </section>
+
+        {/* The product's proof, kept sharp while the rest is blurred. */}
+        {writtenEmail && <EmailCard mail={writtenEmail} />}
+
+        <ClientCarousel cards={proof ? proofCardsFor(proof.showcase) : []} />
       </div>
     </div>,
     document.body,
+  );
+}
+
+function BuysTile({ label, note, children }: { label: string; note: string; children: React.ReactNode }) {
+  return (
+    <div className="k-inset gs-in rounded-lg px-3 py-2.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="k-label">{label}</span>
+        <span className="k-fg3 truncate text-[11px]">{note}</span>
+      </div>
+      <p className="k-fg mt-1 text-[22px] font-semibold leading-7 tabular-nums">{children}</p>
+    </div>
+  );
+}
+
+function EmailCard({ mail }: { mail: GetStartedEmail }) {
+  const to = [[mail.recipient.firstName, mail.recipient.lastName].filter(Boolean).join(" "), mail.recipient.title]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    <section className="gs-panel k-popover overflow-hidden md:col-start-1" style={{ animationDelay: "160ms" }} aria-label="Your first email">
+      <div className="flex items-center gap-2 border-b border-[var(--line-subtle)] px-4 py-2.5">
+        <span className="k-label">Your first email</span>
+        <span className="k-fg3 ml-auto flex items-center gap-1.5 text-[12px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" aria-hidden="true" />
+          Goes out when you start
+        </span>
+      </div>
+      <div className="flex gap-3 border-b border-[var(--line-subtle)] px-4 py-2 text-[13px]">
+        <span className="k-label w-14 shrink-0 pt-0.5">To</span>
+        <span className="k-fg2 min-w-0 truncate">
+          {to}
+          {mail.recipient.companyName ? ` at ${mail.recipient.companyName}` : ""}
+        </span>
+      </div>
+      <div className="flex gap-3 border-b border-[var(--line-subtle)] px-4 py-2 text-[13px]">
+        <span className="k-label w-14 shrink-0 pt-0.5">Subject</span>
+        <span className="k-fg min-w-0 font-medium">{mail.subject}</span>
+      </div>
+      <p className="k-scroll k-fg2 max-h-[180px] overflow-y-auto whitespace-pre-line px-4 py-3 text-[13px] leading-6">{mail.bodyText}</p>
+    </section>
+  );
+}
+
+/**
+ * One named client at a time, turning every few seconds. Only the clients who agreed
+ * to be shown (`proofCardsFor` draws nothing for anyone else), with their own served
+ * figures. Hover or focus holds it; reduced motion holds it on the first card.
+ */
+function ClientCarousel({ cards }: { cards: ProofCard[] }) {
+  const reduced = usePrefersReducedMotion();
+  const [seed] = useState(() => Math.random());
+  const ordered = shuffleWithSeed(cards, seed);
+  const [i, setI] = useState(0);
+  const [held, setHeld] = useState(false);
+  const count = ordered.length;
+  useEffect(() => {
+    if (reduced || held || count < 2) return;
+    const id = setTimeout(() => setI((cur) => nextSlide(cur, count)), SLIDE_MS);
+    return () => clearTimeout(id);
+  }, [i, reduced, held, count]);
+  if (count === 0) return null;
+  const c = ordered[Math.min(i, count - 1)];
+  const deepest = c.counts.length > 1 ? c.counts[c.counts.length - 1] : null;
+  const tiles: { label: string; value: string }[] = [
+    { label: "Return", value: formatReturn(c.returnPerDollar) },
+    ...(deepest ? [{ label: deepest.label, value: deepest.peopleReached.toLocaleString("en-US") }] : []),
+    ...(c.firstStep?.costPerReachUsd != null
+      ? [{ label: `Cost per ${c.firstStep.label.toLowerCase()}`, value: `$${Math.round(c.firstStep.costPerReachUsd).toLocaleString("en-US")}` }]
+      : []),
+  ];
+  return (
+    <section
+      className="gs-panel k-popover p-5 md:col-start-1"
+      style={{ animationDelay: "240ms" }}
+      aria-label="Our clients"
+      aria-roledescription="carousel"
+      onMouseEnter={() => setHeld(true)}
+      onMouseLeave={() => setHeld(false)}
+      onFocus={() => setHeld(true)}
+      onBlur={() => setHeld(false)}
+    >
+      <div key={c.id} className="gs-in" aria-live="polite">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={c.person.portrait} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" />
+          <div className="min-w-0">
+            <p className="k-fg truncate text-[14px] font-medium">{c.person.name}</p>
+            <p className="k-fg3 truncate text-[12px]">{c.person.role}</p>
+          </div>
+        </div>
+        <p className="k-label mt-4">Results</p>
+        <div className={`mt-2 grid gap-2 ${tiles.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {tiles.map((t) => (
+            <div key={t.label} className="k-inset min-w-0 rounded-lg px-2.5 py-2">
+              <p className="k-fg3 truncate text-[11px]">{t.label}</p>
+              <p className="k-fg mt-0.5 text-[16px] font-semibold tabular-nums">{t.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      {count > 1 && (
+        <div className="mt-3 flex justify-center gap-1">
+          {ordered.map((x, n) => (
+            <button
+              key={x.id}
+              type="button"
+              aria-label={`Show ${x.person.name}`}
+              aria-current={n === i ? "true" : undefined}
+              className="flex h-6 w-6 items-center justify-center"
+              onClick={() => setI(n)}
+            >
+              <span className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${n === i ? "w-4 bg-[var(--fg-2)]" : "w-1.5 bg-[var(--line-strong)]"}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z" />
+      <path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z" />
+    </svg>
   );
 }
 
