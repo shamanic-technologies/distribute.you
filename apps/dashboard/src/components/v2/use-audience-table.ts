@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -27,7 +26,6 @@ import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-mode
 import { useCampaignLeg } from "@/lib/use-leg-catalogue";
 import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
 import { goalForLeg, stepsFor } from "@/lib/goal-steps";
-import { audienceLearningFor, useAudienceLearning } from "@/lib/use-audience-learning";
 import { isRunningStatus } from "@/lib/campaign-controls";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import { audienceColumns, type AudienceSortCol } from "@/lib/audience-table-model";
@@ -46,7 +44,6 @@ const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaignId?: string; offerId?: string }) {
   const campaignScoped = Boolean(campaignId);
   const { campaign, featureSlug, settled: scopeSettled } = useScopedFeatureSlug(campaignId);
-  const soleFeatureSlug = useSoleFeatureSlug();
   const channels = useAcquisitionChannels();
   const revenueOk =
     featureSlug === null
@@ -96,7 +93,6 @@ export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaig
   const legPair = campaignScoped ? legColumnPair(campaignLeg) : null;
   const legScoped = legPairIsAvailable(legPair, trackerSetUp);
   const brandLevelMoney = !campaignScoped;
-  const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(brandId, soleFeatureSlug, offerId);
 
   const showSignupCols = legScoped ? legPair === "signup" : optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney;
   const showFormSubmissionCols = legScoped
@@ -207,8 +203,6 @@ export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaig
     listsPending,
     statsLoading,
     statsFor: (id: string) => statsByAudienceId.get(id),
-    moneyLearning: (id: string) =>
-      brandLevelMoney && audienceLearningFor(learningByAudienceId, id, audienceLearningSettled),
     statusMut,
     avatarMut,
   };

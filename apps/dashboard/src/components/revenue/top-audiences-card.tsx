@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { tenantBasePath } from "@/lib/offer-path";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
-import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import {
   AUDIENCE_RANK_METRIC_INFO,
   AUDIENCE_RANK_METRIC_LABEL,
@@ -19,8 +18,7 @@ import type {
 } from "@/lib/api";
 import { formatRoi } from "@/lib/format-roi";
 import { LearningTag } from "@/components/learning-tag";
-import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
-import { audienceLearningFor } from "@/lib/use-audience-learning";
+import { MATURITY_LEARNING_NOTE, shownFigure, type ShownFigure } from "@/lib/maturity";
 
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
@@ -35,26 +33,23 @@ function formatCents(cents: number | null): string {
   })}`;
 }
 
-/** The row's cost under the brand's own metric. Mirrors the Audiences table's `sortValue`,
- *  floor included — a 0-reply audience with real spend shows what it has cost so far rather
- *  than a blank that hides money. Every value is read verbatim from a server field. */
-function metricCents(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): number | null {
-  switch (metric) {
-    case "cppr":
-      return costSoFarFloorCents(
-        row.metrics.cpprCents,
-        row.evidence.totalCostInUsdCents,
-        row.evidence.positiveReplies,
-      );
-    case "cps":
-      return row.metrics.cpsCents ?? null;
-    case "cpfs":
-      return row.metrics.cpfsCents ?? null;
-    case "cpsale":
-      return row.metrics.cpsaleCents ?? null;
-    case "cpc":
-      return row.metrics.cpcCents;
-  }
+/** The served field of the row's `metrics.maturity` pair each rank metric states. */
+const METRIC_FIELD = {
+  cppr: "cpprCents",
+  cps: "cpsCents",
+  cpfs: "cpfsCents",
+  cpsale: "cpsaleCents",
+  cpc: "cpcCents",
+} as const satisfies Record<AudienceRankMetric, string>;
+
+/**
+ * The row's cost under the campaign's own metric: the MATURE half of the row's served
+ * pair, with the producer's Learning verdict (lib/maturity.ts). No floor onto spend and no
+ * count compared to a bar: a price the producer does not state is not stated here.
+ */
+function metricCost(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): ShownFigure {
+  const field = METRIC_FIELD[metric];
+  return shownFigure(row.metrics.maturity, (h) => h[field], "mature");
 }
 
 /** The outcome count the metric divides by. Absent on the wire (the producer omits an
@@ -86,8 +81,8 @@ function metricCount(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): 
  * A CAMPAIGN-scoped card never reads it: a campaign buys one outcome and is judged on
  * what that outcome costs.
  */
-function returnPerDollar(row: FeatureAudienceStatsRow): number | null {
-  return row.projection?.returnPerDollar ?? null;
+function returnPerDollar(row: FeatureAudienceStatsRow): ShownFigure {
+  return shownFigure(row.projection?.maturity, (h) => h.returnPerDollar, "mature");
 }
 
 const RETURN_INFO =
@@ -128,8 +123,6 @@ export function TopAudiencesCard({
   metric,
   campaignScoped = false,
   campaignId,
-  learningByAudienceId,
-  learningSettled = false,
   paused = false,
 }: {
   data?: FeatureAudienceStatsResponse;
@@ -153,13 +146,6 @@ export function TopAudiencesCard({
    * Absent at brand/offer grain, where the offer page is the audience's home.
    */
   campaignId?: string;
-  /**
-   * Which of the scope's audiences its campaigns have priced. An audience absent from the
-   * map — the fan-out has not settled, or the scope runs no campaign — is "cannot tell"
-   * and states its return as before.
-   */
-  learningByAudienceId?: Map<string, boolean>;
-  learningSettled?: boolean;
   /**
    * The campaign this card is scoped to is PAUSED, so a withheld row reads `Paused`
    * rather than `Learning`. False at brand and offer grain, where the card ranks
@@ -193,16 +179,18 @@ export function TopAudiencesCard({
   const ranksByReturn = brandLevelMoney;
   const statsRows = [...(data?.audiences ?? [])]
     .sort((a, b) => {
+      // A row the producer says is still Learning states no figure, so it has no rank
+      // under this column and sorts with the rows that have none.
       if (ranksByReturn || !metric) {
-        const ar = returnPerDollar(a);
-        const br = returnPerDollar(b);
+        const ar = returnPerDollar(a).value;
+        const br = returnPerDollar(b).value;
         if (ar == null && br == null) return 0;
         if (ar == null) return 1;
         if (br == null) return -1;
         return br - ar;
       }
-      const av = metricCents(metric, a);
-      const bv = metricCents(metric, b);
+      const av = metricCost(metric, a).value;
+      const bv = metricCost(metric, b).value;
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
@@ -231,9 +219,10 @@ export function TopAudiencesCard({
   // interactive tooltip trigger there is both invalid-feeling and one more thing to
   // mis-tap. The header's existing (i) explains it instead, and only when a listed row
   // is actually learning.
-  const anyLearning =
-    !!metric && statsRows.some((row) => isLearning(metricCount(metric, row)));
-  const tip = anyLearning ? `${baseTip} ${LEARNING_NOTE}` : baseTip;
+  const anyLearning = statsRows.some((row) =>
+    ranksByReturn || !metric ? returnPerDollar(row).learning : metricCost(metric, row).learning,
+  );
+  const tip = anyLearning ? `${baseTip} ${MATURITY_LEARNING_NOTE}` : baseTip;
 
   const params = useParams();
   const orgId = params.orgId as string;
@@ -274,22 +263,13 @@ export function TopAudiencesCard({
           const avatarUrl = isStats
             ? item.row.audience.avatarUrl ?? avatarById.get(item.row.audience.id) ?? null
             : item.audience.avatarUrl;
-          const costCents = isStats && metric ? metricCents(metric, item.row) : null;
+          const cost = isStats && metric ? metricCost(metric, item.row) : null;
           const rowReturn = isStats ? returnPerDollar(item.row) : null;
           const outcomes = isStats && metric ? metricCount(metric, item.row) : null;
-          // Too few outcomes behind this row's money to state either number: the return
-          // and the cost are both that outcome count divided into things, so at one or
-          // two replies they swing on the next one. The row says `Learning` in the value
-          // slot and drops its cost subtitle entirely rather than printing a price with
-          // a caveat. Only where there IS a metric to count (the campaign card) — at
-          // brand level there is no single leg whose outcomes to count.
-          const rowLearning = isStats && !!metric && isLearning(outcomes);
-          // The scope's own rule, one audience at a time: its return reads `Learning`
-          // until one of the scope's campaigns has priced THIS audience. Same answer the
-          // Audiences table gives for the same row, from the same map.
-          const scopeLearning =
-            !campaignScoped &&
-            audienceLearningFor(learningByAudienceId ?? new Map(), key, learningSettled);
+          // The producer says this row is not mature yet: the row says `Learning` in the
+          // value slot and drops its cost subtitle entirely rather than printing a price
+          // with a caveat. Same verdict the Audiences table reads for the same row.
+          const rowLearning = ranksByReturn || !metric ? Boolean(rowReturn?.learning) : Boolean(cost?.learning);
           // The second line carries what the headline cost DIVIDES BY, so a reader can see
           // how much evidence is behind the price. Never a value the row does not have —
           // and never at BRAND level, where the count is one leg's vocabulary on a
@@ -311,11 +291,11 @@ export function TopAudiencesCard({
                   <span className="block truncate text-[11px] text-gray-400">{subtitle}</span>
                 )}
               </span>
-              {rowLearning || scopeLearning ? (
+              {rowLearning ? (
                 <LearningTag withInfo={false} paused={paused} />
               ) : (
                 <span className="text-sm font-medium text-gray-800 tabular-nums">
-                  {ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)}
+                  {ranksByReturn ? formatReturn(rowReturn?.value ?? null) : formatCents(cost?.value ?? null)}
                 </span>
               )}
             </Link>

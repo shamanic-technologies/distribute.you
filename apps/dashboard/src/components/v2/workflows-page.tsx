@@ -10,6 +10,8 @@ import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-swit
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { grainFigures, scopeLadderRows } from "@/lib/workflow-grains";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
@@ -78,7 +80,15 @@ export function V2WorkflowsPage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Workflows" }]} actions={<CostBasisSwitch />} />
+      <TopBar
+        crumbs={[{ label: "Workflows" }]}
+        actions={
+          <>
+            <StatBasisSwitch />
+            <CostBasisSwitch />
+          </>
+        }
+      />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -169,22 +179,29 @@ function MissionSection({
     [r.allLadderRows],
   );
   const unit = r.pair === "visit" ? "/ visit" : "/ reply";
-  // One read of the three grains per row, then the owner's order: Offer asc, Brand asc,
-  // Global asc, a missing figure after every stated one. `sort` is stable, so a full tie
-  // keeps the producer's served order.
+  // Each grain states the served half of ITS maturity pair (mature for every reader,
+  // flash in the staff debug view), `Learning` where the producer says that grain is not
+  // mature. Then the owner's order: Offer asc, Brand asc, Global asc, a missing or
+  // Learning figure after every stated one. `sort` is stable, so a full tie keeps the
+  // producer's served order.
+  const { basis } = useStatBasis();
   const rows = useMemo(() => {
     const priced = r.ranked.map((w) => {
       const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
       return {
         w,
-        offer: grainFigures(ladder?.estimatesByGrain.offer)?.costPerOutcomeUsd ?? null,
-        brand: grainFigures(ladder?.estimatesByGrain.brand)?.costPerOutcomeUsd ?? null,
-        global: grainFigures(ladder?.estimatesByGrain.crossOrg)?.costPerOutcomeUsd ?? null,
+        offer: grainFigures(ladder?.estimatesByGrain.offer, basis),
+        brand: grainFigures(ladder?.estimatesByGrain.brand, basis),
+        global: grainFigures(ladder?.estimatesByGrain.crossOrg, basis),
       };
     });
+    const cost = (f: ReturnType<typeof grainFigures>) => f?.costPerOutcomeUsd ?? null;
     const asc = (a: number | null, b: number | null) => (a == null ? (b == null ? 0 : 1) : b == null ? -1 : a - b);
-    return [...priced].sort((a, b) => asc(a.offer, b.offer) || asc(a.brand, b.brand) || asc(a.global, b.global));
-  }, [r.ranked, bySlug]);
+    return [...priced].sort(
+      (a, b) =>
+        asc(cost(a.offer), cost(b.offer)) || asc(cost(a.brand), cost(b.brand)) || asc(cost(a.global), cost(b.global)),
+    );
+  }, [r.ranked, bySlug, basis]);
   const shown = expanded ? rows : rows.slice(0, ROWS_SHOWN);
   const hrefFor = useCallback(
     (slug: string) => v2WorkflowHref(orgId, brandId, slug, crewParam(spec), spec.campaignId),
@@ -275,9 +292,9 @@ function MissionSection({
                             {template?.label ?? <span className="k-fg4">{"—"}</span>}
                           </span>
                         </td>
-                        <CostCell value={offer} unit={unit} />
-                        <CostCell value={brand} unit={unit} />
-                        <CostCell value={global} unit={unit} />
+                        <CostCell figure={offer} unit={unit} />
+                        <CostCell figure={brand} unit={unit} />
+                        <CostCell figure={global} unit={unit} />
                         <td className="pl-3 pr-4 text-right">
                           <Link
                             href={href}
@@ -315,10 +332,13 @@ function MissionSection({
   );
 }
 
-function CostCell({ value, unit }: { value: number | null; unit: string }) {
+function CostCell({ figure, unit }: { figure: ReturnType<typeof grainFigures>; unit: string }) {
+  const value = figure?.costPerOutcomeUsd ?? null;
   return (
     <td className="px-3 text-right tabular-nums">
-      {value == null ? (
+      {figure?.learning ? (
+        <span className="k-chip">Learning</span>
+      ) : value == null ? (
         <span className="k-fg4">—</span>
       ) : (
         <>

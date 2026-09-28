@@ -38,9 +38,19 @@
  * a ranking taken here. There is deliberately no `.sort(` on a cost anywhere in this
  * module, and no comparison of one cell's figure against another's.
  *
+ * ── WHICH HALF OF THE FIGURE A CELL STATES ────────────────────────────────────────
+ *
+ * Every measured cell is the row's served MATURITY PAIR (features-service#1196): the
+ * MATURE half for every reader, `Learning` exactly where the producer says the row's
+ * resolved figure is not mature, and the FLASH half only in the staff debug view. The
+ * cell never checks a count against a bar. An UNMEASURED row carries no pair (nothing was
+ * measured), so its cell states nothing.
+ *
  * Alias-free (no `@/` import, no zod) so it carries REAL unit tests — vitest resolves
  * no `@` alias in this repo. Keep it that way.
  */
+
+import type { StatBasis } from "./maturity";
 
 /** The column key of the scope that is not an audience: the campaign's own column. */
 export const CAMPAIGN_SCOPE = "__campaign__";
@@ -48,12 +58,26 @@ export const CAMPAIGN_SCOPE = "__campaign__";
 /** Whose evidence a cell's figure rests on, in the producer's own vocabulary. */
 export type MatrixGrain = "crossOrg" | "brand" | "campaign" | "audience";
 
+/** One half of a row's resolved figure, as served. */
+export interface MatrixResolvedHalf {
+  grain: string | null;
+  costPerOutcomeUsd: number | null;
+}
+
 /** One ladder row, narrowed to what a matrix needs. */
 export interface MatrixLadderRow {
   /** `null` ⟺ the campaign column. */
   audienceId: string | null;
   workflow: { workflowDynastySlug: string };
   resolved: { grain: MatrixGrain | null; costPerOutcomeUsd: number | null };
+  /** The row's maturity pair over its resolved figure. Absent only on a goal-keyed body. */
+  maturity?: {
+    resolved: {
+      flash: MatrixResolvedHalf | null;
+      mature: MatrixResolvedHalf | null;
+      isMature: boolean | null;
+    };
+  } | null;
   measured: boolean;
   /** The WORKFLOW's merit position — identical on every row of one dynasty. */
   rank?: number | null;
@@ -70,6 +94,9 @@ export interface MatrixCell {
   grain: MatrixGrain | null;
   measured: boolean;
   scopeRank: number | null;
+  /** TRUE only where the producer says this row's resolved figure is not mature, on the
+   *  mature basis. The cell then states `Learning` and its cost is null. */
+  learning: boolean;
 }
 
 /** One row of the grid: a workflow and the merit rank every one of its cells shares. */
@@ -90,21 +117,60 @@ export function matrixCellKey(dynastySlug: string, audienceId: string | null): s
  */
 export function buildMatrixCellIndex(
   rows: readonly MatrixLadderRow[],
+  basis: StatBasis = "mature",
 ): Map<string, MatrixCell> {
   const out = new Map<string, MatrixCell>();
   for (const r of rows) {
     const key = matrixCellKey(r.workflow.workflowDynastySlug, r.audienceId);
     if (out.has(key)) continue;
+    const shown = cellFigure(r, basis);
     out.set(key, {
       dynastySlug: r.workflow.workflowDynastySlug,
       audienceId: r.audienceId,
-      costPerOutcomeUsd: r.resolved.costPerOutcomeUsd,
-      grain: r.resolved.grain,
+      costPerOutcomeUsd: shown.costPerOutcomeUsd,
+      grain: shown.grain,
       measured: r.measured,
       scopeRank: r.scopeRank ?? null,
+      learning: shown.learning,
     });
   }
   return out;
+}
+
+const MATRIX_GRAINS: readonly MatrixGrain[] = ["crossOrg", "brand", "campaign", "audience"];
+
+/** The producer's grain word, kept only when it is one this grid draws. */
+function matrixGrain(grain: string | null | undefined): MatrixGrain | null {
+  return grain && (MATRIX_GRAINS as readonly string[]).includes(grain) ? (grain as MatrixGrain) : null;
+}
+
+/**
+ * What ONE cell states, on the reader's basis: the served half of the row's resolved
+ * pair, `Learning` (no figure) where the producer says it is not mature. A row carrying
+ * no pair states nothing: the legacy figure has no verdict beside it, so reading it would
+ * bring back a price the producer never judged.
+ */
+export function cellFigure(
+  row: MatrixLadderRow,
+  basis: StatBasis,
+): { costPerOutcomeUsd: number | null; grain: MatrixGrain | null; learning: boolean } {
+  const pair = row.maturity?.resolved;
+  if (!pair) return { costPerOutcomeUsd: null, grain: null, learning: false };
+  if (basis === "flash") {
+    return {
+      costPerOutcomeUsd: pair.flash?.costPerOutcomeUsd ?? null,
+      grain: matrixGrain(pair.flash?.grain),
+      learning: false,
+    };
+  }
+  if (pair.isMature === false) {
+    return { costPerOutcomeUsd: null, grain: matrixGrain(pair.mature?.grain), learning: true };
+  }
+  return {
+    costPerOutcomeUsd: pair.mature?.costPerOutcomeUsd ?? null,
+    grain: matrixGrain(pair.mature?.grain),
+    learning: false,
+  };
 }
 
 /**

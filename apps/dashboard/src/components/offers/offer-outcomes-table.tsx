@@ -14,7 +14,7 @@ import {
 } from "@/lib/offer-outcomes";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
-import { isLearning } from "@/lib/learning-threshold";
+import { shownFigure, type ShownFigure } from "@/lib/maturity";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { isActiveStatus, NumericHead } from "@/components/campaigns/campaigns-table";
@@ -34,8 +34,9 @@ import { Skeleton } from "@/components/skeleton";
  *
  * A null figure reads `—` with the producer's reason stated in words under the row's
  * name: "we could not measure this" and "this was zero" are different statements, and a
- * measured zero is printed as one. A RATIO (ROI, $ / outcome) under ten outcomes reads
- * `Learning`, the same bar every other surface holds; the TOTALS never do.
+ * measured zero is printed as one. A RATIO (ROI, $ / outcome) states the MATURE half of
+ * the pair features-service serves on the row, and reads `Learning` exactly where it says
+ * the row is not mature; the TOTALS never do. No count is checked against a bar here.
  */
 const INFO = {
   roi: "What these outcomes are worth, divided by what was spent to get them. Worked out from the conversion rates and lifetime revenue set in Offer Settings.",
@@ -49,38 +50,33 @@ function fmtUsd(usd: number | null): string {
   return usd == null ? "—" : formatUsdAdaptive(usd);
 }
 
-/** A ratio cell: the figure, `Learning` while it rests on too few outcomes, or `—`. */
+/** A ratio cell: the served mature figure, `Learning` where the producer says so, or `—`. */
 function RatioCell({
-  value,
-  count,
+  figure,
   render,
   good = false,
 }: {
-  value: number | null;
-  count: number | null;
+  figure: ShownFigure;
   render: (v: number) => string;
   good?: boolean;
 }) {
-  if (value == null) return <span className="text-gray-400">—</span>;
-  if (isLearning(count)) return <LearningTag withInfo={false} />;
+  if (figure.learning) return <LearningTag withInfo={false} />;
+  if (figure.value == null) return <span className="text-gray-400">—</span>;
   return (
     <span className={`tabular-nums ${good ? "text-green-600" : "text-gray-900"}`}>
-      {render(value)}
+      {render(figure.value)}
     </span>
   );
 }
 
 function FigureCells({ f, primary }: { f: OutcomeFigures; primary: boolean }) {
   const weight = primary ? "font-semibold" : "";
+  const roi = shownFigure(f.maturity, (h) => h.roiMultiple, "mature");
+  const cost = shownFigure(f.maturity, (h) => h.costPerOutcomeUsd, "mature");
   return (
     <>
       <td className={`px-4 py-3 text-right ${weight}`}>
-        <RatioCell
-          value={f.roiMultiple}
-          count={f.recipientsReached}
-          render={(v) => formatRoi(v)}
-          good={roiIsGood(f.roiMultiple)}
-        />
+        <RatioCell figure={roi} render={(v) => formatRoi(v)} good={roiIsGood(roi.value)} />
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
         {fmtUsd(f.valueUsd)}
@@ -92,11 +88,7 @@ function FigureCells({ f, primary }: { f: OutcomeFigures; primary: boolean }) {
         {f.recipientsReached == null ? "—" : f.recipientsReached.toLocaleString("en-US")}
       </td>
       <td className="px-4 py-3 text-right hidden md:table-cell">
-        <RatioCell
-          value={f.costPerOutcomeUsd}
-          count={f.recipientsReached}
-          render={(v) => formatUsdAdaptive(v)}
-        />
+        <RatioCell figure={cost} render={(v) => formatUsdAdaptive(v)} />
       </td>
     </>
   );

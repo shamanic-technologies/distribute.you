@@ -9,9 +9,8 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import {
-  audienceCostCents,
-  audienceCostIsLearning,
   audienceCount,
+  audienceFigure,
   formatAudienceCents,
   formatAudienceUsd,
   sortAudiences,
@@ -24,6 +23,8 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import type { StatBasis } from "@/lib/maturity";
 
 type Tab = "active" | "archived";
 
@@ -48,50 +49,49 @@ function Withheld({ paused }: { paused: boolean }) {
 }
 
 /**
- * One cell of the audience table. Every figure is the served field v1 renders, formatted
- * the same way; a missing one is `—`, a thin one reads Learning (or Paused while the
- * campaign that would produce it is stopped).
+ * One cell of the audience table. Every ratio is the half of the row's served maturity
+ * pair the reader is shown (lib/maturity.ts); a missing one is `—`, one the producer
+ * says is not mature reads Learning (or Paused while the campaign that would produce it
+ * is stopped). Totals and counts are served verbatim.
  */
 function AudienceCell({
   column,
   audience,
   stats,
   statsLoading,
-  moneyLearning,
+  basis,
   paused,
 }: {
   column: AudienceColumn;
   audience: AudienceWire;
   stats: FeatureAudienceStatsRow | undefined;
   statsLoading: boolean;
-  moneyLearning: boolean;
+  basis: StatBasis;
   paused: boolean;
 }) {
   if (column.fromStats && statsLoading) return <Shimmer className="ml-auto h-3.5 w-10" />;
   const dash = <span className="k-fg4">—</span>;
+  const figure = audienceFigure(column.col, stats, basis);
   switch (column.kind) {
     case "roi": {
-      if (moneyLearning) return <Withheld paused={paused} />;
-      const v = stats?.projection?.returnPerDollar;
+      if (figure.learning) return <Withheld paused={paused} />;
+      const v = figure.value;
       if (v == null) return dash;
       return <span className={`font-medium ${roiIsGood(v) ? "text-[var(--run)]" : ""}`}>{formatRoi(v)}</span>;
     }
     case "pct": {
-      if (moneyLearning) return <Withheld paused={paused} />;
-      const v = stats?.projection?.costOfAcquisitionPct;
-      return v == null ? dash : <>{Math.round(v)}%</>;
+      if (figure.learning) return <Withheld paused={paused} />;
+      return figure.value == null ? dash : <>{Math.round(figure.value)}%</>;
     }
     case "usd": {
-      if (moneyLearning) return <Withheld paused={paused} />;
-      const v = stats?.projection?.costPerPaidClientUsd;
-      return v == null ? dash : <>{formatAudienceUsd(v)}</>;
+      if (figure.learning) return <Withheld paused={paused} />;
+      return figure.value == null ? dash : <>{formatAudienceUsd(figure.value)}</>;
     }
     case "cents":
       return stats ? <>{formatAudienceCents(stats.evidence.totalCostInUsdCents)}</> : dash;
     case "cost": {
-      if (audienceCostIsLearning(column.col, stats)) return <Withheld paused={paused} />;
-      const v = stats ? audienceCostCents(column.col, stats) : null;
-      return v == null ? dash : <>{formatAudienceCents(v)}</>;
+      if (figure.learning) return <Withheld paused={paused} />;
+      return figure.value == null ? dash : <>{formatAudienceCents(figure.value)}</>;
     }
     case "count": {
       if (column.col === "size") return audience.sizeCount != null ? <>{formatCount(audience.sizeCount)}</> : dash;
@@ -121,6 +121,7 @@ function AudienceCell({
  */
 export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string; offerId?: string }) {
   const t = useAudienceTable({ campaignId, offerId });
+  const { basis } = useStatBasis();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("active");
   const [q, setQ] = useState("");
@@ -162,7 +163,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
   const inTab = t.audiences.filter((a) => (tab === "archived" ? a.status === "archived" : a.status !== "archived"));
   const rows = sortAudiences(
     needle ? inTab.filter((a) => `${a.name ?? ""} ${a.description ?? ""}`.toLowerCase().includes(needle)) : inTab,
-    { sortCol, sortDir, tieBreakCol, statsFor: t.statsFor, moneyLearning: t.moneyLearning },
+    { sortCol, sortDir, tieBreakCol, statsFor: t.statsFor, basis },
   );
 
   const selected = selectedId ? t.audiences.find((a) => a.id === selectedId) ?? null : null;
@@ -299,7 +300,6 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
               ) : (
                 rows.map((a, i) => {
                   const stats = t.statsFor(a.id);
-                  const moneyLearning = t.moneyLearning(a.id);
                   const name = a.name || "Untitled";
                   return (
                     <tr
@@ -325,7 +325,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                             audience={a}
                             stats={stats}
                             statsLoading={t.statsLoading}
-                            moneyLearning={moneyLearning}
+                            basis={basis}
                             paused={t.withheldPaused}
                           />
                         </td>
@@ -353,7 +353,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
           columns={t.columns}
           stats={t.statsFor(selected.id)}
           statsLoading={t.statsLoading}
-          moneyLearning={t.moneyLearning(selected.id)}
+          basis={basis}
           paused={t.withheldPaused}
           docked={docked}
           onClose={() => {
@@ -449,7 +449,7 @@ function AudienceDrawer({
   columns,
   stats,
   statsLoading,
-  moneyLearning,
+  basis,
   paused,
   docked,
   onClose,
@@ -463,7 +463,7 @@ function AudienceDrawer({
   columns: AudienceColumn[];
   stats: FeatureAudienceStatsRow | undefined;
   statsLoading: boolean;
-  moneyLearning: boolean;
+  basis: StatBasis;
   paused: boolean;
   docked: boolean;
   onClose: () => void;
@@ -544,7 +544,7 @@ function AudienceDrawer({
                     audience={audience}
                     stats={stats}
                     statsLoading={statsLoading}
-                    moneyLearning={moneyLearning}
+                    basis={basis}
                     paused={paused}
                   />
                 </p>

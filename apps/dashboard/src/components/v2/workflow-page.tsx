@@ -42,7 +42,9 @@ import {
   type WorkflowGrainBlock,
   type WorkflowLadderRowShape,
 } from "@/lib/workflow-grains";
-import { workflowOutcomeCostCents, workflowOutcomeCount } from "@/lib/campaign-workflow-rows";
+import { workflowOutcomeCost, workflowOutcomeCount, workflowRoi } from "@/lib/campaign-workflow-rows";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useIsAdminUser } from "@/lib/use-admin-user";
@@ -85,6 +87,7 @@ export function V2WorkflowPage() {
   const router = useRouter();
   const { specs, settled, missionByCampaignId } = useBrandMissionSpecs(orgId, brandId);
   const { actual } = useCostBasis();
+  const { basis } = useStatBasis();
 
   // The mission the ranking is asked through. A link naming it wins; an older link naming
   // only the crew resolves when the brand runs a single mission for that crew.
@@ -146,7 +149,10 @@ export function V2WorkflowPage() {
     const row = ranked.row;
     const noun = ranking.outcomeNoun;
     const count = workflowOutcomeCount(row);
-    const costCents = workflowOutcomeCostCents(row);
+    // What THIS mission measured, as the MATURE half of the served pair (Learning where
+    // the producer says so); the projected half beside it is the served ranking.
+    const cost = workflowOutcomeCost(row, basis);
+    const roi = workflowRoi(row, basis);
     body = (
       <>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -190,13 +196,13 @@ export function V2WorkflowPage() {
         <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x md:divide-y-0">
           <DualKpi
             label="Return, this mission"
-            measured={row.learning ? <span className="k-chip">Learning</span> : formatRoi(row.roiMultiple, "—")}
-            projected={formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
+            measured={roi.learning ? <span className="k-chip">Learning</span> : formatRoi(roi.value, "—")}
+            projected={ranked.estLearning ? <span className="k-chip">Learning</span> : formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
           />
           <DualKpi
             label={`Cost / ${noun.toLowerCase()}`}
-            measured={row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)}
-            projected={fmtUsd(ranked.estCostPerOutcomeUsd)}
+            measured={cost.learning ? <span className="k-chip">Learning</span> : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)}
+            projected={ranked.estLearning ? <span className="k-chip">Learning</span> : fmtUsd(ranked.estCostPerOutcomeUsd)}
           />
           <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
         </div>
@@ -249,7 +255,7 @@ export function V2WorkflowPage() {
               featureSlug={spec.featureSlug}
               onForked={(slug) => router.push(v2WorkflowHref(orgId, brandId, slug, crewParam(spec), spec.campaignId))}
             />
-            <AudiencesCard rows={audienceRowsFor(ranking.allLadderRows, dynasty)} audienceById={audienceById} noun={noun} />
+            <AudiencesCard rows={audienceRowsFor(ranking.allLadderRows, dynasty, basis)} audienceById={audienceById} noun={noun} />
           </div>
         </div>
       </>
@@ -264,7 +270,12 @@ export function V2WorkflowPage() {
           ...(missionLabel ? [{ label: missionLabel }] : []),
           { label: name },
         ]}
-        actions={<CostBasisSwitch />}
+        actions={
+          <>
+            <StatBasisSwitch />
+            <CostBasisSwitch />
+          </>
+        }
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">{body}</div>
     </>
@@ -421,7 +432,9 @@ function GrainCell({
   brandDomain: string | null;
   brandLogoUrl: string | null;
 }) {
-  const f = grainFigures(block);
+  // The served half of THIS grain's maturity pair, and the grain's own Learning verdict.
+  const { basis } = useStatBasis();
+  const f = grainFigures(block, basis);
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-center gap-2">
@@ -437,13 +450,16 @@ function GrainCell({
             <p className="k-fg3 mt-1 text-[12px]">{block.costBasis === "charged" ? "What you paid" : "What it costs us, refunds included"}</p>
           )}
           <dl className="mt-3 space-y-1.5 text-[13px]">
-            <Row k={`Cost / ${noun.toLowerCase()}`} v={f?.costPerOutcomeUsd == null ? null : formatUsdAdaptive(f.costPerOutcomeUsd)} />
+            <Row
+              k={`Cost / ${noun.toLowerCase()}`}
+              v={f?.learning ? <span className="k-chip">Learning</span> : f?.costPerOutcomeUsd == null ? null : formatUsdAdaptive(f.costPerOutcomeUsd)}
+            />
             <Row
               k={f && !f.outcomeObserved ? `${plural(noun)} (expected)` : plural(noun)}
               v={f?.outcomeCount == null ? null : fmtCount(Math.round(f.outcomeCount))}
             />
-            <Row k="Spent" v={block.evidence.spentUsd == null ? null : fmtUsd(block.evidence.spentUsd)} />
-            <Row k="People reached" v={fmtCount(block.evidence.observedContacted)} />
+            <Row k="Spent" v={f?.spentUsd == null ? null : fmtUsd(f.spentUsd)} />
+            <Row k="People reached" v={f?.contacted == null ? null : fmtCount(f.contacted)} />
           </dl>
         </>
       )}
@@ -483,7 +499,13 @@ function AudiencesCard({
                 </p>
               </div>
               <span className="shrink-0 text-[13px] font-medium tabular-nums">
-                {r.figures?.costPerOutcomeUsd == null ? <span className="k-fg4">—</span> : formatUsdAdaptive(r.figures.costPerOutcomeUsd)}
+                {r.figures?.learning ? (
+                  <span className="k-chip">Learning</span>
+                ) : r.figures?.costPerOutcomeUsd == null ? (
+                  <span className="k-fg4">—</span>
+                ) : (
+                  formatUsdAdaptive(r.figures.costPerOutcomeUsd)
+                )}
               </span>
             </li>
           );

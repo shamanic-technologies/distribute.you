@@ -50,6 +50,8 @@
  */
 
 import type { LegColumnPair } from "./campaign-leg-columns";
+import { pairIsLearning, shownFigure, type MaturityPair, type ShownFigure, type StatBasis } from "./maturity";
+import type { EconomicsFigures, OutcomeFigures } from "./revenue-view";
 
 /** A dynasty the channel currently offers, as the catalogue states it. */
 export interface WorkflowCatalogueRow {
@@ -87,6 +89,10 @@ export interface WorkflowRevenueGroup {
   recipientsRepliesPositive: number | null;
   cpprCents: number | null;
   cpcCents: number | null;
+  /** ROI, % CAC and $ CAC served twice with this group's maturity verdict (lib/maturity.ts). */
+  economicsMaturity: MaturityPair<EconomicsFigures>;
+  /** Cost per visit and per positive reply served twice. Null = no outcomes block served. */
+  outcomesMaturity: MaturityPair<OutcomeFigures> | null;
 }
 
 /**
@@ -139,8 +145,11 @@ export interface CampaignWorkflowRow {
   roiMultiple: number | null;
   /** Which of the two served outcomes this row is counted and priced by. */
   outcomePair: WorkflowOutcomePair;
-  /** Fewer than the bar's worth of the PAIR's outcome behind the price. */
+  /** The producer said this scope is not mature (`isMature: false`). Never a count read here. */
   learning: boolean;
+  /** The row's ratios served twice. Null when this scope has never run the workflow. */
+  economicsMaturity: MaturityPair<EconomicsFigures> | null;
+  outcomesMaturity: MaturityPair<OutcomeFigures> | null;
   channel: string | null;
   audienceType: string | null;
   /** Both catalogue-only: workflow-service is the one producer that states them. */
@@ -189,9 +198,17 @@ export function workflowOutcomeCount(row: CampaignWorkflowRow): number | null {
   return row.outcomePair === "visit" ? row.websiteClicks : row.positiveReplies;
 }
 
-/** The price this row states — the pair's own. */
-export function workflowOutcomeCostCents(row: CampaignWorkflowRow): number | null {
-  return row.outcomePair === "visit" ? row.cpcCents : row.cpprCents;
+/**
+ * The price this row states — the pair's own, as the half of the served maturity pair
+ * the reader is shown (lib/maturity.ts), with the producer's Learning verdict.
+ */
+export function workflowOutcomeCost(row: CampaignWorkflowRow, basis: StatBasis): ShownFigure {
+  return shownFigure(row.outcomesMaturity, (h) => (row.outcomePair === "visit" ? h.cpcCents : h.cpprCents), basis);
+}
+
+/** The row's return on the reader's basis, with the producer's Learning verdict. */
+export function workflowRoi(row: CampaignWorkflowRow, basis: StatBasis): ShownFigure {
+  return shownFigure(row.economicsMaturity, (h) => h.roiMultiple, basis);
 }
 
 /**
@@ -331,15 +348,15 @@ export function resolveRunningWorkflow(
  * own `resolved.costPerOutcomeUsd`) — this returns them in catalogue order so the
  * caller has a stable list to look a dynasty up in.
  *
- * `isLearning` is injected rather than imported so this module stays alias-free; the
- * caller passes the repo's ONE bar (`lib/learning-threshold`), never a second copy.
+ * `learning` is the producer's own verdict on the group (`isMature: false`), never a
+ * count compared to a bar here: a second judge of "is this thin" is how one campaign
+ * came to state four different costs per positive reply on four screens.
  */
 export function buildCampaignWorkflowRows({
   catalogue,
   groups,
   running,
   pair,
-  isLearning,
 }: {
   catalogue: readonly WorkflowCatalogueRow[];
   groups: readonly WorkflowRevenueGroup[];
@@ -351,7 +368,6 @@ export function buildCampaignWorkflowRows({
    * is how a visit-led campaign came to read zero positive replies on every row.
    */
   pair: WorkflowOutcomePair;
-  isLearning: (count: number | null | undefined) => boolean;
 }): CampaignWorkflowRow[] {
   const collapsed = collapseWorkflowCatalogue(catalogue);
   const runningDynasty = running.dynastySlug;
@@ -363,9 +379,6 @@ export function buildCampaignWorkflowRows({
     const group = byDynasty.get(entry.workflowDynastySlug);
     const positiveReplies = group?.recipientsRepliesPositive ?? null;
     const websiteClicks = group?.recipientsClicked ?? null;
-    // The bar is read against the outcome the row STATES, never the other one: a
-    // visit-led campaign with 400 visits is measured, whatever its reply count is.
-    const outcome = pair === "visit" ? websiteClicks : positiveReplies;
     return {
       workflowDynastySlug: entry.workflowDynastySlug,
       workflowDynastyName: entry.workflowDynastyName || entry.workflowDynastySlug,
@@ -380,7 +393,9 @@ export function buildCampaignWorkflowRows({
       outcomePair: pair,
       // A row this scope has never run is not "learning" — there is nothing to be
       // thin. It has no price at all, which the null already says.
-      learning: group !== undefined && isLearning(outcome),
+      learning: pairIsLearning(group?.economicsMaturity),
+      economicsMaturity: group?.economicsMaturity ?? null,
+      outcomesMaturity: group?.outcomesMaturity ?? null,
       channel: entry.channel ?? null,
       audienceType: entry.audienceType ?? null,
       contentModel: entry.contentModel ?? null,
@@ -392,7 +407,6 @@ export function buildCampaignWorkflowRows({
     const group = byDynasty.get(dynastySlug);
     const positiveReplies = group?.recipientsRepliesPositive ?? null;
     const websiteClicks = group?.recipientsClicked ?? null;
-    const outcome = pair === "visit" ? websiteClicks : positiveReplies;
     return {
       positiveReplies,
       cpprCents: group?.cpprCents ?? null,
@@ -402,7 +416,9 @@ export function buildCampaignWorkflowRows({
       cpcCents: group?.cpcCents ?? null,
       roiMultiple: group?.roiMultiple ?? null,
       outcomePair: pair,
-      learning: group !== undefined && isLearning(outcome),
+      learning: pairIsLearning(group?.economicsMaturity),
+      economicsMaturity: group?.economicsMaturity ?? null,
+      outcomesMaturity: group?.outcomesMaturity ?? null,
       name: group?.workflowDynastyName ?? null,
     };
   });
@@ -451,6 +467,11 @@ function withRunningRow(
   ];
 }
 
+/** One half of a fleet row's maturity pair, narrowed to what the drawer states. */
+export interface FleetOutcomeHalf {
+  costPerOutcomeUsd: number | null;
+}
+
 /** One fleet row, as the public cross-org cost read states it. */
 export interface FleetWorkflowCost {
   workflowDynastySlug: string;
@@ -460,6 +481,32 @@ export interface FleetWorkflowCost {
   /** Cross-org outcome counts the same row carries. */
   observedPositiveReplies: number | null;
   observedClicks: number | null;
+  /** The row's maturity pair on its objective's own leg (features-service#1196). Null on
+   *  a projected objective, where no leg counts its own outcome. */
+  maturity: {
+    isMature: boolean | null;
+    flash: FleetOutcomeHalf | null;
+    mature: FleetOutcomeHalf | null;
+  } | null;
+}
+
+/**
+ * The fleet's own figures, SERVED: the best and the median cost per outcome over the
+ * workflows features-service says are MATURE on this leg. Nothing here ranks workflows,
+ * picks a best, or takes a median: those are statistics about the fleet and the producer
+ * states them.
+ */
+export interface FleetBlock {
+  legKey: string;
+  basis: string;
+  matureWorkflowCount: number;
+  best: { workflowDynastySlug: string; costPerOutcomeUsd: number | null } | null;
+  median: { costPerOutcomeUsd: number | null } | null;
+}
+
+export interface FleetRead {
+  workflows: FleetWorkflowCost[];
+  fleet: FleetBlock | null;
 }
 
 /**
@@ -469,26 +516,26 @@ export interface FleetWorkflowCost {
  * `costBasis: "incurred"`), while everything else on these pages is what THIS
  * customer was CHARGED. Two different questions sharing the words "cost per
  * outcome", so the surface states which is which rather than printing them as one
- * series — and the MEDIAN is the fleet's central figure, never the mean, because one
- * workflow at an absurd rate drags an average and describes nobody.
+ * series.
  *
- * Null when the fleet has no priced row at all: "we could not measure this" is not a
- * zero, and it is not a claim that this workflow beats everyone.
+ * `mine` is this workflow's own pair on the reader's basis, `Learning` where the
+ * producer says it is not mature. `best` and `median` are the served fleet block, which
+ * is taken over MATURE workflows only, so they are stated on the mature basis alone: on
+ * the staff flash view they read nothing rather than sit beside a figure on another basis.
  */
 export function fleetComparison(
   dynastySlug: string,
-  fleet: readonly FleetWorkflowCost[],
-): { mine: number | null; median: number | null; best: number | null } {
-  const priced = fleet
-    .map((f) => f.costPerOutcomeUsd)
-    .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0)
-    .sort((a, b) => a - b);
-  const mine = fleet.find((f) => f.workflowDynastySlug === dynastySlug)?.costPerOutcomeUsd ?? null;
-  if (priced.length === 0) return { mine, median: null, best: null };
-  const mid = Math.floor(priced.length / 2);
-  const median =
-    priced.length % 2 === 1 ? priced[mid] : (priced[mid - 1] + priced[mid]) / 2;
-  return { mine, median, best: priced[0] };
+  read: FleetRead | undefined,
+  basis: StatBasis,
+): { mine: ShownFigure; median: number | null; best: number | null } {
+  const row = read?.workflows.find((f) => f.workflowDynastySlug === dynastySlug) ?? null;
+  const mine = shownFigure(row?.maturity, (h) => h.costPerOutcomeUsd, basis);
+  if (basis === "flash" || !read?.fleet) return { mine, median: null, best: null };
+  return {
+    mine,
+    median: read.fleet.median?.costPerOutcomeUsd ?? null,
+    best: read.fleet.best?.costPerOutcomeUsd ?? null,
+  };
 }
 
 /**

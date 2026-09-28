@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { LearningTag } from "@/components/learning-tag";
-import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
+import { MATURITY_LEARNING_NOTE, shownFigure } from "@/lib/maturity";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
 import type { LegSteps } from "@/lib/goal-steps";
 import { formatUsdAdaptive } from "@/lib/format-number";
@@ -68,15 +68,14 @@ function formatCostCents(cents: number | null | undefined): string {
 /**
  * Shared closing sentence for every cost-per-outcome tooltip on this row.
  *
- * At zero outcomes features-service no longer returns null: it floors the aggregate to
- * `max(committed net spend, the expected cost from the brand's best model)` — the SAME
- * cascade it already applies to each audience, lifted to the brand/campaign aggregate.
- * So the card shows the Strategy page's expected price until the brand has outspent it,
- * and only then reports the spend. One constant so the three tooltips cannot drift into
- * describing two different rules.
+ * Every cost here is the MATURE half of the pair features-service serves: the spend of
+ * the runs started long enough ago for their results to have arrived, divided by every
+ * result the leads they served produced, whenever it landed. No number is written into
+ * the sentence: the duration is the producer's, published per leg. One constant so the
+ * tooltips cannot drift into describing two different rules.
  */
-const EXPECTED_COST_NOTE =
-  "Until the first one lands it shows what it is expected to cost, or your spend so far once that is higher.";
+const MATURE_COST_NOTE =
+  "It only counts outreach sent long enough ago for the answers to have arrived, together with every result those leads produced, so recent emails still waiting for a reply do not skew it.";
 
 // Each card is a fixed-min-width flex item so the whole set stays on ONE strict
 // row (CLAUDE.md "wide legit content scrolls internally" → overflow-x-auto on
@@ -119,7 +118,6 @@ export function OutreachStatCards({
   economics,
   totalPipelineUsd,
   showEconomics = false,
-  economicsLearning = false,
   showStepMetrics = true,
   showOutreach = true,
   paused = false,
@@ -198,16 +196,6 @@ export function OutreachStatCards({
   /** Render the four money cards (Pipeline revenue / ROI / $ CAC / % CAC). */
   showEconomics?: boolean;
   /**
-   * Whether this scope's RATIOS rest on too little evidence to state — every campaign
-   * selling it is still learning.
-   *
-   * It gates ROI, $ CAC and % CAC and NOT Pipeline revenue: the first three divide by the
-   * outcome count, so at a low count they are decided by whichever outcome landed, while a
-   * total simply GROWS with each one — a thin scope has a small pipeline, not an unreliable
-   * one.
-   */
-  economicsLearning?: boolean;
-  /**
    * Whether to render the STEP pairs (Website Visits + cost per visit, and the outcome
    * pair). A brand runs several legs at once, so at brand level those would name one
    * leg's steps while the row sums them all — the money cards are the honest brand-level
@@ -258,21 +246,28 @@ export function OutreachStatCards({
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
 
+  // Every ratio on this row is the MATURE half of its served pair, and it reads Learning
+  // exactly where the producer says the scope is not mature (lib/maturity.ts). v1 has no
+  // staff flash view, so it always states the mature half. Nothing here counts outcomes.
+  const visitCost = shownFigure(spend?.maturity, (h) => h.totalCpcCents, "mature");
+  const replyCost = shownFigure(spend?.maturity, (h) => h.cpprCents, "mature");
+  const roi = shownFigure(economics?.maturity, (h) => h.roiMultiple, "mature");
+  const cacUsd = shownFigure(economics?.maturity, (h) => h.costPerAcquisitionUsd, "mature");
+  const cacPct = shownFigure(economics?.maturity, (h) => h.costOfAcquisitionPct, "mature");
+  const economicsLearning = roi.learning;
+
   const clickMetric = {
     label: "Website Visits",
     tooltip:
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     value: formatCount(clicks),
     costLabel: "Cost per website visit",
-    costTooltip: `Cost per website visit: committed spend (billed plus reserved for scheduled follow-ups) divided by website visits. It can dip when a reserved follow-up sends or gets cancelled. ${EXPECTED_COST_NOTE}`,
-    // Committed CPC (= actual + provisioned / clicks). Prefer the new `totalCpcCents`,
-    // fall back to the legacy `cpcCents` until features-service lands. Server-provided
-    // either way — no client division, including the zero-click case where the server
-    // floors it to the expected cost per visit rather than returning null.
-    costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
-    // Too few visits behind the ratio to state it as a price — the count card beside
-    // this one still shows the real number, so nothing is hidden.
-    costLearning: isLearning(clicks),
+    costTooltip: `Cost per website visit: spend divided by website visits. ${MATURE_COST_NOTE}`,
+    // The served mature figure, read verbatim: no client division and no fallback.
+    costValue: formatCostCents(visitCost.value),
+    // The producer says the scope is not mature yet — the count card beside this one
+    // still shows the real number, so nothing is hidden.
+    costLearning: visitCost.learning,
   };
 
   // The Website Visits pair renders only when a website visit is actually one of the steps.
@@ -297,7 +292,7 @@ export function OutreachStatCards({
     costLabel: string;
     costTooltip: string;
     costValue: string;
-    /** Fewer than the bar's worth of this outcome → the cost reads `Learning`. */
+    /** features-service says the scope is not mature → the cost reads `Learning`. */
     costLearning: boolean;
   } | null = isPositiveReplies
     ? {
@@ -311,21 +306,12 @@ export function OutreachStatCards({
             ? `${formatSharePct(signalSharePct)} of leads contacted`
             : undefined,
         costLabel: "Cost per positive reply",
-        costTooltip: `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`,
-        // features-service owns the zero-reply case: it floors the aggregate to
-        // max(committed net spend, the expected cost from the brand's best model), the same
-        // cascade it applies per audience, so this card and the Strategy page print ONE
-        // price instead of restating "Total spent" under a second label.
-        //
-        // Rendered VERBATIM, with no client fallback to spend. That fallback (the old
-        // `costSoFarFloorCents` call) is what produced "Cost per positive reply $29"
-        // directly above "Total spent $29". features-service's projection read is
-        // deliberately fail-soft: on a blip it returns null, meaning "we could not
-        // estimate this" — and the honest render for that is "—", not the nearest real
-        // number we happen to hold. Re-adding a spend fallback here reintroduces the bug
-        // one layer down, on exactly the branch no fixture covers.
-        costValue: formatCostCents(spend?.cpprCents),
-        costLearning: isLearning(spend?.positiveRepliesCount),
+        costTooltip: `Cost per positive reply: spend divided by the positive replies attributed to your outreach. ${MATURE_COST_NOTE}`,
+        // Rendered VERBATIM, with no client fallback to spend: a spend fallback once
+        // printed "Cost per positive reply $29" directly above "Total spent $29". A null
+        // mature figure means "we could not measure this" and renders "—".
+        costValue: formatCostCents(replyCost.value),
+        costLearning: replyCost.learning,
       }
     : null;
 
@@ -386,14 +372,14 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label="ROI"
-              tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.roi}
-              value={formatRoi(economics?.roiMultiple)}
+              tooltip={economicsLearning ? MATURITY_LEARNING_NOTE : ECONOMICS_INFO.roi}
+              value={formatRoi(roi.value)}
               // Green above break-even, ordinary colour below, never red — the same
               // `roiIsGood` the Return-on-spend headline and the Campaigns table's ROI
               // cell read, so the three cannot disagree about where green starts. The
               // learning branch below replaces the value outright, so a figure we are
               // declining to state is never painted as a good one.
-              valueClassName={roiIsGood(economics?.roiMultiple) ? "text-green-600" : undefined}
+              valueClassName={roiIsGood(roi.value) ? "text-green-600" : undefined}
               action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
@@ -401,8 +387,8 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label="$ CAC"
-              tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.cacUsd}
-              value={formatUsd(economics?.costPerAcquisitionUsd)}
+              tooltip={economicsLearning ? MATURITY_LEARNING_NOTE : ECONOMICS_INFO.cacUsd}
+              value={formatUsd(cacUsd.value)}
               action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
@@ -410,8 +396,8 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label="% CAC"
-              tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.cacPct}
-              value={formatPct(economics?.costOfAcquisitionPct)}
+              tooltip={economicsLearning ? MATURITY_LEARNING_NOTE : ECONOMICS_INFO.cacPct}
+              value={formatPct(cacPct.value)}
               action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
@@ -438,7 +424,7 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label={clickMetric.costLabel}
-              tooltip={clickMetric.costLearning ? LEARNING_NOTE : clickMetric.costTooltip}
+              tooltip={clickMetric.costLearning ? MATURITY_LEARNING_NOTE : clickMetric.costTooltip}
               value={clickMetric.costValue}
               action={clickMetric.costLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
@@ -472,13 +458,13 @@ export function OutreachStatCards({
             <ScoreCard
               label="Cost per positive reply"
               tooltip={
-                isLearning(spend?.positiveRepliesCount)
-                  ? LEARNING_NOTE
-                  : `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`
+                replyCost.learning
+                  ? MATURITY_LEARNING_NOTE
+                  : `Cost per positive reply: spend divided by the positive replies attributed to your outreach. ${MATURE_COST_NOTE}`
               }
-              value={formatCostCents(spend?.cpprCents)}
+              value={formatCostCents(replyCost.value)}
               action={
-                isLearning(spend?.positiveRepliesCount) ? (
+                replyCost.learning ? (
                   <LearningTag withInfo={false} paused={paused} />
                 ) : undefined
               }
@@ -504,7 +490,7 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label={outcomeCard.costLabel}
-              tooltip={outcomeCard.costLearning ? LEARNING_NOTE : outcomeCard.costTooltip}
+              tooltip={outcomeCard.costLearning ? MATURITY_LEARNING_NOTE : outcomeCard.costTooltip}
               value={outcomeCard.costValue}
               action={outcomeCard.costLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}

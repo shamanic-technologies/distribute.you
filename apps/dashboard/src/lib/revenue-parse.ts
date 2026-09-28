@@ -7,7 +7,32 @@
 // authed side; empty section on the report side), never a render crash.
 
 import { z } from "zod";
+import { maturityPairSchema } from "./maturity";
 import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
+
+/**
+ * The ratios of a cost-economics block, served twice (features-service#1196, lib/maturity.ts).
+ * REQUIRED: the producer serves the pair on every revenue body, so a body without it is
+ * shape rot and must fail loud rather than silently drop every Learning tag.
+ */
+export const EconomicsMaturitySchema = maturityPairSchema(
+  z.object({
+    roiMultiple: z.number().nullable(),
+    costOfAcquisitionPct: z.number().nullable(),
+    costPerAcquisitionUsd: z.number().nullable(),
+  }),
+);
+/** The cost-per-outcome ratios of a spend block, served twice. `*Cents` coerce like the block's own. */
+const SpendMaturitySchema = maturityPairSchema(
+  z.object({
+    totalCpcCents: z.coerce.number().nullable(),
+    cpprCents: z.coerce.number().nullable(),
+    cpsCents: z.coerce.number().nullable(),
+    cpsmCents: z.coerce.number().nullable(),
+    cpfsCents: z.coerce.number().nullable(),
+    cpSaleCents: z.coerce.number().nullable(),
+  }),
+);
 
 const RevenueTopPersonSchema = z.object({
   firstName: z.string().nullable(),
@@ -132,6 +157,7 @@ const CostEconomicsSchema = z.object({
   // overview + grouped responses (which omit the field) still parse.
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
+  maturity: EconomicsMaturitySchema,
 });
 // Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
 // spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
@@ -311,6 +337,7 @@ const SpendSchema = z.object({
   // (event=sale, RENAMED from purchase). Same rollout tolerance; cpSaleCents null at 0.
   salesCount: z.coerce.number().optional(),
   cpSaleCents: z.coerce.number().nullable().optional(),
+  maturity: SpendMaturitySchema,
 });
 
 /**
@@ -587,6 +614,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
       costPerAcquisitionUsd: d.costEconomics.costPerAcquisitionUsd ?? null,
       expectedConversions: d.costEconomics.expectedConversions,
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
+      maturity: d.costEconomics.maturity,
     },
     roiHistory: d.roiHistory ?? null,
     // Whole, verbatim. The card renders the served points and the served counts; the one

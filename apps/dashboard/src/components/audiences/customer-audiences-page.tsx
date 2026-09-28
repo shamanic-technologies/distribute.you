@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -18,7 +17,6 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
-import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import { formatRoi } from "@/lib/format-roi";
 import { pollOptions } from "@/lib/query-options";
 import {
@@ -38,8 +36,7 @@ import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-mode
 import { useCampaignLeg } from "@/lib/use-leg-catalogue";
 import { legColumnPair, legPairIsAvailable, legRankMetric } from "@/lib/campaign-leg-columns";
 import { goalForLeg, stepsFor } from "@/lib/goal-steps";
-import { isLearning } from "@/lib/learning-threshold";
-import { audienceLearningFor, useAudienceLearning } from "@/lib/use-audience-learning";
+import { audienceFigure, sortAudiences, type AudienceSortCol } from "@/lib/audience-table-model";
 import { LearningTag } from "@/components/learning-tag";
 import { isRunningStatus } from "@/lib/campaign-controls";
 import { useScopePaused } from "@/lib/use-scope-paused";
@@ -77,94 +74,12 @@ function formatUsd(usd: number | null | undefined): string {
 }
 
 /**
- * The outcome a cost column divides by, for the columns that HAVE one.
- *
- * A cost per outcome with almost no outcomes behind it is decided by whichever one
- * happened to land, so those columns state `Learning` until ten have (the same bar
- * the stat cards use — `lib/learning-threshold.ts` holds it once). This map is what
- * says which count each column is keyed on; a column absent from it is not a per-
- * outcome price and is never gated.
+ * The v1 audiences table states one figure per ratio column: the MATURE half of the pair
+ * features-service serves on the row (lib/maturity.ts), with `Learning` exactly where it
+ * says the row is not mature. The column/sort rule is the shared one the v2 table reads
+ * (lib/audience-table-model.ts), so the two tables cannot rank or tag one audience two ways.
  */
-const COST_COL_OUTCOME: Partial<Record<SortCol, (stats: FeatureAudienceStatsRow) => number | null | undefined>> = {
-  cppr: (s) => s.evidence.positiveReplies,
-  cpc: (s) => s.evidence.websiteClicks,
-  cps: (s) => s.evidence.signups,
-  cpfs: (s) => s.evidence.formSubmissions,
-  cpsale: (s) => s.evidence.sales,
-};
-
-/** Whether this row's price under this column is still learning. No stats row at all is
- *  NOT learning — it is the absent-row case the table already prints as "-". */
-function costIsLearning(col: SortCol, stats: FeatureAudienceStatsRow | undefined): boolean {
-  const read = COST_COL_OUTCOME[col];
-  if (!read || !stats) return false;
-  return isLearning(read(stats));
-}
-
-type SortCol = "audience" | "roi" | "cacPct" | "cacUsd" | "invested" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
-
-/**
- * Sort key for an audience row under a given column. `audience` sorts by name
- * (string, always present); the numeric columns read the joined stats overlay /
- * audience fields and return `null` when absent — the caller pushes nulls last.
- */
-function sortValue(
-  col: SortCol,
-  audience: AudienceWire,
-  stats: FeatureAudienceStatsRow | undefined,
-): string | number | null {
-  switch (col) {
-    case "audience":
-      return (audience.name || "").toLowerCase();
-    // Brand-level money. Both are features-service projections read verbatim — the
-    // browser divides nothing, and in particular does NOT turn the return into a %CAC
-    // by inverting it (that inversion is on this repo's banned list).
-    case "roi":
-      return stats?.projection?.returnPerDollar ?? null;
-    case "cacUsd":
-      return stats?.projection?.costPerPaidClientUsd ?? null;
-    case "cacPct":
-      return stats?.projection?.costOfAcquisitionPct ?? null;
-    // REALIZED spend, unlike the three projections above it — the audience's own net
-    // committed cost as features-service serves it, sorted on the same field the cell
-    // renders.
-    case "invested":
-      return stats?.evidence.totalCostInUsdCents ?? null;
-    case "replies":
-      return stats?.evidence.positiveReplies ?? null;
-    case "cppr":
-      // Accounting "so far": sort on the floored CPPR (net committed spend when 0
-      // replies) so a 0-reply audience with real spend sorts by what it has cost,
-      // matching what the column renders. Same floor as the cell below.
-      return costSoFarFloorCents(
-        stats?.metrics.cpprCents,
-        stats?.evidence.totalCostInUsdCents,
-        stats?.evidence.positiveReplies,
-      );
-    case "cpc":
-      return stats?.metrics.cpcCents ?? null;
-    case "clicks":
-      return stats?.evidence.websiteClicks ?? null;
-    case "signups":
-      return stats?.evidence.signups ?? null;
-    case "cps":
-      return stats?.metrics.cpsCents ?? null;
-    case "formSubmissions":
-      return stats?.evidence.formSubmissions ?? null;
-    case "cpfs":
-      return stats?.metrics.cpfsCents ?? null;
-    case "sales":
-      return stats?.evidence.sales ?? null;
-    case "cpsale":
-      return stats?.metrics.cpsaleCents ?? null;
-    case "outreach":
-      return stats?.evidence.contacted ?? null;
-    case "remaining":
-      return audience.availableToContactPct ?? null;
-    case "size":
-      return audience.sizeCount ?? null;
-  }
-}
+type SortCol = AudienceSortCol;
 
 /** Clickable, sortable column header. Shows a ▲/▼ caret when it's the active sort. */
 function SortHeader({
@@ -240,7 +155,6 @@ export function CustomerAudiencesPage({
     featureSlug,
     settled: scopeSettled,
   } = useScopedFeatureSlug(campaignId);
-  const soleFeatureSlug = useSoleFeatureSlug();
   const channels = useAcquisitionChannels();
   // Under a campaign the gate is the channel CATALOGUE: `isRevenueFeature` is the brand's
   // GA set and would blank this page for a campaign on any other channel. Unsettled reads
@@ -396,18 +310,6 @@ export function CustomerAudiencesPage({
    * campaign performs exactly one leg, so its own steps ARE what it buys.
    */
   const brandLevelMoney = !campaignScoped;
-  // Which audiences the scope's campaigns have priced, and which are still learning. An
-  // audience clears the bar the moment ONE of those campaigns has produced enough
-  // outcomes FROM IT — the same rule the money above this table follows, one level down.
-  // Only read where the money columns render (brand and offer); a campaign-scoped table
-  // states its own leg's per-outcome costs, which carry their own gate.
-  // Read only where the money columns render — brand and offer grain — and the brand
-  // list has always been pinned to its one feature, so it keeps it.
-  const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(
-    brandId,
-    soleFeatureSlug,
-    offerId,
-  );
   // Under a campaign whose leg we could place, the leg's OWN pair is the only one that
   // renders — the goal-keyed gate below is what a brand-level table and a campaign with
   // an unplaceable leg keep.
@@ -717,58 +619,15 @@ export function CustomerAudiencesPage({
         // Sort the visible rows by the active column. Nulls (missing stat) always
         // last, both directions, so a no-data row never sorts as the cheapest $0.
         //
-        // A row whose price reads `Learning` has no rank under that column — ordering the
-        // table by a number it is deliberately not showing reads as unordered. Those rows
-        // therefore sink below every measured one and are ordered among themselves by the
-        // OUTCOME COUNT the column divides by, descending: the closest to a real price
-        // first, and that count is the column immediately beside it, so the order the
-        // reader sees is the order the numbers on screen state.
-        const MONEY_COLS: SortCol[] = ["roi", "cacPct", "cacUsd"];
-        const learningRank = (a: AudienceWire): number | null => {
-          // The scope's money columns: a row the campaigns have not priced has no rank
-          // under any of them, and nothing left to order it by, so they tie.
-          if (
-            brandLevelMoney &&
-            MONEY_COLS.includes(sortCol) &&
-            audienceLearningFor(learningByAudienceId, a.id, audienceLearningSettled)
-          ) {
-            return 0;
-          }
-          const stats = statsByAudienceId.get(a.id);
-          if (!costIsLearning(sortCol, stats)) return null;
-          const read = COST_COL_OUTCOME[sortCol];
-          return (stats && read ? read(stats) : null) ?? 0;
-        };
-        const sorted = [...visible].sort((a, b) => {
-          const al = learningRank(a);
-          const bl = learningRank(b);
-          if (al != null || bl != null) {
-            if (al != null && bl != null) return bl - al;
-            return al != null ? 1 : -1;
-          }
-          const av = sortValue(sortCol, a, statsByAudienceId.get(a.id));
-          const bv = sortValue(sortCol, b, statsByAudienceId.get(b.id));
-          if (av != null && bv != null) {
-            const cmp =
-              typeof av === "string" && typeof bv === "string"
-                ? av.localeCompare(bv)
-                : (av as number) - (bv as number);
-            if (cmp !== 0) return sortDir === "asc" ? cmp : -cmp;
-          } else if (av == null && bv != null) {
-            return 1;
-          } else if (av != null && bv == null) {
-            return -1;
-          }
-          // Primary equal (or both missing): break ties on the goal's website-visit
-          // cost (CPC) ASC — cheapest visit first — independent of the primary
-          // direction. Nulls still last. No tie-break col → stable (return 0).
-          if (!tieBreakCol) return 0;
-          const at = sortValue(tieBreakCol, a, statsByAudienceId.get(a.id));
-          const bt = sortValue(tieBreakCol, b, statsByAudienceId.get(b.id));
-          if (at == null && bt == null) return 0;
-          if (at == null) return 1;
-          if (bt == null) return -1;
-          return (at as number) - (bt as number);
+        // A row whose price reads `Learning` (features-service's verdict, served on the
+        // row) has no rank under that column: it sinks below every measured one, ordered
+        // among themselves by the outcome count beside it. One rule for both tables.
+        const sorted = sortAudiences(visible, {
+          sortCol,
+          sortDir,
+          tieBreakCol,
+          statsFor: (id) => statsByAudienceId.get(id),
+          basis: "mature",
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
@@ -914,13 +773,12 @@ export function CustomerAudiencesPage({
                 {sorted.map((audience) => {
                   const isSelected = selectedId === audience.id;
                   const stats = statsByAudienceId.get(audience.id);
-                  // The scope's money columns for THIS audience: hidden behind the tag
-                  // until one of the scope's campaigns has priced it. Absent from the map
-                  // (the fan-out has not settled, or the scope runs no campaign) is
-                  // "cannot tell" and gates nothing.
-                  const moneyLearning =
-                    brandLevelMoney &&
-                    audienceLearningFor(learningByAudienceId, audience.id, audienceLearningSettled);
+                  // Every ratio this row states is the served MATURE figure, tagged
+                  // `Learning` exactly where features-service says the row is not mature.
+                  const roi = audienceFigure("roi", stats, "mature");
+                  const cacPct = audienceFigure("cacPct", stats, "mature");
+                  const cacUsd = audienceFigure("cacUsd", stats, "mature");
+                  const cost = (col: SortCol) => audienceFigure(col, stats, "mature");
                   return (
                     <tr
                       key={audience.id}
@@ -961,25 +819,25 @@ export function CustomerAudiencesPage({
                       {brandLevelMoney && (
                         <>
                           <td className="px-4 py-3 text-right tabular-nums">
-                            {moneyLearning ? (
+                            {roi.learning ? (
                               <LearningTag withInfo={false} paused={withheldPaused} />
                             ) : (
                               <span
                                 className={`font-medium ${
-                                  (stats?.projection?.returnPerDollar ?? 0) > 1
+                                  (roi.value ?? 0) > 1
                                     ? "text-green-600"
                                     : "text-gray-700"
                                 }`}
                               >
-                                {formatReturn(stats?.projection?.returnPerDollar)}
+                                {formatReturn(roi.value)}
                               </span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {moneyLearning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatPct(stats?.projection?.costOfAcquisitionPct)}
+                            {cacPct.learning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatPct(cacPct.value)}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {moneyLearning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)}
+                            {cacUsd.learning ? <LearningTag withInfo={false} paused={withheldPaused} /> : formatUsd(cacUsd.value)}
                           </td>
                           {/* Realized spend, served ready-made — skeletoned like every
                               other stats-overlay cell so it never flashes "-" first. */}
@@ -1002,12 +860,10 @@ export function CustomerAudiencesPage({
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
-                            ) : costIsLearning("cpsale", stats) ? (
+                            ) : cost("cpsale").learning ? (
                               <LearningTag withInfo={false} paused={withheldPaused} />
-                            ) : stats?.metrics.cpsaleCents != null ? (
-                              formatCents(stats.metrics.cpsaleCents)
                             ) : (
-                              "-"
+                              formatCents(cost("cpsale").value)
                             )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
@@ -1035,24 +891,13 @@ export function CustomerAudiencesPage({
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
-                            ) : costIsLearning("cppr", stats) ? (
-                              // Too few replies behind the ratio to state it as a price. The
-                              // count sits in the column immediately left, so the reader sees
-                              // exactly how much evidence there is.
+                            ) : cost("cppr").learning ? (
+                              // features-service says too few replies have matured behind the
+                              // ratio to state it. The count sits in the column immediately
+                              // left, so the reader sees how much evidence there is.
                               <LearningTag withInfo={false} paused={withheldPaused} />
-                            ) : stats ? (
-                              // Accounting "so far": 0 replies + real spend → floor to this
-                              // audience's net committed spend (same net figure as billing),
-                              // never a blank "-". Server field, no client division.
-                              formatCents(
-                                costSoFarFloorCents(
-                                  stats.metrics.cpprCents,
-                                  stats.evidence.totalCostInUsdCents,
-                                  stats.evidence.positiveReplies,
-                                ),
-                              )
                             ) : (
-                              "-"
+                              formatCents(cost("cppr").value)
                             )}
                           </td>
                         </>
@@ -1064,12 +909,10 @@ export function CustomerAudiencesPage({
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
-                            ) : costIsLearning("cps", stats) ? (
+                            ) : cost("cps").learning ? (
                               <LearningTag withInfo={false} paused={withheldPaused} />
-                            ) : stats?.metrics.cpsCents != null ? (
-                              formatCents(stats.metrics.cpsCents)
                             ) : (
-                              "-"
+                              formatCents(cost("cps").value)
                             )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
@@ -1089,12 +932,10 @@ export function CustomerAudiencesPage({
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
-                            ) : costIsLearning("cpfs", stats) ? (
+                            ) : cost("cpfs").learning ? (
                               <LearningTag withInfo={false} paused={withheldPaused} />
-                            ) : stats?.metrics.cpfsCents != null ? (
-                              formatCents(stats.metrics.cpfsCents)
                             ) : (
-                              "-"
+                              formatCents(cost("cpfs").value)
                             )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
@@ -1113,12 +954,10 @@ export function CustomerAudiencesPage({
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
-                            ) : costIsLearning("cpc", stats) ? (
+                            ) : cost("cpc").learning ? (
                               <LearningTag withInfo={false} paused={withheldPaused} />
-                            ) : stats ? (
-                              formatCents(stats.metrics.cpcCents)
                             ) : (
-                              "-"
+                              formatCents(cost("cpc").value)
                             )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">

@@ -20,7 +20,7 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
-import { scopeIsLearning } from "@/lib/learning-threshold";
+import { shownFigure } from "@/lib/maturity";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import { LearningTag } from "@/components/learning-tag";
 import { ScopeLearningBand } from "@/components/campaigns/scope-learning-band";
@@ -73,13 +73,8 @@ export function CampaignsPage() {
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
   // different campaigns. Both queries dedupe on their keys, so this costs no network.
-  const { rows, activeRows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
-  // This header answers for the whole scope, and the scope's money is its campaigns'
-  // money combined — so it is readable exactly when ONE of them has produced enough
-  // outcomes to price. Read off the SAME rows the table renders, so a header cannot
-  // state a figure the rows beneath it are all declining to state.
-  const scopeLearning = scopeIsLearning(rows);
-  // ...and whether the scope this route names is STOPPED, which outranks it. Nothing
+  const { activeRows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
+  // Whether the scope this route names is STOPPED. Nothing
   // running means no outcome can land, so `Learning` would promise a number that cannot
   // arrive; `Paused` is what the scope's own header pill already says, off the SAME rows.
   const { paused: scopePaused } = useScopePaused(brandId, { offerId });
@@ -122,7 +117,10 @@ export function CampaignsPage() {
   // question — which channel is winning RIGHT NOW. Reading `rows` would let a
   // stopped campaign's old return name the brand's live #1.
   const topChannel = useMemo(() => {
-    const top = activeRows.find((r) => r.revenue?.roiMultiple != null);
+    // A campaign features-service says is still learning has no stated return to rank on.
+    const top = activeRows.find(
+      (r) => !r.learning && r.revenue?.economicsMaturity.mature?.roiMultiple != null,
+    );
     if (!top) return "—";
     const def = acquisitionChannelForFeatureSlug(top.campaign.featureSlug, channels);
     return def ? def.name : channelSlugLabel(top.campaign.featureSlug);
@@ -133,10 +131,16 @@ export function CampaignsPage() {
   const headerSettled = brandRevenueQ.data !== undefined || brandRevenueQ.isError;
 
   const globalPipeline = brandRevenueQ.data?.totalPipelineUsd ?? null;
-  // The dollar cost of winning one customer, read off the DEFAULT un-lensed brand read.
-  // It used to read the lens-only `costPerConversionUsd`, which this call never carries,
-  // so the tile sat on a dash. features-service pins the two equal for the same scope.
-  const globalCac = brandRevenueQ.data?.costEconomics.costPerAcquisitionUsd ?? null;
+  // The dollar cost of winning one customer: the MATURE half of the scope's served pair,
+  // `Learning` exactly where features-service says the scope is not mature. The "#1
+  // acquisition channel" tile is a ranking BY that price, so it wears the same verdict.
+  const cac = shownFigure(
+    brandRevenueQ.data?.costEconomics.maturity,
+    (h) => h.costPerAcquisitionUsd,
+    "mature",
+  );
+  const globalCac = cac.value;
+  const scopeLearning = cac.learning;
 
   return (
     <div className="h-full overflow-y-auto">

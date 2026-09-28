@@ -8,6 +8,30 @@
 //
 // Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
 // from components reused in the public-report bundle.
+import type { MaturityPair } from "./maturity";
+
+/** The three ratios of a cost-economics block, as one half of its served maturity pair. */
+export interface EconomicsFigures {
+  roiMultiple: number | null;
+  costOfAcquisitionPct: number | null;
+  costPerAcquisitionUsd: number | null;
+}
+
+/** A grouped read's cost per visit and per positive reply, as one half of its maturity pair. */
+export interface OutcomeFigures {
+  cpcCents: number | null;
+  cpprCents: number | null;
+}
+
+/** The cost-per-outcome ratios of a spend block, as one half of its served maturity pair. */
+export interface SpendFigures {
+  totalCpcCents: number | null;
+  cpprCents: number | null;
+  cpsCents: number | null;
+  cpsmCents: number | null;
+  cpfsCents: number | null;
+  cpSaleCents: number | null;
+}
 
 /**
  * One step of the walk: how many reached it, what reaching it cost, and what share of
@@ -254,6 +278,12 @@ export interface CostEconomics {
   expectedConversions?: number | null;
   /** Lens-only: `committedCostUsd / expectedConversions`; null when expectedConversions is 0. */
   costPerConversionUsd?: number | null;
+  /**
+   * The three ratios above, served TWICE with the producer's verdict (lib/maturity.ts):
+   * `mature` is what every surface states, `isMature: false` is where it reads Learning.
+   * Nothing here is re-judged in the browser.
+   */
+  maturity: MaturityPair<EconomicsFigures>;
 }
 
 /** One pre-computed cost source (descending) in the spend block. The card renders only
@@ -348,6 +378,11 @@ export interface Spend {
   /** REAL cost per sale, USD cents = committed spend ÷ `salesCount`.
    *  null when `salesCount` is 0 → the cost card renders "—". */
   cpSaleCents?: number | null;
+  /**
+   * The cost-per-outcome ratios above, served TWICE with the producer's verdict
+   * (lib/maturity.ts). A surface states `mature`, and `Learning` where `isMature` is false.
+   */
+  maturity: MaturityPair<SpendFigures>;
 }
 
 /**

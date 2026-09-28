@@ -9,6 +9,7 @@ import { MissionsTable } from "@/components/v2/missions-table";
 import { useMissions } from "@/components/v2/use-missions";
 import { useBrandRevenue } from "@/components/v2/data";
 import { Figure, SectionTitle, Shimmer, SparkLine, StatTile, TopBar } from "@/components/v2/ui";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 
 const DAYS = 30;
 /** A served rate, one decimal under 10% and above 99% (98.6% vs 100% matters), whole between. */
@@ -57,6 +58,7 @@ export function MissionsPage() {
         crumbs={[{ label: "Missions" }]}
         actions={
           <>
+            <StatBasisSwitch />
             {rev.enabled && <CampaignControlsTrigger brandId={brandId} />}
           </>
         }
