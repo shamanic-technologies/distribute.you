@@ -112,6 +112,12 @@ describe("invite call sites", () => {
     expect(page).toContain('signUp.create({ strategy: "ticket", ticket, password })');
     expect(page).toContain("organization: orgId ?? undefined");
     expect(page).toContain("pending.accept()");
+    // Google continues the ticket sign-up; a fresh one would drop the invitation.
+    const google = page.slice(page.indexOf("const joinWithGoogle"), page.indexOf("let body"));
+    expect(google.indexOf('signUp.create({ strategy: "ticket", ticket })')).toBeGreaterThan(-1);
+    expect(google.indexOf('signUp.create({ strategy: "ticket", ticket })')).toBeLessThan(google.indexOf("authenticateWithRedirect"));
+    expect(google).toContain("continueSignUp: true");
+    expect(google).toContain("redirectUrlComplete: landing");
     expect(page).toContain("parseInviteBrand(params)");
     expect(page).toContain("<BrandLogo domain={brand.domain}");
     expect(page).toContain("root.setAttribute(TINT_ATTR");
