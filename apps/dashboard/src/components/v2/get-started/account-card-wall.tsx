@@ -57,6 +57,7 @@ import { formatReturn, useStartCatalogue } from "@/components/start/start-picks"
 import { EMPTY_PROGRESS, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
+import { WALL_OPEN_CLASS } from "./view-transition";
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** How long a sign-up may wait on the bot check before we say a box needs ticking. */
@@ -121,6 +122,9 @@ export function AccountCardWall({
   // No price held yet: the channel's own floor, the smallest budget it runs on.
   const [budget, setBudget] = useState(String(recommendation ?? Math.ceil(floorUsd)));
   const [busy, setBusy] = useState(false);
+  // The claim has its own flag: the code form's `finally` clears `busy` while the
+  // claim this sign-in started is still in flight.
+  const [claiming, setClaiming] = useState(false);
   const [captchaWaiting, setCaptchaWaiting] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
@@ -147,12 +151,16 @@ export function AccountCardWall({
     return () => window.removeEventListener("keydown", onKey);
   }, [busy, stage, onClose]);
 
-  // The page behind does not scroll while the wall is up.
+  // The page behind does not scroll while the wall is up, and the stage's view
+  // transitions stand down (`WALL_OPEN_CLASS`): their snapshots paint in the top
+  // layer, above this layer, so a step finishing behind it would show through sharp.
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.classList.add(WALL_OPEN_CLASS);
     return () => {
       document.body.style.overflow = prev;
+      document.documentElement.classList.remove(WALL_OPEN_CLASS);
     };
   }, []);
 
@@ -169,7 +177,7 @@ export function AccountCardWall({
     claimed.current = true;
     setStage("claim");
     void (async () => {
-      setBusy(true);
+      setClaiming(true);
       setError(null);
       try {
         const res = await fetch("/api/anon/claim", { method: "POST" });
@@ -193,7 +201,7 @@ export function AccountCardWall({
         claimed.current = false;
         setError(e instanceof Error ? e.message : "We could not finish setting up your account.");
       } finally {
-        setBusy(false);
+        setClaiming(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,11 +211,11 @@ export function AccountCardWall({
   // the code and the card. Only when the terms were already accepted (a Google return
   // comes back with the box unticked, and then the button asks for it).
   useEffect(() => {
-    if (stage !== "card" || cardOpened.current || busy || !consent || !account) return;
+    if (stage !== "card" || cardOpened.current || busy || claiming || !consent || !account) return;
     cardOpened.current = true;
     void addCard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, busy, consent, account]);
+  }, [stage, busy, claiming, consent, account]);
 
   const parsedBudget = parseDailyBudget(budget, floorUsd);
   const budgetUsd = "usd" in parsedBudget ? parsedBudget.usd : null;
@@ -627,8 +635,8 @@ export function AccountCardWall({
 
             {stage === "claim" && (
               <div className="mt-4 grid gap-2">
-                <p className="k-fg2 text-[13px]">{busy ? "Setting up your account..." : "Your account is ready."}</p>
-                {busy && (
+                <p className="k-fg2 text-[13px]">{claiming ? "Setting up your account..." : "Your account is ready."}</p>
+                {claiming && (
                   <span className="block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
                     <span className="k-indeterminate block h-full w-1/3 rounded-full bg-[var(--accent)]" />
                   </span>
