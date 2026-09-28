@@ -3,7 +3,7 @@
 import type { PaymentHoldKind } from "@/lib/payment-declined";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
@@ -17,14 +17,12 @@ import {
   type InviteStatus,
 } from "@/lib/api";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { coldEmailCampaignForOffer, isColdEmailChannel } from "@/lib/offer-levers-home";
 import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 import { v2Base, v2Href, v2MissionHref, v2OfferHref } from "@/lib/v2/routes";
-import { OffersTable } from "@/components/offers/offers-table";
-import { NewOfferModal } from "@/components/offers/new-offer-modal";
+import { V2OffersList } from "@/components/v2/offers-list";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
 import { OfferCampaignsCard } from "@/components/settings/offer-campaigns-card";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
@@ -129,26 +127,7 @@ export function V2Page({
 // ─── Offers ─────────────────────────────────────────────────────────────────
 
 export function V2OffersPage() {
-  const { orgId, brandId } = useIds();
-  const featureSlug = useSoleFeatureSlug();
-  const base = v2Base(orgId, brandId);
-  const search = useSearchParams();
-  const [creating, setCreating] = useState(search.get("new") === "1");
-  return (
-    <V2Page
-      crumbs={[{ label: "Setup" }, { label: "Offers" }]}
-      title="Offers"
-      sub="Everything this brand sells. Each offer has its own missions, targeting and return."
-      actions={
-        <button type="button" onClick={() => setCreating(true)} className="k-btn-strong">
-          New offer
-        </button>
-      }
-    >
-      <OffersTable brandId={brandId} featureSlug={featureSlug} basePath={base} />
-      {creating && <NewOfferModal brandId={brandId} offerBasePath={`${base}/offers`} onClose={() => setCreating(false)} />}
-    </V2Page>
-  );
+  return <V2OffersList />;
 }
 
 function useOfferName(brandId: string, offerId: string | null) {
