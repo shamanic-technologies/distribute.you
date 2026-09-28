@@ -914,7 +914,7 @@ function RunsCard({
       const lists = await Promise.all(
         read.map(async (v) => {
           const opts = { workflowSlug: v, taskName: "execute-workflow", limit: RUNS_PER_VERSION };
-          if (!actual) return listBrandRunLedger(brandId, opts);
+          if (!actual) return listBrandRunLedger(brandId, { ...opts, subtreeCost: true });
           const runs = await listBrandRunLedgerVendor(brandId, opts);
           // A run carrying billed rows of no known vendor cost states none (null): the priced
           // part alone would read as the whole run.
@@ -976,7 +976,9 @@ function RunsCard({
               ) : (
                 shown.map((run) => {
                   const m = run.campaignId ? missionByCampaignId.get(run.campaignId) ?? null : null;
-                  const cost = actual ? (run.vendorCents ?? NaN) : Number(run.ownCostInUsdCents);
+                  // A workflow run's cost lives on the runs it spawned: its SUBTREE total, on
+                  // both bases (billed on User cost, vendor on Actual cost).
+                  const cost = actual ? (run.vendorCents ?? NaN) : Number(run.totalCostInUsdCents ?? NaN);
                   return (
                     <RunLine key={run.id} brandId={brandId} run={run} onOpen={() => setOpenRun(run)}>
                       <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{friendlyDateTime(run.startedAt)}</td>

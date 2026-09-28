@@ -9423,6 +9423,10 @@ const RunRowSchema = z.object({
   startedAt: z.string(),
   completedAt: z.string().nullable(),
   ownCostInUsdCents: z.string(),
+  /** Billed cost of the run's whole SUBTREE; present only when asked with
+   *  `include=subtreeCost` (runs-service v0.47.15). A workflow run has no own cost rows,
+   *  so this, not `ownCostInUsdCents`, is what it cost. */
+  totalCostInUsdCents: z.string().optional(),
 });
 
 export type RunRow = z.infer<typeof RunRowSchema>;
@@ -9600,9 +9604,12 @@ export async function listBrandRunLedger(
     /** One VERSIONED workflow slug — runs-service stores the version, not the dynasty. */
     workflowSlug?: string;
     taskName?: string;
+    /** Ask each run's subtree cost (`totalCostInUsdCents`); runs-service caps the page at 500. */
+    subtreeCost?: boolean;
   },
 ): Promise<RunRow[]> {
   const query = new URLSearchParams({ brandId, limit: String(opts.limit) });
+  if (opts.subtreeCost) query.set("include", "subtreeCost");
   if (opts.workflowSlug) query.set("workflowSlug", opts.workflowSlug);
   if (opts.taskName) query.set("taskName", opts.taskName);
   if (opts.startedAfter) query.set("startedAfter", opts.startedAfter);
