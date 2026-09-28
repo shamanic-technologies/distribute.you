@@ -53,7 +53,8 @@ export interface StepCustomerCost {
 
 export interface StepWalkRow {
   step: string;
-  leadField: string;
+  /** Null = nothing in the fleet counts this step: an UNMEASURED rung, kept in order. */
+  leadField: string | null;
   recipientsReached: number | null;
   costPerReachCents: number | null;
   fromStep: string;

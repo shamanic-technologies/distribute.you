@@ -415,7 +415,13 @@ const StepCustomerCostSchema = z.object({
 
 const StepWalkRowSchema = z.object({
   step: z.string(),
-  leadField: z.string(),
+  /**
+   * NULL on an UNMEASURED rung (features-service#1203): a step nothing in the fleet
+   * counts (`sales_from_website`'s "Direct purchase", `lead_forms_from_ads`'s ad-hosted
+   * form). The rung keeps its place and label; its count, costs and rates are null.
+   * Never inferred from the label, never defaulted.
+   */
+  leadField: z.string().nullable(),
   recipientsReached: z.number().nullable(),
   costPerReachCents: z.number().nullable(),
   fromStep: z.string(),
