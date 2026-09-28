@@ -128,6 +128,9 @@ describe("joining while already signed in", () => {
   });
   it("the layout claimer re-checks on navigation and leaves /join to the page", () => {
     expect(claimer).toContain('pathname.startsWith("/join")');
+    // A join that succeeded never reports failure: reload the session, else a full load.
+    expect(claimer).toContain("await clerk.user?.reload();");
+    expect(claimer).toContain("window.location.assign(dest)");
     expect(claimer).toContain("[isSignedIn, clerk, router, pathname]");
   });
 });

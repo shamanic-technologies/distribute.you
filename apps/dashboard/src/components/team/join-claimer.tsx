@@ -39,8 +39,21 @@ export async function claimJoin(token: string, clerk: Clerk, router: Router): Pr
   }
   document.cookie = clearJoinCookieAssignment();
   posthog.capture("team_join_completed");
-  await clerk.setActive({ organization: body.orgId });
-  router.replace(`/orgs/${encodeURIComponent(body.orgId)}`);
+  const dest = `/orgs/${encodeURIComponent(body.orgId)}`;
+  // The membership was just created SERVER-side, and the browser's session does not
+  // know it yet, so a bare setActive is refused as "not a member". Reload the user
+  // first; if the switch is still refused, a full page load of the org lets the edge
+  // activate it from the URL. The join has already succeeded either way, so neither
+  // path may surface as a failure.
+  try {
+    await clerk.user?.reload();
+    await clerk.setActive({ organization: body.orgId });
+    router.replace(dest);
+  } catch (err) {
+    console.error("[join] setActive after join refused, opening the org with a full load", err);
+    posthog.capture("team_join_activate_fallback");
+    window.location.assign(dest);
+  }
   return true;
 }
 
