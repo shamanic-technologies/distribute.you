@@ -238,7 +238,7 @@ function InviteFlow() {
           type="submit"
           disabled={submitting || password.length < MIN_PASSWORD_LENGTH}
           aria-busy={submitting}
-          className={`w-full rounded-xl bg-brand-600 px-4 py-3 text-[15px] font-semibold text-white ${
+          className={`w-full rounded-xl px-4 py-3 text-[15px] font-semibold text-white ${brand?.mono ? "bg-gray-900" : "bg-brand-600"} ${
             submitting ? "cursor-wait" : password.length < MIN_PASSWORD_LENGTH ? "cursor-not-allowed opacity-50" : "hover:brightness-105"
           }`}
         >
@@ -255,7 +255,7 @@ function InviteFlow() {
   }
 
   return (
-    <div className={`flex min-h-screen items-center justify-center p-8 ${brand ? "bg-brand-50" : "bg-gray-50"}`}>
+    <div className={`flex min-h-screen items-center justify-center p-8 ${brand && !brand.mono ? "bg-brand-50" : "bg-gray-50"}`}>
       <div className="w-full max-w-md">
         {/* Who is inviting, before anything else: our mark, a cross, then theirs. */}
         <div className="mb-8 flex flex-wrap items-center justify-center gap-3">
@@ -269,7 +269,14 @@ function InviteFlow() {
                 ×
               </span>
               <span className="inline-flex min-w-0 items-center gap-2">
-                <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={28} className="rounded-md" fallbackClassName="text-gray-400" />
+                {/* A black-and-white brand's logo is usually white on its own dark
+                    background, so it sits on that background here too. */}
+                <span
+                  className={`inline-flex shrink-0 rounded-md ${brand.mono ? "p-1" : ""}`}
+                  style={brand.mono ? { background: brand.mono } : undefined}
+                >
+                  <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={brand.mono ? 22 : 28} className="rounded" fallbackClassName="text-gray-400" />
+                </span>
                 <span className="truncate text-lg font-semibold text-gray-900">{brand.name}</span>
               </span>
             </>
@@ -278,7 +285,7 @@ function InviteFlow() {
         <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
           {brand ? `Join the ${brand.name} team` : "You are invited to join a team"}
         </h1>
-        <div className={`rounded-2xl border bg-white p-6 ${brand ? "border-brand-200" : "border-gray-200"}`}>{body}</div>
+        <div className={`rounded-2xl border bg-white p-6 ${brand && !brand.mono ? "border-brand-200" : "border-gray-200"}`}>{body}</div>
       </div>
     </div>
   );

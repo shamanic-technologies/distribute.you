@@ -70,6 +70,18 @@ export interface InviteBrand {
   logoUrl: string | null;
   /** The brand's resolved accent, the three numbers `BrandTint` writes on <html>. */
   tint: { hue: number; chromaScale: number; hueDelta: number } | null;
+  /**
+   * Set for a black-and-white brand: its dominant colour (`#000000`). The page then
+   * wears black and white instead of our blue, and the logo sits on this colour.
+   */
+  mono?: string | null;
+}
+
+const HEX_SHAPE = /^#[0-9a-f]{6}$/;
+function cleanHex(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const h = (raw.startsWith("#") ? raw : `#${raw}`).toLowerCase();
+  return HEX_SHAPE.test(h) ? h : null;
 }
 
 const DOMAIN_SHAPE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
@@ -119,6 +131,7 @@ export function sanitizeInviteBrand(raw: unknown): InviteBrand | null {
     domain: cleanDomain(b.domain),
     logoUrl: cleanLogoUrl(b.logoUrl),
     tint: tint ? cleanTint(tint.hue, tint.chromaScale, tint.hueDelta) : null,
+    mono: cleanHex(b.mono),
   };
 }
 
@@ -131,6 +144,7 @@ export function parseInviteBrand(params: { get(name: string): string | null }): 
     domain: cleanDomain(params.get("bd")),
     logoUrl: cleanLogoUrl(params.get("bl")),
     tint: params.get("th") === null ? null : cleanTint(params.get("th"), params.get("tc"), params.get("td")),
+    mono: cleanHex(params.get("bm")),
   };
 }
 
@@ -192,6 +206,7 @@ export function brandQuery(brand?: InviteBrand | null): string {
     q.set("tc", String(brand.tint.chromaScale));
     q.set("td", String(brand.tint.hueDelta));
   }
+  if (brand.mono) q.set("bm", brand.mono.replace(/^#/, ""));
   return q.toString();
 }
 

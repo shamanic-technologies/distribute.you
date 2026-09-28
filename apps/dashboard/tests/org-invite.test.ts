@@ -66,12 +66,13 @@ describe("the brand carried in the invite link", () => {
       domain: "olive.exchange",
       logoUrl: "https://cdn.example.com/olive.png",
       tint: { hue: 142.5, chromaScale: 0.8, hueDelta: -115.5 },
+      mono: null,
     });
   });
 
   it("drops what it cannot trust instead of showing it", () => {
     const b = sanitizeInviteBrand({ name: "Olive", domain: "not a domain", logoUrl: "javascript:alert(1)", tint: { hue: "x" } });
-    expect(b).toEqual({ name: "Olive", domain: null, logoUrl: null, tint: null });
+    expect(b).toEqual({ name: "Olive", domain: null, logoUrl: null, tint: null, mono: null });
     expect(sanitizeInviteBrand({ name: "  " })).toBeNull();
     expect(sanitizeInviteBrand(null)).toBeNull();
     expect(parseInviteBrand(new URLSearchParams("org=o&th=900&tc=1&td=0&bn=A")).tint).toBeNull();

@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { use, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth, useClerk } from "@clerk/nextjs";
+import { claimJoin } from "@/components/team/join-claimer";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import posthog from "posthog-js";
 import { clerkErrorMessage } from "@/lib/clerk-error";
@@ -31,10 +32,32 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const [googling, setGoogling] = useState(false);
   const [error, setError] = useState("");
+  const clerk = useClerk();
+  const router = useRouter();
+  const claiming = useRef(false);
 
   useEffect(() => {
     if (valid && !revoked) document.cookie = joinCookieAssignment(token);
   }, [valid, revoked, token]);
+
+  // Already signed in (or just back from Google): join right here. This page is
+  // where the person is looking, so it owns the join and says so if it fails.
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !valid || revoked || claiming.current) return;
+    claiming.current = true;
+    claimJoin(token, clerk, router)
+      .then((done) => {
+        if (!done) {
+          claiming.current = false;
+          setError("We could not add you to the team. Reload the page to try again.");
+        }
+      })
+      .catch((err) => {
+        claiming.current = false;
+        console.error("[join] claim failed", err);
+        setError("We could not add you to the team. Reload the page to try again.");
+      });
+  }, [isLoaded, isSignedIn, valid, revoked, token, clerk, router]);
 
   const tint = brand?.tint ?? null;
   useEffect(() => {
@@ -82,7 +105,13 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
   } else if (!isLoaded) {
     body = <div className="h-24 animate-pulse rounded-xl bg-gray-100" />;
   } else if (isSignedIn) {
-    body = <p className="text-sm text-gray-500">Joining the team...</p>;
+    body = error ? (
+      <p role="alert" className="text-sm text-red-600">
+        {error}
+      </p>
+    ) : (
+      <p className="text-sm text-gray-500">Joining the team...</p>
+    );
   } else {
     body = (
       <div className="flex flex-col gap-3">
@@ -103,13 +132,13 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
         </button>
         <Link
           href="/sign-up"
-          className="flex w-full items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-[15px] font-semibold text-white hover:brightness-105"
+          className={`flex w-full items-center justify-center rounded-xl px-4 py-3 text-[15px] font-semibold text-white hover:brightness-110 ${brand?.mono ? "bg-gray-900" : "bg-brand-600"}`}
         >
           Create an account with email
         </Link>
         <p className="text-center text-sm text-gray-500">
           Already have an account?{" "}
-          <Link href="/sign-in" className="font-medium text-brand-600 hover:text-brand-700">
+          <Link href="/sign-in" className={`font-medium ${brand?.mono ? "text-gray-900 underline" : "text-brand-600 hover:text-brand-700"}`}>
             Sign in
           </Link>
         </p>
@@ -123,7 +152,7 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
   }
 
   return (
-    <div className={`flex min-h-screen items-center justify-center p-8 ${brand ? "bg-brand-50" : "bg-gray-50"}`}>
+    <div className={`flex min-h-screen items-center justify-center p-8 ${brand && !brand.mono ? "bg-brand-50" : "bg-gray-50"}`}>
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-wrap items-center justify-center gap-3">
           <Link href="https://distribute.you" className="inline-flex items-center gap-2">
@@ -136,7 +165,14 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
                 ×
               </span>
               <span className="inline-flex min-w-0 items-center gap-2">
-                <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={28} className="rounded-md" fallbackClassName="text-gray-400" />
+                {/* A black-and-white brand's logo is usually white on its own dark
+                    background, so it sits on that background here too. */}
+                <span
+                  className={`inline-flex shrink-0 rounded-md ${brand.mono ? "p-1" : ""}`}
+                  style={brand.mono ? { background: brand.mono } : undefined}
+                >
+                  <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={brand.mono ? 22 : 28} className="rounded" fallbackClassName="text-gray-400" />
+                </span>
                 <span className="truncate text-lg font-semibold text-gray-900">{brand.name}</span>
               </span>
             </>
@@ -145,7 +181,7 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
         <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
           {brand ? `Join the ${brand.name} team` : "You are invited to join a team"}
         </h1>
-        <div className={`rounded-2xl border bg-white p-6 ${brand ? "border-brand-200" : "border-gray-200"}`}>{body}</div>
+        <div className={`rounded-2xl border bg-white p-6 ${brand && !brand.mono ? "border-brand-200" : "border-gray-200"}`}>{body}</div>
       </div>
     </div>
   );
