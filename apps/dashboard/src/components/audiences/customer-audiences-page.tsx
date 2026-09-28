@@ -225,7 +225,10 @@ function SortHeader({
  *   (`campaign.audienceIds`) and WHOSE outreach the per-audience numbers count
  *   (features-service `?campaignId=`).
  */
-export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = {}) {
+export function CustomerAudiencesPage({
+  campaignId,
+  offerId: offerIdProp,
+}: { campaignId?: string; offerId?: string } = {}) {
   const campaignScoped = Boolean(campaignId);
   // WHICH CHANNEL prices these audiences. A campaign states its own channel on its row,
   // so a campaign-scoped table reads THAT — under the brand's sole GA feature a campaign
@@ -253,7 +256,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // The OFFER this page is scoped to. An audience is a set of people picked for a
   // PROPOSITION, so human-service carries `offerId` on the row and this narrows the
   // list to it. Absent off an offer route — there it stays the brand-wide list.
-  const offerId = params.offerId as string | undefined;
+  // A route carrying no offer segment (the v2 mission page) passes the campaign's own
+  // offer instead, or it would list every audience of the brand under one mission.
+  const offerId = offerIdProp ?? (params.offerId as string | undefined);
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
