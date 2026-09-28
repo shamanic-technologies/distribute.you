@@ -12,6 +12,7 @@ import { isVisitDrivenGoal } from "@/lib/api";
 import { legSteps, type LegSteps } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
+import { shownFigure } from "@/lib/maturity";
 
 /**
  * Outreach overview block — top row: the "Outcome" card (cumulative goal signal
@@ -196,6 +197,16 @@ export function RevenueOverviewSection({
     learningStatus === "learning_limited" ||
     learningStatus === "paused";
   const costPerOutcomeHistory = data?.costPerOutcomeHistory;
+  // The card's PRICE is this leg's served mature figure — the one the producer pins equal
+  // to the spend block's mature ratio the stat row above states — so the page carries one
+  // cost per outcome, not the row's and the curve's last point side by side.
+  // Keyed on the leg the CURVE states; with no curve the card says the price is on the row.
+  const costLegKey = costPerOutcomeHistory?.legKey ?? null;
+  const costHeadline = shownFigure(
+    data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === costLegKey),
+    (h) => h.costPerOutcomeUsd,
+    "mature",
+  );
   // The chart reads `data.days` and cannot take an absent payload, so once the gate
   // has settled an absent one gets its own honest line rather than a skeleton:
   // "still loading" and "we could not load this" are different statements. The
@@ -266,6 +277,7 @@ export function RevenueOverviewSection({
           <CostPerOutcomeCard
             history={costPerOutcomeHistory}
             outcomeLabel={costOutcomeLabel}
+            headline={costHeadline}
             floor={costFloor}
             learning={outcomeLearning}
             paused={paused}

@@ -50,7 +50,9 @@ describe("the brand Overview is scoped to the brand's money", () => {
     // would put a number on screen that features-service never computed.
     expect(cards).not.toContain("committedCostUsd /");
     expect(cards).not.toContain("/ economics");
-    expect(cards).toContain("formatUsd(economics?.costPerAcquisitionUsd)");
+    // Every ratio is the MATURE half of the served pair (features-service#1196).
+    expect(cards).toContain('shownFigure(economics?.maturity, (h) => h.costPerAcquisitionUsd, "mature")');
+    expect(cards).toContain("formatUsd(cacUsd.value)");
   });
 });
 
@@ -96,12 +98,13 @@ describe("the brand Overview charts return, and ranks audiences on it", () => {
   it("ranks audiences by return, highest first, with the cost it used to lead with beside it", () => {
     // Cost per outcome ranks by CHEAPNESS — an audience converting to nothing outranks
     // an expensive one that pays. The card leads with the return instead.
-    expect(audiences).toContain("row.projection?.returnPerDollar");
+    // The MATURE half of the row's served projection pair, never the legacy projection.
+    expect(audiences).toContain("row.projection?.maturity");
     expect(audiences).toContain("const ranksByReturn =");
     expect(audiences).toContain("return br - ar;");
-    // Displayed value and sort key are the same expression in both branches, or the
-    // card shows one order and states another.
-    expect(audiences).toContain("ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)");
+    // Displayed value and sort key are the same figure in both branches, or the card
+    // shows one order and states another.
+    expect(audiences).toContain("ranksByReturn ? formatReturn(rowReturn?.value ?? null) : formatCents(cost?.value ?? null)");
     // Never computed here — lifetime revenue ÷ cost per paid client is the producer's.
     expect(audiences).not.toContain("lifetimeRevenueUsd /");
   });
@@ -165,7 +168,8 @@ describe("brand surfaces list campaigns and state money", () => {
   it("prices the Campaigns page header off the un-lensed field, so its tile is not a dash", () => {
     // `costPerConversionUsd` is lens-only and absent on this brand-level call, which is
     // what left "Cost per acquisition" empty. Same defect, same fix as the Overview's.
-    expect(campaignsPage).toContain("costEconomics.costPerAcquisitionUsd");
+    expect(campaignsPage).toContain("costEconomics.maturity");
+    expect(campaignsPage).toContain("(h) => h.costPerAcquisitionUsd");
     expect(campaignsPage).not.toContain("costEconomics.costPerConversionUsd");
   });
 
@@ -181,12 +185,12 @@ describe("brand surfaces list campaigns and state money", () => {
     expect(audiences).toContain('label="ROI"');
     expect(audiences).toContain('label="% CAC"');
     expect(audiences).toContain('label="$ CAC"');
-    // Read verbatim off the projection — and NOT inverted into a % CAC, which is the
-    // banned browser division. That column waits on features-service.
-    expect(audiences).toContain("stats?.projection?.returnPerDollar");
-    expect(audiences).toContain("stats?.projection?.costPerPaidClientUsd");
+    // Read verbatim off the MATURE half of the projection pair, through the shared
+    // audience model, and NOT inverted into a % CAC (the banned browser division).
+    expect(audiences).toContain('audienceFigure("roi", stats, "mature")');
+    expect(audiences).toContain('audienceFigure("cacUsd", stats, "mature")');
     // % CAC is READ, never derived by inverting the return sitting beside it.
-    expect(audiences).toContain("stats?.projection?.costOfAcquisitionPct");
+    expect(audiences).toContain('audienceFigure("cacPct", stats, "mature")');
     expect(audiences).not.toContain("100 /");
   });
 
@@ -195,9 +199,11 @@ describe("brand surfaces list campaigns and state money", () => {
     // billing charges — the browser divides nothing to get it.
     expect(audiences).toContain('label="$ Invested"');
     expect(audiences).toContain("formatCents(stats.evidence.totalCostInUsdCents)");
-    // Sorted on the field it renders, or the column shows one order and states another.
-    expect(audiences).toContain('case "invested":');
-    expect(audiences).toContain("return stats?.evidence.totalCostInUsdCents ?? null;");
+    // Sorted on the field it renders (the shared audience model), or the column shows
+    // one order and states another.
+    const model = read("lib/audience-table-model.ts");
+    expect(model).toContain('case "invested":');
+    expect(model).toContain("return stats?.evidence.totalCostInUsdCents ?? null;");
     // Brand level: it sits beside $ CAC, which exists nowhere else.
     const money = audiences.slice(audiences.indexOf("{brandLevelMoney && ("));
     expect(money.slice(0, 2000)).toContain('label="$ Invested"');
@@ -216,7 +222,7 @@ describe("brand surfaces list campaigns and state money", () => {
     expect(audiences).toContain('brandLevelMoney ? "desc" : "asc"');
     // Displayed value and sort key are one expression, or the table shows one order
     // and states another.
-    expect(audiences).toContain("formatReturn(stats?.projection?.returnPerDollar)");
+    expect(audiences).toContain("formatReturn(roi.value)");
   });
 });
 

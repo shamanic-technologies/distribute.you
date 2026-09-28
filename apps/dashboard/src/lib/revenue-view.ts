@@ -583,6 +583,48 @@ export interface RevenueOverview {
    * no curve", never "it converts nothing" — the MEASURED zero lives on a point.
    */
   conversionRateHistory?: ConversionRateHistory | null;
+  /**
+   * THE SCOPE'S MATURITY (features-service#1196): the verdict every pair on this body
+   * repeats, and one entry per leg with that leg's figures on both bases. Null where the
+   * producer never read the lead population.
+   */
+  maturity?: ScopeMaturity | null;
+}
+
+/** The figures of ONE scope on ONE basis for one leg — observed accounting. */
+export interface LegOutcomeFigures {
+  /** Committed spend on the request's pricing. */
+  spentUsd: number;
+  /** Distinct leads reached. */
+  contacted: number;
+  /** Distinct leads that reached the leg's own outcome signal. */
+  outcomes: number;
+  /** `spentUsd / outcomes`. Null at 0 outcomes or 0 spend, never a floor. */
+  costPerOutcomeUsd: number | null;
+  /** `100 × outcomes / contacted`. Null only at 0 contacted. */
+  conversionRatePct: number | null;
+}
+
+/** One leg of a scope, both bases and the leg's own rule. */
+export interface ScopeLegMaturity extends MaturityPair<LegOutcomeFigures> {
+  legKey: string | null;
+  durationDays: number;
+  outcomesRequired: number;
+  outcomeSignal: string | null;
+  source: string;
+}
+
+/** The scope's verdict and its legs. */
+export interface ScopeMaturity {
+  isMature: boolean | null;
+  legs: ScopeLegMaturity[];
+}
+
+/** One basis of a scope's conversion (features-service#1196). */
+export interface ConversionRateFigures {
+  contacted: number;
+  outcomes: number;
+  conversionRatePct: number | null;
 }
 
 /** One UTC day of the curve. BOTH legs are cumulative since the scope's first day. */
@@ -663,9 +705,11 @@ export interface ConversionRateHistory {
    */
   undatedContacted: number;
   undatedOutcomes: number;
-  /** The WHOLE scope's rate — the headline. Served precisely so no browser divides two
-   *  of the producer's fields to obtain it. Null when there is no denominator at all. */
+  /** The WHOLE scope's rate to date. Served precisely so no browser divides two of the
+   *  producer's fields to obtain it. Null when there is no denominator at all. */
   scopeConversionRatePct: number | null;
+  /** The scope's conversion on both bases and its verdict. The headline states `mature`. */
+  maturity?: MaturityPair<ConversionRateFigures>;
 }
 
 /**

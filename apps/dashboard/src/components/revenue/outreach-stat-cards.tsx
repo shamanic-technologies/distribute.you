@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { LearningTag } from "@/components/learning-tag";
-import { MATURITY_LEARNING_NOTE, shownFigure } from "@/lib/maturity";
+import { MATURE_COST_NOTE, MATURITY_LEARNING_NOTE, shownFigure } from "@/lib/maturity";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
 import type { LegSteps } from "@/lib/goal-steps";
 import { formatUsdAdaptive } from "@/lib/format-number";
@@ -71,11 +71,10 @@ function formatCostCents(cents: number | null | undefined): string {
  * Every cost here is the MATURE half of the pair features-service serves: the spend of
  * the runs started long enough ago for their results to have arrived, divided by every
  * result the leads they served produced, whenever it landed. No number is written into
- * the sentence: the duration is the producer's, published per leg. One constant so the
- * tooltips cannot drift into describing two different rules.
+ * the sentence: the duration is the producer's, published per leg. One constant
+ * (`MATURE_COST_NOTE`, lib/maturity.ts) so the tooltips here and on the cost and
+ * conversion cards cannot drift into describing two different rules.
  */
-const MATURE_COST_NOTE =
-  "It only counts outreach sent long enough ago for the answers to have arrived, together with every result those leads produced, so recent emails still waiting for a reply do not skew it.";
 
 // Each card is a fixed-min-width flex item so the whole set stays on ONE strict
 // row (CLAUDE.md "wide legit content scrolls internally" → overflow-x-auto on

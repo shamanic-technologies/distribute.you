@@ -204,7 +204,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
         {t.campaignScoped
           ? "The figures count this mission only. The audiences belong to the offer, so pausing or archiving one here changes it for every mission."
           : "ROI, % CAC and $ CAC are projected from your conversion rates and lifetime revenue; $ Invested is what each audience has cost so far."}{" "}
-        A price reads Learning until ten outcomes stand behind it.
+        A price counts only outreach sent long enough ago for its answers to have arrived, and reads Learning until that outreach has produced enough outcomes.
       </p>
       <div className="k-card overflow-hidden">
         <RecordsTabs

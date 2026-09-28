@@ -4,6 +4,7 @@ import * as path from "path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 import { keepLastGoodFeatureRevenue } from "../src/lib/api";
 import type { RevenueOverview } from "../src/lib/revenue-view";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
@@ -31,7 +32,7 @@ function rawRevenue(
     featureSlug: "sales-cold-email-outreach",
     ...(series ?? {}),
     headline: { totalPipelineUsd: 1000 },
-    costEconomics: { committedCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
+    costEconomics: { maturity: NULL_PAIR, committedCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
     timeSeries: [],
     organizations: [],
     leads: [],

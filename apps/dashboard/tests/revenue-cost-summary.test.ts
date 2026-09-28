@@ -85,8 +85,8 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     const stats = read("components/revenue/outreach-stat-cards.tsx");
     // Budget spent today prefers the committed `totalSpentTodayCents`, falls back to legacy.
     expect(card).toContain("spend?.totalSpentTodayCents ?? spend?.todaySpentCents");
-    // CPC prefers the committed `totalCpcCents`, falls back to legacy `cpcCents`.
-    expect(stats).toContain("spend?.totalCpcCents ?? spend?.cpcCents");
+    // CPC is the committed `totalCpcCents`, on the MATURE half of the served pair.
+    expect(stats).toContain('shownFigure(spend?.maturity, (h) => h.totalCpcCents, "mature")');
     // Total spent keeps the `totalSpentCents` name (features-service flips its value to committed).
     expect(card).toContain("spend?.totalSpentCents");
     // No client-side actual+provisioned arithmetic (the committed figure is server-provided).
@@ -128,8 +128,10 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(api).toContain("`/features/${featureSlug}/audience-stats?");
     expect(audiencesCard).toContain("Top 3 audiences");
     expect(audiencesCard).toContain("fallbackRows");
-    expect(audiencesCard).toContain("row.metrics.cpcCents");
-    expect(audiencesCard).toContain("row.metrics.cpprCents");
+    // each row's cost is the MATURE half of its served `metrics.maturity` pair
+    expect(audiencesCard).toContain("row.metrics.maturity");
+    expect(audiencesCard).toContain('cpc: "cpcCents"');
+    expect(audiencesCard).toContain('cppr: "cpprCents"');
     expect(audiencesCard).toContain('if (cents == null) return "-";');
   });
 

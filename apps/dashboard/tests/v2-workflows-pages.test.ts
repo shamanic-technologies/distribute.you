@@ -88,7 +88,8 @@ describe("the Actual cost basis is STAFF-only", () => {
     const hook = read("src/lib/v2/use-cost-basis.ts");
     expect(hook).toContain('const basis: CostBasis = isStaff ? stored : "user";');
     expect(hook).toContain('const readServer = (): CostBasis => "user";');
-    expect(page).toContain("actions={<CostBasisSwitch />}");
+    // the cost basis switch leads the top bar's actions, the staff Mature/Flash switch beside it
+    expect(page).toContain("<CostBasisSwitch />\n            <StatBasisSwitch />");
   });
 
   it("the actual read fires only for staff on the actual basis", () => {
@@ -146,7 +147,8 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
 
   it("reads the Offer column off the SAME ladder as Brand, never the realized grouped revenue (features-service#1172)", () => {
     expect(list).toContain(">Offer</th>");
-    expect(list).toContain("grainFigures(ladder?.estimatesByGrain.offer)?.costPerOutcomeUsd");
+    // each grain states the served half of ITS OWN maturity pair (features-service#1196)
+    expect(list).toContain("offer: grainFigures(ladder?.estimatesByGrain.offer, basis)");
     // The mature-cohort grouped revenue is a different basis: beside a ladder grain it printed a
     // different number for the same scope on a one-offer brand.
     expect(list).not.toContain("getOfferRevenueByWorkflow(");
@@ -155,9 +157,11 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
   it("states measured and projected in ONE cell, each named, never as a bare 'Est. return'", () => {
     expect(page).not.toContain('label="Est. return"');
     const strip = page.slice(page.indexOf('label="Return, this mission"'), page.indexOf("<p className=\"k-fg3 mt-2 text-[12px]\">"));
-    expect(strip).toContain("formatRoi(row.roiMultiple");
+    // measured: the MATURE half of the served pair, Learning where the producer says so
+    expect(strip).toContain('formatRoi(roi.value, "—")');
     expect(strip).toContain("formatRoi(ranked.ladder?.roiMultiple");
     expect(strip).toContain("fmtUsd(ranked.estCostPerOutcomeUsd)");
+    expect(strip).toContain("ranked.estLearning ?");
     const dual = page.slice(page.indexOf("function DualKpi("), page.indexOf("function Row("));
     expect(dual).toContain(">measured<");
     expect(dual).toContain(">projected<");

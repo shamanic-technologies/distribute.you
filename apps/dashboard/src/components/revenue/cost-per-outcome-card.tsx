@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/skeleton";
 import { LearningTag } from "@/components/learning-tag";
+import { InfoTooltip } from "@/components/visibility/metric-info";
+import { MATURE_COST_NOTE, type ShownFigure } from "@/lib/maturity";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { placeholderCostCurve } from "@/lib/cost-per-outcome-placeholder";
 import {
@@ -128,6 +130,7 @@ function CostTooltip({
 export function CostPerOutcomeCard({
   history,
   outcomeLabel,
+  headline,
   floor,
   learning = false,
   paused = false,
@@ -147,6 +150,14 @@ export function CostPerOutcomeCard({
    * this card picks: a campaign's outcome is whichever step its leg lands on.
    */
   outcomeLabel: string;
+  /**
+   * THE price, as the stat row states it: the MATURE half of this leg's served figures
+   * (`maturity.legs[]`, features-service#1196), `Learning` exactly where the producer says
+   * the scope is not mature. Never the curve's last point: that is every dollar and every
+   * outcome to date, a different population, and printing it here put a second cost per
+   * outcome on the page beside the one the row above states.
+   */
+  headline?: ShownFigure;
   /**
    * Too few outcomes have landed for a price to be stated. The curve is then a SHAPE with
    * no values on either axis rather than a measurement — see the placeholder module.
@@ -213,7 +224,6 @@ export function CostPerOutcomeCard({
   }, [data, tail]);
 
   const undated = history?.undatedOutcomes ?? 0;
-  const latest = data.length > 0 ? data[data.length - 1] : null;
   const step = history?.outcomeStep?.label ?? outcomeLabel;
   const title = `Cost per ${step.toLowerCase()}`;
 
@@ -239,16 +249,19 @@ export function CostPerOutcomeCard({
         <div className="shrink-0 text-right">
           {pending ? (
             <Skeleton className="h-8 w-20" />
-          ) : mode === "placeholder" ? (
+          ) : mode === "placeholder" || headline?.learning ? (
             // The tag takes the VALUE's place rather than sitting beside one: there is no
             // price to print, and the curve underneath states nothing either.
             <LearningTag paused={paused} />
           ) : (
-            <p className="text-2xl font-bold leading-none text-gray-900">
-              {latest?.value != null ? formatUsdAdaptive(latest.value) : "—"}
+            <p className="flex items-center justify-end gap-1 text-2xl font-bold leading-none text-gray-900">
+              {headline?.value != null ? formatUsdAdaptive(headline.value) : "—"}
+              <InfoTooltip
+                tip={`The price is the same one the row above states. ${MATURE_COST_NOTE} The line is every dollar and every ${step.toLowerCase()} to date.`}
+                placement="bottom"
+              />
             </p>
           )}
-          <p className="mt-1 text-[11px] text-gray-400">today</p>
         </div>
       </div>
 

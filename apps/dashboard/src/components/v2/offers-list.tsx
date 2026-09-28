@@ -344,7 +344,7 @@ export function V2OffersList() {
             </div>
             <div className="k-fg3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
               <span>
-                Revenue is expected pipeline, not money collected. Invested is net spend, billed plus reserved. ROI and % CAC read Learning until an offer&apos;s campaigns have ten outcomes.
+                Revenue is expected pipeline, not money collected. Invested is net spend, billed plus reserved. ROI and % CAC count only outreach sent long enough ago for its answers to have arrived, and read Learning until that outreach has produced enough outcomes.
               </span>
               <span className="ml-auto hidden items-center gap-1 md:inline-flex">
                 <span className="k-kbd">J</span>

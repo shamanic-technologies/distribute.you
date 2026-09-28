@@ -272,8 +272,8 @@ export function V2WorkflowPage() {
         ]}
         actions={
           <>
-            <StatBasisSwitch />
             <CostBasisSwitch />
+            <StatBasisSwitch />
           </>
         }
       />

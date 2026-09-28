@@ -117,8 +117,8 @@ describe("the Top-3 card decides its own column and orders by it", () => {
     const at = card.indexOf("const statsRows");
     expect(at).toBeGreaterThan(-1);
     const block = card.slice(at, card.indexOf(".slice(0, 3)", at) + 20);
-    expect(block).toContain("metricCents(metric, a)");
-    expect(block).toContain("metricCents(metric, b)");
+    expect(block).toContain("metricCost(metric, a).value");
+    expect(block).toContain("metricCost(metric, b).value");
   });
 });
 

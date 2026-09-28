@@ -275,7 +275,9 @@ describe("Campaigns page (GA)", () => {
       "Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status))",
     );
     expect(body).toContain("if (byStatus !== 0) return byStatus;");
-    expect(body).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
+    // The MATURE return, the half of the served pair the row states (features-service#1196).
+    expect(body).toContain("(b.revenue?.economicsMaturity.mature?.roiMultiple ?? -1)");
+    expect(body).toContain("(a.revenue?.economicsMaturity.mature?.roiMultiple ?? -1)");
     expect(body).toContain("if (byRoi !== 0) return byRoi;");
     expect(body).toContain("b.campaign.updatedAt.localeCompare(a.campaign.updatedAt)");
     // Status is compared before ROI, and ROI before the date.
@@ -292,7 +294,8 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("const activeRows = useMemo(");
     expect(table).toContain("rows.filter((r) => isActiveStatus(r.campaign.status))");
     expect(table).toContain("return { rows, activeRows, settled };");
-    expect(page).toContain("activeRows.find((r) => r.revenue?.roiMultiple != null)");
+    expect(page).toContain("const top = activeRows.find(");
+    expect(page).toContain("!r.learning && r.revenue?.economicsMaturity.mature?.roiMultiple != null");
     expect(page).not.toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
     // Leads: brand level reads the running rows; a campaign's own page reads its
     // own row whatever its status, so a paused campaign still states its leg.
@@ -491,7 +494,9 @@ describe("Campaigns page (GA)", () => {
 
   it("global header blended pipeline + CAC read the brand-level revenue field, not a client sum", () => {
     expect(page).toContain("brandRevenueQ.data?.totalPipelineUsd");
-    expect(page).toContain("brandRevenueQ.data?.costEconomics.costPerAcquisitionUsd");
+    // the MATURE $ CAC, with the scope's own served verdict deciding Learning
+    expect(page).toContain("brandRevenueQ.data?.costEconomics.maturity");
+    expect(page).toContain("const scopeLearning = cac.learning;");
   });
 
   // The top bar names where you are below the tenant: the offer, and the

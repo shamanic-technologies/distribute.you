@@ -134,7 +134,7 @@ const genShapeByKey = new Map();  // person|step -> shape
 eachRow("generations.csv", (g) => {
   if (!g.lead_id) return;
   const person = `${g.platform_campaign_id}|${g.lead_id}`;
-  if (!genByKey.has(person)) genByKey.set(person, { model: g.model, workflow: g.workflow_slug, template: g.prompt_type || null });
+  if (!genByKey.has(person)) genByKey.set(person, { model: g.model, workflow: g.workflow_slug, template: g.prompt_type || null, runId: g.run_id || null });
   const sh = shapeOf(g.body_text);
   sh.subjectChars = (g.subject || "").length;
   genShapeByKey.set(`${person}|${g.step}`, sh);
@@ -165,6 +165,21 @@ if (COST_BASIS === "actual" && spendLegRows.length && spendLegRows[0].vendor_cen
 // The two legs the Research crews buy, one each.
 const HERALD_LEG = "start_to_conversation";
 const SCOUT_LEG = "start_to_website_visit";
+
+// THE RESEARCH MATURITY RULE, read from features-service (features-service#1196), never measured
+// here: per LEG, how many days after a run STARTS its outcomes count as arrived, and how many
+// outcomes a figure needs before it is more than Learning. The dashboard applies the same served
+// rule, so a price on the Research page and one on a campaign page rest on one definition.
+// extract.sh reads it off the channel catalogue into maturity.json.
+const LEG_MATURITY = new Map(JSON.parse(readFileSync(join(dir, "maturity.json"), "utf8")).map((l) => [l.legKey, l]));
+for (const leg of [HERALD_LEG, SCOUT_LEG]) {
+  const m = LEG_MATURITY.get(leg);
+  if (!m || !Number.isInteger(m.durationDays) || m.durationDays < 0 || !Number.isInteger(m.outcomesRequired) || m.outcomesRequired < 1) {
+    throw new Error(`maturity.json carries no usable rule for ${leg}: re-run extract.sh once features-service serves legs[].maturity`);
+  }
+}
+// When each execute-workflow run started (UTC), keyed by run id: the research clock.
+const runStartedAt = new Map(load("run-starts.csv").map((r) => [r.run_id, r.started_at]));
 
 const stepByKey = new Map();
 eachRow("sequence-steps.csv", (r) => {
@@ -317,6 +332,9 @@ for (const e of emails) {
     replied: false,
     _replyAt: reply?.replied_at || null,
     _sentAt: sentAt,
+    // the research clock: when the run that served this lead STARTED (null when no generation
+    // record names its run, or that run is outside the dumped window)
+    _runStartedAt: gen?.runId ? runStartedAt.get(gen.runId) ?? null : null,
   };
   if (cpe !== undefined) facts.push({ ...row, cost: cpe });
   if (leg) {
@@ -364,7 +382,7 @@ const sentVolume = {
 };
 for (let i = facts.length - 1; i >= 0; i--) if (!isMature(facts[i]._sentAt, maturation.cutoff)) facts.splice(i, 1);
 maturation.excludedEmails = allFacts - facts.length;
-for (const f of facts) { delete f._replyAt; delete f._sentAt; delete f._clickAt; }
+for (const f of facts) { delete f._replyAt; delete f._sentAt; delete f._clickAt; delete f._runStartedAt; }
 
 // ---------- bucketing ----------
 const round = (n, d = 0) => Number(n.toFixed(d));
@@ -610,13 +628,28 @@ function workflowMeta(rows) {
   for (const [wf, rs] of by) meta[wf] = { model: topN(rs, 1, modelLabel)[0] || null, template: topN(rs, 1, (r) => r.template)[0] || null };
   return meta;
 }
-// The research population: mature emails of ONE leg each, priced on their own leg's spend.
-// Cost per email = what a (workflow version, leg) was charged before the maturation cutoff,
-// over the mature emails it sent in the same window, so the numerator and the denominator
-// cover the same days and the same population the figures use.
+// The research population: the MATURE emails of ONE leg each, priced on their own leg's spend.
+// Mature is features-service's rule, read per leg: the run that served the lead STARTED in the
+// window and at least the leg's duration before its end, and then every email those runs sent
+// counts, with every outcome their leads produced. A lead whose serving run no record names is in
+// the cohort, as features-service counts a lead with no serve date (stated as noRunStart).
+// Cost per email = what a (workflow version, leg) was charged on runs started in the same span,
+// over the mature emails of that pair, so numerator and denominator cover the same runs.
+const researchCutoff = (leg) => maturationCutoff(WINDOW.to, LEG_MATURITY.get(leg).durationDays);
 const research = (() => {
-  const all = researchRows.length;
-  const mature = researchRows.filter((r) => isMature(r._sentAt, maturation.cutoff));
+  let noRunStart = 0;
+  let young = 0;
+  let beforeWindow = 0;
+  const mature = researchRows.filter((r) => {
+    if (r.leg !== HERALD_LEG && r.leg !== SCOUT_LEG) return false;
+    if (!r._runStartedAt) { noRunStart++; return true; }
+    const day = new Date(toMs(r._runStartedAt)).toISOString().slice(0, 10);
+    // a lead served before the window has only its later emails in the dump: left out whole
+    if (day < WINDOW.from) { beforeWindow++; return false; }
+    // a run too recent for its outcomes to have arrived: it waits, it is not dropped
+    if (day >= researchCutoff(r.leg)) { young++; return false; }
+    return true;
+  });
   const spendByVersionLeg = new Map();
   let spendNoLeg = 0;
   let unpricedCents = 0;
@@ -625,8 +658,12 @@ const research = (() => {
   // workflow whose spend is all unpriced would read $0 and win every cost study.
   const unpricedKeys = new Set();
   for (const s of spendLegRows) {
-    if (s.day >= maturation.cutoff) continue;
     const leg = legOf.get(s.platform_campaign_id) ?? null;
+    // the spend of a run started in the window and before its leg's cutoff (a run's day is the
+    // day it STARTED, extract.sh), the same span as the emails it divides
+    if (leg === HERALD_LEG || leg === SCOUT_LEG) {
+      if (s.day < WINDOW.from || s.day >= researchCutoff(leg)) continue;
+    } else if (s.day >= maturation.cutoff) continue;
     const cents = COST_BASIS === "actual" ? Number(s.vendor_cents) : Number(s.cents);
     if (!leg) { spendNoLeg += cents; continue; }
     const k = `${s.workflow_slug}|${leg}`;
@@ -650,7 +687,7 @@ const research = (() => {
     if (spend === undefined) { noSpend++; continue; }
     if (unpricedKeys.has(k)) { noVendorCost++; continue; }
     r.cost = spend / emailsByVersionLeg.get(k);
-    delete r._replyAt; delete r._sentAt; delete r._clickAt;
+    delete r._replyAt; delete r._sentAt; delete r._clickAt; delete r._runStartedAt;
     priced.push(r);
   }
   const herald = priced.filter((r) => r.leg === HERALD_LEG);
@@ -671,15 +708,18 @@ const research = (() => {
       noLeg: linked.filter((f) => !f.leg).length,
       after: scout.length,
     },
-    immature: all - mature.length,
+    immature: young,
+    servedBeforeWindow: beforeWindow,
     droppedForNoSpend: noSpend,
     droppedForNoDynasty: researchNoDynasty,
     spendOnNoLeg: round(spendNoLeg / 100, 2),
     // actual basis only: billed spend on the two crews' legs no vendor cost is on record for
     unpricedBilledUsd: round(unpricedCents / 100, 2),
     droppedForNoVendorCost: noVendorCost,
+    // leads no generation record ties to a serving run: in the cohort, as features-service does
+    noRunStart,
   };
-  return { herald, scout, union, scope, immature: all - mature.length };
+  return { herald, scout, union, scope, immature: young, noRunStart, beforeWindow };
 })();
 const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
 const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
@@ -701,6 +741,22 @@ out.research = {
   },
   excludedEmails: research.immature,
   scope: research.scope,
+};
+
+// THE RULE the research figures are on, stated beside them: features-service's per-leg maturity,
+// read not measured. research.mjs writes the page's note and its Learning marks from it.
+out.researchMaturity = {
+  rule: "run_start",
+  windowEnd: WINDOW.to,
+  legs: Object.fromEntries(
+    [["reply", HERALD_LEG], ["visit", SCOUT_LEG]].map(([key, leg]) => {
+      const m = LEG_MATURITY.get(leg);
+      return [key, { legKey: leg, durationDays: m.durationDays, outcomesRequired: m.outcomesRequired, outcomeSignal: m.outcomeSignal ?? null, source: m.source ?? null, cutoff: researchCutoff(leg) }];
+    }),
+  ),
+  excludedEmails: research.immature,
+  noRunStart: research.noRunStart,
+  servedBeforeWindow: research.beforeWindow,
 };
 
 process.stdout.write(JSON.stringify(out, null, 2));

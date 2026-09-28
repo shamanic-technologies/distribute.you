@@ -84,8 +84,8 @@ export function V2WorkflowsPage() {
         crumbs={[{ label: "Workflows" }]}
         actions={
           <>
-            <StatBasisSwitch />
             <CostBasisSwitch />
+            <StatBasisSwitch />
           </>
         }
       />

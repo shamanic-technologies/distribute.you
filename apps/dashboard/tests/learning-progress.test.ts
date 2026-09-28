@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 const src = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
 
@@ -68,6 +69,7 @@ const bodyWith = (learningPhase: unknown) => ({
   spend: null,
   headline: { totalPipelineUsd: 1440 },
   costEconomics: {
+    maturity: NULL_PAIR,
     committedCostUsd: 409.26,
     costOfAcquisitionPct: 30.4,
     roiMultiple: 3.28,

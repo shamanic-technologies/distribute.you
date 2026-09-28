@@ -675,6 +675,7 @@ export function CampaignOverviewPage() {
             />
             <ConversionRateCard
               history={revenueRevealed ? data?.conversionRateHistory : undefined}
+              paused={campaignPaused}
               pending={!revenueRevealed}
             />
           </div>

@@ -116,7 +116,8 @@ SELECT g.campaign_id AS platform_campaign_id,
        coalesce((s.value->>'step')::int, 1) AS step,
        g.subject,
        g.client_company_name,
-       coalesce(s.value->>'bodyText', g.body_text) AS body_text
+       coalesce(s.value->>'bodyText', g.body_text) AS body_text,
+       g.run_id
 FROM email_generations g
 LEFT JOIN LATERAL jsonb_array_elements(coalesce(g.sequence, '[]'::jsonb)) s ON true
 WHERE g.feature_slug = 'sales-cold-email-outreach'
@@ -163,6 +164,25 @@ WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
 GROUP BY 1
 " spend.csv
 
+# When each execute-workflow run STARTED. A generation's run_id is its execute-workflow run, and
+# the Research page dates a lead by it: the MATURE population is the runs started long enough
+# before the read (features-service#1196, the clock features-service applies), and every email
+# those runs sent counts with every outcome their leads produced. The articles ignore this file.
+run runs_service "
+SELECT id AS run_id, started_at
+FROM runs
+WHERE task_name = 'execute-workflow' AND feature_slug = 'sales-cold-email-outreach'
+  AND started_at >= '$FROM'::timestamptz - interval '45 days' AND started_at < '$TO'
+" run-starts.csv
+
+# THE MATURITY RULE PER LEG, as features-service publishes it on its channel catalogue
+# (features-service#1196): how long after a run starts its outcomes count as arrived, and how many
+# outcomes make a figure more than Learning. Read, never re-measured, so the Research page and the
+# dashboard apply ONE rule. Read from inside its container (Cloudflare 1010s a scripted request).
+ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'docker exec distribute-features-service-1 node -e "fetch(\"http://127.0.0.1:8080/public/channels\").then(r=>{if(!r.ok)throw new Error(\"channels \"+r.status);return r.json()}).then(j=>{const legs=(j.legs||[]).filter(l=>l.maturity).map(l=>({legKey:l.legKey,durationDays:l.maturity.durationDays,outcomesRequired:l.maturity.outcomesRequired,outcomeSignal:l.maturity.outcomeSignal,source:l.maturity.source}));if(!legs.length)throw new Error(\"channels: no leg carries maturity\");console.log(JSON.stringify(legs))})" </dev/null' > "$OUT/maturity.json"
+[ -s "$OUT/maturity.json" ] || { echo "maturity.json is empty" >&2; exit 1; }
+echo "  maturity.json: $(wc -c < "$OUT/maturity.json") bytes"
+
 # What each price version cost US at the vendor, before our markup, as costs-service states it
 # (its own /internal/vendor-costs read, from inside its container). The Research page's staff
 # "Actual cost" basis prices every spend row through this, with the rule runs-service's vendor
@@ -179,13 +199,15 @@ VENDOR_WINDOWS="SELECT x.cost_name, x.billed, x.vendor, x.served_from AS valid_f
 FROM jsonb_to_recordset('$VERSIONS_JSON'::jsonb) AS x(cost_name text, billed numeric, vendor numeric, served_from timestamptz)"
 
 # The same charge, per workflow version, per CAMPAIGN (so per leg) and per DAY, for the Research
-# page: it prices a (workflow version, leg) on its own spend, windowed on the same days as the
-# emails it divides (derive.mjs cuts both at the maturation cutoff). vendor_cents is the priced
-# rows at vendor cost, unpriced_cents the billed amount of the rows no version prices.
+# page: it prices a (workflow version, leg) on its own spend. The day is the day the RUN carrying
+# the cost STARTED, the clock features-service's mature figures use (runs-service startedBefore
+# filters the cost row's own run), so derive.mjs cuts spend and emails at the same run-start
+# cutoff. vendor_cents is the priced rows at vendor cost, unpriced_cents the billed amount of the
+# rows no version prices.
 run runs_service "
 WITH v AS MATERIALIZED ($VENDOR_WINDOWS)
 SELECT r.workflow_slug, r.campaign_id AS platform_campaign_id,
-       (rc.created_at AT TIME ZONE 'UTC')::date AS day,
+       (r.started_at AT TIME ZONE 'UTC')::date AS day,
        sum(rc.total_cost_in_usd_cents) AS cents,
        coalesce(sum(rc.quantity * v.vendor) FILTER (WHERE v.vendor IS NOT NULL), 0) AS vendor_cents,
        coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE v.vendor IS NULL), 0) AS unpriced_cents
@@ -195,7 +217,7 @@ LEFT JOIN v ON v.cost_name = rc.cost_name AND v.billed = rc.unit_cost_in_usd_cen
   AND rc.created_at >= v.valid_from AND (v.valid_to IS NULL OR rc.created_at < v.valid_to)
 WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
   AND r.feature_slug = 'sales-cold-email-outreach'
-  AND rc.created_at >= '$FROM' AND rc.created_at < '$TO'
+  AND r.started_at >= '$FROM' AND rc.created_at < '$TO'
 GROUP BY 1, 2, 3
 " spend-legs.csv
 

@@ -9,6 +9,7 @@ import {
   unmeasuredReasonWords,
   type CampaignRef,
 } from "../src/lib/offer-outcomes";
+import { NULL_PAIR } from "./fixtures/maturity";
 
 const SRC = join(__dirname, "..", "src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
@@ -19,9 +20,23 @@ const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
  * against a reader that had drifted from the wire; this one is what the wire carries,
  * including a `not_attributable` leg (a count with no price).
  */
-const PROD = JSON.parse(
+const CAPTURED = JSON.parse(
   readFileSync(join(__dirname, "fixtures", "offer-outcomes-prod.json"), "utf8"),
 );
+/**
+ * The same body with the MATURITY PAIR features-service#1196 adds to every outcome row and
+ * every leg (captured before it shipped, so the pair is the "cannot judge" filler). The
+ * reader requires it: the table states the mature half and tags Learning off `isMature`.
+ */
+const withPairs = (body: typeof CAPTURED) => {
+  const out = structuredClone(body);
+  for (const row of out.outcomes) {
+    row.maturity = { ...NULL_PAIR };
+    for (const leg of row.legs) leg.maturity = { ...NULL_PAIR };
+  }
+  return out;
+};
+const PROD = withPairs(CAPTURED);
 
 describe("parseOfferOutcomes", () => {
   it("parses the production body", () => {
@@ -60,6 +75,22 @@ describe("parseOfferOutcomes", () => {
 
   it("still throws on a body that is not the contract", () => {
     expect(() => parseOfferOutcomes({ outcomes: "nope" }, "test")).toThrow();
+  });
+
+  it("refuses a body without the maturity pair: no figure without its verdict", () => {
+    expect(() => parseOfferOutcomes(CAPTURED, "test")).toThrow();
+  });
+
+  it("carries the served verdict through, with every half nullable", () => {
+    const body = structuredClone(PROD);
+    body.outcomes[0].maturity = {
+      flash: { roiMultiple: 1.2, costPerOutcomeUsd: 40 },
+      mature: { roiMultiple: 2.5, costPerOutcomeUsd: 22 },
+      isMature: false,
+    };
+    const parsed = parseOfferOutcomes(body, "test");
+    expect(parsed.outcomes[0].maturity.isMature).toBe(false);
+    expect(parsed.outcomes[0].maturity.mature?.costPerOutcomeUsd).toBe(22);
   });
 });
 

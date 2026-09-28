@@ -292,7 +292,7 @@ function BarsChart({
                 {p.label}
               </span>
               {top && <span className="k-chip shrink-0">Winner</span>}
-              {p.thin && <span className="k-fg3 shrink-0 text-[12px]">Thin</span>}
+              {p.thin && <span className="k-fg3 shrink-0 text-[12px]">Learning</span>}
               <span className={`w-16 shrink-0 text-right tabular-nums ${top ? "font-medium" : ""}`}>{p.display}</span>
               {href && (
                 <span className="k-fg4 shrink-0 opacity-0 group-hover:opacity-100">
@@ -349,7 +349,6 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const meta = RESEARCH.crews.find((c) => c.id === study.crew);
   const look = TOPIC_LOOK[study.topic];
   const state = studyState(study);
-  const floors = RESEARCH.floors;
   return (
     <>
       <TopBar crumbs={[{ label: "Research", href: base }, { label: id.name }, { label: TOPIC_LABEL[study.topic] }]} actions={<CostBasisSwitch />} />
@@ -443,13 +442,15 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label mt-5">How we measured</p>
             <p className="k-fg2 mt-2 text-[12px] leading-5">
               ROI is read as the cost per outcome: every crew buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
-              emails that carried a link. A bar under {floors.crown.minEmails.toLocaleString("en-US")} emails or{" "}
-              {floors.crown.minReplies} positive replies ({floors.crown.minClicks} visits) is ranked where its value puts it and marked thin.
+              emails that carried a link.
             </p>
             <p className="k-fg2 mt-2 text-[12px] leading-5">
-              Emails sent in the last {RESEARCH.maturation.days} days are left out of every figure: we measured how long a positive reply (
-              {RESEARCH.maturation.reply.pAt} days) and a website visit ({RESEARCH.maturation.click.pAt} days) take to arrive after the email that earned them, in
-              95 of 100 cases. {RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} recent emails wait until they are old enough to count.
+              Every figure is on the rule every price in the dashboard is on: only people we started writing to at least {RESEARCH.maturation.legs.reply.durationDays}{" "}
+              days before the read count (before {dayText(RESEARCH.maturation.legs.reply.cutoff)}), with every positive reply and website visit they sent since. A
+              bar resting on fewer than {RESEARCH.maturation.legs.reply.outcomesRequired} positive{" "}
+              {RESEARCH.maturation.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} ({RESEARCH.maturation.legs.visit.outcomesRequired} website visits) is
+              ranked where its value puts it and marked Learning. {RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} emails from more recent runs wait until
+              they are old enough to count.
             </p>
           </aside>
         </div>

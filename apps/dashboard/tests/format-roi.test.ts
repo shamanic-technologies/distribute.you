@@ -129,7 +129,7 @@ describe("every surface that colours an ROI reads the one rule", () => {
     const roi = src.slice(src.indexOf('label="ROI"'));
     const card = roi.slice(0, roi.indexOf("/>"));
     expect(card).toContain(
-      'valueClassName={roiIsGood(economics?.roiMultiple) ? "text-green-600" : undefined}',
+      'valueClassName={roiIsGood(roi.value) ? "text-green-600" : undefined}',
     );
     expect(card).not.toContain("text-red");
   });

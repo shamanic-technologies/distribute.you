@@ -26,7 +26,9 @@ describe("v2 Offers list", () => {
   it("reads v1's own query keys and readers", () => {
     expect(list).toContain('["brandOffers", brandId], () => listBrandOffers(brandId)');
     expect(list).toContain('["brandOfferMoney", brandId], () => getBrandOfferMoney(brandId)');
-    expect(list).toContain("useOfferLearning(brandId, featureSlug)");
+    // Learning is the offer group's served verdict, never a per-campaign fan-out.
+    expect(list).not.toContain("useOfferLearning");
+    expect(list).toContain("offerRatios(");
     expect(list).toContain("usePausedByOffer(brandId)");
     expect(list).toContain("scopePausedFor(pausedByOfferId, o.offerId, pausedSettled)");
   });
