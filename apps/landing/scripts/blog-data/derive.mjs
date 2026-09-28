@@ -152,6 +152,16 @@ const scannerRows = load("scanner-hits.csv");
 // platform campaign -> the leg it performs; "" (a campaign from before legs existed) is no leg
 const legOf = new Map(load("campaign-legs.csv").map((c) => [c.platform_campaign_id, c.leg_key || null]));
 const spendLegRows = load("spend-legs.csv");
+// The Research page is written on TWO cost bases. `user` (default) prices every email on what
+// clients were billed; `actual` (COST_BASIS=actual, the staff-only twin) on what the vendors
+// charged us before our markup, as costs-service states it per price version (extract.sh
+// prices each spend row). Billed spend no version prices is UNPRICED: it is left out of the
+// actual figures and stated beside them, never folded in at the billed price.
+const COST_BASIS = process.env.COST_BASIS ?? "user";
+if (COST_BASIS !== "user" && COST_BASIS !== "actual") throw new Error(`COST_BASIS must be user or actual, got ${COST_BASIS}`);
+if (COST_BASIS === "actual" && spendLegRows.length && spendLegRows[0].vendor_cents === undefined) {
+  throw new Error("spend-legs.csv carries no vendor_cents: re-run extract.sh");
+}
 // The two legs the Research crews buy, one each.
 const HERALD_LEG = "start_to_conversation";
 const SCOUT_LEG = "start_to_website_visit";
@@ -609,12 +619,21 @@ const research = (() => {
   const mature = researchRows.filter((r) => isMature(r._sentAt, maturation.cutoff));
   const spendByVersionLeg = new Map();
   let spendNoLeg = 0;
+  let unpricedCents = 0;
+  // Actual basis: a (workflow version, leg) carrying ANY billed spend no vendor cost prices is
+  // left out whole. Priced on its known part alone it would read cheaper than it was, and a
+  // workflow whose spend is all unpriced would read $0 and win every cost study.
+  const unpricedKeys = new Set();
   for (const s of spendLegRows) {
     if (s.day >= maturation.cutoff) continue;
     const leg = legOf.get(s.platform_campaign_id) ?? null;
-    const cents = Number(s.cents);
+    const cents = COST_BASIS === "actual" ? Number(s.vendor_cents) : Number(s.cents);
     if (!leg) { spendNoLeg += cents; continue; }
     const k = `${s.workflow_slug}|${leg}`;
+    if (COST_BASIS === "actual" && Number(s.unpriced_cents) > 0) {
+      if (leg === HERALD_LEG || leg === SCOUT_LEG) unpricedCents += Number(s.unpriced_cents);
+      unpricedKeys.add(k);
+    }
     spendByVersionLeg.set(k, (spendByVersionLeg.get(k) || 0) + cents / 100);
   }
   const emailsByVersionLeg = new Map();
@@ -624,10 +643,12 @@ const research = (() => {
   }
   const priced = [];
   let noSpend = 0;
+  let noVendorCost = 0;
   for (const r of mature) {
     const k = `${r.workflow}|${r.leg}`;
     const spend = spendByVersionLeg.get(k);
     if (spend === undefined) { noSpend++; continue; }
+    if (unpricedKeys.has(k)) { noVendorCost++; continue; }
     r.cost = spend / emailsByVersionLeg.get(k);
     delete r._replyAt; delete r._sentAt; delete r._clickAt;
     priced.push(r);
@@ -654,12 +675,16 @@ const research = (() => {
     droppedForNoSpend: noSpend,
     droppedForNoDynasty: researchNoDynasty,
     spendOnNoLeg: round(spendNoLeg / 100, 2),
+    // actual basis only: billed spend on the two crews' legs no vendor cost is on record for
+    unpricedBilledUsd: round(unpricedCents / 100, 2),
+    droppedForNoVendorCost: noVendorCost,
   };
   return { herald, scout, union, scope, immature: all - mature.length };
 })();
 const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
 const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
 out.research = {
+  costBasis: COST_BASIS,
   window: { from: minMonth(research.union), to: maxMonth(research.union) },
   // Herald buys a positive reply on the start_to_conversation leg; Scout a website visit on the
   // start_to_website_visit leg, priced on the emails that carried a link.

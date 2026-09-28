@@ -45,6 +45,8 @@ import { workflowOutcomeCostCents, workflowOutcomeCount } from "@/lib/campaign-w
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useIsAdminUser } from "@/lib/use-admin-user";
+import { useCostBasis } from "@/lib/v2/use-cost-basis";
+import { ActualCostPendingNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { v2Href, v2WorkflowHref } from "@/lib/v2/routes";
 
 /** How many of a dynasty's most recent versions the run history reads. */
@@ -58,6 +60,8 @@ const RUNS_SHOWN = 10;
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 
 const fmtUsd = (v: number | null | undefined) => (v == null ? "—" : formatUsdAdaptive(v));
+/** On the Actual cost basis, a figure not served at vendor cost yet reads "—", never the billed amount. */
+const NOT_ACTUAL = <span className="k-fg4">—</span>;
 const fmtCount = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-US"));
 /** "Positive reply" -> "Positive replies", "Website visit" -> "Website visits". */
 const plural = (noun: string) => (/[^aeiou]y$/i.test(noun) ? `${noun.slice(0, -1)}ies` : `${noun}s`);
@@ -81,6 +85,7 @@ export function V2WorkflowPage() {
   const [featureSlug, legKey] = crewRaw.split("|");
   const router = useRouter();
   const { specs, settled, missionByCampaignId } = useBrandMissionSpecs(orgId, brandId);
+  const { actual } = useCostBasis();
 
   // The mission the ranking is asked through. A link naming it wins; an older link naming
   // only the crew resolves when the brand runs a single mission for that crew.
@@ -186,13 +191,15 @@ export function V2WorkflowPage() {
         <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x md:divide-y-0">
           <DualKpi
             label="Return, this mission"
-            measured={row.learning ? <span className="k-chip">Learning</span> : formatRoi(row.roiMultiple, "—")}
-            projected={formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
+            measured={actual ? NOT_ACTUAL : row.learning ? <span className="k-chip">Learning</span> : formatRoi(row.roiMultiple, "—")}
+            projected={actual ? NOT_ACTUAL : formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
           />
           <DualKpi
             label={`Cost / ${noun.toLowerCase()}`}
-            measured={row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)}
-            projected={fmtUsd(ranked.estCostPerOutcomeUsd)}
+            measured={
+              actual ? NOT_ACTUAL : row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)
+            }
+            projected={actual ? NOT_ACTUAL : fmtUsd(ranked.estCostPerOutcomeUsd)}
           />
           <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
         </div>
@@ -200,6 +207,7 @@ export function V2WorkflowPage() {
           Measured is what this mission actually produced for what it spent. Projected is what the ranking expects, from your
           conversion rates and your customer value.
         </p>
+        {actual && <ActualCostPendingNote what="this mission's return and costs, the pricing breakdown, the audiences and each run's cost are" />}
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
@@ -233,7 +241,7 @@ export function V2WorkflowPage() {
                 <Row k="Offer" v={spec.mission.offerName} />
                 <Row k="Step" v={spec.mission.leg?.label ?? null} />
                 <Row k="Model" v={model ? <span className="k-mono text-[12px]">{model.alias}</span> : null} />
-                <Row k="Invested" v={row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
+                <Row k="Invested" v={actual || row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
                 <Row k="Leads emailed" v={row.outreach == null ? null : fmtCount(row.outreach)} />
               </dl>
             </aside>
@@ -259,6 +267,7 @@ export function V2WorkflowPage() {
           ...(missionLabel ? [{ label: missionLabel }] : []),
           { label: name },
         ]}
+        actions={<CostBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">{body}</div>
     </>
@@ -416,6 +425,7 @@ function GrainCell({
   brandLogoUrl: string | null;
 }) {
   const f = grainFigures(block);
+  const { actual } = useCostBasis();
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-center gap-2">
@@ -431,12 +441,12 @@ function GrainCell({
             <p className="k-fg3 mt-1 text-[12px]">{block.costBasis === "charged" ? "What you paid" : "What it costs us, refunds included"}</p>
           )}
           <dl className="mt-3 space-y-1.5 text-[13px]">
-            <Row k={`Cost / ${noun.toLowerCase()}`} v={f?.costPerOutcomeUsd == null ? null : formatUsdAdaptive(f.costPerOutcomeUsd)} />
+            <Row k={`Cost / ${noun.toLowerCase()}`} v={actual || f?.costPerOutcomeUsd == null ? null : formatUsdAdaptive(f.costPerOutcomeUsd)} />
             <Row
               k={f && !f.outcomeObserved ? `${plural(noun)} (expected)` : plural(noun)}
               v={f?.outcomeCount == null ? null : fmtCount(Math.round(f.outcomeCount))}
             />
-            <Row k="Spent" v={fmtUsd(block.evidence.spentUsd)} />
+            <Row k="Spent" v={actual ? null : fmtUsd(block.evidence.spentUsd)} />
             <Row k="People reached" v={fmtCount(block.evidence.observedContacted)} />
           </dl>
         </>
@@ -456,6 +466,7 @@ function AudiencesCard({
   noun: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { actual } = useCostBasis();
   if (rows.length === 0) return null;
   const shown = expanded ? rows : rows.slice(0, AUDIENCES_SHOWN);
   return (
@@ -471,13 +482,13 @@ function AudiencesCard({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px]">{name}</p>
                 <p className="k-fg3 truncate text-[12px] tabular-nums">
-                  {fmtUsd(r.figures?.spentUsd ?? null)} spent
+                  {actual ? "—" : fmtUsd(r.figures?.spentUsd ?? null)} spent
                   {r.figures != null &&
                     `, ${fmtCount(r.figures.outcomeCount == null ? null : Math.round(r.figures.outcomeCount))} ${(r.figures.outcomeCount === 1 ? noun : plural(noun)).toLowerCase()}`}
                 </p>
               </div>
               <span className="shrink-0 text-[13px] font-medium tabular-nums">
-                {r.figures?.costPerOutcomeUsd == null ? <span className="k-fg4">—</span> : formatUsdAdaptive(r.figures.costPerOutcomeUsd)}
+                {actual || r.figures?.costPerOutcomeUsd == null ? <span className="k-fg4">—</span> : formatUsdAdaptive(r.figures.costPerOutcomeUsd)}
               </span>
             </li>
           );
@@ -516,9 +527,8 @@ function AudiencesCard({
  * the gateway refuses anyone else. The value curve is the same on both bases.
  */
 function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKey: string; dynasty: string }) {
-  const isStaff = useIsAdminUser();
-  const [basis, setBasis] = useState<"user" | "actual">("user");
-  const actual = isStaff && basis === "actual";
+  // The basis is the page's (the switch in the top bar), shared with every cost page.
+  const { actual } = useCostBasis();
   const q = useAuthQuery(
     ["fleetWorkflowReturn", featureSlug, dynasty, legKey],
     () => getFleetWorkflowReturnHistory(featureSlug, dynasty, legKey),
@@ -551,26 +561,7 @@ function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKe
 
   return (
     <section>
-      <SectionTitle
-        right={
-          isStaff && (
-            <span className="inline-flex items-center gap-1.5" role="group" aria-label="Cost basis">
-              {(["user", "actual"] as const).map((b) => (
-                <button
-                  key={b}
-                  type="button"
-                  aria-pressed={basis === b}
-                  onClick={() => setBasis(b)}
-                  className={basis === b ? "k-btn h-6 px-2 text-[12px]" : "k-btn-ghost h-6 px-2 text-[12px]"}
-                >
-                  {b === "user" ? "User cost" : "Actual cost"}
-                </button>
-              ))}
-              <MaturityBadge level="staff" />
-            </span>
-          )
-        }
-      >
+      <SectionTitle right={actual ? <span>Actual cost</span> : undefined}>
         Over time <span className="k-fg3 font-normal">· all clients on this crew</span>
       </SectionTitle>
       {unreadable && (
@@ -918,6 +909,7 @@ function RunsCard({
 }) {
   const [openRun, setOpenRun] = useState<RunRow | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const { actual } = useCostBasis();
   const read = versions.slice(0, RUN_VERSIONS);
   const q = useAuthQuery(
     ["workflowRuns", brandId, dynasty, read.join(",")],
@@ -1006,7 +998,7 @@ function RunsCard({
                         {run.completedAt ? durationLabel(run.startedAt, run.completedAt) : <span className="k-fg4">—</span>}
                       </td>
                       <td className="pl-3 pr-4 text-right tabular-nums">
-                        {Number.isFinite(cost) && cost > 0 ? formatCentsAsUsdAdaptive(cost) : <span className="k-fg4">—</span>}
+                        {!actual && Number.isFinite(cost) && cost > 0 ? formatCentsAsUsdAdaptive(cost) : <span className="k-fg4">—</span>}
                       </td>
                     </RunLine>
                   );

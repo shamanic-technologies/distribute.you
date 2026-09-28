@@ -163,15 +163,36 @@ WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
 GROUP BY 1
 " spend.csv
 
+# What each price version cost US at the vendor, before our markup, as costs-service states it
+# (its own /internal/vendor-costs read, from inside its container). The Research page's staff
+# "Actual cost" basis prices every spend row through this, with the rule runs-service's vendor
+# read uses: a row matches the version of its cost name whose billed unit price equals the one
+# the row froze and which was being served when the row was written. A row no known version
+# prices is UNPRICED: it is counted apart, never folded in at the billed price.
+ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'docker exec distribute-costs-service-1 node -e "fetch(\"http://127.0.0.1:8080/internal/vendor-costs\",{headers:{\"x-api-key\":process.env.COSTS_SERVICE_API_KEY}}).then(r=>{if(!r.ok)throw new Error(\"vendor-costs \"+r.status);return r.json()}).then(j=>console.log(JSON.stringify(j.versions.filter(v=>v.billedPricePerUnitInUsdCents!==null).map(v=>({cost_name:v.name,billed:v.billedPricePerUnitInUsdCents,vendor:v.vendorCostPerUnitInUsdCents,served_from:new Date(Math.max(Date.parse(v.effectiveFrom),Date.parse(v.createdAt))).toISOString()})))))" </dev/null' > "$OUT/vendor-versions.json"
+[ -s "$OUT/vendor-versions.json" ] || { echo "vendor-versions.json is empty" >&2; exit 1; }
+echo "  vendor-versions.json: $(wc -c < "$OUT/vendor-versions.json") bytes"
+VERSIONS_JSON="$(cat "$OUT/vendor-versions.json")"
+# The version table as MATCH WINDOWS (see runs-service routes/vendor-costs.ts versionWindowsSql).
+VENDOR_WINDOWS="SELECT x.cost_name, x.billed, x.vendor, x.served_from AS valid_from,
+       LEAD(x.served_from) OVER (PARTITION BY x.cost_name, x.billed ORDER BY x.served_from) AS valid_to
+FROM jsonb_to_recordset('$VERSIONS_JSON'::jsonb) AS x(cost_name text, billed numeric, vendor numeric, served_from timestamptz)"
+
 # The same charge, per workflow version, per CAMPAIGN (so per leg) and per DAY, for the Research
 # page: it prices a (workflow version, leg) on its own spend, windowed on the same days as the
-# emails it divides (derive.mjs cuts both at the maturation cutoff).
+# emails it divides (derive.mjs cuts both at the maturation cutoff). vendor_cents is the priced
+# rows at vendor cost, unpriced_cents the billed amount of the rows no version prices.
 run runs_service "
+WITH v AS MATERIALIZED ($VENDOR_WINDOWS)
 SELECT r.workflow_slug, r.campaign_id AS platform_campaign_id,
        (rc.created_at AT TIME ZONE 'UTC')::date AS day,
-       sum(rc.total_cost_in_usd_cents) AS cents
+       sum(rc.total_cost_in_usd_cents) AS cents,
+       coalesce(sum(rc.quantity * v.vendor) FILTER (WHERE v.vendor IS NOT NULL), 0) AS vendor_cents,
+       coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE v.vendor IS NULL), 0) AS unpriced_cents
 FROM runs_costs rc
 JOIN runs r ON r.id = rc.run_id
+LEFT JOIN v ON v.cost_name = rc.cost_name AND v.billed = rc.unit_cost_in_usd_cents
+  AND rc.created_at >= v.valid_from AND (v.valid_to IS NULL OR rc.created_at < v.valid_to)
 WHERE rc.cost_source = 'platform' AND rc.status = 'actual'
   AND r.feature_slug = 'sales-cold-email-outreach'
   AND rc.created_at >= '$FROM' AND rc.created_at < '$TO'
@@ -218,7 +239,7 @@ WHERE type ~ '^(cold-email|blind-discovery-email)'
 # The last 12 executions of every workflow version, with what each cost (every descendant run's
 # actual cost). No org, no lead: the page states fleet-wide facts only.
 runjson runs_service "
-WITH RECURSIVE top AS (
+WITH RECURSIVE v AS MATERIALIZED ($VENDOR_WINDOWS), top AS (
   SELECT id, workflow_slug, leg, status, started_at, completed_at FROM (
     SELECT r.id, r.workflow_slug, l.leg, r.status, r.started_at, r.completed_at,
            row_number() OVER (PARTITION BY r.workflow_slug, l.leg ORDER BY r.started_at DESC) AS rn
@@ -233,13 +254,18 @@ WITH RECURSIVE top AS (
   SELECT t.root, c.id FROM tree t JOIN runs c ON c.parent_run_id = t.id
 ), priced AS (
   SELECT top.workflow_slug, top.leg, top.status, top.started_at, top.completed_at,
-         coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.status = 'actual'), 0) AS cents
+         coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.status = 'actual'), 0) AS cents,
+         coalesce(sum(rc.quantity * v.vendor) FILTER (WHERE rc.status = 'actual' AND v.vendor IS NOT NULL), 0) AS vendor_cents,
+         coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.status = 'actual' AND rc.id IS NOT NULL AND v.vendor IS NULL), 0) AS unpriced_cents
   FROM top JOIN tree ON tree.root = top.id
   LEFT JOIN runs_costs rc ON rc.run_id = tree.id
+  LEFT JOIN v ON v.cost_name = rc.cost_name AND v.billed = rc.unit_cost_in_usd_cents
+    AND rc.created_at >= v.valid_from AND (v.valid_to IS NULL OR rc.created_at < v.valid_to)
   GROUP BY 1, 2, 3, 4, 5
 )
 SELECT coalesce(json_agg(json_build_object('workflowSlug', workflow_slug, 'leg', leg, 'status', status,
-  'startedAt', started_at, 'completedAt', completed_at, 'cents', round(cents, 2)) ORDER BY started_at DESC), '[]')
+  'startedAt', started_at, 'completedAt', completed_at, 'cents', round(cents, 2),
+  'vendorCents', round(vendor_cents, 4), 'unpricedCents', round(unpriced_cents, 2)) ORDER BY started_at DESC), '[]')
 FROM priced
 " workflow-runs.json
 

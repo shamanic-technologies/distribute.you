@@ -17,6 +17,10 @@ import {
   monthText,
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, CrewCatalogLinks } from "@/components/v2/research-catalog";
+import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ResearchSourceProvider, useResearch } from "@/lib/research/research-source";
+import { useCostBasis } from "@/lib/v2/use-cost-basis";
+import { formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
@@ -169,12 +173,13 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
 }
 
 function V2ResearchHub({ base }: { base: string }) {
+  const RESEARCH = useResearch().file;
   const v = RESEARCH.volume;
   const called = RESEARCH.studies.filter((st) => studyState(st) === "winner").length;
   const maxMonth = Math.max(...v.byMonth.map((m) => m.emails), 1);
   return (
     <>
-      <TopBar crumbs={[{ label: "Research" }]} />
+      <TopBar crumbs={[{ label: "Research" }]} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -233,7 +238,7 @@ function V2ResearchHub({ base }: { base: string }) {
         {CREW_ORDER.map((crew) => {
           const id = crewIdentity(crew);
           const meta = RESEARCH.crews.find((c) => c.id === crew);
-          const studies = studiesFor(crew);
+          const studies = studiesFor(crew, RESEARCH);
           if (!studies.length) return null;
           return (
             <section key={crew} className="mt-8">
@@ -321,11 +326,12 @@ function BarsChart({
 }
 
 function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
-  const study = studyById(studyId);
+  const RESEARCH = useResearch().file;
+  const study = studyById(studyId, RESEARCH);
   if (!study) {
     return (
       <>
-        <TopBar crumbs={[{ label: "Research", href: base }, { label: "Not found" }]} />
+        <TopBar crumbs={[{ label: "Research", href: base }, { label: "Not found" }]} actions={<CostBasisSwitch />} />
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           <div className="k-card">
             <EmptyNote>
@@ -346,7 +352,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const floors = RESEARCH.floors;
   return (
     <>
-      <TopBar crumbs={[{ label: "Research", href: base }, { label: id.name }, { label: TOPIC_LABEL[study.topic] }]} />
+      <TopBar crumbs={[{ label: "Research", href: base }, { label: id.name }, { label: TOPIC_LABEL[study.topic] }]} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <TopicMark topic={study.topic} size={40} />
@@ -498,8 +504,30 @@ export function V2Research() {
     if (href !== pathname) window.history.pushState(null, "", href);
     scrollToTop(e.currentTarget);
   };
+  const { basis } = useCostBasis();
+  const crumbs = [{ label: "Research" }];
   return (
-    <div ref={rootRef} onClickCapture={onClickCapture}>
+    <ResearchSourceProvider
+      pending={
+        <>
+          <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+          <div className="mx-auto max-w-[1280px] px-4 pt-6 md:px-6">
+            <p className="k-fg3 text-[13px]">Loading the research at actual cost…</p>
+          </div>
+        </>
+      }
+      failed={
+        <>
+          <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+          <div className="mx-auto max-w-[1280px] px-4 pt-6 md:px-6">
+            <EmptyNote>We could not load the research at actual cost just now.</EmptyNote>
+          </div>
+        </>
+      }
+    >
+    {/* Keyed on the basis: a view that loaded one basis's catalogue must not keep it on the other. */}
+    <div key={basis} ref={rootRef} onClickCapture={onClickCapture}>
+      <UnpricedNote />
       {view.view === "hub" ? (
         <V2ResearchHub base={base} />
       ) : view.view === "study" ? (
@@ -509,6 +537,26 @@ export function V2Research() {
       ) : (
         <V2ResearchCatalogView base={base} crew={view.crew} kind={view.kind} itemKey={view.view === "item" ? view.key : null} nav={nav} />
       )}
+    </div>
+    </ResearchSourceProvider>
+  );
+}
+
+/**
+ * On the actual basis, a workflow version whose billed spend no vendor cost prices is left out
+ * whole (priced on its known part it would read cheaper than it was); the page says how much.
+ */
+function UnpricedNote() {
+  const { basis, file } = useResearch();
+  if (basis !== "actual") return null;
+  const usd = file.unpricedBilledUsd ?? 0;
+  return (
+    <div className="mx-auto max-w-[1280px] px-4 pt-4 md:px-6">
+      <p className="k-card k-fg2 px-4 py-2.5 text-[12px]">
+        Actual cost: what the vendors charged us, before our margin.
+        {usd > 0 &&
+          ` ${formatUsdAdaptive(usd)} of billed spend has no vendor cost on record yet (mostly Instantly sending before Aug 23), so the ${(file.unpricedEmails ?? 0).toLocaleString("en-US")} emails it paid for are left out of these figures rather than priced at a partial cost.`}
+      </p>
     </div>
   );
 }

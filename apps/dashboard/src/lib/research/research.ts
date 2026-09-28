@@ -62,6 +62,16 @@ export interface ResearchStudy {
 export interface ResearchFile {
   generatedAt: string;
   allOrgs: true;
+  /**
+   * `user`: what clients were billed (this bundled file). `actual`: what the vendors charged us
+   * before our markup (staff only, served by /api/research/actual, never bundled). Absent on a
+   * snapshot written before the two bases existed, which is the billed one.
+   */
+  costBasis?: "user" | "actual";
+  /** Actual basis only: billed spend no vendor cost is on record for, left out of every figure. */
+  unpricedBilledUsd?: number;
+  /** Actual basis only: emails left out because their workflow version's spend is unpriced. */
+  unpricedEmails?: number;
   window: { from: string; to: string };
   /** The day the data was read out of production. */
   readOn: string;
@@ -171,12 +181,12 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   naming: "Naming the client",
 };
 
-export function studiesFor(crew: ResearchCrew): ResearchStudy[] {
-  return RESEARCH.studies.filter((s) => s.crew === crew);
+export function studiesFor(crew: ResearchCrew, file: ResearchFile = RESEARCH): ResearchStudy[] {
+  return file.studies.filter((s) => s.crew === crew);
 }
 
-export function studyById(id: string): ResearchStudy | null {
-  return RESEARCH.studies.find((s) => s.id === id) ?? null;
+export function studyById(id: string, file: ResearchFile = RESEARCH): ResearchStudy | null {
+  return file.studies.find((s) => s.id === id) ?? null;
 }
 
 /** A study's standing as one word: a called winner, a leader on thin counts, or no data. */
