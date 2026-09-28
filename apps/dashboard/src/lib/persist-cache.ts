@@ -81,7 +81,15 @@ export const PERSIST_GC_TIME_MS = 30 * 60 * 1000;
  * to disk — localStorage is readable by any script on the origin. Redundant with
  * the allowlist (they aren't in it) but kept as explicit defense-in-depth.
  */
-export const SENSITIVE_QUERY_ROOTS = new Set(["apiKeys", "byokKeys", "keySources"]);
+// Key material, and the staff ACTUAL-cost reads (our margin): never written to disk.
+export const SENSITIVE_QUERY_ROOTS = new Set([
+  "apiKeys",
+  "byokKeys",
+  "keySources",
+  "workflowRankLadderActual",
+  "campaignWorkflowRevenueActual",
+  "workflowRunsActual",
+]);
 
 /**
  * INVENTORY of every LIVE non-sensitive query root in the dashboard — all persist

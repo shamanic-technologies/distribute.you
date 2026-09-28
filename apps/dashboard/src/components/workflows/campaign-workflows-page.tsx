@@ -290,7 +290,7 @@ export function ladderRowsForScope(
         workflowDynastySlug: row.workflow.workflowDynastySlug,
         measured: row.measured,
         grain: row.resolved.grain,
-        costBasis: row.resolved.costBasis,
+        costBasis: row.resolved.costBasis ?? null,
         costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
         roiMultiple: row.resolved.roiMultiple,
         estimatesByGrain: row.estimatesByGrain,

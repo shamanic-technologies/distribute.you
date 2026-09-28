@@ -2,9 +2,11 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { pollOptions } from "@/lib/query-options";
 import {
   getFeatureRevenueByWorkflow,
+  getFeatureRevenueByWorkflowActual,
   getWorkflowRankLadder,
   listChannelWorkflows,
   type WorkflowRankLadder,
@@ -126,14 +128,21 @@ export function useMissionWorkflowRanking(
     () => listChannelWorkflows(featureSlug as string),
     { ...pollOptions, enabled: ready },
   );
+  // The page's cost basis (the staff switch in the top bar). On Actual, the money reads come
+  // from the staff vendor-cost twins: same rows, same rank, money at vendor cost. Their roots
+  // are never persisted to disk (persist-cache SENSITIVE_QUERY_ROOTS).
+  const { actual } = useCostBasis();
   const groupsQ = useAuthQuery(
-    ["campaignWorkflowRevenue", brandId, campaignId ?? "none"],
-    () => getFeatureRevenueByWorkflow(featureSlug as string, brandId, campaignId),
+    [actual ? "campaignWorkflowRevenueActual" : "campaignWorkflowRevenue", brandId, campaignId ?? "none"],
+    () =>
+      actual
+        ? getFeatureRevenueByWorkflowActual(featureSlug as string, brandId, campaignId)
+        : getFeatureRevenueByWorkflow(featureSlug as string, brandId, campaignId),
     { ...pollOptions, enabled: ready },
   );
   const ladderQ = useAuthQuery(
-    ["workflowRankLadder", brandId, legKey ?? "none", campaignId ?? "none"],
-    () => getWorkflowRankLadder({ featureSlug: featureSlug as string, brandId, leg: legKey, campaignId }),
+    [actual ? "workflowRankLadderActual" : "workflowRankLadder", brandId, legKey ?? "none", campaignId ?? "none"],
+    () => getWorkflowRankLadder({ featureSlug: featureSlug as string, brandId, leg: legKey, campaignId, actual }),
     { ...pollOptions, enabled: ready, retry: false },
   );
 

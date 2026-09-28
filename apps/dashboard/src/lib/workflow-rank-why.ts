@@ -65,17 +65,19 @@ export type WorkflowLadderCostBasis = "charged" | "incurred";
 
 /** One grain's observed evidence — the counts a sentence is allowed to state. */
 export interface WorkflowLadderEvidence {
-  spentUsd: number;
+  /** Null only on the staff actual-cost body, where the grain's vendor cost is unknown. */
+  spentUsd: number | null;
   observedContacted: number;
   observedClicks: number;
   observedPositiveReplies: number;
 }
 
-/** One grain's floor-filled unit costs — never null (spend / max(observed, 1)). */
+/** One grain's floor-filled unit costs — never null on the billed body (spend / max(observed, 1));
+ *  null on the staff actual-cost body where the grain's vendor cost is unknown. */
 export interface WorkflowLadderUnitCosts {
-  costPerClickUsd: number;
-  costPerPositiveReplyUsd: number;
-  costPerContactedUsd: number;
+  costPerClickUsd: number | null;
+  costPerPositiveReplyUsd: number | null;
+  costPerContactedUsd: number | null;
 }
 
 /** One grain of the ladder, as narrowly as this module reads one. */
@@ -95,7 +97,7 @@ export interface WorkflowLadderGrainBlock {
     costPerOutcomeUsd: number | null;
     outcomeCount: number | null;
     outcomeObserved: boolean;
-    spentUsd: number;
+    spentUsd: number | null;
   } | null;
 }
 

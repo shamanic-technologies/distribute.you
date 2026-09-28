@@ -109,8 +109,10 @@ describe("the ranking is asked per MISSION, and the pages speak v2", () => {
 
   it("the ladder is asked with the mission's campaign, on the campaign Workflows page's own key", () => {
     // A leg-keyed ranking with no campaign 409s on a brand selling several offers.
-    expect(data).toContain('["workflowRankLadder", brandId, legKey ?? "none", campaignId ?? "none"]');
-    expect(data).toContain("leg: legKey, campaignId }");
+    // On the billed basis the key is the billed one; the staff Actual basis reads its own
+    // (never-persisted) root, so the two bases never share a cache entry.
+    expect(data).toContain('[actual ? "workflowRankLadderActual" : "workflowRankLadder", brandId, legKey ?? "none", campaignId ?? "none"]');
+    expect(data).toContain("leg: legKey, campaignId, actual }");
     expect(read("src/components/workflows/campaign-workflows-page.tsx")).toContain('["workflowRankLadder", brandId, legKey ?? "none", campaignId]');
   });
 

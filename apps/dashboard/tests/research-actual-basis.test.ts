@@ -67,3 +67,15 @@ describe("the actual-cost research snapshot never reaches a browser bundle", () 
     expect(billed.costBasis).toBe("user");
   });
 });
+
+describe("the staff actual-cost reads are never written to disk", () => {
+  it("their roots are in the never-persisted set", () => {
+    const src = read("lib/persist-cache.ts");
+    for (const root of ["workflowRankLadderActual", "campaignWorkflowRevenueActual", "workflowRunsActual"]) {
+      expect(src.slice(src.indexOf("export const SENSITIVE_QUERY_ROOTS"), src.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain(`"${root}"`);
+    }
+  });
+  it("a run with unpriced rows states no actual cost rather than its priced part", () => {
+    expect(read("components/v2/workflow-page.tsx")).toContain("vendorCents: r.unpricedCostNames.length ? null");
+  });
+});

@@ -17,6 +17,7 @@ import {
   getPlatformPrompt,
   listAudiences,
   listBrandRunLedger,
+  listBrandRunLedgerVendor,
   listRunEmails,
   type Email,
   type RunRow,
@@ -46,7 +47,7 @@ import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useIsAdminUser } from "@/lib/use-admin-user";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
-import { ActualCostPendingNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { v2Href, v2WorkflowHref } from "@/lib/v2/routes";
 
 /** How many of a dynasty's most recent versions the run history reads. */
@@ -60,8 +61,6 @@ const RUNS_SHOWN = 10;
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 
 const fmtUsd = (v: number | null | undefined) => (v == null ? "—" : formatUsdAdaptive(v));
-/** On the Actual cost basis, a figure not served at vendor cost yet reads "—", never the billed amount. */
-const NOT_ACTUAL = <span className="k-fg4">—</span>;
 const fmtCount = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-US"));
 /** "Positive reply" -> "Positive replies", "Website visit" -> "Website visits". */
 const plural = (noun: string) => (/[^aeiou]y$/i.test(noun) ? `${noun.slice(0, -1)}ies` : `${noun}s`);
@@ -191,15 +190,13 @@ export function V2WorkflowPage() {
         <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x md:divide-y-0">
           <DualKpi
             label="Return, this mission"
-            measured={actual ? NOT_ACTUAL : row.learning ? <span className="k-chip">Learning</span> : formatRoi(row.roiMultiple, "—")}
-            projected={actual ? NOT_ACTUAL : formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
+            measured={row.learning ? <span className="k-chip">Learning</span> : formatRoi(row.roiMultiple, "—")}
+            projected={formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
           />
           <DualKpi
             label={`Cost / ${noun.toLowerCase()}`}
-            measured={
-              actual ? NOT_ACTUAL : row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)
-            }
-            projected={actual ? NOT_ACTUAL : fmtUsd(ranked.estCostPerOutcomeUsd)}
+            measured={row.learning ? <span className="k-chip">Learning</span> : costCents == null ? "—" : formatCentsAsUsdAdaptive(costCents)}
+            projected={fmtUsd(ranked.estCostPerOutcomeUsd)}
           />
           <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
         </div>
@@ -207,7 +204,7 @@ export function V2WorkflowPage() {
           Measured is what this mission actually produced for what it spent. Projected is what the ranking expects, from your
           conversion rates and your customer value.
         </p>
-        {actual && <ActualCostPendingNote what="this mission's return and costs, the pricing breakdown, the audiences and each run's cost are" />}
+        {actual && <ActualCostNote unpricedUsd={ranking.ladder?.unpricedBilledCostUsd} />}
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
@@ -241,7 +238,7 @@ export function V2WorkflowPage() {
                 <Row k="Offer" v={spec.mission.offerName} />
                 <Row k="Step" v={spec.mission.leg?.label ?? null} />
                 <Row k="Model" v={model ? <span className="k-mono text-[12px]">{model.alias}</span> : null} />
-                <Row k="Invested" v={actual || row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
+                <Row k="Invested" v={row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
                 <Row k="Leads emailed" v={row.outreach == null ? null : fmtCount(row.outreach)} />
               </dl>
             </aside>
@@ -425,7 +422,6 @@ function GrainCell({
   brandLogoUrl: string | null;
 }) {
   const f = grainFigures(block);
-  const { actual } = useCostBasis();
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-center gap-2">
@@ -441,12 +437,12 @@ function GrainCell({
             <p className="k-fg3 mt-1 text-[12px]">{block.costBasis === "charged" ? "What you paid" : "What it costs us, refunds included"}</p>
           )}
           <dl className="mt-3 space-y-1.5 text-[13px]">
-            <Row k={`Cost / ${noun.toLowerCase()}`} v={actual || f?.costPerOutcomeUsd == null ? null : formatUsdAdaptive(f.costPerOutcomeUsd)} />
+            <Row k={`Cost / ${noun.toLowerCase()}`} v={f?.costPerOutcomeUsd == null ? null : formatUsdAdaptive(f.costPerOutcomeUsd)} />
             <Row
               k={f && !f.outcomeObserved ? `${plural(noun)} (expected)` : plural(noun)}
               v={f?.outcomeCount == null ? null : fmtCount(Math.round(f.outcomeCount))}
             />
-            <Row k="Spent" v={actual ? null : fmtUsd(block.evidence.spentUsd)} />
+            <Row k="Spent" v={block.evidence.spentUsd == null ? null : fmtUsd(block.evidence.spentUsd)} />
             <Row k="People reached" v={fmtCount(block.evidence.observedContacted)} />
           </dl>
         </>
@@ -466,7 +462,6 @@ function AudiencesCard({
   noun: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { actual } = useCostBasis();
   if (rows.length === 0) return null;
   const shown = expanded ? rows : rows.slice(0, AUDIENCES_SHOWN);
   return (
@@ -482,13 +477,13 @@ function AudiencesCard({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px]">{name}</p>
                 <p className="k-fg3 truncate text-[12px] tabular-nums">
-                  {actual ? "—" : fmtUsd(r.figures?.spentUsd ?? null)} spent
+                  {fmtUsd(r.figures?.spentUsd ?? null)} spent
                   {r.figures != null &&
                     `, ${fmtCount(r.figures.outcomeCount == null ? null : Math.round(r.figures.outcomeCount))} ${(r.figures.outcomeCount === 1 ? noun : plural(noun)).toLowerCase()}`}
                 </p>
               </div>
               <span className="shrink-0 text-[13px] font-medium tabular-nums">
-                {actual || r.figures?.costPerOutcomeUsd == null ? <span className="k-fg4">—</span> : formatUsdAdaptive(r.figures.costPerOutcomeUsd)}
+                {r.figures?.costPerOutcomeUsd == null ? <span className="k-fg4">—</span> : formatUsdAdaptive(r.figures.costPerOutcomeUsd)}
               </span>
             </li>
           );
@@ -911,13 +906,20 @@ function RunsCard({
   const [expanded, setExpanded] = useState(false);
   const { actual } = useCostBasis();
   const read = versions.slice(0, RUN_VERSIONS);
+  // On the Actual basis the list comes from the staff vendor twin: the same runs, each with
+  // its whole subtree's cost billed and at vendor cost (runs-service #256).
   const q = useAuthQuery(
-    ["workflowRuns", brandId, dynasty, read.join(",")],
-    async () => {
+    [actual ? "workflowRunsActual" : "workflowRuns", brandId, dynasty, read.join(",")],
+    async (): Promise<(RunRow & { vendorCents?: number | null })[]> => {
       const lists = await Promise.all(
-        read.map((v) =>
-          listBrandRunLedger(brandId, { workflowSlug: v, taskName: "execute-workflow", limit: RUNS_PER_VERSION }),
-        ),
+        read.map(async (v) => {
+          const opts = { workflowSlug: v, taskName: "execute-workflow", limit: RUNS_PER_VERSION };
+          if (!actual) return listBrandRunLedger(brandId, opts);
+          const runs = await listBrandRunLedgerVendor(brandId, opts);
+          // A run carrying billed rows of no known vendor cost states none (null): the priced
+          // part alone would read as the whole run.
+          return runs.map((r) => ({ ...r, vendorCents: r.unpricedCostNames.length ? null : Number(r.vendorTotalCostInUsdCents) }));
+        }),
       );
       return lists
         .flat()
@@ -974,7 +976,7 @@ function RunsCard({
               ) : (
                 shown.map((run) => {
                   const m = run.campaignId ? missionByCampaignId.get(run.campaignId) ?? null : null;
-                  const cost = Number(run.ownCostInUsdCents);
+                  const cost = actual ? (run.vendorCents ?? NaN) : Number(run.ownCostInUsdCents);
                   return (
                     <RunLine key={run.id} brandId={brandId} run={run} onOpen={() => setOpenRun(run)}>
                       <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{friendlyDateTime(run.startedAt)}</td>
@@ -998,7 +1000,7 @@ function RunsCard({
                         {run.completedAt ? durationLabel(run.startedAt, run.completedAt) : <span className="k-fg4">—</span>}
                       </td>
                       <td className="pl-3 pr-4 text-right tabular-nums">
-                        {!actual && Number.isFinite(cost) && cost > 0 ? formatCentsAsUsdAdaptive(cost) : <span className="k-fg4">—</span>}
+                        {Number.isFinite(cost) && cost > 0 ? formatCentsAsUsdAdaptive(cost) : <span className="k-fg4">—</span>}
                       </td>
                     </RunLine>
                   );

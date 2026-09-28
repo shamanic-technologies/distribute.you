@@ -52,13 +52,14 @@ export interface WorkflowLegOutcome {
   /** FALSE means the count was walked through the brand's leg rates rather than
    *  observed — a projection, and it says so on screen rather than reading as people. */
   outcomeObserved: boolean;
-  spentUsd: number;
+  /** Null only on the staff actual-cost body, where the grain's vendor cost is unknown. */
+  spentUsd: number | null;
 }
 
 /** A grain block, as narrowly as this module reads one. */
 export interface WorkflowGrainBlock {
   costBasis?: "charged" | "incurred" | null;
-  evidence: { spentUsd: number; observedContacted: number };
+  evidence: { spentUsd: number | null; observedContacted: number };
   legOutcome?: WorkflowLegOutcome | null;
   projected?: {
     costPerPaidClientUsd: number | null;
