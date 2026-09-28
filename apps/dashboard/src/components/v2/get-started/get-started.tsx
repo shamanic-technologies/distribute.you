@@ -540,7 +540,7 @@ function Stepper({ steps, current }: { steps: Record<GetStartedStepKey, StepStat
         const active = i === current;
         return (
           <li key={s.key} className="flex items-center gap-2">
-            {i > 0 && <span className="hidden h-px w-6 bg-[var(--line)] sm:block" />}
+            {i > 0 && <span className="hidden h-px w-3 bg-[var(--line)] sm:block" />}
             <span
               className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] ${
                 active ? "k-card k-fg font-medium" : st === "done" ? "k-fg2" : "k-fg3"
@@ -695,7 +695,7 @@ function SegmentsCard({
   onSelect: (id: string) => void;
 }) {
   return (
-    <StepCard index={3} title="Segments to write to" meta={<StateWord state={state} doneLabel={`${segments.length} segments`} />}>
+    <StepCard index={3} title="Segments to write to" meta={<StateWord state={state} doneLabel={segments.length === 1 ? "1 segment" : `${segments.length} segments`} />}>
       {state === "running" || state === "waiting" ? (
         <Rows n={4} />
       ) : segments.length === 0 ? (

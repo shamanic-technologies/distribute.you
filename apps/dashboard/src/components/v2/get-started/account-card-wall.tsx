@@ -75,7 +75,8 @@ export function AccountCardWall({
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
-  const [budget, setBudget] = useState(recommendedUsd != null ? String(recommendedUsd) : "");
+  // No price held yet: the channel's own floor, the smallest budget it runs on.
+  const [budget, setBudget] = useState(String(recommendedUsd ?? Math.ceil(floorUsd)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cardSecret, setCardSecret] = useState<string | null>(null);
@@ -87,8 +88,8 @@ export function AccountCardWall({
   // A recommendation that lands after the wall opened fills an untouched field.
   const budgetTouched = useRef(false);
   useEffect(() => {
-    if (!budgetTouched.current && recommendedUsd != null) setBudget(String(recommendedUsd));
-  }, [recommendedUsd]);
+    if (!budgetTouched.current) setBudget(String(recommendedUsd ?? Math.ceil(floorUsd)));
+  }, [recommendedUsd, floorUsd]);
 
   // Esc closes while nothing is in flight.
   useEffect(() => {
@@ -502,7 +503,7 @@ function Consent({ brandName, checked, onChange }: { brandName: string; checked:
 }
 
 function Steps({ stage }: { stage: Stage }) {
-  const at = stage === "account" || stage === "code" ? 0 : stage === "claim" ? 1 : 2;
+  const at = stage === "account" || stage === "code" || stage === "claim" ? 0 : stage === "card" ? 1 : 2;
   const items = ["Account", "Card", "Start"];
   return (
     <ol className="flex items-center gap-2" aria-label="Setup">
