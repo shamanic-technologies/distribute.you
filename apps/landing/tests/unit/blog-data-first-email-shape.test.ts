@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { layoutOf, openingOf, LAYOUT, OPENING } from "../../scripts/blog-data/first-email-shape.mjs";
 
 describe("first email layout", () => {
-  it("names a blank line a paragraph break, a lone line break not, and no break one block", () => {
+  it("names an empty line a double line break, a lone new line a single line break, and no break one block", () => {
     expect(layoutOf("Hallo Stephan,\n\nich schreibe")).toBe(LAYOUT.paragraphs);
     expect(layoutOf("Hi Anna,\r\n  \r\nquick one")).toBe(LAYOUT.paragraphs);
     expect(layoutOf("Hi Anna,\nquick one")).toBe(LAYOUT.lines);

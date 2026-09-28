@@ -8,9 +8,9 @@
 // Layout: a blank line between two blocks of text is a paragraph break; a single line break is
 // not; no break at all is one block.
 export const LAYOUT = {
-  block: "One block, no line break",
-  lines: "Line breaks, no blank line",
-  paragraphs: "Paragraphs with a blank line",
+  block: "One block",
+  lines: "Single line breaks",
+  paragraphs: "Double line breaks",
 };
 export function layoutOf(body) {
   const text = String(body ?? "").replace(/\r\n?/g, "\n").trim();

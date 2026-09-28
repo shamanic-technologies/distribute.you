@@ -57,9 +57,11 @@ describe("research.json is coherent", () => {
         // every bar states its outcome count and email count beside it
         for (const c of s.charts) for (const p of c.points) expect(p.note, s.id).toMatch(/·/);
         const labels = dim === "layout"
-          ? ["One block, no line break", "Line breaks, no blank line", "Paragraphs with a blank line"]
+          ? ["One block", "Single line breaks", "Double line breaks"]
           : ["Greeting + first name", "First name alone", "No greeting"];
         for (const p of s.charts[0].points) expect(labels, s.id).toContain(p.label);
+        // every layout that sent anything is drawn, one with no outcome yet included
+        if (dim === "layout") expect(s.charts[0].points.map((p) => p.label).sort(), s.id).toEqual([...labels].sort());
         if (s.winner) expect(s.winner).toBe(s.charts[0].points[0].label);
         expect(s.conclusion.join(" ")).toContain("Sep 28, 2026");
       }
