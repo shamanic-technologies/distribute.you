@@ -423,7 +423,7 @@ function namingStudies(o, R) {
 const SHAPE = {
   layout: {
     question: (o) => `Does the layout of the first email change what a ${o.noun} costs?`,
-    how: `A blank line between two blocks of text is a paragraph break; a single line break is not; no break at all is one block.`,
+    how: `Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs).`,
     cutKey: "byLayout",
     tierKey: "layoutByTier",
     missing: "noLayout",
@@ -438,6 +438,18 @@ const SHAPE = {
     missingText: "whose first email text is not on record",
   },
 };
+// Every bucket that sent anything is drawn, the three layouts included when one has earned no
+// outcome yet: it has no price, so its bar runs the full length of the chart (it cost at least as
+// much as the dearest priced bucket, having bought nothing) and reads "None yet", marked Learning.
+function shapeBars(o, rows) {
+  const priced = costBars(o, rows);
+  const max = priced.reduce((m, p) => Math.max(m, p.value), 0);
+  const none = rows
+    .filter((r) => r[o.cost] === null && r.emails > 0)
+    .sort((a, b) => b.emails - a.emails)
+    .map((r) => ({ label: r.bucket, value: max, display: "None yet", note: `${counts(o, r)}, ${usd(r.spend)} spent`, thin: true }));
+  return [...priced, ...none];
+}
 function shapeStudies(key, o, R, dim) {
   const d = SHAPE[dim];
   const rows = R[d.cutKey];
@@ -459,13 +471,13 @@ function shapeStudies(key, o, R, dim) {
     result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
     crowned: w ? w.crowned : false,
     charts: [
-      { kind: "bars", title: `All tiers: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: costBars(o, rows), note: RULE_NOTE },
-      ...tiers.map(({ t, rows: tr }) => ({ kind: "bars", title: `${t} tier: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: costBars(o, tr), note: RULE_NOTE })),
+      { kind: "bars", title: `All tiers: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: shapeBars(o, rows), note: RULE_NOTE },
+      ...tiers.map(({ t, rows: tr }) => ({ kind: "bars", title: `${t} tier: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: shapeBars(o, tr), note: RULE_NOTE })),
     ],
     conclusion: [
       w ? `${w.row.bucket}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : null,
       ...tierWin.map(({ t, w: tw }) => `${t} tier: ${tw.row.bucket} is cheapest at ${usd(tw.row[o.cost])} per ${o.noun} (${counts(o, tw.row)}).`),
-      `Every email of a sequence is filed under how its first email looked, and the sequence's ${o.nounPlural} with it. ${d.how} Read by rule on the text we generated, no model asked.`,
+      `Every email of a sequence is filed under how its first email looked, and the sequence's ${o.nounPlural} with it. ${d.how} Classified by a regex on the text of the first email, no LLM involved.`,
       `The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before${last ? `, the last in ${monthLabel(last)}` : ""}.`,
       ...(missing > 0 ? [`${n(missing)} ${o.emailsNoun} ${d.missingText} are left out.`] : []),
       ...(crm && crm.added > 0 ? [`${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} include ${n(crm.added)} the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.`] : []),
