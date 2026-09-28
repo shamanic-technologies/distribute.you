@@ -154,3 +154,52 @@ export function anonCallAllowed({ method, endpoint, brandId }: AllowInput): Allo
 
   return deny(sawWrongBrand ? "wrong-brand" : "not-allowlisted");
 }
+
+/**
+ * The BODY half of the brand binding.
+ *
+ * Two allowlisted routes name the brand in their body rather than their path:
+ * the field extraction (`brandIds`) and the audience suggestion (`brandId`).
+ * The path rule above cannot see a body, so without this a session could read
+ * any customer's extracted fields by naming their brand id there. Every brand
+ * a body names must be the session's own.
+ *
+ * Returns `null` when the call is fine (including every route that names no
+ * brand in its body), otherwise the refusal. The caller answers 403 either way.
+ */
+export function anonBodyRefusal({
+  method,
+  endpoint,
+  body,
+  brandId,
+}: {
+  method: string;
+  endpoint: string;
+  body: string | undefined;
+  brandId: string;
+}): AnonRefusal | null {
+  const upper = typeof method === "string" ? method.toUpperCase() : "";
+  const path = typeof endpoint === "string" ? endpoint.split("?")[0].replace(/\/+$/, "") : "";
+  const bound =
+    upper === "POST" && (path === "/brands/extract-fields" || path === "/orgs/audiences/suggest");
+  if (!bound) return null;
+
+  const owned = typeof brandId === "string" ? brandId : "";
+  if (owned.length === 0) return "wrong-brand";
+
+  let parsed: unknown;
+  try {
+    parsed = body ? JSON.parse(body) : null;
+  } catch {
+    return "not-allowlisted";
+  }
+  if (!parsed || typeof parsed !== "object") return "not-allowlisted";
+  const rec = parsed as Record<string, unknown>;
+
+  if (path === "/brands/extract-fields") {
+    const ids = rec.brandIds;
+    if (!Array.isArray(ids) || ids.length === 0) return "not-allowlisted";
+    return ids.every((id) => id === owned) ? null : "wrong-brand";
+  }
+  return rec.brandId === owned ? null : "wrong-brand";
+}

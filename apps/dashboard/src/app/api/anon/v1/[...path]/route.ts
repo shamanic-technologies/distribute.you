@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { anonCallAllowed } from "@/lib/anon-proxy-allowlist";
+import { anonBodyRefusal, anonCallAllowed } from "@/lib/anon-proxy-allowlist";
 import {
   anonSessionCookie,
   anonTokenFromCookieHeader,
@@ -105,6 +105,21 @@ async function proxyRequest(
 
     const body =
       req.method !== "GET" && req.method !== "HEAD" ? await req.text() : undefined;
+
+    // The brand a BODY names must be the session's own too (the path rule above
+    // cannot see it). See `anonBodyRefusal`.
+    const bodyRefusal = anonBodyRefusal({
+      method: req.method,
+      endpoint,
+      body,
+      brandId: session.brandId,
+    });
+    if (bodyRefusal) {
+      console.error(
+        `[anon-proxy] refused body of ${req.method} ${endpoint} for ${session.anonOrgId}: ${bodyRefusal}`,
+      );
+      return NextResponse.json({ error: "Not available" }, { status: 403 });
+    }
 
     const res = await fetch(url.toString(), { method: req.method, headers, body });
     const contentType = res.headers.get("Content-Type") || "application/json";
