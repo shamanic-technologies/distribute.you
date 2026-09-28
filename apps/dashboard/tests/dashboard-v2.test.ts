@@ -119,6 +119,8 @@ const V2_FILES = [
   "src/components/v2/crew-page.tsx",
   "src/components/v2/missions-page.tsx",
   "src/components/v2/missions-table.tsx",
+  "src/components/v2/offers-list.tsx",
+  "src/components/v2/new-offer-modal.tsx",
   "src/components/v2/mission-page.tsx",
   "src/components/v2/people-page.tsx",
   "src/components/v2/companies-page.tsx",
