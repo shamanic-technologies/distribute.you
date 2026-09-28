@@ -85,7 +85,7 @@ describe("the H1 says what we are, read on its own", () => {
   // rides inside the H1, in plain text, rendered server-side.
   it("names the category inside the h1", () => {
     const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
-    expect(h1).toContain("distribute.you is a cold email agency");
+    expect(h1).toContain("distribute.you does done-for-you revenue automation");
   });
 });
 
