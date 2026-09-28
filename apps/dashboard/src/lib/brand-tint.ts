@@ -142,6 +142,26 @@ export function toOklchChromaHue(hex: string): { chroma: number; hue: number } |
 }
 
 /**
+ * A palette with no accent at all (black and white, greys): that IS the brand's
+ * look, not a missing one. Returns the palette's DOMINANT colour, which logo.dev
+ * puts first and which is usually the logo's own background, so a surface can sit
+ * the logo on it (a white logo on white is invisible). Null when the palette has an
+ * accent, or no readable colour.
+ */
+export function monochromeBackground(colors: readonly BrandColor[] | null | undefined): string | null {
+  if (!colors || colors.length === 0) return null;
+  let first: string | null = null;
+  for (const color of colors) {
+    const hex = colorHex(color);
+    const oklch = hex ? toOklchChromaHue(hex) : null;
+    if (!hex || !oklch) continue;
+    if (oklch.chroma > NEUTRAL_CHROMA_CEILING) return null;
+    first ??= hex.startsWith("#") ? hex.toLowerCase() : `#${hex.toLowerCase()}`;
+  }
+  return first;
+}
+
+/**
  * Pick the tint for a brand, or null when its palette carries no real accent.
  *
  * The most chromatic colour wins. Order is not trusted: logo.dev returns the

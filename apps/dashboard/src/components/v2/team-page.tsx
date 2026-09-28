@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OrgAvatar } from "@/components/org-avatar";
 import { dashboardOrigin, isInvitableEmail, joinLinkUrl, sanitizeInviteBrand } from "@/lib/org-invite";
-import { resolveBrandTint } from "@/lib/brand-tint";
+import { monochromeBackground, resolveBrandTint } from "@/lib/brand-tint";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { V2Page } from "@/components/v2/setup-pages";
@@ -163,6 +163,7 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
                 domain: displayBrand.domain,
                 logoUrl: displayBrand.logoUrl ?? null,
                 tint: resolveBrandTint(displayBrand.colors),
+                mono: monochromeBackground(displayBrand.colors),
               }
             : null,
         }),
@@ -331,6 +332,7 @@ function InviteLinkCard() {
         domain: displayBrand.domain,
         logoUrl: displayBrand.logoUrl ?? null,
         tint: resolveBrandTint(displayBrand.colors),
+        mono: monochromeBackground(displayBrand.colors),
       })
     : null;
   const url = code && orgId ? joinLinkUrl(dashboardOrigin(window.location.origin), orgId, code, brand) : null;

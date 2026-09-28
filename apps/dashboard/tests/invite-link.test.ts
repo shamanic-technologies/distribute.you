@@ -98,3 +98,36 @@ describe("invite link call sites", () => {
     expect(team).toContain("navigator.clipboard.writeText(url)");
   });
 });
+
+import { monochromeBackground } from "../src/lib/brand-tint";
+import { parseInviteBrand, sanitizeInviteBrand, brandQuery } from "../src/lib/org-invite";
+
+describe("black-and-white brands", () => {
+  it("a palette with no accent keeps its dominant colour; any accent means not mono", () => {
+    expect(monochromeBackground(["#000000", "#ffffff", "#ffffff"])).toBe("#000000");
+    expect(monochromeBackground(["#ce2e36", "#000000"])).toBeNull();
+    expect(monochromeBackground([])).toBeNull();
+    expect(monochromeBackground(null)).toBeNull();
+  });
+
+  it("the mono background rides the link and comes back validated", () => {
+    const b = sanitizeInviteBrand({ name: "Olive", domain: "olive.exchange", logoUrl: null, tint: null, mono: "#000000" });
+    const q = new URLSearchParams(brandQuery(b));
+    expect(q.get("bm")).toBe("000000");
+    expect(parseInviteBrand(q)?.mono).toBe("#000000");
+    expect(parseInviteBrand(new URLSearchParams("bn=A&bm=red"))?.mono).toBeNull();
+  });
+});
+
+describe("joining while already signed in", () => {
+  const page = read("src/app/(authed)/join/[token]/page.tsx");
+  const claimer = read("src/components/team/join-claimer.tsx");
+  it("the /join page claims by itself and states a failure instead of spinning", () => {
+    expect(page).toContain("claimJoin(token, clerk, router)");
+    expect(page).toContain("We could not add you to the team");
+  });
+  it("the layout claimer re-checks on navigation and leaves /join to the page", () => {
+    expect(claimer).toContain('pathname.startsWith("/join")');
+    expect(claimer).toContain("[isSignedIn, clerk, router, pathname]");
+  });
+});
