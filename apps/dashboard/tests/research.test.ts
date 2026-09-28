@@ -121,6 +121,25 @@ describe("research.json is coherent", () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
+  it("asks whether naming the client wins positive replies, on the positive-reply leg only, in plain words", () => {
+    const naming = RESEARCH.studies.filter((s) => s.topic === "naming");
+    expect(naming.map((s) => `${s.crew}-${s.goal}`).sort()).toEqual(["herald-rate", "herald-roi"]);
+    for (const s of naming) {
+      expect(s.status, s.id).toBe("measured");
+      expect(s.charts[0].points.map((p) => p.label).sort(), s.id).toEqual(["Client named", "Client not named"]);
+      expect(s.headline, s.id).toMatch(/\(p [<\d]/);
+      // a winner is only called on a significant difference, and then it is the first bar
+      expect(s.crowned, s.id).toBe(s.winner !== null);
+      if (s.winner) expect(s.charts[0].points[0].label, s.id).toBe(s.winner);
+      else expect(s.headline, s.id).toMatch(/not significant/);
+      expect(s.conclusion.join(" "), s.id).toContain("not a split test");
+      expect(s.charts[0].note, s.id).toBe(RESEARCH.maturation.note);
+      // the crews' names stay internal: the study joins its section by its crew field alone
+      const text = [s.question, s.headline, s.result?.unit ?? "", s.result?.sample ?? "", ...s.conclusion, ...s.charts.flatMap((c) => [c.title, c.note ?? "", ...c.points.flatMap((p) => [p.label, p.note])])].join(" ");
+      expect(text, s.id).not.toMatch(/herald|scout|pilot|blind|discovery|cold email/i);
+    }
+  });
+
   it("writes no em-dash anywhere a reader sees", () => {
     expect(JSON.stringify(RESEARCH)).not.toContain("—");
   });

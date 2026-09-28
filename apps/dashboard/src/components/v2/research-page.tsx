@@ -57,6 +57,7 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   opens: "Winner",
   template: "Winner",
   workflow: "Winner",
+  naming: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {

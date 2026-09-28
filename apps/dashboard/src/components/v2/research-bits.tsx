@@ -7,6 +7,7 @@ import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowsClockw
 import { EyeSlashIcon } from "@phosphor-icons/react/dist/csr/EyeSlash";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
+import { IdentificationBadgeIcon } from "@phosphor-icons/react/dist/csr/IdentificationBadge";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
 import { crewFor } from "@/lib/v2/crews";
 import { CREW_KEY, type ResearchChart, type ResearchCrew, type ResearchPoint, type ResearchTopic } from "@/lib/research/research";
@@ -24,6 +25,8 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   opens: { color: "var(--data-sky)", Icon: EyeSlashIcon },
   template: { color: "var(--data-rose)", Icon: FileTextIcon },
   workflow: { color: "var(--data-lime)", Icon: FlowArrowIcon },
+  // a template question too (which prompt), so it wears the template colour with its own mark
+  naming: { color: "var(--data-rose)", Icon: IdentificationBadgeIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
