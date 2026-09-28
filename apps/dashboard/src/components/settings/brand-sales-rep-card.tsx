@@ -61,7 +61,12 @@ function hasRep(rep: SalesRep): boolean {
   return Boolean(rep.salesRepEmail || rep.salesRepPhone);
 }
 
-export function BrandSalesRepCard({ brandId }: { brandId: string }) {
+/** What the sales rep is for, stated once for this card and its v2 host. */
+export const SALES_REP_BLURB =
+  "When someone replies to one of this brand's campaigns saying they are interested, we send the whole conversation to this person straight away, and copy them on the replies we send back on your behalf. Give us a number as well and we ring them too, within the minute.";
+
+/** `bare` drops the explanation, for a host that states it beside the form. */
+export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; bare?: boolean }) {
   const queryClient = useQueryClient();
 
   const { data, isPending, isError } = useAuthQuery(["brandSalesRep", brandId], () =>
@@ -140,11 +145,7 @@ export function BrandSalesRepCard({ brandId }: { brandId: string }) {
 
   return (
     <div className="p-5">
-      <p className="mb-4 text-sm text-gray-600">
-        When someone replies to one of this brand&apos;s campaigns saying they are interested, we
-        send the whole conversation to this person straight away, and copy them on the replies we
-        send back on your behalf. Give us a number as well and we ring them too, within the minute.
-      </p>
+      {!bare && <p className="mb-4 text-sm text-gray-600">{SALES_REP_BLURB}</p>}
 
       <label htmlFor="sales-rep-email" className="mb-1.5 block text-sm font-medium text-gray-800">
         Email to copy

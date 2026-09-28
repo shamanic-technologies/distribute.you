@@ -149,8 +149,9 @@ describe("v2 wiring", () => {
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
     // Workflows and Research are GA (owner-decided 2026-09-28). The only tags left in v2 are
     // the two staff controls on the workflow page (the Actual-cost basis and the prompt Edit)
-    // and the generic tab-badge renderer in setup-pages.
-    const GATED = new Set(["workflow-page.tsx", "setup-pages.tsx"]);
+    // the generic tab-badge renderer in setup-pages, and the beta Integrations section of
+    // Brand settings (the CRM connect, beta on the email allowlist).
+    const GATED = new Set(["workflow-page.tsx", "setup-pages.tsx", "brand-settings-page.tsx"]);
     for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
       if (GATED.has(f)) continue;
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");

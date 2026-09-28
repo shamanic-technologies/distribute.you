@@ -39,13 +39,14 @@ import {
  * own words, instead of failing quietly on the first sync. A credential stored
  * without a successful connect is inert, and reconnecting overwrites it.
  */
-export function BrandIntegrationsCard({ brandId }: { brandId: string }) {
+export function BrandIntegrationsCard({ brandId, bare = false }: { brandId: string; bare?: boolean }) {
   const isBeta = useIsBetaUser();
   if (!isBeta) return null;
-  return <IntegrationsSection brandId={brandId} />;
+  return <IntegrationsSection brandId={brandId} bare={bare} />;
 }
 
-function IntegrationsSection({ brandId }: { brandId: string }) {
+/** `bare` renders the rows alone, for a host that draws the heading and the card. */
+function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean }) {
   const queryClient = useQueryClient();
   const params = useParams<{ orgId?: string }>();
   const orgId = params?.orgId ?? null;
@@ -60,14 +61,7 @@ function IntegrationsSection({ brandId }: { brandId: string }) {
   const settled =
     (!keysQ.isPending || keysQ.isError) && (!connQ.isPending || connQ.isError);
 
-  return (
-    <section id="integrations" className="mb-10 scroll-mt-24">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Integrations</h2>
-        <MaturityBadge level="beta" />
-      </div>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-        {INTEGRATIONS.map((def) => (
+  const rows = INTEGRATIONS.map((def) => (
           <IntegrationRow
             key={def.slug}
             def={def}
@@ -81,8 +75,16 @@ function IntegrationsSection({ brandId }: { brandId: string }) {
               queryClient.invalidateQueries({ queryKey: ["crmConnections", brandId] });
             }}
           />
-        ))}
+  ));
+
+  if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
+  return (
+    <section id="integrations" className="mb-10 scroll-mt-24">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-semibold text-gray-900">Integrations</h2>
+        <MaturityBadge level="beta" />
       </div>
+      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">{rows}</div>
     </section>
   );
 }

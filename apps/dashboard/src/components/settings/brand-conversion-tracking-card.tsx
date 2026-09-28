@@ -126,6 +126,10 @@ function StatusPill({ data }: { data: BrandConversionToken }) {
   );
 }
 
+/** What conversion tracking is for, stated once for this card and its v2 host. */
+export const CONVERSION_TRACKING_BLURB =
+  "Tell us when someone signs up, books a meeting, submits a form, or buys on your site. We match each event back to the lead we emailed for you, so your outcome numbers reflect real results. Send whatever you have about the person. Email matches best, but a name is enough.";
+
 function llmBrief(ingestUrl: string, token: string): string {
   return `Add conversion tracking to my website for distribute.you.
 
@@ -191,7 +195,8 @@ function CopyBlock({ label, code }: { label: string; code: string }) {
   );
 }
 
-export function BrandConversionTrackingCard({ brandId }: { brandId: string }) {
+/** `bare` drops the card's own heading and explanation, for a host that states them beside it. */
+export function BrandConversionTrackingCard({ brandId, bare = false }: { brandId: string; bare?: boolean }) {
   const { data, isPending } = useAuthQuery(["brandConversionToken", brandId], () =>
     getBrandConversionToken(brandId),
   );
@@ -220,27 +225,39 @@ export function BrandConversionTrackingCard({ brandId }: { brandId: string }) {
 
   return (
     <div className="p-5">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="mb-1 text-sm font-semibold text-gray-900">Conversion tracking</h3>
-          <p className="max-w-xl text-sm text-gray-500">
-            Tell us when someone signs up, books a meeting, submits a form, or buys on your site.
-            We match each event back to the lead we emailed for you, so your outcome numbers
-            reflect real results. Send whatever you have about the person. Email matches best, but
-            a name is enough.
+      {bare ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 flex-1 text-sm text-gray-500">
+            Not a coder? Paste the LLM brief into Claude, Cursor, or your dev and it wires the
+            tracking into your site.
           </p>
+          <button
+            onClick={() => copyLlm(llmBrief(ingestUrl, token))}
+            className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+          >
+            {llmCopied ? "Copied!" : "Copy content for LLM"}
+          </button>
         </div>
-        <button
-          onClick={() => copyLlm(llmBrief(ingestUrl, token))}
-          className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
-        >
-          {llmCopied ? "Copied!" : "Copy content for LLM"}
-        </button>
-      </div>
-      <p className="mb-5 text-xs text-gray-400">
-        Not a coder? Paste the LLM brief into Claude, Cursor, or your dev and it wires the tracking
-        into your site.
-      </p>
+      ) : (
+        <>
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="mb-1 text-sm font-semibold text-gray-900">Conversion tracking</h3>
+              <p className="max-w-xl text-sm text-gray-500">{CONVERSION_TRACKING_BLURB}</p>
+            </div>
+            <button
+              onClick={() => copyLlm(llmBrief(ingestUrl, token))}
+              className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+            >
+              {llmCopied ? "Copied!" : "Copy content for LLM"}
+            </button>
+          </div>
+          <p className="mb-5 text-xs text-gray-400">
+            Not a coder? Paste the LLM brief into Claude, Cursor, or your dev and it wires the
+            tracking into your site.
+          </p>
+        </>
+      )}
 
       <StatusPill data={data} />
 
