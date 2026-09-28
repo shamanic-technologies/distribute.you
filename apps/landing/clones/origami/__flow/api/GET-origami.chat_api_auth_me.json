@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://origami.chat/api/auth/me",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "user": null
+  }
+}

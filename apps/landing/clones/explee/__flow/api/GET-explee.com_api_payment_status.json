@@ -1,0 +1,17 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/payment/status",
+    "query": "?device_id=9270933f-540d-44e7-9b35-3c0ecde2bca4"
+  },
+  "requestBody": null,
+  "response": {
+    "has_saved_card": false,
+    "email": null,
+    "quota": null,
+    "trial_granted": false,
+    "funnel_domain": "tidycal.com",
+    "auto_login_token": null,
+    "auto_login_eligible": false
+  }
+}

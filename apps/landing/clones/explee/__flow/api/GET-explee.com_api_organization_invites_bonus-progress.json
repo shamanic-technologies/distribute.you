@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/organization/invites/bonus-progress",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "earned_usd": 0,
+    "cap_usd": 30,
+    "eligible": false,
+    "invites": []
+  }
+}

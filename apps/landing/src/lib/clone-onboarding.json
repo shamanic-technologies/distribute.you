@@ -30,7 +30,8 @@
         "mode": "bytes"
       }
     ],
-    "wall": "The primary CTA is the hero form: it only moves once a website is SUBMITTED (their analysis runs server-side), so the capture stops before it. 'I don't have a website' opens a questionnaire modal inside the landing (works in the clone; submitting it is the wall). 'Sign in' is a Next server action that opens an OIDC request on auth.explee.com (Logto); the clone replays the recorded answer, so it lands on our copy of their sign-in page at lab-explee-auth, and 'Create account' there leads to their register page. Logto refuses those pages outside a live OIDC session, so both are SNAPSHOTS: faithful to look at, inert to click. Behind them: email or phone + a code, or LinkedIn, then the campaign builder."
+    "wall": "Walked past it by hand on 2026-09-28 (see __flow/). The hero form needs no account: submitting a website runs six live steps (company read, competitors, six campaigns with market sizes, real companies, real decision makers with emails, one written email) and ends on the only wall, email and card together on one screen (Stripe Payment Element, $30 credits, 'You won't be charged yet'). Creating an account (email + 6-digit code, no password) lands on an empty app that re-runs the same six steps and ends on the same card screen; nothing is saved to the account before the card.",
+    "flow": "__flow/"
   },
   "revid": {
     "origin": "https://www.revid.ai",
@@ -94,7 +95,8 @@
         "mode": "bytes"
       }
     ],
-    "wall": "Start Free / Get Started go to /sign-up: 'Continue with Email' or Google, rendered by Clerk. Clerk's widget refuses to render off its own domain (its API checks the Origin), so sign-up and sign-in are SNAPSHOTS of what a browser rendered: faithful to look at, inert to click. Behind them: their onboarding progress API (answers 401 before an account exists) and the signal workspace."
+    "wall": "Walked by hand on 2026-09-28 (see __flow/). The hero asks for a domain (validated on the page), then after 600 ms sends to /sign-up?domain=...: first name, last name, email, then a Cloudflare 'Verify you are human' checkbox before the email code (or Google). The domain is not used before the account exists. The walk stopped at the captcha, which a person has to tick; behind it: their onboarding progress API (401 before an account exists) and the signal workspace.",
+    "flow": "__flow/"
   },
   "oxygen": {
     "origin": "https://oxygen-agent.com",
@@ -156,7 +158,8 @@
         "mode": "bytes"
       }
     ],
-    "wall": "Every CTA goes to app.gojiberry.ai/registration (served at lab-gojiberry-app): name, business email, password, or Google, for a 7-day trial. Behind it: the agent setup wizard."
+    "wall": "Walked past it by hand on 2026-09-28 (see __flow/). Every CTA goes to app.gojiberry.ai/registration: first name, last name, business email, password, or Google. Right after, a pricing page, then Stripe Checkout: card required for the 7-day trial ($0 today, $99/month after). Until a card is on file every app route redirects to /pricing, and the website typed on the landing is never used.",
+    "flow": "__flow/"
   },
   "keel": {
     "origin": "https://keel-workspace.vercel.app",

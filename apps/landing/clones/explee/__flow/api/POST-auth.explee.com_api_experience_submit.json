@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://auth.explee.com/api/experience/submit",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "redirectTo": "https://auth.explee.com/oidc/auth/gfnXdbR2QB4P5M-fm2Bog"
+  }
+}

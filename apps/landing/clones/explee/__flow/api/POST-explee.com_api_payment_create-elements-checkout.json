@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://explee.com/api/payment/create-elements-checkout",
+    "query": null
+  },
+  "requestBody": {
+    "device_id": "9270933f-540d-44e7-9b35-3c0ecde2bca4",
+    "fbp": "fb.1.1790589740840.63841243983513190",
+    "ref_code": "",
+    "auto_recharge": true,
+    "domain": "tidycal.com"
+  },
+  "response": {
+    "client_secret": "[redacted]",
+    "device_id": "9270933f-540d-44e7-9b35-3c0ecde2bca4"
+  }
+}

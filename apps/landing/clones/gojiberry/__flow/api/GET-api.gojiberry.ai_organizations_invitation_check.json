@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.gojiberry.ai/organizations/invitation/check",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "hasInvitation": false
+  }
+}

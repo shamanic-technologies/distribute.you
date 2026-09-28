@@ -1,0 +1,135 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://doga.origami.chat/api/surveys/",
+    "query": "?token=phc_5l9kdwEDWdqn0TLRDe9u5qBMjBG1mefrjNdf7njogmz&ip=0&_=1790590494355&ver=1.335.3"
+  },
+  "requestBody": null,
+  "response": {
+    "surveys": [
+      {
+        "appearance": {
+          "backgroundColor": "#ffffff",
+          "borderColor": "#e5e7eb",
+          "borderRadius": "10px",
+          "boxPadding": "20px 24px",
+          "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)",
+          "disabledButtonOpacity": "0.6",
+          "displayThankYouMessage": true,
+          "fontFamily": "inherit",
+          "inputBackground": "#f9fafb",
+          "maxWidth": "300px",
+          "placeholder": "Start typing...",
+          "position": "right",
+          "ratingButtonActiveColor": "#1d1f27",
+          "ratingButtonColor": "#f3f4f6",
+          "shuffleQuestions": false,
+          "submitButtonColor": "#1d1f27",
+          "submitButtonTextColor": "#ffffff",
+          "tabPosition": "right",
+          "textColor": "#1d1f27",
+          "textSubtleColor": "#939393",
+          "thankYouMessageDescription": "",
+          "thankYouMessageHeader": "Thank you for your feedback!",
+          "whiteLabel": true,
+          "zIndex": "2147482647"
+        },
+        "conditions": {},
+        "current_iteration": null,
+        "current_iteration_start_date": null,
+        "enable_partial_responses": true,
+        "end_date": null,
+        "id": "019d4f55-bbb7-0000-916f-442ee4a1fae6",
+        "internal_targeting_flag_key": "survey-targeting-501142732f-custom",
+        "name": "Product-market fit (PMF) (2026-04-02 10:43)",
+        "questions": [
+          {
+            "choices": [
+              "Not disappointed",
+              "Somewhat disappointed",
+              "Very disappointed"
+            ],
+            "description": "",
+            "id": "5951871f-fc46-447e-82a3-8e1fc41b0cae",
+            "question": "How would you feel if you could no longer use our product?",
+            "shuffleOptions": true,
+            "skipSubmitButton": true,
+            "type": "single_choice"
+          },
+          {
+            "buttonText": "Submit",
+            "description": "",
+            "descriptionContentType": "text",
+            "display": "number",
+            "id": "da22d59a-d8b5-42aa-8b1f-ce367ba63156",
+            "lowerBoundLabel": "Not Likely at All",
+            "question": "On a scale of 1 to 10, how likely are you to recommend Origami to a colleague or friend?",
+            "scale": 10,
+            "type": "rating",
+            "upperBoundLabel": "Extremely Likely"
+          },
+          {
+            "buttonText": "Submit",
+            "description": "",
+            "descriptionContentType": "text",
+            "id": "3d274aaf-c309-463d-a595-9644b63a2579",
+            "question": "Why do you use Origami instead of another solution?",
+            "type": "open"
+          },
+          {
+            "buttonText": "Submit",
+            "description": "We will read ALL of these and define our roadmap based off this, so be as detailed and specific as you want!",
+            "descriptionContentType": "text",
+            "id": "76c1a44a-a5ba-4967-899e-e4b1ffbe2038",
+            "question": "If you could improve one thing about Origami right now, what would it be?  ",
+            "type": "open"
+          },
+          {
+            "buttonText": "Submit",
+            "choices": [
+              "Slack",
+              "WhatsApp Group",
+              "I am not interested in joining a community at this time"
+            ],
+            "description": "",
+            "descriptionContentType": "text",
+            "id": "9859f0eb-ffdb-426d-ab82-c6bbc8b15351",
+            "question": "Where would you prefer to join an official Origami community to exchange tips, give feedback, and receive early feature announcements?",
+            "type": "single_choice"
+          },
+          {
+            "buttonText": "Submit",
+            "choices": [
+              "Tips for optimizing credit usage",
+              "Tips for writing better prompts",
+              "Tips for using features you didn't know about",
+              "Other"
+            ],
+            "description": "",
+            "descriptionContentType": "text",
+            "hasOpenChoice": true,
+            "id": "1d517e59-3b40-4d98-b055-0af7973c106d",
+            "question": "What kind of community content or activity are you most interested in? [optional]",
+            "type": "multiple_choice"
+          },
+          {
+            "buttonText": "Submit",
+            "choices": [
+              "Yes",
+              "No"
+            ],
+            "description": "Many of you have chatted with us before — we'd love to hear from you again, as follow-up conversations are just as valuable.  (Selecting 'Yes' does not obligate you, but helps us reach out.)",
+            "descriptionContentType": "text",
+            "id": "dde96293-0762-4c81-a6d7-ee2768db1a14",
+            "question": "Would you be willing to participate in a brief (15-20 minute) user interview regarding your experience with the Founder of Origami? [optional] ",
+            "type": "single_choice"
+          }
+        ],
+        "schedule": "once",
+        "start_date": "2026-04-02T18:12:37.387000Z",
+        "targeting_flag_key": "survey-targeting-7c9b4058c8",
+        "type": "api"
+      }
+    ]
+  }
+}

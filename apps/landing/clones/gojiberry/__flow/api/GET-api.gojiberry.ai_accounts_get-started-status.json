@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.gojiberry.ai/accounts/get-started-status",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "step1Complete": false,
+    "step2Complete": false,
+    "step3Complete": false,
+    "step4Complete": false,
+    "step4Skipped": false,
+    "firstCampaignId": null,
+    "createdAt": "2026-09-28T10:12:53.327Z",
+    "getStartedToolIntegrationStepSkippedAt": null,
+    "getStartedHiddenAt": null,
+    "visible": true
+  }
+}

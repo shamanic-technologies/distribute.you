@@ -1,0 +1,439 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://clerk.origami.chat/v1/environment",
+    "query": "?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0"
+  },
+  "requestBody": null,
+  "response": {
+    "auth_config": {
+      "object": "auth_config",
+      "id": "aac_2srmQmHi9QFC2RVqO7QUXqXniws",
+      "first_name": "required",
+      "last_name": "required",
+      "email_address": "on",
+      "phone_number": "on",
+      "username": "off",
+      "password": "[redacted]",
+      "identification_requirements": [
+        [
+          "email_address",
+          "oauth_google",
+          "phone_number"
+        ],
+        []
+      ],
+      "identification_strategies": [
+        "email_address",
+        "oauth_google",
+        "phone_number"
+      ],
+      "first_factors": [
+        "email_code",
+        "google_one_tap",
+        "oauth_google",
+        "password",
+        "phone_code",
+        "reset_password_email_code",
+        "reset_password_phone_code",
+        "ticket"
+      ],
+      "second_factors": [],
+      "email_address_verification_strategies": [
+        "email_code"
+      ],
+      "single_session_mode": "[redacted]",
+      "enhanced_email_deliverability": false,
+      "test_mode": false,
+      "cookieless_dev": "[redacted]",
+      "url_based_session_syncing": "[redacted]",
+      "claimed_at": null,
+      "reverification": false,
+      "native_settings": {
+        "object": "native_settings",
+        "api_enabled": true,
+        "trusted_device_sign_in_enabled": false,
+        "trusted_device_enrollment_prompt_after_sign_in_enabled": false,
+        "trusted_device_enrollment_prompt_after_sign_up_enabled": false
+      },
+      "session_minter": "[redacted]"
+    },
+    "display_config": {
+      "object": "display_config",
+      "id": "display_config_2srmQn67Oa8BRr9UZVzGDKyu4r5",
+      "instance_environment_type": "production",
+      "application_name": "Origami",
+      "theme": {
+        "buttons": {
+          "font_color": "#ffffff",
+          "font_family": "\"Source Sans Pro\", sans-serif",
+          "font_weight": "600"
+        },
+        "general": {
+          "color": "#9147ff",
+          "padding": "1em",
+          "box_shadow": "0 2px 8px rgba(0, 0, 0, 0.2)",
+          "font_color": "#151515",
+          "font_family": "\"Source Sans Pro\", sans-serif",
+          "border_radius": "0.5em",
+          "background_color": "#ffffff",
+          "label_font_weight": "600"
+        },
+        "accounts": {
+          "background_color": "#ffffff"
+        }
+      },
+      "preferred_sign_in_strategy": "otp",
+      "logo_image_url": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvdXBsb2FkZWQvaW1nXzJ4Q0I4OTJLWW4yRjNnckM1SUx3RjBNcm95VSJ9",
+      "favicon_image_url": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvdXBsb2FkZWQvaW1nXzJ4Q0JMVDZPUVRVaVlqSEdRaEJpcWM2ZnZuSSJ9",
+      "home_url": "https://origami.chat",
+      "sign_in_url": "https://origami.chat/sign-in",
+      "sign_up_url": "https://origami.chat/sign-up",
+      "user_profile_url": "https://accounts.origami.chat/user",
+      "waitlist_url": "https://accounts.origami.chat/waitlist",
+      "oauth_consent_url": "https://accounts.origami.chat/oauth-consent",
+      "oauth_device_verification_url": "https://accounts.origami.chat/device",
+      "after_sign_in_url": "https://origami.chat",
+      "after_sign_up_url": "https://origami.chat",
+      "after_sign_out_one_url": "https://accounts.origami.chat/sign-in/choose",
+      "after_sign_out_all_url": "https://accounts.origami.chat/sign-in",
+      "after_switch_session_url": "[redacted]",
+      "after_join_waitlist_url": "https://origami.chat",
+      "organization_profile_url": "https://accounts.origami.chat/organization",
+      "create_organization_url": "https://accounts.origami.chat/create-organization",
+      "after_leave_organization_url": "https://origami.chat",
+      "after_create_organization_url": "https://origami.chat",
+      "logo_link_url": "https://origami.chat",
+      "support_email": "finn@origamiagents.com",
+      "branded": false,
+      "experimental_force_oauth_first": false,
+      "clerk_js_version": "5",
+      "show_devmode_warning": false,
+      "google_one_tap_client_id": "913459079420-5ltroko8l10tuei44pqp8tkgn306vlv5.apps.googleusercontent.com",
+      "help_url": null,
+      "privacy_policy_url": null,
+      "terms_url": null,
+      "logo_url": "https://images.clerk.dev/uploaded/img_2xCB892KYn2F3grC5ILwF0MroyU",
+      "favicon_url": "https://images.clerk.dev/uploaded/img_2xCBLT6OQTUiYjHGQhBiqc6fvnI",
+      "logo_image": {
+        "object": "image",
+        "id": "img_2xCB892KYn2F3grC5ILwF0MroyU",
+        "public_url": "https://images.clerk.dev/uploaded/img_2xCB892KYn2F3grC5ILwF0MroyU"
+      },
+      "favicon_image": {
+        "object": "image",
+        "id": "img_2xCBLT6OQTUiYjHGQhBiqc6fvnI",
+        "public_url": "https://images.clerk.dev/uploaded/img_2xCBLT6OQTUiYjHGQhBiqc6fvnI"
+      },
+      "captcha_public_key": "0x4AAAAAAAWXJGBD7bONzLBd",
+      "captcha_widget_type": "smart",
+      "captcha_public_key_invisible": "0x4AAAAAAAFV93qQdS0ycilX",
+      "captcha_provider": "turnstile",
+      "captcha_oauth_bypass": []
+    },
+    "user_settings": {
+      "attributes": {
+        "email_address": {
+          "enabled": true,
+          "required": true,
+          "used_for_first_factor": true,
+          "first_factors": [
+            "email_code"
+          ],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [
+            "email_code"
+          ],
+          "verify_at_sign_up": true,
+          "immutable": false
+        },
+        "phone_number": {
+          "enabled": true,
+          "required": false,
+          "used_for_first_factor": true,
+          "first_factors": [
+            "phone_code"
+          ],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [
+            "phone_code"
+          ],
+          "verify_at_sign_up": true,
+          "immutable": false
+        },
+        "username": {
+          "enabled": false,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "web3_wallet": {
+          "enabled": false,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "first_name": {
+          "enabled": true,
+          "required": true,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "last_name": {
+          "enabled": true,
+          "required": true,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "password": {
+          "enabled": true,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "authenticator_app": {
+          "enabled": false,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "ticket": {
+          "enabled": true,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "backup_code": {
+          "enabled": false,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        },
+        "passkey": {
+          "enabled": false,
+          "required": false,
+          "used_for_first_factor": false,
+          "first_factors": [],
+          "used_for_second_factor": false,
+          "second_factors": [],
+          "verifications": [],
+          "verify_at_sign_up": false,
+          "immutable": false
+        }
+      },
+      "sign_in": {
+        "second_factor": {
+          "required": false
+        }
+      },
+      "sign_up": {
+        "captcha_enabled": true,
+        "captcha_widget_type": "smart",
+        "custom_action_required": false,
+        "progressive": true,
+        "mode": "public",
+        "legal_consent_enabled": false,
+        "mfa": {
+          "required": false
+        }
+      },
+      "restrictions": {
+        "allowlist": {
+          "enabled": false
+        },
+        "blocklist": {
+          "enabled": false
+        },
+        "allowlist_blocklist_disabled_on_sign_in": {
+          "enabled": false
+        },
+        "block_email_subaddresses": {
+          "enabled": true
+        },
+        "block_disposable_email_domains": {
+          "enabled": true
+        }
+      },
+      "username_settings": {
+        "min_length": 4,
+        "max_length": 64,
+        "allow_extended_special_characters": false,
+        "allow_numeric_usernames": false
+      },
+      "actions": {
+        "delete_self": true,
+        "create_organization": true,
+        "create_organizations_limit": null
+      },
+      "attack_protection": {
+        "user_lockout": {
+          "enabled": true,
+          "max_attempts": 100,
+          "duration_in_minutes": 0
+        },
+        "pii": {
+          "enabled": true
+        },
+        "email_link": {
+          "require_same_client": true
+        },
+        "enumeration_protection": {
+          "enabled": false
+        }
+      },
+      "passkey_settings": {
+        "allow_autofill": true,
+        "show_sign_in_button": true,
+        "satisfies_second_factor": false
+      },
+      "social": {
+        "oauth_google": {
+          "enabled": true,
+          "required": false,
+          "authenticatable": true,
+          "block_email_subaddresses": true,
+          "strategy": "oauth_google",
+          "not_selectable": false,
+          "deprecated": false,
+          "name": "Google",
+          "logo_url": "https://img.clerk.com/static/google.png"
+        },
+        "oauth_microsoft": {
+          "enabled": false,
+          "required": false,
+          "authenticatable": false,
+          "block_email_subaddresses": false,
+          "strategy": "oauth_microsoft",
+          "not_selectable": false,
+          "deprecated": false,
+          "name": "Microsoft",
+          "logo_url": "https://img.clerk.com/static/microsoft.png"
+        }
+      },
+      "password_settings": {
+        "disable_hibp": false,
+        "disable_password_reverification": "[redacted]",
+        "min_length": 0,
+        "max_length": 0,
+        "require_special_char": false,
+        "require_numbers": false,
+        "require_uppercase": false,
+        "require_lowercase": false,
+        "show_zxcvbn": false,
+        "min_zxcvbn_strength": 0,
+        "enforce_hibp_on_sign_in": true,
+        "allowed_special_characters": "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~"
+      },
+      "saml": {
+        "enabled": false
+      },
+      "enterprise_sso": {
+        "enabled": false,
+        "self_serve_sso": true,
+        "self_serve_directory_sync": false
+      }
+    },
+    "organization_settings": {
+      "enabled": true,
+      "max_allowed_memberships": 0,
+      "actions": {
+        "admin_delete": false
+      },
+      "domains": {
+        "enabled": false,
+        "enrollment_modes": [],
+        "default_role": "org:admin"
+      },
+      "slug": {
+        "disabled": false
+      },
+      "creator_role": "org:admin",
+      "organization_creation_defaults": {
+        "enabled": false,
+        "automatic_organization_creation": {
+          "enabled": false
+        },
+        "detect_from_email_domain": {
+          "enabled": false
+        },
+        "organization_name_template": {
+          "enabled": false,
+          "template": ""
+        },
+        "fallback": {
+          "name": ""
+        }
+      }
+    },
+    "fraud_settings": {
+      "object": "fraud_settings",
+      "native": {
+        "device_attestation_mode": "disabled"
+      }
+    },
+    "commerce_settings": {
+      "billing": {
+        "stripe_publishable_key": null,
+        "free_trial_requires_payment_method": true,
+        "user": {
+          "enabled": false,
+          "has_paid_plans": false
+        },
+        "organization": {
+          "enabled": false,
+          "has_paid_plans": false
+        }
+      }
+    },
+    "api_keys_settings": {
+      "enabled": false,
+      "user_api_keys_enabled": "[redacted]",
+      "orgs_api_keys_enabled": "[redacted]"
+    },
+    "maintenance_mode": false,
+    "client_debug_mode": false,
+    "partitioned_cookies": "[redacted]"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.gojiberry.ai/notifications/unread-count",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "count": 0
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.gojiberry.ai/accounts/should-user-do-onboarding",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "shouldUserDoOnboarding": true
+  }
+}

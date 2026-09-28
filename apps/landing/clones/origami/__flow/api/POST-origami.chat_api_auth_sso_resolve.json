@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://origami.chat/api/auth/sso/resolve",
+    "query": null
+  },
+  "requestBody": {
+    "email": "maria@polaritycourse.com"
+  },
+  "response": {
+    "ssoRequired": false,
+    "organizationName": null
+  }
+}

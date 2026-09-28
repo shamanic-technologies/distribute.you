@@ -245,3 +245,40 @@ describe("the serving surface for onboarding", () => {
     expect(guarded.length).toBe(sources.length);
   });
 });
+
+describe("onboarding walked past the wall (__flow)", () => {
+  const walked = Object.entries(CLONE_ONBOARDING).filter(([, entry]) => entry.flow);
+
+  it("the capture exists for Explee and Gojiberry at least", () => {
+    expect(walked.map(([slug]) => slug)).toEqual(expect.arrayContaining(["explee", "gojiberry"]));
+  });
+
+  for (const [slug, entry] of walked) {
+    const dir = path.join(CLONES_DIR, slug, entry.flow as string);
+
+    it(`${slug}: the flow is served from its index, one screenshot per step`, () => {
+      expect(clonePathFor(`/${entry.flow}`)).toBe(`${entry.flow}index.html`);
+      const index = readFileSync(path.join(dir, "index.html"), "utf8");
+      const steps = [...index.matchAll(/src="shots\/([^"]+)"/g)].map((m) => m[1]);
+      expect(steps.length).toBeGreaterThan(3);
+      for (const shot of steps) expect(existsSync(path.join(dir, "shots", shot))).toBe(true);
+    });
+
+    it(`${slug}: frozen screens carry no script and stay out of the index`, () => {
+      for (const file of readdirSync(dir).filter((f) => f.endsWith(".html"))) {
+        const html = readFileSync(path.join(dir, file), "utf8");
+        expect(html).not.toMatch(/<script\b/i);
+        if (file !== "index.html") expect(html).toContain('<meta name="robots" content="noindex">');
+      }
+    });
+
+    it(`${slug}: no credential survived into the stored API answers`, () => {
+      const apiDir = path.join(dir, "api");
+      for (const file of readdirSync(apiDir).filter((f) => f.endsWith(".json"))) {
+        const text = readFileSync(path.join(apiDir, file), "utf8");
+        expect(text).not.toMatch(/eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,}/);
+        expect(text).not.toMatch(/"(access_token|refresh_token|id_token|password)"\s*:\s*"(?!\[redacted)/i);
+      }
+    });
+  }
+});

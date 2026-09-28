@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://origami.chat/api/version",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "buildId": "7I_XMN8y0q0OyxbAl6J0k"
+  }
+}

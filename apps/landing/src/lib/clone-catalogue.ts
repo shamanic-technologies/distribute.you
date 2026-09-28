@@ -97,6 +97,12 @@ export type CloneOnboarding = {
   readonly steps: readonly OnboardingStep[];
   /** Where the capture stopped, and what lies behind it as far as it is visible. */
   readonly wall: string;
+  /**
+   * Set when the flow was also walked PAST the wall by hand with an account of ours:
+   * the path, relative to the clone root, of the screen-by-screen record written by
+   * scripts/har-to-flow.mjs. Frozen screens, their JSON answers, and the bundles they loaded.
+   */
+  readonly flow?: string;
 };
 
 export const CLONE_ONBOARDING = onboardingData as unknown as Readonly<Record<string, CloneOnboarding>>;

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://explee.com/api/app-auto-gtm/user",
+    "query": null
+  },
+  "requestBody": null,
+  "response": {
+    "projects": [],
+    "archived_projects": [],
+    "has_autogtm_trial": false,
+    "talk_to_us": false,
+    "onboarding_wizard_compact": false,
+    "empty_cabinet_funnel": true
+  }
+}
