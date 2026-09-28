@@ -5,8 +5,8 @@ import {
   DASHBOARD_ORIGIN,
   inviteLandingHref,
   inviteRedirectUrl,
+  INVITE_ROLE,
   isInvitableEmail,
-  isInviteRole,
   normalizeInviteEmail,
   parseInviteBrand,
   parseInviteStatus,
@@ -16,11 +16,8 @@ import {
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 describe("org invite rules", () => {
-  it("accepts only the two roles Clerk knows", () => {
-    expect(isInviteRole("org:admin")).toBe(true);
-    expect(isInviteRole("org:member")).toBe(true);
-    expect(isInviteRole("admin")).toBe(false);
-    expect(isInviteRole(undefined)).toBe(false);
+  it("invites everyone as an admin (there is no member role today)", () => {
+    expect(INVITE_ROLE).toBe("org:admin");
   });
 
   it("checks the address shape and normalizes it", () => {
@@ -96,6 +93,8 @@ describe("invite call sites", () => {
     expect(route).toContain("body.orgId !== orgId");
     expect(route).toContain('orgRole !== "org:admin"');
     expect(route).toContain("createOrganizationInvitation");
+    expect(route).toContain("role: INVITE_ROLE,");
+    expect(route).not.toContain("body.role");
     expect(route).toContain("redirectUrl: inviteRedirectUrl(req.headers.get(\"origin\"), orgId, sanitizeInviteBrand(body.brand))");
   });
 
@@ -104,6 +103,7 @@ describe("invite call sites", () => {
     expect(team).toContain("/api/orgs/invitations");
     expect(team).toContain("getToken({ organizationId: orgId })");
     expect(team).toContain("inv.revoke()");
+    expect(team).not.toContain('aria-label="Role"');
     expect(team).toContain("tint: resolveBrandTint(displayBrand.colors)");
   });
 
