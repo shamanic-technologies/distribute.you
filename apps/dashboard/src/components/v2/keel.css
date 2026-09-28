@@ -150,6 +150,7 @@
 @keyframes gs-panel { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
 .v2-root .gs-fill { transition: width 800ms cubic-bezier(.23, 1, .32, 1), background-color 300ms ease; }
 .v2-root .gs-fade { transition: opacity 400ms ease, transform 400ms cubic-bezier(.23, 1, .32, 1); }
+.v2-root .gs-tick { transition: width 1s linear, background-color 350ms ease-out; }
 .v2-root .gs-caret::after {
   content: ""; display: inline-block; width: 1.5px; height: 1.05em; margin-left: 1px; vertical-align: -3px;
   background: var(--accent); animation: gs-blink 1s steps(1) infinite;
@@ -159,7 +160,7 @@
 @keyframes gs-glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 0%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent); } }
 @media (prefers-reduced-motion: reduce) {
   .v2-root .gs-in, .v2-root .gs-pop, .v2-root .gs-down, .v2-root .gs-scrim, .v2-root .gs-panel, .v2-root .gs-glow { animation: none; }
-  .v2-root .gs-fill, .v2-root .gs-fade { transition: none; }
+  .v2-root .gs-fill, .v2-root .gs-fade, .v2-root .gs-tick { transition: none; }
   .v2-root .gs-caret::after { display: none; }
 }
 
