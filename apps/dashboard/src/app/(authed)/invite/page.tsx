@@ -8,7 +8,9 @@ import { useAuth, useOrganizationList } from "@clerk/nextjs";
 import { useSignIn, useSignUp } from "@clerk/nextjs/legacy";
 import posthog from "posthog-js";
 import { authFailureProps, clerkErrorMessage } from "@/lib/clerk-error";
-import { inviteLandingHref, parseInviteStatus } from "@/lib/org-invite";
+import { inviteLandingHref, parseInviteBrand, parseInviteStatus } from "@/lib/org-invite";
+import { CHROMA_VAR, DELTA_VAR, HUE_VAR, TINT_ATTR } from "@/lib/brand-tint";
+import { BrandLogo } from "@/components/brand-logo";
 
 /**
  * Where the link in an organization invitation lands.
@@ -41,6 +43,27 @@ function InviteFlow() {
   const status = parseInviteStatus(params.get("__clerk_status"));
   const orgId = params.get("org");
   const landing = inviteLandingHref(orgId);
+  const brand = parseInviteBrand(params);
+  const tintHue = brand?.tint?.hue ?? null;
+  const tintChroma = brand?.tint?.chromaScale ?? null;
+  const tintDelta = brand?.tint?.hueDelta ?? null;
+
+  // The page wears the inviting brand's accent, through the same <html> variables
+  // `BrandTint` writes on every brand page, so the button and the tints rotate to it.
+  useEffect(() => {
+    if (tintHue === null || tintChroma === null || tintDelta === null) return;
+    const root = document.documentElement;
+    root.style.setProperty(HUE_VAR, String(tintHue));
+    root.style.setProperty(CHROMA_VAR, String(tintChroma));
+    root.style.setProperty(DELTA_VAR, String(tintDelta));
+    root.setAttribute(TINT_ATTR, "");
+    return () => {
+      root.removeAttribute(TINT_ATTR);
+      root.style.removeProperty(HUE_VAR);
+      root.style.removeProperty(CHROMA_VAR);
+      root.style.removeProperty(DELTA_VAR);
+    };
+  }, [tintHue, tintChroma, tintDelta]);
 
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { signIn, setActive: setSignInActive, isLoaded: signInLoaded } = useSignIn();
@@ -184,16 +207,30 @@ function InviteFlow() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
+    <div className={`flex min-h-screen items-center justify-center p-8 ${brand ? "bg-brand-50" : "bg-gray-50"}`}>
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
+        {/* Who is inviting, before anything else: our mark, a cross, then theirs. */}
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-3">
           <Link href="https://distribute.you" className="inline-flex items-center gap-2">
             <Image src="/logo-distribute.svg" alt="distribute.you" width={28} height={28} />
             <span className="text-lg font-semibold text-gray-900">distribute.you</span>
           </Link>
+          {brand && (
+            <>
+              <span aria-hidden="true" className="text-lg text-gray-400">
+                ×
+              </span>
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <BrandLogo domain={brand.domain} logoUrl={brand.logoUrl} size={28} className="rounded-md" fallbackClassName="text-gray-400" />
+                <span className="truncate text-lg font-semibold text-gray-900">{brand.name}</span>
+              </span>
+            </>
+          )}
         </div>
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">You are invited to join a team</h1>
-        <div className="rounded-2xl border border-gray-200 bg-white p-6">{body}</div>
+        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
+          {brand ? `Join the ${brand.name} team` : "You are invited to join a team"}
+        </h1>
+        <div className={`rounded-2xl border bg-white p-6 ${brand ? "border-brand-200" : "border-gray-200"}`}>{body}</div>
       </div>
     </div>
   );
