@@ -66,6 +66,13 @@ const RULES: Rule[] = [
   // reveal). The audience id is checked against the org at human-service (404 for a
   // foreign one), which is what bounds it.
   { method: "GET", segments: ["orgs", "audiences", ":seg", "preview"] },
+  // Finding and verifying the sampled people's addresses, one person per call (a billed
+  // reveal on this anonymous org; it sends nothing). Same bound as the sample: the
+  // audience id is checked against the org at human-service, and this org holds only
+  // this session's brand's audiences. No body, so nothing for `anonBodyRefusal` to
+  // bind. The address itself is never returned, only its masked domain.
+  { method: "GET", segments: ["orgs", "audiences", ":seg", "preview", "email-checks"] },
+  { method: "POST", segments: ["orgs", "audiences", ":seg", "preview", "email-checks", "next"] },
 
   // ── One written preview for one sampled person, billed to this anonymous org ──
   // It WRITES and never sends: nothing it creates can go out. Its body names the

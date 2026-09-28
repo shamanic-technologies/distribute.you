@@ -3215,6 +3215,63 @@ export async function getAudiencePreview(audienceId: string, token?: string): Pr
   return parsed.data;
 }
 
+// ── Finding and verifying the sampled people's emails, one at a time ──────────
+// human-service `GET|POST /orgs/audiences/{id}/preview/email-checks[/next]` (v0.46.13):
+// the free state, then ONE billed reveal per call (~6-7s) until `done`. The address is
+// never returned, only its masked domain. Vocabularies (`status`, `verdict`, `finder`,
+// `verifier`, `reason`) are read as plain strings so a new value parses.
+
+const EmailCheckPersonSchema = z.object({
+  index: z.number(),
+  firstName: z.string().nullable(),
+  lastNameObfuscated: z.string().nullable(),
+  title: z.string().nullable(),
+  company: z.string().nullable(),
+  status: z.string(),
+  finder: z.string().nullable(),
+  verifier: z.string().nullable(),
+  verdict: z.string().nullable(),
+  deliverable: z.boolean().nullable(),
+  maskedEmail: z.string().nullable(),
+  checkedAt: z.string().nullable(),
+});
+export type EmailCheckPerson = z.infer<typeof EmailCheckPersonSchema>;
+
+const AudienceEmailChecksSchema = z.object({
+  audienceId: z.string(),
+  status: z.string(),
+  reason: z.string().nullable(),
+  done: z.boolean(),
+  people: z.array(EmailCheckPersonSchema),
+  summary: z.object({ checked: z.number(), found: z.number(), deliverable: z.number() }),
+});
+export type AudienceEmailChecks = z.infer<typeof AudienceEmailChecksSchema>;
+
+function parseEmailChecks(raw: unknown, where: string): AudienceEmailChecks {
+  const parsed = AudienceEmailChecksSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${where}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${where}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** The free state of the checks: who is pending, found or not found. Spends nothing. */
+export async function getAudienceEmailChecks(audienceId: string, token?: string): Promise<AudienceEmailChecks> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview/email-checks`, { token });
+  return parseEmailChecks(raw, "getAudienceEmailChecks");
+}
+
+/** Checks ONE more person (billed reveal + verification) and returns the whole state. */
+export async function checkNextAudienceEmail(audienceId: string, token?: string): Promise<AudienceEmailChecks> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview/email-checks/next`, {
+    token,
+    method: "POST",
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  return parseEmailChecks(raw, "checkNextAudienceEmail");
+}
+
 // ── One cold email, written before any campaign exists ────────────────────────
 // content-generation-service `POST /preview-email` (v0.35.6): the product's real
 // writing (same template, brand intel and model as live campaigns) for a brand of the
@@ -3235,9 +3292,27 @@ const PreviewEmailSchema = z.object({
   bodyText: z.string(),
   bodyHtml: z.string(),
   model: z.string(),
+  // Why each sentence is there and which input it rests on (content-generation
+  // v0.35.7). Null for a preview stored before highlights existed; `kind` read as a
+  // plain string so a new source kind parses.
+  highlights: z
+    .array(
+      z.object({
+        text: z.string(),
+        start: z.number(),
+        end: z.number(),
+        kind: z.string(),
+        source: z.string(),
+        sourceLabel: z.string(),
+        sourceValue: z.string().nullable(),
+        reason: z.string(),
+      }),
+    )
+    .nullish(),
   cached: z.boolean(),
   createdAt: z.string(),
 });
+export type PreviewEmailHighlight = NonNullable<z.infer<typeof PreviewEmailSchema>["highlights"]>[number];
 export type PreviewEmail = z.infer<typeof PreviewEmailSchema>;
 
 export interface PreviewEmailRecipient {

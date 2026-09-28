@@ -62,12 +62,15 @@ export function CountUp({ value, format, ms }: { value: number; format: (n: numb
  * Types `text` out once, then holds it. The whole text is in the accessible name from
  * the first frame (a screen reader is not made to wait on a visual effect).
  */
-export function Typewriter({ text, className = "" }: { text: string; className?: string }) {
+export function Typewriter({ text, className = "", onDone }: { text: string; className?: string; onDone?: () => void }) {
   const reduced = usePrefersReducedMotion();
   const [n, setN] = useState(reduced ? text.length : 0);
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
     if (reduced) {
       setN(text.length);
+      done.current?.();
       return;
     }
     setN(0);
@@ -78,6 +81,7 @@ export function Typewriter({ text, className = "" }: { text: string; className?:
       const t = Math.min(1, (now - start) / ms);
       setN(Math.round(text.length * t));
       if (t < 1) raf = requestAnimationFrame(tick);
+      else done.current?.();
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
