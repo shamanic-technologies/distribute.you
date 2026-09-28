@@ -1,8 +1,9 @@
 {
-  "generatedAt": "2026-09-28T11:45:29.917Z",
+  "generatedAt": "2026-09-28T12:22:05.569Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
+  "unpricedEmails": 0,
   "window": {
     "from": "2026-04",
     "to": "2026-09"
@@ -61,7 +62,7 @@
     "click": {
       "sample": 623,
       "p50": 3,
-      "pAt": 11.4
+      "pAt": 11.5
     },
     "excludedEmails": 15810,
     "note": "Emails sent in the last 12 days are left out (from Sep 16 on): 95 in 100 replies and clicks arrive within 12 days of the email that earned them."
@@ -2235,16 +2236,16 @@
             },
             {
               "label": "Jul",
-              "value": 1.82,
-              "display": "$1.82",
-              "note": "188 website visits · 5,803 emails with a link",
+              "value": 1.81,
+              "display": "$1.81",
+              "note": "189 website visits · 5,803 emails with a link",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 6.82,
-              "display": "$6.82",
-              "note": "66 website visits · 3,955 emails with a link",
+              "value": 6.93,
+              "display": "$6.93",
+              "note": "65 website visits · 3,955 emails with a link",
               "thin": false
             },
             {
@@ -2274,9 +2275,9 @@
               },
               {
                 "label": "Jul",
-                "value": 1.68,
-                "display": "$1.68",
-                "note": "277 website visits · 9,847 emails with a link to date",
+                "value": 1.67,
+                "display": "$1.67",
+                "note": "278 website visits · 9,847 emails with a link to date",
                 "thin": false
               },
               {
@@ -2363,7 +2364,7 @@
       "result": {
         "display": "$2.13",
         "unit": "per website visit, first email only",
-        "sample": "364 website visits · $776 spent"
+        "sample": "365 website visits · $776 spent"
       },
       "crowned": true,
       "charts": [
@@ -2376,7 +2377,7 @@
               "label": "First email only",
               "value": 2.13,
               "display": "$2.13",
-              "note": "364 website visits · $776 spent",
+              "note": "365 website visits · $776 spent",
               "thin": false
             },
             {
@@ -2405,14 +2406,14 @@
               "label": "First email",
               "value": 2.13,
               "display": "$2.13",
-              "note": "364 website visits · 9,011 emails with a link",
+              "note": "365 website visits · 9,011 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 1",
-              "value": 6.82,
-              "display": "$6.82",
-              "note": "50 website visits · 4,107 emails with a link",
+              "value": 6.96,
+              "display": "$6.96",
+              "note": "49 website visits · 4,107 emails with a link",
               "thin": false
             },
             {
@@ -2454,9 +2455,9 @@
           "points": [
             {
               "label": "First email only",
-              "value": 40.4,
-              "display": "4.04%",
-              "note": "364 website visits from 9,011 people",
+              "value": 40.5,
+              "display": "4.05%",
+              "note": "365 website visits from 9,011 people",
               "thin": false
             },
             {
@@ -2479,7 +2480,7 @@
       ],
       "conclusion": [
         "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
-        "+ 1 follow-up: +0.55 points.",
+        "+ 1 follow-up: +0.54 points.",
         "+ 2 follow-ups: +0.05 points."
       ]
     },
@@ -2680,17 +2681,17 @@
             },
             {
               "label": "Jul",
-              "value": 0.59,
-              "display": "$0.59",
-              "note": "96 website visits · 1,656 emails with a link",
+              "value": 0.58,
+              "display": "$0.58",
+              "note": "97 website visits · 1,656 emails with a link",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 9.34,
-              "display": "$9.34",
-              "note": "2 website visits · 267 emails with a link",
-              "thin": false
+              "value": 18.68,
+              "display": "$19",
+              "note": "1 website visit · 267 emails with a link",
+              "thin": true
             },
             {
               "label": "Sep",
@@ -2721,7 +2722,7 @@
                 "label": "Jul",
                 "value": 0.93,
                 "display": "$0.93",
-                "note": "161 website visits · 4,646 emails with a link to date",
+                "note": "162 website visits · 4,646 emails with a link to date",
                 "thin": false
               },
               {
@@ -2865,16 +2866,16 @@
             },
             {
               "label": "Jul",
-              "value": 58,
-              "display": "5.80%",
-              "note": "96 website visits · 1,656 emails with a link",
+              "value": 58.6,
+              "display": "5.86%",
+              "note": "97 website visits · 1,656 emails with a link",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 7.5,
-              "display": "0.75%",
-              "note": "2 website visits · 267 emails with a link",
+              "value": 3.7,
+              "display": "0.37%",
+              "note": "1 website visit · 267 emails with a link",
               "thin": true
             },
             {
@@ -2904,9 +2905,9 @@
               },
               {
                 "label": "Jul",
-                "value": 34.65,
-                "display": "3.47%",
-                "note": "161 website visits · 4,646 emails with a link to date",
+                "value": 34.87,
+                "display": "3.49%",
+                "note": "162 website visits · 4,646 emails with a link to date",
                 "thin": false
               },
               {
