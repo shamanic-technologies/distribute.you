@@ -5739,7 +5739,11 @@ export async function startCampaign(
       brandIds: [params.brandId],
       featureSlug: params.featureSlug,
       featureInputs: params.featureInputs,
-      workflowDynastySlug: params.workflowDynastySlug,
+      // campaign-service takes ONE required `workflowSlug` and has no dynasty field (it
+      // dropped dynasty slugs in April), so a body carrying only `workflowDynastySlug`
+      // was refused 400 on every Start. The dynasty slug goes in `workflowSlug`, exactly
+      // as the onboarding launch sends it: the selector picks the running version itself.
+      workflowSlug: params.workflowDynastySlug,
       offerId: params.offerId,
       legKey: params.legKey,
     },
