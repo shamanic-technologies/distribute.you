@@ -145,17 +145,15 @@ describe("v2 wiring", () => {
     expect(layout).not.toContain("isBetaEmail");
     expect(layout).not.toContain("This page is not available");
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
-    // The Workflows surfaces are the one beta area inside v2 (owner-asked): the sidebar
-    // entry, the mission tab, and the two pages. The account menu carries one staff tag, on
-    // Research (staff-only for now). Everything else stays badge-free.
-    const GATED = new Set(["workflows-page.tsx", "workflow-page.tsx", "v2-shell.tsx", "setup-pages.tsx", "sidebar-menus.tsx"]);
+    // Workflows and Research are GA (owner-decided 2026-09-28). The only tags left in v2 are
+    // the two staff controls on the workflow page (the Actual-cost basis and the prompt Edit)
+    // and the generic tab-badge renderer in setup-pages.
+    const GATED = new Set(["workflow-page.tsx", "setup-pages.tsx"]);
     for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
       if (GATED.has(f)) continue;
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");
     }
-    const shell = read("src/components/v2/v2-shell.tsx");
-    expect(shell.match(/<MaturityBadge /g)?.length).toBe(1);
-    expect(shell.slice(shell.indexOf("{isBeta && ("), shell.indexOf("<MaturityBadge "))).toContain('label="Workflows"');
+    expect(read("src/components/v2/v2-shell.tsx")).not.toContain("isBeta");
     // The account menu carries the one way back to v1.
     const menus = read("src/components/v2/sidebar-menus.tsx");
     expect(menus).toContain("Back to v1");
