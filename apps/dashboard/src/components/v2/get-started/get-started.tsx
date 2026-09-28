@@ -142,6 +142,7 @@ export function GetStarted() {
   const [offerError, setOfferError] = useState<string | null>(null);
   // Step 4: who to write to, in words; the ONE picked is created under the offer.
   const icpRef = useRef("");
+  const offerSource = useRef<{ lines: string[]; ov: string }>({ lines: [], ov: "" });
   const [audienceProposals, setAudienceProposals] = useState<AudienceSegmentProposal[]>([]);
   const [audience, setAudience] = useState<GetStartedAudience | null>(null);
   const [audienceBusy, setAudienceBusy] = useState<number | null>(null);
@@ -253,6 +254,7 @@ export function GetStarted() {
   /** The offers the site describes; the brand-service split runs off step 1's read. */
   async function prepareOffers(id: string, lines: string[], ov: string) {
     const text = offerSourceText(lines, ov);
+    setStep("offer", "running");
     if (!text) {
       setStep("offer", "failed");
       return;
@@ -270,6 +272,7 @@ export function GetStarted() {
 
   /** Who to write to: the brand's ideal customer, split into at most 6 audiences in words. */
   async function prepareAudiences(id: string) {
+    setStep("audience", "running");
     try {
       const { icp } = await suggestBrandIcp(id);
       icpRef.current = icp;
@@ -641,9 +644,9 @@ export function GetStarted() {
     saveSnapshot({});
     setSteps((cur) => ({ ...cur, competitors: "running", offer: "running", audience: "running" }));
 
-    // Two reads in parallel, both started now: the site read (steps 1, 2 and the offer
-    // lines, ONE extraction) then the offer split; and the ideal customer then the
-    // audience split. The anonymous org holds $30, enough for both reads' holds at once.
+    // ONE extraction reads steps 1, 2 and the offer lines; then the offer split and the
+    // ideal customer + audience split run in parallel. The anonymous org holds $30,
+    // enough for both reads' holds at once.
     const siteRead = (async () => {
       try {
         const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS, ...OFFER_FIELDS], {
@@ -660,15 +663,17 @@ export function GetStarted() {
         setStep("company", ov || fs.length ? "done" : "failed");
         setStep("competitors", list.length ? "done" : "failed");
         saveSnapshot({ overview: ov, facts: fs, competitors: list });
-        await prepareOffers(id, lines, ov);
+        offerSource.current = { lines, ov };
       } catch (e) {
         console.error("[get-started] company read failed:", e);
         setStep("company", "failed");
         setStep("competitors", "failed");
-        setStep("offer", "failed");
       }
     })();
-    await Promise.all([siteRead, prepareAudiences(id)]);
+    await siteRead;
+    // The ideal customer is drafted from what the read stored, so it waits for it (an
+    // empty profile is refused); the offer split and the audience split then run together.
+    await Promise.all([prepareOffers(id, offerSource.current.lines, offerSource.current.ov), prepareAudiences(id)]);
     posthog.capture("get_started_preview_ready");
   }
 
@@ -723,7 +728,16 @@ export function GetStarted() {
     if (key === "competitors") return <CompetitorsCard state={steps.competitors} competitors={competitors} />;
     if (key === "offer")
       return (
-        <OfferStage state={steps.offer} proposals={offerProposals} main={offerMain} picked={offer} busy={offerBusy} error={offerError} onPick={(i) => void pickOffer(i)} />
+        <OfferStage
+          state={steps.offer}
+          proposals={offerProposals}
+          main={offerMain}
+          picked={offer}
+          busy={offerBusy}
+          error={offerError}
+          onPick={(i) => void pickOffer(i)}
+          onRetry={() => brandId && void prepareOffers(brandId, offerSource.current.lines, offerSource.current.ov)}
+        />
       );
     if (key === "audience")
       return (
@@ -735,6 +749,7 @@ export function GetStarted() {
           error={audienceError}
           waitingForOffer={!offer}
           onPick={(i) => void pickAudience(i)}
+          onRetry={() => brandId && void prepareAudiences(brandId)}
         />
       );
     if (key === "companies")
@@ -1270,6 +1285,7 @@ function OfferStage({
   busy,
   error,
   onPick,
+  onRetry,
 }: {
   state: StepState;
   proposals: OfferProposal[];
@@ -1278,13 +1294,14 @@ function OfferStage({
   busy: number | null;
   error: string | null;
   onPick: (i: number) => void;
+  onRetry: () => void;
 }) {
   return (
     <StepCard index={3} title="What you sell" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
       ) : proposals.length === 0 && !picked ? (
-        <p className="k-fg3 text-[13px]">We could not tell what you sell from your site. Start outreach and tell us in your dashboard.</p>
+        <RetryNote text="We could not tell what you sell from your site." onRetry={onRetry} />
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
@@ -1336,6 +1353,7 @@ function AudienceStage({
   error,
   waitingForOffer,
   onPick,
+  onRetry,
 }: {
   state: StepState;
   proposals: AudienceSegmentProposal[];
@@ -1344,13 +1362,14 @@ function AudienceStage({
   error: string | null;
   waitingForOffer: boolean;
   onPick: (i: number) => void;
+  onRetry: () => void;
 }) {
   return (
     <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
       ) : proposals.length === 0 ? (
-        <p className="k-fg3 text-[13px]">We could not work out who to write to. Try again in a moment.</p>
+        <RetryNote text="We could not work out who to write to." onRetry={onRetry} />
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
@@ -1386,6 +1405,17 @@ function AudienceStage({
         </>
       )}
     </StepCard>
+  );
+}
+
+function RetryNote({ text, onRetry }: { text: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <p className="k-fg3 text-[13px]">{text}</p>
+      <button type="button" className="k-btn h-7 px-3" onClick={onRetry}>
+        Try again
+      </button>
+    </div>
   );
 }
 
