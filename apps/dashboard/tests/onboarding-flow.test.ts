@@ -49,7 +49,11 @@ describe("Onboarding direct checkout launch", () => {
   it("charges the budget minus the welcome gift, configures auto-topup, and launches after return", () => {
     expect(content).toContain("createCheckoutSession");
     expect(content).toContain("const checkoutAmountCents = firstCharge.chargeCents;");
-    expect(content).toContain("topup_amount_cents: checkoutAmountCents");
+    // Billing owns the gift deduction: the FULL budget goes out with the opt-in, so
+    // Stripe shows the discount line. Sending the already-discounted figure too would
+    // take the gift off twice.
+    expect(content).toContain("topup_amount_cents: pending.topupAmountCents,\n            apply_welcome_gift: true,");
+    expect(content).not.toContain("topup_amount_cents: checkoutAmountCents");
     // The reload is the FULL budget; only the FIRST charge carries the welcome discount.
     expect(content).toContain("topupAmountCents: Math.round(budget * 100),");
     expect(content).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");

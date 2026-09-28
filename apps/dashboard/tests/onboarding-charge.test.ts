@@ -135,6 +135,20 @@ describe("onboarding wires the plan, not a second formula", () => {
     expect(src).toContain('mode: "setup",');
   });
 
+  it("hands the gift deduction to billing so Stripe itemises it", () => {
+    // One decision, one layer: billing applies the gift as a Stripe discount on the
+    // FULL budget, so the hosted page shows the budget, the -$30 line and the total.
+    const at = src.indexOf("async function beginCheckoutAndLaunch(");
+    const block = src.slice(at, src.indexOf("window.location.href = session.url;", at));
+    expect(block).toContain("apply_welcome_gift: true");
+    expect(block).toContain("topup_amount_cents: pending.topupAmountCents");
+    expect(block).not.toContain("topup_amount_cents: checkoutAmountCents");
+    // Billing's two refusals keep the flow moving: gift covers it -> no charge;
+    // already paid once -> full budget, no discount.
+    expect(block).toContain('code === "welcome_gift_covers_budget"');
+    expect(block).toContain('code === "welcome_discount_not_first_payment"');
+  });
+
   it("reports the Google Ads purchase value ONLY when money moved", () => {
     // `daily_budget` is read on the checkout return as the conversion VALUE. A
     // budget covered by the gift returns through the same success URL having paid
