@@ -10,82 +10,52 @@
 
 import {
   ApiError,
-  confirmBrandOffers,
+  USER_PROFILE_FIELDS,
   createCampaignWithoutBrandEnrichment,
+  listAudiences,
+  extractBrandFields,
   getWorkflowProjectionLadder,
-  listBrandOffers,
   prefillFeatureInputs,
-  proposeBrandOffers,
   saveCampaignBudget,
+  saveOfferUserFields,
   setAudienceStatus,
+  type UserFieldKey,
+  type UserFieldValue,
 } from "@/lib/api";
-import { NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
+import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
 
 export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
 
 export interface LaunchInput {
   brandId: string;
   website: string;
-  /** What we read the company sells, used to name its offer if it has none yet. */
-  offerSource: string;
-  audienceIds: string[];
+  /** The offer picked at step 3, already confirmed on the brand. */
+  offer: { offerId: string; name: string };
+  /** The audience picked at step 4, already created under that offer. */
+  audienceId: string;
   budgetUsd: number;
 }
 
 export interface LaunchProgress {
-  offerId: string | null;
+  levers: boolean;
   audiences: boolean;
   budget: boolean;
   campaignId: string | null;
 }
 
-export const EMPTY_PROGRESS: LaunchProgress = { offerId: null, audiences: false, budget: false, campaignId: null };
-
-/** The brand's offer: the one it has, else the main one proposed from what it sells. */
-async function resolveOffer(brandId: string, source: string): Promise<{ offerId: string; name: string }> {
-  const { offers } = await listBrandOffers(brandId);
-  const live = offers.filter((o) => o.status !== "archived");
-  if (live.length > 0) return { offerId: live[0].offerId, name: live[0].name };
-  const text = source.trim();
-  if (!text) throw new Error("We could not tell what you sell, so the campaign has no offer to pitch.");
-  const proposal = await proposeBrandOffers(brandId, text);
-  if (proposal.offers.length === 0) throw new Error("We could not read an offer on your site.");
-  const main = proposal.mainOfferIndex >= 0 && proposal.mainOfferIndex < proposal.offers.length ? proposal.mainOfferIndex : 0;
-  const { chosenOfferId } = await confirmBrandOffers(brandId, proposal.offers, main);
-  return { offerId: chosenOfferId, name: proposal.offers[main].name };
-}
+export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, budget: false, campaignId: null };
 
 /**
- * ONE offer resolution per brand in this tab. The wall resolves it as soon as the
- * account exists (to price the budget) and the launch resolves it again; two
- * concurrent resolutions of a brand with no offer would each confirm a proposal and
- * leave it with two offers. A failure is forgotten, so a retry asks again.
+ * The daily budget the v2 "Add a brand" modal would recommend for this offer:
+ * features-service's recommended workflow on this leg, its campaign-grain cost per
+ * outcome, turned into a daily figure by the leg's own rule, never under the channel
+ * floor. `null` when no price is held yet.
  */
-const offerByBrand = new Map<string, Promise<{ offerId: string; name: string }>>();
-function resolveOfferOnce(brandId: string, source: string): Promise<{ offerId: string; name: string }> {
-  const held = offerByBrand.get(brandId);
-  if (held) return held;
-  const p = resolveOffer(brandId, source).catch((e) => {
-    offerByBrand.delete(brandId);
-    throw e;
-  });
-  offerByBrand.set(brandId, p);
-  return p;
-}
-
-/**
- * The daily budget the v2 "Add a brand" modal would recommend for this brand:
- * features-service's recommended workflow for the brand's offer on this leg, its
- * campaign-grain cost per outcome, turned into a daily figure by the leg's own rule,
- * never under the channel floor. A brand is only given its offer once somebody owns
- * it, so this runs after the claim. `null` when no price is held yet.
- */
-export async function recommendedBudgetForPreview(brandId: string, source: string, floorUsd: number): Promise<number | null> {
-  const offer = await resolveOfferOnce(brandId, source);
+export async function recommendedBudgetForPreview(brandId: string, offerId: string, floorUsd: number): Promise<number | null> {
   const ladder = await getWorkflowProjectionLadder({
     featureSlug: NEW_ORG_CHANNEL_SLUG,
     brandId,
-    offerId: offer.offerId,
+    offerId,
     leg: GET_STARTED_LEG,
   });
   const rec = ladder.recommendedWorkflowDynastySlug;
@@ -94,23 +64,53 @@ export async function recommendedBudgetForPreview(brandId: string, source: strin
 }
 
 /**
- * Runs the launch, mutating `progress` as each write lands so a retry resumes.
- * Returns the created campaign's id.
+ * The six Hormozi levers of the picked offer, drafted off the site (brand-service's
+ * `suggest` mode, the onboarding's own read) and SAVED on the offer, so the campaign's
+ * emails are written around them from the first send and the owner edits them later
+ * in the dashboard rather than starting from blank. A lever the read left empty is
+ * not written: an empty confirmed row would hide a later suggestion.
+ */
+async function prefillOfferLevers(brandId: string, offerId: string): Promise<void> {
+  const leverFields = USER_PROFILE_FIELDS.filter((f) => LEVER_QUESTIONS.some((q) => q.key === f.key));
+  const read = await extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId });
+  const fields: Partial<Record<UserFieldKey, UserFieldValue>> = {};
+  for (const q of LEVER_QUESTIONS) {
+    const v = read.fields[q.key]?.value;
+    const lines = (Array.isArray(v) ? v : typeof v === "string" ? v.split("\n") : [])
+      .map((x) => String(x).trim())
+      .filter((x) => x && x.toLowerCase() !== "unknown");
+    if (lines.length === 0) continue;
+    fields[q.key] = q.list ? lines : lines.join("\n");
+  }
+  if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offerId, fields);
+}
+
+/**
+ * Runs the launch on the offer and audience the visitor picked (no re-pick),
+ * mutating `progress` as each write lands so a retry resumes. Returns the campaign id.
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
   const leg = newOrgLeg(GET_STARTED_LEG);
-  const offer = await resolveOfferOnce(input.brandId, input.offerSource);
-  progress.offerId = offer.offerId;
+  const { offerId, name: offerName } = input.offer;
+
+  // The levers are read while the rest is written: the campaign's inputs are prefilled
+  // from the offer below, so they are awaited before that read.
+  const levers = progress.levers
+    ? Promise.resolve()
+    : prefillOfferLevers(input.brandId, offerId).then(() => {
+        progress.levers = true;
+      });
 
   if (!progress.audiences) {
-    if (input.audienceIds.length === 0) throw new Error("No audience was found for your company, so there is nobody to write to.");
-    for (const id of input.audienceIds) {
-      try {
-        await setAudienceStatus(id, "active");
-      } catch (e) {
-        // Already active (a retry after a partial launch) is what we wanted.
-        if (!(e instanceof ApiError && e.status === 409)) throw e;
-      }
+    // The picked audience is the one launched. Another one picked earlier and left
+    // (each pick creates its audience) goes back to suggested: recoverable, not sent to.
+    const { audiences } = await listAudiences(input.brandId, { status: "active", offerId });
+    for (const a of audiences) if (a.id !== input.audienceId) await setAudienceStatus(a.id, "suggested");
+    try {
+      await setAudienceStatus(input.audienceId, "active");
+    } catch (e) {
+      // Already active (created active at the pick, or a retry) is what we wanted.
+      if (!(e instanceof ApiError && e.status === 409)) throw e;
     }
     progress.audiences = true;
   }
@@ -118,32 +118,36 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
   if (!progress.budget) {
     await saveCampaignBudget(
       input.brandId,
-      { offerId: offer.offerId, legKey: GET_STARTED_LEG, featureSlug: NEW_ORG_CHANNEL_SLUG },
+      { offerId, legKey: GET_STARTED_LEG, featureSlug: NEW_ORG_CHANNEL_SLUG },
       input.budgetUsd * 100,
     );
     progress.budget = true;
   }
 
-  if (progress.campaignId) return progress.campaignId;
+  if (progress.campaignId) {
+    await levers;
+    return progress.campaignId;
+  }
 
   const ladder = await getWorkflowProjectionLadder({
     featureSlug: NEW_ORG_CHANNEL_SLUG,
     brandId: input.brandId,
-    offerId: offer.offerId,
+    offerId,
     leg: GET_STARTED_LEG,
   });
   const workflowSlug = ladder.recommendedWorkflowDynastySlug;
   if (!workflowSlug) throw new Error(`No workflow is ready for ${leg.unitPlural} yet, so the campaign cannot start.`);
 
-  const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [input.brandId], offer.offerId);
+  await levers;
+  const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [input.brandId], offerId);
   const featureInputs: Record<string, string> = {};
   for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
 
   const { campaign } = await createCampaignWithoutBrandEnrichment({
-    name: `${offer.name} (${leg.label}, Cold email)`,
+    name: `${offerName} (${leg.label}, Cold email)`,
     workflowSlug,
     brandUrls: [input.website],
-    offerId: offer.offerId,
+    offerId,
     legKey: GET_STARTED_LEG,
     featureSlug: NEW_ORG_CHANNEL_SLUG,
     featureInputs,

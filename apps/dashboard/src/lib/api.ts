@@ -3181,52 +3181,77 @@ const AudienceSchema = z.object({
 
 const AudienceResponseSchema = z.object({ audience: AudienceSchema });
 
-// ── Audience preview: a free sample of who an audience reaches ────────────────
-// human-service `GET /orgs/audiences/{id}/preview` (v0.46.12): up to ~10 real
-// companies and ~20 real people from ONE free provider search, never an email or a
-// phone, taken once and stored so a reload costs nothing. `status` and `reason` are
-// the producer's vocabulary, read as plain strings so a new value parses.
+// ── Up to 100 companies of an audience, one person each ────────────────────────
+// human-service `GET /orgs/audiences/{id}/preview/companies?offset&limit`: built
+// progressively (each call builds only as far as offset+limit), stored once per
+// audience, rows stable in order. Never an email or a phone; a last name is masked.
+// A field Apollo did not give is null. `status` / `reason` are the producer's
+// vocabulary and are read as plain strings.
 
-const AudiencePreviewSchema = z.object({
+const AudienceCompanyRowSchema = z.object({
+  index: z.number(),
+  company: z.object({
+    name: z.string(),
+    domain: z.string().nullable(),
+    website: z.string().nullable(),
+    logoUrl: z.string().nullable(),
+    description: z.string().nullable(),
+    location: z.string().nullable(),
+    city: z.string().nullable(),
+    country: z.string().nullable(),
+    employeeCount: z.number().nullable(),
+    industry: z.string().nullable(),
+    linkedinUrl: z.string().nullable(),
+    foundedYear: z.number().nullable(),
+    // Additive, declared optional so an older body still parses.
+    annualRevenue: z.string().nullable().optional(),
+    totalFunding: z.string().nullable().optional(),
+    latestFundingStage: z.string().nullable().optional(),
+    keywords: z.array(z.string()).optional(),
+  }),
+  person: z.object({
+    firstName: z.string().nullable(),
+    lastNameObfuscated: z.string().nullable(),
+    title: z.string().nullable(),
+    linkedinUrl: z.string().nullable(),
+  }),
+});
+export type AudienceCompanyRow = z.infer<typeof AudienceCompanyRowSchema>;
+
+const AudienceCompaniesSchema = z.object({
   audienceId: z.string(),
   status: z.string(),
   reason: z.string().nullable(),
-  matchCount: z.number().nullable(),
-  companies: z.array(z.object({ name: z.string(), peopleInSample: z.number() })),
-  people: z.array(
-    z.object({
-      firstName: z.string().nullable(),
-      lastNameObfuscated: z.string().nullable(),
-      title: z.string().nullable(),
-      company: z.string().nullable(),
-    }),
-  ),
-  generatedAt: z.string().nullable(),
+  rows: z.array(AudienceCompanyRowSchema),
+  totalAvailable: z.number(),
+  nextOffset: z.number().nullable(),
+  done: z.boolean(),
+  maxRows: z.number(),
 });
-export type AudiencePreview = z.infer<typeof AudiencePreviewSchema>;
+export type AudienceCompanies = z.infer<typeof AudienceCompaniesSchema>;
 
-export async function getAudiencePreview(audienceId: string, token?: string): Promise<AudiencePreview> {
-  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview`, { token });
-  const parsed = AudiencePreviewSchema.safeParse(raw);
+export async function getAudienceCompanies(
+  audienceId: string,
+  page: { offset: number; limit: number },
+  token?: string,
+): Promise<AudienceCompanies> {
+  const raw = await apiCall<unknown>(
+    `/orgs/audiences/${audienceId}/preview/companies?offset=${page.offset}&limit=${page.limit}`,
+    { token, headers: { "x-run-id": globalThis.crypto.randomUUID() } },
+  );
+  const parsed = AudienceCompaniesSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getAudiencePreview: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] getAudiencePreview: invalid response shape");
+    console.error("[dashboard] getAudienceCompanies: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getAudienceCompanies: invalid response shape");
   }
   return parsed.data;
 }
 
-// ── Finding and verifying the sampled people's emails, one at a time ──────────
-// human-service `GET|POST /orgs/audiences/{id}/preview/email-checks[/next]` (v0.46.13):
-// the free state, then ONE billed reveal per call (~6-7s) until `done`. The address is
-// never returned, only its masked domain. Vocabularies (`status`, `verdict`, `finder`,
-// `verifier`, `reason`) are read as plain strings so a new value parses.
-
-const EmailCheckPersonSchema = z.object({
+// One row's person, found and verified live (the first 10 rows only). POST runs ONE
+// billed reveal + verify (~6-7s) and is idempotent: a settled row answers at once with
+// no spend. The address is never returned, only its masked domain.
+const CompanyRowEmailCheckSchema = z.object({
   index: z.number(),
-  firstName: z.string().nullable(),
-  lastNameObfuscated: z.string().nullable(),
-  title: z.string().nullable(),
-  company: z.string().nullable(),
   status: z.string(),
   finder: z.string().nullable(),
   verifier: z.string().nullable(),
@@ -3235,41 +3260,20 @@ const EmailCheckPersonSchema = z.object({
   maskedEmail: z.string().nullable(),
   checkedAt: z.string().nullable(),
 });
-export type EmailCheckPerson = z.infer<typeof EmailCheckPersonSchema>;
+export type CompanyRowEmailCheck = z.infer<typeof CompanyRowEmailCheckSchema>;
 
-const AudienceEmailChecksSchema = z.object({
-  audienceId: z.string(),
-  status: z.string(),
-  reason: z.string().nullable(),
-  done: z.boolean(),
-  people: z.array(EmailCheckPersonSchema),
-  summary: z.object({ checked: z.number(), found: z.number(), deliverable: z.number() }),
-});
-export type AudienceEmailChecks = z.infer<typeof AudienceEmailChecksSchema>;
-
-function parseEmailChecks(raw: unknown, where: string): AudienceEmailChecks {
-  const parsed = AudienceEmailChecksSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[dashboard] ${where}: response shape mismatch`, { issues: parsed.error.issues, raw });
-    throw new Error(`[dashboard] ${where}: invalid response shape`);
-  }
-  return parsed.data;
-}
-
-/** The free state of the checks: who is pending, found or not found. Spends nothing. */
-export async function getAudienceEmailChecks(audienceId: string, token?: string): Promise<AudienceEmailChecks> {
-  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview/email-checks`, { token });
-  return parseEmailChecks(raw, "getAudienceEmailChecks");
-}
-
-/** Checks ONE more person (billed reveal + verification) and returns the whole state. */
-export async function checkNextAudienceEmail(audienceId: string, token?: string): Promise<AudienceEmailChecks> {
-  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview/email-checks/next`, {
+export async function checkAudienceCompanyEmail(audienceId: string, index: number, token?: string): Promise<CompanyRowEmailCheck> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/preview/companies/${index}/email-check`, {
     token,
     method: "POST",
     headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
-  return parseEmailChecks(raw, "checkNextAudienceEmail");
+  const parsed = CompanyRowEmailCheckSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] checkAudienceCompanyEmail: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] checkAudienceCompanyEmail: invalid response shape");
+  }
+  return parsed.data;
 }
 
 // ── One cold email, written before any campaign exists ────────────────────────

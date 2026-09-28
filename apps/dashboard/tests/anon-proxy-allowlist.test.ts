@@ -150,9 +150,10 @@ describe("the file itself", () => {
     const rules = src
       .slice(src.indexOf("const RULES"), src.indexOf("export interface AllowInput"))
       .replace('"preview-email"', "")
-      // The reviewed email CHECKS of the sampled people: they reveal and verify an address
-      // on this anonymous org and return only its masked domain. Nothing is sent.
-      .replaceAll('"email-checks"', "");
+      // The reviewed email CHECK of one row of the 100 companies (step 5 of
+      // /get-started): it reveals and verifies an address on this anonymous org and
+      // returns only its masked domain. Nothing is sent.
+      .replaceAll('"email-check"', "");
     for (const banned of ["campaign", "lead", "instantly", "billing", "credit", "stripe", "email"]) {
       expect(rules.toLowerCase(), banned).not.toContain(banned);
     }
@@ -196,17 +197,14 @@ describe("the brand a BODY names is bound to the session too", () => {
 });
 
 describe("the onboarding v2 preview reads", () => {
-  it("permits the audience sample and the preview email", () => {
-    expect(allow("GET", "/orgs/audiences/9b1c/preview").allowed).toBe(true);
+  it("permits the preview email, and no longer the 5-person sample it replaced", () => {
     expect(allow("POST", "/content/preview-email").allowed).toBe(true);
-    expect(allow("GET", "/orgs/audiences/9b1c/preview/email-checks").allowed).toBe(true);
-    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks/next").allowed).toBe(true);
-    // Only those two shapes: no other verb, no deeper path.
-    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks").allowed).toBe(false);
-    expect(allow("GET", "/orgs/audiences/9b1c/preview/email-checks/next").allowed).toBe(false);
-    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks/next/x").allowed).toBe(false);
+    // Step 5 reads the 100 companies now; the old sample and its checks are closed.
+    expect(allow("GET", "/orgs/audiences/9b1c/preview").allowed).toBe(false);
+    expect(allow("GET", "/orgs/audiences/9b1c/preview/email-checks").allowed).toBe(false);
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks/next").allowed).toBe(false);
     // No body, so nothing for the body binding to refuse.
-    expect(anonBodyRefusal({ method: "POST", endpoint: "/orgs/audiences/9b1c/preview/email-checks/next", body: undefined, brandId: BRAND })).toBeNull();
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/orgs/audiences/9b1c/preview/companies/0/email-check", body: undefined, brandId: BRAND })).toBeNull();
   });
 
   it("binds the preview email's brand to the session", () => {
@@ -219,5 +217,34 @@ describe("the onboarding v2 preview reads", () => {
     expect(allow("POST", "/orgs/audiences/9b1c/preview").allowed).toBe(false);
     expect(allow("POST", "/orgs/audiences/9b1c/status").allowed).toBe(false);
     expect(allow("POST", "/content/generate").allowed).toBe(false);
+  });
+});
+
+describe("onboarding v2 steps 3 to 5: offer, audience, 100 companies", () => {
+  it("permits the offer proposal and confirm on the session's own brand only", () => {
+    expect(allow("POST", `/brands/${BRAND}/offers/proposals`).allowed).toBe(true);
+    expect(allow("POST", `/brands/${BRAND}/offers/confirm`).allowed).toBe(true);
+    expect(allow("POST", `/brands/${OTHER}/offers/proposals`).refusal).toBe("wrong-brand");
+    expect(allow("POST", `/brands/${OTHER}/offers/confirm`).refusal).toBe("wrong-brand");
+    expect(allow("GET", `/brands/${BRAND}/offers/proposals`).allowed).toBe(false);
+  });
+
+  it("permits the audience split and confirm, and binds the brand their body names", () => {
+    expect(allow("POST", "/orgs/audiences/split").allowed).toBe(true);
+    expect(allow("POST", "/orgs/audiences/split/confirm").allowed).toBe(true);
+    const b = (brandId: string) => JSON.stringify({ brandId, targetAudience: "x" });
+    for (const endpoint of ["/orgs/audiences/split", "/orgs/audiences/split/confirm"]) {
+      expect(anonBodyRefusal({ method: "POST", endpoint, body: b(BRAND), brandId: BRAND })).toBeNull();
+      expect(anonBodyRefusal({ method: "POST", endpoint, body: b(OTHER), brandId: BRAND })).toBe("wrong-brand");
+      expect(anonBodyRefusal({ method: "POST", endpoint, body: undefined, brandId: BRAND })).toBe("not-allowlisted");
+    }
+  });
+
+  it("permits the 100 companies and one row's email check, nothing deeper", () => {
+    expect(allow("GET", "/orgs/audiences/9b1c/preview/companies?offset=0&limit=25").allowed).toBe(true);
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/companies/3/email-check").allowed).toBe(true);
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/companies").allowed).toBe(false);
+    expect(allow("GET", "/orgs/audiences/9b1c/preview/companies/3/email-check").allowed).toBe(false);
+    expect(allow("POST", "/orgs/audiences/9b1c/preview/companies/3/reveal").allowed).toBe(false);
   });
 });

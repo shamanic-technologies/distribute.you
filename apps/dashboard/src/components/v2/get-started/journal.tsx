@@ -7,22 +7,21 @@
  * `stepViewName`). An entry is never drawn for the step the stage is showing, so the
  * two never carry the same transition name at once.
  *
- * The segments entry is also the segment picker: picking one re-reads its free
- * sample (steps 4 to 6), queued behind any read already running.
+ * The audience entry is also the audience picker: picking another one builds its
+ * companies (step 5) and the first emails (step 6) again.
  *
  * Desktop draws a rail (`JournalRail`); a phone draws a compact strip above the
  * stage (`JournalStrip`) with the same picker.
  */
 
-import type { AudiencePreview, PreviewEmail } from "@/lib/api";
-import { Initials } from "@/components/v2/ui";
+import type { AudienceCompanyRow, AudienceSegmentProposal } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   GET_STARTED_STEPS,
-  compactCount,
   settledPhase,
   type Competitor,
-  type GetStartedSegment,
+  type GetStartedAudience,
+  type GetStartedOffer,
   type GetStartedStepKey,
   type StepPhase,
 } from "@/lib/v2/get-started";
@@ -36,11 +35,13 @@ export interface JournalData {
   domain: string | null;
   overview: string;
   competitors: Competitor[];
-  segments: GetStartedSegment[];
-  selected: string | null;
-  preview: AudiencePreview | undefined;
-  mail: PreviewEmail | undefined;
-  onSelect: (id: string) => void;
+  offer: GetStartedOffer | null;
+  audience: GetStartedAudience | null;
+  audienceProposals: AudienceSegmentProposal[];
+  audienceBusy: number | null;
+  rows: AudienceCompanyRow[];
+  written: number;
+  onPickAudience: (index: number) => void;
   onFocus: (key: GetStartedStepKey) => void;
 }
 
@@ -108,69 +109,55 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
         {d.competitors.length > 8 && <p className="k-fg3 mt-1 text-[11px]">+{d.competitors.length - 8} more</p>}
       </div>
     );
-  if (k === "segments") return <SegmentPicker d={d} />;
-  if (k === "companies") {
-    const list = d.preview?.status === "ready" ? d.preview.companies : [];
+  if (k === "offer")
+    return d.offer ? (
+      <div className="k-card rounded-lg px-2.5 py-2">
+        <p className="k-fg truncate text-[12.5px] font-medium">{d.offer.name}</p>
+        {d.offer.description && <p className="k-fg3 mt-0.5 line-clamp-2 text-[12px] leading-[18px]">{d.offer.description}</p>}
+      </div>
+    ) : null;
+  if (k === "audience") return <AudiencePicker d={d} />;
+  if (k === "companies")
     return (
-      <ul className="grid gap-1">
-        {list.slice(0, 4).map((c) => (
-          <li key={c.name} className="flex min-w-0 items-center gap-2">
-            <Initials name={c.name} size={16} />
-            <span className="k-fg2 truncate text-[12px]">{c.name}</span>
-          </li>
-        ))}
-        {list.length > 4 && <li className="k-fg3 text-[11px]">+{list.length - 4} more</li>}
-      </ul>
-    );
-  }
-  if (k === "people") {
-    const list = d.preview?.status === "ready" ? d.preview.people : [];
-    return (
-      <ul className="grid gap-1">
-        {list.slice(0, 3).map((x, i) => {
-          const name = [x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ");
-          return (
-            <li key={`${name}-${i}`} className="min-w-0">
-              <p className="k-fg2 truncate text-[12px]">
-                {name || "\u2014"}
-                {x.title && <span className="k-fg3">, {x.title}</span>}
-              </p>
+      <div>
+        <p className="k-label">
+          Companies <span className="k-fg2 tabular-nums">{d.rows.length}</span>
+        </p>
+        <ul className="mt-1.5 grid gap-1">
+          {d.rows.slice(0, 4).map((r) => (
+            <li key={r.index} className="flex min-w-0 items-center gap-2">
+              <BrandLogo domain={r.company.domain} size={14} className="rounded-sm" />
+              <span className="k-fg2 truncate text-[12px]">{r.company.name}</span>
             </li>
-          );
-        })}
-        {list.length > 3 && <li className="k-fg3 text-[11px]">+{list.length - 3} more</li>}
-      </ul>
+          ))}
+          {d.rows.length > 4 && <li className="k-fg3 text-[11px]">+{d.rows.length - 4} more</li>}
+        </ul>
+      </div>
     );
-  }
-  return d.mail ? <p className="k-fg2 line-clamp-2 text-[12px]">{d.mail.subject}</p> : null;
+  return <p className="k-fg2 text-[12px] tabular-nums">{d.written === 1 ? "1 email written" : `${d.written} emails written`}</p>;
 }
 
-/** The segments with their sizes; picking one reads its sample. */
-function SegmentPicker({ d }: { d: JournalData }) {
-  const max = Math.max(1, ...d.segments.map((s) => s.count));
+/** The audiences in words; picking another one builds its companies again. */
+function AudiencePicker({ d }: { d: JournalData }) {
   return (
     <div>
       <p className="k-label">
-        Segments <span className="k-fg2 tabular-nums">{d.segments.length}</span>
+        Audiences <span className="k-fg2 tabular-nums">{d.audienceProposals.length}</span>
       </p>
       <ul className="mt-1.5 grid gap-1">
-        {d.segments.map((s, i) => {
-          const on = d.selected === s.audienceId;
+        {d.audienceProposals.map((a, i) => {
+          const on = d.audience?.name === a.name;
           return (
-            <li key={s.audienceId} className="gs-in" style={stagger(i, 50)}>
+            <li key={`${a.name}-${i}`} className="gs-in" style={stagger(i, 50)}>
               <button
                 type="button"
-                onClick={() => d.onSelect(s.audienceId)}
+                onClick={() => d.onPickAudience(i)}
+                disabled={d.audienceBusy != null}
                 aria-pressed={on}
                 className={`w-full rounded-lg px-2 py-1.5 text-left ${on ? "k-card ring-1 ring-[var(--accent)]" : "k-hover"}`}
               >
-                <span className="flex items-baseline gap-2">
-                  <span className={`min-w-0 flex-1 truncate text-[12.5px] ${on ? "k-fg font-medium" : "k-fg2"}`}>{s.name}</span>
-                  <span className="k-fg tabular-nums text-[12px]">{compactCount(s.count)}</span>
-                </span>
-                <span className="mt-1 block h-[3px] w-full overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
-                  <span className="gs-fill block h-full rounded-full" style={{ width: `${Math.max(3, (s.count / max) * 100)}%`, background: on ? "var(--accent)" : "var(--fg-4)" }} />
-                </span>
+                <span className={`block truncate text-[12.5px] ${on ? "k-fg font-medium" : "k-fg2"}`}>{a.name}</span>
+                {d.audienceBusy === i && <span className="k-fg3 block text-[11px]">Finding companies</span>}
               </button>
             </li>
           );
@@ -180,12 +167,13 @@ function SegmentPicker({ d }: { d: JournalData }) {
   );
 }
 
-/** The phone's journal: one scrollable line of what was found, then the segment picker. */
+/** The phone's journal: one scrollable line of what was found, then the audience picker. */
 export function JournalStrip(d: JournalData) {
   const companyIn = d.steps.company === "done" && d.staged !== "company";
   const competitorsIn = d.steps.competitors === "done" && d.staged !== "competitors" && d.competitors.length > 0;
-  const segmentsIn = d.steps.segments === "done" && d.staged !== "segments" && d.segments.length > 0;
-  if (!companyIn && !competitorsIn && !segmentsIn) return null;
+  const offerIn = d.steps.offer === "done" && d.staged !== "offer" && !!d.offer;
+  const audienceIn = d.steps.audience === "done" && d.staged !== "audience" && d.audienceProposals.length > 0;
+  if (!companyIn && !competitorsIn && !offerIn && !audienceIn) return null;
   return (
     <div className="lg:hidden">
       <div className="k-scroll -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -205,21 +193,27 @@ export function JournalStrip(d: JournalData) {
             <span className="k-fg2 text-[12px] tabular-nums">{d.competitors.length} competitors</span>
           </button>
         )}
+        {offerIn && d.offer && (
+          <button type="button" onClick={() => d.onFocus("offer")} className="gs-in k-card flex shrink-0 items-center gap-2 px-2.5 py-1.5" style={{ viewTransitionName: stepViewName("offer") }}>
+            <span className="k-label">Offer</span>
+            <span className="k-fg max-w-[160px] truncate text-[12px] font-medium">{d.offer.name}</span>
+          </button>
+        )}
       </div>
-      {segmentsIn && (
-        <div className="k-scroll -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1" style={{ viewTransitionName: stepViewName("segments") }} aria-label="Segments">
-          {d.segments.map((s) => {
-            const on = d.selected === s.audienceId;
+      {audienceIn && (
+        <div className="k-scroll -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1" style={{ viewTransitionName: stepViewName("audience") }} aria-label="Audiences">
+          {d.audienceProposals.map((a, i) => {
+            const on = d.audience?.name === a.name;
             return (
               <button
-                key={s.audienceId}
+                key={`${a.name}-${i}`}
                 type="button"
-                onClick={() => d.onSelect(s.audienceId)}
+                onClick={() => d.onPickAudience(i)}
+                disabled={d.audienceBusy != null}
                 aria-pressed={on}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] ${on ? "k-card ring-1 ring-[var(--accent)] k-fg font-medium" : "k-card k-fg2"}`}
               >
-                <span className="max-w-[160px] truncate">{s.name}</span>
-                <span className="k-fg3 tabular-nums">{compactCount(s.count)}</span>
+                <span className="max-w-[180px] truncate">{a.name}</span>
               </button>
             );
           })}

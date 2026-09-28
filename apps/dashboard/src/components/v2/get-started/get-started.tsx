@@ -3,17 +3,20 @@
 /**
  * `/get-started`: onboarding v2, signed out, in the dashboard v2 (Keel) language.
  *
- * Explee's order: a website, then real output one step at a time (the company read,
- * its competitors, its segments sized off a free dry-run count), then ONE screen that
- * asks for the account and the card together. Nothing is asked before the output.
+ * Explee's order: a website, then real output one step at a time: the company read
+ * and its competitors (steps 1 and 2), the ONE offer to sell (3) and the ONE audience
+ * to write to (4), picked from proposals, then up to 100 companies of that audience
+ * with the right person at each (5) and the first emails (6). The account and the
+ * card are asked on ONE screen at the end (the wall).
  *
- * Every read runs on the ANONYMOUS org (`/api/anon/v1`, a small internal credit, a
- * closed allowlist bound to this session's brand), exactly like `/onboarding`'s
- * signed-out half, so nothing here spends on anybody else. Steps whose backend is
- * not live yet (sample companies, sample people, the written email) say so on the
- * step rather than showing invented rows. Rules live in `lib/v2/get-started.ts`.
+ * Steps 3 and 4 do not wait for the visitor: the moment the website is known, the
+ * offer proposals (read off the site) and the audience proposals (from the brand's
+ * ideal customer) are prepared in parallel with steps 1 and 2, so a pick is on screen
+ * as soon as the stage reaches it.
  *
- * The current `/onboarding` is untouched; this route is reached by link only.
+ * Every read runs on the ANONYMOUS org (`/api/anon/v1`, a closed allowlist bound to
+ * this session's brand), so nothing here spends on anybody else, and nothing is sent.
+ * Rules live in `lib/v2/get-started.ts`. The current `/onboarding` is untouched.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -22,74 +25,93 @@ import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
 import {
   ApiError,
-  checkNextAudienceEmail,
+  checkAudienceCompanyEmail,
+  confirmAudienceSegments,
+  confirmBrandOffers,
   extractBrandFields,
-  getAudienceEmailChecks,
-  getAudiencePreview,
+  getAudienceCompanies,
   getPublicCatalogueSignedOut,
-  getWorkflowProjectionLadder,
-  listBrandOffers,
   previewColdEmail,
-  suggestAudiences,
+  proposeAudienceSegments,
+  proposeBrandOffers,
   suggestBrandIcp,
   upsertBrand,
-  type AudienceEmailChecks,
-  type AudiencePreview,
+  type AudienceCompanyRow,
+  type AudienceSegmentProposal,
+  type CompanyRowEmailCheck,
+  type OfferProposal,
   type PreviewEmail,
 } from "@/lib/api";
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import { websiteInputProblem } from "@/lib/website-input";
 import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
-import { NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd } from "@/lib/v2/new-org-wizard";
+import { NEW_ORG_CHANNEL_SLUG } from "@/lib/v2/new-org-wizard";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
+  EMAIL_CAP,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
   NEXT_STEPS,
-  STEPS_NOT_LIVE,
-  emailCheckNote,
+  OFFER_FIELDS,
+  PREWRITTEN_EMAILS,
+  canWriteAnother,
   emailPieces,
+  employeesLabel,
   highlightKindLabel,
   hostOf,
+  offerSourceText,
   parseCompetitors,
-  providerLabel,
-  shouldCheckNext,
-  verdictLabel,
   parseGetStartedSnapshot,
-  segmentCriteria,
+  providerLabel,
   settledPhase,
+  sizeDots,
+  stageDwellMs,
   stageMove,
   valueLines,
   valueText,
+  verdictLabel,
   websiteUrl,
   type Competitor,
+  type GetStartedAudience,
   type GetStartedEmail,
-  type GetStartedSegment,
+  type GetStartedOffer,
   type GetStartedSnapshot,
   type GetStartedStepKey,
   type StepPhase,
 } from "@/lib/v2/get-started";
 import { Initials, Shimmer } from "@/components/v2/ui";
+import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { GET_STARTED_LEG } from "./launch";
+import { recommendedBudgetForPreview } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
-import { SegmentCard } from "./segment-card";
 import { stepViewName, withStageTransition } from "./view-transition";
 
 type StepState = StepPhase;
 
 /**
- * How long a finished step stays on the stage before it flies into the rail. The
- * segments are the richest result and the one to pick from, so they hold longer.
+ * How long a finished step stays on the stage before it flies into the rail, and how
+ * long it is held further when the next one is still being prepared. The companies
+ * table is where the visitor reads and clicks, so it is held until the first email is
+ * written (it takes a minute and a half) rather than flying away under the pointer.
  */
-const STAGE_DWELL_MS: Partial<Record<GetStartedStepKey, number>> = { segments: 5000 };
+const STAGE_DWELL_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 6000 };
+const STAGE_HOLD_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 150_000 };
 const DEFAULT_DWELL_MS = 1600;
+const DEFAULT_HOLD_MS = 12_000;
 
-const LEG = newOrgLeg(GET_STARTED_LEG);
+/**
+ * The 100 companies are built page by page, and each company not already cached costs
+ * the anonymous org an Apollo credit (~12 cents). So the first page is small (it lands
+ * in about 3 s) and the rest is built only as the visitor scrolls to it.
+ */
+const FIRST_PAGE = 10;
+const NEXT_PAGE = 30;
+
+const rowKey = (audienceId: string, index: number) => `${audienceId}:${index}`;
 
 export function GetStarted() {
   const params = useSearchParams();
@@ -106,40 +128,54 @@ export function GetStarted() {
   const [overview, setOverview] = useState("");
   const [facts, setFacts] = useState<string[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
-  const [segments, setSegments] = useState<GetStartedSegment[]>([]);
   const [steps, setSteps] = useState<Record<GetStartedStepKey, StepState>>(() => initialSteps());
   const [floorUsd, setFloorUsd] = useState(1);
   const [recommendedUsd, setRecommendedUsd] = useState<number | null>(null);
   const [wallOpen, setWallOpen] = useState(false);
-  // Steps 4 to 6 read ONE segment at a time: its free sample, then an email to one of
-  // its people. The largest segment is read first; clicking another reads that one.
-  const [selectedSeg, setSelectedSeg] = useState<string | null>(null);
-  const [previews, setPreviews] = useState<Record<string, AudiencePreview>>({});
+  const [wallNote, setWallNote] = useState<string | null>(null);
+
+  // Step 3: the offers read off the site; the ONE picked is confirmed on the brand.
+  const [offerProposals, setOfferProposals] = useState<OfferProposal[]>([]);
+  const [offerMain, setOfferMain] = useState(0);
+  const [offer, setOffer] = useState<GetStartedOffer | null>(null);
+  const [offerBusy, setOfferBusy] = useState<number | null>(null);
+  const [offerError, setOfferError] = useState<string | null>(null);
+  // Step 4: who to write to, in words; the ONE picked is created under the offer.
+  const icpRef = useRef("");
+  const [audienceProposals, setAudienceProposals] = useState<AudienceSegmentProposal[]>([]);
+  const [audience, setAudience] = useState<GetStartedAudience | null>(null);
+  const [audienceBusy, setAudienceBusy] = useState<number | null>(null);
+  const [audienceError, setAudienceError] = useState<string | null>(null);
+  const createdAudiences = useRef(new Map<string, GetStartedAudience>());
+  // Step 5: up to 100 companies per picked audience, page by page.
+  const [rows, setRows] = useState<Record<string, AudienceCompanyRow[]>>({});
+  const [rowsDone, setRowsDone] = useState<Record<string, boolean>>({});
+  const [rowsNote, setRowsNote] = useState<Record<string, string>>({});
+  const loading = useRef(new Set<string>());
+  const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
+  // How many rows the visitor has asked to see, per audience (grows as they scroll).
+  const wanted = useRef(new Map<string, number>());
+  const rowCount = useRef(new Map<string, number>());
+  // Step 6: one email per row, the first ones ahead, the rest on click, capped.
   const [emails, setEmails] = useState<Record<string, PreviewEmail>>({});
-  // Step 5, live: each sampled person's email, found and verified one by one.
-  const [checks, setChecks] = useState<Record<string, AudienceEmailChecks>>({});
-  const [checkingIdx, setCheckingIdx] = useState<Record<string, number | null>>({});
-  const [checkNotes, setCheckNotes] = useState<Record<string, string>>({});
-  const [emailNote, setEmailNote] = useState<string | null>(null);
-  const [offerId, setOfferId] = useState<string | null>(null);
-  const inFlight = useRef(new Set<string>());
+  const [writing, setWriting] = useState<Record<string, boolean>>({});
+  const [emailErrors, setEmailErrors] = useState<Record<string, string>>({});
+  const requested = useRef(new Set<string>());
+  const [selectedRow, setSelectedRow] = useState(0);
+  // The row's person, found and verified live (the first 10 rows only).
+  const [checks, setChecks] = useState<Record<string, CompanyRowEmailCheck>>({});
+  const checkQueue = useRef<Promise<void>>(Promise.resolve());
+  const checkAsked = useRef(new Set<string>());
+
   const [restoredBudget, setRestoredBudget] = useState<number | null>(null);
+  const [restoredEmail, setRestoredEmail] = useState<GetStartedEmail | null>(null);
   // The stage shows ONE step: the one the walk is on (`stageIdx`), or one the person
   // opened from the rail or the stepper (`focus`, cleared when the walk moves on).
   const [stageIdx, setStageIdx] = useState(0);
   const [focus, setFocus] = useState<GetStartedStepKey | null>(null);
-  const selectedRef = useRef<string | null>(null);
-  selectedRef.current = selectedSeg;
-
-  // Every signed-out read after the first ones runs through ONE queue: each metered call
-  // holds its worst case against the anonymous seed, so two at once can be refused for
-  // credit neither will spend. A segment picked while an email is being written waits.
-  const readQueue = useRef<Promise<void>>(Promise.resolve());
-  const enqueue = (task: () => Promise<void>) => {
-    readQueue.current = readQueue.current.then(task).catch((e) => console.error("[get-started] queued read failed:", e));
-  };
-  // The email written before a Google round trip, so the wall can show it again.
-  const [restoredEmail, setRestoredEmail] = useState<GetStartedEmail | null>(null);
+  const audienceRef = useRef<GetStartedAudience | null>(null);
+  audienceRef.current = audience;
+  const snapRef = useRef<GetStartedSnapshot | null>(null);
 
   const ran = useRef(false);
 
@@ -173,6 +209,7 @@ export function GetStarted() {
   }, []);
 
   function applySnapshot(s: GetStartedSnapshot) {
+    snapRef.current = s;
     setWebsite(s.website);
     setBrandId(s.brandId);
     setBrandName(s.brandName);
@@ -180,187 +217,358 @@ export function GetStarted() {
     setOverview(s.overview);
     setFacts(s.facts);
     setCompetitors(s.competitors);
-    setSegments(s.segments);
+    setOffer(s.offer);
+    setAudience(s.audience);
     setRestoredBudget(s.budgetUsd);
-    setStageIdx(s.segments.length ? 2 : 0);
     if (s.email) setRestoredEmail(s.email);
-    if (s.segments.length) setSelectedSeg([...s.segments].sort((a, b) => b.count - a.count)[0].audienceId);
     setStarted(true);
     ran.current = true;
+    setStageIdx(s.audience ? 3 : s.offer ? 2 : 0);
     setSteps({
       company: "done",
       competitors: s.competitors.length ? "done" : "failed",
-      segments: s.segments.length ? "done" : "failed",
-      companies: STEPS_NOT_LIVE.has("companies") ? "notLive" : "failed",
-      people: STEPS_NOT_LIVE.has("people") ? "notLive" : "failed",
-      email: STEPS_NOT_LIVE.has("email") ? "notLive" : "failed",
+      offer: s.offer ? "done" : "failed",
+      audience: s.audience ? "done" : "failed",
+      companies: "failed",
+      email: s.email ? "done" : "failed",
     });
+  }
+
+  function saveSnapshot(patch: Partial<GetStartedSnapshot>) {
+    const base = snapRef.current;
+    if (!base) return;
+    const next = { ...base, ...patch };
+    snapRef.current = next;
+    try {
+      sessionStorage.setItem(GET_STARTED_SNAPSHOT_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.error("[get-started] snapshot write failed:", e);
+    }
   }
 
   const setStep = (k: GetStartedStepKey, v: StepState) => setSteps((cur) => ({ ...cur, [k]: v }));
 
-  function markSampleSteps(v: StepState) {
-    setSteps((cur) => {
+  // ── Steps 3 and 4, prepared in the background ─────────────────────────────
+
+  /** The offers the site describes; the brand-service split runs off step 1's read. */
+  async function prepareOffers(id: string, lines: string[], ov: string) {
+    const text = offerSourceText(lines, ov);
+    if (!text) {
+      setStep("offer", "failed");
+      return;
+    }
+    try {
+      const { offers, mainOfferIndex } = await proposeBrandOffers(id, text);
+      setOfferProposals(offers);
+      setOfferMain(mainOfferIndex >= 0 && mainOfferIndex < offers.length ? mainOfferIndex : 0);
+      setStep("offer", offers.length ? "choose" : "failed");
+    } catch (e) {
+      console.error("[get-started] offer proposals failed:", e);
+      setStep("offer", "failed");
+    }
+  }
+
+  /** Who to write to: the brand's ideal customer, split into at most 6 audiences in words. */
+  async function prepareAudiences(id: string) {
+    try {
+      const { icp } = await suggestBrandIcp(id);
+      icpRef.current = icp;
+      const { segments } = await proposeAudienceSegments(id, icp);
+      setAudienceProposals(segments.slice(0, 6));
+      setStep("audience", segments.length ? "choose" : "failed");
+    } catch (e) {
+      console.error("[get-started] audience proposals failed:", e);
+      setStep("audience", "failed");
+    }
+  }
+
+  /** Step 3: confirm the ONE offer picked, so the brand ends with exactly that offer. */
+  async function pickOffer(i: number) {
+    if (!brandId || offer || offerBusy != null) return;
+    const picked = offerProposals[i];
+    if (!picked) return;
+    setOfferBusy(i);
+    setOfferError(null);
+    try {
+      const { chosenOfferId } = await confirmBrandOffers(brandId, [picked], 0);
+      const next = { offerId: chosenOfferId, name: picked.name, description: picked.description };
+      withStageTransition(() => {
+        setOffer(next);
+        setStep("offer", "done");
+        setFocus(null);
+      });
+      saveSnapshot({ offer: next });
+      posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
+      // What the recommended budget buys, priced on this offer. Best effort: the wall
+      // opens with the floor stated when no price is held.
+      recommendedBudgetForPreview(brandId, chosenOfferId, floorUsd)
+        .then(setRecommendedUsd)
+        .catch((e) => console.error("[get-started] price read failed:", e));
+    } catch (e) {
+      console.error("[get-started] offer confirm failed:", e);
+      setOfferError("We could not save this offer. Try again.");
+    } finally {
+      setOfferBusy(null);
+    }
+  }
+
+  /** Step 4: create the ONE audience picked under the offer, then its companies load. */
+  async function pickAudience(i: number) {
+    if (!brandId || !offer || audienceBusy != null) return;
+    const seg = audienceProposals[i];
+    if (!seg) return;
+    const known = createdAudiences.current.get(seg.name);
+    if (known) {
+      chooseAudience(known);
+      return;
+    }
+    setAudienceBusy(i);
+    setAudienceError(null);
+    try {
+      const { audiences } = await confirmAudienceSegments(brandId, offer.offerId, icpRef.current || seg.description, [seg]);
+      const made = audiences[0];
+      if (!made) throw new Error("no audience created");
+      const next = { audienceId: made.id, name: seg.name, description: seg.description };
+      createdAudiences.current.set(seg.name, next);
+      chooseAudience(next);
+      posthog.capture("get_started_audience_picked", { audiences: audienceProposals.length });
+    } catch (e) {
+      console.error("[get-started] audience confirm failed:", e);
+      setAudienceError("We could not set up this audience. Try again.");
+    } finally {
+      setAudienceBusy(null);
+    }
+  }
+
+  function chooseAudience(next: GetStartedAudience) {
+    const loaded = rows[next.audienceId]?.length ?? 0;
+    withStageTransition(() => {
+      setAudience(next);
+      setSelectedRow(0);
+      setFocus(null);
+      setSteps((cur) => ({
+        ...cur,
+        audience: "done",
+        companies: loaded ? "done" : "running",
+        email: firstEmailFor(next.audienceId) ? "done" : loaded ? cur.email : "waiting",
+      }));
+      if (loaded) setStageIdx(4);
+    });
+    saveSnapshot({ audience: next });
+  }
+
+  const writtenKeys = useRef(new Set<string>());
+  const firstEmailFor = (audienceId: string) => [...writtenKeys.current].some((k) => k.startsWith(`${audienceId}:`));
+
+  // ── Step 5: the companies, page by page ──────────────────────────────────
+
+  useEffect(() => {
+    if (audience) wantRows(audience, FIRST_PAGE);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audience?.audienceId]);
+
+  /** Asks for at least `n` rows of an audience; the loader builds up to that and stops. */
+  function wantRows(aud: GetStartedAudience, n: number) {
+    const id = aud.audienceId;
+    wanted.current.set(id, Math.max(n, wanted.current.get(id) ?? 0));
+    if (rowsDone[id] || loading.current.has(id)) return;
+    void loadCompanies(aud);
+  }
+
+  async function loadCompanies(aud: GetStartedAudience) {
+    const id = aud.audienceId;
+    loading.current.add(id);
+    setLoadingMore((cur) => ({ ...cur, [id]: true }));
+    let offset = rowCount.current.get(id) ?? 0;
+    let waits = 0;
+    let first = offset === 0;
+    try {
+      while (offset < (wanted.current.get(id) ?? FIRST_PAGE)) {
+        const limit = Math.min(offset === 0 ? FIRST_PAGE : NEXT_PAGE, 100 - offset);
+        const page = await getAudienceCompanies(id, { offset, limit });
+        if (page.status === "unavailable" && page.reason === "not_built_yet" && waits < 15) {
+          waits += 1;
+          await new Promise((r) => setTimeout(r, 4000));
+          continue;
+        }
+        if (page.status !== "ready") {
+          setRowsNote((cur) => ({ ...cur, [id]: companiesNote(page.reason) }));
+          setRowsDone((cur) => ({ ...cur, [id]: true }));
+          if (audienceRef.current?.audienceId === id && first) {
+            setStep("companies", "failed");
+            setStep("email", "failed");
+          }
+          return;
+        }
+        const got = page.rows;
+        rowCount.current.set(id, offset + got.length);
+        setRows((cur) => ({ ...cur, [id]: mergeRows(cur[id] ?? [], got) }));
+        if (first && got.length) {
+          first = false;
+          if (audienceRef.current?.audienceId === id) {
+            setStep("companies", "done");
+            prewrite(aud, got);
+          }
+        }
+        if (page.done || page.nextOffset == null || got.length === 0) {
+          setRowsDone((cur) => ({ ...cur, [id]: true }));
+          break;
+        }
+        offset = page.nextOffset;
+      }
+      if (audienceRef.current?.audienceId === id && first && offset === 0) {
+        setStep("companies", "failed");
+        setStep("email", "failed");
+      }
+    } catch (e) {
+      console.error("[get-started] companies read failed:", e);
+      const outOfCredit = e instanceof ApiError && (e.status === 402 || (e.status === 502 && e.body?.upstreamStatus === 402));
+      setRowsNote((cur) => ({
+        ...cur,
+        [id]: outOfCredit ? "Your free preview credit is used up, so we stopped finding companies." : "We could not find more companies just now.",
+      }));
+      setRowsDone((cur) => ({ ...cur, [id]: true }));
+      if (audienceRef.current?.audienceId === id && first) {
+        setStep("companies", "failed");
+        setStep("email", "failed");
+      }
+    } finally {
+      loading.current.delete(id);
+      setLoadingMore((cur) => ({ ...cur, [id]: false }));
+    }
+  }
+
+  // ── Step 6: the emails ───────────────────────────────────────────────────
+
+  /** The first rows' emails, written ahead: the first alone (it reads the site), then the next ones together. */
+  function prewrite(aud: GetStartedAudience, first: AudienceCompanyRow[]) {
+    const writable = first.filter(rowWritable).slice(0, PREWRITTEN_EMAILS);
+    if (writable.length === 0) {
+      setStep("email", "failed");
+      return;
+    }
+    setStep("email", "running");
+    void (async () => {
+      await writeEmail(aud, writable[0]);
+      await Promise.all(writable.slice(1).map((r) => writeEmail(aud, r)));
+    })();
+    for (const r of writable) queueCheck(aud.audienceId, r.index);
+  }
+
+  /** Writes one row's email (content-generation, billed to this anonymous org). The same person returns the stored email. */
+  async function writeEmail(aud: GetStartedAudience, row: AudienceCompanyRow): Promise<void> {
+    const key = rowKey(aud.audienceId, row.index);
+    if (requested.current.has(key) || !brandId) return;
+    if (!canWriteAnother(requested.current.size)) return;
+    requested.current.add(key);
+    setWriting((cur) => ({ ...cur, [key]: true }));
+    setEmailErrors((cur) => {
       const next = { ...cur };
-      for (const k of ["companies", "people", "email"] as const) if (!STEPS_NOT_LIVE.has(k)) next[k] = v;
+      delete next[key];
       return next;
+    });
+    try {
+      const mail = await writeWithRetry(() =>
+        previewColdEmail({
+          brandId,
+          recipient: {
+            firstName: row.person.firstName!,
+            lastName: row.person.lastNameObfuscated || row.person.firstName!.slice(0, 1),
+            title: row.person.title!,
+            companyName: row.company.name,
+            ...(row.company.domain ? { companyDomain: row.company.domain } : {}),
+          },
+          audience: aud.name,
+          offerId: offer?.offerId ?? snapRef.current?.offer?.offerId ?? null,
+        }),
+      );
+      writtenKeys.current.add(key);
+      setEmails((cur) => ({ ...cur, [key]: mail }));
+      if (audienceRef.current?.audienceId === aud.audienceId) setStep("email", "done");
+      if (!snapRef.current?.email) saveSnapshot({ email: { subject: mail.subject, bodyText: mail.bodyText, recipient: mail.recipient } });
+    } catch (e) {
+      console.error("[get-started] email preview failed:", e);
+      // A failed write does not count against the cap.
+      requested.current.delete(key);
+      setEmailErrors((cur) => ({
+        ...cur,
+        [key]:
+          e instanceof ApiError && e.status === 402
+            ? "Your free preview credit is used up. This email will be written once your account is set up."
+            : "We could not write this email just now. Click the row to try again.",
+      }));
+      if (audienceRef.current?.audienceId === aud.audienceId && !firstEmailFor(aud.audienceId)) setStep("email", "failed");
+    } finally {
+      setWriting((cur) => ({ ...cur, [key]: false }));
+    }
+  }
+
+  /** One row's person, found and verified live, one row at a time (a billed reveal, ~6s). */
+  function queueCheck(audienceId: string, index: number) {
+    const key = rowKey(audienceId, index);
+    if (index >= 10 || checkAsked.current.has(key)) return;
+    checkAsked.current.add(key);
+    setChecks((cur) => ({ ...cur, [key]: { index, status: "checking", finder: null, verifier: null, verdict: null, deliverable: null, maskedEmail: null, checkedAt: null } }));
+    checkQueue.current = checkQueue.current.then(async () => {
+      try {
+        const got = await checkAudienceCompanyEmail(audienceId, index);
+        setChecks((cur) => ({ ...cur, [key]: got }));
+      } catch (e) {
+        console.error("[get-started] email check failed:", e);
+        setChecks((cur) => {
+          const next = { ...cur };
+          delete next[key];
+          return next;
+        });
+      }
     });
   }
 
-  // Steps 4 and 5: the selected segment's free sample (companies + people, no email).
-  // A sample the producer cannot take YET (its filters are still being built) is asked
-  // again a few times; an empty one is final.
-  useEffect(() => {
-    if (!selectedSeg || STEPS_NOT_LIVE.has("companies") || previews[selectedSeg] || inFlight.current.has(`p:${selectedSeg}`)) return;
-    const id = selectedSeg;
-    inFlight.current.add(`p:${id}`);
-    setSteps((cur) => ({ ...cur, companies: "running", people: "running", email: STEPS_NOT_LIVE.has("email") ? cur.email : "running" }));
-    enqueue(async () => {
-      // Picked away while it waited in the queue: read what is picked now instead.
-      if (selectedRef.current !== id) {
-        inFlight.current.delete(`p:${id}`);
-        return;
-      }
-      let got: AudiencePreview | null = null;
-      for (let i = 0; i < 12; i++) {
-        try {
-          got = await getAudiencePreview(id);
-        } catch (e) {
-          console.error("[get-started] audience preview failed:", e);
-          got = null;
-          break;
-        }
-        if (!(got.status === "unavailable" && got.reason === "not_built_yet")) break;
-        await new Promise((r) => setTimeout(r, 5000));
-      }
-      inFlight.current.delete(`p:${id}`);
-      if (got) setPreviews((cur) => ({ ...cur, [id]: got! }));
-      if (selectedRef.current !== id) return;
-      const ok = got?.status === "ready";
-      setSteps((cur) => ({
-        ...cur,
-        companies: ok && got!.companies.length ? "done" : "failed",
-        // Stays running while the sampled people's emails are found and verified.
-        people: ok && got!.people.length ? "running" : "failed",
-        email: ok && got!.people.length ? cur.email : STEPS_NOT_LIVE.has("email") ? cur.email : "failed",
-      }));
+  /** A row clicked: its email on the stage, written now when it is not yet (up to the cap). */
+  function openRow(index: number) {
+    if (!audience) return;
+    const row = (rows[audience.audienceId] ?? []).find((r) => r.index === index);
+    if (!row) return;
+    const key = rowKey(audience.audienceId, index);
+    const have = !!emails[key] || requested.current.has(key);
+    if (!have && rowWritable(row) && !canWriteAnother(requested.current.size)) {
+      setWallNote(`You have read ${EMAIL_CAP} emails. Start outreach to write one for every company.`);
+      setWallOpen(true);
+      return;
+    }
+    withStageTransition(() => {
+      setSelectedRow(index);
+      setStageIdx(5);
+      setFocus(null);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSeg, previews]);
+    if (!have && rowWritable(row)) {
+      void writeEmail(audience, row);
+      queueCheck(audience.audienceId, index);
+    }
+  }
 
-  // Step 5, live: the sampled people's emails, found and verified ONE person per call
-  // (a billed reveal on this session's org, ~6s each) until human-service says done.
-  // Queued like every other read; a segment picked meanwhile stops the loop, and
-  // picking this one again resumes it where the producer left off.
-  useEffect(() => {
-    if (!selectedSeg) return;
-    const prev = previews[selectedSeg];
-    if (prev?.status !== "ready" || !prev.people.length) return;
-    const known = checks[selectedSeg];
-    if ((known && (known.done || known.status !== "ready")) || checkNotes[selectedSeg] || inFlight.current.has(`c:${selectedSeg}`)) return;
-    const id = selectedSeg;
-    inFlight.current.add(`c:${id}`);
-    setStep("people", "running");
-    enqueue(async () => {
-      try {
-        if (selectedRef.current !== id) return;
-        let state = await getAudienceEmailChecks(id);
-        setChecks((cur) => ({ ...cur, [id]: state }));
-        let calls = 0;
-        while (shouldCheckNext(state, calls) && selectedRef.current === id) {
-          const next = state.people.find((x) => x.status === "pending") ?? null;
-          setCheckingIdx((cur) => ({ ...cur, [id]: next?.index ?? null }));
-          state = await checkNextAudienceEmail(id);
-          calls += 1;
-          setChecks((cur) => ({ ...cur, [id]: state }));
-        }
-        if (selectedRef.current !== id) return;
-        if (!state.done && state.status === "ready") {
-          console.error("[get-started] email checks did not settle", { audienceId: id, calls, summary: state.summary });
-          setCheckNotes((cur) => ({ ...cur, [id]: "Some emails could not be checked." }));
-        }
-        setStep("people", "done");
-      } catch (e) {
-        console.error("[get-started] email check failed:", e);
-        setCheckNotes((cur) => ({
-          ...cur,
-          [id]:
-            e instanceof ApiError && e.status === 402
-              ? "Your free preview credit is used up, so we stopped checking emails."
-              : "We could not check the emails just now.",
-        }));
-        if (selectedRef.current === id) setStep("people", "done");
-      } finally {
-        setCheckingIdx((cur) => ({ ...cur, [id]: null }));
-        inFlight.current.delete(`c:${id}`);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSeg, previews, checks, checkNotes]);
+  // ── The stage ────────────────────────────────────────────────────────────
 
-  // Step 6: one email written for one of the sampled people, billed to this
-  // session's anonymous org. The same brand + person returns the stored email.
-  useEffect(() => {
-    if (!selectedSeg || !brandId || STEPS_NOT_LIVE.has("email") || emails[selectedSeg] || inFlight.current.has(`e:${selectedSeg}`)) return;
-    const prev = previews[selectedSeg];
-    const person = prev?.status === "ready" ? prev.people.find((x) => x.firstName && x.title && x.company) : undefined;
-    if (!person) return;
-    const id = selectedSeg;
-    const seg = segments.find((x) => x.audienceId === id);
-    inFlight.current.add(`e:${id}`);
-    setEmailNote(null);
-    setStep("email", "running");
-    enqueue(async () => {
-      if (selectedRef.current !== id) {
-        inFlight.current.delete(`e:${id}`);
-        return;
-      }
-      try {
-        const mail = await writeWithRetry(() => previewColdEmail({
-          brandId,
-          recipient: {
-            firstName: person.firstName!,
-            lastName: person.lastNameObfuscated || person.firstName!.slice(0, 1),
-            title: person.title!,
-            companyName: person.company!,
-          },
-          audience: seg?.name,
-          offerId,
-        }));
-        setEmails((cur) => ({ ...cur, [id]: mail }));
-        if (selectedRef.current === id) setStep("email", "done");
-        const snap = parseGetStartedSnapshot(sessionStorage.getItem(GET_STARTED_SNAPSHOT_KEY));
-        if (snap) saveSnapshot({ ...snap, email: { subject: mail.subject, bodyText: mail.bodyText, recipient: mail.recipient } });
-      } catch (e) {
-        console.error("[get-started] email preview failed:", e);
-        if (selectedRef.current !== id) return;
-        setEmailNote(
-          e instanceof ApiError && e.status === 402
-            ? "Your free preview credit is used up, so we stopped before writing the email. It will be written once your account is set up."
-            : "We could not write the email just now.",
-        );
-        setStep("email", "failed");
-      } finally {
-        inFlight.current.delete(`e:${id}`);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSeg, previews, emails, brandId, offerId, segments]);
-
-  // The stage walks forward on its own: a finished step is held for a moment, then
-  // flies into the rail as the next one takes the stage.
+  // The stage walks forward on its own: a finished step is held for a moment (longer
+  // while the next one is still being prepared), then flies into the rail as the next
+  // one takes the stage.
   const phases = GET_STARTED_STEPS.map((s) => steps[s.key]);
   const phaseKey = phases.join(",");
+  const settledAt = useRef<{ idx: number; at: number } | null>(null);
   useEffect(() => {
     const mv = stageMove(phases, stageIdx);
     if (!mv) return;
+    const here = GET_STARTED_STEPS[stageIdx].key;
+    if (!settledAt.current || settledAt.current.idx !== stageIdx) settledAt.current = { idx: stageIdx, at: Date.now() };
+    const target = mv.dwell ? stageDwellMs(phases[mv.to], STAGE_DWELL_MS[here] ?? DEFAULT_DWELL_MS, STAGE_HOLD_MS[here] ?? DEFAULT_HOLD_MS) : 0;
+    const wait = Math.max(0, target - (Date.now() - settledAt.current.at));
     const t = setTimeout(
       () =>
         withStageTransition(() => {
           setStageIdx(mv.to);
           setFocus(null);
         }),
-      mv.dwell ? (STAGE_DWELL_MS[GET_STARTED_STEPS[stageIdx].key] ?? DEFAULT_DWELL_MS) : 0,
+      wait,
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -370,32 +578,6 @@ export function GetStarted() {
   function openStep(key: GetStartedStepKey) {
     const idx = GET_STARTED_STEPS.findIndex((s) => s.key === key);
     withStageTransition(() => setFocus(idx === stageIdx ? null : key));
-  }
-
-  /**
-   * Picks a segment: its sample (steps 4 to 6) takes the stage. A segment read before
-   * shows what was read; a new one is queued behind whatever read is running.
-   */
-  function selectSegment(id: string) {
-    const prev = previews[id];
-    const mail = emails[id];
-    const ready = prev?.status === "ready";
-    withStageTransition(() => {
-      setSelectedSeg(id);
-      setFocus(null);
-      setStageIdx(3);
-      if (prev) {
-        setSteps((cur) => ({
-          ...cur,
-          companies: ready && prev.companies.length ? "done" : "failed",
-          people: !ready || !prev.people.length ? "failed" : checksSettled(checks[id]) || checkNotes[id] ? "done" : "running",
-          email: mail ? "done" : STEPS_NOT_LIVE.has("email") ? cur.email : ready && prev.people.length ? "running" : "failed",
-        }));
-      } else {
-        markSampleSteps("running");
-      }
-    });
-    posthog.capture("get_started_segment_selected");
   }
 
   async function start(raw: string) {
@@ -441,104 +623,56 @@ export function GetStarted() {
       return;
     }
 
-    setStep("competitors", "running");
-    setStep("segments", "running");
     const host = hostOf(url);
-
-    // ONE read at a time, deliberately. Every metered call first HOLDS its worst case
-    // against the anonymous org's small seed, so reads in parallel stack their holds and
-    // the third one is refused for credit the first two will never actually spend
-    // (measured: ~$1.30 spent, a $2.20 hold refused). The company and its competitors
-    // are one extraction for the same reason.
-    let read = { ov: "", fs: [] as string[] };
-    let list: Competitor[] = [];
-    try {
-      const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS], {
-        mode: "suggest",
-        urlStrategy: "landing",
-      });
-      read = {
-        ov: valueText(r.fields.companyOverview?.value),
-        fs: valueLines(r.fields.companyFacts?.value).slice(0, 4),
-      };
-      list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
-      setOverview(read.ov);
-      setFacts(read.fs);
-      setCompetitors(list);
-      setStep("company", read.ov || read.fs.length ? "done" : "failed");
-      setStep("competitors", list.length ? "done" : "failed");
-    } catch (e) {
-      console.error("[get-started] company read failed:", e);
-      setStep("company", "failed");
-      setStep("competitors", "failed");
-    }
-
-    let found: GetStartedSegment[] = [];
-    try {
-      const { icp } = await suggestBrandIcp(id);
-      const { candidates } = await suggestAudiences(id, icp);
-      found = candidates
-        .filter((c) => !c.validationError)
-        .map((c) => ({ audienceId: c.audienceId, name: c.name, rationale: c.rationale, count: c.count, criteria: segmentCriteria(c.filters) }));
-      setSegments(found);
-      setStep("segments", found.length ? "done" : "failed");
-      if (found.length) setSelectedSeg([...found].sort((a, b) => b.count - a.count)[0].audienceId);
-    } catch (e) {
-      console.error("[get-started] segment read failed:", e);
-      setStep("segments", "failed");
-    }
-
-    setSteps((cur) => {
-      const next = { ...cur };
-      for (const k of STEPS_NOT_LIVE) next[k] = "notLive";
-      return next;
-    });
-    if (found.length === 0) markSampleSteps("failed");
-    posthog.capture("get_started_preview_ready", { segments: found.length, competitors: list.length });
-
-    saveSnapshot({
-      version: 1,
+    snapRef.current = {
+      version: 2,
       website: url,
       brandId: id,
       brandName: createdName,
       domain: host,
-      overview: read.ov,
-      facts: read.fs,
-      competitors: list,
-      segments: found,
+      overview: "",
+      facts: [],
+      competitors: [],
+      offer: null,
+      audience: null,
       budgetUsd: null,
-    });
+      email: null,
+    };
+    saveSnapshot({});
+    setSteps((cur) => ({ ...cur, competitors: "running", offer: "running", audience: "running" }));
 
-    // What the recommended budget buys, priced on the brand's offer. Best effort: the
-    // wall opens with an empty field and the floor stated when no price is held.
-    // Queued, so the first sample read (picked above) waits behind it.
-    enqueue(async () => {
-    try {
-      const { offers } = await listBrandOffers(id);
-      const offerId = offers[0]?.offerId;
-      if (offerId) setOfferId(offerId);
-      if (offerId) {
-        const ladder = await getWorkflowProjectionLadder({ featureSlug: NEW_ORG_CHANNEL_SLUG, brandId: id, offerId, leg: GET_STARTED_LEG });
-        const rec = ladder.recommendedWorkflowDynastySlug;
-        const row = ladder.rows.find((r) => r.audienceId === null && r.workflow.workflowDynastySlug === rec);
-        setRecommendedUsd(recommendedDailyBudgetUsd(LEG, row?.resolved.costPerOutcomeUsd ?? null, floorUsd));
+    // Two reads in parallel, both started now: the site read (steps 1, 2 and the offer
+    // lines, ONE extraction) then the offer split; and the ideal customer then the
+    // audience split. The anonymous org holds $30, enough for both reads' holds at once.
+    const siteRead = (async () => {
+      try {
+        const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS, ...OFFER_FIELDS], {
+          mode: "suggest",
+          urlStrategy: "landing",
+        });
+        const ov = valueText(r.fields.companyOverview?.value);
+        const fs = valueLines(r.fields.companyFacts?.value).slice(0, 4);
+        const list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
+        const lines = valueLines(r.fields.offerLines?.value);
+        setOverview(ov);
+        setFacts(fs);
+        setCompetitors(list);
+        setStep("company", ov || fs.length ? "done" : "failed");
+        setStep("competitors", list.length ? "done" : "failed");
+        saveSnapshot({ overview: ov, facts: fs, competitors: list });
+        await prepareOffers(id, lines, ov);
+      } catch (e) {
+        console.error("[get-started] company read failed:", e);
+        setStep("company", "failed");
+        setStep("competitors", "failed");
+        setStep("offer", "failed");
       }
-    } catch (e) {
-      console.error("[get-started] price read failed:", e);
-    }
-    });
+    })();
+    await Promise.all([siteRead, prepareAudiences(id)]);
+    posthog.capture("get_started_preview_ready");
   }
 
-  function saveSnapshot(s: GetStartedSnapshot) {
-    try {
-      sessionStorage.setItem(GET_STARTED_SNAPSHOT_KEY, JSON.stringify(s));
-    } catch (e) {
-      console.error("[get-started] snapshot write failed:", e);
-    }
-  }
-
-  const liveDone = steps.company !== "running" && steps.competitors !== "running" && steps.segments !== "running";
-  const canLaunch = started && liveDone && !!brandId && segments.length > 0;
+  const canLaunch = started && !!brandId && !!offer && !!audience;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
   if (!started) {
@@ -558,7 +692,15 @@ export function GetStarted() {
   }
 
   const stagedKey: GetStartedStepKey = focus ?? GET_STARTED_STEPS[stageIdx].key;
-  const selectedSegment = segments.find((x) => x.audienceId === selectedSeg) ?? null;
+  const audRows = audience ? rows[audience.audienceId] ?? [] : [];
+  const writtenCount = Object.keys(emails).length;
+  const selectedKey = audience ? rowKey(audience.audienceId, selectedRow) : null;
+  const pick =
+    stagedKey === "offer" && steps.offer === "choose"
+      ? "Pick the offer to sell first."
+      : stagedKey === "audience" && steps.audience === "choose"
+        ? "Pick who to write to first."
+        : null;
   const journal: JournalData = {
     steps,
     staged: stagedKey,
@@ -566,41 +708,69 @@ export function GetStarted() {
     domain,
     overview,
     competitors,
-    segments,
-    selected: selectedSeg,
-    preview: selectedSeg ? previews[selectedSeg] : undefined,
-    mail: selectedSeg ? emails[selectedSeg] : undefined,
-    onSelect: selectSegment,
+    offer,
+    audience,
+    audienceProposals,
+    audienceBusy,
+    rows: audRows,
+    written: writtenCount,
+    onPickAudience: (i) => void pickAudience(i),
     onFocus: openStep,
   };
 
   function stageFor(key: GetStartedStepKey): React.ReactNode {
     if (key === "company") return <CompanyCard state={steps.company} name={brandName} domain={domain} website={website} overview={overview} facts={facts} />;
     if (key === "competitors") return <CompetitorsCard state={steps.competitors} competitors={competitors} />;
-    if (key === "segments") return <SegmentsStage state={steps.segments} segments={segments} selected={selectedSeg} previews={previews} onSelect={selectSegment} />;
-    if (key === "companies")
-      return STEPS_NOT_LIVE.has("companies") ? (
-        <NotLiveCard index={4} title="Companies that match" body="Real companies for each segment will be listed here. This step is not live yet." />
-      ) : (
-        <CompaniesCard state={steps.companies} preview={selectedSeg ? previews[selectedSeg] : undefined} segmentName={selectedSegment?.name ?? null} />
+    if (key === "offer")
+      return (
+        <OfferStage state={steps.offer} proposals={offerProposals} main={offerMain} picked={offer} busy={offerBusy} error={offerError} onPick={(i) => void pickOffer(i)} />
       );
-    if (key === "people")
-      return STEPS_NOT_LIVE.has("people") ? (
-        <NotLiveCard index={5} title="Decision makers" body="The people we would write to at those companies, by name and role, will be listed here. This step is not live yet." />
-      ) : (
-        <PeopleCard
-          state={steps.people}
-          preview={selectedSeg ? previews[selectedSeg] : undefined}
-          checks={selectedSeg ? checks[selectedSeg] : undefined}
-          checkingIdx={selectedSeg ? checkingIdx[selectedSeg] ?? null : null}
-          checkNote={selectedSeg ? checkNotes[selectedSeg] ?? null : null}
+    if (key === "audience")
+      return (
+        <AudienceStage
+          state={steps.audience}
+          proposals={audienceProposals}
+          picked={audience}
+          busy={audienceBusy}
+          error={audienceError}
+          waitingForOffer={!offer}
+          onPick={(i) => void pickAudience(i)}
         />
       );
-    return STEPS_NOT_LIVE.has("email") ? (
-      <NotLiveCard index={6} title="Your first email" body="One email written for one of those people will appear here, ready to send. This step is not live yet." />
-    ) : (
-      <EmailCard state={steps.email} mail={selectedSeg ? emails[selectedSeg] : undefined} note={emailNote} />
+    if (key === "companies")
+      return (
+        <CompaniesStage
+          state={steps.companies}
+          audienceName={audience?.name ?? null}
+          rows={audRows}
+          done={audience ? !!rowsDone[audience.audienceId] : false}
+          loadingMore={audience ? !!loadingMore[audience.audienceId] : false}
+          onMore={() => audience && wantRows(audience, (rowCount.current.get(audience.audienceId) ?? 0) + NEXT_PAGE)}
+          note={audience ? rowsNote[audience.audienceId] ?? null : null}
+          emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
+          onOpen={openRow}
+        />
+      );
+    return (
+      <EmailsStage
+        state={steps.email}
+        rows={audRows}
+        selected={selectedRow}
+        mail={selectedKey ? emails[selectedKey] : undefined}
+        error={selectedKey ? emailErrors[selectedKey] ?? null : null}
+        emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
+        check={(i) => (audience ? checks[rowKey(audience.audienceId, i)] : undefined)}
+        written={requested.current.size}
+        onOpen={openRow}
+      />
     );
+  }
+
+  function emailStateFor(key: string): RowEmailState {
+    if (emails[key]) return "written";
+    if (writing[key]) return "writing";
+    if (emailErrors[key]) return "failed";
+    return "none";
   }
 
   return (
@@ -617,7 +787,14 @@ export function GetStarted() {
               </p>
               <p className="k-fg3 hidden text-[12px] sm:block">No charge today. We write and send the emails, you get the replies.</p>
             </div>
-            <button type="button" className="k-btn-accent gs-glow h-8 px-3" onClick={() => setWallOpen(true)}>
+            <button
+              type="button"
+              className="k-btn-accent gs-glow h-8 px-3"
+              onClick={() => {
+                setWallNote(null);
+                setWallOpen(true);
+              }}
+            >
               Start outreach
             </button>
           </div>
@@ -627,9 +804,9 @@ export function GetStarted() {
       <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[296px_minmax(0,1fr)]">
         <JournalRail {...journal} />
         <main className="k-scroll lg:min-h-0 lg:overflow-y-auto">
-          <div className="mx-auto max-w-[920px] px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-8">
             <Stepper steps={steps} staged={stagedKey} onOpen={openStep} nextLit={steps.email === "done"} />
-            <LiveStatus current={current} domain={domain} />
+            <LiveStatus current={current} domain={domain} pick={pick} />
             <div className="mt-4">
               <JournalStrip {...journal} />
             </div>
@@ -649,7 +826,14 @@ export function GetStarted() {
 
             {canLaunch && stagedKey === "email" && (
               <div className="gs-in mt-6 flex justify-end" style={{ animationDelay: "200ms" }}>
-                <button type="button" className="k-btn-accent h-9 px-4" onClick={() => setWallOpen(true)}>
+                <button
+                  type="button"
+                  className="k-btn-accent h-9 px-4"
+                  onClick={() => {
+                    setWallNote(null);
+                    setWallOpen(true);
+                  }}
+                >
                   Start outreach with $30 free
                 </button>
               </div>
@@ -658,21 +842,19 @@ export function GetStarted() {
         </main>
       </div>
 
-      {wallOpen && brandId && (
+      {wallOpen && brandId && offer && audience && (
         <AccountCardWall
           brandId={brandId}
           website={websiteUrl(website)}
           brandName={brandName ?? domain ?? website}
-          offerSource={overview}
-          segments={segments}
-          email={(selectedSeg ? emails[selectedSeg] : undefined) ?? restoredEmail}
+          offer={offer}
+          audience={audience}
+          note={wallNote}
+          email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           floorUsd={floorUsd}
           recommendedUsd={restoredBudget ?? recommendedUsd}
           budgetChosen={restoredBudget != null}
-          onBudget={(usd) => {
-            const snap = parseGetStartedSnapshot(sessionStorage.getItem(GET_STARTED_SNAPSHOT_KEY));
-            if (snap) saveSnapshot({ ...snap, budgetUsd: usd });
-          }}
+          onBudget={(usd) => saveSnapshot({ budgetUsd: usd })}
           onClose={() => setWallOpen(false)}
         />
       )}
@@ -681,8 +863,35 @@ export function GetStarted() {
 }
 
 function initialSteps(): Record<GetStartedStepKey, StepState> {
-  return { company: "waiting", competitors: "waiting", segments: "waiting", companies: "waiting", people: "waiting", email: "waiting" };
+  return { company: "waiting", competitors: "waiting", offer: "waiting", audience: "waiting", companies: "waiting", email: "waiting" };
 }
+
+/** A row we can write to: the person has a first name and a title. */
+function rowWritable(r: AudienceCompanyRow): boolean {
+  return !!r.person.firstName && !!r.person.title;
+}
+
+/** Rows merged by index, in order: a page asked twice never doubles a company. */
+function mergeRows(cur: AudienceCompanyRow[], got: AudienceCompanyRow[]): AudienceCompanyRow[] {
+  const by = new Map(cur.map((r) => [r.index, r]));
+  for (const r of got) by.set(r.index, r);
+  return [...by.values()].sort((a, b) => a.index - b.index);
+}
+
+function firstWritten(emails: Record<string, PreviewEmail>, audienceId: string): PreviewEmail | undefined {
+  const key = Object.keys(emails)
+    .filter((k) => k.startsWith(`${audienceId}:`))
+    .sort((a, b) => Number(a.split(":")[1]) - Number(b.split(":")[1]))[0];
+  return key ? emails[key] : undefined;
+}
+
+function companiesNote(reason: string | null): string {
+  if (reason === "no_match") return "We found no company matching this audience. Pick another one.";
+  if (reason === "not_built_yet") return "This audience is still being prepared. Come back in a minute, or pick another one.";
+  return "The companies of this audience cannot be listed for free. Pick another one.";
+}
+
+type RowEmailState = "none" | "writing" | "written" | "failed";
 
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
@@ -707,7 +916,7 @@ function Hero({
           See who we would sell to for you.
         </h1>
         <p className="gs-in k-fg2 mt-2 text-[14px] leading-6" style={{ animationDelay: "120ms" }}>
-          Type your website. In about a minute we read your company, find your competitors and size the segments worth writing to. No account needed.
+          Type your website. In about a minute we read your company, find your competitors, and show you 100 companies we would write to, with the first emails. No account needed.
         </p>
         <form
           className="gs-in k-card mt-6 flex items-center gap-2 p-2"
@@ -731,7 +940,7 @@ function Hero({
           </button>
         </form>
         <ol className="gs-in mt-5 grid grid-cols-3 gap-2" style={{ animationDelay: "240ms" }} aria-label="What you will see">
-          {["Your company", "Your segments", "Your first email"].map((label, i) => (
+          {["Your company", "100 companies", "Your first emails"].map((label, i) => (
             <li key={label} className="k-fg3 flex items-center gap-2 text-[12px]">
               <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--line-strong)] text-[10px] tabular-nums">{i + 1}</span>
               {label}
@@ -849,6 +1058,12 @@ function StepMark({ index, state }: { index: number; state: StepState }) {
         <span className="k-dot-pulse absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" aria-hidden="true" />
       </span>
     );
+  if (state === "choose")
+    return (
+      <span key="choose" className="gs-pop inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--accent)] text-[10px] tabular-nums text-[var(--accent)]" aria-label="Your pick">
+        {index}
+      </span>
+    );
   if (state === "done")
     return (
       <span key="done" className="gs-pop inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg-strong)] text-[10px] text-white tabular-nums">
@@ -863,25 +1078,30 @@ function StepMark({ index, state }: { index: number; state: StepState }) {
 const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   company: (d) => `Reading ${d ?? "your site"} and finding your competitors`,
   competitors: () => "Finding your competitors",
-  segments: () => "Sizing the segments worth writing to",
-  companies: () => "Taking a free sample of real companies in this segment",
-  people: () => "Finding the decision makers at those companies",
-  email: () => "Writing your first email. This one takes about a minute and a half.",
+  offer: () => "Reading what you sell",
+  audience: () => "Working out who to write to",
+  companies: () => "Finding companies that match, with the right person at each",
+  email: () => "Writing your first emails. The first one takes about a minute and a half.",
 };
 
-/** What is being worked on right now, and for how long. Every line names a real step. */
-function LiveStatus({ current, domain }: { current: number; domain: string | null }) {
-  const key = current >= 0 ? GET_STARTED_STEPS[current].key : null;
+/**
+ * What is being worked on right now, and for how long, or the pick the stage is
+ * waiting on. Every line names a real step.
+ */
+function LiveStatus({ current, domain, pick }: { current: number; domain: string | null; pick: string | null }) {
+  const key = pick ? null : current >= 0 ? GET_STARTED_STEPS[current].key : null;
   const secs = useElapsed(key);
   return (
-    <p key={key ?? "ready"} className="gs-in mt-4 flex min-h-5 items-center gap-2 text-[13px]">
-      {key ? (
+    <p key={pick ? `pick:${pick}` : key ?? "ready"} className="gs-in mt-4 flex min-h-5 items-center gap-2 text-[13px]">
+      {pick ? (
+        <span className="gs-pop h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+      ) : key ? (
         <span className="k-dot-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" />
       ) : (
         <span className="gs-pop h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-teal)]" />
       )}
       <span className="k-fg2 min-w-0" aria-live="polite">
-        {key ? STATUS[key](domain) : "Your preview is ready."}
+        {pick ?? (key ? STATUS[key](domain) : "Your preview is ready.")}
       </span>
       {key && (
         <span className="k-mono k-fg3 text-[12px] tabular-nums" aria-hidden="true">
@@ -938,6 +1158,13 @@ function StateWord({ state, doneLabel }: { state: StepState; doneLabel?: React.R
       <span key="done" className="gs-pop k-fg3 inline-flex items-center gap-1.5 text-[12px] tabular-nums">
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
         {doneLabel ?? "Done"}
+      </span>
+    );
+  if (state === "choose")
+    return (
+      <span key="choose" className="gs-pop inline-flex items-center gap-1.5 text-[12px] text-[var(--accent)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+        Your pick
       </span>
     );
   if (state === "failed") return <span className="text-[12px] text-[var(--data-amber)]">Nothing found</span>;
@@ -1033,53 +1260,479 @@ function CompetitorsCard({ state, competitors }: { state: StepState; competitors
 }
 
 /** Step 3 on the stage: every segment as a card with its size ring; picking one samples it. */
-function SegmentsStage({
+
+/** Step 3: the offers read off the site. Picking one confirms it on the brand. */
+function OfferStage({
   state,
-  segments,
-  selected,
-  previews,
-  onSelect,
+  proposals,
+  main,
+  picked,
+  busy,
+  error,
+  onPick,
 }: {
   state: StepState;
-  segments: GetStartedSegment[];
-  selected: string | null;
-  previews: Record<string, AudiencePreview>;
-  onSelect: (id: string) => void;
+  proposals: OfferProposal[];
+  main: number;
+  picked: GetStartedOffer | null;
+  busy: number | null;
+  error: string | null;
+  onPick: (i: number) => void;
 }) {
-  const max = Math.max(1, ...segments.map((s) => s.count));
-  const total = segments.reduce((n, s) => n + s.count, 0);
   return (
-    <section className="grid gap-3">
-      <div className="flex items-center gap-2">
-        <span className="k-label">Step 3</span>
-        <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">Segments to write to</h2>
-        <span className="ml-auto shrink-0">
-          <StateWord state={state} doneLabel={segments.length === 1 ? "1 segment" : `${segments.length} segments`} />
-        </span>
-      </div>
+    <StepCard index={3} title="What you sell" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
       {state === "running" || state === "waiting" ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="k-card p-4">
-              <Rows n={4} />
-            </div>
-          ))}
-        </div>
-      ) : segments.length === 0 ? (
-        <div className="k-card p-4">
-          <p className="k-fg3 text-[13px]">We could not size a segment for your company. Try again in a moment.</p>
-        </div>
+        <OptionSkeleton />
+      ) : proposals.length === 0 && !picked ? (
+        <p className="k-fg3 text-[13px]">We could not tell what you sell from your site. Start outreach and tell us in your dashboard.</p>
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
-            <CountUp value={total} format={(n) => Math.round(n).toLocaleString("en-US")} ms={1100} /> people across your segments. Pick one to see who is in it.
+            {proposals.length > 1 ? `We found ${proposals.length} things you sell. Pick the one to sell first; you can add the others later.` : "This is what we would sell for you."}
           </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {segments.map((s, i) => (
-              <SegmentCard key={s.audienceId} segment={s} index={i} max={max} selected={selected === s.audienceId} preview={previews[s.audienceId]} onSelect={() => onSelect(s.audienceId)} />
-            ))}
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {proposals.map((o, i) => {
+              const on = picked ? picked.name === o.name : false;
+              const locked = !!picked && !on;
+              return (
+                <button
+                  key={`${o.name}-${i}`}
+                  type="button"
+                  onClick={() => onPick(i)}
+                  disabled={!!picked || busy != null}
+                  aria-pressed={on}
+                  style={stagger(i, 80)}
+                  className={`gs-in k-card flex items-start gap-3 p-3 text-left transition-shadow duration-200 ${on ? "ring-1 ring-[var(--accent)]" : locked ? "opacity-50" : "k-hover"}`}
+                >
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+                    <OfferIcon token={o.icon} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="k-fg text-[14px] font-medium leading-5">{o.name}</span>
+                      {i === main && proposals.length > 1 && !picked && <span className="k-chip">Main</span>}
+                    </span>
+                    <span className="k-fg2 mt-1 block text-[12.5px] leading-5">{o.description}</span>
+                    {busy === i && <span className="k-fg3 mt-1.5 block text-[12px]">Saving your pick</span>}
+                    {on && <span className="k-accent-text mt-1.5 block text-[12px]">Picked</span>}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
+      )}
+    </StepCard>
+  );
+}
+
+/** Step 4: who to write to, in words (at most 6). Picking one builds its companies. */
+function AudienceStage({
+  state,
+  proposals,
+  picked,
+  busy,
+  error,
+  waitingForOffer,
+  onPick,
+}: {
+  state: StepState;
+  proposals: AudienceSegmentProposal[];
+  picked: GetStartedAudience | null;
+  busy: number | null;
+  error: string | null;
+  waitingForOffer: boolean;
+  onPick: (i: number) => void;
+}) {
+  return (
+    <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
+      {state === "running" || state === "waiting" ? (
+        <OptionSkeleton />
+      ) : proposals.length === 0 ? (
+        <p className="k-fg3 text-[13px]">We could not work out who to write to. Try again in a moment.</p>
+      ) : (
+        <>
+          <p className="k-fg2 text-[13px]">
+            {waitingForOffer ? "Pick your offer first, then who to write to." : "Pick one audience. We find 100 companies in it and the right person at each."}
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {proposals.map((a, i) => {
+              const on = picked?.name === a.name;
+              return (
+                <button
+                  key={`${a.name}-${i}`}
+                  type="button"
+                  onClick={() => onPick(i)}
+                  disabled={waitingForOffer || busy != null}
+                  aria-pressed={on}
+                  style={stagger(i, 70)}
+                  className={`gs-in k-card flex flex-col p-3 text-left transition-shadow duration-200 ${on ? "ring-1 ring-[var(--accent)]" : "k-hover"}`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--data-violet)_14%,transparent)] text-[var(--data-violet)]">
+                      <OfferIcon token={a.icon} />
+                    </span>
+                    <span className="k-fg min-w-0 text-[14px] font-medium leading-5">{a.name}</span>
+                  </span>
+                  <span className="k-fg2 mt-2 block text-[12.5px] leading-5">{a.description}</span>
+                  {busy === i && <span className="k-fg3 mt-2 block text-[12px]">Finding companies</span>}
+                  {on && busy !== i && <span className="k-accent-text mt-2 block text-[12px]">Picked</span>}
+                </button>
+              );
+            })}
+          </div>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+function OptionSkeleton() {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="k-inset rounded-lg p-3">
+          <Rows n={3} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Five dots filled by size, then the figure: Explee's size cell. */
+function SizeCell({ count }: { count: number | null }) {
+  const label = employeesLabel(count);
+  if (!label) return <span className="k-fg4">{"—"}</span>;
+  const n = sizeDots(count);
+  return (
+    <span className="inline-flex items-center gap-2 tabular-nums">
+      <span className="inline-flex gap-[3px]" aria-hidden="true">
+        {[1, 2, 3, 4, 5].map((d) => (
+          <span key={d} className={`h-1 w-1 rounded-full ${d <= n ? "bg-[var(--fg-2)]" : "bg-[var(--line-strong)]"}`} />
+        ))}
+      </span>
+      {label}
+    </span>
+  );
+}
+
+function EmailDot({ state }: { state: RowEmailState }) {
+  if (state === "writing")
+    return (
+      <span className="k-fg3 inline-flex items-center gap-1.5 text-[12px]">
+        <span aria-hidden className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
+        Writing
+      </span>
+    );
+  if (state === "written")
+    return (
+      <span className="gs-pop inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
+        Written
+      </span>
+    );
+  if (state === "failed") return <span className="text-[12px] text-[var(--data-amber)]">Not written</span>;
+  return <span className="k-fg3 text-[12px]">Read email</span>;
+}
+
+/**
+ * Step 5: the audience's companies with the ONE person we would write to at each,
+ * streamed page by page. A row opens that person's email.
+ */
+function CompaniesStage({
+  state,
+  audienceName,
+  rows,
+  done,
+  loadingMore,
+  onMore,
+  note,
+  emailState,
+  onOpen,
+}: {
+  state: StepState;
+  audienceName: string | null;
+  rows: AudienceCompanyRow[];
+  done: boolean;
+  loadingMore: boolean;
+  onMore: () => void;
+  note: string | null;
+  emailState: (index: number) => RowEmailState;
+  onOpen: (index: number) => void;
+}) {
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <span className="k-label">Step 5</span>
+        <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">{audienceName ? `Companies in ${audienceName}` : "Companies that match"}</h2>
+        <span className="ml-auto shrink-0">
+          <StateWord
+            state={state === "done" && loadingMore ? "running" : state}
+            doneLabel={<><CountUp value={rows.length} format={(n) => String(Math.round(n))} ms={600} /> found</>}
+          />
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        state === "failed" ? (
+          <div className="k-card p-4">
+            <p className="k-fg3 text-[13px]">{note ?? "We found no company for this audience. Pick another one."}</p>
+          </div>
+        ) : (
+          <div className="k-card p-4">
+            <p className="k-fg3 mb-3 text-[12px]">Finding companies that match, and the right person at each.</p>
+            <Rows n={8} />
+          </div>
+        )
+      ) : (
+        <div className="k-card overflow-hidden">
+          <div className="k-scroll overflow-x-auto">
+            <table className="w-full min-w-[860px] text-[13px]">
+              <thead>
+                <tr className="border-b border-[var(--line-subtle)]">
+                  <th className="k-label px-3 py-2.5 text-left font-normal first:pl-4">Company</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal">Description</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal">Location</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal">Size</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal">We write to</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal last:pr-4">Email</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => {
+                  const name = [r.person.firstName, r.person.lastNameObfuscated].filter(Boolean).join(" ");
+                  return (
+                    <tr
+                      key={r.index}
+                      className="gs-in k-row cursor-pointer border-b border-[var(--line-subtle)] last:border-0"
+                      style={stagger(i % NEXT_PAGE, 30)}
+                      onClick={() => onOpen(r.index)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onOpen(r.index);
+                        }
+                      }}
+                      tabIndex={0}
+                      aria-label={`Read the email to ${name || r.company.name}`}
+                    >
+                      <td className="px-3 py-2 first:pl-4">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <BrandLogo domain={r.company.domain} size={20} className="shrink-0 rounded-md" />
+                          <span className="min-w-0">
+                            <span className="k-fg block max-w-[200px] truncate font-medium">{r.company.name}</span>
+                            {r.company.domain && <span className="k-fg3 k-mono block max-w-[200px] truncate text-[12px]">{r.company.domain}</span>}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="k-fg2 px-3 py-2">
+                        {r.company.description ? <span className="line-clamp-2 max-w-[280px] text-[12.5px] leading-5">{r.company.description}</span> : <span className="k-fg4">{"—"}</span>}
+                        {r.company.industry && <span className="k-fg3 mt-0.5 block max-w-[280px] truncate text-[11.5px] capitalize">{r.company.industry}</span>}
+                      </td>
+                      <td className="k-fg2 px-3 py-2">
+                        <span className="block max-w-[170px] truncate">{r.company.location ?? r.company.country ?? <span className="k-fg4">{"—"}</span>}</span>
+                      </td>
+                      <td className="k-fg2 px-3 py-2">
+                        <SizeCell count={r.company.employeeCount} />
+                      </td>
+                      <td className="px-3 py-2">
+                        {name ? (
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Initials name={name} size={20} round />
+                            <span className="min-w-0">
+                              <span className="k-fg block max-w-[170px] truncate">{name}</span>
+                              {r.person.title && <span className="k-fg3 block max-w-[170px] truncate text-[12px]">{r.person.title}</span>}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="k-fg4">{"—"}</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 last:pr-4">
+                        <EmailDot state={emailState(r.index)} />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {loadingMore &&
+                  [0, 1, 2].map((i) => (
+                    <tr key={`more-${i}`}>
+                      <td colSpan={6} className="px-4 py-2.5">
+                        <Shimmer className="h-5" />
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          {!done && <MoreSentinel onMore={onMore} busy={loadingMore} />}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--line-subtle)] px-4 py-2.5">
+            <p className="k-fg3 min-w-0 flex-1 text-[12px] tabular-nums">
+              {done ? `${rows.length} companies, one person each.` : `${rows.length} of up to 100 companies so far.`} Click a row to read the email we would send. Last names stay masked until your account is set up.
+              {note && done ? ` ${note}` : ""}
+            </p>
+            {!done && (
+              <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" disabled={loadingMore} onClick={onMore}>
+                {loadingMore ? "Finding more" : "Show more"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Builds the next page when the bottom of the table scrolls into view: the rest of
+ * the 100 is built only as the visitor reaches it, so an Apollo credit is only spent
+ * on a company somebody looks at.
+ */
+function MoreSentinel({ onMore, busy }: { onMore: () => void; busy: boolean }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const cb = useRef(onMore);
+  cb.current = onMore;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || busy || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) cb.current();
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [busy]);
+  return <div ref={ref} aria-hidden="true" className="h-px" />;
+}
+
+/** One row's person, found and verified live: a masked domain, never the address. */
+function RowCheck({ check }: { check: CompanyRowEmailCheck | undefined }) {
+  if (!check) return null;
+  if (check.status === "checking" || check.status === "pending")
+    return (
+      <span className="k-fg3 inline-flex items-center gap-1.5 text-[11.5px]">
+        <span aria-hidden className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
+        Finding and verifying the email
+      </span>
+    );
+  const finder = providerLabel(check.finder);
+  const verifier = providerLabel(check.verifier);
+  if (check.status === "found")
+    return (
+      <span className="gs-pop block text-[11.5px]">
+        <span className="k-fg k-mono">{check.maskedEmail ?? "—"}</span>
+        <span className="k-fg3">
+          {finder ? ` found via ${finder}` : " found"}
+          {verifier && `, ${verifier}: `}
+          {verifier && <span style={{ color: check.deliverable ? "var(--run)" : "var(--data-amber)" }}>{verdictLabel(check.verdict) ?? "no verdict"}</span>}
+        </span>
+      </span>
+    );
+  return <span className="gs-in k-fg3 block text-[11.5px]">{finder ? `No email found via ${finder}` : "No email found"}</span>;
+}
+
+/** Step 6: the people on the left, the selected one's email on the right (Explee's layout). */
+function EmailsStage({
+  state,
+  rows,
+  selected,
+  mail,
+  error,
+  emailState,
+  check,
+  written,
+  onOpen,
+}: {
+  state: StepState;
+  rows: AudienceCompanyRow[];
+  selected: number;
+  mail: PreviewEmail | undefined;
+  error: string | null;
+  emailState: (index: number) => RowEmailState;
+  check: (index: number) => CompanyRowEmailCheck | undefined;
+  written: number;
+  onOpen: (index: number) => void;
+}) {
+  const row = rows.find((r) => r.index === selected);
+  const sel = emailState(selected);
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <span className="k-label">Step 6</span>
+        <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">Your first emails</h2>
+        <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">
+          {written} of {EMAIL_CAP} free previews
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <div className="k-card p-4">
+          <p className="k-fg3 text-[13px]">{state === "failed" ? "We need at least one person to write to." : "Waiting for the first companies."}</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <ul className="k-card k-scroll grid max-h-[560px] content-start overflow-y-auto p-1.5" aria-label="People">
+            {rows.map((r, i) => {
+              const name = [r.person.firstName, r.person.lastNameObfuscated].filter(Boolean).join(" ") || r.company.name;
+              const on = r.index === selected;
+              return (
+                <li key={r.index} className="gs-in" style={stagger(Math.min(i, 12), 30)}>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(r.index)}
+                    aria-pressed={on}
+                    className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left ${on ? "k-selected" : "k-hover"}`}
+                  >
+                    <Initials name={name} size={24} round />
+                    <span className="min-w-0 flex-1">
+                      <span className="k-fg block truncate text-[13px] font-medium">{name}</span>
+                      <span className="k-fg3 block truncate text-[12px]">
+                        {[r.person.title, r.company.domain ?? r.company.name].filter(Boolean).join(" · ")}
+                      </span>
+                      <span className="mt-1 block">
+                        <RowCheck check={check(r.index)} />
+                      </span>
+                    </span>
+                    <span className="shrink-0 pt-0.5">
+                      <EmailDot state={emailState(r.index)} />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="k-card h-fit overflow-hidden">
+            {row && (
+              <div className="flex items-center gap-3 border-b border-[var(--line-subtle)] px-4 py-3">
+                <BrandLogo domain={row.company.domain} size={28} className="rounded-md" />
+                <div className="min-w-0">
+                  <p className="k-fg truncate text-[14px] font-medium">
+                    {[row.person.firstName, row.person.lastNameObfuscated].filter(Boolean).join(" ") || "—"}
+                  </p>
+                  <p className="k-fg3 truncate text-[12px]">{[row.person.title, row.company.name].filter(Boolean).join(" at ")}</p>
+                </div>
+              </div>
+            )}
+            {mail ? (
+              <div key={mail.id}>
+                <div className="gs-in flex gap-3 border-b border-[var(--line-subtle)] px-4 py-2 text-[13px]">
+                  <span className="k-label w-14 shrink-0 pt-0.5">Subject</span>
+                  <span className="k-fg font-medium">{mail.subject}</span>
+                </div>
+                <EmailBody mail={mail} />
+              </div>
+            ) : sel === "writing" ? (
+              <div className="px-4 py-4">
+                <p className="k-fg3 mb-3 flex items-center gap-2 text-[12px]">
+                  <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
+                  Writing this email. The first one takes about a minute and a half; the next ones are faster.
+                </p>
+                <Rows n={6} />
+              </div>
+            ) : (
+              <p className="k-fg3 px-4 py-4 text-[13px]">{error ?? (row && !row.person.firstName ? "We have no name for this person, so no email can be written." : "Click a person to write their email.")}</p>
+            )}
+          </div>
+        </div>
       )}
     </section>
   );
@@ -1106,206 +1759,6 @@ async function writeWithRetry<T>(call: () => Promise<T>): Promise<T> {
     }
   }
   throw last;
-}
-
-function sampleNote(preview: AudiencePreview | undefined): string {
-  if (!preview) return "We could not take a sample of this segment just now.";
-  if (preview.status === "empty") return "The search found nobody in this segment. Pick another one above.";
-  if (preview.reason === "not_built_yet") return "This segment is still being prepared. Pick another one above, or come back in a minute.";
-  return "This segment cannot be sampled for free. Pick another one above.";
-}
-
-function CompaniesCard({ state, preview, segmentName }: { state: StepState; preview: AudiencePreview | undefined; segmentName: string | null }) {
-  const companies = preview?.status === "ready" ? preview.companies : [];
-  const matches = preview?.status === "ready" ? preview.matchCount : null;
-  return (
-    <StepCard
-      index={4}
-      title={segmentName ? `Companies in ${segmentName}` : "Companies that match"}
-      state={state}
-      meta={<StateWord state={state} doneLabel={`${companies.length} shown`} />}
-    >
-      {state === "running" || state === "waiting" ? (
-        <Rows n={4} />
-      ) : companies.length === 0 ? (
-        <p className="k-fg3 text-[13px]">{sampleNote(preview)}</p>
-      ) : (
-        <>
-          <ul className="grid gap-1.5 sm:grid-cols-2">
-            {companies.map((c, i) => (
-              <li key={c.name} className="gs-in k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5" style={stagger(i, 45)}>
-                <Initials name={c.name} size={20} />
-                <span className="k-fg min-w-0 flex-1 truncate text-[13px]">{c.name}</span>
-                {c.peopleInSample > 0 && (
-                  <span className="k-fg3 shrink-0 text-[11px] tabular-nums">{c.peopleInSample === 1 ? "1 person" : `${c.peopleInSample} people`}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="k-fg3 mt-2 text-[12px]">
-            {matches != null && matches > companies.length ? (
-              <>
-                A first page of real matches, out of <CountUp value={matches} format={(n) => Math.round(n).toLocaleString("en-US")} ms={1100} /> people in this segment.
-              </>
-            ) : (
-              "A first page of real matches, not the whole list."
-            )}
-          </p>
-        </>
-      )}
-    </StepCard>
-  );
-}
-
-function checksSettled(c: AudienceEmailChecks | undefined): boolean {
-  return !!c && (c.done || c.status !== "ready");
-}
-
-export function PeopleCard({
-  state,
-  preview,
-  checks,
-  checkingIdx,
-  checkNote,
-}: {
-  state: StepState;
-  preview: AudiencePreview | undefined;
-  checks: AudienceEmailChecks | undefined;
-  checkingIdx: number | null;
-  checkNote: string | null;
-}) {
-  const people = preview?.status === "ready" ? preview.people : [];
-  return (
-    <StepCard index={5} title="Decision makers" state={state} meta={<StateWord state={state} doneLabel={`${people.length} shown`} />}>
-      {people.length > 0 && <EmailChecks checks={checks} checkingIdx={checkingIdx} note={checkNote} running={state === "running"} />}
-      {(state === "running" || state === "waiting") && people.length === 0 ? (
-        <Rows n={5} />
-      ) : people.length === 0 ? (
-        <p className="k-fg3 text-[13px]">{sampleNote(preview)}</p>
-      ) : (
-        <div className="k-scroll overflow-x-auto">
-          <table className="w-full min-w-[520px] text-[13px]">
-            <thead>
-              <tr className="border-b border-[var(--line-subtle)]">
-                <th className="k-label px-2 py-2 text-left font-normal">Name</th>
-                <th className="k-label px-2 py-2 text-left font-normal">Title</th>
-                <th className="k-label px-2 py-2 text-left font-normal">Company</th>
-              </tr>
-            </thead>
-            <tbody>
-              {people.map((x, i) => {
-                const name = [x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ");
-                return (
-                  <tr key={`${x.firstName}-${x.company}-${i}`} className="gs-in k-row border-b border-[var(--line-subtle)] last:border-0" style={stagger(i, 50)}>
-                    <td className="k-fg px-2 py-2">
-                      <span className="flex items-center gap-2">
-                        {name ? <Initials name={name} size={20} round /> : null}
-                        {name || <span className="k-fg4">{"—"}</span>}
-                      </span>
-                    </td>
-                    <td className="k-fg2 px-2 py-2">{x.title ?? <span className="k-fg4">{"—"}</span>}</td>
-                    <td className="k-fg2 px-2 py-2">{x.company ?? <span className="k-fg4">{"—"}</span>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="k-fg3 mt-2 text-[12px]">Last names are masked until your account is set up. We never show an email address here, only its domain.</p>
-        </div>
-      )}
-    </StepCard>
-  );
-}
-
-/**
- * The sampled people's emails, found and verified live. Every state drawn is one
- * human-service returned (or the one reveal running right now); the address itself
- * never reaches the page, only its masked domain.
- */
-function EmailChecks({
-  checks,
-  checkingIdx,
-  note,
-  running,
-}: {
-  checks: AudienceEmailChecks | undefined;
-  checkingIdx: number | null;
-  note: string | null;
-  running: boolean;
-}) {
-  const list = checks?.status === "ready" ? checks.people : [];
-  const sum = checks?.summary;
-  return (
-    <div className="k-inset mb-3 rounded-lg px-3 py-2.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="k-fg text-[13px] font-medium">Emails, found and verified live</p>
-        {sum && sum.checked > 0 && (
-          <p className="k-fg3 text-[12px] tabular-nums">
-            {sum.found} of {sum.checked} found, {sum.deliverable} deliverable
-          </p>
-        )}
-      </div>
-      {!checks ? (
-        note ? (
-          <p className="k-fg3 mt-1.5 text-[12px]">{note}</p>
-        ) : (
-          <div className="mt-2">
-            <Rows n={3} />
-          </div>
-        )
-      ) : checks.status !== "ready" ? (
-        <p className="k-fg3 mt-1.5 text-[12px]">{emailCheckNote(checks.reason)}</p>
-      ) : (
-        <ul className="mt-2 grid gap-1.5">
-          {list.map((x) => {
-            const name = [x.firstName, x.lastNameObfuscated].filter(Boolean).join(" ") || "\u2014";
-            const checking = x.status === "checking" || (running && checkingIdx === x.index && x.status === "pending");
-            return (
-              <li key={x.index} className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3" data-check-status={checking ? "checking" : x.status}>
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <Initials name={name} size={20} round />
-                  <span className="min-w-0 truncate text-[13px]">
-                    <span className="k-fg">{name}</span>
-                    {x.company && <span className="k-fg3">, {x.company}</span>}
-                  </span>
-                </span>
-                <EmailCheckCell person={x} checking={checking} />
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {checks && note && <p className="k-fg3 mt-1.5 text-[12px]">{note}</p>}
-    </div>
-  );
-}
-
-function EmailCheckCell({ person, checking }: { person: AudienceEmailChecks["people"][number]; checking: boolean }) {
-  const finder = providerLabel(person.finder);
-  const verifier = providerLabel(person.verifier);
-  if (checking)
-    return (
-      <span className="k-fg2 flex shrink-0 items-center gap-1.5 pl-7 text-[12px] sm:pl-0">
-        <span aria-hidden className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
-        Finding and verifying
-      </span>
-    );
-  if (person.status === "found")
-    return (
-      <span className="gs-pop flex shrink-0 flex-col pl-7 text-[12px] sm:items-end sm:pl-0">
-        <span className="k-fg font-mono">{person.maskedEmail ?? "\u2014"}</span>
-        <span className="k-fg3">
-          {finder ? `Found via ${finder}` : "Found"}
-          {verifier && `, verified by ${verifier}: `}
-          {verifier && (
-            <span style={{ color: person.deliverable ? "var(--run)" : "var(--data-amber)" }}>{verdictLabel(person.verdict) ?? "no verdict"}</span>
-          )}
-        </span>
-      </span>
-    );
-  if (person.status === "not_found")
-    return <span className="gs-in k-fg3 shrink-0 pl-7 text-[12px] sm:pl-0">{finder ? `Not found via ${finder}` : "Not found"}</span>;
-  return <span className="k-fg4 shrink-0 pl-7 text-[12px] sm:pl-0">Waiting</span>;
 }
 
 const KIND_COLOR: Record<string, string> = {
@@ -1391,41 +1844,4 @@ function EmailBody({ mail }: { mail: PreviewEmail }) {
   useEffect(() => setTyped(false), [mail.id]);
   if (explained && typed) return <ExplainedBody mail={mail} />;
   return <Typewriter text={mail.bodyText} className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6" onDone={explained ? () => setTyped(true) : undefined} />;
-}
-
-export function EmailCard({ state, mail, note }: { state: StepState; mail: PreviewEmail | undefined; note: string | null }) {
-  return (
-    <StepCard index={6} title="Your first email" state={state} meta={<StateWord state={state} />}>
-      {state === "running" || state === "waiting" ? (
-        <>
-          <p className="k-fg3 mb-3 text-[12px]">We read your site the way a campaign does, then write. The first email takes about a minute and a half.</p>
-          <Rows n={6} />
-        </>
-      ) : !mail ? (
-        <p className="k-fg3 text-[13px]">{note ?? "We need at least one person in the sample to write to."}</p>
-      ) : (
-        <div className="k-inset rounded-lg">
-          <div className="gs-in flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]">
-            <span className="k-label w-12 shrink-0 pt-0.5">To</span>
-            <span className="k-fg2">
-              {[mail.recipient.firstName, mail.recipient.lastName].join(" ")}, {mail.recipient.title} at {mail.recipient.companyName}
-            </span>
-          </div>
-          <div className="gs-in flex gap-3 border-b border-[var(--line-subtle)] px-3 py-2 text-[13px]" style={{ animationDelay: "120ms" }}>
-            <span className="k-label w-12 shrink-0 pt-0.5">Subject</span>
-            <span className="k-fg font-medium">{mail.subject}</span>
-          </div>
-          <EmailBody mail={mail} />
-        </div>
-      )}
-    </StepCard>
-  );
-}
-
-function NotLiveCard({ index, title, body }: { index: number; title: string; body: string }) {
-  return (
-    <StepCard index={index} title={title} state="notLive" meta={<StateWord state="notLive" />}>
-      <p className="k-fg3 text-[13px] leading-5">{body}</p>
-    </StepCard>
-  );
 }

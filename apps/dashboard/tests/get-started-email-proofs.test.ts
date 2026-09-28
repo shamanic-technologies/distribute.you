@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  emailCheckNote,
   emailPieces,
   highlightKindLabel,
   providerLabel,
-  shouldCheckNext,
   verdictLabel,
   type EmailHighlight,
 } from "../src/lib/v2/get-started";
@@ -19,16 +17,7 @@ const h = (text: string, start: number, kind = "prospect"): EmailHighlight => ({
   reason: "Names their role.",
 });
 
-describe("step 5: the email checks", () => {
-  it("stops on done, on an unavailable preview, and after one call per person plus one", () => {
-    const people = [{}, {}, {}];
-    expect(shouldCheckNext({ status: "ready", done: false, people }, 0)).toBe(true);
-    expect(shouldCheckNext({ status: "ready", done: false, people }, 3)).toBe(true);
-    expect(shouldCheckNext({ status: "ready", done: false, people }, 4)).toBe(false);
-    expect(shouldCheckNext({ status: "ready", done: true, people }, 0)).toBe(false);
-    expect(shouldCheckNext({ status: "unavailable", done: false, people: [] }, 0)).toBe(false);
-  });
-
+describe("step 6: each row's email check", () => {
   it("names providers and verdicts in words, and keeps an unknown one as given", () => {
     expect(providerLabel("apollo")).toBe("Apollo");
     expect(providerLabel("bounceverify")).toBe("BounceVerify");
@@ -40,11 +29,6 @@ describe("step 5: the email checks", () => {
     expect(verdictLabel(null)).toBeNull();
   });
 
-  it("says why nothing could be checked", () => {
-    expect(emailCheckNote("not_built_yet")).toContain("still being prepared");
-    expect(emailCheckNote("no_reveal_handle")).toContain("cannot be looked up");
-    expect(emailCheckNote("empty_sample")).toBe("No email could be checked for this sample.");
-  });
 });
 
 describe("step 6: the sentences and their reasons", () => {

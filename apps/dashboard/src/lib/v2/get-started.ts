@@ -1,34 +1,46 @@
 /**
  * The signed-out "get started" flow of dashboard v2 (`/get-started`), modelled on
- * Explee: a founder types their website and SEES real output before any question
- * or account (their company read, competitors, segments with a market size, real
- * companies, real decision makers, one written email), then gives account and card
- * on ONE screen.
+ * Explee: a founder types their website and SEES real output before the account
+ * (their company read, competitors, the offer and the audience they pick, 100 real
+ * companies with the right person at each, the first emails), then gives account and
+ * card on ONE screen.
  *
  * This module holds the rules the page decides on, alias-free so they carry real
  * unit tests. The page itself (`components/v2/get-started/`) renders and calls the api.
  */
 
-/** The six live steps, in Explee's order. */
+/**
+ * The six live steps. Steps 1 and 2 are read off the site; 3 and 4 are PICKS (one
+ * offer, one audience) whose proposals are prepared in the background from the
+ * moment the website is known, so they are ready when the stage reaches them; 5 is
+ * the audience's companies with one person each; 6 is the first emails.
+ */
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
   { key: "competitors", label: "Find your competitors" },
-  { key: "segments", label: "Size your segments" },
-  { key: "companies", label: "Find companies" },
-  { key: "people", label: "Find decision makers" },
-  { key: "email", label: "Write the first email" },
+  { key: "offer", label: "Pick your offer" },
+  { key: "audience", label: "Pick who to write to" },
+  { key: "companies", label: "Find 100 companies" },
+  { key: "email", label: "Write the first emails" },
 ] as const;
 
 export type GetStartedStepKey = (typeof GET_STARTED_STEPS)[number]["key"];
 
 /**
  * Steps whose backend is not live. The page STATES that on the step rather than
- * showing invented rows (owner rule: never fake data). Empty since human-service's
- * audience preview (v0.46.12) and content-generation's preview email (v0.35.6)
- * reached the gateway (api-service v0.112.23); kept so a step whose producer is
- * withdrawn goes back to saying so in one line.
+ * showing invented rows (owner rule: never fake data). Kept so a step whose producer
+ * is withdrawn goes back to saying so in one line.
  */
 export const STEPS_NOT_LIVE: ReadonlySet<GetStartedStepKey> = new Set<GetStartedStepKey>([]);
+
+/** Emails written before the account exists: the first rows are written ahead, the rest on click, up to the cap. */
+export const PREWRITTEN_EMAILS = 3;
+export const EMAIL_CAP = 10;
+
+/** Whether one more email may be written before the wall. */
+export function canWriteAnother(requested: number, cap = EMAIL_CAP): boolean {
+  return requested < cap;
+}
 
 /** What we ask brand-service to read off the site for step 1. Keys are our own. */
 export const COMPANY_FIELDS = [
@@ -52,6 +64,25 @@ export const COMPETITOR_FIELDS = [
       "Direct competitors of this company: six to twelve other companies selling the same kind of product to the same buyers. Return a list; each item is 'Company name (domain.com)'.",
   },
 ] as const;
+
+/**
+ * Step 3's source: what the company sells, one line per distinct offer, read in the
+ * SAME extraction as steps 1 and 2 (one site read). brand-service then splits it into
+ * offer proposals. A key of our own, so it prefills no user field.
+ */
+export const OFFER_FIELDS = [
+  {
+    key: "offerLines",
+    description:
+      "Every distinct thing this company sells, one line each: what it is, who it is for, and how it is bought (self-serve signup, sales call, custom quote). A SaaS with a self-serve plan and a sales-led enterprise plan is two lines; an agency lists one line per service line. Facts from the site only.",
+  },
+] as const;
+
+/** What brand-service's offer proposal reads: the offer lines, else the overview. */
+export function offerSourceText(lines: string[], overview: string): string {
+  const joined = lines.map((l) => l.trim()).filter(Boolean).join("\n");
+  return joined || overview.trim();
+}
 
 /** Flatten an extracted field value (string, list, nested object) into lines. */
 export function valueLines(value: unknown): string[] {
@@ -144,72 +175,39 @@ export function websiteUrl(website: string): string {
 
 export const GET_STARTED_SNAPSHOT_KEY = "distribute:get-started:v1";
 
-export interface GetStartedSegment {
+/** The offer picked at step 3, confirmed on the brand. */
+export interface GetStartedOffer {
+  offerId: string;
+  name: string;
+  description: string;
+}
+
+/** The audience picked at step 4, created on the brand under the picked offer. */
+export interface GetStartedAudience {
   audienceId: string;
   name: string;
-  rationale: string;
-  count: number;
-  /** What the people search filters on, read off the served filters. Absent on an older snapshot. */
-  criteria?: SegmentCriterion[];
+  description: string;
 }
 
-// ── Segment criteria, read off the people-search filters the producer served ──
-
-export interface SegmentCriterion {
-  label: string;
-  values: string[];
+/** A company's size as a short figure ("27", "1.2K"), or null when Apollo gave none. */
+export function employeesLabel(n: number | null | undefined): string | null {
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
+  return compactCount(n);
 }
 
-/**
- * The filters a segment's people search runs on (apollo-service's native snake_case,
- * camelCase accepted), stated in words. Only the keys below are read: an id list or a
- * flag a person cannot read is skipped rather than guessed at. Nothing is invented; a
- * segment whose filters carry none of these states no criteria.
- */
-const CRITERIA_KEYS: { label: string; keys: string[]; format?: (v: string) => string | null }[] = [
-  { label: "Titles", keys: ["person_titles", "personTitles"] },
-  { label: "Seniority", keys: ["person_seniorities", "personSeniorities"], format: (v) => v.replace(/_/g, " ") },
-  { label: "Industries", keys: ["organization_industries", "organizationIndustries"] },
-  { label: "Keywords", keys: ["q_organization_keyword_tags", "qOrganizationKeywordTags", "q_keywords", "qKeywords"] },
-  { label: "Company size", keys: ["organization_num_employees_ranges", "organizationNumEmployeesRanges"], format: employeeRange },
-  { label: "Where", keys: ["organization_locations", "organizationLocations", "person_locations", "personLocations"] },
-];
-
-/** "50,500" reads "50 to 500 employees"; "10001," reads "10,001+ employees". */
-function employeeRange(v: string): string | null {
-  const m = v.match(/^\s*(\d*)\s*,\s*(\d*)\s*$/);
-  if (!m || (!m[1] && !m[2])) return null;
-  const n = (x: string) => Number(x).toLocaleString("en-US");
-  if (m[1] && m[2]) return `${n(m[1])} to ${n(m[2])} employees`;
-  return m[1] ? `${n(m[1])}+ employees` : `Up to ${n(m[2])} employees`;
-}
-
-export function segmentCriteria(filters: unknown): SegmentCriterion[] {
-  if (!filters || typeof filters !== "object" || Array.isArray(filters)) return [];
-  const rec = filters as Record<string, unknown>;
-  const out: SegmentCriterion[] = [];
-  for (const c of CRITERIA_KEYS) {
-    const seen = new Set<string>();
-    const values: string[] = [];
-    for (const k of c.keys) {
-      const raw = rec[k];
-      const list = typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
-      for (const item of list) {
-        if (typeof item !== "string") continue;
-        const v = (c.format ? c.format(item) : item.trim()) ?? "";
-        if (!v || seen.has(v.toLowerCase())) continue;
-        seen.add(v.toLowerCase());
-        values.push(v);
-      }
-    }
-    if (values.length) out.push({ label: c.label, values });
-  }
-  return out;
+/** How many of the 5 size dots a company fills: 1 person, 10, 50, 250, 1000+. */
+export function sizeDots(n: number | null | undefined): number {
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return 0;
+  return n >= 1000 ? 5 : n >= 250 ? 4 : n >= 50 ? 3 : n >= 10 ? 2 : 1;
 }
 
 // ── The stage: which step is on screen ────────────────────────────────────────
 
-export type StepPhase = "waiting" | "running" | "done" | "failed" | "notLive";
+/**
+ * `choose` is a pick step whose proposals are on screen and waiting for the visitor:
+ * begun (the stage may hand over to it) but not settled (it does not hand on).
+ */
+export type StepPhase = "waiting" | "running" | "choose" | "done" | "failed" | "notLive";
 
 export const settledPhase = (p: StepPhase) => p === "done" || p === "failed" || p === "notLive";
 
@@ -227,6 +225,15 @@ export function stageMove(phases: StepPhase[], at: number): { to: number; dwell:
   return null;
 }
 
+/**
+ * How long a finished step stays on the stage. When the next step is still being
+ * prepared, the finished result is held longer (up to `holdMs`) so the visitor reads
+ * it rather than a spinner; the moment the next one is ready, the base dwell applies.
+ */
+export function stageDwellMs(nextPhase: StepPhase | undefined, baseMs: number, holdMs: number): number {
+  return nextPhase === "running" ? Math.max(baseMs, holdMs) : baseMs;
+}
+
 /** Explee's three steps after the preview: what the account turns on. Not run here. */
 export const NEXT_STEPS = ["Send emails", "Book meetings", "Learn and double down"] as const;
 
@@ -238,7 +245,7 @@ export interface GetStartedEmail {
 }
 
 export interface GetStartedSnapshot {
-  version: 1;
+  version: 2;
   website: string;
   brandId: string;
   brandName: string | null;
@@ -246,22 +253,29 @@ export interface GetStartedSnapshot {
   overview: string;
   facts: string[];
   competitors: Competitor[];
-  segments: GetStartedSegment[];
+  offer: GetStartedOffer | null;
+  audience: GetStartedAudience | null;
   /** Whole dollars a day, or null when none was chosen. */
   budgetUsd: number | null;
-  /** The email written during the preview, so the wall still shows it after the Google round trip. Optional: an older snapshot has none. */
-  email?: GetStartedEmail | null;
+  /** An email written during the preview, so the wall still shows it after the Google round trip. */
+  email: GetStartedEmail | null;
 }
 
-function validCriteria(raw: unknown): SegmentCriterion[] | undefined {
-  if (!Array.isArray(raw)) return undefined;
-  return raw.filter(
-    (c): c is SegmentCriterion =>
-      !!c && typeof c === "object" && typeof (c as SegmentCriterion).label === "string" && Array.isArray((c as SegmentCriterion).values) && (c as SegmentCriterion).values.every((v) => typeof v === "string"),
-  );
+function parseOffer(v: unknown): GetStartedOffer | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.offerId !== "string" || !o.offerId || typeof o.name !== "string") return null;
+  return { offerId: o.offerId, name: o.name, description: typeof o.description === "string" ? o.description : "" };
 }
 
-/** Read a stored snapshot; anything malformed is null (the flow starts over). */
+function parseAudience(v: unknown): GetStartedAudience | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.audienceId !== "string" || !o.audienceId || typeof o.name !== "string") return null;
+  return { audienceId: o.audienceId, name: o.name, description: typeof o.description === "string" ? o.description : "" };
+}
+
+/** Read a stored snapshot; anything malformed, or an older version, is null (the flow starts over). */
 export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot | null {
   if (!raw) return null;
   let v: unknown;
@@ -272,27 +286,13 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
   }
   if (!v || typeof v !== "object") return null;
   const s = v as Record<string, unknown>;
-  if (s.version !== 1 || typeof s.website !== "string" || typeof s.brandId !== "string" || !s.brandId) return null;
+  if (s.version !== 2 || typeof s.website !== "string" || typeof s.brandId !== "string" || !s.brandId) return null;
   const strOrNull = (x: unknown) => (typeof x === "string" ? x : null);
   const competitors = Array.isArray(s.competitors)
-    ? s.competitors.filter(
-        (c): c is Competitor =>
-          !!c && typeof c === "object" && typeof (c as Competitor).name === "string",
-      )
-    : [];
-  const segments = Array.isArray(s.segments)
-    ? s.segments.filter(
-        (g): g is GetStartedSegment =>
-          !!g &&
-          typeof g === "object" &&
-          typeof (g as GetStartedSegment).audienceId === "string" &&
-          typeof (g as GetStartedSegment).name === "string" &&
-          typeof (g as GetStartedSegment).count === "number",
-      )
-      .map((g) => ({ ...g, criteria: validCriteria(g.criteria) }))
+    ? s.competitors.filter((c): c is Competitor => !!c && typeof c === "object" && typeof (c as Competitor).name === "string")
     : [];
   return {
-    version: 1,
+    version: 2,
     website: s.website,
     brandId: s.brandId,
     brandName: strOrNull(s.brandName),
@@ -300,7 +300,8 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     overview: typeof s.overview === "string" ? s.overview : "",
     facts: Array.isArray(s.facts) ? s.facts.filter((f): f is string => typeof f === "string") : [],
     competitors,
-    segments,
+    offer: parseOffer(s.offer),
+    audience: parseAudience(s.audience),
     budgetUsd: typeof s.budgetUsd === "number" && Number.isInteger(s.budgetUsd) && s.budgetUsd > 0 ? s.budgetUsd : null,
     email: parseSnapshotEmail(s.email),
   };
@@ -361,8 +362,8 @@ export function parseDailyBudget(input: string, floorUsd: number): { usd: number
   return { usd: n };
 }
 
-// ── Step 5: each sampled person's email, found and verified live ────────────────
-// human-service reveals ONE person per call and returns the whole state. These rules
+// ── Step 6: each row's person, found and verified live ──────────────────────────
+// human-service reveals ONE row per call and returns that row's state. These rules
 // only NAME what it returned: nothing here decides that an address was found.
 
 /** A provider's name as a person reads it. Unknown names are shown as given, capitalised. */
@@ -383,24 +384,6 @@ export function verdictLabel(verdict: string | null | undefined): string | null 
     unknown: "could not be judged",
   };
   return known[verdict] ?? verdict.replace(/_/g, " ");
-}
-
-/**
- * Whether the page should ask human-service for the next person. Stops on `done`, on
- * an unavailable preview, and after as many calls as there are people plus one, so a
- * producer that never says done cannot make the page spend forever.
- */
-export function shouldCheckNext(state: { status: string; done: boolean; people: unknown[] }, callsMade: number): boolean {
-  if (state.done || state.status !== "ready") return false;
-  return callsMade < state.people.length + 1;
-}
-
-/** Why no email could be checked for this segment, in words. */
-export function emailCheckNote(reason: string | null | undefined): string {
-  if (reason === "not_built_yet") return "This segment is still being prepared, so no email was checked yet.";
-  if (reason === "no_reveal_handle" || reason === "provider_not_previewable")
-    return "The people in this sample cannot be looked up before your account is set up.";
-  return "No email could be checked for this sample.";
 }
 
 export interface EmailHighlight {
