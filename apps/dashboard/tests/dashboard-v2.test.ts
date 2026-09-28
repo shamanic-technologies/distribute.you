@@ -170,8 +170,8 @@ describe("v2 wiring", () => {
     expect([...at].sort((x, y) => x - y)).toEqual(at);
     // Help opens the same identified support chat the FAB opens.
     expect(menus).toContain("supportWhatsAppHref(email,");
-    // Team is a v2 page on Clerk's own members, read-only.
-    expect(read("src/components/v2/team-page.tsx")).toContain("useOrganization({ memberships:");
+    // Team is a v2 page on Clerk's own members; admins can invite (see org-invite.test.ts).
+    expect(read("src/components/v2/team-page.tsx")).toContain("memberships: { pageSize: 50");
     // Staff join every org through god-mode: never list them as the customer's team.
     expect(read("src/components/v2/team-page.tsx")).toContain("!isAdminEmail(m.publicUserData?.identifier)");
   });
