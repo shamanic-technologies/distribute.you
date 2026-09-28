@@ -70,6 +70,18 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("always names the first bar the winner of a two-arm study, whatever its p-value", () => {
+    // Owner rule 2026-09-28: a p-value is shown, it never withholds the winner.
+    for (const s of RESEARCH.studies.filter((st) => ["naming", "opens"].includes(st.topic))) {
+      expect(s.winner, s.id).toBe(s.charts[0].points[0].label);
+      expect(s.headline, s.id).toMatch(/\(p [<\d]/);
+    }
+    for (const s of RESEARCH.studies) {
+      if (s.status === "measured") expect(s.winner, s.id).not.toBeNull();
+      expect(s.headline, s.id).not.toMatch(/no clear winner|not significant/i);
+    }
+  });
+
   it("names a winner that is a bar of the study's first chart", () => {
     for (const s of RESEARCH.studies) {
       if (!s.winner || s.topic === "cost") continue;
@@ -128,10 +140,9 @@ describe("research.json is coherent", () => {
       expect(s.status, s.id).toBe("measured");
       expect(s.charts[0].points.map((p) => p.label).sort(), s.id).toEqual(["Client named", "Client not named"]);
       expect(s.headline, s.id).toMatch(/\(p [<\d]/);
-      // a winner is only called on a significant difference, and then it is the first bar
-      expect(s.crowned, s.id).toBe(s.winner !== null);
-      if (s.winner) expect(s.charts[0].points[0].label, s.id).toBe(s.winner);
-      else expect(s.headline, s.id).toMatch(/not significant/);
+      // the better side always wins and is the first bar; the p-value is information, not a gate
+      expect(s.winner, s.id).toBe(s.charts[0].points[0].label);
+      expect(s.headline, s.id).toMatch(new RegExp(`^${s.winner} wins`));
       expect(s.conclusion.join(" "), s.id).toContain("not a split test");
       expect(s.charts[0].note, s.id).toBe(RESEARCH.maturation.note);
       // the crews' names stay internal: the study joins its section by its crew field alone

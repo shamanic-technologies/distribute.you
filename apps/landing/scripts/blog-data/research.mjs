@@ -412,6 +412,7 @@ function namingStudies(o, R) {
   {
     const pv = rateP(held, named, o);
     const [a, b] = [...rows].sort((x, y) => y[o.rate] - x[o.rate]);
+    // The winner is the first bar, always (owner rule): the p-value is shown, it never withholds it.
     const sig = pv < 0.05 && a[o.rate] > b[o.rate];
     add({
       id: `${o.crew}-naming-rate`,
@@ -420,10 +421,8 @@ function namingStudies(o, R) {
       goal: "rate",
       question: `Does naming the client get more ${o.nounPlural}?`,
       status: "measured",
-      headline: sig
-        ? `${a.bucket} wins: ${rateSentence(o, a[o.rate])}, against ${rateText(o, b[o.rate])} ${WITH[b.side]} (p ${pText(pv)}).`
-        : `No clear winner: ${rateText(o, held[o.rate])} ${WITH.held}, ${rateText(o, named[o.rate])} ${WITH.named} (p ${pText(pv)}, not significant).`,
-      winner: sig ? a.bucket : null,
+      headline: `${a.bucket} wins: ${rateSentence(o, a[o.rate])}, against ${rateText(o, b[o.rate])} ${WITH[b.side]} (p ${pText(pv)}).`,
+      winner: a.bucket,
       result: { display: rateText(o, a[o.rate]), unit: `${WITH[a.side]}, ${rateText(o, b[o.rate])} ${WITH[b.side].replace("with the client ", "")}`, sample: `p ${pText(pv)}, ${n(held.emails + named.emails)} ${o.emailsNoun}` },
       crowned: sig,
       charts: [{ kind: "bars", title: rateTitle(o), lowerIsBetter: false, points: rateBars(o, rows), note: M.note }],
@@ -435,6 +434,7 @@ function namingStudies(o, R) {
     const pv = costP(held, named, o);
     const priced = rows.filter((r) => r[o.cost] !== null).sort(byCost(o));
     const [a, b] = priced;
+    // The winner is the cheaper side, always (owner rule); only a side with no outcome at all is unpriced.
     const sig = Boolean(a && b) && pv < 0.05;
     add({
       id: `${o.crew}-naming-roi`,
@@ -445,10 +445,10 @@ function namingStudies(o, R) {
       status: priced.length ? "measured" : "not_enough_data",
       headline: !priced.length
         ? `Neither side has earned a ${o.noun} yet.`
-        : sig
+        : b
           ? `${a.bucket} wins at ${usd(a[o.cost])} per ${o.noun}, against ${usd(b[o.cost])} ${WITH[b.side]} (p ${pText(pv)}).`
-          : `No clear winner: ${held[o.cost] === null ? `no ${o.noun}` : `${usd(held[o.cost])} per ${o.noun}`} ${WITH.held}, ${named[o.cost] === null ? `no ${o.noun}` : usd(named[o.cost])} ${WITH.named} (p ${pText(pv)}, not significant).`,
-      winner: sig ? a.bucket : null,
+          : `${a.bucket} wins at ${usd(a[o.cost])} per ${o.noun}; no ${o.noun} yet ${WITH[a.side === "held" ? "named" : "held"]} (p ${pText(pv)}).`,
+      winner: a ? a.bucket : null,
       result: a ? { display: usd(a[o.cost]), unit: `per ${o.noun} ${WITH[a.side]}${b ? `, ${usd(b[o.cost])} ${WITH[b.side].replace("with the client ", "")}` : ""}`, sample: `p ${pText(pv)}, ${n(held[o.count] + named[o.count])} ${o.nounPlural}` } : null,
       crowned: sig,
       charts: [{ kind: "bars", title: costTitle(o), lowerIsBetter: true, points: costBars(o, rows), note: M.note }],
@@ -580,15 +580,21 @@ for (const key of ["reply", "visit"]) {
       note: `${n(m[which].count)} of ${n(m[which].of)} people`,
       thin: false,
     });
+    // The winner is the arm with more, always the first bar (owner rule): the p-value is shown,
+    // it never withholds the winner.
+    const lead = (m) => (m.off.pct >= m.on.pct ? "off" : "on");
+    const other = (w) => (w === "off" ? "on" : "off");
+    const leader = (m) => (lead(m) === "off" ? "Tracking off" : "Tracking on");
+    const armsLeadFirst = (m) => [arm(m, lead(m)), arm(m, other(lead(m)))];
     const verdict = (m, what) => {
-      const off = m.off.pct, on = m.on.pct;
-      const lead = off >= on ? "off" : "on";
-      return m.significant
-        ? `Tracking ${lead} wins: ${m[lead].pct.toFixed(2)}% of people ${what}, against ${m[lead === "off" ? "on" : "off"].pct.toFixed(2)}% (p ${m.p}).`
-        : `No clear winner: ${off.toFixed(2)}% with tracking off, ${on.toFixed(2)}% with it on (p ${m.p}, not significant).`;
+      const w = lead(m);
+      return `Tracking ${w} wins: ${m[w].pct.toFixed(2)}% of people ${what}, against ${m[other(w)].pct.toFixed(2)}% (p ${m.p}).`;
     };
-    // The result cell states both arms: the page compares them, it does not pick one quietly.
-    const armResult = (m) => ({ display: `${m.off.pct.toFixed(2)}%`, unit: `with tracking off, ${m.on.pct.toFixed(2)}% on`, sample: `p ${m.p}, ${n(m.off.of + m.on.of)} people` });
+    // The result cell states both arms, the winner first.
+    const armResult = (m) => {
+      const w = lead(m), l = other(w);
+      return { display: `${m[w].pct.toFixed(2)}%`, unit: `with tracking ${w}, ${m[l].pct.toFixed(2)}% ${l}`, sample: `p ${m.p}, ${n(m.off.of + m.on.of)} people` };
+    };
     const periods = `Tracking was on from ${pixel.on.firstDay} to ${pixel.on.lastDay} and off until ${pixel.off.lastDay}: two periods, not a split test, over ${n(pixel.total.leads)} people.`;
     const what = key === "reply" ? "replied positively" : "visited the website";
     add({
@@ -599,10 +605,10 @@ for (const key of ["reply", "visit"]) {
       question: `Should we track opens for the cheapest ${o.noun}?`,
       status: "measured",
       headline: verdict(metric, what),
-      winner: metric.significant ? (metric.off.pct >= metric.on.pct ? "Tracking off" : "Tracking on") : null,
+      winner: leader(metric),
       result: armResult(metric),
       crowned: metric.significant,
-      charts: [{ kind: "bars", title: `People who ${what} (%, higher is better)`, lowerIsBetter: false, points: [arm(metric, "off"), arm(metric, "on")], note: PIXEL_NOTE }],
+      charts: [{ kind: "bars", title: `People who ${what} (%, higher is better)`, lowerIsBetter: false, points: armsLeadFirst(metric), note: PIXEL_NOTE }],
       conclusion: [
         `An email costs the same with or without the pixel, so the cheaper ${o.noun} is the arm with more of them per person.`,
         periods,
@@ -616,11 +622,11 @@ for (const key of ["reply", "visit"]) {
       question: key === "reply" ? `Should we track opens for the best reply rate?` : `Should we track opens for the most website visits?`,
       status: "measured",
       headline: verdict(rateMetric, key === "reply" ? "replied" : "visited the website"),
-      winner: rateMetric.significant ? (rateMetric.off.pct >= rateMetric.on.pct ? "Tracking off" : "Tracking on") : null,
+      winner: leader(rateMetric),
       result: armResult(rateMetric),
       crowned: rateMetric.significant,
       charts: [
-        { kind: "bars", title: key === "reply" ? `People who replied, any reply (%, higher is better)` : `People who visited the website (%, higher is better)`, lowerIsBetter: false, points: [arm(rateMetric, "off"), arm(rateMetric, "on")], note: PIXEL_NOTE },
+        { kind: "bars", title: key === "reply" ? `People who replied, any reply (%, higher is better)` : `People who visited the website (%, higher is better)`, lowerIsBetter: false, points: armsLeadFirst(rateMetric), note: PIXEL_NOTE },
         ...(key === "reply" ? [{ kind: "bars", title: `Bounced (%, lower is better)`, lowerIsBetter: true, points: [arm(pixel.bounced, "off"), arm(pixel.bounced, "on")], note: PIXEL_NOTE }] : []),
       ],
       conclusion: [

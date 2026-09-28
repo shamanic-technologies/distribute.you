@@ -638,8 +638,8 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest positive reply?",
       "status": "measured",
-      "headline": "No clear winner: 0.12% with tracking off, 0.10% with it on (p 0.56, not significant).",
-      "winner": null,
+      "headline": "Tracking off wins: 0.12% of people replied positively, against 0.10% (p 0.56).",
+      "winner": "Tracking off",
       "result": {
         "display": "0.12%",
         "unit": "with tracking off, 0.10% on",
@@ -1296,8 +1296,8 @@
       "goal": "roi",
       "question": "Does naming the client get a cheaper positive reply?",
       "status": "measured",
-      "headline": "No clear winner: $190 per positive reply with the client not named, $272 with the client named (p 0.47, not significant).",
-      "winner": null,
+      "headline": "Client not named wins at $190 per positive reply, against $272 with the client named (p 0.47).",
+      "winner": "Client not named",
       "result": {
         "display": "$190",
         "unit": "per positive reply with the client not named, $272 named",
