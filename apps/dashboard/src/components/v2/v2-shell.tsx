@@ -150,6 +150,8 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { missions, crews } = useMissions(orgId, brandId);
+  const activeCrews = crews.filter((c) => c.running > 0);
+  const activeMissions = missions.filter((m) => m.running);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -267,20 +269,18 @@ function V2Sidebar() {
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>
 
-        {crews.length > 0 && (
+        {/* The sidebar lists only what is WORKING: a crew with a running mission, and
+            running missions. Everything else stays one click away on Crew / Missions. */}
+        {activeCrews.length > 0 && (
           <Group title="Crew">
-            {crews.map((c) => (
+            {activeCrews.map((c) => (
               <NavItem
                 key={c.crew.key}
                 href={`${v2Href(orgId, brandId, "crew")}#${encodeURIComponent(c.crew.key)}`}
                 label={c.crew.name}
                 icon={<CrewMark color={c.crew.color} glyph={c.crew.glyph} />}
                 trailing={
-                  c.running > 0 ? (
-                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Running" />
-                  ) : (
-                    <span className="ml-auto mr-1 h-2 w-2 shrink-0 rounded-full border-[1.5px] border-[var(--fg-2)]" aria-label="Paused" />
-                  )
+                  <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Running" />
                 }
               />
             ))}
@@ -305,9 +305,9 @@ function V2Sidebar() {
           </Group>
         )}
 
-        {missions.length > 0 && (
+        {activeMissions.length > 0 && (
           <Group title="Missions">
-            {missions.map((m) => (
+            {activeMissions.map((m) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={v2MissionHref(orgId, brandId, m.row.campaign.id)}
