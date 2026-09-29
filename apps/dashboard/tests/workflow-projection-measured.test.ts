@@ -170,6 +170,9 @@ describe("the filter runs at the ONE reader boundary", () => {
       // module read that same declared field.
       // Dashboard v2's workflow page, off the same ladder: it says "nothing spent yet"
       // instead of a grain breakdown for an explore row. Reads the declared field.
+      // Research's live workflow list reads the same rank ladder (declared field) and says
+      // "Never ran" for an unmeasured row rather than hiding it.
+      "components/v2/research-live-workflows.tsx",
       "components/v2/workflow-page.tsx",
       "components/workflows/campaign-workflows-page.tsx",
       "components/workflows/workflow-rank-panel.tsx",
@@ -179,6 +182,7 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `measured.fromReached` to say how many leads a measured rate rests on. Not a
       // projection row and not a flag.
       "lib/brand-conversion-rates.ts",
+      "lib/research/live-workflows.ts",
       // A THIRD producer's field under the same name: features-service's public
       // return-on-spend read marks a whole channel `measured`, meaning enough brands past the spend floor to state a median.
       // The pre-signup proof screen branches on it to decide whether it may state
