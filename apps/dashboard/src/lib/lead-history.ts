@@ -27,12 +27,16 @@ import { z } from "zod";
  * than a source-substring guard. Keep it that way.
  */
 
-/** Who owns a fact. `mailbox` is the customer's own Gmail mirror. */
+/**
+ * Who owns a fact. `mailbox` is the customer's own Gmail mirror; `staff-mailbox` is the
+ * Gmail of our own staff who operate the brand, read only for messages with this lead.
+ */
 export const HISTORY_SOURCES = [
   "lead-service",
   "delivery",
   "outreach",
   "mailbox",
+  "staff-mailbox",
   "content",
 ] as const;
 
@@ -222,6 +226,7 @@ const SOURCE_LABEL: Record<string, string> = {
   delivery: "delivery tracking",
   outreach: "the outreach provider",
   mailbox: "your mailbox",
+  "staff-mailbox": "our team's mailbox",
   content: "the generated copy",
 };
 
