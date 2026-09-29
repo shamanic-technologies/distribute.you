@@ -30,9 +30,10 @@ describe("Brand offer card — profileToUserFieldsPayload", () => {
     expect(fn).not.toContain(DROPS_EMPTY);
   });
 
-  it("splits list vs text off the shared field defs", () => {
-    expect(fn).toContain('ALL_FIELDS.find((f) => f.key === key)?.kind === "list"');
-    expect(fn).toContain(': ""');
+  it("splits the two list levers by line and trims the text ones", () => {
+    // Both list-kind levers (services, socialProof) are one-per-line textareas, so
+    // the payload splits them by line; every other lever is text.
+    expect(fn).toContain("TEXTAREA_LIST_KEYS.has(key) ? linesToList(v) : coerceTextField(v).trim()");
   });
 });
 
