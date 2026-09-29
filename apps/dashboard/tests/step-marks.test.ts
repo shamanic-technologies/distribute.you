@@ -14,6 +14,7 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "u
 /** Every step production publishes on `GET /public/channels` (2026-09-18, features-service
  *  v0.169.3: ONE form step), in order. */
 const PROD_STEPS = [
+  "booking_call",
   "conversation",
   "website_visit",
   "meeting_booked",
@@ -27,8 +28,7 @@ const PROD_STEPS = [
  *  mark nothing asks for, which costs nothing; a step offered on a screen with no mark
  *  is a blank square. `purchase` is an outcome `/start` offers today and the producer
  *  is publishing as a step of its own. */
-// booking_call: features-service #1214 publishes it; listed here until the deploy lands.
-const AHEAD_OF_WIRE = ["purchase", "booking_call"];
+const AHEAD_OF_WIRE = ["purchase"];
 
 describe("step marks — one tile per step, the same product-wide", () => {
   it("draws every step the producer publishes", () => {
