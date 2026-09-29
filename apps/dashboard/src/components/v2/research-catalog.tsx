@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ResearchLiveWorkflows, useResearchCrewLeg } from "@/components/v2/research-live-workflows";
 import { useResearch } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, TOPIC_LOOK, TopicMark, crewIdentity, dayText } from "@/components/v2/research-bits";
 import {
@@ -240,6 +241,10 @@ function CatalogList({
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
+  // Workflows are read LIVE off the producer's ranking at the crew's leg; the snapshot table
+  // stays for templates, models, and a crew whose step starts no entry leg.
+  const liveLeg = useResearchCrewLeg(crew);
+  const live = kind === "workflows" && liveLeg != null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -247,17 +252,25 @@ function CatalogList({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {rows.length} {rows.length === 1 ? words.one : words.many}, {priced} with a {o.noun.toLowerCase()}
+              {live ? `${id.name} workflows, ranked live` : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              Every {words.one} that wrote {id.name}&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
-              its last runs{kind === "templates" ? " and its text" : ""}.
+              {live ? (
+                <>Every workflow on this leg, in the order a campaign picks from, with whether it is mature and its return.</>
+              ) : (
+                <>
+                  Every {words.one} that wrote {id.name}&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
+                  its last runs{kind === "templates" ? " and its text" : ""}.
+                </>
+              )}
             </p>
           </div>
-          <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
-            Read from production on {dayText(RESEARCH.readOn)}
-          </span>
+          {!live && (
+            <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
+              Read from production on {dayText(RESEARCH.readOn)}
+            </span>
+          )}
         </div>
 
         <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
@@ -281,6 +294,9 @@ function CatalogList({
           >
             {words.title}
           </SectionTitle>
+          {live ? (
+            <ResearchLiveWorkflows base={base} crew={crew} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
+          ) : (
           <div className="k-card overflow-hidden">
             <div className="k-scroll relative overflow-x-auto">
               <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : "min-w-[860px]"} text-[13px]`}>
@@ -361,7 +377,8 @@ function CatalogList({
               </Link>
             </div>
           </div>
-          <p className="k-fg3 mt-1.5 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
+          )}
+          {!live && <p className="k-fg3 mt-1.5 text-[12px] leading-5">{RESEARCH.maturation.note}</p>}
         </section>
       </div>
     </>
