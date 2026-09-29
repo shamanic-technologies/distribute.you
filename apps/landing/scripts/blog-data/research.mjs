@@ -486,6 +486,92 @@ function shapeStudies(key, o, R, dim) {
   });
 }
 
+// ---------- dashes in the first email ----------
+// Em dash / en dash / neither in the first email (first-email-shape.mjs, a character test on the
+// generated text). Every email of a sequence is filed under its first email's class, as for the
+// layout and the opening. Cost AND rate, all tiers then Flash and Pro, and the models behind each
+// bucket: dash use is mostly a model habit, so a gap between buckets is read against that.
+const pctText = (v) => `${Math.round(v * 100)}%`;
+function dashStudy(key, o, R) {
+  const rows = R.byDash;
+  const w = costWinner(o, rows);
+  const tiers = ["Flash", "Pro"].map((t) => ({ t, rows: R.dashByTier[t] || [] })).filter((x) => x.rows.some((r) => r.emails > 0));
+  const tierWin = tiers.map(({ t, rows: tr }) => ({ t, w: costWinner(o, tr) })).filter((x) => x.w);
+  const both = R.dashBoth;
+  const missing = R.firstShape.noDash;
+  const last = R.firstShape.lastMonth;
+  const crm = key === "reply" ? facts.research.crmReplies : null;
+  const low = (t) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+  // A model's first emails, filed by class. "With a dash" is every class but the no-dash one.
+  const models = R.dashByModel.filter((m) => m.emails > 0);
+  const withDash = (m) => m.emails - (m.classes["No dash"] || 0);
+  const modelBars = models
+    .map((m) => ({
+      label: m.model,
+      value: Number(((withDash(m) / m.emails) * 100).toFixed(1)),
+      display: pctText(withDash(m) / m.emails),
+      note: `${n(withDash(m))} with a dash · ${n(m.emails)} ${o.emailsNoun}`,
+      thin: false,
+    }))
+    .sort((a, b) => b.value - a.value);
+  // Which model wrote most of a bucket, per tier: the plain statement of the confound.
+  const bucketsOf = (m) => (both.folded ? { ...m.classes, "Em dash": (m.classes["Em dash"] || 0) + (m.classes["Both dashes"] || 0) } : m.classes);
+  const mainModel = (tier, bucket) => {
+    const ms = models.filter((m) => m.tier === tier);
+    const total = ms.reduce((a, m) => a + (bucketsOf(m)[bucket] || 0), 0);
+    if (!total) return null;
+    const top = ms.reduce((b, m) => ((bucketsOf(m)[bucket] || 0) > (bucketsOf(b)[bucket] || 0) ? m : b));
+    return { model: top.model, share: (bucketsOf(top)[bucket] || 0) / total };
+  };
+  const confound = tiers
+    .map(({ t }) => {
+      const parts = ["Em dash", "No dash"].map((b) => ({ b, m: mainModel(t, b) })).filter((x) => x.m);
+      if (!parts.length) return null;
+      const said = `${t} tier: ${parts.map(({ b, m }) => `${pctText(m.share)} of the ${b === "No dash" ? "no-dash" : "em dash"} emails come from ${m.model}`).join(", ")}`;
+      if (parts.length < 2) return `${said}.`;
+      if (parts[0].m.model !== parts[1].m.model) return `${said}: different models, so within this tier the gap is largely a model gap, not a dash effect.`;
+      return parts.every((x) => x.m.share >= 0.5)
+        ? `${said}: one model writes most of both, so within this tier the gap is closer to a dash effect.`
+        : `${said}: the same model leads both but does not write most of each, so within this tier dashes and models are mixed.`;
+    })
+    .filter(Boolean);
+  const top = modelBars[0], bottom = modelBars[modelBars.length - 1];
+  add({
+    id: `${o.crew}-dash-roi`,
+    crew: o.crew,
+    topic: "dash",
+    goal: "roi",
+    question: `Do dashes in the first email change what a ${o.noun} costs, and how often one comes?`,
+    status: w ? "measured" : "not_enough_data",
+    headline: w ? `${w.row.bucket} wins at ${usd(w.row[o.cost])} per ${o.noun}.` : `No ${o.noun} yet in any bucket.`,
+    winner: w ? w.row.bucket : null,
+    result: w ? { display: usd(w.row[o.cost]), unit: `per ${o.noun}`, sample: counts(o, w.row) } : null,
+    crowned: w ? w.crowned : false,
+    charts: [
+      { kind: "bars", title: `All tiers: ${low(costTitle(o))}`, lowerIsBetter: true, points: shapeBars(o, rows), note: RULE_NOTE },
+      { kind: "bars", title: `All tiers: ${low(rateTitle(o))}`, lowerIsBetter: false, points: rateBars(o, rows), note: RULE_NOTE },
+      ...tiers.flatMap(({ t, rows: tr }) => [
+        { kind: "bars", title: `${t} tier: ${low(costTitle(o))}`, lowerIsBetter: true, points: shapeBars(o, tr), note: RULE_NOTE },
+        { kind: "bars", title: `${t} tier: ${low(rateTitle(o))}`, lowerIsBetter: false, points: rateBars(o, tr), note: RULE_NOTE },
+      ]),
+      { kind: "bars", title: `Share of first emails with a dash, by model (%)`, lowerIsBetter: false, points: modelBars, note: RULE_NOTE },
+    ],
+    conclusion: [
+      w ? `${w.row.bucket}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent, ${rateSentence(o, w.row[o.rate])}.` : null,
+      ...tierWin.map(({ t, w: tw }) => `${t} tier: ${tw.row.bucket} is cheapest at ${usd(tw.row[o.cost])} per ${o.noun} (${counts(o, tw.row)}).`),
+      top && bottom && top !== bottom
+        ? `Dashes are a model habit: ${top.label} puts one in ${top.display} of its first emails, ${bottom.label} in ${bottom.display}. Read each tier against the models writing its buckets.`
+        : null,
+      ...confound,
+      `Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. ${both.folded ? `The ${n(both.emails)} ${o.emailsNoun} whose first email carries both (${(both.share * 100).toFixed(1)}%, under ${Math.round(both.min * 100)}%) are counted with the em dash.` : `An email carrying both is its own bucket (${n(both.emails)} ${o.emailsNoun}, ${(both.share * 100).toFixed(1)}%).`} Every email of a sequence is filed under its first email, and the sequence's ${o.nounPlural} with it. Classified by a character test on the text, no LLM involved.`,
+      `Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date${last ? ` (the last in ${monthLabel(last)})` : ""}.`,
+      ...(missing > 0 ? [`${n(missing)} ${o.emailsNoun} whose first email text is not on record are left out.`] : []),
+      ...(crm && crm.added > 0 ? [`${o.nounPlural.charAt(0).toUpperCase()}${o.nounPlural.slice(1)} include ${n(crm.added)} the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.`] : []),
+      `The buckets ran for different clients, audiences and months: this is not a split test.`,
+    ].filter(Boolean),
+  });
+}
+
 for (const key of ["reply", "visit"]) {
   const o = OUTCOMES[key];
   const R = facts.research[key];
@@ -665,6 +751,7 @@ for (const key of ["reply", "visit"]) {
   if (key === "reply") namingStudies(o, R);
   shapeStudies(key, o, R, "layout");
   shapeStudies(key, o, R, "opening");
+  dashStudy(key, o, R);
 
   // The best workflow: one model and one template together, which is what a campaign actually
   // runs. The same floors crown it as every other study.

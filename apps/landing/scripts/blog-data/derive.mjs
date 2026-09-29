@@ -22,7 +22,7 @@ import { openSync, readSync, closeSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } from "./maturation.mjs";
 import { MODEL_LABEL } from "./model-label.mjs";
-import { layoutOf, openingOf, LAYOUT, OPENING } from "./first-email-shape.mjs";
+import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "./first-email-shape.mjs";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
@@ -149,6 +149,7 @@ eachRow("generations.csv", (g) => {
     firstClassByKey.set(person, {
       layout: layoutOf(g.body_text),
       opening: openingOf(g.body_text, leadById.get(g.lead_id)?.first_name),
+      dash: dashOf(g.body_text),
     });
   }
 });
@@ -324,6 +325,7 @@ for (const e of emails) {
     // the whole sequence is filed under how its FIRST email looked (null: no step-1 text on record)
     firstLayout: person ? firstClassByKey.get(person)?.layout ?? null : null,
     firstOpening: person ? firstClassByKey.get(person)?.opening ?? null : null,
+    firstDash: person ? firstClassByKey.get(person)?.dash ?? null : null,
     model,
     // the prompt template that wrote the sequence (content-generation's prompt_type)
     template: gen?.template || null,
@@ -649,6 +651,35 @@ function byMonthPer(rows, keyFn) {
   for (const [k, rs] of groups) outMap[k] = cut(rs, (r) => r.month, monthsOf(rs));
   return outMap;
 }
+// An email with BOTH dashes is its own bucket, unless it is under DASH_BOTH_MIN of the classified
+// emails of this population: then it joins the em dash bucket (it does carry one), and the study
+// says so. Decided here, once, so every chart of the study files it the same way.
+const DASH_BOTH_MIN = 0.02;
+function dashCuts(rows) {
+  const classified = rows.filter((r) => r.firstDash);
+  const both = classified.filter((r) => r.firstDash === DASH.both).length;
+  const folded = classified.length > 0 && both / classified.length < DASH_BOTH_MIN;
+  const key = (r) => (folded && r.firstDash === DASH.both ? DASH.em : r.firstDash);
+  return {
+    byDash: cut(rows, key),
+    dashByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), key)])),
+    dashByModel: dashByModel(rows),
+    dashBoth: { emails: both, share: classified.length ? both / classified.length : 0, folded, min: DASH_BOTH_MIN },
+  };
+}
+// Per model: how many emails (filed under their first email) sat in each dash class, and its tier.
+function dashByModel(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    if (!r.firstDash || !r.model) continue;
+    const label = modelLabel(r);
+    if (!by.has(label)) by.set(label, { model: label, tier: r.tier, emails: 0, classes: {} });
+    const m = by.get(label);
+    m.emails++;
+    m.classes[r.firstDash] = (m.classes[r.firstDash] || 0) + 1;
+  }
+  return [...by.values()].sort((a, b) => b.emails - a.emails);
+}
 function researchFor(rows) {
   return {
     byModel: cut(rows, modelLabel),
@@ -668,9 +699,13 @@ function researchFor(rows) {
     byOpening: cut(rows, (r) => r.firstOpening),
     layoutByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), (r) => r.firstLayout)])),
     openingByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), (r) => r.firstOpening)])),
+    // Em dash / en dash / both / neither in the first email, and the same per tier. Dash use is
+    // mostly the MODEL's habit, so byModelDash says, per model, how its first emails split.
+    ...dashCuts(rows),
     firstShape: {
       noLayout: rows.filter((r) => !r.firstLayout).length,
       noOpening: rows.filter((r) => !r.firstOpening).length,
+      noDash: rows.filter((r) => !r.firstDash).length,
       // the most recent month a first email in this population was written in
       lastMonth: rows.filter((r) => r.firstLayout).reduce((m, r) => (!m || r.month > m ? r.month : m), null),
     },
@@ -801,7 +836,7 @@ out.research = {
   excludedEmails: research.immature,
   scope: research.scope,
   crmReplies,
-  shapeLabels: { layout: LAYOUT, opening: OPENING },
+  shapeLabels: { layout: LAYOUT, opening: OPENING, dash: DASH },
 };
 
 // THE RULE the research figures are on, stated beside them: features-service's per-leg maturity,

@@ -68,6 +68,27 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("asks whether dashes in the first email change the cost and the rate, per leg, all tiers then per tier, with the models behind them", () => {
+    for (const crew of ["herald", "scout"] as const) {
+      const s = studiesFor(crew).find((st) => st.id === `${crew}-dash-roi`);
+      expect(s, crew).toBeTruthy();
+      if (!s) continue;
+      expect(s.topic).toBe("dash");
+      const titles = s.charts.map((c) => c.title);
+      expect(titles[0].startsWith("All tiers: cost per")).toBe(true);
+      expect(titles[1].startsWith("All tiers:") && titles[1].includes("rate")).toBe(true);
+      expect(titles.some((t) => /^(Flash|Pro) tier: cost per/.test(t))).toBe(true);
+      expect(titles.some((t) => /^(Flash|Pro) tier: .*rate/.test(t))).toBe(true);
+      expect(titles[titles.length - 1]).toContain("by model");
+      // every bar states its counts beside it
+      for (const c of s.charts) for (const p of c.points) expect(p.note, s.id).toMatch(/·/);
+      for (const c of s.charts.slice(0, -1)) for (const p of c.points) expect(["Em dash", "En dash", "Both dashes", "No dash"], s.id).toContain(p.label);
+      if (s.winner) expect(s.winner).toBe(s.charts[0].points[0].label);
+      expect(s.conclusion.join(" ")).toContain("Sep 29, 2026");
+      expect(s.conclusion.join(" ")).toMatch(/Flash tier: .* come from|Pro tier: .* come from/);
+    }
+  });
+
   it("draws something for every measured study, and nothing is invented for one that is not", () => {
     for (const s of RESEARCH.studies) {
       if (s.status === "measured") {
