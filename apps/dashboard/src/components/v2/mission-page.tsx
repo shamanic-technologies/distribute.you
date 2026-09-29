@@ -164,7 +164,7 @@ export function MissionPage() {
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row k="Crew" v={mission ? <span className="inline-flex items-center gap-1.5"><CrewMark color={mission.crew.color} glyph={mission.crew.glyph} />{mission.crew.name}</span> : null} />
               <Row k="Offer" v={mission?.offerName ?? null} />
-              <Row k="Step" v={mission?.leg?.label ?? null} />
+              <Row k="Outcome" v={mission?.leg?.label ?? null} />
               <Row k="Daily ceiling" v={mission ? `${fmtDailyBudgetUsd(mission.row.budgetCents)} / day` : null} />
               <Row k="Started" v={mission?.row.campaign.createdAt ? friendlyDate(mission.row.campaign.createdAt) : null} />
               <Row k="Pipeline" v={g?.totalPipelineUsd == null ? null : formatUsdAdaptive(g.totalPipelineUsd)} />

@@ -520,7 +520,7 @@ function RecentRuns({
             <table className="w-full min-w-[720px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
-                  {["Time", "Crew", "Step", "Mission", "Status", "Took", "Cost"].map((h) => (
+                  {["Time", "Crew", "Outcome", "Mission", "Status", "Took", "Cost"].map((h) => (
                     <th key={h} className={`k-label px-3 py-2.5 font-medium first:pl-4 last:pr-4 ${h === "Cost" || h === "Took" ? "text-right" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
