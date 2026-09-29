@@ -7,16 +7,11 @@ import {
   ApiError,
   getBrand,
   getBrandCampaignBudgets,
-  getFeature,
   getOfferEconomics,
-  getWorkflowProjectionLadder,
   listCampaignsByBrand,
-  prefillFeatureInputs,
-  prefillToStringMap,
   saveCampaignBudget,
   saveOfferLifetimeRevenue,
   setCampaignStatus,
-  startCampaign,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { invalidateCampaignMoney, invalidateConversionRates } from "@/lib/write-invalidation";
@@ -41,13 +36,12 @@ import {
 } from "@/lib/channel-minimums";
 import {
   CHANNEL_RUN_STATE_LABEL,
-  ChannelStartRefusal,
   channelRunState,
   channelStartBlocker,
   channelWriteErrorMessage,
-  startableWorkflowDynastySlug,
 } from "@/lib/channel-start";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
+import { createCampaignForPair } from "@/lib/start-pair";
 import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { Skeleton } from "@/components/skeleton";
 
@@ -83,7 +77,7 @@ function lifetimeRevenueErrorMessage(err: unknown): string {
   return "We could not save the lifetime revenue. Try again in a moment.";
 }
 
-function OfferLifetimeRevenue({ brandId, offerId }: { brandId: string; offerId: string }) {
+export function OfferLifetimeRevenue({ brandId, offerId }: { brandId: string; offerId: string }) {
   const queryClient = useQueryClient();
   const economicsQ = useAuthQuery(["offerEconomics", brandId, offerId], () =>
     getOfferEconomics(brandId, offerId),
@@ -329,42 +323,15 @@ function OfferCampaignRow({
         }
         return;
       }
-      // No campaign yet: turning it ON creates one. The workflow is the producer's own
-      // pick for THIS leg — never one of ours.
-      const ladder = await getWorkflowProjectionLadder({
-        featureSlug: row.scope.featureSlug,
+      // No campaign yet: turning it ON creates one.
+      await createCampaignForPair({
         brandId,
-        leg: row.scope.legKey,
-      });
-      const workflowDynastySlug = startableWorkflowDynastySlug(
-        ladder.recommendedWorkflowDynastySlug,
-      );
-      if (!workflowDynastySlug) {
-        throw new ChannelStartRefusal(
-          `${row.scope.channelName} is not ready for this outcome yet, so there is nothing to start.`,
-        );
-      }
-      const [{ feature }, prefill] = await Promise.all([
-        getFeature(row.scope.featureSlug),
-        prefillFeatureInputs(row.scope.featureSlug, [brandId], offerId),
-      ]);
-      const prefilled = prefillToStringMap(prefill.prefilled);
-      const featureInputs: Record<string, string> = {};
-      for (const input of feature.inputs ?? []) {
-        const value = prefilled[input.key]?.trim();
-        if (value) featureInputs[input.key] = value;
-      }
-      const brandName = brandQ.data?.brand?.name ?? brandQ.data?.brand?.domain ?? "Brand";
-      await startCampaign({
-        // The leg AND the channel are in the name: campaign-service refuses a name the org
-        // already holds, and an offer is sold through several (leg, channel) pairs.
-        name: `${brandName} — ${legLabel ?? row.scope.legKey} (${row.scope.channelName})`,
-        brandId,
-        featureSlug: row.scope.featureSlug,
-        featureInputs,
-        workflowDynastySlug,
         offerId,
+        featureSlug: row.scope.featureSlug,
         legKey: row.scope.legKey,
+        channelName: row.scope.channelName,
+        legLabel,
+        brandName: brandQ.data?.brand?.name ?? brandQ.data?.brand?.domain ?? "Brand",
       });
     },
     onSuccess: () => {

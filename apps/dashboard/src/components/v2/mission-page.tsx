@@ -15,6 +15,8 @@ import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { v2Href } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
+import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
+import { crewTrigger } from "@/lib/v2/crews";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions } from "@/components/v2/use-missions";
 import { V2TabLink, missionTabs } from "@/components/v2/setup-pages";
@@ -82,12 +84,21 @@ export function MissionPage() {
                 <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
                   <StateDot running={mission.running && !hold} label={hold ? "Held" : undefined} hold={mission.paymentHold} />
-                  {mission.leg ? <span className="k-chip">{mission.leg.label}</span> : null}
+                  {crewTrigger(mission.leg) ? (
+                    <CrewTriggerTag trigger={crewTrigger(mission.leg)!} className="k-fg2 text-[13px]" />
+                  ) : mission.leg ? (
+                    <span className="k-chip">{mission.leg.label}</span>
+                  ) : null}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <CampaignControlsTrigger brandId={brandId} campaignId={mission.row.campaign.id} totalCentsOverride={mission.row.budgetCents} />
+              <CampaignControlsTrigger
+                brandId={brandId}
+                campaignId={mission.row.campaign.id}
+                totalCentsOverride={mission.row.budgetCents}
+                cap={crewTrigger(mission.leg)?.kind === "event"}
+              />
             </div>
           </div>
         )}

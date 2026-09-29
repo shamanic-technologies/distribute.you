@@ -15,7 +15,7 @@ import {
   useCampaignRows,
   type CampaignRow,
 } from "@/components/campaigns/campaigns-table";
-import { crewFor, type CrewIdentity } from "@/lib/v2/crews";
+import { OFFERED_CREWS, crewFor, crewTrigger, type CrewIdentity, type CrewTrigger } from "@/lib/v2/crews";
 import { v2MissionHref } from "@/lib/v2/routes";
 import { paymentHoldKind, type PaymentHoldKind } from "@/lib/payment-declined";
 
@@ -40,6 +40,14 @@ export interface CrewSummary {
   /** How many of its missions are running now. */
   running: number;
   missions: number;
+  /** The (channel, leg) the crew performs. Null leg on a campaign row naming none. */
+  featureSlug: string;
+  legKey: string | null;
+  leg: LegDef | null;
+  /** Daily (spends its budget every day) or waits for a step. Null without a leg. */
+  trigger: CrewTrigger | null;
+  /** One of the crews a customer can put to work (`OFFERED_CREWS`). */
+  offered: boolean;
 }
 
 /**
@@ -120,16 +128,50 @@ export function useMissions(orgId: string, brandId: string) {
     return out;
   }, [missions, allQ.data]);
 
+  // Every crew a customer can put to work is listed, working or not, and so is any
+  // other crew already working for this brand. The offered ones come first, in the
+  // order they are offered.
   const crews = useMemo<CrewSummary[]>(() => {
     const byKey = new Map<string, CrewSummary>();
+    const offeredKeys: string[] = [];
+    for (const o of OFFERED_CREWS) {
+      const leg = legFor(legCatalogue, o.legKey);
+      if (!leg) continue;
+      const def = acquisitionChannelForFeatureSlug(o.featureSlug, channels);
+      const crew = crewFor(o.featureSlug, leg.toKey, def ? def.name : channelSlugLabel(o.featureSlug));
+      offeredKeys.push(crew.key);
+      byKey.set(crew.key, {
+        crew,
+        running: 0,
+        missions: 0,
+        featureSlug: o.featureSlug,
+        legKey: o.legKey,
+        leg,
+        trigger: crewTrigger(leg),
+        offered: true,
+      });
+    }
     for (const m of missions) {
-      const held = byKey.get(m.crew.key) ?? { crew: m.crew, running: 0, missions: 0 };
+      const held = byKey.get(m.crew.key) ?? {
+        crew: m.crew,
+        running: 0,
+        missions: 0,
+        featureSlug: m.row.campaign.featureSlug ?? "",
+        legKey: m.row.campaign.legKey ?? null,
+        leg: m.leg,
+        trigger: crewTrigger(m.leg),
+        offered: false,
+      };
       held.missions += 1;
       if (m.running) held.running += 1;
       byKey.set(m.crew.key, held);
     }
-    return [...byKey.values()].sort((a, b) => a.crew.name.localeCompare(b.crew.name));
-  }, [missions]);
+    const rank = (c: CrewSummary) => {
+      const i = offeredKeys.indexOf(c.crew.key);
+      return i === -1 ? offeredKeys.length : i;
+    };
+    return [...byKey.values()].sort((a, b) => rank(a) - rank(b) || a.crew.name.localeCompare(b.crew.name));
+  }, [missions, legCatalogue, channels]);
 
   return { missions, crews, settled, missionByCampaignId };
 }

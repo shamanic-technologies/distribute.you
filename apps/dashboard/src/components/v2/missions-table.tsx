@@ -10,6 +10,8 @@ import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import type { Mission } from "@/components/v2/use-missions";
+import { crewTrigger } from "@/lib/v2/crews";
+import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
 
 /**
  * What one result cost this mission, READ off the producer's own group for the step
@@ -82,7 +84,7 @@ export function MissionsTable({
             ) : missions.length === 0 ? (
               <tr>
                 <td colSpan={10}>
-                  <EmptyNote>No mission yet. A mission starts when a crew is funded for one of your offers.</EmptyNote>
+                  <EmptyNote>No mission yet. Add one to put a crew to work for one of your offers.</EmptyNote>
                 </td>
               </tr>
             ) : (
@@ -105,7 +107,9 @@ export function MissionsTable({
                             <span className="font-medium">{m.crew.name}</span>
                             {m.offerName && <span className="k-fg2"> · {m.offerName}</span>}
                           </p>
-                          <p className="k-fg3 truncate text-[12px]">{m.leg?.label ?? "—"}</p>
+                          <p className="k-fg3 truncate text-[12px]">
+                            {crewTrigger(m.leg) ? <CrewTriggerTag trigger={crewTrigger(m.leg)!} /> : m.leg?.label ?? "—"}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -140,6 +144,7 @@ export function MissionsTable({
                         brandId={brandId}
                         campaignId={m.row.campaign.id}
                         totalCentsOverride={m.row.budgetCents}
+                        cap={crewTrigger(m.leg)?.kind === "event"}
                       />
                     </td>
                   </tr>
