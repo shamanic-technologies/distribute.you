@@ -3537,6 +3537,15 @@ export const USER_FIELD_KEYS = [
 ] as const;
 export type UserFieldKey = (typeof USER_FIELD_KEYS)[number];
 
+/**
+ * The offer's two give lists (brand-service #584): what the brand gives a prospect who
+ * replies, and what an email must never promise. Stored like the levers but kept OUT of
+ * `USER_FIELD_KEYS` on purpose: the lever editors send every key of that list on save,
+ * empties included, so listing these there would clear them on every lever edit.
+ */
+export const GIVE_LIST_KEYS = ["giveForFree", "neverGive"] as const;
+export type GiveListKey = (typeof GIVE_LIST_KEYS)[number];
+
 export type FieldProvenance = "confirmed" | "suggested" | "extracted";
 export type UserFieldValue = string | string[];
 export interface UserField {
@@ -3675,7 +3684,7 @@ export async function getOfferUserFields(
 export async function saveOfferUserFields(
   brandId: string,
   offerId: string,
-  fields: Partial<Record<UserFieldKey, UserFieldValue>>,
+  fields: Partial<Record<UserFieldKey | GiveListKey, UserFieldValue>>,
   token?: string,
 ): Promise<{ fields: BrandUserFields }> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/user-fields`, {

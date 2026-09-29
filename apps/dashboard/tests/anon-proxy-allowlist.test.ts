@@ -220,6 +220,17 @@ describe("the onboarding v2 preview reads", () => {
   });
 });
 
+describe("onboarding v2 steps 6 to 8: answers saved on the picked offer", () => {
+  it("permits the offer's lifetime revenue and user fields on the session's own brand only", () => {
+    expect(allow("PUT", `/brands/${BRAND}/offers/o1/economics`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${BRAND}/offers/o1/user-fields`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${OTHER}/offers/o1/economics`).refusal).toBe("wrong-brand");
+    expect(allow("PUT", `/brands/${OTHER}/offers/o1/user-fields`).refusal).toBe("wrong-brand");
+    expect(allow("DELETE", `/brands/${BRAND}/offers/o1/user-fields`).allowed).toBe(false);
+    expect(allow("PUT", `/brands/${BRAND}/offers/o1/archive`).allowed).toBe(false);
+  });
+});
+
 describe("onboarding v2 steps 3 to 5: offer, audience, 100 companies", () => {
   it("permits the offer proposal and confirm on the session's own brand only", () => {
     expect(allow("POST", `/brands/${BRAND}/offers/proposals`).allowed).toBe(true);

@@ -34,6 +34,8 @@ import {
   previewColdEmail,
   proposeAudienceSegments,
   proposeBrandOffers,
+  saveOfferLifetimeRevenue,
+  saveOfferUserFields,
   suggestBrandIcp,
   upsertBrand,
   type AudienceCompanyRow,
@@ -53,8 +55,17 @@ import {
   EMAIL_CAP,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
+  GIVE_DRAFT_FIELDS,
+  LEVER_DRAFT_FIELDS,
   NEXT_STEPS,
   OFFER_FIELDS,
+  OUTCOME_OPTIONS,
+  VALUE_FIELDS,
+  answerLines,
+  leversLLMPrompt,
+  parseLifetimeRevenue,
+  parseUsdEstimate,
+  stepIndex,
   PREWRITTEN_EMAILS,
   canWriteAnother,
   emailPieces,
@@ -77,7 +88,10 @@ import {
   type GetStartedAudience,
   type GetStartedEmail,
   type GetStartedOffer,
+  type GetStartedOutcome,
   type GetStartedSnapshot,
+  type GiveDraftKey,
+  type LeverDraftKey,
   type GetStartedStepKey,
   type StepPhase,
 } from "@/lib/v2/get-started";
@@ -85,7 +99,7 @@ import { Initials, Shimmer } from "@/components/v2/ui";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { recommendedBudgetForPreview } from "./launch";
+import { coldEmailLegFor, recommendedBudgetForPreview } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
 import { stepViewName, withStageTransition } from "./view-transition";
@@ -174,6 +188,22 @@ export function GetStarted() {
   const checkQueue = useRef<Promise<void>>(Promise.resolve());
   const checkAsked = useRef(new Set<string>());
 
+  // Steps 5 to 8: questions about the offer, each prefilled from ONE site read made as
+  // soon as the offer is picked. The first emails wait for the answers: they are
+  // written from them.
+  const [outcome, setOutcome] = useState<GetStartedOutcome | null>(null);
+  const [valueInput, setValueInput] = useState("");
+  const [levers, setLevers] = useState<Record<LeverDraftKey, string>>(() => emptyRecord(LEVER_DRAFT_FIELDS));
+  const [gives, setGives] = useState<Record<GiveDraftKey, string>>(() => emptyRecord(GIVE_DRAFT_FIELDS));
+  const [drafted, setDrafted] = useState<"no" | "running" | "done" | "failed">("no");
+  const [answered, setAnswered] = useState(false);
+  const answeredRef = useRef(false);
+  answeredRef.current = answered;
+  const [answerBusy, setAnswerBusy] = useState(false);
+  const [answerError, setAnswerError] = useState<string | null>(null);
+  // The first companies' emails, held until the answers exist.
+  const pendingPrewrite = useRef<{ aud: GetStartedAudience; rows: AudienceCompanyRow[] } | null>(null);
+
   const [restoredBudget, setRestoredBudget] = useState<number | null>(null);
   const [restoredEmail, setRestoredEmail] = useState<GetStartedEmail | null>(null);
   // The stage shows ONE step: the one the walk is on (`stageIdx`), or one the person
@@ -228,14 +258,21 @@ export function GetStarted() {
     setAudience(s.audience);
     setRestoredBudget(s.budgetUsd);
     if (s.email) setRestoredEmail(s.email);
+    setOutcome(s.outcome ?? null);
+    if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
+    setAnswered(!!s.answered);
     setStarted(true);
     ran.current = true;
-    setStageIdx(s.audience ? 3 : s.offer ? 2 : 0);
+    setStageIdx(s.audience ? stepIndex("audience") : s.offer ? stepIndex("offer") : 0);
     setSteps({
       company: "done",
       competitors: s.competitors.length ? "done" : "failed",
       offer: s.offer ? "done" : "failed",
       audience: s.audience ? "done" : "failed",
+      outcome: s.outcome ? "done" : "failed",
+      value: s.lifetimeRevenueUsd != null ? "done" : "failed",
+      levers: s.answered ? "done" : "failed",
+      gives: s.answered ? "done" : "failed",
       companies: "failed",
       email: s.email ? "done" : "failed",
     });
@@ -313,11 +350,147 @@ export function GetStarted() {
       recommendedBudgetForPreview(brandId, chosenOfferId, floorUsd)
         .then(setRecommendedUsd)
         .catch((e) => console.error("[get-started] price read failed:", e));
+      void draftAnswers(brandId, chosenOfferId);
     } catch (e) {
       console.error("[get-started] offer confirm failed:", e);
       setOfferError("We could not save this offer. Try again.");
     } finally {
       setOfferBusy(null);
+    }
+  }
+
+  /**
+   * Steps 6 to 8 prefilled from ONE site read on the picked offer (suggest mode, so a
+   * value the owner already confirmed overlays the draft). A failed read leaves the
+   * fields blank for the visitor to fill; it does not stop the walk.
+   */
+  async function draftAnswers(id: string, offerId: string) {
+    setDrafted("running");
+    try {
+      const fields = [...VALUE_FIELDS, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => ({ key: f.key, description: f.description }));
+      const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
+      const usd = parseUsdEstimate(r.fields.clientLifetimeRevenueUsd?.value);
+      setValueInput((cur) => cur || (usd != null ? String(usd) : ""));
+      setLevers((cur) => fillBlank(cur, LEVER_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
+      setGives((cur) => fillBlank(cur, GIVE_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
+      setDrafted("done");
+    } catch (e) {
+      console.error("[get-started] answer drafts failed:", e);
+      setDrafted("failed");
+    }
+  }
+
+  // A question step opens once the one before it is answered; while its draft is still
+  // being read it shows as running rather than as an empty form.
+  useEffect(() => {
+    const ready = drafted === "done" || drafted === "failed";
+    setSteps((cur) => {
+      const next = { ...cur };
+      const open = (k: GetStartedStepKey, prevDone: boolean, needsDraft: boolean) => {
+        if (next[k] === "done" || !prevDone) return;
+        next[k] = needsDraft && !ready ? "running" : "choose";
+      };
+      open("outcome", cur.audience === "done", false);
+      open("value", cur.outcome === "done", true);
+      open("levers", cur.value === "done", true);
+      open("gives", cur.levers === "done", true);
+      return JSON.stringify(next) === JSON.stringify(cur) ? cur : next;
+    });
+  }, [drafted, steps.audience, steps.outcome, steps.value, steps.levers]);
+
+  /** Step 5: what the visitor buys. */
+  function pickOutcome(o: GetStartedOutcome) {
+    if (!brandId || !offer) return;
+    withStageTransition(() => {
+      setOutcome(o);
+      setStep("outcome", "done");
+      setFocus(null);
+    });
+    saveSnapshot({ outcome: o });
+    posthog.capture("get_started_outcome_picked", { outcome: o });
+    recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, coldEmailLegFor(o))
+      .then(setRecommendedUsd)
+      .catch((e) => console.error("[get-started] price read failed:", e));
+  }
+
+  /** Step 6: what one client is worth, saved on the offer. */
+  async function confirmValue() {
+    if (!brandId || !offer || answerBusy) return;
+    const parsed = parseLifetimeRevenue(valueInput);
+    if ("problem" in parsed) {
+      setAnswerError(parsed.problem);
+      return;
+    }
+    setAnswerBusy(true);
+    setAnswerError(null);
+    try {
+      await saveOfferLifetimeRevenue(brandId, offer.offerId, parsed.usd);
+      withStageTransition(() => {
+        setStep("value", "done");
+        setFocus(null);
+      });
+      saveSnapshot({ lifetimeRevenueUsd: parsed.usd });
+    } catch (e) {
+      console.error("[get-started] lifetime revenue save failed:", e);
+      setAnswerError("We could not save this. Try again.");
+    } finally {
+      setAnswerBusy(false);
+    }
+  }
+
+  /** Step 7: the six offer points, saved on the offer. */
+  async function confirmLevers() {
+    if (!brandId || !offer || answerBusy) return;
+    setAnswerBusy(true);
+    setAnswerError(null);
+    try {
+      const fields: Partial<Record<LeverDraftKey, string | string[]>> = {};
+      for (const f of LEVER_DRAFT_FIELDS) {
+        const lines = answerLines(levers[f.key]);
+        if (lines.length === 0) continue;
+        fields[f.key] = f.key === "socialProof" ? lines : lines.join("\n");
+      }
+      if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offer.offerId, fields);
+      withStageTransition(() => {
+        setStep("levers", "done");
+        setFocus(null);
+      });
+    } catch (e) {
+      console.error("[get-started] offer points save failed:", e);
+      setAnswerError("We could not save your offer. Try again.");
+    } finally {
+      setAnswerBusy(false);
+    }
+  }
+
+  /** Step 8: what is given away and never promised, saved; then the first emails are written. */
+  async function confirmGives() {
+    if (!brandId || !offer || answerBusy) return;
+    setAnswerBusy(true);
+    setAnswerError(null);
+    try {
+      await saveOfferUserFields(brandId, offer.offerId, {
+        giveForFree: answerLines(gives.giveForFree),
+        neverGive: answerLines(gives.neverGive),
+      });
+      withStageTransition(() => {
+        setStep("gives", "done");
+        setAnswered(true);
+        setFocus(null);
+      });
+      answeredRef.current = true;
+      saveSnapshot({ answered: true });
+      posthog.capture("get_started_answers_done");
+      const held = pendingPrewrite.current;
+      if (held && audienceRef.current?.audienceId === held.aud.audienceId) {
+        pendingPrewrite.current = null;
+        prewrite(held.aud, held.rows);
+      }
+    } catch (e) {
+      console.error("[get-started] give lists save failed:", e);
+      setAnswerError("We could not save these lists. Try again.");
+    } finally {
+      setAnswerBusy(false);
     }
   }
 
@@ -381,7 +554,6 @@ export function GetStarted() {
         companies: loaded ? "done" : "running",
         email: firstEmailFor(next.audienceId) ? "done" : loaded ? cur.email : "waiting",
       }));
-      if (loaded) setStageIdx(4);
     });
     saveSnapshot({ audience: next });
   }
@@ -440,7 +612,9 @@ export function GetStarted() {
           first = false;
           if (audienceRef.current?.audienceId === id) {
             setStep("companies", "done");
-            prewrite(aud, got);
+            // The emails are written from the answers: held until they exist.
+            if (answeredRef.current) prewrite(aud, got);
+            else pendingPrewrite.current = { aud, rows: got };
           }
         }
         if (page.done || page.nextOffset == null || got.length === 0) {
@@ -491,6 +665,8 @@ export function GetStarted() {
   /** Writes one row's email (content-generation, billed to this anonymous org). The same person returns the stored email. */
   async function writeEmail(aud: GetStartedAudience, row: AudienceCompanyRow): Promise<void> {
     const key = rowKey(aud.audienceId, row.index);
+    // An email is written from the offer points and the give lists: none before them.
+    if (!answeredRef.current) return;
     if (requested.current.has(key) || !brandId) return;
     if (!canWriteAnother(requested.current.size)) return;
     requested.current.add(key);
@@ -571,7 +747,7 @@ export function GetStarted() {
     }
     withStageTransition(() => {
       setSelectedRow(index);
-      setStageIdx(5);
+      setStageIdx(stepIndex("email"));
       setFocus(null);
     });
     if (!have && rowWritable(row)) {
@@ -707,7 +883,7 @@ export function GetStarted() {
     posthog.capture("get_started_preview_ready");
   }
 
-  const canLaunch = started && !!brandId && !!offer && !!audience;
+  const canLaunch = started && !!brandId && !!offer && !!audience && !!outcome && answered;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
   if (!started) {
@@ -730,12 +906,15 @@ export function GetStarted() {
   const audRows = audience ? rows[audience.audienceId] ?? [] : [];
   const writtenCount = Object.keys(emails).length;
   const selectedKey = audience ? rowKey(audience.audienceId, selectedRow) : null;
-  const pick =
-    stagedKey === "offer" && steps.offer === "choose"
-      ? "Pick the offer to sell first."
-      : stagedKey === "audience" && steps.audience === "choose"
-        ? "Pick who to write to first."
-        : null;
+  const PICK_LINES: Partial<Record<GetStartedStepKey, string>> = {
+    offer: "Pick the offer to sell first.",
+    audience: "Pick who to write to first.",
+    outcome: "Pick what you want us to get you.",
+    value: "Tell us what one client is worth.",
+    levers: "Check your offer, then continue.",
+    gives: "Say what you give away, then we write the emails.",
+  };
+  const pick = steps[stagedKey] === "choose" ? PICK_LINES[stagedKey] ?? null : null;
   const journal: JournalData = {
     steps,
     staged: stagedKey,
@@ -749,6 +928,10 @@ export function GetStarted() {
     audienceBusy,
     rows: audRows,
     written: writtenCount,
+    outcomeLabel: OUTCOME_OPTIONS.find((o) => o.key === outcome)?.label ?? null,
+    lifetimeRevenue: valueInput,
+    leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
+    giveCount: answerLines(gives.giveForFree).length,
     onPickAudience: (i) => void pickAudience(i),
     onFocus: openStep,
   };
@@ -780,6 +963,46 @@ export function GetStarted() {
           waitingForOffer={!offer}
           onPick={(i) => void pickAudience(i)}
           onRetry={() => brandId && void prepareAudiences(brandId)}
+        />
+      );
+    if (key === "outcome")
+      return <OutcomeStage state={steps.outcome} picked={outcome} onPick={pickOutcome} />;
+    if (key === "value")
+      return (
+        <ValueStage
+          state={steps.value}
+          value={valueInput}
+          onValue={(v) => {
+            setValueInput(v);
+            setAnswerError(null);
+          }}
+          drafted={drafted === "done" && !!valueInput}
+          busy={answerBusy}
+          error={steps.value === "choose" ? answerError : null}
+          onContinue={() => void confirmValue()}
+        />
+      );
+    if (key === "levers")
+      return (
+        <LeversStage
+          state={steps.levers}
+          offerName={offer?.name ?? ""}
+          values={levers}
+          onValue={(k, v) => setLevers((cur) => ({ ...cur, [k]: v }))}
+          busy={answerBusy}
+          error={steps.levers === "choose" ? answerError : null}
+          onContinue={() => void confirmLevers()}
+        />
+      );
+    if (key === "gives")
+      return (
+        <GivesStage
+          state={steps.gives}
+          values={gives}
+          onValue={(k, v) => setGives((cur) => ({ ...cur, [k]: v }))}
+          busy={answerBusy}
+          error={steps.gives === "choose" ? answerError : null}
+          onContinue={() => void confirmGives()}
         />
       );
     if (key === "companies")
@@ -888,7 +1111,7 @@ export function GetStarted() {
         </main>
       </div>
 
-      {wallOpen && brandId && offer && audience && (
+      {wallOpen && brandId && offer && audience && outcome && (
         <AccountCardWall
           brandId={brandId}
           website={websiteUrl(website)}
@@ -900,6 +1123,8 @@ export function GetStarted() {
           floorUsd={floorUsd}
           recommendedUsd={restoredBudget ?? recommendedUsd}
           budgetChosen={restoredBudget != null}
+          outcome={outcome ?? "visits"}
+          answered={answered}
           onBudget={(usd) => saveSnapshot({ budgetUsd: usd })}
           onClose={() => setWallOpen(false)}
         />
@@ -909,7 +1134,29 @@ export function GetStarted() {
 }
 
 function initialSteps(): Record<GetStartedStepKey, StepState> {
-  return { company: "waiting", competitors: "waiting", offer: "waiting", audience: "waiting", companies: "waiting", email: "waiting" };
+  return {
+    company: "waiting",
+    competitors: "waiting",
+    offer: "waiting",
+    audience: "waiting",
+    outcome: "waiting",
+    value: "waiting",
+    levers: "waiting",
+    gives: "waiting",
+    companies: "waiting",
+    email: "waiting",
+  };
+}
+
+function emptyRecord<K extends string>(fields: ReadonlyArray<{ key: K }>): Record<K, string> {
+  return Object.fromEntries(fields.map((f) => [f.key, ""])) as Record<K, string>;
+}
+
+/** Fills only the answers still blank: a draft never replaces what the visitor typed. */
+function fillBlank<K extends string>(cur: Record<K, string>, fields: ReadonlyArray<{ key: K }>, draft: (k: K) => string): Record<K, string> {
+  const next = { ...cur };
+  for (const f of fields) if (!next[f.key].trim()) next[f.key] = draft(f.key);
+  return next;
 }
 
 /** A row we can write to: the person has a first name and a title. */
@@ -1126,6 +1373,10 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   competitors: () => "Finding your competitors",
   offer: () => "Reading what you sell",
   audience: () => "Working out who to write to",
+  outcome: () => "Waiting for your pick",
+  value: () => "Estimating what a client is worth to you",
+  levers: () => "Drafting your offer from your site",
+  gives: () => "Drafting what you could give away",
   companies: () => "Finding companies that match, with the right person at each",
   email: () => "Writing your first emails. The first one takes about a minute and a half.",
 };
@@ -1375,6 +1626,283 @@ function OfferStage({
   );
 }
 
+/** Step 5: what the visitor wants us to get them. */
+function OutcomeStage({
+  state,
+  picked,
+  onPick,
+}: {
+  state: StepState;
+  picked: GetStartedOutcome | null;
+  onPick: (o: GetStartedOutcome) => void;
+}) {
+  return (
+    <StepCard index={stepIndex("outcome") + 1} title="What you want" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
+      {state === "waiting" ? (
+        <OptionSkeleton />
+      ) : (
+        <>
+          <p className="k-fg2 text-[13px]">Do you want visits to your website, or meetings in your calendar?</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {OUTCOME_OPTIONS.map((o, i) => {
+              const on = picked === o.key;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() => onPick(o.key)}
+                  disabled={!!picked}
+                  aria-pressed={on}
+                  style={stagger(i, 80)}
+                  className={`gs-in k-card p-3 text-left transition-shadow duration-200 ${on ? "ring-1 ring-[var(--accent)]" : picked ? "opacity-50" : "k-hover"}`}
+                >
+                  <span className="k-fg block text-[14px] font-medium leading-5">{o.label}</span>
+                  <span className="k-fg2 mt-1 block text-[12.5px] leading-5">{o.blurb}</span>
+                  {o.key === "meetings" && <span className="k-fg3 mt-1.5 block text-[12px]">Two campaigns: cold email, then meeting booking.</span>}
+                  {on && <span className="k-accent-text mt-1.5 block text-[12px]">Picked</span>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+/** Step 6: what one client brings over their lifetime, prefilled with our estimate. */
+function ValueStage({
+  state,
+  value,
+  onValue,
+  drafted,
+  busy,
+  error,
+  onContinue,
+}: {
+  state: StepState;
+  value: string;
+  onValue: (v: string) => void;
+  drafted: boolean;
+  busy: boolean;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  const done = state === "done";
+  return (
+    <StepCard index={stepIndex("value") + 1} title="What a client is worth" state={state} meta={<StateWord state={state} />}>
+      {state === "waiting" || state === "running" ? (
+        <OptionSkeleton />
+      ) : (
+        <>
+          <p className="k-fg2 text-[13px]">How much revenue does one client bring you over their whole lifetime?</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="k-fg2 text-[14px]">$</span>
+            <input
+              className="k-input h-9 w-36 px-2 text-right text-[15px] tabular-nums"
+              inputMode="numeric"
+              value={value}
+              onChange={(e) => onValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !done) onContinue();
+              }}
+              disabled={done || busy}
+              aria-label="Lifetime revenue of one client, in dollars"
+            />
+            {drafted && !done && <span className="k-chip">Our estimate from your site</span>}
+            {!done && (
+              <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={busy}>
+                {busy ? "Saving..." : "Continue"}
+              </button>
+            )}
+          </div>
+          <p className="k-fg3 mt-2 text-[12px] leading-5">We use it to show what each campaign returns. You can change it later.</p>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+/**
+ * A short answer shown as bullets; a click turns it into a text area, leaving it turns
+ * it back. The text is the source: one line per bullet.
+ */
+function EditableAnswer({
+  value,
+  onValue,
+  disabled,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onValue: (v: string) => void;
+  disabled: boolean;
+  placeholder: string;
+  label: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const lines = answerLines(value);
+  if (editing && !disabled)
+    return (
+      <textarea
+        autoFocus
+        className="k-input min-h-[96px] w-full resize-y px-2 py-1.5 text-[13px] leading-5"
+        value={value}
+        onChange={(e) => onValue(e.target.value)}
+        onBlur={() => setEditing(false)}
+        aria-label={label}
+        placeholder={placeholder}
+      />
+    );
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      disabled={disabled}
+      className={`w-full rounded-lg px-2 py-1.5 text-left ${disabled ? "" : "k-hover cursor-text"}`}
+      aria-label={`Edit: ${label}`}
+    >
+      {lines.length ? (
+        <ul className="grid gap-1">
+          {lines.map((l, i) => (
+            <li key={i} className="k-fg2 flex gap-2 text-[13px] leading-5">
+              <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+              {l}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <span className="k-fg4 text-[13px]">{placeholder}</span>
+      )}
+    </button>
+  );
+}
+
+/** Step 7: the six offer points (Hormozi), each its own box, click to edit. */
+function LeversStage({
+  state,
+  offerName,
+  values,
+  onValue,
+  busy,
+  error,
+  onContinue,
+}: {
+  state: StepState;
+  offerName: string;
+  values: Record<LeverDraftKey, string>;
+  onValue: (k: LeverDraftKey, v: string) => void;
+  busy: boolean;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const done = state === "done";
+  async function copyAll() {
+    try {
+      await navigator.clipboard.writeText(leversLLMPrompt(offerName, values));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.error("[get-started] copy failed:", e);
+    }
+  }
+  return (
+    <StepCard
+      index={stepIndex("levers") + 1}
+      title="Your offer, in six points"
+      state={state}
+      meta={
+        state === "choose" || done ? (
+          <button type="button" className="k-btn-ghost h-7 px-2 text-[12px]" onClick={() => void copyAll()}>
+            {copied ? "Copied" : "Copy all for LLM"}
+          </button>
+        ) : (
+          <StateWord state={state} />
+        )
+      }
+    >
+      {state === "waiting" || state === "running" ? (
+        <OptionSkeleton />
+      ) : (
+        <>
+          <p className="k-fg2 text-[13px]">We drafted these from your site. Click any box to change it: every email is written from them.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {LEVER_DRAFT_FIELDS.map((f, i) => (
+              <div key={f.key} className="gs-in k-card p-3" style={stagger(i, 60)}>
+                <p className="k-fg text-[13px] font-medium">{f.label}</p>
+                <p className="k-fg3 mt-0.5 text-[12px]">{f.question}</p>
+                <div className="mt-2">
+                  <EditableAnswer value={values[f.key]} onValue={(v) => onValue(f.key, v)} disabled={done || busy} placeholder="Click to answer" label={f.label} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {!done && (
+            <div className="mt-3 flex justify-end">
+              <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
+                {busy ? "Saving..." : "Continue"}
+              </button>
+            </div>
+          )}
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+/** Step 8: what the brand gives away to a prospect who replies, and what it never promises. */
+function GivesStage({
+  state,
+  values,
+  onValue,
+  busy,
+  error,
+  onContinue,
+}: {
+  state: StepState;
+  values: Record<GiveDraftKey, string>;
+  onValue: (k: GiveDraftKey, v: string) => void;
+  busy: boolean;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  const done = state === "done";
+  return (
+    <StepCard index={stepIndex("gives") + 1} title="What you give away" state={state} meta={<StateWord state={state} />}>
+      {state === "waiting" || state === "running" ? (
+        <OptionSkeleton />
+      ) : (
+        <>
+          <p className="k-fg2 text-[13px]">Something free makes people reply. Tell us what we may offer, and what we must never promise.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {GIVE_DRAFT_FIELDS.map((f, i) => (
+              <div key={f.key} className="gs-in k-card p-3" style={stagger(i, 80)}>
+                <p className="k-fg text-[13px] font-medium">{f.label}</p>
+                <p className="k-fg3 mt-0.5 text-[12px]">{f.question}</p>
+                <div className="mt-2">
+                  <EditableAnswer value={values[f.key]} onValue={(v) => onValue(f.key, v)} disabled={done || busy} placeholder="Click to add, one per line" label={f.label} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {!done && (
+            <div className="mt-3 flex items-center justify-end gap-3">
+              <span className="k-fg3 text-[12px]">Next, we write your first emails.</span>
+              <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
+                {busy ? "Saving..." : "Write my emails"}
+              </button>
+            </div>
+          )}
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
 /** Step 4: who to write to, in words (at most 6). Picking one builds its companies. */
 function AudienceStage({
   state,
@@ -1537,7 +2065,7 @@ function CompaniesStage({
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
-        <span className="k-label">Step 5</span>
+        <span className="k-label">{`Step ${stepIndex("companies") + 1}`}</span>
         <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">{audienceName ? `Companies in ${audienceName}` : "Companies that match"}</h2>
         <span className="ml-auto shrink-0">
           <StateWord
@@ -1748,7 +2276,7 @@ function EmailsStage({
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
-        <span className="k-label">Step 6</span>
+        <span className="k-label">{`Step ${stepIndex("email") + 1}`}</span>
         <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">Your first emails</h2>
         <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">
           {written} of {EMAIL_CAP} free previews

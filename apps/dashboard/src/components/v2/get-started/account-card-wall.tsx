@@ -50,12 +50,14 @@ import {
   nextSlide,
   parseDailyBudget,
   type GetStartedEmail,
+  totalDailyUsd,
   type GetStartedAudience,
   type GetStartedOffer,
+  type GetStartedOutcome,
 } from "@/lib/v2/get-started";
 import { proofCardsFor, shuffleWithSeed, type ProofCard } from "@/lib/start-proof";
 import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
-import { EMPTY_PROGRESS, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
+import { EMPTY_PROGRESS, coldEmailLegFor, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
 import { WALL_OPEN_CLASS } from "./view-transition";
@@ -89,6 +91,8 @@ export function AccountCardWall({
   floorUsd,
   recommendedUsd,
   budgetChosen = false,
+  outcome,
+  answered,
   onBudget,
   onClose,
 }: {
@@ -107,6 +111,10 @@ export function AccountCardWall({
   recommendedUsd: number | null;
   /** The budget was typed by the person earlier (restored after a round trip): a price that lands later must not replace it. */
   budgetChosen?: boolean;
+  /** What the visitor buys: one campaign (visits) or two (meetings), each at the daily budget. */
+  outcome: GetStartedOutcome;
+  /** The offer points and give lists were answered in the preview (and saved). */
+  answered: boolean;
   onBudget: (usd: number) => void;
   onClose: () => void;
 }) {
@@ -199,7 +207,7 @@ export function AccountCardWall({
         // Price the budget the way the "Add a brand" modal does, now that the brand
         // can hold an offer. Best effort: the field keeps the floor when no price exists.
         setPricing(true);
-        recommendedBudgetForPreview(brandId, offer.offerId, floorUsd)
+        recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, coldEmailLegFor(outcome))
           .then((usd) => setPricedUsd(usd))
           .catch((e) => console.error("[get-started] budget price read failed:", e))
           .finally(() => setPricing(false));
@@ -411,7 +419,7 @@ export function AccountCardWall({
       await setPaymentMode(postpaid ? "postpaid" : "prepaid");
       if (postpaid) await configureAutoTopup(5000, 1000);
       const campaignId = await launchFromPreview(
-        { brandId, website, offer, audienceId: audience.audienceId, budgetUsd },
+        { brandId, website, offer, audienceId: audience.audienceId, budgetUsd, outcome, answered },
         progress.current,
       );
       const token = await session?.getToken({ skipCache: true });
@@ -455,7 +463,7 @@ export function AccountCardWall({
           disabled={stage === "launching"}
           aria-label="Daily budget in dollars"
         />
-        <span className="k-fg3 text-[12px]">a day</span>
+        <span className="k-fg3 text-[12px]">{outcome === "meetings" ? "a day on each" : "a day"}</span>
       </span>
       {recommendation != null && Number(budget) === recommendation && (
         <span key={recommendation} className="gs-pop k-chip">
@@ -463,6 +471,11 @@ export function AccountCardWall({
         </span>
       )}
       {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
+      {outcome === "meetings" && budgetUsd != null && (
+        <span className="k-fg3 w-full text-[12px] leading-5">
+          {`Two campaigns run: cold email gets the replies, meeting booking turns them into meetings. $${totalDailyUsd(outcome, budgetUsd)} a day in total.`}
+        </span>
+      )}
     </div>
   );
 

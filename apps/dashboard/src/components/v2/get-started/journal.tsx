@@ -41,6 +41,11 @@ export interface JournalData {
   audienceBusy: number | null;
   rows: AudienceCompanyRow[];
   written: number;
+  /** Steps 5 to 8, as the rail states them once answered. */
+  outcomeLabel: string | null;
+  lifetimeRevenue: string;
+  leverCount: number;
+  giveCount: number;
   onPickAudience: (index: number) => void;
   onFocus: (key: GetStartedStepKey) => void;
 }
@@ -122,6 +127,10 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
       </div>
     ) : null;
   if (k === "audience") return <AudiencePicker d={d} />;
+  if (k === "outcome") return d.outcomeLabel ? <p className="k-fg2 text-[12px]">{d.outcomeLabel}</p> : null;
+  if (k === "value") return d.lifetimeRevenue ? <p className="k-fg2 text-[12px] tabular-nums">{`$${d.lifetimeRevenue} per client`}</p> : null;
+  if (k === "levers") return <p className="k-fg2 text-[12px] tabular-nums">{`${d.leverCount} of 6 offer points`}</p>;
+  if (k === "gives") return <p className="k-fg2 text-[12px] tabular-nums">{d.giveCount === 1 ? "1 thing to give away" : `${d.giveCount} things to give away`}</p>;
   if (k === "companies")
     return (
       <div>
