@@ -8,7 +8,7 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
-import { legFor, type LegDef } from "@/lib/legs";
+import { crewNameFor, legFor, type LegDef } from "@/lib/legs";
 import {
   ALL_OFFERS,
   isActiveStatus,
@@ -89,6 +89,7 @@ export function useMissions(orgId: string, brandId: string) {
           c.featureSlug,
           leg?.toKey ?? null,
           def ? def.name : channelSlugLabel(c.featureSlug),
+          crewNameFor(legCatalogue, c.featureSlug, c.legKey),
         );
         return [
           {
@@ -138,7 +139,12 @@ export function useMissions(orgId: string, brandId: string) {
       const leg = legFor(legCatalogue, o.legKey);
       if (!leg) continue;
       const def = acquisitionChannelForFeatureSlug(o.featureSlug, channels);
-      const crew = crewFor(o.featureSlug, leg.toKey, def ? def.name : channelSlugLabel(o.featureSlug));
+      const crew = crewFor(
+        o.featureSlug,
+        leg.toKey,
+        def ? def.name : channelSlugLabel(o.featureSlug),
+        crewNameFor(legCatalogue, o.featureSlug, o.legKey),
+      );
       offeredKeys.push(crew.key);
       byKey.set(crew.key, {
         crew,

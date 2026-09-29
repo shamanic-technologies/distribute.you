@@ -58,19 +58,17 @@ describe("ui-version", () => {
 });
 
 describe("crews", () => {
-  it("names a known (channel, landing step) pair, stably", () => {
-    const scout = crewFor("sales-cold-email-outreach", "website_visit", "Cold email");
+  it("takes the producer's crew name, and keeps our look per pair", () => {
+    const scout = crewFor("sales-cold-email-outreach", "website_visit", "Cold email", "Scout");
     expect(scout.name).toBe("Scout");
     expect(scout.key).toBe(crewKey("sales-cold-email-outreach", "website_visit"));
-    expect(crewFor("sales-cold-email-outreach", "conversation", "Cold email").name).toBe("Herald");
+    expect(scout.color).toBe("var(--data-teal)");
+    expect(crewFor("ai-meeting-booking", "meeting_booked", "AI meeting booking", "Pilot").glyph).toBe("triangle");
   });
 
-  it("names an unlisted pair by its channel, never an invented name", () => {
+  it("names a crew the producer does not name by its channel, never an invented name", () => {
     expect(crewFor("some-new-channel", "website_visit", "Some channel").name).toBe("Some channel");
-    // Every channel we fund today has a teammate's name, whatever leg it lands on.
-    expect(crewFor("ai-meeting-booking", "meeting_booked", "AI meeting booking").name).toBe("Pilot");
-    expect(crewFor("pr-cold-email-outreach", null, "PR cold email").name).toBe("Scribe");
-    expect(crewFor("pr-expert-quote-outreach", null, "PR quote").name).toBe("Quill");
+    expect(crewFor("sales-cold-email-outreach", "conversation", "Cold email", null).name).toBe("Cold email");
     expect(crewFor("x", null, "X").key).toBe("x|unplaced");
     expect(crewInitial("scout")).toBe("S");
   });

@@ -8,9 +8,10 @@
  * which is exactly a campaign identity (offer x leg x channel) — so missions need
  * nothing new from any service.
  *
- * Names are OURS, stable per (channel, landing step), and there are only as many as
- * we have crews. A pair not listed takes its CHANNEL's crew name (one per channel), and only a
- * channel we have never named falls back to the channel's own words.
+ * The NAME is features-service's: it publishes one per (channel, leg) on the public
+ * catalogue (`crewName`), so this dashboard and the staff emails say the same one. The
+ * LOOK (colour, glyph) is ours, keyed per (channel, landing step), else per channel. A
+ * crew the producer names nothing reads by its channel's own words.
  *
  * Alias-free so it carries real unit tests.
  */
@@ -26,27 +27,23 @@ export interface CrewIdentity {
   glyph: CrewGlyph;
 }
 
-const CREW_NAMES: Record<string, { name: string; color: string; glyph: CrewGlyph }> = {
-  "sales-cold-email-outreach|website_visit": { name: "Scout", color: "var(--data-teal)", glyph: "ring" },
-  "sales-cold-email-outreach|conversation": { name: "Herald", color: "var(--data-violet)", glyph: "arc" },
-  "feedback-request-cold-email-outreach|conversation": { name: "Echo", color: "var(--data-rose)", glyph: "hex" },
-  "feedback-request-cold-email-outreach|website_visit": { name: "Relay", color: "var(--data-amber)", glyph: "diamond" },
-  "pr-expert-quote-outreach|website_visit": { name: "Quill", color: "var(--data-lime)", glyph: "triangle" },
-  "sales-crm-email-outreach|conversation": { name: "Anchor", color: "var(--data-sky)", glyph: "ring" },
-  "sales-crm-email-outreach|website_visit": { name: "Beacon", color: "var(--data-amber)", glyph: "triangle" },
+const CREW_LOOKS: Record<string, { color: string; glyph: CrewGlyph }> = {
+  "sales-cold-email-outreach|website_visit": { color: "var(--data-teal)", glyph: "ring" },
+  "sales-cold-email-outreach|conversation": { color: "var(--data-violet)", glyph: "arc" },
+  "feedback-request-cold-email-outreach|conversation": { color: "var(--data-rose)", glyph: "hex" },
+  "feedback-request-cold-email-outreach|website_visit": { color: "var(--data-amber)", glyph: "diamond" },
+  "pr-expert-quote-outreach|website_visit": { color: "var(--data-lime)", glyph: "triangle" },
+  "sales-crm-email-outreach|conversation": { color: "var(--data-sky)", glyph: "ring" },
+  "sales-crm-email-outreach|website_visit": { color: "var(--data-amber)", glyph: "triangle" },
 };
 
-/**
- * A channel whose crew is named whatever step it lands on: the channels performing a
- * single leg, or whose leg is not stated on older campaign rows. Every channel we fund
- * gets a teammate's name, so no crew reads as a product label beside Scout and Herald.
- */
-const CHANNEL_NAMES: Record<string, { name: string; color: string; glyph: CrewGlyph }> = {
-  "ai-meeting-booking": { name: "Pilot", color: "var(--data-lime)", glyph: "triangle" },
-  "pr-cold-email-outreach": { name: "Scribe", color: "var(--data-amber)", glyph: "diamond" },
-  "pr-expert-quote-outreach": { name: "Quill", color: "var(--data-sky)", glyph: "hex" },
-  "pr-expert-quote-opportunities": { name: "Ledger", color: "var(--data-violet)", glyph: "ring" },
-  "google-ads": { name: "Signal", color: "var(--data-amber)", glyph: "triangle" },
+/** A channel's look whatever step it lands on: single-leg channels, or older rows stating no leg. */
+const CHANNEL_LOOKS: Record<string, { color: string; glyph: CrewGlyph }> = {
+  "ai-meeting-booking": { color: "var(--data-lime)", glyph: "triangle" },
+  "pr-cold-email-outreach": { color: "var(--data-amber)", glyph: "diamond" },
+  "pr-expert-quote-outreach": { color: "var(--data-sky)", glyph: "hex" },
+  "pr-expert-quote-opportunities": { color: "var(--data-violet)", glyph: "ring" },
+  "google-ads": { color: "var(--data-amber)", glyph: "triangle" },
 };
 
 const FALLBACK = { color: "var(--fg-3)", glyph: "square" as CrewGlyph };
@@ -56,19 +53,19 @@ export function crewKey(channelSlug: string, landingStep: string | null): string
 }
 
 /**
- * The crew performing a (channel, landing step) pair. `channelName` is the
- * catalogue's own name for the channel, used only when the pair has no crew name.
+ * The crew performing a (channel, landing step) pair. `crewName` is the name the
+ * producer publishes for it (`crewNameFor`); `channelName` is the channel's own words,
+ * used only when the producer names no crew.
  */
 export function crewFor(
   channelSlug: string,
   landingStep: string | null,
   channelName: string,
+  crewName: string | null = null,
 ): CrewIdentity {
   const key = crewKey(channelSlug, landingStep);
-  const named = CREW_NAMES[key] ?? CHANNEL_NAMES[channelSlug];
-  return named
-    ? { key, name: named.name, color: named.color, glyph: named.glyph }
-    : { key, name: channelName, ...FALLBACK };
+  const look = CREW_LOOKS[key] ?? CHANNEL_LOOKS[channelSlug] ?? FALLBACK;
+  return { key, name: crewName ?? channelName, color: look.color, glyph: look.glyph };
 }
 
 /**

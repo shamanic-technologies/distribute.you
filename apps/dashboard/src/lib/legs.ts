@@ -43,12 +43,15 @@ export interface LegCatalogue {
   legs: ReadonlyMap<string, LegDef>;
   /** Every channel's own legs, in the order the producer lists them. */
   legsByChannel: ReadonlyMap<string, readonly string[]>;
+  /** The crew name the producer gives a (channel, leg), keyed `slug|legKey`. Absent = unnamed. */
+  crewNames: ReadonlyMap<string, string>;
 }
 
 export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
   steps: new Map(),
   legs: new Map(),
   legsByChannel: new Map(),
+  crewNames: new Map(),
 };
 
 /** The public catalogue body, read structurally: a row missing what this module needs
@@ -66,6 +69,7 @@ export interface PublicCatalogueWire {
       legKey?: unknown;
       from?: { key?: unknown; label?: unknown } | null;
       to?: { key?: unknown; label?: unknown } | null;
+      crewName?: unknown;
     }> | null;
   }> | null;
 }
@@ -115,6 +119,7 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   for (const leg of body.legs ?? []) addLeg(str(leg?.legKey), leg?.fromStep, leg?.toStep);
 
   const legsByChannel = new Map<string, string[]>();
+  const crewNames = new Map<string, string>();
   for (const channel of body.channels ?? []) {
     const slug = str(channel?.slug);
     if (!slug) continue;
@@ -124,10 +129,29 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
       if (!legKey) continue;
       addLeg(legKey, t?.from, t?.to);
       if (!keys.includes(legKey)) keys.push(legKey);
+      const crew = str(t?.crewName);
+      if (crew) crewNames.set(`${slug}|${legKey}`, crew);
     }
     legsByChannel.set(slug, keys);
   }
-  return { steps, legs, legsByChannel };
+  return { steps, legs, legsByChannel, crewNames };
+}
+
+/**
+ * The teammate name features-service gives the crew performing a (channel, leg), or null
+ * when it names none. The producer owns the name, so staff emails and this dashboard
+ * say the same one.
+ */
+export function crewNameFor(
+  catalogue: LegCatalogue,
+  featureSlug: string | null | undefined,
+  legKey: string | null | undefined,
+): string | null {
+  if (!featureSlug) return null;
+  // An older campaign row stating no leg still has a crew when its channel performs one leg.
+  const key = legKey ?? (catalogue.legsByChannel.get(featureSlug)?.length === 1 ? catalogue.legsByChannel.get(featureSlug)![0] : null);
+  if (!key) return null;
+  return catalogue.crewNames.get(`${featureSlug}|${key}`) ?? null;
 }
 
 /** The leg a key names, or null for no key or one the catalogue does not carry. */
