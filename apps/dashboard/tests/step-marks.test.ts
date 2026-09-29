@@ -14,6 +14,7 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "u
 /** Every step production publishes on `GET /public/channels` (2026-09-18, features-service
  *  v0.169.3: ONE form step), in order. */
 const PROD_STEPS = [
+  "booking_call",
   "conversation",
   "website_visit",
   "meeting_booked",

@@ -9,6 +9,7 @@ import { TextboxIcon } from "@phosphor-icons/react/dist/csr/Textbox";
 import { ClipboardTextIcon } from "@phosphor-icons/react/dist/csr/ClipboardText";
 import { CurrencyDollarIcon } from "@phosphor-icons/react/dist/csr/CurrencyDollar";
 import { ShoppingBagOpenIcon } from "@phosphor-icons/react/dist/csr/ShoppingBagOpen";
+import { PhoneCallIcon } from "@phosphor-icons/react/dist/csr/PhoneCall";
 import type { Icon } from "@phosphor-icons/react";
 import {
   stepMarkFor,
@@ -31,6 +32,7 @@ const STEP_ICONS: Record<StepGlyph, Icon> = {
   clipboard: ClipboardTextIcon,
   "currency-dollar": CurrencyDollarIcon,
   "shopping-bag-open": ShoppingBagOpenIcon,
+  "phone-call": PhoneCallIcon,
 };
 
 type MarkSize = "xs" | "sm" | "md";
