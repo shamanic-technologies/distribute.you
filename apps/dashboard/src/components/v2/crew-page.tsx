@@ -443,23 +443,7 @@ function CrewCard({
       </ul>
 
       <div className="mt-auto pt-3">
-        <div className="k-inset grid grid-cols-2 rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
-          {(["Paused", "Running"] as const).map((label) => {
-            const on = (label === "Running") === running;
-            return (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={on}
-                onClick={() => (on ? undefined : setControlsOpen(true))}
-                className={`h-7 rounded-[7px] text-[13px] ${on ? "bg-[var(--bg-raised)] font-medium text-[var(--fg-1)] shadow-[inset_0_0_0_1px_var(--line),var(--elev-control)]" : "text-[var(--fg-2)] hover:text-[var(--fg-1)]"}`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        <p className="k-fg2 mt-2 text-[12px] leading-[18px]">
+        <p className="k-fg2 text-[12px] leading-[18px]">
           {running
             ? crew.trigger?.kind === "event"
               ? "Wakes each time its step is reached, and never spends more than its cap in a day."
