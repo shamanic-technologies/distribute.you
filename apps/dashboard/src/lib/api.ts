@@ -1,3 +1,5 @@
+import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1771,6 +1773,33 @@ export async function saveOfferSalesPath(
     body: { steps, legKeys },
   });
   return parseOfferSalesPath(raw, "saveOfferSalesPath");
+}
+
+/** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */
+export async function getOfferSalesPaths(brandId: string, offerId: string): Promise<OfferSalesPaths> {
+  const raw = await apiCall<unknown>(`/offers/${offerId}/sales-paths?brandId=${encodeURIComponent(brandId)}`);
+  return parseOfferSalesPaths(raw, "getOfferSalesPaths");
+}
+
+/** GET /brands/:brandId/sales-budget — the brand's daily sales budget mode (billing-service). */
+export async function getBrandSalesBudget(brandId: string): Promise<BrandSalesBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`);
+  return parseBrandSalesBudget(raw, "getBrandSalesBudget");
+}
+
+/** PUT /brands/:brandId/sales-budget — state ONE daily budget for sales (global mode). */
+export async function setBrandSalesBudget(brandId: string, dailyBudgetCents: number): Promise<BrandSalesBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`, {
+    method: "PUT",
+    body: { dailyBudgetCents },
+  });
+  return parseBrandSalesBudget(raw, "setBrandSalesBudget");
+}
+
+/** DELETE /brands/:brandId/sales-budget — back to each campaign's own ceiling. */
+export async function clearBrandSalesBudget(brandId: string): Promise<BrandSalesBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`, { method: "DELETE" });
+  return parseBrandSalesBudget(raw, "clearBrandSalesBudget");
 }
 
 // ─── Effective conversion rates (features-service, 2026-09-25) ───────────────

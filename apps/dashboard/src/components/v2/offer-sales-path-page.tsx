@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferSalesPath, saveOfferSalesPath } from "@/lib/api";
+import { getOfferSalesPath, getOfferSalesPaths, saveOfferSalesPath } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -13,6 +13,8 @@ import { SALES_PATH_CHANNEL_SLUGS, type SalesPathSelection } from "@/lib/offer-s
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, offerTabs, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
+import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
+import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
 
 /**
  * How an offer sells (beta): the steps and legs the customer ticks, saved per offer
@@ -29,6 +31,11 @@ export function V2OfferSalesPathPage() {
   const qc = useQueryClient();
 
   const q = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
+    enabled: isBeta && !!offerId,
+  });
+  // The paths are features-service's answer over the SAVED selection, so they re-read
+  // after every save (below) rather than on a poll.
+  const paths = useAuthQuery(["offerSalesPaths", brandId, offerId], () => getOfferSalesPaths(brandId, offerId), {
     enabled: isBeta && !!offerId,
   });
   const [draft, setDraft] = useState<SalesPathSelection | null>(null);
@@ -52,7 +59,10 @@ export function V2OfferSalesPathPage() {
     setDraft(next);
     setError(null);
     saveOfferSalesPath(brandId, offerId, [...next.steps], [...next.legs])
-      .then((saved) => qc.setQueryData(["offerSalesPath", brandId, offerId], saved))
+      .then((saved) => {
+        qc.setQueryData(["offerSalesPath", brandId, offerId], saved);
+        return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+      })
       .catch((err) => {
         console.error("[offer-sales-path] save failed", err);
         setDraft(null);
@@ -93,6 +103,10 @@ export function V2OfferSalesPathPage() {
           onChange={onChange}
         />
       )}
+      <div className="mt-8 space-y-8">
+        <OfferSalesPaths data={paths.data} pending={paths.isPending && !paths.isError} failed={paths.isError} />
+        <BrandSalesBudgetCard brandId={brandId} />
+      </div>
     </V2Page>
   );
 }
