@@ -265,7 +265,7 @@ function V2Sidebar() {
         <Group title="Setup">
           <NavItem href={v2Href(orgId, brandId, "offers")} label="Offers" icon={<I d={ICONS.offer} />} active={section === "offers"} />
           <NavItem href={v2Href(orgId, brandId, "targeting")} label="Targeting" icon={<I d={ICONS.target} />} active={section === "targeting"} />
-          <NavItem href={v2Href(orgId, brandId, "integrations")} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
+          <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>
 

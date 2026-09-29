@@ -21,9 +21,11 @@ describe("v2 Integrations pages", () => {
     expect(SETUP).not.toContain("<CrmMergedPage");
   });
 
-  it("marks both tabs beta on the tab, like the rest of v2", () => {
+  it("marks the two CRM tabs beta, and leads with the GA AI tab", () => {
     const tabs = SETUP.slice(SETUP.indexOf("function integrationTabs("), SETUP.indexOf("export function V2IntegrationsPage("));
     expect(tabs.match(/badge: "beta"/g)?.length).toBe(2);
+    expect(tabs.indexOf('label: "Your AI"')).toBeGreaterThan(-1);
+    expect(tabs.indexOf('label: "Your AI"')).toBeLessThan(tabs.indexOf('label: "Your CRM"'));
   });
 
   it("reuses the v1 readers on the v1 query keys, so caches dedupe and persist", () => {

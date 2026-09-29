@@ -33,6 +33,7 @@ import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
+import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
 import { crewTrigger, type CrewGlyph } from "@/lib/v2/crews";
@@ -424,25 +425,32 @@ export function V2MissionWorkflowsPage() {
 
 // ─── Integrations and brand settings ────────────────────────────────────────
 
-function integrationTabs(orgId: string, brandId: string, active: "raw" | "merged") {
+function integrationTabs(orgId: string, brandId: string, active: "ai" | "raw" | "merged") {
   const base = `${v2Base(orgId, brandId)}/integrations`;
   return [
+    { label: "Your AI", href: `${base}/ai`, active: active === "ai" },
     { label: "Your CRM", href: base, active: active === "raw", badge: "beta" as const },
     { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged", badge: "beta" as const },
   ];
 }
 
-export function V2IntegrationsPage({ view }: { view: "raw" | "merged" }) {
+export function V2IntegrationsPage({ view }: { view: "ai" | "raw" | "merged" }) {
   const { orgId, brandId } = useIds();
   return (
     <V2Page
       crumbs={[{ label: "Setup" }, { label: "Integrations" }]}
       title="Integrations"
-      sub="The CRM this brand already runs on, read here and set beside our leads."
+      sub={view === "ai" ? "Run distribute.you from the AI you already use. One line sets it up." : "The CRM this brand already runs on, read here and set beside our leads."}
       tabs={integrationTabs(orgId, brandId, view)}
       width="max-w-[1280px]"
     >
-      {view === "raw" ? <V2CrmRawView orgId={orgId} brandId={brandId} /> : <V2CrmMergedView brandId={brandId} />}
+      {view === "ai" ? (
+        <V2AiIntegrationView orgId={orgId} brandId={brandId} />
+      ) : view === "raw" ? (
+        <V2CrmRawView orgId={orgId} brandId={brandId} />
+      ) : (
+        <V2CrmMergedView brandId={brandId} />
+      )}
     </V2Page>
   );
 }
