@@ -70,7 +70,9 @@ describe("the trigger states money it READS", () => {
   });
 
   it("adds up only the RUNNING campaigns' ceilings, at every grain it sums", () => {
-    expect(trigger).toContain("scopeTotalCents(rows)");
+    expect(trigger).toContain("scopeTotalCents(");
+    // v2 counts only the crews that spend every day: an event crew's cap is not daily money.
+    expect(trigger).toContain("dailyOnly ? rows.filter((r) => (legFor(catalogue, r.legKey)?.fromKey ?? null) === null) : rows");
     const lib = read("lib/campaign-controls.ts");
     expect(lib).toContain("r.running && r.savedCents > 0");
   });
