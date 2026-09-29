@@ -10,6 +10,7 @@ import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
 import { IdentificationBadgeIcon } from "@phosphor-icons/react/dist/csr/IdentificationBadge";
 import { ParagraphIcon } from "@phosphor-icons/react/dist/csr/Paragraph";
 import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
+import { MinusIcon } from "@phosphor-icons/react/dist/csr/Minus";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
 import { crewFor } from "@/lib/v2/crews";
 import { CREW_KEY, type ResearchChart, type ResearchCrew, type ResearchPoint, type ResearchTopic } from "@/lib/research/research";
@@ -32,6 +33,7 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   // how the first email is written (its shape, its first words): the same prompt family as a template
   layout: { color: "var(--data-rose)", Icon: ParagraphIcon },
   opening: { color: "var(--data-rose)", Icon: HandWavingIcon },
+  dash: { color: "var(--data-rose)", Icon: MinusIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

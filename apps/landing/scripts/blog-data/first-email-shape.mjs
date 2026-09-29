@@ -72,3 +72,25 @@ export function openingOf(body, firstName) {
   if (m && !NOT_A_NAME.has(fold(m[1]))) return OPENING.name;
   return OPENING.none;
 }
+
+// Dashes: whether the first email carries an em dash (U+2014) or an en dash (U+2013). A plain
+// hyphen is not a dash here. Our templates never banned either until 2026-09-29, and some models
+// pepper every email with them while others almost never do. An email carrying both is its own
+// class; derive.mjs folds it into the em dash bucket when it is too small to stand alone. Labels
+// carry no dash glyph: the Research page bans the em dash in its copy.
+export const DASH = {
+  em: "Em dash",
+  en: "En dash",
+  both: "Both dashes",
+  none: "No dash",
+};
+export function dashOf(body) {
+  const text = String(body ?? "").trim();
+  if (!text) return null;
+  const em = text.includes("—");
+  const en = text.includes("–");
+  if (em && en) return DASH.both;
+  if (em) return DASH.em;
+  if (en) return DASH.en;
+  return DASH.none;
+}

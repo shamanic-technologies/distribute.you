@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutOf, openingOf, LAYOUT, OPENING } from "../../scripts/blog-data/first-email-shape.mjs";
+import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "../../scripts/blog-data/first-email-shape.mjs";
 
 describe("first email layout", () => {
   it("names an empty line a double line break, a lone new line a single line break, and no break one block", () => {
@@ -33,5 +33,15 @@ describe("first email opening", () => {
     expect(openingOf("Most PR retainers are expensive", "")).toBe(OPENING.none);
     expect(openingOf("Hi Marie,", "")).toBe(OPENING.greeting);
     expect(openingOf("   ", "Marie")).toBeNull();
+  });
+});
+
+describe("first email dashes", () => {
+  it("tells an em dash, an en dash, both, and neither apart; a hyphen is not a dash", () => {
+    expect(dashOf("Hi Tom, quick one \u2014 worth a call?")).toBe(DASH.em);
+    expect(dashOf("Hours 9\u20135, Monday to Friday")).toBe(DASH.en);
+    expect(dashOf("A \u2014 b \u2013 c")).toBe(DASH.both);
+    expect(dashOf("A well-known clinic - no dash here")).toBe(DASH.none);
+    expect(dashOf("  ")).toBeNull();
   });
 });

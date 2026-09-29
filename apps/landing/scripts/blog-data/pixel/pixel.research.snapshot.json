@@ -1,22 +1,22 @@
 {
- "readAt": "2026-09-28T18:48:58.583917+00:00",
- "cutoff": "2026-09-07",
+ "readAt": "2026-09-29T04:41:44.200658+00:00",
+ "cutoff": "2026-09-08",
  "arms": [
   {
    "arm": "off",
-   "leads": 20370,
-   "emails": 55717,
+   "leads": 20504,
+   "emails": 56102,
    "replied": 84,
    "positive": 28,
-   "auto_replied": 213,
-   "bounced": 1826,
-   "delivered": 18544,
+   "auto_replied": 214,
+   "bounced": 1832,
+   "delivered": 18672,
    "replied_delivered": 84,
-   "clicked": 392,
+   "clicked": 397,
    "unsubscribed": 23,
    "opened": 0,
    "first_day": "2026-02-10",
-   "last_day": "2026-09-06"
+   "last_day": "2026-09-07"
   },
   {
    "arm": "on",

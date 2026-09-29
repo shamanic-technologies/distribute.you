@@ -13,7 +13,7 @@
 import data from "./research.json";
 
 export type ResearchCrew = "herald" | "scout" | "pilot";
-export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening";
+export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -188,6 +188,7 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   naming: "Naming the client",
   layout: "Email layout",
   opening: "Email opening",
+  dash: "Dashes",
 };
 
 export function studiesFor(crew: ResearchCrew, file: ResearchFile = RESEARCH): ResearchStudy[] {

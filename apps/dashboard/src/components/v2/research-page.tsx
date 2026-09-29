@@ -63,6 +63,7 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   naming: "Winner",
   layout: "Winner",
   opening: "Winner",
+  dash: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
@@ -284,8 +285,10 @@ function BarsChart({
   const max = Math.max(...chart.points.map((p) => p.value), 0) || 1;
   return (
     <ul className="divide-y divide-[var(--line-subtle)]">
-      {chart.points.map((p) => {
-        const top = winner !== null && p.label === winner;
+      {chart.points.map((p, i) => {
+        // The study's winner is marked only where it leads the chart: on a per-tier chart it can
+        // sit last with no price, and "Winner" beside "None yet" states two things at once.
+        const top = winner !== null && p.label === winner && i === 0;
         const href = hrefFor?.(p) ?? null;
         const inner = (
           <>
