@@ -8766,6 +8766,31 @@ export async function createEmbeddedCardSetup(token?: string): Promise<CardSetup
   });
 }
 
+/**
+ * Make Revolut Business the org's acquirer before any card save or payment
+ * (owner-decided 2026-09-29: Revolut by default everywhere a card or money is asked
+ * for, not only in the New organization modal). Idempotent. An org already holding
+ * a chargeable card on another acquirer stays there: billing answers
+ * `card_elsewhere`, which is an answer, not a failure. Anything else throws, and
+ * the caller's own error line says so (never this body).
+ *
+ * A raw fetch rather than `apiCall` because the route is ours, not the gateway's,
+ * and it carries THIS tab's token so it pins the org the page is on.
+ */
+export async function declareRevolutDefault(): Promise<"pinned" | "card_elsewhere"> {
+  const token = await getTabSessionToken();
+  const res = await fetch("/api/orgs/revolut", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    console.error(`[dashboard] Revolut acquirer declaration failed: ${res.status}`);
+    throw new Error("We could not prepare the payment. Please try again.");
+  }
+  const body = (await res.json()) as { result?: string };
+  return body.result === "card_elsewhere" ? "card_elsewhere" : "pinned";
+}
+
 export async function createPortalSession(
   returnUrl: string,
   token?: string

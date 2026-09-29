@@ -6,6 +6,7 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe
 import {
   configureAutoTopup,
   createEmbeddedCardSetup,
+  declareRevolutDefault,
   getBillingAccount,
   setPaymentMode,
   type BillingAccount,
@@ -17,11 +18,13 @@ import {
 } from "@/components/billing/use-billing-controller";
 
 /**
- * Picking POSTPAID on an account with no card: save one for $0, then switch.
+ * Picking POSTPAID on an account with no card: save one, charging nothing, then switch.
  *
  * The same in-page card save the New organization modal and /get-started run
- * (`createEmbeddedCardSetup`): it charges nothing, and the provider decides the
- * mechanism (Stripe's embedded form, or the second acquirer's popup). Once billing
+ * (`createEmbeddedCardSetup`), on Revolut Business by default. It charges nothing,
+ * and the provider decides the mechanism: Revolut's popup, which verifies the card
+ * with a $1 authorisation it releases (the modal says so), or Stripe's embedded
+ * form for an org whose card already lives there. Once billing
  * sees the card, the org moves to postpaid and auto top-up is switched on, which
  * is what lets billing charge the card as it spends. Never the other way round: a
  * postpaid org with no chargeable card is stopped at once by billing.
@@ -46,6 +49,9 @@ export function CardImprintModal({
   // Which step a "Try again" replays: re-opening the form, or re-reading a card
   // already saved (a second form would save a second card).
   const [retryStep, setRetryStep] = useState<"open" | "save" | null>(null);
+  // Revolut cannot save a card for $0: it authorises $1 and releases it (never
+  // captured). Said only when that is the mechanism billing answered with.
+  const [verificationHold, setVerificationHold] = useState(false);
   const started = useRef(false);
 
   async function openForm() {
@@ -53,6 +59,8 @@ export function CardImprintModal({
     setRetryStep(null);
     setStage("opening");
     try {
+      // Revolut Business by default; an org with a card elsewhere keeps paying there.
+      await declareRevolutDefault();
       const setup = await createEmbeddedCardSetup();
       if (setup.mode === "embedded_checkout") {
         setSecret(setup.client_secret);
@@ -60,6 +68,7 @@ export function CardImprintModal({
         return;
       }
       if (setup.mode === "embedded_widget") {
+        setVerificationHold(true);
         setStage("widget");
         const { openCardWidget } = await import("@/lib/card-setup-widget");
         await openCardWidget({
@@ -171,9 +180,14 @@ export function CardImprintModal({
         </div>
         <div className="overflow-y-auto px-4 py-4">
           <p className="text-[13px] leading-5">
-            Add the card we charge as you spend. <span className="font-medium">Nothing is charged now</span>: we save it
-            for $0, then switch you to postpaid.
+            Add the card we charge as you spend. <span className="font-medium">Nothing is charged now</span>. We save it,
+            then switch you to postpaid.
           </p>
+          {verificationHold && (
+            <p className="k-fg3 mt-2 text-[12px] leading-[18px]">
+              Your bank may show a $1 check. It is released within minutes and never charged.
+            </p>
+          )}
 
           {stage === "opening" && error === null && (
             <p className="k-fg3 mt-3 text-[12px]" aria-live="polite">
