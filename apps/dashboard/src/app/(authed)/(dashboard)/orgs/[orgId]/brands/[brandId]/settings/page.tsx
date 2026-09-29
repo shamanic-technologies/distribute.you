@@ -6,6 +6,7 @@ import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
 import { BrandSalesRepCard } from "@/components/settings/brand-sales-rep-card";
+import { BrandBookingLinkCard } from "@/components/settings/brand-booking-link-card";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { BrandConversionRatesCard } from "@/components/settings/brand-conversion-rates-card";
 
@@ -50,6 +51,13 @@ export default function BrandSettingsPage() {
         <h2 className="mb-3 text-lg font-semibold text-gray-900">Sales rep</h2>
         <div className="rounded-xl border border-gray-200 bg-white">
           <BrandSalesRepCard brandId={brandId} />
+        </div>
+      </section>
+
+      <section id="booking-link" className="mb-10 scroll-mt-24">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Booking link</h2>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <BrandBookingLinkCard brandId={brandId} />
         </div>
       </section>
 

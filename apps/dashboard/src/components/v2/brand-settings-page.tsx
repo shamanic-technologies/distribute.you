@@ -9,6 +9,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandSalesRepCard, SALES_REP_BLURB } from "@/components/settings/brand-sales-rep-card";
+import { BrandBookingLinkCard, BOOKING_LINK_BLURB } from "@/components/settings/brand-booking-link-card";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { BrandConversionRatesCard } from "@/components/settings/brand-conversion-rates-card";
 import {
@@ -66,6 +67,12 @@ export function V2BrandSettingsPage() {
       title: "Sales rep",
       description: SALES_REP_BLURB,
       body: <BrandSalesRepCard brandId={brandId} bare />,
+    },
+    {
+      id: "booking-link",
+      title: "Booking link",
+      description: BOOKING_LINK_BLURB,
+      body: <BrandBookingLinkCard brandId={brandId} bare />,
     },
     ...(isBeta
       ? [
