@@ -64,3 +64,21 @@ describe("one start from nothing", () => {
     expect(read("components/settings/offer-campaigns-card.tsx")).not.toContain("startCampaign(");
   });
 });
+
+describe("Mission page", () => {
+  const page = read("components/v2/mission-page.tsx");
+  it("states the work and what it brought in side by side, each scrolling on its own", () => {
+    expect(page).toContain('<div className="mt-6 grid gap-4 lg:grid-cols-2">');
+    expect(page.indexOf("The work")).toBeLessThan(page.indexOf("What it brought in</SectionTitle>"));
+    expect(page).toContain("lg:max-h-[calc(100svh-340px)]");
+    expect(page).toContain("lg:overflow-y-auto");
+  });
+  it("reads the mission's runs across every stored row it owns", () => {
+    expect(page).toContain("useRecentRuns(brandId, runIds, 60)");
+    expect(page).toContain("m === mission && cid !== live");
+  });
+  it("keeps the facts, in a line under the title rather than a side column", () => {
+    expect(page).not.toContain("lg:grid-cols-[minmax(0,1fr)_320px]");
+    expect(page).toContain('k={isEvent ? "Daily cap" : "Daily budget"}');
+  });
+});
