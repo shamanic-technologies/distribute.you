@@ -3,17 +3,18 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { Lead } from "@/lib/api";
+import type { Lead, RunRow } from "@/lib/api";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
-import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
+import { friendlyDate, friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import { shownFigure } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { v2Href } from "@/lib/v2/routes";
+import { v2Href, v2RunHref } from "@/lib/v2/routes";
+import { runState, runTaskLabel, useRecentRuns } from "@/components/v2/runs";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
 import { crewTrigger } from "@/lib/v2/crews";
@@ -41,6 +42,15 @@ export function MissionPage() {
   const { basis } = useStatBasis();
   const { staffMode } = useStaffMode();
 
+  // Every stored campaign row of this mission: a run is filed under whichever row was
+  // live when it ran, so the ancestors carry its older work.
+  const runIds = useMemo(() => {
+    if (!mission) return null;
+    const live = mission.row.campaign.id;
+    return [live, ...[...missionByCampaignId.entries()].filter(([cid, m]) => m === mission && cid !== live).map(([cid]) => cid)];
+  }, [mission, missionByCampaignId]);
+  const runs = useRecentRuns(brandId, runIds, 60);
+
   const results = useMemo(() => {
     const out: { lead: Lead; kind: string; at: string }[] = [];
     for (const l of visits.data?.leads ?? []) if (l.firstClickedAt) out.push({ lead: l, kind: "Website visit", at: l.firstClickedAt });
@@ -66,6 +76,10 @@ export function MissionPage() {
   const roi = shownFigure(g?.economicsMaturity, (h) => h.roiMultiple, basis);
   const name = mission ? `${mission.crew.name} · ${mission.offerName ?? "Offer"}` : "";
   const siblings = mission ? missions.filter((m) => m.crew.key === mission.crew.key && m !== mission) : [];
+  const isEvent = crewTrigger(mission?.leg ?? null)?.kind === "event";
+  const runList = runs.data ?? null;
+  const todayKey = new Date().toDateString();
+  const runsToday = runList ? runList.filter((r) => new Date(r.startedAt).toDateString() === todayKey).length : null;
 
   return (
     <>
@@ -90,6 +104,23 @@ export function MissionPage() {
                     <span className="k-chip">{mission.leg.label}</span>
                   ) : null}
                 </div>
+                <dl className="k-fg3 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
+                  <Fact k={isEvent ? "Daily cap" : "Daily budget"} v={`${fmtDailyBudgetUsd(mission.row.budgetCents)} / day`} />
+                  {mission.row.campaign.createdAt ? <Fact k="Started" v={friendlyDate(mission.row.campaign.createdAt)} /> : null}
+                  {g?.totalPipelineUsd != null ? <Fact k="Pipeline" v={formatUsdAdaptive(g.totalPipelineUsd)} /> : null}
+                  {siblings.length > 0 ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <dt>Also on</dt>
+                      <dd className="flex flex-wrap gap-x-2">
+                        {siblings.map((sib) => (
+                          <Link key={sib.row.campaign.id} href={sib.href} className="k-fg2 hover:underline">
+                            {sib.offerName ?? "Offer"}
+                          </Link>
+                        ))}
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -135,10 +166,44 @@ export function MissionPage() {
           </StatTile>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0">
-            <SectionTitle>What it brought in</SectionTitle>
-            <div className="k-card overflow-hidden">
+        {/* The work and what it brought in, side by side, each scrolling on its own on a
+            wide screen. Stacked on a phone, where a scroll inside a scroll is a trap. */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <section className="min-w-0">
+            <SectionTitle
+              count={runList ? runList.length : null}
+              right={runsToday != null ? <span>{formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"} today</span> : undefined}
+            >
+              The work
+            </SectionTitle>
+            <div className={COLUMN}>
+              {runList === null ? (
+                runs.isError ? (
+                  <EmptyNote>We could not load the runs. Retrying.</EmptyNote>
+                ) : (
+                  <div className="space-y-2 p-3">{[0, 1, 2, 3].map((i) => <Shimmer key={i} className="h-14 w-full rounded-[10px]" />)}</div>
+                )
+              ) : runList.length === 0 ? (
+                <EmptyNote>
+                  {isEvent
+                    ? `Waits for a ${mission?.leg?.fromLabel?.toLowerCase() ?? "lead"}. Nothing has come in yet.`
+                    : "No run yet. The work shows here as it happens."}
+                </EmptyNote>
+              ) : (
+                <ul className="space-y-2 p-3">
+                  {runList.map((run) => (
+                    <li key={run.id}>
+                      <MissionRunCard run={run} href={v2RunHref(orgId, brandId, run.id)} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="min-w-0">
+            <SectionTitle count={resultsSettled ? results.length : null}>What it brought in</SectionTitle>
+            <div className={COLUMN}>
               {!resultsSettled ? (
                 <div className="space-y-2 p-4">{[0, 1, 2, 3].map((i) => <Shimmer key={i} className="h-8 w-full" />)}</div>
               ) : results.length === 0 ? (
@@ -168,45 +233,56 @@ export function MissionPage() {
                 </ul>
               )}
             </div>
-          </div>
-
-          <aside className="k-card h-fit p-4">
-            <p className="k-label">Details</p>
-            <dl className="mt-3 space-y-2.5 text-[13px]">
-              <Row k="Crew" v={mission ? <span className="inline-flex items-center gap-1.5"><CrewMark color={mission.crew.color} glyph={mission.crew.glyph} />{mission.crew.name}</span> : null} />
-              <Row k="Offer" v={mission?.offerName ?? null} />
-              <Row k="Objective" v={mission?.leg?.label ?? null} />
-              <Row k="Daily ceiling" v={mission ? `${fmtDailyBudgetUsd(mission.row.budgetCents)} / day` : null} />
-              <Row k="Started" v={mission?.row.campaign.createdAt ? friendlyDate(mission.row.campaign.createdAt) : null} />
-              <Row k="Pipeline" v={g?.totalPipelineUsd == null ? null : formatUsdAdaptive(g.totalPipelineUsd)} />
-            </dl>
-            {siblings.length > 0 ? (
-              <>
-                <p className="k-label mt-5">Same crew, other offers</p>
-                <ul className="mt-2 space-y-1">
-                  {siblings.map((s) => (
-                    <li key={s.row.campaign.id}>
-                      <Link href={s.href} className="k-hover -mx-2 flex items-center justify-between rounded-[8px] px-2 py-1.5 text-[13px]">
-                        <span className="truncate">{s.offerName ?? "Offer"}</span>
-                        <StateDot running={s.running} />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </aside>
+          </section>
         </div>
       </div>
     </>
   );
 }
 
-function Row({ k, v }: { k: string; v: React.ReactNode | null }) {
+/** A column: a card that scrolls on its own on a wide screen, and flows on a phone. */
+const COLUMN = "k-card k-scroll overflow-hidden lg:max-h-[calc(100svh-340px)] lg:min-h-[320px] lg:overflow-y-auto";
+
+/** How long one run took, off its own two served instants. */
+function took(run: RunRow): string | null {
+  if (!run.completedAt) return null;
+  const ms = new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ${sec % 60}s`;
+  return `${Math.floor(min / 60)}h ${min % 60}m`;
+}
+
+/** One run of this mission: what it did, its state, when, how long, what it cost. */
+function MissionRunCard({ run, href }: { run: RunRow; href: string }) {
+  const st = runState(run);
+  const cost = Number(run.ownCostInUsdCents);
+  const duration = took(run);
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="k-fg3 shrink-0">{k}</dt>
-      <dd className="min-w-0 truncate text-right">{v ?? <span className="k-fg4">{"—"}</span>}</dd>
+    <Link href={href} className="k-hover block rounded-[10px] p-3 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+      <div className="flex items-center gap-2">
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${st === "running" ? "k-dot-pulse text-[var(--run)]" : ""}`}
+          style={{ background: st === "failed" ? "var(--data-rose)" : st === "running" ? "var(--run)" : "var(--data-teal)" }}
+        />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{runTaskLabel(run)}</span>
+        <span className="k-mono k-fg3 shrink-0 text-[11px]">{timeAgo(run.startedAt)}</span>
+      </div>
+      <p className="k-fg3 mt-1 flex justify-between gap-2 pl-3.5 text-[12px]">
+        <span>{st === "failed" ? "Failed" : st === "running" ? "Running" : "Done"}{duration ? ` in ${duration}` : ""}</span>
+        <span className="k-mono tabular-nums">{cost > 0 ? formatCentsAsUsdAdaptive(cost) : ""}</span>
+      </p>
+    </Link>
+  );
+}
+
+function Fact({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-1.5">
+      <dt>{k}</dt>
+      <dd className="k-fg2 tabular-nums">{v}</dd>
     </div>
   );
 }
