@@ -11,7 +11,7 @@ import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { cumulativeWindow, dailyWindow, utcDay } from "@/lib/v2/series";
 import { v2Href } from "@/lib/v2/routes";
-import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
+import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
 import { shownFigure } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
@@ -82,7 +82,9 @@ export function TodayPage() {
   const { missions, crews, settled: missionsSettled, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
   const recentRuns = useRecentRuns(brandId, missionsSettled ? missionCampaignIds(missions, missionByCampaignId) : null, 60);
-  const { cents: budgetCents } = useRunningDailyBudgetCents(brandId, { enabled: rev.enabled });
+  // Daily crews only: an event crew (booking a meeting off a reply) spends against a
+  // cap, and only when its step is reached, so it is not part of the daily budget.
+  const { dailyCents: budgetCents } = useDailyBudgetSplit(brandId, { enabled: rev.enabled });
 
   const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
   const running = missions.filter((m) => m.running);
@@ -158,7 +160,7 @@ export function TodayPage() {
         actions={
           <>
             <StatBasisSwitch />
-            {rev.enabled && <CampaignControlsTrigger brandId={brandId} />}
+            {rev.enabled && <CampaignControlsTrigger brandId={brandId} dailyOnly />}
           </>
         }
       />

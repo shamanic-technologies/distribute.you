@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
@@ -10,6 +10,7 @@ import { useMissions } from "@/components/v2/use-missions";
 import { useBrandRevenue } from "@/components/v2/data";
 import { Figure, SectionTitle, Shimmer, SparkLine, StatTile, TopBar } from "@/components/v2/ui";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
+import { AddMissionModal } from "@/components/v2/add-mission-modal";
 
 const DAYS = 30;
 /** A served rate, one decimal under 10% and above 99% (98.6% vs 100% matters), whole between. */
@@ -24,7 +25,8 @@ export function MissionsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const rev = useBrandRevenue(brandId);
   const data = rev.data;
-  const { missions, settled } = useMissions(orgId, brandId);
+  const { missions, crews, settled } = useMissions(orgId, brandId);
+  const [adding, setAdding] = useState(false);
   const today = useMemo(() => utcDay(new Date()), []);
   const sent = data?.sequences ?? data?.outreachContacted;
   const running = missions.filter((m) => m.running).length;
@@ -59,7 +61,7 @@ export function MissionsPage() {
         actions={
           <>
             <StatBasisSwitch />
-            {rev.enabled && <CampaignControlsTrigger brandId={brandId} />}
+            {rev.enabled && <CampaignControlsTrigger brandId={brandId} dailyOnly />}
           </>
         }
       />
@@ -67,7 +69,15 @@ export function MissionsPage() {
         <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
           {settled ? `${running} of ${missions.length} ${missions.length === 1 ? "mission" : "missions"} running` : "Missions"}
         </h1>
-        <p className="k-fg2 mt-1 text-[14px]">A mission is one crew working for one of your offers.</p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+          <p className="k-fg2 text-[14px]">
+            A mission is one crew working for one of your offers, with its own budget. Herald and Scout target the
+            offer&apos;s audiences; Pilot turns their positive replies into meetings.
+          </p>
+          <button type="button" onClick={() => setAdding(true)} className="k-btn-accent">
+            + Add a mission
+          </button>
+        </div>
 
         <div className="mt-6">
           <SectionTitle right={<span>All missions · all time · line shows {DAYS} days</span>}>Performance</SectionTitle>
@@ -87,6 +97,7 @@ export function MissionsPage() {
           <MissionsTable brandId={brandId} missions={missions} settled={settled} />
         </div>
       </div>
+      {adding && <AddMissionModal brandId={brandId} crews={crews} missions={missions} onClose={() => setAdding(false)} />}
     </>
   );
 }

@@ -192,7 +192,7 @@ export function RunPage() {
                         ) : null
                       }
                     />
-                    <Row k="Step" v={mission?.leg?.label ?? null} />
+                    <Row k="Outcome" v={mission?.leg?.label ?? null} />
                     {staffMode && (
                       <>
                         <Row

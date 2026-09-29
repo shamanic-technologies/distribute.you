@@ -71,6 +71,59 @@ export function crewFor(
     : { key, name: channelName, ...FALLBACK };
 }
 
+/**
+ * The crews a customer can put to work today: every other name above is kept for the
+ * campaigns staff run, and a crew already working for a brand is still listed for it.
+ * Owner-decided (2026-09-29): three, always shown on Crew, and the only three offered
+ * when a mission is added.
+ */
+export interface OfferedCrew {
+  featureSlug: string;
+  legKey: string;
+}
+
+export const OFFERED_CREWS: readonly OfferedCrew[] = [
+  { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation" },
+  { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit" },
+  { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked" },
+];
+
+/**
+ * When a crew works. An ENTRY leg starts from nothing, so the crew spends its daily
+ * budget every day ("Daily"). A leg that starts FROM a step only wakes when a lead
+ * reaches that step, so it spends against a cap and only when something happens.
+ * Read off the leg's own shape, never off a list of crews.
+ */
+export type CrewTriggerKind = "daily" | "event";
+
+export interface CrewTrigger {
+  kind: CrewTriggerKind;
+  /** What sets it off, as a customer reads it: "Daily" or the step it waits for. */
+  label: string;
+  /** What it brings, plural: "Positive replies", "Meetings booked". */
+  outcome: string;
+}
+
+/** The plural of a step a customer reads under a crew. An unlisted step keeps its own words. */
+const OUTCOME_PLURAL: Record<string, string> = {
+  conversation: "Positive replies",
+  website_visit: "Website visits",
+  meeting_booked: "Meetings booked",
+  meeting_attended: "Meetings attended",
+  signup: "Signups",
+  form_submitted: "Form submissions",
+  paid_client: "Paid clients",
+};
+
+export function crewTrigger(
+  leg: { fromKey: string | null; fromLabel: string | null; toKey: string; toLabel: string } | null,
+): CrewTrigger | null {
+  if (!leg) return null;
+  const outcome = OUTCOME_PLURAL[leg.toKey] ?? leg.toLabel;
+  if (leg.fromKey === null) return { kind: "daily", label: "Daily", outcome };
+  return { kind: "event", label: leg.fromLabel ?? leg.fromKey, outcome };
+}
+
 /** The initial drawn in a crew's avatar tile. */
 export function crewInitial(name: string): string {
   return (name.trim().charAt(0) || "?").toUpperCase();

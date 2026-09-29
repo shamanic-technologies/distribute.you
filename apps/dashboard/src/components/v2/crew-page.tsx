@@ -16,7 +16,9 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission, type CrewSummary } from "@/components/v2/use-missions";
 import { formatRunDuration, useCrewOutcomes, useCrewRuns, useRecentRuns, missionCampaignIds, runState, runTaskLabel, type CrewOutcomes, type CrewRuns } from "@/components/v2/runs";
 import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
-import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
+import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
+import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
+import { AddMissionModal } from "@/components/v2/add-mission-modal";
 import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
 import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-modal";
 
@@ -59,7 +61,10 @@ export function CrewPage() {
   const { byCrew: outcomesByCrew, settled: outcomesSettled } = useCrewOutcomes(brandId, missionByCampaignId);
   const recent = useRecentRuns(brandId, settled ? missionCampaignIds(missions, missionByCampaignId) : null, 60);
   const revenue = useBrandRevenue(brandId);
-  const { cents: ceiling } = useRunningDailyBudgetCents(brandId, { enabled: revenue.enabled });
+  // Daily crews only: an event crew's cap is spent only when its step is reached.
+  const { dailyCents: ceiling, eventCapCents } = useDailyBudgetSplit(brandId, { enabled: revenue.enabled });
+  const { staffMode } = useStaffMode();
+  const [adding, setAdding] = useState(false);
   const runningCrews = crews.filter((c) => c.running > 0).length;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [runsShown, setRunsShown] = useState(30);
@@ -88,6 +93,7 @@ export function CrewPage() {
         actions={
           <>
             <StatBasisSwitch />
+            {staffMode && (
             <Link href={v2Href(orgId, brandId, "offers")} className="k-btn">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="6" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
@@ -95,6 +101,7 @@ export function CrewPage() {
               </svg>
               Add a crew
             </Link>
+            )}
           </>
         }
       />
@@ -103,14 +110,15 @@ export function CrewPage() {
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
               {runsSettled && ceiling != null
-                ? `${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today, ${formatCentsAsUsdAdaptive(spendToday)} of ${fmtDailyBudgetUsd(ceiling)}`
+                ? `${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today, ${formatCentsAsUsdAdaptive(spendToday)} of ${fmtDailyBudgetUsd(ceiling)} daily`
                 : "Your crew"}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {settled ? (
                 <>
                   {crews.length} {crews.length === 1 ? "crew" : "crews"}
-                  {runsSettled ? `, ${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today` : ""}.
+                  {runsSettled ? `, ${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today` : ""}
+                  {eventCapCents != null && eventCapCents > 0 ? `, plus up to ${fmtDailyBudgetUsd(eventCapCents)} a day when replies come in` : ""}.
                   {needsCall != null && needsCall > 0 ? (
                     <>
                       {" "}
@@ -150,9 +158,10 @@ export function CrewPage() {
                   lastRun={lastRunByCrew.get(c.crew.key) ?? null}
                   workHref={v2Href(orgId, brandId, "work")}
                   brandId={brandId}
+                  onAddMission={() => setAdding(true)}
                 />
               ))}
-          {settled && (
+          {settled && staffMode && (
             <div className="k-card flex min-h-[280px] flex-col items-center justify-center gap-2 p-8 text-center">
               <div className="mb-2 flex gap-1.5">
                 {(["square", "hex", "triangle"] as const).map((g) => (
@@ -184,6 +193,7 @@ export function CrewPage() {
           onMore={() => setRunsShown((n) => n + 30)}
         />
       </div>
+      {adding && <AddMissionModal brandId={brandId} crews={crews} missions={missions} onClose={() => setAdding(false)} />}
     </>
   );
 }
@@ -198,6 +208,7 @@ function CrewCard({
   lastRun,
   workHref,
   brandId,
+  onAddMission,
 }: {
   crew: CrewSummary;
   missions: Mission[];
@@ -208,6 +219,7 @@ function CrewCard({
   lastRun: RunRow | null;
   workHref: string;
   brandId: string;
+  onAddMission: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
@@ -290,12 +302,30 @@ function CrewCard({
               </span>
             </span>
           </div>
-          <p className="k-fg2 truncate text-[13px]">
-            {leg ? `Brings ${leg.toLowerCase()}` : "Moves your leads one step"}
-            {` · ${crew.missions} ${crew.missions === 1 ? "mission" : "missions"}`}
+          <p className="k-fg2 flex min-w-0 items-center gap-1.5 text-[13px]">
+            {crew.trigger ? (
+              <CrewTriggerTag trigger={crew.trigger} className="min-w-0" />
+            ) : (
+              <span className="truncate">{leg ? `Brings ${leg.toLowerCase()}` : "Moves your leads one step"}</span>
+            )}
+            <span className="k-fg3 shrink-0">{`· ${crew.missions} ${crew.missions === 1 ? "mission" : "missions"}`}</span>
           </p>
         </div>
       </div>
+
+      {missions.length === 0 ? (
+        <div className="mt-4 flex flex-1 flex-col items-start gap-3">
+          <p className="k-fg2 text-[13px] leading-[20px]">
+            {crew.trigger?.kind === "event"
+              ? `Not working for any offer yet. Once on a mission, it wakes each time a ${crew.trigger.label.toLowerCase()} comes in and turns it into ${crew.trigger.outcome.toLowerCase()}.`
+              : `Not working for any offer yet. On a mission, it spends its daily budget bringing ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`}
+          </p>
+          <button type="button" onClick={onAddMission} className="k-btn mt-auto">
+            + Add a mission
+          </button>
+        </div>
+      ) : (
+        <>
 
       <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
         <div className="border-b border-r border-[var(--line-subtle)] p-3">
@@ -350,7 +380,7 @@ function CrewCard({
         <div className="border-r border-[var(--line-subtle)] p-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="k-label">Spend</p>
-            <p className="k-fg3 text-[11px]">of {fmtDailyBudgetUsd(ceiling)}</p>
+            <p className="k-fg3 text-[11px]">of {fmtDailyBudgetUsd(ceiling)}{crew.trigger?.kind === "event" ? " cap" : ""}</p>
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <p className="text-[20px] font-medium leading-6 tabular-nums">{runsSettled ? formatCentsAsUsdAdaptive(spend) : "–"}</p>
@@ -431,10 +461,14 @@ function CrewCard({
         </div>
         <p className="k-fg2 mt-2 text-[12px] leading-[18px]">
           {running
-            ? "Works on its own inside its daily budget. People who reply with interest wait for you in Work."
+            ? crew.trigger?.kind === "event"
+              ? "Wakes each time its step is reached, and never spends more than its cap in a day."
+              : "Works on its own inside its daily budget. People who reply with interest wait for you in Work."
             : "Paused. Nothing is sent until you restart it, and its budget is kept."}
         </p>
       </div>
+        </>
+      )}
       {controlsOpen && <CampaignControlsModal brandId={brandId} {...scope} onClose={() => setControlsOpen(false)} />}
     </div>
   );
@@ -520,7 +554,7 @@ function RecentRuns({
             <table className="w-full min-w-[720px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
-                  {["Time", "Crew", "Step", "Mission", "Status", "Took", "Cost"].map((h) => (
+                  {["Time", "Crew", "Outcome", "Mission", "Status", "Took", "Cost"].map((h) => (
                     <th key={h} className={`k-label px-3 py-2.5 font-medium first:pl-4 last:pr-4 ${h === "Cost" || h === "Took" ? "text-right" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>

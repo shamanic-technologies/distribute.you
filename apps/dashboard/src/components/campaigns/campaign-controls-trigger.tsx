@@ -4,6 +4,8 @@ import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE, strongestPaymentHold } from "@/
 import { useMemo, useState } from "react";
 import { getBrandCampaignBudgets, listCampaignsByBrand } from "@/lib/api";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { legFor } from "@/lib/legs";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   ROLLUP_LABEL,
@@ -52,6 +54,8 @@ export function CampaignControlsTrigger({
   legKey,
   campaignId,
   totalCentsOverride,
+  dailyOnly = false,
+  cap = false,
   className = "",
 }: {
   brandId: string;
@@ -68,6 +72,15 @@ export function CampaignControlsTrigger({
    * status.
    */
   totalCentsOverride?: number | null;
+  /**
+   * Count only the campaigns that spend EVERY day (an entry leg). A campaign on a leg
+   * that starts from a step (booking a meeting off a positive reply) spends only when
+   * that step is reached, so its money is a cap, not part of what is spent daily.
+   * Dashboard v2 passes it; v1 keeps the plain total.
+   */
+  dailyOnly?: boolean;
+  /** The figure is an event crew's cap, spent only when its step is reached. */
+  cap?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -78,6 +91,7 @@ export function CampaignControlsTrigger({
   );
 
   const channels = useAcquisitionChannels();
+  const catalogue = useLegCatalogue();
   const rows = useMemo(
     () =>
       buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
@@ -108,7 +122,11 @@ export function CampaignControlsTrigger({
   // cannot undo by flipping a switch, so the pill names it.
   const hold = rollup === "paused" ? strongestPaymentHold(rows.map((r) => r.paymentHold)) : null;
   const totalCents =
-    totalCentsOverride !== undefined ? totalCentsOverride : scopeTotalCents(rows);
+    totalCentsOverride !== undefined
+      ? totalCentsOverride
+      : scopeTotalCents(
+          dailyOnly ? rows.filter((r) => (legFor(catalogue, r.legKey)?.fromKey ?? null) === null) : rows,
+        );
 
   return (
     <>
@@ -128,7 +146,7 @@ export function CampaignControlsTrigger({
       >
         <span className="text-sm tabular-nums text-gray-600">
           {fmtDailyBudgetUsd(totalCents)}
-          <span className="text-gray-400"> / day</span>
+          <span className="text-gray-400">{cap ? " cap / day" : " / day"}</span>
         </span>
         <span
           className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
