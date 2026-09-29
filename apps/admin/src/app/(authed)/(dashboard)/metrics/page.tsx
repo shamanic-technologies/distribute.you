@@ -26,6 +26,8 @@ import {
   type ChannelBreakdown,
 } from "@/lib/acquisition-breakdown";
 import { fetchOrgAcquisitions } from "@/lib/client-service-acquisitions";
+import { AiBotReadsCard, type AiBotReads } from "@/components/ai-bot-reads-card";
+import { botTrafficWindows, fetchBotTraffic } from "@/lib/bot-traffic";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -61,6 +63,13 @@ function dataSourcesFor(view: PublicAnalyticsView): Array<{ tier: string; label:
       { tier: "Bronze", label: "PostHog unique visitors and signup events" },
       { tier: "Bronze", label: "Stripe saved payment methods" },
       { tier: "Gold", label: "Fleet revenue, active users and the customer board" },
+    ];
+  }
+  if (view === "landing") {
+    return [
+      { tier: "Bronze", label: "PostHog unique visitors (humans only)" },
+      { tier: "Bronze", label: "Cloudflare verified-bot traffic (AI bots)" },
+      { tier: "Gold", label: "Daily AI bot reads by category" },
     ];
   }
   return [
@@ -141,10 +150,14 @@ function LandingView({
   totalVisitors,
   timeline,
   sources,
+  aiBotReads,
+  aiBotReadsError,
 }: {
   totalVisitors: number;
   timeline: DailyFunnelPoint[];
   sources: TrafficSource[];
+  aiBotReads: AiBotReads | null;
+  aiBotReadsError: string | null;
 }) {
   const monthly = monthlyVisitors(timeline);
   const weekly = weeklyVisitors(timeline);
@@ -185,12 +198,14 @@ function LandingView({
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-950">Unique visitors over time</h2>
           <p className="mt-1 text-sm text-gray-500">Daily unique PostHog visitors on distribute.you.</p>
+          <p className="mt-1 text-sm text-gray-500">Humans only: robots such as email link scanners are excluded, so tools that count every hit (Google Analytics) read higher.</p>
           <div className="mt-5">
             <PublicAnalyticsChart data={timeline} metric="landingVisitors" color="#0ea5e9" />
           </div>
         </div>
         <SourcesTable sources={sources} />
       </section>
+      <AiBotReadsCard data={aiBotReads} error={aiBotReadsError} />
     </>
   );
 }
@@ -211,6 +226,25 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
   // read is stated on the card; it must not take the whole tab down.
   let channels: ChannelBreakdown | null = null;
   let channelsError: string | null = null;
+  // AI bot reads (Cloudflare verified bots, via cloudflare-service), read only on
+  // the visitors tab. One served read per window, so every stated total is the
+  // producer's own. A failed read is stated on the card, never a blank tab.
+  let aiBotReads: AiBotReads | null = null;
+  let aiBotReadsError: string | null = null;
+  if (view === "landing") {
+    const w = botTrafficWindows(new Date());
+    try {
+      const [last7, prior7, history] = await Promise.all([
+        fetchBotTraffic({ ...w.last7, topBots: 5 }),
+        fetchBotTraffic(w.prior7),
+        fetchBotTraffic(w.history),
+      ]);
+      aiBotReads = { last7, prior7, history };
+    } catch (err) {
+      console.error("[metrics] AI bot reads:", err);
+      aiBotReadsError = err instanceof Error ? err.message : String(err);
+    }
+  }
   if (view === "signups") {
     try {
       channels = channelBreakdown(await fetchOrgAcquisitions(FIRST_TOUCH_CAPTURE_START));
@@ -269,7 +303,13 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           />
         )}
         {view === "landing" && stats && (
-          <LandingView totalVisitors={stats.landingVisitors} timeline={stats.timeline} sources={stats.trafficSources} />
+          <LandingView
+            totalVisitors={stats.landingVisitors}
+            timeline={stats.timeline}
+            sources={stats.trafficSources}
+            aiBotReads={aiBotReads}
+            aiBotReadsError={aiBotReadsError}
+          />
         )}
         {view === "signups" && stats && (
           <SignupView
