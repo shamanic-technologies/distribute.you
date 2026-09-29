@@ -241,7 +241,7 @@ export function V2WorkflowPage() {
                   }
                 />
                 <Row k="Offer" v={spec.mission.offerName} />
-                <Row k="Outcome" v={spec.mission.leg?.label ?? null} />
+                <Row k="Objective" v={spec.mission.leg?.label ?? null} />
                 <Row k="Model" v={model ? <span className="k-mono text-[12px]">{model.alias}</span> : null} />
                 <Row k="Invested" v={row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
                 <Row k="Leads emailed" v={row.outreach == null ? null : fmtCount(row.outreach)} />

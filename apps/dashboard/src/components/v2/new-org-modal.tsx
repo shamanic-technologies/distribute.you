@@ -22,6 +22,7 @@
  * does the brand step switch to it and land on the campaign.
  */
 
+import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -674,6 +675,8 @@ export function NewOrgModal({
           })
         ).campaign.id;
       launched.current.campaignId = campaignId;
+      // Still acting on the new org through the override: the rep write lands there.
+      await defaultSalesRepToAccountEmail(id, user?.primaryEmailAddress?.emailAddress);
       // The edge gate reads this claim: the org is set up only now, with a campaign running.
       // Mark the NEW org set up, with a token minted for it (the session is still on the
       // previous org), BEFORE switching to it: the edge gate then lets it through.

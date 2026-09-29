@@ -64,7 +64,7 @@ export function CrewPage() {
   // Daily crews only: an event crew's cap is spent only when its step is reached.
   const { dailyCents: ceiling, eventCapCents } = useDailyBudgetSplit(brandId, { enabled: revenue.enabled });
   const { staffMode } = useStaffMode();
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
   const runningCrews = crews.filter((c) => c.running > 0).length;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [runsShown, setRunsShown] = useState(30);
@@ -158,7 +158,7 @@ export function CrewPage() {
                   lastRun={lastRunByCrew.get(c.crew.key) ?? null}
                   workHref={v2Href(orgId, brandId, "work")}
                   brandId={brandId}
-                  onAddMission={() => setAdding(true)}
+                  onAddMission={() => setAdding(c.crew.key)}
                 />
               ))}
           {settled && staffMode && (
@@ -193,7 +193,9 @@ export function CrewPage() {
           onMore={() => setRunsShown((n) => n + 30)}
         />
       </div>
-      {adding && <AddMissionModal brandId={brandId} crews={crews} missions={missions} onClose={() => setAdding(false)} />}
+      {adding && (
+        <AddMissionModal brandId={brandId} crews={crews} missions={missions} initialCrewKey={adding} onClose={() => setAdding(null)} />
+      )}
     </>
   );
 }
@@ -320,9 +322,15 @@ function CrewCard({
               ? `Not working for any offer yet. Once on a mission, it wakes each time a ${crew.trigger.label.toLowerCase()} comes in and turns it into ${crew.trigger.outcome.toLowerCase()}.`
               : `Not working for any offer yet. On a mission, it spends its daily budget bringing ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`}
           </p>
-          <button type="button" onClick={onAddMission} className="k-btn mt-auto">
-            + Add a mission
-          </button>
+          <div className="mt-auto w-full">
+            <button
+              type="button"
+              onClick={onAddMission}
+              className="k-btn h-8 w-full justify-center"
+            >
+              + Add a mission
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -443,7 +451,14 @@ function CrewCard({
       </ul>
 
       <div className="mt-auto pt-3">
-        <p className="k-fg2 text-[12px] leading-[18px]">
+        <button
+          type="button"
+          onClick={onAddMission}
+          className="k-btn h-8 w-full justify-center"
+        >
+          + Add a mission
+        </button>
+        <p className="k-fg2 mt-2 text-[12px] leading-[18px]">
           {running
             ? crew.trigger?.kind === "event"
               ? "Wakes each time its step is reached, and never spends more than its cap in a day."

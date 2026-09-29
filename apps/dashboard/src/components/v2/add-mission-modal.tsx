@@ -48,17 +48,23 @@ export function AddMissionModal({
   crews,
   missions,
   initialOfferId = null,
+  initialCrewKey = null,
   onClose,
 }: {
   brandId: string;
   crews: CrewSummary[];
   missions: Mission[];
   initialOfferId?: string | null;
+  /** Opened from one crew's card: that crew is picked and shown alone, until "Change crew". */
+  initialCrewKey?: string | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const offered = crews.filter((c) => c.offered && c.legKey);
-  const [crewKey, setCrewKey] = useState<string | null>(offered[0]?.crew.key ?? null);
+  const preset = offered.some((c) => c.crew.key === initialCrewKey) ? initialCrewKey : null;
+  const [crewKey, setCrewKey] = useState<string | null>(preset ?? offered[0]?.crew.key ?? null);
+  const [allCrews, setAllCrews] = useState(preset === null);
+  const listedCrews = allCrews ? offered : offered.filter((c) => c.crew.key === crewKey);
   const [offerId, setOfferId] = useState<string | null>(initialOfferId);
   const [budget, setBudget] = useState("");
 
@@ -182,9 +188,16 @@ export function AddMissionModal({
             if (submittable && !mutation.isPending) mutation.mutate();
           }}
         >
-          <p className="k-label">Crew</p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="k-label">Crew</p>
+            {!allCrews && offered.length > 1 && (
+              <button type="button" onClick={() => setAllCrews(true)} className="k-fg2 text-[12px] hover:text-[var(--fg-1)]">
+                Change crew
+              </button>
+            )}
+          </div>
           <div className="mt-1.5 grid gap-1.5" role="radiogroup" aria-label="Crew">
-            {offered.map((c) => {
+            {listedCrews.map((c) => {
               const on = c.crew.key === crewKey;
               return (
                 <button
