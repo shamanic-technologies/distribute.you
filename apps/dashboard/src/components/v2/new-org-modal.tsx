@@ -654,7 +654,7 @@ export function NewOrgModal({
         launched.current.budget = true;
       }
       const workflowSlug = legPrices[legKey]?.workflow;
-      if (!workflowSlug) throw new Error(`No workflow is ready for ${leg.unitPlural} yet, so the campaign cannot start.`);
+      if (!workflowSlug) throw new Error(`Nothing is ready to run for ${leg.unitPlural} yet, so the campaign cannot start.`);
       const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [id], chosenOffer);
       const featureInputs: Record<string, string> = {};
       for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
@@ -845,7 +845,7 @@ export function NewOrgModal({
             <div className="mt-4 space-y-1.5">
               {NEW_ORG_LEGS.map((l) => {
                 const price = legPrices[l.key];
-                const sub = price === undefined ? "Reading the current price…" : price.usd != null ? `About ${fmtUsd(price.usd)} per ${l.unit} with our best workflow right now.` : "No price measured yet.";
+                const sub = price === undefined ? "Reading the current price…" : price.usd != null ? `About ${fmtUsd(price.usd)} per ${l.unit} right now.` : "No price measured yet.";
                 return <PickRow key={l.key} title={l.label} sub={sub} checked={legKey === l.key} kind="radio" onClick={() => setLegKey(l.key)} />;
               })}
             </div>

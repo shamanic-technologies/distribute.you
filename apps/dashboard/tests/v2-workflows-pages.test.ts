@@ -5,17 +5,18 @@ import { resolve } from "node:path";
 const ROOT = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
-describe("dashboard v2 Workflows: GA, no gate and no badge", () => {
-  it("the mission Workflows tab is offered to every reader, untagged", () => {
+describe("dashboard v2 Workflows: staff mode only, no badge", () => {
+  it("the mission Workflows tab is offered in staff mode only, untagged", () => {
     const setup = read("src/components/v2/setup-pages.tsx");
     const fn = setup.slice(setup.indexOf("export function missionTabs("), setup.indexOf("export function V2MissionSettingsPage("));
     expect(fn).toContain('label: "Workflows"');
     expect(fn).not.toContain("isBeta");
     expect(fn).not.toContain("badge:");
-    expect(read("src/components/v2/mission-page.tsx")).toContain('"overview")');
+    expect(fn).toContain("...(staffMode ? [");
+    expect(read("src/components/v2/mission-page.tsx")).toContain('"overview", staffMode)');
   });
 
-  it("the sidebar entry sits under Missions, ungated and untagged", () => {
+  it("the sidebar entry sits under Missions, staff mode only and untagged", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
     const missions = shell.indexOf('label="Missions"');
     const entry = shell.indexOf('label="Workflows"');
@@ -25,7 +26,7 @@ describe("dashboard v2 Workflows: GA, no gate and no badge", () => {
     expect(shell).not.toContain("MaturityBadge");
   });
 
-  it("both pages exist and open to every reader", () => {
+  it("both pages exist, behind staff mode (StaffOnly on the route), never the beta list", () => {
     const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/workflows";
     expect(existsSync(resolve(ROOT, `${base}/page.tsx`))).toBe(true);
     expect(existsSync(resolve(ROOT, `${base}/[workflowSlug]/page.tsx`))).toBe(true);
@@ -52,10 +53,10 @@ describe("editing a workflow's prompt is STAFF-only, and says who it affects", (
   const page = read("src/components/v2/workflow-page.tsx");
   const card = page.slice(page.indexOf("function PromptCard("), page.indexOf("// ─── Past runs"));
 
-  it("the Edit control is offered to staff only, with the Staff label", () => {
-    expect(card).toContain("const isStaff = useIsAdminUser();");
+  it("the Edit control is offered in staff mode only, untagged", () => {
+    expect(card).toContain("const { staffMode: isStaff } = useStaffMode();");
     expect(card).toContain("isStaff && !editing");
-    expect(card).toContain('<MaturityBadge level="staff" />');
+    expect(card).not.toContain('level="staff"');
   });
 
   it("Fork and Upgrade each confirm first, stating the blast radius", () => {
@@ -80,11 +81,11 @@ describe("the Actual cost basis is STAFF-only", () => {
   const page = read("src/components/v2/workflow-page.tsx");
   const over = page.slice(page.indexOf("function OverTime("), page.indexOf("function ChartCard("));
 
-  it("the toggle renders for staff only, with the Staff label, and defaults to User cost", () => {
+  it("the toggle renders in staff mode only, untagged, and defaults to User cost", () => {
     // ONE switch for every cost page, in the top bar (components/v2/cost-basis-switch.tsx).
     const sw = read("src/components/v2/cost-basis-switch.tsx");
     expect(sw).toContain("if (!isStaff) return null;");
-    expect(sw).toContain('<MaturityBadge level="staff" />');
+    expect(sw).not.toContain('level="staff"');
     const hook = read("src/lib/v2/use-cost-basis.ts");
     expect(hook).toContain('const basis: CostBasis = isStaff ? stored : "user";');
     expect(hook).toContain('const readServer = (): CostBasis => "user";');

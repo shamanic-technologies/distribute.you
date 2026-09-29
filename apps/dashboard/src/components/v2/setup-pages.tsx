@@ -38,6 +38,8 @@ import type { CrewGlyph } from "@/lib/v2/crews";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v2/ui";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { StaffOnly } from "@/components/v2/staff-only";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import type { Maturity } from "@/lib/feature-gates";
 
 /**
@@ -246,28 +248,30 @@ function useMissionCrumbs() {
 }
 
 /**
- * A mission's tabs. Workflows is BETA: offered only to a reader on the beta list, and
- * it carries the badge so that reader can tell it is not general yet. The page body
- * gates on the same list, so a typed URL reaches nothing more than the tab would.
+ * A mission's tabs. Workflows sits below the mission, so it is offered in staff mode only
+ * (`staffMode` from `useStaffMode`); the page body gates on the same mode, so a typed URL
+ * reaches nothing more than the tab would.
  */
 export function missionTabs(
   orgId: string,
   brandId: string,
   campaignId: string,
   active: "overview" | "audiences" | "settings" | "workflows",
+  staffMode: boolean,
 ): V2Tab[] {
   const base = v2MissionHref(orgId, brandId, campaignId);
   return [
     { label: "Overview", href: base, active: active === "overview" },
     { label: "Audiences", href: `${base}/audiences`, active: active === "audiences" },
     { label: "Settings", href: `${base}/settings`, active: active === "settings" },
-    { label: "Workflows", href: `${base}/workflows`, active: active === "workflows" },
+    ...(staffMode ? [{ label: "Workflows", href: `${base}/workflows`, active: active === "workflows" }] : []),
   ];
 }
 
 /** Whether a mission runs, what it may spend, and what its emails promise. */
 export function V2MissionSettingsPage() {
   const { orgId, brandId, campaignId, mission, settled, name } = useMissionCrumbs();
+  const { staffMode } = useStaffMode();
   const { data, isPending, isError } = useAuthQuery(["campaign", campaignId ?? "none"], () => getCampaign(campaignId as string), {
     enabled: !!campaignId,
   });
@@ -278,7 +282,7 @@ export function V2MissionSettingsPage() {
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Settings" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "settings")}
+      tabs={missionTabs(orgId, brandId, campaignId, "settings", staffMode)}
     >
       {!offerId ? (
         settled && !isPending ? (
@@ -320,13 +324,14 @@ function MissionTitle({ crewColor, glyph, name, running, hold }: { crewColor: st
  */
 export function V2MissionAudiencesPage() {
   const { orgId, brandId, campaignId, mission, settled, name } = useMissionCrumbs();
+  const { staffMode } = useStaffMode();
   if (!campaignId) return null;
   const offerId = mission?.offerId ?? null;
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Audiences" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "audiences")}
+      tabs={missionTabs(orgId, brandId, campaignId, "audiences", staffMode)}
       width="max-w-[1280px]"
     >
       {!offerId ? (
@@ -345,17 +350,20 @@ export function V2MissionAudiencesPage() {
 /** Every workflow the mission can run, ranked the way campaign-service picks. */
 export function V2MissionWorkflowsPage() {
   const { orgId, brandId, campaignId, mission, name } = useMissionCrumbs();
+  const { staffMode } = useStaffMode();
   if (!campaignId) return null;
   return (
     <V2Page
       crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Workflows" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
-      tabs={missionTabs(orgId, brandId, campaignId, "workflows")}
+      tabs={missionTabs(orgId, brandId, campaignId, "workflows", staffMode)}
       width="max-w-none"
     >
-      <div className="v2-embed -mx-4 md:-mx-6">
-        <CampaignWorkflowsPage campaignId={mission?.row.campaign.id ?? campaignId} panel="drawer" />
-      </div>
+      <StaffOnly>
+        <div className="v2-embed -mx-4 md:-mx-6">
+          <CampaignWorkflowsPage campaignId={mission?.row.campaign.id ?? campaignId} panel="drawer" staffGated />
+        </div>
+      </StaffOnly>
     </V2Page>
   );
 }

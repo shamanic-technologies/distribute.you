@@ -147,14 +147,11 @@ describe("v2 wiring", () => {
     expect(layout).not.toContain("isBetaEmail");
     expect(layout).not.toContain("This page is not available");
     expect(read("src/app/(authed)/v2/layout.tsx")).toContain("<V2ClientLayout>");
-    // Workflows and Research are GA (owner-decided 2026-09-28). The only tags left in v2 are
-    // the staff controls: the Actual-cost switch (one component, in the top bar of every cost
-    // page) and the workflow page's prompt Edit,
-    // the generic tab-badge renderer in setup-pages, and the beta Integrations section of
-    // Brand settings (the CRM connect, beta on the email allowlist).
-    // The staff Mature/Flash switch (stat-basis-switch) is the same kind of staff control as
-    // the cost basis switch, and wears the same staff tag.
-    const GATED = new Set(["workflow-page.tsx", "cost-basis-switch.tsx", "stat-basis-switch.tsx", "setup-pages.tsx", "brand-settings-page.tsx"]);
+    // Staff surfaces (Workflows, Research, the cost and figure switches, the prompt Edit) sit
+    // behind Staff mode (lib/use-staff-mode.ts) and carry NO tag (owner-decided 2026-09-29).
+    // The only badges left in v2 are the generic tab-badge renderer in setup-pages and the
+    // beta Integrations section of Brand settings (beta on the email allowlist).
+    const GATED = new Set(["setup-pages.tsx", "brand-settings-page.tsx"]);
     for (const f of readdirSync(resolve(ROOT, "src/components/v2")).filter((n) => n.endsWith(".tsx"))) {
       if (GATED.has(f)) continue;
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");

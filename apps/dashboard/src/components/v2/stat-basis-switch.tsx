@@ -1,13 +1,12 @@
 "use client";
 
-import { MaturityBadge } from "@/components/maturity-badge";
 import { useStatBasis } from "@/lib/use-stat-basis";
 
 /**
  * The staff switch between the MATURE figure every customer reads (the default) and the
  * FLASH one (everything to date), for debugging a Learning tag or a price that moved. It
  * sits in the top bar of every page that states a ratio and it is ONE setting: flipping it
- * here flips it on every such page and tab. Renders nothing for a non-staff reader.
+ * here flips it on every such page and tab. Renders nothing outside staff mode.
  */
 export function StatBasisSwitch() {
   const { isStaff, basis, setBasis } = useStatBasis();
@@ -25,7 +24,6 @@ export function StatBasisSwitch() {
           {b === "mature" ? "Mature" : "Flash"}
         </button>
       ))}
-      <MaturityBadge level="staff" />
     </span>
   );
 }

@@ -341,7 +341,7 @@ function OfferCampaignRow({
       );
       if (!workflowDynastySlug) {
         throw new ChannelStartRefusal(
-          `${row.scope.channelName} has no workflow ready for this outcome yet, so there is nothing to start.`,
+          `${row.scope.channelName} is not ready for this outcome yet, so there is nothing to start.`,
         );
       }
       const [{ feature }, prefill] = await Promise.all([

@@ -93,13 +93,15 @@ describe("the staff Mature / Flash switch", () => {
     expect(statBasisCookieAssignment("mature")).toContain("path=/");
   });
 
-  it("forces every non-staff reader to the mature half, whatever the cookie says", () => {
+  it("forces every reader outside staff mode to the mature half, whatever the cookie says", () => {
     const hook = read("lib/use-stat-basis.ts");
     expect(hook).toContain('const basis: StatBasis = isStaff ? stored : "mature";');
     expect(hook).toContain('const readServer = (): StatBasis => "mature";');
     const sw = read("components/v2/stat-basis-switch.tsx");
     expect(sw).toContain("if (!isStaff) return null;");
-    expect(sw).toContain('<MaturityBadge level="staff" />');
+    // Staff mode is what says which world you are in; the switch carries no tag.
+    expect(sw).not.toContain('level="staff"');
+    expect(hook).toContain("useStaffMode()");
   });
 
   it("rides the top bar of every v2 page that states a ratio", () => {

@@ -23,6 +23,7 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions } from "@/components/v2/use-missions";
 import { runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
+import { useStaffMode } from "@/lib/use-staff-mode";
 
 /** How long a run took, in the words a person reads. Null while it is still running. */
 function runDuration(run: Pick<RunDetail, "startedAt" | "completedAt">): string | null {
@@ -55,6 +56,8 @@ export function RunPage() {
   const { orgId, brandId, runId } = useParams<{ orgId: string; brandId: string; runId: string }>();
   const personRowId = useSearchParams().get("person");
   const { missionByCampaignId } = useMissions(orgId, brandId);
+  // The workflow, its version, model and template sit below the mission: staff mode only.
+  const { staffMode } = useStaffMode();
 
   const runQ = useAuthQuery(["runDetail", runId], () => getRunDetail(runId), { enabled: Boolean(runId) });
   const genQ = useAuthQuery(["runGenerations", brandId, runId], () => listRunGenerations(brandId, runId), {
@@ -96,7 +99,10 @@ export function RunPage() {
     [run],
   );
 
-  const title = workflow?.dynastyName ?? workflowSlug ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run");
+  const missionName = mission ? `${mission.crew.name}${mission.offerName ? ` · ${mission.offerName}` : ""}` : null;
+  const title = staffMode
+    ? workflow?.dynastyName ?? workflowSlug ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run")
+    : missionName ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run");
 
   return (
     <>
@@ -187,24 +193,28 @@ export function RunPage() {
                       }
                     />
                     <Row k="Step" v={mission?.leg?.label ?? null} />
-                    <Row
-                      k="Workflow"
-                      v={
-                        workflow?.dynastySlug && featureSlug && legKey ? (
-                          <Link
-                            href={v2WorkflowHref(orgId, brandId, workflow.dynastySlug, `${featureSlug}|${legKey}`, campaignId)}
-                            className="hover:underline"
-                          >
-                            {workflow.dynastyName ?? workflow.dynastySlug}
-                          </Link>
-                        ) : (
-                          workflow?.dynastyName ?? null
-                        )
-                      }
-                    />
-                    <Row k="Version" v={workflowSlug ? <span className="k-mono text-[12px]">{workflowSlug}</span> : null} />
-                    <Row k="LLM" v={model ? <span title={model.alias}>{model.label}</span> : null} />
-                    <Row k="Template" v={template ? <span title={template.id}>{template.label}</span> : null} />
+                    {staffMode && (
+                      <>
+                        <Row
+                          k="Workflow"
+                          v={
+                            workflow?.dynastySlug && featureSlug && legKey ? (
+                              <Link
+                                href={v2WorkflowHref(orgId, brandId, workflow.dynastySlug, `${featureSlug}|${legKey}`, campaignId)}
+                                className="hover:underline"
+                              >
+                                {workflow.dynastyName ?? workflow.dynastySlug}
+                              </Link>
+                            ) : (
+                              workflow?.dynastyName ?? null
+                            )
+                          }
+                        />
+                        <Row k="Version" v={workflowSlug ? <span className="k-mono text-[12px]">{workflowSlug}</span> : null} />
+                        <Row k="LLM" v={model ? <span title={model.alias}>{model.label}</span> : null} />
+                        <Row k="Template" v={template ? <span title={template.id}>{template.label}</span> : null} />
+                      </>
+                    )}
                     <Row k="Audience" v={audienceName} />
                     <Row
                       k="Person"
