@@ -5,8 +5,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/skeleton";
 import { MetricLabel } from "@/components/visibility/metric-info";
 import { pollOptions } from "@/lib/query-options";
+import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "@/lib/org-desync";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
+  ApiError,
   getOfferUserFields,
   saveOfferUserFields,
   USER_FIELD_KEYS,
@@ -25,6 +27,34 @@ import {
   coerceTextField,
   OFFER_LEVERS,
 } from "@/lib/strategy-model";
+
+/**
+ * List-kind levers edited as ONE textarea rather than a chip list: a testimonial
+ * or a case study is a paragraph, and a chip input made it unreadable. Storage is
+ * unchanged (a string[]): each non-empty LINE is one item, so a comma inside a
+ * quote stays inside it.
+ */
+const TEXTAREA_LIST_KEYS: ReadonlySet<string> = new Set(["socialProof"]);
+
+function linesToList(value: string | string[] | undefined): string[] {
+  if (Array.isArray(value)) return value.map((v) => v.trim()).filter((v) => v.length > 0);
+  return (value ?? "")
+    .split(/\r?\n/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+}
+
+/** What the save failure says. From the STATUS, never the error body. */
+function saveErrorMessage(err: unknown): string {
+  if (
+    err instanceof ApiError &&
+    err.status === ORG_DESYNC_STATUS &&
+    err.body?.error === ORG_DESYNC_ERROR
+  ) {
+    return "Not saved: another tab switched organization. Reload this page, then save again.";
+  }
+  return "Not saved. Your edits are still here, try again.";
+}
 
 /**
  * The confirmed user-fields map → a plain fields bag (key → value) the inline
@@ -60,7 +90,11 @@ function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserF
     // destructive half of the shape-mismatch bug: an array in a text-kind lever was
     // written back as a confirmed-EMPTY row, silently deleting a value the user never
     // touched. Coercing heals the row instead of blanking it.
-    out[key] = isList ? coerceListField(v) : coerceTextField(v).trim();
+    out[key] = TEXTAREA_LIST_KEYS.has(key)
+      ? linesToList(v)
+      : isList
+        ? coerceListField(v)
+        : coerceTextField(v).trim();
   }
   return out;
 }
@@ -102,9 +136,16 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
   const saveOfferMut = useMutation({
     mutationFn: (fields: ProfileFields) =>
       saveOfferUserFields(brandId, offerId, profileToUserFieldsPayload(fields)),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // The response IS the read this card polls: write it, so the saved values
+      // show at once instead of the pre-save copy until the next poll.
+      queryClient.setQueryData(["offerUserFields", brandId, offerId], res);
       setOfferDraft(null);
-      queryClient.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
+    },
+    onError: (err) => {
+      // A failed save keeps the draft and SAYS so. It used to render nothing, so
+      // the button went back to "Save changes" and the edits were lost on reload.
+      console.error("[dashboard] saveOfferUserFields failed", err);
     },
   });
 
@@ -184,7 +225,15 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
                     <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                       <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
                     </p>
-                    {kind === "text" ? (
+                    {TEXTAREA_LIST_KEYS.has(lever.key) ? (
+                      <TextEditor
+                        value={
+                          Array.isArray(value) ? linesToList(value).join("\n") : (value ?? "")
+                        }
+                        placeholder="One testimonial, case study or result per line"
+                        onText={(v) => setOfferText(lever.key, v)}
+                      />
+                    ) : kind === "text" ? (
                       <TextEditor
                         value={coerceTextField(value)}
                         placeholder={placeholder}
@@ -203,11 +252,19 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
               })}
             </ul>
 
+            {saveOfferMut.isError ? (
+              <p role="alert" className="mt-4 text-right text-sm text-red-600">
+                {saveErrorMessage(saveOfferMut.error)}
+              </p>
+            ) : null}
             {offerDirty ? (
-              <div className="mt-4 flex items-center justify-end gap-2">
+              <div className="mt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setOfferDraft(null)}
+                  onClick={() => {
+                    setOfferDraft(null);
+                    saveOfferMut.reset();
+                  }}
                   className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
                 >
                   Discard
