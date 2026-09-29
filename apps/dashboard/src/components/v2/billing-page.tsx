@@ -30,6 +30,7 @@ import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
+import { CardImprintModal } from "@/components/v2/card-imprint-modal";
 import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
 
 /**
@@ -106,6 +107,8 @@ export function V2BillingPage() {
   // prepaid will charge what is owed first). One in-flight flag for both writes.
   const [target, setTarget] = useState<PaymentMode | null>(null);
   const [switching, setSwitching] = useState(false);
+  // Postpaid picked with no card on file: the $0 card save is up.
+  const [imprintOpen, setImprintOpen] = useState(false);
   const [modeError, setModeError] = useState<string | null>(null);
   const [autoPending, setAutoPending] = useState(false);
   const [autoError, setAutoError] = useState<string | null>(null);
@@ -119,6 +122,12 @@ export function V2BillingPage() {
 
   function requestSwitch(next: PaymentMode) {
     setModeError(null);
+    // No card yet: save one for $0 first. The modal switches once billing holds it,
+    // never before (a postpaid org with no card is stopped at once).
+    if (next === "postpaid" && !account?.has_payment_method) {
+      setImprintOpen(true);
+      return;
+    }
     // Leaving postpaid collects what is owed first, so the amount is confirmed before
     // it is taken. The same derivation the card controls read (`settleCents`), so the
     // two can never state different money.
@@ -208,6 +217,15 @@ export function V2BillingPage() {
             />
           )}
         </div>
+        {imprintOpen && (
+          <CardImprintModal
+            onCancel={() => setImprintOpen(false)}
+            onSwitched={async () => {
+              await refetchMoney();
+              setImprintOpen(false);
+            }}
+          />
+        )}
         {target !== null && c.settleCents !== null && (
           <SwitchConfirm
             settleCents={c.settleCents}
@@ -322,7 +340,7 @@ export function V2BillingPage() {
                   const blocked = m === "postpaid" && !current ? blocker : null;
                   // The card IS the control: picking the other mode is one click on it.
                   // A card that cannot be picked says why, instead of a greyed button.
-                  const pickable = !current && mode !== null && blocked === null && !switching;
+                  const pickable = !current && mode !== null && blocked === null && !switching && !imprintOpen;
                   const pendingHere = switching && !current;
                   return (
                     <button
@@ -355,6 +373,11 @@ export function V2BillingPage() {
                       <span className="k-fg mt-2 block text-[13px] leading-5">{MODE_COPY[m].line}</span>
                       <span className="k-fg3 mt-1 block text-[12px] leading-[18px]">{MODE_COPY[m].detail}</span>
                       {blocked && <span className="mt-2 block text-[12px] leading-[18px] text-[var(--data-amber)]">{blocked}</span>}
+                      {!current && m === "postpaid" && !account?.has_payment_method && (
+                        <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
+                          Pick it to add your card. Nothing is charged now.
+                        </span>
+                      )}
                       {!current && m === "prepaid" && c.settleCents !== null && (
                         <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
                           You owe {formatBillingCents(c.settleCents)}. It is charged to your card first, and we ask before we take it.
