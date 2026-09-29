@@ -320,16 +320,27 @@ export function V2BillingPage() {
                 {(["prepaid", "postpaid"] as const).map((m) => {
                   const current = mode === m;
                   const blocked = m === "postpaid" && !current ? blocker : null;
+                  // The card IS the control: picking the other mode is one click on it.
+                  // A card that cannot be picked says why, instead of a greyed button.
+                  const pickable = !current && mode !== null && blocked === null && !switching;
+                  const pendingHere = switching && !current;
                   return (
-                    <div
+                    <button
                       key={m}
+                      type="button"
                       role="radio"
                       aria-checked={current}
-                      className="k-card flex flex-col p-4"
+                      aria-disabled={!current && !pickable}
+                      onClick={() => {
+                        if (pickable) requestSwitch(m);
+                      }}
+                      className={`k-card flex flex-col p-4 text-left transition-shadow ${
+                        pickable ? "cursor-pointer hover:bg-[var(--bg-inset)]" : current ? "cursor-default" : pendingHere ? "cursor-wait" : "cursor-not-allowed"
+                      }`}
                       // `k-card` is unlayered, so a utility ring loses to its own shadow.
                       style={current ? { boxShadow: "inset 0 0 0 1.5px var(--accent)" } : undefined}
                     >
-                      <div className="flex items-center gap-2">
+                      <span className="flex w-full items-center gap-2">
                         <span
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
                             current ? "bg-[var(--accent)]" : "shadow-[inset_0_0_0_1.5px_var(--fg-4)]"
@@ -339,28 +350,17 @@ export function V2BillingPage() {
                         </span>
                         <span className="text-[14px] font-medium">{MODE_COPY[m].title}</span>
                         {current && <span className="k-chip ml-auto">Current</span>}
-                      </div>
-                      <p className="k-fg mt-2 text-[13px] leading-5">{MODE_COPY[m].line}</p>
-                      <p className="k-fg3 mt-1 text-[12px] leading-[18px]">{MODE_COPY[m].detail}</p>
-                      {!current && mode !== null && (
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            className={`k-btn ${switching ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
-                            disabled={switching || blocked !== null}
-                            onClick={() => requestSwitch(m)}
-                          >
-                            {switching && target === null ? "Switching..." : `Switch to ${MODE_COPY[m].title.toLowerCase()}`}
-                          </button>
-                          {blocked && <p className="k-fg3 mt-2 text-[12px] leading-[18px]">{blocked}</p>}
-                          {m === "prepaid" && c.settleCents !== null && (
-                            <p className="k-fg3 mt-2 text-[12px] leading-[18px]">
-                              You owe {formatBillingCents(c.settleCents)}. It is charged to your card first, and we ask before we take it.
-                            </p>
-                          )}
-                        </div>
+                        {pendingHere && <span className="k-fg3 ml-auto text-[12px]">Switching...</span>}
+                      </span>
+                      <span className="k-fg mt-2 block text-[13px] leading-5">{MODE_COPY[m].line}</span>
+                      <span className="k-fg3 mt-1 block text-[12px] leading-[18px]">{MODE_COPY[m].detail}</span>
+                      {blocked && <span className="mt-2 block text-[12px] leading-[18px] text-[var(--data-amber)]">{blocked}</span>}
+                      {!current && m === "prepaid" && c.settleCents !== null && (
+                        <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
+                          You owe {formatBillingCents(c.settleCents)}. It is charged to your card first, and we ask before we take it.
+                        </span>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>

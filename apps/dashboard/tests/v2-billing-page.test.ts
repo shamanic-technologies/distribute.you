@@ -117,7 +117,15 @@ describe("the prepaid / postpaid switch", () => {
 
   it("refuses postpaid on the page when billing would stop the campaigns", () => {
     expect(V2).toContain("const blocker = postpaidBlocker(account);");
-    expect(V2).toContain("disabled={switching || blocked !== null}");
+    expect(V2).toContain("const pickable = !current && mode !== null && blocked === null && !switching;");
+    expect(V2).toContain("if (pickable) requestSwitch(m);");
+  });
+
+  // The card is the choice: a separate "Switch to" button would be a second click
+  // for the same decision.
+  it("switches on a click on the card, with no extra button", () => {
+    expect(V2).not.toContain("Switch to ${");
+    expect(V2).toContain('role="radio"');
   });
 
   it("renders a sentence per refusal, never the raw error", () => {
