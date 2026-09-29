@@ -16,6 +16,7 @@ import { RunRateLineCard } from "@/components/run-rate-line-card";
 import { formatUsd } from "@/lib/format-number";
 import type { BillingStats, FirstSeenMonthRow } from "@/lib/public-stats";
 import { StatedAmountsCard } from "@/components/revenue/stated-amounts-card";
+import { RevenueOutlookBand } from "@/components/revenue/revenue-outlook-band";
 import {
   brandLabel,
   breakdownReconciles,
@@ -559,9 +560,11 @@ export function RevenueView({
 
   return (
     <>
+      <RevenueOutlookBand />
+
       <SectionHeading
         title="Cash collected"
-        blurb="What customers paid us, whichever acquirer took the payment, minus what went back out. Runs ahead of consumption below by the credit that is bought and not yet spent."
+        blurb="What customers paid us, whichever acquirer took the payment, minus what went back out. Prepaid customers pay before they spend and postpaid customers after, so this never matches consumption below on a given day."
       />
 
       <section className="grid gap-4 md:grid-cols-3">

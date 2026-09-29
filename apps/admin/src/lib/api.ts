@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./revenue-outlook";
+
+/** The gateway path of billing's fleet revenue read (api-service staff proxy). */
+const BILLING_FLEET_REVENUE_PATH = "/billing/revenue/fleet";
 import {
   TRIGGER_TASK_NAME,
   WorkflowRunGroupsResponseSchema,
@@ -5945,6 +5949,16 @@ export interface AuditAccounts {
   rows: AuditAccountRow[];
   stats: AuditAccountsStats;
   asOf: string; // ISO timestamp
+}
+
+/**
+ * billing-service's fleet revenue read (recurring DRR/MRR/ARR, one-off prepaid
+ * run-out, cash expected by week, one row per org). Staff-gated through
+ * api-service; the body is billing's, parsed in lib/revenue-outlook.
+ */
+export async function getBillingFleetRevenue(token?: string): Promise<FleetRevenueOutlook> {
+  const raw = await apiCall<unknown>(BILLING_FLEET_REVENUE_PATH, { token });
+  return parseFleetRevenueOutlook(raw);
 }
 
 /**
