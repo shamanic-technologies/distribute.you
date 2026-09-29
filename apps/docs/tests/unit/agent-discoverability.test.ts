@@ -151,6 +151,8 @@ describe("the product is never named by the bare word", () => {
     "<code>distribute</code>",
     "webhooks/distribute",
     "shamanic-technologies/distribute",
+    // The folder a harness saves the agent skill under (agent-skill.ts).
+    "distribute-you",
   ];
 
   function sourceFiles(dir: string): string[] {
