@@ -18,23 +18,25 @@ import {
   ALL_FIELDS,
   cloneFields,
   fieldsEqual,
-  ListEditor,
   TextEditor,
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
-import {
-  coerceListField,
-  coerceTextField,
-  OFFER_LEVERS,
-} from "@/lib/strategy-model";
+import { coerceTextField, OFFER_LEVERS } from "@/lib/strategy-model";
 
 /**
- * List-kind levers edited as ONE textarea rather than a chip list: a testimonial
- * or a case study is a paragraph, and a chip input made it unreadable. Storage is
- * unchanged (a string[]): each non-empty LINE is one item, so a comma inside a
- * quote stays inside it.
+ * List-kind levers edited as ONE textarea rather than a chip list. Both list levers
+ * go through it: a testimonial or a service description is a paragraph, which a chip
+ * input made unreadable, and a chip input only added what was typed on Enter, so text
+ * typed and then saved was silently dropped (services, 2026-09-29). Storage is
+ * unchanged (a string[]): each non-empty LINE is one item, so a comma inside an item
+ * stays inside it.
  */
-const TEXTAREA_LIST_KEYS: ReadonlySet<string> = new Set(["socialProof"]);
+const TEXTAREA_LIST_KEYS: ReadonlySet<string> = new Set(["services", "socialProof"]);
+
+const TEXTAREA_LIST_PLACEHOLDER: Record<string, string> = {
+  services: "One service or product you sell per line",
+  socialProof: "One testimonial, case study or result per line",
+};
 
 function linesToList(value: string | string[] | undefined): string[] {
   if (Array.isArray(value)) return value.map((v) => v.trim()).filter((v) => v.length > 0);
@@ -84,17 +86,12 @@ function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserF
   const out: Partial<Record<UserFieldKey, UserFieldValue>> = {};
   for (const key of USER_FIELD_KEYS) {
     const v = fields[key];
-    const isList = ALL_FIELDS.find((f) => f.key === key)?.kind === "list";
     // Coerce by kind on the way OUT too. cloneFields already normalised the bag, so this
     // is belt-and-braces — but the old `typeof v === "string" ? v.trim() : ""` was the
     // destructive half of the shape-mismatch bug: an array in a text-kind lever was
     // written back as a confirmed-EMPTY row, silently deleting a value the user never
     // touched. Coercing heals the row instead of blanking it.
-    out[key] = TEXTAREA_LIST_KEYS.has(key)
-      ? linesToList(v)
-      : isList
-        ? coerceListField(v)
-        : coerceTextField(v).trim();
+    out[key] = TEXTAREA_LIST_KEYS.has(key) ? linesToList(v) : coerceTextField(v).trim();
   }
   return out;
 }
@@ -141,6 +138,11 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
       // show at once instead of the pre-save copy until the next poll.
       queryClient.setQueryData(["offerUserFields", brandId, offerId], res);
       setOfferDraft(null);
+      // setQueryData never reaches the on-disk cache (only a query-function run is
+      // persisted), so a reload right after Save painted the PRE-save copy from disk.
+      // Re-read through the query function so the disk copy is the saved one; the
+      // button stays on "Saving…" until it is.
+      return queryClient.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
     },
     onError: (err) => {
       // A failed save keeps the draft and SAYS so. It used to render nothing, so
@@ -151,26 +153,6 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
 
   const setOfferText = (key: string, value: string) =>
     setOfferDraft((prev) => ({ ...(prev ?? offerBaseline), [key]: value }));
-
-  const addOfferItem = (key: string, raw: string) => {
-    const value = raw.trim();
-    if (!value) return;
-    setOfferDraft((prev) => {
-      const cur = prev ?? offerBaseline;
-      // Coerce a LEGACY string value to a list first, so adding an item to a
-      // corrupted socialProof re-persists it as an array on save (heals the row).
-      const arr = coerceListField(cur[key]);
-      if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return cur;
-      return { ...cur, [key]: [...arr, value] };
-    });
-  };
-
-  const removeOfferItem = (key: string, value: string) =>
-    setOfferDraft((prev) => {
-      const cur = prev ?? offerBaseline;
-      const arr = coerceListField(cur[key]);
-      return { ...cur, [key]: arr.filter((v) => v !== value) };
-    });
 
   const saveOffer = () => {
     if (!offerDirty || saveOfferMut.isPending) return;
@@ -214,10 +196,9 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
           <>
             <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
               {OFFER_LEVERS.map((lever) => {
-                // Kind + placeholder come from the shared user-field set
-                // (services / socialProof are lists, the rest free text).
+                // Placeholder comes from the shared user-field set; the two list levers
+                // (services, socialProof) are edited as one-item-per-line textareas.
                 const def = ALL_FIELDS.find((f) => f.key === lever.key);
-                const kind = def?.kind ?? "text";
                 const placeholder = def?.placeholder ?? "";
                 const value = offerFields[lever.key];
                 return (
@@ -230,21 +211,14 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
                         value={
                           Array.isArray(value) ? linesToList(value).join("\n") : (value ?? "")
                         }
-                        placeholder="One testimonial, case study or result per line"
+                        placeholder={TEXTAREA_LIST_PLACEHOLDER[lever.key] ?? placeholder}
                         onText={(v) => setOfferText(lever.key, v)}
                       />
-                    ) : kind === "text" ? (
+                    ) : (
                       <TextEditor
                         value={coerceTextField(value)}
                         placeholder={placeholder}
                         onText={(v) => setOfferText(lever.key, v)}
-                      />
-                    ) : (
-                      <ListEditor
-                        values={coerceListField(value)}
-                        placeholder={placeholder}
-                        onAdd={(v) => addOfferItem(lever.key, v)}
-                        onRemove={(v) => removeOfferItem(lever.key, v)}
                       />
                     )}
                   </li>
