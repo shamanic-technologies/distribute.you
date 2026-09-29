@@ -215,7 +215,7 @@ describe("Billing page", () => {
     expect(fs.existsSync(billingPagePath)).toBe(true);
   });
 
-  const content = fs.readFileSync(billingPagePath, "utf-8");
+  const content = fs.readFileSync(billingPagePath.replace("app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx", "components/billing/use-billing-controller.ts"), "utf-8") + fs.readFileSync(billingPagePath, "utf-8");
 
   it("should be a client component", () => {
     expect(content).toContain('"use client"');
@@ -550,10 +550,13 @@ describe("Billing sidebar link", () => {
 });
 
 describe("billing page — change card settles first (T4 of the card-removal guard)", () => {
-  const page = fs.readFileSync(
+  const page = (fs.readFileSync(
+    path.join(__dirname, "../src/components/billing/use-billing-controller.ts"),
+    "utf8"
+  ) + fs.readFileSync(
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf8"
-  );
+  ));
   const paymentMethod = page.slice(page.indexOf("Payment method — short dedicated section"));
 
   it("the card button reads Change card, never Manage (the page lets a customer replace a card, not manage a list)", () => {
@@ -577,10 +580,13 @@ describe("billing page — change card settles first (T4 of the card-removal gua
 });
 
 describe("billing page — opening the card page is never refused", () => {
-  const page = fs.readFileSync(
+  const page = (fs.readFileSync(
+    path.join(__dirname, "../src/components/billing/use-billing-controller.ts"),
+    "utf8"
+  ) + fs.readFileSync(
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf8"
-  );
+  ));
   // `openCardPage` is the half that actually opens it; `handleManagePayment`
   // above it is the confirmation gate and performs no request.
   const handler = page.slice(
