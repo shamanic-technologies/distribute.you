@@ -8027,6 +8027,11 @@ export async function createCampaignWithoutBrandEnrichment(
 export interface BillingAccount {
   id: string;
   org_id: string;
+  /**
+   * How this org pays (billing-service `payment_mode`, the customer's explicit choice).
+   * Optional because an older billing deploy states none; read through `paymentModeOf`.
+   */
+  payment_mode?: "prepaid" | "postpaid";
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;
@@ -8103,7 +8108,13 @@ export type EmbeddedCheckoutSession =
 export async function setPaymentMode(
   payment_mode: "prepaid" | "postpaid",
   token?: string,
-): Promise<{ org_id: string; payment_mode: "prepaid" | "postpaid" }> {
+): Promise<{
+  org_id: string;
+  payment_mode: "prepaid" | "postpaid";
+  /** Cents billing collected to settle what was owed before a switch to prepaid. */
+  settled_cents?: string;
+  auto_topup_enabled?: boolean;
+}> {
   return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode } });
 }
 

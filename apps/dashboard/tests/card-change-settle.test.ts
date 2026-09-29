@@ -66,13 +66,19 @@ describe("cardChangeSettleCents", () => {
   });
 });
 
-const PAGE = readFileSync(
+const PAGE = (readFileSync(
+  join(
+    __dirname,
+    "../src/components/billing/use-billing-controller.ts",
+  ),
+  "utf8",
+) + readFileSync(
   join(
     __dirname,
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx",
   ),
   "utf8",
-);
+));
 const MODAL = readFileSync(
   join(__dirname, "../src/components/billing/card-change-confirm-modal.tsx"),
   "utf8",
@@ -198,10 +204,13 @@ describe("cardSessionSettleProblem", () => {
 });
 
 describe("billing page: a failed settle is stated before the card page opens", () => {
-  const page = readFileSync(
+  const page = (readFileSync(
+    join(__dirname, "../src/components/billing/use-billing-controller.ts"),
+    "utf8",
+  ) + readFileSync(
     join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf8",
-  );
+  ));
   const open = page.slice(
     page.indexOf("async function openCardPage("),
     page.indexOf("function dismissSettleProblem("),

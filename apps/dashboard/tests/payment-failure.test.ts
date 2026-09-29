@@ -168,10 +168,13 @@ describe("paymentFailureAttemptsLine", () => {
 // Source-substring guards: the derivation is unit-tested above, these pin that
 // the page actually RENDERS it and passes both halves. A banner the page never
 // mounts is the feature entirely absent with the component perfectly correct.
-const PAGE = readFileSync(
+const PAGE = (readFileSync(
+  join(__dirname, "../src/components/billing/use-billing-controller.ts"),
+  "utf8",
+) + readFileSync(
   join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
   "utf8",
-);
+));
 const BANNER = readFileSync(
   join(__dirname, "../src/components/billing/payment-failed-banner.tsx"),
   "utf8",

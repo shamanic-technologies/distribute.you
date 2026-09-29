@@ -21,9 +21,11 @@ const read = (rel: string) => readFileSync(join(REPO, rel), "utf8");
 
 const api = read("apps/dashboard/src/lib/api.ts");
 const widget = read("apps/dashboard/src/lib/card-setup-widget.ts");
-const billing = read(
+const billing = (read(
+  "apps/dashboard/src/components/billing/use-billing-controller.ts",
+) + read(
   "apps/dashboard/src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx",
-);
+));
 
 describe("the descriptor matches what the provider deploys", () => {
   it("carries the fields the provider sends", () => {

@@ -21,10 +21,13 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/components/company-logo.tsx"),
     "utf-8",
   );
-  const billingPage = fs.readFileSync(
+  const billingPage = (fs.readFileSync(
+    path.join(__dirname, "../src/components/billing/use-billing-controller.ts"),
+    "utf-8",
+  ) + fs.readFileSync(
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf-8",
-  );
+  ));
   // The offer card left brand Settings for Offer Settings: what a proposition
   // promises belongs to the offer, not to the brand's identity.
   const offerSettingsPage = fs.readFileSync(

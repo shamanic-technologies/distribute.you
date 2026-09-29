@@ -3,10 +3,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(__dirname, "..");
-const PAGE = readFileSync(
+const PAGE = (readFileSync(
+  join(root, "src/components/billing/use-billing-controller.ts"),
+  "utf8",
+) + readFileSync(
   join(root, "src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
   "utf8",
-);
+));
 const WIDGET = readFileSync(join(root, "src/lib/card-setup-widget.ts"), "utf8");
 
 /**

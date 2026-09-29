@@ -54,13 +54,19 @@ describe("paymentReturnBadge", () => {
 });
 
 describe("billing page payments card", () => {
-  const page = readFileSync(
+  const page = (readFileSync(
+    join(
+      __dirname,
+      "../src/components/billing/use-billing-controller.ts"
+    ),
+    "utf8"
+  ) + readFileSync(
     join(
       __dirname,
       "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"
     ),
     "utf8"
-  );
+  ));
 
   it("decides the payment badge from the returned amount", () => {
     expect(page).toContain("paymentReturnState(payment.amountCents, payment.amountReturnedCents)");

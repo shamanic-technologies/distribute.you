@@ -1,13 +1,8 @@
 "use client";
 
-import BillingPage from "@/app/(authed)/(dashboard)/orgs/[orgId]/billing/page";
-import { V2AccountFrame } from "@/components/v2/setup-pages";
+import { V2BillingPage } from "@/components/v2/billing-page";
 
-/** v1 Billing, whole, in the v2 frame: the money pages are not rewritten. */
+/** Billing in the v2 frame. The reads and money actions are v1's own (`useBillingController`). */
 export default function Page() {
-  return (
-    <V2AccountFrame label="Billing">
-      <BillingPage />
-    </V2AccountFrame>
-  );
+  return <V2BillingPage />;
 }
