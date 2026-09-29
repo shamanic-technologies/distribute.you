@@ -21,7 +21,8 @@ export type StepGlyph =
   | "textbox"
   | "clipboard"
   | "currency-dollar"
-  | "shopping-bag-open";
+  | "shopping-bag-open"
+  | "phone-call";
 
 export interface StepMark {
   glyph: StepGlyph;
@@ -45,6 +46,8 @@ export const STEP_MARKS: Record<string, StepMark> = {
   paid_client: { glyph: "currency-dollar", tone: STEP_TONE },
   // A BUYER PAYING ON THE WEBSITE: an outcome a visitor can press has to wear a tile.
   purchase: { glyph: "shopping-bag-open", tone: STEP_TONE },
+  // A PHONE CALL placed on a positive reply: the brand's rep talks to the lead now.
+  booking_call: { glyph: "phone-call", tone: STEP_TONE },
 };
 
 /**

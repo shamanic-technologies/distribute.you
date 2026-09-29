@@ -92,7 +92,7 @@ export function v2PersonHref(orgId: string, brandId: string, leadRowId: string):
 }
 
 /** One offer in v2: its settings, with its Targeting beside it. */
-export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting"): string {
+export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path"): string {
   const base = `${v2Base(orgId, brandId)}/offers/${encodeURIComponent(offerId)}`;
   return tab ? `${base}/${tab}` : base;
 }

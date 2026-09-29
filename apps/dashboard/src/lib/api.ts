@@ -1708,6 +1708,50 @@ export async function saveOfferLifetimeRevenue(
   return parseOfferEconomics(raw, "saveOfferLifetimeRevenue");
 }
 
+// ─── How an offer sells (brand-service, 2026-09-29, beta) ────────────────────
+//
+// The steps and legs the customer ticked for ONE offer, stored as
+// features-service's own keys. `stated: false` = never stated (both lists null),
+// distinct from a stated empty selection.
+
+const OfferSalesPathSchema = z.object({
+  offerId: z.string(),
+  stated: z.boolean(),
+  steps: z.array(z.string()).nullable(),
+  legKeys: z.array(z.string()).nullable(),
+  statedAt: z.string().nullable(),
+});
+export type OfferSalesPath = z.infer<typeof OfferSalesPathSchema>;
+
+function parseOfferSalesPath(raw: unknown, where: string): OfferSalesPath {
+  const parsed = OfferSalesPathSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[${where}] invalid response shape`, parsed.error.issues, raw);
+    throw new Error(`[${where}] invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** GET /brands/:brandId/offers/:offerId/sales-path — the offer's ticked steps and legs. */
+export async function getOfferSalesPath(brandId: string, offerId: string): Promise<OfferSalesPath> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`);
+  return parseOfferSalesPath(raw, "getOfferSalesPath");
+}
+
+/** PUT /brands/:brandId/offers/:offerId/sales-path — replaces the whole selection. */
+export async function saveOfferSalesPath(
+  brandId: string,
+  offerId: string,
+  steps: string[],
+  legKeys: string[],
+): Promise<OfferSalesPath> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`, {
+    method: "PUT",
+    body: { steps, legKeys },
+  });
+  return parseOfferSalesPath(raw, "saveOfferSalesPath");
+}
+
 // ─── Effective conversion rates (features-service, 2026-09-25) ───────────────
 //
 // The rate every money figure is priced on, per leg, and WHERE it came from: MEASURED

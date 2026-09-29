@@ -168,6 +168,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerUserFields",
   // The offer's lifetime revenue.
   "offerEconomics",
+  "offerSalesPath",
   // The offer's outcome table: one row per outcome it buys, the leg x channel rows
   // under each. Keyed on the offer, so two propositions never share an entry.
   "offerOutcomes",

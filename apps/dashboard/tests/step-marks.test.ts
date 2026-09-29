@@ -27,7 +27,8 @@ const PROD_STEPS = [
  *  mark nothing asks for, which costs nothing; a step offered on a screen with no mark
  *  is a blank square. `purchase` is an outcome `/start` offers today and the producer
  *  is publishing as a step of its own. */
-const AHEAD_OF_WIRE = ["purchase"];
+// booking_call: features-service #1214 publishes it; listed here until the deploy lands.
+const AHEAD_OF_WIRE = ["purchase", "booking_call"];
 
 describe("step marks — one tile per step, the same product-wide", () => {
   it("draws every step the producer publishes", () => {
