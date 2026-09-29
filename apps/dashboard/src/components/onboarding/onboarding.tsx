@@ -1,5 +1,6 @@
 "use client";
 
+import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -2228,6 +2229,8 @@ export function Onboarding() {
     // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
     // earlier (at brand creation) let a mid-flow refresh bypass the rest of the
     // wizard onto the dashboard (DIS-111 / first-run gate). (#1770)
+    // Nobody named yet to receive interested replies: default to the account's own email.
+    await defaultSalesRepToAccountEmail(pending.brandId, signupEmail);
     await fetch("/api/onboarding/complete", { method: "POST" }).catch((e) =>
       console.error("[dashboard] failed to mark onboarding complete:", e),
     );

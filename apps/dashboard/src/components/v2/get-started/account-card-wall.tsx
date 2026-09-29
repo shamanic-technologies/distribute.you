@@ -22,6 +22,7 @@
  *                 lands on its mission.
  */
 
+import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth, useSession, useUser } from "@clerk/nextjs";
@@ -414,6 +415,7 @@ export function AccountCardWall({
         { brandId, website, offer, audienceId: audience.audienceId, budgetUsd },
         progress.current,
       );
+      await defaultSalesRepToAccountEmail(brandId, user?.primaryEmailAddress?.emailAddress);
       const token = await session?.getToken({ skipCache: true });
       if (!token) throw new Error("Your session expired. Sign in again to finish.");
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
