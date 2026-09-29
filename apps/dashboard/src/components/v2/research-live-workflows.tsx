@@ -51,8 +51,13 @@ export function ResearchLiveWorkflows({
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const featureSlug = CREW_KEY[crew].channel;
   const { specs, settled } = useBrandMissionSpecs(orgId, brandId);
+  // A brand selling several offers must name a campaign (the producer 409s `several_offers`
+  // otherwise). This leg's own mission first; else any mission on the same channel, which
+  // names the offer: the ranking of a leg it does not run is the fleet's, priced the same way.
   const campaignId = useMemo(
-    () => specs.find((s) => s.featureSlug === featureSlug && s.legKey === legKey)?.campaignId ?? null,
+    () =>
+      (specs.find((s) => s.featureSlug === featureSlug && s.legKey === legKey) ??
+        specs.find((s) => s.featureSlug === featureSlug))?.campaignId ?? null,
     [specs, featureSlug, legKey],
   );
   const { actual } = useCostBasis();
@@ -95,7 +100,7 @@ export function ResearchLiveWorkflows({
       <div className="k-fg2 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
         <span className="inline-flex items-center gap-1.5">
           <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
-          Live ranking{campaignId ? " for this brand's mission" : ""}
+          Live ranking
         </span>
         {firstRow && (
           <span>
@@ -139,7 +144,11 @@ export function ResearchLiveWorkflows({
             ) : failed ? (
               <tr>
                 <td colSpan={10}>
-                  <EmptyNote>We could not read the live ranking just now. It retries on its own.</EmptyNote>
+                  <EmptyNote>
+                    {campaignId
+                      ? "We could not read the live ranking just now. It retries on its own."
+                      : "This brand sells several offers and runs no mission on this channel, so the ranking cannot tell which offer to price."}
+                  </EmptyNote>
                 </td>
               </tr>
             ) : rows.length === 0 ? (

@@ -77,5 +77,8 @@ describe("research workflows page call site", () => {
     expect(live).toContain("getWorkflowRankLadder({ featureSlug, brandId, leg: legKey, campaignId, actual })");
     expect(live).toContain(">ROI<");
     expect(live).not.toContain(">Emails<");
+    // A multi-offer brand 409s a campaign-less read, so a crew with no mission of its own
+    // borrows any mission on the same channel to name the offer.
+    expect(live).toContain("specs.find((s) => s.featureSlug === featureSlug))?.campaignId");
   });
 });
