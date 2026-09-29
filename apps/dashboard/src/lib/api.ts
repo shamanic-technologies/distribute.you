@@ -1662,6 +1662,9 @@ const OfferEconomicsSchema = z.object({
   name: z.string(),
   lifetimeRevenueUsd: z.number().nullable(),
   lifetimeRevenueStatedAt: z.string().nullable(),
+  // The scheduling page a prospect of this offer books on; the AI meeting-booking
+  // channel reads it to propose slots. `null` = never stated.
+  bookingUrl: z.string().nullable(),
   legRates: z.array(BrandLegRateSchema),
 });
 
@@ -1706,6 +1709,24 @@ export async function saveOfferLifetimeRevenue(
     body: { lifetimeRevenueUsd },
   });
   return parseOfferEconomics(raw, "saveOfferLifetimeRevenue");
+}
+
+/**
+ * PUT /brands/:brandId/offers/:offerId/economics — state (or clear, with null) the
+ * booking page of this offer. Only `bookingUrl` is sent, so nothing else is restated.
+ */
+export async function saveOfferBookingUrl(
+  brandId: string,
+  offerId: string,
+  bookingUrl: string | null,
+  token?: string,
+): Promise<OfferEconomics> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/economics`, {
+    token,
+    method: "PUT",
+    body: { bookingUrl },
+  });
+  return parseOfferEconomics(raw, "saveOfferBookingUrl");
 }
 
 // ─── How an offer sells (brand-service, 2026-09-29, beta) ────────────────────
