@@ -115,6 +115,18 @@ describe("incompleteNote", () => {
     expect(note).toContain("your mailbox and delivery tracking");
   });
 
+  // The agency's own mailbox is ours, so it is named as ours, never as the customer's.
+  it("names our team's mailbox in words", () => {
+    const note = incompleteNote(
+      base({
+        complete: false,
+        sources: [{ source: "staff-mailbox", status: "unavailable", reason: null }],
+      }),
+    );
+    expect(note).toContain("our team's mailbox");
+    expect(note).not.toContain("staff-mailbox");
+  });
+
   // A capped answer must never look like a whole one.
   it("says so when the campaign fan-out was bounded", () => {
     expect(incompleteNote(base({ complete: false, campaignsTruncated: true }))).toContain(
