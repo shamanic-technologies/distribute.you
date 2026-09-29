@@ -103,6 +103,9 @@ const STAGE_HOLD_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 1
 const DEFAULT_DWELL_MS = 1600;
 const DEFAULT_HOLD_MS = 12_000;
 
+/** What a signed-in visitor reads instead of a walk (same words as the session route). */
+const SIGNED_IN_WALK_MESSAGE = "You are signed in. Add this brand from your dashboard instead.";
+
 /**
  * The 100 companies are built page by page, and each company not already cached costs
  * the anonymous org an Apollo credit (~12 cents). So the first page is small (it lands
@@ -618,6 +621,15 @@ export function GetStarted() {
     const problem = websiteInputProblem(raw);
     if (problem || !raw.trim()) {
       setInputError(problem ?? "Enter your website.");
+      return;
+    }
+    // A signed-in visitor would build this walk inside the org they are signed in
+    // to: the Clerk session outranks the anonymous one on every call, so the brand
+    // lands in their active org (a customer's, for staff). Adding a brand from an
+    // account is the dashboard's job. The session route refuses it too.
+    if (isSignedIn) {
+      setInputError(SIGNED_IN_WALK_MESSAGE);
+      setExits({ signIn: null, signUp: { href: "/v2", label: "Open your dashboard" } });
       return;
     }
     ran.current = true;

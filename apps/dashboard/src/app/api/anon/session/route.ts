@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { anonSessionStart, canReuseAnonSession } from "@/lib/anon-session-start";
 import { websiteInputProblem } from "@/lib/website-input";
@@ -52,6 +53,10 @@ import { extractDomain } from "@/lib/extract-domain";
  * code path that creates a brand and it is the one the authed flow already uses.
  */
 
+/** What a signed-in visitor reads instead of a walk. The get-started page says the
+ *  same words before asking the server at all. */
+const SIGNED_IN_MESSAGE = "You are signed in. Add this brand from your dashboard instead.";
+
 const isSecure = (req: NextRequest): boolean => new URL(req.url).protocol === "https:";
 
 /** A refusal the caller renders verbatim. 200, not an error status: from the
@@ -78,6 +83,19 @@ export async function POST(req: NextRequest) {
   if (!secret) {
     console.error("[anon-session] ADMIN_DISTRIBUTE_API_KEY is not set");
     return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  }
+
+  // A SIGNED-IN visitor never starts an anonymous walk. Their browser carries a
+  // Clerk session, and `apiCall` reads the session before the anonymous flag,
+  // so every call the walk makes afterwards goes to the authed proxy under
+  // their ACTIVE org: the brand the walk creates lands in whatever org they
+  // happen to be in, a paying customer's included, and the reads it runs are
+  // billed there (2026-09-28: three test brands in Doc Dinners' org). The
+  // session is not cleared: a visitor who just signed up still claims the org
+  // they built through it.
+  const { userId } = await auth();
+  if (userId) {
+    return refuse(req, SIGNED_IN_MESSAGE, "signed-in", { clearSession: false });
   }
 
   let website = "";
