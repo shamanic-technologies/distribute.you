@@ -8,6 +8,7 @@ import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { shownFigure, type ShownFigure, type StatBasis } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
@@ -211,6 +212,7 @@ function CrewCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const { basis } = useStatBasis();
+  const { staffMode } = useStaffMode();
   const running = crew.running > 0;
   const offerIds = [...new Set(missions.map((m) => m.offerId))];
   const scope =
@@ -277,7 +279,7 @@ function CrewCard({
                           <span className="truncate">{m.offerName ?? "Offer"}</span>
                         </Link>
                       ))}
-                      {missions.length === 1 && (
+                      {staffMode && missions.length === 1 && (
                         <Link href={`${missions[0].href}/workflows`} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
                           Workflows
                         </Link>

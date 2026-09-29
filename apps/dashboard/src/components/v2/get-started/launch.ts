@@ -136,7 +136,7 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     leg: GET_STARTED_LEG,
   });
   const workflowSlug = ladder.recommendedWorkflowDynastySlug;
-  if (!workflowSlug) throw new Error(`No workflow is ready for ${leg.unitPlural} yet, so the campaign cannot start.`);
+  if (!workflowSlug) throw new Error(`Nothing is ready to run for ${leg.unitPlural} yet, so the campaign cannot start.`);
 
   await levers;
   const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [input.brandId], offerId);

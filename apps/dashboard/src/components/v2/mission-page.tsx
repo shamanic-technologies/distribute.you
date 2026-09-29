@@ -10,6 +10,7 @@ import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { shownFigure } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { v2Href } from "@/lib/v2/routes";
@@ -36,6 +37,7 @@ export function MissionPage() {
   const visits = useLatestInBucket(brandId, "website_visit", 20, id);
   const replies = useLatestInBucket(brandId, "positive_reply", 20, id);
   const { basis } = useStatBasis();
+  const { staffMode } = useStaffMode();
 
   const results = useMemo(() => {
     const out: { lead: Lead; kind: string; at: string }[] = [];
@@ -92,7 +94,7 @@ export function MissionPage() {
 
         {mission ? (
           <nav className="k-line-subtle mt-4 flex gap-5 border-b" aria-label="Sections">
-            {missionTabs(orgId, brandId, mission.row.campaign.id, "overview").map((t) => (
+            {missionTabs(orgId, brandId, mission.row.campaign.id, "overview", staffMode).map((t) => (
               <V2TabLink key={t.href} tab={t} />
             ))}
           </nav>

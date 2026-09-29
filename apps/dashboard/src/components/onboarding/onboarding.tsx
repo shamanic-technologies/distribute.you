@@ -2192,7 +2192,7 @@ export function Onboarding() {
         });
       const chosen = workflowSlug ?? (c.featureSlug === SALES_FEATURE_SLUG ? pending.workflowSlug : null);
       if (!chosen) {
-        throw new Error(`${c.channelName} has no workflow ready for ${c.label} yet, so that campaign cannot start.`);
+        throw new Error(`${c.channelName} is not ready for ${c.label} yet, so that campaign cannot start.`);
       }
       const featureInputs =
         c.featureSlug === SALES_FEATURE_SLUG

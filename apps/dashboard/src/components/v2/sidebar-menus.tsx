@@ -24,6 +24,7 @@ import { brandLeadScopeKey, useBrandRevenue, useBucketCounts, useNeedsYourCall }
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, type V2Section } from "@/lib/v2/routes";
+import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
  * The three sidebar controls of v2, drawn the way Explee and Keel draw them:
@@ -86,12 +87,13 @@ export function TenantSwitcherV2() {
   // The popover stays INSIDE the sidebar's width: the drawer wrapper is transformed
   // (a stacking context), so anything wider is painted under the main panel.
   const ref = useOutside(open, () => setOpen(false));
+  const staffModeRef = useRef(false);
   // Close once a switch LANDS (the org id changes), never before: the menu is the
   // only surface that shows a switch running.
   useEffect(() => setOpen(false), [t.orgId, t.brandId]);
   useEffect(() => {
     if (open) t.fetchBrands();
-    if (open && t.isStaff) {
+    if (open && staffModeRef.current) {
       const timer = setTimeout(() => t.fetchOrgs(t.orgSearch), 250);
       return () => clearTimeout(timer);
     }
@@ -103,7 +105,12 @@ export function TenantSwitcherV2() {
   // (from the brand step). Unmounted on close, so a reopened one starts from zero.
   const [setupFor, setSetupFor] = useState<null | "org" | "brand">(null);
   const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
-  const orgs = t.isStaff
+  // Every org on the platform only in staff mode; with it off, a staff reader sees their
+  // own memberships, exactly as a customer does.
+  const { staffMode } = useStaffMode();
+  const allOrgs = staffMode;
+  staffModeRef.current = staffMode;
+  const orgs = allOrgs
     ? t.allOrgs.map((o) => ({ id: o.id, name: o.name, imageUrl: o.imageUrl, hasImage: o.hasImage }))
     : t.memberships.map((m) => ({
         id: m.organization.id,
@@ -180,7 +187,7 @@ export function TenantSwitcherV2() {
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <MenuLabel>Organizations</MenuLabel>
           {t.switchError && <p className="px-2 py-1 text-[12px] text-[var(--data-rose)]">{t.switchError}</p>}
-          {t.isStaff && (
+          {allOrgs && (
             <div className="px-1 pb-1">
               <input
                 value={t.orgSearch}
@@ -248,6 +255,7 @@ const MENU_ICON = {
   help: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2",
   back: "M6 4 3 7l3 3M3.5 7H10a3 3 0 0 1 0 6H8",
   out: "M9.5 3.5h3v9h-3M6.5 5 3.5 8l3 3M3.5 8h7",
+  staff: "M8 2 3 4v4c0 3 2.2 5.2 5 6 2.8-.8 5-3 5-6V4L8 2ZM6 8l1.5 1.5L10.5 6.5",
 };
 function MI({ d }: { d: string }) {
   return (
@@ -272,6 +280,7 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   const { user } = useUser();
   const { organization } = useOrganization();
   const { signOut } = useClerk();
+  const { isStaff, staffMode, setStaffMode } = useStaffMode();
   const [open, setOpen] = useState(false);
   const ref = useOutside(open, () => setOpen(false));
   const name = user?.fullName || user?.firstName || "";
@@ -285,7 +294,8 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
         { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
         { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
-        { href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true },
+        // Research compares workflows, models and templates: below a mission, so staff mode only.
+        ...(staffMode ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true }] : []),
         { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
       ]
     : [];
@@ -333,6 +343,28 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
             <MI d={MENU_ICON.help} />
             Help
           </a>
+          {isStaff && (
+            <>
+              <div className="my-1 h-px bg-[var(--line-subtle)]" />
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={staffMode}
+                className={itemCls}
+                title={staffMode ? "Showing everything staff can see. Turn off to see exactly what a client sees." : "Showing what a client sees. Turn on to see every staff-only surface."}
+                onClick={() => setStaffMode(!staffMode)}
+              >
+                <MI d={MENU_ICON.staff} />
+                <span className="min-w-0 truncate">Staff mode</span>
+                <span
+                  aria-hidden="true"
+                  className={`ml-auto flex h-4 w-7 shrink-0 items-center rounded-full p-0.5 transition-colors ${staffMode ? "justify-end bg-[var(--run)]" : "justify-start bg-[var(--line-subtle)]"}`}
+                >
+                  <span className="h-3 w-3 rounded-full bg-white shadow-sm" />
+                </span>
+              </button>
+            </>
+          )}
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <button
             type="button"

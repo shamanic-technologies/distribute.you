@@ -1,6 +1,5 @@
 "use client";
 
-import { MaturityBadge } from "@/components/maturity-badge";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
 
@@ -8,7 +7,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
  * The staff switch between what clients are billed (User cost, the default) and what the
  * vendors charged us before our markup (Actual cost). It sits in the top bar of every page that
  * states costs and it is ONE setting: flipping it here flips it on every such page and tab.
- * Renders nothing for a non-staff reader.
+ * Renders nothing outside staff mode.
  */
 export function CostBasisSwitch() {
   const { isStaff, basis, setBasis } = useCostBasis();
@@ -26,7 +25,6 @@ export function CostBasisSwitch() {
           {b === "user" ? "User cost" : "Actual cost"}
         </button>
       ))}
-      <MaturityBadge level="staff" />
     </span>
   );
 }

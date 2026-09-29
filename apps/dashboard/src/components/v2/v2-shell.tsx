@@ -14,6 +14,7 @@ import { boardColumnTotals } from "@/lib/leads-server-page";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
+import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -158,6 +159,8 @@ function V2Sidebar() {
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
+  // Workflows sit below a mission: a customer never sees them, staff mode does.
+  const { staffMode } = useStaffMode();
   // Keel's Favorites: the three companies worth most, on features-service's own figure.
   const topCompanies = useMemo(
     () => [...(revenue?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd).slice(0, 3),
@@ -231,12 +234,14 @@ function V2Sidebar() {
           <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
           <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
           <NavItem href={v2Href(orgId, brandId, "missions")} label="Missions" icon={<I d={ICONS.missions} />} active={section === "missions"} />
-          <NavItem
-            href={v2Href(orgId, brandId, "workflows")}
-            label="Workflows"
-            icon={<I d={ICONS.workflows} />}
-            active={section === "workflows"}
-          />
+          {staffMode && (
+            <NavItem
+              href={v2Href(orgId, brandId, "workflows")}
+              label="Workflows"
+              icon={<I d={ICONS.workflows} />}
+              active={section === "workflows"}
+            />
+          )}
         </div>
 
         <Group title="Mailbox">

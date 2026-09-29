@@ -345,8 +345,11 @@ function scopeFigures(
 export function CampaignWorkflowsPage({
   campaignId: campaignIdProp,
   panel = "overlay",
+  staffGated = false,
 }: {
   campaignId?: string;
+  /** Dashboard v2 gates this page on staff mode itself, so the beta list does not apply there. */
+  staffGated?: boolean;
   /** `drawer` for a host that scrolls (dashboard v2): the row panel pins to the viewport,
    *  full height, instead of covering a box only as tall as the grid. */
   panel?: "overlay" | "drawer";
@@ -673,7 +676,7 @@ export function CampaignWorkflowsPage({
   const setOpen = useCallback((slug: string | null) => setParam("workflow", slug), [setParam]);
   const setScope = useCallback((id: string | null) => setParam("scope", id), [setParam]);
 
-  if (!isBeta) {
+  if (!isBeta && !staffGated) {
     return (
       <div className="p-4 md:p-8">
         <div className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center">
@@ -703,7 +706,7 @@ export function CampaignWorkflowsPage({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-medium text-gray-900">Workflows</h1>
-            <MaturityBadge level="beta" />
+            {!staffGated && <MaturityBadge level="beta" />}
             <InfoTooltip tip={WORKFLOW_TIP} placement="top" />
           </div>
           <p className="mt-1 text-sm text-gray-500">

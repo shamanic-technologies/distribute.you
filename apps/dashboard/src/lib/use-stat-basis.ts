@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { useIsAdminUser } from "@/lib/use-admin-user";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import type { StatBasis } from "@/lib/maturity";
 import { statBasisCookieAssignment, statBasisFromCookie } from "@/lib/stat-basis-cookie";
 
@@ -25,7 +25,8 @@ const readServer = (): StatBasis => "mature";
  * stat-basis-cookie.ts.
  */
 export function useStatBasis(): { isStaff: boolean; basis: StatBasis; setBasis: (b: StatBasis) => void } {
-  const isStaff = useIsAdminUser();
+  // Staff mode, not the email alone: with the switch off a staff reader sees the customer's figures.
+  const { staffMode: isStaff } = useStaffMode();
   const stored = useSyncExternalStore(subscribe, read, readServer);
   const basis: StatBasis = isStaff ? stored : "mature";
   const setBasis = useCallback((b: StatBasis) => {

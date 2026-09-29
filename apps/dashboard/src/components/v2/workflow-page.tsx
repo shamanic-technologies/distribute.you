@@ -22,7 +22,6 @@ import {
   type Email,
   type RunRow,
 } from "@/lib/api";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -47,7 +46,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
-import { useIsAdminUser } from "@/lib/use-admin-user";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { v2Href, v2WorkflowHref } from "@/lib/v2/routes";
@@ -753,7 +752,7 @@ function PromptCard({
   featureSlug: string;
   onForked: (newDynasty: string) => void;
 }) {
-  const isStaff = useIsAdminUser();
+  const { staffMode: isStaff } = useStaffMode();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -838,7 +837,7 @@ function PromptCard({
                 <div className="ml-auto flex shrink-0 items-center gap-2">
                   {isStaff && !editing && q.data && (
                     <button type="button" onClick={() => setDraft(original)} className="k-btn">
-                      Edit <MaturityBadge level="staff" />
+                      Edit
                     </button>
                   )}
                   <CloseButton onClick={close} disabled={busy} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { useIsAdminUser } from "@/lib/use-admin-user";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { costBasisCookieAssignment, costBasisFromCookie, type CostBasis } from "@/lib/v2/cost-basis-cookie";
 
 // Every mounted reader re-reads the cookie when the basis changes in THIS tab (the event), or
@@ -23,7 +23,8 @@ const readServer = (): CostBasis => "user";
  * else, and a staff reader who did not, reads `user`. See cost-basis-cookie.ts.
  */
 export function useCostBasis(): { isStaff: boolean; basis: CostBasis; actual: boolean; setBasis: (b: CostBasis) => void } {
-  const isStaff = useIsAdminUser();
+  // Staff mode, not the email alone: with the switch off a staff reader sees the customer's figures.
+  const { staffMode: isStaff } = useStaffMode();
   const stored = useSyncExternalStore(subscribe, read, readServer);
   const basis: CostBasis = isStaff ? stored : "user";
   const setBasis = useCallback((b: CostBasis) => {
