@@ -119,6 +119,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Billing — the account, its credit grants and its payment history.
   "billingAccount",
   "creditGrants",
+  // The Billing page Usage section: billed spend by category.
+  "orgUsage",
   // The reward-task ledger: what an offer owes and how many children of a
   // superior scope have something due. Unlisted, the band and the badge
   // cold-fetch on every visit.
