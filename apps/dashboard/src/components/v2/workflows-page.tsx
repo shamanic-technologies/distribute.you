@@ -17,6 +17,9 @@ import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import { DEPRECATED_ON_LEG_LABEL } from "@/lib/workflow-eligibility";
+import { workflowRoi } from "@/lib/campaign-workflow-rows";
+import { missionWorkflowRows, type MissionLadderRow } from "@/lib/live-workflow-rows";
+import { LiveRankingStrip, LiveWorkflowCells, LiveWorkflowChips, LiveWorkflowHeads } from "@/components/v2/live-workflow-cells";
 import {
   crewParam,
   useBrandMissionSpecs,
@@ -101,7 +104,8 @@ export function V2WorkflowsPage() {
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               Offer is the mission&apos;s own offer, Brand is this brand alone, Global is every client we run a workflow for.
-              Rows read cheapest first on Offer, then Brand, then Global; # is the rank we would put the mission on.
+              Rows read cheapest first on Offer, then Brand, then Global; # is the rank we would put the mission on. Cost,
+              Status, ROI, Rate, Outcomes and Invested are the mission&apos;s own.
             </p>
           </div>
           {settled && specs.length > 0 && (
@@ -202,6 +206,17 @@ function MissionSection({
         asc(cost(a.offer), cost(b.offer)) || asc(cost(a.brand), cost(b.brand)) || asc(cost(a.global), cost(b.global)),
     );
   }, [r.ranked, bySlug, basis]);
+  // The mission's own live figures (its campaign grain + its realized return), with the
+  // row that goes first (the producer's rank 1) and the one its runs last picked.
+  const live = useMemo(() => {
+    const roiBySlug = new Map(r.rows.map((row) => [row.workflowDynastySlug, workflowRoi(row, basis).value]));
+    return missionWorkflowRows({
+      ladderRows: r.allLadderRows as unknown as MissionLadderRow[],
+      roiBySlug,
+      lastPickedSlug: r.ladder?.observedPicks?.last?.workflowDynastySlug ?? null,
+    });
+  }, [r.allLadderRows, r.rows, r.ladder, basis]);
+  const liveBySlug = useMemo(() => new Map(live.map((row) => [row.slug, row])), [live]);
   const shown = expanded ? rows : rows.slice(0, ROWS_SHOWN);
   const hrefFor = useCallback(
     (slug: string) => v2WorkflowHref(orgId, brandId, slug, crewParam(spec), spec.campaignId),
@@ -237,8 +252,9 @@ function MissionSection({
         <SectionSkeleton />
       ) : (
         <div className="k-card overflow-hidden">
+          <LiveRankingStrip rows={live} moneyNote="no run yet" />
           <div className="k-scroll relative overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-[13px]">
+            <table className="w-full min-w-[1720px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className={`${TH} w-12`}>#</th>
@@ -248,13 +264,14 @@ function MissionSection({
                   <th className={`${TH} w-40 text-right`}>Offer</th>
                   <th className={`${TH} w-40 text-right`}>Brand</th>
                   <th className={`${TH} w-40 text-right`}>Global</th>
+                  <LiveWorkflowHeads costLabel={r.pair === "visit" ? "Cost per visit" : "Cost per reply"} />
                   <th className={`${TH} w-10`} aria-label="Open" />
                 </tr>
               </thead>
               <tbody>
                 {r.ranked.length === 0 ? (
                   <tr>
-                    <td colSpan={8}>
+                    <td colSpan={14}>
                       <EmptyNote>This crew offers no workflow yet.</EmptyNote>
                     </td>
                   </tr>
@@ -264,6 +281,7 @@ function MissionSection({
                   // difference in scope (features-service#1172).
                   shown.map(({ w, offer, brand, global }) => {
                     const href = hrefFor(w.row.workflowDynastySlug);
+                    const liveRow = liveBySlug.get(w.row.workflowDynastySlug);
                     const model = workflowModelMark(w.row.contentModel);
                     const template = workflowTemplateLabel(w.row.contentPromptType);
                     return (
@@ -277,6 +295,7 @@ function MissionSection({
                         <td className="max-w-0 px-3">
                           <div className="flex min-w-0 items-center gap-2">
                             <span className="min-w-0 truncate font-medium">{w.row.workflowDynastyName}</span>
+                            {liveRow && <LiveWorkflowChips row={liveRow} />}
                             {r.deprecatedSlugs.has(w.row.workflowDynastySlug) && (
                               <span className="k-chip k-fg3 shrink-0 text-[11px]">{DEPRECATED_ON_LEG_LABEL}</span>
                             )}
@@ -295,6 +314,7 @@ function MissionSection({
                         <CostCell figure={offer} unit={unit} />
                         <CostCell figure={brand} unit={unit} />
                         <CostCell figure={global} unit={unit} />
+                        <LiveWorkflowCells row={liveRow} />
                         <td className="pl-3 pr-4 text-right">
                           <Link
                             href={href}
