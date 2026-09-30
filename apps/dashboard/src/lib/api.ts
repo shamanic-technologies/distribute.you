@@ -6645,6 +6645,57 @@ export async function getFleetWorkflowReturnHistory(
   return parsed.data.roiHistory ? parsed.data.roiHistory.daily : null;
 }
 
+const LegWorkflowRankingSchema = z
+  .object({
+    featureSlug: z.string(),
+    legKey: z.string(),
+    grain: z.literal("fleet"),
+    computedAt: z.string().nullable(),
+    maturity: z.object({
+      durationDays: z.number(),
+      outcomesRequired: z.number(),
+      cutoffIso: z.string().nullable(),
+      measured: z.boolean(),
+    }),
+    rows: z.array(
+      z.object({
+        rank: z.number(),
+        workflowDynastySlug: z.string(),
+        workflowDynastyName: z.string().nullable(),
+        assignment: z.string(),
+        selectable: z.boolean(),
+        isMature: z.boolean().nullable(),
+        costPerOutcomeUsd: z.number().nullable(),
+        conversionRatePct: z.number().nullable(),
+        outcomes: z.number(),
+        spentUsd: z.number(),
+        roiMultiple: z.number().nullable(),
+        goesFirst: z.boolean(),
+        moneyGoesHere: z.boolean(),
+      }),
+    ),
+  })
+  .passthrough();
+
+export type LegWorkflowRanking = z.infer<typeof LegWorkflowRankingSchema>;
+
+/**
+ * EVERY WORKFLOW ON ONE LEG, RANKED AT THE FLEET GRAIN (features-service
+ * `/public/stats/leg-workflow-ranking`, via api-service). Names no org, brand, offer,
+ * campaign or audience: the Research pages read it so nothing they state depends on who
+ * is looking. `computedAt: null` = the producer has not built it yet (no rows).
+ */
+export async function getLegWorkflowRanking(featureSlug: string, legKey: string, token?: string): Promise<LegWorkflowRanking> {
+  const query = new URLSearchParams({ featureSlug, leg: legKey });
+  const raw = await apiCall<unknown>(`/public/features/leg-workflow-ranking?${query.toString()}`, { token });
+  const parsed = LegWorkflowRankingSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLegWorkflowRanking: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getLegWorkflowRanking: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /**
  * STAFF ONLY. The same fleet curve costed at what the vendors charged us before our
  * markup. It reveals our margin, so the gateway refuses anyone off the staff list.

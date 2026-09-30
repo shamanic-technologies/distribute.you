@@ -103,6 +103,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The platform step, leg and channel catalogue — no org, no auth, one answer for
   // every tenant.
   "publicCatalogue",
+  // Research's fleet ranking of one leg's workflows — no org, one answer for every tenant.
+  "legWorkflowRanking",
   // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
