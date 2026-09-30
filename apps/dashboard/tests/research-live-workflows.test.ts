@@ -80,7 +80,6 @@ describe("missionWorkflowRows", () => {
         ladder("c", { rank: 3, maturity: { isMature: true }, estimatesByGrain: { crossOrg: { isMature: true, flash: half(1, 1, 1), mature: half(1, 1, 1) } } }),
       ],
       roiBySlug: new Map([["a", 3]]),
-      lastPickedSlug: null,
     });
     expect(mature).toMatchObject({ slug: "a", mature: true, costPerOutcomeUsd: 10, outcomes: 2, spentUsd: 20, roiMultiple: 3, ran: true });
     // Zero outcomes states no price, never the spend as a floor.
@@ -89,40 +88,56 @@ describe("missionWorkflowRows", () => {
     expect(never).toMatchObject({ slug: "c", ran: false, costPerOutcomeUsd: null, mature: true });
   });
 
-  it("goes first = the producer's first selectable rank; money = the workflow the runs last picked", () => {
+  // Prod 2026-09-30 (brand f2408cfb, Herald): Torrent, Concerto, Raven are learning at ranks
+  // 1-3, Nobelium is the first mature at rank 4. Goes first = Torrent, money = Nobelium.
+  it("goes first = rank 1 whatever its verdict; money = the first MATURE row in rank order", () => {
     const out = missionWorkflowRows({
       ladderRows: [
-        ladder("dep", { rank: 1, legAssignment: { state: "deprecated", selectable: false } }),
-        ladder("x", { rank: 2 }),
-        ladder("y", { rank: 3 }),
+        ladder("azalea", { rank: 6, maturity: { isMature: true } }),
+        ladder("torrent", { rank: 1, maturity: { isMature: false } }),
+        ladder("concerto", { rank: 2, maturity: { isMature: false } }),
+        ladder("raven", { rank: 3, maturity: { isMature: false } }),
+        ladder("nobelium", { rank: 4, maturity: { isMature: true } }),
       ],
       roiBySlug: new Map(),
-      lastPickedSlug: "y",
+    });
+    expect(out.map((r) => r.slug)).toEqual(["torrent", "concerto", "raven", "nobelium", "azalea"]);
+    expect(out.find((r) => r.first)?.slug).toBe("torrent");
+    expect(out.find((r) => r.cash)?.slug).toBe("nobelium");
+    expect(out.filter((r) => r.cash)).toHaveLength(1);
+  });
+
+  it("a non-selectable row neither goes first nor holds the money", () => {
+    const out = missionWorkflowRows({
+      ladderRows: [
+        ladder("dep", { rank: 1, maturity: { isMature: true }, legAssignment: { state: "deprecated", selectable: false } }),
+        ladder("x", { rank: 2, maturity: { isMature: false } }),
+        ladder("y", { rank: 3, maturity: { isMature: true } }),
+      ],
+      roiBySlug: new Map(),
     });
     expect(out.find((r) => r.first)?.slug).toBe("x");
     expect(out.find((r) => r.cash)?.slug).toBe("y");
   });
 
-  it("drops audience rows; no pick = no money row", () => {
+  it("drops audience rows; nothing mature = no money row", () => {
     const out = missionWorkflowRows({
-      ladderRows: [ladder("a", { rank: 1 }), ladder("a", { rank: 1, audienceId: "aud-1" })],
+      ladderRows: [ladder("a", { rank: 1, maturity: { isMature: false } }), ladder("a", { rank: 1, audienceId: "aud-1" })],
       roiBySlug: new Map(),
-      lastPickedSlug: null,
     });
     expect(out.map((r) => r.slug)).toEqual(["a"]);
     expect(out.some((r) => r.cash)).toBe(false);
   });
 
-  // Prod 2026-09-30 (brand 933d4abb, Pilot mission): the runs pick Rhodium, which the owner has
-  // not assigned on the meeting leg. It must keep its row and its money chip.
-  it("keeps an unassigned workflow the mission's runs picked, with its money chip", () => {
+  // Prod 2026-09-30 (brand 933d4abb, Pilot mission): an unassigned workflow the caller chose to
+  // show keeps its row (the caller decides visibility, not the row model).
+  it("keeps an unassigned row the caller passes", () => {
     const out = missionWorkflowRows({
       ladderRows: [ladder("rhodium", { rank: 1, legAssignment: { state: "unassigned", selectable: false } })],
       roiBySlug: new Map(),
-      lastPickedSlug: "rhodium",
     });
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ slug: "rhodium", cash: true, first: false });
+    expect(out[0]).toMatchObject({ slug: "rhodium", first: false });
   });
 });
 
@@ -160,7 +175,8 @@ describe("the brand Workflows page states the mission's own live figures", () =>
     expect(page).toContain("<LiveWorkflowChips row={liveRow} />");
     expect(page).toContain("<LiveWorkflowHeads");
     expect(page).toContain("<LiveWorkflowCells row={liveRow} />");
-    expect(page).toContain("r.ladder?.observedPicks?.last?.workflowDynastySlug");
+    // Rows keep the producer's rank order: no Offer / Brand / Global re-sort.
+    expect(page).not.toContain("asc(cost(a.offer)");
     expect(page).toContain("colSpan={14}");
   });
 });
