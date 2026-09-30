@@ -45,11 +45,13 @@ export function LiveWorkflowChips({ row }: { row: LiveWorkflowRow }) {
   );
 }
 
-/** The live-ranking column heads, in their one order. */
-export function LiveWorkflowHeads({ costLabel }: { costLabel: string }) {
+/** The live-ranking column heads, in their one order. No `costLabel` means no cost column: the
+ *  brand's Workflows page already states the mission's cost in its Offer column, so a second
+ *  column there repeats it (owner, 2026-09-30). */
+export function LiveWorkflowHeads({ costLabel }: { costLabel?: string }) {
   return (
     <>
-      <th className={`${LIVE_TH} w-32 text-right`}>{costLabel}</th>
+      {costLabel && <th className={`${LIVE_TH} w-32 text-right`}>{costLabel}</th>}
       <th className={`${LIVE_TH} w-28`}>Status</th>
       <th className={`${LIVE_TH} w-20 text-right`}>ROI</th>
       <th className={`${LIVE_TH} w-20 text-right`}>Rate</th>
@@ -63,11 +65,13 @@ const DASH = <span className="k-fg4">—</span>;
 
 /** The live-ranking cells, in the heads' order. The status is the workflow's verdict and is always
  *  stated; the figures are the scope's own, and a scope that never ran the workflow states dashes. */
-export function LiveWorkflowCells({ row }: { row: LiveWorkflowRow | undefined }) {
+export function LiveWorkflowCells({ row, showCost = true }: { row: LiveWorkflowRow | undefined; showCost?: boolean }) {
   const ran = Boolean(row?.ran);
   return (
     <>
-      <td className="px-3 text-right tabular-nums">{!ran || row!.costPerOutcomeUsd == null ? DASH : formatUsdAdaptive(row!.costPerOutcomeUsd)}</td>
+      {showCost && (
+        <td className="px-3 text-right tabular-nums">{!ran || row!.costPerOutcomeUsd == null ? DASH : formatUsdAdaptive(row!.costPerOutcomeUsd)}</td>
+      )}
       <td className="px-3">
         {row?.mature === true ? (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--data-teal)]">
