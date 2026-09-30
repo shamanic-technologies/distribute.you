@@ -357,7 +357,17 @@ function CostCell({ figure, unit }: { figure: ReturnType<typeof grainFigures>; u
   return (
     <td className="px-3 text-right tabular-nums">
       {figure?.learning ? (
-        <span className="k-chip">Learning</span>
+        // A learning grain states no price, but what it SPENT is a total, not a ratio: say it,
+        // or a column reads blank beside an Invested figure for the same money.
+        <span className="inline-flex flex-col items-end leading-tight">
+          <span className="k-chip">Learning</span>
+          {figure.spentUsd != null && figure.spentUsd > 0 && (
+            <span className="k-fg3 mt-0.5 text-[11px]">
+              {formatUsdAdaptive(figure.spentUsd)} spent, {figure.outcomeCount ?? 0}{" "}
+              {unit === "/ visit" ? (figure.outcomeCount === 1 ? "visit" : "visits") : figure.outcomeCount === 1 ? "reply" : "replies"}
+            </span>
+          )}
+        </span>
       ) : value == null ? (
         <span className="k-fg4">—</span>
       ) : (

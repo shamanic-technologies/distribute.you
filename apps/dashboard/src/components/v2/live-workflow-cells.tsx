@@ -61,32 +61,20 @@ export function LiveWorkflowHeads({ costLabel }: { costLabel: string }) {
 
 const DASH = <span className="k-fg4">—</span>;
 
-/** The live-ranking cells, in the heads' order. A row with no evidence states dashes. */
+/** The live-ranking cells, in the heads' order. The status is the workflow's verdict and is always
+ *  stated; the figures are the scope's own, and a scope that never ran the workflow states dashes. */
 export function LiveWorkflowCells({ row }: { row: LiveWorkflowRow | undefined }) {
-  if (!row || !row.ran) {
-    return (
-      <>
-        <td className="px-3 text-right">{DASH}</td>
-        <td className="px-3">
-          <span className="k-fg3 text-[12px]">No result yet</span>
-        </td>
-        <td className="px-3 text-right">{DASH}</td>
-        <td className="px-3 text-right">{DASH}</td>
-        <td className="px-3 text-right">{DASH}</td>
-        <td className="px-3 text-right">{DASH}</td>
-      </>
-    );
-  }
+  const ran = Boolean(row?.ran);
   return (
     <>
-      <td className="px-3 text-right tabular-nums">{row.costPerOutcomeUsd == null ? DASH : formatUsdAdaptive(row.costPerOutcomeUsd)}</td>
+      <td className="px-3 text-right tabular-nums">{!ran || row!.costPerOutcomeUsd == null ? DASH : formatUsdAdaptive(row!.costPerOutcomeUsd)}</td>
       <td className="px-3">
-        {row.mature === true ? (
+        {row?.mature === true ? (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--data-teal)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
             Mature
           </span>
-        ) : row.mature === false ? (
+        ) : row?.mature === false ? (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--data-amber)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-amber)]" />
             Learning
@@ -95,12 +83,12 @@ export function LiveWorkflowCells({ row }: { row: LiveWorkflowRow | undefined })
           DASH
         )}
       </td>
-      <td className={`px-3 text-right tabular-nums ${roiIsGood(row.roiMultiple) ? "text-[var(--data-teal)]" : ""}`}>
-        {formatRoi(row.roiMultiple, "—")}
+      <td className={`px-3 text-right tabular-nums ${ran && roiIsGood(row!.roiMultiple) ? "text-[var(--data-teal)]" : ""}`}>
+        {ran ? formatRoi(row!.roiMultiple, "—") : DASH}
       </td>
-      <td className="px-3 text-right tabular-nums">{row.conversionRatePct == null ? DASH : `${row.conversionRatePct.toFixed(2)}%`}</td>
-      <td className="px-3 text-right tabular-nums">{row.outcomes == null ? DASH : Math.round(row.outcomes).toLocaleString("en-US")}</td>
-      <td className="px-3 pr-4 text-right tabular-nums">{row.spentUsd == null ? DASH : formatUsdAdaptive(row.spentUsd)}</td>
+      <td className="px-3 text-right tabular-nums">{!ran || row!.conversionRatePct == null ? DASH : `${row!.conversionRatePct.toFixed(2)}%`}</td>
+      <td className="px-3 text-right tabular-nums">{!ran || row!.outcomes == null ? DASH : Math.round(row!.outcomes).toLocaleString("en-US")}</td>
+      <td className="px-3 pr-4 text-right tabular-nums">{!ran || row!.spentUsd == null ? DASH : formatUsdAdaptive(row!.spentUsd)}</td>
     </>
   );
 }

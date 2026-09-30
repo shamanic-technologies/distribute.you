@@ -70,13 +70,14 @@ describe("missionWorkflowRows", () => {
       ladderRows: [
         ladder("a", {
           rank: 1,
+          maturity: { isMature: true },
           estimatesByGrain: {
             crossOrg: { isMature: true, flash: half(999, 999, 99), mature: half(999, 999, 99) },
             campaign: { isMature: true, flash: half(40, 400, 4), mature: half(20, 200, 2) },
           },
         }),
-        ladder("b", { rank: 2, estimatesByGrain: { campaign: { isMature: false, flash: half(6, 10, 0), mature: null } } }),
-        ladder("c", { rank: 3, estimatesByGrain: { crossOrg: { isMature: true, flash: half(1, 1, 1), mature: half(1, 1, 1) } } }),
+        ladder("b", { rank: 2, maturity: { isMature: false }, estimatesByGrain: { campaign: { isMature: false, flash: half(6, 10, 0), mature: null } } }),
+        ladder("c", { rank: 3, maturity: { isMature: true }, estimatesByGrain: { crossOrg: { isMature: true, flash: half(1, 1, 1), mature: half(1, 1, 1) } } }),
       ],
       roiBySlug: new Map([["a", 3]]),
       lastPickedSlug: null,
@@ -84,7 +85,8 @@ describe("missionWorkflowRows", () => {
     expect(mature).toMatchObject({ slug: "a", mature: true, costPerOutcomeUsd: 10, outcomes: 2, spentUsd: 20, roiMultiple: 3, ran: true });
     // Zero outcomes states no price, never the spend as a floor.
     expect(learning).toMatchObject({ slug: "b", mature: false, costPerOutcomeUsd: null, outcomes: 0, spentUsd: 6 });
-    expect(never).toMatchObject({ slug: "c", ran: false, costPerOutcomeUsd: null, mature: null });
+    // Never run by this mission: no figures, but the workflow's own verdict is still stated.
+    expect(never).toMatchObject({ slug: "c", ran: false, costPerOutcomeUsd: null, mature: true });
   });
 
   it("goes first = the producer's first selectable rank; money = the workflow the runs last picked", () => {
@@ -146,6 +148,12 @@ describe("research reads nothing scoped to the viewer", () => {
 });
 
 describe("the brand Workflows page states the mission's own live figures", () => {
+  it("a learning Offer/Brand cell states what the grain spent, beside the Learning chip", () => {
+    const cost = page.slice(page.indexOf("function CostCell("));
+    expect(cost).toContain("spent,");
+    expect(cost).toContain("figure.spentUsd");
+  });
+
   const page = readFileSync(join(__dirname, "../src/components/v2/workflows-page.tsx"), "utf8");
   it("draws the strip, the chips and the live columns off the mission's rows", () => {
     expect(page).toContain("<LiveRankingStrip rows={live}");

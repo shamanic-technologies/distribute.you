@@ -29,7 +29,10 @@ export interface LiveWorkflowRow {
   conversionRatePct: number | null;
   outcomes: number | null;
   spentUsd: number | null;
-  /** The verdict on the scope the row is read at; null when it states none. */
+  /**
+   * Whether the WORKFLOW is proven on the leg (mature) or still learning — the producer's verdict,
+   * stated on every row, including a workflow this mission has not run yet.
+   */
   mature: boolean | null;
   /** FALSE when this scope has no evidence for the workflow at all. */
   ran: boolean;
@@ -96,6 +99,8 @@ export interface MissionLadderRow {
   >;
   rank?: number | null;
   legAssignment?: { state: string; selectable: boolean } | undefined;
+  /** The WORKFLOW's verdict on the fleet of its leg (the ladder's row `maturity.isMature`). */
+  maturity?: { isMature: boolean | null } | undefined;
 }
 
 interface HalfFigures {
@@ -137,7 +142,7 @@ export function missionWorkflowRows(input: {
       conversionRatePct: half?.conversionRatePct ?? null,
       outcomes: half ? half.outcomes : null,
       spentUsd: half?.spentUsd ?? null,
-      mature: block ? mature : null,
+      mature: r.maturity?.isMature ?? null,
       ran: Boolean(block),
       assignment: r.legAssignment?.state ?? null,
       selectable: r.legAssignment ? r.legAssignment.selectable : true,
