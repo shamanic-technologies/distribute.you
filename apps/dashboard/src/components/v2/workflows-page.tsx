@@ -105,7 +105,7 @@ export function V2WorkflowsPage() {
             <p className="k-fg2 mt-1 text-[14px]">
               Offer is the mission&apos;s own offer, Brand is this brand alone, Global is every client we run a workflow for.
               Rows are in the rank we would put the mission on. Money goes first to the cheap learning workflows above the
-              first mature one, then settles on it. Cost, ROI, Rate, Outcomes and Invested are the mission&apos;s own.
+              first mature one, then settles on it. ROI, Rate, Outcomes and Invested are the mission&apos;s own.
             </p>
           </div>
           {settled && specs.length > 0 && (
@@ -246,7 +246,7 @@ function MissionSection({
         <div className="k-card overflow-hidden">
           <LiveRankingStrip rows={live} moneyNote="no mature workflow yet" />
           <div className="k-scroll relative overflow-x-auto">
-            <table className="w-full min-w-[1720px] text-[13px]">
+            <table className="w-full min-w-[1590px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className={`${TH} w-12`}>#</th>
@@ -256,14 +256,14 @@ function MissionSection({
                   <th className={`${TH} w-40 text-right`}>Offer</th>
                   <th className={`${TH} w-40 text-right`}>Brand</th>
                   <th className={`${TH} w-40 text-right`}>Global</th>
-                  <LiveWorkflowHeads costLabel={r.pair === "visit" ? "Cost per visit" : "Cost per reply"} />
+                  <LiveWorkflowHeads />
                   <th className={`${TH} w-10`} aria-label="Open" />
                 </tr>
               </thead>
               <tbody>
                 {r.ranked.length === 0 ? (
                   <tr>
-                    <td colSpan={14}>
+                    <td colSpan={13}>
                       <EmptyNote>This crew offers no workflow yet.</EmptyNote>
                     </td>
                   </tr>
@@ -306,7 +306,7 @@ function MissionSection({
                         <CostCell figure={offer} unit={unit} />
                         <CostCell figure={brand} unit={unit} />
                         <CostCell figure={global} unit={unit} />
-                        <LiveWorkflowCells row={liveRow} />
+                        <LiveWorkflowCells row={liveRow} showCost={false} />
                         <td className="pl-3 pr-4 text-right">
                           <Link
                             href={href}

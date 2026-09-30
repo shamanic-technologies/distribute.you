@@ -174,9 +174,11 @@ describe("the brand Workflows page states the mission's own live figures", () =>
     expect(page).toContain("<LiveRankingStrip rows={live}");
     expect(page).toContain("<LiveWorkflowChips row={liveRow} />");
     expect(page).toContain("<LiveWorkflowHeads");
-    expect(page).toContain("<LiveWorkflowCells row={liveRow} />");
+    expect(page).toContain("<LiveWorkflowCells row={liveRow} showCost={false} />");
+    // The mission cost is the Offer column; a second cost column repeated it (owner, 2026-09-30).
+    expect(page).toContain("<LiveWorkflowHeads />");
     // Rows keep the producer's rank order: no Offer / Brand / Global re-sort.
     expect(page).not.toContain("asc(cost(a.offer)");
-    expect(page).toContain("colSpan={14}");
+    expect(page).toContain("colSpan={13}");
   });
 });
