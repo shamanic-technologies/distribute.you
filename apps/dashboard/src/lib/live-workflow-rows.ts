@@ -107,8 +107,8 @@ interface HalfFigures {
 }
 
 /**
- * The brand's Workflows page, one mission: every workflow the mission's ladder carries (minus
- * the ones never put on the leg), in the producer's rank for this mission.
+ * The brand's Workflows page, one mission: every ladder row the caller passes, in the producer's
+ * rank for this mission.
  *
  * `roiBySlug` is the mission's realized return per workflow (its own grouped revenue read);
  * `lastPickedSlug` is the workflow its runs last picked (`observedPicks.last`).
@@ -121,7 +121,9 @@ export function missionWorkflowRows(input: {
   const out: LiveWorkflowRow[] = [];
   for (const r of input.ladderRows) {
     if (r.audienceId !== null) continue;
-    if (r.legAssignment?.state === "unassigned") continue;
+    // Which workflows are shown is the CALLER's call (`hiddenWorkflowSlugs` hides an unassigned
+    // one only when this mission never ran it). Dropping every unassigned row here lost the
+    // workflow a mission actually runs when the owner has not assigned it on the leg yet.
     const block = r.estimatesByGrain.campaign;
     const mature = block?.isMature ?? null;
     const half = (mature === true ? block?.mature : block?.flash) ?? null;
