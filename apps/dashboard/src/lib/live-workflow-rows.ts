@@ -13,8 +13,9 @@
  *  - `missionWorkflowRows` — the brand's Workflows page. One mission's own figures: the
  *    CAMPAIGN grain of the per-brand ladder, never a coarser grain wearing its name, and the
  *    realized return of the mission's own per-workflow group. "Goes first" is the producer's
- *    rank 1 for the mission; "Money goes here" is the workflow the mission's runs LAST picked
- *    (the ledger, a fact), never a guess from the table.
+ *    rank 1 for the mission, mature or not; "Money goes here" is the first MATURE row in rank
+ *    order: the cheap learning workflows above it take the money until their flash price
+ *    rises, then it settles there (owner, 2026-09-30).
  *
  * A cost per outcome is observed: null at zero outcomes, never a spend floor. Alias-free (types
  * only) so it carries real unit tests.
@@ -115,13 +116,11 @@ interface HalfFigures {
  * The brand's Workflows page, one mission: every ladder row the caller passes, in the producer's
  * rank for this mission.
  *
- * `roiBySlug` is the mission's realized return per workflow (its own grouped revenue read);
- * `lastPickedSlug` is the workflow its runs last picked (`observedPicks.last`).
+ * `roiBySlug` is the mission's realized return per workflow (its own grouped revenue read).
  */
 export function missionWorkflowRows(input: {
   ladderRows: readonly MissionLadderRow[];
   roiBySlug: ReadonlyMap<string, number | null>;
-  lastPickedSlug: string | null;
 }): LiveWorkflowRow[] {
   const out: LiveWorkflowRow[] = [];
   for (const r of input.ladderRows) {
@@ -163,7 +162,7 @@ export function missionWorkflowRows(input: {
     .map((x) => x.row);
   const first = ordered.find((r) => r.selectable && r.rank != null);
   if (first) first.first = true;
-  const cash = input.lastPickedSlug ? ordered.find((r) => r.slug === input.lastPickedSlug) : undefined;
+  const cash = ordered.find((r) => r.selectable && r.rank != null && r.mature === true);
   if (cash) cash.cash = true;
   return ordered;
 }
