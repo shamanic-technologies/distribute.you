@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ApiError, configureAutoTopup, disableAutoTopup, setPaymentMode } from "@/lib/api";
-import { useQueryClient } from "@/lib/use-auth-query";
+import { ApiError, configureAutoTopup, disableAutoTopup, getOrgUsage, setPaymentMode } from "@/lib/api";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
@@ -678,10 +678,71 @@ export function V2BillingPage() {
             )}
           </div>
         </Section>
+
+        <UsageSection />
       </div>
     </>
   );
 }
+
+/** Dollars to cents without float noise (0.1 * 100 would ceil to 11). */
+function usdToCents(usd: number): number {
+  return Math.round(usd * 1e6) / 1e4;
+}
+
+/** Billed spend by category, with a Total row equal to "Billed" at the top. */
+function UsageSection() {
+  const { data: usage, isPending, isError } = useAuthQuery(["orgUsage"], () => getOrgUsage());
+  const rows = (usage?.categories ?? []).filter((cat) => usdToCents(cat.billedUsd) >= 0.5);
+  const setAsideCents = usdToCents(usage?.totalSetAsideUsd ?? 0);
+  return (
+    <Section
+      id="usage"
+      title="Usage"
+      description="What you have been billed, by what it paid for. The total matches Billed at the top of this page."
+    >
+      <div className="k-card overflow-hidden">
+        {isPending && !isError ? (
+          <div className="space-y-3 p-4">
+            <Shimmer className="h-4 w-56" />
+            <Shimmer className="h-4 w-48" />
+            <Shimmer className="h-4 w-40" />
+          </div>
+        ) : !usage ? (
+          <EmptyNote>We could not load your usage right now.</EmptyNote>
+        ) : (
+          <ul>
+            {rows.map((cat) => (
+              <li
+                key={cat.key}
+                className="k-row k-line-subtle flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2"
+              >
+                <p className="min-w-0 truncate text-[13px]">{cat.label}</p>
+                <span className="w-20 shrink-0 text-right text-[13px] tabular-nums">
+                  {formatBillingCents(usdToCents(cat.billedUsd))}
+                </span>
+              </li>
+            ))}
+            <li className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold">Total</p>
+                {setAsideCents >= 0.5 && (
+                  <p className="k-fg3 text-[12px]">
+                    Plus {formatBillingCents(setAsideCents)} set aside for emails already scheduled.
+                  </p>
+                )}
+              </div>
+              <span className="w-20 shrink-0 text-right text-[13px] font-semibold tabular-nums">
+                {formatBillingCents(usdToCents(usage.totalBilledUsd))}
+              </span>
+            </li>
+          </ul>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 
 /**
  * Leaving postpaid collects what is owed on the card first. The amount is named

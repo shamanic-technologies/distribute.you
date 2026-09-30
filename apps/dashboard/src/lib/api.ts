@@ -8378,6 +8378,40 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
   return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
+// ── Org usage by category ──
+//
+// What the org has been billed, grouped into categories a customer recognises
+// (setting up, finding contacts, writing, sending, reading replies...).
+// features-service classifies every cost row and sums them; the Billing page only
+// renders. `totalBilledUsd` is the same net actual spend billing reports as
+// "Billed", so the Usage section's Total row matches the figure at the top.
+const OrgUsageCategorySchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  billedUsd: z.number(),
+  setAsideUsd: z.number(),
+});
+const OrgUsageResponseSchema = z.object({
+  basis: z.string(),
+  totalBilledUsd: z.number(),
+  totalSetAsideUsd: z.number(),
+  categories: z.array(OrgUsageCategorySchema),
+});
+export type OrgUsage = z.infer<typeof OrgUsageResponseSchema>;
+
+export async function getOrgUsage(token?: string): Promise<OrgUsage> {
+  const raw = await apiCall<unknown>("/features/orgs/usage", { token });
+  const parsed = OrgUsageResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOrgUsage: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getOrgUsage: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── Reward tasks ──
 //
 // The reward-task ledger, owned by client-service and reached through the
