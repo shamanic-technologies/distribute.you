@@ -101,18 +101,26 @@ describe("missionWorkflowRows", () => {
     expect(out.find((r) => r.cash)?.slug).toBe("y");
   });
 
-  it("drops audience rows and workflows never put on the leg; no pick = no money row", () => {
+  it("drops audience rows; no pick = no money row", () => {
     const out = missionWorkflowRows({
-      ladderRows: [
-        ladder("a", { rank: 1 }),
-        ladder("a", { rank: 1, audienceId: "aud-1" }),
-        ladder("u", { rank: 2, legAssignment: { state: "unassigned", selectable: false } }),
-      ],
+      ladderRows: [ladder("a", { rank: 1 }), ladder("a", { rank: 1, audienceId: "aud-1" })],
       roiBySlug: new Map(),
       lastPickedSlug: null,
     });
     expect(out.map((r) => r.slug)).toEqual(["a"]);
     expect(out.some((r) => r.cash)).toBe(false);
+  });
+
+  // Prod 2026-09-30 (brand 933d4abb, Pilot mission): the runs pick Rhodium, which the owner has
+  // not assigned on the meeting leg. It must keep its row and its money chip.
+  it("keeps an unassigned workflow the mission's runs picked, with its money chip", () => {
+    const out = missionWorkflowRows({
+      ladderRows: [ladder("rhodium", { rank: 1, legAssignment: { state: "unassigned", selectable: false } })],
+      roiBySlug: new Map(),
+      lastPickedSlug: "rhodium",
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ slug: "rhodium", cash: true, first: false });
   });
 });
 
