@@ -113,6 +113,18 @@ describe("monitoring: lookups, never arithmetic on money", () => {
   });
 });
 
+describe("monitoring: wears Research's anatomy", () => {
+  it("a card is the link (no Open footer), carries its section mark, colour and two inset cells", () => {
+    const page = read("components/v2/monitoring-page.tsx");
+    const card = page.slice(page.indexOf("function Card("));
+    expect(card).not.toMatch(/>\s*Open\s*</);
+    expect(card).toContain("<SectionMark section={meta.section} />");
+    expect(card).toContain("style={{ color: look.color }}");
+    expect(card).toContain("k-inset mt-4 grid grid-cols-2");
+    for (const k of ["cost", "price", "margin", "emails"]) expect(page).toContain(`<Section section="${k}"`);
+  });
+});
+
 describe("monitoring: staff only, end to end", () => {
   it("both routes sit behind StaffOnly", () => {
     for (const f of ["page.tsx", "[...path]/page.tsx"]) {
