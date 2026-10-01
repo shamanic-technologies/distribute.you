@@ -16,17 +16,14 @@ import {
 const CHROME =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
 const q = (s = "") => new URLSearchParams(s);
+const SUBSCRIPTION_SRC = readFileSync(path.join(__dirname, "../../src/lib/pages/subscription.ts"), "utf8");
 
 describe("the split rule", () => {
-  it("draws a first-time human 50/50 between the homepage and the instinct page, and stores it", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0.5, instinct: 0.5, assistant: 0, concierge: 0, subscription: 0 });
-    expect(drawVariant(0)).toBe("control");
-    expect(drawVariant(0.4999)).toBe("control");
-    expect(drawVariant(0.5)).toBe("instinct");
-    expect(drawVariant(0.9999)).toBe("instinct");
+  it("draws a first-time human 25/25/50 between the homepage, its $99 plan arm and the instinct page", () => {
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0.25, subscription: 0.25, instinct: 0.5, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(counts).toEqual({ control: 5000, instinct: 5000 });
+    expect(counts).toEqual({ control: 2500, instinct: 5000, subscription: 2500 });
     expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.7, enabled: true })).toEqual({
       variant: "instinct", setCookie: true, inTest: true,
     });
@@ -41,7 +38,7 @@ describe("the split rule", () => {
 
   it("redraws a visitor whose cookie names a retired arm, or nothing", () => {
     for (const v of ["assistant", "concierge", "junk"]) {
-      const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.3, enabled: true });
+      const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.1, enabled: true });
       expect(d, v).toEqual({ variant: "control", setCookie: true, inTest: true });
     }
   });
@@ -113,11 +110,10 @@ describe("GET / with the test on", () => {
 
   it("serves the subscription arm the homepage sold at $99/month with a 3-day trial", async () => {
     const { res, html } = await get({ qs: "?variant=subscription" });
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>From $99/month");
-    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100".
-    expect(html).toContain('<select data-plan-amount aria-label="Monthly amount">');
-    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(html).toContain(`<option value="${v}">`);
-    expect(html).toContain("lp_plan=");
+    // The amount picker waits for a checkout that charges the pick (PLAN_PICKER_LIVE):
+    // until then the arm sells exactly what is charged, $99.
+    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>$99/month");
+    expect(html).not.toContain("data-plan-amount");
     expect(html).not.toContain("Add $100");
     expect(html).toContain("3-day free trial");
     expect(html).toContain("Start my free trial");
@@ -130,8 +126,11 @@ describe("GET / with the test on", () => {
     expect(res.headers.get("set-cookie")).toContain("lp_variant=subscription");
   });
 
-  it("keeps the subscription arm out of the draw until its onboarding is live", () => {
-    for (let i = 0; i < 1000; i++) expect(drawVariant(i / 1000)).not.toBe("subscription");
+  it("builds the amount picker once it goes live, from billing's ladder", () => {
+    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100".
+    expect(SUBSCRIPTION_SRC).toContain('<select data-plan-amount aria-label="Monthly amount">');
+    expect(SUBSCRIPTION_SRC).toContain("PLAN_AMOUNTS_USD = [99, 199, 299, 499, 999, 1999]");
+    expect(SUBSCRIPTION_SRC).toContain("return PLAN_PICKER_LIVE ? withAmountPicker(html) : html;");
   });
 
   it("serves the homepage to the control arm, tagged", async () => {

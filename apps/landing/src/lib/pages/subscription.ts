@@ -18,6 +18,13 @@
  */
 export const PLAN_AMOUNTS_USD = [99, 199, 299, 499, 999, 1999] as const;
 
+/**
+ * The picker stays OFF until billing charges the amount picked (owner 2026-10-01: go
+ * live at 25% now, hide the dropdown meanwhile). Off, the arm sells the $99 plan only,
+ * which is what the checkout charges. Flip to true with the checkout that takes it.
+ */
+export const PLAN_PICKER_LIVE = false;
+
 /** The cookie carrying the pick to the dashboard's checkout (cents). */
 export const PLAN_COOKIE = "lp_plan";
 
@@ -51,16 +58,19 @@ document.querySelectorAll("[data-plan-label]").forEach(function(e){e.textContent
 document.cookie="${PLAN_COOKIE}="+c+"; Path=/; Max-Age=7776000; Domain=.distribute.you; SameSite=Lax; Secure";};
 s.addEventListener("change",function(){paint();if(window.posthog)posthog.capture("plan_amount_picked",{amount_cents:Number(s.value)})});paint();})();</script>`;
 
+const from = PLAN_PICKER_LIVE ? "from " : "";
+const From = PLAN_PICKER_LIVE ? "From " : "";
+
 const SWAPS: ReadonlyArray<readonly [string, string, number?]> = [
-  ['Get revenue in 24h, from $1/day">', 'Get revenue in 24h, from $99/month">', 2],
-  ['First $30 free, no commitment.">', '3-day free trial, then from $99 a month. Cancel anytime.">', 2],
+  ['Get revenue in 24h, from $1/day">', `Get revenue in 24h, ${from}$99/month">`, 2],
+  ['First $30 free, no commitment.">', `3-day free trial, then ${from}$99 a month. Cancel anytime.">`, 2],
   [
     "<title>distribute.you. Get revenue in 24h, from $1/day</title>",
-    "<title>distribute.you. Get revenue in 24h, from $99/month</title>",
+    `<title>distribute.you. Get revenue in 24h, ${from}$99/month</title>`,
   ],
   [
     '<span class="accent">revenue in 24h</span><br>From $1/day',
-    '<span class="accent">revenue in 24h</span><br>From $99/month',
+    `<span class="accent">revenue in 24h</span><br>${From}$99/month`,
   ],
   ["First $30 free, no commitment</div>", "3-day free trial, cancel anytime</div>"],
   [
@@ -71,13 +81,23 @@ const SWAPS: ReadonlyArray<readonly [string, string, number?]> = [
     '<h2 style="margin-top:16px">Pay as you go. Or let us run it end to end.</h2>',
     '<h2 style="margin-top:16px">One plan. Start free.</h2>',
   ],
-  ["Set a daily budget, stop it whenever you want.", "3 days free. Then pick your monthly amount, from $99. Cancel anytime."],
+  [
+    "Set a daily budget, stop it whenever you want.",
+    PLAN_PICKER_LIVE
+      ? "3 days free. Then pick your monthly amount, from $99. Cancel anytime."
+      : "3 days free, then $99 a month. Cancel anytime.",
+  ],
   ['<span class="plan-tag"><i></i>Pay as you go</span>', '<span class="plan-tag"><i></i>Pro</span>'],
   [
     '<div class="plan-price">From $1<small>/day</small></div>',
     `<div class="plan-price"><span data-plan-price>${usd(99)}</span><small>/month</small></div>`,
   ],
-  ['<p class="plan-desc">Self-serve, no commitment</p>', `<p class="plan-desc">3-day free trial, then this each month</p>\n        ${AMOUNT_PICKER}`],
+  [
+    '<p class="plan-desc">Self-serve, no commitment</p>',
+    PLAN_PICKER_LIVE
+      ? `<p class="plan-desc">3-day free trial, then this each month</p>\n        ${AMOUNT_PICKER}`
+      : '<p class="plan-desc">3-day free trial, then $99 a month</p>',
+  ],
   ["Start free with $30 credits</a>", "Start my free trial</a>"],
   [
     "<li><i></i>First $30 free, no card needed to look around</li>",
@@ -94,7 +114,7 @@ const SWAPS: ReadonlyArray<readonly [string, string, number?]> = [
   ],
   [
     "<p>You set a daily budget, from $1. We spend it on your campaign and charge you what the campaign spent, nothing else. No subscription, no seat, no retainer. Our margin sits inside the budget. What a meeting or a signup costs you is measured on your account and shown on your dashboard.</p>",
-    "<p>You pick a monthly amount, from $99, after a 3-day free trial. Every dollar becomes campaign credit: we spend it on your outreach and show what each reply and meeting cost you on your dashboard. A bigger amount reaches more leads, and you can change it any time. No seat, no setup fee, cancel anytime.</p>",
+    "<p>Your plan starts at $99 a month, after a 3-day free trial. Every dollar becomes campaign credit: we spend it on your outreach and show what each reply and meeting cost you on your dashboard. A bigger amount reaches more leads, and you can change it any time from your Billing page. No seat, no setup fee, cancel anytime.</p>",
   ],
   [
     '<div class="fine">First $30 free · Live in 2 minutes · Stop any time</div>',
@@ -113,7 +133,7 @@ export function renderSubscriptionPage(controlHtml: string): string {
     }
     html = parts.join(to);
   }
-  return withAmountPicker(html);
+  return PLAN_PICKER_LIVE ? withAmountPicker(html) : html;
 }
 
 /** The picker's style in the head and its script before the body ends. */
