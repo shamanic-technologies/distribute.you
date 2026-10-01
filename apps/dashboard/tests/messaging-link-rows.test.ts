@@ -34,7 +34,10 @@ describe("messaging apps link self-serve from Integrations", () => {
   });
 
   it("passes the app's own refusal through", () => {
-    expect(linkErrorMessage({ status: 422, body: { error: "Phone number too short" } })).toBe("Phone number too short");
+    // The served 422 shape, probed live 2026-10-01.
+    expect(
+      linkErrorMessage({ status: 422, body: { type: "bridge", bridgeError: { code: "FI.MAU.WHATSAPP.PHONE_NUMBER_TOO_SHORT", message: "Phone number too short" } } }),
+    ).toBe("Phone number too short");
     expect(linkErrorMessage({ status: 409, body: { error: "Linking Telegram is not available yet." } })).toBe("Linking Telegram is not available yet.");
     expect(linkErrorMessage({ status: 502 })).toBe("We could not reach the app just now. Try again in a moment.");
   });

@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import {
   connectCrm,
   connectSource,
   disconnectCrm,
   disconnectSource,
+  disconnectGoogleAccount,
   deleteBrandKey,
+  listGoogleAccounts,
+  startGoogleConnect,
   listBrandKeys,
   listCrmConnections,
   listSourceConnections,
@@ -21,6 +24,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import { INTEGRATIONS, missingFields, type IntegrationDef, type IntegrationSlug } from "@/lib/integrations";
+import { GOOGLE_RETURN_KEY, googleCallbackUrl } from "@/lib/google-connect";
 import {
   connectErrorMessage,
   credentialErrorMessage,
@@ -112,6 +116,9 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
       onChanged={() => queryClient.invalidateQueries({ queryKey: ["brandKeys", brandId] })}
     />
   ));
+
+  // Gmail first: the mailbox is where most conversations already are.
+  rows.unshift(<GmailRow key="gmail" orgId={orgId} />);
 
   rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
 
@@ -467,6 +474,125 @@ function IntegrationRow({
           </div>
         </form>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Gmail, per ORGANIZATION: every brand of the org reads the same mailboxes. No key
+ * to paste: the button runs Google's own sign-in (google-service owns it), and the
+ * mailbox mirrors and syncs on its own once Google sends the person back.
+ */
+function GmailRow({ orgId }: { orgId: string | null }) {
+  const queryClient = useQueryClient();
+  const search = useSearchParams();
+  const accountsQ = useAuthQuery(["googleAccounts"], () => listGoogleAccounts());
+  const [error, setError] = useState<string | null>(search?.get("gmailError") ?? null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const accounts = accountsQ.data?.accounts ?? [];
+  const settled = !accountsQ.isPending || accountsQ.isError;
+
+  const connect = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error("Open this page inside an organization to connect Gmail.");
+      const { url } = await startGoogleConnect(googleCallbackUrl(window.location.origin));
+      const returnTo = `${window.location.pathname}${window.location.search}#integrations`;
+      window.sessionStorage.setItem(GOOGLE_RETURN_KEY, JSON.stringify({ orgId, returnTo }));
+      window.location.assign(url);
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] starting the Google sign-in failed", err);
+      setError(err.message.startsWith("Open this page") ? err.message : "Could not start the Google sign-in. Try again.");
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (email: string) => disconnectGoogleAccount(email),
+    onSuccess: async () => {
+      setConfirming(null);
+      setError(null);
+      await queryClient.refetchQueries({ queryKey: ["googleAccounts"] });
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] disconnecting Gmail failed", err);
+      setError("Could not disconnect this mailbox. Try again.");
+    },
+  });
+
+  return (
+    <div className="p-5">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
+          <CompanyLogo domain="gmail.com" name="Gmail" size={28} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-gray-900">Gmail</span>
+            {!settled ? (
+              <span className="h-5 w-24 animate-pulse rounded-full bg-gray-100" />
+            ) : accounts.length > 0 ? (
+              <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+            ) : (
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">Not connected</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm text-gray-500">
+            Read every email you exchanged with a person, in their thread. Shared by every brand of this organization.
+          </p>
+          {accounts.length > 0 ? (
+            <ul className="mt-2 space-y-1.5">
+              {accounts.map((a) => (
+                <li key={a.email} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-gray-900">{a.email}</span>
+                  {a.status !== "active" ? (
+                    <span className="text-amber-700">{a.gmailUnavailableReason ?? "Gmail is not available on this account."}</span>
+                  ) : null}
+                  {confirming === a.email ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => remove.mutate(a.email)}
+                        disabled={remove.isPending}
+                        className="rounded-lg border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                      >
+                        {remove.isPending ? "Disconnecting..." : "Yes, disconnect"}
+                      </button>
+                      <button type="button" onClick={() => setConfirming(null)} className="rounded-lg px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-50">
+                        Keep it
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(a.email)}
+                      className="rounded-lg border border-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {confirming ? (
+            <p className="mt-2 text-sm text-gray-600">This stops reading {confirming} and removes what we mirrored. Nothing in the mailbox changes.</p>
+          ) : null}
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              connect.mutate();
+            }}
+            disabled={connect.isPending}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            {connect.isPending ? "Opening Google..." : accounts.length > 0 ? "Add a mailbox" : "Connect with Google"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

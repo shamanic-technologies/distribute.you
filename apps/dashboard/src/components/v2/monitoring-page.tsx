@@ -7,6 +7,7 @@ import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailsSent, getStaff
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
+import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -411,50 +412,28 @@ function UnpricedNote({ f }: { f: MarginFigures }) {
 function ProvidersPage() {
   const versions = useVersions();
   const margin = useMargin();
+  const prices = useCurrentPrices();
   return (
-    <Loaded q={versions}>
-      {(vs) => {
-        const items = costItemNames(vs);
-        const providers = [...new Set(items.map((i) => i.provider))].sort();
-        const spendOf = (p: string) => margin.data?.providers.find((r) => r.provider === p) ?? null;
-        return (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {providers.map((p) => {
-              const its = items.filter((i) => i.provider === p);
-              const s = spendOf(p);
-              return (
-                <div key={p} className="k-card p-4">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-[14px] font-medium">{p}</p>
-                    <span className="k-fg3 text-[12px]">
-                      {its.length} cost item{its.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <dl className="mt-3 space-y-1 text-[13px]">
-                    <div className="flex justify-between gap-3">
-                      <dt className="k-fg3">Vendor cost since inception</dt>
-                      <dd className="tabular-nums">{margin.isError ? "not readable" : s ? usd(s.vendorCostInUsdCents) : margin.data ? "$0" : "…"}</dd>
-                    </div>
-                  </dl>
-                  <ul className="k-fg2 mt-3 flex flex-wrap gap-1.5">
-                    {its.map((i) => (
-                      <li key={i.name} className="k-chip k-mono text-[11px]">
-                        {i.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        );
-      }}
+    <Loaded q={margin}>
+      {(m) => (
+        <>
+          <SectionTitle>Every provider, since inception</SectionTitle>
+          <ProvidersTable
+            margin={m}
+            versions={versions.data}
+            prices={prices.data}
+            columns={["items", "vendor", "billedNet", "billedGross", "marginNet", "marginGross", "refunded", "unpriced"]}
+          />
+        </>
+      )}
     </Loaded>
   );
 }
 
 function SpendPage() {
   const margin = useMargin();
+  const versions = useVersions();
+  const prices = useCurrentPrices();
   return (
     <Loaded q={margin}>
       {(m) => (
@@ -470,23 +449,7 @@ function SpendPage() {
           <UnpricedNote f={m.total} />
           <div className="mt-6">
             <SectionTitle count={m.providers.length}>Per provider</SectionTitle>
-            <Table
-              head={
-                <>
-                  <th className={TH}>Provider</th>
-                  <th className={THR}>Vendor cost</th>
-                  <th className={THR}>Unpriced spend</th>
-                </>
-              }
-            >
-              {m.providers.map((p) => (
-                <tr key={p.provider ?? "null"}>
-                  <td className={TD}>{providerName(p.provider)}</td>
-                  <td className={TDR}>{usd(p.vendorCostInUsdCents)}</td>
-                  <td className={TDR}>{Number(p.unpricedBilledCostInUsdCents) ? usd(p.unpricedBilledCostInUsdCents) : <Cell v={null} />}</td>
-                </tr>
-              ))}
-            </Table>
+            <ProvidersTable margin={m} versions={versions.data} prices={prices.data} columns={["vendor", "billedNet", "unpriced"]} />
           </div>
           <CostItemsTable rows={m.costItems} cols={["vendor"]} />
         </>

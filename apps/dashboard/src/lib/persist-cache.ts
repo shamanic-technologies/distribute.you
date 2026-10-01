@@ -94,6 +94,9 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffPriceVersions",
   "staffCurrentPrices",
   "staffEmailsSent",
+  "staffMarginTimeseries",
+  "staffPaymentSources",
+  "staffProviderSources",
   // One person's whole exchange (Integrations > Conversations): private message bodies
   // from the brand's own inboxes. Read live, never written to disk.
   "personTimeline",
@@ -157,6 +160,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandKeys",
   "crmConnections",
   "posthogConnections",
+  "googleAccounts",
   "stripeConnections",
   // The mirrored CRM itself. Both are bounded (one page of contacts, one
   // pipeline) and change on their own sync cadence rather than this brand's, so
