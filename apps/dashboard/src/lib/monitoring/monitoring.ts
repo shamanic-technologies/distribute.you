@@ -85,6 +85,34 @@ export const FleetEmailStatsSchema = z.object({
 });
 export type FleetEmailStats = z.infer<typeof FleetEmailStatsSchema>;
 
+/**
+ * runs-service's monthly margin series: every provider, every UTC month from the first cost row
+ * to the current one (dense, zeros where a provider had no row), same rows and basis as the
+ * margin read, so a provider's months sum to its margin row. `complete` is false for the month
+ * in progress: the producer's verdict, never re-derived from a clock here.
+ */
+export const MarginTimeseriesSchema = z.object({
+  interval: z.literal("month"),
+  timezone: z.string(),
+  periods: z.array(z.string()),
+  providers: z.array(
+    z.object({
+      provider: z.string().nullable(),
+      buckets: z.array(z.object({ period: z.string(), complete: z.boolean(), ...MarginFiguresShape })),
+    }),
+  ),
+});
+export type MarginTimeseries = z.infer<typeof MarginTimeseriesSchema>;
+export type ProviderMonth = MarginTimeseries["providers"][number]["buckets"][number];
+
+/** One of OUR accounts that pays a vendor (costs-service's closed vocabulary, staff can grow it). */
+export const PaymentSourceSchema = z.object({ key: z.string(), displayName: z.string(), domain: z.string().nullable() });
+export type PaymentSource = z.infer<typeof PaymentSourceSchema>;
+export const PaymentSourcesSchema = z.object({ sources: z.array(PaymentSourceSchema) });
+export const ProviderSourcesRowSchema = z.object({ provider: z.string(), providerDomain: z.string().nullable(), sources: z.array(PaymentSourceSchema) });
+export type ProviderSourcesRow = z.infer<typeof ProviderSourcesRowSchema>;
+export const ProviderSourcesListSchema = z.object({ providers: z.array(ProviderSourcesRowSchema) });
+
 /** Every price version of one cost item, oldest first. */
 export function versionsOf(versions: PriceVersion[], name: string): PriceVersion[] {
   return versions
