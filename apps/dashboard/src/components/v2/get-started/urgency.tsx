@@ -42,7 +42,8 @@ function timerStart(): number {
 }
 
 
-export function TrialTimer() {
+/** `label` / `extendedLabel` come from `wallCopy`: the $30 claim, or the plan's free trial. */
+export function TrialTimer({ label, extendedLabel }: { label: string; extendedLabel: string }) {
   const [start] = useState(timerStart);
   const [state, setState] = useState<Phase>(() => timerPhase(start, Date.now()));
   useEffect(() => {
@@ -60,7 +61,7 @@ export function TrialTimer() {
     <div className="k-inset grid gap-2 rounded-lg px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="k-fg text-[13px] font-medium">
-          {state.phase === "extended" ? "We're giving you more time to lock in your $30" : "Time left to claim your $30 free trial"}
+          {state.phase === "extended" ? extendedLabel : label}
         </span>
         <span className="shrink-0 text-[18px] font-semibold tabular-nums" style={{ color: colour }}>{`${m}:${String(state.secondsLeft % 60).padStart(2, "0")}`}</span>
       </div>

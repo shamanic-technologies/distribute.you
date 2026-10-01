@@ -14,10 +14,11 @@ const picks = read("src/components/start/start-picks.tsx");
 const shell = read("src/components/start/start-shell.tsx");
 
 describe("/start is the wizard", () => {
-  it("redirects to /onboarding with the query, relatively, and hosts no page of its own", () => {
+  it("redirects to onboarding v2 with the query, relatively, and hosts no page of its own", () => {
     const route = read("src/app/start/route.ts");
-    expect(route).toContain("status: 308");
-    expect(route).toContain("Location: `/onboarding${search}`");
+    // 307: a permanent redirect is cached by the browser, and this one may move again.
+    expect(route).toContain("status: 307");
+    expect(route).toContain("Location: `/get-started${search}`");
     // `request.url` on a self-hosted Next server is the bind address, so an
     // absolute Location built from it points at the container.
     expect(route).not.toContain("NextResponse.redirect(");
