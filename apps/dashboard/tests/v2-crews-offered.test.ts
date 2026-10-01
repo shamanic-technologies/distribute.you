@@ -66,3 +66,13 @@ describe("crewTrigger", () => {
     expect(crewTrigger(null)).toBeNull();
   });
 });
+
+describe("the catalogue reader keeps the crew name", () => {
+  it("declares crewName on each step transition, or zod strips it", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
+    const at = src.indexOf("const PublicCatalogueSchema");
+    const body = src.slice(at, src.indexOf("export type PublicCatalogue", at));
+    expect(body).toContain("crewName: z.string().nullish()");
+  });
+});
