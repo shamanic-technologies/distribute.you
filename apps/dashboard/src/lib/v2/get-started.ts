@@ -690,3 +690,31 @@ export function highlightKindLabel(kind: string): string {
   };
   return known[kind] ?? kind;
 }
+
+/**
+ * A market size as a big figure: "14K leads", "3.4K leads", "820 leads", "1.2M leads".
+ * No "~": the count is the people search's own (human-service's free dry-run).
+ */
+export function leadCountLabel(n: number | null | undefined): string | null {
+  if (n == null || !Number.isFinite(n) || n < 0) return null;
+  const fmt = (v: number, unit: string) => `${v < 10 ? (Math.round(v * 10) / 10).toString() : Math.round(v).toString()}${unit}`;
+  if (n >= 1_000_000) return `${fmt(n / 1_000_000, "M")} leads`;
+  if (n >= 1000) return `${fmt(n / 1000, "K")} leads`;
+  return `${Math.round(n)} leads`;
+}
+
+/** The step before this one, or null for the first. */
+export function previousStep(key: GetStartedStepKey): GetStartedStepKey | null {
+  const i = stepIndex(key);
+  return i > 0 ? GET_STARTED_STEPS[i - 1].key : null;
+}
+
+/** The question steps: going back reopens them to be answered again. Others are only shown. */
+export const REOPENABLE_STEPS: ReadonlySet<GetStartedStepKey> = new Set<GetStartedStepKey>([
+  "value",
+  "salesSteps",
+  "legs",
+  "paths",
+  "levers",
+  "gives",
+]);
