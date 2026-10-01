@@ -19,7 +19,7 @@
  * Rules live in `lib/v2/get-started.ts`. The current `/onboarding` is untouched.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
@@ -1356,12 +1356,7 @@ export function GetStarted() {
             )}
 
             <div key={stagedKey} className="gs-in mt-4" style={{ viewTransitionName: stepViewName(stagedKey) }}>
-              {stageFor(stagedKey)}
-              {previousStep(stagedKey) && (
-                <button type="button" className="k-fg3 mt-3 text-[12.5px] hover:text-[var(--fg-2)]" onClick={() => goBack(stagedKey)}>
-                  ← Back
-                </button>
-              )}
+              <BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>{stageFor(stagedKey)}</BackContext.Provider>
             </div>
 
             {canLaunch && stagedKey === "email" && (
@@ -1685,19 +1680,26 @@ function LiveStatus({ current, domain, pick }: { current: number; domain: string
   );
 }
 
+/** Back to the step before the one on the stage, or null on the first. Read by every step card. */
+const BackContext = createContext<(() => void) | null>(null);
+
 function StepCard({
   index,
   title,
   state,
   meta,
+  footer,
   children,
 }: {
   index: number;
   title: string;
   state: StepState;
   meta?: React.ReactNode;
+  /** The step's own action (Continue), drawn bottom right, on Back's line. */
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const onBack = useContext(BackContext);
   return (
     <section className={`gs-fade k-card relative overflow-hidden p-4 ${state === "waiting" ? "translate-y-0.5 opacity-50" : "opacity-100"}`}>
       {state === "running" && (
@@ -1714,7 +1716,21 @@ function StepCard({
       <div key={state} className="gs-in mt-3">
         {children}
       </div>
+      {(onBack || footer) && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {onBack && <BackLink onBack={onBack} />}
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">{footer}</div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function BackLink({ onBack }: { onBack: () => void }) {
+  return (
+    <button type="button" className="k-fg3 h-9 text-[13px] hover:text-[var(--fg-2)]" onClick={onBack}>
+      ← Back
+    </button>
   );
 }
 
@@ -1929,6 +1945,13 @@ function SalesPathStage({
       index={stepIndex(key) + 1}
       title={part === "steps" ? "Your sales steps" : "How leads move"}
       state={state}
+      footer={
+        !done && state === "choose" && catalogue.legs.size > 0 ? (
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy || empty}>
+            {busy ? "Saving..." : "Continue"}
+          </button>
+        ) : null
+      }
       meta={<StateWord state={state} doneLabel={part === "steps" ? `${selection.steps.size} steps` : `${selection.legs.size} ways`} />}
     >
       {catalogueFailed && catalogue.legs.size === 0 && state !== "waiting" ? (
@@ -1971,11 +1994,6 @@ function SalesPathStage({
             part={part}
             bare
           />
-          <div className="mt-4 flex items-center gap-3">
-            <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={busy || empty}>
-              {busy ? "Saving..." : "Continue"}
-            </button>
-          </div>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
       )}
@@ -2009,7 +2027,22 @@ function PathsStage({
 }) {
   const done = state === "done";
   return (
-    <StepCard index={stepIndex("paths") + 1} title="Where your money goes" state={state} meta={<StateWord state={state} />}>
+    <StepCard
+      index={stepIndex("paths") + 1}
+      title="Where your money goes"
+      state={state}
+      meta={<StateWord state={state} />}
+      footer={
+        !done && state !== "waiting" ? (
+          <>
+            {data && !canContinue && <span className="k-fg3 text-[12px]">None of these paths starts with a way we run. Go back and tick one.</span>}
+            <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={!canContinue}>
+              Continue
+            </button>
+          </>
+        ) : null
+      }
+    >
       {state === "waiting" ? (
         <OptionSkeleton />
       ) : (
@@ -2032,14 +2065,6 @@ function PathsStage({
             <button type="button" className="k-btn mt-2 h-8 px-3" onClick={onRetry}>
               Try again
             </button>
-          )}
-          {!done && (
-            <div className="mt-4 flex items-center gap-3">
-              {data && !canContinue && <span className="k-fg3 text-[12px]">None of these paths starts with a way we run. Go back and tick one.</span>}
-              <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={!canContinue}>
-                Continue
-              </button>
-            </div>
           )}
         </>
       )}
@@ -2067,7 +2092,19 @@ function ValueStage({
 }) {
   const done = state === "done";
   return (
-    <StepCard index={stepIndex("value") + 1} title="What a client is worth" state={state} meta={<StateWord state={state} />}>
+    <StepCard
+      index={stepIndex("value") + 1}
+      title="What a client is worth"
+      state={state}
+      meta={<StateWord state={state} />}
+      footer={
+        !done && state === "choose" ? (
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
+            {busy ? "Saving..." : "Continue"}
+          </button>
+        ) : null
+      }
+    >
       {state === "waiting" || state === "running" ? (
         <OptionSkeleton />
       ) : (
@@ -2087,11 +2124,6 @@ function ValueStage({
               aria-label="Lifetime revenue of one client, in dollars"
             />
             {drafted && !done && <span className="k-chip">Our estimate from your site</span>}
-            {!done && (
-              <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={busy}>
-                {busy ? "Saving..." : "Continue"}
-              </button>
-            )}
           </div>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
@@ -2189,6 +2221,13 @@ function LeversStage({
       index={stepIndex("levers") + 1}
       title="Your offer, in six points"
       state={state}
+      footer={
+        !done && state === "choose" ? (
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
+            {busy ? "Saving..." : "Continue"}
+          </button>
+        ) : null
+      }
       meta={
         state === "choose" || done ? (
           <button type="button" className="k-btn-ghost h-7 px-2 text-[12px]" onClick={() => void copyAll()}>
@@ -2215,13 +2254,6 @@ function LeversStage({
               </div>
             ))}
           </div>
-          {!done && (
-            <div className="mt-3 flex justify-end">
-              <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
-                {busy ? "Saving..." : "Continue"}
-              </button>
-            </div>
-          )}
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
       )}
@@ -2247,7 +2279,22 @@ function GivesStage({
 }) {
   const done = state === "done";
   return (
-    <StepCard index={stepIndex("gives") + 1} title="What you give away" state={state} meta={<StateWord state={state} />}>
+    <StepCard
+      index={stepIndex("gives") + 1}
+      title="What you give away"
+      state={state}
+      meta={<StateWord state={state} />}
+      footer={
+        !done && state === "choose" ? (
+          <>
+            <span className="k-fg3 text-[12px]">Next, a preview of your first emails. Nothing is sent.</span>
+            <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
+              {busy ? "Saving..." : "Preview my emails"}
+            </button>
+          </>
+        ) : null
+      }
+    >
       {state === "waiting" || state === "running" ? (
         <OptionSkeleton />
       ) : (
@@ -2264,14 +2311,6 @@ function GivesStage({
               </div>
             ))}
           </div>
-          {!done && (
-            <div className="mt-3 flex items-center justify-end gap-3">
-              <span className="k-fg3 text-[12px]">Next, a preview of your first emails. Nothing is sent.</span>
-              <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
-                {busy ? "Saving..." : "Preview my emails"}
-              </button>
-            </div>
-          )}
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
       )}
@@ -2457,6 +2496,7 @@ function CompaniesStage({
   emailState: (index: number) => RowEmailState;
   onOpen: (index: number) => void;
 }) {
+  const onBack = useContext(BackContext);
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
@@ -2575,6 +2615,11 @@ function CompaniesStage({
           </div>
         </div>
       )}
+      {onBack && (
+        <div>
+          <BackLink onBack={onBack} />
+        </div>
+      )}
     </section>
   );
 }
@@ -2662,6 +2707,7 @@ function EmailsStage({
 }) {
   const row = rows.find((r) => r.index === selected);
   const sel = emailState(selected);
+  const onBack = useContext(BackContext);
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
@@ -2741,6 +2787,11 @@ function EmailsStage({
               <p className="k-fg3 px-4 py-4 text-[13px]">{error ?? (row && !row.person.firstName ? "We have no name for this person, so no email can be written." : "Click a person to write their email.")}</p>
             )}
           </div>
+        </div>
+      )}
+      {onBack && (
+        <div>
+          <BackLink onBack={onBack} />
         </div>
       )}
     </section>

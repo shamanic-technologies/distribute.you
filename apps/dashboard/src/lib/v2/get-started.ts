@@ -69,6 +69,7 @@ export function salesStepsDraftField(steps: ReadonlyArray<{ key: string; label: 
     key: "salesSteps",
     description:
       "Which of these steps does this company's sales process go through today, judging from its website (how a prospect becomes a paying client: do they book a demo or a call, sign up for a trial, fill a form, buy online, talk to a sales rep)? " +
+      "Tick purchase ONLY when the site sells online with a checkout and no sales conversation (an online shop); a payment after a signup, a trial or a call is NOT a purchase. " +
       `Answer ONLY with keys from this list, one per line, no other words: ${list}.`,
   };
 }

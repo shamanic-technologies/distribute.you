@@ -313,13 +313,14 @@ describe("the surface", () => {
     expect(WALL).toContain("<TrialSpots />");
   });
 
-  it("counts Explee's clock down 7:30, then a 9:59 extension, then stops", async () => {
-    const { timerPhase, spotsTakenThisHour } = await import("../src/components/v2/get-started/urgency");
+  it("counts 7:30, then a 9:59 extension, then starts over: never stops; always 3 spots", async () => {
+    const { timerPhase } = await import("../src/components/v2/get-started/urgency");
     expect(timerPhase(0, 0)).toEqual({ phase: "initial", secondsLeft: 450 });
     expect(timerPhase(0, 450_000)).toEqual({ phase: "extended", secondsLeft: 599 });
-    expect(timerPhase(0, 1_049_000)).toEqual({ phase: "expired", secondsLeft: 0 });
-    const hour = 3_600_000 * 500_000;
-    expect(spotsTakenThisHour(hour + 59 * 60_000)).toBeGreaterThanOrEqual(spotsTakenThisHour(hour));
+    expect(timerPhase(0, 1_049_000)).toEqual({ phase: "initial", secondsLeft: 450 });
+    const urgency = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/urgency.tsx"), "utf8");
+    expect(urgency).toContain("const SPOTS_LEFT = 3;");
+    expect(urgency).not.toContain("no more countdowns");
   });
 
   it("is a journal and a stage: one step on screen, the finished ones in the rail", () => {
@@ -377,12 +378,13 @@ describe("the wall", () => {
     expect(parseGetStartedSnapshot(JSON.stringify({ ...base, email: mail }))?.email).toEqual(mail);
   });
 
-  it("opens over the blurred results, with the email sharp and the proof real", () => {
+  it("opens over the blurred results, with real testimonials and no email or client card", () => {
     const wall = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"), "utf8");
     expect(wall).toContain("backdrop-blur-");
-    expect(wall).toContain("<EmailCard mail={writtenEmail} />");
-    // Only named, consenting clients: the same selection the homepage proof uses.
-    expect(wall).toContain("proofCardsFor(proof.showcase)");
+    // Owner 2026-10-01: the email card and the client proof card are removed; testimonials take their place.
+    expect(wall).not.toContain("<EmailCard");
+    expect(wall).not.toContain("proofCardsFor(");
+    expect(wall).toContain("<Testimonials />");
     // The $30 figure is the served median divided, or absent.
     expect(wall).toContain("hotLeadsForCredit(proof?.hotLeads?.medianCostUsd)");
     // Email code, no password to type.
