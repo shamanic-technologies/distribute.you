@@ -48,12 +48,11 @@ html, body { background: var(--bg-canvas); }
 .site a { color: inherit; text-decoration: none; }
 .mono { font-family: "Geist Mono", "DM Mono", ui-monospace, monospace; }
 .label { font-family: "Geist Mono", "DM Mono", ui-monospace, monospace; font-size: 10.5px; font-weight: 500; line-height: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-3); }
-.topbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; background: var(--bg-surface); border-bottom: 1px solid var(--line-subtle); }
-.topbar img { width: 20px; height: 20px; border-radius: 5px; }
-.topbar span { font-size: 13px; font-weight: 500; }
-@media (min-width: 768px) { .topbar { padding: 0 24px; } }
-.home { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 56px; width: 100%; max-width: 1280px; margin: 0 auto; padding: 72px 16px 0; }
-@media (min-width: 768px) { .home { padding: 104px 24px 0; } }
+.mark { display: flex; width: 100%; max-width: 1280px; margin: 0 auto; padding: 24px 16px 0; }
+.mark img { display: block; width: 28px; height: 28px; border-radius: 7px; }
+@media (min-width: 768px) { .mark { padding: 32px 24px 0; } }
+.home { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 56px; width: 100%; max-width: 1280px; margin: 0 auto; padding: 48px 16px 0; }
+@media (min-width: 768px) { .home { padding: 72px 24px 0; } }
 .home__wrapper { display: flex; flex-direction: column; gap: 40px; }
 .home__intro { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
 .home h1 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg-1); text-wrap: pretty; }
@@ -127,8 +126,9 @@ ${STYLE}
 </head>`;
 }
 
+/** Their header is the mark alone, no bar: a logo in the corner, nothing else. */
 function header(): string {
-  return `<header class="topbar"><a href="/" aria-label="distribute.you home"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="20" height="20"></a><span>distribute.you</span></header>`;
+  return `<header class="mark"><a href="/" aria-label="distribute.you home"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="28" height="28"></a></header>`;
 }
 
 function legal(): string {
@@ -160,7 +160,7 @@ ${header()}
 <main class="home">
 <div class="home__wrapper">
 <div class="home__intro">
-<h1 class="rise">distribute.you is a sales assistant that finds the companies that need what you sell and gets them talking to you. It reads your website, picks the people worth writing to, and sends the cold emails from inboxes we run.</h1>
+<h1 class="rise">distribute.you is a sales assistant that finds the companies that need what you sell and gets them talking to you.</h1>
 <p class="rise">The interface is simple: there is no new interface. You text it, on WhatsApp or Telegram. It answers like a colleague, shows you who it plans to email, and tells you what each reply cost.</p>
 <p class="rise">It learned from more than 125,000 cold emails sent for our clients: which audiences answer, which emails get read, which AI writes them best. It keeps testing all three for you, and hands you the people who want to talk.</p>
 </div>
