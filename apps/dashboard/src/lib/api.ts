@@ -2289,13 +2289,23 @@ export async function attachBrandWebsite(
 const SalesRepResponseSchema = z.object({
   salesRepEmail: z.string().nullable(),
   salesRepPhone: z.string().nullable(),
+  // How a hand-over names the rep in the prospect's thread ("I've copied Marie, Head
+  // of Partnerships at Doc Dinners"). Both optional and never inferred; absent reads
+  // as null so a response from before brand-service served them still parses.
+  salesRepFirstName: z.string().nullable().default(null),
+  salesRepRole: z.string().nullable().default(null),
 });
 
-/** The one person to reach for a brand, and the two facts about them. */
+/** The one person to reach for a brand: how to reach them, and how to introduce them. */
 export type SalesRep = z.infer<typeof SalesRepResponseSchema>;
 
 /** Nobody stated. A first-class answer, never an error and never a 404. */
-export const NO_SALES_REP: SalesRep = { salesRepEmail: null, salesRepPhone: null };
+export const NO_SALES_REP: SalesRep = {
+  salesRepEmail: null,
+  salesRepPhone: null,
+  salesRepFirstName: null,
+  salesRepRole: null,
+};
 
 function parseSalesRep(raw: unknown, fn: string): SalesRep {
   const parsed = SalesRepResponseSchema.safeParse(raw);
@@ -2318,13 +2328,20 @@ export async function getBrandSalesRep(
 }
 
 /**
- * State the rep. The write REPLACES THE WHOLE REP, so both fields always travel:
+ * State the rep. The write REPLACES the email and the phone, so both always travel:
  * omitting the phone CLEARS a number that was there, which is brand-service's
  * own documented semantic and not something to work around by sending a subset.
+ * The first name and role are the exception, by the producer's design: OMITTED
+ * leaves the stored value as it is, `null` (or blank) clears it.
  */
 export async function setBrandSalesRep(
   brandId: string,
-  rep: { salesRepEmail: string | null; salesRepPhone: string | null },
+  rep: {
+    salesRepEmail: string | null;
+    salesRepPhone: string | null;
+    salesRepFirstName?: string | null;
+    salesRepRole?: string | null;
+  },
   token?: string,
 ): Promise<SalesRep> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep`, {
