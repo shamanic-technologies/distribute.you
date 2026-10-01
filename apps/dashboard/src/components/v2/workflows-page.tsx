@@ -10,6 +10,7 @@ import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-swit
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { scopeLadderRows } from "@/lib/workflow-grains";
+import type { WorkflowRankLadderRow } from "@/lib/api";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
@@ -192,24 +193,27 @@ function MissionSection({
     (name: string | null | undefined, slug: string) => shortWorkflowName(name ?? slug, channelName),
     [channelName],
   );
-  // Each grain cell states the price features-service PRICES that grain at (`legOutcome`): mature
-  // where the grain is mature, else its flash price with the cascade floor (a learning workflow's
-  // own spend with no outcome yet). The same figure it ranks on, one format in every cell (owner,
-  // 2026-10-01). An absent grain (never ran at that scope) states nothing. Rows stay in the
-  // producer's rank order (`r.ranked`); nothing is re-sorted here.
+  // Each grain cell states the price features-service HOLDS for the workflow at that grain on
+  // the page's basis (`priceByGrain[grain][basis]`, features-service #1241): its own evidence, or
+  // inherited from the coarser grain by its own cascade. Read, never re-walked here; one format
+  // in every cell (owner, 2026-10-01). Rows stay in the producer's rank order (`r.ranked`).
   const { basis } = useStatBasis();
+  const heldBySlug = useMemo(() => {
+    const m = new Map<string, NonNullable<WorkflowRankLadderRow["priceByGrain"]>>();
+    for (const row of r.ladder?.rows ?? []) {
+      if (row.audienceId !== null || !row.priceByGrain) continue;
+      if (!m.has(row.workflow.workflowDynastySlug)) m.set(row.workflow.workflowDynastySlug, row.priceByGrain);
+    }
+    return m;
+  }, [r.ladder]);
   const rows = useMemo(() => {
     const priced = r.ranked.map((w) => {
-      const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
-      return {
-        w,
-        offer: ladder?.estimatesByGrain.offer?.legOutcome?.costPerOutcomeUsd ?? null,
-        brand: ladder?.estimatesByGrain.brand?.legOutcome?.costPerOutcomeUsd ?? null,
-        global: ladder?.estimatesByGrain.crossOrg?.legOutcome?.costPerOutcomeUsd ?? null,
-      };
+      const held = heldBySlug.get(w.row.workflowDynastySlug);
+      const price = (grain: string) => held?.[grain]?.[basis].costPerOutcomeUsd ?? null;
+      return { w, offer: price("offer"), brand: price("brand"), global: price("crossOrg") };
     });
     return priced;
-  }, [r.ranked, bySlug]);
+  }, [r.ranked, heldBySlug, basis]);
   // The mission's own live figures (its campaign grain + its realized return), with the
   // row that goes first (rank 1) and the producer's recommendation (where the money goes).
   const live = useMemo(() => {

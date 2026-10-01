@@ -78,7 +78,7 @@ describe("how the org pays: a tag, set by staff", () => {
   });
 
   it("reads the mode off the account billing already serves", () => {
-    expect(API).toContain('payment_mode?: "prepaid" | "postpaid";');
+    expect(API).toContain('payment_mode?: "prepaid" | "postpaid" | "subscription";');
     expect(V2).toContain("paymentModeOf(account)");
   });
 });

@@ -148,8 +148,8 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
 
   it("reads the Offer column off the SAME ladder as Brand, never the realized grouped revenue (features-service#1172)", () => {
     expect(list).toContain(">Offer</th>");
-    // each grain states the price features-service prices it at (owner, 2026-10-01)
-    expect(list).toContain("offer: ladder?.estimatesByGrain.offer?.legOutcome?.costPerOutcomeUsd ?? null");
+    // each grain states the price features-service holds for it on the page's basis (#1241)
+    expect(list).toContain('offer: price("offer")');
     // The mature-cohort grouped revenue is a different basis: beside a ladder grain it printed a
     // different number for the same scope on a one-offer brand.
     expect(list).not.toContain("getOfferRevenueByWorkflow(");

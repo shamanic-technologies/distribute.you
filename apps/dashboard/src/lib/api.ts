@@ -7924,7 +7924,28 @@ const WorkflowRankResolvedSchema = z.object({
   conversionRatePct: z.number().nullable(),
 });
 
+/**
+ * ONE PRICE features-service HOLDS for a workflow at one grain on one basis, its cascade
+ * already walked (features-service #1241): `own` evidence, or `inherited` from the nearest
+ * coarser grain (`fromGrain`). Null price ⟺ nothing held (`unpricedReason`). A page reads
+ * this per (grain, basis) and never re-walks the cascade.
+ */
+const HeldPriceSchema = z
+  .object({
+    costPerOutcomeUsd: z.number().nullable(),
+    source: z.string().nullable(),
+    fromGrain: z.string().nullable(),
+    unpricedReason: z.string().nullish(),
+    vendorCostKnown: z.boolean().optional(),
+  })
+  .passthrough();
+
 const WorkflowRankRowSchema = z.object({
+  /** Every grain of the row's cascade priced on BOTH bases. `.optional()`: absent on a
+   *  goal-keyed body and on a body cached before #1241 shipped. */
+  priceByGrain: z
+    .record(z.string(), z.object({ flash: HeldPriceSchema, mature: HeldPriceSchema }).passthrough())
+    .optional(),
   audienceId: z.string().nullable(),
   workflow: z.object({
     workflowDynastySlug: z.string(),
@@ -8252,7 +8273,7 @@ export interface BillingAccount {
    * How this org pays (billing-service `payment_mode`, the customer's explicit choice).
    * Optional because an older billing deploy states none; read through `paymentModeOf`.
    */
-  payment_mode?: "prepaid" | "postpaid";
+  payment_mode?: "prepaid" | "postpaid" | "subscription";
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;
@@ -8337,6 +8358,93 @@ export async function setPaymentMode(
   auto_topup_enabled?: boolean;
 }> {
   return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode } });
+}
+
+// ── Subscription ($99/month, 3-day trial; billing-service v0.81.25, billing#563) ──
+// The landing's `subscription` arm pays through these. The read SETTLES first: right
+// after the checkout returns it flips the org to subscription mode and lands the
+// trial credit (an hourly sweep is billing's backstop).
+
+const SubscriptionSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  trial_end: z.string().nullable(),
+  cancel_at_period_end: z.boolean(),
+  current_period_end: z.string().nullable(),
+  next_charge_at: z.string().nullable(),
+  monthly_amount_cents: z.coerce.number(),
+  currency: z.string(),
+  has_payment_method: z.boolean(),
+  can_raise: z.boolean(),
+  next_raise_monthly_amount_cents: z.coerce.number().nullable(),
+});
+export type Subscription = z.infer<typeof SubscriptionSchema>;
+
+const SubscriptionReadSchema = z.object({
+  org_id: z.string(),
+  payment_mode: z.string().nullish(),
+  subscription: SubscriptionSchema.nullable(),
+  credits_remaining_cents: z.string().nullish(),
+  trial_grant_cents: z.coerce.number().nullish(),
+});
+export type SubscriptionRead = z.infer<typeof SubscriptionReadSchema>;
+
+function parseSubscriptionRead(raw: unknown, where: string): SubscriptionRead {
+  const parsed = SubscriptionReadSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${where}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${where}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+const SubscriptionCheckoutSchema = z.object({
+  mode: z.enum(["embedded", "hosted"]),
+  session_id: z.string(),
+  client_secret: z.string().nullable(),
+  url: z.string().nullable(),
+  trial_days: z.coerce.number().nullable(),
+  monthly_amount_cents: z.coerce.number(),
+  currency: z.string(),
+});
+
+/** Open the hosted Stripe page for the $99/month plan. Refusals are 409 `{ code }`. */
+export async function createSubscriptionCheckout(params: { success_url: string; cancel_url: string }): Promise<string> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/checkout_session", {
+    method: "POST",
+    body: { ui_mode: "hosted", ...params },
+  });
+  const parsed = SubscriptionCheckoutSchema.safeParse(raw);
+  if (!parsed.success || !parsed.data.url) {
+    console.error("[dashboard] createSubscriptionCheckout: response shape mismatch", { raw });
+    throw new Error("[dashboard] createSubscriptionCheckout: invalid response shape");
+  }
+  return parsed.data.url;
+}
+
+export async function getSubscription(token?: string): Promise<SubscriptionRead> {
+  return parseSubscriptionRead(await apiCall<unknown>("/billing/accounts/subscription", { token }), "getSubscription");
+}
+
+/** Raise the monthly amount (ladder 9900 + k x 10000); applies from the next invoice. */
+export async function raiseSubscription(monthly_amount_cents: number): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription", {
+    method: "PATCH",
+    body: { monthly_amount_cents },
+  });
+  return parseSubscriptionRead(raw, "raiseSubscription");
+}
+
+/** Cancel at the end of the period: no further charge. */
+export async function cancelSubscription(): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/cancel", { method: "POST" });
+  return parseSubscriptionRead(raw, "cancelSubscription");
+}
+
+/** Undo a pending cancel. */
+export async function resumeSubscription(): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/resume", { method: "POST" });
+  return parseSubscriptionRead(raw, "resumeSubscription");
 }
 
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
