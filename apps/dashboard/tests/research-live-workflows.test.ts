@@ -171,9 +171,9 @@ describe("research reads nothing scoped to the viewer", () => {
 
 describe("the brand Workflows page states the mission's own live figures", () => {
   it("every Offer/Brand/Global cell states features-service's price for that grain, one format", () => {
-    expect(page).toContain("offer: ladder?.estimatesByGrain.offer?.legOutcome?.costPerOutcomeUsd ?? null");
-    expect(page).toContain("brand: ladder?.estimatesByGrain.brand?.legOutcome?.costPerOutcomeUsd ?? null");
-    expect(page).toContain("global: ladder?.estimatesByGrain.crossOrg?.legOutcome?.costPerOutcomeUsd ?? null");
+    // The price features-service HOLDS per (grain, basis), cascade already walked (#1241).
+    expect(page).toContain("held?.[grain]?.[basis].costPerOutcomeUsd ?? null");
+    expect(page).toContain('offer: price("offer"), brand: price("brand"), global: price("crossOrg")');
     const cost = page.slice(page.indexOf("function CostCell("));
     expect(cost).not.toContain("spent,");
     expect(cost).not.toContain("Learning");
