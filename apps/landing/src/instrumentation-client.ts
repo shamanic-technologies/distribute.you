@@ -1,5 +1,7 @@
 import posthog from "posthog-js";
 
+import { dropVendorNoise } from "./lib/posthog-before-send";
+
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
@@ -18,6 +20,8 @@ if (posthogToken) {
       capture_unhandled_rejections: true,
       capture_console_errors: false,
     },
+    // A blocked Partnero script is not our crash (lib/posthog-before-send.ts).
+    before_send: dropVendorNoise,
   });
   // The release every event (exceptions included) was captured on. Written into
   // the build env by the box's deploy script; absent in a local build.
