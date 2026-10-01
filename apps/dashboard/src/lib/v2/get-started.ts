@@ -430,18 +430,6 @@ export interface GetStartedAudience {
   description: string;
 }
 
-/** A company's size as a short figure ("27", "1.2K"), or null when Apollo gave none. */
-export function employeesLabel(n: number | null | undefined): string | null {
-  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
-  return compactCount(n);
-}
-
-/** How many of the 5 size dots a company fills: 1 person, 10, 50, 250, 1000+. */
-export function sizeDots(n: number | null | undefined): number {
-  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return 0;
-  return n >= 1000 ? 5 : n >= 250 ? 4 : n >= 50 ? 3 : n >= 10 ? 2 : 1;
-}
-
 // ── The stage: which step is on screen ────────────────────────────────────────
 
 /**
