@@ -152,6 +152,86 @@ export const SentPerPeriodSchema = z.object({
 export type SentPerPeriod = z.infer<typeof SentPerPeriodSchema>;
 export type SentPeriod = SentPerPeriod["periods"][number];
 
+/**
+ * costs-service's price of ONE cold email sent to a lead (owner formula, 2026-10-01): everything
+ * ever paid to the email-infrastructure vendors (read from the bank ledger) over every email ever
+ * sent to a lead (instantly-service), recomputed daily and kept as a dense per-day history.
+ * Spend is NET (paid minus refunded; a refund day can be negative), gross served beside it.
+ * Display only: no billed price reads it. Every figure, ratio and running total is the
+ * producer's; prices are null over zero emails or a negative net spend, never 0.
+ */
+const Usd = z.number();
+const PriceCents = z.number().nullable();
+export const EmailSendPriceSchema = z.object({
+  formula: z.string(),
+  asOf: z.string(),
+  refreshedAt: z.string(),
+  stale: z.boolean(),
+  lastRefresh: z
+    .object({
+      status: z.enum(["running", "succeeded", "failed"]),
+      asOf: z.string(),
+      startedAt: z.string(),
+      finishedAt: z.string().nullable(),
+      error: z.string().nullable(),
+    })
+    .nullable(),
+  currentPriceUsdCents: PriceCents,
+  currentGrossPriceUsdCents: PriceCents,
+  currentMonthPriceUsdCents: PriceCents,
+  totals: z.object({ spendUsd: Usd, paidUsd: Usd, refundedUsd: Usd, emailsToLeads: z.number() }),
+  firstPaymentOn: z.string().nullable(),
+  firstSendOn: z.string().nullable(),
+  vendors: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      what: z.string(),
+      firstPaidOn: z.string().nullable(),
+      lastPaidOn: z.string().nullable(),
+      payments: z.number(),
+      refunds: z.number(),
+      paidUsd: Usd,
+      refundedUsd: Usd,
+      netUsd: Usd,
+    }),
+  ),
+  excludedVendors: z.array(z.object({ key: z.string(), reason: z.string() })),
+  monthly: z.array(
+    z.object({
+      month: z.string(),
+      spendUsd: Usd,
+      spendByVendorUsd: z.record(z.string(), Usd),
+      paidUsd: Usd,
+      refundedUsd: Usd,
+      emailsToLeads: z.number(),
+      monthPriceUsdCents: PriceCents,
+      cumulativeSpendUsd: Usd,
+      cumulativeEmailsToLeads: z.number(),
+      priceUsdCents: PriceCents,
+      cumulativePaidUsd: Usd,
+      grossPriceUsdCents: PriceCents,
+    }),
+  ),
+  daily: z.array(
+    z.object({
+      day: z.string(),
+      spendUsd: Usd,
+      emailsToLeads: z.number(),
+      cumulativeSpendUsd: Usd,
+      cumulativeEmailsToLeads: z.number(),
+      priceUsdCents: PriceCents,
+      cumulativePaidUsd: Usd,
+      grossPriceUsdCents: PriceCents,
+      monthToDateSpendUsd: Usd,
+      monthToDateEmailsToLeads: z.number(),
+      monthPriceUsdCents: PriceCents,
+    }),
+  ),
+});
+export type EmailSendPrice = z.infer<typeof EmailSendPriceSchema>;
+export type EmailSendPriceDay = EmailSendPrice["daily"][number];
+
 /** Every price version of one cost item, oldest first. */
 export function versionsOf(versions: PriceVersion[], name: string): PriceVersion[] {
   return versions
@@ -189,7 +269,7 @@ export type MonitoringView =
   | { view: "page"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "price/billed", "price/current", "price/history", "margin", "emails"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "price/billed", "price/current", "price/history", "price/email-sending", "margin", "emails"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 export function parseMonitoringPath(rest: string): MonitoringView {

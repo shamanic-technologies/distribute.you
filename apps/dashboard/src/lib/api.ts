@@ -25,6 +25,8 @@ import {
   SentPerPeriodSchema,
   type SentGrain,
   type SentPerPeriod,
+  EmailSendPriceSchema,
+  type EmailSendPrice,
 } from "./monitoring/monitoring";
 import {
   LeadBucketCountsSchema,
@@ -1422,6 +1424,7 @@ export const STAFF_MONITORING_PATHS = {
   marginTimeseries: "/runs/stats/costs/margin/timeseries",
   providerSources: "/costs/provider-payment-sources",
   sentPerPeriod: "/instantly/ops/sent-per-period",
+  emailSendPrice: "/costs/email-send-price",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -1463,6 +1466,11 @@ export async function getStaffSentPerPeriod(grain: SentGrain): Promise<SentPerPe
 
 export async function getStaffProviderSources(): Promise<ProviderSourcesRow[]> {
   return parseStaff("getStaffProviderSources", ProviderSourcesListSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.providerSources)).providers;
+}
+
+/** The price of one cold email sent to a lead, per day since the first payment (costs-service, daily). */
+export async function getStaffEmailSendPrice(): Promise<EmailSendPrice> {
+  return parseStaff("getStaffEmailSendPrice", EmailSendPriceSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.emailSendPrice));
 }
 
 // Brands

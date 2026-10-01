@@ -10,6 +10,7 @@ import {
   ProviderSourcesListSchema,
   SentPerPeriodSchema,
   PriceVersionsSchema,
+  EmailSendPriceSchema,
   costItemNames,
   parseMonitoringPath,
   versionInForce,
@@ -264,5 +265,79 @@ describe("monitoring: emails per period", () => {
   });
   it("reads through the staff gateway path", () => {
     expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.sentPerPeriod");
+  });
+});
+
+describe("monitoring: price of one cold email (owner formula 2026-10-01)", () => {
+  const day = (d: string, over: Record<string, unknown> = {}) => ({
+    day: d,
+    spendUsd: 0,
+    emailsToLeads: 0,
+    cumulativeSpendUsd: 62.42,
+    cumulativeEmailsToLeads: 0,
+    priceUsdCents: null,
+    cumulativePaidUsd: 62.42,
+    grossPriceUsdCents: null,
+    monthToDateSpendUsd: 62.42,
+    monthToDateEmailsToLeads: 0,
+    monthPriceUsdCents: null,
+    ...over,
+  });
+  const body = {
+    formula: "net paid to email-infrastructure vendors since inception / emails sent to leads since inception",
+    asOf: "2026-10-01",
+    refreshedAt: "2026-10-01T14:10:00.000Z",
+    stale: false,
+    lastRefresh: { status: "succeeded", asOf: "2026-10-01", startedAt: "2026-10-01T14:09:58.000Z", finishedAt: "2026-10-01T14:10:00.000Z", error: null },
+    currentPriceUsdCents: 3.06,
+    currentGrossPriceUsdCents: 3.34,
+    currentMonthPriceUsdCents: null,
+    totals: { spendUsd: 4775.1, paidUsd: 5204.3, refundedUsd: 429.2, emailsToLeads: 155907 },
+    firstPaymentOn: "2026-01-27",
+    firstSendOn: "2026-02-19",
+    vendors: [
+      { key: "instantly", label: "Instantly", what: "Sending platform", firstPaidOn: "2026-02-05", lastPaidOn: "2026-09-16", payments: 23, refunds: 0, paidUsd: 2456.1, refundedUsd: 0, netUsd: 2456.1 },
+      { key: "forge", label: "Forge", what: "Mailboxes", firstPaidOn: "2026-06-26", lastPaidOn: "2026-09-29", payments: 19, refunds: 3, paidUsd: 2259.2, refundedUsd: 429.2, netUsd: 1830 },
+    ],
+    excludedVendors: [{ key: "google workspace", reason: "personal and press mailboxes, not cold-email infrastructure" }],
+    monthly: [
+      { month: "2026-01", spendUsd: 62.42, spendByVendorUsd: { "gandi order": 62.42 }, paidUsd: 62.42, refundedUsd: 0, emailsToLeads: 0, monthPriceUsdCents: null, cumulativeSpendUsd: 62.42, cumulativeEmailsToLeads: 0, priceUsdCents: null, cumulativePaidUsd: 62.42, grossPriceUsdCents: null },
+      { month: "2026-09", spendUsd: 900.5, spendByVendorUsd: { forge: -120, instantly: 1020.5 }, paidUsd: 1450, refundedUsd: 549.5, emailsToLeads: 40066, monthPriceUsdCents: 2.25, cumulativeSpendUsd: 4775.1, cumulativeEmailsToLeads: 155085, priceUsdCents: 3.08, cumulativePaidUsd: 5204.3, grossPriceUsdCents: 3.36 },
+    ],
+    daily: [day("2026-01-27"), day("2026-10-01", { spendUsd: -12.5, emailsToLeads: 822, priceUsdCents: 3.06, grossPriceUsdCents: 3.34 })],
+  };
+
+  it("costs-service's series parses: net beside gross, prices null over zero emails, a negative refund day kept", () => {
+    const p = EmailSendPriceSchema.parse(body);
+    expect(p.currentPriceUsdCents).toBe(3.06);
+    expect(p.currentGrossPriceUsdCents).toBe(3.34);
+    expect(p.daily[0].priceUsdCents).toBeNull();
+    expect(p.daily[1].spendUsd).toBe(-12.5);
+    expect(p.monthly[1].spendByVendorUsd.forge).toBe(-120);
+    expect(EmailSendPriceSchema.safeParse({ ...body, lastRefresh: null, stale: true }).success).toBe(true);
+  });
+
+  it("is a Price card and its own page, read through the staff gateway, never written to disk", () => {
+    expect(MONITORING_PAGES).toContain("price/email-sending");
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('<Section section="price" count={4}>');
+    expect(page).toContain('page="price/email-sending"');
+    expect(page).toContain('{view.page === "price/email-sending" && <EmailSendingPage />}');
+    expect(page).toContain('["staffEmailSendPrice"]');
+    expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.emailSendPrice");
+    const persist = read("lib/persist-cache.ts");
+    expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffEmailSendPrice"');
+  });
+
+  it("the page draws the producer's prices and never divides spend by emails itself", () => {
+    const view = read("components/v2/monitoring-email-price.tsx");
+    expect(view).not.toMatch(/[sS]pend\w*Usd\s*\//);
+    expect(view).not.toMatch(/\/\s*[\w.]*[eE]mailsToLeads/);
+    for (const k of ["priceUsdCents", "grossPriceUsdCents"]) expect(view).toContain(`key: "${k}"`);
+  });
+
+  it("carries the owner's anatomy: price chart, spend per vendor, monthly table, vendors, timeline, billed before", () => {
+    const view = read("components/v2/monitoring-email-price.tsx");
+    for (const s of ["<PriceChart", "<SpendChart", "<MonthlyTable", "<VendorsTable", "<Timeline", "<BilledBefore"]) expect(view).toContain(s);
   });
 });

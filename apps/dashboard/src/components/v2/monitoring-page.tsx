@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailsSent, getStaffPriceVersions } from "@/lib/api";
+import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts } from "@/components/v2/monitoring-emails";
+import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -49,6 +50,9 @@ function useCurrentPrices() {
 function useEmails() {
   return useAuthQuery(["staffEmailsSent"], getStaffEmailsSent, ONCE);
 }
+function useEmailSendPrice() {
+  return useAuthQuery(["staffEmailSendPrice"], getStaffEmailSendPrice, ONCE);
+}
 
 // ─── Formatting only ───────────────────────────────────────────────────────
 
@@ -64,6 +68,8 @@ function unitUsd(cents: number | null): string | null {
 const markup = (m: number | null) => (m == null ? null : `×${m.toLocaleString("en-US", { maximumFractionDigits: 3 })}`);
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 const providerName = (p: string | null) => p ?? "Unknown provider";
+/** A price per email in US cents, "3.06¢"; null stays null (no email yet). */
+const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}¢`);
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
@@ -83,6 +89,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "price/billed": { section: "price", title: "Billed to users", question: "How much did we bill our users since inception?" },
   "price/current": { section: "price", title: "Current prices", question: "How much are we pricing each cost item right now?" },
   "price/history": { section: "price", title: "Prices since inception", question: "How has each cost item been priced since inception?" },
+  "price/email-sending": { section: "price", title: "Email sending", question: "What does sending one cold email really cost us?" },
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
   emails: { section: "emails", title: "Emails", question: "How many emails have we sent since inception?" },
 };
@@ -148,6 +155,7 @@ export function V2Monitoring() {
         {view.page === "price/billed" && <BilledPage />}
         {view.page === "price/current" && <CurrentPricesPage />}
         {view.page === "price/history" && <PriceHistoryPage />}
+        {view.page === "price/email-sending" && <EmailSendingPage />}
         {view.page === "margin" && <MarginPage />}
         {view.page === "emails" && <EmailsPage />}
       </div>
@@ -214,6 +222,8 @@ function Hub({ base }: { base: string }) {
   const versions = useVersions();
   const prices = useCurrentPrices();
   const emails = useEmails();
+  const sendPrice = useEmailSendPrice();
+  const sp = sendPrice.data;
   const m = margin.data;
   const t = m?.total;
   const href = (p: MonitoringPage) => `${base}/${p}`;
@@ -258,7 +268,7 @@ function Hub({ base }: { base: string }) {
         />
       </Section>
 
-      <Section section="price" count={3}>
+      <Section section="price" count={4}>
         <Card
           href={href("price/billed")}
           page="price/billed"
@@ -284,6 +294,20 @@ function Hub({ base }: { base: string }) {
           cells={[
             { label: "Price versions", value: versions.data?.length, note: "since the first" },
             { label: "Cost items", value: items, note: "with a history" },
+          ]}
+        />
+        <Card
+          href={href("price/email-sending")}
+          page="price/email-sending"
+          error={sendPrice.isError}
+          cells={[
+            {
+              label: "Per email",
+              value: sp === undefined ? undefined : centsPerEmail(sp.currentPriceUsdCents),
+              note: sp ? `as of ${day(sp.asOf)}` : undefined,
+              bars: sp?.monthly.slice(-7).map((mo) => mo.priceUsdCents ?? 0),
+            },
+            { label: "Emails to leads", value: sp?.totals.emailsToLeads.toLocaleString("en-US"), note: sp ? `${usd(sp.totals.spendUsd * 100)} infra spend, net` : undefined },
           ]}
         />
       </Section>
@@ -638,6 +662,12 @@ function VersionsTable({ versions }: { versions: PriceVersion[] }) {
 }
 
 // ─── Margin ────────────────────────────────────────────────────────────────
+
+function EmailSendingPage() {
+  const price = useEmailSendPrice();
+  const versions = useVersions();
+  return <Loaded q={price}>{(p) => <EmailPriceView p={p} versions={versions.data} />}</Loaded>;
+}
 
 function MarginPage() {
   const margin = useMargin();
