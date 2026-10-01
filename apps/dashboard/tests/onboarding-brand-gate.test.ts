@@ -77,7 +77,7 @@ describe("DIS-111 drops per-request currentUser() in the API proxy", () => {
     expect(apiProxyRoute).not.toContain("await currentUser");
     expect(apiProxyRoute).not.toMatch(/import\s*\{[^}]*currentUser/);
     expect(apiProxyRoute).toContain("sessionClaims?.email");
-    expect(apiProxyRoute).toContain('headers["x-email"]');
+    expect(apiProxyRoute).toContain('setIdentityHeader(headers, "x-email", sessionClaims?.email)');
   });
 });
 

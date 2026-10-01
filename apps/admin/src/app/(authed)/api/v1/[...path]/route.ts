@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { setIdentityHeader } from "@/lib/identity-header";
 import { checkProxyOrg } from "@/lib/proxy-org";
 import { getOrgName } from "@/lib/org-name";
 
@@ -75,9 +76,9 @@ async function proxyRequest(
     // Identity-enrichment headers read from the session-token claims (DIS-111)
     // instead of a per-request currentUser() round-trip to Clerk. The claims are
     // `{{user.primary_email_address}}` / `{{user.first_name}}` / `{{user.last_name}}`.
-    if (sessionClaims?.email) headers["x-email"] = sessionClaims.email;
-    if (sessionClaims?.firstName) headers["x-first-name"] = sessionClaims.firstName;
-    if (sessionClaims?.lastName) headers["x-last-name"] = sessionClaims.lastName;
+    setIdentityHeader(headers, "x-email", sessionClaims?.email);
+    setIdentityHeader(headers, "x-first-name", sessionClaims?.firstName);
+    setIdentityHeader(headers, "x-last-name", sessionClaims?.lastName);
 
     // The org slug IS the org's referral/invite code, and client-service self-heals
     // it on resolve (writes only when the stored slug is NULL, never overwrites) —
@@ -91,7 +92,7 @@ async function proxyRequest(
     // The org's display name, verbatim, so client-service records it (GET /v1/me
     // names the org a key acts in). Absent when Clerk has none.
     const clerkOrgName = await getOrgName(clerkOrgId);
-    if (clerkOrgName) headers["x-org-name"] = clerkOrgName;
+    setIdentityHeader(headers, "x-org-name", clerkOrgName);
 
     // For multipart, stream the body through untouched (no Content-Length →
     // chunked). Buffering it would set a Content-Length the downstream gateway

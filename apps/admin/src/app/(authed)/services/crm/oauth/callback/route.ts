@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { setIdentityHeader } from "@/lib/identity-header";
 import { getOrgName } from "@/lib/org-name";
 
 const API_URL =
@@ -59,14 +60,14 @@ export async function GET(req: NextRequest) {
   // stored slug is the org's referral invite code.
   if (orgSlug) headers["x-org-slug"] = orgSlug;
   const orgName = await getOrgName(orgId);
-  if (orgName) headers["x-org-name"] = orgName;
+  setIdentityHeader(headers, "x-org-name", orgName);
 
   const user = await currentUser();
   if (user) {
     const email = user.emailAddresses?.[0]?.emailAddress;
-    if (email) headers["x-email"] = email;
-    if (user.firstName) headers["x-first-name"] = user.firstName;
-    if (user.lastName) headers["x-last-name"] = user.lastName;
+    setIdentityHeader(headers, "x-email", email);
+    setIdentityHeader(headers, "x-first-name", user.firstName);
+    setIdentityHeader(headers, "x-last-name", user.lastName);
   }
 
   const target = new URL("/v1/orgs/google/auth/callback", API_URL);

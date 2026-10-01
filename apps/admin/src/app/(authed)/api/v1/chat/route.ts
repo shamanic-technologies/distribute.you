@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { setIdentityHeader } from "@/lib/identity-header";
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -78,16 +79,16 @@ export async function POST(req: NextRequest) {
   // The org's display name, verbatim, so client-service records it (GET /v1/me
   // names the org a key acts in). Absent when Clerk has none.
   const clerkOrgName = await getOrgName(clerkOrgId);
-  if (clerkOrgName) headers["x-org-name"] = clerkOrgName;
+  setIdentityHeader(headers, "x-org-name", clerkOrgName);
 
   // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
   try {
     const user = await currentUser();
     if (user) {
       const email = user.emailAddresses?.[0]?.emailAddress;
-      if (email) headers["x-email"] = email;
-      if (user.firstName) headers["x-first-name"] = user.firstName;
-      if (user.lastName) headers["x-last-name"] = user.lastName;
+      setIdentityHeader(headers, "x-email", email);
+      setIdentityHeader(headers, "x-first-name", user.firstName);
+      setIdentityHeader(headers, "x-last-name", user.lastName);
     }
   } catch (err) {
     console.warn("[chat-proxy] currentUser() failed, continuing without user details:", err);
