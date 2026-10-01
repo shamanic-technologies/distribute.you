@@ -31,6 +31,7 @@ export function OfferSalesPaths({
   highlightLabel = "What we launch first",
   intro = "Every way the ticked legs reach a paying client, best return first. Open one to see why.",
   bare = false,
+  gainHeadline = false,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
@@ -43,6 +44,11 @@ export function OfferSalesPaths({
   intro?: string;
   /** No section title and no intro line (the onboarding states its own question). */
   bare?: boolean;
+  /**
+   * A row headlines the gain (return and lifetime revenue), never a cost: a selling
+   * surface (the onboarding) talks gain, and the cost stays in the detail a row opens.
+   */
+  gainHeadline?: boolean;
   /** When given, each leg between two steps takes a typed rate (whole percent) or null to clear it. */
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   /** When given, the lifetime revenue in a path's detail is editable (whole dollars). */
@@ -73,6 +79,7 @@ export function OfferSalesPaths({
               open={open === p.pathKey}
               onToggle={() => setOpen(open === p.pathKey ? null : p.pathKey)}
               highlight={p.pathKey === highlightPathKey ? highlightLabel : null}
+              gainHeadline={gainHeadline}
               onStateRate={onStateRate}
               onStateLifetimeRevenue={onStateLifetimeRevenue}
             />
@@ -88,6 +95,7 @@ function PathRow({
   open,
   onToggle,
   highlight,
+  gainHeadline,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
@@ -95,6 +103,7 @@ function PathRow({
   open: boolean;
   onToggle: () => void;
   highlight: string | null;
+  gainHeadline: boolean;
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
@@ -115,13 +124,13 @@ function PathRow({
         <span className="k-fg3 w-6 shrink-0 text-[12px] tabular-nums">#{path.rank}</span>
         <span className="min-w-0 flex-1 text-[13px] font-medium">{pathTitle(path)}</span>
         <span className="k-fg2 text-[12px] tabular-nums">
-          {usd(path.costPerPayingClientUsd)} per paying client
+          {gainHeadline ? `${usd(path.lifetimeRevenueUsd)} per client won` : `${usd(path.costPerPayingClientUsd)} per paying client`}
         </span>
         <span
-          className={`w-16 text-right text-[13px] font-semibold tabular-nums ${roiIsGood(path.roi) ? "text-[var(--run)]" : ""}`}
+          className={`${gainHeadline ? "min-w-16" : "w-16"} text-right text-[13px] font-semibold tabular-nums ${roiIsGood(path.roi) ? "text-[var(--run)]" : ""}`}
           title={unavailable ?? undefined}
         >
-          {path.roi == null ? formatRoi(path.roi) : `${formatRoi(path.roi)} ROI`}
+          {path.roi == null ? formatRoi(path.roi) : gainHeadline ? `${formatRoi(path.roi)} return` : `${formatRoi(path.roi)} ROI`}
         </span>
       </button>
       {open && <PathBreakdown path={path} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />}

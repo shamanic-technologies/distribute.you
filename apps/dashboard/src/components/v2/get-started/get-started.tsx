@@ -85,6 +85,7 @@ import {
   stepIndex,
   PREWRITTEN_EMAILS,
   canWriteAnother,
+  countryFlag,
   emailPieces,
   employeesLabel,
   highlightKindLabel,
@@ -2036,7 +2037,7 @@ function PathsStage({
   return (
     <StepCard
       index={stepIndex("paths") + 1}
-      title="Where your money goes"
+      title="Your most profitable opportunity"
       state={state}
       meta={<StateWord state={state} />}
       footer={
@@ -2054,19 +2055,21 @@ function PathsStage({
         <OptionSkeleton />
       ) : (
         <>
-          <p className="k-fg2 mb-3 text-[13px] leading-5">Your budget goes to the framed path first.</p>
+          <p className="k-fg2 mb-3 text-[13px] leading-5">We start with the framed path, the most profitable one we run for you.</p>
           <OfferSalesPaths
             data={data ?? undefined}
             pending={(loading || state === "running") && !data}
             failed={failed}
             highlightPathKey={highlightPathKey}
+            highlightLabel="Most profitable we run, launched first"
+            gainHeadline
             intro=""
             bare
             onStateRate={done ? undefined : onStateRate}
             onStateLifetimeRevenue={done ? undefined : onStateLifetimeRevenue}
           />
           <p className="k-fg3 mt-3 text-[12px] leading-5">
-            This ranking comes from your conversion rates and moves as your results come in.
+            Ranked by return, from your conversion rates. It moves as your results come in.
           </p>
           {failed && (
             <button type="button" className="k-btn mt-2 h-8 px-3" onClick={onRetry}>
@@ -2530,12 +2533,11 @@ function CompaniesStage({
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[860px] text-[13px]">
+            <table className="w-full min-w-[760px] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className="k-label px-3 py-2.5 text-left font-normal first:pl-4">Company</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal">Description</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Location</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal">Size</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal">We write to</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal last:pr-4">Email</th>
@@ -2544,6 +2546,7 @@ function CompaniesStage({
               <tbody>
                 {rows.map((r, i) => {
                   const name = r.person.firstName ?? "";
+                  const country = countryFlag(r.company.country);
                   return (
                     <tr
                       key={r.index}
@@ -2564,16 +2567,23 @@ function CompaniesStage({
                           <BrandLogo domain={r.company.domain} size={20} className="shrink-0 rounded-md" />
                           <span className="min-w-0">
                             <span className="k-fg block max-w-[200px] truncate font-medium">{r.company.name}</span>
-                            {r.company.domain && <span className="k-fg3 k-mono block max-w-[200px] truncate text-[12px]">{r.company.domain}</span>}
+                            {country && (
+                              <span className="k-fg2 flex max-w-[220px] items-center gap-1.5 text-[12px]">
+                                {country.flag && (
+                                  <span className="text-[14px] leading-none" aria-hidden="true">
+                                    {country.flag}
+                                  </span>
+                                )}
+                                <span className="truncate">{country.name}</span>
+                              </span>
+                            )}
+                            {r.company.domain && <span className="k-fg3 k-mono block max-w-[220px] truncate text-[12px]">{r.company.domain}</span>}
                           </span>
                         </span>
                       </td>
                       <td className="k-fg2 px-3 py-2">
                         {r.company.description ? <span className="line-clamp-2 max-w-[280px] text-[12.5px] leading-5">{r.company.description}</span> : <span className="k-fg4">{"—"}</span>}
                         {r.company.industry && <span className="k-fg3 mt-0.5 block max-w-[280px] truncate text-[11.5px] capitalize">{r.company.industry}</span>}
-                      </td>
-                      <td className="k-fg2 px-3 py-2">
-                        <span className="block max-w-[170px] truncate">{r.company.location ?? r.company.country ?? <span className="k-fg4">{"—"}</span>}</span>
                       </td>
                       <td className="k-fg2 px-3 py-2">
                         <SizeCell count={r.company.employeeCount} />
@@ -2600,7 +2610,7 @@ function CompaniesStage({
                 {loadingMore &&
                   [0, 1, 2].map((i) => (
                     <tr key={`more-${i}`}>
-                      <td colSpan={6} className="px-4 py-2.5">
+                      <td colSpan={5} className="px-4 py-2.5">
                         <Shimmer className="h-5" />
                       </td>
                     </tr>
