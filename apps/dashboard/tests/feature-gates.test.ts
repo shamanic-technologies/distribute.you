@@ -48,7 +48,6 @@ describe("no alpha gating in the dashboard", () => {
       "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows",
       "app/(authed)/(dashboard)/workflows",
       "app/(authed)/(dashboard)/orgs/[orgId]/services",
-      "app/(authed)/services",
       // NOT `components/workflows`: the campaign-level Workflows surface lives
       // there and is gated on the EMAIL allowlist, which actually evaluates. What
       // was deleted is the ALPHA-gated BRAND workflow editor, whose routes are
@@ -56,6 +55,17 @@ describe("no alpha gating in the dashboard", () => {
     ]) {
       expect(fs.existsSync(path.join(__dirname, "../src", dead)), dead).toBe(false);
     }
+  });
+
+  it("keeps only the Google OAuth callback under the old services tree", () => {
+    // The alpha services surface is gone. One path under it is not ours to move:
+    // `/services/crm/oauth/callback` is the redirect URI registered on the Google
+    // OAuth client, so the Gmail connect round trip must land exactly there.
+    const root = path.join(__dirname, "../src/app/(authed)/services");
+    const files = (fs.readdirSync(root, { recursive: true }) as string[])
+      .filter((f) => fs.statSync(path.join(root, f)).isFile())
+      .map((f) => f.split(path.sep).join("/"));
+    expect(files).toEqual(["crm/oauth/callback/page.tsx"]);
   });
 });
 

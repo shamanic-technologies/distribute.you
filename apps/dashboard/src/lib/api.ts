@@ -649,6 +649,64 @@ export async function disconnectCrm(
   );
 }
 
+// ==================== GMAIL (google-service), per organization ====================
+//
+// The mailbox is connected by a Google sign-in round trip google-service owns (see
+// `lib/google-connect.ts`). Read-only Gmail scopes; nothing here sends mail.
+
+const GoogleAccountSchema = z.object({
+  email: z.string(),
+  // A plain string: the producer owns this vocabulary ("active" | "gmail_unavailable" today).
+  status: z.string(),
+  gmailUnavailableReason: z.string().nullable(),
+  connectedAt: z.string(),
+});
+
+export type GoogleAccount = z.infer<typeof GoogleAccountSchema>;
+
+/** The org's connected mailboxes and their health. Empty when none. */
+export async function listGoogleAccounts(token?: string): Promise<{ accounts: GoogleAccount[] }> {
+  const raw = await apiCall<unknown>(`/orgs/google/accounts`, { token });
+  const parsed = z.object({ accounts: z.array(GoogleAccountSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listGoogleAccounts response shape mismatch", parsed.error.flatten());
+    throw new Error("listGoogleAccounts returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Start the Google sign-in; returns the URL to send the browser to. */
+export async function startGoogleConnect(redirectUri: string, token?: string): Promise<{ url: string }> {
+  const raw = await apiCall<unknown>(`/orgs/google/auth/start`, { token, method: "POST", body: { redirectUri } });
+  const parsed = z.object({ url: z.string().url() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] startGoogleConnect response shape mismatch", parsed.error.flatten());
+    throw new Error("startGoogleConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Relay Google's code + state; google-service stores the mailbox and starts its sync. */
+export async function finishGoogleConnect(
+  code: string,
+  state: string,
+  token?: string,
+): Promise<{ googleAccountEmail: string }> {
+  const qs = new URLSearchParams({ code, state });
+  const raw = await apiCall<unknown>(`/orgs/google/auth/callback?${qs.toString()}`, { token });
+  const parsed = z.object({ googleAccountEmail: z.string() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] finishGoogleConnect response shape mismatch", parsed.error.flatten());
+    throw new Error("finishGoogleConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Disconnect a mailbox: stops the sync, drops its mirror, revokes the grant at Google. */
+export async function disconnectGoogleAccount(email: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/google/accounts/${encodeURIComponent(email)}`, { token, method: "DELETE" });
+}
+
 // ==================== POSTHOG + STRIPE, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the
