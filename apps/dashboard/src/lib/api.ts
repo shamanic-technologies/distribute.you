@@ -22,6 +22,9 @@ import {
   ProviderSourcesListSchema,
   type MarginTimeseries,
   type ProviderSourcesRow,
+  SentPerPeriodSchema,
+  type SentGrain,
+  type SentPerPeriod,
 } from "./monitoring/monitoring";
 import {
   LeadBucketCountsSchema,
@@ -1418,6 +1421,7 @@ export const STAFF_MONITORING_PATHS = {
   emails: "/instantly/stats",
   marginTimeseries: "/runs/stats/costs/margin/timeseries",
   providerSources: "/costs/provider-payment-sources",
+  sentPerPeriod: "/instantly/ops/sent-per-period",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -1450,6 +1454,11 @@ export async function getStaffEmailsSent(): Promise<{ emails: number; people: nu
 // Per provider per month (runs-service) and the accounts paying each vendor (costs-service).
 export async function getStaffMarginTimeseries(): Promise<MarginTimeseries> {
   return parseStaff("getStaffMarginTimeseries", MarginTimeseriesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.marginTimeseries));
+}
+
+/** Emails sent per day/week/month by purpose (instantly-service), to leads apart from our own mail. */
+export async function getStaffSentPerPeriod(grain: SentGrain): Promise<SentPerPeriod> {
+  return parseStaff("getStaffSentPerPeriod", SentPerPeriodSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.sentPerPeriod}?grain=${grain}`));
 }
 
 export async function getStaffProviderSources(): Promise<ProviderSourcesRow[]> {

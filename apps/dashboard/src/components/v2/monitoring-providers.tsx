@@ -11,7 +11,8 @@ import {
   versionsOf,
   type CostMargin,
   type CurrentPrice,
-  type PaymentSource,
+  type PaidFrom,
+  type ProviderSourcesRow,
   type PriceVersion,
   type ProviderMargin,
 } from "@/lib/monitoring/monitoring";
@@ -38,7 +39,7 @@ const unitUsd = (cents: number | null) => {
   return `$${v.toLocaleString("en-US", v >= 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumSignificantDigits: 4 })}`;
 };
 const markup = (m: number | null) => (m == null ? null : `×${m.toLocaleString("en-US", { maximumFractionDigits: 3 })}`);
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 const providerName = (p: string | null) => p ?? "Unknown provider";
 const dash = <span className="k-fg4">{"—"}</span>;
 
@@ -117,7 +118,7 @@ export function ProvidersTable({
   // (the current-price list only covers what is billed today).
   const domainOf = (p: string | null) => (p ? (sources.data?.find((s) => s.provider === p)?.providerDomain ?? null) : null);
   const itemsOf = (p: string | null) => (p && versions ? new Set(versions.filter((v) => v.provider === p).map((v) => v.name)).size : null);
-  const sourcesOf = (p: string | null) => (p ? (sources.data?.find((s) => s.provider === p)?.sources ?? []) : []);
+  const sourcesOf = (p: string | null) => (p ? (sources.data?.find((s) => s.provider === p) ?? null) : null);
 
   // J/K move the highlighted row, Enter opens it. Keys never fire while typing, on a focused
   // control (its own Enter belongs to it), or while the drawer is open (it owns the keys).
@@ -177,7 +178,7 @@ export function ProvidersTable({
                       </span>
                     </td>
                     <td className={`${TD} whitespace-nowrap`}>
-                      <SourceTags sources={sourcesOf(r.provider)} loading={sources.data === undefined && !sources.isError} error={sources.isError} />
+                      <SourceTags row={sourcesOf(r.provider)} loading={sources.data === undefined && !sources.isError} error={sources.isError} />
                     </td>
                     {columns.map((c) => (
                       <td key={c} className={`${TDR} ${COLUMN[c].wide ? "hidden 2xl:table-cell" : ""} ${c === "items" ? "k-fg2" : ""}`}>
@@ -230,20 +231,48 @@ function LogoSlot({ domain, size }: { domain: string | null; size: number }) {
   );
 }
 
-/** The accounts paying a vendor, as tags with their logo. */
-function SourceTags({ sources, loading, error }: { sources: PaymentSource[]; loading: boolean; error: boolean }) {
+/**
+ * The accounts paying a vendor, read from the bank ledger, as tags with their bank's logo.
+ * A provider the ledger cannot match says so: an empty cell would read as "nobody pays it".
+ */
+function SourceTags({ row, loading, error }: { row: ProviderSourcesRow | null; loading: boolean; error: boolean }) {
   if (error) return <span className="k-fg3 text-[12px]">not readable</span>;
   if (loading) return <Shimmer className="h-4 w-24" />;
-  if (!sources.length) return dash;
+  if (!row) return dash;
+  if (row.match === "unmatched") return <span className="text-[12px] text-[var(--data-rose)]">Not found in the bank</span>;
+  if (!row.paidFrom.length) return dash;
   return (
     <span className="flex gap-1">
-      {sources.map((s) => (
-        <span key={s.key} className="k-chip inline-flex items-center gap-1.5 whitespace-nowrap text-[12px]">
-          <ProviderLogo domain={s.domain} size={12} className="rounded-[3px]" />
-          {s.displayName}
+      {row.paidFrom.map((a) => (
+        <span key={a.accountId} className="k-chip inline-flex items-center gap-1.5 whitespace-nowrap text-[12px]">
+          <ProviderLogo domain={a.institutionDomain} size={12} className="rounded-[3px]" />
+          {a.label}
         </span>
       ))}
     </span>
+  );
+}
+
+/** The drawer's list: one line per paying account, its scope and the last payment from it. */
+function PaidFromList({ row, state }: { row: ProviderSourcesRow | null; state: "loading" | "error" | "ok" }) {
+  if (state === "error") return <EmptyNote>Could not read the bank ledger.</EmptyNote>;
+  if (state === "loading") return <Shimmer className="m-4 h-4 w-48" />;
+  if (!row) return <EmptyNote>This provider is not in the cost catalogue.</EmptyNote>;
+  if (row.match === "unmatched") return <EmptyNote>Not found in the bank: no payment in the ledger matches this provider.</EmptyNote>;
+  if (!row.paidFrom.length) return <EmptyNote>No payment to this vendor in the bank yet.</EmptyNote>;
+  return (
+    <ul className="divide-y divide-[var(--line-subtle)]">
+      {row.paidFrom.map((a: PaidFrom) => (
+        <li key={a.accountId} className="flex h-10 items-center justify-between gap-3 px-3">
+          <span className="flex min-w-0 items-center gap-2">
+            <LogoSlot domain={a.institutionDomain} size={18} />
+            <span className="truncate text-[13px]">{a.label}</span>
+            <span className="k-chip text-[11px]">{a.scope === "business" ? "Business" : "Personal"}</span>
+          </span>
+          <span className="k-mono k-fg2 shrink-0 text-[12px]">{a.lastPaidOn ? `last paid ${day(a.lastPaidOn)}` : dash}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -262,7 +291,7 @@ function ProviderDrawer({
   domain: string | null;
   versions: PriceVersion[];
   prices: CurrentPrice[];
-  sources: PaymentSource[];
+  sources: ProviderSourcesRow | null;
   sourcesState: "loading" | "error" | "ok";
   onClose: () => void;
 }) {
@@ -323,7 +352,9 @@ function ProviderDrawer({
 
         <section>
           <p className="k-label mb-2">Paid from</p>
-          <SourceTags sources={sources} loading={sourcesState === "loading"} error={sourcesState === "error"} />
+          <div className="k-card">
+            <PaidFromList row={sources} state={sourcesState} />
+          </div>
         </section>
 
         <section>

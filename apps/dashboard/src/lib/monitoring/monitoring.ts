@@ -105,12 +105,52 @@ export const MarginTimeseriesSchema = z.object({
 export type MarginTimeseries = z.infer<typeof MarginTimeseriesSchema>;
 export type ProviderMonth = MarginTimeseries["providers"][number]["buckets"][number];
 
-/** One of OUR accounts that pays a vendor (costs-service's closed vocabulary, staff can grow it). */
-export const PaymentSourceSchema = z.object({ key: z.string(), displayName: z.string(), domain: z.string().nullable() });
-export type PaymentSource = z.infer<typeof PaymentSourceSchema>;
-export const ProviderSourcesRowSchema = z.object({ provider: z.string(), providerDomain: z.string().nullable(), sources: z.array(PaymentSourceSchema) });
+/**
+ * One of OUR accounts that paid a vendor, as costs-service reads it from the bank ledger
+ * (admin.kevinlourd.com owns the accounts; nothing here is typed by hand).
+ */
+export const PaidFromSchema = z.object({
+  accountId: z.string(),
+  label: z.string(),
+  institutionDomain: z.string().nullable(),
+  scope: z.enum(["personal", "business"]),
+  lastPaidOn: z.string().nullable(),
+});
+export type PaidFrom = z.infer<typeof PaidFromSchema>;
+/** `unmatched` = the ledger knows no vendor for this provider: shown as such, never as "nobody pays it". */
+export const ProviderSourcesRowSchema = z.object({
+  provider: z.string(),
+  providerDomain: z.string().nullable(),
+  match: z.enum(["matched", "unmatched"]),
+  lastPaidOn: z.string().nullable(),
+  paidFrom: z.array(PaidFromSchema),
+});
 export type ProviderSourcesRow = z.infer<typeof ProviderSourcesRowSchema>;
-export const ProviderSourcesListSchema = z.object({ providers: z.array(ProviderSourcesRowSchema) });
+export const ProviderSourcesListSchema = z.object({ ledgerGeneratedAt: z.string(), providers: z.array(ProviderSourcesRowSchema) });
+
+/**
+ * instantly-service's emails sent per UTC period, by purpose: what reached leads apart from
+ * our own mail (warmup, warmup replies, inbox-placement seeds). Dense, oldest first, the last
+ * period flagged `inProgress` by the producer (never re-derived from a clock here).
+ */
+export const SENT_GRAINS = ["day", "week", "month"] as const;
+export type SentGrain = (typeof SENT_GRAINS)[number];
+const SentCountsShape = {
+  toLeads: z.number(),
+  manualReplies: z.number(),
+  warmup: z.number(),
+  warmupReplies: z.number(),
+  seeds: z.number(),
+};
+export const SentPerPeriodSchema = z.object({
+  grain: z.enum(SENT_GRAINS),
+  timezone: z.string(),
+  asOf: z.string(),
+  totals: z.object(SentCountsShape),
+  periods: z.array(z.object({ periodStart: z.string(), periodEnd: z.string(), inProgress: z.boolean(), leadsEmailed: z.number(), ...SentCountsShape })),
+});
+export type SentPerPeriod = z.infer<typeof SentPerPeriodSchema>;
+export type SentPeriod = SentPerPeriod["periods"][number];
 
 /** Every price version of one cost item, oldest first. */
 export function versionsOf(versions: PriceVersion[], name: string): PriceVersion[] {

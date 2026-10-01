@@ -8,6 +8,7 @@ import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
+import { EmailsCharts } from "@/components/v2/monitoring-emails";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -756,19 +757,5 @@ function CostItemsTable({ rows, cols }: { rows: CostItemMargin[]; cols: ["vendor
 // ─── Emails ────────────────────────────────────────────────────────────────
 
 function EmailsPage() {
-  const emails = useEmails();
-  return (
-    <Loaded q={emails}>
-      {(sent) => (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Emails sent" note="follow-ups included">
-            <Figure value={sent.emails.toLocaleString("en-US")} />
-          </StatTile>
-          <StatTile label="People emailed" note="at least one email">
-            <Figure value={sent.people.toLocaleString("en-US")} />
-          </StatTile>
-        </div>
-      )}
-    </Loaded>
-  );
+  return <EmailsCharts />;
 }
