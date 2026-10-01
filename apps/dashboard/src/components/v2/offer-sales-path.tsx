@@ -62,7 +62,12 @@ export function OfferSalesPath({
                 className={`k-card flex items-center gap-2.5 p-3 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : "k-hover"}`}
               >
                 <StepMark stepKey={s} size="xs" dimmed={!on} />
-                <span className={`min-w-0 flex-1 truncate text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>{label(s)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>{label(s)}</span>
+                  {catalogue.steps.get(s)?.description && (
+                    <span className="k-fg3 block truncate text-[11.5px]">{catalogue.steps.get(s)?.description}</span>
+                  )}
+                </span>
                 {on ? (
                   <span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span>
                 ) : (

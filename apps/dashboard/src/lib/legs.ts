@@ -24,6 +24,8 @@
 export interface StepDef {
   key: string;
   label: string;
+  /** 3 to 5 words a customer reads under the label (features-service `shortDescription`). */
+  description?: string;
 }
 
 /** One leg, with both of its steps resolved. `fromKey` is null for an entry leg. */
@@ -57,7 +59,7 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
 /** The public catalogue body, read structurally: a row missing what this module needs
  *  contributes nothing rather than throwing. */
 export interface PublicCatalogueWire {
-  steps?: Array<{ key?: unknown; label?: unknown }> | null;
+  steps?: Array<{ key?: unknown; label?: unknown; shortDescription?: unknown }> | null;
   legs?: Array<{
     legKey?: unknown;
     fromStep?: { key?: unknown; label?: unknown } | null;
@@ -96,7 +98,8 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   for (const s of body.steps ?? []) {
     const key = str(s?.key);
     const label = str(s?.label);
-    if (key && label && !steps.has(key)) steps.set(key, { key, label });
+    const description = str(s?.shortDescription);
+    if (key && label && !steps.has(key)) steps.set(key, description ? { key, label, description } : { key, label });
   }
   const labelOf = (key: string | null, served: unknown): string | null => {
     if (!key) return null;
