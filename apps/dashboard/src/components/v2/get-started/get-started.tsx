@@ -470,7 +470,14 @@ export function GetStarted() {
     setDrafted("running");
     try {
       const stepsField = offered.steps.length
-        ? [salesStepsDraftField(offered.steps.map((k) => ({ key: k, label: catalogue.steps.get(k)?.label ?? k })))]
+        ? [
+            salesStepsDraftField(
+              offered.steps.map((k) => {
+                const st = catalogue.steps.get(k);
+                return { key: k, label: st?.description ? `${st.label}: ${st.description}` : st?.label ?? k };
+              }),
+            ),
+          ]
         : [];
       const fields = [...VALUE_FIELDS, ...stepsField, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => ({ key: f.key, description: f.description }));
       const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
@@ -2373,7 +2380,7 @@ function AudienceStage({
                       <OfferIcon token={a.icon} />
                     </span>
                     <span className="k-fg min-w-0 flex-1 text-[14px] font-medium leading-5">{a.name}</span>
-                    <AudienceSize count={counts[a.name]} counting={counting} />
+                    <AudienceSize count={a.estimatedLeadCount ?? counts[a.name]} counting={counting && a.estimatedLeadCount == null} />
                   </span>
                   <span className="k-fg2 mt-2 block text-[12.5px] leading-5">{a.description}</span>
                   {on && <span className="mt-2 flex"><span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span></span>}

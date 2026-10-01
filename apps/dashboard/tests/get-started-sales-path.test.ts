@@ -181,7 +181,7 @@ describe("a click moves on at once, and Back goes one step back", () => {
   });
 
   it("shows each audience's market size, big, from human-service's count", () => {
-    expect(PAGE).toContain("<AudienceSize count={counts[a.name]} counting={counting} />");
+    expect(PAGE).toContain("<AudienceSize count={a.estimatedLeadCount ?? counts[a.name]}");
     expect(PAGE).toContain("if (row && row.apolloCount != null) counts[name] = row.apolloCount;");
   });
 
@@ -257,5 +257,26 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
   it("frames the sign-up panel with its own headline", () => {
     expect(WALL).toContain("ring-2 ring-[var(--accent)]");
     expect(WALL).toContain("Claim your $${WALL_FREE_CREDIT_USD} and start");
+  });
+});
+
+import { legCatalogueFromWire } from "../src/lib/legs";
+describe("step descriptions and the instant audience size", () => {
+  it("reads features-service's shortDescription onto each step", () => {
+    const c = legCatalogueFromWire({ steps: [{ key: "purchase", label: "Direct purchase", shortDescription: "Buys online, no sales call" }, { key: "signup", label: "Signup" }] });
+    expect(c.steps.get("purchase")?.description).toBe("Buys online, no sales call");
+    expect(c.steps.get("signup")?.description).toBeUndefined();
+  });
+
+  it("draws the description under each step card, and feeds it to the step draft", () => {
+    const picker = read("src/components/v2/offer-sales-path.tsx");
+    expect(picker).toContain("catalogue.steps.get(s)?.description");
+    expect(PAGE).toContain("st?.description ? `${st.label}: ${st.description}`");
+  });
+
+  it("shows human-service's instant estimate on each audience card, the measured count only as a fallback", () => {
+    expect(PAGE).toContain("<AudienceSize count={a.estimatedLeadCount ?? counts[a.name]}");
+    const api = read("src/lib/api.ts");
+    expect(api).toContain("estimatedLeadCount: z.number().nullish(),");
   });
 });
