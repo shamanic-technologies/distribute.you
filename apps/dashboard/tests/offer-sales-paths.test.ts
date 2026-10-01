@@ -80,7 +80,10 @@ describe("offer sales paths reader", () => {
   });
   it("formats a rate", () => {
     expect(formatRatePct(null)).toBe("—");
-    expect(formatRatePct(2.5)).toBe("2.5%");
+    expect(formatRatePct(2.5)).toBe("3%");
+    expect(formatRatePct(0.45)).toBe("0.5%");
+    expect(formatRatePct(0.04)).toBe("0.04%");
+    expect(formatRatePct(0.97)).toBe("1%");
     expect(formatRatePct(4)).toBe("4%");
     expect(formatRatePct(62.4)).toBe("62%");
   });

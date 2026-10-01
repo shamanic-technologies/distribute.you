@@ -134,7 +134,9 @@ describe("leg rates", () => {
   });
   it("parses what was typed: empty clears, out of range refuses", () => {
     expect(parseRatePct("")).toEqual({ ok: true, value: null });
-    expect(parseRatePct("12,5 %")).toEqual({ ok: true, value: 12.5 });
+    expect(parseRatePct("12,5 %").ok).toBe(false);
+    expect(parseRatePct("12 %")).toEqual({ ok: true, value: 12 });
+    expect(parseRatePct("0,5")).toEqual({ ok: true, value: 0.5 });
     expect(parseRatePct("0").ok).toBe(false);
     expect(parseRatePct("101").ok).toBe(false);
     expect(parseRatePct("abc").ok).toBe(false);

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SectionTitle, Shimmer, EmptyNote } from "@/components/v2/ui";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { LEG_RATE_RULE, parseRateInput, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
   formatRatePct,
   pathTitle,
@@ -257,21 +258,21 @@ function RateEditor({
   leg: SalesPathLeg;
   onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
 }) {
-  const shown = leg.conversionRatePct == null ? "" : String(Math.round(leg.conversionRatePct));
+  const shown = leg.conversionRatePct == null ? "" : String(roundLegRatePct(leg.conversionRatePct));
   const [value, setValue] = useState(shown);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dirty = value.trim() !== shown;
   async function save() {
-    const t = value.trim().replace(/%$/, "");
-    if (t !== "" && (!/^\d+$/.test(t) || Number(t) > 100)) {
-      setError("A whole percent, 0 to 100.");
+    const parsed = parseRateInput(value);
+    if (parsed === undefined) {
+      setError(LEG_RATE_RULE);
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await onStateRate(leg, t === "" ? null : Number(t));
+      await onStateRate(leg, parsed);
     } catch (e) {
       console.error("[offer-sales-paths] rate save failed", e);
       setError("Could not save. Try again.");
@@ -283,7 +284,7 @@ function RateEditor({
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <input
         className="k-input h-6 w-12 px-1.5 text-right tabular-nums"
-        inputMode="numeric"
+        inputMode="decimal"
         value={value}
         onChange={(e) => {
           setValue(e.target.value);

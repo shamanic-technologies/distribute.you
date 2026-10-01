@@ -14,7 +14,10 @@ const unstated = { fromStep: "Meeting booked", toStep: "Meeting attended", rateP
 describe("parseRateInput", () => {
   it("reads a blank field as a clear, a number as a rate, and refuses the rest", () => {
     expect(parseRateInput("  ")).toBeNull();
-    expect(parseRateInput("12,5")).toBe(12.5);
+    expect(parseRateInput("12,5")).toBeUndefined();
+    expect(parseRateInput("12")).toBe(12);
+    expect(parseRateInput("0,5")).toBe(0.5);
+    expect(parseRateInput("0.25 %")).toBe(0.25);
     expect(parseRateInput("40")).toBe(40);
     expect(parseRateInput("abc")).toBeUndefined();
     expect(parseRateInput("120")).toBeUndefined();
@@ -54,7 +57,8 @@ describe("legRatePatch", () => {
 describe("formatRatePct", () => {
   it("states at most one decimal and no trailing zero", () => {
     expect(formatRatePct(30)).toBe("30%");
-    expect(formatRatePct(8.3222)).toBe("8.3%");
+    expect(formatRatePct(8.3222)).toBe("8%");
+    expect(formatRatePct(0.45)).toBe("0.5%");
     expect(formatRatePct(0)).toBe("0%");
   });
 });

@@ -10,8 +10,11 @@
  * settings today are cold email's two give lists, stored as the offer's
  * `giveForFree` / `neverGive` user-fields: what content-generation reads on every email.
  *
- * Alias-free on purpose (no runtime import at all) so it carries REAL unit tests.
+ * Alias-free on purpose (no runtime `@/` import, only the relative alias-free
+ * `./brand-conversion-rates`) so it carries REAL unit tests.
  */
+
+import { isLegRatePct } from "./brand-conversion-rates";
 
 export interface ChannelLegSection {
   legKey: string;
@@ -101,6 +104,6 @@ export function parseRatePct(text: string): { ok: true; value: number | null } |
   const t = text.replace("%", "").replace(",", ".").trim();
   if (t === "") return { ok: true, value: null };
   const n = Number(t);
-  if (!Number.isFinite(n) || n <= 0 || n > 100) return { ok: false };
+  if (n <= 0 || !isLegRatePct(n)) return { ok: false };
   return { ok: true, value: n };
 }

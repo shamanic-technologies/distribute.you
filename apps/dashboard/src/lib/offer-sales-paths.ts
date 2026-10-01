@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatRatePct as formatLegRatePct } from "./brand-conversion-rates";
 
 /**
  * An offer's SALES PATHS (beta): features-service links the legs the customer
@@ -167,8 +168,8 @@ export function pathTitle(path: SalesPathRow): string {
   return path.steps.map((s) => s.label).join(" → ");
 }
 
-/** A percentage as the leg states it: one decimal under 10%, whole above. */
+/** A percentage as the leg states it: whole, a decimal only below 1%. */
 export function formatRatePct(pct: number | null): string {
   if (pct == null || !Number.isFinite(pct)) return "—";
-  return `${pct < 10 ? pct.toFixed(1).replace(/\.0$/, "") : Math.round(pct)}%`;
+  return formatLegRatePct(pct);
 }

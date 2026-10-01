@@ -22,7 +22,7 @@ import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { v2Href, v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
-import { formatRatePct, rateSourceLabel } from "@/lib/brand-conversion-rates";
+import { formatRatePct, LEG_RATE_RULE, rateSourceLabel, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
   giveListLines,
   giveListsEqual,
@@ -329,7 +329,7 @@ function InlineRate({ rate, onSave }: { rate: EffectiveLegRate; onSave: (ratePct
     if (text === null) return;
     const parsed = parseRatePct(text);
     if (!parsed.ok) {
-      setError("Enter a percentage up to 100");
+      setError(LEG_RATE_RULE);
       return;
     }
     setText(null);
@@ -373,7 +373,7 @@ function InlineRate({ rate, onSave }: { rate: EffectiveLegRate; onSave: (ratePct
         <button
           type="button"
           title="Shared by every offer of this brand"
-          onClick={() => setText(String(rate.manualRatePct ?? (shown === null ? "" : Math.round(shown * 10) / 10)))}
+          onClick={() => setText(String(rate.manualRatePct != null ? roundLegRatePct(rate.manualRatePct) : shown === null ? "" : roundLegRatePct(shown)))}
           className="k-hover h-6 rounded-[6px] px-1.5 text-[13px] tabular-nums"
         >
           {shown === null ? <span className="k-fg4">—</span> : <span className="k-fg">{formatRatePct(shown)}</span>}
