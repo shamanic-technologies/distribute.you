@@ -68,15 +68,20 @@ export type PriceVersion = z.infer<typeof PriceVersionSchema>;
 export const CurrentPriceSchema = z.object({
   name: z.string(),
   provider: z.string(),
-  providerDomain: z.string(),
+  // Null in prod on the sponsorship spend items (no vendor site to show).
+  providerDomain: z.string().nullable(),
   pricePerUnitInUsdCents: z.coerce.number(),
+  unit: z.string().nullish(),
+  effectiveFrom: z.string().nullish(),
 });
 export const CurrentPricesSchema = z.array(CurrentPriceSchema);
 export type CurrentPrice = z.infer<typeof CurrentPriceSchema>;
 
-/** The fleet's email counters (instantly-service public stats, no org scoping). */
+/** The fleet's email counters (instantly-service public stats, no org scoping): every email
+ *  sent (follow-ups included) and the people they went to. */
 export const FleetEmailStatsSchema = z.object({
   emailStats: z.object({ sent: z.coerce.number() }).passthrough(),
+  recipientStats: z.object({ sent: z.coerce.number() }).passthrough(),
 });
 export type FleetEmailStats = z.infer<typeof FleetEmailStatsSchema>;
 

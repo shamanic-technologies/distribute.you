@@ -184,8 +184,8 @@ function Hub({ base }: { base: string }) {
       </Section>
 
       <Section title="Emails">
-        <Card href={href("emails")} question={PAGE.emails.question} label="Emails sent" note="every org">
-          {fig(emails.data ? emails.data.toLocaleString("en-US") : undefined, emails.isError)}
+        <Card href={href("emails")} question={PAGE.emails.question} label="Emails sent" note={emails.data ? `to ${emails.data.people.toLocaleString("en-US")} people` : undefined}>
+          {fig(emails.data ? emails.data.emails.toLocaleString("en-US") : undefined, emails.isError)}
         </Card>
       </Section>
     </Frame>
@@ -423,7 +423,7 @@ function CurrentPricesPage() {
                     <td className={`${TD} k-mono text-[12px]`}>{p.name}</td>
                     <td className={TD}>{p.provider}</td>
                     <td className={`${TD} k-fg3`}>
-                      <Cell v={v?.unit ?? null} />
+                      <Cell v={p.unit ?? null} />
                     </td>
                     <td className={TDR}>{unitUsd(p.pricePerUnitInUsdCents)}</td>
                     <td className={TDR}>
@@ -433,7 +433,7 @@ function CurrentPricesPage() {
                       <Cell v={markup(v?.markupMultiplier ?? null)} />
                     </td>
                     <td className={`${TDR} k-fg3`}>
-                      <Cell v={v ? day(v.effectiveFrom) : null} />
+                      <Cell v={p.effectiveFrom ? day(p.effectiveFrom) : null} />
                     </td>
                   </tr>
                 );
@@ -645,8 +645,11 @@ function EmailsPage() {
     <Loaded q={emails}>
       {(sent) => (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Emails sent" note="every org, since the first">
-            <Figure value={sent.toLocaleString("en-US")} />
+          <StatTile label="Emails sent" note="follow-ups included">
+            <Figure value={sent.emails.toLocaleString("en-US")} />
+          </StatTile>
+          <StatTile label="People emailed" note="at least one email">
+            <Figure value={sent.people.toLocaleString("en-US")} />
           </StatTile>
         </div>
       )}

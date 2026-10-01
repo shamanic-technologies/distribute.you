@@ -1151,13 +1151,14 @@ export async function getOrgCostBreakdown(token?: string): Promise<{ costs: Cost
 export interface PlatformPrice {
   name: string;
   provider: string;
-  providerDomain: string;
+  providerDomain: string | null;
 }
 
 const PlatformPriceSchema = z.object({
   name: z.string(),
   provider: z.string(),
-  providerDomain: z.string(),
+  // Null in prod on the sponsorship spend items: a strict string rejected the whole catalogue.
+  providerDomain: z.string().nullable(),
 });
 const PlatformPricesResponseSchema = z.array(PlatformPriceSchema);
 
@@ -1206,8 +1207,9 @@ export async function getStaffCurrentPrices(): Promise<CurrentPrice[]> {
   return parseStaff("getStaffCurrentPrices", CurrentPricesSchema, await apiCall<unknown>(`/costs/platform-prices`));
 }
 
-export async function getStaffEmailsSent(): Promise<number> {
-  return parseStaff("getStaffEmailsSent", FleetEmailStatsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.emails)).emailStats.sent;
+export async function getStaffEmailsSent(): Promise<{ emails: number; people: number }> {
+  const s = parseStaff("getStaffEmailsSent", FleetEmailStatsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.emails));
+  return { emails: s.emailStats.sent, people: s.recipientStats.sent };
 }
 
 // Brands

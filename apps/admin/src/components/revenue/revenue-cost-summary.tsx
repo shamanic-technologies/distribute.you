@@ -90,7 +90,7 @@ export function RevenueCostSummary({
   );
   const domainByCost = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of platformPrices ?? []) m.set(p.name, p.providerDomain);
+    for (const p of platformPrices ?? []) if (p.providerDomain) m.set(p.name, p.providerDomain);
     return m;
   }, [platformPrices]);
 

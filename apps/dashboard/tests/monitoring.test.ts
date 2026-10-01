@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CostMarginSchema,
+  CurrentPricesSchema,
+  FleetEmailStatsSchema,
   MONITORING_PAGES,
   PriceVersionsSchema,
   costItemNames,
@@ -64,6 +66,16 @@ describe("monitoring: the producers' shapes parse", () => {
     });
     expect(parsed.versions[0].billedPricePerUnitInUsdCents).toBe(0.3);
     expect(parsed.versions[0].vendorCostPerUnitInUsdCents).toBeNull();
+  });
+});
+
+describe("monitoring: prod quirks seen on the first real read", () => {
+  it("a null providerDomain does not reject the whole price catalogue", () => {
+    expect(CurrentPricesSchema.parse([{ name: "podcast-sponsorship-spend", provider: "podcast-sponsorship", providerDomain: null, pricePerUnitInUsdCents: "100" }])[0].providerDomain).toBeNull();
+  });
+  it("emails reads both counters: every email, and the people they went to", () => {
+    const s = FleetEmailStatsSchema.parse({ recipientStats: { sent: 49158, contacted: 1 }, emailStats: { sent: 161911, opened: 2 } });
+    expect([s.emailStats.sent, s.recipientStats.sent]).toEqual([161911, 49158]);
   });
 });
 
