@@ -13,7 +13,7 @@
 
 **Usable before discoverable: verify every pasted value RUNS before writing copy.** Past pages printed a nonexistent npm package, a 401 auth header (api-service ADMIN path), a 404 TS client, 35 MCP tools vs 6 real, and REST routes absent from the 185 served. Checks: `npm view <pkg>`; deployed `openapi.json` `components.securitySchemes`; a connected MCP client's tool list; regex every printed route and diff against deployed `openapi.json`.
 
-**Another system's catalogue is read from that system, never hand-maintained.** `src/lib/developer-surfaces.ts` is the one home for every pasted value (header, key prefix, MCP endpoint, client configs, CLI package, tool catalogue). Command-printing pages import from it; the guard fails if a retired literal reappears in `src`/`public` or a page carries its own copy. Word comments to DESCRIBE a retired literal, not spell it.
+**Another system's catalogue is read from that system, never hand-maintained.** `src/lib/developer-surfaces.ts` is the one home for every pasted value (header, key prefix, MCP endpoint, client configs, CLI package, tool catalogue). Command-printing pages import from it; the guard fails if a retired literal reappears in `src`/`public` or a page carries its own copy. Word comments to DESCRIBE a retired literal, not spell it. Exception: the admin-path header is `REJECTED_KEY_HEADER` in developer-surfaces and may be printed only on a line saying it is "NOT accepted" (the Agent quickstart, `lib/agent-quickstart.ts`, tops `/`, `/api`, `/mcp`, skill.md and a byte-equal llms.txt copy).
 
 **Sweep traps (find-and-replace across the app):**
 - It rewrites your own explanatory comments (inverted the `X-API-Key` rationale). Re-read every touched comment.
