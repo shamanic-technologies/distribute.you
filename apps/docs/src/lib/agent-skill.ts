@@ -70,7 +70,7 @@ export interface SkillUseCase {
 
 export const SKILL_USE_CASES: SkillUseCase[] = [
   {
-    ask: "Which account and organization is this key for?",
+    ask: "Which organizations and brands can this key act in?",
     routes: ["GET /v1/me"],
   },
   {
@@ -162,7 +162,7 @@ You are the customer's assistant. This file tells you how to connect to their ac
 
 ## 1. Set up (do this once, in order)
 
-1. **Get the API key.** It starts with \`${API_KEY_PREFIX}\`. If the user pasted one, use it. If not, ask for it, and tell them where it is issued: ${API_KEYS_URL}. Treat it like a password: it can read and change everything in their organization. Never print it back in full, never commit it to a repository.
+1. **Get the API key.** It starts with \`${API_KEY_PREFIX}\`. If the user pasted one, use it. If not, ask for it, and tell them where it is issued: ${API_KEYS_URL}. Treat it like a password: it acts as them, and can read and change everything in every organization they belong to. Never print it back in full, never commit it to a repository.
 2. **Save this skill** where your harness keeps skills or standing instructions, so the next session knows it:
    - Claude Code, Conductor: \`~/.claude/skills/${SKILL_NAME}/SKILL.md\`
    - Codex: \`~/.codex/skills/${SKILL_NAME}/SKILL.md\`
@@ -192,7 +192,7 @@ ${indent(MCP_STDIO_BRIDGE_CONFIG, 5)}
    \`\`\`
 ${indent(curlExample("/v1/me"), 3)}
    \`\`\`
-   It answers with the user and organization the key acts for. Tell the user which organization you are connected to.
+   It answers with the user the key acts as and every organization they belong to, each with its brands. Tell the user which organizations and brands you see, then name a brand (\`brandId\`) on each call that follows.
 
 ## 2. What the MCP server can do
 

@@ -15,14 +15,15 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { ApiKeyScope } from "@/components/settings/api-key-scope";
 
 /**
- * One org, one kind of key: ours. The page used to carry a second section where
+ * One kind of key: ours. The page used to carry a second section where
  * an org pasted its own third-party credentials; that is gone on purpose — we
  * hand out a Distribute key and run every vendor ourselves.
  *
- * The key authenticates as the user who created it, in the org active at that
- * moment (said on screen by ApiKeyScope): api-service validates a
- * `distrib.usr_*` Bearer through key-service and then serves the same routes
- * the dashboard uses, so the holder can read and write everything this UI can.
+ * The key is the USER's, across every organization they belong to (said on
+ * screen by ApiKeyScope; api-service #1073): api-service validates a
+ * `distrib.usr_*` Bearer through key-service, resolves the org each call
+ * names (brandId or orgId) against the user's memberships, then serves the
+ * same routes the dashboard uses. It never carries staff powers.
  * There are no scopes and no expiry yet — revoking is the only limit.
  */
 export default function OrgApiKeysPage() {
@@ -80,7 +81,8 @@ export default function OrgApiKeysPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">API Key</h1>
         <p className="text-gray-600">
-          Read and manage this organization from your own code.
+          Use distribute.you from your own code or your AI. Your keys are yours,
+          not one organization&apos;s.
         </p>
       </div>
 
@@ -126,8 +128,8 @@ export default function OrgApiKeysPage() {
                 <ApiKeyScope />
               </p>
               <p className="text-sm text-gray-500">
-                Anyone holding it can read and change this organization, so treat
-                it like a password.
+                Anyone holding it can act as you in every organization you belong
+                to, so treat it like a password.
               </p>
             </div>
             <button
@@ -185,8 +187,9 @@ export default function OrgApiKeysPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-medium text-gray-800 mb-4">How to use it</h3>
           <p className="text-sm text-gray-500 mb-3">
-            Send the key as a Bearer token. This returns the organization the key
-            belongs to.
+            Send the key as a Bearer token. This call needs no brand and lists
+            your organizations and their brands; name a brand (brandId) on every
+            call after it.
           </p>
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
 {`curl https://api.distribute.you/v1/me \\

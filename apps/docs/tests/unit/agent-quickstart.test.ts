@@ -19,11 +19,29 @@ describe("the agent quickstart", () => {
     expect(md).toContain(AUTH_HEADER_LINE);
     expect(md).toContain(`\`${REJECTED_KEY_HEADER}\` header is NOT accepted`);
     expect(md).toContain("GET /v1/me");
-    expect(md).toContain("One key is one user in one organization");
+    expect(md).toContain("One key is one user, across every organization that user belongs to");
+    expect(md).not.toContain("one user in one organization");
     expect(md).toContain("never belongs to a brand");
     expect(md).toContain(DASHBOARD_URL);
     expect(MCP_TOOL_COUNT).toBe(MCP_TOOLS.length);
     expect(md).toContain(`exactly ${MCP_TOOL_COUNT} tools`);
+  });
+
+  it("tells an agent to list orgs first, name a brand on each call, and what each refusal code asks for", () => {
+    expect(md).toContain("lists every organization the key can act in, each with its brands");
+    expect(md).toContain("Each call acts in ONE organization. Name a brand");
+    for (const code of [
+      "org_target_required",
+      "brand_in_several_orgs",
+      "brands_span_orgs",
+      "org_not_member",
+      "no_organization",
+      "org_not_found",
+      "brand_not_found",
+      "membership_unavailable",
+    ]) {
+      expect(md).toMatch(new RegExp(`\\b${code}\\b`));
+    }
   });
 
   it("tells an agent to lead with outcomes, put failures last and never hide a zero", () => {
