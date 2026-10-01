@@ -2,6 +2,8 @@ import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
+import { AgentQuickstart } from "@/components/agent-quickstart";
+import { agentQuickstartMarkdown } from "@/lib/agent-quickstart";
 import { URLS } from "@distribute/content";
 import {
   AUTH_HEADER_LINE,
@@ -15,6 +17,8 @@ import {
 export const metadata = docsMetadata("/mcp");
 
 const LLM_INSTRUCTIONS = `# distribute.you MCP Server
+
+${agentQuickstartMarkdown()}
 
 Hosted, Streamable HTTP. Nothing to install.
 
@@ -38,6 +42,7 @@ export default function McpOverviewPage() {
         <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/mcp")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
+      <AgentQuickstart />
       <p className="text-base text-gray-500 mb-8">
         Use distribute.you from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client.
       </p>

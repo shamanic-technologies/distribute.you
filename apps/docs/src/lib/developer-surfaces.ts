@@ -47,8 +47,19 @@ export const AUTH_HEADER_LINE = `${AUTH_HEADER_NAME}: Bearer ${API_KEY_PLACEHOLD
 /** The same header as a curl flag. */
 export const CURL_AUTH_FLAG = `-H "${AUTH_HEADER_LINE}"`;
 
+/**
+ * The header an assistant guesses first, named only to say it is refused: an
+ * org key sent under it lands on the ADMIN path and is answered 401. This is
+ * the one file allowed to spell it; the guard checks every other mention says
+ * it is not accepted.
+ */
+export const REJECTED_KEY_HEADER = "X-API-Key";
+
+/** The customer dashboard. */
+export const DASHBOARD_URL = "https://dashboard.distribute.you";
+
 /** Where a key is issued. */
-export const API_KEYS_URL = "https://dashboard.distribute.you/api-keys";
+export const API_KEYS_URL = `${DASHBOARD_URL}/api-keys`;
 
 /**
  * The CLI, which is the one npm package this product actually publishes.

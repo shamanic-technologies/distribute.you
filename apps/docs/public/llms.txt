@@ -4,6 +4,20 @@
 
 Every page below is a static HTML document at a stable URL. Fetch any of them directly.
 
+## Agent quickstart
+
+- **Base URL**: `https://api.distribute.you/v1`
+- **Auth**: `Authorization: Bearer distrib.usr_YOUR_KEY` on every REST and MCP call. The `X-API-Key` header is NOT accepted for user keys: it answers 401.
+- **First call**: `GET /v1/me` (or the `distribute_status` MCP tool). It says who the key acts as: the user and the organization. Tell the human which organization you are reading before anything else.
+- **Scope**: One key is one user in one organization: the organization that was active when the key was created. A key never belongs to a brand. It reads every brand of its organization and nothing outside it, and it carries no staff powers.
+- **Key refused**: A 401 means the key was mistyped, revoked or not sent. Show the human the error as served and ask for a new key from https://dashboard.distribute.you/api-keys. Keys start with `distrib.usr_`.
+- **Dashboard**: https://dashboard.distribute.you (API keys sit in the account menu, under API Keys).
+- **MCP server**: `https://mcp.distribute.you/mcp`, exactly 6 tools: `distribute_status`, `distribute_list_brands`, `distribute_suggest_icp`, `distribute_list_campaigns`, `distribute_campaign_stats`, `distribute_list_workflows`. Everything else goes through the REST API.
+
+### How to report results to a human
+
+Lead with what the customer pays for: meetings booked and positive replies, then money earned or return when the API serves it, then the delivery rate ("98% delivered", not "531 sent, 518 delivered"). Volume sent and cost come next. Failures such as bounces and errors go last, in a details line. Never hide a number: 0 positive replies is said plainly.
+
 ## Machine-readable entry points
 
 - [Agent skill](https://docs.distribute.you/skill.md): one file an AI assistant reads to connect itself (MCP or REST, per harness), save itself as a skill, and answer the usual questions about an account.

@@ -117,14 +117,14 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "campaignId": "camp_abc123",
-  "totalCostInUsdCents": "423",
-  "leadsServed": 150,
-  "emailsSent": 247,
-  "emailsDelivered": 231,
-  "emailsOpened": 54,
-  "emailsReplied": 12,
-  "repliesInterested": 5,
   "repliesMeetingBooked": 3,
+  "repliesInterested": 5,
+  "emailsReplied": 12,
+  "emailsDelivered": 231,
+  "emailsSent": 247,
+  "leadsServed": 150,
+  "emailsOpened": 54,
+  "totalCostInUsdCents": "423",
   "costBreakdown": [
     { "costName": "llm-email-generation", "totalCostInUsdCents": "200" },
     { "costName": "apollo-enrichment", "totalCostInUsdCents": "150" }

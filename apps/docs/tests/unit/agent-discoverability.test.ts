@@ -23,6 +23,7 @@ import {
   MCP_TOOLS,
   MCP_TOOL_COUNT,
   MCP_URL,
+  REJECTED_KEY_HEADER,
   mcpToolsByCategory,
 } from "../../src/lib/developer-surfaces";
 
@@ -300,7 +301,6 @@ describe("nothing on this site prints a command that cannot run", () => {
     "@distribute/mcp", // npm 404: this package has never been published
     "@distribute/api-client", // npm 404
     "DistributeClient", // the client class of that package
-    "X-API-Key", // api-service's admin path, not the org-key scheme
     "dist_", // no key has ever carried this prefix
     "DISTRIBUTE_API_KEY", // a flag on the package that does not exist
     "35 tools",
@@ -311,6 +311,14 @@ describe("nothing on this site prints a command that cannot run", () => {
     for (const retired of RETIRED) {
       expect(src).not.toContain(retired);
     }
+  });
+
+  // The admin-path header may be NAMED only to say it is refused: spelled once
+  // in developer-surfaces, and anywhere else (llms.txt) on a "NOT accepted" line.
+  it.each(files)("%s names the admin-path header only to refuse it", (file) => {
+    if (file.endsWith("developer-surfaces.ts")) return;
+    const lines = readFileSync(file, "utf8").split("\n").filter((l) => l.includes(REJECTED_KEY_HEADER));
+    for (const line of lines) expect(line).toContain("NOT accepted");
   });
 });
 

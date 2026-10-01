@@ -13,7 +13,8 @@ groupBy values: costName, brandId, featureSlug
 
 ## Delivery Stats
 GET /v1/email-gateway/stats?brandId=brand_abc123
-Returns: emailsContacted, emailsSent, emailsDelivered, emailsOpened, emailsClicked, emailsReplied, emailsBounced, reply classifications
+Returns: reply classifications (meetings booked, interested), emailsReplied, emailsDelivered, emailsSent, emailsContacted, emailsOpened, emailsClicked, emailsBounced
+Report it outcomes first: meetings and positive replies, then the delivery rate (delivered out of sent), then volume. Bounces go last.
 
 ## TypeScript Client
 const { groups } = await client.getCostBreakdown({ groupBy: "costName", brandId: "brand_abc123" });
@@ -49,20 +50,20 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
-  "emailsContacted": 500,
-  "emailsSent": 480,
+  "repliesMeetingBooked": 3,
+  "repliesInterested": 8,
+  "repliesClosed": 1,
+  "emailsReplied": 22,
   "emailsDelivered": 460,
+  "emailsSent": 480,
+  "emailsContacted": 500,
   "emailsOpened": 120,
   "emailsClicked": 25,
-  "emailsReplied": 22,
-  "emailsBounced": 20,
-  "repliesInterested": 8,
-  "repliesMeetingBooked": 3,
-  "repliesClosed": 1,
   "repliesNeutral": 5,
   "repliesNotInterested": 3,
   "repliesOutOfOffice": 2,
-  "repliesUnsubscribe": 0
+  "repliesUnsubscribe": 0,
+  "emailsBounced": 20
 }`}</code>
         </pre>
 

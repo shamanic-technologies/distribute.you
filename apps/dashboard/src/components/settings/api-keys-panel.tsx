@@ -12,13 +12,15 @@ import {
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
+import { ApiKeyScope } from "@/components/settings/api-key-scope";
 
 /**
  * One org, one kind of key: ours. The page used to carry a second section where
  * an org pasted its own third-party credentials; that is gone on purpose — we
  * hand out a Distribute key and run every vendor ourselves.
  *
- * The key authenticates as the org that created it: api-service validates a
+ * The key authenticates as the user who created it, in the org active at that
+ * moment (said on screen by ApiKeyScope): api-service validates a
  * `distrib.usr_*` Bearer through key-service and then serves the same routes
  * the dashboard uses, so the holder can read and write everything this UI can.
  * There are no scopes and no expiry yet — revoking is the only limit.
@@ -93,6 +95,9 @@ export default function OrgApiKeysPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h3 className="font-medium text-green-800 mb-2">New API key created</h3>
+              <p className="text-sm text-green-700 mb-1">
+                <ApiKeyScope />
+              </p>
               <p className="text-sm text-green-700 mb-3">
                 Copy this key now. It won&apos;t be shown again.
               </p>
@@ -117,6 +122,9 @@ export default function OrgApiKeysPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <h3 className="font-medium text-gray-800">Create a new API key</h3>
+              <p className="text-sm text-gray-600 mb-1">
+                <ApiKeyScope />
+              </p>
               <p className="text-sm text-gray-500">
                 Anyone holding it can read and change this organization, so treat
                 it like a password.
