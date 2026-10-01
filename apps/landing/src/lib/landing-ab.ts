@@ -23,7 +23,8 @@
 // as control against the instinct.com-style page, 50/50. `/lp/assistant` and
 // `/lp/concierge` left the draw and stay reachable by URL. `subscription` (the same
 // homepage sold as a $99/month plan with a 3-day free trial) joined on 2026-10-01 at
-// the owner's 25/25/50: half of the old control traffic.
+// the owner's 25/25/50: half of the old control traffic. Owner moved it to 80/10/10 the
+// same evening (control 80%, each candidate 10%) after a day of near-zero human traffic.
 export const AB_TEST_ENABLED = true;
 
 export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription"] as const;
@@ -33,16 +34,16 @@ export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-10-01: a quarter to the
- * control homepage, a quarter to the same homepage sold as the $99/month plan, half to
- * the instinct.com-style page. A variant at weight 0 has left
+ * Share of first visits drawn into each variant. Owner-set 2026-10-01 (evening): 80% to the
+ * control homepage, 10% to the same homepage sold as the $99/month plan, 10% to the
+ * instinct.com-style page. A variant at weight 0 has left
  * the test: a visitor whose cookie names it is drawn again rather than kept on a page
  * nobody else is being shown, so the two live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  control: 0.25,
-  subscription: 0.25,
-  instinct: 0.5,
+  control: 0.8,
+  subscription: 0.1,
+  instinct: 0.1,
   assistant: 0,
   concierge: 0,
 };
