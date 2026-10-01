@@ -62,7 +62,7 @@ export function OrgUsageSection({ brands, pending = false }: { brands: Brand[]; 
 
   const domainByCost = useMemo(() => {
     const map = new Map<string, string>();
-    for (const p of platformPrices ?? []) map.set(p.name, p.providerDomain);
+    for (const p of platformPrices ?? []) if (p.providerDomain) map.set(p.name, p.providerDomain);
     return map;
   }, [platformPrices]);
 

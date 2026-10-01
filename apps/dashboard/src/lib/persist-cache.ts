@@ -89,6 +89,11 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "workflowRankLadderActual",
   "campaignWorkflowRevenueActual",
   "workflowRunsActual",
+  // Staff Monitoring (fleet margin, vendor costs, price catalogue, emails sent).
+  "staffCostMargin",
+  "staffPriceVersions",
+  "staffCurrentPrices",
+  "staffEmailsSent",
 ]);
 
 /**

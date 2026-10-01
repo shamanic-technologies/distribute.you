@@ -5,6 +5,15 @@ import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
 import { z } from "zod";
 import {
+  CostMarginSchema,
+  CurrentPricesSchema,
+  FleetEmailStatsSchema,
+  PriceVersionsSchema,
+  type CostMargin,
+  type CurrentPrice,
+  type PriceVersion,
+} from "./monitoring/monitoring";
+import {
   LeadBucketCountsSchema,
   LeadStandingCountsSchema,
   LeadsPageEnvelopeSchema,
@@ -1142,13 +1151,14 @@ export async function getOrgCostBreakdown(token?: string): Promise<{ costs: Cost
 export interface PlatformPrice {
   name: string;
   provider: string;
-  providerDomain: string;
+  providerDomain: string | null;
 }
 
 const PlatformPriceSchema = z.object({
   name: z.string(),
   provider: z.string(),
-  providerDomain: z.string(),
+  // Null in prod on the sponsorship spend items: a strict string rejected the whole catalogue.
+  providerDomain: z.string().nullable(),
 });
 const PlatformPricesResponseSchema = z.array(PlatformPriceSchema);
 
@@ -1163,6 +1173,43 @@ export async function getPlatformPrices(token?: string): Promise<PlatformPrice[]
     throw new Error("[dashboard] getPlatformPrices: invalid response shape");
   }
   return parsed.data;
+}
+
+// Staff Monitoring — fleet-wide cost, price, margin and emails, since inception. Every path is a
+// staff-only gateway route (api-service `requireStaff`: platform key + a staff `x-email`, which
+// the /api/v1 proxy forwards from the verified session), so a non-staff caller gets a 403 and
+// no figure. Schemas and the reasons behind them: lib/monitoring/monitoring.ts.
+export const STAFF_MONITORING_PATHS = {
+  margin: "/runs/stats/costs/margin",
+  priceVersions: "/costs/vendor-costs",
+  emails: "/instantly/stats",
+} as const;
+
+function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${name}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${name}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+export async function getStaffCostMargin(): Promise<CostMargin> {
+  return parseStaff("getStaffCostMargin", CostMarginSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.margin));
+}
+
+export async function getStaffPriceVersions(): Promise<PriceVersion[]> {
+  return parseStaff("getStaffPriceVersions", PriceVersionsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.priceVersions)).versions;
+}
+
+/** The public catalogue's price in force now per cost item, with its unit price (the logo reader above drops it). */
+export async function getStaffCurrentPrices(): Promise<CurrentPrice[]> {
+  return parseStaff("getStaffCurrentPrices", CurrentPricesSchema, await apiCall<unknown>(`/costs/platform-prices`));
+}
+
+export async function getStaffEmailsSent(): Promise<{ emails: number; people: number }> {
+  const s = parseStaff("getStaffEmailsSent", FleetEmailStatsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.emails));
+  return { emails: s.emailStats.sent, people: s.recipientStats.sent };
 }
 
 // Brands

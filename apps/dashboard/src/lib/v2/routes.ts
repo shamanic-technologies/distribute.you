@@ -20,7 +20,8 @@ export type V2Section =
   | "account"
   | "team"
   | "referral"
-  | "research";
+  | "research"
+  | "monitoring";
 
 export function v2Base(orgId: string, brandId: string): string {
   return `/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
@@ -75,6 +76,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "team",
     "referral",
     "research",
+    "monitoring",
   ];
   // An offer's Targeting tab is Targeting, not Offers.
   if (s === "offers" && parts[7] === "targeting") return "targeting";
