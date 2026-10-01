@@ -42,6 +42,20 @@ Rebuild with `node scripts/har-to-flow.mjs <slug> <capture-dir>`.
   domain typed on the landing is not used before the account exists. The walk stopped
   at that checkbox, which a person has to tick; the rest of Origami is still to capture.
 
+## Instinct (walked 2026-10-01, a real French mobile)
+
+- One CTA, "Text Instinct to get started", to `app.instinct.com/login`: phone number (any
+  country), Cloudflare Turnstile, 6-digit SMS code from short code 22395. No email, no
+  password, no Google, no `/signup` (404): a new number signing in IS the signup.
+- Behind it the web app is ONE screen, `/onboarding` "Start texting Instinct": iMessage
+  (+1 650 223 4329) or WhatsApp (`wa.me/16508702892`), by QR code. Every other route
+  (`/settings`, `/workspace`, `/agent`, `/vault`, `/voice`...) redirects there until you
+  have texted it. The real onboarding is the chat; the web pages it links to
+  (`/link-icloud`, `/connect/whatsapp`, `/whatsapp-onboarding`, `/text-onboarding`) only
+  open from a link the agent sends.
+- A Twilio number receives their SMS as `failed` with the code stripped: walk it with a
+  real mobile. Steps showing the number were dropped from `__flow/` (public repo).
+
 ## What their API answers (their data model)
 
 - Explee `GET /api/project/<domain>` (`__flow/api/GET-explee.com_api_project_tidycal.com.json`):

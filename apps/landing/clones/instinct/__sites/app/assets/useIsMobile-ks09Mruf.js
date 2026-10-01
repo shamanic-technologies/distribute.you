@@ -1,0 +1,1 @@
+import{b as n}from"./app-DVKIbK40.js";const i={MOBILE_BREAKPOINT_PX:768},s=`(max-width: ${i.MOBILE_BREAKPOINT_PX-1}px)`;function d(){const[o,r]=n.useState(()=>typeof window>"u"?!1:window.matchMedia(s).matches);return n.useEffect(()=>{const e=window.matchMedia(s),t=a=>r(a.matches);return e.addEventListener("change",t),()=>e.removeEventListener("change",t)},[]),o}export{d as u};

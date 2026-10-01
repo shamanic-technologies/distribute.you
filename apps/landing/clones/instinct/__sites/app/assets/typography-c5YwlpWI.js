@@ -1,0 +1,1 @@
+const t={heading:"text-base font-medium text-textPrimary",title:"text-sm font-medium text-textPrimary",body:"text-sm text-textPrimary",description:"text-sm text-textSecondary",subtitle:"text-xs text-textSecondary",label:"text-xs text-textTertiary",hintSm:"text-xs text-textTertiary",tabLabel:"text-xs font-medium"};export{t};

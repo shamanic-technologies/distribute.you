@@ -1,0 +1,1 @@
+import{a1 as s,b as r,j as o,b8 as n}from"./app-DVKIbK40.js";import{h as u}from"./feature-access-Cc0snl54.js";import{a as c}from"./auth-context-Di4G9Eue.js";import"./feature-flags-Btzq0uwu.js";function m(){const a=c(),t=u({enabledFeatureFlags:a}),e=s();return r.useEffect(()=>{t||e({to:"/workspace",replace:!0})},[t,e]),t?o.jsx(n,{}):null}export{m as AgentChatGuard};
