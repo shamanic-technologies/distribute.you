@@ -21,10 +21,12 @@
 
 // Off from 2026-09-27 (no arm had produced a signup in three days), back on 2026-10-01
 // as control against the instinct.com-style page, 50/50. `/lp/assistant` and
-// `/lp/concierge` left the draw and stay reachable by URL.
+// `/lp/concierge` left the draw and stay reachable by URL. `subscription` (the same
+// homepage sold as $99/month with a 3-day free trial) joins at weight 0 until its
+// subscription onboarding is live, reachable meanwhile with `?variant=subscription`.
 export const AB_TEST_ENABLED = true;
 
-export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct"] as const;
+export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
 
 export const VARIANT_COOKIE = "lp_variant";
@@ -41,6 +43,7 @@ export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
   instinct: 0.5,
   assistant: 0,
   concierge: 0,
+  subscription: 0,
 };
 
 /** The variant a uniform draw in [0, 1) lands on, walking the weights in a fixed order. */

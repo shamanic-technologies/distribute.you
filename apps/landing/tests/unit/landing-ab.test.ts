@@ -19,7 +19,7 @@ const q = (s = "") => new URLSearchParams(s);
 
 describe("the split rule", () => {
   it("draws a first-time human 50/50 between the homepage and the instinct page, and stores it", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0.5, instinct: 0.5, assistant: 0, concierge: 0 });
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0.5, instinct: 0.5, assistant: 0, concierge: 0, subscription: 0 });
     expect(drawVariant(0)).toBe("control");
     expect(drawVariant(0.4999)).toBe("control");
     expect(drawVariant(0.5)).toBe("instinct");
@@ -109,6 +109,24 @@ describe("GET / with the test on", () => {
     expect(html).toContain('lp_variant:"instinct"');
     expect(res.headers.get("set-cookie")).toContain("lp_variant=instinct");
     expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("serves the subscription arm the homepage sold at $99/month with a 3-day trial", async () => {
+    const { res, html } = await get({ qs: "?variant=subscription" });
+    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>$99/month");
+    expect(html).toContain("3-day free trial");
+    expect(html).toContain("Start my free trial");
+    // The page's own copy, scripts aside: the site-wide Organization JSON-LD and the
+    // invite banner (shown only to a referred visitor) are injected for every page.
+    const copy = html.replace(/<script[\s\S]*?<\/script>/g, "");
+    for (const gone of ["$30", "From $1<", "$1/day", "No subscription", "Pay as you go"]) expect(copy, gone).not.toContain(gone);
+    expect(html).not.toContain("\u2014");
+    expect(html).toContain('lp_variant:"subscription"');
+    expect(res.headers.get("set-cookie")).toContain("lp_variant=subscription");
+  });
+
+  it("keeps the subscription arm out of the draw until its onboarding is live", () => {
+    for (let i = 0; i < 1000; i++) expect(drawVariant(i / 1000)).not.toBe("subscription");
   });
 
   it("serves the homepage to the control arm, tagged", async () => {
