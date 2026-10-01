@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { checkProxyOrg } from "@/lib/proxy-org";
+import { getOrgName } from "@/lib/org-name";
 
 export const maxDuration = 15;
 
@@ -45,6 +46,8 @@ export async function GET(
     // switched into. client-service stores it the first time it sees one, and that
     // stored slug is the org's referral invite code.
     if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;
+    const clerkOrgName = await getOrgName(clerkOrgId);
+    if (clerkOrgName) headers["x-org-name"] = clerkOrgName;
 
     // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
     try {
