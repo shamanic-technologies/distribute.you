@@ -6,7 +6,7 @@ import {
   ApiError,
   cancelSubscription,
   getSubscription,
-  raiseSubscription,
+  changeSubscriptionAmount,
   resumeSubscription,
   type Subscription,
   type SubscriptionRead,
@@ -84,9 +84,7 @@ export function SubscriptionPlan() {
       setError(
         code === "subscription_trialing"
           ? "You can change the amount once your free trial ends."
-          : code === "amount_not_higher"
-            ? "A lower amount is not available yet. Write to us and we will change it."
-            : "We could not change your plan. Please try again.",
+          : "We could not change your plan. Please try again.",
       );
     }
     setBusy(null);
@@ -120,6 +118,9 @@ export function SubscriptionPlan() {
   const amount = picked ?? sub.monthly_amount_cents;
   const changed = picked !== null && picked !== sub.monthly_amount_cents;
   const trialing = sub.status === "trialing";
+  // billing says whether the amount can move now (not during the trial, not while a
+  // cancel is pending); an older read without the flag falls back to the trial rule.
+  const locked = sub.can_change_amount != null ? !sub.can_change_amount : trialing;
 
   return (
     <div className="k-card">
@@ -150,12 +151,14 @@ export function SubscriptionPlan() {
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium">Monthly amount</p>
             <p className="k-fg3 text-[12px] leading-[18px]">
-              {trialing
-                ? "You can change it once your free trial ends."
+              {locked
+                ? trialing
+                  ? "You can change it once your free trial ends."
+                  : "You can change it again once your plan is active."
                 : "Each dollar becomes credit for your outreach. A new amount applies from your next charge."}
             </p>
           </div>
-          <label className={`k-btn relative h-7 text-[12px] ${trialing ? "opacity-50" : ""}`}>
+          <label className={`k-btn relative h-7 text-[12px] ${locked ? "opacity-50" : ""}`}>
             <span className="tabular-nums">{monthlyUsd(amount)} / month</span>
             <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="k-fg3">
               <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -163,7 +166,7 @@ export function SubscriptionPlan() {
             <select
               aria-label="Monthly amount"
               value={amount}
-              disabled={trialing || busy !== null}
+              disabled={locked || busy !== null}
               onChange={(e) => setPicked(Number(e.target.value))}
               className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
             >
@@ -179,7 +182,7 @@ export function SubscriptionPlan() {
               type="button"
               className={`k-btn-accent h-7 ${busy === "amount" ? "cursor-wait" : ""}`}
               disabled={busy !== null}
-              onClick={() => void run("amount", () => raiseSubscription(amount))}
+              onClick={() => void run("amount", () => changeSubscriptionAmount(amount))}
             >
               {busy === "amount" ? "Saving..." : "Update plan"}
             </button>

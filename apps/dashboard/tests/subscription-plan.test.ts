@@ -6,6 +6,7 @@ import {
   SUBSCRIPTION_REACTIVE_DAILY_USD,
   isSubscriptionArm,
   monthlyUsd,
+  pickedPlanCents,
   planAmountOptions,
   subscriptionBudgets,
   subscriptionCheckoutRefusal,
@@ -52,6 +53,16 @@ describe("the plan's daily money", () => {
   });
 });
 
+describe("the amount picked on the landing", () => {
+  it("reads lp_plan when it sits on billing's ladder, else $99", () => {
+    expect(pickedPlanCents("lp_plan=49900")).toBe(49900);
+    expect(pickedPlanCents("a=1; lp_plan=19900")).toBe(19900);
+    expect(pickedPlanCents("lp_plan=12345")).toBe(9900);
+    expect(pickedPlanCents("lp_plan=500")).toBe(9900);
+    expect(pickedPlanCents(null)).toBe(9900);
+  });
+});
+
 describe("words", () => {
   it("states a monthly amount in whole dollars", () => {
     expect(monthlyUsd(9900)).toBe("$99");
@@ -80,15 +91,22 @@ describe("the onboarding sells the plan to its arm", () => {
   it("opens the $99/month trial checkout, with no Ads purchase value", () => {
     const begin = ONBOARDING.slice(ONBOARDING.indexOf("async function beginCheckoutAndLaunch("), ONBOARDING.indexOf("async function resumeCheckoutLaunch("));
     const arm = begin.slice(begin.indexOf("if (subscriptionArm) {"), begin.indexOf("const prepared = preparedCheckoutRef.current;"));
-    expect(arm).toContain("createSubscriptionCheckout(");
-    expect(arm).toContain("launch_checkout=success");
-    expect(arm).not.toContain("daily_budget");
+    expect(arm).toContain("await openTrialCheckout();");
+    const open = ONBOARDING.slice(ONBOARDING.indexOf("async function openTrialCheckout("), ONBOARDING.indexOf("async function finishTrialCheckout("));
+    // billing#568: the ordinary card form (Revolut widget), the picked amount, then start.
+    expect(open).toContain("await declareRevolutDefault();");
+    expect(open).toContain("pickedPlanCents(document.cookie)");
+    expect(open).toContain('setup.mode === "embedded_widget"');
+    expect(open).toContain("onSuccess: () => void finishTrialCheckout()");
+    expect(open).toContain("launch_checkout=success");
+    expect(open).not.toContain("daily_budget");
     expect(begin).toContain("subscriptionCheckoutRefusal(");
   });
 
   it("starts the launch by settling the subscription, never by arming a top-up", () => {
     const run = ONBOARDING.slice(ONBOARDING.indexOf("async function runLaunchWork("), ONBOARDING.indexOf("setLaunchStep(1);"));
     const arm = run.slice(run.indexOf("if (subscriptionArm) {"), run.indexOf("} else {"));
+    expect(arm).toContain("await ensureSubscriptionStarted();");
     expect(arm).toContain("await getSubscription()");
     expect(arm).toContain('read.payment_mode !== "subscription"');
     expect(arm).not.toContain("configureAutoTopup");
@@ -124,7 +142,7 @@ describe("the plan on the Billing page", () => {
   it("lets the customer pick the monthly amount from a dropdown of choices", () => {
     expect(PLAN).toContain('aria-label="Monthly amount"');
     expect(PLAN).toContain("planAmountOptions(sub.monthly_amount_cents).map");
-    expect(PLAN).toContain("raiseSubscription(amount)");
+    expect(PLAN).toContain("changeSubscriptionAmount(amount)");
     expect(PLAN).not.toContain("Add $100");
     expect(planAmountOptions(9900)).toEqual([9900, 19900, 29900, 49900, 99900, 199900]);
     expect(planAmountOptions(39900)).toContain(39900);
@@ -151,6 +169,7 @@ describe("the plan on the Billing page", () => {
       '"/billing/accounts/subscription"',
       '"/billing/accounts/subscription/cancel"',
       '"/billing/accounts/subscription/resume"',
+      '"/billing/accounts/subscription/start"',
     ]) {
       expect(API, path).toContain(path);
     }

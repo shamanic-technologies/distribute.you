@@ -68,6 +68,21 @@ export function subscriptionBudgets(pairs: readonly PlanPair[]): Record<string, 
   return out;
 }
 
+/** The monthly amount the visitor picked on the landing (`lp_plan`, cents), or $99. */
+export function pickedPlanCents(cookieHeader: string | null | undefined): number {
+  if (cookieHeader) {
+    for (const part of cookieHeader.split(";")) {
+      const [k, ...rest] = part.trim().split("=");
+      if (k !== "lp_plan") continue;
+      const cents = Number(decodeURIComponent(rest.join("=")));
+      if (Number.isInteger(cents) && cents >= SUBSCRIPTION_MONTHLY_CENTS && (cents - SUBSCRIPTION_MONTHLY_CENTS) % 10000 === 0) {
+        return cents;
+      }
+    }
+  }
+  return SUBSCRIPTION_MONTHLY_CENTS;
+}
+
 /** "$99", "$199": a monthly amount in whole dollars. */
 export function monthlyUsd(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString("en-US")}`;

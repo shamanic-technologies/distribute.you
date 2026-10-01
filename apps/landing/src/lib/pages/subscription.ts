@@ -19,11 +19,10 @@
 export const PLAN_AMOUNTS_USD = [99, 199, 299, 499, 999, 1999] as const;
 
 /**
- * The picker stays OFF until billing charges the amount picked (owner 2026-10-01: go
- * live at 25% now, hide the dropdown meanwhile). Off, the arm sells the $99 plan only,
- * which is what the checkout charges. Flip to true with the checkout that takes it.
+ * The picker is ON since billing's checkout charges the amount picked (billing#568,
+ * read by the dashboard from `lp_plan`). Off, the arm sells the $99 plan only.
  */
-export const PLAN_PICKER_LIVE = false;
+export const PLAN_PICKER_LIVE = true;
 
 /** The cookie carrying the pick to the dashboard's checkout (cents). */
 export const PLAN_COOKIE = "lp_plan";
