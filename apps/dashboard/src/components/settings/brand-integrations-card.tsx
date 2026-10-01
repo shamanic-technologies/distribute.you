@@ -6,18 +6,20 @@ import { useParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import {
   connectCrm,
+  connectSource,
   disconnectCrm,
+  disconnectSource,
   deleteBrandKey,
   listBrandKeys,
   listCrmConnections,
+  listSourceConnections,
   setBrandKey,
-  type CrmConnection,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CompanyLogo } from "@/components/company-logo";
-import { INTEGRATIONS, missingFields, type IntegrationDef } from "@/lib/integrations";
+import { INTEGRATIONS, missingFields, type IntegrationDef, type IntegrationSlug } from "@/lib/integrations";
 import {
   connectErrorMessage,
   credentialErrorMessage,
@@ -45,6 +47,49 @@ export function BrandIntegrationsCard({ brandId, bare = false }: { brandId: stri
   return <IntegrationsSection brandId={brandId} bare={bare} />;
 }
 
+/** What every connection reads as on this card, whichever service row it is. */
+interface Connection {
+  id: string;
+  status: string;
+  lastError: string | null;
+}
+
+/**
+ * Where each integration's connection lives: its query root, and how to list,
+ * connect and disconnect it. GoHighLevel keeps its own readers (and the
+ * `crmConnections` root the CRM pages share); PostHog and Stripe ride the generic
+ * crm-service source readers.
+ */
+const CONNECTION_IO: Record<
+  IntegrationSlug,
+  {
+    root: string;
+    list: (brandId: string) => Promise<{ connections: Connection[] }>;
+    connect: (brandId: string, values: Record<string, string>) => Promise<unknown>;
+    disconnect: (connection: Connection, brandId: string) => Promise<unknown>;
+  }
+> = {
+  gohighlevel: {
+    root: "crmConnections",
+    list: (brandId) => listCrmConnections(brandId),
+    connect: (brandId, values) => connectCrm(brandId, values.locationId ?? ""),
+    disconnect: (connection, brandId) => disconnectCrm(connection.id, brandId),
+  },
+  posthog: {
+    root: "posthogConnections",
+    list: (brandId) => listSourceConnections("posthog", brandId),
+    connect: (brandId, values) =>
+      connectSource("posthog", brandId, { projectId: (values.projectId ?? "").trim(), region: values.region ?? "" }),
+    disconnect: (connection, brandId) => disconnectSource("posthog", connection.id, brandId),
+  },
+  stripe: {
+    root: "stripeConnections",
+    list: (brandId) => listSourceConnections("stripe", brandId),
+    connect: (brandId) => connectSource("stripe", brandId, {}),
+    disconnect: (connection, brandId) => disconnectSource("stripe", connection.id, brandId),
+  },
+};
+
 /** `bare` renders the rows alone, for a host that draws the heading and the card. */
 function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean }) {
   const queryClient = useQueryClient();
@@ -52,29 +97,19 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   const orgId = params?.orgId ?? null;
 
   const keysQ = useAuthQuery(["brandKeys", brandId], () => listBrandKeys(brandId));
-  const connQ = useAuthQuery(["crmConnections", brandId], () => listCrmConnections(brandId));
-
   const storedProviders = new Set((keysQ.data?.keys ?? []).map((k) => k.provider));
-  const connections = connQ.data?.connections ?? [];
-  // Reveal on SETTLE, never success-only: a failed read must degrade to the rows
-  // reading "not connected" rather than skeleton for ever.
-  const settled =
-    (!keysQ.isPending || keysQ.isError) && (!connQ.isPending || connQ.isError);
+  const keysSettled = !keysQ.isPending || keysQ.isError;
 
   const rows = INTEGRATIONS.map((def) => (
-          <IntegrationRow
-            key={def.slug}
-            def={def}
-            brandId={brandId}
-            orgId={orgId}
-            settled={settled}
-            credentialStored={storedProviders.has(def.slug)}
-            connection={connections[0] ?? null}
-            onChanged={() => {
-              queryClient.invalidateQueries({ queryKey: ["brandKeys", brandId] });
-              queryClient.invalidateQueries({ queryKey: ["crmConnections", brandId] });
-            }}
-          />
+    <ConnectedRow
+      key={def.slug}
+      def={def}
+      brandId={brandId}
+      orgId={orgId}
+      keysSettled={keysSettled}
+      credentialStored={storedProviders.has(def.slug)}
+      onChanged={() => queryClient.invalidateQueries({ queryKey: ["brandKeys", brandId] })}
+    />
   ));
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
@@ -89,13 +124,51 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   );
 }
 
+/** One integration's own connection read, then its row. */
+function ConnectedRow({
+  def,
+  brandId,
+  orgId,
+  keysSettled,
+  credentialStored,
+  onChanged,
+}: {
+  def: IntegrationDef;
+  brandId: string;
+  orgId: string | null;
+  keysSettled: boolean;
+  credentialStored: boolean;
+  onChanged: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const io = CONNECTION_IO[def.slug];
+  const connQ = useAuthQuery([io.root, brandId], () => io.list(brandId));
+  // Reveal on SETTLE, never success-only: a failed read must degrade to the row
+  // reading "not connected" rather than skeleton for ever.
+  const settled = keysSettled && (!connQ.isPending || connQ.isError);
+  return (
+    <IntegrationRow
+      def={def}
+      brandId={brandId}
+      orgId={orgId}
+      settled={settled}
+      credentialStored={credentialStored}
+      connection={connQ.data?.connections[0] ?? null}
+      onChanged={() => {
+        onChanged();
+        queryClient.invalidateQueries({ queryKey: [io.root, brandId] });
+      }}
+    />
+  );
+}
+
 function StatusPill({
   settled,
   connection,
   credentialStored,
 }: {
   settled: boolean;
-  connection: CrmConnection | null;
+  connection: Connection | null;
   credentialStored: boolean;
 }) {
   if (!settled) {
@@ -144,9 +217,10 @@ function IntegrationRow({
   orgId: string | null;
   settled: boolean;
   credentialStored: boolean;
-  connection: CrmConnection | null;
+  connection: Connection | null;
   onChanged: () => void;
 }) {
+  const io = CONNECTION_IO[def.slug];
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +247,7 @@ function IntegrationRow({
       // 2. The connection. crm-service resolves the credential it was just given
       //    and proves it against the vendor, so THIS is what can refuse.
       try {
-        return await connectCrm(brandId, values.locationId ?? "");
+        return await io.connect(brandId, values);
       } catch (err) {
         console.error("[integrations] connecting failed", err);
         throw new Error(connectErrorMessage(err));
@@ -192,7 +266,7 @@ function IntegrationRow({
     mutationFn: async () => {
       if (connection) {
         try {
-          await disconnectCrm(connection.id, brandId);
+          await io.disconnect(connection, brandId);
         } catch (err) {
           console.error("[integrations] disconnecting failed", err);
           const msg = disconnectErrorMessage(err);
@@ -251,7 +325,7 @@ function IntegrationRow({
 
           {connection && orgId ? (
             <Link
-              href={`/orgs/${orgId}/brands/${brandId}/crm`}
+              href={def.surfaceHref(orgId, brandId)}
               className="mt-2 inline-flex text-sm font-medium text-brand-600 hover:underline"
             >
               Open your {def.surfaceLabel}
@@ -325,6 +399,22 @@ function IntegrationRow({
           {def.fields.map((f) => (
             <label key={f.key} className="block">
               <span className="text-sm font-medium text-gray-700">{f.label}</span>
+              {f.options ? (
+                <select
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  className="mt-1 block w-full max-w-md rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40"
+                >
+                  <option value="" disabled>
+                    {f.placeholder}
+                  </option>
+                  {f.options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
               <input
                 type={f.secret ? "password" : "text"}
                 value={values[f.key] ?? ""}
@@ -334,6 +424,7 @@ function IntegrationRow({
                 spellCheck={false}
                 className="mt-1 w-full max-w-md rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40"
               />
+              )}
               <span className="mt-1 block text-xs text-gray-500">
                 {f.secret && credentialStored
                   ? `Leave blank to keep the ${f.label.toLowerCase()} you already gave us. ${f.help}`

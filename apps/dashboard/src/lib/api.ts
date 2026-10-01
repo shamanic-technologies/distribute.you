@@ -652,6 +652,81 @@ export async function disconnectCrm(
   );
 }
 
+// ==================== POSTHOG + STRIPE, read-only sources of Conversations ====================
+//
+// Same two-write connect as GoHighLevel: the credential goes to key-service under the
+// brand (`setBrandKey(brandId, "posthog" | "stripe", key)`), then crm-service proves it
+// against the vendor and writes the connection, or refuses in the vendor's own words.
+// `brandId` rides the query string on every call for the same gateway reason as
+// `connectCrm` above (identity is promoted from headers / query only, never a body).
+
+export type SourceSlug = "posthog" | "stripe";
+
+const SourceConnectionSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  // A plain string: the producer owns this vocabulary.
+  status: z.string(),
+  synced: z.boolean(),
+  lastSyncedAt: z.string().nullable(),
+  lastError: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type SourceConnection = z.infer<typeof SourceConnectionSchema>;
+
+/** This brand's connection to `source` and its health. Empty when nothing is connected. */
+export async function listSourceConnections(
+  source: SourceSlug,
+  brandId: string,
+  token?: string,
+): Promise<{ connections: SourceConnection[] }> {
+  const raw = await apiCall<unknown>(`/orgs/${source}/connections?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ connections: z.array(SourceConnectionSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listSourceConnections response shape mismatch", source, parsed.error.flatten());
+    throw new Error("listSourceConnections returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Connect `source` for this brand. The credential must ALREADY be stored; `fields`
+ * is what names the account (PostHog: projectId + region; Stripe: nothing, the
+ * restricted key is bound to its account).
+ */
+export async function connectSource(
+  source: SourceSlug,
+  brandId: string,
+  fields: Record<string, string>,
+  token?: string,
+): Promise<{ connection: SourceConnection }> {
+  const raw = await apiCall<unknown>(`/orgs/${source}/connections?brandId=${encodeURIComponent(brandId)}`, {
+    token,
+    method: "POST",
+    body: { brandId, ...fields },
+  });
+  const parsed = z.object({ connection: SourceConnectionSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] connectSource response shape mismatch", source, parsed.error.flatten());
+    throw new Error("connectSource returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Stop syncing this connection and drop what was mirrored with it. */
+export async function disconnectSource(
+  source: SourceSlug,
+  connectionId: string,
+  brandId: string,
+  token?: string,
+): Promise<unknown> {
+  return apiCall<unknown>(
+    `/orgs/${source}/connections/${connectionId}?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "DELETE" },
+  );
+}
+
 // The three groups are crm-service's own grouping and it always emits them, so
 // they are REQUIRED here with nullable leaves — a field their CRM does not hold
 // reads null, which is a different statement from a group we failed to parse.

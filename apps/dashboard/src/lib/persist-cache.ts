@@ -159,6 +159,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // so without these the Integrations section cold-skeletons every time.
   "brandKeys",
   "crmConnections",
+  "posthogConnections",
+  "stripeConnections",
   // The mirrored CRM itself. Both are bounded (one page of contacts, one
   // pipeline) and change on their own sync cadence rather than this brand's, so
   // a disk read is exactly what they are for.
