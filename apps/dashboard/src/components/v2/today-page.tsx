@@ -14,6 +14,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
 import { shownFigure } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
+import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
@@ -73,6 +74,9 @@ export function TodayPage() {
   const router = useRouter();
   const { user } = useUser();
   const now = useMemo(() => new Date(), []);
+  // The printed greeting, date and time read the browser clock after mount only: the
+  // server renders in UTC, which broke hydration (React #418) outside UTC.
+  const clock = useClientClock();
   const today = utcDay(now);
   const brand = useBrandInfo(brandId).data?.brand ?? null;
   const rev = useBrandRevenue(brandId);
@@ -148,8 +152,8 @@ export function TodayPage() {
   }, [callLeads, cursor, router, orgId, brandId]);
 
   const first = user?.firstName ?? null;
-  const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  const timeLine = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const dateLine = clock?.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const timeLine = clock?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const roi = shownRoi.value;
   const gaugeMax = Math.max(3, Math.ceil((roi ?? 0) + 0.5));
 
@@ -168,8 +172,8 @@ export function TodayPage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {greeting(now)}
-              {first ? `, ${first}` : ""}
+              {clock ? greeting(clock) : "\u00a0"}
+              {clock && first ? `, ${first}` : ""}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {!runsSettled ? (
@@ -197,7 +201,7 @@ export function TodayPage() {
             </p>
           </div>
           <p className="k-fg3 text-[13px]">
-            {dateLine} · {timeLine}
+            {clock ? `${dateLine} · ${timeLine}` : "\u00a0"}
           </p>
         </div>
 

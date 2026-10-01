@@ -43,6 +43,8 @@ Customer dashboard (Next 16, Clerk, React Query v5), a container on the Hetzner 
 - `useMonotonicStatuses(entries, priority)` (`lib/use-monotonic-status.ts`): every client-polled status-tab surface latches the most-advanced bucket (poll downgrade is a stale read; `console.error` it).
 - keep-last-good (`lib/keep-last-good.ts`, `keepLastGoodFields/List`, passed as `structuralSharing`): OPT-IN per query whose nullable fields gate UI and where null = transient; list only those fields; cannot heal the FIRST fetch, so keep a bounded conditional `refetchInterval` (~4s, capped tries) while the payload has no usable data (workflow-projection costs). TanStack types the params `unknown`.
 - A full-width row at the top of a list/detail split page goes INSIDE the inner padded content column, never a child of the `flex md:flex-row` root.
+- **Nothing printed from "now" renders on the server** (greeting, today's date, a clock): the box renders in UTC and React throws #418 for anyone elsewhere. Read `useClientClock()` (`lib/use-client-clock.ts`, `null` until mounted) and show a placeholder meanwhile.
+- **Server Action ids survive a deploy only because the box builds with a fixed `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** (`env/dashboard-app.build.env`, same for admin): Next salts every id with it and draws a random one per build otherwise, so every open tab hit `UnrecognizedActionError` on its next Clerk org switch. Never remove or rotate it casually; `lib/stale-server-action.ts` reloads a stale tab once as the backstop.
 
 ## Local-first cache (per-query IndexedDB persister)
 

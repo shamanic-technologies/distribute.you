@@ -1,5 +1,15 @@
 import posthog from "posthog-js";
 
+import { installStaleServerActionReload } from "./lib/stale-server-action";
+
+// A tab left open across a deploy recovers by itself (lib/stale-server-action.ts).
+installStaleServerActionReload({
+  addEventListener: (type, fn) => window.addEventListener(type, fn),
+  sessionStorage: window.sessionStorage,
+  location: window.location,
+  now: Date.now,
+});
+
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
