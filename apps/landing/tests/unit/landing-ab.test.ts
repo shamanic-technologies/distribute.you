@@ -19,12 +19,15 @@ const q = (s = "") => new URLSearchParams(s);
 const SUBSCRIPTION_SRC = readFileSync(path.join(__dirname, "../../src/lib/pages/subscription.ts"), "utf8");
 
 describe("the split rule", () => {
-  it("draws a first-time human 25/25/50 between the homepage, its $99 plan arm and the instinct page", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0.25, subscription: 0.25, instinct: 0.5, assistant: 0, concierge: 0 });
+  it("draws a first-time human 80/10/10 between the homepage, its $99 plan arm and the instinct page", () => {
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0.8, subscription: 0.1, instinct: 0.1, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(counts).toEqual({ control: 2500, instinct: 5000, subscription: 2500 });
-    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.7, enabled: true })).toEqual({
+    expect(Object.keys(counts).sort()).toEqual(["control", "instinct", "subscription"]);
+    expect(counts.control).toBe(8000);
+    expect(Math.abs(counts.instinct - 1000)).toBeLessThanOrEqual(1);
+    expect(Math.abs(counts.subscription - 1000)).toBeLessThanOrEqual(1);
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.85, enabled: true })).toEqual({
       variant: "instinct", setCookie: true, inTest: true,
     });
   });
