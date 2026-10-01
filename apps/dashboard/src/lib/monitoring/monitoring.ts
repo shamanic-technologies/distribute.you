@@ -232,6 +232,100 @@ export const EmailSendPriceSchema = z.object({
 export type EmailSendPrice = z.infer<typeof EmailSendPriceSchema>;
 export type EmailSendPriceDay = EmailSendPrice["daily"][number];
 
+/**
+ * costs-service's real cost per credit of each vendor subscription (owner 2026-10-01): net paid
+ * to the subscription's bank-ledger vendor(s) since 2026-01-01 over the credits consumed through
+ * our own account. Money is null when no ledger line matches (unknown, never $0); a cost per
+ * credit is null with a served reason. Every ratio and total is the producer's.
+ */
+const LedgerMoney = z.number().nullable();
+export const SubscriptionCostsSchema = z.object({
+  formula: z.string(),
+  since: z.string(),
+  asOf: z.string(),
+  refreshedAt: z.string(),
+  stale: z.boolean(),
+  lastRefresh: z
+    .object({ status: z.string(), asOf: z.string(), startedAt: z.string(), finishedAt: z.string().nullable(), error: z.string().nullable() })
+    .nullable(),
+  subscriptions: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      provider: z.string(),
+      ledgerMatched: z.boolean(),
+      ledgerNote: z.string().nullable(),
+      ledgerVendors: z.array(
+        z.object({
+          key: z.string(),
+          firstPaidOn: z.string().nullable(),
+          lastPaidOn: z.string().nullable(),
+          payments: z.number(),
+          refunds: z.number(),
+          paidUsd: z.number(),
+          refundedUsd: z.number(),
+          netUsd: z.number(),
+        }),
+      ),
+      firstPaymentOn: z.string().nullable(),
+      lastPaymentOn: z.string().nullable(),
+      paidUsd: LedgerMoney,
+      refundedUsd: LedgerMoney,
+      netUsd: LedgerMoney,
+      creditDefinition: z.string(),
+      orgKeyUnitsCounted: z.boolean(),
+      orgKeyUnitsNote: z.string().nullable(),
+      credits: z.number(),
+      costPerCreditUsdCents: z.number().nullable(),
+      grossCostPerCreditUsdCents: z.number().nullable(),
+      costPerCreditNullReason: z.string().nullable(),
+      costItems: z.array(
+        z.object({
+          costName: z.string(),
+          isCredit: z.boolean(),
+          excludedReason: z.string().nullable(),
+          quantityPlatformKey: z.number(),
+          quantityOrgKey: z.number(),
+          creditsCounted: z.number(),
+          unit: z.string().nullable(),
+          billedPricePerUnitInUsdCents: z.number().nullable(),
+          vendorCostPerUnitInUsdCents: z.number().nullable(),
+          catalogueNote: z.string().nullable(),
+        }),
+      ),
+      monthly: z.array(
+        z.object({
+          month: z.string(),
+          paidUsd: LedgerMoney,
+          refundedUsd: LedgerMoney,
+          netUsd: LedgerMoney,
+          credits: z.number(),
+          monthCostPerCreditUsdCents: z.number().nullable(),
+          cumulativeNetUsd: LedgerMoney,
+          cumulativeCredits: z.number(),
+          costPerCreditUsdCents: z.number().nullable(),
+          grossCostPerCreditUsdCents: z.number().nullable(),
+        }),
+      ),
+      daily: z.array(
+        z.object({
+          day: z.string(),
+          paidUsd: LedgerMoney,
+          netUsd: LedgerMoney,
+          credits: z.number(),
+          cumulativePaidUsd: LedgerMoney,
+          cumulativeNetUsd: LedgerMoney,
+          cumulativeCredits: z.number(),
+          costPerCreditUsdCents: z.number().nullable(),
+          grossCostPerCreditUsdCents: z.number().nullable(),
+        }),
+      ),
+    }),
+  ),
+});
+export type SubscriptionCosts = z.infer<typeof SubscriptionCostsSchema>;
+export type SubscriptionCost = SubscriptionCosts["subscriptions"][number];
+
 /** Every price version of one cost item, oldest first. */
 export function versionsOf(versions: PriceVersion[], name: string): PriceVersion[] {
   return versions
@@ -269,7 +363,7 @@ export type MonitoringView =
   | { view: "page"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "price/billed", "price/current", "price/history", "price/email-sending", "margin", "emails"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "price/billed", "price/current", "price/history", "price/email-sending", "margin", "emails"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 export function parseMonitoringPath(rest: string): MonitoringView {

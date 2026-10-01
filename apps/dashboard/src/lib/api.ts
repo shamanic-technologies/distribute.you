@@ -27,6 +27,8 @@ import {
   type SentPerPeriod,
   EmailSendPriceSchema,
   type EmailSendPrice,
+  SubscriptionCostsSchema,
+  type SubscriptionCosts,
 } from "./monitoring/monitoring";
 import {
   LeadBucketCountsSchema,
@@ -1425,6 +1427,7 @@ export const STAFF_MONITORING_PATHS = {
   providerSources: "/costs/provider-payment-sources",
   sentPerPeriod: "/instantly/ops/sent-per-period",
   emailSendPrice: "/costs/email-send-price",
+  subscriptionCosts: "/costs/subscription-costs",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -1471,6 +1474,11 @@ export async function getStaffProviderSources(): Promise<ProviderSourcesRow[]> {
 /** The price of one cold email sent to a lead, per day since the first payment (costs-service, daily). */
 export async function getStaffEmailSendPrice(): Promise<EmailSendPrice> {
   return parseStaff("getStaffEmailSendPrice", EmailSendPriceSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.emailSendPrice));
+}
+
+/** The real cost per credit of each vendor subscription, per day since 2026-01-01 (costs-service, daily). */
+export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
+  return parseStaff("getStaffSubscriptionCosts", SubscriptionCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.subscriptionCosts));
 }
 
 // Brands

@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions } from "@/lib/api";
+import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts } from "@/components/v2/monitoring-emails";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
+import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -53,6 +54,9 @@ function useEmails() {
 function useEmailSendPrice() {
   return useAuthQuery(["staffEmailSendPrice"], getStaffEmailSendPrice, ONCE);
 }
+function useSubscriptionCosts() {
+  return useAuthQuery(["staffSubscriptionCosts"], getStaffSubscriptionCosts, ONCE);
+}
 
 // ─── Formatting only ───────────────────────────────────────────────────────
 
@@ -86,6 +90,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
 const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; question: string }> = {
   "cost/providers": { section: "cost", title: "Providers", question: "Which vendors do we pay, and for what?" },
   "cost/spend": { section: "cost", title: "Spend per provider", question: "How much has each provider charged us since inception?" },
+  "cost/subscriptions": { section: "cost", title: "Subscriptions", question: "What does one credit of each subscription really cost us?" },
   "price/billed": { section: "price", title: "Billed to users", question: "How much did we bill our users since inception?" },
   "price/current": { section: "price", title: "Current prices", question: "How much are we pricing each cost item right now?" },
   "price/history": { section: "price", title: "Prices since inception", question: "How has each cost item been priced since inception?" },
@@ -152,6 +157,7 @@ export function V2Monitoring() {
       <div className="mt-6">
         {view.page === "cost/providers" && <ProvidersPage />}
         {view.page === "cost/spend" && <SpendPage />}
+        {view.page === "cost/subscriptions" && <SubscriptionsPage />}
         {view.page === "price/billed" && <BilledPage />}
         {view.page === "price/current" && <CurrentPricesPage />}
         {view.page === "price/history" && <PriceHistoryPage />}
@@ -223,6 +229,7 @@ function Hub({ base }: { base: string }) {
   const prices = useCurrentPrices();
   const emails = useEmails();
   const sendPrice = useEmailSendPrice();
+  const subs = useSubscriptionCosts();
   const sp = sendPrice.data;
   const m = margin.data;
   const t = m?.total;
@@ -247,7 +254,7 @@ function Hub({ base }: { base: string }) {
         </span>
       </div>
 
-      <Section section="cost" count={2}>
+      <Section section="cost" count={3}>
         <Card
           href={href("cost/providers")}
           page="cost/providers"
@@ -264,6 +271,19 @@ function Hub({ base }: { base: string }) {
           cells={[
             { label: "Vendor cost", value: t && usd(t.vendorCostInUsdCents), note: "priced spend", bars: byProvider("vendorCostInUsdCents") },
             { label: "Largest provider", value: top === undefined ? undefined : top ? providerName(top.provider) : null, note: top ? `${usd(top.vendorCostInUsdCents)} vendor cost` : undefined },
+          ]}
+        />
+        <Card
+          href={href("cost/subscriptions")}
+          page="cost/subscriptions"
+          error={subs.isError}
+          cells={[
+            { label: "Subscriptions", value: subs.data?.subscriptions.length, note: "priced from the bank ledger" },
+            {
+              label: "Apollo, per credit",
+              value: subs.data === undefined ? undefined : centsPerEmail(subs.data.subscriptions.find((x) => x.key === "apollo")?.costPerCreditUsdCents ?? null),
+              note: subs.data ? `real cost, as of ${day(subs.data.asOf)}` : undefined,
+            },
           ]}
         />
       </Section>
@@ -662,6 +682,11 @@ function VersionsTable({ versions }: { versions: PriceVersion[] }) {
 }
 
 // ─── Margin ────────────────────────────────────────────────────────────────
+
+function SubscriptionsPage() {
+  const subs = useSubscriptionCosts();
+  return <Loaded q={subs}>{(d) => <SubscriptionsView data={d} />}</Loaded>;
+}
 
 function EmailSendingPage() {
   const price = useEmailSendPrice();
