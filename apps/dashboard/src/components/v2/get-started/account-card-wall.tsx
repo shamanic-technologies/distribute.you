@@ -24,6 +24,7 @@
 
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { useEffect, useRef, useState } from "react";
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { createPortal } from "react-dom";
 import { useAuth, useSession, useUser } from "@clerk/nextjs";
 import { useSignUp } from "@clerk/nextjs/legacy";
@@ -129,6 +130,7 @@ export function AccountCardWall({
 
   const [stage, setStage] = useState<Stage>("account");
   const [email, setEmail] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
   // The reply margin: unticked by default, so it is read before anything is paid.
@@ -591,44 +593,54 @@ export function AccountCardWall({
               <>
                 {stage === "account" ? (
                   <form className="mt-4 grid gap-3" onSubmit={(e) => void submitAccount(e)}>
+                    {/* Two equal choices, same colour (owner 2026-10-01): Google's dark theme, and
+                        email in the same dress; the email field opens on its click. */}
                     <button
                       type="button"
-                      className="k-cta k-cta-google w-full justify-center gap-3"
+                      className="k-cta k-cta-dark w-full justify-center gap-3"
                       onClick={() => void google()}
                       disabled={busy}
                     >
                       <GoogleMark />
                       Continue with Google
                     </button>
-                    <div className="flex items-center gap-2">
-                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
-                      <span className="k-fg3 text-[12px]">or with your email</span>
-                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
-                    </div>
-                    <div className="grid gap-2">
-                      <input
-                        className="k-input k-cta-input"
-                        type="email"
-                        autoComplete="email"
-                        placeholder="you@company.com"
-                        aria-label="Work email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                      <div id="clerk-captcha" />
-                      {captchaWaiting && (
-                        <p className="gs-in k-fg2 text-[12px]" role="status">
-                          Check the box above to finish creating your account.
-                        </p>
-                      )}
+                    {!emailOpen ? (
                       <button
-                        type="submit"
-                        className="k-btn-accent k-cta gs-glow w-full justify-center"
-                        disabled={busy || !EMAIL_SHAPE.test(email.trim())}
+                        type="button"
+                        className="k-cta k-cta-dark w-full justify-center gap-3"
+                        onClick={() => setEmailOpen(true)}
+                        disabled={busy}
                       >
-                        {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : `Claim my $${WALL_FREE_CREDIT_USD} and start`}
+                        <EnvelopeIcon className="h-5 w-5" aria-hidden="true" />
+                        Continue with Email
                       </button>
-                    </div>
+                    ) : (
+                      <div className="gs-in grid gap-2">
+                        <input
+                          className="k-input k-cta-input"
+                          type="email"
+                          autoComplete="email"
+                          placeholder="you@company.com"
+                          aria-label="Work email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="k-cta k-cta-dark w-full justify-center"
+                          disabled={busy || !EMAIL_SHAPE.test(email.trim())}
+                        >
+                          {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : `Claim my $${WALL_FREE_CREDIT_USD} and start`}
+                        </button>
+                      </div>
+                    )}
+                    <div id="clerk-captcha" />
+                    {captchaWaiting && (
+                      <p className="gs-in k-fg2 text-[12px]" role="status">
+                        Check the box above to finish creating your account.
+                      </p>
+                    )}
                     <Consent brandName={brandName} checked={consent} onChange={setConsent} />
                     <p className="k-fg3 text-[12px]">
                       Already have an account?{" "}
