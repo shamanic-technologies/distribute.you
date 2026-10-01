@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  formatRatePct,
+  legRateFor,
+  parseRatePct,
   giveListLines,
   giveListsEqual,
   giveListsPayload,
@@ -99,7 +102,37 @@ describe("Channels tab wiring", () => {
   it("reads the legs off the saved sales path and the give lists off the offer user-fields", () => {
     expect(page).toContain('["offerSalesPath", brandId, offerId]');
     expect(page).toContain('["offerUserFields", brandId, offerId]');
-    expect(page).toContain("saveOfferUserFields(brandId, offerId, giveListsPayload(edited))");
+    expect(page).toContain("saveOfferUserFields(brandId, offerId, giveListsPayload(next))");
     expect(page).toContain("SALES_PATH_CHANNEL_SLUGS");
+  });
+
+  it("autosaves on leaving a field: no Save button, a rate write re-reads every money root", () => {
+    expect(page).not.toMatch(/>\s*Save\s*</);
+    expect(page.match(/onBlur=\{commit\}/g)?.length).toBe(2);
+    expect(page).toContain('["brandLegRates", brandId]');
+    expect(page).toContain("invalidateConversionRates(qc)");
+  });
+});
+
+describe("leg rates", () => {
+  const rates = [
+    { fromStep: "Positive reply", toStep: "Meeting booked", ratePct: 20, stated: true, statedAt: "x" },
+    { fromStep: "Website visit", toStep: "Form filled", ratePct: null, stated: false, statedAt: null },
+  ];
+  it("matches a leg by the two step labels, verbatim", () => {
+    expect(legRateFor(rates, "Positive reply", "Meeting booked")?.ratePct).toBe(20);
+    // brand-service spells this step differently from the catalogue: no row, never a guess.
+    expect(legRateFor(rates, "Website visit", "Form submitted")).toBeUndefined();
+  });
+  it("parses what was typed: empty clears, out of range refuses", () => {
+    expect(parseRatePct("")).toEqual({ ok: true, value: null });
+    expect(parseRatePct("12,5 %")).toEqual({ ok: true, value: 12.5 });
+    expect(parseRatePct("0").ok).toBe(false);
+    expect(parseRatePct("101").ok).toBe(false);
+    expect(parseRatePct("abc").ok).toBe(false);
+  });
+  it("prints one decimal at most", () => {
+    expect(formatRatePct(12.5)).toBe("12.5%");
+    expect(formatRatePct(20)).toBe("20%");
   });
 });
