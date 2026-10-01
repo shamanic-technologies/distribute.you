@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
@@ -10,6 +11,7 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/co
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts } from "@/components/v2/monitoring-emails";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
+import { BillingTable } from "@/components/v2/monitoring-billing";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
 import { NewPricingView } from "@/components/v2/monitoring-new-pricing";
 import { PricingComparisonView } from "@/components/v2/monitoring-pricing-comparison";
@@ -20,12 +22,9 @@ import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimpl
 import {
   costItemNames,
   parseMonitoringPath,
-  versionInForce,
-  versionsOf,
   type CostItemMargin,
   type MarginFigures,
   type MonitoringPage,
-  type PriceVersion,
   type ProviderMargin,
 } from "@/lib/monitoring/monitoring";
 
@@ -67,14 +66,6 @@ function useSubscriptionCosts() {
 
 const usd = (cents: string | number) => formatCentsAsUsd(cents, 0);
 const usdExact = (cents: string | number) => formatCentsAsUsd(cents, 2);
-/** A unit price: often a fraction of a cent, so four significant digits. */
-function unitUsd(cents: number | null): string | null {
-  if (cents == null) return null;
-  const v = cents / 100;
-  if (v === 0) return "$0";
-  return `$${v.toLocaleString("en-US", v >= 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumSignificantDigits: 4 })}`;
-}
-const markup = (m: number | null) => (m == null ? null : `×${m.toLocaleString("en-US", { maximumFractionDigits: 3 })}`);
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 const providerName = (p: string | null) => p ?? "Unknown provider";
 /** A price per email in US cents, "3.06¢"; null stays null (no email yet). */
@@ -96,10 +87,8 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/providers": { section: "cost", title: "Providers", question: "Which vendors do we pay, and for what?" },
   "cost/spend": { section: "cost", title: "Spend per provider", question: "How much has each provider charged us since inception?" },
   "cost/subscriptions": { section: "cost", title: "Subscriptions", question: "What does one credit of each subscription really cost us?" },
-  "price/billed": { section: "price", title: "Billed to users", question: "How much did we bill our users since inception?" },
-  "price/current": { section: "price", title: "Current prices", question: "How much are we pricing each cost item right now?" },
-  "price/history": { section: "price", title: "Prices since inception", question: "How has each cost item been priced since inception?" },
-  "price/email-sending": { section: "price", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "price/billed": { section: "price", title: "Billed to users", question: "What did we bill for each cost item, and at what price?" },
   "price/new-pricing": { section: "price", title: "New pricing", question: "What would each cost item cost at its real cost ×2?" },
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
   "margin/pricing-comparison": { section: "margin", title: "Pricing comparison", question: "What would a client have paid, and our margin, under two price lists?" },
@@ -132,6 +121,12 @@ export function V2Monitoring() {
   const base = v2Href(orgId, brandId, "monitoring");
   const rest = pathname.startsWith(base) ? pathname.slice(base.length) : "";
   const view = parseMonitoringPath(rest);
+  const router = useRouter();
+  const movedTo = view.view === "moved" ? `${base}/${view.page}` : null;
+  useEffect(() => {
+    if (movedTo) router.replace(movedTo);
+  }, [movedTo, router]);
+  if (view.view === "moved") return null;
   if (view.view === "hub") return <Hub base={base} />;
   if (view.view === "missing") {
     return (
@@ -165,10 +160,8 @@ export function V2Monitoring() {
         {view.page === "cost/providers" && <ProvidersPage />}
         {view.page === "cost/spend" && <SpendPage />}
         {view.page === "cost/subscriptions" && <SubscriptionsPage />}
+        {view.page === "cost/email-sending" && <EmailSendingPage />}
         {view.page === "price/billed" && <BilledPage />}
-        {view.page === "price/current" && <CurrentPricesPage />}
-        {view.page === "price/history" && <PriceHistoryPage />}
-        {view.page === "price/email-sending" && <EmailSendingPage />}
         {view.page === "price/new-pricing" && <NewPricingView />}
         {view.page === "margin/pricing-comparison" && <PricingComparisonView />}
         {view.page === "margin" && <MarginPage />}
@@ -265,7 +258,7 @@ function Hub({ base }: { base: string }) {
         </span>
       </div>
 
-      <Section section="cost" count={3}>
+      <Section section="cost" count={4}>
         <Card
           href={href("cost/providers")}
           page="cost/providers"
@@ -297,48 +290,30 @@ function Hub({ base }: { base: string }) {
             },
           ]}
         />
-      </Section>
-
-      <Section section="price" count={5}>
         <Card
-          href={href("price/billed")}
-          page="price/billed"
-          error={margin.isError}
-          cells={[
-            { label: "Billed, net", value: t && usd(t.netBilledCostInUsdCents), note: "after discounts", bars: byProvider("netBilledCostInUsdCents") },
-            { label: "Billed, gross", value: t && usd(t.billedCostInUsdCents), note: "list price" },
-          ]}
-        />
-        <Card
-          href={href("price/current")}
-          page="price/current"
-          error={prices.isError}
-          cells={[
-            { label: "Cost items", value: prices.data?.length, note: "priced now" },
-            { label: "Providers", value: prices.data ? new Set(prices.data.map((p) => p.provider)).size : undefined, note: "billing them" },
-          ]}
-        />
-        <Card
-          href={href("price/history")}
-          page="price/history"
-          error={versions.isError}
-          cells={[
-            { label: "Price versions", value: versions.data?.length, note: "since the first" },
-            { label: "Cost items", value: items, note: "with a history" },
-          ]}
-        />
-        <Card
-          href={href("price/email-sending")}
-          page="price/email-sending"
+          href={href("cost/email-sending")}
+          page="cost/email-sending"
           error={sendPrice.isError}
           cells={[
             {
               label: "Per email",
               value: sp === undefined ? undefined : centsPerEmail(sp.currentPriceUsdCents),
-              note: sp ? `as of ${day(sp.asOf)}` : undefined,
+              note: sp ? `real cost, as of ${day(sp.asOf)}` : undefined,
               bars: sp?.monthly.slice(-7).map((mo) => mo.priceUsdCents ?? 0),
             },
             { label: "Emails to leads", value: sp?.totals.emailsToLeads.toLocaleString("en-US"), note: sp ? `${usd(sp.totals.spendUsd * 100)} infra spend, net` : undefined },
+          ]}
+        />
+      </Section>
+
+      <Section section="price" count={2}>
+        <Card
+          href={href("price/billed")}
+          page="price/billed"
+          error={margin.isError}
+          cells={[
+            { label: "Billed, net", value: t && usd(t.netBilledCostInUsdCents), note: `${t ? usd(t.billedCostInUsdCents) : "…"} gross`, bars: byProvider("netBilledCostInUsdCents") },
+            { label: "Priced now", value: prices.data?.length, note: prices.data ? `of ${items ?? "…"} cost items` : undefined },
           ]}
         />
         <Card
@@ -534,175 +509,34 @@ function SpendPage() {
 
 function BilledPage() {
   const margin = useMargin();
+  const versions = useVersions();
+  const prices = useCurrentPrices();
   return (
-    <Loaded q={margin}>
-      {(m) => (
+    <Loaded q={versions}>
+      {(vs) => (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Billed, net" note="after per-org discounts">
-              <Figure value={usd(m.total.netBilledCostInUsdCents)} />
+              <Figure value={margin.data ? usd(margin.data.total.netBilledCostInUsdCents) : margin.isError ? null : undefined} />
             </StatTile>
             <StatTile label="Billed, gross" note="list price">
-              <Figure value={usd(m.total.billedCostInUsdCents)} />
+              <Figure value={margin.data ? usd(margin.data.total.billedCostInUsdCents) : margin.isError ? null : undefined} />
             </StatTile>
             <StatTile label="Refunded" note="spent, not charged">
-              <Figure value={usd(m.total.refundedCostInUsdCents)} />
+              <Figure value={margin.data ? usd(margin.data.total.refundedCostInUsdCents) : margin.isError ? null : undefined} />
+            </StatTile>
+            <StatTile label="Priced now" note="cost items">
+              <Figure value={prices.data ? prices.data.length : prices.isError ? null : undefined} />
             </StatTile>
           </div>
+          {margin.data && <UnpricedNote f={margin.data.total} />}
           <div className="mt-6">
-            <SectionTitle count={m.providers.length}>Per provider</SectionTitle>
-            <Table
-              head={
-                <>
-                  <th className={TH}>Provider</th>
-                  <th className={THR}>Billed, net</th>
-                  <th className={THR}>Billed, gross</th>
-                  <th className={THR}>Refunded</th>
-                </>
-              }
-            >
-              {m.providers.map((p) => (
-                <tr key={p.provider ?? "null"}>
-                  <td className={TD}>{providerName(p.provider)}</td>
-                  <td className={TDR}>{usd(p.netBilledCostInUsdCents)}</td>
-                  <td className={TDR}>{usd(p.billedCostInUsdCents)}</td>
-                  <td className={TDR}>{usd(p.refundedCostInUsdCents)}</td>
-                </tr>
-              ))}
-            </Table>
+            <SectionTitle right={<span>Pick a row for its price history</span>}>Per cost item</SectionTitle>
+            <BillingTable margin={margin.data} marginError={margin.isError} versions={vs} prices={prices.data} pricesError={prices.isError} />
           </div>
-          <CostItemsTable rows={m.costItems} cols={["billed"]} />
         </>
       )}
     </Loaded>
-  );
-}
-
-function CurrentPricesPage() {
-  const prices = useCurrentPrices();
-  const versions = useVersions();
-  return (
-    <Loaded q={prices}>
-      {(ps) => (
-        <>
-          {versions.isError && <p className="k-card k-fg2 mb-3 px-4 py-2.5 text-[12px]">The vendor cost catalogue could not be read, so the vendor column is empty.</p>}
-          <SectionTitle count={ps.length}>Cost items in force now</SectionTitle>
-          <Table
-            head={
-              <>
-                <th className={TH}>Cost item</th>
-                <th className={TH}>Provider</th>
-                <th className={TH}>Unit</th>
-                <th className={THR}>We charge / unit</th>
-                <th className={THR}>Vendor charges / unit</th>
-                <th className={THR}>Markup</th>
-                <th className={THR}>Since</th>
-              </>
-            }
-          >
-            {[...ps]
-              .sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name))
-              .map((p) => {
-                const v = versions.data ? versionInForce(versions.data, p) : null;
-                return (
-                  <tr key={p.name}>
-                    <td className={`${TD} k-mono text-[12px]`}>{p.name}</td>
-                    <td className={TD}>{p.provider}</td>
-                    <td className={`${TD} k-fg3`}>
-                      <Cell v={p.unit ?? null} />
-                    </td>
-                    <td className={TDR}>{unitUsd(p.pricePerUnitInUsdCents)}</td>
-                    <td className={TDR}>
-                      <Cell v={unitUsd(v?.vendorCostPerUnitInUsdCents ?? null)} />
-                    </td>
-                    <td className={TDR}>
-                      <Cell v={markup(v?.markupMultiplier ?? null)} />
-                    </td>
-                    <td className={`${TDR} k-fg3`}>
-                      <Cell v={p.effectiveFrom ? day(p.effectiveFrom) : null} />
-                    </td>
-                  </tr>
-                );
-              })}
-          </Table>
-        </>
-      )}
-    </Loaded>
-  );
-}
-
-function PriceHistoryPage() {
-  const versions = useVersions();
-  const margin = useMargin();
-  return (
-    <Loaded q={versions}>
-      {(vs) => {
-        const items = costItemNames(vs);
-        const billedOf = (name: string) => margin.data?.costItems.filter((c) => c.costName === name) ?? [];
-        return (
-          <div className="space-y-6">
-            {items.map((i) => (
-              <section key={i.name}>
-                <SectionTitle
-                  count={i.versions}
-                  right={
-                    margin.data ? (
-                      <span>
-                        Billed since inception:{" "}
-                        {billedOf(i.name).length ? billedOf(i.name).map((c) => `${usd(c.netBilledCostInUsdCents)} net${c.provider !== i.provider ? ` (${providerName(c.provider)})` : ""}`).join(" · ") : "$0"}
-                      </span>
-                    ) : null
-                  }
-                >
-                  <span className="k-mono">{i.name}</span>
-                  <span className="k-fg3 ml-2 font-normal">{i.provider}</span>
-                </SectionTitle>
-                <VersionsTable versions={versionsOf(vs, i.name)} />
-              </section>
-            ))}
-          </div>
-        );
-      }}
-    </Loaded>
-  );
-}
-
-function VersionsTable({ versions }: { versions: PriceVersion[] }) {
-  // Fixed layout: one table per cost item, stacked, so the columns line up down the page.
-  return (
-    <Table
-      fixed
-      head={
-        <>
-          <th className={TH}>In force from</th>
-          <th className={TH}>Plan</th>
-          <th className={THR}>We charge / unit</th>
-          <th className={THR}>Vendor charges / unit</th>
-          <th className={THR}>Markup</th>
-        </>
-      }
-    >
-      {versions.map((v) => (
-        <tr key={v.id}>
-          <td className={TD}>
-            {day(v.effectiveFrom)}
-            {v.reconstructed && <span className="k-fg3 ml-2 text-[12px]">reconstructed</span>}
-          </td>
-          <td className={`${TD} k-fg3`}>
-            <Cell v={[v.planTier, v.billingCycle].filter(Boolean).join(" · ") || null} />
-          </td>
-          <td className={TDR}>
-            <Cell v={unitUsd(v.billedPricePerUnitInUsdCents)} />
-          </td>
-          <td className={TDR}>
-            <Cell v={v.vendorCostKnown ? unitUsd(v.vendorCostPerUnitInUsdCents) : "unknown"} />
-          </td>
-          <td className={TDR}>
-            <Cell v={markup(v.markupMultiplier)} />
-          </td>
-        </tr>
-      ))}
-    </Table>
   );
 }
 
@@ -715,8 +549,7 @@ function SubscriptionsPage() {
 
 function EmailSendingPage() {
   const price = useEmailSendPrice();
-  const versions = useVersions();
-  return <Loaded q={price}>{(p) => <EmailPriceView p={p} versions={versions.data} />}</Loaded>;
+  return <Loaded q={price}>{(p) => <EmailPriceView p={p} />}</Loaded>;
 }
 
 function MarginPage() {

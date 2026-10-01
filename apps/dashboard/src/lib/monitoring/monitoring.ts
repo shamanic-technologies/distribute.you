@@ -503,13 +503,22 @@ export function costItemNames(versions: PriceVersion[]): { name: string; provide
 export type MonitoringView =
   | { view: "hub" }
   | { view: "page"; page: MonitoringPage }
+  | { view: "moved"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "price/billed", "price/current", "price/history", "price/email-sending", "price/new-pricing", "margin", "margin/pricing-comparison", "emails"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "price/billed", "price/new-pricing", "margin", "margin/pricing-comparison", "emails"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
+
+/** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */
+export const MONITORING_MOVED: Record<string, MonitoringPage> = {
+  "price/current": "price/billed",
+  "price/history": "price/billed",
+  "price/email-sending": "cost/email-sending",
+};
 
 export function parseMonitoringPath(rest: string): MonitoringView {
   const clean = rest.replace(/^\/+|\/+$/g, "");
   if (!clean) return { view: "hub" };
+  if (MONITORING_MOVED[clean]) return { view: "moved", page: MONITORING_MOVED[clean] };
   return (MONITORING_PAGES as readonly string[]).includes(clean) ? { view: "page", page: clean as MonitoringPage } : { view: "missing", rest: clean };
 }

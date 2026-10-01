@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyNote, Figure, SectionTitle } from "@/components/v2/ui";
+import { Figure, SectionTitle } from "@/components/v2/ui";
 import {
   DEFAULT_WINDOWS,
   DailyLines,
@@ -19,22 +19,19 @@ import {
   type BarSeries,
   type Line,
 } from "@/components/v2/monitoring-charts";
-import { versionsOf, type EmailSendPrice, type EmailSendPriceDay, type PriceVersion } from "@/lib/monitoring/monitoring";
+import type { EmailSendPrice, EmailSendPriceDay } from "@/lib/monitoring/monitoring";
 
 /**
- * Monitoring > Price > Email sending (staff only): what sending ONE cold email to a lead really
- * cost us, the price we would re-bill for sending. Owner formula (2026-10-01): everything ever
+ * Monitoring > Cost > Email sending (staff only): what sending ONE cold email to a lead really
+ * costs us. Cost only (owner 2026-10-01): no billed price or margin here. Owner formula (2026-10-01): everything ever
  * paid to the email-infrastructure vendors (bank ledger, net of refunds) over every email ever
  * sent to a lead, recomputed daily by costs-service. Every price, total and running figure here
  * is the producer's; this file formats, slices a window and draws. It never adds or divides.
  */
 
-/** The catalogue item sending was billed under, for the "what we billed before" comparison. */
-const SENDING_COST_ITEM = "instantly-account-email-sent";
-
 const VENDOR_COLORS = SERIES_COLORS;
 
-/** The same price read per thousand emails: a unit change of the served figure ($0.0306 → $30.60). */
+/** The same cost read per thousand emails: a unit change of the served figure ($0.0306 → $30.60). */
 function perThousand(v: number | null): string | null {
   return v == null ? null : `$${(v * 10).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -44,13 +41,13 @@ function lastFullMonth(p: EmailSendPrice) {
   return p.monthly.length >= 2 ? p.monthly[p.monthly.length - 2] : null;
 }
 
-export function EmailPriceView({ p, versions }: { p: EmailSendPrice; versions: PriceVersion[] | undefined }) {
+export function EmailPriceView({ p }: { p: EmailSendPrice }) {
   return (
     <div className="space-y-8">
       <Freshness p={p} />
       <Kpis p={p} />
       <section>
-        <SectionTitle right={<span>Per day, US cents per email</span>}>Price since the first send</SectionTitle>
+        <SectionTitle right={<span>Per day, US cents per email</span>}>Cost per email since the first send</SectionTitle>
         <PriceChart days={p.daily} firstSendOn={p.firstSendOn} />
       </section>
       <section>
@@ -70,10 +67,6 @@ export function EmailPriceView({ p, versions }: { p: EmailSendPrice; versions: P
       <section>
         <SectionTitle>Timeline</SectionTitle>
         <Timeline p={p} />
-      </section>
-      <section>
-        <SectionTitle right={<span className="k-mono">{SENDING_COST_ITEM}</span>}>What we billed for sending so far</SectionTitle>
-        <BilledBefore p={p} versions={versions} />
       </section>
     </div>
   );
@@ -96,7 +89,7 @@ function Freshness({ p }: { p: EmailSendPrice }) {
 
 function Kpis({ p }: { p: EmailSendPrice }) {
   const cells: { label: string; value: React.ReactNode; sub?: React.ReactNode }[] = [
-    { label: "Price per email", value: cents(p.currentPriceUsdCents) ?? <Dash />, sub: perThousand(p.currentPriceUsdCents) && `${perThousand(p.currentPriceUsdCents)} per 1,000` },
+    { label: "Cost per email", value: cents(p.currentPriceUsdCents) ?? <Dash />, sub: perThousand(p.currentPriceUsdCents) && `${perThousand(p.currentPriceUsdCents)} per 1,000` },
     { label: "Last full month", value: cents(lastFullMonth(p)?.monthPriceUsdCents ?? null) ?? <Dash />, sub: lastFullMonth(p) ? `${monthLabel(lastFullMonth(p)!.month)} alone` : undefined },
     { label: "Infra spend, net", value: dollars(p.totals.spendUsd), sub: `${dollars(p.totals.paidUsd)} paid, ${dollars(p.totals.refundedUsd)} refunded` },
     { label: "Emails to leads", value: n(p.totals.emailsToLeads), sub: p.firstSendOn ? `since ${dayLabel(p.firstSendOn)}` : undefined },
@@ -134,8 +127,8 @@ function PriceChart({ days, firstSendOn }: { days: EmailSendPriceDay[]; firstSen
       caption={(d) => `${n(d.cumulativeEmailsToLeads)} emails, ${dollars(d.cumulativeSpendUsd)} spent so far`}
       format={cents}
       windows={[...DEFAULT_WINDOWS.slice(0, 2), { key: "all", label: "Since the first send", days: null }]}
-      empty="No email sent to a lead yet, so no price to draw."
-      label="Price per email per day"
+      empty="No email sent to a lead yet, so no cost per email to draw."
+      label="Cost per email per day"
     />
   );
 }
@@ -201,7 +194,7 @@ function MonthlyTable({ p }: { p: EmailSendPrice }) {
         </tbody>
       </table>
       <p className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-        &ldquo;Since inception&rdquo; is the running price at the month&apos;s last day: all net spend so far over all emails so far. The current month runs to today.
+        &ldquo;Since inception&rdquo; is the running cost per email at the month&apos;s last day: all net spend so far over all emails so far. The current month runs to today.
       </p>
     </div>
   );
@@ -267,8 +260,8 @@ function Timeline({ p }: { p: EmailSendPrice }) {
   p.vendors.forEach((v, i) => {
     if (v.firstPaidOn) events.push({ on: v.firstPaidOn, title: `First payment to ${v.label}`, note: v.what, color: VENDOR_COLORS[i % VENDOR_COLORS.length] });
   });
-  if (p.firstSendOn) events.push({ on: p.firstSendOn, title: "First email sent to a lead", note: "The price exists from this day", color: "var(--run)" });
-  events.push({ on: p.asOf, title: `Price today: ${cents(p.currentPriceUsdCents) ?? "—"} per email`, note: `${n(p.totals.emailsToLeads)} emails, ${dollars(p.totals.spendUsd)} net spend`, color: "var(--accent)" });
+  if (p.firstSendOn) events.push({ on: p.firstSendOn, title: "First email sent to a lead", note: "The cost per email exists from this day", color: "var(--run)" });
+  events.push({ on: p.asOf, title: `Cost today: ${cents(p.currentPriceUsdCents) ?? "—"} per email`, note: `${n(p.totals.emailsToLeads)} emails, ${dollars(p.totals.spendUsd)} net spend`, color: "var(--accent)" });
   events.sort((a, b) => a.on.localeCompare(b.on));
   return (
     <ol className="k-card p-4">
@@ -286,44 +279,5 @@ function Timeline({ p }: { p: EmailSendPrice }) {
         </li>
       ))}
     </ol>
-  );
-}
-
-/** The catalogue's billed price per email over time, beside the measured price: a lookup, no arithmetic. */
-function BilledBefore({ p, versions }: { p: EmailSendPrice; versions: PriceVersion[] | undefined }) {
-  if (!versions) {
-    return (
-      <div className="k-card">
-        <EmptyNote>Reading the price catalogue…</EmptyNote>
-      </div>
-    );
-  }
-  const vs = versionsOf(versions, SENDING_COST_ITEM).filter((v) => !v.reconstructed);
-  return (
-    <div className="k-card overflow-x-auto">
-      <table className="w-full text-[13px]">
-        <thead className="border-b border-[var(--line-subtle)]">
-          <tr>
-            <th className={TH}>From</th>
-            <th className={TH}>Plan</th>
-            <th className={THR}>Billed per email</th>
-            <th className={THR}>Vendor cost on record</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--line-subtle)]">
-          {vs.map((v) => (
-            <tr key={v.id} className="k-row">
-              <td className={`${TD} k-mono k-fg2 text-[12px]`}>{dayLabel(v.effectiveFrom)}</td>
-              <td className={`${TD} k-fg2`}>{v.planTier ?? <Dash />}</td>
-              <td className={TDR}>{cents(v.billedPricePerUnitInUsdCents) ?? <span className="k-fg3">no price</span>}</td>
-              <td className={`${TDR} k-fg2`}>{cents(v.vendorCostPerUnitInUsdCents) ?? <Dash />}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-        Measured today: {cents(p.currentPriceUsdCents) ?? "—"} per email. Shown only: no billed price reads it yet.
-      </p>
-    </div>
   );
 }
