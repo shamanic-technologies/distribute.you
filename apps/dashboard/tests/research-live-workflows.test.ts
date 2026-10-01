@@ -183,6 +183,12 @@ describe("the brand Workflows page states the mission's own live figures", () =>
     expect(unpriced.indexOf("<SpentLine")).toBeLessThan(unpriced.indexOf("k-fg4"));
   });
 
+  it("names a workflow by its distinctive name, the channel dropped (table and strip)", () => {
+    expect(page).toContain("shortWorkflowName(name ?? slug, channelName)");
+    expect(page).toContain("{shortName(w.row.workflowDynastyName, w.row.workflowDynastySlug)}");
+    expect(page).toContain("nameOf={(row) => shortName(row.name, row.slug)}");
+  });
+
   it("the money row is the producer's recommendation", () => {
     expect(page).toContain("recommendedSlug: r.ladder?.recommendedWorkflowDynastySlug ?? null");
   });
