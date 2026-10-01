@@ -94,6 +94,9 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffPriceVersions",
   "staffCurrentPrices",
   "staffEmailsSent",
+  // One person's whole exchange (Integrations > Conversations): private message bodies
+  // from the brand's own inboxes. Read live, never written to disk.
+  "personTimeline",
 ]);
 
 /**
@@ -168,6 +171,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Whose win each step their CRM evidences was, per lead row (lead-service).
   "crmAttribution",
   "crmContactOrigins",
+  // Integrations > Conversations: one bounded page of merged people (crm-service).
+  "people",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.
