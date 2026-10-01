@@ -265,13 +265,17 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
     const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
     // keel.css is unlayered, so a Tailwind h-12 loses to the 28px control: size with k-cta.
     expect(KEEL).toContain(".v2-root .k-cta { height: 48px;");
-    expect(form.match(/k-btn-accent k-cta/g)?.length).toBe(2);
-    expect(form).toContain("Continue with Google, get my $${WALL_FREE_CREDIT_USD}");
+    // ONE primary button (owner 2026-10-01: two blue CTAs confuse). Google wears its own
+    // light theme per its branding guidelines (white, grey stroke, standard G, approved label).
+    expect(form.match(/k-btn-accent k-cta/g)?.length).toBe(1);
+    expect(form).toContain('className="k-cta k-cta-google w-full justify-center gap-3"');
+    expect(form).toContain("Continue with Google\n");
+    expect(KEEL).toContain("background: #fff; color: #1f1f1f; box-shadow: inset 0 0 0 1px #747775;");
     expect(WALL).not.toContain("Email me a code");
     // Owner 2026-10-01 (second pass): the scarcity and the steps come first, the buttons under them,
     // and the headline carries no accent fill (it read as one more button).
-    expect(WALL.indexOf("<TrialTimer />")).toBeLessThan(WALL.indexOf("Continue with Google, get my"));
-    expect(WALL.indexOf("<Steps stage={stage} />")).toBeLessThan(WALL.indexOf("Continue with Google, get my"));
+    expect(WALL.indexOf("<TrialTimer />")).toBeLessThan(WALL.indexOf("Continue with Google"));
+    expect(WALL.indexOf("<Steps stage={stage} />")).toBeLessThan(WALL.indexOf("Continue with Google"));
     expect(WALL).not.toContain('<div className="bg-[var(--accent)] px-5 py-4 text-white">');
     // On a phone the form comes first.
     expect(WALL).toContain("order-first");
