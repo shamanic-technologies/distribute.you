@@ -22,6 +22,7 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CompanyLogo } from "@/components/company-logo";
+import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import { INTEGRATIONS, missingFields, type IntegrationDef, type IntegrationSlug } from "@/lib/integrations";
 import { GOOGLE_RETURN_KEY, googleCallbackUrl } from "@/lib/google-connect";
 import {
@@ -118,6 +119,8 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
 
   // Gmail first: the mailbox is where most conversations already are.
   rows.unshift(<GmailRow key="gmail" orgId={orgId} />);
+
+  rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
   return (
