@@ -6,7 +6,8 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
-import { paymentModeOf, type PaymentMode } from "@/lib/payment-mode";
+import { paymentModeOf, type BillingMode } from "@/lib/payment-mode";
+import { LossDialog, SubscriptionPlan } from "@/components/v2/subscription-plan";
 import {
   AUTO_TOPUP_ENABLE_AMOUNT_CENTS,
   AUTO_TOPUP_ENABLE_THRESHOLD_CENTS,
@@ -38,7 +39,7 @@ import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
  * no switch; its rules are billing-service's and its words are `lib/payment-mode`.
  */
 
-const MODE_COPY: Record<PaymentMode, { title: string; line: string; detail: string }> = {
+const MODE_COPY: Record<BillingMode, { title: string; line: string; detail: string }> = {
   prepaid: {
     title: "Prepaid",
     line: "You spend what you have paid in. Your campaigns pause at $0.",
@@ -48,6 +49,11 @@ const MODE_COPY: Record<PaymentMode, { title: string; line: string; detail: stri
     title: "Postpaid",
     line: "Your campaigns run on credit and your card is charged as you spend.",
     detail: "Needs a card we can charge automatically. The credit grows as you pay.",
+  },
+  subscription: {
+    title: "Monthly plan",
+    line: "Your plan's monthly payment becomes credit, and your campaigns spend it.",
+    detail: "Sending stops when the month's credit runs out. Add more to your plan to reach more leads.",
   },
 };
 
@@ -96,6 +102,8 @@ export function V2BillingPage() {
   const account = c.account;
   const mode = paymentModeOf(account);
 
+  // A plan's card: what stops is stated before the usual removal confirmation.
+  const [cardLossOpen, setCardLossOpen] = useState(false);
   const [autoPending, setAutoPending] = useState(false);
   const [autoError, setAutoError] = useState<string | null>(null);
 
@@ -149,6 +157,19 @@ export function V2BillingPage() {
               onCancel={c.settleProblem ? c.dismissSettleProblem : () => c.setConfirmSource(null)}
               problem={c.settleProblem?.problem ?? null}
               onContinue={c.continueAfterSettleProblem}
+            />
+          )}
+          {cardLossOpen && (
+            <LossDialog
+              title="Before you remove your card"
+              confirmLabel="Remove anyway"
+              keepLabel="Keep my card"
+              pending={false}
+              onConfirm={() => {
+                setCardLossOpen(false);
+                c.setRemoveConfirmOpen(true);
+              }}
+              onKeep={() => setCardLossOpen(false)}
             />
           )}
           {c.removeConfirmOpen && (
@@ -267,9 +288,10 @@ export function V2BillingPage() {
                   <p className="k-fg3 mt-1 text-[12px] leading-[18px]">{MODE_COPY[mode].detail}</p>
                 </div>
               )}
+              {mode === "subscription" && <SubscriptionPlan />}
 
               {/* Auto top-up, in the words of the mode it serves. */}
-              {account?.has_payment_method && c.autoReloadSupported && (
+              {mode !== "subscription" && account?.has_payment_method && c.autoReloadSupported && (
                 <div className="k-card mt-3 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -353,7 +375,7 @@ export function V2BillingPage() {
                   <button
                     type="button"
                     className="k-btn-ghost"
-                    onClick={() => c.setRemoveConfirmOpen(true)}
+                    onClick={() => (mode === "subscription" ? setCardLossOpen(true) : c.setRemoveConfirmOpen(true))}
                     disabled={c.portalLoadingSource !== null || c.removePending}
                   >
                     Remove
@@ -387,7 +409,8 @@ export function V2BillingPage() {
         </Section>
 
         {/* Add credit, only while auto top-up is off (it refills the balance otherwise). */}
-        {!c.accountPending && !c.hasAutoTopup && (
+        {/* A plan adds money by raising the plan, never a one-off top-up. */}
+        {!c.accountPending && !c.hasAutoTopup && mode !== "subscription" && (
           <Section id="add-credit" title="Add credit" description="A one-off payment. The amounts are sized to what your brands spend a day.">
             <div className="k-card p-4">
               <div className="flex flex-wrap items-center gap-2">
