@@ -57,7 +57,7 @@ describe("the AI tab", () => {
   });
 });
 
-describe("a key says what it reads, where it is made", () => {
+describe("a key says it is the user's, across their orgs, where it is made", () => {
   const VIEW = read("src/components/v2/integrations-ai.tsx");
   const PANEL = read("src/components/settings/api-keys-panel.tsx");
   const SCOPE = read("src/components/settings/api-key-scope.tsx");
@@ -68,16 +68,20 @@ describe("a key says what it reads, where it is made", () => {
     expect(read("src/components/v2/sidebar-menus.tsx")).toContain('{ href: `${base}/api-keys`, label: "API Keys"');
   });
 
-  it("names the organization on both creation surfaces", () => {
+  it("says the key acts as the user across all their organizations, on both creation surfaces", () => {
     expect(VIEW).toContain("<ApiKeyScope />");
     expect(PANEL.match(/<ApiKeyScope \/>/g)?.length).toBe(2);
-    expect(SCOPE).toContain("This key reads the organization <strong>{organization.name}</strong>");
-    expect(SCOPE).toContain("It acts as\n      you, in this organization only.");
+    expect(SCOPE).toContain(
+      '"This key acts as you, across all your organizations. Name a brand on each call."',
+    );
+    expect(SCOPE).not.toContain("reads the organization");
+    expect(SCOPE).not.toContain("in this organization only");
+    expect(PANEL).not.toContain("this organization");
   });
 
-  it("reads the org from Clerk and the brands from the served list, never a staff or beta option", () => {
-    expect(SCOPE).toContain("useOrganization()");
-    expect(SCOPE).toContain('["brands"], () => listBrands()');
+  it("names no active org (the key is account-level) and offers no staff or beta option", () => {
+    expect(SCOPE).not.toContain("useOrganization");
+    expect(SCOPE).not.toContain("listBrands");
     expect(SCOPE).not.toMatch(/isStaff|staffMode|beta/i);
     expect(SCOPE).not.toContain("—");
   });

@@ -48,7 +48,7 @@ ${CLI_INSTALL_COMMAND}
 The CLI stores the key once and sends the same header.
 
 ## Security
-- A key is scoped to one organization
+- A key is yours, across every organization you belong to. Name a brand (brandId) or an organization (orgId) on each call
 - Rotate keys periodically from the dashboard
 - Never commit a key to version control`;
 
@@ -78,14 +78,16 @@ export default function AuthenticationPage() {
           <code>{`${API_KEY_PREFIX}xxxxxxxxxxxxxxxxxxxxxxxx`}</code>
         </pre>
         <p>
-          <strong>Keep this key secret.</strong> It grants full access to your organization. Issue
+          <strong>Keep this key secret.</strong> It acts as you, with full access to every organization you belong to. Issue
           and revoke keys at <a href={API_KEYS_URL}>{API_KEYS_URL}</a>.
         </p>
 
         <h2>3. Send it</h2>
         <p>
           The key is a <strong>Bearer token</strong> in the <code>{AUTH_HEADER_NAME}</code> header.
-          It already carries your org and your user, so no other identity header is needed.
+          It carries your user. Each call acts in one organization: name a brand with{" "}
+          <code>brandId</code>, or an organization with <code>orgId</code>. If you belong to a
+          single organization you can name nothing.
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{AUTH_HEADER_LINE}</code>
@@ -121,7 +123,7 @@ export default function AuthenticationPage() {
           <code>{curlExample("/v1/me")}</code>
         </pre>
         <p>
-          You should see your user id and organization id. A <code>401</code> means the header is
+          You should see your user and every organization you belong to, with its brands. A <code>401</code> means the header is
           missing, the scheme is not <code>Bearer</code>, or the key is not one of yours: a key
           always starts with <code>{API_KEY_PREFIX}</code>, and a placeholder such as{" "}
           <code>{API_KEY_PLACEHOLDER}</code> is not a key.
@@ -129,7 +131,10 @@ export default function AuthenticationPage() {
 
         <h2>Security</h2>
         <ul>
-          <li>A key is scoped to one organization</li>
+          <li>
+            A key is yours, across every organization you belong to. Name a brand{" "}
+            (<code>brandId</code>) or an organization (<code>orgId</code>) on each call.
+          </li>
           <li>Never commit a key to version control</li>
           <li>Use environment variables for local development</li>
           <li>Rotate keys periodically from the dashboard</li>
