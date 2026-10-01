@@ -21,6 +21,21 @@
  * only) so it carries real unit tests.
  */
 
+/**
+ * A workflow's distinctive name: its channel's name dropped from the front ("Sales Cold Email
+ * Outreach Maelstrom" under "Sales Cold Email Outreach" reads "Maelstrom"). A name that does not
+ * start with it, or that would be left empty, is returned unchanged.
+ */
+export function shortWorkflowName(name: string, channelName: string | null | undefined): string {
+  const prefix = channelName?.trim();
+  if (!prefix) return name;
+  if (name.toLowerCase().startsWith(prefix.toLowerCase())) {
+    const rest = name.slice(prefix.length).replace(/^[\s·:-]+/, "").trim();
+    if (rest) return rest;
+  }
+  return name;
+}
+
 export interface LiveWorkflowRow {
   slug: string;
   name: string | null;

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   fleetWorkflowRows,
   missionWorkflowRows,
+  shortWorkflowName,
   type FleetRankingRow,
   type MissionLadderRow,
 } from "../src/lib/live-workflow-rows";
@@ -180,5 +181,24 @@ describe("the brand Workflows page states the mission's own live figures", () =>
     // Rows keep the producer's rank order: no Offer / Brand / Global re-sort.
     expect(page).not.toContain("asc(cost(a.offer)");
     expect(page).toContain("colSpan={13}");
+  });
+});
+
+describe("shortWorkflowName", () => {
+  it("drops the channel name from the front", () => {
+    expect(shortWorkflowName("Sales Cold Email Outreach Maelstrom", "Sales Cold Email Outreach")).toBe("Maelstrom");
+    expect(shortWorkflowName("sales cold email outreach Bronze-2", "Sales Cold Email Outreach")).toBe("Bronze-2");
+  });
+  it("keeps a name that does not start with it, or would be left empty", () => {
+    expect(shortWorkflowName("Dawn", "Sales Cold Email Outreach")).toBe("Dawn");
+    expect(shortWorkflowName("Sales Cold Email Outreach", "Sales Cold Email Outreach")).toBe("Sales Cold Email Outreach");
+    expect(shortWorkflowName("Maelstrom", null)).toBe("Maelstrom");
+  });
+  it("Research renders the short name and paints before the snapshot file loads", () => {
+    const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+    expect(live).toContain("{nameOf(r)}");
+    expect(live).toContain("nameOf={nameOf}");
+    expect(catalog).toContain('if (!catalog && !itemKey && kind === "workflows" && liveLeg != null)');
   });
 });

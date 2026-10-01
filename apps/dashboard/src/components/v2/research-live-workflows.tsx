@@ -9,7 +9,8 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legKeyForSteps } from "@/lib/legs";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { CREW_KEY, researchCatalogHref, type ResearchCatalog, type ResearchCrew } from "@/lib/research/research";
-import { fleetWorkflowRows } from "@/lib/live-workflow-rows";
+import { fleetWorkflowRows, shortWorkflowName } from "@/lib/live-workflow-rows";
+import { useFeatures } from "@/lib/features-context";
 import {
   LIVE_TH,
   LiveRankingStrip,
@@ -28,6 +29,12 @@ import {
  * The brand's own version of this table (one per mission) lives on the brand Workflows page.
  */
 
+/** The crew's channel name, the prefix every one of its workflow names repeats. */
+export function useCrewChannelName(crew: ResearchCrew): string | null {
+  const { getFeature } = useFeatures();
+  return getFeature(CREW_KEY[crew].channel)?.name ?? null;
+}
+
 /** The crew's leg in the fleet's own key, or null when the crew's step starts no entry leg. */
 export function useResearchCrewLeg(crew: ResearchCrew): string | null {
   const catalogue = useLegCatalogue();
@@ -45,7 +52,7 @@ export function ResearchLiveWorkflows({
   base: string;
   crew: ResearchCrew;
   legKey: string;
-  catalog: ResearchCatalog;
+  catalog: ResearchCatalog | null;
   outcomeUnit: string;
   nav: (href: string) => void;
 }) {
@@ -69,7 +76,9 @@ export function ResearchLiveWorkflows({
     }
     return m;
   }, [catalogueQ.data]);
-  const researched = useMemo(() => new Set(catalog[crew].workflows.map((w) => w.key)), [catalog, crew]);
+  const researched = useMemo(() => new Set((catalog?.[crew].workflows ?? []).map((w) => w.key)), [catalog, crew]);
+  const channelName = useCrewChannelName(crew);
+  const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
 
   const answered = rankingQ.data !== undefined || rankingQ.isFetchedAfterMount;
   const failed = rankingQ.data === undefined && rankingQ.isFetchedAfterMount;
@@ -77,7 +86,7 @@ export function ResearchLiveWorkflows({
 
   return (
     <div className="k-card overflow-hidden">
-      <LiveRankingStrip rows={rows} moneyNote="no mature workflow yet" />
+      <LiveRankingStrip rows={rows} moneyNote="no mature workflow yet" nameOf={nameOf} />
       <div className="k-scroll relative overflow-x-auto">
         <table className="w-full min-w-[1180px] text-[13px]">
           <thead>
@@ -131,11 +140,11 @@ export function ResearchLiveWorkflows({
                       <div className="flex min-w-0 items-center gap-2">
                         {href ? (
                           <Link href={href} className="min-w-0 truncate font-medium" title={r.name ?? r.slug}>
-                            {r.name ?? r.slug}
+                            {nameOf(r)}
                           </Link>
                         ) : (
                           <span className="min-w-0 truncate font-medium" title={r.name ?? r.slug}>
-                            {r.name ?? r.slug}
+                            {nameOf(r)}
                           </span>
                         )}
                         <LiveWorkflowChips row={r} />

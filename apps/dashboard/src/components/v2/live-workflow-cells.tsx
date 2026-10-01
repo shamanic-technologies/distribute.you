@@ -13,7 +13,15 @@ import type { LiveWorkflowRow } from "@/lib/live-workflow-rows";
 export const LIVE_TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 
 /** The strip above a live table: it is live, what goes first, where the money goes. */
-export function LiveRankingStrip({ rows, moneyNote }: { rows: readonly LiveWorkflowRow[]; moneyNote: string }) {
+export function LiveRankingStrip({
+  rows,
+  moneyNote,
+  nameOf = (r) => r.name ?? r.slug,
+}: {
+  rows: readonly LiveWorkflowRow[];
+  moneyNote: string;
+  nameOf?: (r: LiveWorkflowRow) => string;
+}) {
   const firstRow = rows.find((r) => r.first);
   const cashRow = rows.find((r) => r.cash);
   return (
@@ -24,12 +32,12 @@ export function LiveRankingStrip({ rows, moneyNote }: { rows: readonly LiveWorkf
       </span>
       {firstRow && (
         <span>
-          Goes first: <span className="k-fg font-medium">{firstRow.name ?? firstRow.slug}</span>
+          Goes first: <span className="k-fg font-medium">{nameOf(firstRow)}</span>
         </span>
       )}
       <span>
         Money goes to:{" "}
-        {cashRow ? <span className="k-fg font-medium">{cashRow.name ?? cashRow.slug}</span> : <span className="k-fg3">{moneyNote}</span>}
+        {cashRow ? <span className="k-fg font-medium">{nameOf(cashRow)}</span> : <span className="k-fg3">{moneyNote}</span>}
       </span>
     </div>
   );
