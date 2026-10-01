@@ -236,8 +236,8 @@ node apps/landing/scripts/blog-data/followups/render-followups-article.mjs apps/
 ```
 
 The renderer refuses a snapshot where the steps sent stop being the first email and two follow-ups,
-the follow-ups stop doubling the positive replies, the price per email stops rising down the
-sequence, or the title's round volume no longer matches.
+the follow-ups stop doubling the positive replies, or the second follow-up stops adding less
+than the first. The article states lifts (x2, +67%); the counts sit in its Notes.
 
 ## Research on two cost bases
 

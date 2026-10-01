@@ -5,9 +5,9 @@
 //   node render-followups-article.mjs <followups.snapshot.json> <content-dir>
 //
 // Every figure, bar and count is a token filled here, with the Research page's own arithmetic
-// (research.mjs, follow-ups block): a depth adds up the spend and the positive replies of every
-// email up to it, a rate divides by the people who got the first email, and a price is spend
-// over positive replies.
+// (research.mjs, follow-ups block): a depth adds up the positive replies of every email up to it
+// and a rate divides by the people who got the first email. The answer is stated as a lift
+// (x2, +67%); the counts behind it go to the notes.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROW, BAR_END, chartHeight, gutterFor } from "../chart-geometry.mjs";
@@ -29,42 +29,45 @@ if (sent.some((s) => s.replies < snap.outcomesRequired)) throw new Error("a step
 
 const [first, fu1, fu2] = sent;
 const people = first.emails;
-const cost = (s) => Number((s.spend / s.replies).toFixed(2));
-let spend = 0, got = 0;
+let got = 0;
 const depth = sent.map((s, i) => {
-  spend += s.spend; got += s.replies;
-  return { label: i === 0 ? "First email only" : `+ ${i} follow-up${i > 1 ? "s" : ""}`, spend, got, per10k: Number(((got / people) * 10000).toFixed(1)) };
+  got += s.replies;
+  return { label: i === 0 ? "First email only" : `+ ${i} follow-up${i > 1 ? "s" : ""}`, got, per10k: Number(((got / people) * 10000).toFixed(1)) };
 });
 const total = depth[depth.length - 1].got;
-// "doubled" and "under half" are words in the prose: refuse a snapshot where they stop being true.
+// The answer is a relative effect: each follow-up's lift over what the sequence had before it,
+// and the whole sequence against the first email alone.
+const pct = (a, b) => Math.round((a / b - 1) * 100);
+const lift1 = pct(depth[1].got, depth[0].got);
+const lift2 = pct(depth[2].got, depth[1].got);
+const mult = (total / first.replies).toFixed(1);
+// "doubled" and "smaller second lift" are words in the prose: refuse a snapshot where they stop being true.
 if (total < 2 * first.replies) throw new Error("follow-ups no longer double the positive replies: rewrite the verdict");
-// Each later email costs more per positive reply than the one before it, which the rule says.
-if (!(cost(first) < cost(fu1) && cost(fu1) < cost(fu2))) throw new Error("the price per email no longer rises down the sequence: rewrite the rule");
+if (!(lift1 > lift2 && lift2 > 0)) throw new Error("the second follow-up no longer adds less than the first, or adds nothing: rewrite the rule");
 if (snap.durationDays !== 21) throw new Error("the waiting rule changed: check Method");
 
 const BLUE = "#2563eb";
 const PALE = "#93c5fd";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const commas = (n) => Number(n).toLocaleString("en-US");
-const usd = (n) => `$${commas(Math.round(Number(n)))}`;
 const round = (n) => commas(Math.round(Number(n) / 1000) * 1000);
-const roundK = (n) => `${Math.round(Number(n) / 1000)}k`;
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const day = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number); return `${MONTHS[m - 1]} ${d}, ${y}`; };
-const replies = (n) => `${commas(n)} positive ${n === 1 ? "reply" : "replies"}`;
 
 const facts = {
   ...snap,
   people,
-  first: { ...first, cost: cost(first) },
-  fu1: { ...fu1, cost: cost(fu1) },
-  fu2: { ...fu2, cost: cost(fu2), sharePct: Math.round((fu2.replies / total) * 100) },
+  lift1,
+  lift2,
+  mult,
+  first,
+  fu1,
+  fu2,
+  depth,
   total: { replies: total, emails: sent.reduce((t, s) => t + s.emails, 0) },
-  // the rate chart's first and last bars, as printed on them
-  rate: { first: depth[0].per10k.toFixed(1), all: depth[depth.length - 1].per10k.toFixed(1) },
-  // the steps left out of the charts, stated only when there are some
+  // the steps left out of the chart, stated only when there are some
   leftOut: dropped.length
-    ? `We almost never send a third follow-up (${dropped.map((s) => `${commas(s.emails)} ${s.emails === 1 ? "email" : "emails"}`).join(", ")} in the window), so it is left out and this data says nothing about it.`
+    ? `We almost never send a third follow-up (${dropped.map((s) => `${commas(s.emails)} ${s.emails === 1 ? "email" : "emails"}`).join(", ")} in the window), so this data says nothing about it.`
     : "",
 };
 
@@ -75,53 +78,43 @@ function get(path) {
   }, facts);
 }
 
-// Two charts, both in sequence order (an ordinal cut keeps its order); the best bar is blue.
-function bars({ title, rows, best }) {
+// One chart in sequence order (an ordinal cut keeps its order): positive replies against the
+// first email alone, the full sequence blue.
+function chart() {
+  const title = "Positive replies, against the first email alone (higher is better)";
+  const rows = depth.map((d, i) => ({
+    label: d.label,
+    value: d.got / first.replies,
+    display: `x${(d.got / first.replies).toFixed(1)}`,
+    note: i === 0 ? "the baseline" : i === 1 ? `+${lift1}% over the first email alone` : `+${lift2}% over one follow-up`,
+  }));
   const LEFT = gutterFor(rows.map((r) => r.label));
   const W = BAR_END - LEFT;
   const max = Math.max(...rows.map((r) => r.value));
   const height = chartHeight(rows.length, false);
-  const spoken = rows.map((r) => `${r.label} ${r.display} (${r.count})`).join(", ");
+  const spoken = rows.map((r) => `${r.label} ${r.display} (${r.note})`).join(", ");
   const out = [`<svg viewBox="0 0 800 ${height}" width="100%" role="img" aria-label="${esc(title)}: ${esc(spoken)}" font-family="Inter, system-ui, sans-serif">`];
   out.push(`<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">${esc(title)}</text>`);
   rows.forEach((r, i) => {
     const y = 56 + i * ROW;
     const w = Math.max(6, Math.round((r.value / max) * W));
     out.push(`<text x="0" y="${y + 18}" font-size="14" fill="#475569">${esc(r.label)}</text>`);
-    out.push(`<rect x="${LEFT}" y="${y}" width="${w}" height="26" rx="5" fill="${i === best ? BLUE : PALE}"/>`);
+    out.push(`<rect x="${LEFT}" y="${y}" width="${w}" height="26" rx="5" fill="${i === rows.length - 1 ? BLUE : PALE}"/>`);
     out.push(`<text x="${LEFT + w + 10}" y="${y + 19}" font-size="16" font-weight="700" fill="#0f172a">${esc(r.display)}</text>`);
-    out.push(`<text x="${LEFT}" y="${y + 39}" font-size="11" fill="#94a3b8">${esc(r.count)}</text>`);
+    out.push(`<text x="${LEFT}" y="${y + 39}" font-size="11" fill="#94a3b8">${esc(r.note)}</text>`);
   });
   out.push("</svg>");
-  const caption = `<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">Only people we started writing to at least ${snap.durationDays} days before the read count, with every positive reply they sent since. A reply counts for the last email sent before it.</figcaption>`;
+  const caption = `<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">The same people at every step. A reply counts for the last email sent before it. Counts in the notes below.</figcaption>`;
   return `<figure>\n${out.join("\n")}\n${caption}\n</figure>`;
 }
-
-const CHARTS = {
-  rate: () => bars({
-    title: "Positive replies per 10,000 people, adding each follow-up (higher is better)",
-    rows: depth.map((d) => ({ label: d.label, value: d.per10k, display: d.per10k.toFixed(1), count: `${replies(d.got)} from ${commas(people)} people` })),
-    best: depth.length - 1,
-  }),
-  cost: () => bars({
-    title: "Each email on its own: cost per positive reply (USD, lower is better)",
-    rows: sent.map((s) => ({ label: s.bucket, value: cost(s), display: usd(cost(s)), count: `${replies(s.replies)}, ${commas(s.emails)} emails` })),
-    best: 0,
-  }),
-};
 
 const HANDLERS = {
   n: (p) => commas(get(p)),
   round: (p) => round(get(p)),
-  k: (p) => roundK(get(p)),
   raw: (p) => String(get(p)),
-  usd: (p) => usd(get(p)),
   day: (p) => day(get(p)),
-  chart: (p) => { const c = CHARTS[p]; if (!c) throw new Error(`unknown chart: ${p}`); return c(); },
+  chart: () => chart(),
 };
-
-const meta = JSON.parse(readFileSync(join(contentDir, SLUG, "meta.json"), "utf8"));
-if (!meta.title.includes(`(${roundK(facts.total.emails)} Emails)`)) throw new Error(`meta.title must end with (${roundK(facts.total.emails)} Emails)`);
 
 const tpl = readFileSync(join(contentDir, SLUG, "article.template.html"), "utf8");
 const html = tpl.replace(/\{\{(\w+)\s+([^}]*)\}\}/g, (whole, kind, rest) => {
@@ -132,4 +125,4 @@ const html = tpl.replace(/\{\{(\w+)\s+([^}]*)\}\}/g, (whole, kind, rest) => {
 if (html.includes("{{")) throw new Error(`${SLUG}: unresolved token`);
 if (html.includes("—")) throw new Error(`${SLUG}: em-dash in copy`);
 writeFileSync(join(contentDir, SLUG, "article.html"), html);
-console.log(`${SLUG}: ${html.length} chars, ${facts.total.emails} emails, ${total} positive replies`);
+console.log(`${SLUG}: ${html.length} chars, x${mult}, +${lift1}% then +${lift2}%`);
