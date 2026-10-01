@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { startDestination } from "@/lib/start-destination";
 
 /**
- * `/start` IS `/onboarding` now. The three sell-first screens (goal, path,
- * results) are the wizard's own first steps, so the route that hosted them on
- * their own is a redirect — the landing links here from five places and a
- * shared link keeps resolving. The query string rides along (`?url=` is how the
- * landing hands over the website).
+ * `/start` is the landing's way in (it links here from several places and a
+ * shared link keeps resolving). It hands the visitor to onboarding v2
+ * (`/get-started`), except the subscription arm, which keeps `/onboarding`
+ * (`lib/start-destination.ts` says why). The query string rides along (`?url=` is
+ * how the landing hands over the website).
+ *
+ * 307, not 308: the target depends on the visitor's cookie, so the browser must
+ * not cache it as permanent.
  *
  * A RELATIVE Location on purpose: `request.url` on a self-hosted Next server is
  * the address the process binds to (`http://0.0.0.0:3000/...`), not the host the
@@ -13,5 +17,6 @@ import { NextResponse } from "next/server";
  */
 export function GET(request: Request) {
   const search = new URL(request.url).search;
-  return new NextResponse(null, { status: 308, headers: { Location: `/onboarding${search}` } });
+  const target = startDestination(request.headers.get("cookie"));
+  return new NextResponse(null, { status: 307, headers: { Location: `${target}${search}` } });
 }
