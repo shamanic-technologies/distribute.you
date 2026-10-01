@@ -282,3 +282,11 @@ describe("the sales path steps of /get-started", () => {
     expect(allow("PUT", `/brands/${BRAND}/sales-budget`).allowed).toBe(false);
   });
 });
+
+describe("the proxy hands the query to the allowlist", () => {
+  it("passes the request's query string, so a query-bound rule can see the brand", () => {
+    const route = fs.readFileSync(path.join(__dirname, "../src/app/api/anon/v1/[...path]/route.ts"), "utf8");
+    const call = route.slice(route.indexOf("anonCallAllowed({"), route.indexOf("});", route.indexOf("anonCallAllowed({")));
+    expect(call).toContain("endpoint: `${endpoint}${req.nextUrl.search}`");
+  });
+});
