@@ -75,8 +75,8 @@ describe("color system in docs app", () => {
   it("should define brand color in tailwind config", () => {
     const config = readFileSync(join(ROOT, "tailwind.config.ts"), "utf-8");
     expect(config).toContain("brand");
-    expect(config).toContain("#ec4899"); // brand-500
-    expect(config).toContain("#db2777"); // brand-600
+    // The blue ramp of dashboard v2; brand-guidelines.test.ts pins every step.
+    expect(config).toContain('600: "oklch(54% 0.16 258)"');
   });
 
   it("should not contain old orange hex values in globals.css", () => {
@@ -87,11 +87,10 @@ describe("color system in docs app", () => {
     expect(css).not.toContain("#fff7ed"); // old primary-50
   });
 
-  it("should use brand pink hex values in globals.css", () => {
+  it("colours links and code from the brand ramp in globals.css", () => {
     const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf-8");
-    expect(css).toContain("#ec4899"); // brand-500 for links
-    expect(css).toContain("#db2777"); // brand-600 for link hover
-    expect(css).toContain("#be185d"); // brand-700 for code
-    expect(css).toContain("#fdf2f8"); // brand-50 for code bg
+    expect(css).toContain("color: theme('colors.brand.600');"); // links
+    expect(css).toContain("color: theme('colors.brand.700');"); // code, link hover
+    expect(css).toContain("background-color: theme('colors.brand.50');"); // code bg
   });
 });

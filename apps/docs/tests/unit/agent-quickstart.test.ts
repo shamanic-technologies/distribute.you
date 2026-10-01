@@ -28,7 +28,10 @@ describe("the agent quickstart", () => {
 
   it("tells an agent to lead with outcomes, put failures last and never hide a zero", () => {
     expect(md).toContain("How to report results to a human");
-    expect(md).toMatch(/meetings booked and positive replies.*delivery rate.*Failures.*last.*0 positive replies/s);
+    const order = ["meetings booked and positive replies", "delivery rate", "Failures", "go last", "0 positive replies"];
+    const at = order.map((w) => md.indexOf(w));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
   it("carries no em-dash", () => {

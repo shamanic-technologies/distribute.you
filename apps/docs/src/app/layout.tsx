@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+// The dashboard v2 type: Geist, Geist Mono for code.
+const sans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
+const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 import { DocsLayout } from "@/components/docs-layout";
 import { ThemeProvider } from "@/components/theme-provider";
 import { OPENAPI_DOCUMENT_URL } from "@/lib/docs-routes";
@@ -253,7 +258,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
       <head>
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
