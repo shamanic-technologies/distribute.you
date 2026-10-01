@@ -14,6 +14,10 @@ import {
   getUsageDiscount,
   setUsageDiscount,
   removeUsageDiscount,
+  getStaffPaymentMode,
+  setStaffPaymentMode,
+  type StaffPaymentMode,
+  type StaffPaymentModeRead,
   type BillingAccount,
   type OrgRun,
   type CreditGrant,
@@ -92,6 +96,37 @@ export default function BillingPage() {
       setGrantError(err instanceof Error ? err.message : "Failed to grant credits");
     } finally {
       setGrantLoading(false);
+    }
+  }
+
+  // Payment mode (staff-only): customers no longer switch it, staff do, here. Keyed on
+  // billing's own org id, read off the account this page already holds.
+  const billingOrgId = account?.org_id ?? null;
+  const { data: paymentMode } = useAuthQuery<StaffPaymentModeRead>(
+    ["staffPaymentMode", billingOrgId],
+    () => getStaffPaymentMode(billingOrgId!),
+    { enabled: billingOrgId !== null },
+  );
+  const [modeSaving, setModeSaving] = useState<StaffPaymentMode | null>(null);
+  const [modeError, setModeError] = useState<string | null>(null);
+  const [modeSuccess, setModeSuccess] = useState<string | null>(null);
+
+  async function handleSetPaymentMode(next: StaffPaymentMode) {
+    if (!billingOrgId) return;
+    if (!window.confirm(`Switch this org to ${next}? Moving off postpaid charges what it owes first.`)) return;
+    setModeSaving(next);
+    setModeError(null);
+    setModeSuccess(null);
+    try {
+      const result = await setStaffPaymentMode(billingOrgId, next);
+      const settled = result.settled_cents && Number(result.settled_cents) > 0 ? ` Settled ${formatBillingCents(result.settled_cents)}.` : "";
+      setModeSuccess(`Now ${result.payment_mode}.${settled}`);
+      queryClient.invalidateQueries({ queryKey: ["staffPaymentMode"] });
+      queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+    } catch (err) {
+      setModeError(err instanceof Error ? err.message : "Failed to set payment mode");
+    } finally {
+      setModeSaving(null);
     }
   }
 
@@ -745,6 +780,39 @@ export default function BillingPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Payment mode (staff-only): the customer sees it as a tag and cannot change it */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-lg font-medium text-gray-900 mb-1">Payment mode</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Prepaid spends what was paid in. Postpaid runs on credit charged to the card. Subscription is the
+            $99/month plan (paid = credit, no auto top-up). Only staff change it.
+          </p>
+          {modeSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg mb-3 text-sm">{modeSuccess}</div>
+          )}
+          {modeError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3 text-sm">{modeError}</div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {(["prepaid", "postpaid", "subscription"] as const).map((m) => {
+              const current = paymentMode?.payment_mode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => void handleSetPaymentMode(m)}
+                  disabled={!paymentMode || current || modeSaving !== null}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                    current ? "bg-brand-600 text-white border-brand-600" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                  }`}
+                >
+                  {modeSaving === m ? "Switching..." : m}
+                  {current && " (current)"}
+                </button>
+              );
+            })}
           </div>
         </div>
 
