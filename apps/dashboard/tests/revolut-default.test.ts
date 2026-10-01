@@ -14,7 +14,6 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 const API = read("src/lib/api.ts");
 const CONTROLLER = read("src/components/billing/use-billing-controller.ts");
 const GUARD = read("src/lib/billing-guard.tsx");
-const IMPRINT = read("src/components/v2/card-imprint-modal.tsx");
 
 function between(src: string, from: string, to: string) {
   const at = src.indexOf(from);
@@ -57,23 +56,5 @@ describe("every card or money entry point declares first", () => {
 
   it("the Add credit modal", () => {
     declaredBefore(between(GUARD, "async function handleCheckout(", "async function handleEmbeddedComplete("), "createEmbeddedCheckoutSession(");
-  });
-
-  it("the postpaid card save", () => {
-    declaredBefore(between(IMPRINT, "async function openForm(", "async function afterCardSaved("), "createEmbeddedCardSetup()");
-  });
-});
-
-describe("the postpaid card save states Revolut's verification hold", () => {
-  it("says it only when Revolut's widget is the mechanism", () => {
-    const open = between(IMPRINT, "async function openForm(", "async function afterCardSaved(");
-    expect(open.indexOf("setVerificationHold(true)")).toBeGreaterThan(open.indexOf('setup.mode === "embedded_widget"'));
-    expect(IMPRINT).toContain("{verificationHold && (");
-    expect(IMPRINT).toContain("Your bank may show a $1 check. It is released within minutes and never charged.");
-  });
-
-  it("no longer promises a $0 save it cannot keep on Revolut", () => {
-    const copy = IMPRINT.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    expect(copy).not.toContain("for $0");
   });
 });

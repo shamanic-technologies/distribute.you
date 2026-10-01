@@ -1,18 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { ApiError, configureAutoTopup, disableAutoTopup, getOrgUsage, setPaymentMode } from "@/lib/api";
+import { useState } from "react";
+import { configureAutoTopup, disableAutoTopup, getOrgUsage } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
-import {
-  paymentModeOf,
-  paymentModeRefusalMessage,
-  postpaidBlocker,
-  type PaymentMode,
-} from "@/lib/payment-mode";
+import { paymentModeOf, type PaymentMode } from "@/lib/payment-mode";
 import {
   AUTO_TOPUP_ENABLE_AMOUNT_CENTS,
   AUTO_TOPUP_ENABLE_THRESHOLD_CENTS,
@@ -30,7 +24,6 @@ import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
-import { CardImprintModal } from "@/components/v2/card-imprint-modal";
 import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
 
 /**
@@ -40,15 +33,16 @@ import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
  * hook the v1 page runs: opening the card page asks before it settles, removing the
  * card re-reads instead of reloading, a top-up arms auto top-up the same way. This
  * file only draws, in Keel's settings layout (a title and what it is for, beside the
- * card), and adds the one control v1 never had: choosing prepaid or postpaid, whose
- * rules are billing-service's and whose words are `lib/payment-mode`.
+ * card), and states how the org pays (prepaid or postpaid) as a tag. The mode is set
+ * by staff, never by the customer (owner 2026-10-01), so the page shows it and offers
+ * no switch; its rules are billing-service's and its words are `lib/payment-mode`.
  */
 
 const MODE_COPY: Record<PaymentMode, { title: string; line: string; detail: string }> = {
   prepaid: {
     title: "Prepaid",
     line: "You spend what you have paid in. Your campaigns pause at $0.",
-    detail: "No card needed. Auto top-up is switched on when you choose prepaid, and you can turn it off.",
+    detail: "No card needed. With a card on file, auto top-up can add credit when you run out.",
   },
   postpaid: {
     title: "Postpaid",
@@ -101,15 +95,7 @@ export function V2BillingPage() {
   const queryClient = useQueryClient();
   const account = c.account;
   const mode = paymentModeOf(account);
-  const blocker = postpaidBlocker(account);
 
-  // The switch. `target` non-null = the confirmation is up (only when a switch to
-  // prepaid will charge what is owed first). One in-flight flag for both writes.
-  const [target, setTarget] = useState<PaymentMode | null>(null);
-  const [switching, setSwitching] = useState(false);
-  // Postpaid picked with no card on file: the $0 card save is up.
-  const [imprintOpen, setImprintOpen] = useState(false);
-  const [modeError, setModeError] = useState<string | null>(null);
   const [autoPending, setAutoPending] = useState(false);
   const [autoError, setAutoError] = useState<string | null>(null);
 
@@ -118,47 +104,6 @@ export function V2BillingPage() {
       queryClient.refetchQueries({ queryKey: ["billingAccount"] }),
       queryClient.refetchQueries({ queryKey: ["billingPayments"] }),
     ]).catch((err) => console.error("[billing v2] refetch after write failed:", err));
-  }
-
-  function requestSwitch(next: PaymentMode) {
-    setModeError(null);
-    // No card yet: save one for $0 first. The modal switches once billing holds it,
-    // never before (a postpaid org with no card is stopped at once).
-    if (next === "postpaid" && !account?.has_payment_method) {
-      setImprintOpen(true);
-      return;
-    }
-    // Leaving postpaid collects what is owed first, so the amount is confirmed before
-    // it is taken. The same derivation the card controls read (`settleCents`), so the
-    // two can never state different money.
-    if (next === "prepaid" && c.settleCents !== null) {
-      setTarget(next);
-      return;
-    }
-    void runSwitch(next);
-  }
-
-  async function runSwitch(next: PaymentMode) {
-    setSwitching(true);
-    setModeError(null);
-    try {
-      await setPaymentMode(next);
-    } catch (err) {
-      // Logged, never rendered: the thrown message is the downstream body verbatim.
-      console.error("[billing v2] payment mode switch failed:", err);
-      const status = err instanceof ApiError ? err.status : null;
-      const body = err instanceof ApiError ? err.body : {};
-      const owed = typeof body.owed_cents === "string" ? formatBillingCents(body.owed_cents) : null;
-      setModeError(paymentModeRefusalMessage(status, body.code, owed));
-      setSwitching(false);
-      setTarget(null);
-      return;
-    }
-    // A settle may have charged the card, so payments move with the account. The
-    // confirmation stays up until the fresh answer lands.
-    await refetchMoney();
-    setSwitching(false);
-    setTarget(null);
   }
 
   async function toggleAutoTopup(on: boolean) {
@@ -217,24 +162,6 @@ export function V2BillingPage() {
             />
           )}
         </div>
-        {imprintOpen && (
-          <CardImprintModal
-            onCancel={() => setImprintOpen(false)}
-            onSwitched={async () => {
-              await refetchMoney();
-              setImprintOpen(false);
-            }}
-          />
-        )}
-        {target !== null && c.settleCents !== null && (
-          <SwitchConfirm
-            settleCents={c.settleCents}
-            pending={switching}
-            onConfirm={() => void runSwitch(target)}
-            onCancel={() => setTarget(null)}
-          />
-        )}
-
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Billing</h1>
@@ -321,79 +248,24 @@ export function V2BillingPage() {
           </div>
         </Section>
 
-        {/* How you pay: the switch. */}
+        {/* How you pay: a tag, set by staff. */}
         <Section
           id="payment-mode"
           title="How you pay"
-          description="Choose whether your campaigns run on money you paid in, or on credit charged to your card as you spend. You can change it at any time."
+          description="Set by our team for your account. Write to us if you want it changed."
         >
           {c.accountPending ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Shimmer className="h-28" />
-              <Shimmer className="h-28" />
-            </div>
+            <Shimmer className="h-24" />
           ) : (
             <>
-              <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="How you pay">
-                {(["prepaid", "postpaid"] as const).map((m) => {
-                  const current = mode === m;
-                  const blocked = m === "postpaid" && !current ? blocker : null;
-                  // The card IS the control: picking the other mode is one click on it.
-                  // A card that cannot be picked says why, instead of a greyed button.
-                  const pickable = !current && mode !== null && blocked === null && !switching && !imprintOpen;
-                  const pendingHere = switching && !current;
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      role="radio"
-                      aria-checked={current}
-                      aria-disabled={!current && !pickable}
-                      onClick={() => {
-                        if (pickable) requestSwitch(m);
-                      }}
-                      className={`k-card flex flex-col p-4 text-left transition-shadow ${
-                        pickable ? "cursor-pointer hover:bg-[var(--bg-inset)]" : current ? "cursor-default" : pendingHere ? "cursor-wait" : "cursor-not-allowed"
-                      }`}
-                      // `k-card` is unlayered, so a utility ring loses to its own shadow.
-                      style={current ? { boxShadow: "inset 0 0 0 1.5px var(--accent)" } : undefined}
-                    >
-                      <span className="flex w-full items-center gap-2">
-                        <span
-                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
-                            current ? "bg-[var(--accent)]" : "shadow-[inset_0_0_0_1.5px_var(--fg-4)]"
-                          }`}
-                        >
-                          {current && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </span>
-                        <span className="text-[14px] font-medium">{MODE_COPY[m].title}</span>
-                        {current && <span className="k-chip ml-auto">Current</span>}
-                        {pendingHere && <span className="k-fg3 ml-auto text-[12px]">Switching...</span>}
-                      </span>
-                      <span className="k-fg mt-2 block text-[13px] leading-5">{MODE_COPY[m].line}</span>
-                      <span className="k-fg3 mt-1 block text-[12px] leading-[18px]">{MODE_COPY[m].detail}</span>
-                      {blocked && <span className="mt-2 block text-[12px] leading-[18px] text-[var(--data-amber)]">{blocked}</span>}
-                      {!current && m === "postpaid" && !account?.has_payment_method && (
-                        <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
-                          Pick it to add your card. Nothing is charged now.
-                        </span>
-                      )}
-                      {!current && m === "prepaid" && c.settleCents !== null && (
-                        <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
-                          You owe {formatBillingCents(c.settleCents)}. It is charged to your card first, and we ask before we take it.
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {mode === null && (
-                <p className="k-fg3 mt-3 text-[12px]">We could not read how this account pays right now.</p>
-              )}
-              {modeError && (
-                <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
-                  {modeError}
-                </p>
+              {mode === null ? (
+                <p className="k-fg3 text-[12px]">We could not read how this account pays right now.</p>
+              ) : (
+                <div className="k-card p-4">
+                  <span className="k-chip">{MODE_COPY[mode].title}</span>
+                  <p className="k-fg mt-2 text-[13px] leading-5">{MODE_COPY[mode].line}</p>
+                  <p className="k-fg3 mt-1 text-[12px] leading-[18px]">{MODE_COPY[mode].detail}</p>
+                </div>
               )}
 
               {/* Auto top-up, in the words of the mode it serves. */}
@@ -740,88 +612,5 @@ function UsageSection() {
         )}
       </div>
     </Section>
-  );
-}
-
-
-/**
- * Leaving postpaid collects what is owed on the card first. The amount is named
- * before it is taken, and the dialog says what is running while billing charges.
- */
-function SwitchConfirm({
-  settleCents,
-  pending,
-  onConfirm,
-  onCancel,
-}: {
-  settleCents: number;
-  pending: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending) onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, pending]);
-
-  if (typeof document === "undefined") return null;
-  const host = document.getElementById("v2-portal") ?? document.body;
-  const amount = formatBillingCents(settleCents);
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[60] flex items-start justify-center bg-[#1010121f] px-3 pt-[12vh]"
-      onMouseDown={() => !pending && onCancel()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="v2-switch-prepaid-title"
-        className="k-popover flex w-full max-w-[440px] flex-col overflow-hidden"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          <span id="v2-switch-prepaid-title" className="k-label">
-            Switch to prepaid
-          </span>
-          <button
-            type="button"
-            aria-label="Close"
-            className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0"
-            onClick={onCancel}
-            disabled={pending}
-          >
-            ×
-          </button>
-        </div>
-        <div className="px-4 py-4">
-          <p className="text-[13px] leading-5">
-            You owe <span className="font-medium tabular-nums">{amount}</span> on credit. Prepaid runs only on money paid
-            in, so we charge it to your card first, then switch.
-          </p>
-          {pending && (
-            <p className="k-fg3 mt-2 text-[12px]" aria-live="polite">
-              Charging {amount}. Please keep this page open.
-            </p>
-          )}
-          <div className="mt-5 flex items-center justify-end gap-2">
-            <button type="button" onClick={onCancel} disabled={pending} className="k-btn-ghost">
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={pending}
-              className={`k-btn-accent tabular-nums ${pending ? "cursor-wait" : ""}`}
-            >
-              {pending ? `Charging ${amount}...` : `Charge ${amount} and switch`}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    host,
   );
 }

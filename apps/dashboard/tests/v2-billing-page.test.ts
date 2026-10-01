@@ -1,11 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  paymentModeOf,
-  paymentModeRefusalMessage,
-  postpaidBlocker,
-} from "../src/lib/payment-mode";
+import { paymentModeOf } from "../src/lib/payment-mode";
 
 const root = join(__dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -13,8 +9,6 @@ const V2 = read("src/components/v2/billing-page.tsx");
 const ROUTE = read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/billing/page.tsx");
 const V1 = read("src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx");
 const API = read("src/lib/api.ts");
-const IMPRINT = read("src/components/v2/card-imprint-modal.tsx");
-const PAYMENT_MODE = read("src/lib/payment-mode.ts");
 
 describe("paymentModeOf", () => {
   it("reads billing's own word", () => {
@@ -26,45 +20,6 @@ describe("paymentModeOf", () => {
     expect(paymentModeOf({ has_payment_method: true })).toBeNull();
     expect(paymentModeOf({ payment_mode: "weekly", has_payment_method: true })).toBeNull();
     expect(paymentModeOf(null)).toBeNull();
-  });
-});
-
-describe("postpaidBlocker", () => {
-  // billing does not refuse the switch: it stops every campaign the moment a
-  // postpaid org has no chargeable card. With NO card the page does not refuse:
-  // picking postpaid asks for one, saved for $0, before switching.
-  it("does not block an account with no card", () => {
-    expect(postpaidBlocker({ has_payment_method: false })).toBeNull();
-    expect(postpaidBlocker({ has_payment_method: false, auto_reload_supported: false })).toBeNull();
-    expect(PAYMENT_MODE).not.toContain("Add a card first");
-  });
-
-  it("refuses a card that cannot be charged automatically", () => {
-    expect(postpaidBlocker({ has_payment_method: true, auto_reload_supported: false })).toMatch(/cannot be charged/);
-  });
-
-  it("allows a chargeable card, an absent flag reading as supported", () => {
-    expect(postpaidBlocker({ has_payment_method: true })).toBeNull();
-    expect(postpaidBlocker({ has_payment_method: true, auto_reload_supported: true })).toBeNull();
-  });
-});
-
-describe("paymentModeRefusalMessage", () => {
-  it("says a sentence per refusal code, with billing's owed amount", () => {
-    expect(paymentModeRefusalMessage(409, "outstanding_balance_no_card", "$29.84")).toContain("You owe $29.84 ");
-    expect(paymentModeRefusalMessage(409, "outstanding_balance_charge_declined", "$29.84")).toMatch(/declined/);
-    expect(paymentModeRefusalMessage(409, "outstanding_balance_below_minimum_charge", "$0.20")).toMatch(/less than a card/);
-  });
-
-  it("falls to one generic line for anything else, never the raw body", () => {
-    const generic = "We could not change how you pay. Please try again.";
-    expect(paymentModeRefusalMessage(502, undefined, null)).toBe(generic);
-    expect(paymentModeRefusalMessage(409, "something_new", null)).toBe(generic);
-    expect(paymentModeRefusalMessage(null, null, null)).toBe(generic);
-  });
-
-  it("never claims nothing changed: a settle may have charged before a failure", () => {
-    expect(paymentModeRefusalMessage(502, undefined, null)).not.toContain("Nothing was changed");
   });
 });
 
@@ -97,113 +52,34 @@ describe("the v2 Billing page draws; it re-implements no money path", () => {
     expect(change).toContain("settleCents={c.settleCents}");
     expect(change).toContain("pending={c.portalLoadingSource !== null}");
     expect(change).toContain("problem={c.settleProblem?.problem ?? null}");
-    const remove = V2.slice(V2.indexOf("<CardRemoveConfirmModal"), V2.indexOf("{target !== null"));
+    const remove = V2.slice(V2.indexOf("<CardRemoveConfirmModal"), V2.indexOf('<div className="mb-6 flex flex-wrap'));
     expect(remove).toContain("consequence={c.removeConsequence}");
     expect(remove).toContain("pending={c.removePending}");
     expect(remove).toContain("c.handleRemoveCard()");
   });
 });
 
-describe("the prepaid / postpaid switch", () => {
-  const request = V2.slice(V2.indexOf("function requestSwitch("), V2.indexOf("async function runSwitch("));
-  const run = V2.slice(V2.indexOf("async function runSwitch("), V2.indexOf("async function toggleAutoTopup("));
+describe("how the org pays: a tag, set by staff", () => {
+  // Owner 2026-10-01: each client keeps the mode it has, stated plainly; only staff
+  // moves an org between modes (admin console), so the page offers no switch.
+  const section = V2.slice(V2.indexOf('id="payment-mode"'), V2.indexOf("{/* Auto top-up, in the words of the mode it serves. */}"));
 
-  it("asks before a switch to prepaid that charges what is owed", () => {
-    expect(request).toContain('next === "prepaid" && c.settleCents !== null');
-    expect(request).toContain("setTarget(next)");
-    // Nothing owed switches straight away.
-    expect(request).toContain("void runSwitch(next)");
+  it("shows the current mode as a tag with its rule, and nothing to click", () => {
+    expect(section).toContain('<span className="k-chip">{MODE_COPY[mode].title}</span>');
+    expect(section).toContain("{MODE_COPY[mode].line}");
+    expect(section).not.toContain("<button");
+    expect(section).not.toContain('role="radio"');
+    expect(V2).not.toContain("setPaymentMode");
+    expect(V2).not.toContain("CardImprintModal");
   });
 
-  it("names the amount from the same derivation the card controls read", () => {
-    expect(V2).toContain("settleCents={c.settleCents}");
-    expect(V2).not.toContain("cardChangeSettleCents(");
-  });
-
-  it("refuses postpaid on the page when billing would stop the campaigns", () => {
-    expect(V2).toContain("const blocker = postpaidBlocker(account);");
-    expect(V2).toContain("const pickable = !current && mode !== null && blocked === null && !switching && !imprintOpen;");
-    expect(V2).toContain("if (pickable) requestSwitch(m);");
-  });
-
-  // The card is the choice: a separate "Switch to" button would be a second click
-  // for the same decision.
-  it("switches on a click on the card, with no extra button", () => {
-    expect(V2).not.toContain("Switch to ${");
-    expect(V2).toContain('role="radio"');
-  });
-
-  it("renders a sentence per refusal, never the raw error", () => {
-    expect(run).toContain("paymentModeRefusalMessage(status, body.code, owed)");
-    expect(run).not.toContain("err.message");
-    expect(V2).not.toContain("err instanceof Error ? err.message");
-  });
-
-  it("re-reads the account AND the payments after a switch, and never reloads", () => {
-    expect(V2).toContain('refetchQueries({ queryKey: ["billingAccount"] })');
-    expect(V2).toContain('refetchQueries({ queryKey: ["billingPayments"] })');
-    expect(V2).not.toContain("location.reload");
-    // The confirmation stays up until the fresh answer lands.
-    expect(run.lastIndexOf("setTarget(null)")).toBeGreaterThan(run.indexOf("await refetchMoney()"));
+  it("says who changes it", () => {
+    expect(section).toContain("Set by our team for your account. Write to us if you want it changed.");
   });
 
   it("reads the mode off the account billing already serves", () => {
     expect(API).toContain('payment_mode?: "prepaid" | "postpaid";');
     expect(V2).toContain("paymentModeOf(account)");
-  });
-});
-
-describe("postpaid with no card: a $0 card save, then the switch", () => {
-  const request = V2.slice(V2.indexOf("function requestSwitch("), V2.indexOf("async function runSwitch("));
-  const saved = IMPRINT.slice(IMPRINT.indexOf("async function afterCardSaved("), IMPRINT.indexOf("useEffect(() => {"));
-
-  it("opens the card modal instead of switching, before any write", () => {
-    expect(request).toContain('next === "postpaid" && !account?.has_payment_method');
-    expect(request.indexOf("setImprintOpen(true)")).toBeGreaterThan(-1);
-    expect(request.indexOf("setImprintOpen(true)")).toBeLessThan(request.indexOf("void runSwitch(next)"));
-  });
-
-  it("mounts the modal and re-reads the money once it has switched", () => {
-    const site = V2.slice(V2.indexOf("<CardImprintModal"), V2.indexOf("{target !== null"));
-    expect(site).toContain("onCancel={() => setImprintOpen(false)}");
-    expect(site).toContain("await refetchMoney()");
-    expect(site.indexOf("setImprintOpen(false)", site.indexOf("onSwitched"))).toBeGreaterThan(site.indexOf("await refetchMoney()"));
-  });
-
-  it("says the card can be added right on the postpaid choice, with no negative line", () => {
-    expect(V2).toContain("Pick it to add your card. Nothing is charged now.");
-  });
-
-  it("saves the card in the page, charging nothing, through the shared card setup", () => {
-    expect(IMPRINT).toContain("createEmbeddedCardSetup()");
-    expect(IMPRINT).toContain('setup.mode === "embedded_checkout"');
-    expect(IMPRINT).toContain('setup.mode === "embedded_widget"');
-    for (const fn of ["createCheckoutSession", "createPortalSession", "createEmbeddedCheckoutSession"]) {
-      expect(IMPRINT, fn).not.toContain(fn);
-    }
-  });
-
-  it("switches only once billing holds a chargeable card, then arms auto top-up", () => {
-    const held = saved.indexOf("acct?.has_payment_method) break");
-    const refused = saved.indexOf("acct.auto_reload_supported === false");
-    const sw = saved.indexOf('setPaymentMode("postpaid")');
-    const topup = saved.indexOf("configureAutoTopup(AUTO_TOPUP_ENABLE_AMOUNT_CENTS, AUTO_TOPUP_ENABLE_THRESHOLD_CENTS)");
-    expect(held).toBeGreaterThan(-1);
-    expect(refused).toBeGreaterThan(held);
-    expect(sw).toBeGreaterThan(refused);
-    expect(topup).toBeGreaterThan(sw);
-    expect(saved.indexOf("await onSwitched()")).toBeGreaterThan(topup);
-  });
-
-  it("never renders a thrown message", () => {
-    expect(IMPRINT).not.toContain("err.message");
-    expect(IMPRINT).not.toContain("e.message");
-    expect(IMPRINT).not.toContain("{message}");
-  });
-
-  it("carries no em-dash in its copy", () => {
-    const code = IMPRINT.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    expect(code).not.toContain("—");
   });
 });
 
