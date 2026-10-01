@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { formatCentsAsUsd } from "@/lib/format-number";
-import { getStaffMarginTimeseries, getStaffPaymentSources, getStaffProviderSources, setStaffProviderSources } from "@/lib/api";
+import { getStaffMarginTimeseries, getStaffProviderSources } from "@/lib/api";
 import { ProviderLogo } from "@/components/provider-logo";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import {
@@ -15,7 +14,6 @@ import {
   type PaymentSource,
   type PriceVersion,
   type ProviderMargin,
-  type ProviderSourcesRow,
 } from "@/lib/monitoring/monitoring";
 
 /**
@@ -23,7 +21,8 @@ import {
  * its logo (logo.dev off costs-service's providerDomain), the accounts we pay it from, and
  * the since-inception figures runs-service serves. A row opens a drawer with the vendor's
  * monthly cost since inception (the month in progress drawn dashed), the accounts that pay
- * it (editable), and each cost item's price timeline.
+ * it (read from the bank ledger by costs-service, never typed here), and each cost item's
+ * price timeline.
  *
  * Every money figure is served: the margin read per provider, the dated series per provider
  * per month. This file formats and draws; it never adds, subtracts or divides money.
@@ -45,9 +44,6 @@ const dash = <span className="k-fg4">{"—"}</span>;
 
 function useMarginTimeseries() {
   return useAuthQuery(["staffMarginTimeseries"], getStaffMarginTimeseries, ONCE);
-}
-function usePaymentSources() {
-  return useAuthQuery(["staffPaymentSources"], getStaffPaymentSources, ONCE);
 }
 function useProviderSources() {
   return useAuthQuery(["staffProviderSources"], getStaffProviderSources, ONCE);
@@ -75,12 +71,15 @@ interface Row {
 }
 
 /**
- * The rows, in runs-service's order (billed, largest first), then the catalogue's providers
- * that never billed anything, by name. A merge of two served lists, no figure computed.
+ * The rows, in runs-service's order (billed, largest first), then, when `catalogue` is set,
+ * the catalogue's providers that never billed anything, by name. A merge of two served
+ * lists, no figure computed.
  */
-function rowsOf(margin: CostMargin, versions: PriceVersion[] | undefined): Row[] {
-  const rows: Row[] = margin.providers.map((m) => ({ provider: m.provider, margin: m }));
-  const seen = new Set(margin.providers.map((m) => m.provider));
+function rowsOf(margin: CostMargin | undefined, versions: PriceVersion[] | undefined, catalogue: boolean): Row[] {
+  const billed = margin?.providers ?? [];
+  const rows: Row[] = billed.map((m) => ({ provider: m.provider, margin: m }));
+  if (!catalogue) return rows;
+  const seen = new Set(billed.map((m) => m.provider));
   const idle = [...new Set((versions ?? []).map((v) => v.provider))].filter((p) => !seen.has(p)).sort();
   return [...rows, ...idle.map((provider) => ({ provider, margin: null }))];
 }
@@ -90,20 +89,28 @@ const THR = `${TH} text-right`;
 const TD = "px-3 py-2 first:pl-4 last:pr-4";
 const TDR = `${TD} whitespace-nowrap text-right tabular-nums`;
 
+/**
+ * `margin` undefined with `marginError` false = still reading; with `marginError` true = the
+ * figures are not readable, the catalogue rows still list (Providers page). `catalogue`
+ * adds the providers that never billed; Spend leaves it off so its counts match the table.
+ */
 export function ProvidersTable({
   margin,
+  marginError = false,
   versions,
   prices,
   columns,
+  catalogue,
 }: {
-  margin: CostMargin;
+  margin: CostMargin | undefined;
+  marginError?: boolean;
   versions: PriceVersion[] | undefined;
   prices: CurrentPrice[] | undefined;
   columns: ProviderColumn[];
+  catalogue: boolean;
 }) {
   const sources = useProviderSources();
-  const vocabulary = usePaymentSources();
-  const rows = useMemo(() => rowsOf(margin, versions), [margin, versions]);
+  const rows = useMemo(() => rowsOf(margin, versions, catalogue), [margin, versions, catalogue]);
   const [open, setOpen] = useState<string | null | undefined>(undefined);
   const [cursor, setCursor] = useState(-1);
   // costs-service's per-provider row carries the vendor's domain for every catalogue provider
@@ -112,11 +119,13 @@ export function ProvidersTable({
   const itemsOf = (p: string | null) => (p && versions ? new Set(versions.filter((v) => v.provider === p).map((v) => v.name)).size : null);
   const sourcesOf = (p: string | null) => (p ? (sources.data?.find((s) => s.provider === p)?.sources ?? []) : []);
 
-  // J/K move the highlighted row, Enter opens it. Keys never fire while typing.
+  // J/K move the highlighted row, Enter opens it. Keys never fire while typing, on a focused
+  // control (its own Enter belongs to it), or while the drawer is open (it owns the keys).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (open !== undefined) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "BUTTON" || t.tagName === "A" || t.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey || !rows.length) return;
       if (e.key === "j" || e.key === "ArrowDown") {
         e.preventDefault();
@@ -128,7 +137,7 @@ export function ProvidersTable({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rows, cursor]);
+  }, [rows, cursor, open]);
 
   const openRow = open === undefined ? null : (rows.find((r) => r.provider === open) ?? null);
 
@@ -142,7 +151,7 @@ export function ProvidersTable({
                 <th className={TH}>Provider</th>
                 <th className={TH}>Sources</th>
                 {columns.map((c) => (
-                  <th key={c} className={`${c === "items" ? THR : THR} ${COLUMN[c].wide ? "hidden 2xl:table-cell" : ""}`}>
+                  <th key={c} className={`${THR} ${COLUMN[c].wide ? "hidden 2xl:table-cell" : ""}`}>
                     {COLUMN[c].label}
                   </th>
                 ))}
@@ -172,7 +181,7 @@ export function ProvidersTable({
                     </td>
                     {columns.map((c) => (
                       <td key={c} className={`${TDR} ${COLUMN[c].wide ? "hidden 2xl:table-cell" : ""} ${c === "items" ? "k-fg2" : ""}`}>
-                        {c === "items" ? (items ?? dash) : r.margin ? (COLUMN[c].cell(r.margin) ?? dash) : dash}
+                        {c === "items" ? (items ?? dash) : r.margin ? (COLUMN[c].cell(r.margin) ?? dash) : marginError ? <span className="k-fg3 text-[12px]">not readable</span> : dash}
                       </td>
                     ))}
                     <td className="pr-4 text-right">
@@ -204,7 +213,7 @@ export function ProvidersTable({
           versions={versions ?? []}
           prices={prices ?? []}
           sources={sourcesOf(openRow.provider)}
-          vocabulary={vocabulary.data}
+          sourcesState={sources.isError ? "error" : sources.data === undefined ? "loading" : "ok"}
           onClose={() => setOpen(undefined)}
         />
       )}
@@ -246,7 +255,7 @@ function ProviderDrawer({
   versions,
   prices,
   sources,
-  vocabulary,
+  sourcesState,
   onClose,
 }: {
   row: Row;
@@ -254,7 +263,7 @@ function ProviderDrawer({
   versions: PriceVersion[];
   prices: CurrentPrice[];
   sources: PaymentSource[];
-  vocabulary: PaymentSource[] | undefined;
+  sourcesState: "loading" | "error" | "ok";
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -312,7 +321,10 @@ function ProviderDrawer({
 
         <MonthlyCost provider={row.provider} />
 
-        {row.provider && <SourcesEditor provider={row.provider} sources={sources} vocabulary={vocabulary} />}
+        <section>
+          <p className="k-label mb-2">Paid from</p>
+          <SourceTags sources={sources} loading={sourcesState === "loading"} error={sourcesState === "error"} />
+        </section>
 
         <section>
           <p className="k-label mb-2">Price timeline</p>
@@ -448,72 +460,6 @@ function MonthlyCost({ provider }: { provider: string | null }) {
         <p className="k-fg3 text-[12px]">since inception</p>
       </div>
       <div className="k-card">{body}</div>
-    </section>
-  );
-}
-
-// ─── Sources editor ────────────────────────────────────────────────────────
-
-/**
- * The accounts that pay this vendor. A tap toggles one and saves at once (no Save button);
- * the pressed set shows while saving and is dropped on refusal, costs-service's answer wins.
- */
-function SourcesEditor({ provider, sources, vocabulary }: { provider: string; sources: PaymentSource[]; vocabulary: PaymentSource[] | undefined }) {
-  const qc = useQueryClient();
-  const [pending, setPending] = useState<string[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const on = new Set(pending ?? sources.map((s) => s.key));
-
-  async function toggle(key: string) {
-    const next = on.has(key) ? [...on].filter((k) => k !== key) : [...on, key];
-    setPending(next);
-    setError(null);
-    try {
-      const saved = await setStaffProviderSources(provider, next);
-      qc.setQueryData<ProviderSourcesRow[]>(["staffProviderSources"], (old) => old?.map((p) => (p.provider === provider ? saved : p)));
-      await qc.invalidateQueries({ queryKey: ["staffProviderSources"] });
-    } catch (e) {
-      console.error("[monitoring] saving payment sources failed", { provider, next, e });
-      setError("Not saved. Try again.");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  return (
-    <section>
-      <p className="k-label mb-2">Paid from</p>
-      {!vocabulary ? (
-        <Shimmer className="h-7 w-64" />
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {vocabulary.map((s) => {
-            const active = on.has(s.key);
-            return (
-              <button
-                key={s.key}
-                type="button"
-                aria-pressed={active}
-                disabled={pending != null}
-                onClick={() => toggle(s.key)}
-                className={`inline-flex h-7 items-center gap-1.5 rounded-[8px] px-2.5 text-[12px] ${
-                  active ? "bg-[var(--accent)] font-medium text-white" : "k-btn k-fg2"
-                }`}
-              >
-                {active ? (
-                  <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
-                    <path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <ProviderLogo domain={s.domain} size={12} className="rounded-[3px]" />
-                )}
-                {s.displayName}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
     </section>
   );
 }

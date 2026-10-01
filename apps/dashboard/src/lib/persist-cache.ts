@@ -95,7 +95,6 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffCurrentPrices",
   "staffEmailsSent",
   "staffMarginTimeseries",
-  "staffPaymentSources",
   "staffProviderSources",
   // One person's whole exchange (Integrations > Conversations): private message bodies
   // from the brand's own inboxes. Read live, never written to disk.

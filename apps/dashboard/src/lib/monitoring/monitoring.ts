@@ -108,7 +108,6 @@ export type ProviderMonth = MarginTimeseries["providers"][number]["buckets"][num
 /** One of OUR accounts that pays a vendor (costs-service's closed vocabulary, staff can grow it). */
 export const PaymentSourceSchema = z.object({ key: z.string(), displayName: z.string(), domain: z.string().nullable() });
 export type PaymentSource = z.infer<typeof PaymentSourceSchema>;
-export const PaymentSourcesSchema = z.object({ sources: z.array(PaymentSourceSchema) });
 export const ProviderSourcesRowSchema = z.object({ provider: z.string(), providerDomain: z.string().nullable(), sources: z.array(PaymentSourceSchema) });
 export type ProviderSourcesRow = z.infer<typeof ProviderSourcesRowSchema>;
 export const ProviderSourcesListSchema = z.object({ providers: z.array(ProviderSourcesRowSchema) });

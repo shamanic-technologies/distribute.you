@@ -7,7 +7,6 @@ import {
   FleetEmailStatsSchema,
   MONITORING_PAGES,
   MarginTimeseriesSchema,
-  PaymentSourcesSchema,
   ProviderSourcesListSchema,
   PriceVersionsSchema,
   costItemNames,
@@ -149,7 +148,7 @@ describe("monitoring: staff only, end to end", () => {
     for (const k of ["STAFF_MONITORING_PATHS.margin", "STAFF_MONITORING_PATHS.priceVersions", "STAFF_MONITORING_PATHS.emails"]) expect(api).toContain(k);
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
-    for (const root of ["staffCostMargin", "staffPriceVersions", "staffCurrentPrices", "staffEmailsSent", "staffMarginTimeseries", "staffPaymentSources", "staffProviderSources"]) {
+    for (const root of ["staffCostMargin", "staffPriceVersions", "staffCurrentPrices", "staffEmailsSent", "staffMarginTimeseries", "staffProviderSources"]) {
       expect(sensitive).toContain(`"${root}"`);
       expect(read("components/v2/monitoring-page.tsx") + read("components/v2/monitoring-providers.tsx")).toContain(`["${root}"]`);
     }
@@ -170,8 +169,7 @@ describe("monitoring: providers table and drawer", () => {
     });
     expect(parsed.providers[0].buckets.map((b) => b.complete)).toEqual([true, false]);
   });
-  it("costs-service's payment sources parse (vocabulary, and every provider with its domain and sources)", () => {
-    expect(PaymentSourcesSchema.parse({ sources: [{ key: "qonto", displayName: "Qonto", domain: "qonto.com" }] }).sources[0].displayName).toBe("Qonto");
+  it("costs-service's per-provider sources parse (every provider with its domain and sources)", () => {
     const rows = ProviderSourcesListSchema.parse({ providers: [{ provider: "apollo", providerDomain: "apollo.io", sources: [] }, { provider: "x", providerDomain: null, sources: [] }] }).providers;
     expect(rows[1].providerDomain).toBeNull();
   });
@@ -186,6 +184,26 @@ describe("monitoring: providers table and drawer", () => {
     expect(table).toContain("<ProviderDrawer");
     expect(table).toContain("<MonthlyCost provider={row.provider} />");
   });
+  it("who pays a vendor is read, never edited here (the bank ledger owns it, owner 2026-10-01)", () => {
+    const api = read("lib/api.ts");
+    expect(api).not.toContain("setStaffProviderSources");
+    expect(api).not.toContain('method: "PUT", body: { sources }');
+    expect(read("components/v2/monitoring-providers.tsx")).not.toContain("aria-pressed");
+  });
+  it("Spend lists only providers with spend, so its counts match its table; Providers adds the catalogue", () => {
+    const page = read("components/v2/monitoring-page.tsx");
+    const spend = page.slice(page.indexOf("function SpendPage("), page.indexOf("\n}\n", page.indexOf("function SpendPage(")));
+    expect(spend).toContain("catalogue={false}");
+    const providers = page.slice(page.indexOf("function ProvidersPage("), page.indexOf("function SpendPage("));
+    expect(providers).toContain("<Loaded q={versions}>");
+    expect(providers).toContain("marginError={margin.isError}");
+  });
+  it("row keys stand down while the drawer is open and on a focused control", () => {
+    const table = read("components/v2/monitoring-providers.tsx");
+    const keys = table.slice(table.indexOf("// J/K move"), table.indexOf("const openRow"));
+    expect(keys).toContain("if (open !== undefined) return;");
+    expect(keys).toContain('t.tagName === "BUTTON"');
+  });
   it("the month drawn dashed is the one runs-service marks incomplete, never one read off a clock", () => {
     const table = read("components/v2/monitoring-providers.tsx");
     const chart = table.slice(table.indexOf("function MonthlyCost("), table.indexOf("// ─── Sources editor"));
@@ -198,9 +216,8 @@ describe("monitoring: providers table and drawer", () => {
     expect(table).not.toMatch(/CostInUsdCents\)?\s*[-+/]\s*Number|Number\([^)]*CostInUsdCents\)\s*[-+/*]/);
     expect(table).not.toContain("reduce(");
   });
-  it("the reads and the write go through the staff gateway paths", () => {
+  it("the reads go through the staff gateway paths", () => {
     const api = read("lib/api.ts");
-    for (const k of ["STAFF_MONITORING_PATHS.marginTimeseries", "STAFF_MONITORING_PATHS.paymentSources", "STAFF_MONITORING_PATHS.providerSources"]) expect(api).toContain(k);
-    expect(api).toContain('method: "PUT", body: { sources }');
+    for (const k of ["STAFF_MONITORING_PATHS.marginTimeseries", "STAFF_MONITORING_PATHS.providerSources"]) expect(api).toContain(k);
   });
 });
