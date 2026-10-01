@@ -486,7 +486,6 @@ function UnpricedNote({ f }: { f: MarginFigures }) {
 function ProvidersPage() {
   const versions = useVersions();
   const margin = useMargin();
-  const prices = useCurrentPrices();
   return (
     <Loaded q={versions}>
       {(vs) => (
@@ -496,9 +495,8 @@ function ProvidersPage() {
             margin={margin.data}
             marginError={margin.isError}
             versions={vs}
-            prices={prices.data}
             catalogue
-            columns={["items", "vendor", "billedNet", "billedGross", "marginNet", "marginGross", "refunded", "unpriced"]}
+            columns={["items", "vendor"]}
           />
         </>
       )}
@@ -509,7 +507,6 @@ function ProvidersPage() {
 function SpendPage() {
   const margin = useMargin();
   const versions = useVersions();
-  const prices = useCurrentPrices();
   return (
     <Loaded q={margin}>
       {(m) => (
@@ -522,10 +519,9 @@ function SpendPage() {
               <Figure value={m.providers.length} />
             </StatTile>
           </div>
-          <UnpricedNote f={m.total} />
           <div className="mt-6">
             <SectionTitle count={m.providers.length}>Per provider</SectionTitle>
-            <ProvidersTable margin={m} versions={versions.data} prices={prices.data} catalogue={false} columns={["vendor", "billedNet", "unpriced"]} />
+            <ProvidersTable margin={m} versions={versions.data} catalogue={false} columns={["vendor"]} />
           </div>
           <CostItemsTable rows={m.costItems} cols={["vendor"]} />
         </>
@@ -808,7 +804,7 @@ function CostItemsTable({ rows, cols }: { rows: CostItemMargin[]; cols: ["vendor
                 <th className={THR}>Margin, net</th>
               </>
             )}
-            <th className={THR}>Unpriced spend</th>
+            {kind !== "vendor" && <th className={THR}>Unpriced spend</th>}
           </>
         }
       >
@@ -830,7 +826,7 @@ function CostItemsTable({ rows, cols }: { rows: CostItemMargin[]; cols: ["vendor
                 <td className={TDR}>{usd(c.netMarginCostInUsdCents)}</td>
               </>
             )}
-            <td className={TDR}>{Number(c.unpricedBilledCostInUsdCents) ? usd(c.unpricedBilledCostInUsdCents) : <Cell v={null} />}</td>
+            {kind !== "vendor" && <td className={TDR}>{Number(c.unpricedBilledCostInUsdCents) ? usd(c.unpricedBilledCostInUsdCents) : <Cell v={null} />}</td>}
           </tr>
         ))}
       </Table>

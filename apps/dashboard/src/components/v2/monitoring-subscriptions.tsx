@@ -8,9 +8,9 @@ import { DailyLines, Dash, PeriodBars, SERIES_COLORS, TD, TDR, TH, THR, cents, d
 /**
  * Monitoring > Cost > Subscriptions (staff only): the REAL cost of one credit of each vendor
  * subscription (owner 2026-10-01): net paid to the vendor since 2026-01-01 (bank ledger) over the
- * credits consumed through our own account, recomputed daily by costs-service, beside what the
- * catalogue records and bills per unit. Every price and total is the producer's; this file
- * formats, picks a row and draws. It never divides.
+ * credits consumed through our own account, recomputed daily by costs-service, beside the vendor
+ * cost the catalogue records per unit. Cost only (owner 2026-10-01): no price or margin figure.
+ * Every total is the producer's; this file formats, picks a row and draws. It never divides.
  */
 
 const NULL_REASON: Record<string, string> = {
@@ -21,9 +21,9 @@ const NULL_REASON: Record<string, string> = {
 
 const money = (v: number | null) => (v == null ? <span className="k-fg3">unknown</span> : dollars(v));
 
-/** The catalogue figures of a subscription's first credit item: a lookup, the item the price is quoted on. */
+/** The catalogue figures of a subscription's first credit item: a lookup, the item the vendor cost is recorded on. */
 function mainItem(s: SubscriptionCost) {
-  return s.costItems.find((c) => c.isCredit && c.billedPricePerUnitInUsdCents != null) ?? s.costItems.find((c) => c.isCredit) ?? null;
+  return s.costItems.find((c) => c.isCredit && c.vendorCostPerUnitInUsdCents != null) ?? s.costItems.find((c) => c.isCredit) ?? null;
 }
 
 export function SubscriptionsView({ data }: { data: SubscriptionCosts }) {
@@ -55,7 +55,6 @@ export function SubscriptionsView({ data }: { data: SubscriptionCosts }) {
                 <th className={THR}>Real cost / credit</th>
                 <th className={THR}>Before refunds</th>
                 <th className={THR}>Vendor cost on record</th>
-                <th className={THR}>Billed / credit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line-subtle)]">
@@ -85,14 +84,13 @@ export function SubscriptionsView({ data }: { data: SubscriptionCosts }) {
                     </td>
                     <td className={`${TDR} k-fg2`}>{cents(s.grossCostPerCreditUsdCents) ?? <Dash />}</td>
                     <td className={`${TDR} k-fg2`}>{cents(item?.vendorCostPerUnitInUsdCents) ?? <Dash />}</td>
-                    <td className={TDR}>{cents(item?.billedPricePerUnitInUsdCents) ?? <Dash />}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
           <p className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-            Vendor cost on record and Billed are the catalogue&apos;s current figures for the subscription&apos;s main credit item. Real cost is what the bank paid over what we used.
+            Vendor cost on record is the catalogue&apos;s current figure for the subscription&apos;s main credit item. Real cost is what the bank paid over what we used.
           </p>
         </div>
       </section>
@@ -217,7 +215,6 @@ function Detail({ s }: { s: SubscriptionCost }) {
                 <th className={THR}>Org key</th>
                 <th className={THR}>Credits counted</th>
                 <th className={THR}>Vendor cost on record</th>
-                <th className={THR}>Billed / unit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line-subtle)]">
@@ -229,7 +226,6 @@ function Detail({ s }: { s: SubscriptionCost }) {
                   <td className={`${TDR} k-fg2`}>{c.quantityOrgKey ? n(c.quantityOrgKey) : <Dash />}</td>
                   <td className={TDR}>{n(c.creditsCounted)}</td>
                   <td className={`${TDR} k-fg2`}>{cents(c.vendorCostPerUnitInUsdCents) ?? <span className="k-fg3">{c.catalogueNote ? "not in catalogue" : "—"}</span>}</td>
-                  <td className={TDR}>{cents(c.billedPricePerUnitInUsdCents) ?? <Dash />}</td>
                 </tr>
               ))}
             </tbody>

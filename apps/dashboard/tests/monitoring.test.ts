@@ -233,6 +233,16 @@ describe("monitoring: providers table and drawer", () => {
     const api = read("lib/api.ts");
     for (const k of ["STAFF_MONITORING_PATHS.marginTimeseries", "STAFF_MONITORING_PATHS.providerSources"]) expect(api).toContain(k);
   });
+  it("the Cost pages show no price, markup or margin figure (owner 2026-10-01)", () => {
+    const page = read("components/v2/monitoring-page.tsx");
+    const cost = [page.slice(page.indexOf("function ProvidersPage("), page.indexOf("// ─── Price"))];
+    const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    for (const f of ["components/v2/monitoring-providers.tsx", "components/v2/monitoring-subscriptions.tsx"]) cost.push(strip(read(f)));
+    for (const src of cost) {
+      expect(src).not.toMatch(/"(Billed|Margin|Markup|Unpriced)[^"]*"|>(Billed|Margin|Markup|Unpriced)[^<]*</);
+      expect(src).not.toMatch(/billedPricePerUnit|pricePerUnitInUsdCents|markupMultiplier|BilledCostInUsdCents|MarginCostInUsdCents/);
+    }
+  });
 });
 
 describe("monitoring: emails per period", () => {
