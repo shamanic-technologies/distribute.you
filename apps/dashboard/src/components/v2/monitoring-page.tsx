@@ -8,6 +8,7 @@ import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
+import { EmailsCharts } from "@/components/v2/monitoring-emails";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -414,14 +415,16 @@ function ProvidersPage() {
   const margin = useMargin();
   const prices = useCurrentPrices();
   return (
-    <Loaded q={margin}>
-      {(m) => (
+    <Loaded q={versions}>
+      {(vs) => (
         <>
           <SectionTitle>Every provider, since inception</SectionTitle>
           <ProvidersTable
-            margin={m}
-            versions={versions.data}
+            margin={margin.data}
+            marginError={margin.isError}
+            versions={vs}
             prices={prices.data}
+            catalogue
             columns={["items", "vendor", "billedNet", "billedGross", "marginNet", "marginGross", "refunded", "unpriced"]}
           />
         </>
@@ -449,7 +452,7 @@ function SpendPage() {
           <UnpricedNote f={m.total} />
           <div className="mt-6">
             <SectionTitle count={m.providers.length}>Per provider</SectionTitle>
-            <ProvidersTable margin={m} versions={versions.data} prices={prices.data} columns={["vendor", "billedNet", "unpriced"]} />
+            <ProvidersTable margin={m} versions={versions.data} prices={prices.data} catalogue={false} columns={["vendor", "billedNet", "unpriced"]} />
           </div>
           <CostItemsTable rows={m.costItems} cols={["vendor"]} />
         </>
@@ -754,19 +757,5 @@ function CostItemsTable({ rows, cols }: { rows: CostItemMargin[]; cols: ["vendor
 // ─── Emails ────────────────────────────────────────────────────────────────
 
 function EmailsPage() {
-  const emails = useEmails();
-  return (
-    <Loaded q={emails}>
-      {(sent) => (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Emails sent" note="follow-ups included">
-            <Figure value={sent.emails.toLocaleString("en-US")} />
-          </StatTile>
-          <StatTile label="People emailed" note="at least one email">
-            <Figure value={sent.people.toLocaleString("en-US")} />
-          </StatTile>
-        </div>
-      )}
-    </Loaded>
-  );
+  return <EmailsCharts />;
 }

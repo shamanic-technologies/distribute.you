@@ -7,8 +7,8 @@ import {
   FleetEmailStatsSchema,
   MONITORING_PAGES,
   MarginTimeseriesSchema,
-  PaymentSourcesSchema,
   ProviderSourcesListSchema,
+  SentPerPeriodSchema,
   PriceVersionsSchema,
   costItemNames,
   parseMonitoringPath,
@@ -149,7 +149,7 @@ describe("monitoring: staff only, end to end", () => {
     for (const k of ["STAFF_MONITORING_PATHS.margin", "STAFF_MONITORING_PATHS.priceVersions", "STAFF_MONITORING_PATHS.emails"]) expect(api).toContain(k);
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
-    for (const root of ["staffCostMargin", "staffPriceVersions", "staffCurrentPrices", "staffEmailsSent", "staffMarginTimeseries", "staffPaymentSources", "staffProviderSources"]) {
+    for (const root of ["staffCostMargin", "staffPriceVersions", "staffCurrentPrices", "staffEmailsSent", "staffMarginTimeseries", "staffProviderSources"]) {
       expect(sensitive).toContain(`"${root}"`);
       expect(read("components/v2/monitoring-page.tsx") + read("components/v2/monitoring-providers.tsx")).toContain(`["${root}"]`);
     }
@@ -170,10 +170,17 @@ describe("monitoring: providers table and drawer", () => {
     });
     expect(parsed.providers[0].buckets.map((b) => b.complete)).toEqual([true, false]);
   });
-  it("costs-service's payment sources parse (vocabulary, and every provider with its domain and sources)", () => {
-    expect(PaymentSourcesSchema.parse({ sources: [{ key: "qonto", displayName: "Qonto", domain: "qonto.com" }] }).sources[0].displayName).toBe("Qonto");
-    const rows = ProviderSourcesListSchema.parse({ providers: [{ provider: "apollo", providerDomain: "apollo.io", sources: [] }, { provider: "x", providerDomain: null, sources: [] }] }).providers;
-    expect(rows[1].providerDomain).toBeNull();
+  it("costs-service's per-provider sources parse (read from the bank ledger, unmatched stated)", () => {
+    const rows = ProviderSourcesListSchema.parse({
+      ledgerGeneratedAt: "2026-10-01T12:00:00Z",
+      providers: [
+        { provider: "anthropic", providerDomain: "anthropic.com", match: "matched", lastPaidOn: "2026-09-30", paidFrom: [{ accountId: "a1", label: "Qonto", institutionDomain: "qonto.com", scope: "business", lastPaidOn: "2026-09-30" }] },
+        { provider: "x", providerDomain: null, match: "unmatched", lastPaidOn: null, paidFrom: [] },
+      ],
+    }).providers;
+    expect(rows[1].match).toBe("unmatched");
+    expect(rows[0].paidFrom[0].scope).toBe("business");
+    expect(read("components/v2/monitoring-providers.tsx")).toContain("Not found in the bank");
   });
   it("Providers and Spend both list providers through the one table, which carries a Sources column and opens a drawer", () => {
     const page = read("components/v2/monitoring-page.tsx");
@@ -185,6 +192,26 @@ describe("monitoring: providers table and drawer", () => {
     expect(table).toContain("<th className={TH}>Sources</th>");
     expect(table).toContain("<ProviderDrawer");
     expect(table).toContain("<MonthlyCost provider={row.provider} />");
+  });
+  it("who pays a vendor is read, never edited here (the bank ledger owns it, owner 2026-10-01)", () => {
+    const api = read("lib/api.ts");
+    expect(api).not.toContain("setStaffProviderSources");
+    expect(api).not.toContain('method: "PUT", body: { sources }');
+    expect(read("components/v2/monitoring-providers.tsx")).not.toContain("aria-pressed");
+  });
+  it("Spend lists only providers with spend, so its counts match its table; Providers adds the catalogue", () => {
+    const page = read("components/v2/monitoring-page.tsx");
+    const spend = page.slice(page.indexOf("function SpendPage("), page.indexOf("\n}\n", page.indexOf("function SpendPage(")));
+    expect(spend).toContain("catalogue={false}");
+    const providers = page.slice(page.indexOf("function ProvidersPage("), page.indexOf("function SpendPage("));
+    expect(providers).toContain("<Loaded q={versions}>");
+    expect(providers).toContain("marginError={margin.isError}");
+  });
+  it("row keys stand down while the drawer is open and on a focused control", () => {
+    const table = read("components/v2/monitoring-providers.tsx");
+    const keys = table.slice(table.indexOf("// J/K move"), table.indexOf("const openRow"));
+    expect(keys).toContain("if (open !== undefined) return;");
+    expect(keys).toContain('t.tagName === "BUTTON"');
   });
   it("the month drawn dashed is the one runs-service marks incomplete, never one read off a clock", () => {
     const table = read("components/v2/monitoring-providers.tsx");
@@ -198,9 +225,44 @@ describe("monitoring: providers table and drawer", () => {
     expect(table).not.toMatch(/CostInUsdCents\)?\s*[-+/]\s*Number|Number\([^)]*CostInUsdCents\)\s*[-+/*]/);
     expect(table).not.toContain("reduce(");
   });
-  it("the reads and the write go through the staff gateway paths", () => {
+  it("the reads go through the staff gateway paths", () => {
     const api = read("lib/api.ts");
-    for (const k of ["STAFF_MONITORING_PATHS.marginTimeseries", "STAFF_MONITORING_PATHS.paymentSources", "STAFF_MONITORING_PATHS.providerSources"]) expect(api).toContain(k);
-    expect(api).toContain('method: "PUT", body: { sources }');
+    for (const k of ["STAFF_MONITORING_PATHS.marginTimeseries", "STAFF_MONITORING_PATHS.providerSources"]) expect(api).toContain(k);
+  });
+});
+
+describe("monitoring: emails per period", () => {
+  it("instantly-service's per-period series parses (purposes apart, the current period flagged)", () => {
+    const counts = { toLeads: 10, manualReplies: 1, warmup: 5, warmupReplies: 2, seeds: 3 };
+    const parsed = SentPerPeriodSchema.parse({
+      grain: "week",
+      timezone: "UTC",
+      since: null,
+      asOf: "2026-10-01T12:00:00Z",
+      totals: counts,
+      periods: [
+        { periodStart: "2026-09-22", periodEnd: "2026-09-29", inProgress: false, leadsEmailed: 9, ...counts },
+        { periodStart: "2026-09-29", periodEnd: "2026-10-06", inProgress: true, leadsEmailed: 4, ...counts },
+      ],
+    });
+    expect(parsed.periods.map((p) => p.inProgress)).toEqual([false, true]);
+  });
+  it("the Emails page is bar charts with a Daily/Weekly/Monthly switch, leads apart from our own mail (owner 2026-10-01)", () => {
+    const page = read("components/v2/monitoring-page.tsx");
+    const body = page.slice(page.indexOf("function EmailsPage("), page.indexOf("\n}\n", page.indexOf("function EmailsPage(")));
+    expect(body).toContain("<EmailsCharts />");
+    const charts = read("components/v2/monitoring-emails.tsx");
+    for (const label of ['day: "Daily"', 'week: "Weekly"', 'month: "Monthly"', "Sent to leads", "Our own mail"]) expect(charts).toContain(label);
+    expect(charts).toContain('["staffSentPerPeriod", grain]');
+    expect(read("lib/persist-cache.ts")).toContain('"staffSentPerPeriod"');
+  });
+  it("the dashed period is the producer's inProgress, never a clock", () => {
+    const charts = read("components/v2/monitoring-emails.tsx");
+    expect(charts).toContain("p.inProgress");
+    expect(charts).toContain("dashed");
+    expect(charts).not.toMatch(/new Date\(\)|useClientClock/);
+  });
+  it("reads through the staff gateway path", () => {
+    expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.sentPerPeriod");
   });
 });
