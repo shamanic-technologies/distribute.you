@@ -8,10 +8,11 @@
  *
  * Refresh: re-run the four commands in `apps/landing/scripts/blog-data/README.md` (Research).
  *
+ * The JSON files are served ONLY by the staff route `/api/research/{basis}/{part}` and read through
+ * `research-source.tsx`; this module never imports them, so no browser bundle carries a figure.
+ *
  * Alias-free so it carries real unit tests.
  */
-import data from "./research.json";
-
 export type ResearchCrew = "herald" | "scout" | "pilot";
 export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash";
 export type ResearchGoal = "roi" | "rate";
@@ -65,7 +66,7 @@ export interface ResearchFile {
   allOrgs: true;
   /**
    * `user`: what clients were billed (this bundled file). `actual`: what the vendors charged us
-   * before our markup (staff only, served by /api/research/actual, never bundled). Absent on a
+   * before our markup (staff only, served by /api/research/actual/file, never bundled). Absent on a
    * snapshot written before the two bases existed, which is the billed one.
    */
   costBasis?: "user" | "actual";
@@ -165,7 +166,6 @@ export type ResearchCatalog = Record<
 export type CatalogKind = "workflows" | "templates" | "models";
 export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"];
 
-export const RESEARCH = data as ResearchFile;
 
 export const CREW_ORDER: ResearchCrew[] = ["herald", "scout", "pilot"];
 
@@ -191,11 +191,11 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   dash: "Dashes",
 };
 
-export function studiesFor(crew: ResearchCrew, file: ResearchFile = RESEARCH): ResearchStudy[] {
+export function studiesFor(crew: ResearchCrew, file: ResearchFile): ResearchStudy[] {
   return file.studies.filter((s) => s.crew === crew);
 }
 
-export function studyById(id: string, file: ResearchFile = RESEARCH): ResearchStudy | null {
+export function studyById(id: string, file: ResearchFile): ResearchStudy | null {
   return file.studies.find((s) => s.id === id) ?? null;
 }
 
@@ -249,39 +249,6 @@ export function pointHref(base: string, study: ResearchStudy, point: ResearchPoi
   if (study.topic === "template") return researchCatalogHref(base, study.crew, "templates", point.key);
   if (study.topic === "llm") return researchCatalogHref(base, study.crew, "models", point.key);
   return null;
-}
-
-// The catalogue and the template texts are side files, loaded once right after the page paints,
-// so the hub does not carry them and a click on a workflow or template finds them in memory.
-let catalog: ResearchCatalog | null = null;
-let catalogLoad: Promise<ResearchCatalog> | null = null;
-let texts: Record<string, string> | null = null;
-let textsLoad: Promise<Record<string, string>> | null = null;
-
-export function peekResearchCatalog(): ResearchCatalog | null {
-  return catalog;
-}
-export function loadResearchCatalog(): Promise<ResearchCatalog> {
-  catalogLoad ??= import("./research-catalog.json").then((m) => {
-    catalog = (m.default ?? m) as unknown as ResearchCatalog;
-    return catalog;
-  });
-  return catalogLoad;
-}
-export function peekTemplateTexts(): Record<string, string> | null {
-  return texts;
-}
-export function loadTemplateTexts(): Promise<Record<string, string>> {
-  textsLoad ??= import("./research-templates.json").then((m) => {
-    texts = (m.default ?? m) as unknown as Record<string, string>;
-    return texts;
-  });
-  return textsLoad;
-}
-/** Starts both loads; the Research page calls it once it has painted. */
-export function preloadResearchCatalog(): void {
-  void loadResearchCatalog();
-  void loadTemplateTexts();
 }
 
 export function researchWorkflow(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchWorkflow | null {
