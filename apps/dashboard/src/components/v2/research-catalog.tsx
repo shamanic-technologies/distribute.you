@@ -6,7 +6,7 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { ResearchLiveWorkflows, useCrewChannelName, useResearchCrewLeg } from "@/components/v2/research-live-workflows";
-import { shortWorkflowName } from "@/lib/research/live-workflows";
+import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useResearch } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, TOPIC_LOOK, TopicMark, crewIdentity, dayText } from "@/components/v2/research-bits";
 import {
