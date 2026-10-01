@@ -146,7 +146,7 @@ export function offerTabs(
   orgId: string,
   brandId: string,
   offerId: string,
-  active: "settings" | "targeting" | "sales-path",
+  active: "settings" | "targeting" | "sales-path" | "channels",
   isBeta: boolean,
 ): V2Tab[] {
   const tabs: V2Tab[] = [
@@ -155,6 +155,7 @@ export function offerTabs(
   ];
   if (isBeta) {
     tabs.push({ label: "Sales path", href: v2OfferHref(orgId, brandId, offerId, "sales-path"), active: active === "sales-path", badge: "beta" });
+    tabs.push({ label: "Channels", href: v2OfferHref(orgId, brandId, offerId, "channels"), active: active === "channels", badge: "beta" });
   }
   return tabs;
 }
