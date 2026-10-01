@@ -80,3 +80,17 @@ export function disconnectErrorMessage(err: unknown): string {
   if (status === 400 && upstream) return upstream;
   return "Could not disconnect. Try again.";
 }
+
+/**
+ * Why linking a messaging app was refused. crm-service answers 409 for a channel
+ * not available yet and 422 for the bridge's (or WhatsApp's) own refusal; both
+ * carry a sentence written for a person.
+ */
+export function linkErrorMessage(err: unknown): string {
+  const status = statusOf(err);
+  const upstream = upstreamError(err);
+  if ((status === 400 || status === 409 || status === 422) && upstream) return upstream;
+  if (status === 401 || status === 403) return "You do not have access to this brand.";
+  if (status === 502 || status === 503) return "We could not reach the app just now. Try again in a moment.";
+  return "Could not start linking. Try again.";
+}

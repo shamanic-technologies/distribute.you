@@ -19,6 +19,7 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { CompanyLogo } from "@/components/company-logo";
+import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import { INTEGRATIONS, missingFields, type IntegrationDef, type IntegrationSlug } from "@/lib/integrations";
 import {
   connectErrorMessage,
@@ -111,6 +112,8 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
       onChanged={() => queryClient.invalidateQueries({ queryKey: ["brandKeys", brandId] })}
     />
   ));
+
+  rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
   return (

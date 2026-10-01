@@ -649,6 +649,71 @@ export async function disconnectCrm(
   );
 }
 
+// ==================== MESSAGING APPS (crm-service Matrix bridges), per brand ====================
+//
+// Self-serve linking: crm-service creates the brand's own bridge account and runs the
+// vendor's login (WhatsApp: a QR to scan, or a pairing code for a phone number). The
+// browser only ever sees that QR / code. Read-only: nothing is sent on the account.
+// `brandId` rides the query string on every call (the gateway reads identity from
+// query / headers only, never a body).
+
+const MatrixLinkSchema = z.object({
+  // Plain strings: crm-service owns these vocabularies and adds channels.
+  channel: z.string(),
+  available: z.boolean(),
+  unavailableReason: z.string().nullable(),
+  methods: z.array(z.string()),
+  status: z.string(),
+  qr: z.object({ data: z.string(), imageDataUrl: z.string() }).nullable(),
+  pairingCode: z.string().nullable(),
+  instructions: z.string().nullable(),
+  account: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
+  bridgeState: z.object({ state: z.string().nullable(), reason: z.string().nullable() }).nullable(),
+  error: z.object({ code: z.string(), message: z.string() }).nullable(),
+});
+
+export type MatrixLink = z.infer<typeof MatrixLinkSchema>;
+
+/** Every messaging channel's link for this brand, with the CURRENT code while waiting. */
+export async function listMatrixLinks(brandId: string, token?: string): Promise<{ links: MatrixLink[] }> {
+  const raw = await apiCall<unknown>(`/orgs/matrix/links?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ links: z.array(MatrixLinkSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listMatrixLinks response shape mismatch", parsed.error.flatten());
+    throw new Error("listMatrixLinks returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Start linking `channel`: answers with the first QR, or the pairing code for `phoneNumber`. */
+export async function startMatrixLink(
+  brandId: string,
+  channel: string,
+  method: "qr" | "phone",
+  phoneNumber?: string,
+  token?: string,
+): Promise<{ link: MatrixLink }> {
+  const raw = await apiCall<unknown>(`/orgs/matrix/links?brandId=${encodeURIComponent(brandId)}`, {
+    token,
+    method: "POST",
+    body: { brandId, channel, method, ...(phoneNumber ? { phoneNumber } : {}) },
+  });
+  const parsed = z.object({ link: MatrixLinkSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] startMatrixLink response shape mismatch", parsed.error.flatten());
+    throw new Error("startMatrixLink returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Unlink: logs the bridge out, stops syncing, drops what was mirrored. */
+export async function unlinkMatrixLink(brandId: string, channel: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(
+    `/orgs/matrix/links/${encodeURIComponent(channel)}?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "DELETE" },
+  );
+}
+
 // ==================== POSTHOG + STRIPE, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the
