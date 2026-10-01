@@ -1,0 +1,36 @@
+{
+  "windowFrom": "2026-04-15",
+  "readOn": "2026-10-01",
+  "windowEnd": "2026-10-01",
+  "legKey": "start_to_conversation",
+  "durationDays": 21,
+  "outcomesRequired": 1,
+  "cutoff": "2026-09-10",
+  "steps": [
+    {
+      "bucket": "First email",
+      "emails": 32166,
+      "replies": 18,
+      "spend": 2331.77
+    },
+    {
+      "bucket": "Follow-up 1",
+      "emails": 30369,
+      "replies": 12,
+      "spend": 2173.31
+    },
+    {
+      "bucket": "Follow-up 2",
+      "emails": 28141,
+      "replies": 7,
+      "spend": 2007.46
+    },
+    {
+      "bucket": "Follow-up 3",
+      "emails": 1,
+      "replies": 0,
+      "spend": 0.11
+    }
+  ],
+  "crmRepliesAdded": 4
+}

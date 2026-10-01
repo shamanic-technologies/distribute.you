@@ -31,7 +31,7 @@ import {
  */
 
 const CHART = /<svg viewBox="0 0 800 (\d+)"[\s\S]*?<\/svg>/g;
-const ARTICLES = ["cost-per-click-cold-email", "flash-vs-pro-llm-cold-email", "cold-email-unsubscribe-link-spam", "cold-email-response-rate"] as const;
+const ARTICLES = ["cost-per-click-cold-email", "flash-vs-pro-llm-cold-email", "cold-email-unsubscribe-link-spam", "cold-email-response-rate", "cold-email-follow-up"] as const;
 
 type Chart = {
   slug: string;
