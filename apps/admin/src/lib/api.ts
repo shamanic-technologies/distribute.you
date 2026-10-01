@@ -5964,14 +5964,36 @@ export interface AuditAccountRow {
   brandName: string | null;
   brandDomain: string | null;
   configuredDailyBudgetUsd: number; // every ceiling the customer set (USD) — what they posted
-  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
+  runningDailyBudgetUsd: number; // PROACTIVE only since features-service v0.179.24 — the money in play
+  proactiveRunningDailyBudgetUsd: number; // same value as runningDailyBudgetUsd, named for what it is
+  reactiveRunningDailyCapUsd: number; // cap behind ongoing REACTIVE campaigns; never money in play, never summed into it
   orgBalanceUsd: number; // org available credit balance (USD)
-  // "active" = running budget > 0 and the org can fund the next day.
-  // "paused" = money configured, nothing running against it (campaigns stopped, or
-  // campaign-service never gave this funnel one). It keeps its ceiling and spends nothing.
-  // Else "inactive". There is no brand-level pause flag in this rule any more.
-  status: "active" | "paused" | "inactive";
+  // Precedence (producer-computed): payment_declined / no_payment_method > active > reactive_only > paused > inactive.
+  // "active" = proactive running budget > 0 and the org can fund the next day.
+  // "reactive_only" = nothing proactive running, a reactive campaign still on (cap > 0).
+  // "paused" = money configured, nothing running against it. Else "inactive".
+  status: AccountStatus;
+  paymentDeclinedReason?: string | null; // billing's reason when status is payment_declined / no_payment_method
 }
+
+/** Every account status features-service serves (accounts + customer-health). */
+export type AccountStatus =
+  | "active"
+  | "payment_declined"
+  | "no_payment_method"
+  | "reactive_only"
+  | "paused"
+  | "inactive";
+
+/** Display rank, mirroring the producer's order. */
+export const ACCOUNT_STATUS_RANK: Record<AccountStatus, number> = {
+  active: 0,
+  payment_declined: 1,
+  no_payment_method: 2,
+  reactive_only: 3,
+  paused: 4,
+  inactive: 5,
+};
 
 export interface AuditAccountsStats {
   totalRunningDailyBudgetUsd: number; // sum over ACTIVE rows only — what the fleet can spend today
@@ -5982,7 +6004,12 @@ export interface AuditAccountsStats {
   mrrUsd: number | null;
   arrUsd: number | null;
   mrrUnavailableReason?: string | null;
+  // Σ reactive running cap over active + reactive_only rows. A cap, never added to the running total.
+  totalReactiveRunningDailyCapUsd: number;
   activeCount: number;
+  reactiveOnlyCount: number;
+  paymentDeclinedCount: number;
+  noPaymentMethodCount: number;
   pausedCount: number;
   inactiveCount: number;
   totalCount: number;
@@ -6232,9 +6259,12 @@ export interface CustomerRow {
   activeThisWeek: boolean;
   activeThisMonth: boolean;
   activeDays: string[]; // YYYY-MM-DD, ascending
-  status: "active" | "paused" | "inactive";
+  status: AccountStatus;
+  paymentDeclinedReason?: string | null;
   configuredDailyBudgetUsd: number; // every ceiling this account set (USD)
-  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
+  runningDailyBudgetUsd: number; // PROACTIVE only — the money in play
+  proactiveRunningDailyBudgetUsd: number; // same value, named for what it is
+  reactiveRunningDailyCapUsd: number; // cap behind ongoing reactive campaigns, never money in play
   orgBalanceUsd: number; // spendable
   orgActualBalanceUsd: number; // actual (active-verdict figure)
   autoTopupEnabled: boolean;
@@ -6254,6 +6284,9 @@ export interface CustomerRow {
 export interface CustomerSuccessFleetStats {
   totalCustomers: number;
   activeCount: number;
+  reactiveOnlyCount: number;
+  paymentDeclinedCount: number;
+  noPaymentMethodCount: number;
   pausedCount: number;
   inactiveCount: number;
   greenCount: number;

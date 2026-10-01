@@ -228,6 +228,24 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
     expect(read("src/app/how-it-works/route.ts")).toContain('Location: "/#how"');
   });
 
+  it("the URLs crawlers and AI assistants still fetch redirect to a live page instead of a 404", () => {
+    const config = read("next.config.ts");
+    for (const [source, destination] of [
+      ["/pricing", "/#pricing"],
+      ["/performance/:path*", "/"],
+      ["/use-cases", "/"],
+      ["/outcomes/:path*", "/"],
+      ["/cold-email-cost-guide/:path*", "/blog/cost-per-click-cold-email"],
+      ["/cold-email-for-saas-founders/:path*", "/"],
+      ["/cold-email-vs-linkedin/:path*", "/"],
+      ["/developers/:path+", "/developers"],
+    ]) {
+      expect(config).toContain(`{ source: "${source}", destination: "${destination}", permanent: true, missing: offLab }`);
+    }
+    // The old sub-view redirects pointed at /performance, itself a 404 since the page was deleted.
+    expect(config).not.toContain('destination: "/performance"');
+  });
+
   it("the live-figure machinery those pages carried is gone from the pipeline", () => {
     const pipeline = read("src/lib/static-html.ts");
     for (const token of ["__CAC_PRICE__", "__HERO_CONSOLE__", "__TICKER_BOARD__", "__BEST_POSITIVE_REPLY_COST__"]) {

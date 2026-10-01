@@ -17,6 +17,8 @@
  * 9 is the audience's companies with one person each; 10 is the first emails, written
  * only once 5 to 8 are answered, since they are written from those answers.
  */
+import { COUNTRIES } from "../../components/onboarding/phone-countries";
+
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
   { key: "competitors", label: "Find your competitors" },
@@ -25,7 +27,7 @@ export const GET_STARTED_STEPS = [
   { key: "value", label: "What a client is worth" },
   { key: "salesSteps", label: "Your sales steps" },
   { key: "legs", label: "How leads move" },
-  { key: "paths", label: "Where your money goes" },
+  { key: "paths", label: "Your most profitable opportunity" },
   { key: "levers", label: "Sharpen your offer" },
   { key: "gives", label: "What you give away" },
   { key: "companies", label: "Find 100 companies" },
@@ -428,18 +430,6 @@ export interface GetStartedAudience {
   description: string;
 }
 
-/** A company's size as a short figure ("27", "1.2K"), or null when Apollo gave none. */
-export function employeesLabel(n: number | null | undefined): string | null {
-  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
-  return compactCount(n);
-}
-
-/** How many of the 5 size dots a company fills: 1 person, 10, 50, 250, 1000+. */
-export function sizeDots(n: number | null | undefined): number {
-  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return 0;
-  return n >= 1000 ? 5 : n >= 250 ? 4 : n >= 50 ? 3 : n >= 10 ? 2 : 1;
-}
-
 // ── The stage: which step is on screen ────────────────────────────────────────
 
 /**
@@ -719,3 +709,68 @@ export const REOPENABLE_STEPS: ReadonlySet<GetStartedStepKey> = new Set<GetStart
   "levers",
   "gives",
 ]);
+
+/**
+ * A company's country as a flag and a name, off the name the companies read carries
+ * (Apollo's English name, "United States"; a bare ISO code also resolves). A name we
+ * cannot map keeps its words with no flag; no country gives null (the row shows none).
+ */
+export function countryFlag(country: string | null | undefined): { flag: string | null; name: string } | null {
+  const name = (country ?? "").trim();
+  if (!name) return null;
+  const code = /^[A-Za-z]{2}$/.test(name) ? name.toUpperCase() : countryCodeByName().get(name.toLowerCase()) ?? null;
+  if (!code) return { flag: null, name };
+  const flag = String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + (c.charCodeAt(0) - 65)));
+  const shown = name.length === 2 ? (regionNames()?.of(code) ?? name) : name;
+  return { flag, name: shown };
+}
+
+let byName: Map<string, string> | null = null;
+function regionNames(): Intl.DisplayNames | null {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" });
+  } catch {
+    return null;
+  }
+}
+/**
+ * English region name to ISO code: the curated phone-picker list first (current codes
+ * only), then every other two-letter code the runtime names (Bermuda, British Virgin
+ * Islands), then Apollo spellings neither knows. First writer wins, so a retired code
+ * the runtime still names (DD "Germany", UK "United Kingdom") never takes a live name.
+ */
+function countryCodeByName(): Map<string, string> {
+  if (byName) return byName;
+  const map = new Map<string, string>();
+  for (const c of COUNTRIES) map.set(c.name.toLowerCase(), c.code);
+  const names = regionNames();
+  if (names) {
+    for (let a = 65; a <= 90; a++) {
+      for (let b = 65; b <= 90; b++) {
+        const code = String.fromCharCode(a, b);
+        const n = names.of(code)?.toLowerCase();
+        if (n && n !== code.toLowerCase() && !map.has(n)) map.set(n, code);
+      }
+    }
+  }
+  byName = map;
+  for (const [n, code] of [
+    ["hong kong", "HK"],
+    ["macau", "MO"],
+    ["czech republic", "CZ"],
+    ["turkey", "TR"],
+    ["ivory coast", "CI"],
+    ["north macedonia", "MK"],
+    ["russia", "RU"],
+    ["vietnam", "VN"],
+    ["south korea", "KR"],
+    ["taiwan", "TW"],
+    ["palestine", "PS"],
+    ["the netherlands", "NL"],
+    ["uk", "GB"],
+    ["usa", "US"],
+  ] as const) {
+    if (!map.has(n)) map.set(n, code);
+  }
+  return map;
+}

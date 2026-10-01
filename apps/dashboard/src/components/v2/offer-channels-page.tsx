@@ -6,18 +6,30 @@ import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getOfferSalesPath, getOfferUserFields, saveOfferUserFields, type BrandUserFields } from "@/lib/api";
+import {
+  getBrandLegRates,
+  getOfferSalesPath,
+  getOfferUserFields,
+  saveOfferUserFields,
+  stateBrandLegRates,
+  type BrandLegRate,
+  type BrandUserFields,
+} from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { v2Href, v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import {
+  formatRatePct,
   giveListLines,
   giveListsEqual,
   giveListsPayload,
+  legRateFor,
   parseGiveListText,
+  parseRatePct,
   validatedLegSections,
   type GiveLists,
 } from "@/lib/offer-channel-settings";
@@ -25,19 +37,18 @@ import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-m
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { V2Page, offerTabs, useOfferName } from "@/components/v2/setup-pages";
 
-type GiveDraft = { giveForFree: string; neverGive: string };
-
 const GIVE_FIELDS = [
-  { key: "giveForFree", label: "We give for free", placeholder: "A free audit\nA 20 minute call" },
-  { key: "neverGive", label: "We never give", placeholder: "Discounts\nFree samples" },
+  { key: "giveForFree", label: "We give for free" },
+  { key: "neverGive", label: "We never give" },
 ] as const;
 
 /**
- * An offer's channels (beta): per leg its sales path validated, the channels that can
- * work it and each channel's own settings. Cold email's settings are the offer's two
- * give lists, read and written on the offer's user-fields, the store content-generation
- * reads on every email. Which channel works a leg is not stored anywhere yet, so the
- * channels are listed, not picked.
+ * An offer's channels (beta): per leg its sales path validated, the brand's conversion
+ * rate on that leg, the channels that can work it and each channel's own settings.
+ * Cold email's settings are the offer's two give lists, on the offer's user-fields
+ * (what content-generation reads on every email). Everything saves on its own when the
+ * field is left: no Save button. Which channel works a leg is not stored anywhere yet,
+ * so the channels are listed, not picked.
  */
 export function V2OfferChannelsPage() {
   const { orgId, brandId, offerId } = useParams<{ orgId: string; brandId: string; offerId: string }>();
@@ -54,6 +65,10 @@ export function V2OfferChannelsPage() {
     ...pollOptions,
     enabled: isBeta && !!brandId && !!offerId,
   });
+  const rates = useAuthQuery(["brandLegRates", brandId], () => getBrandLegRates(brandId), {
+    ...pollOptions,
+    enabled: isBeta && !!brandId,
+  });
 
   const { sections, unknown } = useMemo(
     () => validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS),
@@ -65,54 +80,36 @@ export function V2OfferChannelsPage() {
     }
   }, [catalogue.legs.size, unknown, offerId]);
 
-  const baseline = useMemo<GiveLists | null>(() => giveListsFrom(fields.data?.fields), [fields.data]);
+  const served = useMemo<GiveLists | null>(() => giveListsFrom(fields.data?.fields), [fields.data]);
   const suggested = useMemo(() => {
     const f = fields.data?.fields;
     return GIVE_FIELDS.some((g) => f?.[g.key]?.provenance !== "confirmed" && giveListLines(f?.[g.key]?.value).length > 0);
   }, [fields.data]);
 
-  // null = follow what brand-service serves; an object = the user's working text.
-  const [draft, setDraft] = useState<GiveDraft | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   if (!isBeta) return null;
 
-  const shown: GiveDraft = draft ?? {
-    giveForFree: (baseline?.giveForFree ?? []).join("\n"),
-    neverGive: (baseline?.neverGive ?? []).join("\n"),
-  };
-  const edited: GiveLists = { giveForFree: parseGiveListText(shown.giveForFree), neverGive: parseGiveListText(shown.neverGive) };
-  const dirty = draft !== null && baseline !== null && !giveListsEqual(edited, baseline);
-
-  const edit = (key: keyof GiveDraft, text: string) => {
-    setSaved(false);
-    setError(null);
-    setDraft({ ...shown, [key]: text });
+  /** One list changed: both keys go out (an omitted key is left as stored, an emptied one is []). */
+  const saveList = async (key: keyof GiveLists, lines: string[]) => {
+    if (!served) throw new Error("[offer-channels] give lists not read yet");
+    const next = { ...served, [key]: lines };
+    if (giveListsEqual(next, served)) return;
+    const res = await saveOfferUserFields(brandId, offerId, giveListsPayload(next));
+    qc.setQueryData(["offerUserFields", brandId, offerId], res);
+    // setQueryData never reaches the on-disk cache: re-read so a reload paints the saved lists.
+    await qc.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
   };
 
-  const save = async () => {
-    if (!dirty || saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await saveOfferUserFields(brandId, offerId, giveListsPayload(edited));
-      qc.setQueryData(["offerUserFields", brandId, offerId], res);
-      // setQueryData never reaches the on-disk cache: re-read so a reload paints the saved lists.
-      await qc.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
-      setDraft(null);
-      setSaved(true);
-    } catch (err) {
-      console.error("[offer-channels] give lists save failed", err);
-      setError("Could not save these lists. Try again.");
-    } finally {
-      setSaving(false);
-    }
+  const saveRate = async (rate: BrandLegRate, ratePct: number | null) => {
+    if (rate.ratePct === ratePct) return;
+    const res = await stateBrandLegRates(brandId, [{ fromStep: rate.fromStep, toStep: rate.toStep, ratePct }]);
+    qc.setQueryData(["brandLegRates", brandId], res);
+    // A rate prices every money figure: re-read all of them.
+    invalidateConversionRates(qc);
   };
 
   const pathSettled = path.isFetchedAfterMount || path.data !== undefined;
   const fieldsSettled = fields.isFetchedAfterMount || fields.data !== undefined;
+  const ratesSettled = rates.isFetchedAfterMount || rates.data !== undefined;
   const stepLabel = (step: string | null) => (step ? catalogue.steps.get(step)?.label ?? step : "Start");
   const channelDef = (slug: string) => channels.find((c) => c.featureSlug === slug);
 
@@ -124,7 +121,7 @@ export function V2OfferChannelsPage() {
         { label: "Channels" },
       ]}
       title={name ?? " "}
-      sub="What each channel may and may not do, on every leg of this offer's sales path."
+      sub="What each channel may and may not do, on every leg of this offer's sales path. Click a value to change it."
       tabs={offerTabs(orgId, brandId, offerId, "channels", isBeta)}
       width="max-w-[1280px]"
     >
@@ -147,94 +144,238 @@ export function V2OfferChannelsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {sections.map((s) => (
-            <section key={s.legKey}>
-              <SectionTitle count={s.channels.length}>
-                {stepLabel(s.fromKey)} <span className="k-fg3">→</span> {stepLabel(s.toKey)}
-              </SectionTitle>
-              <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-                {s.channels.length === 0 && (
-                  <li className="flex items-center gap-3 px-4 py-3">
-                    <span className="min-w-0 flex-1 text-[13px]">Your team</span>
-                    <span className="k-fg3 text-[12px]">No settings</span>
-                  </li>
-                )}
-                {s.channels.map((slug) => {
-                  const def = channelDef(slug);
-                  const hasSettings = isColdEmailChannel(slug);
-                  return (
-                    <li key={slug} className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {def && <AcquisitionChannelMark def={def} size="xs" />}
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{def?.name ?? slug}</span>
-                        {!hasSettings && <span className="k-fg3 text-[12px]">No settings</span>}
-                        {hasSettings && suggested && <span className="k-chip">Suggested, not saved</span>}
-                      </div>
-                      {hasSettings && (
-                        <div className="mt-3">
-                          {!fieldsSettled ? (
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <Shimmer className="h-[132px] rounded-[8px]" />
-                              <Shimmer className="h-[132px] rounded-[8px]" />
-                            </div>
-                          ) : fields.isError && !fields.data ? (
-                            <p className="k-fg3 text-[13px]">Could not read this offer&apos;s give lists.</p>
-                          ) : (
-                            <>
-                              <div className="grid gap-3 sm:grid-cols-2">
-                                {GIVE_FIELDS.map((g) => {
-                                  const id = `${s.legKey}-${g.key}`;
-                                  const count = parseGiveListText(shown[g.key]).length;
-                                  return (
-                                    <div key={g.key} className="min-w-0">
-                                      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                                        <label htmlFor={id} className="k-label">
-                                          {g.label}
-                                        </label>
-                                        <span className="k-fg3 text-[12px] tabular-nums">{count === 0 ? "Empty" : `${count} ${count === 1 ? "item" : "items"}`}</span>
-                                      </div>
-                                      <textarea
-                                        id={id}
-                                        value={shown[g.key]}
-                                        onChange={(e) => edit(g.key, e.target.value)}
-                                        placeholder={g.placeholder}
-                                        rows={5}
-                                        // k-input pins a 28px control height; this field holds a list.
-                                        style={{ height: "auto" }}
-                                        className="k-input w-full resize-y px-2.5 py-2 text-[13px] leading-[20px]"
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              <div className="mt-2.5 flex min-h-7 items-center justify-end gap-2">
-                                {error && <span className="mr-auto text-[12px] text-[var(--data-rose)]">{error}</span>}
-                                {!dirty && saved && <span className="k-fg3 text-[12px]">Saved</span>}
-                                {dirty && (
-                                  <>
-                                    <span className="k-fg3 mr-auto text-[12px]">One item per line. Every cold email of this offer follows these lists.</span>
-                                    <button type="button" className="k-btn-ghost h-7 px-2.5" onClick={() => setDraft(null)} disabled={saving}>
-                                      Discard
-                                    </button>
-                                    <button type="button" className="k-btn-strong h-7 px-3" onClick={save} disabled={saving}>
-                                      {saving ? "Saving…" : "Save"}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
+          {sections.map((s) => {
+            const rate = s.fromKey === null ? undefined : legRateFor(rates.data ?? [], stepLabel(s.fromKey), stepLabel(s.toKey));
+            return (
+              <section key={s.legKey}>
+                <SectionTitle
+                  count={s.channels.length}
+                  right={
+                    s.fromKey === null ? null : !ratesSettled ? (
+                      <Shimmer className="h-5 w-24 rounded-[6px]" />
+                    ) : rates.isError && !rates.data ? (
+                      <span>Could not read the conversion rate</span>
+                    ) : rate ? (
+                      <InlineRate key={`${rate.fromStep}|${rate.toStep}`} rate={rate} onSave={(v) => saveRate(rate, v)} />
+                    ) : (
+                      <span>No conversion rate kept for this leg</span>
+                    )
+                  }
+                >
+                  {stepLabel(s.fromKey)} <span className="k-fg3">→</span> {stepLabel(s.toKey)}
+                </SectionTitle>
+                <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
+                  {s.channels.length === 0 && (
+                    <li className="flex items-center gap-3 px-4 py-3">
+                      <span className="min-w-0 flex-1 text-[13px]">Your team</span>
+                      <span className="k-fg3 text-[12px]">No settings</span>
                     </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                  )}
+                  {s.channels.map((slug) => {
+                    const def = channelDef(slug);
+                    const hasSettings = isColdEmailChannel(slug);
+                    return (
+                      <li key={slug} className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {def && <AcquisitionChannelMark def={def} size="xs" />}
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{def?.name ?? slug}</span>
+                          {!hasSettings && <span className="k-fg3 text-[12px]">No settings</span>}
+                          {hasSettings && suggested && <span className="k-chip">Suggested, not saved</span>}
+                        </div>
+                        {hasSettings && (
+                          <div className="mt-3">
+                            {!fieldsSettled ? (
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <Shimmer className="h-[88px] rounded-[8px]" />
+                                <Shimmer className="h-[88px] rounded-[8px]" />
+                              </div>
+                            ) : (fields.isError && !fields.data) || !served ? (
+                              <p className="k-fg3 text-[13px]">Could not read this offer&apos;s give lists.</p>
+                            ) : (
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {GIVE_FIELDS.map((g) => (
+                                  <InlineList
+                                    key={g.key}
+                                    id={`${s.legKey}-${g.key}`}
+                                    label={g.label}
+                                    lines={served[g.key]}
+                                    onSave={(lines) => saveList(g.key, lines)}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
         </div>
       )}
     </V2Page>
+  );
+}
+
+/**
+ * A list that reads as text and turns into a textarea on click. Leaving the field saves
+ * it; while the save is in flight the typed lines are shown, and a refused save reopens
+ * the field with the text kept and says so. Esc drops the edit.
+ */
+function InlineList({
+  id,
+  label,
+  lines,
+  onSave,
+}: {
+  id: string;
+  label: string;
+  lines: string[];
+  onSave: (lines: string[]) => Promise<void>;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  const [pending, setPending] = useState<string[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const shown = pending ?? lines;
+
+  const commit = async () => {
+    if (text === null) return;
+    const next = parseGiveListText(text);
+    setText(null);
+    setPending(next);
+    setError(null);
+    try {
+      await onSave(next);
+    } catch (err) {
+      console.error("[offer-channels] give list save failed", { label, err });
+      setText(next.join("\n"));
+      setError("Not saved. Try again.");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="min-w-0">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="k-label">
+          {label}
+        </label>
+        <span className={`text-[12px] tabular-nums ${error ? "text-[var(--data-rose)]" : "k-fg3"}`}>
+          {error ?? (pending ? "Saving…" : shown.length === 0 ? "Empty" : `${shown.length} ${shown.length === 1 ? "item" : "items"}`)}
+        </span>
+      </div>
+      {text !== null ? (
+        <textarea
+          id={id}
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setText(null);
+              setError(null);
+            }
+          }}
+          rows={Math.max(3, text.split("\n").length + 1)}
+          placeholder="One item per line"
+          // k-input pins a 28px control height; this field holds a list.
+          style={{ height: "auto" }}
+          className="k-input w-full resize-y px-2.5 py-2 text-[13px] leading-[20px]"
+        />
+      ) : (
+        <button
+          id={id}
+          type="button"
+          onClick={() => setText(shown.join("\n"))}
+          className="k-hover block min-h-[44px] w-full rounded-[8px] px-2.5 py-2 text-left text-[13px] leading-[20px] [box-shadow:inset_0_0_0_1px_var(--line-subtle)]"
+        >
+          {shown.length === 0 ? (
+            <span className="k-fg3">Nothing yet. Click to add.</span>
+          ) : (
+            <ul className="space-y-0.5">
+              {shown.map((l, i) => (
+                <li key={i} className="flex gap-2">
+                  <span aria-hidden className="k-fg3">•</span>
+                  <span className="min-w-0">{l}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The brand's conversion rate on one leg, as text that turns into an input on click.
+ * Leaving the field (or Enter) saves it; empty clears it. Shared by every offer of the
+ * brand, which the hover title says.
+ */
+function InlineRate({ rate, onSave }: { rate: BrandLegRate; onSave: (ratePct: number | null) => Promise<void> }) {
+  const [text, setText] = useState<string | null>(null);
+  const [pending, setPending] = useState<number | null | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const shown = pending !== undefined ? pending : rate.ratePct;
+
+  const commit = async () => {
+    if (text === null) return;
+    const parsed = parseRatePct(text);
+    if (!parsed.ok) {
+      setError("Enter a percentage up to 100");
+      return;
+    }
+    setText(null);
+    setError(null);
+    setPending(parsed.value);
+    try {
+      await onSave(parsed.value);
+    } catch (err) {
+      console.error("[offer-channels] leg rate save failed", { rate, err });
+      setText(parsed.value === null ? "" : String(parsed.value));
+      setError("Not saved. Try again.");
+    } finally {
+      setPending(undefined);
+    }
+  };
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      {error && <span className="text-[var(--data-rose)]">{error}</span>}
+      <span className="k-label">Conversion rate</span>
+      {text !== null ? (
+        <input
+          autoFocus
+          inputMode="decimal"
+          aria-label="Conversion rate, percent"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") {
+              setText(null);
+              setError(null);
+            }
+          }}
+          placeholder="%"
+          className="k-input h-6 w-16 px-2 text-right text-[12px] tabular-nums"
+        />
+      ) : (
+        <button
+          type="button"
+          title="Shared by every offer of this brand"
+          onClick={() => setText(shown === null ? "" : String(shown))}
+          className="k-hover h-6 rounded-[6px] px-1.5 text-[13px] tabular-nums"
+        >
+          {shown === null ? <span className="k-fg4">—</span> : <span className="k-fg">{formatRatePct(shown)}</span>}
+        </button>
+      )}
+    </span>
   );
 }
 

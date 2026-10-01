@@ -3,6 +3,12 @@ import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budg
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
+import {
+  PeopleListSchema,
+  PersonTimelineSchema,
+  type PeopleList,
+  type PersonTimeline,
+} from "./people-conversations";
 import { z } from "zod";
 import {
   CostMarginSchema,
@@ -551,6 +557,39 @@ export async function listCrmConnections(
 }
 
 /**
+ * Conversations: everyone the brand is in conversation with, every channel merged, one
+ * state each (crm-service's gold person layer, gateway passthrough). Order, totals and
+ * per-source counts are crm-service's. The first read for a brand starts its build and
+ * answers `scope.status = "building"` with nobody in it yet.
+ */
+export async function listPeople(
+  brandId: string,
+  opts: { limit: number; offset: number },
+  token?: string,
+): Promise<PeopleList> {
+  const qs = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
+  const raw = await apiCall<unknown>(`/orgs/people?${qs.toString()}`, { token });
+  const parsed = PeopleListSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listPeople response shape mismatch", parsed.error.flatten());
+    throw new Error("listPeople returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** One person's whole exchange, every channel merged, oldest first (read live from each source). */
+export async function getPersonTimeline(brandId: string, personKey: string, token?: string): Promise<PersonTimeline> {
+  const qs = new URLSearchParams({ brandId, personKey });
+  const raw = await apiCall<unknown>(`/orgs/people/timeline?${qs.toString()}`, { token });
+  const parsed = PersonTimelineSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getPersonTimeline response shape mismatch", parsed.error.flatten());
+    throw new Error("getPersonTimeline returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
  * Connect this brand to the CRM account named by `locationId`.
  *
  * The credential must ALREADY be stored for this brand — crm-service resolves it
@@ -606,6 +645,81 @@ export async function disconnectCrm(
 ): Promise<{ disconnected: boolean; connectionId: string }> {
   return apiCall<{ disconnected: boolean; connectionId: string }>(
     `/orgs/gohighlevel/connections/${connectionId}?brandId=${encodeURIComponent(brandId)}`,
+    { token, method: "DELETE" },
+  );
+}
+
+// ==================== POSTHOG + STRIPE, read-only sources of Conversations ====================
+//
+// Same two-write connect as GoHighLevel: the credential goes to key-service under the
+// brand (`setBrandKey(brandId, "posthog" | "stripe", key)`), then crm-service proves it
+// against the vendor and writes the connection, or refuses in the vendor's own words.
+// `brandId` rides the query string on every call for the same gateway reason as
+// `connectCrm` above (identity is promoted from headers / query only, never a body).
+
+export type SourceSlug = "posthog" | "stripe";
+
+const SourceConnectionSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  // A plain string: the producer owns this vocabulary.
+  status: z.string(),
+  synced: z.boolean(),
+  lastSyncedAt: z.string().nullable(),
+  lastError: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type SourceConnection = z.infer<typeof SourceConnectionSchema>;
+
+/** This brand's connection to `source` and its health. Empty when nothing is connected. */
+export async function listSourceConnections(
+  source: SourceSlug,
+  brandId: string,
+  token?: string,
+): Promise<{ connections: SourceConnection[] }> {
+  const raw = await apiCall<unknown>(`/orgs/${source}/connections?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ connections: z.array(SourceConnectionSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listSourceConnections response shape mismatch", source, parsed.error.flatten());
+    throw new Error("listSourceConnections returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Connect `source` for this brand. The credential must ALREADY be stored; `fields`
+ * is what names the account (PostHog: projectId + region; Stripe: nothing, the
+ * restricted key is bound to its account).
+ */
+export async function connectSource(
+  source: SourceSlug,
+  brandId: string,
+  fields: Record<string, string>,
+  token?: string,
+): Promise<{ connection: SourceConnection }> {
+  const raw = await apiCall<unknown>(`/orgs/${source}/connections?brandId=${encodeURIComponent(brandId)}`, {
+    token,
+    method: "POST",
+    body: { brandId, ...fields },
+  });
+  const parsed = z.object({ connection: SourceConnectionSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] connectSource response shape mismatch", source, parsed.error.flatten());
+    throw new Error("connectSource returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Stop syncing this connection and drop what was mirrored with it. */
+export async function disconnectSource(
+  source: SourceSlug,
+  connectionId: string,
+  brandId: string,
+  token?: string,
+): Promise<unknown> {
+  return apiCall<unknown>(
+    `/orgs/${source}/connections/${connectionId}?brandId=${encodeURIComponent(brandId)}`,
     { token, method: "DELETE" },
   );
 }
@@ -7724,23 +7838,27 @@ export async function setPaymentMode(
   return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode } });
 }
 
-// ── Subscription ($99/month, 3-day trial; billing-service v0.81.25, billing#563) ──
-// The landing's `subscription` arm pays through these. The read SETTLES first: right
-// after the checkout returns it flips the org to subscription mode and lands the
-// trial credit (an hourly sweep is billing's backstop).
+// ── Subscription (monthly plan, 3-day trial; billing-service v0.81.28, billing#568) ──
+// The landing's `subscription` arm pays through these. The card is saved through the
+// ORDINARY card setup (`card_setup`, Revolut widget by default), then `start` opens the
+// plan. The read SETTLES first and an hourly sweep also starts a checkout whose card is
+// on file, so a missed `start` is caught.
 
 const SubscriptionSchema = z.object({
   id: z.string(),
   status: z.string(),
   trial_end: z.string().nullable(),
   cancel_at_period_end: z.boolean(),
+  current_period_start: z.string().nullish(),
   current_period_end: z.string().nullable(),
+  ended_at: z.string().nullish(),
   next_charge_at: z.string().nullable(),
   monthly_amount_cents: z.coerce.number(),
   currency: z.string(),
   has_payment_method: z.boolean(),
-  can_raise: z.boolean(),
-  next_raise_monthly_amount_cents: z.coerce.number().nullable(),
+  can_change_amount: z.boolean().nullish(),
+  can_raise: z.boolean().nullish(),
+  next_raise_monthly_amount_cents: z.coerce.number().nullish(),
 });
 export type Subscription = z.infer<typeof SubscriptionSchema>;
 
@@ -7750,6 +7868,7 @@ const SubscriptionReadSchema = z.object({
   subscription: SubscriptionSchema.nullable(),
   credits_remaining_cents: z.string().nullish(),
   trial_grant_cents: z.coerce.number().nullish(),
+  expired_cents: z.string().nullish(),
 });
 export type SubscriptionRead = z.infer<typeof SubscriptionReadSchema>;
 
@@ -7763,40 +7882,63 @@ function parseSubscriptionRead(raw: unknown, where: string): SubscriptionRead {
 }
 
 const SubscriptionCheckoutSchema = z.object({
-  mode: z.enum(["embedded", "hosted"]),
-  session_id: z.string(),
-  client_secret: z.string().nullable(),
-  url: z.string().nullable(),
-  trial_days: z.coerce.number().nullable(),
   monthly_amount_cents: z.coerce.number(),
   currency: z.string(),
+  trial_days: z.coerce.number().nullable(),
+  card_required: z.boolean(),
+  card_setup: z
+    .object({ object: z.literal("card_setup"), mode: z.enum(["hosted_redirect", "embedded_checkout", "embedded_widget"]) })
+    .passthrough()
+    .nullable(),
 });
+export interface SubscriptionCheckout {
+  monthly_amount_cents: number;
+  trial_days: number | null;
+  /** false (with no card_setup) = a chargeable card is already on file: start right away. */
+  card_required: boolean;
+  /** Exactly what `createEmbeddedCardSetup` answers: switch on `mode`. */
+  card_setup: CardSetup | null;
+}
 
-/** Open the hosted Stripe page for the $99/month plan. Refusals are 409 `{ code }`. */
-export async function createSubscriptionCheckout(params: { success_url: string; cancel_url: string }): Promise<string> {
+/**
+ * Begin the plan: nothing is charged. Saves the card through the ordinary card setup
+ * when one is needed; call `startSubscription` once it is saved. Refusals are 409
+ * `{ code }`: `subscription_exists` | `existing_paying_org`.
+ */
+export async function createSubscriptionCheckout(params: {
+  monthly_amount_cents: number;
+  ui_mode: "embedded" | "hosted";
+  return_url?: string;
+}): Promise<SubscriptionCheckout> {
   const raw = await apiCall<unknown>("/billing/accounts/subscription/checkout_session", {
     method: "POST",
-    body: { ui_mode: "hosted", ...params },
+    body: params,
   });
   const parsed = SubscriptionCheckoutSchema.safeParse(raw);
-  if (!parsed.success || !parsed.data.url) {
-    console.error("[dashboard] createSubscriptionCheckout: response shape mismatch", { raw });
+  if (!parsed.success) {
+    console.error("[dashboard] createSubscriptionCheckout: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] createSubscriptionCheckout: invalid response shape");
   }
-  return parsed.data.url;
+  return { ...parsed.data, card_setup: parsed.data.card_setup as CardSetup | null };
+}
+
+/** Open the plan once the card is saved. 409 `card_required` = not confirmed yet, retry. */
+export async function startSubscription(): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/start", { method: "POST", body: {} });
+  return parseSubscriptionRead(raw, "startSubscription");
 }
 
 export async function getSubscription(token?: string): Promise<SubscriptionRead> {
   return parseSubscriptionRead(await apiCall<unknown>("/billing/accounts/subscription", { token }), "getSubscription");
 }
 
-/** Raise the monthly amount (ladder 9900 + k x 10000); applies from the next invoice. */
-export async function raiseSubscription(monthly_amount_cents: number): Promise<SubscriptionRead> {
+/** Change the monthly amount, up or down (ladder 9900 + k x 10000); applies from the next charge. */
+export async function changeSubscriptionAmount(monthly_amount_cents: number): Promise<SubscriptionRead> {
   const raw = await apiCall<unknown>("/billing/accounts/subscription", {
     method: "PATCH",
     body: { monthly_amount_cents },
   });
-  return parseSubscriptionRead(raw, "raiseSubscription");
+  return parseSubscriptionRead(raw, "changeSubscriptionAmount");
 }
 
 /** Cancel at the end of the period: no further charge. */

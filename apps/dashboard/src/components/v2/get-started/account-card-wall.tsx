@@ -459,6 +459,14 @@ export function AccountCardWall({
   const hotLeads = hotLeadsForCredit(proof?.hotLeads?.medianCostUsd);
   const medianReturn = proof?.medianReturnPerDollar ?? null;
 
+  const urgency =
+    stage !== "launching" ? (
+      <div className="mb-4 grid gap-2">
+        <TrialTimer />
+        <TrialSpots />
+      </div>
+    ) : null;
+
   const budgetRow = (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span className="k-label w-24 shrink-0">Daily budget</span>
@@ -485,7 +493,7 @@ export function AccountCardWall({
       )}
       {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
       <span className="k-fg3 w-full text-[12px] leading-5">
-        One budget for finding new leads. We put it on your best sales path first, and move it as your results come in.
+        One budget for finding new leads. It goes to your most profitable path first, then follows what brings you the most revenue.
       </span>
       {hasReplies && (
         <label className="mt-1 flex w-full items-start gap-2 text-[12px] leading-5">
@@ -554,41 +562,45 @@ export function AccountCardWall({
               </div>
               {hotLeads != null && proof?.hotLeads && (
                 <p className="k-fg3 mt-2 text-[12px] leading-5">
-                  {`At the median our clients pay, $${proof.hotLeads.medianCostUsd.toFixed(2)} per hot lead. An estimate, not a promise.`}
+                  From what our clients get at the median. An estimate, not a promise.
                 </p>
               )}
             </>
           )}
         </section>
 
-        {/* The form, the one thing to do here: framed in the accent, with its own headline. */}
+        {/* The form, the one thing to do here: framed in the accent, with its own headline, first on a phone. */}
         <section
-          className="gs-panel k-popover gs-glow overflow-hidden p-0 ring-2 ring-[var(--accent)] md:col-start-2 md:row-span-3 md:row-start-1"
+          className="gs-panel k-popover gs-glow order-first overflow-hidden p-0 ring-2 ring-[var(--accent)] md:order-none md:col-start-2 md:row-span-3 md:row-start-1"
           style={{ animationDelay: "80ms" }}
         >
-          <div className="bg-[var(--accent)] px-5 py-4 text-white">
-            <p className="text-[20px] font-semibold leading-7 tracking-tight">
+          {/* A plain headline, no fill: only the buttons may look clickable (owner 2026-10-01). */}
+          <div className="border-b border-[var(--line-subtle)] px-5 py-4">
+            <p className="k-fg text-[20px] font-semibold leading-7 tracking-tight">
               <span aria-hidden="true">🎉 </span>
               {`Claim your $${WALL_FREE_CREDIT_USD} and start`}
             </p>
-            <p className="mt-0.5 text-[13px] opacity-90">One minute. No charge today.</p>
+            <p className="k-fg2 mt-0.5 text-[13px]">One minute. No charge today.</p>
           </div>
           <div className="p-5">
-          {stage !== "launching" && (
-            <div className="mb-4 grid gap-2">
-              <TrialTimer />
-              <TrialSpots />
-            </div>
-          )}
+          {/* The scarcity and the steps first, then the buttons under them (owner 2026-10-01). */}
+          {urgency}
           <Steps stage={stage} />
           <div key={stage === "code" ? "account" : stage} className="gs-in">
             {(stage === "account" || stage === "code") && !isSignedIn && (
               <>
                 {stage === "account" ? (
                   <form className="mt-4 grid gap-3" onSubmit={(e) => void submitAccount(e)}>
-                    <button type="button" className="k-btn h-10 justify-center gap-2 text-[14px]" onClick={() => void google()} disabled={busy}>
-                      <GoogleMark />
-                      Continue with Google
+                    <button
+                      type="button"
+                      className="k-btn-accent k-cta gs-glow w-full justify-center gap-2.5"
+                      onClick={() => void google()}
+                      disabled={busy}
+                    >
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white" aria-hidden="true">
+                        <GoogleMark />
+                      </span>
+                      {`Continue with Google, get my $${WALL_FREE_CREDIT_USD}`}
                     </button>
                     <div className="flex items-center gap-2">
                       <span className="h-px flex-1 bg-[var(--line-subtle)]" />
@@ -597,7 +609,7 @@ export function AccountCardWall({
                     </div>
                     <div className="grid gap-2">
                       <input
-                        className="k-input h-10 px-2.5"
+                        className="k-input k-cta-input"
                         type="email"
                         autoComplete="email"
                         placeholder="you@company.com"
@@ -613,10 +625,10 @@ export function AccountCardWall({
                       )}
                       <button
                         type="submit"
-                        className="k-btn-accent gs-glow h-10 justify-center"
+                        className="k-btn-accent k-cta gs-glow w-full justify-center"
                         disabled={busy || !EMAIL_SHAPE.test(email.trim())}
                       >
-                        {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : "Email me a code"}
+                        {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : `Claim my $${WALL_FREE_CREDIT_USD} and start`}
                       </button>
                     </div>
                     <Consent brandName={brandName} checked={consent} onChange={setConsent} />
@@ -636,7 +648,7 @@ export function AccountCardWall({
                     <label className="grid gap-1">
                       <span className="k-label">Code</span>
                       <input
-                        className="k-input h-10 px-2.5 text-[18px] tracking-[0.4em] tabular-nums"
+                        className="k-input k-cta-input tracking-[0.4em] tabular-nums"
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={VERIFICATION_CODE_LENGTH}
@@ -645,8 +657,12 @@ export function AccountCardWall({
                         autoFocus
                       />
                     </label>
-                    <button type="submit" className="k-btn-accent h-9 justify-center" disabled={busy || code.length !== VERIFICATION_CODE_LENGTH}>
-                      {busy ? "Checking..." : "Verify and add card"}
+                    <button
+                      type="submit"
+                      className="k-btn-accent k-cta gs-glow w-full justify-center"
+                      disabled={busy || code.length !== VERIFICATION_CODE_LENGTH}
+                    >
+                      {busy ? "Checking..." : `Unlock my $${WALL_FREE_CREDIT_USD}`}
                     </button>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
                       <button

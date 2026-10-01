@@ -19,6 +19,7 @@ const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
 const PAGE = read("src/components/v2/get-started/get-started.tsx");
 const LAUNCH = read("src/components/v2/get-started/launch.ts");
 const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
+const KEEL = read("src/components/v2/keel.css");
 const PATHS = read("src/components/v2/offer-sales-paths.tsx");
 
 const leg = (legKey: string, from: string | null, slug: string | null) => ({
@@ -224,7 +225,7 @@ describe("the payment wall, simplified", () => {
   it("asks Google OR email, with the email field right above its button, and asks the budget with the card", () => {
     const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
     expect(form.indexOf("Continue with Google")).toBeLessThan(form.indexOf("or with your email"));
-    expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("Email me a code"));
+    expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("Claim my $${WALL_FREE_CREDIT_USD} and start"));
     expect(form).not.toContain("{budgetRow}");
     expect(WALL).toContain('if (!checkReady("account")) return;');
   });
@@ -257,6 +258,47 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
   it("frames the sign-up panel with its own headline", () => {
     expect(WALL).toContain("ring-2 ring-[var(--accent)]");
     expect(WALL).toContain("Claim your $${WALL_FREE_CREDIT_USD} and start");
+  });
+
+  // Owner 2026-10-01: signing up must be the first thing anyone wants to click.
+  it("makes the sign-up buttons the biggest thing on the wall, labelled with the gain", () => {
+    const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
+    // keel.css is unlayered, so a Tailwind h-12 loses to the 28px control: size with k-cta.
+    expect(KEEL).toContain(".v2-root .k-cta { height: 48px;");
+    expect(form.match(/k-btn-accent k-cta/g)?.length).toBe(2);
+    expect(form).toContain("Continue with Google, get my $${WALL_FREE_CREDIT_USD}");
+    expect(WALL).not.toContain("Email me a code");
+    // Owner 2026-10-01 (second pass): the scarcity and the steps come first, the buttons under them,
+    // and the headline carries no accent fill (it read as one more button).
+    expect(WALL.indexOf("<TrialTimer />")).toBeLessThan(WALL.indexOf("Continue with Google, get my"));
+    expect(WALL.indexOf("<Steps stage={stage} />")).toBeLessThan(WALL.indexOf("Continue with Google, get my"));
+    expect(WALL).not.toContain('<div className="bg-[var(--accent)] px-5 py-4 text-white">');
+    // On a phone the form comes first.
+    expect(WALL).toContain("order-first");
+  });
+});
+
+describe("gain, never cost, on the selling screens (owner 2026-10-01)", () => {
+  it("titles the paths step with the gain and headlines rows by return", () => {
+    expect(PAGE).toContain('title="Your most profitable opportunity"');
+    expect(PAGE).not.toContain("Where your money goes");
+    expect(PAGE).toContain("gainHeadline");
+    expect(PATHS).toContain("per client won");
+    expect(WALL).not.toContain("per hot lead");
+  });
+
+  it("shows a company's country as a flag in the first column, no Location column", async () => {
+    const { countryFlag } = await import("../src/lib/v2/get-started");
+    expect(countryFlag("United States")).toEqual({ flag: "🇺🇸", name: "United States" });
+    expect(countryFlag("Germany")?.flag).toBe("🇩🇪");
+    expect(countryFlag("United Kingdom")?.flag).toBe("🇬🇧");
+    expect(countryFlag("Bermuda")?.flag).toBe("🇧🇲");
+    expect(countryFlag("Narnia")).toEqual({ flag: null, name: "Narnia" });
+    expect(countryFlag(null)).toBeNull();
+    expect(countryFlag(" ")).toBeNull();
+    expect(PAGE).not.toContain(">Location</th>");
+    expect(PAGE).not.toContain(">Size</th>");
+    expect(PAGE).toContain("const country = countryFlag(r.company.country);");
   });
 });
 

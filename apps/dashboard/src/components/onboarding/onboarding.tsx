@@ -70,7 +70,9 @@ import {
   ApiError,
   createCheckoutSession,
   createSubscriptionCheckout,
+  declareRevolutDefault,
   getSubscription,
+  startSubscription,
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   getWorkflowProjectionLadder,
@@ -138,6 +140,8 @@ import {
   SUBSCRIPTION_OUTBOUND_DAILY_USD,
   SUBSCRIPTION_REACTIVE_DAILY_USD,
   isSubscriptionArm,
+  monthlyUsd,
+  pickedPlanCents,
   subscriptionBudgets,
   subscriptionCheckoutRefusal,
 } from "@/lib/subscription-plan";
@@ -2148,8 +2152,9 @@ export function Onboarding() {
     // here used to fail the whole launch for a customer who had done everything right,
     // so that org runs prepaid on its credit instead, the same rule the v2 flows apply.
     if (subscriptionArm) {
-      // The plan funds itself: this read settles the checkout, flips the org to
-      // subscription mode and lands the trial credit. No top-up, no mode write.
+      // The plan funds itself: start it (a no-op once started; the hosted return
+      // lands here first), then read it back. No top-up, no mode write.
+      await ensureSubscriptionStarted();
       const read = await getSubscription();
       if (read.payment_mode !== "subscription" || !read.subscription) {
         throw new Error("Your free trial has not started yet. Refresh this page in a moment.");
@@ -2558,13 +2563,7 @@ export function Onboarding() {
       await ensureProjectionLoaded();
       const pending = buildPendingLaunchBlob();
       if (subscriptionArm) {
-        // Same return URLs as a top-up, so the launch resumes identically, minus the
-        // Ads purchase value: a trial moves no money, so it is not a purchase.
-        const back = `${window.location.origin}${window.location.pathname}`;
-        window.location.href = await createSubscriptionCheckout({
-          success_url: `${back}?success=true&launch_checkout=success`,
-          cancel_url: `${back}?launch_checkout=cancelled`,
-        });
+        await openTrialCheckout();
         return;
       }
       const prepared = preparedCheckoutRef.current;
@@ -2587,6 +2586,83 @@ export function Onboarding() {
     }
   }
 
+
+  // The plan's checkout (billing#568): the card is saved through the ORDINARY card
+  // form (the Revolut widget, the default acquirer), then the plan is started and the
+  // launch resumes exactly as a returning top-up does. Nothing is charged here, so no
+  // Ads purchase value rides the return either.
+  async function openTrialCheckout() {
+    await declareRevolutDefault();
+    const amount = pickedPlanCents(document.cookie);
+    const back = `${window.location.origin}${window.location.pathname}`;
+    let checkout = await createSubscriptionCheckout({ monthly_amount_cents: amount, ui_mode: "embedded" });
+    // This page mounts no Stripe embedded form: an org whose card lives on Stripe
+    // takes the hosted page instead, and comes back through the usual return.
+    if (checkout.card_setup?.mode === "embedded_checkout") {
+      checkout = await createSubscriptionCheckout({
+        monthly_amount_cents: amount,
+        ui_mode: "hosted",
+        return_url: `${back}?success=true&launch_checkout=success`,
+      });
+    }
+    const setup = checkout.card_setup;
+    if (!checkout.card_required || !setup) {
+      await finishTrialCheckout();
+      return;
+    }
+    if (setup.mode === "hosted_redirect") {
+      window.location.href = setup.url;
+      return;
+    }
+    if (setup.mode === "embedded_widget") {
+      const { openCardWidget } = await import("@/lib/card-setup-widget");
+      await openCardWidget({
+        token: setup.token,
+        environment: setup.environment,
+        savePaymentMethodFor: setup.save_payment_method_for,
+        name: setup.customer_name ?? undefined,
+        email: setup.customer_email ?? signupEmail ?? undefined,
+        onSuccess: () => void finishTrialCheckout(),
+        onCancel: () => setBusy(false),
+        onError: (message) => {
+          setError(message);
+          setBusy(false);
+        },
+      });
+      return;
+    }
+    console.error("[onboarding] subscription checkout answered no card form this page opens", setup);
+    throw new Error("[onboarding] subscription checkout: no card form to open");
+  }
+
+  async function finishTrialCheckout() {
+    try {
+      await ensureSubscriptionStarted();
+    } catch (err) {
+      console.error("[onboarding] subscription start failed:", err);
+      setError("Your card is saved, but your trial could not start yet. Wait a few seconds and press the button again.");
+      setBusy(false);
+      return;
+    }
+    await resumeCheckoutLaunch();
+  }
+
+  // Open the plan. The saved card reaches billing through the provider's webhook a
+  // moment after the widget reports it, so `card_required` is retried, not shown.
+  async function ensureSubscriptionStarted(): Promise<void> {
+    for (let i = 0; i < 12; i++) {
+      try {
+        await startSubscription();
+        return;
+      } catch (err) {
+        const code = err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;
+        if (code === "subscription_exists") return;
+        if (code !== "card_required") throw err;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    throw new Error("[onboarding] the card was not confirmed in time");
+  }
 
   // Payment succeeded. Restore the wizard state and stash the pending blob, then
   // route to the FIRST post-payment step (phone) — the launch itself is deferred
@@ -3663,7 +3739,7 @@ export function Onboarding() {
             </span>
             <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Your first 3 days are free.</h2>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
-              Your campaign starts with $99 of credit the moment you add your card. Nothing is charged before day 3, then it is $99 a month. Cancel anytime.
+              Your campaign starts with $99 of credit the moment you add your card. Nothing is charged before day 3, then it is {monthlyUsd(pickedPlanCents(typeof document === "undefined" ? null : document.cookie))} a month. Cancel anytime.
             </p>
           </div>
       </StepShell>

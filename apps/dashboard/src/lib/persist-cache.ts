@@ -94,6 +94,9 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffPriceVersions",
   "staffCurrentPrices",
   "staffEmailsSent",
+  // One person's whole exchange (Integrations > Conversations): private message bodies
+  // from the brand's own inboxes. Read live, never written to disk.
+  "personTimeline",
 ]);
 
 /**
@@ -112,6 +115,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "legWorkflowRanking",
   // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
+  "brandLegRates",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
   // only source of an org's name and it hydrates asynchronously, so without a disk
   // snapshot the switcher reads "Dashboard" for the first second of every load.
@@ -151,6 +155,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // so without these the Integrations section cold-skeletons every time.
   "brandKeys",
   "crmConnections",
+  "posthogConnections",
+  "stripeConnections",
   // The mirrored CRM itself. Both are bounded (one page of contacts, one
   // pipeline) and change on their own sync cadence rather than this brand's, so
   // a disk read is exactly what they are for.
@@ -163,6 +169,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Whose win each step their CRM evidences was, per lead row (lead-service).
   "crmAttribution",
   "crmContactOrigins",
+  // Integrations > Conversations: one bounded page of merged people (crm-service).
+  "people",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.
