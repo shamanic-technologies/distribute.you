@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Figure, SectionTitle, StatTile, TopBar } from "@/components/v2/ui";
@@ -25,11 +25,9 @@ import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
   CREW_ORDER,
-  RESEARCH,
   TOPIC_LABEL,
   parseResearchPath,
   pointHref,
-  preloadResearchCatalog,
   studiesFor,
   studyById,
   studySpark,
@@ -43,7 +41,7 @@ import {
 
 /**
  * Research: what we measured across every org's campaigns, one card per question, grouped by
- * crew. Open to every reader: it states fleet-wide results only.
+ * crew. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
  *
  * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is the Crew card grid
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
@@ -481,18 +479,13 @@ function scrollToTop(el: HTMLElement | null) {
 /**
  * Research, the hub and every question, as ONE client view. The route is dynamic (Clerk), so a
  * Next navigation between two questions is a full server round-trip for data that already sits in
- * this bundle. Links under `/research` therefore move with the history API instead: the URL, Back
+ * the query cache. Links under `/research` therefore move with the history API instead: the URL, Back
  * and a new tab behave as links, and the switch is instant.
  */
 export function V2Research() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  // The workflow and template pages read two side files: start them once the page has painted,
-  // so a click finds them in memory.
-  useEffect(() => {
-    preloadResearchCatalog();
-  }, []);
   const base = v2Href(orgId, brandId, "research");
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, "") : "";
   const view = parseResearchPath(rest);
@@ -518,7 +511,7 @@ export function V2Research() {
         <>
           <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
           <div className="mx-auto max-w-[1280px] px-4 pt-6 md:px-6">
-            <p className="k-fg3 text-[13px]">Loading the research at actual cost…</p>
+            <p className="k-fg3 text-[13px]">Loading the research…</p>
           </div>
         </>
       }
@@ -526,7 +519,7 @@ export function V2Research() {
         <>
           <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
           <div className="mx-auto max-w-[1280px] px-4 pt-6 md:px-6">
-            <EmptyNote>We could not load the research at actual cost just now.</EmptyNote>
+            <EmptyNote>We could not load the research just now.</EmptyNote>
           </div>
         </>
       }

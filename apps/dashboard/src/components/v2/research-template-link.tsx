@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { v2Href } from "@/lib/v2/routes";
+import { researchCatalogHref, researchCrewFor, researchTemplate, researchWorkflow } from "@/lib/research/research";
+import { useResearchCatalog } from "@/lib/research/research-source";
 
 /**
  * A workflow's template chip that opens the template's Research page. It links only when Research lists that template for the crew; otherwise it stays
- * the plain chip it was. The research module is imported on demand, so the workflow page does not
- * carry the research snapshot in its own bundle.
+ * the plain chip it was. The catalogue comes from the staff-only Research route (a non-staff
+ * reader gets a 403 and the plain chip), shared with the Research page's own cache.
  */
 export function ResearchTemplateChip({
   orgId,
@@ -24,24 +25,12 @@ export function ResearchTemplateChip({
   templateKey: string | null;
   label: string;
 }) {
-  const [href, setHref] = useState<string | null>(null);
-  useEffect(() => {
-    if (!templateKey) return;
-    let live = true;
-    import("@/lib/research/research")
-      .then(async (r) => {
-        const crew = r.researchCrewFor(channel, step);
-        if (!crew) return;
-        const catalog = await r.loadResearchCatalog();
-        if (live && r.researchTemplate(catalog, crew, templateKey)) {
-          setHref(r.researchCatalogHref(v2Href(orgId, brandId, "research"), crew, "templates", templateKey));
-        }
-      })
-      .catch((err) => console.error("[research] template link", err));
-    return () => {
-      live = false;
-    };
-  }, [templateKey, channel, step, orgId, brandId]);
+  const { data: catalog } = useResearchCatalog("user");
+  const crew = researchCrewFor(channel, step);
+  const href =
+    catalog && crew && templateKey && researchTemplate(catalog, crew, templateKey)
+      ? researchCatalogHref(v2Href(orgId, brandId, "research"), crew, "templates", templateKey)
+      : null;
   return href ? (
     <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open this template in Research">
       {label} →
@@ -71,22 +60,10 @@ export function ResearchModelChip({
   dynasty: string;
   label: string;
 }) {
-  const [href, setHref] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    import("@/lib/research/research")
-      .then(async (r) => {
-        const crew = r.researchCrewFor(channel, step);
-        if (!crew) return;
-        const catalog = await r.loadResearchCatalog();
-        const model = r.researchWorkflow(catalog, crew, dynasty)?.model;
-        if (live && model?.linked) setHref(r.researchCatalogHref(v2Href(orgId, brandId, "research"), crew, "models", model.key));
-      })
-      .catch((err) => console.error("[research] model link", err));
-    return () => {
-      live = false;
-    };
-  }, [dynasty, channel, step, orgId, brandId]);
+  const { data: catalog } = useResearchCatalog("user");
+  const crew = researchCrewFor(channel, step);
+  const model = catalog && crew ? researchWorkflow(catalog, crew, dynasty)?.model : null;
+  const href = model?.linked ? researchCatalogHref(v2Href(orgId, brandId, "research"), crew!, "models", model.key) : null;
   return href ? (
     <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open the model Research measured for this workflow">
       {label} →
