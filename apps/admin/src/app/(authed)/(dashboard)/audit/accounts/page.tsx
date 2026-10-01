@@ -42,6 +42,7 @@ const usd0 = (n: number) =>
 const usd2 = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const num = (n: number) => n.toLocaleString("en-US");
+const DASH = "-";
 
 /**
  * Resolve the Clerk display name for every org referenced by the rows. Org names
@@ -73,7 +74,7 @@ function useOrgNames(rows: AuditAccountRow[] | undefined) {
 
 function orgLabel(row: AuditAccountRow, names: Record<string, string>): string {
   const clerk = row.orgExternalId ? names[row.orgExternalId] : undefined;
-  return clerk || row.brandDomain || row.ownerEmail || "—";
+  return clerk || row.brandDomain || row.ownerEmail || DASH;
 }
 
 const STATUS_STYLE: Record<AccountStatus, { label: string; className: string }> = {
@@ -179,7 +180,7 @@ export default function AuditAccountsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard
               label="Proactive running budget"
-              value={s ? usd0(s.totalRunningDailyBudgetUsd) : "—"}
+              value={s ? usd0(s.totalRunningDailyBudgetUsd) : DASH}
               sub={
                 s && s.totalConfiguredDailyBudgetUsd > s.totalRunningDailyBudgetUsd
                   ? `active accounts · ${usd0(s.totalConfiguredDailyBudgetUsd)} posted`
@@ -189,43 +190,43 @@ export default function AuditAccountsPage() {
             />
             <StatCard
               label="Reactive cap"
-              value={s ? usd0(s.totalReactiveRunningDailyCapUsd ?? 0) : "—"}
+              value={s ? usd0(s.totalReactiveRunningDailyCapUsd ?? 0) : DASH}
               sub="per day, not added to the budget"
               pending={isPending}
             />
             <StatCard
               label="MRR"
-              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : "—"}
+              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : DASH}
               sub="recurring customers, from billing"
               pending={isPending}
             />
             <StatCard
               label="ARR"
-              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : "—"}
+              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : DASH}
               sub="MRR × 12"
               pending={isPending}
             />
             <StatCard
               label="Active accounts"
-              value={s ? num(s.activeCount) : "—"}
+              value={s ? num(s.activeCount) : DASH}
               sub="proactive sending now"
               pending={isPending}
             />
             <StatCard
               label="Reactive only"
-              value={s?.reactiveOnlyCount != null ? num(s.reactiveOnlyCount) : "—"}
+              value={s?.reactiveOnlyCount != null ? num(s.reactiveOnlyCount) : DASH}
               sub="only a reactive cap running"
               pending={isPending}
             />
             <StatCard
               label="Paused"
-              value={s?.pausedCount != null ? num(s.pausedCount) : "—"}
+              value={s?.pausedCount != null ? num(s.pausedCount) : DASH}
               sub="held, not spending"
               pending={isPending}
             />
             <StatCard
               label="Total accounts"
-              value={s ? num(s.totalCount) : "—"}
+              value={s ? num(s.totalCount) : DASH}
               sub={
                 s
                   ? [
@@ -268,10 +269,10 @@ export default function AuditAccountsPage() {
                             r.status === "inactive" ? "text-gray-400" : ""
                           }`}
                         >
-                          <td className="py-2.5 pr-4 text-gray-700">{r.ownerEmail ?? "—"}</td>
+                          <td className="py-2.5 pr-4 text-gray-700">{r.ownerEmail ?? DASH}</td>
                           <td className="py-2.5 px-4 text-gray-700">{orgLabel(r, names)}</td>
                           <td className="py-2.5 px-4">
-                            <div className="font-medium text-gray-900">{r.brandName ?? r.brandDomain ?? "—"}</div>
+                            <div className="font-medium text-gray-900">{r.brandName ?? r.brandDomain ?? DASH}</div>
                             {r.brandName && r.brandDomain && (
                               <div className="text-xs text-gray-400">{r.brandDomain}</div>
                             )}
