@@ -3048,6 +3048,44 @@ export async function setUsageDiscount(discountPct: number, token?: string): Pro
   });
 }
 
+// Staff-only payment mode of a GIVEN org (api-service staff proxy → billing
+// `/internal/accounts/by-org/:orgId/payment-mode`). Owner 2026-10-01: customers no
+// longer switch modes; staff move an org between prepaid, postpaid and the $99/month
+// subscription. `orgId` is billing's org id (`BillingAccount.org_id`), not Clerk's.
+export type StaffPaymentMode = "prepaid" | "postpaid" | "subscription";
+
+const StaffPaymentModeSchema = z.object({
+  org_id: z.string(),
+  payment_mode: z.enum(["prepaid", "postpaid", "subscription"]),
+  settled_cents: z.string().nullish(),
+  auto_topup_enabled: z.boolean().nullish(),
+});
+export type StaffPaymentModeRead = z.infer<typeof StaffPaymentModeSchema>;
+
+function parseStaffPaymentMode(raw: unknown): StaffPaymentModeRead {
+  const parsed = StaffPaymentModeSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] staff payment mode: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] staff payment mode: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export async function getStaffPaymentMode(orgId: string): Promise<StaffPaymentModeRead> {
+  return parseStaffPaymentMode(
+    await apiCall<unknown>(`/billing/accounts/by-org/${encodeURIComponent(orgId)}/payment-mode`),
+  );
+}
+
+export async function setStaffPaymentMode(orgId: string, payment_mode: StaffPaymentMode): Promise<StaffPaymentModeRead> {
+  return parseStaffPaymentMode(
+    await apiCall<unknown>(`/billing/accounts/by-org/${encodeURIComponent(orgId)}/payment-mode`, {
+      method: "PUT",
+      body: { payment_mode },
+    }),
+  );
+}
+
 // Remove the active org's usage discount (discountPct → null).
 export async function removeUsageDiscount(token?: string): Promise<UsageDiscount> {
   return apiCall<UsageDiscount>("/billing/usage-discount", { token, method: "DELETE" });
