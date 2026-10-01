@@ -61,9 +61,9 @@ describe("offer-lever list handling — writes socialProof as a string[]", () =>
 });
 
 describe("source guards — the clobbering / collapsing patterns are gone", () => {
-  it("Brand Settings offer editor renders the ListEditor via coerceListField, not Array.isArray-collapse", () => {
+  it("Brand Settings offer editor splits list levers by line, never collapses a legacy string", () => {
     const src = read("../src/components/settings/brand-offer-card.tsx");
-    expect(src).toMatch(/values=\{coerceListField\(value\)\}/);
+    expect(src).toContain("function linesToList(");
     expect(src).not.toMatch(/values=\{Array\.isArray\(value\) \? value : \[\]\}/);
   });
 

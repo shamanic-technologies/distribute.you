@@ -187,5 +187,30 @@
       }
     ],
     "wall": "There is no wall: Keel is a public demo workspace with no sign-up and no account, so every screen is reachable signed out. The whole app is mock data (the Loomwell workspace, 24 companies, 34 people, 38 deals, five agents) rendered in the browser, so the clone is the app, not a landing in front of it."
+  },
+  "instinct": {
+    "origin": "https://instinct.com",
+    "sites": [
+      {
+        "label": "app",
+        "origin": "https://app.instinct.com"
+      }
+    ],
+    "steps": [
+      {
+        "url": "https://app.instinct.com/login",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://instinct.com/privacy-policy",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://instinct.com/terms",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Walked past it by hand on 2026-10-01 (see __flow/). The only CTA, \"Text Instinct to get started\", leads to app.instinct.com/login: a phone number (any country), a Cloudflare Turnstile check, then a 6-digit code by SMS from short code 22395 (a Twilio number gets it delivered as failed with the code stripped). There is no email, no password, no Google and no /signup (404): signing in with a new number IS the signup. Behind it the web app is one screen, /onboarding \"Start texting Instinct\", offering iMessage (+1 650 223 4329) or WhatsApp (wa.me/16508702892) by QR code; every other route (/settings, /workspace, /agent, /vault, /voice...) redirects there until you have texted it. The rest of the onboarding happens in the chat itself, plus link pages it sends (/link-icloud, /connect/whatsapp, /whatsapp-onboarding, /text-onboarding).",
+    "flow": "__flow/"
   }
 }

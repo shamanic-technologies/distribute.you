@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ResearchLiveWorkflows, useCrewChannelName, useResearchCrewLeg } from "@/components/v2/research-live-workflows";
+import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useResearch } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, TOPIC_LOOK, TopicMark, crewIdentity, dayText } from "@/components/v2/research-bits";
 import {
@@ -61,8 +63,8 @@ function RefLink({ base, crew, kind, r, className = "" }: { base: string; crew: 
 }
 
 /** A workflow row is named by its own name (its model and template have their own columns); the rest by their label. */
-function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | ResearchModel): string {
-  return kind === "workflows" ? ((r as ResearchWorkflow).name ?? r.label) : r.label;
+function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | ResearchModel, channelName: string | null): string {
+  return kind === "workflows" ? shortWorkflowName((r as ResearchWorkflow).name ?? r.label, channelName) : r.label;
 }
 
 function outcomeOf(crew: ResearchCrew): { noun: string; plural: string; unit: string } {
@@ -136,6 +138,12 @@ export function V2ResearchCatalogView({
     { label: id.name },
     itemKey ? { label: KIND_WORD[kind].title, href: listHref } : { label: KIND_WORD[kind].title },
   ];
+  const liveLeg = useResearchCrewLeg(crew);
+  const channelName = useCrewChannelName(crew);
+  // The live workflow list needs nothing from the snapshot file to paint: it renders at once.
+  if (!catalog && !itemKey && kind === "workflows" && liveLeg != null) {
+    return <CatalogList base={base} crew={crew} kind={kind} catalog={null} crumbs={crumbs} nav={nav} />;
+  }
   if (!catalog) {
     return (
       <>
@@ -177,7 +185,7 @@ export function V2ResearchCatalogView({
     );
   }
   const total = catalog[crew][kind].length;
-  const itemCrumbs = [...crumbs, { label: rowName(kind, item) }];
+  const itemCrumbs = [...crumbs, { label: rowName(kind, item, channelName) }];
   if (kind === "workflows") return <WorkflowView base={base} crew={crew} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
   if (kind === "templates") return <TemplateView base={base} crew={crew} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
   return <ModelView base={base} crew={crew} m={item as ResearchModel} total={total} crumbs={itemCrumbs} nav={nav} />;
@@ -230,16 +238,21 @@ function CatalogList({
   base: string;
   crew: ResearchCrew;
   kind: CatalogKind;
-  catalog: ResearchCatalog;
+  catalog: ResearchCatalog | null;
   crumbs: { label: string; href?: string }[];
   nav: (href: string) => void;
 }) {
   const id = crewIdentity(crew);
   const o = outcomeOf(crew);
-  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog[crew][kind];
+  const channelName = useCrewChannelName(crew);
+  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog?.[crew][kind] ?? [];
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
+  // Workflows are read LIVE off the producer's ranking at the crew's leg; the snapshot table
+  // stays for templates, models, and a crew whose step starts no entry leg.
+  const liveLeg = useResearchCrewLeg(crew);
+  const live = kind === "workflows" && liveLeg != null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -247,24 +260,32 @@ function CatalogList({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {rows.length} {rows.length === 1 ? words.one : words.many}, {priced} with a {o.noun.toLowerCase()}
+              {live ? `${id.name} workflows, ranked live` : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              Every {words.one} that wrote {id.name}&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
-              its last runs{kind === "templates" ? " and its text" : ""}.
+              {live ? (
+                <>Every workflow on this leg, in the order a campaign picks from, with whether it is mature and its return.</>
+              ) : (
+                <>
+                  Every {words.one} that wrote {id.name}&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
+                  its last runs{kind === "templates" ? " and its text" : ""}.
+                </>
+              )}
             </p>
           </div>
-          <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
-            Read from production on {dayText(RESEARCH.readOn)}
-          </span>
+          {!live && (
+            <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
+              Read from production on {dayText(RESEARCH.readOn)}
+            </span>
+          )}
         </div>
 
         <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
           {CATALOG_KINDS.map((k) => (
             <Link key={k} href={researchCatalogHref(base, crew, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
               {KIND_WORD[k].title}
-              <span className="k-fg3 tabular-nums">{catalog[crew][k].length}</span>
+              {catalog && <span className="k-fg3 tabular-nums">{catalog[crew][k].length}</span>}
             </Link>
           ))}
         </div>
@@ -281,6 +302,9 @@ function CatalogList({
           >
             {words.title}
           </SectionTitle>
+          {live ? (
+            <ResearchLiveWorkflows base={base} crew={crew} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
+          ) : (
           <div className="k-card overflow-hidden">
             <div className="k-scroll relative overflow-x-auto">
               <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : "min-w-[860px]"} text-[13px]`}>
@@ -316,8 +340,8 @@ function CatalogList({
                         <tr key={r.key} onClick={() => nav(href)} className="k-row group h-10 cursor-pointer">
                           <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
                           <td className="max-w-0 px-3">
-                            <Link href={href} className="block min-w-0 truncate font-medium" title={rowName(kind, r)}>
-                              {rowName(kind, r)}
+                            <Link href={href} className="block min-w-0 truncate font-medium" title={rowName(kind, r, channelName)}>
+                              {rowName(kind, r, channelName)}
                             </Link>
                           </td>
                           {kind === "workflows" && (
@@ -361,7 +385,8 @@ function CatalogList({
               </Link>
             </div>
           </div>
-          <p className="k-fg3 mt-1.5 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
+          )}
+          {!live && <p className="k-fg3 mt-1.5 text-[12px] leading-5">{RESEARCH.maturation.note}</p>}
         </section>
       </div>
     </>
@@ -496,6 +521,7 @@ function WorkflowView({
 }) {
   const id = crewIdentity(crew);
   const o = outcomeOf(crew);
+  const channelName = useCrewChannelName(crew);
   const tplHref = w.template?.linked ? researchCatalogHref(base, crew, "templates", w.template.key) : null;
   return (
     <>
@@ -503,7 +529,7 @@ function WorkflowView({
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="workflow"
-          title={w.name ?? w.label}
+          title={shortWorkflowName(w.name ?? w.label, channelName)}
           chips={
             <>
               <span className="k-chip tabular-nums">{w.rank == null ? "Not priced yet" : `#${w.rank} of ${total}`}</span>

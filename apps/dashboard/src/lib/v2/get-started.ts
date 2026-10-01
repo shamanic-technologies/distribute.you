@@ -66,6 +66,39 @@ export const OUTCOME_OPTIONS: ReadonlyArray<{ key: GetStartedOutcome; label: str
   },
 ];
 
+/**
+ * The expected price of one outcome, as features-service serves it
+ * (`/public/stats/outcome-prices`). `early` = at least one leg it rests on is priced on
+ * early (flash) evidence because no workflow is mature there yet. Null price = the
+ * producer could not measure it; the card then states none, never one of ours.
+ */
+export interface OutcomePrice {
+  priceUsd: number | null;
+  early: boolean;
+}
+
+/** Reads the producer's body into one price per outcome. Throws on a body it cannot read. */
+export function parseOutcomePrices(raw: unknown): Record<GetStartedOutcome, OutcomePrice> {
+  const outcomes = (raw as { outcomes?: Record<string, unknown> } | null)?.outcomes;
+  if (!outcomes || typeof outcomes !== "object") throw new Error("[get-started] outcome prices: no outcomes in body");
+  const read = (key: string): OutcomePrice => {
+    const o = outcomes[key] as { priceUsd?: unknown; maturity?: unknown } | undefined;
+    if (!o || typeof o !== "object") throw new Error(`[get-started] outcome prices: ${key} missing`);
+    const p = o.priceUsd;
+    if (p !== null && (typeof p !== "number" || !Number.isFinite(p))) throw new Error(`[get-started] outcome prices: ${key}.priceUsd unreadable`);
+    return { priceUsd: p === null || p <= 0 ? null : p, early: o.maturity === "early" };
+  };
+  return { visits: read("websiteVisit"), meetings: read("meetingBooked") };
+}
+
+/** "About $2.49 per visit" / "About $117 per meeting": cents under $10, whole dollars above. */
+export function outcomePriceLine(price: OutcomePrice | null | undefined, unit: string): string | null {
+  if (!price || price.priceUsd == null) return null;
+  const usd = price.priceUsd;
+  const amount = usd < 10 ? usd.toFixed(2) : Math.round(usd).toLocaleString("en-US");
+  return `About $${amount} per ${unit}`;
+}
+
 /** The campaigns an outcome launches: channel + leg, in launch order. */
 export function campaignsForOutcome(outcome: GetStartedOutcome): Array<{ featureSlug: string; legKey: string; label: string }> {
   if (outcome === "visits") return [{ featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email" }];

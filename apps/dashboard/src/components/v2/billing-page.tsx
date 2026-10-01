@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ApiError, configureAutoTopup, disableAutoTopup, setPaymentMode } from "@/lib/api";
-import { useQueryClient } from "@/lib/use-auth-query";
+import { ApiError, configureAutoTopup, disableAutoTopup, getOrgUsage, setPaymentMode } from "@/lib/api";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
@@ -30,6 +30,7 @@ import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner";
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
+import { CardImprintModal } from "@/components/v2/card-imprint-modal";
 import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
 
 /**
@@ -106,6 +107,8 @@ export function V2BillingPage() {
   // prepaid will charge what is owed first). One in-flight flag for both writes.
   const [target, setTarget] = useState<PaymentMode | null>(null);
   const [switching, setSwitching] = useState(false);
+  // Postpaid picked with no card on file: the $0 card save is up.
+  const [imprintOpen, setImprintOpen] = useState(false);
   const [modeError, setModeError] = useState<string | null>(null);
   const [autoPending, setAutoPending] = useState(false);
   const [autoError, setAutoError] = useState<string | null>(null);
@@ -119,6 +122,12 @@ export function V2BillingPage() {
 
   function requestSwitch(next: PaymentMode) {
     setModeError(null);
+    // No card yet: save one for $0 first. The modal switches once billing holds it,
+    // never before (a postpaid org with no card is stopped at once).
+    if (next === "postpaid" && !account?.has_payment_method) {
+      setImprintOpen(true);
+      return;
+    }
     // Leaving postpaid collects what is owed first, so the amount is confirmed before
     // it is taken. The same derivation the card controls read (`settleCents`), so the
     // two can never state different money.
@@ -208,6 +217,15 @@ export function V2BillingPage() {
             />
           )}
         </div>
+        {imprintOpen && (
+          <CardImprintModal
+            onCancel={() => setImprintOpen(false)}
+            onSwitched={async () => {
+              await refetchMoney();
+              setImprintOpen(false);
+            }}
+          />
+        )}
         {target !== null && c.settleCents !== null && (
           <SwitchConfirm
             settleCents={c.settleCents}
@@ -320,16 +338,27 @@ export function V2BillingPage() {
                 {(["prepaid", "postpaid"] as const).map((m) => {
                   const current = mode === m;
                   const blocked = m === "postpaid" && !current ? blocker : null;
+                  // The card IS the control: picking the other mode is one click on it.
+                  // A card that cannot be picked says why, instead of a greyed button.
+                  const pickable = !current && mode !== null && blocked === null && !switching && !imprintOpen;
+                  const pendingHere = switching && !current;
                   return (
-                    <div
+                    <button
                       key={m}
+                      type="button"
                       role="radio"
                       aria-checked={current}
-                      className="k-card flex flex-col p-4"
+                      aria-disabled={!current && !pickable}
+                      onClick={() => {
+                        if (pickable) requestSwitch(m);
+                      }}
+                      className={`k-card flex flex-col p-4 text-left transition-shadow ${
+                        pickable ? "cursor-pointer hover:bg-[var(--bg-inset)]" : current ? "cursor-default" : pendingHere ? "cursor-wait" : "cursor-not-allowed"
+                      }`}
                       // `k-card` is unlayered, so a utility ring loses to its own shadow.
                       style={current ? { boxShadow: "inset 0 0 0 1.5px var(--accent)" } : undefined}
                     >
-                      <div className="flex items-center gap-2">
+                      <span className="flex w-full items-center gap-2">
                         <span
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
                             current ? "bg-[var(--accent)]" : "shadow-[inset_0_0_0_1.5px_var(--fg-4)]"
@@ -339,28 +368,22 @@ export function V2BillingPage() {
                         </span>
                         <span className="text-[14px] font-medium">{MODE_COPY[m].title}</span>
                         {current && <span className="k-chip ml-auto">Current</span>}
-                      </div>
-                      <p className="k-fg mt-2 text-[13px] leading-5">{MODE_COPY[m].line}</p>
-                      <p className="k-fg3 mt-1 text-[12px] leading-[18px]">{MODE_COPY[m].detail}</p>
-                      {!current && mode !== null && (
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            className={`k-btn ${switching ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
-                            disabled={switching || blocked !== null}
-                            onClick={() => requestSwitch(m)}
-                          >
-                            {switching && target === null ? "Switching..." : `Switch to ${MODE_COPY[m].title.toLowerCase()}`}
-                          </button>
-                          {blocked && <p className="k-fg3 mt-2 text-[12px] leading-[18px]">{blocked}</p>}
-                          {m === "prepaid" && c.settleCents !== null && (
-                            <p className="k-fg3 mt-2 text-[12px] leading-[18px]">
-                              You owe {formatBillingCents(c.settleCents)}. It is charged to your card first, and we ask before we take it.
-                            </p>
-                          )}
-                        </div>
+                        {pendingHere && <span className="k-fg3 ml-auto text-[12px]">Switching...</span>}
+                      </span>
+                      <span className="k-fg mt-2 block text-[13px] leading-5">{MODE_COPY[m].line}</span>
+                      <span className="k-fg3 mt-1 block text-[12px] leading-[18px]">{MODE_COPY[m].detail}</span>
+                      {blocked && <span className="mt-2 block text-[12px] leading-[18px] text-[var(--data-amber)]">{blocked}</span>}
+                      {!current && m === "postpaid" && !account?.has_payment_method && (
+                        <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
+                          Pick it to add your card. Nothing is charged now.
+                        </span>
                       )}
-                    </div>
+                      {!current && m === "prepaid" && c.settleCents !== null && (
+                        <span className="k-fg3 mt-2 block text-[12px] leading-[18px]">
+                          You owe {formatBillingCents(c.settleCents)}. It is charged to your card first, and we ask before we take it.
+                        </span>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -655,10 +678,71 @@ export function V2BillingPage() {
             )}
           </div>
         </Section>
+
+        <UsageSection />
       </div>
     </>
   );
 }
+
+/** Dollars to cents without float noise (0.1 * 100 would ceil to 11). */
+function usdToCents(usd: number): number {
+  return Math.round(usd * 1e6) / 1e4;
+}
+
+/** Billed spend by category, with a Total row equal to "Billed" at the top. */
+function UsageSection() {
+  const { data: usage, isPending, isError } = useAuthQuery(["orgUsage"], () => getOrgUsage());
+  const rows = (usage?.categories ?? []).filter((cat) => usdToCents(cat.billedUsd) >= 0.5);
+  const setAsideCents = usdToCents(usage?.totalSetAsideUsd ?? 0);
+  return (
+    <Section
+      id="usage"
+      title="Usage"
+      description="What you have been billed, by what it paid for. The total matches Billed at the top of this page."
+    >
+      <div className="k-card overflow-hidden">
+        {isPending && !isError ? (
+          <div className="space-y-3 p-4">
+            <Shimmer className="h-4 w-56" />
+            <Shimmer className="h-4 w-48" />
+            <Shimmer className="h-4 w-40" />
+          </div>
+        ) : !usage ? (
+          <EmptyNote>We could not load your usage right now.</EmptyNote>
+        ) : (
+          <ul>
+            {rows.map((cat) => (
+              <li
+                key={cat.key}
+                className="k-row k-line-subtle flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2"
+              >
+                <p className="min-w-0 truncate text-[13px]">{cat.label}</p>
+                <span className="w-20 shrink-0 text-right text-[13px] tabular-nums">
+                  {formatBillingCents(usdToCents(cat.billedUsd))}
+                </span>
+              </li>
+            ))}
+            <li className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold">Total</p>
+                {setAsideCents >= 0.5 && (
+                  <p className="k-fg3 text-[12px]">
+                    Plus {formatBillingCents(setAsideCents)} set aside for emails already scheduled.
+                  </p>
+                )}
+              </div>
+              <span className="w-20 shrink-0 text-right text-[13px] font-semibold tabular-nums">
+                {formatBillingCents(usdToCents(usage.totalBilledUsd))}
+              </span>
+            </li>
+          </ul>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 
 /**
  * Leaving postpaid collects what is owed on the card first. The amount is named

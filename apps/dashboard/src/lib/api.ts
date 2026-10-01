@@ -1,3 +1,5 @@
+import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1662,6 +1664,9 @@ const OfferEconomicsSchema = z.object({
   name: z.string(),
   lifetimeRevenueUsd: z.number().nullable(),
   lifetimeRevenueStatedAt: z.string().nullable(),
+  // The scheduling page a prospect of this offer books on; the AI meeting-booking
+  // channel reads it to propose slots. `null` = never stated.
+  bookingUrl: z.string().nullable(),
   legRates: z.array(BrandLegRateSchema),
 });
 
@@ -1706,6 +1711,95 @@ export async function saveOfferLifetimeRevenue(
     body: { lifetimeRevenueUsd },
   });
   return parseOfferEconomics(raw, "saveOfferLifetimeRevenue");
+}
+
+/**
+ * PUT /brands/:brandId/offers/:offerId/economics — state (or clear, with null) the
+ * booking page of this offer. Only `bookingUrl` is sent, so nothing else is restated.
+ */
+export async function saveOfferBookingUrl(
+  brandId: string,
+  offerId: string,
+  bookingUrl: string | null,
+  token?: string,
+): Promise<OfferEconomics> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/economics`, {
+    token,
+    method: "PUT",
+    body: { bookingUrl },
+  });
+  return parseOfferEconomics(raw, "saveOfferBookingUrl");
+}
+
+// ─── How an offer sells (brand-service, 2026-09-29, beta) ────────────────────
+//
+// The steps and legs the customer ticked for ONE offer, stored as
+// features-service's own keys. `stated: false` = never stated (both lists null),
+// distinct from a stated empty selection.
+
+const OfferSalesPathSchema = z.object({
+  offerId: z.string(),
+  stated: z.boolean(),
+  steps: z.array(z.string()).nullable(),
+  legKeys: z.array(z.string()).nullable(),
+  statedAt: z.string().nullable(),
+});
+export type OfferSalesPath = z.infer<typeof OfferSalesPathSchema>;
+
+function parseOfferSalesPath(raw: unknown, where: string): OfferSalesPath {
+  const parsed = OfferSalesPathSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[${where}] invalid response shape`, parsed.error.issues, raw);
+    throw new Error(`[${where}] invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** GET /brands/:brandId/offers/:offerId/sales-path — the offer's ticked steps and legs. */
+export async function getOfferSalesPath(brandId: string, offerId: string): Promise<OfferSalesPath> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`);
+  return parseOfferSalesPath(raw, "getOfferSalesPath");
+}
+
+/** PUT /brands/:brandId/offers/:offerId/sales-path — replaces the whole selection. */
+export async function saveOfferSalesPath(
+  brandId: string,
+  offerId: string,
+  steps: string[],
+  legKeys: string[],
+): Promise<OfferSalesPath> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`, {
+    method: "PUT",
+    body: { steps, legKeys },
+  });
+  return parseOfferSalesPath(raw, "saveOfferSalesPath");
+}
+
+/** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */
+export async function getOfferSalesPaths(brandId: string, offerId: string): Promise<OfferSalesPaths> {
+  const raw = await apiCall<unknown>(`/offers/${offerId}/sales-paths?brandId=${encodeURIComponent(brandId)}`);
+  return parseOfferSalesPaths(raw, "getOfferSalesPaths");
+}
+
+/** GET /brands/:brandId/sales-budget — the brand's daily sales budget mode (billing-service). */
+export async function getBrandSalesBudget(brandId: string): Promise<BrandSalesBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`);
+  return parseBrandSalesBudget(raw, "getBrandSalesBudget");
+}
+
+/** PUT /brands/:brandId/sales-budget — state ONE daily budget for sales (global mode). */
+export async function setBrandSalesBudget(brandId: string, dailyBudgetCents: number): Promise<BrandSalesBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`, {
+    method: "PUT",
+    body: { dailyBudgetCents },
+  });
+  return parseBrandSalesBudget(raw, "setBrandSalesBudget");
+}
+
+/** DELETE /brands/:brandId/sales-budget — back to each campaign's own ceiling. */
+export async function clearBrandSalesBudget(brandId: string): Promise<BrandSalesBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`, { method: "DELETE" });
+  return parseBrandSalesBudget(raw, "clearBrandSalesBudget");
 }
 
 // ─── Effective conversion rates (features-service, 2026-09-25) ───────────────
@@ -2195,13 +2289,23 @@ export async function attachBrandWebsite(
 const SalesRepResponseSchema = z.object({
   salesRepEmail: z.string().nullable(),
   salesRepPhone: z.string().nullable(),
+  // How a hand-over names the rep in the prospect's thread ("I've copied Marie, Head
+  // of Partnerships at Doc Dinners"). Both optional and never inferred; absent reads
+  // as null so a response from before brand-service served them still parses.
+  salesRepFirstName: z.string().nullable().default(null),
+  salesRepRole: z.string().nullable().default(null),
 });
 
-/** The one person to reach for a brand, and the two facts about them. */
+/** The one person to reach for a brand: how to reach them, and how to introduce them. */
 export type SalesRep = z.infer<typeof SalesRepResponseSchema>;
 
 /** Nobody stated. A first-class answer, never an error and never a 404. */
-export const NO_SALES_REP: SalesRep = { salesRepEmail: null, salesRepPhone: null };
+export const NO_SALES_REP: SalesRep = {
+  salesRepEmail: null,
+  salesRepPhone: null,
+  salesRepFirstName: null,
+  salesRepRole: null,
+};
 
 function parseSalesRep(raw: unknown, fn: string): SalesRep {
   const parsed = SalesRepResponseSchema.safeParse(raw);
@@ -2224,13 +2328,20 @@ export async function getBrandSalesRep(
 }
 
 /**
- * State the rep. The write REPLACES THE WHOLE REP, so both fields always travel:
+ * State the rep. The write REPLACES the email and the phone, so both always travel:
  * omitting the phone CLEARS a number that was there, which is brand-service's
  * own documented semantic and not something to work around by sending a subset.
+ * The first name and role are the exception, by the producer's design: OMITTED
+ * leaves the stored value as it is, `null` (or blank) clears it.
  */
 export async function setBrandSalesRep(
   brandId: string,
-  rep: { salesRepEmail: string | null; salesRepPhone: string | null },
+  rep: {
+    salesRepEmail: string | null;
+    salesRepPhone: string | null;
+    salesRepFirstName?: string | null;
+    salesRepRole?: string | null;
+  },
   token?: string,
 ): Promise<SalesRep> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/sales-rep`, {
@@ -2499,6 +2610,9 @@ const PublicCatalogueSchema = z.object({
             legKey: z.string(),
             from: StepRefSchema.nullable(),
             to: StepRefSchema,
+            // The crew's name (Herald, Scout, Pilot...), published per leg. Undeclared,
+            // zod strips it and every crew reads by its channel's name instead.
+            crewName: z.string().nullish(),
           }),
         )
         .optional(),
@@ -6560,6 +6674,57 @@ export async function getFleetWorkflowReturnHistory(
   return parsed.data.roiHistory ? parsed.data.roiHistory.daily : null;
 }
 
+const LegWorkflowRankingSchema = z
+  .object({
+    featureSlug: z.string(),
+    legKey: z.string(),
+    grain: z.literal("fleet"),
+    computedAt: z.string().nullable(),
+    maturity: z.object({
+      durationDays: z.number(),
+      outcomesRequired: z.number(),
+      cutoffIso: z.string().nullable(),
+      measured: z.boolean(),
+    }),
+    rows: z.array(
+      z.object({
+        rank: z.number(),
+        workflowDynastySlug: z.string(),
+        workflowDynastyName: z.string().nullable(),
+        assignment: z.string(),
+        selectable: z.boolean(),
+        isMature: z.boolean().nullable(),
+        costPerOutcomeUsd: z.number().nullable(),
+        conversionRatePct: z.number().nullable(),
+        outcomes: z.number(),
+        spentUsd: z.number(),
+        roiMultiple: z.number().nullable(),
+        goesFirst: z.boolean(),
+        moneyGoesHere: z.boolean(),
+      }),
+    ),
+  })
+  .passthrough();
+
+export type LegWorkflowRanking = z.infer<typeof LegWorkflowRankingSchema>;
+
+/**
+ * EVERY WORKFLOW ON ONE LEG, RANKED AT THE FLEET GRAIN (features-service
+ * `/public/stats/leg-workflow-ranking`, via api-service). Names no org, brand, offer,
+ * campaign or audience: the Research pages read it so nothing they state depends on who
+ * is looking. `computedAt: null` = the producer has not built it yet (no rows).
+ */
+export async function getLegWorkflowRanking(featureSlug: string, legKey: string, token?: string): Promise<LegWorkflowRanking> {
+  const query = new URLSearchParams({ featureSlug, leg: legKey });
+  const raw = await apiCall<unknown>(`/public/features/leg-workflow-ranking?${query.toString()}`, { token });
+  const parsed = LegWorkflowRankingSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLegWorkflowRanking: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getLegWorkflowRanking: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /**
  * STAFF ONLY. The same fleet curve costed at what the vendors charged us before our
  * markup. It reveals our margin, so the gateway refuses anyone off the staff list.
@@ -8242,6 +8407,40 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
   return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
+// ── Org usage by category ──
+//
+// What the org has been billed, grouped into categories a customer recognises
+// (setting up, finding contacts, writing, sending, reading replies...).
+// features-service classifies every cost row and sums them; the Billing page only
+// renders. `totalBilledUsd` is the same net actual spend billing reports as
+// "Billed", so the Usage section's Total row matches the figure at the top.
+const OrgUsageCategorySchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  billedUsd: z.number(),
+  setAsideUsd: z.number(),
+});
+const OrgUsageResponseSchema = z.object({
+  basis: z.string(),
+  totalBilledUsd: z.number(),
+  totalSetAsideUsd: z.number(),
+  categories: z.array(OrgUsageCategorySchema),
+});
+export type OrgUsage = z.infer<typeof OrgUsageResponseSchema>;
+
+export async function getOrgUsage(token?: string): Promise<OrgUsage> {
+  const raw = await apiCall<unknown>("/features/orgs/usage", { token });
+  const parsed = OrgUsageResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOrgUsage: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getOrgUsage: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── Reward tasks ──
 //
 // The reward-task ledger, owned by client-service and reached through the
@@ -8773,6 +8972,31 @@ export async function createEmbeddedCardSetup(token?: string): Promise<CardSetup
     method: "POST",
     body: { ui_mode: "embedded" },
   });
+}
+
+/**
+ * Make Revolut Business the org's acquirer before any card save or payment
+ * (owner-decided 2026-09-29: Revolut by default everywhere a card or money is asked
+ * for, not only in the New organization modal). Idempotent. An org already holding
+ * a chargeable card on another acquirer stays there: billing answers
+ * `card_elsewhere`, which is an answer, not a failure. Anything else throws, and
+ * the caller's own error line says so (never this body).
+ *
+ * A raw fetch rather than `apiCall` because the route is ours, not the gateway's,
+ * and it carries THIS tab's token so it pins the org the page is on.
+ */
+export async function declareRevolutDefault(): Promise<"pinned" | "card_elsewhere"> {
+  const token = await getTabSessionToken();
+  const res = await fetch("/api/orgs/revolut", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    console.error(`[dashboard] Revolut acquirer declaration failed: ${res.status}`);
+    throw new Error("We could not prepare the payment. Please try again.");
+  }
+  const body = (await res.json()) as { result?: string };
+  return body.result === "card_elsewhere" ? "card_elsewhere" : "pinned";
 }
 
 export async function createPortalSession(

@@ -33,6 +33,7 @@ import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
+import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
 import { crewTrigger, type CrewGlyph } from "@/lib/v2/crews";
@@ -41,6 +42,7 @@ import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v
 import { MaturityBadge } from "@/components/maturity-badge";
 import { StaffOnly } from "@/components/v2/staff-only";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 import type { Maturity } from "@/lib/feature-gates";
 
 /**
@@ -128,7 +130,7 @@ export function V2OffersPage() {
   return <V2OffersList />;
 }
 
-function useOfferName(brandId: string, offerId: string | null) {
+export function useOfferName(brandId: string, offerId: string | null) {
   // With archived offers: an archived offer's own page still has a title.
   const q = useAuthQuery(
     ["brandOffers", brandId, "withArchived"],
@@ -138,11 +140,22 @@ function useOfferName(brandId: string, offerId: string | null) {
   return q.data?.offers.find((o) => o.offerId === offerId)?.name ?? null;
 }
 
-function offerTabs(orgId: string, brandId: string, offerId: string, active: "settings" | "targeting") {
-  return [
+/** The offer's tabs. "Sales path" is beta: shown only to the beta allowlist, with its badge. */
+export function offerTabs(
+  orgId: string,
+  brandId: string,
+  offerId: string,
+  active: "settings" | "targeting" | "sales-path",
+  isBeta: boolean,
+): V2Tab[] {
+  const tabs: V2Tab[] = [
     { label: "Settings", href: v2OfferHref(orgId, brandId, offerId), active: active === "settings" },
     { label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting"), active: active === "targeting" },
   ];
+  if (isBeta) {
+    tabs.push({ label: "Sales path", href: v2OfferHref(orgId, brandId, offerId, "sales-path"), active: active === "sales-path", badge: "beta" });
+  }
+  return tabs;
 }
 
 /**
@@ -155,6 +168,7 @@ function offerTabs(orgId: string, brandId: string, offerId: string, active: "set
 export function V2OfferPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
+  const isBeta = useIsBetaUser();
   const { missions, crews, settled } = useMissions(orgId, brandId);
   const [adding, setAdding] = useState(false);
   if (!offerId) return null;
@@ -163,7 +177,7 @@ export function V2OfferPage() {
     <V2Page
       crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " " }]}
       title={name ?? " "}
-      tabs={offerTabs(orgId, brandId, offerId, "settings")}
+      tabs={offerTabs(orgId, brandId, offerId, "settings", isBeta)}
       width="max-w-[1280px]"
     >
       <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
@@ -231,12 +245,13 @@ export function V2OfferPage() {
 export function V2TargetingPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
+  const isBeta = useIsBetaUser();
   if (!offerId) return null;
   return (
     <V2Page
       crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
       title={name ?? " "}
-      tabs={offerTabs(orgId, brandId, offerId, "targeting")}
+      tabs={offerTabs(orgId, brandId, offerId, "targeting", isBeta)}
       width="max-w-[1280px]"
     >
       <V2AudiencesTable offerId={offerId} />
@@ -410,25 +425,32 @@ export function V2MissionWorkflowsPage() {
 
 // ─── Integrations and brand settings ────────────────────────────────────────
 
-function integrationTabs(orgId: string, brandId: string, active: "raw" | "merged") {
+function integrationTabs(orgId: string, brandId: string, active: "ai" | "raw" | "merged") {
   const base = `${v2Base(orgId, brandId)}/integrations`;
   return [
+    { label: "Your AI", href: `${base}/ai`, active: active === "ai" },
     { label: "Your CRM", href: base, active: active === "raw", badge: "beta" as const },
     { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged", badge: "beta" as const },
   ];
 }
 
-export function V2IntegrationsPage({ view }: { view: "raw" | "merged" }) {
+export function V2IntegrationsPage({ view }: { view: "ai" | "raw" | "merged" }) {
   const { orgId, brandId } = useIds();
   return (
     <V2Page
       crumbs={[{ label: "Setup" }, { label: "Integrations" }]}
       title="Integrations"
-      sub="The CRM this brand already runs on, read here and set beside our leads."
+      sub={view === "ai" ? "Run distribute.you from the AI you already use. One line sets it up." : "The CRM this brand already runs on, read here and set beside our leads."}
       tabs={integrationTabs(orgId, brandId, view)}
       width="max-w-[1280px]"
     >
-      {view === "raw" ? <V2CrmRawView orgId={orgId} brandId={brandId} /> : <V2CrmMergedView brandId={brandId} />}
+      {view === "ai" ? (
+        <V2AiIntegrationView orgId={orgId} brandId={brandId} />
+      ) : view === "raw" ? (
+        <V2CrmRawView orgId={orgId} brandId={brandId} />
+      ) : (
+        <V2CrmMergedView brandId={brandId} />
+      )}
     </V2Page>
   );
 }

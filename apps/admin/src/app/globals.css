@@ -146,6 +146,7 @@ html.dark .text-red-700 { color: #fca5a5; }
 html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
 html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.15); }
 html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
+html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
 /* Indigo's text and border weights, which the fill above never had — the same

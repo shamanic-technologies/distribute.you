@@ -1,0 +1,146 @@
+{
+  "windowFrom": "2026-04-15",
+  "readOn": "2026-09-29",
+  "windowEnd": "2026-09-29",
+  "visit": {
+    "legKey": "start_to_website_visit",
+    "durationDays": 21,
+    "outcomesRequired": 10,
+    "cutoff": "2026-09-08",
+    "all": [
+      {
+        "bucket": "First name alone",
+        "emails": 6414,
+        "clicks": 136,
+        "spend": 539.6
+      },
+      {
+        "bucket": "Greeting + first name",
+        "emails": 2931,
+        "clicks": 47,
+        "spend": 173.12
+      },
+      {
+        "bucket": "No greeting",
+        "emails": 6589,
+        "clicks": 192,
+        "spend": 372.87
+      }
+    ],
+    "tiers": {
+      "Flash": [
+        {
+          "bucket": "First name alone",
+          "emails": 3269,
+          "clicks": 69,
+          "spend": 110.47
+        },
+        {
+          "bucket": "Greeting + first name",
+          "emails": 2445,
+          "clicks": 40,
+          "spend": 153.21
+        },
+        {
+          "bucket": "No greeting",
+          "emails": 4877,
+          "clicks": 155,
+          "spend": 243.84
+        }
+      ],
+      "Pro": [
+        {
+          "bucket": "First name alone",
+          "emails": 3145,
+          "clicks": 67,
+          "spend": 429.14
+        },
+        {
+          "bucket": "Greeting + first name",
+          "emails": 486,
+          "clicks": 7,
+          "spend": 19.9
+        },
+        {
+          "bucket": "No greeting",
+          "emails": 1712,
+          "clicks": 37,
+          "spend": 129.04
+        }
+      ]
+    },
+    "noOpening": 0,
+    "lastMonth": "2026-09"
+  },
+  "reply": {
+    "legKey": "start_to_conversation",
+    "durationDays": 21,
+    "outcomesRequired": 1,
+    "cutoff": "2026-09-08",
+    "all": [
+      {
+        "bucket": "First name alone",
+        "emails": 40720,
+        "replies": 14,
+        "spend": 2873.34
+      },
+      {
+        "bucket": "Greeting + first name",
+        "emails": 39200,
+        "replies": 21,
+        "spend": 3035.62
+      },
+      {
+        "bucket": "No greeting",
+        "emails": 13083,
+        "replies": 3,
+        "spend": 668.8
+      }
+    ],
+    "tiers": {
+      "Flash": [
+        {
+          "bucket": "First name alone",
+          "emails": 4866,
+          "replies": 0,
+          "spend": 191.67
+        },
+        {
+          "bucket": "Greeting + first name",
+          "emails": 351,
+          "replies": 0,
+          "spend": 33.6
+        },
+        {
+          "bucket": "No greeting",
+          "emails": 4964,
+          "replies": 1,
+          "spend": 279.45
+        }
+      ],
+      "Pro": [
+        {
+          "bucket": "First name alone",
+          "emails": 35854,
+          "replies": 14,
+          "spend": 2681.67
+        },
+        {
+          "bucket": "Greeting + first name",
+          "emails": 38849,
+          "replies": 21,
+          "spend": 3002.02
+        },
+        {
+          "bucket": "No greeting",
+          "emails": 8119,
+          "replies": 2,
+          "spend": 389.35
+        }
+      ]
+    },
+    "noOpening": 6,
+    "lastMonth": "2026-09"
+  },
+  "crmRepliesAdded": 4
+}

@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./revenue-outlook";
+
+/** The gateway path of billing's fleet revenue read (api-service staff proxy). */
+const BILLING_FLEET_REVENUE_PATH = "/billing/revenue/fleet";
 import {
   TRIGGER_TASK_NAME,
   WorkflowRunGroupsResponseSchema,
@@ -5933,8 +5937,12 @@ export interface AuditAccountRow {
 export interface AuditAccountsStats {
   totalRunningDailyBudgetUsd: number; // sum over ACTIVE rows only — what the fleet can spend today
   totalConfiguredDailyBudgetUsd: number; // sum over the SAME rows of what those customers posted
-  mrrUsd: number; // totalRunningDailyBudgetUsd × 30
-  arrUsd: number; // totalRunningDailyBudgetUsd × 365
+  // billing-service's RECURRING MRR (features-service v0.179.15): recurring orgs
+  // only, their running proactive campaigns with people left to contact, × 30.
+  // ARR = MRR × 12. Null when billing could not be read, never a fallback figure.
+  mrrUsd: number | null;
+  arrUsd: number | null;
+  mrrUnavailableReason?: string | null;
   activeCount: number;
   pausedCount: number;
   inactiveCount: number;
@@ -5945,6 +5953,16 @@ export interface AuditAccounts {
   rows: AuditAccountRow[];
   stats: AuditAccountsStats;
   asOf: string; // ISO timestamp
+}
+
+/**
+ * billing-service's fleet revenue read (recurring DRR/MRR/ARR, one-off prepaid
+ * run-out, cash expected by week, one row per org). Staff-gated through
+ * api-service; the body is billing's, parsed in lib/revenue-outlook.
+ */
+export async function getBillingFleetRevenue(token?: string): Promise<FleetRevenueOutlook> {
+  const raw = await apiCall<unknown>(BILLING_FLEET_REVENUE_PATH, { token });
+  return parseFleetRevenueOutlook(raw);
 }
 
 /**
@@ -6352,7 +6370,10 @@ export interface MrrSplit {
   currentTotalMrrUsd: number | null;
   currentTotalArrUsd: number | null;
   currentSelfServeBasis: MrrSplitBasis | null;
-  currentAgencyBudgetMrrUsd: number;
+  currentAgencyBudgetMrrUsd: number | null;
+  // The day the self-serve series switched to billing's recurring revenue. Points
+  // before it are on the old running-budget basis; growth is never read across it.
+  basisChangedOn?: string | null;
   // THE ERA BOUNDARY, measured rather than declared: the earliest UTC day
   // campaign-service holds ANY recorded answer about a campaign running or its
   // audience. Every bucket before it is necessarily approximated.

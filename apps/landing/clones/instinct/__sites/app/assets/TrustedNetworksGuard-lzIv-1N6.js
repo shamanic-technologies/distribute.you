@@ -1,0 +1,1 @@
+import{j as r,M as t,b8 as e}from"./app-DVKIbK40.js";import{h as s,A as o}from"./feature-flags-Btzq0uwu.js";import{a as u}from"./auth-context-Di4G9Eue.js";function p(){const a=u();return s(a,o)?r.jsx(e,{}):r.jsx(t,{to:"/workspace",replace:!0})}export{p as TrustedNetworksGuard};

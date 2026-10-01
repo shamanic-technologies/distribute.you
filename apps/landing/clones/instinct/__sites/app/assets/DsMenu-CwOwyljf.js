@@ -1,0 +1,6 @@
+import{c as t,j as e,aW as i,P as n}from"./app-DVKIbK40.js";import{D as l,a as p,b as x,c as h}from"./dropdown-menu-CAQGLMDv.js";/**
+ * @license lucide-react v0.577.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const u=[["circle",{cx:"12",cy:"12",r:"1",key:"41hilf"}],["circle",{cx:"19",cy:"12",r:"1",key:"1wjl8i"}],["circle",{cx:"5",cy:"12",r:"1",key:"1pcz8c"}]],b=t("ellipsis",u);function g({label:s,items:a,disabled:r=!1,className:c,trigger:d}){return e.jsxs(l,{children:[e.jsx(p,{asChild:!0,disabled:r,"aria-label":s,children:d??e.jsx(i,{label:s,disabled:r,className:n("opacity-35 transition-opacity duration-[120ms] hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 max-md:opacity-100 group-hover/row:opacity-100",c),children:e.jsx(b,{strokeWidth:2.5})})}),e.jsx(x,{align:"end",sideOffset:6,className:"min-w-[160px] rounded border-ds-hairline bg-ds-page p-0 font-text text-ds-ink shadow-none",children:a.map(o=>e.jsx(h,{disabled:o.disabled,onSelect:o.onSelect,className:n("h-[43px] rounded-none border-b border-dotted border-ds-hairline px-3.5 text-[13px] text-ds-ink last:border-b-0 hover:bg-ds-hover focus:bg-ds-hover",o.destructive&&"text-ds-red hover:bg-ds-hoverRed focus:bg-ds-hoverRed"),children:o.label},o.label))})]})}export{g as D,b as E};

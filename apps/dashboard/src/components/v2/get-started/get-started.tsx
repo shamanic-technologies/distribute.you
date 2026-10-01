@@ -52,6 +52,9 @@ import { NEW_ORG_CHANNEL_SLUG } from "@/lib/v2/new-org-wizard";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
+  outcomePriceLine,
+  parseOutcomePrices,
+  type OutcomePrice,
   EMAIL_CAP,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
@@ -117,6 +120,9 @@ const STAGE_HOLD_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 1
 const DEFAULT_DWELL_MS = 1600;
 const DEFAULT_HOLD_MS = 12_000;
 
+/** What a signed-in visitor reads instead of a walk (same words as the session route). */
+const SIGNED_IN_WALK_MESSAGE = "You are signed in. Add this brand from your dashboard instead.";
+
 /**
  * The 100 companies are built page by page, and each company not already cached costs
  * the anonymous org an Apollo credit (~12 cents). So the first page is small (it lands
@@ -144,6 +150,8 @@ export function GetStarted() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [steps, setSteps] = useState<Record<GetStartedStepKey, StepState>>(() => initialSteps());
   const [floorUsd, setFloorUsd] = useState(1);
+  // The expected price of one visit / one meeting, served by features-service. Null until read.
+  const [outcomePrices, setOutcomePrices] = useState<Record<GetStartedOutcome, OutcomePrice> | null>(null);
   const [recommendedUsd, setRecommendedUsd] = useState<number | null>(null);
   const [wallOpen, setWallOpen] = useState(false);
   const [wallNote, setWallNote] = useState<string | null>(null);
@@ -235,6 +243,17 @@ export function GetStarted() {
         if (cents != null) setFloorUsd(cents / 100);
       })
       .catch((e) => console.error("[get-started] catalogue read failed:", e));
+  }, []);
+
+  // What one visit / one meeting is expected to cost, for the "What you want" cards.
+  // A failed read states no price on the cards; it never blocks the pick.
+  useEffect(() => {
+    fetch("/api/public/outcome-prices")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`outcome prices ${res.status}`);
+        setOutcomePrices(parseOutcomePrices(await res.json()));
+      })
+      .catch((e) => console.error("[get-started] outcome prices read failed:", e));
   }, []);
 
   // A website carried from a link starts the walk at once, like Explee's hero.
@@ -796,6 +815,15 @@ export function GetStarted() {
       setInputError(problem ?? "Enter your website.");
       return;
     }
+    // A signed-in visitor would build this walk inside the org they are signed in
+    // to: the Clerk session outranks the anonymous one on every call, so the brand
+    // lands in their active org (a customer's, for staff). Adding a brand from an
+    // account is the dashboard's job. The session route refuses it too.
+    if (isSignedIn) {
+      setInputError(SIGNED_IN_WALK_MESSAGE);
+      setExits({ signIn: null, signUp: { href: "/v2", label: "Open your dashboard" } });
+      return;
+    }
     ran.current = true;
     setInputError(null);
     setExits(null);
@@ -966,7 +994,7 @@ export function GetStarted() {
         />
       );
     if (key === "outcome")
-      return <OutcomeStage state={steps.outcome} picked={outcome} onPick={pickOutcome} />;
+      return <OutcomeStage state={steps.outcome} picked={outcome} prices={outcomePrices} onPick={pickOutcome} />;
     if (key === "value")
       return (
         <ValueStage
@@ -1630,10 +1658,12 @@ function OfferStage({
 function OutcomeStage({
   state,
   picked,
+  prices,
   onPick,
 }: {
   state: StepState;
   picked: GetStartedOutcome | null;
+  prices: Record<GetStartedOutcome, OutcomePrice> | null;
   onPick: (o: GetStartedOutcome) => void;
 }) {
   return (
@@ -1646,6 +1676,7 @@ function OutcomeStage({
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {OUTCOME_OPTIONS.map((o, i) => {
               const on = picked === o.key;
+              const priceLine = outcomePriceLine(prices?.[o.key], o.unit);
               return (
                 <button
                   key={o.key}
@@ -1658,6 +1689,12 @@ function OutcomeStage({
                 >
                   <span className="k-fg block text-[14px] font-medium leading-5">{o.label}</span>
                   <span className="k-fg2 mt-1 block text-[12.5px] leading-5">{o.blurb}</span>
+                  {priceLine && (
+                    <span className="k-fg mt-1.5 block text-[13px] font-medium tabular-nums">
+                      {priceLine}
+                      {prices?.[o.key].early && <span className="k-fg3 font-normal"> (early estimate)</span>}
+                    </span>
+                  )}
                   {o.key === "meetings" && <span className="k-fg3 mt-1.5 block text-[12px]">Two campaigns: cold email, then meeting booking.</span>}
                   {on && <span className="k-accent-text mt-1.5 block text-[12px]">Picked</span>}
                 </button>

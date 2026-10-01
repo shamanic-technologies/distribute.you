@@ -1,0 +1,174 @@
+import { z } from "zod";
+
+/**
+ * An offer's SALES PATHS (beta): features-service links the legs the customer
+ * ticked, from an entry leg to a paying client, and ranks them by ROI
+ * (`GET /offers/:offerId/sales-paths`). Every figure is served: the retained
+ * rate of each leg and where it came from, the channel chosen for it, the cost
+ * per paying client and the ROI. Nothing here divides, sums or ranks.
+ *
+ * Vocabularies (status, rate source, channel choice) are read as plain STRINGS:
+ * a producer vocabulary grows, and a closed enum here would throw the whole
+ * section the day it does. The words for the ones we know live below.
+ *
+ * Alias-free (only zod) so it carries real unit tests. Keep it that way.
+ */
+
+const StepSchema = z.object({ key: z.string(), label: z.string() }).passthrough();
+
+const CandidateSchema = z
+  .object({
+    slug: z.string(),
+    name: z.string(),
+    costPerOutcomeUsd: z.number().nullable(),
+    unpricedReason: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const LegSchema = z
+  .object({
+    legKey: z.string(),
+    fromStep: StepSchema.nullable(),
+    toStep: StepSchema,
+    conversionRatePct: z.number().nullable(),
+    rateSource: z.string().nullable(),
+    rateInputs: z
+      .object({
+        measured: z
+          .object({
+            basis: z.string(),
+            fromReached: z.number().nullable(),
+            toReached: z.number().nullable(),
+            ratePct: z.number().nullable(),
+            sufficient: z.boolean(),
+          })
+          .passthrough(),
+        customerStatedPct: z.number().nullable(),
+        fleetMedian: z.object({ ratePct: z.number().nullable(), brandCount: z.number() }).passthrough(),
+        industryDefaultPct: z.number().nullable(),
+      })
+      .passthrough()
+      .nullable(),
+    workedBy: z.string(),
+    channel: z
+      .object({
+        slug: z.string().nullable(),
+        name: z.string().nullable(),
+        trigger: z.string().nullable(),
+        choice: z.string(),
+        candidates: z.array(CandidateSchema),
+      })
+      .passthrough()
+      .nullable(),
+    outcomesNeededPerPayingClient: z.number().nullable(),
+    costPerOutcomeUsd: z.number().nullable(),
+    costPerPayingClientUsd: z.number().nullable(),
+  })
+  .passthrough();
+
+const PathSchema = z
+  .object({
+    rank: z.number(),
+    pathKey: z.string(),
+    legKeys: z.array(z.string()),
+    steps: z.array(StepSchema),
+    entryLegKey: z.string(),
+    entryChannelSlug: z.string().nullable(),
+    legs: z.array(LegSchema),
+    entryToPayingClientPct: z.number().nullable(),
+    lifetimeRevenueUsd: z.number().nullable(),
+    costPerPayingClientUsd: z.number().nullable(),
+    roi: z.number().nullable(),
+    roiUnavailableReason: z.string().nullable(),
+  })
+  .passthrough();
+
+export const OfferSalesPathsSchema = z
+  .object({
+    offerId: z.string(),
+    brandId: z.string(),
+    status: z.string(),
+    statedAt: z.string().nullable(),
+    selectedLegKeys: z.array(z.string()),
+    unknownLegKeys: z.array(z.string()),
+    lifetimeRevenueUsd: z.number().nullable(),
+    paths: z.array(PathSchema),
+  })
+  .passthrough();
+
+export type OfferSalesPaths = z.infer<typeof OfferSalesPathsSchema>;
+export type SalesPathRow = OfferSalesPaths["paths"][number];
+export type SalesPathLeg = SalesPathRow["legs"][number];
+
+export function parseOfferSalesPaths(raw: unknown, where: string): OfferSalesPaths {
+  const parsed = OfferSalesPathsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[${where}] invalid response shape`, parsed.error.issues, raw);
+    throw new Error(`[${where}] invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** Why the section holds no path, in the customer's words. Null when paths are served. */
+export function salesPathsEmptyReason(status: string): string | null {
+  switch (status) {
+    case "ok":
+      return null;
+    case "not_stated":
+    case "no_legs_selected":
+      return "Tick the legs this offer sells through above. Its sales paths appear here.";
+    case "no_complete_path":
+      return "No ticked legs reach a paying client yet. Tick the legs that lead to one.";
+    default:
+      return `No sales path to show (${status}).`;
+  }
+}
+
+/** Where a leg's retained rate came from. An unknown source is shown verbatim. */
+export function rateSourceLabel(source: string | null): string {
+  switch (source) {
+    case "crm_measured":
+      return "Measured in your CRM";
+    case "measured_on_our_leads":
+      return "Measured on our leads";
+    case "customer_stated":
+      return "Stated by you";
+    case "fleet_median":
+      return "Median of our clients";
+    case "industry_default":
+      return "Industry benchmark";
+    case null:
+      return "—";
+    default:
+      return source;
+  }
+}
+
+/** Why a path states no ROI. An unknown reason is shown verbatim. */
+export function roiUnavailableLabel(reason: string | null): string | null {
+  switch (reason) {
+    case null:
+      return null;
+    case "leg_cost_unavailable":
+      return "A leg has no price yet";
+    case "zero_conversion_rate":
+      return "A leg converts at 0%";
+    case "no_lifetime_revenue":
+      return "State this offer's lifetime revenue";
+    case "no_platform_cost":
+      return "Nothing on this path is run by us";
+    default:
+      return reason;
+  }
+}
+
+/** The path read as one line: "Positive reply → Meeting booked → Paid client". */
+export function pathTitle(path: SalesPathRow): string {
+  return path.steps.map((s) => s.label).join(" → ");
+}
+
+/** A percentage as the leg states it: one decimal under 10%, whole above. */
+export function formatRatePct(pct: number | null): string {
+  if (pct == null || !Number.isFinite(pct)) return "—";
+  return `${pct < 10 ? pct.toFixed(1).replace(/\.0$/, "") : Math.round(pct)}%`;
+}

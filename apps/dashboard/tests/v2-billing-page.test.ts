@@ -13,6 +13,8 @@ const V2 = read("src/components/v2/billing-page.tsx");
 const ROUTE = read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/billing/page.tsx");
 const V1 = read("src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx");
 const API = read("src/lib/api.ts");
+const IMPRINT = read("src/components/v2/card-imprint-modal.tsx");
+const PAYMENT_MODE = read("src/lib/payment-mode.ts");
 
 describe("paymentModeOf", () => {
   it("reads billing's own word", () => {
@@ -29,9 +31,12 @@ describe("paymentModeOf", () => {
 
 describe("postpaidBlocker", () => {
   // billing does not refuse the switch: it stops every campaign the moment a
-  // postpaid org has no chargeable card. So the page refuses first.
-  it("refuses without a card", () => {
-    expect(postpaidBlocker({ has_payment_method: false })).toMatch(/Add a card first/);
+  // postpaid org has no chargeable card. With NO card the page does not refuse:
+  // picking postpaid asks for one, saved for $0, before switching.
+  it("does not block an account with no card", () => {
+    expect(postpaidBlocker({ has_payment_method: false })).toBeNull();
+    expect(postpaidBlocker({ has_payment_method: false, auto_reload_supported: false })).toBeNull();
+    expect(PAYMENT_MODE).not.toContain("Add a card first");
   });
 
   it("refuses a card that cannot be charged automatically", () => {
@@ -117,7 +122,15 @@ describe("the prepaid / postpaid switch", () => {
 
   it("refuses postpaid on the page when billing would stop the campaigns", () => {
     expect(V2).toContain("const blocker = postpaidBlocker(account);");
-    expect(V2).toContain("disabled={switching || blocked !== null}");
+    expect(V2).toContain("const pickable = !current && mode !== null && blocked === null && !switching && !imprintOpen;");
+    expect(V2).toContain("if (pickable) requestSwitch(m);");
+  });
+
+  // The card is the choice: a separate "Switch to" button would be a second click
+  // for the same decision.
+  it("switches on a click on the card, with no extra button", () => {
+    expect(V2).not.toContain("Switch to ${");
+    expect(V2).toContain('role="radio"');
   });
 
   it("renders a sentence per refusal, never the raw error", () => {
@@ -137,6 +150,60 @@ describe("the prepaid / postpaid switch", () => {
   it("reads the mode off the account billing already serves", () => {
     expect(API).toContain('payment_mode?: "prepaid" | "postpaid";');
     expect(V2).toContain("paymentModeOf(account)");
+  });
+});
+
+describe("postpaid with no card: a $0 card save, then the switch", () => {
+  const request = V2.slice(V2.indexOf("function requestSwitch("), V2.indexOf("async function runSwitch("));
+  const saved = IMPRINT.slice(IMPRINT.indexOf("async function afterCardSaved("), IMPRINT.indexOf("useEffect(() => {"));
+
+  it("opens the card modal instead of switching, before any write", () => {
+    expect(request).toContain('next === "postpaid" && !account?.has_payment_method');
+    expect(request.indexOf("setImprintOpen(true)")).toBeGreaterThan(-1);
+    expect(request.indexOf("setImprintOpen(true)")).toBeLessThan(request.indexOf("void runSwitch(next)"));
+  });
+
+  it("mounts the modal and re-reads the money once it has switched", () => {
+    const site = V2.slice(V2.indexOf("<CardImprintModal"), V2.indexOf("{target !== null"));
+    expect(site).toContain("onCancel={() => setImprintOpen(false)}");
+    expect(site).toContain("await refetchMoney()");
+    expect(site.indexOf("setImprintOpen(false)", site.indexOf("onSwitched"))).toBeGreaterThan(site.indexOf("await refetchMoney()"));
+  });
+
+  it("says the card can be added right on the postpaid choice, with no negative line", () => {
+    expect(V2).toContain("Pick it to add your card. Nothing is charged now.");
+  });
+
+  it("saves the card in the page, charging nothing, through the shared card setup", () => {
+    expect(IMPRINT).toContain("createEmbeddedCardSetup()");
+    expect(IMPRINT).toContain('setup.mode === "embedded_checkout"');
+    expect(IMPRINT).toContain('setup.mode === "embedded_widget"');
+    for (const fn of ["createCheckoutSession", "createPortalSession", "createEmbeddedCheckoutSession"]) {
+      expect(IMPRINT, fn).not.toContain(fn);
+    }
+  });
+
+  it("switches only once billing holds a chargeable card, then arms auto top-up", () => {
+    const held = saved.indexOf("acct?.has_payment_method) break");
+    const refused = saved.indexOf("acct.auto_reload_supported === false");
+    const sw = saved.indexOf('setPaymentMode("postpaid")');
+    const topup = saved.indexOf("configureAutoTopup(AUTO_TOPUP_ENABLE_AMOUNT_CENTS, AUTO_TOPUP_ENABLE_THRESHOLD_CENTS)");
+    expect(held).toBeGreaterThan(-1);
+    expect(refused).toBeGreaterThan(held);
+    expect(sw).toBeGreaterThan(refused);
+    expect(topup).toBeGreaterThan(sw);
+    expect(saved.indexOf("await onSwitched()")).toBeGreaterThan(topup);
+  });
+
+  it("never renders a thrown message", () => {
+    expect(IMPRINT).not.toContain("err.message");
+    expect(IMPRINT).not.toContain("e.message");
+    expect(IMPRINT).not.toContain("{message}");
+  });
+
+  it("carries no em-dash in its copy", () => {
+    const code = IMPRINT.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(code).not.toContain("—");
   });
 });
 

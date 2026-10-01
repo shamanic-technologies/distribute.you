@@ -46,7 +46,29 @@ describe("the brand states one person to reach", () => {
 
   it("sends BOTH facts on every write, because the write replaces the whole rep", () => {
     const body = sliceToNextExport(CARD, "const save = useMutation(");
-    expect(body).toContain("setBrandSalesRep(brandId, { salesRepEmail, salesRepPhone })");
+    expect(body).toMatch(
+      /setBrandSalesRep\(brandId, \{\s*salesRepEmail,\s*salesRepPhone,\s*salesRepFirstName,\s*salesRepRole,\s*\}\)/,
+    );
+  });
+
+  it("asks for the rep's first name and role, both optional, to introduce them in the thread", () => {
+    expect(CARD).toContain('id="sales-rep-first-name"');
+    expect(CARD).toContain('id="sales-rep-role"');
+    expect(CARD).toContain("introduce this person when we copy them into a prospect");
+    // The producer's caps, as a courtesy; brand-service's 400 still decides.
+    expect(CARD).toContain("maxLength={60}");
+    expect(CARD).toContain("maxLength={100}");
+  });
+
+  it("sends a blank name or role as null, so clearing it on screen clears it stored", () => {
+    // brand-service leaves an OMITTED name or role untouched, so the card never omits them.
+    const body = sliceToNextExport(CARD, "const save = useMutation(");
+    expect(body).toContain("const salesRepFirstName = next.firstName.trim() || null;");
+    expect(body).toContain("const salesRepRole = next.role.trim() || null;");
+  });
+
+  it("a name or role alone is not a rep: removing email and phone removes it", () => {
+    expect(CARD).toContain("return Boolean(rep.salesRepEmail || rep.salesRepPhone);");
   });
 
   it("clears by asking the producer to remove it, never by writing empty strings", () => {
@@ -113,5 +135,19 @@ describe("the brand states one person to reach", () => {
   it("persists its query root, so the fields paint from disk instead of cold-loading", () => {
     expect(PERSIST).toContain('"brandSalesRep"');
     expect(PERSIST).not.toContain('"brandSalesRepPhone"');
+  });
+});
+
+describe("reading the rep's first name and role", () => {
+  it("reads them when brand-service serves them, and null when it does not yet", async () => {
+    const { NO_SALES_REP } = await import("../src/lib/api");
+    expect(NO_SALES_REP).toEqual({
+      salesRepEmail: null,
+      salesRepPhone: null,
+      salesRepFirstName: null,
+      salesRepRole: null,
+    });
+    expect(API).toContain("salesRepFirstName: z.string().nullable().default(null)");
+    expect(API).toContain("salesRepRole: z.string().nullable().default(null)");
   });
 });

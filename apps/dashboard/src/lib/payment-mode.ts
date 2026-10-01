@@ -29,14 +29,13 @@ export function paymentModeOf(account: PaymentModeAccount | null | undefined): P
  * Why the org cannot move to POSTPAID from here, or null when it can.
  *
  * billing does not refuse this switch, it stops the org's campaigns the moment it
- * lands without a chargeable card. So the page refuses first, with the reason, rather
- * than letting one click stop every campaign.
+ * lands without a chargeable card. An account with NO card is not blocked: picking
+ * postpaid asks for one, saved for $0, and switches only once billing holds it. What
+ * stays blocked is a card on file that cannot be charged with nobody on the page.
  */
 export function postpaidBlocker(account: PaymentModeAccount | null | undefined): string | null {
   if (!account) return null;
-  if (!account.has_payment_method) {
-    return "Add a card first. Postpaid is charged to the card on file.";
-  }
+  if (!account.has_payment_method) return null;
   if (account.auto_reload_supported === false) {
     return "This card cannot be charged automatically, so postpaid needs another card.";
   }

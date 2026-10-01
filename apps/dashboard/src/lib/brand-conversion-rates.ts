@@ -115,6 +115,8 @@ export function rateSourceLabel(leg: EffectiveLegRate): string {
       return measuredLabel(leg.measured);
     case "manual":
       return "Your value";
+    case "default":
+      return "Industry benchmark";
     case "median":
       return `Median of ${leg.median.brandCount} ${leg.median.brandCount === 1 ? "client" : "clients"}`;
     case null:
