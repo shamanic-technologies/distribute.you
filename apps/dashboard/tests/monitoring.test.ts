@@ -11,6 +11,7 @@ import {
   SentPerPeriodSchema,
   PriceVersionsSchema,
   EmailSendPriceSchema,
+  SubscriptionCostsSchema,
   costItemNames,
   parseMonitoringPath,
   versionInForce,
@@ -339,5 +340,74 @@ describe("monitoring: price of one cold email (owner formula 2026-10-01)", () =>
   it("carries the owner's anatomy: price chart, spend per vendor, monthly table, vendors, timeline, billed before", () => {
     const view = read("components/v2/monitoring-email-price.tsx");
     for (const s of ["<PriceChart", "<SpendChart", "<MonthlyTable", "<VendorsTable", "<Timeline", "<BilledBefore"]) expect(view).toContain(s);
+  });
+});
+
+describe("monitoring: real cost per credit of each subscription (owner 2026-10-01)", () => {
+  const sub = (over: Record<string, unknown> = {}) => ({
+    key: "apollo",
+    label: "Apollo",
+    provider: "apollo",
+    ledgerMatched: true,
+    ledgerNote: null,
+    ledgerVendors: [{ key: "apollo io", firstPaidOn: "2026-01-28", lastPaidOn: "2026-09-29", payments: 39, refunds: 0, paidUsd: 1761.2, refundedUsd: 0, netUsd: 1761.2 }],
+    firstPaymentOn: "2026-01-28",
+    lastPaymentOn: "2026-09-29",
+    paidUsd: 1761.2,
+    refundedUsd: 0,
+    netUsd: 1761.2,
+    creditDefinition: "apollo-credit + apollo-enrichment-credit + apollo-person-match-credit",
+    orgKeyUnitsCounted: false,
+    orgKeyUnitsNote: null,
+    credits: 61007,
+    costPerCreditUsdCents: 2.887,
+    grossCostPerCreditUsdCents: 2.887,
+    costPerCreditNullReason: null,
+    costItems: [
+      { costName: "apollo-credit", isCredit: true, excludedReason: null, quantityPlatformKey: 47833, quantityOrgKey: 0, creditsCounted: 47833, unit: "credit", billedPricePerUnitInUsdCents: 8.5, vendorCostPerUnitInUsdCents: 2.1, catalogueNote: null },
+      { costName: "apollo-search-credit", isCredit: false, excludedReason: "Apollo does not deduct credits for search", quantityPlatformKey: 1589, quantityOrgKey: 0, creditsCounted: 0, unit: null, billedPricePerUnitInUsdCents: null, vendorCostPerUnitInUsdCents: null, catalogueNote: "not in the catalogue" },
+    ],
+    monthly: [{ month: "2026-09", paidUsd: 300, refundedUsd: 0, netUsd: 300, credits: 9000, monthCostPerCreditUsdCents: 3.33, cumulativeNetUsd: 1761.2, cumulativeCredits: 61007, costPerCreditUsdCents: 2.887, grossCostPerCreditUsdCents: 2.887 }],
+    daily: [{ day: "2026-10-01", paidUsd: 0, netUsd: 0, credits: 120, cumulativePaidUsd: 1761.2, cumulativeNetUsd: 1761.2, cumulativeCredits: 61007, costPerCreditUsdCents: 2.887, grossCostPerCreditUsdCents: 2.887 }],
+    ...over,
+  });
+  const body = {
+    formula: "net paid since 2026-01-01 / credits consumed through our own account since 2026-01-01",
+    since: "2026-01-01",
+    asOf: "2026-10-01",
+    refreshedAt: "2026-10-01T15:00:00.000Z",
+    stale: false,
+    lastRefresh: null,
+    subscriptions: [
+      sub(),
+      sub({ key: "explee", label: "Explee", provider: "explee", ledgerMatched: false, ledgerNote: "no ledger line", ledgerVendors: [], paidUsd: null, refundedUsd: null, netUsd: null, costPerCreditUsdCents: null, grossCostPerCreditUsdCents: null, costPerCreditNullReason: "no-ledger-line" }),
+    ],
+  };
+
+  it("costs-service's read parses: unknown money stays null with its reason, never $0", () => {
+    const p = SubscriptionCostsSchema.parse(body);
+    expect(p.subscriptions[1].netUsd).toBeNull();
+    expect(p.subscriptions[1].costPerCreditNullReason).toBe("no-ledger-line");
+    expect(p.subscriptions[0].costItems[1].isCredit).toBe(false);
+  });
+
+  it("is a Cost card and its own page, read through the staff gateway, never written to disk", () => {
+    expect(MONITORING_PAGES).toContain("cost/subscriptions");
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('<Section section="cost" count={3}>');
+    expect(page).toContain('page="cost/subscriptions"');
+    expect(page).toContain('{view.page === "cost/subscriptions" && <SubscriptionsPage />}');
+    expect(page).toContain('["staffSubscriptionCosts"]');
+    expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.subscriptionCosts");
+    const persist = read("lib/persist-cache.ts");
+    expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffSubscriptionCosts"');
+  });
+
+  it("the page reads the producer's cost per credit and never divides paid by credits itself", () => {
+    const view = read("components/v2/monitoring-subscriptions.tsx");
+    expect(view).not.toMatch(/[pP]aidUsd\s*\//);
+    expect(view).not.toMatch(/[nN]etUsd\s*\//);
+    expect(view).not.toMatch(/\/\s*[\w.]*[cC]redits\b/);
+    expect(view).toContain("costPerCreditUsdCents");
   });
 });

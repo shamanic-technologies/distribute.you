@@ -1,7 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { EmptyNote, Figure, SectionTitle } from "@/components/v2/ui";
+import {
+  DEFAULT_WINDOWS,
+  DailyLines,
+  Dash,
+  PeriodBars,
+  SERIES_COLORS,
+  TD,
+  TDR,
+  TH,
+  THR,
+  cents,
+  dayLabel,
+  dollars,
+  monthLabel,
+  n,
+  type BarSeries,
+  type Line,
+} from "@/components/v2/monitoring-charts";
 import { versionsOf, type EmailSendPrice, type EmailSendPriceDay, type PriceVersion } from "@/lib/monitoring/monitoring";
 
 /**
@@ -15,26 +32,11 @@ import { versionsOf, type EmailSendPrice, type EmailSendPriceDay, type PriceVers
 /** The catalogue item sending was billed under, for the "what we billed before" comparison. */
 const SENDING_COST_ITEM = "instantly-account-email-sent";
 
-const VENDOR_COLORS = ["var(--accent)", "var(--data-violet)", "var(--data-amber)", "var(--data-teal)", "var(--data-rose)", "var(--data-sky)"];
+const VENDOR_COLORS = SERIES_COLORS;
 
-const n = (v: number) => v.toLocaleString("en-US");
-const dollars = (v: number) => `${v < 0 ? "-" : ""}$${Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-/** A price per email in US cents: "3.06¢", or "$7.81" once it is a dollar or more. */
-function cents(v: number | null): string | null {
-  if (v == null) return null;
-  if (v >= 100) return `$${(v / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  return `${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}¢`;
-}
 /** The same price read per thousand emails: a unit change of the served figure ($0.0306 → $30.60). */
 function perThousand(v: number | null): string | null {
   return v == null ? null : `$${(v * 10).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-const dayLabel = (d: string, opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" }) =>
-  new Date(`${d.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
-const monthLabel = (m: string, short = false) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: short ? "2-digit" : "numeric", timeZone: "UTC" });
-
-function Dash() {
-  return <span className="k-fg4">{"—"}</span>;
 }
 
 /** The last month the producer marks closed: every month but the one running to today. */
@@ -117,213 +119,51 @@ function Kpis({ p }: { p: EmailSendPrice }) {
   );
 }
 
-// ─── Price chart ───────────────────────────────────────────────────────────
+// ─── Charts ────────────────────────────────────────────────────────────────
 
-type Window = "90" | "180" | "all";
-const WINDOWS: { key: Window; label: string; days: number | null }[] = [
-  { key: "90", label: "90 days", days: 90 },
-  { key: "180", label: "180 days", days: 180 },
-  { key: "all", label: "Since the first send", days: null },
-];
-
-const LINES: { key: "priceUsdCents" | "grossPriceUsdCents"; label: string; color: string; dashed?: boolean }[] = [
-  { key: "priceUsdCents", label: "Since inception", color: "var(--accent)" },
-  { key: "grossPriceUsdCents", label: "Before refunds", color: "var(--fg-3)", dashed: true },
+const LINES: Line<EmailSendPriceDay>[] = [
+  { key: "priceUsdCents", label: "Since inception", color: "var(--accent)", get: (d) => d.priceUsdCents },
+  { key: "grossPriceUsdCents", label: "Before refunds", color: "var(--fg-3)", dashed: true, get: (d) => d.grossPriceUsdCents },
 ];
 
 function PriceChart({ days, firstSendOn }: { days: EmailSendPriceDay[]; firstSendOn: string | null }) {
-  const [win, setWin] = useState<Window>("90");
-  const [hover, setHover] = useState<number | null>(null);
-  const sent = firstSendOn ? days.filter((d) => d.day >= firstSendOn) : [];
-  const w = WINDOWS.find((x) => x.key === win)!;
-  const shown = w.days == null ? sent : sent.slice(-w.days);
-
-  const toolbar = (
-    <span className="inline-flex items-center gap-1.5" role="group" aria-label="Window">
-      {WINDOWS.map((x) => (
-        <button key={x.key} type="button" aria-pressed={win === x.key} onClick={() => setWin(x.key)} className={win === x.key ? "k-btn h-7 px-2 text-[12px]" : "k-btn-ghost h-7 px-2 text-[12px]"}>
-          {x.label}
-        </button>
-      ))}
-    </span>
-  );
-
-  if (shown.length < 2) {
-    return (
-      <div className="k-card">
-        <EmptyNote>No email sent to a lead yet, so no price to draw.</EmptyNote>
-      </div>
-    );
-  }
-
-  // Geometry only: pixel positions of served values, never a figure shown.
-  const W = 800;
-  const H = 220;
-  const PAD = { l: 0, r: 0, t: 8, b: 4 };
-  const vals = shown.flatMap((d) => LINES.map((l) => d[l.key]).filter((v): v is number => v != null));
-  const max = Math.max(...vals, 0.01);
-  const ticks = niceTicks(max);
-  const top = ticks[ticks.length - 1];
-  const x = (i: number) => PAD.l + (i / (shown.length - 1)) * (W - PAD.l - PAD.r);
-  const y = (v: number) => PAD.t + (1 - v / top) * (H - PAD.t - PAD.b);
-  const path = (key: (typeof LINES)[number]["key"]) => {
-    let d = "";
-    let pen = false;
-    shown.forEach((p, i) => {
-      const v = p[key];
-      if (v == null) {
-        pen = false;
-        return;
-      }
-      d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)} `;
-      pen = true;
-    });
-    return d;
-  };
-  const at = shown[hover ?? shown.length - 1];
-  const every = Math.ceil(shown.length / 6);
-
   return (
-    <div className="k-card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="k-fg2 text-[12px]">
-          {dayLabel(at.day)} · {n(at.cumulativeEmailsToLeads)} emails, {dollars(at.cumulativeSpendUsd)} spent so far
-        </span>
-        {toolbar}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
-        {LINES.map((l) => (
-          <span key={l.key} className="inline-flex items-center gap-1.5">
-            <span className="h-[2px] w-3" style={{ background: l.color, opacity: l.dashed ? 0.7 : 1 }} aria-hidden="true" />
-            <span className="k-fg3">{l.label}</span>
-            <span className="tabular-nums">{cents(at[l.key]) ?? "—"}</span>
-          </span>
-        ))}
-      </div>
-      <div className="relative mt-3 pl-[44px]" style={{ height: H }}>
-        {ticks.map((t) => (
-          <span key={t} className="k-fg3 absolute left-0 w-[38px] -translate-y-1/2 text-right text-[11px] tabular-nums" style={{ top: y(t) }}>
-            {tickLabel(t)}
-          </span>
-        ))}
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="none" onMouseLeave={() => setHover(null)} role="img" aria-label="Price per email per day">
-        {ticks.map((t) => (
-          <line key={t} x1={0} x2={W} y1={y(t)} y2={y(t)} stroke="var(--line-subtle)" vectorEffect="non-scaling-stroke" />
-        ))}
-        {LINES.map((l) => (
-          <path key={l.key} d={path(l.key)} fill="none" stroke={l.color} strokeWidth={l.key === "priceUsdCents" ? 2 : 1.5} strokeDasharray={l.dashed ? "4 3" : undefined} vectorEffect="non-scaling-stroke" opacity={l.dashed ? 0.7 : 1} />
-        ))}
-        {hover != null && <line x1={x(hover)} x2={x(hover)} y1={PAD.t} y2={H - PAD.b} stroke="var(--line)" vectorEffect="non-scaling-stroke" />}
-        {shown.map((d, i) => (
-          <rect
-            key={d.day}
-            x={x(i) - (W - PAD.l - PAD.r) / shown.length / 2}
-            y={0}
-            width={(W - PAD.l - PAD.r) / shown.length}
-            height={H}
-            fill="transparent"
-            onMouseEnter={() => setHover(i)}
-          />
-        ))}
-      </svg>
-      </div>
-      <div className="k-line-subtle ml-[44px] flex border-t pt-1.5">
-        {shown.map((d, i) => (
-          <span key={d.day} className="k-fg3 w-0 min-w-0 flex-1 overflow-visible whitespace-nowrap text-[10.5px]">
-            {i % every === 0 ? dayLabel(d.day, { month: "short", day: "numeric" }) : ""}
-          </span>
-        ))}
-      </div>
-    </div>
+    <DailyLines
+      points={firstSendOn ? days.filter((d) => d.day >= firstSendOn) : []}
+      lines={LINES}
+      caption={(d) => `${n(d.cumulativeEmailsToLeads)} emails, ${dollars(d.cumulativeSpendUsd)} spent so far`}
+      format={cents}
+      windows={[...DEFAULT_WINDOWS.slice(0, 2), { key: "all", label: "Since the first send", days: null }]}
+      empty="No email sent to a lead yet, so no price to draw."
+      label="Price per email per day"
+    />
   );
 }
-
-/** An axis tick: as few decimals as the step needs. */
-function tickLabel(v: number): string {
-  if (v >= 100) return `$${(v / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-  return `${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}¢`;
-}
-
-/** Round axis ticks (0 and up to four steps) for the drawn range. */
-function niceTicks(max: number): number[] {
-  const raw = max / 4;
-  const mag = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? 10 * mag;
-  const out: number[] = [];
-  for (let v = 0; v < max + step * 0.999; v += step) out.push(Number(v.toPrecision(6)));
-  return out;
-}
-
-// ─── Spend per vendor per month ────────────────────────────────────────────
 
 function SpendChart({ p }: { p: EmailSendPrice }) {
-  const [hover, setHover] = useState<string | null>(null);
-  const months = p.monthly;
-  if (!months.length) {
-    return (
-      <div className="k-card">
-        <EmptyNote>No payment to an email infrastructure vendor yet.</EmptyNote>
-      </div>
-    );
-  }
-  const H = 140;
-  const vendors = p.vendors.map((v, i) => ({ key: v.key, label: v.label, color: VENDOR_COLORS[i % VENDOR_COLORS.length] }));
-  // Bar height only: a refund month can be net negative for a vendor, drawn at zero height.
-  const max = Math.max(1, ...months.map((m) => vendors.reduce((t, v) => t + Math.max(0, m.spendByVendorUsd[v.key] ?? 0), 0)));
-  // Unhovered, the legend reads the last full month: the current one has barely started.
-  const shown = months.find((m) => m.month === hover) ?? lastFullMonth(p) ?? months[months.length - 1];
+  const series: BarSeries<EmailSendPrice["monthly"][number] & { period: string }>[] = p.vendors.map((v, i) => ({
+    key: v.key,
+    label: v.label,
+    color: SERIES_COLORS[i % SERIES_COLORS.length],
+    get: (m) => m.spendByVendorUsd[v.key] ?? 0,
+  }));
+  const months = p.monthly.map((m) => ({ ...m, period: m.month }));
+  const last = lastFullMonth(p);
   return (
-    <div className="k-card p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <span className="k-fg2 text-[12px]">
-          {monthLabel(shown.month)} · {dollars(shown.spendUsd)} net, {n(shown.emailsToLeads)} emails · {cents(shown.monthPriceUsdCents) ?? "—"} per email that month
-        </span>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
-          {vendors.map((v) => (
-            <span key={v.key} className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-[2px]" style={{ background: v.color }} aria-hidden="true" />
-              <span className="k-fg3">{v.label}</span>
-              <span className="tabular-nums">{dollars(shown.spendByVendorUsd[v.key] ?? 0)}</span>
-            </span>
-          ))}
-        </span>
-      </div>
-      <div className="mt-3 flex items-end gap-2" style={{ height: H }} onMouseLeave={() => setHover(null)}>
-        {months.map((m) => (
-          <button
-            key={m.month}
-            type="button"
-            aria-label={`${monthLabel(m.month)}: ${vendors.map((v) => `${v.label} ${dollars(m.spendByVendorUsd[v.key] ?? 0)}`).join(", ")}`}
-            onMouseEnter={() => setHover(m.month)}
-            onFocus={() => setHover(m.month)}
-            className="flex h-full min-w-0 flex-1 flex-col-reverse"
-            style={{ opacity: hover && hover !== m.month ? 0.5 : 1 }}
-          >
-            {vendors.map((v) => {
-              const val = m.spendByVendorUsd[v.key] ?? 0;
-              if (val <= 0) return null;
-              return <span key={v.key} className="block w-full first:rounded-b-[1px] last:rounded-t-[2px]" style={{ height: Math.max(1, (val / max) * H), background: v.color }} />;
-            })}
-          </button>
-        ))}
-      </div>
-      <div className="k-line-subtle flex gap-2 border-t pt-1.5">
-        {months.map((m) => (
-          <span key={m.month} className="k-fg3 min-w-0 flex-1 text-center text-[10.5px]">
-            {monthLabel(m.month, true)}
-          </span>
-        ))}
-      </div>
-    </div>
+    <PeriodBars
+      periods={months}
+      series={series}
+      // Unhovered, the legend reads the last full month: the current one has barely started.
+      initial={last ? { ...last, period: last.month } : null}
+      caption={(m) => `${dollars(m.spendUsd)} net, ${n(m.emailsToLeads)} emails · ${cents(m.monthPriceUsdCents) ?? "—"} per email that month`}
+      format={dollars}
+      label={monthLabel}
+      empty="No payment to an email infrastructure vendor yet."
+    />
   );
 }
 
 // ─── Tables ────────────────────────────────────────────────────────────────
-
-const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
-const THR = `${TH} text-right`;
-const TD = "px-3 py-2.5 first:pl-4 last:pr-4";
-const TDR = `${TD} text-right tabular-nums`;
 
 function MonthlyTable({ p }: { p: EmailSendPrice }) {
   return (
