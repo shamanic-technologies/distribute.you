@@ -1,0 +1,155 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+import {
+  REPLY_MARGIN_SHARE,
+  firstLaunchedPath,
+  launchPlan,
+  parseDraftedSteps,
+  planFloorUsd,
+  replyCeilingUsd,
+  replyMarginUsd,
+  salesStepsDraftField,
+  type PlanPath,
+} from "../src/lib/v2/get-started";
+import { selectionFromSteps, type PathLeg } from "../src/lib/offer-sales-path";
+import { parseOfferSalesPaths } from "../src/lib/offer-sales-paths";
+
+const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
+const PAGE = read("src/components/v2/get-started/get-started.tsx");
+const LAUNCH = read("src/components/v2/get-started/launch.ts");
+const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
+const PATHS = read("src/components/v2/offer-sales-paths.tsx");
+
+const leg = (legKey: string, from: string | null, slug: string | null) => ({
+  legKey,
+  fromStep: from ? { key: from } : null,
+  workedBy: slug ? "platform" : "human",
+  channel: slug ? { slug, name: null } : null,
+});
+
+// Two paths as features-service ranks them: a reply path through meeting booking first,
+// a visit path second, and a path entered by nothing we run (it buys nothing).
+const PATHS_FIXTURE: PlanPath[] = [
+  {
+    pathKey: "human-entry",
+    entryChannelSlug: null,
+    legs: [leg("start_to_meeting_booked", null, null), leg("meeting_booked_to_paid_client", "meeting_booked", null)],
+  },
+  {
+    pathKey: "reply",
+    entryChannelSlug: "sales-cold-email-outreach",
+    legs: [
+      leg("start_to_conversation", null, "sales-cold-email-outreach"),
+      leg("conversation_to_meeting_booked", "conversation", "ai-meeting-booking"),
+      leg("meeting_booked_to_paid_client", "meeting_booked", null),
+    ],
+  },
+  {
+    pathKey: "visit",
+    entryChannelSlug: "sales-cold-email-outreach",
+    legs: [leg("start_to_website_visit", null, "sales-cold-email-outreach"), leg("website_visit_to_paid_client", "website_visit", null)],
+  },
+];
+
+describe("the steps are drafted off the site, from the catalogue only", () => {
+  it("asks for keys from the list it names", () => {
+    const f = salesStepsDraftField([
+      { key: "conversation", label: "Positive reply" },
+      { key: "meeting_booked", label: "Meeting booked" },
+    ]);
+    expect(f.key).toBe("salesSteps");
+    expect(f.description).toContain("conversation (Positive reply), meeting_booked (Meeting booked)");
+  });
+
+  it("keeps only offered steps, in catalogue order, however the model wrote them", () => {
+    const offered = ["website_visit", "conversation", "meeting_booked"];
+    expect(parseDraftedSteps("- meeting_booked (Meeting booked)\nconversation\ninvented_step", offered)).toEqual(["conversation", "meeting_booked"]);
+    expect(parseDraftedSteps(["website_visit"], offered)).toEqual(["website_visit"]);
+    expect(parseDraftedSteps(null, offered)).toEqual([]);
+  });
+
+  it("ticking the drafted steps ticks the legs between them", () => {
+    const legs: PathLeg[] = [
+      { legKey: "start_to_conversation", fromKey: null, toKey: "conversation" },
+      { legKey: "conversation_to_meeting_booked", fromKey: "conversation", toKey: "meeting_booked" },
+      { legKey: "meeting_booked_to_paid_client", fromKey: "meeting_booked", toKey: "paid_client" },
+    ];
+    const sel = selectionFromSteps(["conversation", "meeting_booked"], legs);
+    expect([...sel.legs].sort()).toEqual(["conversation_to_meeting_booked", "meeting_booked_to_paid_client", "start_to_conversation"]);
+  });
+});
+
+describe("what we launch", () => {
+  it("frames the best path a channel of ours enters, never one entered by nothing we run", () => {
+    expect(firstLaunchedPath(PATHS_FIXTURE)?.pathKey).toBe("reply");
+  });
+
+  it("creates every leg a channel of ours works, the framed path first, once each", () => {
+    expect(launchPlan(PATHS_FIXTURE)).toEqual([
+      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation", label: "Cold email", reactive: false, required: true },
+      { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked", label: "Meeting booking", reactive: true, required: true },
+      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", reactive: false, required: false },
+    ]);
+  });
+
+  it("reads the production body through the real parser", () => {
+    const data = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-paths.prod.json")), "test");
+    expect(launchPlan(data.paths)).toEqual([
+      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", reactive: false, required: true },
+    ]);
+  });
+});
+
+describe("the reply margin, Google Ads' way", () => {
+  it("is half the budget, shared between the reply campaigns, whole dollars", () => {
+    expect(REPLY_MARGIN_SHARE).toBe(0.5);
+    expect(replyMarginUsd(20)).toBe(10);
+    expect(replyCeilingUsd(20, 1)).toBe(10);
+    expect(replyCeilingUsd(20, 2)).toBe(5);
+    expect(replyCeilingUsd(20, 0)).toBe(0);
+  });
+
+  it("lifts the smallest budget so every campaign clears its channel's floor", () => {
+    const plan = launchPlan(PATHS_FIXTURE);
+    const floors = new Map([
+      ["sales-cold-email-outreach", 100],
+      ["ai-meeting-booking", 300],
+    ]);
+    // The meeting booking needs $3 out of a 50% margin: a $6 budget.
+    expect(planFloorUsd(plan, floors, 1)).toBe(6);
+    expect(planFloorUsd(plan.filter((c) => !c.reactive), floors, 1)).toBe(1);
+  });
+});
+
+describe("the call sites", () => {
+  it("states the ONE daily budget as the brand's global budget before creating the campaigns", () => {
+    const at = LAUNCH.indexOf("await setBrandSalesBudget(input.brandId, input.budgetUsd * 100)");
+    expect(at).toBeGreaterThan(0);
+    expect(at).toBeLessThan(LAUNCH.indexOf("createCampaignWithoutBrandEnrichment({"));
+    expect(LAUNCH).toContain("c.reactive ? replyCeilingUsd(input.budgetUsd, replies) : input.budgetUsd");
+  });
+
+  it("asks the reply margin as a required box, unticked by default, on the payment wall", () => {
+    expect(WALL).toContain("const [marginOk, setMarginOk] = useState(false);");
+    expect(WALL).toContain("if (hasReplies && !marginOk) {");
+    expect(WALL).toContain("up to +50% of my daily budget");
+    expect(WALL).not.toContain("a day on each");
+  });
+
+  it("frames the path launched first and lets a rate be overwritten from its detail", () => {
+    expect(PAGE).toContain("highlightPathKey={firstPath?.pathKey ?? null}");
+    expect(PAGE).toContain("await stateBrandLegRates(brandId, [{ fromStep: leg.fromStep.label, toStep: leg.toStep.label, ratePct }]);");
+    expect(PATHS).toContain("onStateRate ? <RateEditor leg={leg} onStateRate={onStateRate} />");
+  });
+
+  it("prices the wall's floor on every channel of the plan", () => {
+    expect(PAGE).toContain("floorUsd={planFloorUsd(plan, floorCents, floorUsd)}");
+    expect(PAGE).toContain("plan={plan}");
+  });
+
+  it("asks nothing about visits or meetings any more", () => {
+    expect(PAGE).not.toContain("OutcomeStage");
+    expect(PAGE).not.toContain("outcome-prices");
+  });
+});

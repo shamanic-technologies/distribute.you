@@ -18,18 +18,19 @@ import {
   prefillFeatureInputs,
   saveCampaignBudget,
   saveOfferUserFields,
+  setBrandSalesBudget,
   setAudienceStatus,
   type UserFieldKey,
   type UserFieldValue,
 } from "@/lib/api";
 import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
-import { campaignsForOutcome, type GetStartedOutcome } from "@/lib/v2/get-started";
+import { replyCeilingUsd, type PlanCampaign } from "@/lib/v2/get-started";
 
 export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
 
-/** The cold-email leg an outcome starts with: it prices the recommended budget. */
-export function coldEmailLegFor(outcome: GetStartedOutcome | null): NewOrgLegKey {
-  return outcome === "meetings" ? "start_to_conversation" : GET_STARTED_LEG;
+/** The cold-email entry leg that prices the recommended budget, when the path launched first starts with one. */
+export function pricingLegFor(entryLegKey: string | null | undefined): NewOrgLegKey | null {
+  return entryLegKey === "start_to_website_visit" || entryLegKey === "start_to_conversation" ? entryLegKey : null;
 }
 
 export interface LaunchInput {
@@ -39,10 +40,10 @@ export interface LaunchInput {
   offer: { offerId: string; name: string };
   /** The audience picked at step 4, already created under that offer. */
   audienceId: string;
-  /** Whole dollars a day, set on EACH campaign the outcome launches. */
+  /** The ONE daily budget (whole dollars): billing's global budget, spent on the best path first. */
   budgetUsd: number;
-  /** What the visitor buys: one campaign (visits) or two (meetings). */
-  outcome: GetStartedOutcome;
+  /** Every campaign the ranked paths need, the path launched first first (`launchPlan`). */
+  plan: PlanCampaign[];
   /** The offer points were answered in the preview and saved on the offer already. */
   answered: boolean;
 }
@@ -50,12 +51,14 @@ export interface LaunchInput {
 export interface LaunchProgress {
   levers: boolean;
   audiences: boolean;
+  /** The brand's global sales budget stated. */
+  salesBudget: boolean;
   /** Per campaign (keyed `featureSlug|legKey`): its budget written, and its id once created. */
   budgets: Record<string, boolean>;
   campaignIds: Record<string, string>;
 }
 
-export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, budgets: {}, campaignIds: {} };
+export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, salesBudget: false, budgets: {}, campaignIds: {} };
 
 /**
  * The daily budget the v2 "Add a brand" modal would recommend for this offer:
@@ -103,10 +106,14 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
 }
 
 /**
- * Runs the launch on the offer and audience the visitor picked (no re-pick), one
- * campaign per (channel, leg) the outcome needs, each with the daily budget the
- * visitor set. Mutates `progress` as each write lands so a retry resumes. Returns the
- * first campaign's id (the cold email one, where the mission page opens).
+ * Runs the launch on the offer and audience the visitor picked (no re-pick): the ONE
+ * daily budget stated as the brand's global sales budget (campaign-service spends it on
+ * the best-ROI path first), then one campaign per (channel, leg) the ranked paths need.
+ * A lead-finding campaign's own ceiling is the whole budget (the global one caps them
+ * together); a reply campaign's is its share of the reply margin. A campaign of the path
+ * launched first must be created or the launch fails; one of a later path that has
+ * nothing ready to run is skipped and logged. Mutates `progress` as each write lands so
+ * a retry resumes. Returns the first campaign's id (where the mission page opens).
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
   const { offerId, name: offerName } = input.offer;
@@ -134,20 +141,32 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     progress.audiences = true;
   }
 
+  if (input.plan.length === 0) throw new Error("No sales path can be launched yet. Go back and tick the steps your sales go through.");
+  if (!progress.salesBudget) {
+    await setBrandSalesBudget(input.brandId, input.budgetUsd * 100);
+    progress.salesBudget = true;
+  }
+
+  const replies = input.plan.filter((c) => c.reactive).length;
   const ids: string[] = [];
-  for (const c of campaignsForOutcome(input.outcome)) {
+  for (const c of input.plan) {
     const key = `${c.featureSlug}|${c.legKey}`;
-    if (!progress.budgets[key]) {
-      await saveCampaignBudget(input.brandId, { offerId, legKey: c.legKey, featureSlug: c.featureSlug }, input.budgetUsd * 100);
-      progress.budgets[key] = true;
-    }
     if (progress.campaignIds[key]) {
       ids.push(progress.campaignIds[key]);
       continue;
     }
     const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: c.legKey });
     const workflowSlug = ladder.recommendedWorkflowDynastySlug;
-    if (!workflowSlug) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
+    if (!workflowSlug) {
+      if (c.required) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
+      console.warn(`[get-started] launch: no workflow ready for ${key}, campaign skipped (a later path)`);
+      continue;
+    }
+    if (!progress.budgets[key]) {
+      const ceilingUsd = c.reactive ? replyCeilingUsd(input.budgetUsd, replies) : input.budgetUsd;
+      await saveCampaignBudget(input.brandId, { offerId, legKey: c.legKey, featureSlug: c.featureSlug }, ceilingUsd * 100);
+      progress.budgets[key] = true;
+    }
 
     await levers;
     const prefill = await prefillFeatureInputs(c.featureSlug, [input.brandId], offerId);

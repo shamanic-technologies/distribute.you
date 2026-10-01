@@ -32,6 +32,9 @@ interface Rule {
   /** Segments. `:brand` must equal the session's brand; `:seg` is any single
    *  non-empty segment; anything else matches literally. */
   segments: string[];
+  /** A query parameter that must be present and equal the session's brand, for a
+   *  route that names the brand in its query rather than its path. */
+  queryBrand?: string;
 }
 
 /**
@@ -69,6 +72,15 @@ const RULES: Rule[] = [
   // refuses an offer that is not the brand's.
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "economics"] },
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "user-fields"] },
+  // The sales path steps of /get-started: the steps and legs ticked for the offer
+  // (brand-service), the brand's conversion rate per leg, read and overwritten from the
+  // paths' detail (brand-service), and the paths those legs make, ranked by expected ROI
+  // (features-service). The ranking names the brand in its QUERY, bound below.
+  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "sales-path"] },
+  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "sales-path"] },
+  { method: "GET", segments: ["brands", ":brand", "leg-rates"] },
+  { method: "PUT", segments: ["brands", ":brand", "leg-rates"] },
+  { method: "GET", segments: ["offers", ":seg", "sales-paths"], queryBrand: "brandId" },
 
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },
@@ -173,6 +185,10 @@ export function anonCallAllowed({ method, endpoint, brandId }: AllowInput): Allo
       }
     }
     if (!matched) continue;
+    if (rule.queryBrand) {
+      const q = new URLSearchParams(endpoint.includes("?") ? endpoint.slice(endpoint.indexOf("?") + 1) : "");
+      if (ownedBrand.length === 0 || q.get(rule.queryBrand) !== ownedBrand) brandMismatch = true;
+    }
     if (brandMismatch) {
       sawWrongBrand = true;
       continue;

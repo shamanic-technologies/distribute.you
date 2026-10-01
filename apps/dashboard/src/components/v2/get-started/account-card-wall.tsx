@@ -51,14 +51,14 @@ import {
   nextSlide,
   parseDailyBudget,
   type GetStartedEmail,
-  totalDailyUsd,
+  replyMarginUsd,
   type GetStartedAudience,
   type GetStartedOffer,
-  type GetStartedOutcome,
+  type PlanCampaign,
 } from "@/lib/v2/get-started";
 import { proofCardsFor, shuffleWithSeed, type ProofCard } from "@/lib/start-proof";
 import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
-import { EMPTY_PROGRESS, coldEmailLegFor, launchFromPreview, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
+import { EMPTY_PROGRESS, launchFromPreview, pricingLegFor, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
 import { WALL_OPEN_CLASS } from "./view-transition";
@@ -92,7 +92,8 @@ export function AccountCardWall({
   floorUsd,
   recommendedUsd,
   budgetChosen = false,
-  outcome,
+  plan,
+  entryLegKey,
   answered,
   onBudget,
   onClose,
@@ -112,8 +113,10 @@ export function AccountCardWall({
   recommendedUsd: number | null;
   /** The budget was typed by the person earlier (restored after a round trip): a price that lands later must not replace it. */
   budgetChosen?: boolean;
-  /** What the visitor buys: one campaign (visits) or two (meetings), each at the daily budget. */
-  outcome: GetStartedOutcome;
+  /** Every campaign the ranked paths need (`launchPlan`), the path launched first first. */
+  plan: PlanCampaign[];
+  /** The entry leg of the path launched first: it prices the recommended budget. */
+  entryLegKey: string | null;
   /** The offer points and give lists were answered in the preview (and saved). */
   answered: boolean;
   onBudget: (usd: number) => void;
@@ -129,6 +132,9 @@ export function AccountCardWall({
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
+  // The reply margin: unticked by default, so it is read before anything is paid.
+  const hasReplies = plan.some((c) => c.reactive);
+  const [marginOk, setMarginOk] = useState(false);
   // The price read once the brand has an owner (and therefore an offer) wins over the
   // one the preview could read signed out, which is none for a brand with no offer yet.
   const [pricedUsd, setPricedUsd] = useState<number | null>(null);
@@ -208,8 +214,9 @@ export function AccountCardWall({
         // Price the budget the way the "Add a brand" modal does, now that the brand
         // can hold an offer. Best effort: the field keeps the floor when no price exists.
         setPricing(true);
-        recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, coldEmailLegFor(outcome))
-          .then((usd) => setPricedUsd(usd))
+        const pricingLeg = pricingLegFor(entryLegKey);
+        (pricingLeg ? recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, pricingLeg) : Promise.resolve(null))
+          .then((usd) => setPricedUsd(usd == null ? null : Math.max(usd, Math.ceil(floorUsd))))
           .catch((e) => console.error("[get-started] budget price read failed:", e))
           .finally(() => setPricing(false));
       } catch (e) {
@@ -226,11 +233,11 @@ export function AccountCardWall({
   // the code and the card. Only when the terms were already accepted (a Google return
   // comes back with the box unticked, and then the button asks for it).
   useEffect(() => {
-    if (stage !== "card" || cardOpened.current || busy || claiming || !consent || !account) return;
+    if (stage !== "card" || cardOpened.current || busy || claiming || !consent || (hasReplies && !marginOk) || !account) return;
     cardOpened.current = true;
     void addCard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, busy, claiming, consent, account]);
+  }, [stage, busy, claiming, consent, marginOk, account]);
 
   const parsedBudget = parseDailyBudget(budget, floorUsd);
   const budgetUsd = "usd" in parsedBudget ? parsedBudget.usd : null;
@@ -242,6 +249,10 @@ export function AccountCardWall({
     }
     if ("problem" in parsedBudget) {
       setError(parsedBudget.problem);
+      return false;
+    }
+    if (hasReplies && !marginOk) {
+      setError("Tick the box about replying to your leads.");
       return false;
     }
     if (budgetTouched.current) onBudget(parsedBudget.usd);
@@ -420,7 +431,7 @@ export function AccountCardWall({
       await setPaymentMode(postpaid ? "postpaid" : "prepaid");
       if (postpaid) await configureAutoTopup(5000, 1000);
       const campaignId = await launchFromPreview(
-        { brandId, website, offer, audienceId: audience.audienceId, budgetUsd, outcome, answered },
+        { brandId, website, offer, audienceId: audience.audienceId, budgetUsd, plan, answered },
         progress.current,
       );
       await defaultSalesRepToAccountEmail(brandId, user?.primaryEmailAddress?.emailAddress);
@@ -465,7 +476,7 @@ export function AccountCardWall({
           disabled={stage === "launching"}
           aria-label="Daily budget in dollars"
         />
-        <span className="k-fg3 text-[12px]">{outcome === "meetings" ? "a day on each" : "a day"}</span>
+        <span className="k-fg3 text-[12px]">a day</span>
       </span>
       {recommendation != null && Number(budget) === recommendation && (
         <span key={recommendation} className="gs-pop k-chip">
@@ -473,10 +484,18 @@ export function AccountCardWall({
         </span>
       )}
       {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
-      {outcome === "meetings" && budgetUsd != null && (
-        <span className="k-fg3 w-full text-[12px] leading-5">
-          {`Two campaigns run: cold email gets the replies, meeting booking turns them into meetings. $${totalDailyUsd(outcome, budgetUsd)} a day in total.`}
-        </span>
+      <span className="k-fg3 w-full text-[12px] leading-5">
+        One budget for finding new leads. We put it on your best sales path first, and move it as your results come in.
+      </span>
+      {hasReplies && (
+        <label className="mt-1 flex w-full items-start gap-2 text-[12px] leading-5">
+          <input type="checkbox" className="mt-1" checked={marginOk} onChange={(e) => setMarginOk(e.target.checked)} disabled={stage === "launching"} />
+          <span className="k-fg2">
+            {budgetUsd != null
+              ? `I understand that up to +50% of my daily budget (up to $${replyMarginUsd(budgetUsd)} a day) can be used to reply to my leads, calls included.`
+              : "I understand that up to +50% of my daily budget can be used to reply to my leads, calls included."}
+          </span>
+        </label>
       )}
     </div>
   );

@@ -4,13 +4,11 @@ import { resolve } from "path";
 import {
   GET_STARTED_STEPS,
   answerLines,
-  campaignsForOutcome,
   leversLLMPrompt,
   parseGetStartedSnapshot,
   parseLifetimeRevenue,
   parseUsdEstimate,
   stepIndex,
-  totalDailyUsd,
 } from "../src/lib/v2/get-started";
 
 const PAGE = readFileSync(resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf-8");
@@ -18,14 +16,16 @@ const LAUNCH = readFileSync(resolve(__dirname, "../src/components/v2/get-started
 const API = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf-8");
 
 describe("onboarding v2: the offer questions come after the audience, before the companies", () => {
-  it("orders offer, audience, outcome, value, levers, gives, companies, email", () => {
+  it("orders offer, audience, value, sales steps, legs, paths, levers, gives, companies, email", () => {
     expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual([
       "company",
       "competitors",
       "offer",
       "audience",
-      "outcome",
       "value",
+      "salesSteps",
+      "legs",
+      "paths",
       "levers",
       "gives",
       "companies",
@@ -34,17 +34,6 @@ describe("onboarding v2: the offer questions come after the audience, before the
     expect(stepIndex("email")).toBe(GET_STARTED_STEPS.length - 1);
   });
 
-  it("launches one campaign for visits and two for meetings, each at the daily amount", () => {
-    expect(campaignsForOutcome("visits")).toEqual([
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email" },
-    ]);
-    expect(campaignsForOutcome("meetings").map((c) => `${c.featureSlug}|${c.legKey}`)).toEqual([
-      "sales-cold-email-outreach|start_to_conversation",
-      "ai-meeting-booking|conversation_to_meeting_booked",
-    ]);
-    expect(totalDailyUsd("visits", 10)).toBe(10);
-    expect(totalDailyUsd("meetings", 10)).toBe(20);
-  });
 });
 
 describe("lifetime revenue", () => {
@@ -81,9 +70,13 @@ describe("answers as bullets", () => {
 describe("snapshot", () => {
   it("restores the answers and tolerates an older snapshot without them", () => {
     const base = { version: 2, website: "https://a.com", brandId: "b1" };
-    expect(parseGetStartedSnapshot(JSON.stringify(base))?.outcome).toBeNull();
-    const s = parseGetStartedSnapshot(JSON.stringify({ ...base, outcome: "meetings", lifetimeRevenueUsd: 900, answered: true }));
-    expect(s).toMatchObject({ outcome: "meetings", lifetimeRevenueUsd: 900, answered: true });
+    expect(parseGetStartedSnapshot(JSON.stringify(base))?.salesPath).toBeNull();
+    const s = parseGetStartedSnapshot(
+      JSON.stringify({ ...base, salesPath: { steps: ["conversation"], legs: ["start_to_conversation"] }, pathsDone: true, lifetimeRevenueUsd: 900, answered: true }),
+    );
+    expect(s).toMatchObject({ salesPath: { steps: ["conversation"], legs: ["start_to_conversation"] }, pathsDone: true, lifetimeRevenueUsd: 900, answered: true });
+    // A retired "what you want" answer is ignored, never read as a path.
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...base, outcome: "meetings" }))?.salesPath).toBeNull();
   });
 });
 
@@ -105,8 +98,8 @@ describe("the page's call sites", () => {
     expect(keys).not.toContain("neverGive");
   });
 
-  it("launches every campaign the outcome needs, and skips re-drafting answered levers", () => {
-    expect(LAUNCH).toContain("for (const c of campaignsForOutcome(input.outcome))");
+  it("launches every campaign the ranked paths need, and skips re-drafting answered levers", () => {
+    expect(LAUNCH).toContain("for (const c of input.plan)");
     expect(LAUNCH).toContain("if (input.answered) progress.levers = true;");
   });
 });

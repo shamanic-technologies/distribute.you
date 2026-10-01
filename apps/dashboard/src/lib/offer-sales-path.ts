@@ -111,3 +111,34 @@ export function toggleStep(
   for (const l of legs) if (touches(l)) nextLegs.delete(l.legKey);
   return { steps: nextSteps, legs: nextLegs };
 }
+
+/**
+ * The legs and steps a surface offers, off the catalogue: every leg between steps, the
+ * entry legs a channel of ours performs, and the steps they touch (in catalogue order).
+ * `channelsByLeg` lists, per leg, the channels of ours that perform it.
+ */
+export function offeredFromCatalogue(
+  catalogue: {
+    legs: ReadonlyMap<string, { legKey: string; fromKey: string | null; toKey: string }>;
+    steps: ReadonlyMap<string, unknown>;
+    legsByChannel: ReadonlyMap<string, readonly string[]>;
+  },
+  channelSlugs: Iterable<string>,
+): { legs: PathLeg[]; steps: string[]; channelsByLeg: Map<string, string[]> } {
+  const ours = new Set(channelSlugs);
+  const byLeg = new Map<string, string[]>();
+  for (const [slug, keys] of catalogue.legsByChannel) {
+    if (!ours.has(slug)) continue;
+    for (const k of keys) byLeg.set(k, [...(byLeg.get(k) ?? []), slug]);
+  }
+  const all: PathLeg[] = [...catalogue.legs.values()].map((l) => ({ legKey: l.legKey, fromKey: l.fromKey, toKey: l.toKey }));
+  const offered = offeredLegs(all, byLeg);
+  return { legs: offered, steps: offeredSteps(offered, [...catalogue.steps.keys()]), channelsByLeg: byLeg };
+}
+
+/** A selection built by ticking steps one by one (the legs between ticked steps follow). */
+export function selectionFromSteps(stepKeys: readonly string[], legs: readonly PathLeg[]): SalesPathSelection {
+  let sel: SalesPathSelection = { steps: new Set(), legs: new Set() };
+  for (const s of stepKeys) sel = toggleStep(sel, s, true, legs);
+  return sel;
+}

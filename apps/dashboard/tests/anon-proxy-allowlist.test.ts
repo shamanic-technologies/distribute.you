@@ -259,3 +259,26 @@ describe("onboarding v2 steps 3 to 5: offer, audience, 100 companies", () => {
     expect(allow("POST", "/orgs/audiences/9b1c/preview/companies/3/reveal").allowed).toBe(false);
   });
 });
+
+describe("the sales path steps of /get-started", () => {
+  const OFFER = "7b5c063d-e33f-4440-87fb-1f1e6aa4e850";
+  it("permits the steps and legs, the leg rates and the ranked paths, on the session's brand", () => {
+    expect(allow("GET", `/brands/${BRAND}/offers/${OFFER}/sales-path`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/sales-path`).allowed).toBe(true);
+    expect(allow("GET", `/brands/${BRAND}/leg-rates`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${BRAND}/leg-rates`).allowed).toBe(true);
+    expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${BRAND}`).allowed).toBe(true);
+  });
+
+  it("refuses them on another brand, the query-bound read included", () => {
+    expect(allow("PUT", `/brands/${OTHER}/offers/${OFFER}/sales-path`).refusal).toBe("wrong-brand");
+    expect(allow("PUT", `/brands/${OTHER}/leg-rates`).refusal).toBe("wrong-brand");
+    expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${OTHER}`).refusal).toBe("wrong-brand");
+    expect(allow("GET", `/offers/${OFFER}/sales-paths`).refusal).toBe("wrong-brand");
+    expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${BRAND}`, "").allowed).toBe(false);
+  });
+
+  it("never lets the anonymous session state the global budget (that is set after the account exists)", () => {
+    expect(allow("PUT", `/brands/${BRAND}/sales-budget`).allowed).toBe(false);
+  });
+});
