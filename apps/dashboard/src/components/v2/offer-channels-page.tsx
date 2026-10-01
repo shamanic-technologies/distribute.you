@@ -287,14 +287,14 @@ function InlineList({
           placeholder="One item per line"
           // k-input pins a 28px control height; this field holds a list.
           style={{ height: "auto" }}
-          className="k-input w-full resize-y px-2.5 py-2 text-[13px] leading-[20px]"
+          className="k-input w-full resize-y px-1.5 py-0.5 text-[13px] leading-[20px]"
         />
       ) : (
         <button
           id={id}
           type="button"
           onClick={() => setText(shown.join("\n"))}
-          className="k-hover block min-h-[44px] w-full rounded-[8px] px-2.5 py-2 text-left text-[13px] leading-[20px] [box-shadow:inset_0_0_0_1px_var(--line-subtle)]"
+          className="k-hover -mx-1.5 block w-[calc(100%+12px)] cursor-text rounded-[6px] px-1.5 py-0.5 text-left text-[13px] leading-[20px]"
         >
           {shown.length === 0 ? (
             <span className="k-fg3">Nothing yet. Click to add.</span>
