@@ -299,7 +299,7 @@ describe("the surface", () => {
   });
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
-    expect(WALL).toContain("<TrialTimer />");
+    expect(WALL).toContain("<TrialTimer label={copy.timerLabel}");
     expect(WALL).toContain("<TrialSpots />");
   });
 
@@ -376,7 +376,7 @@ describe("the wall", () => {
     expect(wall).not.toContain("proofCardsFor(");
     expect(wall).toContain("<Testimonials />");
     // The $30 figure is the served median divided, or absent.
-    expect(wall).toContain("hotLeadsForCredit(proof?.hotLeads?.medianCostUsd)");
+    expect(wall).toContain("hotLeadsForCredit(proof?.hotLeads?.medianCostUsd, copy.creditUsd)");
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');

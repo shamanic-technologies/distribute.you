@@ -225,7 +225,7 @@ describe("the payment wall, simplified", () => {
   it("asks Google OR email, with the email field right above its button, and asks the budget with the card", () => {
     const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
     expect(form.indexOf("Continue with Google")).toBeLessThan(form.indexOf("Continue with Email"));
-    expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("Claim my $${WALL_FREE_CREDIT_USD} and start"));
+    expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("copy.emailCta}"));
     expect(form).not.toContain("{budgetRow}");
     expect(WALL).toContain('if (!checkReady("account")) return;');
   });
@@ -257,7 +257,7 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
 
   it("frames the sign-up panel with its own headline", () => {
     expect(WALL).toContain("ring-2 ring-[var(--accent)]");
-    expect(WALL).toContain("Claim your $${WALL_FREE_CREDIT_USD} and start");
+    expect(WALL).toContain("{copy.formTitle}");
   });
 
   // Owner 2026-10-01: signing up must be the first thing anyone wants to click.
@@ -277,7 +277,7 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
     expect(WALL).not.toContain("Email me a code");
     // Owner 2026-10-01 (second pass): the scarcity and the steps come first, the buttons under them,
     // and the headline carries no accent fill (it read as one more button).
-    expect(WALL.indexOf("<TrialTimer />")).toBeLessThan(WALL.indexOf("Continue with Google"));
+    expect(WALL.indexOf("<TrialTimer ")).toBeLessThan(WALL.indexOf("Continue with Google"));
     expect(WALL.indexOf("<Steps stage={stage} />")).toBeLessThan(WALL.indexOf("Continue with Google"));
     expect(WALL).not.toContain('<div className="bg-[var(--accent)] px-5 py-4 text-white">');
     // On a phone the form comes first.

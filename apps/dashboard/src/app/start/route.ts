@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { startDestination } from "@/lib/start-destination";
 
 /**
  * `/start` is the landing's way in (it links here from several places and a
- * shared link keeps resolving). It hands the visitor to onboarding v2
- * (`/get-started`), except the subscription arm, which keeps `/onboarding`
- * (`lib/start-destination.ts` says why). The query string rides along (`?url=` is
- * how the landing hands over the website).
+ * shared link keeps resolving). It opens onboarding v2, `/get-started` (owner
+ * 2026-10-01), for every visitor, the $99/month arm included; `/onboarding` (v1)
+ * stays served for direct links. The query string rides along (`?url=` is how the
+ * landing hands over the website).
  *
- * 307, not 308: the target depends on the visitor's cookie, so the browser must
- * not cache it as permanent.
+ * 307, not 308: a permanent redirect is cached by the browser, and this one may
+ * move again.
  *
  * A RELATIVE Location on purpose: `request.url` on a self-hosted Next server is
  * the address the process binds to (`http://0.0.0.0:3000/...`), not the host the
@@ -17,6 +16,5 @@ import { startDestination } from "@/lib/start-destination";
  */
 export function GET(request: Request) {
   const search = new URL(request.url).search;
-  const target = startDestination(request.headers.get("cookie"));
-  return new NextResponse(null, { status: 307, headers: { Location: `${target}${search}` } });
+  return new NextResponse(null, { status: 307, headers: { Location: `/get-started${search}` } });
 }

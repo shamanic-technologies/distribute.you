@@ -107,6 +107,7 @@ import {
   type LeverDraftKey,
   type GetStartedStepKey,
   type StepPhase,
+  wallCopy,
 } from "@/lib/v2/get-started";
 import { Initials, Shimmer } from "@/components/v2/ui";
 import { OfferIcon } from "@/components/v2/new-org-icons";
@@ -114,6 +115,7 @@ import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motio
 import { BrandLogo } from "@/components/brand-logo";
 import { pricingLegFor, recommendedBudgetForPreview } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
+import { SUBSCRIPTION_MONTHLY_CENTS, isSubscriptionArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
 import { stepViewName, withStageTransition } from "./view-transition";
 
@@ -146,6 +148,12 @@ const rowKey = (audienceId: string, index: number) => `${audienceId}:${index}`;
 export function GetStarted() {
   const params = useSearchParams();
   const { isSignedIn } = useAuth();
+  // The landing's $99/month arm sells the plan's free trial instead of the $30 (`wallCopy`).
+  const [wall] = useState(() =>
+    typeof document !== "undefined" && isSubscriptionArm(document.cookie)
+      ? wallCopy({ subscription: true, monthlyCents: pickedPlanCents(document.cookie), creditCents: SUBSCRIPTION_MONTHLY_CENTS })
+      : wallCopy({ subscription: false }),
+  );
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -1324,7 +1332,7 @@ export function GetStarted() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="k-fg text-[14px] font-medium">
-                <CountUp value={30} format={(n) => `$${Math.round(n)}`} ms={700} /> of free credit to start
+                <CountUp value={wall.creditUsd} format={(n) => `$${Math.round(n)}`} ms={700} /> {wall.bannerTitle}
               </p>
               <p className="k-fg3 hidden text-[12px] sm:block">No charge today. We write and send the emails, you get the replies.</p>
             </div>
@@ -1375,7 +1383,7 @@ export function GetStarted() {
                     setWallOpen(true);
                   }}
                 >
-                  Start outreach with $30 free
+                  {wall.bannerCta}
                 </button>
               </div>
             )}

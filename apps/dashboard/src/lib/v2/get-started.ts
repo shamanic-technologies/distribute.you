@@ -595,6 +595,67 @@ export function hotLeadsForCredit(medianCostUsd: number | null | undefined, cred
   return n >= 1 ? n : null;
 }
 
+/**
+ * The words of the wall, per arm. The landing's `subscription` arm (`lp_variant`,
+ * `lib/subscription-plan.ts`) walks the same `/get-started` but buys the monthly plan:
+ * a 3-day free trial that starts with the plan's credit, then the monthly amount.
+ * Every other visitor claims the $30 free credit and pays as the campaign spends.
+ */
+export interface WallCopy {
+  /** The credit the visitor starts on, in dollars (what the left panel counts). */
+  creditUsd: number;
+  creditLine: string;
+  bannerTitle: string;
+  bannerCta: string;
+  timerLabel: string;
+  timerExtendedLabel: string;
+  formTitle: string;
+  formSub: string;
+  emailCta: string;
+  codeCta: string;
+  cardTitle: string;
+  cardNote: string;
+  cardCta: string;
+}
+
+export function wallCopy(arm: { subscription: false } | { subscription: true; monthlyCents: number; creditCents: number }): WallCopy {
+  if (!arm.subscription) {
+    const c = WALL_FREE_CREDIT_USD;
+    return {
+      creditUsd: c,
+      creditLine: "free credit",
+      bannerTitle: "of free credit to start",
+      bannerCta: `Start outreach with $${c} free`,
+      timerLabel: `Time left to claim your $${c} free trial`,
+      timerExtendedLabel: `We're giving you more time to lock in your $${c}`,
+      formTitle: `Claim your $${c} and start`,
+      formSub: "One minute. No charge today.",
+      emailCta: `Claim my $${c} and start`,
+      codeCta: `Unlock my $${c}`,
+      cardTitle: "You will not be charged yet",
+      cardNote: `The card only confirms you are real. Once your $${c} runs out, it pays what the campaign spends, never more than your daily budget.`,
+      cardCta: "Add card and start",
+    };
+  }
+  const credit = Math.round(arm.creditCents / 100);
+  const monthly = `$${Math.round(arm.monthlyCents / 100).toLocaleString("en-US")}`;
+  return {
+    creditUsd: credit,
+    creditLine: "of credit, free for 3 days",
+    bannerTitle: "of credit, free for 3 days",
+    bannerCta: "Start my free trial",
+    timerLabel: "Time left to claim your free trial",
+    timerExtendedLabel: "We're giving you more time to start your free trial",
+    formTitle: "Start your 3-day free trial",
+    formSub: "One minute. Nothing charged for 3 days.",
+    emailCta: "Start my free trial",
+    codeCta: "Start my free trial",
+    cardTitle: "Nothing charged for 3 days",
+    cardNote: `Your campaign starts with $${credit} of credit when you add your card. After 3 days, ${monthly} a month. Cancel anytime.`,
+    cardCta: "Add card and start my trial",
+  };
+}
+
 /** The next slide of a carousel, wrapping. */
 export function nextSlide(i: number, count: number): number {
   return count > 0 ? (i + 1) % count : 0;

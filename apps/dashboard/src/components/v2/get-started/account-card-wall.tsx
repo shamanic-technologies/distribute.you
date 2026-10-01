@@ -31,12 +31,24 @@ import { useSignUp } from "@clerk/nextjs/legacy";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
 import {
+  ApiError,
   configureAutoTopup,
   createEmbeddedCardSetup,
+  createSubscriptionCheckout,
   getBillingAccount,
+  getSubscription,
   setPaymentMode,
+  startSubscription,
   type BillingAccount,
+  type CardSetup,
 } from "@/lib/api";
+import {
+  SUBSCRIPTION_MONTHLY_CENTS,
+  SUBSCRIPTION_OUTBOUND_DAILY_USD,
+  isSubscriptionArm,
+  pickedPlanCents,
+  subscriptionCheckoutRefusal,
+} from "@/lib/subscription-plan";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -47,7 +59,6 @@ import {
 import { v2MissionHref } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
-  WALL_FREE_CREDIT_USD,
   hotLeadsForCredit,
   nextSlide,
   parseDailyBudget,
@@ -56,6 +67,7 @@ import {
   type GetStartedAudience,
   type GetStartedOffer,
   type PlanCampaign,
+  wallCopy,
 } from "@/lib/v2/get-started";
 import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
 import { EMPTY_PROGRESS, launchFromPreview, pricingLegFor, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
@@ -128,6 +140,14 @@ export function AccountCardWall({
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
   const { catalogue } = useStartCatalogue();
 
+  // The landing's $99/month arm (owner 2026-10-01): the same wall, but the card opens
+  // billing's 3-day trial subscription and the plan sets the daily money. Read once.
+  const [subscription] = useState(() => isSubscriptionArm(document.cookie));
+  const [monthlyCents] = useState(() => pickedPlanCents(document.cookie));
+  const copy = subscription
+    ? wallCopy({ subscription: true, monthlyCents, creditCents: SUBSCRIPTION_MONTHLY_CENTS })
+    : wallCopy({ subscription: false });
+
   const [stage, setStage] = useState<Stage>("account");
   const [email, setEmail] = useState("");
   const [emailOpen, setEmailOpen] = useState(false);
@@ -142,7 +162,9 @@ export function AccountCardWall({
   const [pricing, setPricing] = useState(false);
   const recommendation = pricedUsd ?? recommendedUsd;
   // No price held yet: the channel's own floor, the smallest budget it runs on.
-  const [budget, setBudget] = useState(String(recommendation ?? Math.ceil(floorUsd)));
+  const [budget, setBudget] = useState(
+    String(subscription ? SUBSCRIPTION_OUTBOUND_DAILY_USD : recommendation ?? Math.ceil(floorUsd)),
+  );
   const [busy, setBusy] = useState(false);
   // The claim has its own flag: the code form's `finally` clears `busy` while the
   // claim this sign-in started is still in flight.
@@ -159,7 +181,8 @@ export function AccountCardWall({
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS });
 
   // A recommendation that lands after the wall opened fills an untouched field.
-  const budgetTouched = useRef(budgetChosen);
+  // The plan's budget is fixed: nothing lands over it.
+  const budgetTouched = useRef(budgetChosen || subscription);
   useEffect(() => {
     if (!budgetTouched.current) setBudget(String(recommendation ?? Math.ceil(floorUsd)));
   }, [recommendation, floorUsd]);
@@ -240,7 +263,7 @@ export function AccountCardWall({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, busy, claiming, consent, marginOk, account]);
 
-  const parsedBudget = parseDailyBudget(budget, floorUsd);
+  const parsedBudget = parseDailyBudget(budget, subscription ? 1 : floorUsd);
   const budgetUsd = "usd" in parsedBudget ? parsedBudget.usd : null;
 
   function checkReady(scope: "account" | "card" = "card"): boolean {
@@ -356,6 +379,10 @@ export function AccountCardWall({
   async function addCard() {
     if (busy) return;
     if (!checkReady()) return;
+    if (subscription) {
+      void openTrialCheckout();
+      return;
+    }
     if (account?.has_payment_method) {
       void launch(account);
       return;
@@ -396,6 +423,85 @@ export function AccountCardWall({
     }
   }
 
+  // ── The plan's card (billing#568) ──
+  // The card is saved through the ordinary card setup billing answers (Revolut widget by
+  // default, Stripe's embedded form when the org's card lives there), then the plan starts.
+  async function openTrialCheckout() {
+    setBusy(true);
+    setError(null);
+    try {
+      await declareRevolut();
+      const checkout = await createSubscriptionCheckout({ monthly_amount_cents: monthlyCents, ui_mode: "embedded" });
+      const setup: CardSetup | null = checkout.card_setup;
+      if (!checkout.card_required || !setup) {
+        void afterTrialCardSaved();
+        return;
+      }
+      if (setup.mode === "embedded_checkout") {
+        setCardSecret(setup.client_secret);
+        setBusy(false);
+        return;
+      }
+      if (setup.mode === "embedded_widget") {
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: setup.token,
+          environment: setup.environment,
+          savePaymentMethodFor: setup.save_payment_method_for,
+          name: setup.customer_name ?? user?.fullName ?? undefined,
+          email: setup.customer_email ?? user?.primaryEmailAddress?.emailAddress ?? undefined,
+          onSuccess: () => void afterTrialCardSaved(),
+          onCancel: () => setBusy(false),
+          onError: (message) => {
+            setError(message);
+            setBusy(false);
+          },
+        });
+        return;
+      }
+      console.error("[get-started] subscription checkout answered a hosted page to an in-page request", setup);
+      throw new Error("[get-started] subscription checkout: no in-page card form");
+    } catch (e) {
+      console.error("[get-started] subscription checkout failed:", e);
+      setError(subscriptionCheckoutRefusal(e instanceof ApiError && e.status === 409 ? e.body?.code : undefined));
+      setBusy(false);
+    }
+  }
+
+  // Open the plan. The saved card reaches billing through the provider's webhook a
+  // moment after the form reports it, so `card_required` is retried, not shown.
+  async function afterTrialCardSaved() {
+    setCardSecret(null);
+    setBusy(true);
+    setError(null);
+    try {
+      let started = false;
+      for (let i = 0; i < 12 && !started; i++) {
+        try {
+          await startSubscription();
+          started = true;
+        } catch (err) {
+          const code = err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;
+          if (code === "subscription_exists") started = true;
+          else if (code !== "card_required") throw err;
+          else await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+      if (!started) throw new Error("[get-started] the card was not confirmed in time");
+      const read = await getSubscription();
+      if (read.payment_mode !== "subscription" || !read.subscription) {
+        throw new Error("[get-started] subscription did not start");
+      }
+    } catch (e) {
+      console.error("[get-started] subscription start failed:", e);
+      setError("Your card is saved, but your trial could not start yet. Wait a few seconds and press the button again.");
+      setBusy(false);
+      return;
+    }
+    posthog.capture("get_started_card_saved", { plan: "subscription" });
+    void launch(null);
+  }
+
   async function afterCardSaved() {
     setCardSecret(null);
     setBusy(true);
@@ -421,17 +527,21 @@ export function AccountCardWall({
   }
 
   // ── Launch ──
-  async function launch(acct: BillingAccount) {
+  // `acct` is null on the plan: it funds itself (billing flipped the mode at start), so
+  // no payment mode is written and no top-up is armed.
+  async function launch(acct: BillingAccount | null) {
     if (budgetUsd == null || !orgId) return;
     setStage("launching");
     setBusy(true);
     setError(null);
     try {
-      // A card some countries only let us charge with each payment approved cannot top
-      // up by itself: that org runs prepaid on its free credit instead.
-      const postpaid = acct.auto_reload_supported !== false;
-      await setPaymentMode(postpaid ? "postpaid" : "prepaid");
-      if (postpaid) await configureAutoTopup(5000, 1000);
+      if (acct) {
+        // A card some countries only let us charge with each payment approved cannot top
+        // up by itself: that org runs prepaid on its free credit instead.
+        const postpaid = acct.auto_reload_supported !== false;
+        await setPaymentMode(postpaid ? "postpaid" : "prepaid");
+        if (postpaid) await configureAutoTopup(5000, 1000);
+      }
       const campaignId = await launchFromPreview(
         { brandId, website, offer, audienceId: audience.audienceId, budgetUsd, plan, answered },
         progress.current,
@@ -442,7 +552,7 @@ export function AccountCardWall({
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
-      posthog.capture("get_started_launched", { budget_usd: budgetUsd });
+      posthog.capture("get_started_launched", { budget_usd: budgetUsd, plan: subscription ? "subscription" : "pay_as_you_go" });
       try {
         sessionStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {
@@ -458,13 +568,13 @@ export function AccountCardWall({
   }
 
   const proof = catalogue?.proof ?? null;
-  const hotLeads = hotLeadsForCredit(proof?.hotLeads?.medianCostUsd);
+  const hotLeads = hotLeadsForCredit(proof?.hotLeads?.medianCostUsd, copy.creditUsd);
   const medianReturn = proof?.medianReturnPerDollar ?? null;
 
   const urgency =
     stage !== "launching" ? (
       <div className="mb-4 grid gap-2">
-        <TrialTimer />
+        <TrialTimer label={copy.timerLabel} extendedLabel={copy.timerExtendedLabel} />
         <TrialSpots />
       </div>
     ) : null;
@@ -483,12 +593,14 @@ export function AccountCardWall({
             setBudget(e.target.value);
             setError(null);
           }}
+          readOnly={subscription}
           disabled={stage === "launching"}
           aria-label="Daily budget in dollars"
         />
         <span className="k-fg3 text-[12px]">a day</span>
       </span>
-      {recommendation != null && Number(budget) === recommendation && (
+      {subscription && <span className="k-chip">Your plan</span>}
+      {!subscription && recommendation != null && Number(budget) === recommendation && (
         <span key={recommendation} className="gs-pop k-chip">
           Recommended
         </span>
@@ -533,7 +645,7 @@ export function AccountCardWall({
         <section className="gs-panel k-popover p-5 md:col-start-1">
           {note && <p className="k-fg2 mb-3 rounded-lg bg-[var(--accent-soft)] px-3 py-2 text-[13px] leading-5">{note}</p>}
           <p className="k-fg text-[22px] font-semibold leading-7 tracking-tight">
-            <CountUp value={WALL_FREE_CREDIT_USD} format={(n) => `$${Math.round(n)}`} ms={800} /> free credit
+            <CountUp value={copy.creditUsd} format={(n) => `$${Math.round(n)}`} ms={800} /> {copy.creditLine}
           </p>
           <ul className="k-fg2 mt-2.5 grid gap-1 text-[13px] leading-5">
             {[
@@ -549,7 +661,7 @@ export function AccountCardWall({
           </ul>
           {(hotLeads != null || medianReturn != null) && (
             <>
-              <p className="k-fg mt-4 text-[13px] font-medium">{`Here is what your $${WALL_FREE_CREDIT_USD} gets you`}</p>
+              <p className="k-fg mt-4 text-[13px] font-medium">{`Here is what your $${copy.creditUsd} gets you`}</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {hotLeads != null && (
                   <BuysTile label="Hot leads" note="Replies or visits">
@@ -580,9 +692,9 @@ export function AccountCardWall({
           <div className="border-b border-[var(--line-subtle)] px-5 py-4">
             <p className="k-fg text-[20px] font-semibold leading-7 tracking-tight">
               <span aria-hidden="true">🎉 </span>
-              {`Claim your $${WALL_FREE_CREDIT_USD} and start`}
+              {copy.formTitle}
             </p>
-            <p className="k-fg2 mt-0.5 text-[13px]">One minute. No charge today.</p>
+            <p className="k-fg2 mt-0.5 text-[13px]">{copy.formSub}</p>
           </div>
           <div className="p-5">
           {/* The scarcity and the steps first, then the buttons under them (owner 2026-10-01). */}
@@ -631,7 +743,7 @@ export function AccountCardWall({
                           className="k-cta k-cta-dark w-full justify-center"
                           disabled={busy || !EMAIL_SHAPE.test(email.trim())}
                         >
-                          {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : `Claim my $${WALL_FREE_CREDIT_USD} and start`}
+                          {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : copy.emailCta}
                         </button>
                       </div>
                     )}
@@ -672,7 +784,7 @@ export function AccountCardWall({
                       className="k-btn-accent k-cta gs-glow w-full justify-center"
                       disabled={busy || code.length !== VERIFICATION_CODE_LENGTH}
                     >
-                      {busy ? "Checking..." : `Unlock my $${WALL_FREE_CREDIT_USD}`}
+                      {busy ? "Checking..." : copy.codeCta}
                     </button>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
                       <button
@@ -713,25 +825,26 @@ export function AccountCardWall({
             {stage === "card" && !cardSecret && (
               <div className="mt-4 grid gap-3">
                 <p className="k-fg text-[13px] font-medium">
-                  {account?.has_payment_method ? "Your card is on file." : "You will not be charged yet"}
+                  {account?.has_payment_method && !subscription ? "Your card is on file." : copy.cardTitle}
                 </p>
-                {!account?.has_payment_method && (
-                  <p className="k-fg2 -mt-2 text-[13px] leading-5">
-                    {`The card only confirms you are real. Once your $${WALL_FREE_CREDIT_USD} runs out, it pays what the campaign spends, never more than your daily budget.`}
-                  </p>
+                {(subscription || !account?.has_payment_method) && (
+                  <p className="k-fg2 -mt-2 text-[13px] leading-5">{copy.cardNote}</p>
                 )}
                 <div className="k-inset rounded-lg p-3">{budgetRow}</div>
                 <Consent brandName={brandName} checked={consent} onChange={setConsent} />
                 <button type="button" className="k-btn-accent gs-glow h-9 justify-center" onClick={() => void addCard()} disabled={busy}>
-                  {busy ? "Opening the card form..." : account?.has_payment_method ? "Start outreach" : "Add card and start"}
+                  {busy ? "Opening the card form..." : account?.has_payment_method && !subscription ? "Start outreach" : copy.cardCta}
                 </button>
               </div>
             )}
 
             {stage === "card" && cardSecret && (
               <div className="mt-4 grid gap-2">
-                <p className="k-fg text-[13px] font-medium">You will not be charged yet</p>
-                <EmbeddedCheckoutProvider stripe={getStripe()} options={{ clientSecret: cardSecret, onComplete: () => void afterCardSaved() }}>
+                <p className="k-fg text-[13px] font-medium">{copy.cardTitle}</p>
+                <EmbeddedCheckoutProvider
+                  stripe={getStripe()}
+                  options={{ clientSecret: cardSecret, onComplete: () => void (subscription ? afterTrialCardSaved() : afterCardSaved()) }}
+                >
                   <EmbeddedCheckout />
                 </EmbeddedCheckoutProvider>
               </div>
