@@ -224,7 +224,7 @@ describe("the payment wall, simplified", () => {
 
   it("asks Google OR email, with the email field right above its button, and asks the budget with the card", () => {
     const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
-    expect(form.indexOf("Continue with Google")).toBeLessThan(form.indexOf("or with your email"));
+    expect(form.indexOf("Continue with Google")).toBeLessThan(form.indexOf("Continue with Email"));
     expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("Claim my $${WALL_FREE_CREDIT_USD} and start"));
     expect(form).not.toContain("{budgetRow}");
     expect(WALL).toContain('if (!checkReady("account")) return;');
@@ -265,12 +265,15 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
     const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
     // keel.css is unlayered, so a Tailwind h-12 loses to the 28px control: size with k-cta.
     expect(KEEL).toContain(".v2-root .k-cta { height: 48px;");
-    // ONE primary button (owner 2026-10-01: two blue CTAs confuse). Google wears its own
-    // light theme per its branding guidelines (white, grey stroke, standard G, approved label).
-    expect(form.match(/k-btn-accent k-cta/g)?.length).toBe(1);
-    expect(form).toContain('className="k-cta k-cta-google w-full justify-center gap-3"');
+    // Two equal choices in one colour (owner 2026-10-01: "Continue with Google / Continue with
+    // Email, même CTA color"): Google's dark theme (its guidelines forbid our accent), email alike;
+    // the email field opens on its click.
+    expect(form).not.toContain("k-btn-accent");
+    expect(form.match(/className="k-cta k-cta-dark w-full justify-center gap-3"/g)?.length).toBe(2);
     expect(form).toContain("Continue with Google\n");
-    expect(KEEL).toContain("background: #fff; color: #1f1f1f; box-shadow: inset 0 0 0 1px #747775;");
+    expect(form).toContain("Continue with Email\n");
+    expect(form).toContain("onClick={() => setEmailOpen(true)}");
+    expect(KEEL).toContain("background: #131314; color: #fff; box-shadow: inset 0 0 0 1px #8e918f;");
     expect(WALL).not.toContain("Email me a code");
     // Owner 2026-10-01 (second pass): the scarcity and the steps come first, the buttons under them,
     // and the headline carries no accent fill (it read as one more button).
