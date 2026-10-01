@@ -56,7 +56,6 @@ import {
   type GetStartedOffer,
   type PlanCampaign,
 } from "@/lib/v2/get-started";
-import { proofCardsFor, shuffleWithSeed, type ProofCard } from "@/lib/start-proof";
 import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
 import { EMPTY_PROGRESS, launchFromPreview, pricingLegFor, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
 import { CountUp, usePrefersReducedMotion } from "./motion";
@@ -544,7 +543,7 @@ export function AccountCardWall({
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {hotLeads != null && (
                   <BuysTile label="Hot leads" note="Replies or visits">
-                    ~<CountUp value={hotLeads} format={(n) => String(Math.round(n))} ms={900} />
+                    <CountUp value={hotLeads} format={(n) => String(Math.round(n))} ms={900} />
                   </BuysTile>
                 )}
                 {medianReturn != null && (
@@ -562,8 +561,19 @@ export function AccountCardWall({
           )}
         </section>
 
-        {/* The form. On a phone it comes right after the $30. */}
-        <section className="gs-panel k-popover p-5 md:col-start-2 md:row-span-3 md:row-start-1" style={{ animationDelay: "80ms" }}>
+        {/* The form, the one thing to do here: framed in the accent, with its own headline. */}
+        <section
+          className="gs-panel k-popover gs-glow overflow-hidden p-0 ring-2 ring-[var(--accent)] md:col-start-2 md:row-span-3 md:row-start-1"
+          style={{ animationDelay: "80ms" }}
+        >
+          <div className="bg-[var(--accent)] px-5 py-4 text-white">
+            <p className="text-[20px] font-semibold leading-7 tracking-tight">
+              <span aria-hidden="true">🎉 </span>
+              {`Claim your $${WALL_FREE_CREDIT_USD} and start`}
+            </p>
+            <p className="mt-0.5 text-[13px] opacity-90">One minute. No charge today.</p>
+          </div>
+          <div className="p-5">
           {stage !== "launching" && (
             <div className="mb-4 grid gap-2">
               <TrialTimer />
@@ -715,12 +725,10 @@ export function AccountCardWall({
               {error}
             </p>
           )}
+          </div>
         </section>
 
-        {/* The product's proof, kept sharp while the rest is blurred. */}
-        {writtenEmail && <EmailCard mail={writtenEmail} />}
-
-        <ClientCarousel cards={proof ? proofCardsFor(proof.showcase) : []} />
+        {/* What our clients say, kept sharp while the rest is blurred. */}
         <Testimonials />
       </div>
     </div>,
@@ -740,111 +748,7 @@ function BuysTile({ label, note, children }: { label: string; note: string; chil
   );
 }
 
-function EmailCard({ mail }: { mail: GetStartedEmail }) {
-  const to = [mail.recipient.firstName, mail.recipient.title]
-    .filter(Boolean)
-    .join(", ");
-  return (
-    <section className="gs-panel k-popover overflow-hidden md:col-start-1" style={{ animationDelay: "160ms" }} aria-label="Your first email">
-      <div className="flex items-center gap-2 border-b border-[var(--line-subtle)] px-4 py-2.5">
-        <span className="k-label">Your first email</span>
-        <span className="k-fg3 ml-auto flex items-center gap-1.5 text-[12px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" aria-hidden="true" />
-          Goes out when you start
-        </span>
-      </div>
-      <div className="flex gap-3 border-b border-[var(--line-subtle)] px-4 py-2 text-[13px]">
-        <span className="k-label w-14 shrink-0 pt-0.5">To</span>
-        <span className="k-fg2 min-w-0 truncate">
-          {to}
-          {mail.recipient.companyName ? ` at ${mail.recipient.companyName}` : ""}
-        </span>
-      </div>
-      <div className="flex gap-3 border-b border-[var(--line-subtle)] px-4 py-2 text-[13px]">
-        <span className="k-label w-14 shrink-0 pt-0.5">Subject</span>
-        <span className="k-fg min-w-0 font-medium">{mail.subject}</span>
-      </div>
-      <p className="k-scroll k-fg2 max-h-[180px] overflow-y-auto whitespace-pre-line px-4 py-3 text-[13px] leading-6">{mail.bodyText}</p>
-    </section>
-  );
-}
 
-/**
- * One named client at a time, turning every few seconds. Only the clients who agreed
- * to be shown (`proofCardsFor` draws nothing for anyone else), with their own served
- * figures. Hover or focus holds it; reduced motion holds it on the first card.
- */
-function ClientCarousel({ cards }: { cards: ProofCard[] }) {
-  const reduced = usePrefersReducedMotion();
-  const [seed] = useState(() => Math.random());
-  const ordered = shuffleWithSeed(cards, seed);
-  const [i, setI] = useState(0);
-  const [held, setHeld] = useState(false);
-  const count = ordered.length;
-  useEffect(() => {
-    if (reduced || held || count < 2) return;
-    const id = setTimeout(() => setI((cur) => nextSlide(cur, count)), SLIDE_MS);
-    return () => clearTimeout(id);
-  }, [i, reduced, held, count]);
-  if (count === 0) return null;
-  const c = ordered[Math.min(i, count - 1)];
-  const deepest = c.counts.length > 1 ? c.counts[c.counts.length - 1] : null;
-  const tiles: { label: string; value: string }[] = [
-    { label: "Return", value: formatReturn(c.returnPerDollar) },
-    ...(deepest ? [{ label: deepest.label, value: deepest.peopleReached.toLocaleString("en-US") }] : []),
-    ...(c.firstStep?.costPerReachUsd != null
-      ? [{ label: `Cost per ${c.firstStep.label.toLowerCase()}`, value: `$${Math.round(c.firstStep.costPerReachUsd).toLocaleString("en-US")}` }]
-      : []),
-  ];
-  return (
-    <section
-      className="gs-panel k-popover p-5 md:col-start-1"
-      style={{ animationDelay: "240ms" }}
-      aria-label="Our clients"
-      aria-roledescription="carousel"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={() => setHeld(false)}
-    >
-      <div key={c.id} className="gs-in" aria-live="polite">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.person.portrait} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" />
-          <div className="min-w-0">
-            <p className="k-fg truncate text-[14px] font-medium">{c.person.name}</p>
-            <p className="k-fg3 truncate text-[12px]">{c.person.role}</p>
-          </div>
-        </div>
-        <p className="k-label mt-4">Results</p>
-        <div className={`mt-2 grid gap-2 ${tiles.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-          {tiles.map((t) => (
-            <div key={t.label} className="k-inset min-w-0 rounded-lg px-2.5 py-2">
-              <p className="k-fg3 truncate text-[11px]">{t.label}</p>
-              <p className="k-fg mt-0.5 text-[16px] font-semibold tabular-nums">{t.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      {count > 1 && (
-        <div className="mt-3 flex justify-center gap-1">
-          {ordered.map((x, n) => (
-            <button
-              key={x.id}
-              type="button"
-              aria-label={`Show ${x.person.name}`}
-              aria-current={n === i ? "true" : undefined}
-              className="flex h-6 w-6 items-center justify-center"
-              onClick={() => setI(n)}
-            >
-              <span className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${n === i ? "w-4 bg-[var(--fg-2)]" : "w-1.5 bg-[var(--line-strong)]"}`} />
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
 
 function GoogleMark() {
   return (
