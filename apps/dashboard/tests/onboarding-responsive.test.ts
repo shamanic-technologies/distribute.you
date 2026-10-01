@@ -64,8 +64,8 @@ describe("Onboarding mobile responsiveness", () => {
     // 16 since the welcome moved to the sell-first screens (StartPicks draws its
     // own shell); 12 since the per-funnel rate screens and the best-model step
     // went with the post-payment trim, and the funnel step and the primary pick went (the Path
-    // screen states the set).
-    expect(shellUses.length).toBe(12);
+    // screen states the set); 13 with the $99/month arm's own trial screen.
+    expect(shellUses.length).toBe(13);
     // The first-run account widget rides the step's own header row on mobile
     // instead of a bar of its own above the Brand card, so a step with a header
     // spends one row where it used to spend two. Gated on the escape chrome not

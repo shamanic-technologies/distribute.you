@@ -123,6 +123,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "entityRegistry",
   // Billing — the account, its credit grants and its payment history.
   "billingAccount",
+  "subscription",
   "creditGrants",
   // The Billing page Usage section: billed spend by category.
   "orgUsage",

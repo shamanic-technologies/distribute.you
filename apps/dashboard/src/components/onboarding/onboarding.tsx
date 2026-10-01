@@ -69,6 +69,8 @@ import {
   setPaymentMode,
   ApiError,
   createCheckoutSession,
+  createSubscriptionCheckout,
+  getSubscription,
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   getWorkflowProjectionLadder,
@@ -132,6 +134,13 @@ import { validateInvite } from "@/lib/api";
 import { inviteCodeFromCookie } from "@/lib/invite-link";
 import { onboardingBrandCookieAssignment } from "@/lib/onboarding-brand-cookie";
 import { welcomeHeadline, welcomeDetail, referredByLine } from "@/lib/welcome-offer-copy";
+import {
+  SUBSCRIPTION_OUTBOUND_DAILY_USD,
+  SUBSCRIPTION_REACTIVE_DAILY_USD,
+  isSubscriptionArm,
+  subscriptionBudgets,
+  subscriptionCheckoutRefusal,
+} from "@/lib/subscription-plan";
 import { planFirstCharge } from "@/lib/onboarding-charge";
 import {
   formatLocaleInteger,
@@ -910,6 +919,12 @@ export function Onboarding() {
   // Entered from an in-app "New brand" / "New org" button (vs a fresh signup) —
   // skip the welcome hero and land straight on the URL step. Same flow otherwise.
   const fromAdd = searchParams.get("from") === "add";
+  // The landing's $99/month arm (`lp_variant=subscription`, owner 2026-10-01): the
+  // same walk, but the plan sets the daily money and the payment is a 3-day trial
+  // subscription instead of a top-up. A brand ADDED to an existing org is never in it.
+  const [subscriptionArm] = useState(
+    () => !fromAdd && typeof document !== "undefined" && isSubscriptionArm(document.cookie),
+  );
   const flowKey: OnboardingFlowKey = fromAdd ? "add" : forceNew ? "new" : "signup";
   // Cross-session resume of a never-finished brand. The per-brand setup gate
   // (`BrandSetupGate`) redirects a brand that has no campaign (= onboarding
@@ -2132,11 +2147,20 @@ export function Onboarding() {
     // cannot top up by itself, and billing refuses to arm auto-reload on it. Refusing
     // here used to fail the whole launch for a customer who had done everything right,
     // so that org runs prepaid on its credit instead, the same rule the v2 flows apply.
-    const account = await getBillingAccount();
-    if (account.auto_reload_supported === false) {
-      await setPaymentMode("prepaid");
+    if (subscriptionArm) {
+      // The plan funds itself: this read settles the checkout, flips the org to
+      // subscription mode and lands the trial credit. No top-up, no mode write.
+      const read = await getSubscription();
+      if (read.payment_mode !== "subscription" || !read.subscription) {
+        throw new Error("Your free trial has not started yet. Refresh this page in a moment.");
+      }
     } else {
-      await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+      const account = await getBillingAccount();
+      if (account.auto_reload_supported === false) {
+        await setPaymentMode("prepaid");
+      } else {
+        await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+      }
     }
     setLaunchStep(1);
     // The OFFER everything this launch creates is about. A campaign is
@@ -2219,6 +2243,7 @@ export function Onboarding() {
     setLaunchStep(4);
     posthog.capture("onboarding_completed", {
       flow: "beta",
+      plan: subscriptionArm ? "subscription" : "pay_as_you_go",
       outcome: pending.outcome,
       budget: pending.budgetUsd,
       checkout_amount_cents: pending.checkoutAmountCents,
@@ -2494,6 +2519,8 @@ export function Onboarding() {
 
   useEffect(() => {
     if (step !== "bonus") return;
+    // The plan's checkout is created on the click: nothing to prepare.
+    if (subscriptionArm) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -2530,6 +2557,16 @@ export function Onboarding() {
       // the whole hydrate; the button already reads "Redirecting to checkout…".
       await ensureProjectionLoaded();
       const pending = buildPendingLaunchBlob();
+      if (subscriptionArm) {
+        // Same return URLs as a top-up, so the launch resumes identically, minus the
+        // Ads purchase value: a trial moves no money, so it is not a purchase.
+        const back = `${window.location.origin}${window.location.pathname}`;
+        window.location.href = await createSubscriptionCheckout({
+          success_url: `${back}?success=true&launch_checkout=success`,
+          cancel_url: `${back}?launch_checkout=cancelled`,
+        });
+        return;
+      }
       const prepared = preparedCheckoutRef.current;
       const url =
         prepared && prepared.key === checkoutKey(pending)
@@ -2541,7 +2578,11 @@ export function Onboarding() {
       // Never `err.message`: the shared api client sets it to the whole downstream body,
       // which on an upstream outage is an HTML error page read out to the customer.
       console.error("[onboarding] checkout session failed:", err);
-      setError("We couldn't open the checkout. Nothing was charged. Please try again in a moment.");
+      setError(
+        subscriptionArm
+          ? subscriptionCheckoutRefusal(err instanceof ApiError && err.status === 409 ? err.body?.code : undefined)
+          : "We couldn't open the checkout. Nothing was charged. Please try again in a moment.",
+      );
       setBusy(false);
     }
   }
@@ -2929,6 +2970,11 @@ export function Onboarding() {
   useEffect(() => {
     const first = launchPairs.find((p) => p.toKey === startOutcomes[0]) ?? launchPairs[0];
     if (step !== "pricing" || !first) return;
+    // The plan sets the money, so it is written whatever the map held.
+    if (subscriptionArm) {
+      setCampaignBudgets(subscriptionBudgets(launchPairs));
+      return;
+    }
     const floorCents = floorCentsFor(first.channelSlug);
     // Rounded UP so the seed can never be refused.
     const floorUsd = floorCents === null ? null : Math.ceil(floorCents / 100);
@@ -3590,6 +3636,40 @@ export function Onboarding() {
     );
   }
 
+  if (step === "bonus" && subscriptionArm) {
+    return (
+      <StepShell chrome={chrome}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
+        footer={
+          <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {busy ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Redirecting to checkout…
+              </>
+            ) : (
+              <>
+                Start my free trial <ArrowRightIcon className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        }
+      >
+          <BackButton onClick={() => setStep("pricing")} />
+          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-center">
+            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+              <GiftIcon className="h-7 w-7 text-brand-600" />
+            </span>
+            <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">Your first 3 days are free.</h2>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
+              Your campaign starts with $99 of credit the moment you add your card. Nothing is charged before day 3, then it is $99 a month. Cancel anytime.
+            </p>
+          </div>
+      </StepShell>
+    );
+  }
+
   if (step === "bonus") {
     const amount = budgetForCharge();
     // What the buyer actually pays here: their budget minus the welcome gift. The
@@ -3683,10 +3763,14 @@ export function Onboarding() {
     >
       <BackButton onClick={() => setStep("consent")} />
       <h2 className="font-display text-3xl leading-none tracking-[-0.03em] text-gray-900 sm:text-4xl">
-        {onePath ? "Set your daily budget." : "Fund each campaign."}
+        {subscriptionArm ? "Your plan is ready to send." : onePath ? "Set your daily budget." : "Fund each campaign."}
       </h2>
       <p className="mt-2 mb-5 text-gray-500">
-        {onePath ? (
+        {subscriptionArm ? (
+          <>
+            ${SUBSCRIPTION_OUTBOUND_DAILY_USD} a day of outreach from day one, plus up to ${SUBSCRIPTION_REACTIVE_DAILY_USD} a day to answer the people who reply.
+          </>
+        ) : onePath ? (
           <>Set what we may spend a day on this campaign. You can change it whenever you like.</>
         ) : (
           <>
@@ -3700,10 +3784,16 @@ export function Onboarding() {
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
-          {onePath
-            ? "We spend up to your ceiling, and never more than that in a day."
-            : "Each campaign spends up to its own ceiling, and never more than that in a day."}{" "}
-          You pay as you go for what we actually spend. Cancel anytime.
+          {subscriptionArm ? (
+            <>It all comes out of the $99 of credit your plan gives you each month. When it runs out, sending stops until the next month. Cancel anytime.</>
+          ) : (
+            <>
+              {onePath
+                ? "We spend up to your ceiling, and never more than that in a day."
+                : "Each campaign spends up to its own ceiling, and never more than that in a day."}{" "}
+              You pay as you go for what we actually spend. Cancel anytime.
+            </>
+          )}
         </p>
       </div>
 
@@ -3733,6 +3823,7 @@ export function Onboarding() {
                     type="text"
                     inputMode="numeric"
                     value={campaignBudgets[pair.key] ?? ""}
+                    readOnly={subscriptionArm}
                     onChange={(e) =>
                       setCampaignBudgets((prev) => ({
                         ...prev,
@@ -3773,7 +3864,9 @@ export function Onboarding() {
       {/* The total is a SUM, so it only says something when there is more than one
           thing to add. With one campaign it restates the figure typed an inch above,
           under a second label, alongside a count that card already carries. */}
-      {!onePath && displayBudget != null && (
+      {/* The plan's total would add the reply ceiling to the outreach budget: a
+          ceiling is not spend, so the plan states the two apart (above) instead. */}
+      {!onePath && !subscriptionArm && displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
           <span className="text-gray-400"> across {fundedCount} {fundedCount === 1 ? "campaign" : "campaigns"}</span>
