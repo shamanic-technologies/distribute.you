@@ -49,6 +49,23 @@ export type LeadFollowup =
   | { state: "not_set" };
 
 /**
+ * The rows a timeline draws, given whether it also mounts the next-follow-up notice.
+ *
+ * lead-service reports the follow-up schedule ONCE, as a `followup` event. A timeline that
+ * mounts `LeadNextFollowup` already states it at its foot ("No further follow-ups" and why,
+ * or when the next one is due), so drawing the same event as a row too put one statement
+ * on screen twice. The foot is the right home: the schedule is what happens NEXT, and the
+ * timeline above it is what already happened. A timeline WITHOUT the notice (the brand-wide
+ * roll-up) keeps the row, since it is then the only place the schedule appears.
+ */
+export function timelineEvents<E extends { type: string }>(
+  events: readonly E[],
+  { showsNextFollowup }: { showsNextFollowup: boolean },
+): E[] {
+  return showsNextFollowup ? events.filter((e) => e.type !== "followup") : [...events];
+}
+
+/**
  * Read the schedule out of a lead's history.
  *
  * A STOPPED schedule outranks a scheduled one. The producer already nulls the due date
