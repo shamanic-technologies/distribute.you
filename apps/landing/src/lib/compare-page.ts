@@ -83,11 +83,11 @@ function featureRow(label: string, ours: string, theirs: string): string {
 }
 
 export function comparePageTitle(c: Competitor): string {
-  return `distribute.you vs ${c.name}: pricing, model and what a meeting costs (${COMPARE_VERIFIED_LABEL})`;
+  return `${c.name} alternative: distribute.you vs ${c.name} pricing (${COMPARE_VERIFIED_LABEL})`;
 }
 
 export function comparePageDescription(c: Competitor): string {
-  return `${c.name} vs distribute.you, side by side: entry price, who runs the campaign, whose domains send, and the measured cost of a positive reply. Prices read from ${c.domain} in ${COMPARE_VERIFIED_LABEL}.`;
+  return `Looking at ${c.name} alternatives? distribute.you runs your cold email for you from $1 a day, from our own domains. Compare the entry price, who runs the campaign and the measured cost of a positive reply.`;
 }
 
 export function renderComparePage(c: Competitor): string {
