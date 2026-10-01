@@ -18,7 +18,8 @@ import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import { DEPRECATED_ON_LEG_LABEL } from "@/lib/workflow-eligibility";
 import { workflowRoi } from "@/lib/campaign-workflow-rows";
-import { missionWorkflowRows, type MissionLadderRow } from "@/lib/live-workflow-rows";
+import { missionWorkflowRows, shortWorkflowName, type MissionLadderRow } from "@/lib/live-workflow-rows";
+import { useFeatures } from "@/lib/features-context";
 import { LiveRankingStrip, LiveWorkflowCells, LiveWorkflowChips, LiveWorkflowHeads } from "@/components/v2/live-workflow-cells";
 import {
   crewParam,
@@ -183,6 +184,14 @@ function MissionSection({
     [r.allLadderRows],
   );
   const unit = r.pair === "visit" ? "/ visit" : "/ reply";
+  // A workflow reads by its distinctive name ("Osprey"), its channel's name dropped from the front:
+  // every row of a section shares the channel, so repeating it says nothing (owner, 2026-10-01).
+  const { getFeature } = useFeatures();
+  const channelName = getFeature(spec.featureSlug)?.name ?? null;
+  const shortName = useCallback(
+    (name: string | null | undefined, slug: string) => shortWorkflowName(name ?? slug, channelName),
+    [channelName],
+  );
   // Each grain states the served half of ITS maturity pair (mature for every reader,
   // flash in the staff debug view), `Learning` where the producer says that grain is not
   // mature. Rows stay in the producer's rank order (`r.ranked`); nothing is re-sorted here.
@@ -245,7 +254,7 @@ function MissionSection({
         <SectionSkeleton />
       ) : (
         <div className="k-card overflow-hidden">
-          <LiveRankingStrip rows={live} moneyNote="no mature workflow yet" />
+          <LiveRankingStrip rows={live} moneyNote="no mature workflow yet" nameOf={(row) => shortName(row.name, row.slug)} />
           <div className="k-scroll relative overflow-x-auto">
             <table className="w-full min-w-[1590px] text-[13px]">
               <thead>
@@ -287,7 +296,9 @@ function MissionSection({
                         <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{w.rank ?? "—"}</td>
                         <td className="max-w-0 px-3">
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="min-w-0 truncate font-medium">{w.row.workflowDynastyName}</span>
+                            <span className="min-w-0 truncate font-medium" title={w.row.workflowDynastyName ?? undefined}>
+                              {shortName(w.row.workflowDynastyName, w.row.workflowDynastySlug)}
+                            </span>
                             {liveRow && <LiveWorkflowChips row={liveRow} />}
                             {r.deprecatedSlugs.has(w.row.workflowDynastySlug) && (
                               <span className="k-chip k-fg3 shrink-0 text-[11px]">{DEPRECATED_ON_LEG_LABEL}</span>
