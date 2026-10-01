@@ -49,13 +49,15 @@ describe("the switch sits in the top bar of every page that states costs", () =>
   });
 });
 
-describe("the actual-cost research snapshot never reaches a browser bundle", () => {
-  it("only the staff route imports it", () => {
-    const importers = walk(SRC).filter((p) => readFileSync(p, "utf8").includes("lib/research/actual/"));
-    expect(importers.map((p) => p.slice(SRC.length + 1))).toEqual([join("app", "(authed)", "api", "research", "actual", "route.ts")]);
+const RESEARCH_ROUTE = join("app", "(authed)", "api", "research", "[basis]", "[part]", "route.ts");
+
+describe("no research snapshot reaches a browser bundle (billed or actual)", () => {
+  it("only the staff route imports a research JSON file", () => {
+    const importers = walk(SRC).filter((p) => /lib\/research\/(actual\/)?research[\w-]*\.json|\.\/research[\w-]*\.json/.test(readFileSync(p, "utf8")));
+    expect(importers.map((p) => p.slice(SRC.length + 1))).toEqual([RESEARCH_ROUTE]);
   });
   it("the route refuses anyone off the staff list", () => {
-    const route = read("app/(authed)/api/research/actual/route.ts");
+    const route = read(RESEARCH_ROUTE);
     expect(route).toContain("isAdminEmail(sessionClaims?.email)");
     expect(route).toContain("status: 403");
     expect(route).not.toMatch(/^"use client"/m);

@@ -3,8 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CREW_ORDER,
-  RESEARCH,
-  loadResearchCatalog,
   parseResearchPath,
   pointHref,
   researchCatalogHref,
@@ -14,11 +12,15 @@ import {
   researchWorkflow,
   studyById,
   studiesFor,
+  type ResearchCatalog,
+  type ResearchFile,
 } from "../src/lib/research/research";
+import researchJson from "../src/lib/research/research.json";
 import catalogJson from "../src/lib/research/research-catalog.json";
 import textsJson from "../src/lib/research/research-templates.json";
 
 const ROOT = join(__dirname, "..", "src");
+const RESEARCH = researchJson as unknown as ResearchFile;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
 describe("research.json is coherent", () => {
@@ -32,23 +34,23 @@ describe("research.json is coherent", () => {
     const ids = RESEARCH.studies.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const s of RESEARCH.studies) expect(CREW_ORDER).toContain(s.crew);
-    for (const s of RESEARCH.studies) expect(studyById(s.id)).toBe(s);
+    for (const s of RESEARCH.studies) expect(studyById(s.id, RESEARCH)).toBe(s);
   });
 
   it("covers the nine questions for Herald and for Scout, plus Pilot", () => {
     for (const crew of ["herald", "scout"] as const) {
-      const topics = studiesFor(crew).map((s) => `${s.topic}-${s.goal}`);
+      const topics = studiesFor(crew, RESEARCH).map((s) => `${s.topic}-${s.goal}`);
       for (const t of ["llm-roi", "llm-rate", "cost-roi", "followups-roi", "followups-rate", "opens-roi", "opens-rate", "template-roi", "template-rate"]) {
         expect(topics).toContain(t);
       }
     }
-    expect(studiesFor("pilot").length).toBeGreaterThan(0);
+    expect(studiesFor("pilot", RESEARCH).length).toBeGreaterThan(0);
   });
 
   it("asks whether the first email's layout and opening change the cost, per leg, all tiers then per tier", () => {
     for (const crew of ["herald", "scout"] as const) {
       for (const dim of ["layout", "opening"] as const) {
-        const s = studiesFor(crew).find((st) => st.id === `${crew}-${dim}-roi`);
+        const s = studiesFor(crew, RESEARCH).find((st) => st.id === `${crew}-${dim}-roi`);
         expect(s, `${crew}-${dim}`).toBeTruthy();
         if (!s) continue;
         expect(s.topic).toBe(dim);
@@ -70,7 +72,7 @@ describe("research.json is coherent", () => {
 
   it("asks whether dashes in the first email change the cost and the rate, per leg, all tiers then per tier, with the models behind them", () => {
     for (const crew of ["herald", "scout"] as const) {
-      const s = studiesFor(crew).find((st) => st.id === `${crew}-dash-roi`);
+      const s = studiesFor(crew, RESEARCH).find((st) => st.id === `${crew}-dash-roi`);
       expect(s, crew).toBeTruthy();
       if (!s) continue;
       expect(s.topic).toBe("dash");
@@ -150,11 +152,11 @@ describe("research.json is coherent", () => {
 
   it("asks the best-workflow questions (ROI and rate) for Herald and Scout, and Pilot says it cannot yet", () => {
     for (const crew of ["herald", "scout"] as const) {
-      const wf = studiesFor(crew).filter((s) => s.topic === "workflow");
+      const wf = studiesFor(crew, RESEARCH).filter((s) => s.topic === "workflow");
       expect(wf.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
       for (const s of wf) expect(s.status, s.id).toBe("measured");
     }
-    const pilot = studiesFor("pilot").filter((s) => s.topic === "workflow");
+    const pilot = studiesFor("pilot", RESEARCH).filter((s) => s.topic === "workflow");
     expect(pilot.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
     for (const s of pilot) {
       expect(s.status).toBe("not_enough_data");
@@ -316,7 +318,7 @@ describe("the maturity rule is features-service's, read per leg and applied ever
 });
 
 describe("workflow and template pages (the research catalogue)", () => {
-  const catalog = catalogJson as unknown as Awaited<ReturnType<typeof loadResearchCatalog>>;
+  const catalog = catalogJson as unknown as ResearchCatalog;
   const texts = textsJson as Record<string, string>;
   const base = "/v2/orgs/o/brands/b/research";
 
@@ -411,7 +413,6 @@ describe("workflow and template pages (the research catalogue)", () => {
     const page = read("components/v2/research-page.tsx");
     expect(page).toContain("<CrewCatalogLinks base={base} crew={crew} />");
     expect(page).toContain("hrefFor={(p) => pointHref(base, study, p)}");
-    expect(page).toContain("preloadResearchCatalog()");
     const cat = read("components/v2/research-catalog.tsx");
     expect(cat).toContain('researchCatalogHref(base, crew, "templates", w.template.key)');
     expect(cat).not.toMatch(/\.sort\(|text-gray-|InfoTooltip/);
@@ -421,8 +422,8 @@ describe("workflow and template pages (the research catalogue)", () => {
     expect(wf).toContain("<ResearchModelChip");
     // a workflow's alias is never mapped to a model: the chip follows the model Research measured
     expect(read("components/v2/research-template-link.tsx")).toContain("researchWorkflow(catalog, crew, dynasty)?.model");
-    // the brand workflow page loads the research module on demand, never statically
-    expect(read("components/v2/research-template-link.tsx")).not.toMatch(/from "@\/lib\/research\/research"/);
+    // the chips read the catalogue from the staff-only route (research.ts carries no data any more)
+    expect(read("components/v2/research-template-link.tsx")).toContain('useResearchCatalog("user")');
   });
 });
 

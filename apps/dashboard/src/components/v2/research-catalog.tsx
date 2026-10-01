@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { ResearchLiveWorkflows, useCrewChannelName, useResearchCrewLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
-import { useResearch } from "@/lib/research/research-source";
+import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, TOPIC_LOOK, TopicMark, crewIdentity, dayText } from "@/components/v2/research-bits";
 import {
-  RESEARCH,
-  loadTemplateTexts,
-  peekTemplateTexts,
   CATALOG_KINDS,
   researchCatalogHref,
   researchModel,
@@ -35,8 +32,7 @@ import {
  *
  * Every figure, label and date arrives written in `research-catalog.json` (research.mjs); this
  * file lays them out and never divides, ranks or formats a number. The catalogue and the
- * template texts are side files the page starts loading as soon as Research paints, so a click
- * finds them in memory.
+ * template texts are read from the staff-only Research route (research-source.tsx).
  */
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
@@ -67,36 +63,15 @@ function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | Res
   return kind === "workflows" ? shortWorkflowName((r as ResearchWorkflow).name ?? r.label, channelName) : r.label;
 }
 
-function outcomeOf(crew: ResearchCrew): { noun: string; plural: string; unit: string } {
-  const outcome = RESEARCH.crews.find((c) => c.id === crew)?.outcome ?? "Outcome";
+function useOutcome(crew: ResearchCrew): { noun: string; plural: string; unit: string } {
+  const outcome = useResearch().file.crews.find((c) => c.id === crew)?.outcome ?? "Outcome";
   const plural = /[^aeiou]y$/i.test(outcome) ? `${outcome.slice(0, -1)}ies` : `${outcome}s`;
   return { noun: outcome, plural, unit: crew === "scout" ? "/ visit" : "/ reply" };
 }
 
-/** A side file's value: in memory at once when Research already loaded it, else when it lands. */
-function useLoaded<T>(peek: () => T | null, load: () => Promise<T>): { value: T | null; failed: boolean } {
-  const [value, setValue] = useState<T | null>(peek);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (value) return;
-    let live = true;
-    load().then(
-      (v) => live && setValue(v),
-      (err) => {
-        console.error("[research] could not load a side file", err);
-        if (live) setFailed(true);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [value, load]);
-  return { value, failed };
-}
-
 /** The hub's links from a crew's section to its workflow and template pages. */
 export function CrewCatalogLinks({ base, crew }: { base: string; crew: ResearchCrew }) {
-  const counts = RESEARCH.catalogCounts?.[crew];
+  const counts = useResearch().file.catalogCounts?.[crew];
   if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
   return (
     <div className="mb-3 flex flex-wrap gap-2">
@@ -129,8 +104,9 @@ export function V2ResearchCatalogView({
   itemKey: string | null;
   nav: (href: string) => void;
 }) {
-  const source = useResearch();
-  const { value: catalog, failed } = useLoaded(source.peekCatalog, source.loadCatalog);
+  const catalogQuery = useResearchCatalog(useResearch().basis);
+  const catalog = catalogQuery.data ?? null;
+  const failed = catalogQuery.isError;
   const id = crewIdentity(crew);
   const listHref = researchCatalogHref(base, crew, kind);
   const crumbs = [
@@ -243,8 +219,9 @@ function CatalogList({
   nav: (href: string) => void;
 }) {
   const id = crewIdentity(crew);
-  const o = outcomeOf(crew);
+  const o = useOutcome(crew);
   const channelName = useCrewChannelName(crew);
+  const RESEARCH = useResearch().file;
   const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog?.[crew][kind] ?? [];
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
@@ -425,7 +402,7 @@ function Header({
 }
 
 function KpiStrip({ f, crew }: { f: ResearchFigures; crew: ResearchCrew }) {
-  const o = outcomeOf(crew);
+  const o = useOutcome(crew);
   return (
     <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
       <Kpi label={`Cost / ${o.noun.toLowerCase()}`} value={<Dash v={f.cost} />} />
@@ -494,6 +471,7 @@ function RunsTable({ title, note, head, rows }: { title: string; note: string; h
 }
 
 function MeasuredNote() {
+  const RESEARCH = useResearch().file;
   return (
     <>
       <p className="k-label mt-5">How we measured</p>
@@ -520,7 +498,7 @@ function WorkflowView({
   nav: (href: string) => void;
 }) {
   const id = crewIdentity(crew);
-  const o = outcomeOf(crew);
+  const o = useOutcome(crew);
   const channelName = useCrewChannelName(crew);
   const tplHref = w.template?.linked ? researchCatalogHref(base, crew, "templates", w.template.key) : null;
   return (
@@ -633,7 +611,9 @@ function WorkflowView({
 }
 
 function TemplateText({ templateKey, hasText }: { templateKey: string; hasText: boolean }) {
-  const { value: texts, failed } = useLoaded(peekTemplateTexts, loadTemplateTexts);
+  const textsQuery = useResearchTexts(hasText);
+  const texts = textsQuery.data ?? null;
+  const failed = textsQuery.isError;
   const [open, setOpen] = useState(false);
   const text = texts?.[templateKey] ?? null;
   return (
@@ -682,7 +662,7 @@ function TemplateView({
   nav: (href: string) => void;
 }) {
   const id = crewIdentity(crew);
-  const o = outcomeOf(crew);
+  const o = useOutcome(crew);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -809,7 +789,7 @@ function ModelView({
   nav: (href: string) => void;
 }) {
   const id = crewIdentity(crew);
-  const o = outcomeOf(crew);
+  const o = useOutcome(crew);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
