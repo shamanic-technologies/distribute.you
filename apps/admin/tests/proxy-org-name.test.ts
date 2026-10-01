@@ -150,6 +150,18 @@ describe("admin proxies forward the org name to api-service", () => {
       expect(headers["x-external-org-id"]).toBe("org_123");
     });
 
+    it(`${route.name} omits x-org-name and still proxies when the name cannot go in a header`, async () => {
+      // Node's fetch throws "Cannot convert argument to a ByteString" on any header
+      // char above U+00FF, before the request leaves: one CJK or emoji org name
+      // must not turn every proxied request for that org into a 500.
+      clerkState.orgName = "株式会社 Acme 🚀";
+
+      await route.call();
+
+      expect(fetchSpy).toHaveBeenCalled();
+      expect("x-org-name" in headersOfCall(fetchSpy)).toBe(false);
+    });
+
     it(`${route.name} sends nothing upstream when there is no active org`, async () => {
       clerkState.orgId = null;
 
