@@ -13,9 +13,11 @@
  *  - `missionWorkflowRows` — the brand's Workflows page. One mission's own figures: the
  *    CAMPAIGN grain of the per-brand ladder, never a coarser grain wearing its name, and the
  *    realized return of the mission's own per-workflow group. "Goes first" is the producer's
- *    rank 1 for the mission, mature or not; "Money goes here" is the first MATURE row in rank
- *    order: the cheap learning workflows above it take the money until their flash price
- *    rises, then it settles there (owner, 2026-09-30).
+ *    rank 1 for the mission, mature or not; "Money goes here" is the producer's
+ *    `recommendedWorkflowDynastySlug`, read, never re-derived. Electing "the first mature row in
+ *    rank order" here put the money on Dawn ($4.73/visit) while the producer recommended and ran
+ *    Osprey ($2.26/visit): the rank had tied on the offer and fallen back to the slug (prod
+ *    2026-10-01, brand c4b5284d).
  *
  * A cost per outcome is observed: null at zero outcomes, never a spend floor. Alias-free (types
  * only) so it carries real unit tests.
@@ -132,10 +134,12 @@ interface HalfFigures {
  * rank for this mission.
  *
  * `roiBySlug` is the mission's realized return per workflow (its own grouped revenue read).
+ * `recommendedSlug` is the producer's pick for the mission: the row the money goes to.
  */
 export function missionWorkflowRows(input: {
   ladderRows: readonly MissionLadderRow[];
   roiBySlug: ReadonlyMap<string, number | null>;
+  recommendedSlug: string | null;
 }): LiveWorkflowRow[] {
   const out: LiveWorkflowRow[] = [];
   for (const r of input.ladderRows) {
@@ -177,7 +181,7 @@ export function missionWorkflowRows(input: {
     .map((x) => x.row);
   const first = ordered.find((r) => r.selectable && r.rank != null);
   if (first) first.first = true;
-  const cash = ordered.find((r) => r.selectable && r.rank != null && r.mature === true);
+  const cash = ordered.find((r) => r.selectable && r.slug === input.recommendedSlug);
   if (cash) cash.cash = true;
   return ordered;
 }
