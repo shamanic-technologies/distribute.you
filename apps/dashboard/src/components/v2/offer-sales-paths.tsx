@@ -27,10 +27,20 @@ export function OfferSalesPaths({
   data,
   pending,
   failed,
+  highlightPathKey = null,
+  highlightLabel = "What we launch first",
+  intro = "Every way the ticked legs reach a paying client, best return first. Open one to see why.",
+  onStateRate,
 }: {
   data: OfferSalesPaths | undefined;
   pending: boolean;
   failed: boolean;
+  /** The path framed as the one launched first (the onboarding states it). */
+  highlightPathKey?: string | null;
+  highlightLabel?: string;
+  intro?: string;
+  /** When given, each leg between two steps takes a typed rate (whole percent) or null to clear it. */
+  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const paths = data?.paths ?? [];
@@ -38,9 +48,7 @@ export function OfferSalesPaths({
   return (
     <section>
       <SectionTitle count={data ? paths.length : null}>Sales paths</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">
-        Every way the ticked legs reach a paying client, best return first. Open one to see why.
-      </p>
+      <p className="k-fg2 -mt-1 mb-3 text-[13px]">{intro}</p>
       {pending ? (
         <div className="space-y-2">
           <Shimmer className="h-12 rounded-[10px]" />
@@ -58,6 +66,8 @@ export function OfferSalesPaths({
               path={p}
               open={open === p.pathKey}
               onToggle={() => setOpen(open === p.pathKey ? null : p.pathKey)}
+              highlight={p.pathKey === highlightPathKey ? highlightLabel : null}
+              onStateRate={onStateRate}
             />
           ))}
         </ul>
@@ -66,10 +76,25 @@ export function OfferSalesPaths({
   );
 }
 
-function PathRow({ path, open, onToggle }: { path: SalesPathRow; open: boolean; onToggle: () => void }) {
+function PathRow({
+  path,
+  open,
+  onToggle,
+  highlight,
+  onStateRate,
+}: {
+  path: SalesPathRow;
+  open: boolean;
+  onToggle: () => void;
+  highlight: string | null;
+  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+}) {
   const unavailable = roiUnavailableLabel(path.roiUnavailableReason);
   return (
-    <li>
+    <li className={highlight ? "bg-[var(--accent-soft)] ring-1 ring-inset ring-[var(--accent)]" : undefined}>
+      {highlight && (
+        <p className="k-accent-text px-4 pt-2.5 text-[11.5px] font-semibold uppercase tracking-wide">{highlight}</p>
+      )}
       <button
         type="button"
         aria-expanded={open}
@@ -88,12 +113,18 @@ function PathRow({ path, open, onToggle }: { path: SalesPathRow; open: boolean; 
           {formatRoi(path.roi)}
         </span>
       </button>
-      {open && <PathBreakdown path={path} />}
+      {open && <PathBreakdown path={path} onStateRate={onStateRate} />}
     </li>
   );
 }
 
-function PathBreakdown({ path }: { path: SalesPathRow }) {
+function PathBreakdown({
+  path,
+  onStateRate,
+}: {
+  path: SalesPathRow;
+  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+}) {
   const unavailable = roiUnavailableLabel(path.roiUnavailableReason);
   return (
     <div className="k-inset space-y-3 px-4 pb-4 pt-1">
@@ -110,7 +141,7 @@ function PathBreakdown({ path }: { path: SalesPathRow }) {
           </thead>
           <tbody>
             {path.legs.map((l) => (
-              <LegLine key={l.legKey} leg={l} />
+              <LegLine key={l.legKey} leg={l} onStateRate={onStateRate} />
             ))}
           </tbody>
         </table>
@@ -137,7 +168,13 @@ function PathBreakdown({ path }: { path: SalesPathRow }) {
   );
 }
 
-function LegLine({ leg }: { leg: SalesPathLeg }) {
+function LegLine({
+  leg,
+  onStateRate,
+}: {
+  leg: SalesPathLeg;
+  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+}) {
   const from = leg.fromStep?.label ?? "Start";
   const inputs = leg.rateInputs;
   const { measured } = inputs ?? { measured: null };
@@ -167,7 +204,9 @@ function LegLine({ leg }: { leg: SalesPathLeg }) {
       <td className="py-1.5 pr-3">
         {from} <span className="k-fg3">→</span> {leg.toStep.label}
       </td>
-      <td className="py-1.5 pr-3 tabular-nums">{leg.fromStep ? formatRatePct(leg.conversionRatePct) : "—"}</td>
+      <td className="py-1.5 pr-3 tabular-nums">
+        {!leg.fromStep ? "—" : onStateRate ? <RateEditor leg={leg} onStateRate={onStateRate} /> : formatRatePct(leg.conversionRatePct)}
+      </td>
       <td className="py-1.5 pr-3">
         <div>{leg.fromStep ? rateSourceLabel(leg.rateSource) : "Entry"}</div>
         {detail && <div className="k-fg3 text-[11px]">{detail}</div>}
@@ -175,5 +214,66 @@ function LegLine({ leg }: { leg: SalesPathLeg }) {
       <td className="py-1.5 pr-3">{worker}</td>
       <td className="py-1.5 text-right tabular-nums">{leg.workedBy === "human" ? "—" : usd(leg.costPerPayingClientUsd)}</td>
     </tr>
+  );
+}
+
+/**
+ * The rate a leg is priced on, overwritable in place. Saving states the brand's own rate
+ * for the leg (brand-service, shared by every offer); the paths are then re-ranked by
+ * features-service. An empty field clears the statement. Whole percents.
+ */
+function RateEditor({
+  leg,
+  onStateRate,
+}: {
+  leg: SalesPathLeg;
+  onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+}) {
+  const shown = leg.conversionRatePct == null ? "" : String(Math.round(leg.conversionRatePct));
+  const [value, setValue] = useState(shown);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dirty = value.trim() !== shown;
+  async function save() {
+    const t = value.trim().replace(/%$/, "");
+    if (t !== "" && (!/^\d+$/.test(t) || Number(t) > 100)) {
+      setError("A whole percent, 0 to 100.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await onStateRate(leg, t === "" ? null : Number(t));
+    } catch (e) {
+      console.error("[offer-sales-paths] rate save failed", e);
+      setError("Could not save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <input
+        className="k-input h-6 w-12 px-1.5 text-right tabular-nums"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setError(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && dirty) void save();
+        }}
+        aria-label={`Conversion rate from ${leg.fromStep?.label ?? "start"} to ${leg.toStep.label}, in percent`}
+        disabled={busy}
+      />
+      <span className="k-fg3">%</span>
+      {dirty && (
+        <button type="button" className="k-btn h-6 px-2 text-[11.5px]" onClick={() => void save()} disabled={busy}>
+          {busy ? "Saving..." : "Save"}
+        </button>
+      )}
+      {error && <span className="w-full text-[11px] text-[var(--data-rose)]">{error}</span>}
+    </span>
   );
 }

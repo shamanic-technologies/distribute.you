@@ -30,12 +30,15 @@ import {
   confirmBrandOffers,
   extractBrandFields,
   getAudienceCompanies,
+  getOfferSalesPaths,
   getPublicCatalogueSignedOut,
   previewColdEmail,
   proposeAudienceSegments,
   proposeBrandOffers,
   saveOfferLifetimeRevenue,
+  saveOfferSalesPath,
   saveOfferUserFields,
+  stateBrandLegRates,
   suggestBrandIcp,
   upsertBrand,
   type AudienceCompanyRow,
@@ -49,12 +52,14 @@ import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import { websiteInputProblem } from "@/lib/website-input";
 import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
 import { NEW_ORG_CHANNEL_SLUG } from "@/lib/v2/new-org-wizard";
+import { EMPTY_LEG_CATALOGUE, legCatalogueFromWire, type LegCatalogue } from "@/lib/legs";
+import { SALES_PATH_CHANNEL_SLUGS, offeredFromCatalogue, selectionFromSteps, type SalesPathSelection } from "@/lib/offer-sales-path";
+import type { OfferSalesPaths as OfferSalesPathsData, SalesPathLeg } from "@/lib/offer-sales-paths";
+import { OfferSalesPath } from "@/components/v2/offer-sales-path";
+import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
-  outcomePriceLine,
-  parseOutcomePrices,
-  type OutcomePrice,
   EMAIL_CAP,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
@@ -62,8 +67,13 @@ import {
   LEVER_DRAFT_FIELDS,
   NEXT_STEPS,
   OFFER_FIELDS,
-  OUTCOME_OPTIONS,
+  SALES_PATH_CHANNEL_LABEL,
   VALUE_FIELDS,
+  firstLaunchedPath,
+  launchPlan,
+  parseDraftedSteps,
+  planFloorUsd,
+  salesStepsDraftField,
   answerLines,
   leversLLMPrompt,
   parseLifetimeRevenue,
@@ -91,7 +101,6 @@ import {
   type GetStartedAudience,
   type GetStartedEmail,
   type GetStartedOffer,
-  type GetStartedOutcome,
   type GetStartedSnapshot,
   type GiveDraftKey,
   type LeverDraftKey,
@@ -102,7 +111,7 @@ import { Initials, Shimmer } from "@/components/v2/ui";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { coldEmailLegFor, recommendedBudgetForPreview } from "./launch";
+import { pricingLegFor, recommendedBudgetForPreview } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
 import { stepViewName, withStageTransition } from "./view-transition";
@@ -150,8 +159,9 @@ export function GetStarted() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [steps, setSteps] = useState<Record<GetStartedStepKey, StepState>>(() => initialSteps());
   const [floorUsd, setFloorUsd] = useState(1);
-  // The expected price of one visit / one meeting, served by features-service. Null until read.
-  const [outcomePrices, setOutcomePrices] = useState<Record<GetStartedOutcome, OutcomePrice> | null>(null);
+  // The step and leg catalogue, and each channel's floor, off the public catalogue.
+  const [catalogue, setCatalogue] = useState<LegCatalogue>(EMPTY_LEG_CATALOGUE);
+  const [floorCents, setFloorCents] = useState<Map<string, number>>(new Map());
   const [recommendedUsd, setRecommendedUsd] = useState<number | null>(null);
   const [wallOpen, setWallOpen] = useState(false);
   const [wallNote, setWallNote] = useState<string | null>(null);
@@ -199,8 +209,14 @@ export function GetStarted() {
   // Steps 5 to 8: questions about the offer, each prefilled from ONE site read made as
   // soon as the offer is picked. The first emails wait for the answers: they are
   // written from them.
-  const [outcome, setOutcome] = useState<GetStartedOutcome | null>(null);
   const [valueInput, setValueInput] = useState("");
+  // The sales path: the steps their sales go through (drafted off the site), the legs
+  // between them, both saved on the offer; then the paths features-service ranks.
+  const [selection, setSelection] = useState<SalesPathSelection>({ steps: new Set(), legs: new Set() });
+  const selectionTouched = useRef(false);
+  const draftedSteps = useRef<string[] | null>(null);
+  const [salesPaths, setSalesPaths] = useState<OfferSalesPathsData | null>(null);
+  const [pathsState, setPathsState] = useState<"idle" | "loading" | "failed">("idle");
   const [levers, setLevers] = useState<Record<LeverDraftKey, string>>(() => emptyRecord(LEVER_DRAFT_FIELDS));
   const [gives, setGives] = useState<Record<GiveDraftKey, string>>(() => emptyRecord(GIVE_DRAFT_FIELDS));
   const [drafted, setDrafted] = useState<"no" | "running" | "done" | "failed">("no");
@@ -235,26 +251,33 @@ export function GetStarted() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The channel's floor, off the public catalogue: no session needed.
+  // The steps, the legs and each channel's floor, off the public catalogue: no session needed.
   useEffect(() => {
     getPublicCatalogueSignedOut()
       .then((cat) => {
-        const cents = channelMinimumCents(channelMinimumsFromWire(cat.channels), NEW_ORG_CHANNEL_SLUG);
+        const mins = channelMinimumsFromWire(cat.channels);
+        const cents = channelMinimumCents(mins, NEW_ORG_CHANNEL_SLUG);
         if (cents != null) setFloorUsd(cents / 100);
+        const floors = new Map<string, number>();
+        for (const slug of SALES_PATH_CHANNEL_SLUGS) {
+          const c = channelMinimumCents(mins, slug);
+          if (c != null) floors.set(slug, c);
+        }
+        setFloorCents(floors);
+        setCatalogue(legCatalogueFromWire(cat));
       })
       .catch((e) => console.error("[get-started] catalogue read failed:", e));
   }, []);
 
-  // What one visit / one meeting is expected to cost, for the "What you want" cards.
-  // A failed read states no price on the cards; it never blocks the pick.
+  const offered = useMemo(() => offeredFromCatalogue(catalogue, SALES_PATH_CHANNEL_SLUGS), [catalogue]);
+
+  // The drafted steps tick the screen once both the draft and the catalogue are in,
+  // unless the visitor already ticked something.
   useEffect(() => {
-    fetch("/api/public/outcome-prices")
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`outcome prices ${res.status}`);
-        setOutcomePrices(parseOutcomePrices(await res.json()));
-      })
-      .catch((e) => console.error("[get-started] outcome prices read failed:", e));
-  }, []);
+    if (selectionTouched.current || !draftedSteps.current || offered.legs.length === 0) return;
+    const keys = parseDraftedSteps(draftedSteps.current, offered.steps);
+    if (keys.length > 0) setSelection(selectionFromSteps(keys, offered.legs));
+  }, [offered, drafted]);
 
   // A website carried from a link starts the walk at once, like Explee's hero.
   useEffect(() => {
@@ -277,7 +300,10 @@ export function GetStarted() {
     setAudience(s.audience);
     setRestoredBudget(s.budgetUsd);
     if (s.email) setRestoredEmail(s.email);
-    setOutcome(s.outcome ?? null);
+    if (s.salesPath) {
+      selectionTouched.current = true;
+      setSelection({ steps: new Set(s.salesPath.steps), legs: new Set(s.salesPath.legs) });
+    }
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
     setStarted(true);
@@ -288,8 +314,10 @@ export function GetStarted() {
       competitors: s.competitors.length ? "done" : "failed",
       offer: s.offer ? "done" : "failed",
       audience: s.audience ? "done" : "failed",
-      outcome: s.outcome ? "done" : "failed",
       value: s.lifetimeRevenueUsd != null ? "done" : "failed",
+      salesSteps: s.salesPath ? "done" : "failed",
+      legs: s.salesPath ? "done" : "failed",
+      paths: s.pathsDone ? "done" : "failed",
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
       companies: "failed",
@@ -386,8 +414,13 @@ export function GetStarted() {
   async function draftAnswers(id: string, offerId: string) {
     setDrafted("running");
     try {
-      const fields = [...VALUE_FIELDS, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => ({ key: f.key, description: f.description }));
+      const stepsField = offered.steps.length
+        ? [salesStepsDraftField(offered.steps.map((k) => ({ key: k, label: catalogue.steps.get(k)?.label ?? k })))]
+        : [];
+      const fields = [...VALUE_FIELDS, ...stepsField, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => ({ key: f.key, description: f.description }));
       const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
+      const said = r.fields.salesSteps?.value;
+      draftedSteps.current = Array.isArray(said) ? said.map(String) : typeof said === "string" ? said.split("\n") : [];
       const usd = parseUsdEstimate(r.fields.clientLifetimeRevenueUsd?.value);
       setValueInput((cur) => cur || (usd != null ? String(usd) : ""));
       setLevers((cur) => fillBlank(cur, LEVER_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
@@ -409,27 +442,82 @@ export function GetStarted() {
         if (next[k] === "done" || !prevDone) return;
         next[k] = needsDraft && !ready ? "running" : "choose";
       };
-      open("outcome", cur.audience === "done", false);
-      open("value", cur.outcome === "done", true);
-      open("levers", cur.value === "done", true);
+      open("value", cur.audience === "done", true);
+      open("salesSteps", cur.value === "done", true);
+      open("legs", cur.salesSteps === "done", false);
+      if (next.paths !== "done" && cur.legs === "done") next.paths = salesPaths ? "choose" : pathsState === "failed" ? "failed" : "running";
+      open("levers", cur.paths === "done", true);
       open("gives", cur.levers === "done", true);
       return JSON.stringify(next) === JSON.stringify(cur) ? cur : next;
     });
-  }, [drafted, steps.audience, steps.outcome, steps.value, steps.levers]);
+  }, [drafted, steps.audience, steps.value, steps.salesSteps, steps.legs, steps.paths, steps.levers, salesPaths, pathsState]);
 
-  /** Step 5: what the visitor buys. */
-  function pickOutcome(o: GetStartedOutcome) {
+  /** Saves the ticked steps and legs on the offer (brand-service replaces the whole selection). */
+  async function saveSelection(next: SalesPathSelection, done: GetStartedStepKey) {
+    if (!brandId || !offer || answerBusy) return;
+    setAnswerBusy(true);
+    setAnswerError(null);
+    try {
+      await saveOfferSalesPath(brandId, offer.offerId, [...next.steps], [...next.legs]);
+      withStageTransition(() => {
+        setStep(done, "done");
+        setFocus(null);
+      });
+      saveSnapshot({ salesPath: { steps: [...next.steps], legs: [...next.legs] } });
+      posthog.capture(done === "salesSteps" ? "get_started_steps_ticked" : "get_started_legs_ticked", {
+        steps: next.steps.size,
+        legs: next.legs.size,
+      });
+    } catch (e) {
+      console.error("[get-started] sales path save failed:", e);
+      setAnswerError("We could not save this. Try again.");
+    } finally {
+      setAnswerBusy(false);
+    }
+  }
+
+  /** The paths the saved legs make, ranked by features-service on expected ROI. */
+  async function loadPaths() {
     if (!brandId || !offer) return;
+    setPathsState("loading");
+    try {
+      const data = await getOfferSalesPaths(brandId, offer.offerId);
+      setSalesPaths(data);
+      setPathsState("idle");
+      const first = firstLaunchedPath(data.paths);
+      const leg = pricingLegFor(first?.entryLegKey);
+      if (leg)
+        recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, leg)
+          .then(setRecommendedUsd)
+          .catch((e) => console.error("[get-started] price read failed:", e));
+    } catch (e) {
+      console.error("[get-started] sales paths read failed:", e);
+      setPathsState("failed");
+    }
+  }
+
+  // The paths are read once the legs are saved (and again on a restored walk).
+  useEffect(() => {
+    if (brandId && offer && steps.legs === "done" && !salesPaths && pathsState === "idle") void loadPaths();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId, offer?.offerId, steps.legs, salesPaths, pathsState]);
+
+  /** A rate overwritten from a path's detail: the brand's own rate for the leg, then the paths re-ranked. */
+  async function stateLegRate(leg: SalesPathLeg, ratePct: number | null) {
+    if (!brandId || !leg.fromStep) return;
+    await stateBrandLegRates(brandId, [{ fromStep: leg.fromStep.label, toStep: leg.toStep.label, ratePct }]);
+    posthog.capture("get_started_rate_stated", { leg: leg.legKey, cleared: ratePct == null });
+    await loadPaths();
+  }
+
+  /** Step: the ranked paths seen; the one launched first is where the money goes. */
+  function confirmPaths() {
     withStageTransition(() => {
-      setOutcome(o);
-      setStep("outcome", "done");
+      setStep("paths", "done");
       setFocus(null);
     });
-    saveSnapshot({ outcome: o });
-    posthog.capture("get_started_outcome_picked", { outcome: o });
-    recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, coldEmailLegFor(o))
-      .then(setRecommendedUsd)
-      .catch((e) => console.error("[get-started] price read failed:", e));
+    saveSnapshot({ pathsDone: true });
+    posthog.capture("get_started_paths_seen", { paths: salesPaths?.paths.length ?? 0 });
   }
 
   /** Step 6: what one client is worth, saved on the offer. */
@@ -911,7 +999,9 @@ export function GetStarted() {
     posthog.capture("get_started_preview_ready");
   }
 
-  const canLaunch = started && !!brandId && !!offer && !!audience && !!outcome && answered;
+  const plan = useMemo(() => launchPlan(salesPaths?.paths ?? []), [salesPaths]);
+  const firstPath = useMemo(() => firstLaunchedPath(salesPaths?.paths ?? []), [salesPaths]);
+  const canLaunch = started && !!brandId && !!offer && !!audience && steps.paths === "done" && plan.length > 0 && answered;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
   if (!started) {
@@ -937,8 +1027,10 @@ export function GetStarted() {
   const PICK_LINES: Partial<Record<GetStartedStepKey, string>> = {
     offer: "Pick the offer to sell first.",
     audience: "Pick who to write to first.",
-    outcome: "Pick what you want us to get you.",
     value: "Tell us what one client is worth.",
+    salesSteps: "Tick the steps your sales go through today.",
+    legs: "Tick how your leads move from one step to the next.",
+    paths: "See where we put your money first.",
     levers: "Check your offer, then continue.",
     gives: "Say what you give away, then we write the emails.",
   };
@@ -956,7 +1048,9 @@ export function GetStarted() {
     audienceBusy,
     rows: audRows,
     written: writtenCount,
-    outcomeLabel: OUTCOME_OPTIONS.find((o) => o.key === outcome)?.label ?? null,
+    stepCount: selection.steps.size,
+    legCount: selection.legs.size,
+    firstPathLabel: firstPath ? firstPath.steps.map((x) => x.label).join(" → ") : null,
     lifetimeRevenue: valueInput,
     leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
     giveCount: answerLines(gives.giveForFree).length,
@@ -993,8 +1087,38 @@ export function GetStarted() {
           onRetry={() => brandId && void prepareAudiences(brandId)}
         />
       );
-    if (key === "outcome")
-      return <OutcomeStage state={steps.outcome} picked={outcome} prices={outcomePrices} onPick={pickOutcome} />;
+    if (key === "salesSteps" || key === "legs")
+      return (
+        <SalesPathStage
+          part={key === "salesSteps" ? "steps" : "legs"}
+          state={steps[key]}
+          catalogue={catalogue}
+          selection={selection}
+          drafted={key === "salesSteps" && !!draftedSteps.current?.length}
+          onChange={(next) => {
+            selectionTouched.current = true;
+            setSelection(next);
+            setAnswerError(null);
+          }}
+          busy={answerBusy}
+          error={steps[key] === "choose" ? answerError : null}
+          onContinue={() => void saveSelection(selection, key)}
+        />
+      );
+    if (key === "paths")
+      return (
+        <PathsStage
+          state={steps.paths}
+          data={salesPaths}
+          loading={pathsState === "loading"}
+          failed={pathsState === "failed"}
+          highlightPathKey={firstPath?.pathKey ?? null}
+          canContinue={plan.length > 0}
+          onRetry={() => void loadPaths()}
+          onStateRate={stateLegRate}
+          onContinue={confirmPaths}
+        />
+      );
     if (key === "value")
       return (
         <ValueStage
@@ -1139,7 +1263,7 @@ export function GetStarted() {
         </main>
       </div>
 
-      {wallOpen && brandId && offer && audience && outcome && (
+      {wallOpen && brandId && offer && audience && plan.length > 0 && (
         <AccountCardWall
           brandId={brandId}
           website={websiteUrl(website)}
@@ -1148,10 +1272,11 @@ export function GetStarted() {
           audience={audience}
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
-          floorUsd={floorUsd}
+          floorUsd={planFloorUsd(plan, floorCents, floorUsd)}
           recommendedUsd={restoredBudget ?? recommendedUsd}
           budgetChosen={restoredBudget != null}
-          outcome={outcome ?? "visits"}
+          plan={plan}
+          entryLegKey={firstPath?.entryLegKey ?? null}
           answered={answered}
           onBudget={(usd) => saveSnapshot({ budgetUsd: usd })}
           onClose={() => setWallOpen(false)}
@@ -1167,8 +1292,10 @@ function initialSteps(): Record<GetStartedStepKey, StepState> {
     competitors: "waiting",
     offer: "waiting",
     audience: "waiting",
-    outcome: "waiting",
     value: "waiting",
+    salesSteps: "waiting",
+    legs: "waiting",
+    paths: "waiting",
     levers: "waiting",
     gives: "waiting",
     companies: "waiting",
@@ -1401,8 +1528,10 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   competitors: () => "Finding your competitors",
   offer: () => "Reading what you sell",
   audience: () => "Working out who to write to",
-  outcome: () => "Waiting for your pick",
   value: () => "Estimating what a client is worth to you",
+  salesSteps: () => "Reading how your sales work today",
+  legs: () => "Saving your sales steps",
+  paths: () => "Ranking every way your sales can run",
   levers: () => "Drafting your offer from your site",
   gives: () => "Drafting what you could give away",
   companies: () => "Finding companies that match, with the right person at each",
@@ -1654,53 +1783,144 @@ function OfferStage({
   );
 }
 
-/** Step 5: what the visitor wants us to get them. */
-function OutcomeStage({
+/** The step and leg screens of the sales path: the shared picker, one part per screen. */
+function SalesPathStage({
+  part,
   state,
-  picked,
-  prices,
-  onPick,
+  catalogue,
+  selection,
+  drafted,
+  onChange,
+  busy,
+  error,
+  onContinue,
+}: {
+  part: "steps" | "legs";
+  state: StepState;
+  catalogue: LegCatalogue;
+  selection: SalesPathSelection;
+  drafted: boolean;
+  onChange: (next: SalesPathSelection) => void;
+  busy: boolean;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  const done = state === "done";
+  const key = part === "steps" ? "salesSteps" : "legs";
+  const channelNames = useMemo(() => new Map(SALES_PATH_CHANNEL_SLUGS.map((s) => [s, SALES_PATH_CHANNEL_LABEL[s] ?? s])), []);
+  const empty = part === "steps" ? selection.steps.size === 0 : selection.legs.size === 0;
+  const label = (k: string | null) => (k ? catalogue.steps.get(k)?.label ?? k : "Start");
+  return (
+    <StepCard
+      index={stepIndex(key) + 1}
+      title={part === "steps" ? "Your sales steps" : "How leads move"}
+      state={state}
+      meta={<StateWord state={state} doneLabel={part === "steps" ? `${selection.steps.size} steps` : `${selection.legs.size} ways`} />}
+    >
+      {state === "waiting" || state === "running" || catalogue.legs.size === 0 ? (
+        <OptionSkeleton />
+      ) : done ? (
+        <ul className="flex flex-wrap gap-1.5">
+          {part === "steps"
+            ? [...selection.steps].map((s) => (
+                <li key={s} className="k-chip">
+                  {label(s)}
+                </li>
+              ))
+            : [...catalogue.legs.values()]
+                .filter((l) => selection.legs.has(l.legKey))
+                .map((l) => (
+                  <li key={l.legKey} className="k-chip">
+                    {label(l.fromKey)} → {label(l.toKey)}
+                  </li>
+                ))}
+        </ul>
+      ) : (
+        <>
+          <p className="k-fg2 mb-3 text-[13px]">
+            {part === "steps"
+              ? "Which steps do your sales go through today, before someone becomes a paying client?"
+              : "How do you move a lead from one step to the next today? Tick every way that applies."}
+          </p>
+          {part === "steps" && drafted && <p className="k-fg3 -mt-1 mb-3 text-[12px]">We ticked what we read on your site. Change anything.</p>}
+          <OfferSalesPath
+            catalogue={catalogue}
+            channelNames={channelNames}
+            selection={selection}
+            onChange={onChange}
+            part={part}
+            stepsIntro="A paying client is always the last step."
+            legsIntro="We run the ways marked with a channel. Your team keeps the others."
+          />
+          <div className="mt-4 flex items-center gap-3">
+            {empty && <span className="k-fg3 text-[12px]">{part === "steps" ? "Tick at least one step." : "Tick at least one way."}</span>}
+            <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={busy || empty}>
+              {busy ? "Saving..." : "Continue"}
+            </button>
+          </div>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+/** Every path the ticked legs make, ranked by expected ROI; the one launched first is framed. */
+function PathsStage({
+  state,
+  data,
+  loading,
+  failed,
+  highlightPathKey,
+  canContinue,
+  onRetry,
+  onStateRate,
+  onContinue,
 }: {
   state: StepState;
-  picked: GetStartedOutcome | null;
-  prices: Record<GetStartedOutcome, OutcomePrice> | null;
-  onPick: (o: GetStartedOutcome) => void;
+  data: OfferSalesPathsData | null;
+  loading: boolean;
+  failed: boolean;
+  highlightPathKey: string | null;
+  canContinue: boolean;
+  onRetry: () => void;
+  onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  onContinue: () => void;
 }) {
+  const done = state === "done";
   return (
-    <StepCard index={stepIndex("outcome") + 1} title="What you want" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
+    <StepCard index={stepIndex("paths") + 1} title="Where your money goes" state={state} meta={<StateWord state={state} />}>
       {state === "waiting" ? (
         <OptionSkeleton />
       ) : (
         <>
-          <p className="k-fg2 text-[13px]">Do you want visits to your website, or meetings in your calendar?</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {OUTCOME_OPTIONS.map((o, i) => {
-              const on = picked === o.key;
-              const priceLine = outcomePriceLine(prices?.[o.key], o.unit);
-              return (
-                <button
-                  key={o.key}
-                  type="button"
-                  onClick={() => onPick(o.key)}
-                  disabled={!!picked}
-                  aria-pressed={on}
-                  style={stagger(i, 80)}
-                  className={`gs-in k-card p-3 text-left transition-shadow duration-200 ${on ? "ring-1 ring-[var(--accent)]" : picked ? "opacity-50" : "k-hover"}`}
-                >
-                  <span className="k-fg block text-[14px] font-medium leading-5">{o.label}</span>
-                  <span className="k-fg2 mt-1 block text-[12.5px] leading-5">{o.blurb}</span>
-                  {priceLine && (
-                    <span className="k-fg mt-1.5 block text-[13px] font-medium tabular-nums">
-                      {priceLine}
-                      {prices?.[o.key].early && <span className="k-fg3 font-normal"> (early estimate)</span>}
-                    </span>
-                  )}
-                  {o.key === "meetings" && <span className="k-fg3 mt-1.5 block text-[12px]">Two campaigns: cold email, then meeting booking.</span>}
-                  {on && <span className="k-accent-text mt-1.5 block text-[12px]">Picked</span>}
-                </button>
-              );
-            })}
-          </div>
+          <p className="k-fg2 mb-3 text-[13px] leading-5">
+            Every way your sales can run, with the return we expect from each. We put your budget on the framed one first.
+          </p>
+          <OfferSalesPaths
+            data={data ?? undefined}
+            pending={(loading || state === "running") && !data}
+            failed={failed}
+            highlightPathKey={highlightPathKey}
+            intro="Best return first. Open a path to see the conversion rates behind it, and change any of them."
+            onStateRate={done ? undefined : onStateRate}
+          />
+          <p className="k-fg3 mt-3 text-[12px] leading-5">
+            This ranking comes from the conversion rates we measure and the ones you give us. As your results come in, it updates, and your budget follows the best return.
+          </p>
+          {failed && (
+            <button type="button" className="k-btn mt-2 h-8 px-3" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+          {!done && (
+            <div className="mt-4 flex items-center gap-3">
+              {data && !canContinue && <span className="k-fg3 text-[12px]">None of these paths starts with a way we run. Go back and tick one.</span>}
+              <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={!canContinue}>
+                Continue
+              </button>
+            </div>
+          )}
         </>
       )}
     </StepCard>

@@ -4,14 +4,7 @@ import { useMemo } from "react";
 import { StepMark } from "@/components/marks/step-mark";
 import { SectionTitle } from "@/components/v2/ui";
 import type { LegCatalogue } from "@/lib/legs";
-import {
-  offeredLegs,
-  offeredSteps,
-  toggleLeg,
-  toggleStep,
-  type PathLeg,
-  type SalesPathSelection,
-} from "@/lib/offer-sales-path";
+import { offeredFromCatalogue, toggleLeg, toggleStep, type SalesPathSelection } from "@/lib/offer-sales-path";
 
 /**
  * How an offer sells (beta): the steps it goes through, the legs between them, and
@@ -23,33 +16,37 @@ export function OfferSalesPath({
   channelNames,
   selection,
   onChange,
+  part = "both",
+  stepsIntro = "Every step a sale of this offer goes through. A paying client is always the last one.",
+  legsIntro = "How a lead moves from one step to the next, and who moves it.",
 }: {
   catalogue: LegCatalogue;
   /** The channels this surface offers, slug -> name. Any other channel is not shown. */
   channelNames: ReadonlyMap<string, string>;
   selection: SalesPathSelection;
   onChange: (next: SalesPathSelection) => void;
+  /** Draw the steps, the legs, or both (the onboarding asks them on two screens). */
+  part?: "steps" | "legs" | "both";
+  stepsIntro?: string;
+  legsIntro?: string;
 }) {
-  const { legs, steps, channelsByLeg } = useMemo(() => {
-    const byLeg = new Map<string, string[]>();
-    for (const [slug, keys] of catalogue.legsByChannel) {
-      if (!channelNames.has(slug)) continue;
-      for (const k of keys) byLeg.set(k, [...(byLeg.get(k) ?? []), slug]);
-    }
-    const all: PathLeg[] = [...catalogue.legs.values()].map((l) => ({ legKey: l.legKey, fromKey: l.fromKey, toKey: l.toKey }));
-    const offered = offeredLegs(all, byLeg);
-    return { legs: offered, steps: offeredSteps(offered, [...catalogue.steps.keys()]), channelsByLeg: byLeg };
-  }, [catalogue, channelNames]);
+  const { legs, steps, channelsByLeg } = useMemo(() => offeredFromCatalogue(catalogue, channelNames.keys()), [catalogue, channelNames]);
 
   const label = (step: string | null) => (step ? catalogue.steps.get(step)?.label ?? step : "Start");
 
+  // On its own screen the legs list only those between ticked steps: a leg into a step
+  // nobody ticked is not a way their sales move.
+  const shownLegs =
+    part === "legs"
+      ? legs.filter((l) => (l.fromKey === null || selection.steps.has(l.fromKey)) && (l.toKey === "paid_client" || selection.steps.has(l.toKey)))
+      : legs;
+
   return (
     <div className="space-y-8">
+      {part !== "legs" && (
       <section>
         <SectionTitle count={selection.steps.size}>Steps</SectionTitle>
-        <p className="k-fg2 -mt-1 mb-3 text-[13px]">
-          Every step a sale of this offer goes through. A paying client is always the last one.
-        </p>
+        <p className="k-fg2 -mt-1 mb-3 text-[13px]">{stepsIntro}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {steps.map((s) => {
             const on = selection.steps.has(s);
@@ -68,14 +65,14 @@ export function OfferSalesPath({
           })}
         </div>
       </section>
+      )}
 
+      {part !== "steps" && (
       <section>
         <SectionTitle count={selection.legs.size}>Legs</SectionTitle>
-        <p className="k-fg2 -mt-1 mb-3 text-[13px]">
-          How a lead moves from one step to the next, and who moves it.
-        </p>
+        <p className="k-fg2 -mt-1 mb-3 text-[13px]">{legsIntro}</p>
         <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-          {legs.map((l) => {
+          {shownLegs.map((l) => {
             const on = selection.legs.has(l.legKey);
             const channels = channelsByLeg.get(l.legKey) ?? [];
             return (
@@ -95,7 +92,7 @@ export function OfferSalesPath({
                   </span>
                   <span className="flex flex-wrap gap-1.5">
                     {channels.length === 0 ? (
-                      <span className="k-fg3 text-[12px]">No channel</span>
+                      <span className="k-fg3 text-[12px]">Your team</span>
                     ) : (
                       channels.map((slug) => (
                         <span key={slug} className="k-chip">
@@ -110,6 +107,7 @@ export function OfferSalesPath({
           })}
         </ul>
       </section>
+      )}
     </div>
   );
 }

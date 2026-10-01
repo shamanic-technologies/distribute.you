@@ -41,8 +41,10 @@ export interface JournalData {
   audienceBusy: number | null;
   rows: AudienceCompanyRow[];
   written: number;
-  /** Steps 5 to 8, as the rail states them once answered. */
-  outcomeLabel: string | null;
+  /** The questions, as the rail states them once answered. */
+  stepCount: number;
+  legCount: number;
+  firstPathLabel: string | null;
   lifetimeRevenue: string;
   leverCount: number;
   giveCount: number;
@@ -127,7 +129,9 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
       </div>
     ) : null;
   if (k === "audience") return <AudiencePicker d={d} />;
-  if (k === "outcome") return d.outcomeLabel ? <p className="k-fg2 text-[12px]">{d.outcomeLabel}</p> : null;
+  if (k === "salesSteps") return <p className="k-fg2 text-[12px] tabular-nums">{d.stepCount === 1 ? "1 sales step" : `${d.stepCount} sales steps`}</p>;
+  if (k === "legs") return <p className="k-fg2 text-[12px] tabular-nums">{d.legCount === 1 ? "1 way leads move" : `${d.legCount} ways leads move`}</p>;
+  if (k === "paths") return d.firstPathLabel ? <p className="k-fg2 text-[12px]">{`First: ${d.firstPathLabel}`}</p> : null;
   if (k === "value") return d.lifetimeRevenue ? <p className="k-fg2 text-[12px] tabular-nums">{`$${d.lifetimeRevenue} per client`}</p> : null;
   if (k === "levers") return <p className="k-fg2 text-[12px] tabular-nums">{`${d.leverCount} of 6 offer points`}</p>;
   if (k === "gives") return <p className="k-fg2 text-[12px] tabular-nums">{d.giveCount === 1 ? "1 thing to give away" : `${d.giveCount} things to give away`}</p>;

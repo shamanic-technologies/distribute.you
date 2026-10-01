@@ -22,8 +22,10 @@ export const GET_STARTED_STEPS = [
   { key: "competitors", label: "Find your competitors" },
   { key: "offer", label: "Pick your offer" },
   { key: "audience", label: "Pick who to write to" },
-  { key: "outcome", label: "Pick what you want" },
   { key: "value", label: "What a client is worth" },
+  { key: "salesSteps", label: "Your sales steps" },
+  { key: "legs", label: "How leads move" },
+  { key: "paths", label: "Where your money goes" },
   { key: "levers", label: "Sharpen your offer" },
   { key: "gives", label: "What you give away" },
   { key: "companies", label: "Find 100 companies" },
@@ -45,72 +47,138 @@ export function stepIndex(key: GetStartedStepKey): number {
 }
 
 /**
- * What the visitor buys (owner-decided 2026-09-29). Visits are one campaign; meetings
- * are two, cold email getting the positive reply then meeting booking turning it into
- * a meeting, and the daily amount the visitor sets goes on EACH of them.
+ * The sales path (owner-decided 2026-10-01): we know the visitor wants sales, so the
+ * question is what they let us do. They tick the STEPS their sales go through today
+ * (drafted off the site), then the LEGS between them, and features-service ranks every
+ * path those legs make by expected ROI (`GET /offers/:offerId/sales-paths`). One daily
+ * budget then goes to the best path first (billing's global mode, spent by
+ * campaign-service): nothing here ranks, divides or splits money.
  */
-export type GetStartedOutcome = "visits" | "meetings";
 
-export const OUTCOME_OPTIONS: ReadonlyArray<{ key: GetStartedOutcome; label: string; unit: string; blurb: string }> = [
-  {
-    key: "visits",
-    label: "Website visits",
-    unit: "visit",
-    blurb: "We email your audience and send the interested ones to your website.",
-  },
-  {
-    key: "meetings",
-    label: "Meetings booked",
-    unit: "meeting",
-    blurb: "We email your audience, then book a meeting with everyone who replies with interest.",
-  },
-];
+/** The channels we run, with the words a visitor reads for each. */
+export const SALES_PATH_CHANNEL_LABEL: Readonly<Record<string, string>> = {
+  "sales-cold-email-outreach": "Cold email",
+  "ai-meeting-booking": "Meeting booking",
+  "ai-instant-call": "Instant call",
+};
+
+/** The site read that drafts the steps: ONE field, answered with step keys from the catalogue. */
+export function salesStepsDraftField(steps: ReadonlyArray<{ key: string; label: string }>): { key: "salesSteps"; description: string } {
+  const list = steps.map((s) => `${s.key} (${s.label})`).join(", ");
+  return {
+    key: "salesSteps",
+    description:
+      "Which of these steps does this company's sales process go through today, judging from its website (how a prospect becomes a paying client: do they book a demo or a call, sign up for a trial, fill a form, buy online, talk to a sales rep)? " +
+      `Answer ONLY with keys from this list, one per line, no other words: ${list}.`,
+  };
+}
+
+/** The drafted steps, kept only when the catalogue offers them, in catalogue order. */
+export function parseDraftedSteps(value: unknown, offered: readonly string[]): string[] {
+  const raw = Array.isArray(value) ? value.map(String) : typeof value === "string" ? value.split(/[\n,]/) : [];
+  const said = new Set(
+    raw
+      .map((x) => x.trim().replace(/^[-*\s]+/, "").split(/[\s(]/)[0])
+      .filter(Boolean),
+  );
+  return offered.filter((k) => said.has(k));
+}
+
+/** A path as this flow reads it: what features-service served, narrowed to what we use. */
+export interface PlanPath {
+  pathKey: string;
+  entryChannelSlug: string | null;
+  legs: ReadonlyArray<{
+    legKey: string;
+    fromStep: { key: string } | null;
+    workedBy: string;
+    channel: { slug: string | null; name: string | null } | null;
+  }>;
+}
 
 /**
- * The expected price of one outcome, as features-service serves it
- * (`/public/stats/outcome-prices`). `early` = at least one leg it rests on is priced on
- * early (flash) evidence because no workflow is mature there yet. Null price = the
- * producer could not measure it; the card then states none, never one of ours.
+ * The path we launch first: the best-ranked one whose entry leg a channel of ours runs.
+ * campaign-service's global budget goes to exactly that one (a path no channel of ours
+ * enters buys nothing it can run), so the highlight and the money agree.
  */
-export interface OutcomePrice {
-  priceUsd: number | null;
-  early: boolean;
+export function firstLaunchedPath<P extends PlanPath>(paths: readonly P[]): P | null {
+  return paths.find((p) => !!p.entryChannelSlug) ?? null;
 }
 
-/** Reads the producer's body into one price per outcome. Throws on a body it cannot read. */
-export function parseOutcomePrices(raw: unknown): Record<GetStartedOutcome, OutcomePrice> {
-  const outcomes = (raw as { outcomes?: Record<string, unknown> } | null)?.outcomes;
-  if (!outcomes || typeof outcomes !== "object") throw new Error("[get-started] outcome prices: no outcomes in body");
-  const read = (key: string): OutcomePrice => {
-    const o = outcomes[key] as { priceUsd?: unknown; maturity?: unknown } | undefined;
-    if (!o || typeof o !== "object") throw new Error(`[get-started] outcome prices: ${key} missing`);
-    const p = o.priceUsd;
-    if (p !== null && (typeof p !== "number" || !Number.isFinite(p))) throw new Error(`[get-started] outcome prices: ${key}.priceUsd unreadable`);
-    return { priceUsd: p === null || p <= 0 ? null : p, early: o.maturity === "early" };
-  };
-  return { visits: read("websiteVisit"), meetings: read("meetingBooked") };
+/** One campaign the launch creates: a channel on one leg. `reactive` = set off by a step, not by the daily budget. */
+export interface PlanCampaign {
+  featureSlug: string;
+  legKey: string;
+  label: string;
+  reactive: boolean;
+  /** On the path launched first: its campaign must be created or the launch fails. */
+  required: boolean;
 }
 
-/** "About $2.49 per visit" / "About $117 per meeting": cents under $10, whole dollars above. */
-export function outcomePriceLine(price: OutcomePrice | null | undefined, unit: string): string | null {
-  if (!price || price.priceUsd == null) return null;
-  const usd = price.priceUsd;
-  const amount = usd < 10 ? usd.toFixed(2) : Math.round(usd).toLocaleString("en-US");
-  return `About $${amount} per ${unit}`;
+/**
+ * Every campaign the launch creates: each leg a channel of ours works, on every path,
+ * the path launched first first. The global budget then decides which runs; a path
+ * whose campaigns do not exist could never take the money when a better one cannot.
+ */
+export function launchPlan(paths: readonly PlanPath[]): PlanCampaign[] {
+  const first = firstLaunchedPath(paths);
+  const ordered = first ? [first, ...paths.filter((p) => p !== first)] : [...paths];
+  const out: PlanCampaign[] = [];
+  const seen = new Set<string>();
+  for (const p of ordered) {
+    if (!p.entryChannelSlug) continue;
+    for (const l of p.legs) {
+      const slug = l.channel?.slug;
+      if (l.workedBy !== "platform" || !slug) continue;
+      const key = `${slug}|${l.legKey}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        featureSlug: slug,
+        legKey: l.legKey,
+        label: SALES_PATH_CHANNEL_LABEL[slug] ?? l.channel?.name ?? slug,
+        reactive: l.fromStep !== null,
+        required: p === first,
+      });
+    }
+  }
+  return out;
 }
 
-/** The campaigns an outcome launches: channel + leg, in launch order. */
-export function campaignsForOutcome(outcome: GetStartedOutcome): Array<{ featureSlug: string; legKey: string; label: string }> {
-  if (outcome === "visits") return [{ featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email" }];
-  return [
-    { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation", label: "Cold email" },
-    { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked", label: "Meeting booking" },
-  ];
+/**
+ * The margin for replies (owner-decided 2026-10-01, Google Ads' way): the daily budget
+ * goes to finding new leads, and on top of it UP TO half of it may be spent answering the
+ * leads who reply (every campaign set off by a step: meeting booking, calls). The visitor
+ * ticks a box saying so before paying.
+ */
+export const REPLY_MARGIN_SHARE = 0.5;
+
+/** Whole dollars a day each reply campaign may spend: the margin shared between them. */
+export function replyCeilingUsd(budgetUsd: number, replyCampaigns: number): number {
+  if (replyCampaigns <= 0) return 0;
+  return Math.floor((budgetUsd * REPLY_MARGIN_SHARE) / replyCampaigns);
 }
 
-/** Whole dollars a day across every campaign the outcome launches. */
-export function totalDailyUsd(outcome: GetStartedOutcome, perCampaignUsd: number): number {
-  return perCampaignUsd * campaignsForOutcome(outcome).length;
+/** The whole-dollar margin for replies on a budget. */
+export function replyMarginUsd(budgetUsd: number): number {
+  return Math.floor(budgetUsd * REPLY_MARGIN_SHARE);
+}
+
+/**
+ * The smallest daily budget the plan can run on: every lead-finding campaign must clear
+ * its channel's floor at the full budget, and every reply campaign at its share of the
+ * margin (billing refuses a ceiling under the floor).
+ */
+export function planFloorUsd(plan: readonly PlanCampaign[], floorCentsBySlug: ReadonlyMap<string, number>, fallbackUsd: number): number {
+  let floor = fallbackUsd;
+  const replies = plan.filter((c) => c.reactive).length;
+  for (const c of plan) {
+    const cents = floorCentsBySlug.get(c.featureSlug);
+    if (cents == null) continue;
+    const need = c.reactive ? Math.ceil((cents / 100) * replies / REPLY_MARGIN_SHARE) : Math.ceil(cents / 100);
+    if (need > floor) floor = need;
+  }
+  return floor;
 }
 
 /** What a client is worth, drafted off the site. A key of our own: it prefills nothing stored. */
@@ -429,8 +497,10 @@ export interface GetStartedSnapshot {
   budgetUsd: number | null;
   /** An email written during the preview, so the wall still shows it after the Google round trip. */
   email: GetStartedEmail | null;
-  /** What the visitor buys; null until answered. Absent on an older snapshot. */
-  outcome?: GetStartedOutcome | null;
+  /** The steps and legs ticked for the offer (saved on it); null until ticked. Absent on an older snapshot. */
+  salesPath?: { steps: string[]; legs: string[] } | null;
+  /** The ranked paths were seen and accepted. */
+  pathsDone?: boolean;
   /** What one client is worth, whole dollars; null until answered. */
   lifetimeRevenueUsd?: number | null;
   /** Whether the offer points and the give lists were answered (and saved on the offer). */
@@ -480,11 +550,21 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     audience: parseAudience(s.audience),
     budgetUsd: typeof s.budgetUsd === "number" && Number.isInteger(s.budgetUsd) && s.budgetUsd > 0 ? s.budgetUsd : null,
     email: parseSnapshotEmail(s.email),
-    outcome: s.outcome === "visits" || s.outcome === "meetings" ? s.outcome : null,
+    salesPath: parseSalesPath(s.salesPath),
+    pathsDone: s.pathsDone === true,
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
   };
+}
+
+function parseSalesPath(v: unknown): { steps: string[]; legs: string[] } | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const strs = (x: unknown) => (Array.isArray(x) ? x.filter((y): y is string => typeof y === "string" && y.length > 0) : null);
+  const steps = strs(o.steps);
+  const legs = strs(o.legs);
+  return steps && legs ? { steps, legs } : null;
 }
 
 function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
