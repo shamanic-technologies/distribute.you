@@ -7924,7 +7924,28 @@ const WorkflowRankResolvedSchema = z.object({
   conversionRatePct: z.number().nullable(),
 });
 
+/**
+ * ONE PRICE features-service HOLDS for a workflow at one grain on one basis, its cascade
+ * already walked (features-service #1241): `own` evidence, or `inherited` from the nearest
+ * coarser grain (`fromGrain`). Null price ⟺ nothing held (`unpricedReason`). A page reads
+ * this per (grain, basis) and never re-walks the cascade.
+ */
+const HeldPriceSchema = z
+  .object({
+    costPerOutcomeUsd: z.number().nullable(),
+    source: z.string().nullable(),
+    fromGrain: z.string().nullable(),
+    unpricedReason: z.string().nullish(),
+    vendorCostKnown: z.boolean().optional(),
+  })
+  .passthrough();
+
 const WorkflowRankRowSchema = z.object({
+  /** Every grain of the row's cascade priced on BOTH bases. `.optional()`: absent on a
+   *  goal-keyed body and on a body cached before #1241 shipped. */
+  priceByGrain: z
+    .record(z.string(), z.object({ flash: HeldPriceSchema, mature: HeldPriceSchema }).passthrough())
+    .optional(),
   audienceId: z.string().nullable(),
   workflow: z.object({
     workflowDynastySlug: z.string(),
