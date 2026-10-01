@@ -110,10 +110,12 @@ describe("GET / with the test on", () => {
 
   it("serves the subscription arm the homepage sold at $99/month with a 3-day trial", async () => {
     const { res, html } = await get({ qs: "?variant=subscription" });
-    // The amount picker waits for a checkout that charges the pick (PLAN_PICKER_LIVE):
-    // until then the arm sells exactly what is charged, $99.
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>$99/month");
-    expect(html).not.toContain("data-plan-amount");
+    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100";
+    // billing charges the pick (billing#568), the dashboard reads it from lp_plan.
+    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>From $99/month");
+    expect(html).toContain('<select data-plan-amount aria-label="Monthly amount">');
+    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(html).toContain(`<option value="${v}">`);
+    expect(html).toContain("lp_plan=");
     expect(html).not.toContain("Add $100");
     expect(html).toContain("3-day free trial");
     expect(html).toContain("Start my free trial");
