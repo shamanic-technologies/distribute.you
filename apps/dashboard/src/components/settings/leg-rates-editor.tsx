@@ -9,6 +9,7 @@ import {
   legId,
   legRatePatch,
   formatRatePct,
+  LEG_RATE_RULE,
   rateFieldSeed,
   rateSourceLabel,
   statedFromEffective,
@@ -81,7 +82,7 @@ export function LegRatesEditor({
 
   function save() {
     if (invalid.length > 0) {
-      setError("A rate is a number between 0 and 100.");
+      setError(LEG_RATE_RULE);
       return;
     }
     setError(null);

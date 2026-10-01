@@ -31,11 +31,30 @@ export function legId(leg: { fromStep: string; toStep: string }): string {
  * inputs are locale text fields.
  */
 export function parseRateInput(raw: string): number | null | undefined {
-  const trimmed = raw.trim();
+  const trimmed = raw.trim().replace(/%$/, "").trim();
   if (trimmed === "") return null;
   const n = Number(trimmed.replace(",", "."));
-  if (!Number.isFinite(n) || n < 0 || n > 100) return undefined;
+  if (!isLegRatePct(n)) return undefined;
   return n;
+}
+
+/**
+ * The precision a leg rate carries (owner, 2026-10-01): a whole percent from 1% up,
+ * since the rate is an approximation; below 1% a decimal is kept (0.5%), because a
+ * whole percent would read 0% and empty the rest of the path.
+ */
+export function isLegRatePct(n: number): boolean {
+  return Number.isFinite(n) && n >= 0 && n <= 100 && (n < 1 || Number.isInteger(n));
+}
+
+/** What a field refusing a rate says. */
+export const LEG_RATE_RULE = "A whole percent from 1 to 100, or a decimal below 1.";
+
+/** A leg rate at the precision it is shown and typed at (see `isLegRatePct`). */
+export function roundLegRatePct(pct: number): number {
+  if (pct >= 0.95) return Math.round(pct);
+  const tenth = Math.round(pct * 10) / 10;
+  return tenth > 0 || pct <= 0 ? tenth : Math.round(pct * 100) / 100;
 }
 
 /**
@@ -65,10 +84,9 @@ export function legRatePatch(
   return { patch, invalid };
 }
 
-/** A rate as a customer reads it: at most one decimal, never trailing zeros. */
+/** A rate as a customer reads it: a whole percent, a decimal only below 1%. */
 export function formatRatePct(pct: number): string {
-  const rounded = Math.round(pct * 10) / 10;
-  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`;
+  return `${roundLegRatePct(pct)}%`;
 }
 
 /** The brand's own statement, read off the effective-rate row that carries it. */
@@ -89,7 +107,7 @@ export function statedFromEffective(leg: EffectiveLegRate): StatedLegRate {
  */
 export function rateFieldSeed(leg: EffectiveLegRate): string {
   const value = leg.manualRatePct ?? leg.median.ratePct;
-  return value === null ? "" : String(Math.round(value * 10) / 10);
+  return value === null ? "" : String(roundLegRatePct(value));
 }
 
 /**

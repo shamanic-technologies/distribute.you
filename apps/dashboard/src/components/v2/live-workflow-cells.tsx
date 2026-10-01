@@ -2,6 +2,7 @@
 
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { formatRatePct } from "@/lib/brand-conversion-rates";
 import type { LiveWorkflowRow } from "@/lib/live-workflow-rows";
 
 /**
@@ -98,7 +99,7 @@ export function LiveWorkflowCells({ row, showCost = true }: { row: LiveWorkflowR
       <td className={`px-3 text-right tabular-nums ${ran && roiIsGood(row!.roiMultiple) ? "text-[var(--data-teal)]" : ""}`}>
         {ran ? formatRoi(row!.roiMultiple, "—") : DASH}
       </td>
-      <td className="px-3 text-right tabular-nums">{!ran || row!.conversionRatePct == null ? DASH : `${row!.conversionRatePct.toFixed(2)}%`}</td>
+      <td className="px-3 text-right tabular-nums">{!ran || row!.conversionRatePct == null ? DASH : formatRatePct(row!.conversionRatePct)}</td>
       <td className="px-3 text-right tabular-nums">{!ran || row!.outcomes == null ? DASH : Math.round(row!.outcomes).toLocaleString("en-US")}</td>
       <td className="px-3 pr-4 text-right tabular-nums">{!ran || row!.spentUsd == null ? DASH : formatUsdAdaptive(row!.spentUsd)}</td>
     </>
