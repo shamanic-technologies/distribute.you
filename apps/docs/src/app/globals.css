@@ -1,11 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --foreground: #1a1a2e;
+  --foreground: #101012;
   --background: #ffffff;
 }
 
@@ -18,7 +16,7 @@ html.dark {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
 /*
@@ -39,26 +37,26 @@ html {
 
 /* Prose overrides for docs */
 .prose h2 {
-  color: #1a1a2e;
+  color: #101012;
 }
 
 .prose h3 {
-  color: #1a1a2e;
+  color: #101012;
 }
 
 .prose a {
-  color: #ec4899;
+  color: theme('colors.brand.600');
   text-decoration: none;
 }
 
 .prose a:hover {
-  color: #db2777;
+  color: theme('colors.brand.700');
   text-decoration: underline;
 }
 
 .prose code {
-  color: #be185d;
-  background-color: #fdf2f8;
+  color: theme('colors.brand.700');
+  background-color: theme('colors.brand.50');
   padding: 0.2em 0.4em;
   border-radius: 0.25rem;
   font-size: 0.875em;
@@ -70,7 +68,7 @@ html {
 }
 
 .prose pre {
-  background-color: #1a1a2e;
+  background-color: #18181b;
   border-radius: 0.5rem;
   /* Wide code scrolls inside the block — never clipped by html{overflow-x:clip}. */
   overflow-x: auto;
@@ -118,13 +116,14 @@ html.dark .hover\:text-gray-800:hover { color: #e2e8f0; }
 html.dark .hover\:text-gray-900:hover { color: #f1f5f9; }
 
 /* Brand colors in dark */
-html.dark .bg-brand-50 { background-color: rgba(219, 39, 119, 0.15); }
-html.dark .bg-brand-100 { background-color: rgba(219, 39, 119, 0.2); }
-html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
-html.dark .text-brand-800 { color: #f9a8d4; }
-html.dark .text-brand-700 { color: #f9a8d4; }
-html.dark .text-brand-600 { color: #f472b6; }
-html.dark .text-brand-500 { color: #ec4899; }
+html.dark .bg-brand-50 { background-color: color-mix(in oklab, theme('colors.brand.600') 15%, transparent); }
+html.dark .bg-brand-100 { background-color: color-mix(in oklab, theme('colors.brand.600') 20%, transparent); }
+html.dark .border-brand-200 { border-color: color-mix(in oklab, theme('colors.brand.600') 30%, transparent); }
+html.dark .border-brand-300 { border-color: color-mix(in oklab, theme('colors.brand.500') 40%, transparent); }
+html.dark .text-brand-800 { color: theme('colors.brand.200'); }
+html.dark .text-brand-700 { color: theme('colors.brand.200'); }
+html.dark .text-brand-600 { color: theme('colors.brand.300'); }
+html.dark .text-brand-500 { color: theme('colors.brand.400'); }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
@@ -148,8 +147,8 @@ html.dark .prose th { color: #cbd5e1; }
 html.dark .prose strong { color: #f1f5f9; }
 
 html.dark .prose code {
-  color: #f9a8d4;
-  background-color: rgba(219, 39, 119, 0.15);
+  color: theme('colors.brand.200');
+  background-color: color-mix(in oklab, theme('colors.brand.600') 15%, transparent);
 }
 
 html.dark .prose pre {

@@ -23,4 +23,6 @@
 
 **A page for a surface the API no longer serves is DELETED**, with its route entry, sidebar entry and llms.txt line in the same commit (outlets/journalists/articles/press kits, #3632).
 
+**Brand: the docs wear dashboard v2's guidelines** (brand ramp byte-equal with `apps/dashboard/src/app/globals.css` `--color-brand-*`, Keel neutral greys, Geist/Geist Mono, marks copied from `apps/landing/public/brand`). Change the ramp there first, then mirror it in `tailwind.config.ts`; `brand-guidelines.test.ts` + `brand-mark.test.ts` fail on drift. The pink ramp and Inter are retired.
+
 **Guards:** `tests/unit/agent-discoverability.test.ts`. The docs suite is NOT a CI gate: run `pnpm --filter @distribute/docs test` locally before pushing.
