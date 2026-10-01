@@ -114,6 +114,12 @@
   box-shadow: inset 0 0 0 1px var(--line); outline: none;
 }
 .v2-root .k-input:focus-within { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 60%, transparent); }
+/* The call to action a selling screen exists for (the sign-up wall): 48px tall, never
+   missed. Tailwind height utilities lose to the 28px controls above (this file is
+   unlayered), so size a big control with these, never with h-12. */
+.v2-root .k-cta { height: 48px; padding: 0 18px; border-radius: 10px; font-size: 15px; font-weight: 600; }
+.v2-root .k-btn-accent.k-cta:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 88%, black); }
+.v2-root .k-input.k-cta-input { height: 48px; padding: 0 12px; border-radius: 10px; font-size: 15px; }
 .v2-root .k-tab { position: relative; height: 40px; display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); }
 .v2-root .k-tab[aria-current="page"] { color: var(--fg-1); }
 .v2-root .k-tab[aria-current="page"]::after {
