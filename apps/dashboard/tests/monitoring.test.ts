@@ -12,6 +12,8 @@ import {
   PriceVersionsSchema,
   EmailSendPriceSchema,
   SubscriptionCostsSchema,
+  RealCostsSchema,
+  PriceComparisonSchema,
   costItemNames,
   parseMonitoringPath,
   versionInForce,
@@ -321,7 +323,6 @@ describe("monitoring: price of one cold email (owner formula 2026-10-01)", () =>
   it("is a Price card and its own page, read through the staff gateway, never written to disk", () => {
     expect(MONITORING_PAGES).toContain("price/email-sending");
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('<Section section="price" count={4}>');
     expect(page).toContain('page="price/email-sending"');
     expect(page).toContain('{view.page === "price/email-sending" && <EmailSendingPage />}');
     expect(page).toContain('["staffEmailSendPrice"]');
@@ -409,5 +410,55 @@ describe("monitoring: real cost per credit of each subscription (owner 2026-10-0
     expect(view).not.toMatch(/[nN]etUsd\s*\//);
     expect(view).not.toMatch(/\/\s*[\w.]*[cC]redits\b/);
     expect(view).toContain("costPerCreditUsdCents");
+  });
+});
+
+describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", () => {
+  const fig = { amount1UsdCents: 100, amount2UsdCents: 150, differenceUsdCents: 50, differencePct: 50, realCostUsdCents: 120, margin1UsdCents: -20, margin1Pct: -20, margin2UsdCents: 30, margin2Pct: 20, billedUsdCents: 90, netBilledUsdCents: 85, billedPlatformKeyUsdCents: 90, netBilledPlatformKeyUsdCents: 85 };
+
+  it("costs-service's real costs parse: producer methods, flags and bases read as strings, missing figures null", () => {
+    const item = { costName: "apollo-credit", provider: "apollo", method: "subscription", flag: null, realCostPerUnitUsdCents: 2.94, ratio: null, catalogueVendorCostPerUnitUsdCents: 2.36, cataloguePricePerUnitUsdCents: 11.8, catalogueMarkupOnRealCost: 4.01, multiplier: 2, proposedPricePerUnitUsdCents: 5.88, proposedBasis: "real-cost-x2", proposedVsCataloguePct: -50.1 };
+    const p = RealCostsSchema.parse({
+      formula: "f", rules: { since: "2026-01-01", proposedMultiplier: 2, passThroughMultiplier: 1, x1Rule: "x1", payAsYouGoVendors: [], catalogueVendorCostProviders: {} },
+      day: "2026-10-01", asOf: "2026-10-01", refreshedAt: "2026-10-01T15:00:00Z", stale: false, lastRefresh: null, payAsYouGo: [],
+      items: [item, { ...item, costName: "explee-credit", method: "catalogue-vendor-cost", flag: "a-flag-added-later", realCostPerUnitUsdCents: null, proposedBasis: "current-price-kept" }],
+    });
+    expect(p.items[1].flag).toBe("a-flag-added-later");
+  });
+
+  it("the comparison parses at fleet grain (per org and brand) and at org x brand grain (none)", () => {
+    const base = { perimeter: { grain: "fleet" }, list1: { source: "catalogue", date: "2026-10-01" }, list2: { source: "proposed", date: "2026-10-01" }, interval: "month", consumptionAsOf: "2026-10-01T15:00:00Z", stale: false, notes: [], totals: fig, unpricedCostNames1: ["instantly-account-email-sent"], unpricedCostNames2: [], realCostUnknownCostNames: [], buckets: [{ period: "2026-09-01", ...fig, cumulative: fig }], costItems: [] };
+    expect(PriceComparisonSchema.parse({ ...base, byOrg: [{ orgId: "o", ...fig }], byBrand: [{ orgId: "o", brandId: null, ...fig }] }).byOrg).toHaveLength(1);
+    expect(PriceComparisonSchema.parse({ ...base, perimeter: { grain: "org-brand", orgId: "o", brandId: "b" }, byOrg: null, byBrand: null }).byBrand).toBeNull();
+  });
+
+  it("two pages, one per section, read through the staff gateway and never written to disk", () => {
+    for (const p of ["price/new-pricing", "margin/pricing-comparison"]) expect(MONITORING_PAGES).toContain(p);
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('<Section section="price" count={5}>');
+    expect(page).toContain('<Section section="margin" count={2}>');
+    expect(page).toContain('page="price/new-pricing"');
+    expect(page).toContain('page="margin/pricing-comparison"');
+    const api = read("lib/api.ts");
+    for (const k of ["STAFF_MONITORING_PATHS.realCosts", "STAFF_MONITORING_PATHS.priceComparison", "STAFF_MONITORING_PATHS.brands"]) expect(api).toContain(k);
+    const persist = read("lib/persist-cache.ts");
+    const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
+    for (const r of ["staffRealCosts", "staffRealCostSeries", "staffPriceComparison", "staffBrands"]) expect(sensitive).toContain(`"${r}"`);
+  });
+
+  it("the comparison picks two dated lists and a perimeter, and keys its read on every one of them", () => {
+    const v = read("components/v2/monitoring-pricing-comparison.tsx");
+    expect(v).toContain('["staffPriceComparison", list1.source, list1.date, list2.source, list2.date, orgId, brandId, interval]');
+    for (const s of ['title="Price 1"', 'title="Price 2"', 'aria-label="Organization"', 'aria-label="Brand"', 'aria-label="Interval"']) expect(v).toContain(s);
+  });
+
+  it("neither page computes a margin, a difference or a share itself", () => {
+    for (const f of ["components/v2/monitoring-new-pricing.tsx", "components/v2/monitoring-pricing-comparison.tsx"]) {
+      const v = read(f);
+      expect(v).not.toMatch(/amount2UsdCents\s*-\s*[\w.]*amount1UsdCents/);
+      expect(v).not.toMatch(/amount\dUsdCents\s*-\s*[\w.]*realCostUsdCents/);
+      expect(v).not.toMatch(/proposedPricePerUnitUsdCents\s*\/\s*[\w.]*cataloguePrice/);
+      expect(v).not.toMatch(/\/\s*[\w.]*(amount1|realCost|vendorCostRecorded)UsdCents/);
+    }
   });
 });

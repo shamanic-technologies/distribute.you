@@ -29,6 +29,16 @@ import {
   type EmailSendPrice,
   SubscriptionCostsSchema,
   type SubscriptionCosts,
+  RealCostsSchema,
+  type RealCosts,
+  RealCostSeriesSchema,
+  type RealCostSeries,
+  PriceComparisonSchema,
+  type PriceComparison,
+  type PriceSource,
+  type ComparisonInterval,
+  StaffBrandsSchema,
+  type StaffBrand,
 } from "./monitoring/monitoring";
 import {
   LeadBucketCountsSchema,
@@ -1428,6 +1438,9 @@ export const STAFF_MONITORING_PATHS = {
   sentPerPeriod: "/instantly/ops/sent-per-period",
   emailSendPrice: "/costs/email-send-price",
   subscriptionCosts: "/costs/subscription-costs",
+  realCosts: "/costs/real-costs",
+  priceComparison: "/costs/price-comparison",
+  brands: "/admin/brands",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -1479,6 +1492,35 @@ export async function getStaffEmailSendPrice(): Promise<EmailSendPrice> {
 /** The real cost per credit of each vendor subscription, per day since 2026-01-01 (costs-service, daily). */
 export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
   return parseStaff("getStaffSubscriptionCosts", SubscriptionCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.subscriptionCosts));
+}
+
+/** Every cost item's real cost and proposed price on a day (latest when omitted), costs-service, daily. */
+export async function getStaffRealCosts(day: string | null): Promise<RealCosts> {
+  const q = day ? `?day=${encodeURIComponent(day)}` : "";
+  return parseStaff("getStaffRealCosts", RealCostsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.realCosts}${q}`));
+}
+
+/** One cost item's real cost, catalogue price and proposed price per day. */
+export async function getStaffRealCostSeries(costName: string): Promise<RealCostSeries> {
+  return parseStaff("getStaffRealCostSeries", RealCostSeriesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.realCosts}/${encodeURIComponent(costName)}`));
+}
+
+export interface PriceListRef {
+  source: PriceSource;
+  date: string;
+}
+
+/** A perimeter's consumption since inception replayed under two dated price lists (costs-service). */
+export async function getStaffPriceComparison(args: { list1: PriceListRef; list2: PriceListRef; orgId: string | null; brandId: string | null; interval: ComparisonInterval }): Promise<PriceComparison> {
+  const q = new URLSearchParams({ list1: `${args.list1.source}:${args.list1.date}`, list2: `${args.list2.source}:${args.list2.date}`, interval: args.interval });
+  if (args.orgId) q.set("orgId", args.orgId);
+  if (args.brandId) q.set("brandId", args.brandId);
+  return parseStaff("getStaffPriceComparison", PriceComparisonSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.priceComparison}?${q.toString()}`));
+}
+
+/** Every brand of every org (staff), to name the comparison's org and brand ids. */
+export async function getStaffBrands(): Promise<StaffBrand[]> {
+  return parseStaff("getStaffBrands", StaffBrandsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.brands)).brands;
 }
 
 // Brands

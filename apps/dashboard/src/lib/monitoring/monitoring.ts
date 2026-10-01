@@ -326,6 +326,135 @@ export const SubscriptionCostsSchema = z.object({
 export type SubscriptionCosts = z.infer<typeof SubscriptionCostsSchema>;
 export type SubscriptionCost = SubscriptionCosts["subscriptions"][number];
 
+/**
+ * costs-service's real cost per unit of every cost item and the PROPOSED price (real cost x2 for
+ * production tools, x1 for Stripe and media), per day since 2026-01-01 (owner 2026-10-01). Display
+ * only until the owner's go: no catalogue price reads it. Methods, flags and bases are the
+ * producer's vocabulary, read as strings and never re-graded here.
+ */
+const Num = z.number().nullable();
+const RealCostFields = {
+  costName: z.string(),
+  provider: z.string(),
+  method: z.string(),
+  flag: z.string().nullable(),
+  realCostPerUnitUsdCents: Num,
+  ratio: Num,
+  catalogueVendorCostPerUnitUsdCents: Num,
+  cataloguePricePerUnitUsdCents: Num,
+  catalogueMarkupOnRealCost: Num,
+  multiplier: Num,
+  proposedPricePerUnitUsdCents: Num,
+  proposedBasis: z.string(),
+  proposedVsCataloguePct: Num,
+};
+const RefreshShape = z
+  .object({ status: z.string(), asOf: z.string(), startedAt: z.string(), finishedAt: z.string().nullable(), error: z.string().nullable() })
+  .nullable();
+export const RealCostsSchema = z.object({
+  formula: z.string(),
+  rules: z
+    .object({
+      since: z.string(),
+      proposedMultiplier: z.number(),
+      passThroughMultiplier: z.number(),
+      x1Rule: z.string(),
+      payAsYouGoVendors: z.array(
+        z.object({
+          provider: z.string(),
+          ledgerVendors: z.array(z.string()),
+          ledgerVendorPrefix: z.string().nullable(),
+          excludedLedgerVendors: z.array(z.object({ key: z.string(), reason: z.string() })),
+        }),
+      ),
+      catalogueVendorCostProviders: z.record(z.string(), z.string()),
+    })
+    .passthrough(),
+  day: z.string(),
+  asOf: z.string(),
+  refreshedAt: z.string(),
+  stale: z.boolean(),
+  lastRefresh: RefreshShape,
+  payAsYouGo: z.array(
+    z.object({
+      provider: z.string(),
+      ledgerVendors: z.array(z.string()),
+      paidUsdCents: z.number(),
+      refundedUsdCents: z.number(),
+      netPaidUsdCents: z.number(),
+      vendorCostRecordedUsdCents: z.number(),
+      ratio: Num,
+    }),
+  ),
+  items: z.array(z.object(RealCostFields)),
+});
+export type RealCosts = z.infer<typeof RealCostsSchema>;
+export type RealCostItem = RealCosts["items"][number];
+export const RealCostSeriesSchema = z.object({ costName: z.string(), daily: z.array(z.object({ day: z.string(), ...RealCostFields })) });
+export type RealCostSeries = z.infer<typeof RealCostSeriesSchema>;
+
+/** A price list for the comparison: a source and the day it is read at. */
+export const PRICE_SOURCES = ["catalogue", "proposed"] as const;
+export type PriceSource = (typeof PRICE_SOURCES)[number];
+export const COMPARISON_INTERVALS = ["day", "week", "month"] as const;
+export type ComparisonInterval = (typeof COMPARISON_INTERVALS)[number];
+
+const FiguresShape = {
+  amount1UsdCents: z.number(),
+  amount2UsdCents: z.number(),
+  differenceUsdCents: z.number(),
+  differencePct: Num,
+  realCostUsdCents: z.number(),
+  margin1UsdCents: z.number(),
+  margin1Pct: Num,
+  margin2UsdCents: z.number(),
+  margin2Pct: Num,
+  billedUsdCents: z.number(),
+  netBilledUsdCents: z.number(),
+  billedPlatformKeyUsdCents: z.number(),
+  netBilledPlatformKeyUsdCents: z.number(),
+};
+const Figures = z.object(FiguresShape);
+export type ComparisonFigures = z.infer<typeof Figures>;
+const ListRef = z.object({ source: z.string(), date: z.string() });
+/** costs-service's replay of a perimeter's consumption since inception under two price lists. */
+export const PriceComparisonSchema = z.object({
+  perimeter: z.object({ grain: z.string(), orgId: z.string().optional(), brandId: z.string().optional() }),
+  list1: ListRef,
+  list2: ListRef,
+  interval: z.string(),
+  consumptionAsOf: z.string(),
+  stale: z.boolean(),
+  notes: z.array(z.string()),
+  totals: Figures,
+  unpricedCostNames1: z.array(z.string()),
+  unpricedCostNames2: z.array(z.string()),
+  realCostUnknownCostNames: z.array(z.string()),
+  buckets: z.array(z.object({ period: z.string(), ...FiguresShape, cumulative: Figures })),
+  costItems: z.array(
+    z.object({
+      costName: z.string(),
+      quantity: z.number(),
+      quantityPlatformKey: z.number(),
+      price1PerUnitUsdCents: Num,
+      price2PerUnitUsdCents: Num,
+      unpricedQuantity1: z.number(),
+      unpricedQuantity2: z.number(),
+      realCostUnknownQuantity: z.number(),
+      ...FiguresShape,
+    }),
+  ),
+  byOrg: z.array(z.object({ orgId: z.string().nullable(), ...FiguresShape })).nullable(),
+  byBrand: z.array(z.object({ orgId: z.string().nullable(), brandId: z.string().nullable(), ...FiguresShape })).nullable(),
+});
+export type PriceComparison = z.infer<typeof PriceComparisonSchema>;
+
+/** brand-service's cross-org brand list (staff): the names the comparison's org and brand ids are shown by. */
+export const StaffBrandsSchema = z.object({
+  brands: z.array(z.object({ id: z.string(), name: z.string().nullable(), domain: z.string().nullable(), orgId: z.string().nullable() }).passthrough()),
+});
+export type StaffBrand = z.infer<typeof StaffBrandsSchema>["brands"][number];
+
 /** Every price version of one cost item, oldest first. */
 export function versionsOf(versions: PriceVersion[], name: string): PriceVersion[] {
   return versions
@@ -363,7 +492,7 @@ export type MonitoringView =
   | { view: "page"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "price/billed", "price/current", "price/history", "price/email-sending", "margin", "emails"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "price/billed", "price/current", "price/history", "price/email-sending", "price/new-pricing", "margin", "margin/pricing-comparison", "emails"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 export function parseMonitoringPath(rest: string): MonitoringView {
