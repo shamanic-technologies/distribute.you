@@ -64,7 +64,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
     for (const root of [
       // config / registries / tenant identity
       "features", "feature", "statsRegistry", "entityRegistry",
-      "orgIdentity", "billingAccount", "creditGrants", "billingPayments",
+      "orgIdentity", "billingAccount", "subscription", "creditGrants", "billingPayments",
       "inviteStatus", "freeCreditPromises",
       // brand metadata + config
       "brand", "brands", "brandSalesEconomics", "brandCampaignBudgets",
