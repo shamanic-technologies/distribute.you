@@ -39,7 +39,7 @@ describe("the v2 Billing page draws; it re-implements no money path", () => {
   });
 
   it("routes every card control through the gate that asks before it charges", () => {
-    expect(V2.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(2);
+    expect(V2.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(3);
     expect(V2.match(/handleManagePayment\("invoices"\)/g) ?? []).toHaveLength(1);
     // The only raw open is the confirmation's own Confirm.
     expect(V2.match(/openCardPage\(/g) ?? []).toHaveLength(1);
@@ -54,6 +54,27 @@ describe("the v2 Billing page draws; it re-implements no money path", () => {
     expect(remove).toContain("consequence={c.removeConsequence}");
     expect(remove).toContain("pending={c.removePending}");
     expect(remove).toContain("c.handleRemoveCard()");
+  });
+});
+
+describe("a Revolut org can always get a card on file", () => {
+  const CONTROLLER = read("src/components/billing/use-billing-controller.ts");
+
+  it("offers Add card when there is no card, through the card gate", () => {
+    const noCard = V2.slice(V2.indexOf("No card yet."), V2.indexOf("{c.settleCents !== null"));
+    expect(noCard).toContain("Add card");
+    expect(noCard).toContain('c.handleManagePayment("manage")');
+    expect(V2).not.toContain("One is saved with your first payment");
+  });
+
+  it("tops up through the in-page widget first, which saves the card", () => {
+    const topup = CONTROLLER.slice(CONTROLLER.indexOf("async function handleTopup("));
+    const embeddedAt = topup.indexOf("createEmbeddedCheckoutSession(amountCents)");
+    const hostedAt = topup.indexOf("createCheckoutSession({");
+    expect(embeddedAt).toBeGreaterThan(-1);
+    expect(hostedAt).toBeGreaterThan(embeddedAt);
+    expect(topup).toContain('embedded.mode === "embedded_widget"');
+    expect(topup).toContain("savePaymentMethodFor: embedded.save_payment_method_for");
   });
 });
 

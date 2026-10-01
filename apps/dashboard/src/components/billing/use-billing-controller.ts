@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
@@ -9,6 +9,7 @@ import {
   getCreditGrants,
   getBillingPayments,
   createCheckoutSession,
+  createEmbeddedCheckoutSession,
   createPortalSession,
   declareRevolutDefault,
   listBrands,
@@ -62,6 +63,7 @@ export const AUTO_TOPUP_ENABLE_THRESHOLD_CENTS = 500;
 export function useBillingController() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const orgId = params.orgId as string;
   void orgId;
   const queryClient = useQueryClient();
@@ -551,6 +553,37 @@ export function useBillingController() {
 
       // Revolut Business by default; an org with a card elsewhere keeps paying there.
       await declareRevolutDefault();
+
+      // Revolut saves the card ONLY when the payment is taken in its in-page card
+      // field: its hosted page takes the money and keeps no card (seen in prod
+      // 2026-10-01: a $135 top-up left the org with no card and auto top-up never
+      // armed). So ask for the in-page variant first; a Revolut org answers with
+      // its widget, which pays AND saves the card. A Stripe org answers with an
+      // embedded session this page does not mount, and keeps the hosted page.
+      const embedded = await createEmbeddedCheckoutSession(amountCents);
+      if (embedded.mode === "embedded_widget") {
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: embedded.token,
+          environment: embedded.environment,
+          savePaymentMethodFor: embedded.save_payment_method_for,
+          onSuccess: () => {
+            // Same return the hosted page makes, without leaving the page: the
+            // success banner, the purchase conversion and the pending auto
+            // top-up all read these params.
+            router.replace(`${successUrl.pathname}${successUrl.search}`);
+            void refreshAfterCardSaved();
+            setTopupLoading(false);
+          },
+          onCancel: () => setTopupLoading(false),
+          onError: (message) => {
+            setError(message);
+            setTopupLoading(false);
+          },
+        });
+        return;
+      }
+
       const session = await createCheckoutSession({
         topup_amount_cents: amountCents,
         success_url: successUrl.toString(),

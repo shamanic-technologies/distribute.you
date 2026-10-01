@@ -107,9 +107,9 @@ describe("the billing page asks before it charges", () => {
   it("routes BOTH buttons through the gate, never the raw open", () => {
     // "View invoices" hits the same endpoint and settles identically, and
     // nothing about its label suggests money moves.
-    // Two of them: the failed-payment banner's Update card and the Payment
-    // method card.
-    expect(PAGE.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(2);
+    // Three of them: the failed-payment banner's Update card, the Payment
+    // method card's Change card, and its Add card when there is none.
+    expect(PAGE.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(3);
     expect(PAGE.match(/handleManagePayment\("invoices"\)/g) ?? []).toHaveLength(1);
     // The only call site of the un-gated open is the gate itself and the
     // modal's own Confirm.
