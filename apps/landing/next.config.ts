@@ -56,10 +56,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     const offLab = [{ type: "host" as const, value: "lab-[a-z0-9-]+\\.distribute\\.you" }];
     return [
-      // Old multi-feature performance sub-views collapsed into one page.
-      { source: "/performance/brands", destination: "/performance", permanent: true, missing: offLab },
-      { source: "/performance/models", destination: "/performance", permanent: true, missing: offLab },
-      { source: "/performance/prompts", destination: "/performance", permanent: true, missing: offLab },
+      // Retired pages that crawlers and AI assistants still fetch (Cloudflare, 7 days to
+      // 2026-10-01: /performance 15, /pricing 13, the cold-email clusters ~100 together). The
+      // pages stay deleted (see CLAUDE.md); each URL lands on the live page answering the same
+      // question instead of a 404. Retired-vertical blog posts (PR, VC) stay 404 on purpose.
+      { source: "/pricing", destination: "/#pricing", permanent: true, missing: offLab },
+      { source: "/performance/:path*", destination: "/", permanent: true, missing: offLab },
+      { source: "/use-cases", destination: "/", permanent: true, missing: offLab },
+      { source: "/outcomes/:path*", destination: "/", permanent: true, missing: offLab },
+      { source: "/cold-email-cost-guide/:path*", destination: "/blog/cost-per-click-cold-email", permanent: true, missing: offLab },
+      { source: "/cold-email-for-saas-founders/:path*", destination: "/", permanent: true, missing: offLab },
+      { source: "/cold-email-vs-linkedin/:path*", destination: "/", permanent: true, missing: offLab },
+      { source: "/developers/:path+", destination: "/developers", permanent: true, missing: offLab },
       // Blog slug shortened to its keyword after publication.
       { source: "/blog/cold-email-open-tracking-pixel", destination: "/blog/cold-email-open-tracking", permanent: true, missing: offLab },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },

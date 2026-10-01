@@ -3,6 +3,12 @@ import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budg
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
+import {
+  PeopleListSchema,
+  PersonTimelineSchema,
+  type PeopleList,
+  type PersonTimeline,
+} from "./people-conversations";
 import { z } from "zod";
 import {
   CostMarginSchema,
@@ -549,6 +555,39 @@ export async function listCrmConnections(
   if (!parsed.success) {
     console.error("[api] listCrmConnections response shape mismatch", parsed.error.flatten());
     throw new Error("listCrmConnections returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Conversations: everyone the brand is in conversation with, every channel merged, one
+ * state each (crm-service's gold person layer, gateway passthrough). Order, totals and
+ * per-source counts are crm-service's. The first read for a brand starts its build and
+ * answers `scope.status = "building"` with nobody in it yet.
+ */
+export async function listPeople(
+  brandId: string,
+  opts: { limit: number; offset: number },
+  token?: string,
+): Promise<PeopleList> {
+  const qs = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
+  const raw = await apiCall<unknown>(`/orgs/people?${qs.toString()}`, { token });
+  const parsed = PeopleListSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listPeople response shape mismatch", parsed.error.flatten());
+    throw new Error("listPeople returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** One person's whole exchange, every channel merged, oldest first (read live from each source). */
+export async function getPersonTimeline(brandId: string, personKey: string, token?: string): Promise<PersonTimeline> {
+  const qs = new URLSearchParams({ brandId, personKey });
+  const raw = await apiCall<unknown>(`/orgs/people/timeline?${qs.toString()}`, { token });
+  const parsed = PersonTimelineSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getPersonTimeline response shape mismatch", parsed.error.flatten());
+    throw new Error("getPersonTimeline returned an unexpected shape");
   }
   return parsed.data;
 }
