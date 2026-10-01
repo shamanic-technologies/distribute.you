@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { EmailSignature } from "@/components/email-signature";
 import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
+import { timelineEvents } from "@/lib/lead-followup";
 import { emailBodySegments, linkDisplayText } from "@/lib/email-body-links";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import {
@@ -57,8 +58,11 @@ export function LeadHistoryTimeline({
   // Every row the producer sent is drawn, with its words: the timeline states what
   // happened to a person AND what was said, to every reader (owner-decided 2026-09-25,
   // reversing #4226, which withheld every body until a sales interest).
-  const visible = history.events;
-  if (visible.length === 0 && !note) return null;
+  // The follow-up schedule is stated once: at the foot when the notice is mounted.
+  const visible = timelineEvents(history.events, { showsNextFollowup: showNextFollowup });
+  // Keyed on what the producer sent, not on `visible`: a history holding only its
+  // follow-up schedule still renders, so the notice at the foot can state it.
+  if (history.events.length === 0 && !note) return null;
 
   const nowMs = Date.now();
 

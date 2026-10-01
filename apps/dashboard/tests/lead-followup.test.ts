@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { timeUntil } from "../src/lib/friendly-datetime";
-import { canFollowUpNow, followupLine, followupNotice, leadFollowup } from "../src/lib/lead-followup";
+import {
+  canFollowUpNow,
+  followupLine,
+  followupNotice,
+  leadFollowup,
+  timelineEvents,
+} from "../src/lib/lead-followup";
 import type { LeadHistory } from "../src/lib/lead-history";
 
 const NOW = new Date("2026-09-05T12:00:00.000Z");
@@ -322,5 +328,44 @@ describe("followupNotice (who will answer)", () => {
     const fixLink = section.slice(section.indexOf("function FollowupFixLink("));
     expect(fixLink).not.toContain("useMutation");
     expect(fixLink).not.toContain("setCampaignStatus");
+  });
+});
+
+describe("a stopped follow-up is stated exactly once on a lead page", () => {
+  const stopped = history([
+    { id: "e1", type: "email", at: "2026-09-01T10:00:00.000Z" },
+    { id: "e2", type: "reply", at: "2026-09-02T10:00:00.000Z" },
+    {
+      id: "f1",
+      type: "followup",
+      state: "stopped",
+      stoppedReason: "The automated responder could not answer: pricing for groups",
+    },
+  ]);
+
+  it("drops the followup row from a timeline that mounts the next-follow-up notice", () => {
+    const rows = timelineEvents(stopped.events, { showsNextFollowup: true });
+    expect(rows.map((e) => e.id)).toEqual(["e1", "e2"]);
+    // ...and the notice at the foot is the one place that states it, reason included.
+    const f = leadFollowup(stopped);
+    expect(followupNotice(f, NOW).line).toBe("No further follow-ups");
+    expect(f).toEqual({
+      state: "stopped",
+      reason: "The automated responder could not answer: pricing for groups",
+    });
+  });
+
+  it("keeps the row on a timeline with no notice (the brand-wide roll-up)", () => {
+    const rows = timelineEvents(stopped.events, { showsNextFollowup: false });
+    expect(rows.filter((e) => e.type === "followup")).toHaveLength(1);
+  });
+
+  it("the timeline component filters through timelineEvents with its own notice flag", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/components/audiences/lead-history-timeline.tsx"),
+      "utf8",
+    );
+    expect(src).toContain("timelineEvents(history.events, { showsNextFollowup: showNextFollowup })");
+    expect(src).not.toMatch(/const visible = history\.events;/);
   });
 });

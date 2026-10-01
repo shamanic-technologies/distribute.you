@@ -6,6 +6,7 @@ Every page below is a static HTML document at a stable URL. Fetch any of them di
 
 ## Machine-readable entry points
 
+- [Agent skill](https://docs.distribute.you/skill.md): one file an AI assistant reads to connect itself (MCP or REST, per harness), save itself as a skill, and answer the usual questions about an account.
 - [OpenAPI document](https://api.distribute.you/openapi.json): every REST route under https://api.distribute.you/v1, in one file.
 - [Interactive API explorer](https://api.distribute.you/docs): the same document, rendered with a request builder.
 - [MCP server](https://mcp.distribute.you/mcp): hosted, Streamable HTTP, 6 tools. There is no local server to install.

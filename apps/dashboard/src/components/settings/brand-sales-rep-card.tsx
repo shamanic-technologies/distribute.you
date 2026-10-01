@@ -43,6 +43,12 @@ import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 // ⚠️ THE WRITE REPLACES THE WHOLE REP. Omitting the phone CLEARS a number that
 // was there. So both fields always travel together, and Save sends what is on
 // screen rather than a diff — brand-service's own semantic, not worked around.
+//
+// The FIRST NAME and ROLE are how a hand-over introduces the rep in a prospect's
+// thread ("I've copied Marie, Head of Partnerships at Doc Dinners"). Both optional,
+// never guessed from the email. brand-service leaves them untouched when OMITTED,
+// so Save always sends them too (null when blank) and what is on screen is what is
+// stored. They alone are not a rep: with no email nobody is copied to introduce.
 
 /** brand-service writes the sentence; `err.message` is the whole downstream body verbatim. */
 function saveErrorMessage(err: unknown): string {
@@ -79,6 +85,8 @@ export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; 
   const saved = data ?? NO_SALES_REP;
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [role, setRole] = useState("");
   const [justSaved, setJustSaved] = useState(false);
 
   // Re-seed when the payload is a DIFFERENT object than the one the fields were
@@ -95,16 +103,25 @@ export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; 
     seededFrom.current = token;
     setEmail(data.salesRepEmail ?? "");
     setPhone(data.salesRepPhone ?? "");
+    setFirstName(data.salesRepFirstName ?? "");
+    setRole(data.salesRepRole ?? "");
   }, [data]);
 
   const save = useMutation({
-    mutationFn: (next: { email: string; phone: string }) => {
+    mutationFn: (next: { email: string; phone: string; firstName: string; role: string }) => {
       const salesRepEmail = next.email.trim() || null;
       const salesRepPhone = next.phone.trim() || null;
+      const salesRepFirstName = next.firstName.trim() || null;
+      const salesRepRole = next.role.trim() || null;
       // Both blank is not an empty write, it is a REMOVAL — and DELETE is the
       // idempotent way to say so.
       if (!salesRepEmail && !salesRepPhone) return clearBrandSalesRep(brandId);
-      return setBrandSalesRep(brandId, { salesRepEmail, salesRepPhone });
+      return setBrandSalesRep(brandId, {
+        salesRepEmail,
+        salesRepPhone,
+        salesRepFirstName,
+        salesRepRole,
+      });
     },
     onSuccess: (next) => {
       // The response IS what this query reads, so write it rather than invalidating:
@@ -113,6 +130,8 @@ export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; 
       touched.current = false;
       setEmail(next.salesRepEmail ?? "");
       setPhone(next.salesRepPhone ?? "");
+      setFirstName(next.salesRepFirstName ?? "");
+      setRole(next.salesRepRole ?? "");
       setJustSaved(true);
     },
     onError: (err) => {
@@ -122,7 +141,9 @@ export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; 
 
   const dirty =
     email.trim() !== (saved.salesRepEmail ?? "") ||
-    phone.trim() !== (saved.salesRepPhone ?? "");
+    phone.trim() !== (saved.salesRepPhone ?? "") ||
+    firstName.trim() !== (saved.salesRepFirstName ?? "") ||
+    role.trim() !== (saved.salesRepRole ?? "");
 
   // The one thing held locally, and only to spare the customer a refusal after
   // the fact. brand-service decides; this just does not send what it will reject.
@@ -190,6 +211,52 @@ export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; 
         Include the country code. Leave it empty and this person is copied but never rung.
       </p>
 
+      <div className="mt-5 flex max-w-sm gap-3">
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor="sales-rep-first-name"
+            className="mb-1.5 block text-sm font-medium text-gray-800"
+          >
+            First name <span className="font-normal text-gray-500">(optional)</span>
+          </label>
+          <input
+            id="sales-rep-first-name"
+            type="text"
+            autoComplete="given-name"
+            maxLength={60}
+            value={firstName}
+            onChange={(e) => {
+              touch();
+              setFirstName(e.target.value);
+            }}
+            placeholder="Marie"
+            className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <label htmlFor="sales-rep-role" className="mb-1.5 block text-sm font-medium text-gray-800">
+            Role <span className="font-normal text-gray-500">(optional)</span>
+          </label>
+          <input
+            id="sales-rep-role"
+            type="text"
+            autoComplete="organization-title"
+            maxLength={100}
+            value={role}
+            onChange={(e) => {
+              touch();
+              setRole(e.target.value);
+            }}
+            placeholder="Head of Partnerships"
+            className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          />
+        </div>
+      </div>
+      <p className="mt-1.5 max-w-sm text-xs text-gray-500">
+        We use these to introduce this person when we copy them into a prospect&apos;s email
+        thread, for example &quot;I&apos;ve copied Marie, Head of Partnerships&quot;.
+      </p>
+
       {phoneWithoutEmail && (
         <p className="mt-3 text-sm text-gray-600">
           Add the email as well. We ring the number to say a buyer is interested, so we need
@@ -216,7 +283,7 @@ export function BrandSalesRepCard({ brandId, bare = false }: { brandId: string; 
         saving={save.isPending}
         saved={justSaved && !dirty}
         disabled={phoneWithoutEmail}
-        onSave={() => save.mutate({ email, phone })}
+        onSave={() => save.mutate({ email, phone, firstName, role })}
       />
     </div>
   );
