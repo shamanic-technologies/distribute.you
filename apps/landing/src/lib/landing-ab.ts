@@ -1,7 +1,7 @@
 /**
- * The homepage A/B test: `/` serves the current homepage (`control`), the
- * AI-sales-assistant candidate (`assistant`, also at `/lp/assistant`), or the concierge
- * candidate you just message (`concierge`, also at `/lp/concierge`).
+ * The homepage A/B test: `/` serves the current homepage (`control`) or the
+ * instinct.com-style candidate (`instinct`, also at `/lp/instinct`). Two earlier
+ * candidates, `assistant` and `concierge`, keep their URLs but are out of the draw.
  *
  * Server-side and sticky: the first visit draws a variant and stores it in a cookie on
  * the registrable domain, so a returning visitor (and the dashboard, which shares the
@@ -19,26 +19,28 @@
  * Alias-free and pure so the rules carry real unit tests.
  */
 
-// Off since 2026-09-27: after three days no arm had produced a signup, so `/` went
-// back to the control homepage for everyone. `/lp/assistant` and `/lp/concierge`
-// stay reachable by URL.
-export const AB_TEST_ENABLED = false;
+// Off from 2026-09-27 (no arm had produced a signup in three days), back on 2026-10-01
+// as control against the instinct.com-style page, 50/50. `/lp/assistant` and
+// `/lp/concierge` left the draw and stay reachable by URL.
+export const AB_TEST_ENABLED = true;
 
-export const LANDING_VARIANTS = ["control", "assistant", "concierge"] as const;
+export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
 
 export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-09-24: half to the
- * concierge page, a quarter each to the other two. A visitor already holding a cookie
- * keeps their variant whatever these say.
+ * Share of first visits drawn into each variant. Owner-set 2026-10-01: half to the
+ * control homepage, half to the instinct.com-style page. A variant at weight 0 has left
+ * the test: a visitor whose cookie names it is drawn again rather than kept on a page
+ * nobody else is being shown, so the two live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  concierge: 0.5,
-  control: 0.25,
-  assistant: 0.25,
+  control: 0.5,
+  instinct: 0.5,
+  assistant: 0,
+  concierge: 0,
 };
 
 /** The variant a uniform draw in [0, 1) lands on, walking the weights in a fixed order. */
@@ -94,7 +96,7 @@ export function decideVariant(input: {
   const forced = asVariant(input.query.get("variant"));
   if (forced) return { variant: forced, setCookie: true, inTest: true };
   const stored = asVariant(cookieValue(input.cookieHeader, VARIANT_COOKIE));
-  if (stored) return { variant: stored, setCookie: false, inTest: true };
+  if (stored && VARIANT_WEIGHTS[stored] > 0) return { variant: stored, setCookie: false, inTest: true };
   const variant = drawVariant(input.random);
   return { variant, setCookie: true, inTest: true };
 }
