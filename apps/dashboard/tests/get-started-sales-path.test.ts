@@ -171,9 +171,8 @@ describe("a click moves on at once, and Back goes one step back", () => {
     expect(PAGE).toContain("if (brandId && offer && legsSaved && !salesPaths && pathsState === \"idle\") void loadPaths();");
   });
 
-  it("draws a grey Back under every step but the first", () => {
-    expect(PAGE).toContain("{previousStep(stagedKey) && (");
-    expect(PAGE).toContain("onClick={() => goBack(stagedKey)}");
+  it("draws a grey Back on every step but the first", () => {
+    expect(PAGE).toContain("previousStep(stagedKey) ? () => goBack(stagedKey) : null");
   });
 
   it("says nothing on a step waiting for a pick", () => {
@@ -241,5 +240,22 @@ describe("the payment wall, simplified", () => {
     expect(PAGE).not.toContain("found via");
     expect(PAGE).not.toContain("maskedEmail ??");
     expect(PAGE).toContain('"Email found and verified"');
+  });
+});
+
+describe("batch: wall, urgency, Back in the card, purchase rule", () => {
+  it("tells the step draft that a purchase is an online checkout, never a payment after signup", () => {
+    expect(salesStepsDraftField([{ key: "purchase", label: "Direct purchase" }]).description).toContain("a payment after a signup, a trial or a call is NOT a purchase");
+  });
+
+  it("draws Back inside the card, on the Continue line", () => {
+    expect(PAGE).toContain("const BackContext = createContext<(() => void) | null>(null);");
+    expect(PAGE).toContain("{onBack && <BackLink onBack={onBack} />}");
+    expect(PAGE).toContain("<BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>");
+  });
+
+  it("frames the sign-up panel with its own headline", () => {
+    expect(WALL).toContain("ring-2 ring-[var(--accent)]");
+    expect(WALL).toContain("Claim your $${WALL_FREE_CREDIT_USD} and start");
   });
 });

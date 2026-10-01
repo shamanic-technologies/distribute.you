@@ -50,7 +50,7 @@ Public route (`proxy.ts` exact match), Keel language, `components/v2/get-started
 - **A SIGNED-IN visitor cannot start the walk** (guard in `start()`, `/api/anon/session` refuses `signed-in` without clearing the cookie): `apiCall` reads Clerk session first, so a signed-in walk bills the ACTIVE org (2026-09-28/29: $15.95 on Doc Dinners, refunded). Test in a private window. Guard `get-started-signed-in.test.ts`.
 - Signed-out proxy binds a body-named brand to the session brand (`anonBodyRefusal`).
 - Layout: `JournalRail` + one stage step (phone `JournalStrip`); finished step flies into the rail via View Transitions (`view-transition.ts`, shared `stepViewName`; never draw a rail entry for the staged step or it aborts on duplicate name); `stageMove`; `segmentCriteria`; `NEXT_STEPS` dotted until the email is written. Motion `.gs-*` in `keel.css`.
-- **Wall countdown (7:30, 9:59) and "Only N trial spots left this hour" are COPIED from Explee on owner decision (2026-09-28, temporary)** in `urgency.tsx`; they limit nothing. Do not remove them.
+- **Wall urgency is HARDCODED, owner-decided** (`urgency.tsx`, 2026-10-01): a 7:30 countdown then 9:59, then it STARTS OVER (never a "no more countdowns" line), and "Only 3 trial spots left this hour", always 3. They limit nothing. Do not remove or "soften" them. The wall carries no email card and no client proof card, only real homepage testimonials with 5 stars; the sign-up panel is framed in the accent with its own headline.
 - Verify with a real prod walk (wait for hydration, domain like `home.cern`), tear down the throwaway account. Guards `get-started.test.ts`, `anon-proxy-allowlist.test.ts`.
 
 ## Critical path budget (owner 2026-09-28)
