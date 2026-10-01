@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { renderedResponse } from "@/lib/static-html";
 import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
+import { renderInstinctPage } from "@/lib/pages/instinct";
 import {
   AB_TEST_ENABLED,
   decideVariant,
@@ -38,7 +39,9 @@ export async function GET(request: Request) {
       ? renderAssistantPage(undefined, { at: "homepage" })
       : decision.variant === "concierge"
         ? renderConciergePage(undefined, { at: "homepage" })
-        : readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
+        : decision.variant === "instinct"
+          ? renderInstinctPage()
+          : readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
   const html = decision.inTest
     ? withBeforeBodyEnd(page, variantTrackingScript(decision.variant))
     : page;

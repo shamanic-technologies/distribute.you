@@ -18,32 +18,32 @@ const CHROME =
 const q = (s = "") => new URLSearchParams(s);
 
 describe("the split rule", () => {
-  it("draws a first-time human by the weights (1/2 concierge, 1/4 each other) and stores it", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ concierge: 0.5, control: 0.25, assistant: 0.25 });
+  it("draws a first-time human 50/50 between the homepage and the instinct page, and stores it", () => {
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0.5, instinct: 0.5, assistant: 0, concierge: 0 });
     expect(drawVariant(0)).toBe("control");
-    expect(drawVariant(0.2499)).toBe("control");
-    expect(drawVariant(0.25)).toBe("assistant");
-    expect(drawVariant(0.4999)).toBe("assistant");
-    expect(drawVariant(0.5)).toBe("concierge");
-    expect(drawVariant(0.9999)).toBe("concierge");
+    expect(drawVariant(0.4999)).toBe("control");
+    expect(drawVariant(0.5)).toBe("instinct");
+    expect(drawVariant(0.9999)).toBe("instinct");
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(counts).toEqual({ control: 2500, assistant: 2500, concierge: 5000 });
+    expect(counts).toEqual({ control: 5000, instinct: 5000 });
     expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.7, enabled: true })).toEqual({
-      variant: "concierge", setCookie: true, inTest: true,
+      variant: "instinct", setCookie: true, inTest: true,
     });
   });
 
-  it("keeps a returning visitor on the variant their cookie names, and does not rewrite it", () => {
+  it("keeps a returning visitor on a live arm their cookie names, and does not rewrite it", () => {
     const d = decideVariant({
-      cookieHeader: `a=1; ${VARIANT_COOKIE}=assistant; b=2`, userAgent: CHROME, query: q(), random: 0.99, enabled: true,
+      cookieHeader: `a=1; ${VARIANT_COOKIE}=instinct; b=2`, userAgent: CHROME, query: q(), random: 0.1, enabled: true,
     });
-    expect(d).toEqual({ variant: "assistant", setCookie: false, inTest: true });
+    expect(d).toEqual({ variant: "instinct", setCookie: false, inTest: true });
   });
 
-  it("redraws on a cookie value that names no variant", () => {
-    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=junk`, userAgent: CHROME, query: q(), random: 0.3, enabled: true });
-    expect(d).toEqual({ variant: "assistant", setCookie: true, inTest: true });
+  it("redraws a visitor whose cookie names a retired arm, or nothing", () => {
+    for (const v of ["assistant", "concierge", "junk"]) {
+      const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.3, enabled: true });
+      expect(d, v).toEqual({ variant: "control", setCookie: true, inTest: true });
+    }
   });
 
   it("lets ?variant= force either page and pins it in the cookie", () => {
@@ -88,7 +88,7 @@ describe("the split rule", () => {
   });
 });
 
-describe("GET / with the test off", () => {
+describe("GET / with the test on", () => {
   beforeAll(() => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline in tests"); }));
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -103,32 +103,30 @@ describe("GET / with the test off", () => {
     return { res, html: await res.text() };
   }
 
-  it("the test is off: every human gets the control homepage, untagged, with no cookie", async () => {
-    for (const opts of [{}, { qs: "?variant=assistant" }, { qs: "?variant=concierge" }, { cookie: "lp_variant=concierge" }]) {
-      const { res, html } = await get(opts);
-      expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span>");
-      expect(html).not.toContain("asst-eyebrow");
-      expect(html).not.toContain("landing_variant_viewed");
-      expect(res.headers.get("set-cookie")).toBeNull();
-      expect(res.headers.get("cache-control")).not.toBe("private, no-store");
-    }
+  it("serves the instinct page to its arm, tagged, cookie pinned, out of shared caches", async () => {
+    const { res, html } = await get({ qs: "?variant=instinct" });
+    expect(html).toContain("Text distribute.you to get started");
+    expect(html).toContain('lp_variant:"instinct"');
+    expect(res.headers.get("set-cookie")).toContain("lp_variant=instinct");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("serves the homepage to the control arm, tagged", async () => {
+    const { html } = await get({ cookie: "lp_variant=control" });
+    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span>");
+    expect(html).toContain('lp_variant:"control"');
   });
 
   it("gives a crawler the homepage, untagged, with no cookie", async () => {
-    const { res, html } = await get({ ua: "Googlebot/2.1", qs: "?variant=assistant" });
-    expect(html).not.toContain("asst-eyebrow");
+    const { res, html } = await get({ ua: "Googlebot/2.1", qs: "?variant=instinct" });
+    expect(html).not.toContain("Text distribute.you to get started");
     expect(html).not.toContain("landing_variant_viewed");
     expect(res.headers.get("set-cookie")).toBeNull();
   });
 
   it("answers an agent asking for markdown with the homepage", async () => {
-    const { res, html } = await get({ accept: "text/markdown", qs: "?variant=assistant" });
+    const { res, html } = await get({ accept: "text/markdown", qs: "?variant=instinct" });
     expect(res.headers.get("content-type")).toContain("markdown");
-    expect(html).not.toContain("build than prospect");
-  });
-
-  it("the candidate URL stays noindex", () => {
-    const route = readFileSync(path.resolve(__dirname, "../../src/app/lp/assistant/route.ts"), "utf8");
-    expect(route).toContain("renderAssistantPage()");
+    expect(html).not.toContain("Text distribute.you to get started");
   });
 });
