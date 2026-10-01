@@ -459,10 +459,9 @@ export function AccountCardWall({
   const hotLeads = hotLeadsForCredit(proof?.hotLeads?.medianCostUsd);
   const medianReturn = proof?.medianReturnPerDollar ?? null;
 
-  const signupFirst = (stage === "account" || stage === "code") && !isSignedIn;
   const urgency =
     stage !== "launching" ? (
-      <div className={`grid gap-2 ${signupFirst ? "" : "mb-4"}`}>
+      <div className="mb-4 grid gap-2">
         <TrialTimer />
         <TrialSpots />
       </div>
@@ -575,22 +574,23 @@ export function AccountCardWall({
           className="gs-panel k-popover gs-glow order-first overflow-hidden p-0 ring-2 ring-[var(--accent)] md:order-none md:col-start-2 md:row-span-3 md:row-start-1"
           style={{ animationDelay: "80ms" }}
         >
-          <div className="bg-[var(--accent)] px-5 py-4 text-white">
-            <p className="text-[20px] font-semibold leading-7 tracking-tight">
+          {/* A plain headline, no fill: only the buttons may look clickable (owner 2026-10-01). */}
+          <div className="border-b border-[var(--line-subtle)] px-5 py-4">
+            <p className="k-fg text-[20px] font-semibold leading-7 tracking-tight">
               <span aria-hidden="true">🎉 </span>
               {`Claim your $${WALL_FREE_CREDIT_USD} and start`}
             </p>
-            <p className="mt-0.5 text-[13px] opacity-90">One minute. No charge today.</p>
+            <p className="k-fg2 mt-0.5 text-[13px]">One minute. No charge today.</p>
           </div>
           <div className="p-5">
-          {/* Signing up is the first thing here: the urgency and the steps sit under its buttons. */}
-          {!signupFirst && urgency}
-          {!signupFirst && <Steps stage={stage} />}
+          {/* The scarcity and the steps first, then the buttons under them (owner 2026-10-01). */}
+          {urgency}
+          <Steps stage={stage} />
           <div key={stage === "code" ? "account" : stage} className="gs-in">
             {(stage === "account" || stage === "code") && !isSignedIn && (
               <>
                 {stage === "account" ? (
-                  <form className="grid gap-3" onSubmit={(e) => void submitAccount(e)}>
+                  <form className="mt-4 grid gap-3" onSubmit={(e) => void submitAccount(e)}>
                     <button
                       type="button"
                       className="k-btn-accent k-cta gs-glow w-full justify-center gap-2.5"
@@ -640,7 +640,7 @@ export function AccountCardWall({
                     </p>
                   </form>
                 ) : (
-                  <form className="grid gap-3" onSubmit={(e) => void submitCode(e)}>
+                  <form className="mt-4 grid gap-3" onSubmit={(e) => void submitCode(e)}>
                     <p className="k-fg2 text-[13px] leading-5">
                       {`We sent a 6-digit code to `}
                       <span className="k-fg font-medium">{email.trim()}</span>.
@@ -740,12 +740,6 @@ export function AccountCardWall({
             <p key={error} className="gs-in mt-3 text-[13px] text-[var(--data-rose)]" role="alert">
               {error}
             </p>
-          )}
-          {signupFirst && (
-            <div className="mt-5 grid gap-4 border-t border-[var(--line-subtle)] pt-4">
-              {urgency}
-              <Steps stage={stage} />
-            </div>
           )}
           </div>
         </section>

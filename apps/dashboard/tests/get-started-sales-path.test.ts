@@ -268,9 +268,11 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
     expect(form.match(/k-btn-accent k-cta/g)?.length).toBe(2);
     expect(form).toContain("Continue with Google, get my $${WALL_FREE_CREDIT_USD}");
     expect(WALL).not.toContain("Email me a code");
-    // Nothing above the buttons competes: urgency and steps sit under them while signing up.
-    expect(WALL).toContain("{!signupFirst && urgency}");
-    expect(WALL.indexOf("{signupFirst && (")).toBeGreaterThan(WALL.indexOf("</form>"));
+    // Owner 2026-10-01 (second pass): the scarcity and the steps come first, the buttons under them,
+    // and the headline carries no accent fill (it read as one more button).
+    expect(WALL.indexOf("<TrialTimer />")).toBeLessThan(WALL.indexOf("Continue with Google, get my"));
+    expect(WALL.indexOf("<Steps stage={stage} />")).toBeLessThan(WALL.indexOf("Continue with Google, get my"));
+    expect(WALL).not.toContain('<div className="bg-[var(--accent)] px-5 py-4 text-white">');
     // On a phone the form comes first.
     expect(WALL).toContain("order-first");
   });
@@ -295,6 +297,7 @@ describe("gain, never cost, on the selling screens (owner 2026-10-01)", () => {
     expect(countryFlag(null)).toBeNull();
     expect(countryFlag(" ")).toBeNull();
     expect(PAGE).not.toContain(">Location</th>");
+    expect(PAGE).not.toContain(">Size</th>");
     expect(PAGE).toContain("const country = countryFlag(r.company.country);");
   });
 });

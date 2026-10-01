@@ -9,7 +9,6 @@ import {
   STEPS_NOT_LIVE,
   canWriteAnother,
   compactCount,
-  employeesLabel,
   hostOf,
   hotLeadsForCredit,
   nextSlide,
@@ -17,7 +16,6 @@ import {
   parseCompetitors,
   parseDailyBudget,
   parseGetStartedSnapshot,
-  sizeDots,
   stageDwellMs,
   stageMove,
   valueLines,
@@ -123,14 +121,6 @@ describe("the rules the page decides on", () => {
     expect(canWriteAnother(10)).toBe(false);
   });
 
-  it("states a company's size as served, never a guess", () => {
-    expect(employeesLabel(27)).toBe("27");
-    expect(employeesLabel(1200)).toBe("1.2K");
-    expect(employeesLabel(null)).toBeNull();
-    expect(employeesLabel(0)).toBeNull();
-    expect([1, 10, 50, 250, 1000].map(sizeDots)).toEqual([1, 2, 3, 4, 5]);
-    expect(sizeDots(null)).toBe(0);
-  });
 
   it("holds a finished step while the next one is still prepared, and not otherwise", () => {
     expect(stageDwellMs("running", 1600, 12000)).toBe(12000);
