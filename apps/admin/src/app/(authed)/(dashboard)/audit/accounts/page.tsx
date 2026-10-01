@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getAuditAccounts, type AuditAccounts, type AuditAccountRow } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
+import { ACCOUNT_STATUS_LABEL, accountStatusRank, type AccountStatus } from "@/lib/account-status";
 import { Skeleton } from "@/components/skeleton";
 
 function StatCard({
@@ -36,6 +37,7 @@ const usd0 = (n: number) =>
 const usd2 = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const num = (n: number) => n.toLocaleString("en-US");
+const DASH = "-";
 
 /**
  * Resolve the Clerk display name for every org referenced by the rows. Org names
@@ -67,42 +69,44 @@ function useOrgNames(rows: AuditAccountRow[] | undefined) {
 
 function orgLabel(row: AuditAccountRow, names: Record<string, string>): string {
   const clerk = row.orgExternalId ? names[row.orgExternalId] : undefined;
-  return clerk || row.brandDomain || row.ownerEmail || "—";
+  return clerk || row.brandDomain || row.ownerEmail || DASH;
 }
 
+const STATUS_PILL: Record<AccountStatus, string> = {
+  active: "bg-emerald-50 text-emerald-700",
+  reactive_only: "bg-sky-50 text-sky-700",
+  paused: "bg-amber-50 text-amber-700",
+  payment_declined: "bg-red-50 text-red-700",
+  no_payment_method: "bg-red-50 text-red-700",
+  inactive: "bg-gray-100 text-gray-500",
+};
+
 function StatusCell({ row }: { row: AuditAccountRow }) {
-  if (row.status === "active") {
-    // The running figure is what this account can spend today. When the customer has posted more
-    // than that — a second funnel whose campaign is stopped — the difference is stated rather than
-    // averaged away: the two numbers answer different questions and only one is money in play.
-    const posted = row.configuredDailyBudgetUsd > row.runningDailyBudgetUsd;
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-700">
-        {usd2(row.runningDailyBudgetUsd)}/day
-        {posted && (
-          <span className="font-medium text-emerald-600">
-            · {usd2(row.configuredDailyBudgetUsd)} posted
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (row.status === "paused") {
-    // Paused keeps its ceiling and runs nothing — show the held amount for context.
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-        Paused
-        {row.configuredDailyBudgetUsd > 0 && (
-          <span className="font-medium tabular-nums text-amber-600">
-            · {usd2(row.configuredDailyBudgetUsd)}/day posted
-          </span>
-        )}
-      </span>
-    );
-  }
+  // A customer can post more than what runs today (a second funnel whose campaign is stopped, or
+  // everything held while paused). The posted ceiling is stated beside the pill rather than
+  // averaged into the running figure: only the Proactive column is money in play.
+  const posted =
+    (row.status === "active" || row.status === "paused" || row.status === "reactive_only") &&
+    row.configuredDailyBudgetUsd > row.proactiveRunningDailyBudgetUsd;
   return (
-    <span className="inline-block rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-      Inactive
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold ${STATUS_PILL[row.status]}`}
+    >
+      {ACCOUNT_STATUS_LABEL[row.status]}
+      {posted && (
+        <span className="font-medium tabular-nums opacity-80">
+          · {usd2(row.configuredDailyBudgetUsd)}/day posted
+        </span>
+      )}
+    </span>
+  );
+}
+
+function MoneyCell({ value, suffix }: { value: number; suffix: string }) {
+  return (
+    <span className={`tabular-nums ${value > 0 ? "font-medium text-gray-900" : "text-gray-400"}`}>
+      {usd2(value)}
+      <span className="text-xs font-normal text-gray-400">{suffix}</span>
     </span>
   );
 }
@@ -116,17 +120,19 @@ export default function AuditAccountsPage() {
 
   const names = useOrgNames(data?.rows);
 
-  // Rank active → paused → inactive; within a bucket by RUNNING budget desc, then by what was
-  // posted — the money actually in play leads, held ceilings next, inactive last. A paused row runs
-  // nothing, so its posted amount is what ranks it.
+  // Rank by status (active, reactive only, paused, cannot charge, inactive); within a bucket by
+  // PROACTIVE running budget desc, then the reactive cap, then what was posted. Money actually in
+  // play leads; a reactive-only row spends no budget, so its cap is what ranks it.
   const rows = useMemo(() => {
-    const rank = (s: AuditAccountRow["status"]) => (s === "active" ? 0 : s === "paused" ? 1 : 2);
     const list = [...(data?.rows ?? [])];
     list.sort((a, b) => {
-      const r = rank(a.status) - rank(b.status);
+      const r = accountStatusRank(a.status) - accountStatusRank(b.status);
       if (r !== 0) return r;
-      if (b.runningDailyBudgetUsd !== a.runningDailyBudgetUsd) {
-        return b.runningDailyBudgetUsd - a.runningDailyBudgetUsd;
+      if (b.proactiveRunningDailyBudgetUsd !== a.proactiveRunningDailyBudgetUsd) {
+        return b.proactiveRunningDailyBudgetUsd - a.proactiveRunningDailyBudgetUsd;
+      }
+      if (b.reactiveRunningDailyCapUsd !== a.reactiveRunningDailyCapUsd) {
+        return b.reactiveRunningDailyCapUsd - a.reactiveRunningDailyCapUsd;
       }
       return b.configuredDailyBudgetUsd - a.configuredDailyBudgetUsd;
     });
@@ -140,12 +146,13 @@ export default function AuditAccountsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Every customer account across the fleet, cross-org. Active means money is actually
-          running — a ceiling standing behind a campaign that is ongoing — and the org holds enough
-          credit to fund at least one more day of it. Paused means the customer has posted money
-          with nothing running against it: campaigns stopped, or none created for the funnel they
-          funded. Anything else is inactive. Running budget, MRR and ARR count active accounts
-          only, and read what can be spent today rather than what was configured.
+          Every customer account across the fleet, cross-org. Proactive campaigns start
+          conversations (cold email) and spend the budget. Reactive campaigns act on conversations
+          that already exist (AI meeting booking) and only carry a cap, rarely spent. Active means a
+          proactive budget is running and the org can fund at least one more day of it. Reactive
+          only means every proactive campaign stopped while a reactive one is still on. Paused
+          means money is posted with nothing running against it. Running budget, MRR and ARR count
+          active accounts only; the reactive cap is shown beside them, never added.
         </p>
       </div>
 
@@ -156,10 +163,10 @@ export default function AuditAccountsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard
               label="Running daily budget"
-              value={s ? usd0(s.totalRunningDailyBudgetUsd) : "—"}
+              value={s ? usd0(s.totalRunningDailyBudgetUsd) : DASH}
               sub={
                 s && s.totalConfiguredDailyBudgetUsd > s.totalRunningDailyBudgetUsd
                   ? `active accounts · ${usd0(s.totalConfiguredDailyBudgetUsd)} posted`
@@ -168,33 +175,51 @@ export default function AuditAccountsPage() {
               pending={isPending}
             />
             <StatCard
+              label="Reactive daily cap"
+              value={s ? usd0(s.totalReactiveRunningDailyCapUsd) : DASH}
+              sub="cap, not added to running"
+              pending={isPending}
+            />
+            <StatCard
               label="MRR"
-              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : "—"}
+              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : DASH}
               sub="recurring customers, from billing"
               pending={isPending}
             />
             <StatCard
               label="ARR"
-              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : "—"}
+              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : DASH}
               sub="MRR × 12"
               pending={isPending}
             />
             <StatCard
               label="Active accounts"
-              value={s ? num(s.activeCount) : "—"}
+              value={s ? num(s.activeCount) : DASH}
               sub="sending now"
               pending={isPending}
             />
             <StatCard
+              label="Reactive only"
+              value={s ? num(s.reactiveOnlyCount) : DASH}
+              sub="no cold email, reactive on"
+              pending={isPending}
+            />
+            <StatCard
               label="Paused"
-              value={s?.pausedCount != null ? num(s.pausedCount) : "—"}
+              value={s?.pausedCount != null ? num(s.pausedCount) : DASH}
               sub="held, not spending"
               pending={isPending}
             />
             <StatCard
               label="Total accounts"
-              value={s ? num(s.totalCount) : "—"}
-              sub={s ? `${num(s.inactiveCount)} inactive` : undefined}
+              value={s ? num(s.totalCount) : DASH}
+              sub={
+                s
+                  ? s.paymentDeclinedCount + s.noPaymentMethodCount > 0
+                    ? `${num(s.inactiveCount)} inactive · ${num(s.paymentDeclinedCount + s.noPaymentMethodCount)} cannot be charged`
+                    : `${num(s.inactiveCount)} inactive`
+                  : undefined
+              }
               pending={isPending}
             />
           </div>
@@ -206,12 +231,14 @@ export default function AuditAccountsPage() {
                 <Skeleton className="h-64 w-full rounded" />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-[640px] w-full text-sm">
+                  <table className="min-w-[860px] w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                         <th className="py-2 pr-4 font-medium">User</th>
                         <th className="py-2 px-4 font-medium">Org</th>
                         <th className="py-2 px-4 font-medium">Brand</th>
+                        <th className="py-2 px-4 text-right font-medium">Proactive</th>
+                        <th className="py-2 px-4 text-right font-medium">Reactive</th>
                         <th className="py-2 pl-4 text-right font-medium">Brand status</th>
                       </tr>
                     </thead>
@@ -223,13 +250,19 @@ export default function AuditAccountsPage() {
                             r.status === "inactive" ? "text-gray-400" : ""
                           }`}
                         >
-                          <td className="py-2.5 pr-4 text-gray-700">{r.ownerEmail ?? "—"}</td>
+                          <td className="py-2.5 pr-4 text-gray-700">{r.ownerEmail ?? DASH}</td>
                           <td className="py-2.5 px-4 text-gray-700">{orgLabel(r, names)}</td>
                           <td className="py-2.5 px-4">
-                            <div className="font-medium text-gray-900">{r.brandName ?? r.brandDomain ?? "—"}</div>
+                            <div className="font-medium text-gray-900">{r.brandName ?? r.brandDomain ?? DASH}</div>
                             {r.brandName && r.brandDomain && (
                               <div className="text-xs text-gray-400">{r.brandDomain}</div>
                             )}
+                          </td>
+                          <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                            <MoneyCell value={r.proactiveRunningDailyBudgetUsd} suffix="/day" />
+                          </td>
+                          <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                            <MoneyCell value={r.reactiveRunningDailyCapUsd} suffix=" cap/day" />
                           </td>
                           <td className="py-2.5 pl-4 text-right">
                             <StatusCell row={r} />
@@ -238,7 +271,7 @@ export default function AuditAccountsPage() {
                       ))}
                       {rows.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="py-8 text-center text-sm text-gray-400">
+                          <td colSpan={6} className="py-8 text-center text-sm text-gray-400">
                             No accounts found.
                           </td>
                         </tr>

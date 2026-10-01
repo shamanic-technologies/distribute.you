@@ -11,6 +11,7 @@ import {
   type CustomerDashboardReturnFrequency,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
+import { ACCOUNT_STATUS_LABEL, type AccountStatus } from "@/lib/account-status";
 import { Skeleton } from "@/components/skeleton";
 
 // ── Formatters (render only; never compute a metric) ─────────────────────────
@@ -145,16 +146,19 @@ function HealthBadge({ badge }: { badge: "green" | "yellow" | "red" }) {
 
 // ── Status pill ──────────────────────────────────────────────────────────────
 
-const STATUS_PILL: Record<"active" | "paused" | "inactive", string> = {
+const STATUS_PILL: Record<AccountStatus, string> = {
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  reactive_only: "bg-sky-50 text-sky-700 border-sky-200",
   paused: "bg-amber-50 text-amber-700 border-amber-200",
+  payment_declined: "bg-red-50 text-red-700 border-red-200",
+  no_payment_method: "bg-red-50 text-red-700 border-red-200",
   inactive: "bg-gray-50 text-gray-500 border-gray-200",
 };
 
-function StatusPill({ status }: { status: "active" | "paused" | "inactive" }) {
+function StatusPill({ status }: { status: AccountStatus }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${STATUS_PILL[status]}`}>
-      {status}
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_PILL[status]}`}>
+      {ACCOUNT_STATUS_LABEL[status]}
     </span>
   );
 }
@@ -392,8 +396,9 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
       </PanelSection>
 
       <PanelSection title="Budget and balance">
-        <PanelRow label="Status" value={row.status} />
-        <PanelRow label="Daily budget (running)" value={usd(row.runningDailyBudgetUsd)} />
+        <PanelRow label="Status" value={ACCOUNT_STATUS_LABEL[row.status]} />
+        <PanelRow label="Proactive (running)" value={`${usd(row.proactiveRunningDailyBudgetUsd)}/day`} />
+        <PanelRow label="Reactive (cap)" value={`${usd(row.reactiveRunningDailyCapUsd)} cap/day`} />
         <PanelRow label="Daily budget (posted)" value={usd(row.configuredDailyBudgetUsd)} />
         <PanelRow label="Org balance (spendable)" value={usd(row.orgBalanceUsd)} />
         <PanelRow label="Org balance (actual)" value={usd(row.orgActualBalanceUsd)} />
@@ -579,9 +584,10 @@ export function CustomerSuccessView() {
 
   return (
     <>
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard label="Customers" value={s ? count(s.totalCustomers) : DASH} detail="Ever-active org x brand" accent="bg-brand-500" pending={isPending} />
         <StatCard label="Active" value={s ? count(s.activeCount) : DASH} detail="Budgeted, funded, not paused" accent="bg-emerald-500" pending={isPending} />
+        <StatCard label="Reactive only" value={s ? count(s.reactiveOnlyCount) : DASH} detail="No cold email, reactive on" accent="bg-sky-500" pending={isPending} />
         <StatCard label="Paused" value={s ? count(s.pausedCount) : DASH} detail="Held, not spending" accent="bg-amber-500" pending={isPending} />
         <StatCard label="Inactive" value={s ? count(s.inactiveCount) : DASH} detail="No budget or funds" accent="bg-gray-500" pending={isPending} />
         <HealthCountCard green={s?.greenCount ?? 0} yellow={s?.yellowCount ?? 0} red={s?.redCount ?? 0} pending={isPending} />

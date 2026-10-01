@@ -14,6 +14,7 @@ import {
   selectPriorSubmittedPitches,
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
+import type { AccountStatus } from "./account-status";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
@@ -5964,17 +5965,26 @@ export interface AuditAccountRow {
   brandName: string | null;
   brandDomain: string | null;
   configuredDailyBudgetUsd: number; // every ceiling the customer set (USD) — what they posted
-  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
+  runningDailyBudgetUsd: number; // the part behind an ongoing PROACTIVE campaign (USD) — the money in play
+  // Proactive campaigns start conversations (cold email) and spend the budget; same value as
+  // runningDailyBudgetUsd, named for what it is. Reactive campaigns (AI meeting booking) act on
+  // existing conversations and only carry a CAP: stated beside, never added to the money in play.
+  proactiveRunningDailyBudgetUsd: number;
+  reactiveRunningDailyCapUsd: number;
   orgBalanceUsd: number; // org available credit balance (USD)
-  // "active" = running budget > 0 and the org can fund the next day.
-  // "paused" = money configured, nothing running against it (campaigns stopped, or
-  // campaign-service never gave this funnel one). It keeps its ceiling and spends nothing.
-  // Else "inactive". There is no brand-level pause flag in this rule any more.
-  status: "active" | "paused" | "inactive";
+  // Producer precedence: payment_declined / no_payment_method > active > reactive_only >
+  // paused > inactive. "active" = proactive running budget > 0 and the org can fund the
+  // next day. "reactive_only" = nothing proactive runs, a reactive campaign still does.
+  // "paused" = money configured, nothing running against it. Else "inactive".
+  status: AccountStatus;
+  paymentDeclinedReason?: string | null;
 }
 
 export interface AuditAccountsStats {
-  totalRunningDailyBudgetUsd: number; // sum over ACTIVE rows only — what the fleet can spend today
+  totalRunningDailyBudgetUsd: number; // sum of PROACTIVE running budget over ACTIVE rows only — what the fleet can spend today
+  // Σ reactive running cap over active + reactive_only rows: a cap, stated beside the running
+  // total, never added to it.
+  totalReactiveRunningDailyCapUsd: number;
   totalConfiguredDailyBudgetUsd: number; // sum over the SAME rows of what those customers posted
   // billing-service's RECURRING MRR (features-service v0.179.15): recurring orgs
   // only, their running proactive campaigns with people left to contact, × 30.
@@ -5983,6 +5993,9 @@ export interface AuditAccountsStats {
   arrUsd: number | null;
   mrrUnavailableReason?: string | null;
   activeCount: number;
+  reactiveOnlyCount: number;
+  paymentDeclinedCount: number;
+  noPaymentMethodCount: number;
   pausedCount: number;
   inactiveCount: number;
   totalCount: number;
@@ -6232,9 +6245,12 @@ export interface CustomerRow {
   activeThisWeek: boolean;
   activeThisMonth: boolean;
   activeDays: string[]; // YYYY-MM-DD, ascending
-  status: "active" | "paused" | "inactive";
+  status: AccountStatus; // same composition as AuditAccountRow.status
+  paymentDeclinedReason?: string | null;
   configuredDailyBudgetUsd: number; // every ceiling this account set (USD)
-  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
+  runningDailyBudgetUsd: number; // the part behind an ongoing PROACTIVE campaign (USD) — the money in play
+  proactiveRunningDailyBudgetUsd: number; // = runningDailyBudgetUsd, named for what it is
+  reactiveRunningDailyCapUsd: number; // reactive campaigns' daily CAP, never money in play
   orgBalanceUsd: number; // spendable
   orgActualBalanceUsd: number; // actual (active-verdict figure)
   autoTopupEnabled: boolean;
@@ -6254,6 +6270,9 @@ export interface CustomerRow {
 export interface CustomerSuccessFleetStats {
   totalCustomers: number;
   activeCount: number;
+  reactiveOnlyCount: number;
+  paymentDeclinedCount: number;
+  noPaymentMethodCount: number;
   pausedCount: number;
   inactiveCount: number;
   greenCount: number;
