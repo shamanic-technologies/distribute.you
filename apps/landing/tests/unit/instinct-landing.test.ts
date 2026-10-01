@@ -15,7 +15,7 @@ const text = (html: string) => html.replace(/<style>[\s\S]*?<\/style>|<script>[\
 
 describe("the instinct-style landing", () => {
   it("is one page with one call to action, leading to the channel picker", () => {
-    expect(landing.match(/class="cta"/g)).toHaveLength(1);
+    expect(landing.match(/class="cta[ "]/g)).toHaveLength(1);
     expect(landing).toContain(`href="${INSTINCT_START_PATH}"`);
     expect(landing).not.toMatch(/<form|<input/);
   });
@@ -37,7 +37,7 @@ describe("the instinct-style landing", () => {
     for (const f of ["qr-whatsapp.svg", "qr-telegram.svg"]) {
       expect(existsSync(path.resolve(__dirname, "../../public/landing/instinct", f)), f).toBe(true);
     }
-    for (const page of [landing, start]) expect(page).not.toMatch(/stickman|brush-stroke\.png|melange/i);
+    for (const page of [landing, start]) expect(page).not.toMatch(/stickman|brush|melange/i);
   });
 
   it("follows the copy rules: no em-dash, the cost is the client's, no promised meetings, not indexed", () => {
