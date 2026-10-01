@@ -18,8 +18,19 @@
 export const SUBSCRIPTION_ARM = "subscription";
 export const SUBSCRIPTION_MONTHLY_CENTS = 9900;
 export const SUBSCRIPTION_TRIAL_DAYS = 3;
-/** One step of the "add more" ladder billing accepts (9900 + k x 10000). */
-export const SUBSCRIPTION_RAISE_STEP_CENTS = 10000;
+/**
+ * The monthly amounts offered in the plan dropdown (owner 2026-10-01: the customer
+ * picks what they want, several choices, never a bare "+$100"). Every value sits on
+ * billing's ladder (9900 + k x 10000).
+ */
+export const SUBSCRIPTION_AMOUNT_OPTIONS_CENTS = [9900, 19900, 29900, 49900, 99900, 199900] as const;
+
+/** The dropdown's choices: the offered amounts plus the plan's current one, ascending. */
+export function planAmountOptions(currentCents: number | null): number[] {
+  const set = new Set<number>(SUBSCRIPTION_AMOUNT_OPTIONS_CENTS);
+  if (currentCents != null && currentCents > 0) set.add(currentCents);
+  return [...set].sort((a, b) => a - b);
+}
 /** What the plan's outbound (entry legs) may spend a day. */
 export const SUBSCRIPTION_OUTBOUND_DAILY_USD = 50;
 /** What reactive work may spend a day on top: +50% of the outbound. */
