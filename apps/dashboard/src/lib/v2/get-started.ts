@@ -236,14 +236,14 @@ export const GIVE_DRAFT_FIELDS = [
     label: "What we can give for free",
     question: "What could you give, for free, to someone who replies?",
     description:
-      "What this company could offer for free to a prospect who replies to a cold email, to make replying worth it: a free audit, a trial, a sample, a custom mockup, a short consultation. Four to six short bullet points, each under ten words, fitting what this company sells.",
+      "What this company actually gives for free to a prospect who replies to a cold email, as its site or offer states it. Only things it says it gives; never a generic idea it did not state. None stated means no bullet. Up to five short bullet points, each under ten words.",
   },
   {
     key: "neverGive",
     label: "What we will never give",
     question: "What should an email never promise?",
     description:
-      "What an email written for this company must never promise a prospect: discounts, free implementation, unlimited revisions, anything that would cost them too much. Three to five short bullet points, each under ten words.",
+      "Things this company's site or offer explicitly says it does not give or do. Most sites say none: then return no bullet, never a guess. Each item is a whole thing it never gives in any form, never a limit on something it gives (a limit reads as a promise of everything below it): drop the item's size, duration or scope word (full, full-scale, permanent, unlimited, unbounded, long-term, above, beyond, a date, a number); if what is left is something the company gives, do not list it. Up to four short bullet points, each under ten words.",
   },
 ] as const;
 
