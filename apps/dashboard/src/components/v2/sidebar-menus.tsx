@@ -250,6 +250,7 @@ const MENU_ICON = {
   team: "M6 7.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.5c.4-2 2-3.2 4-3.2s3.6 1.2 4 3.2M10.5 3.2a2.2 2.2 0 0 1 0 4.1M12 9.9c1.2.4 2 1.4 2.2 3.1",
   key: "M6 9.5a3 3 0 1 1 2.6-1.5l4.9 4.9-1.2 1.2-1-1-1 1-1-1 1-1-2.1-2.1A3 3 0 0 1 6 9.5Z",
   billing: "M3.5 2.5h9v11l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1zM6 5.5h4M6 8h4",
+  monitoring: "M2.5 13.5h11M4 11V8M7 11V4.5M10 11V6.5M13 11V9",
   research: "M6 2.5h4M6.5 2.5v4L3 12.3a.9.9 0 0 0 .8 1.2h8.4a.9.9 0 0 0 .8-1.2L9.5 6.5v-4M4.8 9.5h6.4",
   gift: "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z",
   help: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2",
@@ -294,6 +295,8 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
         { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
         { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
+        // Monitoring states our fleet-wide cost, price and margin: staff mode only, like Research.
+        ...(staffMode ? [{ href: `${base}/monitoring`, label: "Monitoring", icon: MENU_ICON.monitoring, prefetch: true }] : []),
         // Research compares workflows, models and templates: below a mission, so staff mode only.
         ...(staffMode ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true }] : []),
         { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
