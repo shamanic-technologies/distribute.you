@@ -230,13 +230,13 @@ describe("the surface", () => {
     expect(open).toContain("setWallOpen(true)");
   });
 
-  it("checks one row's person live, one row at a time, and shows only a masked domain", () => {
+  it("checks one row's person live, one row at a time, and shows no address at all", () => {
     const q = FLOW.slice(FLOW.indexOf("function queueCheck("), FLOW.indexOf("function openRow("));
     expect(q).toContain("index >= 10");
     expect(q).toContain("checkQueue.current = checkQueue.current.then(");
     expect(q).toContain("checkAudienceCompanyEmail(audienceId, index)");
     const cell = FLOW.slice(FLOW.indexOf("function RowCheck("), FLOW.indexOf("function EmailsStage("));
-    expect(cell).toContain("check.maskedEmail");
+    expect(cell).not.toContain("check.maskedEmail");
     expect(cell).toContain("motion-reduce:animate-none");
   });
 
