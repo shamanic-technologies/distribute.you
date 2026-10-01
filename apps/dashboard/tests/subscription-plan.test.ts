@@ -6,6 +6,7 @@ import {
   SUBSCRIPTION_REACTIVE_DAILY_USD,
   isSubscriptionArm,
   monthlyUsd,
+  planAmountOptions,
   subscriptionBudgets,
   subscriptionCheckoutRefusal,
 } from "../src/lib/subscription-plan";
@@ -104,7 +105,8 @@ describe("the onboarding sells the plan to its arm", () => {
 
 describe("the plan on the Billing page", () => {
   it("shows the plan for a subscription org, and no top-up or auto top-up", () => {
-    expect(BILLING).toContain('{mode === "subscription" && <SubscriptionPlan />}');
+    expect(BILLING).toContain('id="plan"');
+    expect(BILLING).toContain("<SubscriptionPlan />");
     expect(BILLING).toContain('mode !== "subscription" && account?.has_payment_method && c.autoReloadSupported');
     expect(BILLING).toContain('!c.accountPending && !c.hasAutoTopup && mode !== "subscription"');
   });
@@ -118,14 +120,28 @@ describe("the plan on the Billing page", () => {
     expect(BILLING).toContain('mode === "subscription" ? setCardLossOpen(true) : c.setRemoveConfirmOpen(true)');
   });
 
-  it("offers +$100 a month only when billing says the plan can rise", () => {
-    expect(PLAN).toContain("sub.can_raise && sub.next_raise_monthly_amount_cents != null");
-    expect(PLAN).toContain("raiseSubscription(sub.next_raise_monthly_amount_cents!)");
+  // Owner 2026-10-01: a dropdown of several amounts, never a bare "+$100".
+  it("lets the customer pick the monthly amount from a dropdown of choices", () => {
+    expect(PLAN).toContain('aria-label="Monthly amount"');
+    expect(PLAN).toContain("planAmountOptions(sub.monthly_amount_cents).map");
+    expect(PLAN).toContain("raiseSubscription(amount)");
+    expect(PLAN).not.toContain("Add $100");
+    expect(planAmountOptions(9900)).toEqual([9900, 19900, 29900, 49900, 99900, 199900]);
+    expect(planAmountOptions(39900)).toContain(39900);
+  });
+
+  it("draws with the v2 primitives, no hand-rolled greys or cards", () => {
+    for (const p of ["<Figure", "<StateDot", "k-label", "<EmptyNote"]) expect(PLAN, p).toContain(p);
+    expect(PLAN).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|text-\[22px\]/);
   });
 
   it("never renders a thrown message and carries no em-dash", () => {
     expect(PLAN).not.toContain("err.message");
-    const code = PLAN.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    // The v2 missing-value glyph (`—` in k-fg4) is the one sanctioned dash.
+    const code = PLAN.replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "")
+      .replace('<span className="k-fg4">—</span>', "")
+      .replace(': "—"', "");
     expect(code).not.toContain("—");
   });
 

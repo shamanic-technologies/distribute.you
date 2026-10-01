@@ -161,7 +161,8 @@ export function V2BillingPage() {
           )}
           {cardLossOpen && (
             <LossDialog
-              title="Before you remove your card"
+              title="Remove card"
+              question="Remove the card that pays for your plan? Here is what stops."
               confirmLabel="Remove anyway"
               keepLabel="Keep my card"
               pending={false}
@@ -269,6 +270,17 @@ export function V2BillingPage() {
           </div>
         </Section>
 
+        {/* The monthly plan, for an org on one: its own row, the Balance strip's anatomy. */}
+        {mode === "subscription" && (
+          <Section
+            id="plan"
+            title="Plan"
+            description="What you pay each month becomes credit for your outreach. Pick a bigger amount to reach more leads."
+          >
+            <SubscriptionPlan />
+          </Section>
+        )}
+
         {/* How you pay: a tag, set by staff. */}
         <Section
           id="payment-mode"
@@ -288,7 +300,6 @@ export function V2BillingPage() {
                   <p className="k-fg3 mt-1 text-[12px] leading-[18px]">{MODE_COPY[mode].detail}</p>
                 </div>
               )}
-              {mode === "subscription" && <SubscriptionPlan />}
 
               {/* Auto top-up, in the words of the mode it serves. */}
               {mode !== "subscription" && account?.has_payment_method && c.autoReloadSupported && (
