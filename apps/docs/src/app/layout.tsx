@@ -3,6 +3,7 @@ import "./globals.css";
 import { DocsLayout } from "@/components/docs-layout";
 import { ThemeProvider } from "@/components/theme-provider";
 import { OPENAPI_DOCUMENT_URL } from "@/lib/docs-routes";
+import { DOCS_OG_IMAGE } from "@/lib/docs-metadata";
 import {
   AUTH_HEADER_LINE,
   CLAUDE_CODE_MCP_COMMAND,
@@ -57,20 +58,13 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: "distribute.you Documentation",
     description: "Learn how to use distribute.you - installation, API reference, and integrations.",
-    images: [
-      {
-        url: "/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "distribute.you Documentation",
-      },
-    ],
+    images: [DOCS_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "distribute.you Documentation",
     description: "Complete guides and API reference for distribute.you.",
-    images: ["/og-image.jpg"],
+    images: [DOCS_OG_IMAGE.url],
     creator: "@distribute_you",
   },
   robots: {

@@ -2,6 +2,20 @@ import type { Metadata } from "next";
 import { PRODUCT_NAME, docsRoute, docsUrl } from "./docs-routes";
 
 /**
+ * The link-preview card (WhatsApp, Slack, LinkedIn, X), built at export time by
+ * `src/app/og-image.png/route.tsx`. It is declared on every page because a
+ * page's `openGraph` replaces the layout's instead of merging with it: when only
+ * the layout named an image, no page served one.
+ */
+export const DOCS_OG_IMAGE_PATH = "/og-image.png";
+export const DOCS_OG_IMAGE = {
+  url: DOCS_OG_IMAGE_PATH,
+  width: 1200,
+  height: 630,
+  alt: `${PRODUCT_NAME} docs: REST API, MCP server and command line client`,
+};
+
+/**
  * Metadata for one docs page, built from the single route list.
  *
  * The canonical is the load-bearing part. The root layout used to declare
@@ -32,11 +46,13 @@ export function docsMetadata(path: string): Metadata {
       url,
       title: socialTitle,
       description: route.description,
+      images: [DOCS_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: socialTitle,
       description: route.description,
+      images: [DOCS_OG_IMAGE],
     },
   };
 }
