@@ -7,12 +7,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
-  getBrandLegRates,
+  getBrandConversionRates,
   getOfferSalesPath,
   getOfferUserFields,
   saveOfferUserFields,
   stateBrandLegRates,
-  type BrandLegRate,
+  type EffectiveLegRate,
   type BrandUserFields,
 } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -22,8 +22,8 @@ import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { v2Href, v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
+import { formatRatePct, rateSourceLabel } from "@/lib/brand-conversion-rates";
 import {
-  formatRatePct,
   giveListLines,
   giveListsEqual,
   giveListsPayload,
@@ -65,7 +65,9 @@ export function V2OfferChannelsPage() {
     ...pollOptions,
     enabled: isBeta && !!brandId && !!offerId,
   });
-  const rates = useAuthQuery(["brandLegRates", brandId], () => getBrandLegRates(brandId), {
+  // The EFFECTIVE rate per leg (features-service): measured, else what the brand stated,
+  // else the fleet median, else a benchmark. Never re-derived here.
+  const rates = useAuthQuery(["brandConversionRates", brandId], () => getBrandConversionRates(brandId), {
     ...pollOptions,
     enabled: isBeta && !!brandId,
   });
@@ -99,12 +101,13 @@ export function V2OfferChannelsPage() {
     await qc.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
   };
 
-  const saveRate = async (rate: BrandLegRate, ratePct: number | null) => {
-    if (rate.ratePct === ratePct) return;
-    const res = await stateBrandLegRates(brandId, [{ fromStep: rate.fromStep, toStep: rate.toStep, ratePct }]);
-    qc.setQueryData(["brandLegRates", brandId], res);
-    // A rate prices every money figure: re-read all of them.
+  /** Writes the brand's OWN rate (null clears it, back to the median); the effective rate is re-read, never guessed. */
+  const saveRate = async (rate: EffectiveLegRate, ratePct: number | null) => {
+    if (rate.manualRatePct === ratePct) return;
+    await stateBrandLegRates(brandId, [{ fromStep: rate.fromStep, toStep: rate.toStep, ratePct }]);
+    // A rate prices every money figure: re-read all of them, and wait for this one.
     invalidateConversionRates(qc);
+    await qc.refetchQueries({ queryKey: ["brandConversionRates", brandId] });
   };
 
   const pathSettled = path.isFetchedAfterMount || path.data !== undefined;
@@ -145,7 +148,7 @@ export function V2OfferChannelsPage() {
       ) : (
         <div className="space-y-8">
           {sections.map((s) => {
-            const rate = s.fromKey === null ? undefined : legRateFor(rates.data ?? [], stepLabel(s.fromKey), stepLabel(s.toKey));
+            const rate = s.fromKey === null ? undefined : legRateFor(rates.data?.legs ?? [], stepLabel(s.fromKey), stepLabel(s.toKey));
             return (
               <section key={s.legKey}>
                 <SectionTitle
@@ -158,7 +161,7 @@ export function V2OfferChannelsPage() {
                     ) : rate ? (
                       <InlineRate key={`${rate.fromStep}|${rate.toStep}`} rate={rate} onSave={(v) => saveRate(rate, v)} />
                     ) : (
-                      <span>No conversion rate kept for this leg</span>
+                      <MissingRate leg={s.legKey} />
                     )
                   }
                 >
@@ -313,14 +316,14 @@ function InlineList({
 
 /**
  * The brand's conversion rate on one leg, as text that turns into an input on click.
- * Leaving the field (or Enter) saves it; empty clears it. Shared by every offer of the
- * brand, which the hover title says.
+ * Leaving the field (or Enter) saves the brand's own rate; empty clears it, and the
+ * leg falls back to the median. Shared by every offer of the brand (the hover title).
  */
-function InlineRate({ rate, onSave }: { rate: BrandLegRate; onSave: (ratePct: number | null) => Promise<void> }) {
+function InlineRate({ rate, onSave }: { rate: EffectiveLegRate; onSave: (ratePct: number | null) => Promise<void> }) {
   const [text, setText] = useState<string | null>(null);
   const [pending, setPending] = useState<number | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  const shown = pending !== undefined ? pending : rate.ratePct;
+  const shown = pending !== undefined ? pending : rate.effectiveRatePct;
 
   const commit = async () => {
     if (text === null) return;
@@ -347,6 +350,7 @@ function InlineRate({ rate, onSave }: { rate: BrandLegRate; onSave: (ratePct: nu
     <span className="inline-flex items-center gap-2">
       {error && <span className="text-[var(--data-rose)]">{error}</span>}
       <span className="k-label">Conversion rate</span>
+      {text === null && pending === undefined && <span className="k-fg3">{rateSourceLabel(rate)}</span>}
       {text !== null ? (
         <input
           autoFocus
@@ -369,7 +373,7 @@ function InlineRate({ rate, onSave }: { rate: BrandLegRate; onSave: (ratePct: nu
         <button
           type="button"
           title="Shared by every offer of this brand"
-          onClick={() => setText(shown === null ? "" : String(shown))}
+          onClick={() => setText(String(rate.manualRatePct ?? (shown === null ? "" : Math.round(shown * 10) / 10)))}
           className="k-hover h-6 rounded-[6px] px-1.5 text-[13px] tabular-nums"
         >
           {shown === null ? <span className="k-fg4">—</span> : <span className="k-fg">{formatRatePct(shown)}</span>}
@@ -377,6 +381,17 @@ function InlineRate({ rate, onSave }: { rate: BrandLegRate; onSave: (ratePct: nu
       )}
     </span>
   );
+}
+
+/**
+ * A leg between two steps with no effective rate: features-service names it under labels
+ * the catalogue does not use. A producer bug, said out loud rather than filled in here.
+ */
+function MissingRate({ leg }: { leg: string }) {
+  useEffect(() => {
+    console.error("[offer-channels] features-service serves no conversion rate for this leg", { leg });
+  }, [leg]);
+  return <span>No conversion rate served for this leg</span>;
 }
 
 /** The two lists as brand-service serves them; null until the read answers. */

@@ -87,11 +87,10 @@ export function giveListsPayload(lists: GiveLists): { giveForFree: string[]; nev
 }
 
 /**
- * The brand's conversion rate on one leg, from brand-service's leg-rates read. A rate
- * is stated per (brand, leg) and shared by every offer; brand-service names the leg by
- * its two step LABELS, so the match is on the labels the catalogue serves, verbatim.
- * `undefined` = brand-service holds no row for this leg (it cannot be stated there),
- * which is not the same as a row whose rate was never stated (`ratePct: null`).
+ * The brand's conversion rate on one leg, from features-service's effective rates. A
+ * rate is per (brand, leg) and shared by every offer; the producer names the leg by its
+ * two step LABELS, so the match is on the labels the catalogue serves, verbatim.
+ * `undefined` = the producer serves no rate under those labels (its bug, never guessed).
  */
 export function legRateFor<R extends { fromStep: string; toStep: string }>(
   rates: readonly R[],
@@ -108,9 +107,4 @@ export function parseRatePct(text: string): { ok: true; value: number | null } |
   const n = Number(t);
   if (!Number.isFinite(n) || n <= 0 || n > 100) return { ok: false };
   return { ok: true, value: n };
-}
-
-/** A rate as the page prints it: up to one decimal, no trailing zero. */
-export function formatRatePct(value: number): string {
-  return `${Number(value.toFixed(1))}%`;
 }

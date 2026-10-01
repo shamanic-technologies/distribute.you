@@ -115,7 +115,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "legWorkflowRanking",
   // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
-  "brandLegRates",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
   // only source of an org's name and it hydrates asynchronously, so without a disk
   // snapshot the switcher reads "Dashboard" for the first second of every load.
