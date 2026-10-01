@@ -153,3 +153,62 @@ describe("the call sites", () => {
     expect(PAGE).not.toContain("outcome-prices");
   });
 });
+
+describe("a click moves on at once, and Back goes one step back", () => {
+  it("advances the stage on the click, before the write lands, and reopens the step if it fails", () => {
+    const pickOffer = PAGE.slice(PAGE.indexOf("function pickOffer("), PAGE.indexOf("async function confirmValue("));
+    expect(pickOffer.indexOf('advance("offer")')).toBeLessThan(pickOffer.indexOf("await confirmBrandOffers"));
+    const value = PAGE.slice(PAGE.indexOf("async function confirmValue("), PAGE.indexOf("async function confirmLevers("));
+    expect(value.indexOf('advance("value")')).toBeLessThan(value.indexOf("await saveOfferLifetimeRevenue"));
+    expect(value).toContain('reopen("value",');
+    const pickAud = PAGE.slice(PAGE.indexOf("function pickAudience("), PAGE.indexOf("function chooseAudience("));
+    expect(pickAud.indexOf('advance("audience")')).toBeLessThan(pickAud.indexOf("await ensureOffer()"));
+  });
+
+  it("writes the emails only once the give lists are SAVED, and ranks paths only off SAVED legs", () => {
+    const gives = PAGE.slice(PAGE.indexOf("async function confirmGives("), PAGE.indexOf("\n  }\n", PAGE.indexOf("async function confirmGives(")));
+    expect(gives.indexOf("await saveOfferUserFields")).toBeLessThan(gives.indexOf("setAnswered(true)"));
+    expect(PAGE).toContain("if (brandId && offer && legsSaved && !salesPaths && pathsState === \"idle\") void loadPaths();");
+  });
+
+  it("draws a grey Back under every step but the first", () => {
+    expect(PAGE).toContain("{previousStep(stagedKey) && (");
+    expect(PAGE).toContain("onClick={() => goBack(stagedKey)}");
+  });
+
+  it("says nothing on a step waiting for a pick", () => {
+    expect(PAGE).not.toContain("Your pick");
+    expect(PAGE).not.toContain("We ticked what we read on your site");
+  });
+
+  it("shows each audience's market size, big, from human-service's count", () => {
+    expect(PAGE).toContain("<AudienceSize count={counts[a.name]} counting={counting} />");
+    expect(PAGE).toContain("if (row && row.apolloCount != null) counts[name] = row.apolloCount;");
+  });
+
+  it("names the multiple as ROI, and lets the lifetime revenue be changed from a path's detail", () => {
+    expect(PATHS).toContain("`${formatRoi(path.roi)} ROI`");
+    expect(PATHS).toContain("<LifetimeRevenueEditor value={path.lifetimeRevenueUsd} onSave={onStateLifetimeRevenue} />");
+    expect(PAGE).toContain("onStateLifetimeRevenue={stateLifetimeRevenue}");
+  });
+
+  it("calls the emails step a preview", () => {
+    expect(PAGE).toContain('"Preview my emails"');
+    expect(PAGE).not.toContain('"Write my emails"');
+  });
+});
+
+import { leadCountLabel, previousStep } from "../src/lib/v2/get-started";
+describe("market size and back helpers", () => {
+  it("writes a lead count as a big figure, no tilde", () => {
+    expect(leadCountLabel(14183)).toBe("14K leads");
+    expect(leadCountLabel(3433)).toBe("3.4K leads");
+    expect(leadCountLabel(820)).toBe("820 leads");
+    expect(leadCountLabel(1_250_000)).toBe("1.3M leads");
+    expect(leadCountLabel(null)).toBeNull();
+  });
+  it("goes back one step", () => {
+    expect(previousStep("company")).toBeNull();
+    expect(previousStep("legs")).toBe("salesSteps");
+  });
+});

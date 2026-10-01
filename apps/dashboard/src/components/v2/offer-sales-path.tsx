@@ -17,6 +17,7 @@ export function OfferSalesPath({
   selection,
   onChange,
   part = "both",
+  bare = false,
   stepsIntro = "Every step a sale of this offer goes through. A paying client is always the last one.",
   legsIntro = "How a lead moves from one step to the next, and who moves it.",
 }: {
@@ -27,6 +28,8 @@ export function OfferSalesPath({
   onChange: (next: SalesPathSelection) => void;
   /** Draw the steps, the legs, or both (the onboarding asks them on two screens). */
   part?: "steps" | "legs" | "both";
+  /** No section titles and no intro lines (the onboarding states its own question). */
+  bare?: boolean;
   stepsIntro?: string;
   legsIntro?: string;
 }) {
@@ -45,8 +48,8 @@ export function OfferSalesPath({
     <div className="space-y-8">
       {part !== "legs" && (
       <section>
-        <SectionTitle count={selection.steps.size}>Steps</SectionTitle>
-        <p className="k-fg2 -mt-1 mb-3 text-[13px]">{stepsIntro}</p>
+        {!bare && <SectionTitle count={selection.steps.size}>Steps</SectionTitle>}
+        {!bare && <p className="k-fg2 -mt-1 mb-3 text-[13px]">{stepsIntro}</p>}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {steps.map((s) => {
             const on = selection.steps.has(s);
@@ -56,10 +59,15 @@ export function OfferSalesPath({
                 type="button"
                 aria-pressed={on}
                 onClick={() => onChange(toggleStep(selection, s, !on, legs))}
-                className={`k-card flex items-center gap-2.5 p-3 text-left ${on ? "k-selected" : "k-hover"}`}
+                className={`k-card flex items-center gap-2.5 p-3 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : "k-hover"}`}
               >
                 <StepMark stepKey={s} size="xs" dimmed={!on} />
-                <span className={`truncate text-[13px] ${on ? "font-medium" : "k-fg2"}`}>{label(s)}</span>
+                <span className={`min-w-0 flex-1 truncate text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>{label(s)}</span>
+                {on ? (
+                  <span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span>
+                ) : (
+                  <span aria-hidden className="h-5 w-5 shrink-0 rounded-full border border-[var(--line-strong)]" />
+                )}
               </button>
             );
           })}
@@ -69,8 +77,8 @@ export function OfferSalesPath({
 
       {part !== "steps" && (
       <section>
-        <SectionTitle count={selection.legs.size}>Legs</SectionTitle>
-        <p className="k-fg2 -mt-1 mb-3 text-[13px]">{legsIntro}</p>
+        {!bare && <SectionTitle count={selection.legs.size}>Legs</SectionTitle>}
+        {!bare && <p className="k-fg2 -mt-1 mb-3 text-[13px]">{legsIntro}</p>}
         <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
           {shownLegs.map((l) => {
             const on = selection.legs.has(l.legKey);
@@ -81,13 +89,15 @@ export function OfferSalesPath({
                   type="button"
                   aria-pressed={on}
                   onClick={() => onChange(toggleLeg(selection, l, !on, legs))}
-                  className={`k-row flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-left ${on ? "k-selected" : ""}`}
+                  className={`k-row flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-left ${on ? "bg-[var(--accent-soft)]" : ""}`}
                 >
                   <span
                     aria-hidden
-                    className={`h-3.5 w-3.5 shrink-0 rounded-[4px] border ${on ? "border-[var(--accent)] bg-[var(--accent)]" : "k-line"}`}
-                  />
-                  <span className={`min-w-0 flex-1 text-[13px] ${on ? "font-medium" : "k-fg2"}`}>
+                    className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border text-[10px] text-white ${on ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--line-strong)]"}`}
+                  >
+                    {on ? "✓" : ""}
+                  </span>
+                  <span className={`min-w-0 flex-1 text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>
                     {label(l.fromKey)} <span className="k-fg3">→</span> {label(l.toKey)}
                   </span>
                   <span className="flex flex-wrap gap-1.5">

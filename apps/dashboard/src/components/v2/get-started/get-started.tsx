@@ -32,6 +32,7 @@ import {
   getAudienceCompanies,
   getOfferSalesPaths,
   getPublicCatalogueSignedOut,
+  listAudiences,
   previewColdEmail,
   proposeAudienceSegments,
   proposeBrandOffers,
@@ -67,8 +68,11 @@ import {
   LEVER_DRAFT_FIELDS,
   NEXT_STEPS,
   OFFER_FIELDS,
+  REOPENABLE_STEPS,
   SALES_PATH_CHANNEL_LABEL,
   VALUE_FIELDS,
+  leadCountLabel,
+  previousStep,
   firstLaunchedPath,
   launchPlan,
   parseDraftedSteps,
@@ -171,6 +175,10 @@ export function GetStarted() {
   const [offerMain, setOfferMain] = useState(0);
   const [offer, setOffer] = useState<GetStartedOffer | null>(null);
   const [offerBusy, setOfferBusy] = useState<number | null>(null);
+  // A pick moves the walk on at once; the offer is confirmed behind it. Until then the
+  // rail and the cards show the PENDING pick, and anything needing the offer awaits it.
+  const [pendingOffer, setPendingOffer] = useState<{ name: string; description: string } | null>(null);
+  const offerPromise = useRef<Promise<GetStartedOffer> | null>(null);
   const [offerError, setOfferError] = useState<string | null>(null);
   // Step 4: who to write to, in words; the ONE picked is created under the offer.
   const icpRef = useRef("");
@@ -180,6 +188,10 @@ export function GetStarted() {
   const [audienceBusy, setAudienceBusy] = useState<number | null>(null);
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const createdAudiences = useRef(new Map<string, GetStartedAudience>());
+  const [pendingAudience, setPendingAudience] = useState<{ name: string; description: string } | null>(null);
+  // Each proposed audience's market size (human-service's people count, ~45 s after it is created).
+  const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
+  const [prebuilt, setPrebuilt] = useState(false);
   // Every proposed audience is created in ONE confirm as soon as the offer is picked:
   // human-service then builds each one's people search (~90 s) while the visitor reads
   // the proposals, so the picked one's companies are ready sooner. The launch sends
@@ -217,6 +229,8 @@ export function GetStarted() {
   const draftedSteps = useRef<string[] | null>(null);
   const [salesPaths, setSalesPaths] = useState<OfferSalesPathsData | null>(null);
   const [pathsState, setPathsState] = useState<"idle" | "loading" | "failed">("idle");
+  // The paths are read off the SAVED legs, so only once a save has landed.
+  const [legsSaved, setLegsSaved] = useState(false);
   const [levers, setLevers] = useState<Record<LeverDraftKey, string>>(() => emptyRecord(LEVER_DRAFT_FIELDS));
   const [gives, setGives] = useState<Record<GiveDraftKey, string>>(() => emptyRecord(GIVE_DRAFT_FIELDS));
   const [drafted, setDrafted] = useState<"no" | "running" | "done" | "failed">("no");
@@ -316,6 +330,7 @@ export function GetStarted() {
     if (s.email) setRestoredEmail(s.email);
     if (s.salesPath) {
       selectionTouched.current = true;
+      setLegsSaved(true);
       setSelection({ steps: new Set(s.salesPath.steps), legs: new Set(s.salesPath.legs) });
     }
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
@@ -390,34 +405,62 @@ export function GetStarted() {
   }
 
   /** Step 3: confirm the ONE offer picked, so the brand ends with exactly that offer. */
-  async function pickOffer(i: number) {
-    if (!brandId || offer || offerBusy != null) return;
+  /** A click moves the walk on at once: the step is done, the next one takes the stage. */
+  function advance(k: GetStartedStepKey) {
+    withStageTransition(() => {
+      setStep(k, "done");
+      setFocus(null);
+      setStageIdx(stepIndex(k) + 1);
+    });
+  }
+
+  /** A write behind a click failed: back to that step, with the reason. */
+  function reopen(k: GetStartedStepKey, message: string) {
+    withStageTransition(() => {
+      setStep(k, "choose");
+      setFocus(null);
+      setStageIdx(stepIndex(k));
+    });
+    setAnswerError(message);
+  }
+
+  /** The confirmed offer, waiting for a pick still being saved. */
+  async function ensureOffer(): Promise<GetStartedOffer> {
+    if (offer) return offer;
+    if (offerPromise.current) return offerPromise.current;
+    throw new Error("no offer picked");
+  }
+
+  /** Step 3: the ONE offer picked moves the walk on at once; it is confirmed behind it. */
+  function pickOffer(i: number) {
+    if (!brandId || offer || pendingOffer) return;
     const picked = offerProposals[i];
     if (!picked) return;
-    setOfferBusy(i);
     setOfferError(null);
-    try {
-      const { chosenOfferId } = await confirmBrandOffers(brandId, [picked], 0);
+    setPendingOffer({ name: picked.name, description: picked.description });
+    advance("offer");
+    posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
+    const id = brandId;
+    const p = (async () => {
+      const { chosenOfferId } = await confirmBrandOffers(id, [picked], 0);
       const next = { offerId: chosenOfferId, name: picked.name, description: picked.description };
-      withStageTransition(() => {
-        setOffer(next);
-        setStep("offer", "done");
-        setFocus(null);
-      });
+      setOffer(next);
       saveSnapshot({ offer: next });
-      posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
-      // What the recommended budget buys, priced on this offer. Best effort: the wall
-      // opens with the floor stated when no price is held.
-      recommendedBudgetForPreview(brandId, chosenOfferId, floorUsd)
-        .then(setRecommendedUsd)
-        .catch((e) => console.error("[get-started] price read failed:", e));
-      void draftAnswers(brandId, chosenOfferId);
-    } catch (e) {
+      void draftAnswers(id, chosenOfferId);
+      return next;
+    })();
+    offerPromise.current = p;
+    p.catch((e) => {
       console.error("[get-started] offer confirm failed:", e);
+      offerPromise.current = null;
+      setPendingOffer(null);
+      withStageTransition(() => {
+        setStep("offer", "choose");
+        setFocus(null);
+        setStageIdx(stepIndex("offer"));
+      });
       setOfferError("We could not save this offer. Try again.");
-    } finally {
-      setOfferBusy(null);
-    }
+    });
   }
 
   /**
@@ -468,25 +511,24 @@ export function GetStarted() {
 
   /** Saves the ticked steps and legs on the offer (brand-service replaces the whole selection). */
   async function saveSelection(next: SalesPathSelection, done: GetStartedStepKey) {
-    if (!brandId || !offer || answerBusy) return;
-    setAnswerBusy(true);
+    if (!brandId) return;
     setAnswerError(null);
+    advance(done);
     try {
-      await saveOfferSalesPath(brandId, offer.offerId, [...next.steps], [...next.legs]);
-      withStageTransition(() => {
-        setStep(done, "done");
-        setFocus(null);
-      });
+      const o = await ensureOffer();
+      await saveOfferSalesPath(brandId, o.offerId, [...next.steps], [...next.legs]);
       saveSnapshot({ salesPath: { steps: [...next.steps], legs: [...next.legs] } });
       posthog.capture(done === "salesSteps" ? "get_started_steps_ticked" : "get_started_legs_ticked", {
         steps: next.steps.size,
         legs: next.legs.size,
       });
+      // The paths are re-ranked off what was just saved.
+      setSalesPaths(null);
+      setPathsState("idle");
+      if (done === "legs") setLegsSaved(true);
     } catch (e) {
       console.error("[get-started] sales path save failed:", e);
-      setAnswerError("We could not save this. Try again.");
-    } finally {
-      setAnswerBusy(false);
+      reopen(done, "We could not save this. Try again.");
     }
   }
 
@@ -512,9 +554,9 @@ export function GetStarted() {
 
   // The paths are read once the legs are saved (and again on a restored walk).
   useEffect(() => {
-    if (brandId && offer && steps.legs === "done" && !salesPaths && pathsState === "idle") void loadPaths();
+    if (brandId && offer && legsSaved && !salesPaths && pathsState === "idle") void loadPaths();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandId, offer?.offerId, steps.legs, salesPaths, pathsState]);
+  }, [brandId, offer?.offerId, legsSaved, salesPaths, pathsState]);
 
   /** A rate overwritten from a path's detail: the brand's own rate for the leg, then the paths re-ranked. */
   async function stateLegRate(leg: SalesPathLeg, ratePct: number | null) {
@@ -524,81 +566,76 @@ export function GetStarted() {
     await loadPaths();
   }
 
+  /** What a client is worth, changed from a path's detail: saved on the offer, then the paths re-ranked. */
+  async function stateLifetimeRevenue(usd: number) {
+    if (!brandId) return;
+    const o = await ensureOffer();
+    await saveOfferLifetimeRevenue(brandId, o.offerId, usd);
+    setValueInput(String(usd));
+    saveSnapshot({ lifetimeRevenueUsd: usd });
+    await loadPaths();
+  }
+
   /** Step: the ranked paths seen; the one launched first is where the money goes. */
   function confirmPaths() {
-    withStageTransition(() => {
-      setStep("paths", "done");
-      setFocus(null);
-    });
+    advance("paths");
     saveSnapshot({ pathsDone: true });
     posthog.capture("get_started_paths_seen", { paths: salesPaths?.paths.length ?? 0 });
   }
 
   /** Step 6: what one client is worth, saved on the offer. */
   async function confirmValue() {
-    if (!brandId || !offer || answerBusy) return;
+    if (!brandId) return;
     const parsed = parseLifetimeRevenue(valueInput);
     if ("problem" in parsed) {
       setAnswerError(parsed.problem);
       return;
     }
-    setAnswerBusy(true);
     setAnswerError(null);
+    advance("value");
+    saveSnapshot({ lifetimeRevenueUsd: parsed.usd });
     try {
-      await saveOfferLifetimeRevenue(brandId, offer.offerId, parsed.usd);
-      withStageTransition(() => {
-        setStep("value", "done");
-        setFocus(null);
-      });
-      saveSnapshot({ lifetimeRevenueUsd: parsed.usd });
+      const o = await ensureOffer();
+      await saveOfferLifetimeRevenue(brandId, o.offerId, parsed.usd);
     } catch (e) {
       console.error("[get-started] lifetime revenue save failed:", e);
-      setAnswerError("We could not save this. Try again.");
-    } finally {
-      setAnswerBusy(false);
+      reopen("value", "We could not save this. Try again.");
     }
   }
 
   /** Step 7: the six offer points, saved on the offer. */
   async function confirmLevers() {
-    if (!brandId || !offer || answerBusy) return;
-    setAnswerBusy(true);
+    if (!brandId) return;
     setAnswerError(null);
+    const fields: Partial<Record<LeverDraftKey, string | string[]>> = {};
+    for (const f of LEVER_DRAFT_FIELDS) {
+      const lines = answerLines(levers[f.key]);
+      if (lines.length === 0) continue;
+      fields[f.key] = f.key === "socialProof" ? lines : lines.join("\n");
+    }
+    advance("levers");
     try {
-      const fields: Partial<Record<LeverDraftKey, string | string[]>> = {};
-      for (const f of LEVER_DRAFT_FIELDS) {
-        const lines = answerLines(levers[f.key]);
-        if (lines.length === 0) continue;
-        fields[f.key] = f.key === "socialProof" ? lines : lines.join("\n");
-      }
-      if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offer.offerId, fields);
-      withStageTransition(() => {
-        setStep("levers", "done");
-        setFocus(null);
-      });
+      const o = await ensureOffer();
+      if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, o.offerId, fields);
     } catch (e) {
       console.error("[get-started] offer points save failed:", e);
-      setAnswerError("We could not save your offer. Try again.");
-    } finally {
-      setAnswerBusy(false);
+      reopen("levers", "We could not save your offer. Try again.");
     }
   }
 
   /** Step 8: what is given away and never promised, saved; then the first emails are written. */
   async function confirmGives() {
-    if (!brandId || !offer || answerBusy) return;
-    setAnswerBusy(true);
+    if (!brandId) return;
     setAnswerError(null);
+    advance("gives");
     try {
-      await saveOfferUserFields(brandId, offer.offerId, {
+      const o = await ensureOffer();
+      await saveOfferUserFields(brandId, o.offerId, {
         giveForFree: answerLines(gives.giveForFree),
         neverGive: answerLines(gives.neverGive),
       });
-      withStageTransition(() => {
-        setStep("gives", "done");
-        setAnswered(true);
-        setFocus(null);
-      });
+      // The emails are written from these: only now.
+      setAnswered(true);
       answeredRef.current = true;
       saveSnapshot({ answered: true });
       posthog.capture("get_started_answers_done");
@@ -609,9 +646,7 @@ export function GetStarted() {
       }
     } catch (e) {
       console.error("[get-started] give lists save failed:", e);
-      setAnswerError("We could not save these lists. Try again.");
-    } finally {
-      setAnswerBusy(false);
+      reopen("gives", "We could not save these lists. Try again.");
     }
   }
 
@@ -625,50 +660,95 @@ export function GetStarted() {
           const made = audiences.find((a) => a.name === seg.name) ?? audiences[i];
           if (made) createdAudiences.current.set(seg.name, { audienceId: made.id, name: seg.name, description: seg.description });
         });
+        setPrebuilt(true);
       })
       .catch((e) => console.error("[get-started] audience prebuild failed:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId, offer?.offerId, audienceProposals]);
 
   /** Step 4: the ONE audience picked (created with the others above), then its companies load. */
-  async function pickAudience(i: number) {
-    if (!brandId || !offer || audienceBusy != null) return;
+  // Each audience's market size, read once human-service has counted it (~45 s after
+  // the prebuild created it): asked every 3 s until every created audience has one.
+  useEffect(() => {
+    if (!brandId || !offer || !prebuilt) return;
+    let stop = false;
+    let tries = 0;
+    const tick = async () => {
+      if (stop) return;
+      tries += 1;
+      try {
+        const { audiences } = await listAudiences(brandId, { offerId: offer.offerId });
+        const counts: Record<string, number> = {};
+        for (const [name, a] of createdAudiences.current) {
+          const row = audiences.find((x) => x.id === a.audienceId);
+          if (row && row.apolloCount != null) counts[name] = row.apolloCount;
+        }
+        setAudienceCounts(counts);
+        if (Object.keys(counts).length >= createdAudiences.current.size) return;
+      } catch (e) {
+        console.error("[get-started] audience counts read failed:", e);
+      }
+      if (tries < 60 && !stop) setTimeout(() => void tick(), 3000);
+    };
+    void tick();
+    return () => {
+      stop = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId, offer?.offerId, prebuilt]);
+
+  /** Step 4: the ONE audience picked moves the walk on at once; it is created (or found) behind it. */
+  function pickAudience(i: number) {
+    if (!brandId || audienceBusy != null) return;
+    if (!offer && !offerPromise.current) return;
     const seg = audienceProposals[i];
     if (!seg) return;
-    if (prebuild.current && !createdAudiences.current.has(seg.name)) {
-      setAudienceBusy(i);
-      await prebuild.current;
-      setAudienceBusy(null);
-    }
-    const known = createdAudiences.current.get(seg.name);
-    if (known) {
-      chooseAudience(known);
-      return;
-    }
-    setAudienceBusy(i);
     setAudienceError(null);
-    try {
-      const { audiences } = await confirmAudienceSegments(brandId, offer.offerId, icpRef.current || seg.description, [seg]);
-      const made = audiences[0];
-      if (!made) throw new Error("no audience created");
-      const next = { audienceId: made.id, name: seg.name, description: seg.description };
-      createdAudiences.current.set(seg.name, next);
-      chooseAudience(next);
-      posthog.capture("get_started_audience_picked", { audiences: audienceProposals.length });
-    } catch (e) {
-      console.error("[get-started] audience confirm failed:", e);
-      setAudienceError("We could not set up this audience. Try again.");
-    } finally {
-      setAudienceBusy(null);
+    if (steps.audience !== "done") {
+      setPendingAudience({ name: seg.name, description: seg.description });
+      advance("audience");
+    } else {
+      setAudienceBusy(i);
     }
+    const id = brandId;
+    void (async () => {
+      try {
+        const o = await ensureOffer();
+        // The batch that creates every proposed audience starts once the offer lands:
+        // wait for it to start rather than create this one a second time.
+        for (let t = 0; t < 30 && !prebuild.current; t += 1) await new Promise((r) => setTimeout(r, 100));
+        if (prebuild.current && !createdAudiences.current.has(seg.name)) await prebuild.current;
+        let known = createdAudiences.current.get(seg.name);
+        if (!known) {
+          const { audiences } = await confirmAudienceSegments(id, o.offerId, icpRef.current || seg.description, [seg]);
+          const made = audiences[0];
+          if (!made) throw new Error("no audience created");
+          known = { audienceId: made.id, name: seg.name, description: seg.description };
+          createdAudiences.current.set(seg.name, known);
+        }
+        chooseAudience(known);
+        posthog.capture("get_started_audience_picked", { audiences: audienceProposals.length });
+      } catch (e) {
+        console.error("[get-started] audience confirm failed:", e);
+        setPendingAudience(null);
+        withStageTransition(() => {
+          setStep("audience", "choose");
+          setFocus(null);
+          setStageIdx(stepIndex("audience"));
+        });
+        setAudienceError("We could not set up this audience. Try again.");
+      } finally {
+        setAudienceBusy(null);
+      }
+    })();
   }
 
   function chooseAudience(next: GetStartedAudience) {
     const loaded = rows[next.audienceId]?.length ?? 0;
+    setPendingAudience(null);
     withStageTransition(() => {
       setAudience(next);
       setSelectedRow(0);
-      setFocus(null);
       setSteps((cur) => ({
         ...cur,
         audience: "done",
@@ -904,6 +984,21 @@ export function GetStarted() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseKey, stageIdx]);
 
+  /** Back: a question step before this one is reopened to be answered again; any other is shown. */
+  function goBack(from: GetStartedStepKey) {
+    const prev = previousStep(from);
+    if (!prev) return;
+    if (REOPENABLE_STEPS.has(prev) && steps[prev] === "done") {
+      withStageTransition(() => {
+        setStep(prev, "choose");
+        setFocus(null);
+        setStageIdx(stepIndex(prev));
+      });
+      return;
+    }
+    withStageTransition(() => setFocus(prev));
+  }
+
   /** Opens a finished step on the stage; the walk takes over again when it moves on. */
   function openStep(key: GetStartedStepKey) {
     const idx = GET_STARTED_STEPS.findIndex((s) => s.key === key);
@@ -1056,8 +1151,8 @@ export function GetStarted() {
     domain,
     overview,
     competitors,
-    offer,
-    audience,
+    offer: offer ?? (pendingOffer ? { offerId: "", ...pendingOffer } : null),
+    audience: audience ?? (pendingAudience ? { audienceId: "", ...pendingAudience } : null),
     audienceProposals,
     audienceBusy,
     rows: audRows,
@@ -1081,7 +1176,7 @@ export function GetStarted() {
           state={steps.offer}
           proposals={offerProposals}
           main={offerMain}
-          picked={offer}
+          picked={offer ?? pendingOffer}
           busy={offerBusy}
           error={offerError}
           onPick={(i) => void pickOffer(i)}
@@ -1093,10 +1188,12 @@ export function GetStarted() {
         <AudienceStage
           state={steps.audience}
           proposals={audienceProposals}
-          picked={audience}
+          picked={audience ?? pendingAudience}
           busy={audienceBusy}
           error={audienceError}
-          waitingForOffer={!offer}
+          counts={audienceCounts}
+          counting={prebuilt || !!offerPromise.current}
+          waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
           onRetry={() => brandId && void prepareAudiences(brandId)}
         />
@@ -1132,6 +1229,7 @@ export function GetStarted() {
           canContinue={plan.length > 0}
           onRetry={() => void loadPaths()}
           onStateRate={stateLegRate}
+          onStateLifetimeRevenue={stateLifetimeRevenue}
           onContinue={confirmPaths}
         />
       );
@@ -1259,6 +1357,11 @@ export function GetStarted() {
 
             <div key={stagedKey} className="gs-in mt-4" style={{ viewTransitionName: stepViewName(stagedKey) }}>
               {stageFor(stagedKey)}
+              {previousStep(stagedKey) && (
+                <button type="button" className="k-fg3 mt-3 text-[12.5px] hover:text-[var(--fg-2)]" onClick={() => goBack(stagedKey)}>
+                  ← Back
+                </button>
+              )}
             </div>
 
             {canLaunch && stagedKey === "email" && (
@@ -1524,7 +1627,7 @@ function StepMark({ index, state }: { index: number; state: StepState }) {
     );
   if (state === "choose")
     return (
-      <span key="choose" className="gs-pop inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--accent)] text-[10px] tabular-nums text-[var(--accent)]" aria-label="Your pick">
+      <span key="choose" className="gs-pop inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--accent)] text-[10px] tabular-nums text-[var(--accent)]" aria-label="Waiting for you">
         {index}
       </span>
     );
@@ -1630,13 +1733,7 @@ function StateWord({ state, doneLabel }: { state: StepState; doneLabel?: React.R
         {doneLabel ?? "Done"}
       </span>
     );
-  if (state === "choose")
-    return (
-      <span key="choose" className="gs-pop inline-flex items-center gap-1.5 text-[12px] text-[var(--accent)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-        Your pick
-      </span>
-    );
+  if (state === "choose") return null;
   if (state === "failed") return <span className="text-[12px] text-[var(--data-amber)]">Nothing found</span>;
   if (state === "notLive") return <span className="k-chip">Not live yet</span>;
   return <span className="k-fg4 text-[12px]">Waiting</span>;
@@ -1682,9 +1779,7 @@ function CompanyCard({
         <div className="mt-3">
           <Rows n={3} />
         </div>
-      ) : state === "failed" ? (
-        <p className="k-fg3 mt-3 text-[13px]">We could not read enough from your site to describe it. The rest of the preview still runs.</p>
-      ) : (
+      ) : state === "failed" ? null : (
         <>
           {overview && <p className="k-fg2 mt-3 text-[13px] leading-5">{overview}</p>}
           {facts.length > 0 && (
@@ -1714,7 +1809,7 @@ function CompetitorsCard({ state, competitors }: { state: StepState; competitors
       {state === "running" || state === "waiting" ? (
         <Rows n={3} />
       ) : competitors.length === 0 ? (
-        <p className="k-fg3 text-[13px]">We found no direct competitor on your site. This does not change what we send.</p>
+        <p className="k-fg3 text-[13px]">No competitor found.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-1.5 lg:grid-cols-3">
           {competitors.map((c, i) => (
@@ -1745,14 +1840,14 @@ function OfferStage({
   state: StepState;
   proposals: OfferProposal[];
   main: number;
-  picked: GetStartedOffer | null;
+  picked: { name: string } | null;
   busy: number | null;
   error: string | null;
   onPick: (i: number) => void;
   onRetry: () => void;
 }) {
   return (
-    <StepCard index={3} title="What you sell" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
+    <StepCard index={3} title="What you sell" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
       ) : proposals.length === 0 && !picked ? (
@@ -1760,7 +1855,7 @@ function OfferStage({
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
-            {proposals.length > 1 ? `We found ${proposals.length} things you sell. Pick the one to sell first; you can add the others later.` : "This is what we would sell for you."}
+            {proposals.length > 1 ? "Which one do we sell first?" : "This is what we sell for you."}
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {proposals.map((o, i) => {
@@ -1774,7 +1869,7 @@ function OfferStage({
                   disabled={!!picked || busy != null}
                   aria-pressed={on}
                   style={stagger(i, 80)}
-                  className={`gs-in k-card flex items-start gap-3 p-3 text-left transition-shadow duration-200 ${on ? "ring-1 ring-[var(--accent)]" : locked ? "opacity-50" : "k-hover"}`}
+                  className={`gs-in k-card flex items-start gap-3 p-3 text-left transition-[box-shadow,background-color,opacity] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : locked ? "opacity-40" : "k-hover"}`}
                 >
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
                     <OfferIcon token={o.icon} />
@@ -1783,10 +1878,9 @@ function OfferStage({
                     <span className="flex items-center gap-2">
                       <span className="k-fg text-[14px] font-medium leading-5">{o.name}</span>
                       {i === main && proposals.length > 1 && !picked && <span className="k-chip">Main</span>}
+                      {on && <span aria-hidden className="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span>}
                     </span>
                     <span className="k-fg2 mt-1 block text-[12.5px] leading-5">{o.description}</span>
-                    {busy === i && <span className="k-fg3 mt-1.5 block text-[12px]">Saving your pick</span>}
-                    {on && <span className="k-accent-text mt-1.5 block text-[12px]">Picked</span>}
                   </span>
                 </button>
               );
@@ -1866,21 +1960,18 @@ function SalesPathStage({
         <>
           <p className="k-fg2 mb-3 text-[13px]">
             {part === "steps"
-              ? "Which steps do your sales go through today, before someone becomes a paying client?"
-              : "How do you move a lead from one step to the next today? Tick every way that applies."}
+              ? "Which steps do your sales go through today?"
+              : "How do leads move from one step to the next?"}
           </p>
-          {part === "steps" && drafted && <p className="k-fg3 -mt-1 mb-3 text-[12px]">We ticked what we read on your site. Change anything.</p>}
           <OfferSalesPath
             catalogue={catalogue}
             channelNames={channelNames}
             selection={selection}
             onChange={onChange}
             part={part}
-            stepsIntro="A paying client is always the last step."
-            legsIntro="We run the ways marked with a channel. Your team keeps the others."
+            bare
           />
           <div className="mt-4 flex items-center gap-3">
-            {empty && <span className="k-fg3 text-[12px]">{part === "steps" ? "Tick at least one step." : "Tick at least one way."}</span>}
             <button type="button" className="k-btn-accent ml-auto h-9 px-4" onClick={onContinue} disabled={busy || empty}>
               {busy ? "Saving..." : "Continue"}
             </button>
@@ -1902,6 +1993,7 @@ function PathsStage({
   canContinue,
   onRetry,
   onStateRate,
+  onStateLifetimeRevenue,
   onContinue,
 }: {
   state: StepState;
@@ -1912,6 +2004,7 @@ function PathsStage({
   canContinue: boolean;
   onRetry: () => void;
   onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  onStateLifetimeRevenue: (usd: number) => Promise<void>;
   onContinue: () => void;
 }) {
   const done = state === "done";
@@ -1921,19 +2014,19 @@ function PathsStage({
         <OptionSkeleton />
       ) : (
         <>
-          <p className="k-fg2 mb-3 text-[13px] leading-5">
-            Every way your sales can run, with the return we expect from each. We put your budget on the framed one first.
-          </p>
+          <p className="k-fg2 mb-3 text-[13px] leading-5">Your budget goes to the framed path first.</p>
           <OfferSalesPaths
             data={data ?? undefined}
             pending={(loading || state === "running") && !data}
             failed={failed}
             highlightPathKey={highlightPathKey}
-            intro="Best return first. Open a path to see the conversion rates behind it, and change any of them."
+            intro=""
+            bare
             onStateRate={done ? undefined : onStateRate}
+            onStateLifetimeRevenue={done ? undefined : onStateLifetimeRevenue}
           />
           <p className="k-fg3 mt-3 text-[12px] leading-5">
-            This ranking comes from the conversion rates we measure and the ones you give us. As your results come in, it updates, and your budget follows the best return.
+            This ranking comes from your conversion rates and moves as your results come in.
           </p>
           {failed && (
             <button type="button" className="k-btn mt-2 h-8 px-3" onClick={onRetry}>
@@ -2000,7 +2093,6 @@ function ValueStage({
               </button>
             )}
           </div>
-          <p className="k-fg3 mt-2 text-[12px] leading-5">We use it to show what each campaign returns. You can change it later.</p>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
       )}
@@ -2111,7 +2203,7 @@ function LeversStage({
         <OptionSkeleton />
       ) : (
         <>
-          <p className="k-fg2 text-[13px]">We drafted these from your site. Click any box to change it: every email is written from them.</p>
+          <p className="k-fg2 text-[13px]">Is this your offer?</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {LEVER_DRAFT_FIELDS.map((f, i) => (
               <div key={f.key} className="gs-in k-card p-3" style={stagger(i, 60)}>
@@ -2160,7 +2252,7 @@ function GivesStage({
         <OptionSkeleton />
       ) : (
         <>
-          <p className="k-fg2 text-[13px]">Something free makes people reply. Tell us what we may offer, and what we must never promise.</p>
+          <p className="k-fg2 text-[13px]">What can we offer for free? What must we never promise?</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {GIVE_DRAFT_FIELDS.map((f, i) => (
               <div key={f.key} className="gs-in k-card p-3" style={stagger(i, 80)}>
@@ -2174,9 +2266,9 @@ function GivesStage({
           </div>
           {!done && (
             <div className="mt-3 flex items-center justify-end gap-3">
-              <span className="k-fg3 text-[12px]">Next, we write your first emails.</span>
+              <span className="k-fg3 text-[12px]">Next, a preview of your first emails. Nothing is sent.</span>
               <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
-                {busy ? "Saving..." : "Write my emails"}
+                {busy ? "Saving..." : "Preview my emails"}
               </button>
             </div>
           )}
@@ -2194,21 +2286,27 @@ function AudienceStage({
   picked,
   busy,
   error,
+  counts,
+  counting,
   waitingForOffer,
   onPick,
   onRetry,
 }: {
   state: StepState;
   proposals: AudienceSegmentProposal[];
-  picked: GetStartedAudience | null;
+  picked: { name: string } | null;
   busy: number | null;
   error: string | null;
+  /** Market size per audience name (human-service's people count), when counted. */
+  counts: Record<string, number>;
+  /** The audiences are being counted: a missing figure shows a loading bar, not nothing. */
+  counting: boolean;
   waitingForOffer: boolean;
   onPick: (i: number) => void;
   onRetry: () => void;
 }) {
   return (
-    <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} doneLabel={picked ? "Picked" : undefined} />}>
+    <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
       ) : proposals.length === 0 ? (
@@ -2216,7 +2314,7 @@ function AudienceStage({
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
-            {waitingForOffer ? "Pick your offer first, then who to write to." : "Pick one audience. We find 100 companies in it and the right person at each."}
+            {waitingForOffer ? "Pick your offer first." : "Who do we write to first?"}
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {proposals.map((a, i) => {
@@ -2229,17 +2327,17 @@ function AudienceStage({
                   disabled={waitingForOffer || busy != null}
                   aria-pressed={on}
                   style={stagger(i, 70)}
-                  className={`gs-in k-card flex flex-col p-3 text-left transition-shadow duration-200 ${on ? "ring-1 ring-[var(--accent)]" : "k-hover"}`}
+                  className={`gs-in k-card flex flex-col p-3 text-left transition-[box-shadow,background-color,opacity] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : picked ? "opacity-40" : "k-hover"}`}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-start gap-2">
                     <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--data-violet)_14%,transparent)] text-[var(--data-violet)]">
                       <OfferIcon token={a.icon} />
                     </span>
-                    <span className="k-fg min-w-0 text-[14px] font-medium leading-5">{a.name}</span>
+                    <span className="k-fg min-w-0 flex-1 text-[14px] font-medium leading-5">{a.name}</span>
+                    <AudienceSize count={counts[a.name]} counting={counting} />
                   </span>
                   <span className="k-fg2 mt-2 block text-[12.5px] leading-5">{a.description}</span>
-                  {busy === i && <span className="k-fg3 mt-2 block text-[12px]">Finding companies</span>}
-                  {on && busy !== i && <span className="k-accent-text mt-2 block text-[12px]">Picked</span>}
+                  {on && <span className="mt-2 flex"><span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span></span>}
                 </button>
               );
             })}
@@ -2249,6 +2347,19 @@ function AudienceStage({
       )}
     </StepCard>
   );
+}
+
+/** An audience's market size, big, top right: "14K leads". A loading bar while counted. */
+function AudienceSize({ count, counting }: { count: number | undefined; counting: boolean }) {
+  const label = leadCountLabel(count);
+  if (label)
+    return (
+      <span className="gs-pop shrink-0 text-right">
+        <span className="k-fg block text-[20px] font-semibold leading-6 tabular-nums">{label.replace(" leads", "")}</span>
+        <span className="k-fg3 block text-[11px]">leads</span>
+      </span>
+    );
+  return counting ? <Shimmer className="mt-1 h-5 w-12 shrink-0 rounded-md" /> : null;
 }
 
 function RetryNote({ text, onRetry }: { text: string; onRetry: () => void }) {

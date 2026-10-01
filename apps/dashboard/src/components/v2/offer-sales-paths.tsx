@@ -30,7 +30,9 @@ export function OfferSalesPaths({
   highlightPathKey = null,
   highlightLabel = "What we launch first",
   intro = "Every way the ticked legs reach a paying client, best return first. Open one to see why.",
+  bare = false,
   onStateRate,
+  onStateLifetimeRevenue,
 }: {
   data: OfferSalesPaths | undefined;
   pending: boolean;
@@ -39,16 +41,20 @@ export function OfferSalesPaths({
   highlightPathKey?: string | null;
   highlightLabel?: string;
   intro?: string;
+  /** No section title and no intro line (the onboarding states its own question). */
+  bare?: boolean;
   /** When given, each leg between two steps takes a typed rate (whole percent) or null to clear it. */
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  /** When given, the lifetime revenue in a path's detail is editable (whole dollars). */
+  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const paths = data?.paths ?? [];
 
   return (
     <section>
-      <SectionTitle count={data ? paths.length : null}>Sales paths</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">{intro}</p>
+      {!bare && <SectionTitle count={data ? paths.length : null}>Sales paths</SectionTitle>}
+      {!bare && intro && <p className="k-fg2 -mt-1 mb-3 text-[13px]">{intro}</p>}
       {pending ? (
         <div className="space-y-2">
           <Shimmer className="h-12 rounded-[10px]" />
@@ -68,6 +74,7 @@ export function OfferSalesPaths({
               onToggle={() => setOpen(open === p.pathKey ? null : p.pathKey)}
               highlight={p.pathKey === highlightPathKey ? highlightLabel : null}
               onStateRate={onStateRate}
+              onStateLifetimeRevenue={onStateLifetimeRevenue}
             />
           ))}
         </ul>
@@ -82,16 +89,20 @@ function PathRow({
   onToggle,
   highlight,
   onStateRate,
+  onStateLifetimeRevenue,
 }: {
   path: SalesPathRow;
   open: boolean;
   onToggle: () => void;
   highlight: string | null;
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
   const unavailable = roiUnavailableLabel(path.roiUnavailableReason);
   return (
-    <li className={highlight ? "bg-[var(--accent-soft)] ring-1 ring-inset ring-[var(--accent)]" : undefined}>
+    // The frame sits inside the list with a margin and its own radius, so all four
+    // corners show (an inset ring on a square row is clipped by the list's rounding).
+    <li className={highlight ? "m-1.5 rounded-[8px] bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : undefined}>
       {highlight && (
         <p className="k-accent-text px-4 pt-2.5 text-[11.5px] font-semibold uppercase tracking-wide">{highlight}</p>
       )}
@@ -110,10 +121,10 @@ function PathRow({
           className={`w-16 text-right text-[13px] font-semibold tabular-nums ${roiIsGood(path.roi) ? "text-[var(--run)]" : ""}`}
           title={unavailable ?? undefined}
         >
-          {formatRoi(path.roi)}
+          {path.roi == null ? formatRoi(path.roi) : `${formatRoi(path.roi)} ROI`}
         </span>
       </button>
-      {open && <PathBreakdown path={path} onStateRate={onStateRate} />}
+      {open && <PathBreakdown path={path} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />}
     </li>
   );
 }
@@ -121,9 +132,11 @@ function PathRow({
 function PathBreakdown({
   path,
   onStateRate,
+  onStateLifetimeRevenue,
 }: {
   path: SalesPathRow;
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
   const unavailable = roiUnavailableLabel(path.roiUnavailableReason);
   return (
@@ -153,7 +166,13 @@ function PathBreakdown({
         </div>
         <div>
           <dt className="k-fg3">Lifetime revenue kept</dt>
-          <dd className="tabular-nums">{usd(path.lifetimeRevenueUsd)}</dd>
+          <dd className="tabular-nums">
+            {onStateLifetimeRevenue ? (
+              <LifetimeRevenueEditor value={path.lifetimeRevenueUsd} onSave={onStateLifetimeRevenue} />
+            ) : (
+              usd(path.lifetimeRevenueUsd)
+            )}
+          </dd>
         </div>
         <div>
           <dt className="k-fg3">Cost per paying client</dt>
@@ -268,6 +287,57 @@ function RateEditor({
         disabled={busy}
       />
       <span className="k-fg3">%</span>
+      {dirty && (
+        <button type="button" className="k-btn h-6 px-2 text-[11.5px]" onClick={() => void save()} disabled={busy}>
+          {busy ? "Saving..." : "Save"}
+        </button>
+      )}
+      {error && <span className="w-full text-[11px] text-[var(--data-rose)]">{error}</span>}
+    </span>
+  );
+}
+
+/** What a client is worth, overwritable in a path's detail (whole dollars); the paths re-rank after. */
+function LifetimeRevenueEditor({ value, onSave }: { value: number | null; onSave: (usd: number) => Promise<void> }) {
+  const shown = value == null ? "" : String(Math.round(value));
+  const [text, setText] = useState(shown);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dirty = text.trim() !== shown;
+  async function save() {
+    const t = text.trim().replace(/^\$/, "").replace(/,/g, "");
+    if (!/^\d+$/.test(t) || Number(t) <= 0) {
+      setError("Whole dollars, above 0.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(Number(t));
+    } catch (e) {
+      console.error("[offer-sales-paths] lifetime revenue save failed", e);
+      setError("Could not save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span className="k-fg3">$</span>
+      <input
+        className="k-input h-6 w-20 px-1.5 text-right tabular-nums"
+        inputMode="numeric"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && dirty) void save();
+        }}
+        aria-label="Lifetime revenue of one client, in dollars"
+        disabled={busy}
+      />
       {dirty && (
         <button type="button" className="k-btn h-6 px-2 text-[11.5px]" onClick={() => void save()} disabled={busy}>
           {busy ? "Saving..." : "Save"}
