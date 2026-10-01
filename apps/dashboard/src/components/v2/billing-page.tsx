@@ -352,7 +352,7 @@ export function V2BillingPage() {
         <Section
           id="card"
           title="Payment method"
-          description="The card we charge. Replacing it opens our payment provider's page; nothing is removed without asking."
+          description="The card we charge. Adding or replacing it opens our payment provider's form; nothing is removed without asking."
         >
           <div className="k-card p-4">
             {c.accountPending ? (
@@ -402,7 +402,17 @@ export function V2BillingPage() {
                 </div>
               </div>
             ) : (
-              <p className="k-fg2 text-[13px]">No card yet. One is saved with your first payment.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="k-fg2 text-[13px]">No card yet.</p>
+                <button
+                  type="button"
+                  className="k-btn-strong"
+                  onClick={() => c.handleManagePayment("manage")}
+                  disabled={c.portalLoadingSource !== null}
+                >
+                  {c.portalLoadingSource === "manage" ? "Opening..." : "Add card"}
+                </button>
+              </div>
             )}
             {c.settleCents !== null && (
               <p className="k-fg3 mt-3 text-[12px] leading-[18px]">
