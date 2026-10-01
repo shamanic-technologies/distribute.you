@@ -123,13 +123,14 @@ describe("Channels tab wiring", () => {
 
 describe("leg rates", () => {
   const rates = [
-    { fromStep: "Positive reply", toStep: "Meeting booked", ratePct: 20, stated: true, statedAt: "x" },
-    { fromStep: "Website visit", toStep: "Form filled", ratePct: null, stated: false, statedAt: null },
+    { legKey: "conversation_to_meeting_booked", fromStep: "Positive reply", toStep: "Meeting booked", effectiveRatePct: 30 },
+    // The producer's label differs from the catalogue's "Form submitted": the key still joins.
+    { legKey: "website_visit_to_form_submitted", fromStep: "Website visit", toStep: "Form filled", effectiveRatePct: 8 },
   ];
-  it("matches a leg by the two step labels, verbatim", () => {
-    expect(legRateFor(rates, "Positive reply", "Meeting booked")?.ratePct).toBe(20);
-    // Spelled differently from the catalogue: no row, never a guess.
-    expect(legRateFor(rates, "Website visit", "Form submitted")).toBeUndefined();
+  it("joins on the catalogue legKey, whatever the labels say", () => {
+    expect(legRateFor(rates, "conversation_to_meeting_booked")?.effectiveRatePct).toBe(30);
+    expect(legRateFor(rates, "website_visit_to_form_submitted")?.effectiveRatePct).toBe(8);
+    expect(legRateFor(rates, "gone_leg")).toBeUndefined();
   });
   it("parses what was typed: empty clears, out of range refuses", () => {
     expect(parseRatePct("")).toEqual({ ok: true, value: null });

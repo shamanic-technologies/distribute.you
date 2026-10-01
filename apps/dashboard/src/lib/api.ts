@@ -1960,6 +1960,9 @@ const MeasuredLegRateSchema = z.object({
 const EffectiveLegRateSchema = z.object({
   fromStep: z.string(),
   toStep: z.string(),
+  // The catalogue's own leg identity (features-service v0.179.25): join on this, never on
+  // the labels, which can differ from the catalogue's. Optional for an older body.
+  legKey: z.string().nullish(),
   effectiveRatePct: z.number().nullable(),
   source: z.string().nullable(),
   unresolvedReason: z.string().nullable(),

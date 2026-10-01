@@ -91,16 +91,12 @@ export function giveListsPayload(lists: GiveLists): { giveForFree: string[]; nev
 
 /**
  * The brand's conversion rate on one leg, from features-service's effective rates. A
- * rate is per (brand, leg) and shared by every offer; the producer names the leg by its
- * two step LABELS, so the match is on the labels the catalogue serves, verbatim.
- * `undefined` = the producer serves no rate under those labels (its bug, never guessed).
+ * rate is per (brand, leg) and shared by every offer. Joined on the catalogue's `legKey`,
+ * which the producer serves on each row; its step labels may differ from the catalogue's
+ * and are only sent back verbatim on a write. `undefined` = no row (its bug, never guessed).
  */
-export function legRateFor<R extends { fromStep: string; toStep: string }>(
-  rates: readonly R[],
-  fromLabel: string,
-  toLabel: string,
-): R | undefined {
-  return rates.find((r) => r.fromStep === fromLabel && r.toStep === toLabel);
+export function legRateFor<R extends { legKey?: string | null }>(rates: readonly R[], legKey: string): R | undefined {
+  return rates.find((r) => r.legKey === legKey);
 }
 
 /** What the user typed in a rate field: empty clears it, else a percentage in (0, 100]. */
