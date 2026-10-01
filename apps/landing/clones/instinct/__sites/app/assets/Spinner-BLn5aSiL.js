@@ -1,0 +1,1 @@
+import{j as n,P as o}from"./app-DVKIbK40.js";const d={sm:"h-2.5 w-2.5 border",md:"h-3 w-3 border-2",lg:"h-4 w-4 border-2",xl:"h-6 w-6 border-2"};function t({size:r="md",className:e}){return n.jsx("div",{className:o("shrink-0 animate-spin rounded-full border-muted-foreground/30 border-t-transparent",d[r],e)})}export{t as S};

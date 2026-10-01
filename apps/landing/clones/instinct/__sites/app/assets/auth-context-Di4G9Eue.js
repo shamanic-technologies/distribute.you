@@ -1,0 +1,1 @@
+import{b as e}from"./app-DVKIbK40.js";const t=e.createContext(!1);function a(){return e.useContext(t)}const o=e.createContext([]);function n(){return e.useContext(o)}export{t as E,o as F,n as a,a as u};

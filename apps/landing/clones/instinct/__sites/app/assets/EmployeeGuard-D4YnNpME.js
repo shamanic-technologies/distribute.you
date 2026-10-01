@@ -1,0 +1,1 @@
+import{a1 as s,b as o,j as r,b8 as a}from"./app-DVKIbK40.js";import{u}from"./auth-context-Di4G9Eue.js";function n(){const e=u(),t=s();return o.useEffect(()=>{e||t({to:"/workspace",replace:!0})},[e,t]),e?r.jsx(a,{}):null}export{n as EmployeeGuard};

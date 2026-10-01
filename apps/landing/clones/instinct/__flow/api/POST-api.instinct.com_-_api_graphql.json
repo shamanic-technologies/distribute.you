@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.instinct.com/-/api/graphql",
+    "query": null
+  },
+  "requestBody": {
+    "query": "query browserSessionBootstrapQuery {\n  authSession {\n    user {\n      id\n      name\n      email\n      roles\n      enabledFeatureFlags\n      onboardingStep\n      profilePictureUrl\n      phoneNumber\n    }\n  }\n}\n",
+    "variables": {}
+  },
+  "response": {
+    "data": {
+      "authSession": null
+    }
+  }
+}

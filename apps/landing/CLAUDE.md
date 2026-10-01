@@ -4,7 +4,7 @@ Served landing = STATIC HTML `public/landing/**.html` (routes `src/app/<page>/ro
 
 ## Competitor clones: a PHOTOGRAPH at the root of its own host, nothing of ours injected
 
-`clones/<slug>/` = mirrored competitor landing at `lab-<slug>.distribute.you` (one password `CLONE_BASIC_AUTH`, `noindex`). Slugs: explee, revid, outrank, trustmrr, gojiberry, origami, oxygen, graphed, keel (a whole demo APP). Bytes are exactly what the origin sent; `brandised: false` on each `src/lib/clone-catalogue.ts` entry is the flag to read before injecting anything.
+`clones/<slug>/` = mirrored competitor landing at `lab-<slug>.distribute.you` (one password `CLONE_BASIC_AUTH`, `noindex`). Slugs: explee, revid, outrank, trustmrr, gojiberry, origami, oxygen, graphed, keel (a whole demo APP), instinct (SMS sign-in; walked with a real mobile: a Twilio number gets the code stripped by the carrier). Bytes are exactly what the origin sent; `brandised: false` on each `src/lib/clone-catalogue.ts` entry is the flag to read before injecting anything.
 - **Root of its own SUBDOMAIN, never a path prefix** (root-absolute refs `/_next/static/...` must resolve unchanged). One level deep (Universal SSL covers it; no wildcard). Adding a clone/archive/site = one directory + one catalogue entry + one hostname on the box Caddy line + one proxied Cloudflare A record (**no wildcard for `lab-*`**, DNS is not optional).
 - **`src/proxy.ts` exists for this; its FIRST statement exits every ordinary request.** No `config.matcher` (a clone needs `/_next/*`). Add no work above the host check.
 - **Route segment is `internal-clone`, NOT `_clone`** (leading underscore = private folder, never routes). The proxy 404s that prefix off clone hosts (else a passwordless second door).
