@@ -2593,6 +2593,9 @@ const PublicCatalogueSchema = z.object({
             legKey: z.string(),
             from: StepRefSchema.nullable(),
             to: StepRefSchema,
+            // The crew's name (Herald, Scout, Pilot...), published per leg. Undeclared,
+            // zod strips it and every crew reads by its channel's name instead.
+            crewName: z.string().nullish(),
           }),
         )
         .optional(),
