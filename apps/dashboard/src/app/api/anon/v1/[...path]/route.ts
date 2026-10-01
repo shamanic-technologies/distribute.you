@@ -71,9 +71,11 @@ async function proxyRequest(
     const { path } = await segmentData.params;
     const endpoint = `/${path.join("/")}`;
 
+    // The query rides along: a route that names the brand in its query (the ranked
+    // sales paths) is bound on it. Path matching ignores it.
     const verdict = anonCallAllowed({
       method: req.method,
-      endpoint,
+      endpoint: `${endpoint}${req.nextUrl.search}`,
       brandId: session.brandId,
     });
     if (!verdict.allowed) {
