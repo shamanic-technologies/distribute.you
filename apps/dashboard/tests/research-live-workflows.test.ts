@@ -170,17 +170,13 @@ describe("research reads nothing scoped to the viewer", () => {
 });
 
 describe("the brand Workflows page states the mission's own live figures", () => {
-  it("a learning Offer/Brand cell states what the grain spent, beside the Learning chip", () => {
+  it("every Offer/Brand/Global cell states features-service's price for that grain, one format", () => {
+    expect(page).toContain("offer: ladder?.estimatesByGrain.offer?.legOutcome?.costPerOutcomeUsd ?? null");
+    expect(page).toContain("brand: ladder?.estimatesByGrain.brand?.legOutcome?.costPerOutcomeUsd ?? null");
+    expect(page).toContain("global: ladder?.estimatesByGrain.crossOrg?.legOutcome?.costPerOutcomeUsd ?? null");
     const cost = page.slice(page.indexOf("function CostCell("));
-    expect(cost).toContain("<SpentLine figure={figure} unit={unit} />");
-    expect(page).toContain("spent, {n}");
-  });
-
-  it("an unpriced cell that spent states the spend, not a dash (flash basis, zero outcomes)", () => {
-    const cost = page.slice(page.indexOf("function CostCell("), page.indexOf("function SpentLine("));
-    const unpriced = cost.slice(cost.indexOf(": value == null ? ("));
-    expect(unpriced.indexOf("<SpentLine")).toBeGreaterThan(-1);
-    expect(unpriced.indexOf("<SpentLine")).toBeLessThan(unpriced.indexOf("k-fg4"));
+    expect(cost).not.toContain("spent,");
+    expect(cost).not.toContain("Learning");
   });
 
   it("names a workflow by its distinctive name, the channel dropped (table and strip)", () => {
