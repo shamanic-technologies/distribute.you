@@ -6,9 +6,6 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 const exists = (rel: string) => fs.existsSync(path.join(SRC, rel));
 
-const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
-const CAMPAIGN = `${APP}/offers/[offerId]/campaigns/[id]`;
-
 /**
  * These are source-substring guards, not unit tests: the card imports through the
  * `@` alias, which vitest does not resolve in this repo, so its exported helpers
@@ -16,18 +13,9 @@ const CAMPAIGN = `${APP}/offers/[offerId]/campaigns/[id]`;
  */
 describe("Campaign Settings — is it running, and what may it spend", () => {
   const card = read("components/settings/campaign-settings-card.tsx");
-  const page = read(`${CAMPAIGN}/settings/page.tsx`);
-  const sidebar = read("components/context-sidebar.tsx");
 
-  it("sits under the campaign, with its entry in the campaign sidebar", () => {
-    expect(exists(`${CAMPAIGN}/settings/page.tsx`)).toBe(true);
-
-    const campaignLevel = sidebar.slice(
-      sidebar.indexOf("function CampaignLevelSidebar"),
-      sidebar.indexOf("function OfferLevelSidebar"),
-    );
-    expect(campaignLevel).toContain('label: "Campaign Settings"');
-    expect(campaignLevel).toContain("href: `${campaignBase}/settings`");
+  it("is mounted on the v2 campaign setup page", () => {
+    expect(read("components/v2/setup-pages.tsx")).toContain("<CampaignSettingsCard");
   });
 
   it("carries a daily budget and nothing else", () => {
@@ -48,7 +36,6 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
     ]) {
       expect(card).not.toContain(gone);
     }
-    expect(page).toContain("may spend in a day");
   });
 
   it("edits BILLING's own row, never a campaign-service mirror of it", () => {
@@ -223,37 +210,5 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
     for (const root of ["campaign", "campaigns", "brandCampaignBudgets"]) {
       expect(persist).toContain(`"${root}"`);
     }
-  });
-});
-
-/**
- * The brand kept a Leads list when audiences moved down to the offer, because a
- * lead is a PERSON rather than a statement about a proposition.
- */
-describe("the brand-level Leads page", () => {
-  const page = read(`${APP}/leads/page.tsx`);
-
-  it("lives at /leads, not under the offer's audiences segment", () => {
-    expect(exists(`${APP}/leads/page.tsx`)).toBe(true);
-    expect(exists(`${APP}/audiences/leads/page.tsx`)).toBe(false);
-  });
-
-  it("renders the SAME component unscoped, never a second page body", () => {
-    expect(page).toContain("<EngagedLeadsPage");
-    expect(page).not.toContain("campaignId=");
-  });
-
-  it("states what it returns rather than claiming to be the offers added up", () => {
-    // It is very nearly every offer's leads summed, and it is not exactly that: a
-    // campaign created before the offer level names no offer, so its leads are here
-    // and under no offer at all.
-    expect(page).toContain("scopeNote=");
-    expect(page).toContain("whichever offer it was contacted for");
-    expect(page).toContain("they appear under no offer");
-    expect(page).not.toContain("every offer's leads put together");
-
-    const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain("scopeNote?: string;");
-    expect(leads).toContain("{scopeNote && <p");
   });
 });

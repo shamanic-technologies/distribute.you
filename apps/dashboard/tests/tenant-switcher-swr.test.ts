@@ -88,7 +88,6 @@ describe("Tenant switcher first-frame identity", () => {
     fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
 
   const hook = read("src/lib/use-tenant-switcher.ts");
-  const switcher = read("src/components/tenant-switcher.tsx");
   const authedLayout = read("src/app/(authed)/layout.tsx");
   const provider = read("src/components/tenant-identity-provider.tsx");
 
@@ -135,25 +134,10 @@ describe("Tenant switcher first-frame identity", () => {
     expect(hook).toContain("rememberIdentity({");
   });
 
-  it("renders a skeleton for an unknown tenant, never a fabricated label", () => {
+  it("knows when the tenant is unknown, so a consumer never fabricates a label", () => {
     // `Brand` beside a globe asserts an identity we do not have; the user reads it
     // as the product having lost their brand.
-    expect(switcher).toContain("function IdentitySkeleton");
     expect(hook).toContain("const orgKnown = !!displayOrg?.name;");
     expect(hook).toContain("const brandKnown = !!displayBrand;");
-
-    // Both switcher surfaces gate on the tenant the URL is on — a brand page must
-    // not fall back to the org's name.
-    // The in-flight org switch takes the FIRST branch (it names the target the
-    // user just clicked, which is a truthful identity we do hold), so the unknown
-    // check reads `: !identityKnown ? (` rather than `{!identityKnown ? (`.
-    // Measured offsets to the assertion: 1972 desktop / 1044 mobile.
-    const desktop = sliceFrom(switcher, "export function TenantSwitcher()", 2600);
-    expect(desktop).toContain("const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;");
-    expect(desktop).toContain("!identityKnown ? (");
-
-    const mobile = sliceFrom(switcher, "export function MobileTenantChip()", 1800);
-    expect(mobile).toContain("const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;");
-    expect(mobile).toContain("!identityKnown ? (");
   });
 });

@@ -58,10 +58,8 @@ describe("Offer page", () => {
 });
 
 describe("one start from nothing", () => {
-  it("Offer Settings and Add a mission share createCampaignForPair", () => {
-    expect(read("components/settings/offer-campaigns-card.tsx")).toContain("await createCampaignForPair({");
+  it("Add a mission creates through createCampaignForPair", () => {
     expect(read("components/v2/add-mission-modal.tsx")).toContain("await createCampaignForPair({");
-    expect(read("components/settings/offer-campaigns-card.tsx")).not.toContain("startCampaign(");
   });
 });
 

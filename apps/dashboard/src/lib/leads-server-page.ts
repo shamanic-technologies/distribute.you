@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { AnyLeadTab } from "./goal-steps";
 import type { LeadBoardColumnKey } from "./lead-board";
 import { STANDINGS_BY_COLUMN } from "./lead-board";
 import type { LeadStandingState } from "./lead-standing";
@@ -39,29 +38,6 @@ export const LEAD_BUCKETS = [
   "sale",
 ] as const;
 export type LeadBucket = (typeof LEAD_BUCKETS)[number];
-
-/**
- * Which bucket a tab asks for.
- *
- * The dashboard's `meetings` tab is the BOOKED meeting, matching `goal-steps`'
- * `leadField: "meetingBooked"`. Pointing it at `meeting_attended` would count a
- * different, smaller population under the label the stat cards already price.
- */
-const BUCKET_BY_TAB: Record<AnyLeadTab, LeadBucket> = {
-  outreach: "contacted",
-  clicks: "website_visit",
-  "positive-replies": "positive_reply",
-  signups: "signup",
-  meetings: "meeting_booked",
-  "form-submissions": "form_submission",
-  sales: "sale",
-};
-
-export function bucketForTab(tab: AnyLeadTab): LeadBucket {
-  return BUCKET_BY_TAB[tab];
-}
-
-export type LeadsTab = AnyLeadTab;
 
 /**
  * The bucket the PAGE is about: everyone we contacted.
@@ -109,20 +85,6 @@ export function leadsSearchParam(raw: string): string | null {
 }
 
 /**
- * One page request. `offset` rather than `cursor` because the table offers numbered
- * pages: a cursor can only walk forward, and a reader clicking "page 7" has no cursor
- * for it. lead-service documents both over the SAME total order and warns that an
- * offset walk shifts if a row leaves the filtered set mid-walk — acceptable for a
- * numbered pager over a 30s poll, and the ordering is total so no page can repeat a
- * lead within itself.
- */
-export interface LeadsPageRequest {
-  tab: LeadsTab;
-  search: string;
-  page: number;
-}
-
-/**
  * The query lead-service reads. Every key is omitted when it carries no instruction, so
  * an unfiltered first page is byte-identical to what this endpoint has always answered
  * plus the bound — which is what keeps the producer's "absent means unchanged" promise
@@ -136,16 +98,6 @@ function leadsScopeQuery(bucket: LeadBucket, search: string): Record<string, str
   };
   const q = leadsSearchParam(search);
   if (q) query.q = q;
-  return query;
-}
-
-export function leadsPageQuery(req: LeadsPageRequest): Record<string, string> {
-  const query: Record<string, string> = {
-    ...leadsScopeQuery(bucketForTab(req.tab), req.search),
-    limit: String(LEADS_PAGE_SIZE),
-  };
-  const offset = Math.max(0, Math.trunc(req.page)) * LEADS_PAGE_SIZE;
-  if (offset > 0) query.offset = String(offset);
   return query;
 }
 
@@ -213,35 +165,6 @@ export const LeadBucketCountsSchema = z.object({
   }),
 });
 export type LeadBucketCounts = z.infer<typeof LeadBucketCountsSchema>;
-
-/**
- * How many leads a tab holds. `null` while the counts read is unsettled — a tab whose
- * count we have not been told is not a tab with zero leads, and rendering `0` there
- * states something we do not know.
- */
-export function tabCount(counts: LeadBucketCounts | undefined, tab: LeadsTab): number | null {
-  if (!counts) return null;
-  return counts.counts[bucketForTab(tab)];
-}
-
-/**
- * The population the page can reach, for the title.
- *
- * It is the CONTACTED bucket, not `bucket-counts.total`: that total is the whole scoped
- * population INCLUDING the people who carry no evidence at all (about 5,000 of the
- * 12,945 on the brand that surfaced this), and those can appear under no tab, so
- * advertising them is the bug #3071 fixed.
- *
- * Contacted is the base tab by construction — "every lead we contacted is in it
- * whoever sold to them" — so it is the union's floor. Residual: a tracker could attribute
- * an outcome to somebody we never contacted, who would then be in an outcome tab and
- * outside this number. That tab states its own count, and the alternative (summing
- * buckets, which are not exclusive) would overstate it instead.
- */
-export function reachablePopulation(counts: LeadBucketCounts | undefined): number | null {
-  if (!counts) return null;
-  return counts.counts[REACHABLE_BUCKET];
-}
 
 /**
  * The STANDING dimension — what the board partitions on, and a different question from
@@ -345,8 +268,3 @@ export function leadsColumnPageQuery(req: {
   return query;
 }
 
-/** Pages available for a total, never fewer than one (an empty tab still has page 1). */
-export function pageCountFor(total: number | null | undefined): number {
-  if (total == null) return 1;
-  return Math.max(1, Math.ceil(total / LEADS_PAGE_SIZE));
-}

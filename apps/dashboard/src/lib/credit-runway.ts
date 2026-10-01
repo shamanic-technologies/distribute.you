@@ -12,13 +12,6 @@ import type { BillingAccount } from "./api";
  * missing-backend-data workaround.
  */
 
-/** Runway (days) at/under which the banner escalates to red. */
-export const URGENT_RUNWAY_DAYS = 1;
-/** Runway (days) at/under which the (amber) banner first appears. */
-export const WARNING_RUNWAY_DAYS = 3;
-
-export type RunwaySeverity = "warning" | "urgent";
-
 /**
  * "Available" credit in cents = the billing page's Available =
  * total credited − confirmed charges − provisioned holds = `balance_cents`.
@@ -27,39 +20,6 @@ export function availableCreditCents(
   account: Pick<BillingAccount, "balance_cents">,
 ): number {
   return parseFloat(account.balance_cents);
-}
-
-/**
- * Whole days the available credit covers at the brand's daily budget. null when
- * no budget is set (never launched) or the budget is 0 (paused) — nothing burns
- * daily, so there's no runway to warn about.
- */
-export function brandRunwayDays(
-  availableCents: number,
-  dailyBudgetCents: number | null,
-): number | null {
-  if (dailyBudgetCents === null || dailyBudgetCents <= 0) return null;
-  return Math.floor(availableCents / dailyBudgetCents);
-}
-
-/**
- * Whether — and how loudly — to nag about the runway. null = no banner.
- *
- * Shows whenever auto-topup is OFF, covering BOTH sub-cases the user asked for:
- * deactivated, and unsupported (e.g. India / RBI e-mandates, where it can never
- * be turned on). Unlike a campaign-scoped check this does NOT suppress on
- * unsupported auto-reload — an Indian-card brand still needs the "add credits"
- * nudge before it runs dry.
- */
-export function brandRunwaySeverity(
-  runwayDays: number | null,
-  hasAutoTopup: boolean,
-): RunwaySeverity | null {
-  if (hasAutoTopup) return null;
-  if (runwayDays === null) return null;
-  if (runwayDays <= URGENT_RUNWAY_DAYS) return "urgent";
-  if (runwayDays <= WARNING_RUNWAY_DAYS) return "warning";
-  return null;
 }
 
 /**

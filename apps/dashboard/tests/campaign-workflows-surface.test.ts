@@ -14,10 +14,8 @@ const read = (rel: string) => fs.readFileSync(path.join(__dirname, "..", rel), "
 const TABLE = read("src/components/workflows/campaign-workflows-page.tsx");
 const PANEL = read("src/components/workflows/workflow-rank-panel.tsx");
 const CELLS = read("src/components/workflows/workflow-cells.tsx");
-const SIDEBAR = read("src/components/context-sidebar.tsx");
 const API = read("src/lib/api.ts");
 const PERSIST = read("src/lib/persist-cache.ts");
-const HEADER = read("src/components/header-page-context.tsx");
 
 /** Bound a slice to the next top-level declaration rather than a measured length. */
 function sliceFn(src: string, marker: string): string {
@@ -27,16 +25,7 @@ function sliceFn(src: string, marker: string): string {
   return src.slice(at, next === -1 ? undefined : next);
 }
 
-describe("the surface is BETA-gated on the email allowlist, nav AND body", () => {
-  it("the sidebar entry is gated on useIsBetaUser and carries the badge", () => {
-    const at = SIDEBAR.indexOf("function CampaignLevelSidebar(");
-    const body = SIDEBAR.slice(at, SIDEBAR.indexOf("\nfunction ", at + 1));
-    expect(body).toContain("useIsBetaUser()");
-    expect(body).toContain('id: "campaign-workflows"');
-    expect(body).toContain('maturity: "beta" as Maturity');
-    expect(body).toContain("/workflows`");
-  });
-
+describe("the surface is BETA-gated on the email allowlist in the page body", () => {
   it("does NOT reach for the dead PostHog gate", () => {
     // `useFeatureFlag` returns false for everyone in the dashboard, so gating on it
     // would hide the surface from staff too — the deleted-surface trap.
@@ -220,14 +209,6 @@ describe("THE MATRIX — rows are the served rank, columns the served audience o
     expect(body).not.toContain(".sort(");
   });
 
-  it("the audience-stats key is byte-equal to the campaign Overview's, so it dedupes", () => {
-    const overview = read("src/components/campaigns/campaign-overview-page.tsx");
-    expect(overview).toContain('"featureAudienceStats", featureSlug, brandId,');
-    expect(TABLE).toContain(
-      '["featureAudienceStats", featureSlug, brandId, legKey ?? "none", "campaign", campaignId]',
-    );
-  });
-
   it("a cell is a SERVED figure, addressed by (workflow, column)", () => {
     expect(TABLE).toContain("cells.get(matrixCellKey(r.dynastySlug, null))");
     expect(TABLE).toContain("cells.get(matrixCellKey(r.dynastySlug, a.audienceId))");
@@ -394,23 +375,13 @@ describe("there is NO second sidebar of audiences beside the grid", () => {
   });
 });
 
-describe("the detail PAGE is gone and its route redirects", () => {
-  const ROUTE =
-    "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/campaigns/[id]/workflows/[workflowDynastySlug]/page.tsx";
-
+describe("the detail PAGE is gone", () => {
   it("the component file no longer exists", () => {
     expect(
       fs.existsSync(
         path.join(__dirname, "..", "src/components/workflows/campaign-workflow-detail-page.tsx"),
       ),
     ).toBe(false);
-  });
-
-  it("the old URL still lands somewhere true", () => {
-    const src = read(ROUTE);
-    expect(src).toContain("redirect(");
-    expect(src).toContain("workflows?workflow=");
-    expect(src).toContain("encodeURIComponent(");
   });
 });
 
@@ -864,15 +835,6 @@ describe("what is RUNNING is read from the ledger, not from the campaign row", (
     const body = sliceFn(API, "export async function getWorkflowRankLadder(");
     expect(body).toContain("safeParse");
     expect(body).toContain("throw new Error");
-  });
-});
-
-describe("the top bar still parses the old workflow route", () => {
-  // The route redirects rather than 404ing, so the parser stays: a stale link renders
-  // one frame of that path before the redirect lands.
-  it("reads the segment rather than a hardcoded index at a call site", () => {
-    expect(HEADER).toContain("workflowDynastySlug:");
-    expect(HEADER).toContain('sixth === "workflows" && seventh');
   });
 });
 

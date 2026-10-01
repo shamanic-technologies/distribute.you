@@ -171,12 +171,6 @@ describe("there is no channels card", () => {
         path.resolve(__dirname, "../src/components/settings/brand-acquisition-channels-card.tsx"),
       ),
     ).toBe(false);
-    for (const rel of [
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/settings/page.tsx",
-    ]) {
-      expect(read(rel)).not.toContain("BrandAcquisitionChannelsCard");
-    }
   });
 
   it("draws its mark through the shared component", () => {
@@ -192,8 +186,6 @@ describe("a campaign's channel is read, never inferred", () => {
   it("resolves the channel from the campaign's own feature slug", () => {
     for (const rel of [
       "../src/components/campaigns/campaigns-table.tsx",
-      "../src/components/campaigns/campaigns-page.tsx",
-      "../src/lib/campaign-title.ts",
     ]) {
       const src = read(rel);
       expect(src).not.toContain("acquisitionChannelForWorkflowSlug");

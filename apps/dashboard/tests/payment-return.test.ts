@@ -63,19 +63,19 @@ describe("billing page payments card", () => {
   ) + readFileSync(
     join(
       __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"
+      "../src/components/v2/billing-page.tsx"
     ),
     "utf8"
   ));
 
   it("decides the payment badge from the returned amount", () => {
     expect(page).toContain("paymentReturnState(payment.amountCents, payment.amountReturnedCents)");
-    expect(page).toContain("returned ?? paymentStatusBadge(payment.status)");
+    expect(page).toContain("{returned ? returned.label : \"Paid\"}");
   });
 
   it("stops claiming the customer paid money that came back", () => {
     expect(page).toContain("payment.amountCents - payment.amountReturnedCents");
-    expect(page).toContain("line-through");
+    expect(page).toContain("formatBillingCents(returned ? keptCents : payment.amountCents)");
   });
 
   it("keeps returned payments in the history instead of filtering them out", () => {

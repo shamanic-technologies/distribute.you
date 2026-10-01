@@ -6,78 +6,11 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 /**
- * The brand Overview answers ONE question: what the whole brand returned.
- *
- * A brand runs several acquisition channels and several sales funnels at once, so
- * the surfaces that describe a single channel (the per-day outreach bars, which
- * count the emails cold outreach sends) or a single funnel (Website Visits, Sales
- * Meetings and their cost pairs) each state something narrower than the row they
- * sit in. They live on the campaign Overview, which runs exactly one channel and
- * sells exactly one funnel.
+ * The return-on-spend chart charts what came back per dollar. The figure is
+ * features-service's; the browser divides nothing.
  */
-describe("the brand Overview is scoped to the brand's money", () => {
-  const overview = read(
-    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-  );
-  const section = read("components/revenue/revenue-overview-section.tsx");
-  const campaign = read("components/campaigns/campaign-overview-page.tsx");
-
-  it("drops the channel-scoped Outreach-activity chart at brand level", () => {
-    expect(overview).toContain("showActivityChart={false}");
-    expect(section).toContain("showActivityChart?: boolean");
-    // The chart labels a funnel's steps, so it renders only when a funnel is named — and
-    // a brand names none.
-    expect(section).toContain("{showActivityChart && optimizationGoal && (");
-    // The chart itself stays — it is the campaign Overview's, and that page renders
-    // it by taking the default rather than by opting in.
-    expect(section).toContain("<PipelineActivityChart");
-    expect(campaign).not.toContain("showActivityChart={false}");
-  });
-
-  it("shows the four money cards and no per-leg step pair", () => {
-    expect(overview).toContain("showEconomics");
-    expect(overview).toContain("showStepMetrics={false}");
-    expect(overview).toContain("totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}");
-    // The campaign Overview performs one leg, so it keeps the step pairs.
-    expect(campaign).not.toContain("showStepMetrics={false}");
-  });
-
-  it("reads every money figure off features-service, never dividing in the browser", () => {
-    const cards = read("components/revenue/outreach-stat-cards.tsx");
-    // $ CAC reads `costPerAcquisitionUsd`, served on the DEFAULT un-lensed brand read.
-    // The lens-only `costPerConversionUsd` is absent on this response and left the card
-    // on a dash; deriving it here instead (spend ÷ an outcome count, or pipeline ÷ ROI)
-    // would put a number on screen that features-service never computed.
-    expect(cards).not.toContain("committedCostUsd /");
-    expect(cards).not.toContain("/ economics");
-    // Every ratio is the MATURE half of the served pair (features-service#1196).
-    expect(cards).toContain('shownFigure(economics?.maturity, (h) => h.costPerAcquisitionUsd, "mature")');
-    expect(cards).toContain("formatUsd(cacUsd.value)");
-  });
-});
-
-/**
- * The Overview charts what came back per dollar, and ranks audiences by the same
- * question. Both figures are features-service's; the browser divides nothing.
- */
-describe("the brand Overview charts return, and ranks audiences on it", () => {
-  const overview = read(
-    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-  );
-  const section = read("components/revenue/revenue-overview-section.tsx");
+describe("the return-on-spend chart", () => {
   const roi = read("components/revenue/roi-trend-card.tsx");
-  const audiences = read("components/revenue/top-audiences-card.tsx");
-  const campaign = read("components/campaigns/campaign-overview-page.tsx");
-
-  it("swaps the one-funnel signal line for return on spend at brand level only", () => {
-    expect(overview).toContain("showRoiTrend");
-    expect(section).toContain("showRoiTrend = false");
-    expect(section).toContain("<RoiTrendCard");
-    // The campaign Overview sells exactly one funnel, so its own signal IS what that
-    // campaign buys — it keeps the outcome line by taking the default.
-    expect(section).toContain("<OutcomeTrendCard");
-    expect(campaign).not.toContain("showRoiTrend");
-  });
 
   it("charts the server's own cumulative series and fabricates no point", () => {
     expect(roi).toContain("history?.daily");
@@ -94,171 +27,29 @@ describe("the brand Overview charts return, and ranks audiences on it", () => {
     expect(roi).toContain("<ReferenceLine");
     expect(roi).not.toContain("CartesianGrid");
   });
-
-  it("ranks audiences by return, highest first, with the cost it used to lead with beside it", () => {
-    // Cost per outcome ranks by CHEAPNESS — an audience converting to nothing outranks
-    // an expensive one that pays. The card leads with the return instead.
-    // The MATURE half of the row's served projection pair, never the legacy projection.
-    expect(audiences).toContain("row.projection?.maturity");
-    expect(audiences).toContain("const ranksByReturn =");
-    expect(audiences).toContain("return br - ar;");
-    // Displayed value and sort key are the same figure in both branches, or the card
-    // shows one order and states another.
-    expect(audiences).toContain("ranksByReturn ? formatReturn(rowReturn?.value ?? null) : formatCents(cost?.value ?? null)");
-    // Never computed here — lifetime revenue ÷ cost per paid client is the producer's.
-    expect(audiences).not.toContain("lifetimeRevenueUsd /");
-  });
-
-  it("leads a CAMPAIGN-scoped card with its cost per outcome, never a return", () => {
-    // A campaign buys ONE outcome and is run to make it cheaper, so the return is a
-    // brand's question, not its own — and the Audiences table one click away already
-    // leads with that cost. The return therefore leads at brand level and nowhere else:
-    // a projection on any row must not flip the campaign card over to it.
-    expect(audiences).toContain("const ranksByReturn = brandLevelMoney;");
-    expect(audiences).not.toContain("brandLevelMoney || (data?.audiences");
-    // The campaign call site is what asks for the cost column at all.
-    const at = campaign.indexOf("<TopAudiencesCard");
-    expect(at).toBeGreaterThan(-1);
-    const call = campaign.slice(at, campaign.indexOf("/>", at));
-    expect(call).toContain("metric={audienceStatsMetric}");
-    expect(call).toContain("campaignScoped");
-  });
-
-  it("states no brand-wide return of its own, and no funnel cost at brand level", () => {
-    // The card used to restate the brand's PROJECTED return under its heading, two
-    // inches from the ROI stat card's REALIZED one — same word, two questions, so the
-    // page read as contradicting itself (2.5x under 2.7x in prod). One return per page.
-    expect(audiences).not.toContain("brandProjection");
-    expect(audiences).not.toContain("per dollar overall");
-    // A cost per outcome names one funnel's step; a brand runs several at once.
-    expect(audiences).toContain("const brandLevelMoney = !campaignScoped");
-    expect(audiences).toContain("const subtitle =\n            brandLevelMoney ||");
-    // The brand Overview takes the brand-level default; the campaign Overview opts out.
-    const at = overview.indexOf("<TopAudiencesCard");
-    expect(at).toBeGreaterThan(-1);
-    expect(overview.slice(at, overview.indexOf("/>", at))).not.toContain("campaignScoped");
-    expect(campaign).toContain("campaignScoped");
-  });
 });
 
 /**
- * The brand Overview lists the campaigns behind its own numbers, and the brand
- * Audiences table states money rather than one funnel's steps. Both are the same rule
- * one level down: a brand runs several funnels, so a per-funnel figure on a brand
- * surface labels a sum with one member's vocabulary.
+ * The audience table model sorts $ Invested on the realized spend features-service
+ * serves, the same field the column renders.
  */
-describe("brand surfaces list campaigns and state money", () => {
-  const overview = read(
-    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-  );
-  const table = read("components/campaigns/campaigns-table.tsx");
-  const campaignsPage = read("components/campaigns/campaigns-page.tsx");
-  const audiences = read("components/audiences/customer-audiences-page.tsx");
-
-  it("renders ONE campaigns table, and the offer Overview lists OUTCOMES instead", () => {
-    // A component, never a second copy — two copies is how a campaign comes to read
-    // one way on one surface and another way one click over.
-    expect(table).toContain("export function CampaignsTable(");
-    // The offer Overview states what the offer BUYS, one row per outcome; its
-    // campaigns are one click down, from each leg row or the Campaigns list.
-    expect(overview).toContain("<OfferOutcomesTable");
-    expect(overview).not.toContain("<CampaignsTable");
-  });
-
-  it("prices the Campaigns page header off the un-lensed field, so its tile is not a dash", () => {
-    // `costPerConversionUsd` is lens-only and absent on this brand-level call, which is
-    // what left "Cost per acquisition" empty. Same defect, same fix as the Overview's.
-    expect(campaignsPage).toContain("costEconomics.maturity");
-    expect(campaignsPage).toContain("(h) => h.costPerAcquisitionUsd");
-    expect(campaignsPage).not.toContain("costEconomics.costPerConversionUsd");
-  });
-
-  it("states ROI and $ CAC on the brand Audiences table, and no step columns", () => {
-    expect(audiences).toContain("const brandLevelMoney = !campaignScoped;");
-    // Every step-scoped pair is off at brand level; the campaign route keeps them all.
-    expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
-    // The two signal pairs are keyed on the CAMPAIGN's own leg steps, never on the
-    // retired goal alone. `!brandLevelMoney` is still what turns both off at brand level.
-    expect(audiences).toContain('hasStep("website_visits") && !brandLevelMoney');
-    expect(audiences).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
-    expect(audiences).toContain("const scopeSteps = stepsFor(optimizationGoal, campaignLeg);");
-    expect(audiences).toContain('label="ROI"');
-    expect(audiences).toContain('label="% CAC"');
-    expect(audiences).toContain('label="$ CAC"');
-    // Read verbatim off the MATURE half of the projection pair, through the shared
-    // audience model, and NOT inverted into a % CAC (the banned browser division).
-    expect(audiences).toContain('audienceFigure("roi", stats, "mature")');
-    expect(audiences).toContain('audienceFigure("cacUsd", stats, "mature")');
-    // % CAC is READ, never derived by inverting the return sitting beside it.
-    expect(audiences).toContain('audienceFigure("cacPct", stats, "mature")');
-    expect(audiences).not.toContain("100 /");
-  });
-
-  it("states what the audience has actually cost beside what it is projected to be worth", () => {
-    // REALIZED spend, served ready-made by features-service on the same net basis
-    // billing charges — the browser divides nothing to get it.
-    expect(audiences).toContain('label="$ Invested"');
-    expect(audiences).toContain("formatCents(stats.evidence.totalCostInUsdCents)");
-    // Sorted on the field it renders (the shared audience model), or the column shows
-    // one order and states another.
+describe("the audience table model", () => {
+  it("sorts $ Invested on the served realized cost", () => {
     const model = read("lib/audience-table-model.ts");
     expect(model).toContain('case "invested":');
     expect(model).toContain("return stats?.evidence.totalCostInUsdCents ?? null;");
-    // Brand level: it sits beside $ CAC, which exists nowhere else.
-    const money = audiences.slice(audiences.indexOf("{brandLevelMoney && ("));
-    expect(money.slice(0, 2000)).toContain('label="$ Invested"');
-    // Campaign level carries the same column, directly left of Outreach — which is
-    // where the brand table already prints it, since every funnel pair above is off
-    // there. Both read the same served field; neither divides anything.
-    expect(audiences).toContain("{campaignScoped && (\n                    <SortHeader\n                      label=\"$ Invested\"");
-    const outreachHeaderAt = audiences.indexOf('<SortHeader label="Outreach"');
-    const campaignInvestedAt = audiences.indexOf('{campaignScoped && (\n                    <SortHeader');
-    expect(campaignInvestedAt).toBeGreaterThan(-1);
-    expect(campaignInvestedAt).toBeLessThan(outreachHeaderAt);
-  });
-
-  it("leads the brand Audiences table with the highest return, not the cheapest cost", () => {
-    expect(audiences).toContain('brandLevelMoney\n    ? "roi"');
-    expect(audiences).toContain('brandLevelMoney ? "desc" : "asc"');
-    // Displayed value and sort key are one expression, or the table shows one order
-    // and states another.
-    expect(audiences).toContain("formatReturn(roi.value)");
   });
 });
 
 /**
- * The retired brand goal never reaches features-service from a brand-level surface.
+ * The retired brand goal never reaches features-service from a brand-level read.
  *
  * features-service v0.129.0 made "name NEITHER a funnel NOR a goal" a first-class
  * request: it prices every audience through the best-returning funnel the brand
- * declared and sorts on return descending. That is the only honest answer at brand
- * level — naming one funnel would denominate the whole table in one funnel's terms,
- * and the goal that used to pick it is a server-defaulted retired column.
+ * declared and sorts on return descending.
  */
-describe("brand-level audience reads name neither a leg nor a goal", () => {
-  const overview = read(
-    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-  );
-  const audiences = read("components/audiences/customer-audiences-page.tsx");
-  const campaign = read("components/campaigns/campaign-overview-page.tsx");
+describe("the audience-stats reader can name neither a leg nor a goal", () => {
   const api = read("lib/api.ts");
-
-  it("sends only the brandId from the Overview's Top-audiences card", () => {
-    // `offerId` is a SCOPE (which audiences are priced), never a funnel or a goal
-    // (the funnel they are priced through) — it is `undefined` at brand level.
-    expect(overview).toContain("fetchFeatureAudienceStats(featureSlug, { brandId, offerId })");
-    // The goal mapping is gone from this page entirely.
-    expect(overview).not.toContain("goalForOptimizationGoal");
-    expect(overview).not.toContain("audienceStatsGoal");
-  });
-
-  it("omits both params at brand level and names the LEG under a campaign", () => {
-    expect(audiences).toContain("brandLevelMoney");
-    expect(audiences).toContain("{ leg: campaign.legKey }");
-    // A campaign stating no leg still has its goal to fall back on.
-    expect(audiences).toContain("goal: audienceStatsGoal");
-    expect(campaign).toContain("{ leg: campaign.legKey }");
-  });
 
   it("makes both params optional on the reader, so omitting them is expressible", () => {
     expect(api).toContain("leg?: string | null;");

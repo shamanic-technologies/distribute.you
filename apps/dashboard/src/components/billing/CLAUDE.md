@@ -21,7 +21,7 @@ The click settles on the card (6.3 s measured) before the session is minted; sil
 ## Campaign paused over PAYMENT says why; refused restart shows campaign-service's sentence
 Owner rule 2026-09-27: no chargeable card (removed or never added) also stops the org. billing outlook `charge_blocked` / `no_chargeable_card`; campaign-service (v0.73.14) stops with `stopReason: "no_payment_method"` or `"payment_declined"` and 409s starts with `{error, reason, blockedReason}` (502 `billing_unavailable`). Nothing resumes on its own.
 - `lib/payment-hold-reason.ts` (no imports) maps stop reasons to `PaymentHoldKind` (`declined | no_payment_method`); `lib/payment-declined.ts` (alias-free) is the ONE home: labels/notes/titles are `Record`s over the kind, `isPaymentDeclinedStop`, `scopePaymentHold` / `strongestPaymentHold` (declined wins), `scopeHeldByPayment` (fires only while NOTHING in scope runs), `campaignStartRefusalMessage` (keyed on status + machine `reason`, returns producer `error` verbatim). `ControlRow.paymentHold` replaces the old boolean.
-- Surfaces: Campaigns table pill (`stopReason`), controls trigger/modal rows, Campaign Settings heading, `ScopePaymentDeclinedBand` (Fix billing link) on brand/offer/campaign/v2 Overviews off `["campaigns", brandId]`; v2: `Mission.paymentHold`, `StateDot hold=`, band in `V2Shell` linking the v2 Billing twin. Label `Paused: payment declined` (amber). Guard `tests/payment-declined.test.ts`.
+- Surfaces: Campaigns table pill (`stopReason`), controls trigger/modal rows, Campaign Settings heading; v2: `Mission.paymentHold`, `StateDot hold=`, `ScopePaymentDeclinedBand` in `V2Shell` off `["campaigns", brandId]` linking the v2 Billing twin. Label `Paused: payment declined` (amber). Guard `tests/payment-declined.test.ts`.
 
 ## A REFUSED charge is on the wire already (`lib/payment-failure.ts`, `PaymentFailedBanner` at top of `/billing`)
 - `last_payment_error` was always served (stripe-service mirrors the PaymentIntent, api-service `/v1/billing/payments` is a passthrough); `PaymentIntentSchema` just did not declare it. "Producer does not serve X" is a claim about a payload: verify against one.
@@ -31,26 +31,12 @@ Owner rule 2026-09-27: no chargeable card (removed or never added) also stops th
 - Retry opens the hard-402 modal (`showPaymentRequired`, `depleted` when out); do NOT pass the refused amount as `required_cents`.
 - Billing page only. Guard `tests/payment-failure.test.ts`.
 
-## Reward tasks: client-service owns the ledger; the app renders, derives nothing
-$1 free credit per recurring task; first task = refresh an offer's lifetime revenue/rates ~every 30 days. client-service ledger (`reward_funnel_observations` -> `reward_task_states` -> `reward_task_completions`) holds no money; tells billing to grant (recurring `product_task_completed` reason with per-completion id).
-- `lib/reward-tasks.ts` (alias-free) only SELECTS. Due/since/pay are client-service's answers.
-- brand-service `updatedAt` is untrustworthy (moves on a funnel toggle); client-service uses a content fingerprint. `contentChangedProvenance` `observed` vs `producer_ts`: on `producer_ts` print NO day count.
-- Offer missing from roll-up reads `null`, never `0`. `status` / provenance are plain strings, never `z.enum`; `lastCompletedAt` is `.nullable()`. `x-org-id` required when several orgs claim a brand (gateway supplies it).
-- ONE read `["rewardTasks", brandId]` (allowlisted in `PERSISTABLE_QUERY_ROOTS`) feeds the offer-Overview band (above the learning band; renders only while OWED, not a third of the Return-on-spend row) and the top-bar pill due-count badge (BRAND routes only).
-- The band states the damage of staleness (overjustification trap); no second paid task without its own reason. Gap: observed on read, no sweep. Guards `tests/reward-task-band.test.ts`, `tests/reward-credits-pill.test.ts`.
-
-## Top-bar reward pill (`components/rewards/reward-credits-pill.tsx`)
-Exception to "the bar carries only universal actions": earned credit is universal state.
-- Totals the WHOLE grants ledger (not a reason list), from `["creditGrants"]` (Billing's key). NOT the spendable balance. Unparseable row => total `null` => render nothing.
-- Count-up/pop/confetti fire ONLY on an INCREASE from a value already seen (`lib/count-up.ts`; `lib/confetti.ts` `z-index: 60`, nothing under reduced motion).
-
-## Sidebar reward ladder (`components/invite/rewards-card.tsx`, all three brand sidebars)
-Two cards: invite row (do) then promise card (watch).
-- Invite row has NO button (`role="button"` div; label measured 142px, do not widen padding). Confirmation is a TOAST (`components/toast.tsx`, `role="status"`, centred bottom: the support FAB owns bottom-right).
+## Free-credit promise (`V2ReferralPage` in `components/v2/setup-pages.tsx`)
+- Confirmation is a TOAST (`components/toast.tsx`, `role="status"`, centred bottom: the support FAB owns bottom-right).
 - Heading = billing's served `outstanding_total_cents` (`.optional()`, absent is not zero); never sum rows here. Bar + line describe the NEAREST promise only (billing orders cheapest-bar-first).
 - Line from `promiseUnlockLine` (`lib/free-credit-promise-view`): `Unlock $347 free credits after $376 more in payments.` Promises WHOLE dollars (`formatBillingCentsWhole`), charges keep cents; remaining bar CEILED; no measured progress => no bar. Key `["freeCreditPromises"]` is Billing's; link reads org from the URL, never `useParams`. Guards `tests/referral-invite-wiring.test.ts`, `tests/free-credit-promise-view.test.ts`.
 
 ## Billing / top-up UX lives in TWO surfaces only
-- `billing/page.tsx` (Add Credits one-time charge + auto-topup config) and `lib/billing-guard.tsx` (`showPaymentRequired` at campaign launch: the ONLY place card + auto-topup get set up). Onboarding asks NO card (a `$10` threshold over a `$2` welcome credit fired an instant $50 charge, #1528). Recurring launch => auto-topup MANDATORY (#1536). Identify the surface first when a top-up symptom is reported.
-- "Available credit" for runway warnings = `balance_cents` (credited - confirmed - provisioned), NEVER `actual_balance_cents` (ignores holds) or `credited_cents`. Low-credit banner + daily modal (`components/billing/credit-alerts.tsx`, `lib/credit-runway.ts`) fire on Available / brand daily budget < 3 days when auto-topup is off or unsupported.
+- `components/v2/billing-page.tsx` (Add Credits one-time charge + auto-topup config) and `lib/billing-guard.tsx` (`showPaymentRequired` at campaign launch: the ONLY place card + auto-topup get set up). Onboarding asks NO card (a `$10` threshold over a `$2` welcome credit fired an instant $50 charge, #1528). Recurring launch => auto-topup MANDATORY (#1536). Identify the surface first when a top-up symptom is reported.
+- "Available credit" for runway warnings = `balance_cents` (credited - confirmed - provisioned), NEVER `actual_balance_cents` (ignores holds) or `credited_cents`.
 - Hosted top-up coupon = Stripe `allow_promotion_codes` set in billing-service (hosted payment-mode only); no dashboard change. Credit = what Stripe RECEIVED, so a 100%-off code lands $0 credit by design; comp via `POST /v1/credits/grant`.

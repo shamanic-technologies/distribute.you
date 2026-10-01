@@ -172,7 +172,7 @@ const PAGE = (readFileSync(
   join(__dirname, "../src/components/billing/use-billing-controller.ts"),
   "utf8",
 ) + readFileSync(
-  join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+  join(__dirname, "../src/components/v2/billing-page.tsx"),
   "utf8",
 ));
 const BANNER = readFileSync(
@@ -185,8 +185,8 @@ describe("billing page call site", () => {
     const at = PAGE.indexOf("<PaymentFailedBanner");
     expect(at).toBeGreaterThan(-1);
     const call = PAGE.slice(at, PAGE.indexOf("/>", at));
-    expect(call).toContain("failure={paymentFailure}");
-    expect(call).toContain("stopped={paymentsStopped}");
+    expect(call).toContain("failure={c.paymentFailure}");
+    expect(call).toContain("stopped={c.paymentsStopped}");
     expect(call).toContain("onRetry=");
     expect(call).toContain("onUpdateCard=");
   });

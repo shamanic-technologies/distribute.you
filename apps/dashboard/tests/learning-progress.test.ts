@@ -159,146 +159,24 @@ describe("the verdict is READ off the body, never rebuilt", () => {
   });
 });
 
-describe("the band divides nothing", () => {
-  const band = src("components/campaigns/learning-progress-callout.tsx");
-  const scope = src("components/campaigns/scope-learning-band.tsx");
-
-  it("renders the served figures and computes no threshold, price or countdown", () => {
-    expect(band).toContain("phase.daysRemaining");
-    expect(band).toContain("phase.progressPct");
-    expect(band).toContain("phase.ceilingScenarios");
-    // The arithmetic that produced "0 days left" must not come back in any form.
-    expect(band).not.toContain("learningProgress");
-    expect(band).not.toContain("LEARNING_MIN_OUTCOMES");
-    expect(band).not.toContain("settlingDays");
-    expect(band).not.toMatch(/Math\.ceil\(/);
-  });
-
+describe("the modules the served verdict replaced stay gone", () => {
   it("the two modules it replaced are GONE, not merely unused", () => {
-    // A lib with no caller is a lib the next surface reaches for. Both are deleted, and
-    // nothing under src may name them again.
-    const all = [
-      "lib/use-scope-learning-lead.ts",
-      "lib/learning-progress.ts",
-    ];
-    for (const rel of all) {
+    // A lib with no caller is a lib the next surface reaches for. Both are deleted.
+    for (const rel of ["lib/use-scope-learning-lead.ts", "lib/learning-progress.ts"]) {
       expect(() => src(rel)).toThrow();
     }
-    expect(scope).not.toContain("useScopeLearningLead");
     // The cheapest-across-workflows pick is what chose the floor. It has no caller left.
     const choice = src("lib/workflow-projection-choice.ts");
     expect(choice).not.toContain("learningSignalUnitCostUsd");
     expect(choice).not.toContain("workflowSignalUnitCost");
   });
+});
 
-  it("takes the verdict as a PROP, so the band and the figures beside it share one body", () => {
-    // A read of its own is how one campaign came to read 13 days on its own page and 27
-    // one click up: same spend, same ceiling, two call sites passing different inputs.
-    expect(scope).toContain("phase: LearningPhase | null | undefined");
-    expect(scope).not.toContain("useAuthQuery");
-  });
-
-  it("states the three verdicts that speak, and nothing for the two that do not", () => {
-    expect(band).toContain('case "learning"');
-    expect(band).toContain('case "learning_limited"');
-    expect(band).toContain('case "paused"');
-    // `priced` and `unmeasured` render nothing: the first has its figures, and the
-    // second is the producer saying it cannot answer.
-    expect(band).toContain("default:\n      return null;");
-  });
-
-  it("offers the raise only while there is spend left to get through", () => {
-    // On `learning_limited` the money is already in and the wait is the provider's, so
-    // a lever promising to buy days back would be promising something it cannot.
-    expect(band).toContain("phase.daysRemaining != null");
-    expect(band).toContain("s.daysRemaining < phase.daysRemaining");
-  });
-
-  it("names both figures and states what the raise buys, in days saved", () => {
-    // "about 42 days" makes a reader subtract to learn what they gain.
-    expect(band).toContain("save {saved}");
-    expect(band).not.toContain("/day instead → about");
-  });
-
-  it("opens the budget form on the figure the button just named", () => {
+describe("the budget form takes a prefilled figure only for one campaign", () => {
+  it("drafts on the prefill, and drops it at a wider grain", () => {
     const modal = src("components/campaigns/campaign-controls-modal.tsx");
-    expect(band).toContain("prefillBudgetUsd={prefillUsd}");
     expect(modal).toContain("draftFor(row, prefill)");
     // A figure offered for ONE campaign has no row to land on at a wider grain.
     expect(modal).toContain("const prefill = campaignId != null ? prefillBudgetUsd : undefined;");
-  });
-
-  it("carries no explanatory line under the bar", () => {
-    // Three clauses (the spend target, the daily rate, the settling window) on a band
-    // whose whole job is to be read at a glance.
-    expect(band).not.toContain("we need to price it");
-    expect(band).not.toContain("Replies keep landing for");
-  });
-
-  it("wears the charter's TERTIARY, rotated to the brand, on every layer it draws", () => {
-    // One accent across a campaign's surfaces: the band and the `Learning` tag it
-    // belongs to must never read as two different states of one thing.
-    expect(band).toContain("tone-tile");
-    for (const cls of [
-      "border-orange-200",
-      "bg-orange-50",
-      "text-orange-700",
-      "bg-orange-200",
-      "bg-orange-600",
-    ]) {
-      expect(band).toContain(cls);
-    }
-    expect(band).not.toMatch(/(bg|text|border)-purple-/);
-
-    const css = src("app/globals.css");
-    for (const sel of [".tone-tile.bg-orange-50", ".tone-tile.border-orange-200"]) {
-      expect(css).toContain(`:root[data-brand-tint] ${sel}`);
-      expect(css).toContain(`html.dark:root[data-brand-tint] ${sel}`);
-    }
-    for (const sel of [
-      ".tone-tile .text-orange-700",
-      ".tone-tile .bg-orange-200",
-      ".tone-tile .bg-orange-600",
-    ]) {
-      expect(css).toContain(`:root[data-brand-tint] ${sel}`);
-    }
-    for (const rule of [
-      "html.dark .text-orange-700",
-      "html.dark .border-orange-200",
-      "html.dark .bg-orange-200",
-    ]) {
-      expect(css).toContain(rule);
-    }
-  });
-
-  it("ships no em-dash in anything a customer reads", () => {
-    // Comments are exempt fleet-wide; the copy is not. Asserted against a
-    // comment-stripped copy so an explanatory line cannot fail its own guard.
-    const stripped = band
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "");
-    expect(stripped).not.toContain("—");
-  });
-});
-
-describe("every surface feeds the band from its OWN scope's body", () => {
-  // A band fed from a wider read states a wider scope's countdown under a narrower
-  // name.
-  it("the campaigns list reads the scope its header answers for", () => {
-    const page = src("components/campaigns/campaigns-page.tsx");
-    expect(page).toContain("const learningPhase = brandRevenueQ.data?.learningPhase ?? null;");
-    expect(page).toContain("phase={learningPhase}");
-  });
-
-  it("the brand and offer Overview reads its own body", () => {
-    const page = src("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
-    expect(page).toContain("phase={data?.learningPhase ?? null}");
-    expect(page).not.toContain("featureSlug={featureSlug} offerId={offerId} />");
-  });
-
-  it("the campaign Overview reads its own campaign's body", () => {
-    const page = src("components/campaigns/campaign-overview-page.tsx");
-    expect(page).toContain("phase={data?.learningPhase ?? null}");
-    expect(page).not.toContain("campaignId={campaignId}\n        />");
   });
 });

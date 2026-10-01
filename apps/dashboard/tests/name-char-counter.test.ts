@@ -131,7 +131,6 @@ describe("CharCounter", () => {
 describe("every field that collects a name mounts the counter", () => {
   const surfaces = [
     { file: "components/settings/offer-identity-card.tsx", max: "OFFER_NAME_MAX_CHARS" },
-    { file: "components/offers/new-offer-modal.tsx", max: "OFFER_NAME_MAX_CHARS" },
     { file: "components/settings/brand-identity-card.tsx", max: "BRAND_NAME_MAX_CHARS" },
   ];
 

@@ -4,10 +4,7 @@ import path from "path";
 import {
   lastBrandCookieName,
   explicitHierarchyHref,
-  hasExplicitHierarchyIntent,
-  matchOrgLanding,
   matchBrandPath,
-  resolveLandingBrand,
 } from "../src/lib/last-brand";
 
 describe("lastBrandCookieName — org-scoped", () => {
@@ -29,31 +26,6 @@ describe("explicit hierarchy intent — user-requested back navigation", () => {
       "/orgs/org_123?tab=usage&view=overview",
     );
   });
-
-  it("detects only the explicit overview marker", () => {
-    expect(
-      hasExplicitHierarchyIntent(new URLSearchParams("view=overview")),
-    ).toBe(true);
-    expect(hasExplicitHierarchyIntent(new URLSearchParams(""))).toBe(false);
-    expect(hasExplicitHierarchyIntent(new URLSearchParams("view=brand"))).toBe(
-      false,
-    );
-  });
-});
-
-describe("matchOrgLanding — bare /orgs/:orgId only", () => {
-  it("matches the bare org URL (with or without a trailing slash)", () => {
-    expect(matchOrgLanding("/orgs/org_123")).toEqual({ orgId: "org_123" });
-    expect(matchOrgLanding("/orgs/org_123/")).toEqual({ orgId: "org_123" });
-  });
-
-  it("does NOT match org sub-routes — they stay reachable, no redirect", () => {
-    expect(matchOrgLanding("/orgs/org_123/brands")).toBeNull();
-    expect(matchOrgLanding("/orgs/org_123/brands/brand_1")).toBeNull();
-    expect(matchOrgLanding("/orgs/org_123/settings")).toBeNull();
-    expect(matchOrgLanding("/orgs")).toBeNull();
-    expect(matchOrgLanding("/features/x/new")).toBeNull();
-  });
 });
 
 describe("matchBrandPath — any brand URL incl. sub-routes", () => {
@@ -74,32 +46,6 @@ describe("matchBrandPath — any brand URL incl. sub-routes", () => {
   });
 });
 
-describe("resolveLandingBrand — last-visited, else first (decision B)", () => {
-  const brands = [{ id: "a" }, { id: "b" }, { id: "c" }];
-
-  it("returns the last-visited brand when it still exists", () => {
-    expect(resolveLandingBrand(brands, "b")).toBe("b");
-  });
-
-  it("falls back to the FIRST brand when the last-visited was deleted", () => {
-    expect(resolveLandingBrand(brands, "zzz")).toBe("a");
-  });
-
-  it("falls back to the FIRST brand when there is no last-visited (no cookie)", () => {
-    expect(resolveLandingBrand(brands, null)).toBe("a");
-  });
-
-  it("single-brand org always lands on that brand", () => {
-    expect(resolveLandingBrand([{ id: "only" }], null)).toBe("only");
-    expect(resolveLandingBrand([{ id: "only" }], "stale")).toBe("only");
-  });
-
-  it("returns null for an empty org (the onboarding gate owns this case)", () => {
-    expect(resolveLandingBrand([], null)).toBeNull();
-    expect(resolveLandingBrand([], "x")).toBeNull();
-  });
-});
-
 describe("proxy.ts wiring — edge read + write", () => {
   const proxy = fs.readFileSync(
     path.join(__dirname, "../src/proxy.ts"),
@@ -107,7 +53,8 @@ describe("proxy.ts wiring — edge read + write", () => {
   );
 
   it("redirects the bare org URL on the last-brand cookie (read side)", () => {
-    expect(proxy).toContain("matchOrgLanding");
+    // v1's bare org URL is redirected to v2 by `v2PathForV1`, which reads the cookie.
+    expect(proxy).toContain("v2PathForV1");
     expect(proxy).toContain("lastBrandCookieName");
     expect(proxy).toContain("req.cookies.get");
   });
@@ -117,82 +64,18 @@ describe("proxy.ts wiring — edge read + write", () => {
     expect(proxy).toContain("res.cookies.set");
     expect(proxy).toContain("httpOnly: true");
   });
-
-  it("does not redirect during the autoCreate brand-creation hop", () => {
-    expect(proxy).toContain('searchParams.has("autoCreate")');
-  });
-
-  it("does not redirect a bare org URL when the user explicitly asked for hierarchy overview", () => {
-    expect(proxy).toContain("hasExplicitHierarchyIntent");
-    expect(proxy).toContain("!hasExplicitHierarchyIntent(req.nextUrl.searchParams)");
-  });
-
-  it("treats /?view=overview as authenticated dashboard navigation, not public metrics", () => {
-    expect(proxy).toContain("isExplicitDashboardRoot");
-    expect(proxy).toContain('pathname === "/"');
-    expect(proxy).toContain('const orgsUrl = new URL("/orgs", req.url)');
-    expect(proxy).toContain("orgsUrl.search = req.nextUrl.search");
-  });
 });
 
-describe("org landing page — client fallback redirect", () => {
-  const page = fs.readFileSync(
-    path.join(
-      __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/page.tsx",
-    ),
-    "utf-8",
-  );
-
-  it("redirects to the resolved brand when one exists", () => {
-    expect(page).toContain("resolveLandingBrand");
-    expect(page).toContain("router.replace");
-  });
-
-  it("keeps the org overview reachable on explicit hierarchy navigation", () => {
-    expect(page).toContain("hasExplicitHierarchyIntent");
-    expect(page).toContain("!explicitHierarchy && brandsData");
-  });
-
-  it("does not flash Overview while resolving (returns null until decided)", () => {
-    expect(page).toMatch(/if \(!brandsData \|\| landingBrandId\)/);
-  });
-});
-
-// The "brand overview page — auto-skip into the feature" + the pure
-// `resolveFeatureLanding` helper were removed when the campaign concept was
-// hidden from the UI: a bare brand URL always lands on the brand Overview (one
-// brand-level feature home → no feature/create-campaign choice to
-// make).
-
-describe("hierarchy links — breadcrumb, header, sidebar", () => {
+describe("hierarchy links — breadcrumb", () => {
   const breadcrumb = fs.readFileSync(
     path.join(__dirname, "../src/components/breadcrumb-nav.tsx"),
     "utf-8",
   );
-  const header = fs.readFileSync(
-    path.join(__dirname, "../src/components/header.tsx"),
-    "utf-8",
-  );
-  const contextSidebar = fs.readFileSync(
-    path.join(__dirname, "../src/components/context-sidebar.tsx"),
-    "utf-8",
-  );
-  // campaign-sidebar.tsx was removed with the campaign concept.
 
   it("marks breadcrumb parent links as explicit hierarchy navigation", () => {
-    // The header no longer carries a logo link — the sidebar-top tenant switcher
-    // replaced it — so there is no header hierarchy link left to mark. The
-    // breadcrumb still serves the onboarding chrome.
-    expect(header).not.toContain("explicitHierarchyHref");
+    // The breadcrumb serves the onboarding chrome.
     // Org root link uses the per-tab URL org, not the shared active org (#1948).
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
-  });
-
-  // The sidebar back links are gone (the tenant switcher owns every move up),
-  // so the overview row is the only hierarchy navigation left to mark.
-  it("marks sidebar overview rows as explicit hierarchy navigation", () => {
-    expect(contextSidebar).toContain("explicitHierarchyHref(basePath)");
   });
 });

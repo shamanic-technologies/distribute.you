@@ -7,68 +7,24 @@ const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
 const trigger = read("components/campaigns/campaign-controls-trigger.tsx");
 const modal = read("components/campaigns/campaign-controls-modal.tsx");
-const brandPage = read(
-  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-);
-const campaignPage = read("components/campaigns/campaign-overview-page.tsx");
 const api = read("lib/api.ts");
 
 /**
- * Is this running, and how hard — one modal, three entry points.
+ * Is this running, and how hard — one modal.
  *
  * The rows are always CAMPAIGNS whatever the grain. A brand and an offer are
  * SCOPES, not things billing or campaign-service fund, so an editable figure at
  * either grain would have to be split back across the campaigns and no split the
  * customer did not state is honest.
  */
-describe("campaign controls — one modal, three grains", () => {
-  it("is ONE modal component, mounted through ONE trigger", () => {
+describe("campaign controls — one modal", () => {
+  it("the trigger mounts the ONE modal component", () => {
     // A second implementation is how a campaign comes to be controlled two ways.
     expect(trigger).toContain("CampaignControlsModal");
-    for (const src of [brandPage, campaignPage]) {
-      expect(src).toContain("CampaignControlsTrigger");
-      expect(src).not.toContain("CampaignControlsModal");
-    }
-  });
-
-  it("mounts at brand and offer grain from the ONE Overview component", () => {
-    // The brand root and `offers/[offerId]` render the same page, so the offer
-    // grain falls out of passing the route's own offerId.
-    expect(brandPage).toContain("offerId={offerId}");
-    expect(brandPage).toContain("<CampaignControlsTrigger");
-  });
-
-  it("mounts at campaign grain scoped to that one campaign", () => {
-    expect(campaignPage).toContain("campaignId={campaign.id}");
-  });
-
-  it("rides the section heading rather than standing above it", () => {
-    // A full-width line over the title reads as a second heading. This is an
-    // attribute of what the heading names, so it goes in the slot the section
-    // already has for exactly that, on the same row and to its right.
-    const section = read("components/revenue/revenue-overview-section.tsx");
-    expect(section).toContain("lg:justify-between");
-    expect(section).toContain("{headerAction}");
-    expect(brandPage).toContain("headerAction={ControlsLine}");
-    expect(campaignPage).toContain("headerAction={CampaignStatusLine}");
-    // ...and nowhere as a sibling of the section itself. The empty-state branch
-    // is the one exception, and it sits one level deeper in its own return.
-    expect(brandPage).not.toContain("\n      {ControlsLine}\n");
-    expect(campaignPage).not.toContain("\n      {CampaignStatusLine}\n");
   });
 });
 
 describe("the trigger states money it READS", () => {
-  it("states what may be spent TODAY at brand grain, not billing's status-blind total", () => {
-    // billing keys a ceiling on (offer x leg x channel) and stores NO status, so
-    // its served brand total counts a paused campaign's money: one running at $50
-    // beside one paused at $10 read `$60 / day`. Neither producer can answer this
-    // alone, and the join is free — the trigger already holds both reads.
-    expect(brandPage).not.toContain("totalCentsOverride");
-    expect(brandPage).not.toContain("getBrandDailyBudget");
-    expect(brandPage).toContain("<CampaignControlsTrigger brandId={brandId} offerId={offerId} />");
-  });
-
   it("adds up only the RUNNING campaigns' ceilings, at every grain it sums", () => {
     expect(trigger).toContain("scopeTotalCents(");
     // v2 counts only the crews that spend every day: an event crew's cap is not daily money.

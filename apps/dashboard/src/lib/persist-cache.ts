@@ -131,10 +131,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "creditGrants",
   // The Billing page Usage section: billed spend by category.
   "orgUsage",
-  // The reward-task ledger: what an offer owes and how many children of a
-  // superior scope have something due. Unlisted, the band and the badge
-  // cold-fetch on every visit.
-  "rewardTasks",
   "billingPayments",
   // The org's own referral code, behind the sidebar's invite link. Tiny, and it
   // never changes, so an unlisted root would cold-fetch on every single load.
@@ -144,7 +140,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Brand metadata + config + small summaries.
   "brand",
   "brands",
-  "brandSalesEconomics",
   // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
   "brandCampaignBudgets",
   "brandSalesRep",
@@ -189,16 +184,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerSalesPath",
   "offerSalesPaths",
   "brandSalesBudget",
-  // The offer's outcome table: one row per outcome it buys, the leg x channel rows
-  // under each. Keyed on the offer, so two propositions never share an entry.
-  "offerOutcomes",
-  // The brand's WHOLE lead population. Big — over the size cap on a heavy brand (44.5 MB
-  // over 12,945 rows on one, 99 MB on the largest), so it is allowlisted and still
-  // refused at write time; the query keeps `keepPreviousData` in memory and the
-  // per-query persister restores it lazily on its own fetch. The Leads page no longer
-  // reads it: it asks for one page at a time (`leadsPage` below). A write still
-  // invalidates it.
-  "brandLeads",
   // ONE page of a scope's leads, and every bucket's count. These are what the Leads page
   // reads now, and the point of them is that each entry is SMALL enough to be written:
   // a 50-row page is a few hundred KB against the 2 MB cap, so the table paints from
@@ -223,20 +208,11 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Unlisted, the thread cold-fetches on every panel open — a live third-party read
   // — so the words a customer just looked at vanish the moment they close the row.
   "leadConversation",
-  // What a human stated about a lead's reply, behind the same detail panel. Written by
-  // the mutation's own `setQueryData`, so an unlisted root would cold-fetch it back on
-  // every panel open.
-  "leadReplyKind",
-  // Every reply kind stated on one campaign, read once and joined by email so the
-  // leads BOARD places its cards without a request per card.
-  "campaignReplyKinds",
   // Feature-level stats / revenue / activity.
-  "featureStats",
   "featureRevenue",
-  // The offer and brand grains of the same money — a page scoped to one of them asks
-  // features-service across every channel it covers, so these are DIFFERENT answers
-  // from the per-feature entry above and get their own roots.
-  "offerRevenue",
+  // The brand grain of the same money — a page scoped to it asks features-service
+  // across every channel it covers, so it is a DIFFERENT answer from the per-feature
+  // entry above and gets its own root.
   "brandRevenue",
   // What the contacted-but-not-engaged leads are worth (v2 Deals), a separate figure.
   "contactedValue",
@@ -244,12 +220,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "v2RunOutcomes",
   "featureRevenueByCampaign",
   "brandOfferMoney",
-  "featurePipelineActivity",
   "featureAudienceStats",
   // Audiences.
   "audiences",
-  // The per-workflow projection behind the best-model card and the budget steps.
-  "workflowProjection",
   // The WORKFLOWS a campaign's channel can run, and what each one did — at each of
   // the grains the page offers. Six roots, each a different question: the channel's
   // catalogue (workflow-service), this campaign's money per workflow, the brand's,
@@ -283,7 +256,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Campaigns.
   "campaign",
   "campaigns",
-  "campaignLeads",
   // Why a live campaign is not running right now. Small (one page of hold events,
   // filtered by slug at the gateway), and it is the first thing a customer reads when
   // they open a campaign that has produced nothing, so it paints from disk.

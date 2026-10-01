@@ -13,11 +13,6 @@ describe("Brand sales-economics persistence", () => {
   const apiRel = "../src/lib/api.ts";
   const apiContent = fs.readFileSync(path.join(__dirname, apiRel), "utf-8");
 
-  it("api.ts exposes a getBrandSalesEconomics reader on the locked path", () => {
-    expect(apiContent).toContain("export async function getBrandSalesEconomics");
-    expect(apiContent).toContain("/sales-economics");
-  });
-
   it("api.ts exposes saveBrandSalesEconomics as an idempotent PUT", () => {
     const fnStart = apiContent.indexOf("export async function saveBrandSalesEconomics");
     expect(fnStart).toBeGreaterThan(-1);
@@ -26,13 +21,7 @@ describe("Brand sales-economics persistence", () => {
     expect(fnBody).toContain("/sales-economics");
   });
 
-  it("uses separate read(nullable)/write(non-null) schemas with safeParse (per #1221)", () => {
-    expect(apiContent).toContain("GetBrandSalesEconomicsResponseSchema");
-    expect(apiContent).toContain("SaveBrandSalesEconomicsResponseSchema");
-    // read schema is nullable, write schema is not
-    expect(apiContent).toMatch(/GetBrandSalesEconomicsResponseSchema[\s\S]{0,160}\.nullable\(\)/);
-    // both wrappers validate the wire shape
-    expect(apiContent).toContain("GetBrandSalesEconomicsResponseSchema.safeParse");
+  it("validates the write's wire shape with its own schema (per #1221)", () => {
     expect(apiContent).toContain("SaveBrandSalesEconomicsResponseSchema.safeParse");
   });
 

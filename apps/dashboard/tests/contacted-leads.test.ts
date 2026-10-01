@@ -171,13 +171,9 @@ describe("keepLastGoodFeatureRevenue (cache-write boundary)", () => {
   });
 });
 
-describe("single-source wiring (Overview card + graph read /revenue outreachContacted)", () => {
-  const page = read(
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-  );
+describe("single-source wiring (revenue-parse reads /revenue outreachContacted)", () => {
   const parse = read("../src/lib/revenue-parse.ts");
   const view = read("../src/lib/revenue-view.ts");
-  const cards = read("../src/components/revenue/outreach-stat-cards.tsx");
 
   it("revenue-parse declares optional, coercing signal-series schemas (new + legacy names)", () => {
     // features-service#416 renames + the new `sequences` series — both kept optional
@@ -200,32 +196,6 @@ describe("single-source wiring (Overview card + graph read /revenue outreachCont
     expect(view).toContain("outreachContacted?: OutreachContacted");
     expect(view).toContain("sequences?: SignalSeries");
     expect(view).toContain("clicked?: SignalSeries");
-  });
-
-  it("Outreach card count comes from the server sequences.total (fallback outreachContacted)", () => {
-    expect(page).toContain("const outreachSeries = data?.sequences ?? data?.outreachContacted");
-    expect(page).toContain("const outreachTotal = outreachSeries?.total ?? null");
-    expect(page).toContain("outreachOverride={outreachTotal}");
-    expect(cards).toContain("outreachOverride?: number | null");
-    // legacy /stats fallback kept for entity pages that don't fetch /revenue
-    expect(cards).toContain(
-      "outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0",
-    );
-  });
-
-  it("graph actuals are mapped from /revenue series, expected untouched", () => {
-    expect(page).toContain("const outreachByDay = countByDay(data?.sequences ?? data?.outreachContacted)");
-    expect(page).toContain("const clickedByDay = countByDay(data?.clicked)");
-    expect(page).toContain("const meetingsByDay = countByDay(data?.meetingsBooked)");
-    expect(page).toContain("clicks: withActual(");
-    expect(page).toContain("signups: withActual(");
-    expect(page).toContain("salesMeetings: withActual(");
-    expect(page).toContain("pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}");
-  });
-
-  it("featureRevenue query keeps last-good actual series via structuralSharing", () => {
-    expect(page).toContain("keepLastGoodFeatureRevenue");
-    expect(page).toContain("structuralSharing");
     expect(parse).toContain("meetingsBooked: d.meetingsBooked");
   });
 });

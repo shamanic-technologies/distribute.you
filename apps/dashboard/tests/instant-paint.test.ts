@@ -178,27 +178,6 @@ describe("poll cadence — freshness traded for the instant paint (owner-decided
 describe("route transitions — the destination is warmed before the click", () => {
   const read = (p: string) => fs.readFileSync(path.join(__dirname, "../src", p), "utf-8");
 
-  it("the sidebar's nav rows prefetch their page, not only its layouts", () => {
-    const src = read("components/context-sidebar.tsx");
-    const link = src.indexOf("<Link\n      href={item.href}");
-    expect(link).toBeGreaterThan(-1);
-    expect(src.slice(link, link + 1200)).toContain("prefetch");
-  });
-
-  it("every row that navigates with router.push warms its href on hover AND focus", () => {
-    // A row carries its own controls, so it cannot be an anchor — nothing prefetches
-    // a `router.push` target unless the row asks for it.
-    for (const file of [
-      "components/offers/offers-table.tsx",
-      "components/campaigns/campaigns-table.tsx",
-    ]) {
-      const src = read(file);
-      expect(src, file).toContain("useRoutePrefetch");
-      expect(src, file).toContain("onMouseEnter");
-      expect(src, file).toContain("onFocus");
-    }
-  });
-
   it("prefetches each href at most once per mount", () => {
     const src = read("lib/use-route-prefetch.ts");
     expect(src).toContain("seen.current.has(href)");
@@ -215,7 +194,7 @@ describe("reveal gates — no surface reads isLoading off a useAuthQuery", () =>
   // brand-info and the workflow detail panel were on this list and are now DELETED —
   // both were `useFeatureFlag`-gated, which in the dashboard hides a surface from
   // everyone rather than staging it. They live in `apps/admin`, where the gate resolves.
-  const files = ["app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx"];
+  const files = ["components/settings/api-keys-panel.tsx"];
 
   it("gates on isPending in every live surface that used to read isLoading", () => {
     for (const file of files) {
@@ -223,5 +202,4 @@ describe("reveal gates — no surface reads isLoading off a useAuthQuery", () =>
       expect(src, file).not.toMatch(/isLoading:\s*\w+\s*\}\s*=\s*useAuthQuery/);
     }
   });
-
 });

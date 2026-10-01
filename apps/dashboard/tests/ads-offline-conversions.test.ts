@@ -61,8 +61,9 @@ describe("the onboarding layout mounts both trackers", () => {
     expect(layout).toContain('from "@/components/distribute-sale-tracker"');
   });
 
-  it("the dashboard layout keeps its own mount, for the billing top-up return", () => {
-    const dash = read("src/app/(authed)/(dashboard)/layout.tsx");
+  it("the dashboard shell keeps its own mount, for the billing top-up return", () => {
+    // The v2 Billing page is where a top-up's Stripe return lands.
+    const dash = read("src/components/v2/v2-client-layout.tsx");
     expect(dash).toContain("<AdsPurchaseTracker />");
     expect(dash).toContain("<DistributeSaleTracker />");
   });

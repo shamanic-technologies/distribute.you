@@ -6,80 +6,21 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 /**
- * Campaigns page (v2, campaign-centered) — GA. Guards the load-bearing invariants:
- *  - NO staff gate and NO beta badge anywhere on the surface: the entry is shown to
- *    every customer on a revenue feature, and the page body renders for them;
- *  - every displayed stat is a READY features-service field (pipeline / $CAC / ROI
- *    / %CAC) — the page renders, never computes a cost metric client-side
+ * Campaign rows (`useCampaignRows`, read by the v2 missions). Guards the load-bearing invariants:
+ *  - every displayed stat is a READY features-service field (pipeline / ROI / %CAC):
+ *    the table renders, never computes a cost metric client-side
  *    (CLAUDE.md: a displayed stat is features-service-owned);
  *  - reveal-on-settle so a failed gate query can't eternal-skeleton.
  */
-describe("Campaigns page (GA)", () => {
-  const page = read("components/campaigns/campaigns-page.tsx");
-  // The table, its columns and the vocabulary behind them are a COMPONENT — the brand
-  // Overview renders the same one under its chart. So the assertions about columns,
-  // cells, ordering and status wording read the table; the ones about the page's own
-  // header (tiles, heading, #1 channel) still read the page.
+describe("Campaign rows (useCampaignRows)", () => {
   const table = read("components/campaigns/campaigns-table.tsx");
-  // That file now holds TWO tables: this multi-funnel list, and the leg walk a single
-  // funnel's page renders (`funnel-leg-table.test.ts` owns that one). Every guard about
-  // columns, colSpans and folded cells reads the LIST, or it counts both and reports a
-  // shape neither table has.
-  const listTable = table.slice(table.indexOf("export function CampaignsTable("));
   const identity = read("components/campaigns/campaign-identity.tsx");
   const modal = read("components/campaigns/campaign-controls-modal.tsx");
-  const sidebar = read("components/context-sidebar.tsx");
-  const overview = read("components/campaigns/campaign-overview-page.tsx");
   const api = read("lib/api.ts");
-
-  // The surface is GA: the staff-allowlist gate that made it a preview is gone
-  // from the nav entry AND from both page bodies. `useIsAdminUser` still exists
-  // for the god-mode org switcher — it must simply not gate Campaigns.
-  it("carries no staff gate on the sidebar entry or either page body", () => {
-    expect(sidebar).not.toContain("useIsAdminUser");
-    expect(page).not.toContain("useIsAdminUser");
-    expect(page).not.toContain("if (!isAdmin)");
-    expect(page).not.toContain("Not available");
-    expect(overview).not.toContain("useIsAdminUser");
-    expect(overview).not.toContain("if (!isAdmin)");
-    expect(overview).not.toContain("staff-only");
-  });
-
-  it("does NOT hang a Campaigns entry off the offer, because an offer sells funnels", () => {
-    // An offer sells through FUNNELS and a campaign buys one LEG of one of them, so a
-    // campaign has a cost per step and no return of its own. Naming campaigns at the
-    // offer level would skip the level where a return exists.
-    const offerSidebar = sidebar.slice(sidebar.indexOf("function OfferLevelSidebar("));
-    expect(offerSidebar.slice(0, 2000)).not.toContain('id: "campaigns"');
-    expect(sidebar).not.toContain("const campaignsOk = isRevenueFeature(featureSlug)");
-    expect(page).not.toContain("MaturityBadge");
-    // The campaign-level nav rows (Overview / Leads / Strategy / Audiences) drop
-    // their badges too — a GA surface states no maturity.
-    const campaignAt = sidebar.indexOf("function CampaignLevelSidebar(");
-    const campaignSidebar = sidebar.slice(campaignAt, sidebar.indexOf("\nfunction ", campaignAt + 1));
-    // The GA rows state no maturity. The one row that does is the BETA Workflows
-    // entry, which is a different surface and must carry its badge — so the guard
-    // pins WHICH row it sits on rather than banning the word from the function.
-    const betaRows = campaignSidebar.match(/maturity: "beta" as Maturity/g) ?? [];
-    expect(betaRows).toHaveLength(1);
-    expect(campaignSidebar).toContain('id: "campaign-workflows"');
-  });
-
-  // The surface is called Campaigns everywhere it is named: nav entry, page
-  // heading, empty state, and the URL.
-  it("names the surface Campaigns, never Channels", () => {
-    expect(sidebar).not.toContain('label: "Channels"');
-    expect(page).toContain(">Campaigns</h1>");
-    expect(table).toContain("No campaigns yet.");
-    expect(table).not.toContain("No channels yet.");
-  });
 
   // A campaign is set up with us, not spun up from a table row. The create
   // control and the modal behind it are gone, not hidden.
-  it("offers no create control", () => {
-    expect(page).not.toContain("New channel");
-    expect(page).not.toContain("New campaign<");
-    expect(page).not.toContain("NewCampaignModal");
+  it("ships no create modal", () => {
     expect(
       fs.existsSync(path.join(SRC, "components/campaigns/new-campaign-modal.tsx")),
     ).toBe(false);
@@ -98,16 +39,10 @@ describe("Campaigns page (GA)", () => {
     expect(identity).toContain("<AcquisitionChannelMark");
     expect(identity).toContain("<LegMark");
     expect(identity).not.toContain("<SalesFunnelMark");
-    // ONE cell states the pair: a campaign IS (offer x leg x channel), so the leg
-    // and the channel were never two independent answers — only two columns. The
-    // row reads them from the campaign it is given, once.
-    expect(table).toContain("<CampaignCell campaign={campaign} />");
-    expect(table).toContain("leg={legFor(catalogue, campaign.legKey)}");
     expect(identity).toContain("acquisitionChannelForFeatureSlug(featureSlug, channels)");
     // The layout lives in one module, because the budget modal states the same
     // pair for the same campaigns and a second copy is how the row and the modal
     // that funds it come to describe one campaign two ways.
-    expect(table).toContain("<CampaignIdentity");
     expect(modal).toContain("<CampaignIdentity");
     expect(modal).not.toContain("FunnelCell");
     expect(modal).not.toContain("ChannelCell");
@@ -119,31 +54,12 @@ describe("Campaigns page (GA)", () => {
   // campaign-service persists the funnel on every campaign, so a missing one is
   // a real gap and reads as one.
   it("names the leg from the campaign's own key, with no goal fallback", () => {
-    // `\n}\n` and not `\n}`: the props are destructured with a type annotation,
-    // so the first `\n}` in this component closes the parameter block, not the
-    // function — slicing there cuts the body out entirely.
-    const cell = table.slice(table.indexOf("export function CampaignCell("));
-    const body = cell.slice(0, cell.indexOf("\n}\n"));
-    expect(body).toContain("legKey={campaign.legKey}");
-    expect(body).not.toContain("primaryFunnelForGoal");
     // The row is named for the LEG the campaign states, LOOKED UP in the catalogue
     // rather than parsed. A leg we cannot resolve is a real gap and reads as one.
     expect(identity).toContain("return leg ?? legFor(catalogue, legKey);");
     expect(identity).toContain('{leg?.label ?? "—"}');
     expect(api).toContain("legKey: string | null;");
     expect(api).not.toContain("funnelKey: SalesFunnelKeyWire | null;");
-  });
-
-  // A campaign a brand has been running keeps running when that brand funds its
-  // funnels — campaign-service adopts it into that funnel rather than parking it
-  // and provisioning an empty twin. So the page invents no state: it renders the
-  // campaign's own status, and there is no "superseded" anywhere in the fleet.
-  it("renders the campaign's own status and invents no state", () => {
-    // The stop REASON rides with the status: a campaign billing paused over a declined
-    // card reads its own words (see payment-declined.test.ts).
-    expect(table).toContain("<StatusPill status={campaign.status} stopReason={campaign.stopReason} />");
-    expect(page).not.toContain("superseded");
-    expect(page).not.toContain("Superseded");
   });
 
   // ONE LINE PER IDENTITY — (offer x funnel x channel) — running or paused.
@@ -188,79 +104,6 @@ describe("Campaigns page (GA)", () => {
     expect(api).not.toContain("outcomes: CampaignRevenueOutcomesSchema.optional()");
   });
 
-  // Identity leads: which campaign this is, stated once as the funnel it sells
-  // with the channel under it. The return follows, and the table is sorted by it.
-  // `$ Invested` sits immediately right of `$ Revenue`: the money block reads
-  // projection, projection, projection, then the one realized figure behind them.
-  // `$ Budget` sits with the STATUS, not with the money block: those four are
-  // charges and projections of charges, and a ceiling is neither. Beside the
-  // pill it answers the other half of one question — is this campaign running,
-  // and how hard.
-  it("orders the columns Campaign, ROI, % CAC, $ Revenue, $ Invested, $ Budget, Status", () => {
-    const head = listTable.slice(listTable.indexOf("<thead>"), listTable.indexOf("</thead>"));
-    const order = [
-      "Campaign",
-      "ROI",
-      "% CAC",
-      "$ Revenue",
-      "$ Invested",
-      "$ Budget",
-      "Status",
-    ];
-    let at = -1;
-    for (const label of order) {
-      const next = head.indexOf(`${label}"`) >= 0 ? head.indexOf(`${label}"`) : head.indexOf(label);
-      expect(next).toBeGreaterThan(at);
-      at = next;
-    }
-    // The per-campaign $ CAC column is gone; the brand-level tile still heads
-    // the page.
-    // The two columns this one replaces do not come back: printing the funnel and
-    // the channel apart is one identity stated in two places.
-    expect(head).not.toContain("Sales funnel");
-    expect(head).not.toContain(">Channel<");
-    expect(head).not.toContain("$ CAC");
-    expect(page).toContain("Cost per acquisition");
-  });
-
-  // Type + chrome come from the dashboard's own tables and cards, not from this
-  // page's taste. A heavier header or a different eyebrow reads as a different
-  // product sitting inside the same shell.
-  it("uses the dashboard's table header and card eyebrow, not its own", () => {
-    const leads = read("components/audiences/engaged-leads-page.tsx");
-    const header =
-      "border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
-    expect(leads).toContain(header);
-    expect(table).toContain(header);
-    // Row separation via the same divider the reference table uses, so a row
-    // carries no border of its own.
-    expect(table).toContain('<tbody className="divide-y divide-gray-50">');
-    expect(table).not.toContain("border-b border-gray-100 cursor-pointer");
-    // The eyebrow on a stat card, byte-equal to top-audiences-card's.
-    const eyebrow = "text-xs font-medium text-gray-400 uppercase tracking-wide";
-    expect(read("components/revenue/top-audiences-card.tsx")).toContain(eyebrow);
-    expect(page).toContain(eyebrow);
-  });
-
-  // ROI is the row's headline number, and a return above 1x is the campaign
-  // making money back. Below 1x stays the ordinary colour: an early campaign is
-  // under 1x by construction, and red would call it a failure. Weight and colour
-  // carry the emphasis — a second type size inside one row is what made the
-  // table read as its own thing.
-  it("greens ROI above 1x, never red below, at the table's own size", () => {
-    const cell = table.slice(table.indexOf("function RoiCell("));
-    const body = cell.slice(0, cell.indexOf("\n}"));
-    // ONE rule, one home: the ROI stat card and the Return-on-spend headline read the
-    // same `roiIsGood`, so three copies of `> 1` cannot drift apart.
-    expect(body).toContain("roiIsGood(multiple)");
-    expect(body).not.toMatch(/multiple\s*>\s*1/);
-    expect(body).toContain("font-semibold");
-    expect(body).toContain("text-green-600");
-    expect(body).toContain("text-gray-900");
-    expect(body).not.toContain("text-red");
-    expect(body).not.toMatch(/text-(base|lg|xl)/);
-  });
-
   // STATUS, then ROI DESC, then last-updated DESC — in that order.
   //
   // Status leads now that the list holds both: what is running goes above what is
@@ -294,17 +137,6 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("const activeRows = useMemo(");
     expect(table).toContain("rows.filter((r) => isActiveStatus(r.campaign.status))");
     expect(table).toContain("return { rows, activeRows, settled };");
-    expect(page).toContain("const top = activeRows.find(");
-    expect(page).toContain("!r.learning && r.revenue?.economicsMaturity?.mature?.roiMultiple != null");
-    expect(page).not.toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
-    // Leads: brand level reads the running rows; a campaign's own page reads its
-    // own row whatever its status, so a paused campaign still states its leg.
-    const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain(": campaignRows.activeRows.map((r) => r.campaign.legKey);");
-    // A campaign takes its leg off its OWN row: the campaign rows are filtered by
-    // feature, so a campaign on any other channel is not among them at all.
-    expect(leads).toContain("? [scopedCampaign?.legKey ?? null]");
-    expect(leads).not.toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
   });
 
   // `listCampaignsByBrand` answers for the WHOLE brand, so it also returns the PR,
@@ -315,37 +147,12 @@ describe("Campaigns page (GA)", () => {
   // brand whose only campaigns belong to another feature would be told it has some.
   it("lists only the campaigns of the feature whose figures it renders", () => {
     expect(table).toContain("c.featureSlug === featureSlug");
-    // ONE empty sentence: every campaign belongs to an identity and every identity
-    // states a row, so the list is empty exactly when the brand has no campaign on
-    // this feature. "No active campaigns." named a state it can no longer be in.
-    expect(table).toContain("No campaigns yet.");
-    expect(table).not.toContain("No active campaigns.");
   });
 
-  // The words that paint a pill green and the words that rank a row first are ONE
-  // set. Two lists would let the colour and the order disagree about which
-  // campaigns are live — a row shown as running, sorted as stopped.
-  it("ranks on the same status set the pill paints green", () => {
+  // The words that decide a row is running are ONE set, read by every consumer
+  // (`isActiveStatus`), so two lists cannot disagree about which campaigns are live.
+  it("defines running as ONE status set", () => {
     expect(table).toContain('const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"])');
-    const pill = table.slice(table.indexOf("function StatusPill("));
-    expect(pill.slice(0, pill.indexOf("\n}"))).toContain("isActiveStatus(status)");
-  });
-
-  // A campaign reads "Active" or "Paused" — never `ongoing` / `stopped`, which are
-  // campaign-service's internal spellings and put two words for one concept on
-  // screen. `stopped` reads Paused specifically because the controls modal stops and
-  // restarts a campaign through that same status while leaving its ceiling alone, so
-  // a stopped campaign is one waiting to be turned back on; it also keeps this pill
-  // and the modal's roll-up saying the same word about the same campaign. Only the
-  // LABEL is translated: the pill still renders `campaign.status` and `isActiveStatus`
-  // still decides what running means.
-  it("says Active and Paused, never the wire's own words for them", () => {
-    const label = table.slice(table.indexOf("function statusLabel("));
-    const body = label.slice(0, label.indexOf("\n}"));
-    expect(body).toContain('if (isActiveStatus(status)) return "Active"');
-    expect(body).toContain('status.toLowerCase() === "stopped" ? "Paused" : status');
-    const pill = table.slice(table.indexOf("function StatusPill("));
-    expect(pill.slice(0, pill.indexOf("\n}"))).toContain("{statusLabel(status)}");
   });
 
   // One vocabulary across the two surfaces that name a campaign's state: the table's
@@ -357,36 +164,7 @@ describe("Campaigns page (GA)", () => {
     expect(lib).toContain('paused: "Paused"');
   });
 
-  // Every number on the row is a projection built from the brand's own rates, so
-  // each column says so through the shared (i) primitive — never a native
-  // `title` (dead on a phone) and never a second wording per column.
-  it("explains each number column through InfoTooltip", () => {
-    expect(table).toContain("InfoTooltip");
-    expect(table).not.toContain("title=");
-    expect(table).toContain("COLUMN_INFO.roi");
-    expect(table).toContain("COLUMN_INFO.cacPct");
-    expect(table).toContain("COLUMN_INFO.revenue");
-    expect(table).toContain("COLUMN_INFO.invested");
-    // The revenue column is expected pipeline, not money collected — the whole
-    // reason it carries a tip.
-    expect(table).toContain("Expected pipeline revenue:");
-    expect(table).toContain("not money already collected");
-    // `$ Invested` is the one already-happened figure beside three projections, so
-    // its tip says so rather than leaving a reader to multiply it by the ROI next to
-    // it — and it names BOTH halves of the committed basis, since a reader who reads
-    // "cost" as billed-only will not understand why it exceeds what they were charged.
-    expect(table).toContain("money already billed plus money reserved for emails it has queued");
-    expect(table).toContain("not a multiplier of them");
-  });
-
-  it("renders all four campaign stats from server fields, no client cost math", () => {
-    // Fields come straight off the features-service group.
-    expect(table).toContain("totalPipelineUsd");
-    expect(table).toContain("roiMultiple");
-    expect(table).toContain("costOfAcquisitionPct");
-    // `$ Invested` renders the served COMMITTED net spend verbatim — the same field
-    // ROI and % CAC divide by, so a row cannot contradict its own return.
-    expect(table).toContain("fmtUsd(revenue?.committedCostUsd)");
+  it("does no client cost math on the rows", () => {
     // No client-side cost derivation (the CPC-incident rule): no dividing a cost
     // by a count, no reduce-summing a cost breakdown.
     expect(table).not.toMatch(/committedCostUsd\s*\/\s*/);
@@ -401,33 +179,13 @@ describe("Campaigns page (GA)", () => {
     // offer's money under this campaign's name. That is what makes the
     // brand-scoped list and the offer-scoped one agree about one campaign.
     expect(table).toContain("campaignBudgetCents(c, budgets, channels)");
-    expect(table).toContain("fmtDailyBudgetUsd(budgetCents)");
-    // Stated as a RATE, in the campaign header's own words and style: a bare
-    // figure reads as a total beside the two money columns to its left, which
-    // really are totals. Withheld on the dash — "we have no figure" is not a
-    // figure per day.
-    expect(table).toContain('<span className="text-gray-400"> / day</span>');
-    expect(table).toContain("budgetCents == null ? (");
     // The shared narrowing, so the table, the campaign Overview and Campaign
     // Settings cannot disagree about one campaign's money.
     expect(table).toContain('from "@/lib/campaign-budget"');
     // The key Campaign Settings and Offer Settings already read → no new poll.
     expect(table).toContain('["brandCampaignBudgets", brandId]');
-    // A ceiling is not a charge, and the tip says so rather than letting a
-    // reader read it as spend beside four columns that are.
-    expect(table).toContain("COLUMN_INFO.budget");
-    expect(table).toContain("It is a ceiling you set, not money spent");
     // Nothing is derived here: no summing ceilings, no dividing one.
     expect(table).not.toMatch(/budgetCents\s*[/*+]\s*/);
-  });
-
-  it("holds the table's own shape as the column count grows", () => {
-    // A stale colSpan silently narrows the skeleton and the empty state, and a
-    // stale min-w lets the last column fold.
-    expect(listTable).toContain("md:min-w-[760px]");
-    expect(table).not.toContain("colSpan={8}");
-    expect(table).not.toContain("colSpan={9}");
-    expect((listTable.match(/colSpan=\{7\}/g) ?? []).length).toBe(2);
   });
 
   /**
@@ -441,21 +199,6 @@ describe("Campaigns page (GA)", () => {
    * in step with a desktop one and no width that can show half an identity.
    */
   describe("fits a phone", () => {
-    it("gates the width floor at the breakpoint the columns come back", () => {
-      // Unconditional, the floor re-widens the row past the viewport even with five
-      // columns hidden, pushing the survivors off to the right (the leads-table case).
-      expect(table).not.toMatch(/[^:]min-w-\[760px\]/);
-      expect(table).toContain("table-fixed");
-      expect(table).toContain("md:table-auto");
-      // The two survivors split the phone's width and give it back at `md`, where
-      // the auto layout sizes every column to its content.
-      expect(table).toContain('w-[30%] md:w-auto');
-      expect(table).toContain('w-[70%] md:w-auto');
-      // No mobile-only cell to drift from a desktop one: there is one identity
-      // column, rendered at every width.
-      expect(table).not.toContain("md:hidden");
-    });
-
     it("states the leg above the channel in one cell, pinned to the mark's height", () => {
       const at = identity.indexOf("export function CampaignIdentity(");
       expect(at).toBeGreaterThan(-1);
@@ -477,60 +220,14 @@ describe("Campaigns page (GA)", () => {
       expect(cell).toContain('size="sm"');
       expect(cell).toContain('size="xs"');
     });
-
-    it("hides every money column below md, and no more", () => {
-      for (const label of ["% CAC", "$ Revenue", "$ Invested", "$ Budget"]) {
-        const at = listTable.indexOf(`label="${label}"`);
-        expect(at).toBeGreaterThan(-1);
-        expect(listTable.slice(listTable.lastIndexOf("<th", at), at)).toContain(
-          "hidden md:table-cell",
-        );
-      }
-      // Header + cell for each of the five folded columns (the four money ones and
-      // Status). Campaign and ROI render at every width.
-      expect((listTable.match(/hidden md:table-cell/g) ?? []).length).toBe(10);
-    });
-  });
-
-  it("global header blended pipeline + CAC read the brand-level revenue field, not a client sum", () => {
-    expect(page).toContain("brandRevenueQ.data?.totalPipelineUsd");
-    // the MATURE $ CAC, with the scope's own served verdict deciding Learning
-    expect(page).toContain("brandRevenueQ.data?.costEconomics.maturity");
-    expect(page).toContain("const scopeLearning = cac.learning;");
-  });
-
-  // The top bar names where you are below the tenant: the offer, and the
-  // campaign under it. Tenant identity (org, brand) stays in the switcher.
-  //
-  // This guard used to pin the campaign at path segment 4 — `parts[4] !==
-  // "campaigns"` — which is exactly the assertion that let the bar break in
-  // silence when campaigns moved under the offer. It now pins the PARSER by
-  // name, so a future level shift fails in one place that has a test on it.
-  it("names the open campaign in the top bar", () => {
-    const header = read("components/header.tsx");
-    const context = read("components/header-page-context.tsx");
-    expect(header).toContain("<HeaderPageContext />");
-    expect(context).toContain("export function offerRouteFromPath");
-    expect(context).toContain('p[4] !== "offers"');
-    // The campaign is named as what it IS (funnel x channel), never by
-    // campaign-service's stored name, which predates the per-funnel model.
-    expect(context).toContain("<CampaignTitle");
-    expect(context).not.toContain("campaign?.name");
-    // Byte-equal to the campaign overview's key → one deduped poll.
-    expect(context).toContain('["campaign", route?.campaignId ?? "none"]');
-    // A placeholder word would state a name we do not have yet.
-    expect(context).not.toContain('|| "Campaign"');
   });
 
   it("reveals on settle (resolved OR errored) so a failed query can't eternal-skeleton", () => {
-    expect(page).toContain("brandRevenueQ.isError");
     expect(table).toContain("campaignsQ.isError");
     expect(table).toContain("groupsQ.isError");
     // The per-channel fan-out is in the gate too: one channel's read failing must
     // not hold the table, and one still loading must not let it paint half its money.
     expect(table).toContain("channelGroupQs.every");
-    expect(page).toContain("headerSettled");
-    expect(page).toContain("tableSettled");
   });
 
   it("lists an offer's campaigns across CHANNELS, not one feature slug", () => {
@@ -567,41 +264,6 @@ describe("Campaigns page (GA)", () => {
     const fanout = table.slice(fanoutAt, fanoutAt + 902);
     expect(fanout).not.toContain("reduce");
     expect(fanout).not.toContain("+=");
-  });
-
-  it("scopes the campaign DETAIL page to the campaign's own channel", () => {
-    // A campaign IS (offer x funnel x channel). Resolving the brand's sole GA
-    // feature instead scoped every read to a channel the open campaign may not run
-    // on: a campaign on the brand's second channel had its spend fetched for the
-    // FIRST one, which does not carry it, so the page read `$0 spent today` for a
-    // campaign that had committed $10.32 that day — while the list one click away
-    // read it correctly. Two surfaces, one campaign, two numbers, neither erroring.
-    const detail = read("components/campaigns/campaign-overview-page.tsx");
-    expect(detail).toContain("const featureSlug = campaign?.featureSlug ?? null");
-    // The brand's sole-feature resolver must not come back to this page.
-    expect(detail).not.toContain("useSoleFeatureSlug");
-    // No read may fire under a guessed slug: until the campaign resolves we do not
-    // know its channel, and a read fired on the wrong one lands in that channel's
-    // cache entry.
-    expect(detail).toContain("const enabled = featureSlug !== null && isChannelCampaign");
-    // Availability is decided by the campaign's OWN channel, not by which feature is
-    // GA for the brand — that is what would blank the page for every campaign but one.
-    expect(detail).toContain("!campaignLoading && !isChannelCampaign");
-    expect(detail).not.toContain("isRevenueFeature");
-  });
-
-  describe("the list is the offer's own, with no funnel level under it", () => {
-    it("renders the table and reads no funnel", () => {
-      expect(page).toContain("<CampaignsTable");
-      expect(page).not.toContain("funnelKey");
-      expect(page).not.toContain("FunnelLegColumnsBoard");
-      expect(page).not.toContain("funnelSteps={");
-    });
-
-    it("states the learning verdict of the scope its header answers for", () => {
-      expect(page).toContain("const learningPhase = brandRevenueQ.data?.learningPhase ?? null;");
-      expect(page).toContain("phase={learningPhase}");
-    });
   });
 
   it("carries the org gate explicitly on the fan-out", () => {

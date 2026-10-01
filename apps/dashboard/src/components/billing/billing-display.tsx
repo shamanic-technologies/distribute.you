@@ -7,22 +7,6 @@ import { useState } from "react";
  * payment status and a date are written. Formatting only, no figure is derived here.
  */
 
-// Payment status → badge label + tone. Stripe PaymentIntent statuses:
-// succeeded | processing | requires_* | canceled. Customers mostly see
-// succeeded; the rest are shown honestly rather than hidden.
-export function paymentStatusBadge(status: string): { label: string; className: string } {
-  switch (status) {
-    case "succeeded":
-      return { label: "Paid", className: "bg-green-50 text-green-700" };
-    case "processing":
-      return { label: "Processing", className: "bg-amber-50 text-amber-700" };
-    case "canceled":
-      return { label: "Canceled", className: "bg-gray-100 text-gray-500" };
-    default:
-      return { label: "Incomplete", className: "bg-gray-100 text-gray-500" };
-  }
-}
-
 export function formatGrantDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";

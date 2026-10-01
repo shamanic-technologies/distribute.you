@@ -199,7 +199,7 @@ describe("what their CRM holds about the company and the record", () => {
   });
 });
 
-describe("the contacts table can be matched on company and opened on one person", () => {
+describe("the contacts can be matched on company", () => {
   const rows = [
     person({ id: "1", fullName: "Ada Lovelace", company: { name: "Acme Plumbing", website: null } }),
     person({
@@ -231,34 +231,6 @@ describe("the contacts table can be matched on company and opened on one person"
     expect(filterContacts(rows, "facebook").map((c) => c.id)).toEqual(["2"]);
     expect(filterContacts(rows, "vip").map((c) => c.id)).toEqual(["2"]);
   });
-
-  it("carries a Company column, because a reader scans the list on it", () => {
-    const src = read("components/crm/crm-contacts-table.tsx");
-    expect(src).toContain(">Company<");
-    expect(src).toContain("contactCompanyName");
-  });
-
-  it("opens one person's detail from the row, by mouse and by keyboard", () => {
-    const src = read("components/crm/crm-contacts-table.tsx");
-    expect(src).toContain("CrmContactDetail");
-    expect(src).toContain("aria-expanded");
-    expect(src).toContain('e.key === "Enter"');
-  });
-
-  it("still writes nothing back to their CRM", () => {
-    // There is no write path between here and their system, and opening a row
-    // must not be read as licence to build one.
-    const table = read("components/crm/crm-contacts-table.tsx");
-    const detail = read("components/crm/crm-contact-detail.tsx");
-    expect(table).not.toMatch(/useMutation|apiCall|fetch\(/);
-    expect(detail).not.toMatch(/useMutation|apiCall|fetch\(/);
-  });
-
-  it("renders a link only for http(s), never for whatever scheme their CRM stored", () => {
-    // The website and the origin URL are somebody else's data landing in an
-    // anchor; any other scheme there is that data deciding what a click does.
-    expect(read("components/crm/crm-contact-detail.tsx")).toContain("^https?:\\/\\/");
-  });
 });
 
 describe("the page renders the producer's grouping and re-derives none of it", () => {
@@ -270,38 +242,6 @@ describe("the page renders the producer's grouping and re-derives none of it", (
     expect(view).not.toContain("groupOpportunitiesByPipeline");
     expect(view).not.toMatch(/\.reduce\(/);
     expect(view).not.toMatch(/roi|cpa|cac|costPer|Pct\b/i);
-
-    const board = read("components/crm/crm-pipeline-board.tsx");
-    expect(board).not.toMatch(/\.reduce\(/);
-    // The count beside a stage is the served one, never the cards on screen.
-    expect(board).toContain("{stage.count}");
-    expect(board).not.toContain("{stage.opportunities.length}<");
-  });
-
-  it("shows the deals their system left out of a pipeline, so the counts add up", () => {
-    expect(read("components/crm/crm-pipeline-board.tsx")).toContain("view.ungrouped");
-  });
-
-  it("never offers to move a card — there is no write path to their CRM", () => {
-    const board = read("components/crm/crm-pipeline-board.tsx");
-    expect(board).not.toMatch(/draggable|onDrop|useBoardDrag|pointerdown/i);
-  });
-});
-
-describe("the contacts table states one value once", () => {
-  it("suppresses the folded phone when the phone is what named the person", () => {
-    // Looking at the render is what caught this: a contact holding only a phone
-    // was named by it AND had it printed again on the line below.
-    expect(read("components/crm/crm-contacts-table.tsx")).toContain('who.source !== "phone"');
-  });
-
-  it("keeps the customer's tags out of the row and inside the opened detail", () => {
-    // Their CRM DOES serve tags now (crm-service #21) — this guard used to say
-    // it served none, which stopped being true. Tags are free text per customer
-    // and there are up to a dozen of them, so a column would crush the row: they
-    // belong in the detail a reader opens on one person.
-    expect(read("components/crm/crm-contacts-table.tsx")).not.toContain(">Tags<");
-    expect(read("components/crm/crm-contact-detail.tsx")).toContain("Tags");
   });
 });
 

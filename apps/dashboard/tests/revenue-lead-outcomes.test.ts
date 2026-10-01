@@ -247,30 +247,14 @@ describe("no browser surface reads the full lead array", () => {
   it("routes every dashboard revenue reader through the leadless parse", () => {
     const api = read("src/lib/api.ts");
     expect(api).not.toContain("parseRevenueWithLeads");
-    // Four: the three grains of the money read (feature, offer, brand — the funnel
-    // grain is retired), plus the per-workflow drill-down, which is the SAME body
-    // narrowed and therefore goes through the same parse.
-    expect((api.match(/parseFeatureRevenue\(/g) ?? []).length).toBe(4);
+    // Two: the brand grain of the money read, plus the per-workflow drill-down, which
+    // is the SAME body narrowed and therefore goes through the same parse.
+    expect((api.match(/parseFeatureRevenue\(/g) ?? []).length).toBe(2);
   });
 
   it("keeps the full array to the digest, which runs server-side", () => {
     const digest = read("src/lib/outcome-digest.ts");
     expect(digest).toContain("parseRevenueWithLeads(raw,");
     expect(digest).not.toContain("parseFeatureRevenue(");
-  });
-
-  it("has the per-lead consumer read the narrowed list", () => {
-    for (const p of ["src/components/audiences/engaged-leads-page.tsx"]) {
-      const src = read(p);
-      expect(src).toContain("leadOutcomes");
-      expect(src).not.toMatch(/revenue(Data)?[.?]*\.data\?\.leads\b/);
-      expect(src).not.toContain("revenueData?.leads");
-    }
-  });
-
-  it("gates the outcome tab on the served fields, not on the narrowed rows", () => {
-    const src = read("src/components/audiences/engaged-leads-page.tsx");
-    expect(src).toContain("outcomeFieldsServed");
-    expect(src).not.toContain("l[t.leadField] !== undefined");
   });
 });

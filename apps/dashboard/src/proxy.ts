@@ -1,23 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import {
-  lastBrandCookieName,
-  matchOrgLanding,
-  matchBrandPath,
-  hasExplicitHierarchyIntent,
-} from "@/lib/last-brand";
-import { landingHref } from "@/lib/landing-drilldown";
+import { lastBrandCookieName, matchBrandPath } from "@/lib/last-brand";
 import {
   onboardingBrandCookieName,
   onboardingResumeHref,
 } from "@/lib/onboarding-brand-cookie";
-import {
-  UI_VERSION_COOKIE,
-  parseUiVersion,
-  v2PathForV1,
-  stripV2Prefix,
-  v2DashboardHref,
-} from "@/lib/ui-version";
+import { v2PathForV1, stripV2Prefix } from "@/lib/ui-version";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
@@ -90,8 +78,6 @@ export default clerkMiddleware(
       if (inProgressBrand) return onboardingResumeHref(inProgressBrand);
       return "/onboarding";
     };
-    const isExplicitDashboardRoot =
-      pathname === "/" && hasExplicitHierarchyIntent(req.nextUrl.searchParams);
 
     // Clerk keeps users in a pending session when personal accounts are
     // disabled and an org still needs to be chosen. Let only pending sessions
@@ -101,26 +87,13 @@ export default clerkMiddleware(
         return NextResponse.next();
       }
       return NextResponse.redirect(
-        new URL(userId ? "/orgs" : "/sign-in", req.url),
+        new URL(userId ? "/v2" : "/sign-in", req.url),
       );
     }
 
     // Redirect authenticated users away from auth pages
     if (isAuthRoute(req) && userId) {
-      return NextResponse.redirect(new URL("/orgs", req.url));
-    }
-
-    // `/?view=overview` is the dashboard hierarchy intent emitted by the authed
-    // header logo. Resolve it at the edge so first-run users hit onboarding
-    // pre-paint and everyone else lands on /orgs with their search preserved
-    // (the root page itself is now a bare redirect to /orgs).
-    if (userId && isExplicitDashboardRoot) {
-      if (sessionClaims?.orgMeta?.onboardingComplete !== true) {
-        return NextResponse.redirect(new URL(onboardingHref(), req.url));
-      }
-      const orgsUrl = new URL("/orgs", req.url);
-      orgsUrl.search = req.nextUrl.search;
-      return NextResponse.redirect(orgsUrl);
+      return NextResponse.redirect(new URL("/v2", req.url));
     }
 
     // Protect non-public routes
@@ -138,90 +111,35 @@ export default clerkMiddleware(
     // onboarding redirect happens pre-paint with zero data fetch — no dashboard
     // flash, no coupling to the (slow) brands API. A brand-less / org-less user
     // has no `onboardingComplete: true` claim → routed to onboarding.
-    // Exempt: public/auth routes, the onboarding flow itself, all API routes,
-    // and the `?autoCreate` brand-creation hop (the org is transiently
-    // brand-less while it creates its first brand + sets the flag).
+    // Exempt: public/auth routes, the onboarding flow itself, all API routes.
     //
-    // Exempt too, for a v2 user only: the bare ORG page (`/orgs/:id`, `/v2/orgs/:id`).
-    // An org with no brand yet (a New organization modal someone closed) lands on the
-    // v2 org page, which offers "Add a brand" and runs the same modal from the brand
-    // step. Sending it to the full-page onboarding instead is what this replaces. Every
-    // other path of such an org is still gated, and v1 users are unchanged.
-    const v2OrgRoot =
-      parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2" &&
-      (!!matchOrgLanding(pathname) || /^\/v2\/orgs\/[^/]+\/?$/.test(pathname));
+    // Exempt too: the bare ORG page (`/orgs/:id`, `/v2/orgs/:id`). An org with no
+    // brand yet (a New organization modal someone closed) lands on the v2 org page,
+    // which offers "Add a brand" and runs the same modal from the brand step. Sending
+    // it to the full-page onboarding instead is what this replaces. Every other path
+    // of such an org is still gated.
+    const v2OrgRoot = /^(\/v2)?\/orgs\/[^/]+\/?$/.test(pathname);
     if (
       userId &&
       !isPublicRoute(req) &&
       !isOnboardingRoute(req) &&
       !isApiRoute(req) &&
-      !req.nextUrl.searchParams.has("autoCreate") &&
       !v2OrgRoot &&
       sessionClaims?.orgMeta?.onboardingComplete !== true
     ) {
       return NextResponse.redirect(new URL(onboardingHref(), req.url));
     }
 
-    // Dashboard v2 is the default for every signed-in user. A user on v2 lands on v2 from the first frame:
-    // the choice is a cookie so it survives a reload and a new sign-in, and it is
-    // read HERE, pre-paint, rather than by a client redirect that would flash v1.
-    // Every v1 brand page has a v2 twin now (`v2PathForV1`), so a v2 user is never
-    // sent back to v1 by a link, a `router.push` or a typed URL — including the
-    // links inside the v1 business components v2 embeds. The bare org lands on the
-    // last brand. The only way into v1 is the "Back to v1" switch, which flips the
-    // cookie to `v1` first; nothing else sends anyone back to v1.
-    const wantsV2 =
-      !!userId &&
-      parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2" &&
-      !req.nextUrl.searchParams.has("autoCreate") &&
-      !hasExplicitHierarchyIntent(req.nextUrl.searchParams);
-    if (wantsV2) {
+    // v1 is gone (git history has it). Its URLs still arrive (sent emails, bookmarks,
+    // Stripe returns, links inside the shared components v2 embeds), so every one is
+    // redirected to its v2 page HERE, pre-paint. The bare org lands on v2's org page,
+    // which reads the last-brand cookie itself.
+    if (userId) {
       const v2Path = v2PathForV1(pathname, req.nextUrl.search, {
         lastBrand: (org) => req.cookies.get(lastBrandCookieName(org))?.value,
         activeOrgId: orgId ?? null,
       });
       if (v2Path) return NextResponse.redirect(new URL(v2Path, req.url));
-      const landing = matchOrgLanding(pathname);
-      const lastBrand = landing
-        ? req.cookies.get(lastBrandCookieName(landing.orgId))?.value
-        : undefined;
-      if (landing && lastBrand) {
-        return NextResponse.redirect(new URL(v2DashboardHref(landing.orgId, lastBrand), req.url));
-      }
-    }
-
-    // "Land on last-visited brand" — READ side. On a bare `/orgs/:orgId`,
-    // redirect pre-paint to the last brand opened in that org (remembered in
-    // the org-scoped cookie below). Zero flash, zero data fetch — same edge
-    // pattern as the onboarding gate. A stale cookie (brand later deleted)
-    // lands on the brand page's "Brand not found" recovery state (it links back
-    // to the brand list), mirroring Clerk's invalid-active-org handling. The
-    // no-cookie / single-brand cases are resolved client-side on the org page
-    // (the edge can't count brands without a fetch). Skip during the
-    // `?autoCreate` brand-creation hop.
-    if (
-      userId &&
-      !req.nextUrl.searchParams.has("autoCreate") &&
-      !hasExplicitHierarchyIntent(req.nextUrl.searchParams)
-    ) {
-      const landing = matchOrgLanding(pathname);
-      if (landing) {
-        const lastBrand = req.cookies.get(
-          lastBrandCookieName(landing.orgId),
-        )?.value;
-        if (lastBrand) {
-          // The marker says the hierarchy is still being RESOLVED, not that this is the
-          // destination: the brand page reads its offers and, if the brand sells exactly
-          // one, hands the landing down to it. Gated on the marker so no ordinary link into a
-          // brand ever bounces — see `lib/landing-drilldown.ts`.
-          return NextResponse.redirect(
-            new URL(
-              landingHref(`/orgs/${landing.orgId}/brands/${lastBrand}`),
-              req.url,
-            ),
-          );
-        }
-      }
     }
 
     const res = NextResponse.next();

@@ -1,10 +1,7 @@
 "use client";
 
-import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE, paymentHoldKind } from "@/lib/payment-declined";
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -17,100 +14,17 @@ import {
   type CampaignRevenueGroup,
 } from "@/lib/api";
 import { pairIsLearning } from "@/lib/maturity";
-import { LearningTag } from "@/components/learning-tag";
-import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { formatUsdAdaptive } from "@/lib/format-number";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { legFor } from "@/lib/legs";
-import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
-import { InfoTooltip } from "@/components/visibility/metric-info";
-import { Skeleton } from "@/components/skeleton";
 
 /**
- * The brand's campaigns, one line each, ordered by return.
+ * The brand's campaigns as rows (`useCampaignRows`), read by the v2 missions.
  *
- * ONE table, rendered on the Campaigns page and again under the brand Overview's
- * chart. It is a component rather than a second copy because both surfaces answer the
- * same question with the same numbers, and two copies is how a campaign comes to read
- * one way on one page and another way on the next.
- *
- * Every displayed number is a READY features-service field. The only non-formatting
+ * Every number on a row is a READY features-service field. The only non-formatting
  * client work is joining the campaign row (channel / leg / status from
  * campaign-service) to its revenue group by campaignId — a display arrangement of wire
  * data, never a derived metric.
  */
-
-export function fmtUsd(usd: number | null | undefined): string {
-  return usd == null ? "—" : formatUsdAdaptive(usd);
-}
-function fmtRoi(multiple: number | null | undefined): string {
-  return formatRoi(multiple);
-}
-export function fmtPct(pct: number | null | undefined): string {
-  return pct == null ? "—" : `${Math.round(pct)}%`;
-}
-
-/**
- * What each number column means, in the words a reader needs to trust it.
- *
- * The first three are PROJECTIONS, and saying so is the point: the revenue is what
- * the outcomes so far are expected to be worth, not money collected, and ROI and
- * % CAC are computed from it. A column that reads as banked revenue when it is a
- * forecast is the same statement under two meanings.
- *
- * `$ Invested` is the one figure here that already happened, which is exactly why it
- * sits beside them and says so: it is COMMITTED spend, billed plus the holds open on
- * sends this campaign has already queued, and it is byte the same number ROI and % CAC
- * divide by. A reader who assumes one basis will try to multiply `$ Invested x ROI`,
- * so the tip states the difference outright.
- *
- * Committed, not billed-only, and the two are NOT interchangeable: features-service
- * serves exactly one spend basis and this is it. Reading the billed-only sibling here
- * would put a smaller number under the same label the ROI was computed from, which is
- * the contradiction that made a brand read $202 on its Overview beside $191 here.
- */
-export const COLUMN_INFO = {
-  roi: "What a customer is worth over their lifetime, divided by what it costs to win one. 11.7x means every $1 spent is projected to return $11.70. Based on the conversion rates and lifetime revenue set in Brand Settings.",
-  cacPct:
-    "What winning a customer costs, as a share of what that customer is worth over their lifetime. 9% means $9 spent for every $100 earned. Lower is better, and it is the inverse of ROI.",
-  revenue:
-    "Expected pipeline revenue: the outcomes this campaign has produced so far, valued with the conversion rates and customer lifetime revenue you set in Brand Settings. It is a projection of what this pipeline is worth, not money already collected.",
-  invested:
-    "What this campaign has cost so far, net of any discount: money already billed plus money reserved for emails it has queued. It is the same figure the ROI and % CAC beside it are calculated from. Those two are projections of what it is worth going forward, so this is not a multiplier of them.",
-  budget:
-    "The most this campaign may spend in a day. It is a ceiling you set, not money spent, so nothing is charged against it until the campaign sends. Zero means it is stopped, and you change it in Campaign Settings.",
-} as const;
-
-/** A right-aligned numeric header with its (i) sitting after the label. */
-export function NumericHead({ label, tip }: { label: string; tip: string }) {
-  return (
-    <span className="inline-flex items-center justify-end gap-1">
-      {label}
-      <InfoTooltip tip={tip} />
-    </span>
-  );
-}
-
-/**
- * The headline number of the row. It carries the table's own size — weight and
- * colour are what set it apart, not a second type scale inside one row.
- *
- * A return above 1x means the campaign is making money back, and that reads
- * GREEN. Below 1x it stays the ordinary text colour rather than turning red: an
- * early campaign is under 1x by construction, and painting that red calls a
- * campaign that has not finished learning a failure.
- */
-export function RoiCell({ multiple }: { multiple: number | null | undefined }) {
-  return (
-    <span
-      className={`font-semibold tabular-nums ${roiIsGood(multiple) ? "text-green-600" : "text-gray-900"}`}
-    >
-      {fmtRoi(multiple)}
-    </span>
-  );
-}
 
 /**
  * A campaign is RUNNING when campaign-service reports one of these words. The
@@ -118,95 +32,13 @@ export function RoiCell({ multiple }: { multiple: number | null | undefined }) {
  * `ongoing`, and only `ongoing` / `stopped` are written today), so the set is
  * spelled out rather than narrowed to an enum the wire does not promise.
  *
- * ONE set drives BOTH the green pill and the table's first sort key. A row the
- * eye reads as running must also be ranked as running: two lists of the same
- * words would let the colour and the order drift into disagreeing about which
+ * ONE set drives every reading of "running" (the rows' first sort key, the v2
+ * missions): two lists of the same words would drift into disagreeing about which
  * campaigns are live.
  */
 const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"]);
 export function isActiveStatus(status: string): boolean {
   return ACTIVE_STATUSES.has(status.toLowerCase());
-}
-
-const RUNNING_STATUS_STYLE = "bg-green-50 text-green-700 border-green-200";
-const STATUS_STYLES: Record<string, string> = {
-  paused: "bg-amber-50 text-amber-700 border-amber-200",
-  pending: "bg-blue-50 text-blue-700 border-blue-200",
-  scheduled: "bg-blue-50 text-blue-700 border-blue-200",
-  stopped: "bg-gray-100 text-gray-500 border-gray-200",
-  completed: "bg-gray-100 text-gray-500 border-gray-200",
-  ended: "bg-gray-100 text-gray-500 border-gray-200",
-};
-/**
- * The two words this dashboard uses for a campaign: **Active** and **Paused**.
- *
- * campaign-service stores `ongoing` and `stopped`, which are its own internal
- * spellings and not words anyone outside this fleet says. Printing them verbatim
- * put two words for one concept on screen, so the wire value is translated here
- * and nowhere else.
- *
- * `stopped` reads **Paused** because that is now what it is from the customer's
- * side: the controls modal stops and restarts a campaign through the same status,
- * leaving its ceiling untouched, so a stopped campaign is one waiting to be turned
- * back on rather than one that has ended. It also keeps this pill and the modal's
- * own roll-up saying the SAME word about the same campaign — a row reading
- * "stopped" in the list beside a "Paused" pill on its own page is one campaign
- * described two ways.
- *
- * Only the LABEL moves: `isActiveStatus` remains the single definition of what
- * running MEANS, and it still drives the colour and the table's first sort key.
- * Any other word campaign-service may write is printed as it comes.
- */
-function statusLabel(status: string): string {
-  if (isActiveStatus(status)) return "Active";
-  return status.toLowerCase() === "stopped" ? "Paused" : status;
-}
-
-/**
- * The campaign's own status. There is no state invented here: a campaign a brand has
- * been running keeps running when that brand funds its campaigns, so the page never has
- * to explain away a live campaign that never gets a turn.
- */
-export function StatusPill({ status, stopReason }: { status: string; stopReason?: string | null }) {
-  // A campaign billing stopped over payment (declined card, or no card) is NOT one
-  // somebody paused: starting it is refused until the payment is fixed, so it says so.
-  const hold = paymentHoldKind({ status, stopReason });
-  if (hold) {
-    return (
-      <span
-        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${PAYMENT_HOLD_STYLE}`}
-      >
-        {PAYMENT_HOLD_LABEL[hold]}
-      </span>
-    );
-  }
-  const cls = isActiveStatus(status)
-    ? RUNNING_STATUS_STYLE
-    : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
-  return (
-    <span className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>
-      {statusLabel(status)}
-    </span>
-  );
-}
-
-/**
- * WHICH campaign this row is: the leg it performs, with the channel it performs it
- * through under it.
- *
- * The layout lives in `campaign-identity` because the budget modal states the
- * same pair for the same campaigns — a second copy is how a campaign comes to
- * read one way in this table and another way in the modal that funds it.
- */
-export function CampaignCell({ campaign }: { campaign: Campaign }) {
-  const catalogue = useLegCatalogue();
-  return (
-    <CampaignIdentity
-      featureSlug={campaign.featureSlug}
-      legKey={campaign.legKey}
-      leg={legFor(catalogue, campaign.legKey)}
-    />
-  );
 }
 
 // One row = a campaign joined to its revenue group and to its own daily ceiling.
@@ -476,167 +308,3 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   return { rows, activeRows, settled };
 }
 
-
-/**
- * A campaign table states NO tone of its own — the SURFACE it is mounted on decides.
- *
- * It used to pin itself to the tertiary wherever it was mounted, on the reasoning that
- * it states campaigns and so should read in the campaign accent everywhere. That reads
- * as one rule and behaves as another: a page that states `primary` for its own cards
- * then carries an orange table under a purple-and-blue header, and a reader meets two
- * accents on one screen for one meaning. The tone is a property of the page (see
- * `LearningToneProvider`), so the pin was the one thing stopping a page from being one
- * colour. Owner-decided: every tag on a surface reads in that surface's accent.
- *
- * Consequence, and it is the point: this table reads PRIMARY on the brand Overview, on
- * the offer Overview, and keeps the default tertiary on
- * the campaign-grain surfaces, which state no tone.
- */
-export function CampaignsTable(props: Parameters<typeof CampaignsTableInner>[0]) {
-  return <CampaignsTableInner {...props} />;
-}
-
-function CampaignsTableInner({
-  brandId,
-  featureSlug,
-  basePath,
-  offerId,
-}: {
-  brandId: string;
-  featureSlug: string;
-  /** `/orgs/:orgId/brands/:brandId/offers/:offerId` — a row opens that campaign underneath it. */
-  basePath: string;
-  /** The OFFER whose campaigns to list. Omitted → every campaign of the brand. */
-  offerId?: string;
-}) {
-  const router = useRouter();
-  const prefetch = useRoutePrefetch();
-  const { rows, settled } = useCampaignRows(brandId, featureSlug, offerId);
-
-
-  return (
-    /* Below `md` the row narrows to the two things a reader can act on: what the
-       campaign returns, and which campaign it is. Both are columns at EVERY width
-       now — `Campaign` states the leg and the channel together, so the pair
-       needs no separate mobile stacking and no width can show half an identity.
-
-       The floor is gated at the breakpoint the money columns come back:
-       unconditional, it re-widens the row past a phone's viewport even with five
-       columns hidden, so the two that survived get pushed off to the right and
-       read as missing. `table-fixed` below `md` is what makes the truncation bite
-       — in the default auto layout a column grows to its content, so one long
-       leg name widens the whole row however many `truncate`s it carries. */
-    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[760px]">
-        <thead>
-          {/* Identity first, then the return the table is sorted by.
-              Header chrome byte-equal to the Leads table (`engaged-leads-page`),
-              which is the dashboard's reference entity table: a heavier,
-              differently-tracked header reads as a different product. */}
-          <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            {/* Which campaign, first: the leg it performs with the channel under
-                it. It is the row's identity, so it leads at every width — the two
-                columns it replaces stated one thing in two places. */}
-            <th className="px-4 py-3 w-[70%] md:w-auto">Campaign</th>
-            <th className="px-4 py-3 text-right w-[30%] md:w-auto"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
-            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
-            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Revenue" tip={COLUMN_INFO.revenue} /></th>
-            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Invested" tip={COLUMN_INFO.invested} /></th>
-            {/* The ceiling sits beside the status because the two answer one
-                question together — is this campaign running, and how hard. It is
-                deliberately NOT in the money block on the left: those are charges
-                and projections of charges, and a budget is neither. */}
-            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Budget" tip={COLUMN_INFO.budget} /></th>
-            <th className="px-4 py-3 hidden md:table-cell">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {!settled ? (
-            [0, 1, 2].map((i) => (
-              <tr key={`sk-${i}`}>
-                <td className="px-4 py-3" colSpan={7}>
-                  <Skeleton className="h-5 w-full" />
-                </td>
-              </tr>
-            ))
-          ) : rows.length === 0 ? (
-            <tr>
-              <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
-                {/* One line, because there is now only one way to be empty: every
-                    campaign belongs to some identity and every identity states a
-                    row, so this is reached exactly when the brand has none on this
-                    feature. The second sentence this replaced named a nothing-is-
-                    running state the list can no longer be in — a paused campaign
-                    IS a row now. */}
-                No campaigns yet.
-              </td>
-            </tr>
-          ) : (
-            rows.map(({ campaign, revenue, budgetCents, learning }) => {
-          // A PAUSED row is not gathering the outcomes the bar waits for, so its withheld
-          // ratios read `Paused` — the same word its own status pill states two cells
-          // over. `Learning` there tells a reader to wait for a figure that cannot
-          // arrive until they restart it.
-          const paused = !isActiveStatus(campaign.status);
-          return (
-              <tr
-                key={campaign.id}
-                onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
-                // Warm the campaign's route while the pointer rests on the row, so
-                // the click has nothing left to fetch. See `useRoutePrefetch`.
-                onMouseEnter={() => prefetch(`${basePath}/campaigns/${campaign.id}`)}
-                onFocus={() => prefetch(`${basePath}/campaigns/${campaign.id}`)}
-                className="cursor-pointer transition hover:bg-gray-50"
-              >
-                <td className="px-4 py-3 text-gray-800"><CampaignCell campaign={campaign} /></td>
-                {/* The two RATIOS state `Learning` together or not at all — they are one
-                    statement in two units, a return and its reciprocal, so showing one of
-                    them beside a tag would let a reader trust the number we just said we
-                    could not stand behind.
-
-                    `$ Revenue` is NOT one of them. It is a TOTAL, not a price: it grows
-                    with each outcome instead of being decided by whichever one landed, so
-                    a campaign with two outcomes has a small pipeline rather than an
-                    unreliable one. Withholding it would hide a real figure behind a word
-                    about precision it does not have a precision problem with. */}
-                <td className="px-4 py-3 text-right">
-                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.economicsMaturity?.mature?.roiMultiple} />}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.economicsMaturity?.mature?.costOfAcquisitionPct)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
-                {/* `costEconomics.committedCostUsd`, read verbatim off the same
-                    `pricing=net` group — the exact number the ROI and %CAC beside it
-                    divide by, so a row cannot contradict its own return. A row with no
-                    group at all reads `—` rather than $0 — "we have no figure" and "it
-                    cost nothing" differ. */}
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.committedCostUsd)}</td>
-                {/* Whole dollars, always: a ceiling is a configured whole-dollar
-                    value. `$0` is a real answer — the campaign is stopped — and a
-                    dash means billing had none, which is a different statement.
-                    The `/ day` rider is the same one the campaign's own header
-                    states beside its status pill: a ceiling is a RATE, and the
-                    bare figure reads as a total beside the two money columns to
-                    its left, which really are totals. Withheld on the dash —
-                    "we have no figure" is not a figure per day. */}
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
-                  {budgetCents == null ? (
-                    fmtDailyBudgetUsd(null)
-                  ) : (
-                    <>
-                      {fmtDailyBudgetUsd(budgetCents)}
-                      <span className="text-gray-400"> / day</span>
-                    </>
-                  )}
-                </td>
-                <td className="px-4 py-3 hidden md:table-cell">
-                  <StatusPill status={campaign.status} stopReason={campaign.stopReason} />
-                </td>
-              </tr>
-          );
-        })
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}

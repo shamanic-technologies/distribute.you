@@ -27,8 +27,6 @@ import type { BrandOptimizationGoal } from "@/lib/api";
 export type LeadTab = "outreach" | "clicks" | "positive-replies";
 /** Leads-page tab key for a realized-outcome step (per-lead conversion). */
 export type OutcomeTab = "signups" | "meetings" | "form-submissions" | "sales";
-/** Any Leads-page tab. */
-export type AnyLeadTab = LeadTab | OutcomeTab;
 /**
  * Per-lead realized-outcome field names on the features-service `/revenue` `leads[]`
  * rows (features-service#476). The dashboard buckets an outcome tab by the boolean
@@ -317,16 +315,6 @@ export function leadTabsFor(
     .reverse();
 }
 
-/** `goalChartMetricKeys`, keyed on the leg when one is stated. */
-export function chartMetricKeysFor(
-  goal: BrandOptimizationGoal | null | undefined,
-  leg?: LegSteps | null,
-): ChartMetricKey[] {
-  return stepsFor(goal, leg)
-    .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
-    .map((s) => s.chartKey);
-}
-
 /** `goalOutcomeStep`, keyed on the leg when one is stated: the DEEPEST outcome step. */
 export function outcomeStepFor(
   goal: BrandOptimizationGoal | null | undefined,
@@ -360,21 +348,6 @@ export function goalChartMetricKeys(goal: BrandOptimizationGoal): ChartMetricKey
     .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
     .map((s) => s.chartKey);
 }
-
-/**
- * Chart metric keys that come from a downstream tracker OUTCOME step (the daily
- * series only carries data once the brand's site fires the conversion pixel) — so
- * these bars are hidden until the conversion tracker is live, mirroring the
- * signup/form-submission column gate in the audiences table (#2646). Today this is
- * the Form-submissions bar; any future outcome step that gains a `chartKey`
- * inherits the gate automatically. Engagement-signal bars (outreach/clicks/
- * repliedPositive) are NEVER tracker-dependent.
- */
-export const TRACKER_DEPENDENT_CHART_KEYS: ReadonlySet<ChartMetricKey> = new Set(
-  [SIGNUPS_OUTCOME, MEETINGS_OUTCOME, FORM_OUTCOME, PURCHASE_OUTCOME, SALE_OUTCOME]
-    .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
-    .map((s) => s.chartKey),
-);
 
 /**
  * The goal's downstream OUTCOME step for the stat card (Signups / Sales Meetings /
@@ -413,68 +386,3 @@ export function outcomeTabFor(
   };
 }
 
-/**
- * The tabs a BRAND or OFFER shows: the union over the legs its ACTIVE campaigns buy.
- *
- * Built from `legSteps`, the same per-leg step list a campaign-scoped surface reads, so a
- * tab cannot mean one thing on a campaign page and another on the brand's. `outreach` is
- * always present and always last: every lead we contacted is in it, so a scope with no
- * live campaign still has one truthful tab.
- */
-export function leadTabsForLegs(legs: readonly LegSteps[]): {
-  engagement: LeadTab[];
-  outcomes: OutcomeTab[];
-} {
-  const engagement = new Set<LeadTab>(["outreach"]);
-  const outcomes = new Set<OutcomeTab>();
-  for (const leg of legs) {
-    for (const step of legSteps(leg)) {
-      if (step.tab) engagement.add(step.tab);
-      if (step.outcome) outcomes.add(step.outcome.tab);
-    }
-  }
-  // ONE canonical order, so a union assembled from any set of legs always reads the
-  // same way.
-  const order = (tab: LeadTab | OutcomeTab): number => {
-    const at = TAB_ORDER.indexOf(tab);
-    return at === -1 ? TAB_ORDER.length : at;
-  };
-  return {
-    engagement: [...engagement].sort((a, b) => order(a) - order(b)),
-    outcomes: [...outcomes].sort((a, b) => order(a) - order(b)),
-  };
-}
-
-/** Most advanced outcome first, `outreach` last. */
-const TAB_ORDER: readonly (LeadTab | OutcomeTab)[] = [
-  "sales",
-  "meetings",
-  "signups",
-  "form-submissions",
-  "positive-replies",
-  "clicks",
-  "outreach",
-];
-
-/**
- * The realized-outcome tab descriptor, looked up by TAB rather than by a goal — a
- * brand's campaigns can land on several outcomes, so the per-goal lookup cannot answer it.
- */
-export function outcomeTabDescriptor(
-  tab: OutcomeTab,
-): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } {
-  const step = OUTCOME_STEP_BY_TAB[tab];
-  return {
-    tab,
-    label: step.label,
-    leadField: step.outcome!.leadField,
-    dateField: step.outcome!.dateField,
-  };
-}
-
-const OUTCOME_STEP_BY_TAB: Record<OutcomeTab, GoalStep> = {
-  signups: SIGNUPS_OUTCOME,
-  meetings: MEETINGS_OUTCOME,
-  "form-submissions": FORM_OUTCOME,
-  sales: SALE_OUTCOME,
-};

@@ -159,7 +159,6 @@ describe("the surface that renders it", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
   const section = read("components/leads/lead-next-followup.tsx");
   const timeline = read("components/audiences/lead-history-timeline.tsx");
-  const page = read("components/audiences/engaged-leads-page.tsx");
 
   it("derives nothing about the schedule in the component", () => {
     // Ordering, precedence and what a stopped sequence means are lead-service's. The
@@ -171,16 +170,6 @@ describe("the surface that renders it", () => {
 
   it("keys the write on the row this timeline is about", () => {
     expect(timeline).toContain("leadRowId={history.leadCampaignId}");
-  });
-
-  it("mounts the section on the CAMPAIGN-scoped timelines and nowhere else", () => {
-    // The pin is the CALL SITE, not the component: a component perfectly able to render
-    // the line is the feature entirely absent if no page asks for it — and mounting it on
-    // the brand roll-up would put several schedules behind one sentence.
-    const mounts = page.match(/showNextFollowup/g) ?? [];
-    expect(mounts.length).toBe(2);
-    const brandRollup = page.slice(page.indexOf('heading="Everything this brand did"'));
-    expect(brandRollup).not.toContain("showNextFollowup");
   });
 
   it("holds the pressed statement locally so the control is not silent for a round trip", () => {

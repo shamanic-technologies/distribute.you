@@ -172,13 +172,6 @@ describe("no browser-side Learning threshold, median or spend floor remains", ()
 });
 
 describe("every surface states the served mature figure", () => {
-  it("the stat row reads the spend and economics pairs", () => {
-    const cards = read("components/revenue/outreach-stat-cards.tsx");
-    expect(cards).toContain('shownFigure(spend?.maturity, (h) => h.totalCpcCents, "mature")');
-    expect(cards).toContain('shownFigure(spend?.maturity, (h) => h.cpprCents, "mature")');
-    expect(cards).toContain('shownFigure(economics?.maturity, (h) => h.roiMultiple, "mature")');
-  });
-
   it("the v2 Missions list, a mission and its crew read the per-campaign pairs", () => {
     expect(read("components/v2/missions-table.tsx")).toContain("outcomesMaturity");
     expect(read("components/v2/mission-page.tsx")).toContain("shownFigure(");
@@ -195,7 +188,6 @@ describe("every surface states the served mature figure", () => {
     const model = read("lib/audience-table-model.ts");
     expect(model).toContain("stats.metrics.maturity");
     expect(model).toContain("stats.projection?.maturity");
-    expect(read("components/audiences/customer-audiences-page.tsx")).toContain('audienceFigure("roi", stats, "mature")');
     expect(read("components/v2/audiences-table.tsx")).toContain("audienceFigure(");
   });
 
@@ -205,11 +197,6 @@ describe("every surface states the served mature figure", () => {
     expect(page).toContain("ladderRowsForScope(ladderQ.data, scope, basis)");
     expect(page).toContain("figures.learning ?");
     expect(page).toContain("cell?.learning");
-  });
-
-  it("the offer tables read their pairs", () => {
-    expect(read("components/offers/offer-outcomes-table.tsx")).toContain('shownFigure(f.maturity, (h) => h.roiMultiple, "mature")');
-    expect(read("components/offers/offers-table.tsx")).toContain("revenue?.economicsMaturity");
   });
 });
 
@@ -274,60 +261,7 @@ describe("LearningTag", () => {
 });
 
 describe("a PAUSED campaign says so where it would have said Learning", () => {
-  // The tag itself is guarded above. These pin the CALL SITES: a component that
-  // HANDLES `paused` while no page passes it is the feature entirely absent with the
-  // component perfectly correct.
-  it("the campaign Overview derives it once and threads it to every surface it owns", () => {
-    const page = read("components/campaigns/campaign-overview-page.tsx");
-    expect(page).toContain(
-      "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
-    );
-    // The stat row, the section (which owns the return chart's tag), the Top-3 audiences
-    // card, the Top-3 LLMs card and the conversion card (each reads Paused where it would
-    // read Learning), and the hold band on each of the page's two return branches. The band
-    // takes it for the opposite reason to the others: a paused campaign must NOT be told it
-    // is held, because the status pill beside the heading already says it is not running.
-    expect((page.match(/paused=\{campaignPaused\}/g) ?? []).length).toBe(7);
-  });
-
-  it("the campaign Audiences table reads the campaign it already polls", () => {
-    // No second read: the page holds `["campaign", campaignId]` for its funnel already.
-    const table = read("components/audiences/customer-audiences-page.tsx");
-    expect(table).toContain("const campaign = scopedCampaign;");
-    expect(table).toContain(
-      "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
-    );
-    // Off a campaign it falls through to the SCOPE's verdict — the offer's campaigns,
-    // since a set is picked for a proposition and never for a funnel.
-    expect(table).toContain("const withheldPaused = campaignPaused || scopePaused;");
-    expect(table).toContain("paused={withheldPaused}");
-    expect(table).toContain("useScopePaused(brandId, { offerId })");
-    expect(table).toContain('const campaignScoped = Boolean(campaignId);');
-  });
-
-  it("a paused ROW in the Campaigns table states it too", () => {
-    const table = read("components/campaigns/campaigns-table.tsx");
-    expect(table).toContain("const paused = !isActiveStatus(campaign.status);");
-    expect(table).toContain("<LearningTag withInfo={false} paused={paused} />");
-  });
-
-  it("every campaign-scoped entity page states it too, off the campaign it already polls", () => {
-    // `OutreachStatCardsAuto` is the stat row on the campaign Leads page (and every
-    // other campaign-scoped entity page). It holds `["campaign", id]` for the funnel
-    // already, so the flag costs no second read; brand and offer grain fetch no
-    // campaign, so `campaignData` is undefined and the flag is false by construction.
-    const auto = read("components/revenue/outreach-stat-cards-auto.tsx");
-    expect(auto).toContain(
-      "const campaignPaused = scopedCampaign != null && !isRunningStatus(scopedCampaign.status);",
-    );
-    // ...and off a campaign it states the SCOPE's verdict instead of nothing.
-    expect(auto).toContain("const withheldPaused = campaignPaused || scopePaused;");
-    expect(auto).toContain("paused={withheldPaused}");
-  });
-
-  it("the return chart's tag follows the section's flag", () => {
-    const section = read("components/revenue/revenue-overview-section.tsx");
-    expect(section).toContain("paused={paused}");
+  it("the return chart's tag reads the paused flag", () => {
     const chart = read("components/revenue/roi-trend-card.tsx");
     expect(chart).toContain("<LearningTag paused={paused} />");
   });
@@ -362,58 +296,6 @@ describe("LearningTag tone — which of the brand's accents a surface states", (
     for (const cls of [".bg-brand-50", ".text-brand-600", ".border-brand-200"]) {
       expect(css).toContain(`html.dark ${cls}`);
       expect(css).toContain(`html.dark[data-brand-tint] ${cls}`);
-    }
-  });
-
-  it("lets the SURFACE decide the campaigns table's tone — no self-pin", () => {
-    // It used to pin itself to the tertiary wherever it was mounted. That put an orange
-    // table under a primary header on every page that states its own accent, so one
-    // screen carried two colours for one meaning. Owner-decided: the tone belongs to the
-    // surface, so the table states none and follows whatever page mounts it.
-    const table = read("components/campaigns/campaigns-table.tsx");
-    expect(table).not.toContain("<LearningToneProvider");
-    expect(table).toContain("<CampaignsTableInner {...props} />");
-  });
-
-  it("no shared page states a tone of its own", () => {
-    // The tone belongs to the surface: a shared component stating one would repaint
-    // every grain that mounts it.
-    for (const page of [
-      "components/campaigns/campaign-overview-page.tsx",
-      "components/campaigns/campaigns-page.tsx",
-      "components/offers/offer-outcomes-table.tsx",
-    ]) {
-      expect(read(page)).not.toContain("LearningToneProvider");
-    }
-  });
-
-  it("states the primary on the BRAND page, which is the offer Overview too", () => {
-    // Owner-decided: every Learning tag on a brand's Overview reads in the brand's own
-    // primary. There is no route wrapper for the brand grain — that file IS the page —
-    // so the tone is stated in the component, and the offer Overview, which renders the
-    // very same component, inherits it rather than restating it.
-    const brand = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
-    expect(brand).toContain('<LearningToneProvider tone="primary">');
-    const OFFER = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]";
-    expect(read(`${OFFER}/page.tsx`)).not.toContain("LearningToneProvider");
-  });
-
-  it("states the primary on the offer's other routes, from the ROUTE", () => {
-    // Those mount components that are ALSO mounted at the brand and campaign
-    // grains, so a tone set inside them would repaint grains nobody asked to change.
-    const OFFER = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]";
-    for (const route of [
-      `${OFFER}/audiences/page.tsx`,
-      `${OFFER}/audiences/leads/page.tsx`,
-      `${OFFER}/campaigns/page.tsx`,
-    ]) {
-      expect(read(route)).toContain('<LearningToneProvider tone="primary">');
-    }
-    for (const shared of [
-      "components/audiences/customer-audiences-page.tsx",
-      "components/audiences/engaged-leads-page.tsx",
-    ]) {
-      expect(read(shared)).not.toContain("LearningToneProvider");
     }
   });
 });
@@ -474,19 +356,6 @@ describe("the chart headlines state the served mature figure, never the curve's 
     const parsed = parseFeatureRevenue(b, "test");
     expect(parsed.costEconomics.maturity).toBeNull();
     expect(shownFigure(parsed.costEconomics.maturity, (h) => h.roiMultiple, "mature")).toEqual({ value: null, learning: false });
-  });
-
-  it("the cost card's price is the leg's mature figure, keyed on the curve's own leg", () => {
-    const section = read("components/revenue/revenue-overview-section.tsx");
-    expect(section).toContain("const costLegKey = costPerOutcomeHistory?.legKey ?? null;");
-    expect(section).toContain("data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === costLegKey)");
-    expect(section).toContain("headline={costHeadline}");
-    const card = read("components/revenue/cost-per-outcome-card.tsx");
-    expect(card).toContain('mode === "placeholder" || headline?.learning ?');
-    expect(card).toContain("headline?.value != null ? formatUsdAdaptive(headline.value)");
-    // the curve's last point is no longer printed as the price
-    expect(card).not.toContain("latest?.value");
-    expect(card).not.toMatch(/>today</);
   });
 
   it("the Learning verdict on a leg follows the served pair, never a count here", () => {

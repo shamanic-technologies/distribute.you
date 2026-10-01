@@ -110,59 +110,7 @@ describe("the hook reads the SAME rows the header pill does", () => {
   });
 });
 
-describe("every surface PASSES the flag, not merely handles it", () => {
-  // A component that honours `paused` while no page passes it is the feature entirely
-  // absent with the component perfectly correct. So these pin the CALL SITE.
-  const sliceFrom = (src: string, marker: string, len: number) => {
-    const at = src.indexOf(marker);
-    expect(at, `missing marker: ${marker}`).toBeGreaterThan(-1);
-    return src.slice(at, at + len);
-  };
-
-  it("the brand Overview states the brand's verdict", () => {
-    const src = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(sliceFrom(src, "<RevenueOverviewSection", 3000)).toContain("paused={scopePaused}");
-    expect(sliceFrom(src, "<OutreachStatCards", 1600)).toContain("paused={scopePaused}");
-    expect(sliceFrom(src, "<TopAudiencesCard", 900)).toContain("paused={scopePaused}");
-  });
-
-  it("covers the OFFER Overview through the same component, scoped by the route", () => {
-    // The offer route re-exports the brand page rather than copying it, so one
-    // `useScopePaused(brandId, { offerId })` answers at both grains — `offerId` is
-    // undefined at brand level, which is a first-class scope and not a missing value.
-    const route = read(
-      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/page.tsx",
-    );
-    expect(route).toContain("brands/[brandId]/page");
-    const src = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
-    expect(src).toContain("useScopePaused(brandId, { offerId, enabled })");
-  });
-
-  it("the Campaigns page states the verdict of the scope its route names", () => {
-    const src = read("components/campaigns/campaigns-page.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(src).toContain("paused={scopePaused}");
-  });
-
-  it("the shared Audiences page falls back to its SCOPE when no campaign is named", () => {
-    const src = read("components/audiences/customer-audiences-page.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(src).toContain("campaignPaused || scopePaused");
-  });
-
-  it("the shared stat-card wrapper falls back to its SCOPE too", () => {
-    const src = read("components/revenue/outreach-stat-cards-auto.tsx");
-    expect(src).toContain("useScopePaused(");
-    expect(src).toContain("campaignPaused || scopePaused");
-  });
-
-  it("the Offers table reads a per-offer verdict rather than one scope's", () => {
-    const src = read("components/offers/offers-table.tsx");
-    expect(src).toContain("usePausedByOffer(");
-    expect(src).toContain("scopePausedFor(");
-  });
-
+describe("surfaces leave the verdict to scope-paused", () => {
   it("the campaigns table never re-derives the verdict from the rows it holds", () => {
     // `scope-paused.ts` owns the rule. This component fetches the very rows it would
     // need to restate it, which is exactly why the ban is worth pinning: two spellings

@@ -1,47 +1,14 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { offerImageLookup } from "../src/lib/offer-image";
 
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
-
-const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
-const OFFER_SETTINGS = `${APP}/offers/[offerId]/settings/page.tsx`;
 
 /**
  * An offer's NAME and its MARK — the two things that tell one proposition from
  * another, and neither was editable anywhere in the product before this.
  */
-describe("offerImageLookup", () => {
-  const offers = [
-    { offerId: "a", imageUrl: "https://cdn/a.png" },
-    { offerId: "b", imageUrl: null },
-    { offerId: "c" },
-  ];
-
-  it("answers an image for an offer that has one", () => {
-    expect(offerImageLookup(offers)("a")).toBe("https://cdn/a.png");
-  });
-
-  it("reads an offer with no image, an absent field and an unknown id the SAME way — the mark keeps its glyph", () => {
-    const at = offerImageLookup(offers);
-    expect(at("b")).toBeNull();
-    expect(at("c")).toBeNull();
-    expect(at("nobody")).toBeNull();
-  });
-
-  it("answers null while the list is still in flight rather than throwing", () => {
-    expect(offerImageLookup(undefined)("a")).toBeNull();
-  });
-
-  it("answers null for no offer at all — a lead attributed to none has nothing to draw", () => {
-    const at = offerImageLookup(offers);
-    expect(at(null)).toBeNull();
-    expect(at(undefined)).toBeNull();
-  });
-});
-
 describe("OfferMark carries the offer's own image", () => {
   const mark = read("components/marks/offer-mark.tsx");
 
@@ -65,58 +32,8 @@ describe("OfferMark carries the offer's own image", () => {
   });
 });
 
-describe("every surface that CAN resolve an offer's image passes it", () => {
-  it("the top bar reads the offer's own row", () => {
-    expect(read("components/header-page-context.tsx")).toContain(
-      '<OfferMark size="sm" imageUrl={offer.imageUrl} />',
-    );
-  });
-
-  it("the Offers table reads the row it already renders", () => {
-    expect(read("components/offers/offers-table.tsx")).toContain(
-      '<OfferMark size="sm" imageUrl={offer.imageUrl} />',
-    );
-  });
-
-  it("the tenant switcher passes one on BOTH the current offer and every row of its list", () => {
-    const switcher = read("components/tenant-switcher.tsx");
-    expect(switcher).toContain("<OfferTile imageUrl={t.displayOffer?.imageUrl} />");
-    expect(switcher).toContain("<OfferTile imageUrl={o.imageUrl} />");
-    // No bare tile left: one offer wearing two marks on one screen is the bug this closes.
-    expect(switcher).not.toContain("<OfferTile />");
-  });
-
-  it("the three lead surfaces resolve it from the brand's own offer list — lead-service serves an offer with no image", () => {
-    for (const file of [
-      "components/audiences/lead-scope-cards.tsx",
-      "components/audiences/lead-campaign-sections.tsx",
-      "components/audiences/engaged-leads-page.tsx",
-    ]) {
-      expect(read(file)).toContain("useOfferImages");
-    }
-  });
-
-  it("the leads table takes a RESOLVER, so the read stays on the page and the table stays a pure render", () => {
-    const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain("offerImageOf: (lead: Lead) => string | null");
-    expect(leads).toContain("<OfferMark size=\"sm\" imageUrl={offerImageOf(lead)} />");
-  });
-
-  it("the lookup is ONE brand-wide list read (with archived offers, so a lead under an archived offer keeps its mark)", () => {
-    expect(read("lib/use-offer-images.ts")).toContain('["brandOffers", brandId ?? "none", "withArchived"]');
-    // Never a per-offer by-id fan-out: a leads table naming forty offers is not forty requests.
-    expect(read("lib/use-offer-images.ts")).not.toContain("getBrandOffer");
-  });
-});
-
 describe("Offer Settings states the offer's identity", () => {
-  const page = read(OFFER_SETTINGS);
   const card = read("components/settings/offer-identity-card.tsx");
-
-  it("mounts the card FIRST — every card under it is about an offer you must name first", () => {
-    expect(page).toContain("<OfferIdentityCard brandId={brandId} offerId={offerId} />");
-    expect(page.indexOf("<OfferIdentityCard")).toBeLessThan(page.indexOf("<OfferCampaignsCard"));
-  });
 
   it("writes the name through the reader that had no caller at all before this", () => {
     expect(card).toContain("renameBrandOffer(brandId, offerId, value)");

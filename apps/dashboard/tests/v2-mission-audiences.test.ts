@@ -21,14 +21,14 @@ describe("dashboard v2 mission Audiences tab", () => {
   it("the page scopes the table to the campaign AND its offer", () => {
     const page = setup.slice(setup.indexOf("export function V2MissionAudiencesPage("), setup.indexOf("export function V2MissionWorkflowsPage("));
     expect(page).toContain('missionTabs(orgId, brandId, campaignId, "audiences", staffMode)');
-    // v2 draws the table in its own anatomy (`V2AudiencesTable`), over v1's data layer.
+    // v2 draws the table in its own anatomy (`V2AudiencesTable`).
     const call = page.slice(page.indexOf("<V2AudiencesTable"));
     expect(call).toContain("campaignId={");
     expect(call).toContain("offerId={offerId}");
   });
 
   it("the table takes the offer as a prop before falling back to the route", () => {
-    const src = read("src/components/audiences/customer-audiences-page.tsx");
+    const src = read("src/components/v2/use-audience-table.ts");
     expect(src).toContain("const offerId = offerIdProp ?? (params.offerId as string | undefined);");
   });
 

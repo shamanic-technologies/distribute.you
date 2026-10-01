@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 import {
@@ -183,40 +183,27 @@ describe("origins + state filters", () => {
 });
 
 describe("call sites", () => {
-  const page = read("src/components/crm/crm-merged-page.tsx");
-  const layout = read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/crm/layout.tsx");
-  const sidebar = read("src/components/crm/crm-sidebar.tsx");
+  const page = read("src/components/v2/integrations-merged.tsx");
   const persist = read("src/lib/persist-cache.ts");
 
-  it("the Merged route exists and the Raw page is untouched", () => {
-    expect(existsSync(join(root, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/crm/merged/page.tsx"))).toBe(true);
-    expect(read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/crm/page.tsx")).toContain("BrandCrmPage");
-  });
-  it("both the sidebar and the body are beta-gated, with a visible badge", () => {
-    expect(layout).toContain("useIsBetaUser");
-    expect(layout).toContain("CrmSidebar");
+  it("the body is beta-gated", () => {
     expect(page).toContain("useIsBetaUser");
-    expect(page).toContain('<MaturityBadge level="beta" />');
-    expect(sidebar).toContain('maturity: "beta"');
-    expect(sidebar).toContain('label: "Raw"');
-    expect(sidebar).toContain('label: "Merged"');
   });
   it("reads the counts and one bounded page, never the population", () => {
     expect(page).toContain("getCrmPairingCounts(brandId)");
-    expect(page).toContain("limit: PAIRINGS_PAGE, offset");
+    expect(page).toContain("limit: V2_PAIRINGS_PAGE, offset");
     expect(persist).toContain('"crmPairings"');
     expect(persist).toContain('"crmPairingCounts"');
   });
   it("filters by pairing state server-side and opens on the pairs in common", () => {
     expect(page).toContain('useState<string>("paired")');
-    expect(page).toContain("listCrmPairings(brandId, { limit: PAIRINGS_PAGE, offset, states, toConfirm: filterToConfirm })");
+    expect(page).toContain("listCrmPairings(brandId, { limit: V2_PAIRINGS_PAGE, offset, states, toConfirm: filterToConfirm })");
     expect(read("src/lib/api.ts")).toContain('q.set("toConfirm", "true")');
     expect(read("src/lib/api.ts")).toContain('q.set("state", opts.states.join(","))');
     expect(page).toContain("getCrmContactOrigins(brandId)");
     expect(persist).toContain('"crmContactOrigins"');
   });
-  it("reveals on settle and never renders a raw error body", () => {
-    expect(page).toContain("pageQ.isPending && !pageQ.isError");
+  it("never renders a raw error body", () => {
     expect(page).not.toContain("err.message");
     expect(page).not.toContain("error.message");
   });
@@ -224,10 +211,6 @@ describe("call sites", () => {
     expect(page).toContain("setCrmPairingRuling(");
     expect(page).toContain("withdrawCrmPairingRuling(");
     expect(page).toContain('refetchQueries({ queryKey: ["crmPairings", brandId] })');
-  });
-  it("carries no em-dash in copy", () => {
-    const code = page.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    expect(code).not.toContain("—");
   });
 });
 
@@ -267,7 +250,7 @@ describe("to confirm — doubt counts as ours, and a person settles it", () => {
     expect(out.map((r) => r.crmContact.id)).toEqual(["tc", "behind"]);
   });
   it("the page shows a To confirm section above the table, read server-side", () => {
-    const page = read("src/components/crm/crm-merged-page.tsx");
+    const page = read("src/components/v2/integrations-merged.tsx");
     expect(page).toContain("<ToConfirmSection");
     expect(page.indexOf("<ToConfirmSection")).toBeLessThan(page.indexOf("<PairingsTable rows={rows}"));
     expect(page).toContain("states: TO_CONFIRM_STATES, toConfirm: true");

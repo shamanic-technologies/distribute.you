@@ -35,11 +35,7 @@ describe("a campaign-scoped surface reads the CAMPAIGN's channel", () => {
     expect(scoped).toContain("settled: campaignScoped ? !isPending || isError : true");
   });
 
-  for (const rel of [
-    "components/audiences/engaged-leads-page.tsx",
-    "components/audiences/customer-audiences-page.tsx",
-    "components/revenue/outreach-stat-cards-auto.tsx",
-  ]) {
+  for (const rel of ["components/v2/use-audience-table.ts"]) {
     it(`${rel} takes its channel from the narrowing`, () => {
       const src = read(rel);
       expect(src).toContain("useScopedFeatureSlug(campaignId)");
@@ -49,50 +45,14 @@ describe("a campaign-scoped surface reads the CAMPAIGN's channel", () => {
     });
   }
 
-  it("resolves the leads page's leg from the campaign, not from feature-filtered rows", () => {
-    const src = read("components/audiences/engaged-leads-page.tsx");
-    // The rows are filtered by feature, so a campaign on any other channel is not among
-    // them: asking them for its leg is asking a list that cannot contain it.
-    expect(src).toContain("? [scopedCampaign?.legKey ?? null]");
-    expect(src).not.toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
-    // ...and the brand branch keeps the one feature the brand list has always used.
-    expect(src).toContain("useCampaignRows(brandId, soleFeatureSlug)");
-  });
-
-  it("states the lead panel's steps off the campaign's OWN leg", () => {
-    const src = read("components/audiences/engaged-leads-page.tsx");
-    // A campaign states its leg on its own row; the panel reads it from there rather
-    // than placing one from a channel's legs.
-    expect(src).toContain("const panelLeg = campaignId ? (activeLegs[0] ?? null) : null;");
-    // Pin the CALL SITE, not only the component: a component that handles a prop no
-    // page passes is the feature entirely absent.
-    const at = src.indexOf("<LeadStageSection");
-    expect(at).toBeGreaterThan(-1);
-    const callSite = src.slice(at, at + 400);
-    expect(callSite).toContain("stages={panelStages}");
-  });
-
   it("gates a campaign's money on the channel CATALOGUE, never the brand's GA set", () => {
     // `isRevenueFeature` is the brand's revenue-feature set. Gating a campaign on it
     // blanks every campaign that is not on the brand's one GA channel.
-    for (const rel of [
-      "components/audiences/engaged-leads-page.tsx",
-      "components/audiences/customer-audiences-page.tsx",
-      "components/revenue/outreach-stat-cards-auto.tsx",
-    ]) {
+    for (const rel of ["components/v2/use-audience-table.ts"]) {
       const src = read(rel);
       expect(src, `${rel} must gate a campaign on the catalogue`).toContain(
         "acquisitionChannelForFeatureSlug(featureSlug, channels) !== null",
       );
     }
-  });
-
-  it("asks the campaign's revenue with campaignId ALONE, byte-equal to the Overview", () => {
-    // A campaign belongs to exactly one offer, so stating both is two answers to one
-    // question — and it would make the args differ from the Overview's under the SAME
-    // query key, which is how one campaign comes to show two numbers.
-    const src = read("components/audiences/engaged-leads-page.tsx");
-    expect(src).toContain("campaignId ? { campaignId } : { offerId }");
-    expect(src).not.toContain("getFeatureRevenue(featureSlug, brandId, { campaignId, offerId })");
   });
 });

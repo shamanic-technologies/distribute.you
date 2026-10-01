@@ -50,11 +50,7 @@ describe("formatRoi", () => {
 describe("every ROI surface reads the one helper", () => {
   // A second copy of the rule is exactly what shipped `12×` under `11.7×` before.
   const SURFACES = [
-    "components/audiences/customer-audiences-page.tsx",
-    "components/campaigns/campaigns-table.tsx",
-    "components/revenue/outreach-stat-cards.tsx",
     "components/revenue/roi-trend-card.tsx",
-    "components/revenue/top-audiences-card.tsx",
     "components/strategy/best-model-card.tsx",
     "lib/outcome-digest.ts",
   ];
@@ -77,8 +73,8 @@ describe("every ROI surface reads the one helper", () => {
 /**
  * Where GREEN starts, stated once.
  *
- * The ROI stat card, the Return-on-spend headline and the Campaigns table's ROI cell sit
- * within inches of each other on one screen. Three copies of `> 1` is how they come to
+ * The Return-on-spend headline and the Campaigns table's ROI cell sit
+ * within inches of each other on one screen. Two copies of `> 1` is how they come to
  * disagree about a threshold, which is the same failure the formatter itself exists to
  * prevent one column over.
  */
@@ -108,9 +104,7 @@ describe("roiIsGood", () => {
 
 describe("every surface that colours an ROI reads the one rule", () => {
   const GREEN_SURFACES = [
-    "components/campaigns/campaigns-table.tsx",
     "components/revenue/roi-trend-card.tsx",
-    "components/revenue/outreach-stat-cards.tsx",
   ];
 
   for (const rel of GREEN_SURFACES) {
@@ -121,23 +115,4 @@ describe("every surface that colours an ROI reads the one rule", () => {
       expect(src).not.toMatch(/roiMultiple\s*>\s*BREAK_EVEN/);
     });
   }
-
-  it("colours the ROI stat card at its CALL SITE, not only in the card", () => {
-    // A prop the page never passes leaves ScoreCard perfectly correct and the colour
-    // entirely absent, which is the threaded-prop trap this repo keeps paying for.
-    const src = read("components/revenue/outreach-stat-cards.tsx");
-    const roi = src.slice(src.indexOf('label="ROI"'));
-    const card = roi.slice(0, roi.indexOf("/>"));
-    expect(card).toContain(
-      'valueClassName={roiIsGood(roi.value) ? "text-green-600" : undefined}',
-    );
-    expect(card).not.toContain("text-red");
-  });
-
-  it("keeps the ordinary colour as ScoreCard's default", () => {
-    // Every other card on the row states a figure that carries no reading of its own.
-    const card = read("components/visibility/score-card.tsx");
-    expect(card).toContain('valueClassName = "text-gray-800"');
-    expect(card).toContain("`text-2xl font-semibold ${valueClassName}`");
-  });
 });

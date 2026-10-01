@@ -6,7 +6,7 @@ const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 // The booking link lived on a settings card retired in #4433 while
 // brand-service kept the value per offer. These pin that it is editable again, on
-// both Brand Settings surfaces, through a write that sends nothing else.
+// the Brand Settings surface, through a write that sends nothing else.
 describe("brand settings booking link", () => {
   const card = read("src/components/settings/brand-booking-link-card.tsx");
   const api = read("src/lib/api.ts");
@@ -29,10 +29,7 @@ describe("brand settings booking link", () => {
     expect(card).toContain('["offerEconomics", brandId, offer.offerId]');
   });
 
-  it("is mounted on both Brand Settings pages", () => {
-    expect(
-      read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx"),
-    ).toContain("<BrandBookingLinkCard brandId={brandId} />");
+  it("is mounted on the Brand Settings page", () => {
     expect(read("src/components/v2/brand-settings-page.tsx")).toContain(
       "<BrandBookingLinkCard brandId={brandId} bare />",
     );

@@ -143,21 +143,6 @@ export function hiddenWorkflowSlugs(args: {
   return hidden;
 }
 
-/**
- * THE DYNASTIES NO NEW RUN MAY PICK ON THIS LEG — `unassigned` or `deprecated`.
- *
- * Wider than `hiddenWorkflowSlugs` on purpose: a deprecated workflow is DRAWN (its history
- * matters) but a "best price" or "top model" read must still skip it, since campaign-service
- * never selects it and a floor taken from it would be a price nothing reaches.
- */
-export function notSelectableWorkflowSlugs(rows: readonly EligibilityLadderRow[]): Set<string> {
-  const out = new Set<string>();
-  for (const r of rows) {
-    if (r.legAssignment && !r.legAssignment.selectable) out.add(r.workflow.workflowDynastySlug);
-  }
-  return out;
-}
-
 /** THE DYNASTIES DEPRECATED ON THIS LEG, drawn with a tag rather than hidden. */
 export function deprecatedOnLegSlugs(rows: readonly EligibilityLadderRow[]): Set<string> {
   const out = new Set<string>();

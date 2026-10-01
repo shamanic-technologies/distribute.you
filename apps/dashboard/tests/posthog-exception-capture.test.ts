@@ -31,7 +31,7 @@ describe("PostHog exception capture", () => {
   });
 
   it.each([
-    "apps/dashboard/src/app/(authed)/(dashboard)/error.tsx",
+    "apps/dashboard/src/app/(authed)/v2/error.tsx",
     "apps/admin/src/app/(authed)/(dashboard)/error.tsx",
     "apps/admin/src/app/report/[orgId]/[brandId]/[featureSlug]/error.tsx",
   ])("%s reports the error it swallows", (p) => {

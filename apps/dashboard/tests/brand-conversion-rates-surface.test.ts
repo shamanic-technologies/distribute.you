@@ -4,14 +4,14 @@ import { describe, expect, it } from "vitest";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, "../src", rel), "utf-8");
 
-const settingsPage = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx");
+const settingsPage = read("components/v2/brand-settings-page.tsx");
 const card = read("components/settings/brand-conversion-rates-card.tsx");
 const editor = read("components/settings/leg-rates-editor.tsx");
 const persist = read("lib/persist-cache.ts");
 
 describe("brand conversion rates", () => {
   it("renders a Conversion rates section on Brand Settings", () => {
-    expect(settingsPage).toContain('id="conversion-rates"');
+    expect(settingsPage).toContain('id: "conversion-rates"');
     expect(settingsPage).toContain("<BrandConversionRatesCard brandId={brandId} />");
   });
 

@@ -7,7 +7,7 @@ const PAGE = (readFileSync(
   join(root, "src/components/billing/use-billing-controller.ts"),
   "utf8",
 ) + readFileSync(
-  join(root, "src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+  join(root, "src/components/v2/billing-page.tsx"),
   "utf8",
 ));
 const MODAL = readFileSync(
@@ -31,14 +31,13 @@ describe("the billing page offers a way to remove the card", () => {
   it("mounts the confirmation and passes every prop it needs", () => {
     const at = PAGE.indexOf("<CardRemoveConfirmModal");
     expect(at).toBeGreaterThan(-1);
-    // Bounded by the sibling that follows it, so the slice moves with the file
-    // rather than expiring on the next comment somebody adds above it.
-    const call = PAGE.slice(at, PAGE.indexOf('<div className="mb-6 flex max-w-2xl', at));
-    expect(call).toContain("settleCents={settleCents}");
-    expect(call).toContain("consequence={removeConsequence}");
-    expect(call).toContain("cardLabel={cardLabel}");
-    expect(call).toContain("pending={removePending}");
-    expect(call).toContain("handleRemoveCard()");
+    // The modal is self-closing with no element children, so its own `/>` bounds it.
+    const call = PAGE.slice(at, PAGE.indexOf("/>", at));
+    expect(call).toContain("settleCents={c.settleCents}");
+    expect(call).toContain("consequence={c.removeConsequence}");
+    expect(call).toContain("cardLabel={c.cardLabel}");
+    expect(call).toContain("pending={c.removePending}");
+    expect(call).toContain("c.handleRemoveCard()");
   });
 
   it("calls the removal and re-reads rather than patching the account", () => {
@@ -99,15 +98,6 @@ describe("the billing page offers a way to remove the card", () => {
   // Two surfaces stating one amount is how they come to disagree about it.
   it("derives the consequence once", () => {
     expect(PAGE.split("cardRemoveConsequence(").length - 1).toBe(1);
-  });
-
-  // A greyed control with no reason beside it reads as broken rather than as
-  // secondary, so the quiet weight is colour and never `disabled` at rest.
-  it("is quiet, not disabled at rest", () => {
-    const at = PAGE.indexOf("setRemoveConfirmOpen(true)");
-    const button = PAGE.slice(at, at + 260);
-    expect(button).toContain("text-gray-500");
-    expect(button).toContain("disabled={portalLoadingSource !== null || removePending}");
   });
 });
 

@@ -77,9 +77,7 @@ describe("validateDestination — WhatsApp links are accepted off-domain", () =>
 
 // The brand-wide Click Destination section is gone.
 describe("no brand-wide destination section", () => {
-  const page = read(
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
-  );
+  const page = read("../src/components/v2/brand-settings-page.tsx");
 
   it("no longer renders a brand-wide click-destination section", () => {
     expect(page).not.toContain("BrandClickDestinationCard");

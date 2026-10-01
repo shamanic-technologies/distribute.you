@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import * as queryOptions from "../src/lib/query-options";
 import { POLL_INTERVAL, pollIntervalFor, pollOptions } from "../src/lib/query-options";
-
-const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
 
 describe("POLL_INTERVAL", () => {
   it("is 5s — a refresh may lag, never by more than about five seconds", () => {
@@ -37,12 +33,5 @@ describe("the Leads reads", () => {
     // the ~5s the rest of the dashboard promises.
     expect("LEADS_POLL_INTERVAL" in queryOptions).toBe(false);
     expect("leadsPollOptions" in queryOptions).toBe(false);
-    for (const path of [
-      "components/audiences/engaged-leads-page.tsx",
-    ]) {
-      const src = read(path);
-      expect(src).not.toContain("LEADS_POLL_INTERVAL");
-      expect(src).toContain("refetchInterval: POLL_INTERVAL");
-    }
   });
 });

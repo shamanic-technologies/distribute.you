@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { resolve } from "path";
-import {
-  matchV1BrandRoot,
-  parseUiVersion,
-  stripV2Prefix,
-  uiVersionCookieAssignment,
-  v2DashboardHref,
-  isV2Path,
-} from "../src/lib/ui-version";
+import { stripV2Prefix, v2DashboardHref } from "../src/lib/ui-version";
 import { crewFor, crewInitial, crewKey } from "../src/lib/v2/crews";
 import { cumulativeWindow, dailyWindow, windowDays } from "../src/lib/v2/series";
 import { brandIdFromPathname } from "../src/lib/brand-tint-preload";
@@ -17,36 +10,11 @@ const ROOT = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
 describe("ui-version", () => {
-  it("v2 is the default: only an exact v1 reads as v1", () => {
-    expect(parseUiVersion("v2")).toBe("v2");
-    expect(parseUiVersion("v1")).toBe("v1");
-    expect(parseUiVersion(undefined)).toBe("v2");
-    expect(parseUiVersion("")).toBe("v2");
-    expect(parseUiVersion("V1")).toBe("v2");
-  });
-
-  it("writes a year-long, site-wide cookie, Secure only on https", () => {
-    expect(uiVersionCookieAssignment("v2", true)).toBe(
-      "distribute-ui=v2; Path=/; Max-Age=31536000; SameSite=Lax; Secure",
-    );
-    expect(uiVersionCookieAssignment("v1", false)).not.toContain("Secure");
-  });
-
   it("strips the v2 prefix so v1 parsers read a v2 URL", () => {
     expect(stripV2Prefix("/v2/orgs/o/brands/b")).toBe("/orgs/o/brands/b");
     expect(stripV2Prefix("/v2")).toBe("/");
     expect(stripV2Prefix("/orgs/o")).toBe("/orgs/o");
     expect(stripV2Prefix("/v2x/orgs")).toBe("/v2x/orgs");
-    expect(isV2Path("/v2/orgs/o")).toBe(true);
-    expect(isV2Path("/v20")).toBe(false);
-  });
-
-  it("matches the v1 brand ROOT only, never a deeper page", () => {
-    expect(matchV1BrandRoot("/orgs/o/brands/b")).toEqual({ orgId: "o", brandId: "b" });
-    expect(matchV1BrandRoot("/orgs/o/brands/b/")).toEqual({ orgId: "o", brandId: "b" });
-    expect(matchV1BrandRoot("/orgs/o/brands/b/leads")).toBeNull();
-    expect(matchV1BrandRoot("/orgs/o/brands/b/offers/x")).toBeNull();
-    expect(matchV1BrandRoot("/v2/orgs/o/brands/b")).toBeNull();
     expect(v2DashboardHref("o", "b")).toBe("/v2/orgs/o/brands/b");
   });
 
@@ -131,11 +99,11 @@ const V2_FILES = [
 ];
 
 describe("v2 wiring", () => {
-  it("the edge sends every signed-in user to v2 unless they chose v1, and keeps Clerk synced under /v2", () => {
+  it("the edge sends every signed-in user's old v1 URL to v2, and keeps Clerk synced under /v2", () => {
     const proxy = read("src/proxy.ts");
-    // v2 is GA: no allowlist decides who lands on it.
+    // v1 is deleted: no allowlist and no version cookie decide who lands on v2.
     expect(proxy).not.toContain("isBetaEmail(");
-    expect(proxy).toContain('parseUiVersion(req.cookies.get(UI_VERSION_COOKIE)?.value) === "v2"');
+    expect(proxy).not.toContain("UI_VERSION_COOKIE");
     expect(proxy).toContain("v2PathForV1(pathname, req.nextUrl.search");
     expect(proxy).toContain('"/v2/orgs/:id"');
   });
@@ -155,9 +123,9 @@ describe("v2 wiring", () => {
       expect(read(`src/components/v2/${f}`), f).not.toContain("MaturityBadge");
     }
     expect(read("src/components/v2/v2-shell.tsx")).not.toContain("isBeta");
-    // The account menu carries the one way back to v1.
+    // v1 is deleted: the account menu offers no way back to it.
     const menus = read("src/components/v2/sidebar-menus.tsx");
-    expect(menus).toContain("Back to v1");
+    expect(menus).not.toContain("Back to v1");
     expect(read("src/components/v2/v2-shell.tsx")).toContain("<AccountMenuV2 ");
   });
 
@@ -175,13 +143,6 @@ describe("v2 wiring", () => {
     expect(read("src/components/v2/team-page.tsx")).toContain("memberships: { pageSize: 50");
     // Staff join every org through god-mode: never list them as the customer's team.
     expect(read("src/components/v2/team-page.tsx")).toContain("!isAdminEmail(m.publicUserData?.identifier)");
-  });
-
-  it("the v1 sidebar offers the way back to v2 to everyone, unbadged", () => {
-    expect(read("src/components/context-sidebar.tsx")).toContain("<SwitchToV2 />");
-    const sw = read("src/components/ui-version-switch.tsx");
-    expect(sw).not.toContain("isBeta");
-    expect(sw).not.toContain("MaturityBadge");
   });
 
   const V2_ROUTES = [
