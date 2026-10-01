@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { timelineEvents } from "../src/lib/lead-followup";
 
 /**
  * The lead panel's email copy is GA: every reader sees the words of every message, ours
@@ -27,8 +28,15 @@ describe("the lead panel shows every email body to every reader", () => {
   });
 
   it("keeps the draft row, and every other row", () => {
-    expect(TIMELINE).toContain("const visible = history.events;");
+    // The only row dropped is the follow-up schedule, which the foot notice states.
+    expect(TIMELINE).toContain("timelineEvents(history.events, { showsNextFollowup: showNextFollowup })");
     expect(TIMELINE).not.toContain('e.type !== "generated_email"');
+    const rows = [{ type: "generated_email" }, { type: "email" }, { type: "reply" }, { type: "followup" }];
+    expect(timelineEvents(rows, { showsNextFollowup: true }).map((e) => e.type)).toEqual([
+      "generated_email",
+      "email",
+      "reply",
+    ]);
   });
 
   it("carries no beta badge on the copy", () => {

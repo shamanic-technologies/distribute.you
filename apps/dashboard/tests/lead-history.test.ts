@@ -179,11 +179,12 @@ describe("the panel derives nothing of its own", () => {
     expect(timeline).toContain(".map((e, i) =>");
   });
 
-  // No filter at all: every row the producer sent is drawn, with its words, for every
-  // reader. A filter here would be re-deciding what happened, which is the producer's.
+  // Every row the producer sent is drawn, with its words, for every reader. The one
+  // exception is the follow-up schedule on a timeline that mounts the foot notice: that
+  // notice states it, and drawing it twice put one statement on screen twice.
   it("draws every row the producer sent", () => {
     expect(timeline).not.toContain(".filter(");
-    expect(timeline).toContain("const visible = history.events;");
+    expect(timeline).toContain("timelineEvents(history.events, { showsNextFollowup: showNextFollowup })");
   });
 
   // A type this build does not know renders nothing rather than a guess at the nearest
