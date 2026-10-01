@@ -18,6 +18,13 @@ import {
   type CostMargin,
   type CurrentPrice,
   type PriceVersion,
+  MarginTimeseriesSchema,
+  PaymentSourcesSchema,
+  ProviderSourcesListSchema,
+  ProviderSourcesRowSchema,
+  type MarginTimeseries,
+  type PaymentSource,
+  type ProviderSourcesRow,
 } from "./monitoring/monitoring";
 import {
   LeadBucketCountsSchema,
@@ -1347,6 +1354,9 @@ export const STAFF_MONITORING_PATHS = {
   margin: "/runs/stats/costs/margin",
   priceVersions: "/costs/vendor-costs",
   emails: "/instantly/stats",
+  marginTimeseries: "/runs/stats/costs/margin/timeseries",
+  paymentSources: "/costs/payment-sources",
+  providerSources: "/costs/provider-payment-sources",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -1374,6 +1384,28 @@ export async function getStaffCurrentPrices(): Promise<CurrentPrice[]> {
 export async function getStaffEmailsSent(): Promise<{ emails: number; people: number }> {
   const s = parseStaff("getStaffEmailsSent", FleetEmailStatsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.emails));
   return { emails: s.emailStats.sent, people: s.recipientStats.sent };
+}
+
+// Per provider per month (runs-service) and the accounts paying each vendor (costs-service).
+export async function getStaffMarginTimeseries(): Promise<MarginTimeseries> {
+  return parseStaff("getStaffMarginTimeseries", MarginTimeseriesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.marginTimeseries));
+}
+
+export async function getStaffPaymentSources(): Promise<PaymentSource[]> {
+  return parseStaff("getStaffPaymentSources", PaymentSourcesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.paymentSources)).sources;
+}
+
+export async function getStaffProviderSources(): Promise<ProviderSourcesRow[]> {
+  return parseStaff("getStaffProviderSources", ProviderSourcesListSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.providerSources)).providers;
+}
+
+/** Replaces one provider's sources (`[]` clears). costs-service refuses an unknown key (400). */
+export async function setStaffProviderSources(provider: string, sources: string[]): Promise<ProviderSourcesRow> {
+  return parseStaff(
+    "setStaffProviderSources",
+    ProviderSourcesRowSchema,
+    await apiCall<unknown>(`${STAFF_MONITORING_PATHS.providerSources}/${encodeURIComponent(provider)}`, { method: "PUT", body: { sources } }),
+  );
 }
 
 // Brands
