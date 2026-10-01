@@ -335,7 +335,8 @@ export type SubscriptionCost = SubscriptionCosts["subscriptions"][number];
 const Num = z.number().nullable();
 const RealCostFields = {
   costName: z.string(),
-  provider: z.string(),
+  // Null on a legacy cost name runs-service recorded that the catalogue no longer carries (prod, v0.71.3).
+  provider: z.string().nullable(),
   method: z.string(),
   flag: z.string().nullable(),
   realCostPerUnitUsdCents: Num,
