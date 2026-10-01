@@ -200,12 +200,13 @@ function MissionSection({
     return priced;
   }, [r.ranked, bySlug, basis]);
   // The mission's own live figures (its campaign grain + its realized return), with the
-  // row that goes first (rank 1) and the first mature row (where the money settles).
+  // row that goes first (rank 1) and the producer's recommendation (where the money goes).
   const live = useMemo(() => {
     const roiBySlug = new Map(r.rows.map((row) => [row.workflowDynastySlug, workflowRoi(row, basis).value]));
     return missionWorkflowRows({
       ladderRows: r.allLadderRows as unknown as MissionLadderRow[],
       roiBySlug,
+      recommendedSlug: r.ladder?.recommendedWorkflowDynastySlug ?? null,
     });
   }, [r.allLadderRows, r.rows, r.ladder, basis]);
   const liveBySlug = useMemo(() => new Map(live.map((row) => [row.slug, row])), [live]);
@@ -353,20 +354,32 @@ function CostCell({ figure, unit }: { figure: ReturnType<typeof grainFigures>; u
         // or a column reads blank beside an Invested figure for the same money.
         <span className="inline-flex flex-col items-end leading-tight">
           <span className="k-chip">Learning</span>
-          {figure.spentUsd != null && figure.spentUsd > 0 && (
-            <span className="k-fg3 mt-0.5 text-[11px]">
-              {formatUsdAdaptive(figure.spentUsd)} spent, {figure.outcomeCount ?? 0}{" "}
-              {unit === "/ visit" ? (figure.outcomeCount === 1 ? "visit" : "visits") : figure.outcomeCount === 1 ? "reply" : "replies"}
-            </span>
-          )}
+          <SpentLine figure={figure} unit={unit} />
         </span>
       ) : value == null ? (
-        <span className="k-fg4">—</span>
+        // No price yet (zero outcomes, e.g. on the flash basis) but money went out: state the
+        // spend rather than a dash beside an Invested figure for the same money.
+        figure?.spentUsd != null && figure.spentUsd > 0 ? (
+          <SpentLine figure={figure} unit={unit} />
+        ) : (
+          <span className="k-fg4">—</span>
+        )
       ) : (
         <>
           {formatUsdAdaptive(value)} <span className="k-fg3 text-[12px]">{unit}</span>
         </>
       )}
     </td>
+  );
+}
+
+/** What a grain spent and the outcomes it bought, for a cell that states no price. */
+function SpentLine({ figure, unit }: { figure: NonNullable<ReturnType<typeof grainFigures>>; unit: string }) {
+  if (figure.spentUsd == null || figure.spentUsd <= 0) return null;
+  const n = figure.outcomeCount ?? 0;
+  return (
+    <span className="k-fg3 mt-0.5 block text-[11px]">
+      {formatUsdAdaptive(figure.spentUsd)} spent, {n} {unit === "/ visit" ? (n === 1 ? "visit" : "visits") : n === 1 ? "reply" : "replies"}
+    </span>
   );
 }

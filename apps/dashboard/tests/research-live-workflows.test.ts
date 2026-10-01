@@ -81,6 +81,7 @@ describe("missionWorkflowRows", () => {
         ladder("c", { rank: 3, maturity: { isMature: true }, estimatesByGrain: { crossOrg: { isMature: true, flash: half(1, 1, 1), mature: half(1, 1, 1) } } }),
       ],
       roiBySlug: new Map([["a", 3]]),
+      recommendedSlug: null,
     });
     expect(mature).toMatchObject({ slug: "a", mature: true, costPerOutcomeUsd: 10, outcomes: 2, spentUsd: 20, roiMultiple: 3, ran: true });
     // Zero outcomes states no price, never the spend as a floor.
@@ -89,9 +90,10 @@ describe("missionWorkflowRows", () => {
     expect(never).toMatchObject({ slug: "c", ran: false, costPerOutcomeUsd: null, mature: true });
   });
 
-  // Prod 2026-09-30 (brand f2408cfb, Herald): Torrent, Concerto, Raven are learning at ranks
-  // 1-3, Nobelium is the first mature at rank 4. Goes first = Torrent, money = Nobelium.
-  it("goes first = rank 1 whatever its verdict; money = the first MATURE row in rank order", () => {
+  // Prod 2026-10-01 (brand c4b5284d): the rank tied on the offer and fell back to the slug, so
+  // the first mature row was Dawn ($4.73/visit) while the producer recommended and ran Osprey
+  // ($2.26/visit). The money row is the producer's recommendation, read, never re-derived.
+  it("goes first = rank 1 whatever its verdict; money = the producer's recommendation", () => {
     const out = missionWorkflowRows({
       ladderRows: [
         ladder("azalea", { rank: 6, maturity: { isMature: true } }),
@@ -101,10 +103,11 @@ describe("missionWorkflowRows", () => {
         ladder("nobelium", { rank: 4, maturity: { isMature: true } }),
       ],
       roiBySlug: new Map(),
+      recommendedSlug: "azalea",
     });
     expect(out.map((r) => r.slug)).toEqual(["torrent", "concerto", "raven", "nobelium", "azalea"]);
     expect(out.find((r) => r.first)?.slug).toBe("torrent");
-    expect(out.find((r) => r.cash)?.slug).toBe("nobelium");
+    expect(out.find((r) => r.cash)?.slug).toBe("azalea");
     expect(out.filter((r) => r.cash)).toHaveLength(1);
   });
 
@@ -116,15 +119,17 @@ describe("missionWorkflowRows", () => {
         ladder("y", { rank: 3, maturity: { isMature: true } }),
       ],
       roiBySlug: new Map(),
+      recommendedSlug: "dep",
     });
     expect(out.find((r) => r.first)?.slug).toBe("x");
-    expect(out.find((r) => r.cash)?.slug).toBe("y");
+    expect(out.some((r) => r.cash)).toBe(false);
   });
 
-  it("drops audience rows; nothing mature = no money row", () => {
+  it("drops audience rows; no recommendation = no money row", () => {
     const out = missionWorkflowRows({
       ladderRows: [ladder("a", { rank: 1, maturity: { isMature: false } }), ladder("a", { rank: 1, audienceId: "aud-1" })],
       roiBySlug: new Map(),
+      recommendedSlug: null,
     });
     expect(out.map((r) => r.slug)).toEqual(["a"]);
     expect(out.some((r) => r.cash)).toBe(false);
@@ -136,6 +141,7 @@ describe("missionWorkflowRows", () => {
     const out = missionWorkflowRows({
       ladderRows: [ladder("rhodium", { rank: 1, legAssignment: { state: "unassigned", selectable: false } })],
       roiBySlug: new Map(),
+      recommendedSlug: null,
     });
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ slug: "rhodium", first: false });
@@ -166,8 +172,19 @@ describe("research reads nothing scoped to the viewer", () => {
 describe("the brand Workflows page states the mission's own live figures", () => {
   it("a learning Offer/Brand cell states what the grain spent, beside the Learning chip", () => {
     const cost = page.slice(page.indexOf("function CostCell("));
-    expect(cost).toContain("spent,");
-    expect(cost).toContain("figure.spentUsd");
+    expect(cost).toContain("<SpentLine figure={figure} unit={unit} />");
+    expect(page).toContain("spent, {n}");
+  });
+
+  it("an unpriced cell that spent states the spend, not a dash (flash basis, zero outcomes)", () => {
+    const cost = page.slice(page.indexOf("function CostCell("), page.indexOf("function SpentLine("));
+    const unpriced = cost.slice(cost.indexOf(": value == null ? ("));
+    expect(unpriced.indexOf("<SpentLine")).toBeGreaterThan(-1);
+    expect(unpriced.indexOf("<SpentLine")).toBeLessThan(unpriced.indexOf("k-fg4"));
+  });
+
+  it("the money row is the producer's recommendation", () => {
+    expect(page).toContain("recommendedSlug: r.ladder?.recommendedWorkflowDynastySlug ?? null");
   });
 
   const page = readFileSync(join(__dirname, "../src/components/v2/workflows-page.tsx"), "utf8");
