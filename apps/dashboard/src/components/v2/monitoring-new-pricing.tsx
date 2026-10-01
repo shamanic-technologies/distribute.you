@@ -77,7 +77,7 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const methods = [...new Set(d.items.map((i) => i.method))];
-  const rows = d.items.filter((i) => (method == null || i.method === method) && (!search || i.costName.includes(search.toLowerCase()) || i.provider.includes(search.toLowerCase())));
+  const rows = d.items.filter((i) => (method == null || i.method === method) && (!search || i.costName.includes(search.toLowerCase()) || (i.provider ?? "").includes(search.toLowerCase())));
   const count = (m: string | null) => (m == null ? d.items.length : d.items.filter((i) => i.method === m).length);
   return (
     <div className="space-y-8">
@@ -210,7 +210,7 @@ function ItemRow({ i, open, onToggle }: { i: RealCostItem; open: boolean; onTogg
       >
         <td className={TD}>
           <span className="k-mono text-[12px]">{i.costName}</span>
-          <span className="k-fg3 ml-2 text-[12px]">{i.provider}</span>
+          <span className="k-fg3 ml-2 text-[12px]">{i.provider ?? "legacy name"}</span>
         </td>
         <td className={`${TD} k-fg2`}>
           {label(METHOD_LABEL, i.method)}

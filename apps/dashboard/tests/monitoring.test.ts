@@ -421,7 +421,7 @@ describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", ()
     const p = RealCostsSchema.parse({
       formula: "f", rules: { since: "2026-01-01", proposedMultiplier: 2, passThroughMultiplier: 1, x1Rule: "x1", payAsYouGoVendors: [], catalogueVendorCostProviders: {} },
       day: "2026-10-01", asOf: "2026-10-01", refreshedAt: "2026-10-01T15:00:00Z", stale: false, lastRefresh: null, payAsYouGo: [],
-      items: [item, { ...item, costName: "explee-credit", method: "catalogue-vendor-cost", flag: "a-flag-added-later", realCostPerUnitUsdCents: null, proposedBasis: "current-price-kept" }],
+      items: [item, { ...item, costName: "explee-credit", method: "catalogue-vendor-cost", flag: "a-flag-added-later", realCostPerUnitUsdCents: null, proposedBasis: "current-price-kept" }, { ...item, costName: "instantly-email-send", provider: null }],
     });
     expect(p.items[1].flag).toBe("a-flag-added-later");
   });
