@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { checkProxyOrg } from "@/lib/proxy-org";
+import { getOrgName } from "@/lib/org-name";
 
 export const maxDuration = 300;
 
@@ -81,6 +82,11 @@ async function proxyRequest(
     // Send exactly what Clerk has, or send nothing at all: never derive, normalize
     // or substitute a value, and omit the header rather than sending a blank one.
     if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;
+
+    // The org's display name, verbatim, so client-service records it (GET /v1/me
+    // names the org a key acts in). Absent when Clerk has none.
+    const clerkOrgName = await getOrgName(clerkOrgId);
+    if (clerkOrgName) headers["x-org-name"] = clerkOrgName;
 
     const body =
       req.method !== "GET" && req.method !== "HEAD"

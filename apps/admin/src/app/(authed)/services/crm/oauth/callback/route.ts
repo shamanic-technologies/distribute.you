@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { getOrgName } from "@/lib/org-name";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -57,6 +58,8 @@ export async function GET(req: NextRequest) {
   // switched into. client-service stores it the first time it sees one, and that
   // stored slug is the org's referral invite code.
   if (orgSlug) headers["x-org-slug"] = orgSlug;
+  const orgName = await getOrgName(orgId);
+  if (orgName) headers["x-org-name"] = orgName;
 
   const user = await currentUser();
   if (user) {

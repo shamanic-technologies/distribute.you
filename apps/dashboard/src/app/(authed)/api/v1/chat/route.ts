@@ -6,6 +6,7 @@ import {
   type UIMessageStreamWriter,
 } from "ai";
 import { checkProxyOrg } from "@/lib/proxy-org";
+import { getOrgName } from "@/lib/org-name";
 
 export const maxDuration = 300;
 
@@ -73,6 +74,11 @@ export async function POST(req: NextRequest) {
   // stores it the first time it sees one, and that stored slug is the org's referral
   // invite code — so this heals orgs that predate the header.
   if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;
+
+  // The org's display name, verbatim, so client-service records it (GET /v1/me
+  // names the org a key acts in). Absent when Clerk has none.
+  const clerkOrgName = await getOrgName(clerkOrgId);
+  if (clerkOrgName) headers["x-org-name"] = clerkOrgName;
 
   // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
   try {
