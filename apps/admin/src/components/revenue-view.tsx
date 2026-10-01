@@ -548,7 +548,7 @@ export function RevenueView({
   // under an agency org that nobody has stated an amount for yet. Served so the
   // gap is visible instead of quietly shrinking the total.
   const unstatedAgencyUsd =
-    split && split.currentAgencyBudgetMrrUsd > split.currentAgencyMrrUsd
+    split && split.currentAgencyBudgetMrrUsd !== null && split.currentAgencyBudgetMrrUsd > split.currentAgencyMrrUsd
       ? split.currentAgencyBudgetMrrUsd - split.currentAgencyMrrUsd
       : 0;
   // Named rather than silently missing from the curve. Both halves are SUMS now,
@@ -703,7 +703,7 @@ export function RevenueView({
           units, not two answers, so they can never disagree. */}
       <SectionHeading
         title="Monthly run-rate"
-        blurb="What the fleet is worth per month, in the two halves it is actually earned in. A SELF-SERVE customer pays through the product, so what they are worth IS their daily budget × 30, counted on a day only when they were paying, their campaign was running, a budget was in force, and they still had people to contact. An AGENCY does not pay that way: it hands over cash at its own discretion and somebody then decides how that cash is spread into daily budgets across its brands, so there the budget says how the money was split and never what the customer is worth. Only what a human states does. Both halves are sums over customers who never overlap, so they add up."
+        blurb="What the fleet is worth per month, in the two halves it is actually earned in. A SELF-SERVE customer is worth billing's recurring revenue above: postpaid with a card, or prepaid with auto top-up and a card, counting only its daily campaigns that are running and still have people to contact, × 30. An AGENCY does not pay that way: it hands over cash at its own discretion and somebody then decides how that cash is spread into daily budgets across its brands, so there the budget says how the money was split and never what the customer is worth. Only what a human states does. Both halves are sums over customers who never overlap, so they add up."
       />
 
       {splitUnavailable ? (
@@ -723,8 +723,8 @@ export function RevenueView({
               value={split && split.currentSelfServeMrrUsd !== null ? usdFull(split.currentSelfServeMrrUsd) : "—"}
               detail={
                 split && split.currentSelfServeArrUsd !== null
-                  ? `${usdFull(split.currentSelfServeArrUsd)} a year. Daily budgets × 30, summed over every non-agency customer that was earning today`
-                  : "Daily budgets × 30, summed over every non-agency customer that was earning today"
+                  ? `${usdFull(split.currentSelfServeArrUsd)} a year. Billing's recurring revenue over every non-agency customer`
+                  : "Billing's recurring revenue over every non-agency customer"
               }
               accent="bg-brand-500"
               pending={isPending || !derived}
@@ -757,6 +757,16 @@ export function RevenueView({
               a brand under an agency org nobody has stated an amount for yet.
               Stated rather than absorbed: without it the total silently sits
               below the fleet figure and nothing says why. */}
+          {split?.basisChangedOn && (
+            <section className="rounded-lg border border-gray-200 bg-white p-4">
+              <p className="text-sm text-gray-600">
+                The self-serve series follows billing&apos;s recurring revenue from {split.basisChangedOn}. Points
+                before that day were counted on the older running-budget rule, so a jump across that day is a change
+                of rule, not of business.
+              </p>
+            </section>
+          )}
+
           {unmeasurable.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-white p-4">
               <p className="text-sm text-amber-700">
@@ -889,7 +899,7 @@ export function RevenueView({
           <section className="grid gap-6 md:grid-cols-2">
             <RunRateLineCard
               label="Monthly self-serve MRR"
-              subtitle="Daily budgets × 30 for every org that is not an agency, recorded daily."
+              subtitle="Recurring revenue of every org that is not an agency, recorded daily."
               summary={
                 derived?.monthlySelfServeRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
               }
@@ -902,7 +912,7 @@ export function RevenueView({
             />
             <RunRateLineCard
               label="Weekly self-serve MRR"
-              subtitle="Daily budgets × 30 for every org that is not an agency, recorded weekly."
+              subtitle="Recurring revenue of every org that is not an agency, recorded weekly."
               summary={
                 derived?.weeklySelfServeRunRate ?? { latestUsd: null, cmgrPct: null, periodsSpanned: null }
               }

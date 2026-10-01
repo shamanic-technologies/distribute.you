@@ -169,14 +169,14 @@ export default function AuditAccountsPage() {
             />
             <StatCard
               label="MRR"
-              value={s ? usd0(s.mrrUsd) : "—"}
-              sub="running budget × 30"
+              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : "—"}
+              sub="recurring customers, from billing"
               pending={isPending}
             />
             <StatCard
               label="ARR"
-              value={s ? usd0(s.arrUsd) : "—"}
-              sub="running budget × 365"
+              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : "—"}
+              sub="MRR × 12"
               pending={isPending}
             />
             <StatCard
