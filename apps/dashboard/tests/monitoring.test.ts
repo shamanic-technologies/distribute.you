@@ -426,6 +426,17 @@ describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", ()
     expect(p.items[1].flag).toBe("a-flag-added-later");
   });
 
+  it("a split pay-as-you-go vendor parses with its parts, and the page shows which part prices units", () => {
+    const part = (p: string, c: number, loaded: boolean) => ({ part: p, usdCents: c, basis: "b", loadedOnUnits: loaded, flag: loaded ? null : "f" });
+    const v = { provider: "google", ledgerVendors: ["google cloud"], paidUsdCents: 554840, refundedUsdCents: 0, netPaidUsdCents: 554840, vendorCostRecordedUsdCents: 42865, ratio: 1.44, numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 61749, split: { parts: [part("metered", 61749, true), part("other-services", 1717, false)], unexplained: { usdCents: 400000, basis: null, loadedOnUnits: false, flag: "u" } } };
+    const base = { formula: "f", rules: { since: "2026-01-01", proposedMultiplier: 2, passThroughMultiplier: 1, x1Rule: "x1", payAsYouGoVendors: [], catalogueVendorCostProviders: {} }, day: "2026-10-01", asOf: "2026-10-01", refreshedAt: "2026-10-01T17:16:00Z", stale: false, lastRefresh: null, items: [] };
+    const p = RealCostsSchema.parse({ ...base, payAsYouGo: [v, { ...v, provider: "openai", numeratorBasis: "ledger-net-paid", meteredUsdCents: null, split: null }] });
+    expect(p.payAsYouGo[0].split?.parts).toHaveLength(2);
+    const view = read("components/v2/monitoring-new-pricing.tsx");
+    expect(view).toContain("const counted = v.split ? v.meteredUsdCents : v.netPaidUsdCents;");
+    expect(view).toContain("<th className={THR}>Counted as usage</th>");
+  });
+
   it("the comparison parses at fleet grain (per org and brand) and at org x brand grain (none)", () => {
     const base = { perimeter: { grain: "fleet" }, list1: { source: "catalogue", date: "2026-10-01" }, list2: { source: "proposed", date: "2026-10-01" }, interval: "month", consumptionAsOf: "2026-10-01T15:00:00Z", stale: false, notes: [], totals: fig, unpricedCostNames1: ["instantly-account-email-sent"], unpricedCostNames2: [], realCostUnknownCostNames: [], buckets: [{ period: "2026-09-01", ...fig, cumulative: fig }], costItems: [] };
     expect(PriceComparisonSchema.parse({ ...base, byOrg: [{ orgId: "o", ...fig }], byBrand: [{ orgId: "o", brandId: null, ...fig }] }).byOrg).toHaveLength(1);

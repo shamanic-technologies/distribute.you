@@ -156,7 +156,7 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
       </section>
 
       <section>
-        <SectionTitle count={d.payAsYouGo.length} right={<span>Bank ledger over what our runs recorded, since {dayLabel(d.rules.since)}</span>}>
+        <SectionTitle count={d.payAsYouGo.length} right={<span>What we paid for usage over what our runs recorded</span>}>
           Pay-as-you-go correction
         </SectionTitle>
         <div className="k-card overflow-x-auto">
@@ -168,31 +168,69 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
                 <th className={THR}>Paid</th>
                 <th className={THR}>Refunded</th>
                 <th className={THR}>Net paid</th>
+                <th className={THR}>Counted as usage</th>
                 <th className={THR}>Recorded by our runs</th>
                 <th className={THR}>Correction</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line-subtle)]">
               {d.payAsYouGo.map((v) => (
-                <tr key={v.provider} className="k-row">
-                  <td className={TD}>{v.provider}</td>
-                  <td className={`${TD} k-mono k-fg2 text-[12px]`}>{v.ledgerVendors.join(", ") || <Dash />}</td>
-                  <td className={TDR}>{dollars(v.paidUsdCents / 100)}</td>
-                  <td className={`${TDR} k-fg2`}>{v.refundedUsdCents ? dollars(v.refundedUsdCents / 100) : <Dash />}</td>
-                  <td className={TDR}>{dollars(v.netPaidUsdCents / 100)}</td>
-                  <td className={`${TDR} k-fg2`}>{dollars(v.vendorCostRecordedUsdCents / 100)}</td>
-                  <td className={`${TDR} font-medium`}>{ratio(v.ratio) ?? <Dash />}</td>
-                </tr>
+                <PaygRows key={v.provider} v={v} />
               ))}
             </tbody>
           </table>
           <p className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-            The correction multiplies the vendor&apos;s list cost: it carries what the bank paid that our runs did not record. Not counted as API usage:{" "}
+            The correction multiplies the vendor&apos;s list cost by what we paid for usage over what our runs recorded. A split vendor counts only its metered part; the other parts are shown under it and price no unit. Not counted as API usage:{" "}
             {d.rules.payAsYouGoVendors.flatMap((v) => v.excludedLedgerVendors.map((e) => `${e.key} (${e.reason})`)).join(", ") || "none"}.
           </p>
         </div>
       </section>
     </div>
+  );
+}
+
+const PART_LABEL: Record<string, string> = {
+  metered: "Metered usage",
+  "other-services": "Other services",
+  rental: "Phone number rental",
+  other: "Other usage",
+  "unconsumed-balance": "Prepaid, not consumed",
+  tax: "Tax",
+  adjustments: "Adjustments",
+  prepayments: "Prepayments",
+};
+
+/** A vendor's row; a split vendor lists what its bank money paid for under it, counted or not. */
+function PaygRows({ v }: { v: RealCosts["payAsYouGo"][number] }) {
+  const counted = v.split ? v.meteredUsdCents : v.netPaidUsdCents;
+  return (
+    <>
+      <tr className="k-row">
+        <td className={TD}>{v.provider}</td>
+        <td className={`${TD} k-mono k-fg2 text-[12px]`}>{v.ledgerVendors.join(", ") || <Dash />}</td>
+        <td className={TDR}>{dollars(v.paidUsdCents / 100)}</td>
+        <td className={`${TDR} k-fg2`}>{v.refundedUsdCents ? dollars(v.refundedUsdCents / 100) : <Dash />}</td>
+        <td className={TDR}>{dollars(v.netPaidUsdCents / 100)}</td>
+        <td className={`${TDR} font-medium`}>{counted == null ? <Dash /> : dollars(counted / 100)}</td>
+        <td className={`${TDR} k-fg2`}>{dollars(v.vendorCostRecordedUsdCents / 100)}</td>
+        <td className={`${TDR} font-medium`}>{ratio(v.ratio) ?? <Dash />}</td>
+      </tr>
+      {v.split &&
+        [...v.split.parts, { part: "unexplained", ...v.split.unexplained }].map((p) => (
+          <tr key={`${v.provider}:${p.part}`} className="k-row">
+            <td className={`${TD} k-fg3 pl-8 text-[12px]`} colSpan={2}>
+              {p.part === "unexplained" ? "Not explained by the vendor" : (PART_LABEL[p.part] ?? p.part)}
+              {p.basis && <span className="k-fg4 ml-2 line-clamp-1 inline">{p.basis.split(" | ")[0]}</span>}
+            </td>
+            <td className={`${TDR} k-fg2 text-[12px]`} colSpan={3}>
+              {dollars(p.usdCents / 100)}
+            </td>
+            <td className={`${TDR} text-[12px]`} colSpan={3}>
+              {p.loadedOnUnits ? <span style={{ color: "var(--data-teal)" }}>Counted</span> : <span className="k-fg3">Not counted</span>}
+            </td>
+          </tr>
+        ))}
+    </>
   );
 }
 

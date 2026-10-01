@@ -349,6 +349,8 @@ const RealCostFields = {
   proposedBasis: z.string(),
   proposedVsCataloguePct: Num,
 };
+/** One slice of a split vendor's bank money; only `loadedOnUnits` slices price a unit. */
+const SplitPart = z.object({ part: z.string(), usdCents: z.number(), basis: z.string().nullable(), loadedOnUnits: z.boolean(), flag: z.string().nullable() });
 const RefreshShape = z
   .object({ status: z.string(), asOf: z.string(), startedAt: z.string(), finishedAt: z.string().nullable(), error: z.string().nullable() })
   .nullable();
@@ -385,6 +387,16 @@ export const RealCostsSchema = z.object({
       netPaidUsdCents: z.number(),
       vendorCostRecordedUsdCents: z.number(),
       ratio: Num,
+      // What the ratio's numerator is: the whole bank block ("ledger-net-paid") or only the metered part
+      // of a split vendor (Google from its billing export, Twilio from its usage records).
+      numeratorBasis: z.string(),
+      meteredUsdCents: Num,
+      split: z
+        .object({
+          parts: z.array(SplitPart),
+          unexplained: SplitPart.omit({ part: true }),
+        })
+        .nullable(),
     }),
   ),
   items: z.array(z.object(RealCostFields)),
