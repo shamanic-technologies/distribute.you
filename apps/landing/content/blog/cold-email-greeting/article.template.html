@@ -1,9 +1,10 @@
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
 <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
-<p style="margin:0 0 8px;font-weight:600;color:#0f172a">The cold email greeting that gets the click is not the one that gets the reply:</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Skip the greeting when your cold email asks for a click:</p>
 <ul style="margin:0;padding-left:20px">
-<li><strong>{{usd v.none.cost}} per website visit</strong> with no greeting, against {{usd v.name.cost}} with the first name alone and {{usd v.greet.cost}} with "Hi" and the first name</li>
-<li><strong>{{usd r.greet.cost}} per positive reply</strong> with "Hi" and the first name, against {{usd r.name.cost}} with the first name alone and {{usd r.none.cost}} with no greeting</li>
+<li><strong>{{lift v.none.rate v.name.rate}} website visits</strong> with no greeting, against the first name alone</li>
+<li><strong>{{lift v.none.rate v.greet.rate}} website visits</strong> with no greeting, against "Hi" and the first name</li>
+<li>On positive replies, the opening made no measurable difference</li>
 </ul>
 </div>
 
@@ -11,7 +12,7 @@
 
 <p>Every cold email opens somehow. "Hi Marie," is the polite default. "Marie," alone is shorter and reads like a note from a colleague. Some emails skip both and open on the point.</p>
 
-<p>We write cold emails for our clients, and until recently the model writing them picked the opening on its own. So all three openings are in our data. We counted which one costs less for the two things a first email can ask for: a click, or a reply.</p>
+<p>We write cold emails for our clients, and until recently the model writing them picked the opening on its own. So all three openings are in our data. We counted which one works better for the two things a first email can ask for: a click, or a reply.</p>
 
 <h2 id="the-data">The data</h2>
 
@@ -21,37 +22,38 @@
 
 <h2 id="the-answer">The answer</h2>
 
-<p><strong>The greeting that gets the click is not the one that gets the reply.</strong> When the email asks for a website visit, skipping the greeting was cheapest: a visit cost you <strong>{{usd v.none.cost}}</strong> with no greeting, against {{usd v.name.cost}} with the first name alone.</p>
+<p><strong>Skipping the greeting got more clicks.</strong> When the email asks for a website visit, <strong>{{pct v.none.rate}}</strong> of emails with no greeting got one, against {{pct v.name.rate}} with the first name alone and {{pct v.greet.rate}} with "Hi" and the first name. That is <strong>{{lift v.none.rate v.name.rate}} visits</strong> against "Marie,", and <strong>{{lift v.none.rate v.greet.rate}}</strong> against the full "Hi Marie,".</p>
 
 {{chart visit}}
 
-<p>When the email asks for a reply, the order flips. "Hi" plus the first name was cheapest: a positive reply cost you <strong>{{usd r.greet.cost}}</strong>, against {{usd r.none.cost}} with no greeting.</p>
+<h2 id="replies">Replies: the opening made no measurable difference</h2>
 
-{{chart reply}}
+<p>When the email asks for a reply, the three openings landed too close to rank. Positive replies are rare, and the gap between the openings is smaller than what chance alone moves at this volume.</p>
+
+<p>So when you want a reply, stop agonizing over "Hi".</p>
 
 <h2 id="the-rule">The rule this points to</h2>
 
-<p><strong>An email that asks for a click can skip the hello. An email that asks for a conversation says hello first.</strong></p>
+<p><strong>Want the click? Skip the hello.</strong> Open on the point and put the link in front of the reader sooner.</p>
 
-<p>Pick the opening by what the email asks for, not by habit. The same "Hi Marie," that earns the cheapest reply was not the cheapest way to earn a visit.</p>
+<p>Want a reply? Open however reads natural to you. Our data shows no opening winning there.</p>
 
-<h2 id="why">Why the two outcomes disagree</h2>
+<h2 id="why">Why skipping the hello helps the click</h2>
 
-<p>Our reading, not something this data proves on its own. A website visit is a one-click decision. An email that gets straight to the point puts the offer and the link in front of the reader sooner, and a salutation adds nothing to that decision. A reply is the start of a conversation, and people answer people. "Hi Marie," reads as one person writing to another, which is the tone a prospect answers.</p>
+<p>Our reading: a website visit is a one-click decision. An email that gets straight to the point puts the offer and the link in front of the reader sooner, and a salutation is one more line before it.</p>
 
-<h2 id="the-limits">What this data cannot tell you</h2>
+<h2 id="the-limits">Notes</h2>
 
 <ul>
-<li>This is not a split test: the three openings ran for different clients, audiences and months. Read it as a direction.</li>
-<li>Positive replies are rare. With no greeting there are only {{n r.none.outcomes}}, so the reply ranking is directional.</li>
-<li>The visit result depends on the model tier. With our Flash models, no greeting was cheapest. With our Pro models, "Hi" and the first name was cheapest at {{usd v.tiers.Pro.greet.cost}}, but on only {{n v.tiers.Pro.greet.outcomes}} visits, too few to call.</li>
-<li>Our templates have required a greeting since {{day greetingRequiredSince}}. Every email here was written before that.</li>
-<li>{{n crmRepliesAdded}} of the positive replies were recorded by the client in their CRM (a phone call, a LinkedIn message).</li>
+<li>This is not a split test: the three openings ran for different clients, audiences, months and models.</li>
+<li>With our Flash models, no greeting got a visit on {{pct v.tiers.Flash.none.rate}} of emails, against {{pct v.tiers.Flash.name.rate}} with the first name alone and {{pct v.tiers.Flash.greet.rate}} with "Hi" and the first name. With our Pro models, no greeting and the first name alone tied ({{pct v.tiers.Pro.none.rate}} and {{pct v.tiers.Pro.name.rate}}).</li>
+<li>95% intervals on the visit rate: no greeting {{pct v.none.lo}} to {{pct v.none.hi}}, first name alone {{pct v.name.lo}} to {{pct v.name.hi}}, "Hi" and the first name {{pct v.greet.lo}} to {{pct v.greet.hi}}.</li>
+<li>Positive replies per 10,000 emails: {{per10k r.greet.rate}} with "Hi" and the first name ({{per10k r.greet.lo}} to {{per10k r.greet.hi}}), {{per10k r.name.rate}} with the first name alone ({{per10k r.name.lo}} to {{per10k r.name.hi}}), {{per10k r.none.rate}} with no greeting ({{per10k r.none.lo}} to {{per10k r.none.hi}}).</li>
 </ul>
 
 <h2 id="method">Method</h2>
 
-<p>Every cold email sent from {{day windowFrom}}, read from our production database on {{day readOn}}. Only people we started writing to at least {{raw v.durationDays}} days before the read count, with every outcome they sent since. A website visit is counted only on emails that carry a link. The opening is read from the first email's text by a regex, no model involved: a greeting word in any language we write in (Hi, Hallo, Bonjour) counts as a greeting; a first name followed by a comma, a colon or a dash counts as the first name alone; anything else is no greeting. {{raw leftOut}} The cost is what the emails cost you to write and send. The scripts are on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/greeting">GitHub</a>.</p>
+<p>Every cold email sent from {{day windowFrom}}, read from our production database on {{day readOn}}. Only people we started writing to at least {{raw v.durationDays}} days before the read count, with every outcome they made since. A website visit is counted only on emails that carry a link. On emails we send ourselves, a click from a link scanner (a mail security bot that opens every link, such as Microsoft Safe Links) is not counted; on emails sent through Instantly, the count is Instantly's. {{n crmRepliesAdded}} positive replies were recorded by the client in their CRM. The opening is read from the first email's text by a regex. {{raw leftOut}} The scripts are on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/greeting">GitHub</a>.</p>
 
 <h2 id="about-us">About distribute.you</h2>
 

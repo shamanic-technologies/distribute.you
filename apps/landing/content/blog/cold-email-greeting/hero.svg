@@ -35,7 +35,7 @@
     <path d="M459 308 l8 8 l15 -16" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 
-  <!-- right: greeting and first name, the email asks for a reply -->
+  <!-- right: the email asks for a reply, the opening made no measurable difference -->
   <g transform="translate(830,400)">
     <rect x="0" y="0" width="540" height="360" rx="28" fill="#ffffff" stroke="#bfdbfe" stroke-width="2" filter="url(#shadow)"/>
     <rect x="36" y="36" width="230" height="40" rx="20" fill="#dbeafe"/>
@@ -44,7 +44,7 @@
     <rect x="36" y="168" width="420" height="14" rx="7" fill="#e2e8f0"/>
     <rect x="36" y="200" width="380" height="14" rx="7" fill="#e2e8f0"/>
     <rect x="36" y="232" width="260" height="14" rx="7" fill="#e2e8f0"/>
-    <text x="36" y="316" font-size="24" font-weight="600" fill="#1d4ed8">Say hello first</text>
+    <text x="36" y="316" font-size="24" font-weight="600" fill="#1d4ed8">Either works</text>
     <circle cx="470" cy="308" r="22" fill="#2563eb"/>
     <path d="M459 308 l8 8 l15 -16" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
