@@ -9,7 +9,7 @@ import { useRowKeys } from "@/components/v2/records";
 import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { grainFigures, scopeLadderRows } from "@/lib/workflow-grains";
+import { scopeLadderRows } from "@/lib/workflow-grains";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
@@ -192,22 +192,24 @@ function MissionSection({
     (name: string | null | undefined, slug: string) => shortWorkflowName(name ?? slug, channelName),
     [channelName],
   );
-  // Each grain states the served half of ITS maturity pair (mature for every reader,
-  // flash in the staff debug view), `Learning` where the producer says that grain is not
-  // mature. Rows stay in the producer's rank order (`r.ranked`); nothing is re-sorted here.
+  // Each grain cell states the price features-service PRICES that grain at (`legOutcome`): mature
+  // where the grain is mature, else its flash price with the cascade floor (a learning workflow's
+  // own spend with no outcome yet). The same figure it ranks on, one format in every cell (owner,
+  // 2026-10-01). An absent grain (never ran at that scope) states nothing. Rows stay in the
+  // producer's rank order (`r.ranked`); nothing is re-sorted here.
   const { basis } = useStatBasis();
   const rows = useMemo(() => {
     const priced = r.ranked.map((w) => {
       const ladder = bySlug.get(w.row.workflowDynastySlug) ?? null;
       return {
         w,
-        offer: grainFigures(ladder?.estimatesByGrain.offer, basis),
-        brand: grainFigures(ladder?.estimatesByGrain.brand, basis),
-        global: grainFigures(ladder?.estimatesByGrain.crossOrg, basis),
+        offer: ladder?.estimatesByGrain.offer?.legOutcome?.costPerOutcomeUsd ?? null,
+        brand: ladder?.estimatesByGrain.brand?.legOutcome?.costPerOutcomeUsd ?? null,
+        global: ladder?.estimatesByGrain.crossOrg?.legOutcome?.costPerOutcomeUsd ?? null,
       };
     });
     return priced;
-  }, [r.ranked, bySlug, basis]);
+  }, [r.ranked, bySlug]);
   // The mission's own live figures (its campaign grain + its realized return), with the
   // row that goes first (rank 1) and the producer's recommendation (where the money goes).
   const live = useMemo(() => {
@@ -315,9 +317,9 @@ function MissionSection({
                             {template?.label ?? <span className="k-fg4">{"—"}</span>}
                           </span>
                         </td>
-                        <CostCell figure={offer} unit={unit} />
-                        <CostCell figure={brand} unit={unit} />
-                        <CostCell figure={global} unit={unit} />
+                        <CostCell value={offer} unit={unit} />
+                        <CostCell value={brand} unit={unit} />
+                        <CostCell value={global} unit={unit} />
                         <LiveWorkflowCells row={liveRow} showCost={false} />
                         <td className="pl-3 pr-4 text-right">
                           <Link
@@ -356,41 +358,16 @@ function MissionSection({
   );
 }
 
-function CostCell({ figure, unit }: { figure: ReturnType<typeof grainFigures>; unit: string }) {
-  const value = figure?.costPerOutcomeUsd ?? null;
+function CostCell({ value, unit }: { value: number | null; unit: string }) {
   return (
     <td className="px-3 text-right tabular-nums">
-      {figure?.learning ? (
-        // A learning grain states no price, but what it SPENT is a total, not a ratio: say it,
-        // or a column reads blank beside an Invested figure for the same money.
-        <span className="inline-flex flex-col items-end leading-tight">
-          <span className="k-chip">Learning</span>
-          <SpentLine figure={figure} unit={unit} />
-        </span>
-      ) : value == null ? (
-        // No price yet (zero outcomes, e.g. on the flash basis) but money went out: state the
-        // spend rather than a dash beside an Invested figure for the same money.
-        figure?.spentUsd != null && figure.spentUsd > 0 ? (
-          <SpentLine figure={figure} unit={unit} />
-        ) : (
-          <span className="k-fg4">—</span>
-        )
+      {value == null ? (
+        <span className="k-fg4">—</span>
       ) : (
         <>
           {formatUsdAdaptive(value)} <span className="k-fg3 text-[12px]">{unit}</span>
         </>
       )}
     </td>
-  );
-}
-
-/** What a grain spent and the outcomes it bought, for a cell that states no price. */
-function SpentLine({ figure, unit }: { figure: NonNullable<ReturnType<typeof grainFigures>>; unit: string }) {
-  if (figure.spentUsd == null || figure.spentUsd <= 0) return null;
-  const n = figure.outcomeCount ?? 0;
-  return (
-    <span className="k-fg3 mt-0.5 block text-[11px]">
-      {formatUsdAdaptive(figure.spentUsd)} spent, {n} {unit === "/ visit" ? (n === 1 ? "visit" : "visits") : n === 1 ? "reply" : "replies"}
-    </span>
   );
 }
