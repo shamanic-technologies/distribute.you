@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { liveWorkflowRows, type LiveLadderRow } from "../src/lib/research/live-workflows";
+import { liveWorkflowRows, shortWorkflowName, type LiveLadderRow } from "../src/lib/research/live-workflows";
 
 function row(slug: string, o: Partial<LiveLadderRow> & { cost?: number | null; mature?: boolean | null } = {}): LiveLadderRow {
   return {
@@ -68,6 +68,18 @@ describe("liveWorkflowRows", () => {
   });
 });
 
+describe("shortWorkflowName", () => {
+  it("drops the channel name from the front", () => {
+    expect(shortWorkflowName("Sales Cold Email Outreach Maelstrom", "Sales Cold Email Outreach")).toBe("Maelstrom");
+    expect(shortWorkflowName("sales cold email outreach Bronze-2", "Sales Cold Email Outreach")).toBe("Bronze-2");
+  });
+  it("keeps a name that does not start with it, or would be left empty", () => {
+    expect(shortWorkflowName("Dawn", "Sales Cold Email Outreach")).toBe("Dawn");
+    expect(shortWorkflowName("Sales Cold Email Outreach", "Sales Cold Email Outreach")).toBe("Sales Cold Email Outreach");
+    expect(shortWorkflowName("Maelstrom", null)).toBe("Maelstrom");
+  });
+});
+
 describe("research workflows page call site", () => {
   const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
   const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
@@ -80,5 +92,10 @@ describe("research workflows page call site", () => {
     // A multi-offer brand 409s a campaign-less read, so a crew with no mission of its own
     // borrows any mission on the same channel to name the offer.
     expect(live).toContain("specs.find((s) => s.featureSlug === featureSlug))?.campaignId");
+    // Instant paint: the ladder does not wait for the missions to settle once a campaign is
+    // known, and the live list renders before the snapshot file has loaded.
+    expect(live).toContain("(settled || campaignId != null)");
+    expect(catalog).toContain('if (!catalog && !itemKey && kind === "workflows" && liveLeg != null)');
+    expect(live).toContain("{nameOf(r)}");
   });
 });

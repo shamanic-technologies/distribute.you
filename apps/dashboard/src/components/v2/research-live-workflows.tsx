@@ -14,7 +14,8 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { useBrandMissionSpecs } from "@/components/v2/workflows-data";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { CREW_KEY, researchCatalogHref, type ResearchCatalog, type ResearchCrew } from "@/lib/research/research";
-import { liveWorkflowRows, type LiveLadderRow } from "@/lib/research/live-workflows";
+import { liveWorkflowRows, shortWorkflowName, type LiveLadderRow } from "@/lib/research/live-workflows";
+import { useFeatures } from "@/lib/features-context";
 
 /**
  * A crew's workflows as the producer ranks them RIGHT NOW, at the crew's leg: the order
@@ -26,6 +27,12 @@ import { liveWorkflowRows, type LiveLadderRow } from "@/lib/research/live-workfl
  */
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
+
+/** The crew's channel name, the prefix every one of its workflow names repeats. */
+export function useCrewChannelName(crew: ResearchCrew): string | null {
+  const { getFeature } = useFeatures();
+  return getFeature(CREW_KEY[crew].channel)?.name ?? null;
+}
 
 /** The crew's leg in the fleet's own key, or null when the crew's step starts no entry leg. */
 export function useResearchCrewLeg(crew: ResearchCrew): string | null {
@@ -44,7 +51,7 @@ export function ResearchLiveWorkflows({
   base: string;
   crew: ResearchCrew;
   legKey: string;
-  catalog: ResearchCatalog;
+  catalog: ResearchCatalog | null;
   outcomeUnit: string;
   nav: (href: string) => void;
 }) {
@@ -61,7 +68,9 @@ export function ResearchLiveWorkflows({
     [specs, featureSlug, legKey],
   );
   const { actual } = useCostBasis();
-  const ready = Boolean(brandId) && settled;
+  // Fires as soon as the missions can name a campaign (they paint from disk), or once they have
+  // settled with none: the persisted ladder under the same key then paints on the first frame.
+  const ready = Boolean(brandId) && (settled || campaignId != null);
 
   const ladderQ = useAuthQuery(
     [actual ? "workflowRankLadderActual" : "workflowRankLadder", brandId, legKey, campaignId ?? "none"],
@@ -88,7 +97,9 @@ export function ResearchLiveWorkflows({
     }
     return m;
   }, [catalogueQ.data]);
-  const researched = useMemo(() => new Set(catalog[crew].workflows.map((w) => w.key)), [catalog, crew]);
+  const researched = useMemo(() => new Set((catalog?.[crew].workflows ?? []).map((w) => w.key)), [catalog, crew]);
+  const channelName = useCrewChannelName(crew);
+  const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
 
   const answered = ladderQ.data !== undefined || ladderQ.isFetchedAfterMount;
   const failed = ladderQ.data === undefined && ladderQ.isFetchedAfterMount;
@@ -104,13 +115,13 @@ export function ResearchLiveWorkflows({
         </span>
         {firstRow && (
           <span>
-            Goes first: <span className="k-fg font-medium">{firstRow.name ?? firstRow.slug}</span>
+            Goes first: <span className="k-fg font-medium">{nameOf(firstRow)}</span>
           </span>
         )}
         <span>
           Money goes to:{" "}
           {cashRow ? (
-            <span className="k-fg font-medium">{cashRow.name ?? cashRow.slug}</span>
+            <span className="k-fg font-medium">{nameOf(cashRow)}</span>
           ) : (
             <span className="k-fg3">no mature workflow yet</span>
           )}
@@ -172,11 +183,11 @@ export function ResearchLiveWorkflows({
                       <div className="flex min-w-0 items-center gap-2">
                         {href ? (
                           <Link href={href} className="min-w-0 truncate font-medium" title={r.name ?? r.slug}>
-                            {r.name ?? r.slug}
+                            {nameOf(r)}
                           </Link>
                         ) : (
                           <span className="min-w-0 truncate font-medium" title={r.name ?? r.slug}>
-                            {r.name ?? r.slug}
+                            {nameOf(r)}
                           </span>
                         )}
                         {r.first && <span className="k-chip shrink-0">Goes first</span>}
