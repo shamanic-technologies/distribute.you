@@ -212,3 +212,34 @@ describe("market size and back helpers", () => {
     expect(previousStep("legs")).toBe("salesSteps");
   });
 });
+
+describe("the payment wall, simplified", () => {
+  it("never closes on a click outside the panels (only × or Escape)", () => {
+    expect(WALL).not.toContain("if (e.target === e.currentTarget && !busy && stage !== \"launching\") onClose();");
+  });
+
+  it("freezes the walk behind an open wall", () => {
+    expect(PAGE).toContain("if (wallOpen) return;\n    const mv = stageMove(phases, stageIdx);");
+  });
+
+  it("asks Google OR email, with the email field right above its button, and asks the budget with the card", () => {
+    const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
+    expect(form.indexOf("Continue with Google")).toBeLessThan(form.indexOf("or with your email"));
+    expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("Email me a code"));
+    expect(form).not.toContain("{budgetRow}");
+    expect(WALL).toContain('if (!checkReady("account")) return;');
+  });
+
+  it("carries real testimonials with five stars, from people the homepage names", () => {
+    for (const n of ["Christian Lemke", "Katherine Fleishman", "Andrew Becker"]) expect(WALL).toContain(n);
+    expect(WALL).toContain("★★★★★");
+    expect(WALL).toContain("<Testimonials />");
+  });
+
+  it("shows no masked surname, no address and no vendor on a lead", () => {
+    expect(PAGE).not.toContain("[r.person.firstName, r.person.lastNameObfuscated]");
+    expect(PAGE).not.toContain("found via");
+    expect(PAGE).not.toContain("maskedEmail ??");
+    expect(PAGE).toContain('"Email found and verified"');
+  });
+});

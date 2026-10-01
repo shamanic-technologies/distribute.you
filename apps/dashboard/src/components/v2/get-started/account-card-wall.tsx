@@ -242,11 +242,12 @@ export function AccountCardWall({
   const parsedBudget = parseDailyBudget(budget, floorUsd);
   const budgetUsd = "usd" in parsedBudget ? parsedBudget.usd : null;
 
-  function checkReady(): boolean {
+  function checkReady(scope: "account" | "card" = "card"): boolean {
     if (!consent) {
       setError(`Tick the box to let us email on behalf of ${brandName}.`);
       return false;
     }
+    if (scope === "account") return true;
     if ("problem" in parsedBudget) {
       setError(parsedBudget.problem);
       return false;
@@ -263,7 +264,7 @@ export function AccountCardWall({
   async function submitAccount(e: React.FormEvent) {
     e.preventDefault();
     if (!signUpLoaded || !signUp || busy) return;
-    if (!checkReady()) return;
+    if (!checkReady("account")) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -326,7 +327,7 @@ export function AccountCardWall({
 
   async function google() {
     if (!signUpLoaded || !signUp || busy) return;
-    if (!checkReady()) return;
+    if (!checkReady("account")) return;
     setBusy(true);
     setError(null);
     try {
@@ -503,9 +504,6 @@ export function AccountCardWall({
   return createPortal(
     <div
       className="v2-root gs-scrim fixed inset-0 z-[60] overflow-y-auto bg-[color-mix(in_oklab,var(--bg-canvas)_35%,transparent)] backdrop-blur-[6px]"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy && stage !== "launching") onClose();
-      }}
     >
       <button
         type="button"
@@ -521,9 +519,6 @@ export function AccountCardWall({
         aria-modal="true"
         aria-label="Start outreach"
         className="mx-auto grid w-full max-w-[1040px] gap-3 px-3 pb-10 pt-14 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:px-6 md:pt-[6vh]"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget && !busy && stage !== "launching") onClose();
-        }}
       >
         {/* What the $30 is, and what it buys. */}
         <section className="gs-panel k-popover p-5 md:col-start-1">
@@ -581,46 +576,40 @@ export function AccountCardWall({
               <>
                 {stage === "account" ? (
                   <form className="mt-4 grid gap-3" onSubmit={(e) => void submitAccount(e)}>
-                    <label className="grid gap-1">
-                      <span className="k-label">Work email</span>
-                      <input
-                        className="k-input h-9 px-2.5"
-                        type="email"
-                        autoComplete="email"
-                        placeholder="you@company.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </label>
-                    <div className="k-inset grid gap-2 rounded-lg p-3">
-                      {budgetRow}
-                      <p className="k-fg3 text-[12px] leading-5">
-                        {`You will not be charged yet. We spend your $${WALL_FREE_CREDIT_USD} first, then your card pays what the campaign spends, never more than your daily budget. Pause anytime.`}
-                      </p>
-                    </div>
-                    <Consent brandName={brandName} checked={consent} onChange={setConsent} />
-                    <div id="clerk-captcha" />
-                    {captchaWaiting && (
-                      <p className="gs-in k-fg2 text-[12px]" role="status">
-                        Check the box above to finish creating your account.
-                      </p>
-                    )}
-                    <button
-                      type="submit"
-                      className="k-btn-accent gs-glow h-9 justify-center"
-                      disabled={busy || !EMAIL_SHAPE.test(email.trim())}
-                    >
-                      {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : "Email me a code"}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
-                      <span className="k-fg3 text-[12px]">or</span>
-                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
-                    </div>
-                    <button type="button" className="k-btn h-9 justify-center gap-2" onClick={() => void google()} disabled={busy}>
+                    <button type="button" className="k-btn h-10 justify-center gap-2 text-[14px]" onClick={() => void google()} disabled={busy}>
                       <GoogleMark />
                       Continue with Google
                     </button>
+                    <div className="flex items-center gap-2">
+                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
+                      <span className="k-fg3 text-[12px]">or with your email</span>
+                      <span className="h-px flex-1 bg-[var(--line-subtle)]" />
+                    </div>
+                    <div className="grid gap-2">
+                      <input
+                        className="k-input h-10 px-2.5"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@company.com"
+                        aria-label="Work email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                      <div id="clerk-captcha" />
+                      {captchaWaiting && (
+                        <p className="gs-in k-fg2 text-[12px]" role="status">
+                          Check the box above to finish creating your account.
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        className="k-btn-accent gs-glow h-10 justify-center"
+                        disabled={busy || !EMAIL_SHAPE.test(email.trim())}
+                      >
+                        {busy ? (captchaWaiting ? "Waiting for verification" : "Sending your code...") : "Email me a code"}
+                      </button>
+                    </div>
+                    <Consent brandName={brandName} checked={consent} onChange={setConsent} />
                     <p className="k-fg3 text-[12px]">
                       Already have an account?{" "}
                       <a className="k-accent-text underline" href="/sign-in">
@@ -732,6 +721,7 @@ export function AccountCardWall({
         {writtenEmail && <EmailCard mail={writtenEmail} />}
 
         <ClientCarousel cards={proof ? proofCardsFor(proof.showcase) : []} />
+        <Testimonials />
       </div>
     </div>,
     document.body,
@@ -751,7 +741,7 @@ function BuysTile({ label, note, children }: { label: string; note: string; chil
 }
 
 function EmailCard({ mail }: { mail: GetStartedEmail }) {
-  const to = [[mail.recipient.firstName, mail.recipient.lastName].filter(Boolean).join(" "), mail.recipient.title]
+  const to = [mail.recipient.firstName, mail.recipient.title]
     .filter(Boolean)
     .join(", ");
   return (
@@ -909,5 +899,52 @@ function Steps({ stage }: { stage: Stage }) {
         <span className="gs-fill block h-full rounded-full bg-[var(--accent)]" style={{ width: `${((at + 1) / items.length) * 100}%` }} />
       </span>
     </div>
+  );
+}
+
+/**
+ * Real words from real clients, as the homepage states them (owner 2026-10-01: the
+ * payment step carries testimonials beside the proof card). Never invented.
+ */
+const TESTIMONIALS = [
+  {
+    name: "Christian Lemke",
+    role: "Google Ads expert, Maggie M.",
+    photo: "/start/christian-lemke.jpg",
+    quote: "It was incredibly fast to launch a campaign. I just entered my URL, the platform identified the right audience and handled the outreach.",
+  },
+  {
+    name: "Katherine Fleishman",
+    role: "Marketing expert, 20+ years",
+    photo: "/start/katherine-fleishman.jpeg",
+    quote: "Excellent click-through rate. I can literally see everything at a glance.",
+  },
+  {
+    name: "Andrew Becker",
+    role: "Founder, voozaa.app",
+    photo: "/start/andrew-becker.jpg",
+    quote: "Best thing I liked is the depth to which it personalizes outreach. Something I always wished I could do better at scale.",
+  },
+] as const;
+
+function Testimonials() {
+  return (
+    <section className="gs-panel k-popover grid gap-3 p-4 md:col-start-1">
+      {TESTIMONIALS.map((t) => (
+        <figure key={t.name} className="grid gap-1.5">
+          <span className="text-[13px] tracking-[2px] text-[var(--data-amber)]" aria-label="5 out of 5 stars">
+            ★★★★★
+          </span>
+          <blockquote className="k-fg text-[13px] leading-5">{t.quote}</blockquote>
+          <figcaption className="flex items-center gap-2">
+            <img src={t.photo} alt="" className="h-6 w-6 rounded-full object-cover" />
+            <span className="text-[12px]">
+              <span className="k-fg font-medium">{t.name}</span>
+              <span className="k-fg3">{` · ${t.role}`}</span>
+            </span>
+          </figcaption>
+        </figure>
+      ))}
+    </section>
   );
 }

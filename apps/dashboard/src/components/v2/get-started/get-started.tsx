@@ -92,14 +92,12 @@ import {
   offerSourceText,
   parseCompetitors,
   parseGetStartedSnapshot,
-  providerLabel,
   settledPhase,
   sizeDots,
   stageDwellMs,
   stageMove,
   valueLines,
   valueText,
-  verdictLabel,
   websiteUrl,
   type Competitor,
   type GetStartedAudience,
@@ -966,6 +964,8 @@ export function GetStarted() {
   const phaseKey = phases.join(",");
   const settledAt = useRef<{ idx: number; at: number } | null>(null);
   useEffect(() => {
+    // The payment window is open: the page behind stands still.
+    if (wallOpen) return;
     const mv = stageMove(phases, stageIdx);
     if (!mv) return;
     const here = GET_STARTED_STEPS[stageIdx].key;
@@ -982,7 +982,7 @@ export function GetStarted() {
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phaseKey, stageIdx]);
+  }, [phaseKey, stageIdx, wallOpen]);
 
   /** Back: a question step before this one is reopened to be answered again; any other is shown. */
   function goBack(from: GetStartedStepKey) {
@@ -2496,7 +2496,7 @@ function CompaniesStage({
               </thead>
               <tbody>
                 {rows.map((r, i) => {
-                  const name = [r.person.firstName, r.person.lastNameObfuscated].filter(Boolean).join(" ");
+                  const name = r.person.firstName ?? "";
                   return (
                     <tr
                       key={r.index}
@@ -2618,7 +2618,7 @@ function MoreSentinel({ onMore, busy }: { onMore: () => void; busy: boolean }) {
   return <div ref={ref} aria-hidden="true" className="h-px" />;
 }
 
-/** One row's person, found and verified live: a masked domain, never the address. */
+/** One row's person, found and verified live, in plain words. */
 function RowCheck({ check }: { check: CompanyRowEmailCheck | undefined }) {
   if (!check) return null;
   if (check.status === "checking" || check.status === "pending")
@@ -2628,20 +2628,14 @@ function RowCheck({ check }: { check: CompanyRowEmailCheck | undefined }) {
         Finding and verifying the email
       </span>
     );
-  const finder = providerLabel(check.finder);
-  const verifier = providerLabel(check.verifier);
+  // No address, no vendor names: the visitor only needs to know we reach this person.
   if (check.status === "found")
     return (
-      <span className="gs-pop block text-[11.5px]">
-        <span className="k-fg k-mono">{check.maskedEmail ?? "—"}</span>
-        <span className="k-fg3">
-          {finder ? ` found via ${finder}` : " found"}
-          {verifier && `, ${verifier}: `}
-          {verifier && <span style={{ color: check.deliverable ? "var(--run)" : "var(--data-amber)" }}>{verdictLabel(check.verdict) ?? "no verdict"}</span>}
-        </span>
+      <span className="gs-pop block text-[11.5px]" style={{ color: check.deliverable ? "var(--run)" : undefined }}>
+        {check.deliverable ? "Email found and verified" : "Email found"}
       </span>
     );
-  return <span className="gs-in k-fg3 block text-[11.5px]">{finder ? `No email found via ${finder}` : "No email found"}</span>;
+  return <span className="gs-in k-fg3 block text-[11.5px]">No email found</span>;
 }
 
 /** Step 6: the people on the left, the selected one's email on the right (Explee's layout). */
@@ -2685,7 +2679,7 @@ function EmailsStage({
         <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
           <ul className="k-card k-scroll grid max-h-[560px] content-start overflow-y-auto overflow-x-hidden p-1.5" aria-label="People">
             {rows.map((r, i) => {
-              const name = [r.person.firstName, r.person.lastNameObfuscated].filter(Boolean).join(" ") || r.company.name;
+              const name = r.person.firstName || r.company.name;
               const on = r.index === selected;
               return (
                 <li key={r.index} className="gs-in" style={stagger(Math.min(i, 12), 30)}>
@@ -2719,7 +2713,7 @@ function EmailsStage({
                 <BrandLogo domain={row.company.domain} size={28} className="rounded-md" />
                 <div className="min-w-0">
                   <p className="k-fg truncate text-[14px] font-medium">
-                    {[row.person.firstName, row.person.lastNameObfuscated].filter(Boolean).join(" ") || "—"}
+                    {row.person.firstName || "—"}
                   </p>
                   <p className="k-fg3 truncate text-[12px]">{[row.person.title, row.company.name].filter(Boolean).join(" at ")}</p>
                 </div>
