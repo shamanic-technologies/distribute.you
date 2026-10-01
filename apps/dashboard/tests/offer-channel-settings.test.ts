@@ -112,6 +112,13 @@ describe("Channels tab wiring", () => {
     expect(page).toContain("rate.effectiveRatePct");
     expect(page).toContain("invalidateConversionRates(qc)");
   });
+
+  it("reads as plain text at rest: the list button draws no frame", () => {
+    const at = page.indexOf("onClick={() => setText(shown.join");
+    const btn = page.slice(at, page.indexOf(">", page.indexOf("className=", at)));
+    expect(btn).not.toContain("box-shadow");
+    expect(btn).not.toContain("k-input");
+  });
 });
 
 describe("leg rates", () => {
