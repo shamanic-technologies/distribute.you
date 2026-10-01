@@ -1,0 +1,57 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Two follow-ups doubled the positive replies of our cold emails:</p>
+<ul style="margin:0;padding-left:20px">
+<li><strong>{{n first.replies}} positive replies from the first email, {{n total.replies}} after two follow-ups</strong>, from the same {{n people}} people</li>
+<li><strong>{{usd first.cost}} per positive reply</strong> on the first email, {{usd fu1.cost}} on the first follow-up, {{usd fu2.cost}} on the second</li>
+</ul>
+</div>
+
+<h2 id="the-question">The question</h2>
+
+<p>Every cold emailer asks it: how many times do you follow up before you stop? Too few and you leave replies on the table. Too many and you pay for emails nobody wanted, and annoy the people you hope to work with.</p>
+
+<p>We run cold email for our clients, and our sequences send a first email and up to two follow-ups. So we counted what each email in the sequence brings back, and what it cost.</p>
+
+<h2 id="the-data">The data</h2>
+
+<p>We looked at <strong>{{round total.emails}} cold emails</strong> sent to {{round people}} people, from campaigns that ask for a reply. We counted positive replies only: a prospect answering with interest. Auto-replies, out-of-office messages and refusals do not count.</p>
+
+<p>Every person is counted once, from the first email to the last, so each follow-up is judged on the same people.</p>
+
+<h2 id="the-answer">The answer</h2>
+
+<p><strong>Follow-ups doubled the positive replies.</strong> The first email alone brought <strong>{{raw rate.first}}</strong> positive replies per 10,000 people. With two follow-ups, the same people reached <strong>{{raw rate.all}}</strong>.</p>
+
+{{chart rate}}
+
+<p>Each email costs more per positive reply than the one before it: <strong>{{usd first.cost}}</strong> for the first email, {{usd fu1.cost}} for the first follow-up, <strong>{{usd fu2.cost}}</strong> for the second.</p>
+
+{{chart cost}}
+
+<h2 id="the-rule">The rule this points to</h2>
+
+<p><strong>Send the first email and two follow-ups.</strong> Stopping after the first email gives up more than half of the positive replies.</p>
+
+<p>The second follow-up is the most expensive email in the sequence, and it still brings about one positive reply in five ({{raw fu2.sharePct}}%). Keep it if a new conversation is worth more to you than {{usd fu2.cost}}.</p>
+
+<h2 id="why">Why the later emails still work</h2>
+
+<p>Our reading, not something this data proves on its own. A first email lands in a busy inbox and gets skipped, not refused. A short follow-up puts the thread back on top on a day the reader has a minute. Each round, the people most likely to answer already have, so the next email reaches a colder group, and each reply costs more.</p>
+
+<h2 id="the-limits">What this data cannot tell you</h2>
+
+<ul>
+<li>Positive replies are rare. The second follow-up carries {{n fu2.replies}} of them, so its price is a direction, not a precise figure.</li>
+<li>A reply counts for the last email sent before it. Someone who read the first email and answered after a follow-up arrived is counted for the follow-up.</li>
+<li>{{raw leftOut}}</li>
+<li>Positive replies include the ones a client logged in their CRM (a phone call, a LinkedIn message), not only email answers.</li>
+</ul>
+
+<h2 id="method">Method</h2>
+
+<p>Every cold email sent from {{day windowFrom}} on campaigns that ask for a reply, read from our production database on {{day readOn}}. Only people we started writing to at least {{raw durationDays}} days before the read count, with every positive reply they sent since. Each email is filed under its place in the sequence. The cost is what the emails cost you to write and send. The scripts are on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/followups">GitHub</a>.</p>
+
+<h2 id="about-us">About distribute.you</h2>
+
+<p>distribute.you runs cold email for you: the sending mailboxes, the tests like this one, the templates and the audiences, and the numbers on what it cost you. From $1/day, first $30 free. <a href="https://distribute.you">distribute.you</a></p>
