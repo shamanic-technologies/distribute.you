@@ -5952,10 +5952,20 @@ export async function getSendForecast(
 // that is ongoing right now — billing's own brand total is the configured one and
 // is status-blind, so it counts money posted against funnels whose campaign is
 // stopped or was never created. Anything claiming to be money in play reads
-// RUNNING. A row is "active" iff runningDailyBudgetUsd > 0 AND the org can fund
-// another day of it; "paused" iff money is configured with nothing running
-// against it; else "inactive".
+// RUNNING. Since features-service v0.179.24 RUNNING is PROACTIVE only (campaigns
+// that START conversations, e.g. cold email, and spend the budget); a REACTIVE
+// campaign (AI meeting booking on an existing conversation) carries only a cap,
+// served apart in `reactiveRunningDailyCapUsd`, never money in play. The status
+// verdict and the row ORDER are the server's; the page derives neither.
 // ---------------------------------------------------------------------------
+export type AuditAccountStatus =
+  | "active"
+  | "payment_declined"
+  | "no_payment_method"
+  | "reactive_only"
+  | "paused"
+  | "inactive";
+
 export interface AuditAccountRow {
   orgId: string; // internal org UUID
   orgExternalId: string | null; // Clerk org id (org_...), resolves the org name client-side
@@ -5964,17 +5974,19 @@ export interface AuditAccountRow {
   brandName: string | null;
   brandDomain: string | null;
   configuredDailyBudgetUsd: number; // every ceiling the customer set (USD) — what they posted
-  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
+  runningDailyBudgetUsd: number; // PROACTIVE budget behind an ongoing campaign (USD), the money in play
+  proactiveRunningDailyBudgetUsd: number; // same value as runningDailyBudgetUsd, named for what it is
+  reactiveRunningDailyCapUsd: number; // REACTIVE cap behind an ongoing campaign (USD), rarely spent
   orgBalanceUsd: number; // org available credit balance (USD)
-  // "active" = running budget > 0 and the org can fund the next day.
-  // "paused" = money configured, nothing running against it (campaigns stopped, or
-  // campaign-service never gave this funnel one). It keeps its ceiling and spends nothing.
-  // Else "inactive". There is no brand-level pause flag in this rule any more.
-  status: "active" | "paused" | "inactive";
+  // Server precedence: payment_declined / no_payment_method > active > reactive_only > paused > inactive.
+  // "reactive_only" = nothing proactive running, a reactive campaign still on.
+  status: AuditAccountStatus;
+  paymentDeclinedReason?: string | null; // billing's reason when status is payment_declined
 }
 
 export interface AuditAccountsStats {
-  totalRunningDailyBudgetUsd: number; // sum over ACTIVE rows only — what the fleet can spend today
+  totalRunningDailyBudgetUsd: number; // PROACTIVE, sum over ACTIVE rows only, what the fleet can spend today
+  totalReactiveRunningDailyCapUsd: number; // reactive caps (active + reactive_only rows), never added to the running total
   totalConfiguredDailyBudgetUsd: number; // sum over the SAME rows of what those customers posted
   // billing-service's RECURRING MRR (features-service v0.179.15): recurring orgs
   // only, their running proactive campaigns with people left to contact, × 30.
@@ -5983,6 +5995,9 @@ export interface AuditAccountsStats {
   arrUsd: number | null;
   mrrUnavailableReason?: string | null;
   activeCount: number;
+  paymentDeclinedCount: number;
+  noPaymentMethodCount: number;
+  reactiveOnlyCount: number;
   pausedCount: number;
   inactiveCount: number;
   totalCount: number;

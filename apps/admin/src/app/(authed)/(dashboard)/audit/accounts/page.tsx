@@ -3,7 +3,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getAuditAccounts, type AuditAccounts, type AuditAccountRow } from "@/lib/api";
+import {
+  getAuditAccounts,
+  type AuditAccounts,
+  type AuditAccountRow,
+  type AuditAccountStatus,
+} from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 
@@ -67,42 +72,46 @@ function useOrgNames(rows: AuditAccountRow[] | undefined) {
 
 function orgLabel(row: AuditAccountRow, names: Record<string, string>): string {
   const clerk = row.orgExternalId ? names[row.orgExternalId] : undefined;
-  return clerk || row.brandDomain || row.ownerEmail || "—";
+  return clerk || row.brandDomain || row.ownerEmail || "-";
 }
 
+const STATUS_LABEL: Record<AuditAccountStatus, string> = {
+  active: "Active",
+  payment_declined: "Payment declined",
+  no_payment_method: "No card",
+  reactive_only: "Reactive only",
+  paused: "Paused",
+  inactive: "Inactive",
+};
+
+const STATUS_PILL: Record<AuditAccountStatus, string> = {
+  active: "bg-emerald-50 text-emerald-700",
+  payment_declined: "bg-red-50 text-red-700",
+  no_payment_method: "bg-red-50 text-red-700",
+  reactive_only: "bg-sky-50 text-sky-700",
+  paused: "bg-amber-50 text-amber-700",
+  inactive: "bg-gray-100 text-gray-500",
+};
+
 function StatusCell({ row }: { row: AuditAccountRow }) {
-  if (row.status === "active") {
-    // The running figure is what this account can spend today. When the customer has posted more
-    // than that — a second funnel whose campaign is stopped — the difference is stated rather than
-    // averaged away: the two numbers answer different questions and only one is money in play.
-    const posted = row.configuredDailyBudgetUsd > row.runningDailyBudgetUsd;
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-700">
-        {usd2(row.runningDailyBudgetUsd)}/day
-        {posted && (
-          <span className="font-medium text-emerald-600">
-            · {usd2(row.configuredDailyBudgetUsd)} posted
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (row.status === "paused") {
-    // Paused keeps its ceiling and runs nothing — show the held amount for context.
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-        Paused
-        {row.configuredDailyBudgetUsd > 0 && (
-          <span className="font-medium tabular-nums text-amber-600">
-            · {usd2(row.configuredDailyBudgetUsd)}/day posted
-          </span>
-        )}
-      </span>
-    );
-  }
+  // Label read straight off the served status: the verdict is features-service's, never re-derived here.
+  const reason = row.status === "payment_declined" ? row.paymentDeclinedReason : null;
   return (
-    <span className="inline-block rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-      Inactive
+    <span
+      className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${STATUS_PILL[row.status] ?? STATUS_PILL.inactive}`}
+      title={reason ? reason.replace(/_/g, " ") : undefined}
+    >
+      {STATUS_LABEL[row.status] ?? row.status}
+    </span>
+  );
+}
+
+/** A daily figure; zero is drawn muted so the running money reads first. */
+function PerDay({ usd, sub }: { usd: number; sub?: string }) {
+  return (
+    <span className={`tabular-nums ${usd > 0 ? "font-medium text-gray-900" : "text-gray-400"}`}>
+      {usd2(usd)}/day
+      {sub && <span className="block text-xs font-normal text-gray-400">{sub}</span>}
     </span>
   );
 }
@@ -116,22 +125,9 @@ export default function AuditAccountsPage() {
 
   const names = useOrgNames(data?.rows);
 
-  // Rank active → paused → inactive; within a bucket by RUNNING budget desc, then by what was
-  // posted — the money actually in play leads, held ceilings next, inactive last. A paused row runs
-  // nothing, so its posted amount is what ranks it.
-  const rows = useMemo(() => {
-    const rank = (s: AuditAccountRow["status"]) => (s === "active" ? 0 : s === "paused" ? 1 : 2);
-    const list = [...(data?.rows ?? [])];
-    list.sort((a, b) => {
-      const r = rank(a.status) - rank(b.status);
-      if (r !== 0) return r;
-      if (b.runningDailyBudgetUsd !== a.runningDailyBudgetUsd) {
-        return b.runningDailyBudgetUsd - a.runningDailyBudgetUsd;
-      }
-      return b.configuredDailyBudgetUsd - a.configuredDailyBudgetUsd;
-    });
-    return list;
-  }, [data]);
+  // Rows render in the SERVED order (active, payment declined, no card, reactive only, paused,
+  // inactive, then running budget desc): features-service owns it, the page never re-sorts.
+  const rows = data?.rows ?? [];
 
   const s = data?.stats;
 
@@ -140,12 +136,13 @@ export default function AuditAccountsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Every customer account across the fleet, cross-org. Active means money is actually
-          running — a ceiling standing behind a campaign that is ongoing — and the org holds enough
-          credit to fund at least one more day of it. Paused means the customer has posted money
-          with nothing running against it: campaigns stopped, or none created for the funnel they
-          funded. Anything else is inactive. Running budget, MRR and ARR count active accounts
-          only, and read what can be spent today rather than what was configured.
+          Every customer account across the fleet, cross-org. Proactive campaigns (cold email)
+          start conversations and spend the daily budget. Reactive campaigns (AI meeting booking)
+          only act on a conversation that already exists, so they carry a cap that is rarely spent.
+          Active means a proactive campaign is running and the org can fund another day of it.
+          Reactive only means every proactive campaign is stopped and a reactive one is still on.
+          Paused means money is posted with nothing running. Running budget, MRR and ARR count
+          proactive money on active accounts only.
         </p>
       </div>
 
@@ -156,45 +153,61 @@ export default function AuditAccountsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard
-              label="Running daily budget"
-              value={s ? usd0(s.totalRunningDailyBudgetUsd) : "—"}
+              label="Proactive running / day"
+              value={s ? usd0(s.totalRunningDailyBudgetUsd) : "-"}
               sub={
                 s && s.totalConfiguredDailyBudgetUsd > s.totalRunningDailyBudgetUsd
-                  ? `active accounts · ${usd0(s.totalConfiguredDailyBudgetUsd)} posted`
+                  ? `active accounts, ${usd0(s.totalConfiguredDailyBudgetUsd)} posted`
                   : "active accounts"
               }
               pending={isPending}
             />
             <StatCard
+              label="Reactive cap / day"
+              value={s ? usd0(s.totalReactiveRunningDailyCapUsd) : "-"}
+              sub="a cap, rarely spent, not in running"
+              pending={isPending}
+            />
+            <StatCard
               label="MRR"
-              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : "—"}
+              value={s ? (s.mrrUsd === null ? "Not measured" : usd0(s.mrrUsd)) : "-"}
               sub="recurring customers, from billing"
               pending={isPending}
             />
             <StatCard
               label="ARR"
-              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : "—"}
+              value={s ? (s.arrUsd === null ? "Not measured" : usd0(s.arrUsd)) : "-"}
               sub="MRR × 12"
               pending={isPending}
             />
             <StatCard
               label="Active accounts"
-              value={s ? num(s.activeCount) : "—"}
-              sub="sending now"
+              value={s ? num(s.activeCount) : "-"}
+              sub="proactive running now"
+              pending={isPending}
+            />
+            <StatCard
+              label="Reactive only"
+              value={s ? num(s.reactiveOnlyCount) : "-"}
+              sub="no proactive campaign on"
               pending={isPending}
             />
             <StatCard
               label="Paused"
-              value={s?.pausedCount != null ? num(s.pausedCount) : "—"}
+              value={s?.pausedCount != null ? num(s.pausedCount) : "-"}
               sub="held, not spending"
               pending={isPending}
             />
             <StatCard
               label="Total accounts"
-              value={s ? num(s.totalCount) : "—"}
-              sub={s ? `${num(s.inactiveCount)} inactive` : undefined}
+              value={s ? num(s.totalCount) : "-"}
+              sub={
+                s
+                  ? `${num(s.paymentDeclinedCount + s.noPaymentMethodCount)} payment issue, ${num(s.inactiveCount)} inactive`
+                  : undefined
+              }
               pending={isPending}
             />
           </div>
@@ -212,7 +225,9 @@ export default function AuditAccountsPage() {
                         <th className="py-2 pr-4 font-medium">User</th>
                         <th className="py-2 px-4 font-medium">Org</th>
                         <th className="py-2 px-4 font-medium">Brand</th>
-                        <th className="py-2 pl-4 text-right font-medium">Brand status</th>
+                        <th className="py-2 px-4 text-right font-medium">Proactive / day</th>
+                        <th className="py-2 px-4 text-right font-medium">Reactive cap / day</th>
+                        <th className="py-2 pl-4 text-right font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -223,13 +238,26 @@ export default function AuditAccountsPage() {
                             r.status === "inactive" ? "text-gray-400" : ""
                           }`}
                         >
-                          <td className="py-2.5 pr-4 text-gray-700">{r.ownerEmail ?? "—"}</td>
+                          <td className="py-2.5 pr-4 text-gray-700">{r.ownerEmail ?? "-"}</td>
                           <td className="py-2.5 px-4 text-gray-700">{orgLabel(r, names)}</td>
                           <td className="py-2.5 px-4">
-                            <div className="font-medium text-gray-900">{r.brandName ?? r.brandDomain ?? "—"}</div>
+                            <div className="font-medium text-gray-900">{r.brandName ?? r.brandDomain ?? "-"}</div>
                             {r.brandName && r.brandDomain && (
                               <div className="text-xs text-gray-400">{r.brandDomain}</div>
                             )}
+                          </td>
+                          <td className="py-2.5 px-4 text-right">
+                            <PerDay
+                              usd={r.proactiveRunningDailyBudgetUsd}
+                              sub={
+                                r.configuredDailyBudgetUsd > r.proactiveRunningDailyBudgetUsd
+                                  ? `${usd2(r.configuredDailyBudgetUsd)} posted`
+                                  : undefined
+                              }
+                            />
+                          </td>
+                          <td className="py-2.5 px-4 text-right">
+                            <PerDay usd={r.reactiveRunningDailyCapUsd} />
                           </td>
                           <td className="py-2.5 pl-4 text-right">
                             <StatusCell row={r} />
@@ -238,7 +266,7 @@ export default function AuditAccountsPage() {
                       ))}
                       {rows.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="py-8 text-center text-sm text-gray-400">
+                          <td colSpan={6} className="py-8 text-center text-sm text-gray-400">
                             No accounts found.
                           </td>
                         </tr>

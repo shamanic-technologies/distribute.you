@@ -168,9 +168,9 @@ export function persisterStorageKey(bucket: string | null | undefined): string {
  * `safeParse`, so a field the schema now REQUIRES is simply absent on it and the
  * page throws (v2: `cost.usd` on the cold-email Domains page read `monthlyCents`
  * off `undefined`). Only a field every consumer reads as optional is safe
- * without a bump.
+ * without a bump. (v3: `reactiveRunningDailyCapUsd` on the Accounts audit rows.)
  */
-const PERSIST_CACHE_VERSION = "2";
+const PERSIST_CACHE_VERSION = "3";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
