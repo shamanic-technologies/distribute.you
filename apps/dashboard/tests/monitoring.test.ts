@@ -6,6 +6,9 @@ import {
   CurrentPricesSchema,
   FleetEmailStatsSchema,
   MONITORING_PAGES,
+  MarginTimeseriesSchema,
+  PaymentSourcesSchema,
+  ProviderSourcesListSchema,
   PriceVersionsSchema,
   costItemNames,
   parseMonitoringPath,
@@ -146,9 +149,58 @@ describe("monitoring: staff only, end to end", () => {
     for (const k of ["STAFF_MONITORING_PATHS.margin", "STAFF_MONITORING_PATHS.priceVersions", "STAFF_MONITORING_PATHS.emails"]) expect(api).toContain(k);
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
-    for (const root of ["staffCostMargin", "staffPriceVersions", "staffCurrentPrices", "staffEmailsSent"]) {
+    for (const root of ["staffCostMargin", "staffPriceVersions", "staffCurrentPrices", "staffEmailsSent", "staffMarginTimeseries", "staffPaymentSources", "staffProviderSources"]) {
       expect(sensitive).toContain(`"${root}"`);
-      expect(read("components/v2/monitoring-page.tsx")).toContain(`["${root}"]`);
+      expect(read("components/v2/monitoring-page.tsx") + read("components/v2/monitoring-providers.tsx")).toContain(`["${root}"]`);
     }
+  });
+});
+
+describe("monitoring: providers table and drawer", () => {
+  it("runs-service's monthly series parses (dense periods, the month in progress marked incomplete)", () => {
+    const { unpricedCostNames, ...money } = figures;
+    const parsed = MarginTimeseriesSchema.parse({
+      interval: "month",
+      timezone: "UTC",
+      periods: ["2026-09-01", "2026-10-01"],
+      providers: [
+        { provider: "instantly", buckets: [{ period: "2026-09-01", complete: true, ...money, unpricedCostNames }, { period: "2026-10-01", complete: false, ...money, unpricedCostNames: [] }] },
+        { provider: null, buckets: [] },
+      ],
+    });
+    expect(parsed.providers[0].buckets.map((b) => b.complete)).toEqual([true, false]);
+  });
+  it("costs-service's payment sources parse (vocabulary, and every provider with its domain and sources)", () => {
+    expect(PaymentSourcesSchema.parse({ sources: [{ key: "qonto", displayName: "Qonto", domain: "qonto.com" }] }).sources[0].displayName).toBe("Qonto");
+    const rows = ProviderSourcesListSchema.parse({ providers: [{ provider: "apollo", providerDomain: "apollo.io", sources: [] }, { provider: "x", providerDomain: null, sources: [] }] }).providers;
+    expect(rows[1].providerDomain).toBeNull();
+  });
+  it("Providers and Spend both list providers through the one table, which carries a Sources column and opens a drawer", () => {
+    const page = read("components/v2/monitoring-page.tsx");
+    for (const fn of ["function ProvidersPage(", "function SpendPage("]) {
+      const body = page.slice(page.indexOf(fn), page.indexOf("\n}\n", page.indexOf(fn)));
+      expect(body).toContain("<ProvidersTable");
+    }
+    const table = read("components/v2/monitoring-providers.tsx");
+    expect(table).toContain("<th className={TH}>Sources</th>");
+    expect(table).toContain("<ProviderDrawer");
+    expect(table).toContain("<MonthlyCost provider={row.provider} />");
+  });
+  it("the month drawn dashed is the one runs-service marks incomplete, never one read off a clock", () => {
+    const table = read("components/v2/monitoring-providers.tsx");
+    const chart = table.slice(table.indexOf("function MonthlyCost("), table.indexOf("// ─── Sources editor"));
+    expect(chart).toContain("b.complete");
+    expect(chart).toContain("dashed");
+    expect(chart).not.toMatch(/new Date\(\)|useClientClock/);
+  });
+  it("the table formats money and never subtracts, sums or divides it", () => {
+    const table = read("components/v2/monitoring-providers.tsx");
+    expect(table).not.toMatch(/CostInUsdCents\)?\s*[-+/]\s*Number|Number\([^)]*CostInUsdCents\)\s*[-+/*]/);
+    expect(table).not.toContain("reduce(");
+  });
+  it("the reads and the write go through the staff gateway paths", () => {
+    const api = read("lib/api.ts");
+    for (const k of ["STAFF_MONITORING_PATHS.marginTimeseries", "STAFF_MONITORING_PATHS.paymentSources", "STAFF_MONITORING_PATHS.providerSources"]) expect(api).toContain(k);
+    expect(api).toContain('method: "PUT", body: { sources }');
   });
 });
