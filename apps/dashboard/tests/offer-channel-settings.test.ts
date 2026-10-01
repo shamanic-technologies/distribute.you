@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  formatRatePct,
   legRateFor,
   parseRatePct,
   giveListLines,
@@ -109,7 +108,8 @@ describe("Channels tab wiring", () => {
   it("autosaves on leaving a field: no Save button, a rate write re-reads every money root", () => {
     expect(page).not.toMatch(/>\s*Save\s*</);
     expect(page.match(/onBlur=\{commit\}/g)?.length).toBe(2);
-    expect(page).toContain('["brandLegRates", brandId]');
+    expect(page).toContain('["brandConversionRates", brandId]');
+    expect(page).toContain("rate.effectiveRatePct");
     expect(page).toContain("invalidateConversionRates(qc)");
   });
 });
@@ -121,7 +121,7 @@ describe("leg rates", () => {
   ];
   it("matches a leg by the two step labels, verbatim", () => {
     expect(legRateFor(rates, "Positive reply", "Meeting booked")?.ratePct).toBe(20);
-    // brand-service spells this step differently from the catalogue: no row, never a guess.
+    // Spelled differently from the catalogue: no row, never a guess.
     expect(legRateFor(rates, "Website visit", "Form submitted")).toBeUndefined();
   });
   it("parses what was typed: empty clears, out of range refuses", () => {
@@ -131,8 +131,5 @@ describe("leg rates", () => {
     expect(parseRatePct("101").ok).toBe(false);
     expect(parseRatePct("abc").ok).toBe(false);
   });
-  it("prints one decimal at most", () => {
-    expect(formatRatePct(12.5)).toBe("12.5%");
-    expect(formatRatePct(20)).toBe("20%");
-  });
+
 });
