@@ -113,6 +113,20 @@ describe("monitoring: lookups, never arithmetic on money", () => {
     for (const p of MONITORING_PAGES) expect(parseMonitoringPath(`/${p}/`)).toEqual({ view: "page", page: p });
     expect(parseMonitoringPath("/nope")).toEqual({ view: "missing", rest: "nope" });
   });
+  it("Current prices and Prices since inception live inside Billed to users; their old links redirect (owner 2026-10-01)", () => {
+    for (const old of ["price/current", "price/history"]) {
+      expect(MONITORING_PAGES).not.toContain(old);
+      expect(parseMonitoringPath(`/${old}`)).toEqual({ view: "moved", page: "price/billed" });
+    }
+    const page = read("components/v2/monitoring-page.tsx");
+    const billed = page.slice(page.indexOf("function BilledPage("), page.indexOf("// ─── Margin"));
+    expect(billed).toContain("<BillingTable");
+    expect(page).toContain("router.replace(movedTo)");
+    const table = read("components/v2/monitoring-billing.tsx");
+    expect(table).toContain("<CostItemDrawer");
+    expect(table).toContain('document.getElementById("v2-portal")');
+    expect(table).not.toContain("reduce(");
+  });
   it("the page formats money and never subtracts or divides it", () => {
     const page = read("components/v2/monitoring-page.tsx");
     expect(page).not.toMatch(/CostInUsdCents\)?\s*[-/]\s*Number|Number\([^)]*CostInUsdCents\)\s*[-+/*]/);
@@ -330,11 +344,12 @@ describe("monitoring: price of one cold email (owner formula 2026-10-01)", () =>
     expect(EmailSendPriceSchema.safeParse({ ...body, lastRefresh: null, stale: true }).success).toBe(true);
   });
 
-  it("is a Price card and its own page, read through the staff gateway, never written to disk", () => {
-    expect(MONITORING_PAGES).toContain("price/email-sending");
+  it("is a Cost card and its own page (moved from Price, owner 2026-10-01), read through the staff gateway, never written to disk", () => {
+    expect(MONITORING_PAGES).toContain("cost/email-sending");
+    expect(parseMonitoringPath("/price/email-sending")).toEqual({ view: "moved", page: "cost/email-sending" });
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('page="price/email-sending"');
-    expect(page).toContain('{view.page === "price/email-sending" && <EmailSendingPage />}');
+    expect(page).toContain('page="cost/email-sending"');
+    expect(page).toContain('{view.page === "cost/email-sending" && <EmailSendingPage />}');
     expect(page).toContain('["staffEmailSendPrice"]');
     expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.emailSendPrice");
     const persist = read("lib/persist-cache.ts");
@@ -348,9 +363,10 @@ describe("monitoring: price of one cold email (owner formula 2026-10-01)", () =>
     for (const k of ["priceUsdCents", "grossPriceUsdCents"]) expect(view).toContain(`key: "${k}"`);
   });
 
-  it("carries the owner's anatomy: price chart, spend per vendor, monthly table, vendors, timeline, billed before", () => {
+  it("carries the owner's anatomy: cost chart, spend per vendor, monthly table, vendors, timeline; no billed price (it is a Cost page)", () => {
     const view = read("components/v2/monitoring-email-price.tsx");
-    for (const s of ["<PriceChart", "<SpendChart", "<MonthlyTable", "<VendorsTable", "<Timeline", "<BilledBefore"]) expect(view).toContain(s);
+    for (const s of ["<PriceChart", "<SpendChart", "<MonthlyTable", "<VendorsTable", "<Timeline"]) expect(view).toContain(s);
+    expect(view).not.toMatch(/billedPricePerUnit|BilledBefore|markupMultiplier/);
   });
 });
 
@@ -405,7 +421,7 @@ describe("monitoring: real cost per credit of each subscription (owner 2026-10-0
   it("is a Cost card and its own page, read through the staff gateway, never written to disk", () => {
     expect(MONITORING_PAGES).toContain("cost/subscriptions");
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('<Section section="cost" count={3}>');
+    expect(page).toContain('<Section section="cost" count={4}>');
     expect(page).toContain('page="cost/subscriptions"');
     expect(page).toContain('{view.page === "cost/subscriptions" && <SubscriptionsPage />}');
     expect(page).toContain('["staffSubscriptionCosts"]');
@@ -456,7 +472,7 @@ describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", ()
   it("two pages, one per section, read through the staff gateway and never written to disk", () => {
     for (const p of ["price/new-pricing", "margin/pricing-comparison"]) expect(MONITORING_PAGES).toContain(p);
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('<Section section="price" count={5}>');
+    expect(page).toContain('<Section section="price" count={2}>');
     expect(page).toContain('<Section section="margin" count={2}>');
     expect(page).toContain('page="price/new-pricing"');
     expect(page).toContain('page="margin/pricing-comparison"');
